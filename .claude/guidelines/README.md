@@ -14,6 +14,7 @@ new team members (and AI assistants) stay consistent.
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
 | Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract) | [security-and-auth.md](security-and-auth.md) |
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Vue Router 5 file-based · Tailwind v4 · composables · fetch/auth · Vitest) | [frontend.md](frontend.md) |
+| Deployment (ghcr images · arm64 CI · Caddy edge · prod compose · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
 
 ## Stack baseline
 
