@@ -27,4 +27,8 @@ data class User(
     /** Name shown in the UI: user-chosen, else GitHub display name, else GitHub handle. */
     val username: String
         get() = displayName ?: githubName ?: githubLogin
+
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
 }

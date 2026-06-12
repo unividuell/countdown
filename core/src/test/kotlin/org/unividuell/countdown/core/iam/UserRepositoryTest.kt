@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import kotlin.test.assertEquals
@@ -12,6 +13,7 @@ import kotlin.test.assertNull
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
+@Transactional
 class UserRepositoryTest(@Autowired val repository: UserRepository) {
 
     @Test
