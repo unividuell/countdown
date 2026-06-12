@@ -31,8 +31,12 @@ concern; revisit when other modules gain protected resources).
   `CsrfTokenRequestAttributeHandler()` (plain handler so the cookie value matches
   the header — avoids the BREACH/XOR mismatch that breaks SPAs). The SPA must echo
   the `XSRF-TOKEN` cookie as the `X-XSRF-TOKEN` header on mutating requests
-  (incl. `POST /logout`). Note: the token cookie is only emitted once the
-  `CsrfToken` is resolved — ensure an early endpoint materialises it.
+  (incl. `POST /logout`). The token cookie is only written once the deferred
+  `CsrfToken` is *read*, which a plain `GET /api/me` never does — so register a
+  `CsrfCookieFilter` (an `OncePerRequestFilter` that reads `csrfToken.token`)
+  **after `CsrfFilter`** (`addFilterAfter<CsrfFilter>(CsrfCookieFilter())`) to
+  materialise it on every request. Without it, the SPA has no cookie to echo and
+  `POST /logout` returns **403**.
 - Logout: `POST /logout` → **204** (`HttpStatusReturningLogoutSuccessHandler`).
 - Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` in production.
 - **Disable the request cache** (`requestCache { requestCache = NullRequestCache() }`). On a 401 the `ExceptionTranslationFilter` caches the intercepted request *regardless* of the entry point; for a SPA the intercepted request is the bootstrap `GET /api/me`, and the OAuth2 success handler would replay it — landing the user on raw `/api/me` JSON instead of the app. With no request cache, login success goes to `/` and the SPA owns navigation.

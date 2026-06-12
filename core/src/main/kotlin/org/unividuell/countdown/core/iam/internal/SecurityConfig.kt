@@ -10,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler
 import org.springframework.security.web.savedrequest.NullRequestCache
 
@@ -59,6 +60,9 @@ class SecurityConfig {
                 csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse()
                 csrfTokenRequestHandler = CsrfTokenRequestAttributeHandler()
             }
+            // Materialise the deferred CSRF token on every request so the XSRF-TOKEN cookie is
+            // actually written (a plain GET /api/me otherwise never sets it → POST /logout 403).
+            addFilterAfter<CsrfFilter>(CsrfCookieFilter())
             logout {
                 // POST; the SPA must send the CSRF token (X-XSRF-TOKEN header) or logout returns 403
                 logoutUrl = "/logout"

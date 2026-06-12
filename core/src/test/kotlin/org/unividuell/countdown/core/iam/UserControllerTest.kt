@@ -66,6 +66,16 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
+        mockMvc.get("/api/me") {
+            with(principalFor(user()))
+        }.andExpect {
+            status { isOk() }
+            cookie { exists("XSRF-TOKEN") }
+        }
+    }
+
+    @Test
     fun `PATCH me updates own profile`() {
         every { profileService.update(uid, "New Name", "#abcdef") } returns
                 user(displayName = "New Name").copy(bgColorHex = "#abcdef")
