@@ -13,15 +13,18 @@ services:
 
   db-backup:
     image: postgres:18
+    # long-running backup loop (not one-shot) — keep it alive across crashes/restarts
     restart: unless-stopped
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./backups:/backups
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/bin/bash", "-c"]
     command:
       - |
+        set -eo pipefail
         while true; do
+          until pg_isready -h postgres -U admin -d app; do sleep 2; done
           pg_dump -h postgres -U admin -d app | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
           find /backups -name 'app-*.sql.gz' -mtime +7 -delete
           sleep 86400
@@ -45,6 +48,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
       - caddy-data:/data
       - caddy-config:/config
