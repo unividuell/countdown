@@ -3,3 +3,6 @@
 *.iml
 *.iws
 *.ipr
+
+# Stray compiled output
+*.class
