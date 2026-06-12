@@ -31,6 +31,7 @@ backup-friendly logical dumps.
 | TLS / edge | **Caddy** terminates TLS (automatic HTTPS / Let's Encrypt) for `countdown.unividuell.org`, serves the SPA (history-mode fallback), reverse-proxies the API paths to the backend. |
 | PG persistence | named volume `pgdata`. |
 | PG backup | **daily `pg_dump` logical dumps** (sidecar reusing `postgres:18`) to a host-mounted `./backups`, retention 7 days. No PITR (deliberately; can be added later as an isolated change — see "PITR upgrade path"). |
+| DB debugging (pgAdmin) | pgAdmin in the prod compose under a **`debug` profile** (off by default), bound to **`127.0.0.1` only** (no public endpoint, not proxied by Caddy), with pgAdmin login enabled; accessed via **SSH local port-forward**. |
 | Server bootstrap | files fetched from the public repo via `curl` (raw.githubusercontent); the server only needs `compose.prod.yaml` + `.env`. |
 
 ## Architecture
@@ -171,13 +172,42 @@ services:
     volumes: [ 'caddy-data:/data', 'caddy-config:/config' ]   # persist Let's Encrypt certs
     depends_on: [ core ]
 
+  # DB debugging UI — NOT public, NOT proxied by Caddy. Under the `debug` profile so it
+  # only runs when explicitly started; bound to the server's loopback and reached via an
+  # SSH tunnel. Server mode (login required) for defense-in-depth on prod data.
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: [ debug ]
+    environment:
+      - 'PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}'
+      - 'PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}'
+    ports: [ '127.0.0.1:5050:80' ]   # loopback only — never bind 0.0.0.0
+    configs:
+      - source: pgadmin_servers
+        target: /pgadmin4/servers.json
+    volumes: [ 'pgadmin-data:/var/lib/pgadmin' ]
+    depends_on: [ postgres ]
+
+configs:
+  pgadmin_servers:
+    content: |
+      {
+        "Servers": { "1": {
+          "Name": "countdown app (postgres)", "Group": "Servers",
+          "Host": "postgres", "Port": 5432, "MaintenanceDB": "app",
+          "Username": "admin", "SSLMode": "prefer"
+        } }
+      }
+
 volumes:
   pgdata:
   caddy-data:
   caddy-config:
+  pgadmin-data:
 ```
 - Secrets via a server-side **`.env`** (not committed): `POSTGRES_PASSWORD`,
-  `GITHUB_CLIENT_SECRET`. A committed `deploy/.env.example` documents the keys.
+  `GITHUB_CLIENT_SECRET`, and `PGADMIN_EMAIL`/`PGADMIN_PASSWORD` (only used by the
+  optional `debug`-profile pgAdmin). A committed `deploy/.env.example` documents the keys.
 - `./backups` is host-mounted → easy to copy off-server (rsync/scp).
 
 ## Server operations (`deploy/README.md`)
@@ -194,6 +224,25 @@ then `docker compose pull && docker compose up -d`.
 
 **Prerequisite:** DNS A/AAAA record for `countdown.unividuell.org` → server IP,
 ports 80+443 open — otherwise Caddy cannot obtain a TLS certificate. (DNS not set yet.)
+
+### Debugging the DB (pgAdmin, SSH tunnel only — no public endpoint)
+
+pgAdmin is under the `debug` profile and bound to the server's loopback, so it is
+not reachable from the internet and not started by default. To debug:
+
+```bash
+# 1) start it on the server (on demand)
+ssh user@server 'cd /opt/countdown && docker compose --profile debug up -d pgadmin'
+# 2) open an SSH local-port-forward (laptop:5050 -> server loopback:5050)
+ssh -L 5050:127.0.0.1:5050 user@server
+# 3) browse http://localhost:5050 on your machine; log in with PGADMIN_EMAIL/PASSWORD;
+#    the 'countdown app (postgres)' server is pre-registered (enter the DB password once).
+# 4) when done, stop it again
+ssh user@server 'cd /opt/countdown && docker compose --profile debug stop pgadmin'
+```
+
+Security: SSH is the only access path (the port is loopback-bound), pgAdmin still
+requires its own login (defense-in-depth), and it runs only while you're debugging.
 
 ## Backup & restore
 
