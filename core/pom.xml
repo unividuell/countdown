@@ -210,6 +210,18 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<image>
+						<name>ghcr.io/unividuell/countdown-core:latest</name>
+					</image>
+					<docker>
+						<publishRegistry>
+							<url>https://ghcr.io</url>
+							<username>${env.GHCR_USERNAME}</username>
+							<password>${env.GHCR_TOKEN}</password>
+						</publishRegistry>
+					</docker>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>

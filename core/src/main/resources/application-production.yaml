@@ -1,0 +1,26 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            # Production GitHub OAuth App (callback https://countdown.unividuell.org/login/oauth2/code/github).
+            # Replace with the real prod Client ID (public value, safe to commit).
+            client-id: REPLACE_WITH_PROD_GITHUB_CLIENT_ID
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: read:user
+  datasource:
+    url: jdbc:postgresql://postgres:5432/app
+    username: admin
+    password: ${POSTGRES_PASSWORD}
+
+server:
+  # Caddy terminates TLS and forwards X-Forwarded-*; honour it so the app builds
+  # correct https://countdown.unividuell.org URLs (OAuth redirect_uri) and treats
+  # requests as secure.
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: true
+        same-site: lax
