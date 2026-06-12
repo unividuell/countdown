@@ -11,17 +11,26 @@ export class ApiError extends Error {
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
+/** JSON-only API: callers pass an already-serialized string body. */
+export type ApiFetchOptions = Omit<RequestInit, 'body'> & { body?: string | null }
+
 let onUnauthorized: () => void = () => {}
 export function setUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler
 }
 
 function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`))
   return match?.[1] ? decodeURIComponent(match[1]) : null
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function readJsonBody(res: Response): Promise<unknown> {
+  if (!res.headers.get('content-type')?.includes('application/json')) return undefined
+  return res.json().catch(() => undefined)
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase()
   const headers = new Headers(options.headers)
   if (MUTATING.has(method)) {
@@ -35,13 +44,24 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const res = await fetch(path, { ...options, method, headers, credentials: 'include' })
 
   if (res.status === 401) {
-    onUnauthorized()
-    throw new ApiError(401, 'unauthorized')
+    try {
+      onUnauthorized()
+    } catch {
+      // never let a throwing handler mask the ApiError the caller expects
+    }
+    throw new ApiError(401, 'unauthorized', await readJsonBody(res))
   }
   if (!res.ok) {
-    throw new ApiError(res.status, `request to ${path} failed: ${res.status}`)
+    throw new ApiError(
+      res.status,
+      `request to ${path} failed: ${res.status}`,
+      await readJsonBody(res),
+    )
   }
   if (res.status === 204) return undefined as T
   const contentType = res.headers.get('content-type')
-  return (contentType?.includes('application/json') ? await res.json() : undefined) as T
+  if (!contentType?.includes('application/json')) {
+    throw new ApiError(res.status, `unexpected content-type from ${path}: ${contentType ?? 'none'}`)
+  }
+  return (await res.json()) as T
 }
