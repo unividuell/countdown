@@ -148,6 +148,19 @@ Vitest + Vue Test Utils + happy-dom. Cover:
 - A light mount of `login.vue`: renders the GitHub button; clicking it invokes
   `loginWithGitHub` (the `window.location.assign` call stubbed).
 
+## Post-implementation: feed knowledge back into guidelines
+
+After the implementation lands, distil the conventions established here into a
+new **`.claude/guidelines/frontend.md`** (mirroring the backend guidelines):
+the Vue 3 / Vite 8 project setup, very-strict TS config, Vue Router 5 file-based
+routing, Tailwind v4, the composables+VueUse state approach, the `apiFetch` /
+`useAuth` auth-client patterns (credentials, CSRF header, 401 handling, full-page
+OAuth nav), the Vitest + Vue Test Utils + happy-dom testing convention (and that
+frontend mocking uses Vitest `vi`, not the Kotlin mockk/kotest stack), and the
+dev-proxy/same-origin setup. Add it to `.claude/guidelines/README.md` and link it
+from `CLAUDE.md`. This is a required final task of the implementation plan, not an
+afterthought — it keeps future frontend work and other team members consistent.
+
 ## Out of scope (YAGNI / later sub-projects)
 
 - All mini-games, ECharts charts, audio (tone), canvas (roughjs), the admin area.
