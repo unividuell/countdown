@@ -89,6 +89,14 @@ shared-edge). countdown therefore:
   `forward-headers-strategy=framework` still yields `https://countdown.unividuell.org/...`.
 - Server dir is `/opt/unividuell/countdown/`.
 
+**Two-hop scheme loss (OAuth `redirect_uri` = `http://`):** by default the inner `countdown-web`
+Caddy receives the edge hop on plaintext `:80` and **overwrites** `X-Forwarded-Proto` with `http`,
+so `core` builds an `http://` `redirect_uri` (GitHub rejects it; insecure). Fix in `countdown-web`'s
+Caddyfile with a global `servers { trusted_proxies static private_ranges }` block — the edge reaches
+it over the private `edge` network, so trusting private ranges makes Caddy **preserve** the edge's
+`X-Forwarded-Proto=https`/`-Host`. The Caddyfile is baked into the image → this needs a `build-web`
+rebuild + `docker compose pull && up -d` on the server.
+
 ## Docker Desktop gotcha (local, macOS)
 
 This project lives under `/opt`, which Docker Desktop does **not** share by default → host

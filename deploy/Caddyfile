@@ -1,3 +1,13 @@
+# Trust the shared edge (it reaches us over the private `edge` docker network) so this
+# inner Caddy PRESERVES the edge's X-Forwarded-Proto=https / X-Forwarded-Host instead of
+# overwriting them with the plaintext :80 hop. Without this, core builds an http:// OAuth
+# redirect_uri (two-hop scheme loss).
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	encode zstd gzip
 
