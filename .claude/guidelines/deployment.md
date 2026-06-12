@@ -21,9 +21,10 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   **path-filtered workflows do NOT trigger on the initial branch-creation push** (no diff
   base), so the first `build-web` had to be kicked off another way. Each workflow lists its
   own file in `paths`, so editing the workflow re-triggers it.
-- **ghcr package visibility:** packages published via `GITHUB_TOKEN` are **private by default**
-  even from a public repo — set each package public (repo/org → Packages → settings) so the
-  server pulls without auth.
+- **ghcr package visibility:** the `countdown-core`/`countdown-web` packages are kept **private**.
+  The server therefore authenticates before pulling: `docker login ghcr.io -u <user>` with a
+  token that has **`read:packages`** (the credential persists in `~/.docker/config.json`). CI
+  publishes with the workflow `GITHUB_TOKEN` + `packages: write`.
 
 ## Caddy edge
 

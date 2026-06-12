@@ -2,10 +2,18 @@
 
 Production stack for `countdown.unividuell.org`, run on the (linux/arm64) server
 from `compose.prod.yaml`. Images come from `ghcr.io/unividuell/countdown-*:latest`
-(public). Everything below is run **on the server**, e.g. in `/opt/countdown/`.
+(**private** packages — the server must `docker login ghcr.io` first, see below).
+Everything below is run **on the server**, e.g. in `/opt/countdown/`.
 
 ## Prerequisites
 - Docker + Docker Compose v2.
+- **ghcr login (private images):** the server must authenticate to pull. Create a GitHub
+  token with **`read:packages`** scope (classic PAT, or a fine-grained token with package
+  read on this repo), then once on the server:
+  ```bash
+  echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
+  ```
+  The credential persists in `~/.docker/config.json`, so `update.sh`'s `docker compose pull` works.
 - DNS: `A` (and `AAAA`) record `countdown.unividuell.org` → this server's public IP;
   inbound ports **80 + 443** (TCP, and 443/UDP for HTTP/3) open. Without correct DNS +
   reachable 80/443, Caddy cannot obtain a TLS certificate.
@@ -14,6 +22,9 @@ from `compose.prod.yaml`. Images come from `ghcr.io/unividuell/countdown-*:lates
 
 ## Bootstrap (first time)
 ```bash
+# private ghcr images: authenticate first (token needs read:packages)
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
+
 mkdir -p /opt/countdown && cd /opt/countdown
 curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/update.sh -o update.sh && chmod +x update.sh
 ./update.sh                 # fetches README.md + compose.prod.yaml + a .env template, then stops
