@@ -29,7 +29,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<kotlin.version>2.3.21</kotlin.version>
-		<spring-modulith.version>2.1.0-RC1</spring-modulith.version>
+		<spring-modulith.version>2.1.0</spring-modulith.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -105,11 +105,6 @@
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
 			<artifactId>spring-modulith-actuator</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.modulith</groupId>
-			<artifactId>spring-modulith-observability</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
