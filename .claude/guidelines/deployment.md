@@ -35,6 +35,11 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   A bare `reverse_proxy @backend` + a catch-all `handle` compiles the SPA `file_server` *first*
   (it matches everything, incl. `/api/*`) → API requests 404→index.html instead of proxying.
   Verify route order with `caddy adapt`.
+- **Exact-path matcher gotcha:** Caddy's `path /logout/*` (slash before `*`) matches `/logout/`
+  and `/logout/x` but **NOT** the bare `/logout`. The SPA POSTs to exactly `/logout`, so it fell
+  through to the SPA `file_server`, which rejects POST with **405**. List both forms in the
+  matcher: `path /api/* /oauth2/* /login /login/* /logout /logout/*`. (Only shows up in prod —
+  dev hits the backend directly via the Vite proxy, bypassing this matcher.)
 - The backend must set **`server.forward-headers-strategy=framework`** so it honours Caddy's
   `X-Forwarded-*` and builds correct `https://<domain>/...` URLs (OAuth `redirect_uri`!) + secure cookies.
 
