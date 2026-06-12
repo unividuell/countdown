@@ -14,6 +14,8 @@ import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertFailsWith
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 
 class GitHubOAuth2UserServiceTest {
 
@@ -45,6 +47,32 @@ class GitHubOAuth2UserServiceTest {
         assertIs<CountdownOAuth2User>(result)
         assertEquals(provisioned, result.user)
         assertEquals(listOf(4711L, "octocat", "The Octocat", "cat@example.com"), captured)
+    }
+
+    @Test
+    fun `missing id claim throws OAuth2AuthenticationException`() {
+        val delegate = OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+            DefaultOAuth2User(emptyList(), mapOf<String, Any>("login" to "octocat"), "login")
+        }
+        val provisioning = object : UserProvisioningService(FakeRepo(), SuperAdminProperties(emptyList())) {
+            override fun provision(githubId: Long, login: String, name: String?, email: String?): User =
+                error("should not be called")
+        }
+        val service = GitHubOAuth2UserService(provisioning, delegate)
+        assertFailsWith<OAuth2AuthenticationException> { service.loadUser(mock(OAuth2UserRequest::class.java)) }
+    }
+
+    @Test
+    fun `missing login claim throws OAuth2AuthenticationException`() {
+        val delegate = OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+            DefaultOAuth2User(emptyList(), mapOf<String, Any>("id" to 4711), "id")
+        }
+        val provisioning = object : UserProvisioningService(FakeRepo(), SuperAdminProperties(emptyList())) {
+            override fun provision(githubId: Long, login: String, name: String?, email: String?): User =
+                error("should not be called")
+        }
+        val service = GitHubOAuth2UserService(provisioning, delegate)
+        assertFailsWith<OAuth2AuthenticationException> { service.loadUser(mock(OAuth2UserRequest::class.java)) }
     }
 }
 

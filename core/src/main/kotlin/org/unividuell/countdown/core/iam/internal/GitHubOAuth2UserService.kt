@@ -3,6 +3,8 @@ package org.unividuell.countdown.core.iam.internal
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
 
@@ -18,14 +20,21 @@ class GitHubOAuth2UserService(
 
     override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
         val githubUser = delegate.loadUser(userRequest)
-            ?: error("Delegate OAuth2UserService returned null for userRequest")
+            ?: throw invalidClaims("GitHub user-info endpoint returned no user")
         val attributes = githubUser.attributes
+        val githubId = (attributes["id"] as? Number)?.toLong()
+            ?: throw invalidClaims("missing or non-numeric 'id' in GitHub attributes")
+        val login = attributes["login"] as? String
+            ?: throw invalidClaims("missing or non-string 'login' in GitHub attributes")
         val user = provisioning.provision(
-            githubId = (attributes["id"] as Number).toLong(),
-            login = attributes["login"] as String,
-            name = attributes["name"] as String?,
-            email = attributes["email"] as String?,
+            githubId = githubId,
+            login = login,
+            name = attributes["name"] as? String,
+            email = attributes["email"] as? String,
         )
         return CountdownOAuth2User(user, attributes)
     }
+
+    private fun invalidClaims(message: String) =
+        OAuth2AuthenticationException(OAuth2Error("invalid_github_claims", message, null), message)
 }
