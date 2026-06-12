@@ -5,8 +5,8 @@ spring:
         registration:
           github:
             # Production GitHub OAuth App (callback https://countdown.unividuell.org/login/oauth2/code/github).
-            # Replace with the real prod Client ID (public value, safe to commit).
-            client-id: REPLACE_WITH_PROD_GITHUB_CLIENT_ID
+            # Public Client ID — safe to commit. The matching secret comes from ${GITHUB_CLIENT_SECRET}.
+            client-id: Ov23lihx8kIQNB9e5Vz2
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user
   datasource:
