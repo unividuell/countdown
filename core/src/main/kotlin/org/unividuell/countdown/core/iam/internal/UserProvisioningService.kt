@@ -28,9 +28,12 @@ open class UserProvisioningService(
                     isSuperAdmin = isSuperAdmin,
                 )
             )
-        } catch (_: DuplicateKeyException) {
+        } catch (e: DuplicateKeyException) {
             // a concurrent login already inserted the row: re-fetch and sync
-            val existing = repository.findByGithubId(githubId)!!
+            val existing = repository.findByGithubId(githubId)
+                ?: throw IllegalStateException(
+                    "DuplicateKeyException on insert but no row found for githubId=$githubId", e
+                )
             repository.save(sync(existing, login, name, email, isSuperAdmin))
         }
     }
