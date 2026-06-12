@@ -2,8 +2,32 @@ services:
   postgres:
     image: 'postgres:18'
     environment:
-      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_DB=app'
       - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_USER=admin'
+    # Host port: POSTGRES_PORT unset -> '0' -> Docker picks a free port (no collisions
+    # when running many projects at once). Set POSTGRES_PORT in .env for a STABLE port
+    # (e.g. a fixed IntelliJ DB connection). Spring + external tools then share it.
     ports:
-      - '5432'
+      - '${POSTGRES_PORT:-0}:5432'
+
+  pgadmin:
+    image: 'dpage/pgadmin4:latest'
+    environment:
+      - 'PGADMIN_DEFAULT_EMAIL=admin@local.dev'
+      - 'PGADMIN_DEFAULT_PASSWORD=secret'
+      # local-dev convenience: no separate master-password prompt
+      - 'PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False'
+    # Same scheme as postgres: PGADMIN_PORT unset -> random; set it in .env for a stable URL.
+    ports:
+      - '${PGADMIN_PORT:-0}:80'
+    volumes:
+      # pre-registers the 'postgres' server so it appears on first launch
+      - './pgadmin/servers.json:/pgadmin4/servers.json:ro'
+      # persist pgAdmin state (incl. a saved DB password) across restarts
+      - 'pgadmin-data:/var/lib/pgadmin'
+    depends_on:
+      - postgres
+
+volumes:
+  pgadmin-data:

@@ -57,3 +57,25 @@ For "create-or-update on each login" style flows: look up by the natural key,
 `UNIQUE` constraint + `catch (e: DuplicateKeyException) { re-fetch and sync }`.
 Throw a diagnosable `IllegalStateException(..., e)` if the re-fetch unexpectedly
 misses — never a bare `!!`.
+
+## Local dev database (Docker Compose)
+
+`compose.yaml` (repo root) is started automatically by Spring Boot's
+docker-compose support; credentials (local dev only) are `admin` / `secret`,
+database `app`.
+
+- **Host port — random by default, stable on demand:** the mapping is
+  `'${POSTGRES_PORT:-0}:5432'`. Unset → host port `0` → Docker picks a free port
+  (no collisions when many similar projects run at once). Set `POSTGRES_PORT` in
+  the root `.env` for a **stable** port so external tools (e.g. an IntelliJ data
+  source) can connect reliably — Spring reads whatever port is mapped, so both
+  share it. Same trick for `PGADMIN_PORT`. This keeps the zero-config free-port
+  default while allowing a fixed port per project (one number, chosen once).
+- **pgAdmin** runs as a second compose service; it pre-registers the `postgres`
+  server via `pgadmin/servers.json` (host `postgres`, the compose-internal
+  service name) and persists its state in the `pgadmin-data` named volume — enter
+  the DB password once and it sticks.
+- Changing `POSTGRES_*` only re-inits a **fresh** database. To apply new
+  credentials/DB-name to an existing volume:
+  `docker compose down -v` then start again.
+- Find the live mapped port any time: `docker compose port postgres 5432`.

@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "countdown app (postgres)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "app",
+      "Username": "admin",
+      "SSLMode": "prefer",
+      "Comment": "Auto-registered. Host/Port are the compose-internal service address; enter the password (secret) once — it persists via the pgadmin-data volume."
+    }
+  }
+}

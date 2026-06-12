@@ -17,7 +17,7 @@ new team members (and AI assistants) stay consistent.
 
 ## Stack baseline
 
-**Backend (`core/`):** **Spring Boot 4.1**, **Kotlin 2.3**, **Java 25**, **Spring Modulith 2.1** (GA — not RC), **PostgreSQL 18** (native `uuidv7()`). Build with the Maven wrapper from `core/`: `./mvnw test`, `./mvnw spring-boot:run`; local DB via Spring Boot docker-compose support (`core/compose.yaml`, pinned to `postgres:18`).
+**Backend (`core/`):** **Spring Boot 4.1**, **Kotlin 2.3**, **Java 25**, **Spring Modulith 2.1** (GA — not RC), **PostgreSQL 18** (native `uuidv7()`). Build with the Maven wrapper from `core/`: `./mvnw test`, `./mvnw spring-boot:run`; local DB via Spring Boot docker-compose support (`compose.yaml` at the repo root, pinned to `postgres:18`; see [persistence.md](persistence.md) for the port/pgAdmin setup).
 
 **Frontend (`webapp-vue/`):** **Vite 8**, **Vue 3** (Composition API), **TypeScript** (strict), **Vue Router 5** (file-based), **Tailwind v4**, **pnpm**. `pnpm dev` proxies to the backend for same-origin auth.
 
