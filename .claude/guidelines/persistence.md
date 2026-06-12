@@ -79,6 +79,14 @@ database `app`.
   `/opt`, which Docker Desktop does not share by default, so a `./pgadmin/...`
   bind mount fails with "mounts denied". Inline `configs.content` (Compose ≥ 2.23)
   needs no host file sharing. Named volumes are unaffected (Docker-managed).
+- **No pgAdmin login (desktop mode):** `PGADMIN_CONFIG_SERVER_MODE=False` +
+  `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False` → single-user, no login screen.
+  The desktop auto-login identity must match the entrypoint user, so set
+  `PGADMIN_CONFIG_DESKTOP_USER` to the `PGADMIN_DEFAULT_EMAIL` (else 401 against the
+  default `pgadmin4@pgadmin.org`). Gotcha: `PGADMIN_CONFIG_*` values are written into
+  a Python config verbatim — **string values need embedded quotes**
+  (`"PGADMIN_CONFIG_DESKTOP_USER='admin@local.dev'"`); booleans like `False` are fine
+  bare. Since there's no auth, the port is bound to `127.0.0.1` only.
 - Changing `POSTGRES_*` only re-inits a **fresh** database. To apply new
   credentials/DB-name to an existing volume:
   `docker compose down -v` then start again.

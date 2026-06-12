@@ -18,13 +18,21 @@ services:
   pgadmin:
     image: 'dpage/pgadmin4:latest'
     environment:
+      # Desktop mode: single-user, NO pgAdmin login screen and no master-password prompt.
+      - 'PGADMIN_CONFIG_SERVER_MODE=False'
+      - 'PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False'
+      # The desktop auto-login identity must match the user the entrypoint creates
+      # (PGADMIN_DEFAULT_EMAIL); otherwise pgAdmin looks up its default
+      # 'pgadmin4@pgadmin.org', doesn't find it, and returns 401.
+      # PGADMIN_CONFIG_* values are written into a Python config file verbatim, so string
+      # values must carry embedded quotes (booleans like False are valid Python as-is).
+      - "PGADMIN_CONFIG_DESKTOP_USER='admin@local.dev'"
       - 'PGADMIN_DEFAULT_EMAIL=admin@local.dev'
       - 'PGADMIN_DEFAULT_PASSWORD=secret'
-      # local-dev convenience: no separate master-password prompt
-      - 'PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False'
-    # Same scheme as postgres: PGADMIN_PORT unset -> random; set it in .env for a stable URL.
+    # Bound to localhost only — desktop mode has no auth, so don't expose it on the network.
+    # PGADMIN_PORT unset -> random; set it in .env for a stable URL.
     ports:
-      - '${PGADMIN_PORT:-0}:80'
+      - '127.0.0.1:${PGADMIN_PORT:-0}:80'
     # servers.json is injected as an inline config (no host bind mount), so it works
     # regardless of Docker Desktop file-sharing (the project lives under /opt).
     configs:
