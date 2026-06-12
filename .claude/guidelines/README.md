@@ -7,6 +7,7 @@ new features and new team members (and AI assistants) stay consistent.
 
 | Topic | File |
 |---|---|
+| **Feeding knowledge back** — capture important learnings into these guidelines as part of every task | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
 | Testing (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
 | Persistence (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |

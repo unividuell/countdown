@@ -7,6 +7,7 @@ app. Spring Boot 4.1 · Kotlin 2.3 · Java 25 · Spring Modulith 2.1 · PostgreS
 
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
+- **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing important learnings into these guidelines.
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
