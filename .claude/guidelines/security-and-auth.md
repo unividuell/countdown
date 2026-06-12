@@ -35,6 +35,8 @@ concern; revisit when other modules gain protected resources).
   `CsrfToken` is resolved — ensure an early endpoint materialises it.
 - Logout: `POST /logout` → **204** (`HttpStatusReturningLogoutSuccessHandler`).
 - Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` in production.
+- **Disable the request cache** (`requestCache { requestCache = NullRequestCache() }`). On a 401 the `ExceptionTranslationFilter` caches the intercepted request *regardless* of the entry point; for a SPA the intercepted request is the bootstrap `GET /api/me`, and the OAuth2 success handler would replay it — landing the user on raw `/api/me` JSON instead of the app. With no request cache, login success goes to `/` and the SPA owns navigation.
+- **Dev behind the Vite proxy:** the proxy must be transparent (`changeOrigin: false`) so the backend sees the browser's `Host` and builds OAuth2 `redirect_uri`/redirects on the SPA origin; the GitHub OAuth App callback is the SPA origin. See [frontend.md](frontend.md).
 
 ## Authorization rules
 

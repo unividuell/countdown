@@ -11,6 +11,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler
+import org.springframework.security.web.savedrequest.NullRequestCache
 
 /**
  * App-wide HTTP security. Lives in the `iam` module because authentication is the
@@ -45,6 +46,14 @@ class SecurityConfig {
                 // Deliberate: return 401 for ALL unauthenticated requests (SPA navigates to login itself),
                 // overriding oauth2Login's default browser redirect entry point.
                 authenticationEntryPoint = HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+            }
+            // SPA: do NOT replay a server-side "saved request" after login. On a 401 the
+            // ExceptionTranslationFilter would otherwise cache the intercepted request — here the
+            // SPA's bootstrap `GET /api/me` — and the OAuth2 success handler would replay it,
+            // landing the user on raw /api/me JSON. With no request cache, login success goes to
+            // the app root "/" and the SPA owns navigation from there.
+            requestCache {
+                requestCache = NullRequestCache()
             }
             csrf {
                 csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse()
