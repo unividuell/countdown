@@ -1,3 +1,7 @@
+# Compose project name — otherwise derived from the dir (countdown.unividuell.org ->
+# countdownunividuellorg). Yields countdown-postgres-1, countdown_default, etc.
+name: countdown
+
 services:
   postgres:
     image: 'postgres:18'
