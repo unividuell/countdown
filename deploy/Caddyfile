@@ -1,0 +1,12 @@
+countdown.unividuell.org {
+	encode zstd gzip
+
+	@backend path /api/* /oauth2/* /login/* /logout/*
+	reverse_proxy @backend core:8080
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
