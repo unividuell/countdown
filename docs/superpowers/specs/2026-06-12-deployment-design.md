@@ -213,7 +213,10 @@ volumes:
 ## Server operations
 
 Everything is run **on the server**. The entry point is **`deploy/README.md`** —
-it is fetched via `curl` and explains the whole operation. The server keeps these
+it is fetched via `curl` and is the single on-server operations guide. It must
+cover, end-to-end: **bootstrap**, **full update** (`update.sh`), the **pgAdmin
+debug flow** (SSH tunnel — see below), the **DB restore** procedure (see
+"Backup & restore"), and the **DNS/TLS prerequisite**. The server keeps these
 files in e.g. `/opt/countdown/`: `README.md`, `update.sh`, `compose.prod.yaml`,
 and `.env` (secrets, from `.env.example`). `Caddyfile`/`web.Dockerfile` are build
 inputs only — the server never needs them.
