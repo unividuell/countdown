@@ -1,0 +1,86 @@
+name: countdown
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  db-backup:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          pg_dump -h postgres -U admin -d app | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
+          find /backups -name 'app-*.sql.gz' -mtime +7 -delete
+          sleep 86400
+        done
+    depends_on:
+      - postgres
+
+  core:
+    image: ghcr.io/unividuell/countdown-core:latest
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+
+  caddy:
+    image: ghcr.io/unividuell/countdown-web:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - core
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: [debug]
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+    ports:
+      - "127.0.0.1:5050:80"
+    configs:
+      - source: pgadmin_servers
+        target: /pgadmin4/servers.json
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+configs:
+  pgadmin_servers:
+    content: |
+      {
+        "Servers": { "1": {
+          "Name": "countdown app (postgres)", "Group": "Servers",
+          "Host": "postgres", "Port": 5432, "MaintenanceDB": "app",
+          "Username": "admin", "SSLMode": "prefer"
+        } }
+      }
+
+volumes:
+  pgdata:
+  caddy-data:
+  caddy-config:
+  pgadmin-data:
