@@ -6,3 +6,7 @@
 
 # Stray compiled output
 *.class
+
+# local dev env (ports only) — use .env.example as the template
+.env
+!.env.example
