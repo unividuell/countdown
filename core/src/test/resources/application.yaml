@@ -1,6 +1,4 @@
 spring:
-  application:
-    name: core
   modulith:
     runtime:
       flyway-enabled: true
@@ -9,12 +7,9 @@ spring:
       client:
         registration:
           github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
+            client-id: test-client-id
+            client-secret: test-client-secret
             scope: read:user
   session:
     jdbc:
       initialize-schema: never
-
-app:
-  super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
