@@ -58,4 +58,14 @@ describe('useAuth', () => {
     expect(auth.status.value).toBe('anonymous')
     expect(auth.user.value).toBeNull()
   })
+
+  it('markAnonymous resets an authenticated session', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(me)
+    const auth = useAuth()
+    await auth.bootstrap()
+    expect(auth.status.value).toBe('authenticated')
+    auth.markAnonymous()
+    expect(auth.status.value).toBe('anonymous')
+    expect(auth.user.value).toBeNull()
+  })
 })

@@ -23,7 +23,7 @@ implementation.
 
 ## State — composables + VueUse (no Pinia)
 
-App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_resetForTesting()` hook to reset the singleton between cases (module state is per-file, not per-test, in Vitest).
+App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_resetAuthState()` hook to reset the singleton between cases (module state is per-file, not per-test, in Vitest).
 
 ## HTTP + auth (the same-origin SPA contract)
 

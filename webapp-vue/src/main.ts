@@ -9,9 +9,14 @@ import './assets/main.css'
 
 const router = createRouter({ history: createWebHistory(), routes })
 registerAuthGuard(router)
-setUnauthorizedHandler(() => void router.push('/login'))
 
-const { bootstrap } = useAuth()
+const { bootstrap, markAnonymous } = useAuth()
+setUnauthorizedHandler(() => {
+  // 401 = dead session: drop local auth state, then route to login so the guard
+  // (which only admits 'authenticated') doesn't bounce the user back.
+  markAnonymous()
+  void router.push('/login')
+})
 // Resolve the session before mounting so the guard never sees 'unknown'.
 bootstrap()
   .catch((err: unknown) => {

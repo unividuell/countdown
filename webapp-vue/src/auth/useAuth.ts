@@ -35,7 +35,21 @@ export function useAuth() {
     status.value = 'anonymous'
   }
 
-  return { user: readonly(user), status: readonly(status), bootstrap, loginWithGitHub, logout }
+  // A 401 means the session is dead server-side: drop local auth state.
+  // (Distinct from logout failure, where we intentionally keep state.)
+  function markAnonymous(): void {
+    user.value = null
+    status.value = 'anonymous'
+  }
+
+  return {
+    user: readonly(user),
+    status: readonly(status),
+    bootstrap,
+    loginWithGitHub,
+    logout,
+    markAnonymous,
+  }
 }
 
 /** Test-only: reset the module-level singleton between test cases. */
