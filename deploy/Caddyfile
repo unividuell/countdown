@@ -2,8 +2,15 @@ countdown.unividuell.org {
 	encode zstd gzip
 
 	@backend path /api/* /oauth2/* /login/* /logout/*
-	reverse_proxy @backend core:8080
 
+	# API paths -> backend. A dedicated handle block (not a bare reverse_proxy) so it is
+	# mutually exclusive with the SPA catch-all and evaluated first; otherwise the catch-all
+	# handle matches everything (incl. /api/*) and the file_server swallows API requests.
+	handle @backend {
+		reverse_proxy core:8080
+	}
+
+	# everything else -> SPA with HTML5 history-mode fallback
 	handle {
 		root * /srv
 		try_files {path} /index.html
