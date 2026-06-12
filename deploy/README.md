@@ -3,7 +3,7 @@
 Production stack for `countdown.unividuell.org`, run on the (linux/arm64) server
 from `compose.prod.yaml`. Images come from `ghcr.io/unividuell/countdown-*:latest`
 (**private** packages — the server must `docker login ghcr.io` first, see below).
-Everything below is run **on the server**, e.g. in `/opt/countdown/`.
+Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
 
 ## Prerequisites
 - Docker + Docker Compose v2.
@@ -14,18 +14,23 @@ Everything below is run **on the server**, e.g. in `/opt/countdown/`.
   echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
   ```
   The credential persists in `~/.docker/config.json`, so `update.sh`'s `docker compose pull` works.
-- DNS: `A` (and `AAAA`) record `countdown.unividuell.org` → this server's public IP;
-  inbound ports **80 + 443** (TCP, and 443/UDP for HTTP/3) open. Without correct DNS +
-  reachable 80/443, Caddy cannot obtain a TLS certificate.
+- DNS: `A`/`AAAA` `countdown.unividuell.org` → this server's public IP. TLS is terminated
+  by the shared **edge-caddy** (see `/opt/unividuell/edge-caddy`), which must be running and
+  routing `countdown.unividuell.org` → `countdown-web:80`. This stack publishes no host
+  ports; it only joins the external `edge` network.
 - A production GitHub OAuth App (callback `https://countdown.unividuell.org/login/oauth2/code/github`);
   its Client ID is committed in `application-production.yaml`, its secret goes into `.env` as `GITHUB_CLIENT_SECRET`.
 
 ## Bootstrap (first time)
+
+> Requires the shared **edge-caddy** stack to be up (it owns 80/443 + TLS) and the external
+> `edge` network to exist. `update.sh` creates the network idempotently if missing.
+
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
 
-mkdir -p /opt/countdown && cd /opt/countdown
+mkdir -p /opt/unividuell/countdown && cd /opt/unividuell/countdown
 curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/update.sh -o update.sh && chmod +x update.sh
 ./update.sh                 # fetches README.md + compose.prod.yaml + a .env template, then stops
 # edit .env: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, PGADMIN_EMAIL/PGADMIN_PASSWORD
@@ -38,7 +43,7 @@ then run `./update.sh` again.
 
 ## Update (new images / infra changes)
 ```bash
-cd /opt/countdown && ./update.sh
+cd /opt/unividuell/countdown && ./update.sh
 ```
 Re-fetches `compose.prod.yaml`, `README.md`, and `update.sh` itself from `main`, then runs:
 ```

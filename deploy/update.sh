@@ -13,6 +13,7 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+docker network create edge 2>/dev/null || true
 docker compose --env-file .env -f compose.prod.yaml pull
 docker compose --env-file .env -f compose.prod.yaml up -d
 docker image prune -f

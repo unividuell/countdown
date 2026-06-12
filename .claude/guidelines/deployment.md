@@ -70,6 +70,18 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   not proxied by Caddy), **login required**. Access via an SSH local-port-forward
   (`ssh -L 5050:127.0.0.1:5050 user@server`). Three layers: SSH boundary + loopback bind + pgAdmin login.
 
+## Shared edge (multi-project host)
+
+This server hosts several `unividuell.org` sites; only one process can bind 80/443. TLS +
+host-routing live in the separate **`unividuell/edge-caddy`** repo (its own guideline:
+shared-edge). countdown therefore:
+- serves `countdown-web` on **`:80`** (Caddyfile address `:80`, not the domain) — no own TLS;
+- **publishes no host ports**; the `countdown-web` container joins the external **`edge`**
+  network (stable `container_name: countdown-web`) and an `internal` net for `core`/`postgres`;
+- relies on the edge for the two-hop `X-Forwarded-*` chain (edge → countdown-web → core), so
+  `forward-headers-strategy=framework` still yields `https://countdown.unividuell.org/...`.
+- Server dir is `/opt/unividuell/countdown/`.
+
 ## Docker Desktop gotcha (local, macOS)
 
 This project lives under `/opt`, which Docker Desktop does **not** share by default → host
