@@ -1,4 +1,4 @@
-countdown.unividuell.org {
+:80 {
 	encode zstd gzip
 
 	@backend path /api/* /oauth2/* /login/* /logout/*
