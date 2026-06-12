@@ -13,6 +13,13 @@ setUnauthorizedHandler(() => void router.push('/login'))
 
 const { bootstrap } = useAuth()
 // Resolve the session before mounting so the guard never sees 'unknown'.
-bootstrap().finally(() => {
-  createApp(App).use(router).mount('#app')
-})
+bootstrap()
+  .catch((err: unknown) => {
+    // Backend unreachable / unexpected error: status stays 'unknown' and the guard
+    // routes to /login. Log it so it surfaces in error monitoring rather than as an
+    // unhandled promise rejection.
+    console.error('[bootstrap] failed to resolve session:', err)
+  })
+  .finally(() => {
+    createApp(App).use(router).mount('#app')
+  })

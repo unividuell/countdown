@@ -1,7 +1,20 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useAuth } from '@/auth/useAuth'
 
+// `user` is guaranteed non-null here: the guard only admits status === 'authenticated',
+// which implies user !== null (see useAuth.ts). The `?.` below only satisfies the type checker.
 const { user, logout } = useAuth()
+const logoutError = ref<string | null>(null)
+
+async function handleLogout(): Promise<void> {
+  logoutError.value = null
+  try {
+    await logout()
+  } catch {
+    logoutError.value = 'Logout failed. Please try again.'
+  }
+}
 </script>
 
 <template>
@@ -21,6 +34,9 @@ const { user, logout } = useAuth()
         <dd>{{ user?.isSuperAdmin }}</dd>
       </div>
     </dl>
-    <button class="rounded border px-3 py-1.5 hover:bg-neutral-200" @click="logout">Log out</button>
+    <button class="rounded border px-3 py-1.5 hover:bg-neutral-200" @click="handleLogout">
+      Log out
+    </button>
+    <p v-if="logoutError" class="mt-3 text-sm text-red-600">{{ logoutError }}</p>
   </section>
 </template>
