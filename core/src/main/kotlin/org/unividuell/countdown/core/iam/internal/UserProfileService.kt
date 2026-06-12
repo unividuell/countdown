@@ -9,7 +9,10 @@ import java.util.UUID
 
 @Service
 class UserProfileService(private val repository: UserRepository) {
-    /** Sets the caller's user-owned fields. `null` clears the value. */
+    /**
+     * Updates the caller's profile fields [displayName] and [bgColorHex]; `null` clears a field.
+     * All other fields (GitHub-sourced and system fields) are preserved unchanged.
+     */
     @Transactional
     fun update(userId: UUID, displayName: String?, bgColorHex: String?): User {
         val user = repository.findByIdOrNull(userId)

@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 @Import(TestcontainersConfiguration::class)
@@ -16,7 +18,6 @@ import kotlin.test.assertNull
 @Transactional
 class UserProfileServiceTest(
     @Autowired val service: UserProfileService,
-    @Autowired val query: UserQuery,
     @Autowired val repository: UserRepository,
 ) {
 
@@ -45,9 +46,9 @@ class UserProfileServiceTest(
     }
 
     @Test
-    fun `query finds user by id`() {
-        val saved = repository.save(User(githubId = 202L, githubLogin = "octocat"))
-        assertEquals(saved.id, query.findById(saved.id!!)?.id)
-        assertNull(query.findById(java.util.UUID.randomUUID()))
+    fun `update throws NoSuchElementException for unknown user`() {
+        assertFailsWith<NoSuchElementException> {
+            service.update(UUID.randomUUID(), displayName = "x", bgColorHex = null)
+        }
     }
 }
