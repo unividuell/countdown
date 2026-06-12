@@ -9,7 +9,10 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18 moved the data dir into a version subdir and the mount point
+      # to /var/lib/postgresql (NOT .../data) — mounting .../data makes 18 refuse
+      # to start ("data in unused mount/volume"). Mount the parent.
+      - pgdata:/var/lib/postgresql
     networks:
       - internal
 

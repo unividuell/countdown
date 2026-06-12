@@ -53,6 +53,13 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
 - Compose `name: countdown` (else it's derived from the dir). Postgres: named volume, **no host port**.
   Backend: internal only. Caddy: `80:80`, `443:443`, `443:443/udp` (HTTP/3). Secrets via a server-side
   **`.env`** (never committed).
+- **`postgres:18` volume mount gotcha:** Postgres 18's Docker image moved `PGDATA` into a
+  version subdir and the recommended mount point to **`/var/lib/postgresql`** (not the old
+  `/var/lib/postgresql/data`). Mounting the named volume at `.../data` makes 18 **refuse to
+  start** — it logs "PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)" and
+  crash-loops, which cascades (`UnknownHostException: postgres` in `core`, 502 at the edge).
+  Mount the **parent**: `pgdata:/var/lib/postgresql`. (pg_dump/psql via `-h postgres` are
+  unaffected — they go over the network.)
 - **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to host `./backups`
   (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
   `until pg_isready ...; do sleep 2; done` before each dump — otherwise a not-yet-ready Postgres makes
