@@ -27,10 +27,19 @@ export function useAuth() {
   }
 
   async function logout(): Promise<void> {
+    // Intentional: on a failed server call we do NOT reset local state — the session
+    // may still be alive server-side, so we keep status 'authenticated' and let the
+    // caller surface the error / retry.
     await apiFetch<void>('/logout', { method: 'POST' })
     user.value = null
     status.value = 'anonymous'
   }
 
   return { user: readonly(user), status: readonly(status), bootstrap, loginWithGitHub, logout }
+}
+
+/** Test-only: reset the module-level singleton between test cases. */
+export function _resetAuthState(): void {
+  user.value = null
+  status.value = 'unknown'
 }

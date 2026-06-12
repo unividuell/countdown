@@ -6,7 +6,7 @@ vi.mock('@/api/client', async (orig) => {
   return { ...actual, apiFetch: vi.fn() }
 })
 import { apiFetch } from '@/api/client'
-import { useAuth } from '@/auth/useAuth'
+import { useAuth, _resetAuthState } from '@/auth/useAuth'
 
 const me = {
   id: 'u1',
@@ -20,7 +20,10 @@ const me = {
 }
 
 describe('useAuth', () => {
-  beforeEach(() => vi.mocked(apiFetch).mockReset())
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset()
+    _resetAuthState()
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it('bootstrap sets authenticated + user on 200', async () => {
