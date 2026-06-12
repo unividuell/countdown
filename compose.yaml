@@ -21,13 +21,33 @@ services:
     # Same scheme as postgres: PGADMIN_PORT unset -> random; set it in .env for a stable URL.
     ports:
       - '${PGADMIN_PORT:-0}:80'
+    # servers.json is injected as an inline config (no host bind mount), so it works
+    # regardless of Docker Desktop file-sharing (the project lives under /opt).
+    configs:
+      - source: pgadmin_servers
+        target: /pgadmin4/servers.json
     volumes:
-      # pre-registers the 'postgres' server so it appears on first launch
-      - './pgadmin/servers.json:/pgadmin4/servers.json:ro'
       # persist pgAdmin state (incl. a saved DB password) across restarts
       - 'pgadmin-data:/var/lib/pgadmin'
     depends_on:
       - postgres
+
+configs:
+  pgadmin_servers:
+    content: |
+      {
+        "Servers": {
+          "1": {
+            "Name": "countdown app (postgres)",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "app",
+            "Username": "admin",
+            "SSLMode": "prefer"
+          }
+        }
+      }
 
 volumes:
   pgadmin-data:

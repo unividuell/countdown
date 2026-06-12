@@ -72,9 +72,13 @@ database `app`.
   share it. Same trick for `PGADMIN_PORT`. This keeps the zero-config free-port
   default while allowing a fixed port per project (one number, chosen once).
 - **pgAdmin** runs as a second compose service; it pre-registers the `postgres`
-  server via `pgadmin/servers.json` (host `postgres`, the compose-internal
-  service name) and persists its state in the `pgadmin-data` named volume — enter
-  the DB password once and it sticks.
+  server (host `postgres`, the compose-internal service name) and persists its
+  state in the `pgadmin-data` named volume — enter the DB password once and it
+  sticks. The `servers.json` is injected via an **inline compose `configs` entry**
+  (`configs: [{ content: ... }]`), NOT a host bind mount: the project lives under
+  `/opt`, which Docker Desktop does not share by default, so a `./pgadmin/...`
+  bind mount fails with "mounts denied". Inline `configs.content` (Compose ≥ 2.23)
+  needs no host file sharing. Named volumes are unaffected (Docker-managed).
 - Changing `POSTGRES_*` only re-inits a **fresh** database. To apply new
   credentials/DB-name to an existing volume:
   `docker compose down -v` then start again.
