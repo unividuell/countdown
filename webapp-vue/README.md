@@ -15,6 +15,13 @@ proxy target with `VITE_API_PROXY_TARGET` if the backend runs elsewhere. Visit
 `/` → redirected to `/login` → "Login with GitHub" → back to `/` showing your
 profile.
 
+**GitHub OAuth App (dev):** the browser only ever talks to the SPA origin; the
+Vite proxy forwards to the backend transparently (`changeOrigin: false`), so the
+backend builds OAuth URLs on the SPA origin. Set the OAuth App's **Authorization
+callback URL** to `http://localhost:5173/login/oauth2/code/github` (the SPA origin,
+**not** `:8080`) — otherwise GitHub sends you to `:8080` after login and you land
+on the backend's raw JSON instead of the app.
+
 ## Scripts
 
 - `pnpm test` — unit tests (Vitest + Vue Test Utils + happy-dom)

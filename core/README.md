@@ -3,6 +3,10 @@
 1. Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps).
    - Homepage URL: `http://localhost:8080`
    - Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
+   - **When developing with the `webapp-vue` SPA** (the normal setup), use the SPA
+     origin instead: `http://localhost:5173/login/oauth2/code/github`. A GitHub
+     OAuth App allows only one callback URL — pick the one matching the origin you
+     log in from. The `:8080` callback is only for testing the backend standalone.
 2. Export credentials and (optionally) super-admin logins:
    ```bash
    export GITHUB_CLIENT_ID=...        # from the OAuth App
