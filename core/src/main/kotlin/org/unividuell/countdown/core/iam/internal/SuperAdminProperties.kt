@@ -8,5 +8,5 @@ open class SuperAdminProperties(
     val superAdminGithubLogins: List<String> = emptyList(),
 ) {
     open fun isSuperAdmin(login: String): Boolean =
-        superAdminGithubLogins.any { it.equals(login, ignoreCase = true) }
+        superAdminGithubLogins.any { it.isNotBlank() && it.equals(login, ignoreCase = true) }
 }

@@ -12,6 +12,13 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler
 
+/**
+ * App-wide HTTP security. Lives in the `iam` module because authentication is the
+ * only security concern today; revisit if other modules gain protected resources.
+ *
+ * SPA contract: unauthenticated API calls get a 401 (not a redirect to GitHub).
+ * The frontend triggers login by navigating to `/oauth2/authorization/github`.
+ */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(SuperAdminProperties::class)
 class SecurityConfig {
@@ -35,9 +42,8 @@ class SecurityConfig {
                 }
             }
             exceptionHandling {
-                // Return 401 (not a redirect to GitHub) for unauthenticated API requests.
-                // oauth2Login registers its own LoginUrlAuthenticationEntryPoint; overriding
-                // authenticationEntryPoint here replaces it as the default for all matchers.
+                // Deliberate: return 401 for ALL unauthenticated requests (SPA navigates to login itself),
+                // overriding oauth2Login's default browser redirect entry point.
                 authenticationEntryPoint = HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
             }
             csrf {
@@ -45,6 +51,7 @@ class SecurityConfig {
                 csrfTokenRequestHandler = CsrfTokenRequestAttributeHandler()
             }
             logout {
+                // POST; the SPA must send the CSRF token (X-XSRF-TOKEN header) or logout returns 403
                 logoutUrl = "/logout"
                 logoutSuccessHandler = HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)
             }

@@ -19,7 +19,10 @@ class GitHubOAuth2UserService(
     private val delegate: OAuth2UserService<OAuth2UserRequest, OAuth2User>,
 ) : OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
-    @Autowired // Spring uses this constructor: no OAuth2UserService parameter avoids circular-ref self-injection
+    // Spring uses this constructor (the primary one exists for tests). Passing a fresh
+    // DefaultOAuth2UserService() directly avoids Spring injecting this very bean back into
+    // itself via the OAuth2UserService<OAuth2UserRequest, OAuth2User> interface type (self-injection).
+    @Autowired
     constructor(provisioning: UserProvisioningService) : this(provisioning, DefaultOAuth2UserService())
 
     override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
