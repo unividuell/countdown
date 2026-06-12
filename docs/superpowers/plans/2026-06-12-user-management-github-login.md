@@ -2,26 +2,26 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Authenticate users via GitHub OAuth2, provision/sync a local Postgres user record keyed by a Postgres-generated UUID v7, persist the login in an HTTP session, and expose the user (plus a self-service profile update and an admin role) to a future SPA.
+**Goal:** Authenticate users via GitHub OAuth2, provision/sync a local Postgres user record keyed by a Postgres-generated UUID v7, persist the login in an HTTP session, and expose the user (plus a self-service profile update and a super-admin role) to a future SPA.
 
-**Architecture:** A single Spring Modulith module `user`. A custom `OAuth2UserService` upserts the user on every login and returns a principal carrying our UUID + authorities. Spring Session JDBC persists the session in Postgres. Flyway owns all DDL (users table + Spring Session schema). Domain API (`User`, `UserQuery`) is exposed; everything else lives in `user.internal`.
+**Architecture:** A single Spring Modulith module `iam`, owning a dedicated Postgres schema `iam`. A custom `OAuth2UserService` upserts the user on every login and returns a principal carrying our UUID + authorities. Spring Session JDBC persists the session in Postgres. Flyway runs **per module** (Spring Modulith's module-aware migrations) with independent versioning. Domain API (`User`, `UserQuery`) is exposed; everything else lives in `iam.internal`.
 
-**Tech Stack:** Spring Boot 4.1, Kotlin, Java 25, Spring Security 7 (OAuth2 client + session), Spring Data JDBC, Flyway, PostgreSQL 18 (`uuidv7()`), Spring Modulith, Testcontainers, spring-security-test.
+**Tech Stack:** Spring Boot 4.1, Kotlin, Java 25, Spring Security 7 (OAuth2 client + session), Spring Data JDBC, Flyway, PostgreSQL 18 (`uuidv7()`), Spring Modulith 2.1, Testcontainers, spring-security-test.
 
 ---
 
 ## File Structure
 
-Module base package `org.unividuell.countdown.core.user` (path prefix `core/src/main/kotlin/org/unividuell/countdown/core/user`):
+Module base package `org.unividuell.countdown.core.iam` (path prefix `core/src/main/kotlin/org/unividuell/countdown/core/iam`):
 
 **Exposed (module API), base package:**
 - `User.kt` — JDBC aggregate + read model (immutable `data class`, `Serializable`).
 - `UserQuery.kt` — facade interface for other modules.
 
-**Internal, `user/internal/`:**
+**Internal, `iam/internal/`:**
 - `UserRepository.kt` — Spring Data JDBC repository.
-- `AdminProperties.kt` — `@ConfigurationProperties(prefix = "app")` admin allowlist.
-- `UserProvisioningService.kt` — upsert + sync + admin evaluation.
+- `SuperAdminProperties.kt` — `@ConfigurationProperties(prefix = "app")` super-admin allowlist.
+- `UserProvisioningService.kt` — upsert + sync + super-admin evaluation.
 - `UserProfileService.kt` — self-service updates to user-owned fields.
 - `UserQueryService.kt` — `UserQuery` implementation.
 - `CountdownOAuth2User.kt` — custom `OAuth2User` principal (`Serializable`).
@@ -29,15 +29,32 @@ Module base package `org.unividuell.countdown.core.user` (path prefix `core/src/
 - `SecurityConfig.kt` — `SecurityFilterChain` + `@EnableConfigurationProperties`.
 - `UserController.kt` — `/api/me` (GET + PATCH) + DTOs `MeResponse`, `UpdateProfileRequest`.
 
-**Resources:**
-- `core/src/main/resources/db/migration/V1__create_users.sql`
-- `core/src/main/resources/db/migration/V2__spring_session.sql`
+**Resources — module-based Flyway layout:**
+- `core/src/main/resources/db/migration/iam/V1__create_users.sql` (creates schema `iam` + `iam.users`)
+- `core/src/main/resources/db/migration/__root/V1__spring_session.sql` (shared infra)
 - `core/src/main/resources/application.yaml` (extended)
 - `core/src/test/resources/application.yaml` (test OAuth2 dummy creds)
 
-**Tests, `core/src/test/kotlin/org/unividuell/countdown/core/user/`:**
+**Tests, `core/src/test/kotlin/org/unividuell/countdown/core/iam/`:**
 - `UserRepositoryTest.kt`, `UserProvisioningServiceTest.kt`, `UserProfileServiceTest.kt`, `CountdownOAuth2UserTest.kt`, `GitHubOAuth2UserServiceTest.kt`, `UserControllerTest.kt`
 - `core/src/test/kotlin/org/unividuell/countdown/core/ModularityTests.kt`
+
+### Module-based Flyway migrations (read first)
+
+This project enables Spring Modulith's module-aware Flyway support
+(`spring.modulith.runtime.flyway-enabled=true`). Its effect:
+
+- The default base location `classpath:db/migration` (no wildcard) is expanded
+  per module: Flyway runs once for a `__root` pseudo-module and once for each
+  application module (`iam`), scanning `db/migration/__root` and
+  `db/migration/iam` respectively.
+- Each gets its **own** schema-history table (`flyway_schema_history` for root,
+  `flyway_schema_history_iam` for the module), so each module versions
+  independently and starts at `V1`.
+- **Scripts placed directly in `db/migration` are not scanned** — everything
+  goes in a per-module subfolder.
+- The feature requires ArchUnit on the runtime classpath (provided by
+  `spring-modulith-starter-core`); the runtime support fails fast otherwise.
 
 ---
 
@@ -91,27 +108,28 @@ git commit -m "build: pin PostgreSQL to 18 for uuidv7()"
 
 ---
 
-## Task 2: `users` table + `User` entity + repository
+## Task 2: Enable module-based migrations + `iam` schema + `User` entity + repository
 
 **Files:**
-- Create: `core/src/main/resources/db/migration/V1__create_users.sql`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/User.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserRepository.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/UserRepositoryTest.kt`
+- Modify: `core/src/main/resources/application.yaml`
+- Create: `core/src/main/resources/db/migration/iam/V1__create_users.sql`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/User.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserRepository.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserRepositoryTest.kt`
 
 - [ ] **Step 1: Write the failing test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/UserRepositoryTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/UserRepositoryTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.user.internal.UserRepository
+import org.unividuell.countdown.core.iam.internal.UserRepository
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -150,52 +168,69 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
 Run: `cd core && ./mvnw -q -Dtest=UserRepositoryTest test`
 Expected: COMPILE FAILURE — `User` and `UserRepository` are unresolved references.
 
-- [ ] **Step 3: Create the Flyway migration**
+- [ ] **Step 3: Enable module-based Flyway migrations**
 
-`core/src/main/resources/db/migration/V1__create_users.sql`:
+Replace `core/src/main/resources/application.yaml` with:
+
+```yaml
+spring:
+  application:
+    name: core
+  modulith:
+    runtime:
+      flyway-enabled: true
+```
+
+This makes Flyway scan `db/migration/iam` and `db/migration/__root` with
+per-module history tables (see "Module-based Flyway migrations" above).
+
+- [ ] **Step 4: Create the module migration (schema + table)**
+
+`core/src/main/resources/db/migration/iam/V1__create_users.sql`:
 
 ```sql
-CREATE TABLE users (
-    id            UUID         PRIMARY KEY DEFAULT uuidv7(),
-    github_id     BIGINT       NOT NULL UNIQUE,
-    github_login  TEXT         NOT NULL,
-    github_name   TEXT         NULL,
-    display_name  TEXT         NULL,
-    email         TEXT         NULL,
-    bg_color_hex  TEXT         NULL,
-    is_admin      BOOLEAN      NOT NULL DEFAULT FALSE,
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+CREATE SCHEMA IF NOT EXISTS iam;
+
+CREATE TABLE iam.users (
+    id              UUID         PRIMARY KEY DEFAULT uuidv7(),
+    github_id       BIGINT       NOT NULL UNIQUE,
+    github_login    TEXT         NOT NULL,
+    github_name     TEXT         NULL,
+    display_name    TEXT         NULL,
+    email           TEXT         NULL,
+    bg_color_hex    TEXT         NULL,
+    is_super_admin  BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 ```
 
-- [ ] **Step 4: Create the `User` entity**
+- [ ] **Step 5: Create the `User` entity**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/User.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/User.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.springframework.data.annotation.Id
-import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.io.Serializable
 import java.time.Instant
 import java.util.UUID
 
-@Table("users")
+@Table(schema = "iam", name = "users")
 data class User(
     @Id
     val id: UUID? = null,
-    @Column("github_id") val githubId: Long,
-    @Column("github_login") val githubLogin: String,
-    @Column("github_name") val githubName: String? = null,
-    @Column("display_name") val displayName: String? = null,
-    @Column("email") val email: String? = null,
-    @Column("bg_color_hex") val bgColorHex: String? = null,
-    @Column("is_admin") val isAdmin: Boolean = false,
-    @Column("created_at") val createdAt: Instant? = null,
-    @Column("updated_at") val updatedAt: Instant? = null,
+    val githubId: Long,
+    val githubLogin: String,
+    val githubName: String? = null,
+    val displayName: String? = null,
+    val email: String? = null,
+    val bgColorHex: String? = null,
+    val isSuperAdmin: Boolean = false,
+    val createdAt: Instant? = null,
+    val updatedAt: Instant? = null,
 ) : Serializable {
     /** Name shown in the UI: user-chosen, else GitHub display name, else GitHub handle. */
     val username: String
@@ -203,17 +238,17 @@ data class User(
 }
 ```
 
-Explicit `@Column` names are required because Spring Data JDBC's default naming strategy uses the property name verbatim (no automatic snake_case). `id == null` makes Spring Data JDBC treat the row as new (INSERT); PostgreSQL fills the `uuidv7()` default and the driver returns it.
+No `@Column` annotations needed: Spring Data JDBC's `DefaultNamingStrategy` already maps camelCase properties to `snake_case` columns (verified in spring-data-relational 4.1.0 — its javadoc states *"Names are in SNAKE_CASE"* and `getColumnName` uses `ParsingUtils.reconcatenateCamelCase(name, "_")`), so `githubLogin` → `github_login`, `isSuperAdmin` → `is_super_admin`, etc. `@Table(schema = "iam", name = "users")` pins the module schema and avoids the reserved word `user`. `id == null` makes Spring Data JDBC treat the row as new (INSERT); PostgreSQL fills the `uuidv7()` default and the driver returns it.
 
-- [ ] **Step 5: Create the repository**
+- [ ] **Step 6: Create the repository**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserRepository.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserRepository.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.data.repository.CrudRepository
-import org.unividuell.countdown.core.user.User
+import org.unividuell.countdown.core.iam.User
 import java.util.UUID
 
 interface UserRepository : CrudRepository<User, UUID> {
@@ -221,36 +256,40 @@ interface UserRepository : CrudRepository<User, UUID> {
 }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [ ] **Step 7: Run test to verify it passes**
 
 Run: `cd core && ./mvnw -q -Dtest=UserRepositoryTest test`
-Expected: PASS (both tests green; `id.version()` is 7).
+Expected: PASS. The `iam` schema + `iam.users` table are created by the module
+migration; both tests green; `id.version()` is 7. (If the table is missing,
+confirm `spring.modulith.runtime.flyway-enabled=true` and that the script is at
+`db/migration/iam/V1__create_users.sql`.)
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add core/src/main/resources/db/migration/V1__create_users.sql \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/User.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserRepository.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/UserRepositoryTest.kt
-git commit -m "feat(user): users table with uuid v7 id and repository"
+git add core/src/main/resources/application.yaml \
+        core/src/main/resources/db/migration/iam/V1__create_users.sql \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/User.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserRepository.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/UserRepositoryTest.kt
+git commit -m "feat(iam): module-based migration, iam schema, users table with uuid v7"
 ```
 
 ---
 
-## Task 3: Admin allowlist + provisioning/sync service
+## Task 3: Super-admin allowlist + provisioning/sync service
 
 **Files:**
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/AdminProperties.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProvisioningService.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/UserProvisioningServiceTest.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SuperAdminProperties.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProvisioningService.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProvisioningServiceTest.kt`
 
 - [ ] **Step 1: Write the failing test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/UserProvisioningServiceTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProvisioningServiceTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -258,8 +297,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.user.internal.UserProvisioningService
-import org.unividuell.countdown.core.user.internal.UserRepository
+import org.unividuell.countdown.core.iam.internal.UserProvisioningService
+import org.unividuell.countdown.core.iam.internal.UserRepository
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -267,7 +306,7 @@ import kotlin.test.assertTrue
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
-@TestPropertySource(properties = ["app.admin-github-logins=bossuser"])
+@TestPropertySource(properties = ["app.super-admin-github-logins=bossuser"])
 class UserProvisioningServiceTest(
     @Autowired val service: UserProvisioningService,
     @Autowired val repository: UserRepository,
@@ -280,7 +319,7 @@ class UserProvisioningServiceTest(
         assertEquals("octocat", user.githubLogin)
         assertEquals("The Octocat", user.githubName)
         assertEquals("cat@example.com", user.email)
-        assertFalse(user.isAdmin)
+        assertFalse(user.isSuperAdmin)
         assertNull(user.displayName)
         assertEquals(1, repository.count())
     }
@@ -302,12 +341,12 @@ class UserProvisioningServiceTest(
     }
 
     @Test
-    fun `admin flag follows the allowlist on every login`() {
-        val notAdmin = service.provision(102L, "regular", null, null)
-        assertFalse(notAdmin.isAdmin)
+    fun `super-admin flag follows the allowlist on every login`() {
+        val notSuperAdmin = service.provision(102L, "regular", null, null)
+        assertFalse(notSuperAdmin.isSuperAdmin)
 
-        val admin = service.provision(103L, "bossuser", null, null)
-        assertTrue(admin.isAdmin)
+        val superAdmin = service.provision(103L, "bossuser", null, null)
+        assertTrue(superAdmin.isSuperAdmin)
     }
 }
 ```
@@ -317,49 +356,51 @@ class UserProvisioningServiceTest(
 Run: `cd core && ./mvnw -q -Dtest=UserProvisioningServiceTest test`
 Expected: COMPILE FAILURE — `UserProvisioningService` unresolved.
 
-- [ ] **Step 3: Create the admin properties**
+- [ ] **Step 3: Create the super-admin properties**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/AdminProperties.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SuperAdminProperties.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "app")
-data class AdminProperties(
-    /** GitHub logins granted ROLE_ADMIN. Re-evaluated on every login. */
-    val adminGithubLogins: List<String> = emptyList(),
+open class SuperAdminProperties(
+    /** GitHub logins granted ROLE_SUPER_ADMIN. Re-evaluated on every login. */
+    val superAdminGithubLogins: List<String> = emptyList(),
 ) {
-    fun isAdmin(login: String): Boolean =
-        adminGithubLogins.any { it.equals(login, ignoreCase = true) }
+    open fun isSuperAdmin(login: String): Boolean =
+        superAdminGithubLogins.any { it.equals(login, ignoreCase = true) }
 }
 ```
 
+(`open` so the Task 5 unit test can subclass it without Spring context.)
+
 - [ ] **Step 4: Create the provisioning service**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProvisioningService.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProvisioningService.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.unividuell.countdown.core.user.User
+import org.unividuell.countdown.core.iam.User
 import java.time.Instant
 
 @Service
-class UserProvisioningService(
+open class UserProvisioningService(
     private val repository: UserRepository,
-    private val adminProperties: AdminProperties,
+    private val superAdminProperties: SuperAdminProperties,
 ) {
     /** Upserts the user from GitHub claims; never touches user-owned fields. */
     @Transactional
-    fun provision(githubId: Long, login: String, name: String?, email: String?): User {
-        val isAdmin = adminProperties.isAdmin(login)
+    open fun provision(githubId: Long, login: String, name: String?, email: String?): User {
+        val isSuperAdmin = superAdminProperties.isSuperAdmin(login)
         repository.findByGithubId(githubId)?.let { existing ->
-            return repository.save(sync(existing, login, name, email, isAdmin))
+            return repository.save(sync(existing, login, name, email, isSuperAdmin))
         }
         return try {
             repository.save(
@@ -368,22 +409,22 @@ class UserProvisioningService(
                     githubLogin = login,
                     githubName = name,
                     email = email,
-                    isAdmin = isAdmin,
+                    isSuperAdmin = isSuperAdmin,
                 )
             )
         } catch (_: DuplicateKeyException) {
             // a concurrent login already inserted the row: re-fetch and sync
             val existing = repository.findByGithubId(githubId)!!
-            repository.save(sync(existing, login, name, email, isAdmin))
+            repository.save(sync(existing, login, name, email, isSuperAdmin))
         }
     }
 
-    private fun sync(existing: User, login: String, name: String?, email: String?, isAdmin: Boolean): User =
+    private fun sync(existing: User, login: String, name: String?, email: String?, isSuperAdmin: Boolean): User =
         existing.copy(
             githubLogin = login,
             githubName = name,
             email = email,
-            isAdmin = isAdmin,
+            isSuperAdmin = isSuperAdmin,
             updatedAt = Instant.now(),
         )
 }
@@ -397,10 +438,10 @@ Expected: PASS (3 tests green).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add core/src/main/kotlin/org/unividuell/countdown/core/user/internal/AdminProperties.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProvisioningService.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/UserProvisioningServiceTest.kt
-git commit -m "feat(user): provisioning/sync with admin allowlist"
+git add core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SuperAdminProperties.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProvisioningService.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProvisioningServiceTest.kt
+git commit -m "feat(iam): provisioning/sync with super-admin allowlist"
 ```
 
 ---
@@ -408,25 +449,25 @@ git commit -m "feat(user): provisioning/sync with admin allowlist"
 ## Task 4: Profile update service + `UserQuery` facade
 
 **Files:**
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/UserQuery.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserQueryService.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProfileService.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/UserProfileServiceTest.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/UserQuery.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserQueryService.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProfileService.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProfileServiceTest.kt`
 
 - [ ] **Step 1: Write the failing test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/UserProfileServiceTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProfileServiceTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.user.internal.UserProfileService
-import org.unividuell.countdown.core.user.internal.UserRepository
+import org.unividuell.countdown.core.iam.internal.UserProfileService
+import org.unividuell.countdown.core.iam.internal.UserRepository
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -478,10 +519,10 @@ Expected: COMPILE FAILURE — `UserQuery`, `UserProfileService` unresolved.
 
 - [ ] **Step 3: Create the query facade (exposed) and its implementation**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/UserQuery.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/UserQuery.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import java.util.UUID
 
@@ -491,15 +532,15 @@ interface UserQuery {
 }
 ```
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserQueryService.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserQueryService.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import org.unividuell.countdown.core.user.User
-import org.unividuell.countdown.core.user.UserQuery
+import org.unividuell.countdown.core.iam.User
+import org.unividuell.countdown.core.iam.UserQuery
 import java.util.UUID
 
 @Service
@@ -510,15 +551,15 @@ class UserQueryService(private val repository: UserRepository) : UserQuery {
 
 - [ ] **Step 4: Create the profile service**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProfileService.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProfileService.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.unividuell.countdown.core.user.User
+import org.unividuell.countdown.core.iam.User
 import java.time.Instant
 import java.util.UUID
 
@@ -544,11 +585,11 @@ Expected: PASS (3 tests green).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add core/src/main/kotlin/org/unividuell/countdown/core/user/UserQuery.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserQueryService.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProfileService.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/UserProfileServiceTest.kt
-git commit -m "feat(user): profile update service and query facade"
+git add core/src/main/kotlin/org/unividuell/countdown/core/iam/UserQuery.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserQueryService.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserProfileService.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/UserProfileServiceTest.kt
+git commit -m "feat(iam): profile update service and query facade"
 ```
 
 ---
@@ -556,20 +597,20 @@ git commit -m "feat(user): profile update service and query facade"
 ## Task 5: OAuth2 principal + custom `OAuth2UserService`
 
 **Files:**
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/CountdownOAuth2User.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/GitHubOAuth2UserService.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/CountdownOAuth2UserTest.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/GitHubOAuth2UserServiceTest.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/CountdownOAuth2User.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/GitHubOAuth2UserService.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/CountdownOAuth2UserTest.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/GitHubOAuth2UserServiceTest.kt`
 
 - [ ] **Step 1: Write the failing principal test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/CountdownOAuth2UserTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/CountdownOAuth2UserTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.user.internal.CountdownOAuth2User
+import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -577,9 +618,9 @@ import kotlin.test.assertTrue
 
 class CountdownOAuth2UserTest {
 
-    private fun user(isAdmin: Boolean) = User(
+    private fun user(isSuperAdmin: Boolean) = User(
         id = UUID.fromString("018f0000-0000-7000-8000-000000000000"),
-        githubId = 1L, githubLogin = "octocat", isAdmin = isAdmin,
+        githubId = 1L, githubLogin = "octocat", isSuperAdmin = isSuperAdmin,
     )
 
     @Test
@@ -589,17 +630,17 @@ class CountdownOAuth2UserTest {
     }
 
     @Test
-    fun `non-admin has only ROLE_USER`() {
+    fun `non-super-admin has only ROLE_USER`() {
         val authorities = CountdownOAuth2User(user(false), emptyMap()).authorities.map { it.authority }
         assertTrue("ROLE_USER" in authorities)
-        assertFalse("ROLE_ADMIN" in authorities)
+        assertFalse("ROLE_SUPER_ADMIN" in authorities)
     }
 
     @Test
-    fun `admin has ROLE_ADMIN`() {
+    fun `super-admin has ROLE_SUPER_ADMIN`() {
         val authorities = CountdownOAuth2User(user(true), emptyMap()).authorities.map { it.authority }
         assertTrue("ROLE_USER" in authorities)
-        assertTrue("ROLE_ADMIN" in authorities)
+        assertTrue("ROLE_SUPER_ADMIN" in authorities)
     }
 }
 ```
@@ -611,15 +652,15 @@ Expected: COMPILE FAILURE — `CountdownOAuth2User` unresolved.
 
 - [ ] **Step 3: Create the principal**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/CountdownOAuth2User.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/CountdownOAuth2User.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.user.OAuth2User
-import org.unividuell.countdown.core.user.User
+import org.unividuell.countdown.core.iam.User
 import java.io.Serializable
 
 /** Session principal carrying our domain user. Serializable for Spring Session JDBC. */
@@ -634,26 +675,28 @@ class CountdownOAuth2User(
 
     override fun getAuthorities(): Collection<GrantedAuthority> = buildList {
         add(SimpleGrantedAuthority("ROLE_USER"))
-        if (user.isAdmin) add(SimpleGrantedAuthority("ROLE_ADMIN"))
+        if (user.isSuperAdmin) add(SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))
     }
 }
 ```
 
 - [ ] **Step 4: Write the failing service test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/GitHubOAuth2UserServiceTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/GitHubOAuth2UserServiceTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
-import org.unividuell.countdown.core.user.internal.CountdownOAuth2User
-import org.unividuell.countdown.core.user.internal.GitHubOAuth2UserService
-import org.unividuell.countdown.core.user.internal.UserProvisioningService
+import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
+import org.unividuell.countdown.core.iam.internal.GitHubOAuth2UserService
+import org.unividuell.countdown.core.iam.internal.SuperAdminProperties
+import org.unividuell.countdown.core.iam.internal.UserProvisioningService
+import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -671,7 +714,7 @@ class GitHubOAuth2UserServiceTest {
         )
 
         var captured: List<Any?> = emptyList()
-        val provisioning = object : UserProvisioningService(FakeRepo(), AdminPropsNone()) {
+        val provisioning = object : UserProvisioningService(FakeRepo(), SuperAdminProperties(emptyList())) {
             override fun provision(githubId: Long, login: String, name: String?, email: String?): User {
                 captured = listOf(githubId, login, name, email)
                 return provisioned
@@ -691,14 +734,8 @@ class GitHubOAuth2UserServiceTest {
         assertEquals(listOf(4711L, "octocat", "The Octocat", "cat@example.com"), captured)
     }
 }
-```
 
-Add the two tiny in-test fakes at the bottom of the same file (they let us construct the open `UserProvisioningService` without a DB):
-
-```kotlin
-private class AdminPropsNone : org.unividuell.countdown.core.user.internal.AdminProperties(emptyList())
-
-private class FakeRepo : org.unividuell.countdown.core.user.internal.UserRepository {
+private class FakeRepo : UserRepository {
     override fun findByGithubId(githubId: Long): User? = null
     override fun <S : User> save(entity: S): S = entity
     override fun <S : User> saveAll(entities: Iterable<S>): Iterable<S> = entities
@@ -715,54 +752,22 @@ private class FakeRepo : org.unividuell.countdown.core.user.internal.UserReposit
 }
 ```
 
-> NOTE: `UserProvisioningService` and `AdminProperties` must be `open` (and their relevant members) for these test doubles. Kotlin classes are `final` by default; the Spring Kotlin compiler plugin only opens Spring-annotated classes. Mark them `open` in Steps 6–7.
+> NOTE: `SuperAdminProperties` and `UserProvisioningService.provision` are `open`
+> (Task 3) so this test can subclass them without a database. `UserRepository`
+> imports come from `...iam.internal`. The `FakeRepo` implements every
+> `CrudRepository` method.
 
 - [ ] **Step 5: Run service test to verify it fails**
 
 Run: `cd core && ./mvnw -q -Dtest=GitHubOAuth2UserServiceTest test`
 Expected: COMPILE FAILURE — `GitHubOAuth2UserService` unresolved.
 
-- [ ] **Step 6: Make `AdminProperties` open with an overridable ctor shape**
+- [ ] **Step 6: Create the custom `OAuth2UserService`**
 
-Replace `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/AdminProperties.kt` with:
-
-```kotlin
-package org.unividuell.countdown.core.user.internal
-
-import org.springframework.boot.context.properties.ConfigurationProperties
-
-@ConfigurationProperties(prefix = "app")
-open class AdminProperties(
-    /** GitHub logins granted ROLE_ADMIN. Re-evaluated on every login. */
-    val adminGithubLogins: List<String> = emptyList(),
-) {
-    open fun isAdmin(login: String): Boolean =
-        adminGithubLogins.any { it.equals(login, ignoreCase = true) }
-}
-```
-
-- [ ] **Step 7: Make `UserProvisioningService.provision` overridable**
-
-In `UserProvisioningService.kt`, change the class and method to `open`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/GitHubOAuth2UserService.kt`:
 
 ```kotlin
-@Service
-open class UserProvisioningService(
-    private val repository: UserRepository,
-    private val adminProperties: AdminProperties,
-) {
-    @Transactional
-    open fun provision(githubId: Long, login: String, name: String?, email: String?): User {
-```
-
-(The rest of the body is unchanged from Task 3.)
-
-- [ ] **Step 8: Create the custom `OAuth2UserService`**
-
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/GitHubOAuth2UserService.kt`:
-
-```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
@@ -794,40 +799,40 @@ class GitHubOAuth2UserService(
 }
 ```
 
-- [ ] **Step 9: Run both tests to verify they pass**
+- [ ] **Step 7: Run both tests to verify they pass**
 
 Run: `cd core && ./mvnw -q -Dtest='CountdownOAuth2UserTest,GitHubOAuth2UserServiceTest' test`
 Expected: PASS (all green).
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add core/src/main/kotlin/org/unividuell/countdown/core/user/internal/CountdownOAuth2User.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/GitHubOAuth2UserService.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/AdminProperties.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserProvisioningService.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/CountdownOAuth2UserTest.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/GitHubOAuth2UserServiceTest.kt
-git commit -m "feat(user): custom OAuth2 user service and session principal"
+git add core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/CountdownOAuth2User.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/GitHubOAuth2UserService.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/CountdownOAuth2UserTest.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/GitHubOAuth2UserServiceTest.kt
+git commit -m "feat(iam): custom OAuth2 user service and session principal"
 ```
 
 ---
 
 ## Task 6: Security config, session schema, controller, and web tests
 
-This task wires the filter chain, the Spring Session schema, the GitHub client config, and the `/api/me` endpoints, and verifies the whole HTTP contract.
+This task wires the filter chain, the Spring Session schema (in the `__root`
+migration), the GitHub client config, and the `/api/me` endpoints, and verifies
+the whole HTTP contract.
 
 **Files:**
-- Create: `core/src/main/resources/db/migration/V2__spring_session.sql`
+- Create: `core/src/main/resources/db/migration/__root/V1__spring_session.sql`
 - Modify: `core/src/main/resources/application.yaml`
 - Create: `core/src/test/resources/application.yaml`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/SecurityConfig.kt`
-- Create: `core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserController.kt`
-- Test: `core/src/test/kotlin/org/unividuell/countdown/core/user/UserControllerTest.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SecurityConfig.kt`
+- Create: `core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserController.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserControllerTest.kt`
 
-- [ ] **Step 1: Create the Spring Session schema migration**
+- [ ] **Step 1: Create the Spring Session schema migration (root module)**
 
-`core/src/main/resources/db/migration/V2__spring_session.sql` (canonical Spring Session JDBC PostgreSQL schema):
+`core/src/main/resources/db/migration/__root/V1__spring_session.sql` (canonical Spring Session JDBC PostgreSQL schema, default schema):
 
 ```sql
 CREATE TABLE SPRING_SESSION (
@@ -862,6 +867,9 @@ Replace `core/src/main/resources/application.yaml` with:
 spring:
   application:
     name: core
+  modulith:
+    runtime:
+      flyway-enabled: true
   security:
     oauth2:
       client:
@@ -875,7 +883,7 @@ spring:
       initialize-schema: never
 
 app:
-  admin-github-logins: ${ADMIN_GITHUB_LOGINS:}
+  super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
 ```
 
 - [ ] **Step 3: Add test config so the context loads without real GitHub creds**
@@ -896,38 +904,36 @@ spring:
 
 - [ ] **Step 4: Write the failing controller test**
 
-`core/src/test/kotlin/org/unividuell/countdown/core/user/UserControllerTest.kt`:
+`core/src/test/kotlin/org/unividuell/countdown/core/iam/UserControllerTest.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user
+package org.unividuell.countdown.core.iam
 
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
-import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.assertj.MockMvcTester
-import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.user.internal.CountdownOAuth2User
-import org.unividuell.countdown.core.user.internal.UserProfileService
-import org.unividuell.countdown.core.user.internal.UserProvisioningService
-import org.mockito.kotlin.whenever
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
+import org.unividuell.countdown.core.iam.internal.UserProfileService
 import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
-@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+@AutoConfigureMockMvc
 class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @MockitoBean
@@ -944,9 +950,9 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             )
         )
 
-    private fun user(isAdmin: Boolean = false, displayName: String? = null) = User(
+    private fun user(isSuperAdmin: Boolean = false, displayName: String? = null) = User(
         id = uid, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",
-        email = "cat@example.com", displayName = displayName, isAdmin = isAdmin,
+        email = "cat@example.com", displayName = displayName, isSuperAdmin = isSuperAdmin,
     )
 
     @Test
@@ -961,7 +967,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             .andExpect(jsonPath("$.id").value(uid.toString()))
             .andExpect(jsonPath("$.username").value("Mr. Custom"))
             .andExpect(jsonPath("$.githubLogin").value("octocat"))
-            .andExpect(jsonPath("$.isAdmin").value(false))
+            .andExpect(jsonPath("$.isSuperAdmin").value(false))
     }
 
     @Test
@@ -979,8 +985,8 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
-    fun `admin path forbidden for non-admin`() {
-        mockMvc.perform(get("/api/admin/ping").with(principalFor(user(isAdmin = false))))
+    fun `super-admin path forbidden for non-super-admin`() {
+        mockMvc.perform(get("/api/super-admin/ping").with(principalFor(user(isSuperAdmin = false))))
             .andExpect(status().isForbidden)
     }
 
@@ -992,19 +998,22 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 }
 ```
 
-> NOTE on imports: this test uses `org.mockito.kotlin.whenever`. If `mockito-kotlin` is not already available transitively, prefer Mockito's `Mockito.`when`` or add the dependency. The `@MockitoBean` annotation lives in `org.springframework.test.context.bean.override.mockito`. Remove the unused `MockMvcTester` import if your IDE flags it.
+> NOTE on imports: this test uses `org.mockito.kotlin.whenever` (mockito-kotlin).
+> If it is not available transitively, either add it as a test dependency or use
+> Mockito's `Mockito.\`when\``. `@MockitoBean` is in
+> `org.springframework.test.context.bean.override.mockito`.
 
 - [ ] **Step 5: Run controller test to verify it fails**
 
 Run: `cd core && ./mvnw -q -Dtest=UserControllerTest test`
-Expected: COMPILE FAILURE — `SecurityConfig`/`UserController` missing (and `/api/admin/**`, `/logout` not configured).
+Expected: COMPILE FAILURE — `SecurityConfig`/`UserController` missing (and `/api/super-admin/**`, `/logout` not configured).
 
 - [ ] **Step 6: Create the security config**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/SecurityConfig.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SecurityConfig.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -1019,7 +1028,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(AdminProperties::class)
+@EnableConfigurationProperties(SuperAdminProperties::class)
 class SecurityConfig {
 
     @Bean
@@ -1032,7 +1041,7 @@ class SecurityConfig {
                 authorize("/oauth2/**", permitAll)
                 authorize("/login/**", permitAll)
                 authorize("/actuator/health", permitAll)
-                authorize("/api/admin/**", hasRole("ADMIN"))
+                authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {
@@ -1061,10 +1070,10 @@ class SecurityConfig {
 
 - [ ] **Step 7: Create the controller + DTOs**
 
-`core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserController.kt`:
+`core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserController.kt`:
 
 ```kotlin
-package org.unividuell.countdown.core.user.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -1072,7 +1081,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import org.unividuell.countdown.core.user.User
+import org.unividuell.countdown.core.iam.User
 import java.time.Instant
 import java.util.UUID
 
@@ -1083,7 +1092,7 @@ data class MeResponse(
     val githubName: String?,
     val email: String?,
     val bgColorHex: String?,
-    val isAdmin: Boolean,
+    val isSuperAdmin: Boolean,
     val createdAt: Instant?,
 )
 
@@ -1095,7 +1104,7 @@ data class UpdateProfileRequest(
 
 private fun User.toMeResponse() = MeResponse(
     id = id!!, username = username, githubLogin = githubLogin, githubName = githubName,
-    email = email, bgColorHex = bgColorHex, isAdmin = isAdmin, createdAt = createdAt,
+    email = email, bgColorHex = bgColorHex, isSuperAdmin = isSuperAdmin, createdAt = createdAt,
 )
 
 @RestController
@@ -1118,18 +1127,18 @@ class UserController(private val profileService: UserProfileService) {
 - [ ] **Step 8: Run controller test to verify it passes**
 
 Run: `cd core && ./mvnw -q -Dtest=UserControllerTest test`
-Expected: PASS. If `GET /api/me` without auth returns `302` instead of `401`, the `oauth2Login` default entry point won. Confirm the `exceptionHandling { authenticationEntryPoint = ... }` block is present (it sets the default entry point); the test then passes.
+Expected: PASS. If `GET /api/me` without auth returns `302` instead of `401`, confirm the `exceptionHandling { authenticationEntryPoint = ... }` block is present (it sets the default entry point).
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add core/src/main/resources/db/migration/V2__spring_session.sql \
+git add core/src/main/resources/db/migration/__root/V1__spring_session.sql \
         core/src/main/resources/application.yaml \
         core/src/test/resources/application.yaml \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/SecurityConfig.kt \
-        core/src/main/kotlin/org/unividuell/countdown/core/user/internal/UserController.kt \
-        core/src/test/kotlin/org/unividuell/countdown/core/user/UserControllerTest.kt
-git commit -m "feat(user): security filter chain, session schema, /api/me endpoints"
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/SecurityConfig.kt \
+        core/src/main/kotlin/org/unividuell/countdown/core/iam/internal/UserController.kt \
+        core/src/test/kotlin/org/unividuell/countdown/core/iam/UserControllerTest.kt
+git commit -m "feat(iam): security filter chain, session schema, /api/me endpoints"
 ```
 
 ---
@@ -1163,7 +1172,7 @@ class ModularityTests {
 - [ ] **Step 2: Run the test**
 
 Run: `cd core && ./mvnw -q -Dtest=ModularityTests test`
-Expected: PASS. If it fails because internal types are exposed across module boundaries, confirm all implementation classes live under `...user.internal` and only `User` + `UserQuery` are in `...user`. There are no cross-module references yet, so verification should be green.
+Expected: PASS. If it fails because internal types are exposed across module boundaries, confirm all implementation classes live under `...iam.internal` and only `User` + `UserQuery` are in `...iam`. There are no cross-module references yet, so verification should be green.
 
 - [ ] **Step 3: Commit**
 
@@ -1194,11 +1203,11 @@ Append to `core/README.md`:
 1. Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps).
    - Homepage URL: `http://localhost:8080`
    - Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
-2. Export credentials and (optionally) admin logins:
+2. Export credentials and (optionally) super-admin logins:
    ```bash
    export GITHUB_CLIENT_ID=...        # from the OAuth App
    export GITHUB_CLIENT_SECRET=...
-   export ADMIN_GITHUB_LOGINS=your-github-login
+   export SUPER_ADMIN_GITHUB_LOGINS=your-github-login
    ```
 3. Start Postgres + the app (Spring Boot docker-compose support starts `compose.yaml`):
    ```bash
@@ -1221,13 +1230,15 @@ git commit -m "docs: local run instructions for GitHub OAuth login"
 
 **Spec coverage:**
 - GitHub-only social login, no password → Tasks 5–6 (OAuth2 login, GitHub registration). ✓
-- Expose user via HTTP session → Task 6 (Spring Session JDBC schema + session principal). ✓
+- Expose user via HTTP session → Task 6 (Spring Session JDBC schema in `__root` + session principal). ✓
 - Take username, email, GitHub id → Tasks 2–3 (`github_id`, `github_login`, `github_name`, `email`). ✓
 - UUID v7 own id → Task 2 (`DEFAULT uuidv7()`, version assertion). ✓
 - `display_name`/`bg_color_hex` user-owned, never synced → Task 3 test asserts preservation. ✓
 - `github_login` + `github_name`, username fallback → `User.username` (Task 2) + controller assertion (Task 6). ✓
 - `email_verified` dropped → not present anywhere. ✓
-- Admin role via allowlist → Tasks 3, 5, 6 (`AdminProperties`, `ROLE_ADMIN`, `/api/admin/**` 403 test). ✓
+- Module `iam` + dedicated schema `iam` → Task 2 (`CREATE SCHEMA iam`, `@Table(schema = "iam")`). ✓
+- Module-based Flyway migrations (independent versioning) → Task 2 (enable property, `db/migration/iam/V1`) + Task 6 (`db/migration/__root/V1`). ✓
+- Super-admin role via allowlist → Tasks 3, 5, 6 (`SuperAdminProperties`, `ROLE_SUPER_ADMIN`, `/api/super-admin/**` 403 test). ✓
 - 401 (not redirect) for unauthenticated API → Task 6 (`HttpStatusEntryPoint`, 401 test). ✓
 - Self-service `PATCH /api/me` → Tasks 4, 6. ✓
 - Same-origin CSRF (`SameSite=Lax`, cookie token) → Task 6 (`CookieCsrfTokenRepository`). ✓
@@ -1236,6 +1247,8 @@ git commit -m "docs: local run instructions for GitHub OAuth login"
 
 **Placeholder scan:** No TBD/TODO; every code step contains full code; every run step has an expected outcome.
 
-**Type consistency:** `User` fields (`githubLogin`, `githubName`, `displayName`, `bgColorHex`, `isAdmin`, `username`) are used identically across tasks. `provision(githubId, login, name, email)` signature matches between Task 3 (definition), Task 5 (override + call site). `UserProfileService.update(userId, displayName, bgColorHex)` matches between Task 4 and Task 6 mock. `CountdownOAuth2User(user, attributes)` constructor matches across Tasks 5–6. `MeResponse` field names match the controller-test JSON paths.
+**Type consistency:** `User` fields (`githubLogin`, `githubName`, `displayName`, `bgColorHex`, `isSuperAdmin`, `username`) are used identically across tasks. `provision(githubId, login, name, email)` signature matches between Task 3 (definition), Task 5 (override + call site). `UserProfileService.update(userId, displayName, bgColorHex)` matches between Task 4 and Task 6 mock. `CountdownOAuth2User(user, attributes)` constructor matches across Tasks 5–6. `MeResponse` field names match the controller-test JSON paths. All packages are `org.unividuell.countdown.core.iam[.internal]`.
 
-**Note on `open` classes:** Task 5 deliberately upgrades `AdminProperties` and `UserProvisioningService` to `open` so the unit test can subclass them without a database. This is called out inline in Task 5, Steps 6–7.
+**Notes carried into implementation:**
+- `SuperAdminProperties` and `UserProvisioningService` are `open` so the Task 5 unit test can subclass them without a database (called out in Tasks 3 and 5).
+- Module-based Flyway requires migrations in per-module subfolders (`db/migration/iam`, `db/migration/__root`) and ArchUnit on the runtime classpath; scripts directly under `db/migration` are ignored.
