@@ -10,6 +10,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
 
   db-backup:
     image: postgres:18
@@ -31,6 +33,8 @@ services:
         done
     depends_on:
       - postgres
+    networks:
+      - internal
 
   core:
     image: ghcr.io/unividuell/countdown-core:latest
@@ -41,19 +45,21 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       - postgres
+    networks:
+      - internal
 
   caddy:
     image: ghcr.io/unividuell/countdown-web:latest
+    container_name: countdown-web
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
     volumes:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
       - core
+    networks:
+      - edge      # reachable by the shared edge (reverse_proxy countdown-web:80)
+      - internal  # to reach core:8080
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -71,6 +77,8 @@ services:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:
       - postgres
+    networks:
+      - internal
 
 configs:
   pgadmin_servers:
@@ -88,3 +96,9 @@ volumes:
   caddy-data:
   caddy-config:
   pgadmin-data:
+
+networks:
+  edge:
+    external: true
+  internal:
+    driver: bridge
