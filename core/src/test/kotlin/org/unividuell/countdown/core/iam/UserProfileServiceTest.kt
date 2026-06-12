@@ -1,5 +1,8 @@
 package org.unividuell.countdown.core.iam
 
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -9,9 +12,6 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -27,10 +27,10 @@ class UserProfileServiceTest(
 
         val updated = service.update(saved.id!!, displayName = "Mr. Custom", bgColorHex = "#00ff00")
 
-        assertEquals("Mr. Custom", updated.displayName)
-        assertEquals("#00ff00", updated.bgColorHex)
-        assertEquals("octocat", updated.githubLogin)
-        assertEquals("The Octocat", updated.githubName)
+        updated.displayName shouldBe "Mr. Custom"
+        updated.bgColorHex shouldBe "#00ff00"
+        updated.githubLogin shouldBe "octocat"
+        updated.githubName shouldBe "The Octocat"
     }
 
     @Test
@@ -41,13 +41,13 @@ class UserProfileServiceTest(
 
         val updated = service.update(saved.id!!, displayName = null, bgColorHex = null)
 
-        assertNull(updated.displayName)
-        assertNull(updated.bgColorHex)
+        updated.displayName.shouldBeNull()
+        updated.bgColorHex.shouldBeNull()
     }
 
     @Test
     fun `update throws NoSuchElementException for unknown user`() {
-        assertFailsWith<NoSuchElementException> {
+        shouldThrow<NoSuchElementException> {
             service.update(UUID.randomUUID(), displayName = "x", bgColorHex = null)
         }
     }

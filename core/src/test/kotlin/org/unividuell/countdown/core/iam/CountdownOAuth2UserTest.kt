@@ -1,11 +1,11 @@
 package org.unividuell.countdown.core.iam
 
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
 import java.util.UUID
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class CountdownOAuth2UserTest {
 
@@ -17,20 +17,20 @@ class CountdownOAuth2UserTest {
     @Test
     fun `name is our uuid`() {
         val principal = CountdownOAuth2User(user(false), mapOf("login" to "octocat"))
-        assertEquals("018f0000-0000-7000-8000-000000000000", principal.name)
+        principal.name shouldBe "018f0000-0000-7000-8000-000000000000"
     }
 
     @Test
     fun `non-super-admin has only ROLE_USER`() {
         val authorities = CountdownOAuth2User(user(false), emptyMap()).authorities.map { it.authority }
-        assertTrue("ROLE_USER" in authorities)
-        assertFalse("ROLE_SUPER_ADMIN" in authorities)
+        authorities shouldContain "ROLE_USER"
+        authorities shouldNotContain "ROLE_SUPER_ADMIN"
     }
 
     @Test
     fun `super-admin has ROLE_SUPER_ADMIN`() {
         val authorities = CountdownOAuth2User(user(true), emptyMap()).authorities.map { it.authority }
-        assertTrue("ROLE_USER" in authorities)
-        assertTrue("ROLE_SUPER_ADMIN" in authorities)
+        authorities shouldContain "ROLE_USER"
+        authorities shouldContain "ROLE_SUPER_ADMIN"
     }
 }

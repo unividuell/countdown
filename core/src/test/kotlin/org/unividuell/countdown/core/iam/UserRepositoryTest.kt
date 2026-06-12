@@ -1,5 +1,8 @@
 package org.unividuell.countdown.core.iam
 
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -7,9 +10,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.UserRepository
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -22,10 +22,10 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
             User(githubId = 4711L, githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
         )
 
-        assertNotNull(saved.id, "DB should assign a UUID v7")
-        assertEquals(7, saved.id!!.version(), "id must be a UUID version 7")
-        assertNotNull(saved.createdAt)
-        assertNotNull(saved.updatedAt)
+        saved.id.shouldNotBeNull()
+        saved.id!!.version() shouldBe 7
+        saved.createdAt.shouldNotBeNull()
+        saved.updatedAt.shouldNotBeNull()
     }
 
     @Test
@@ -34,8 +34,8 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
 
         val found = repository.findByGithubId(1234L)
 
-        assertNotNull(found)
-        assertEquals("hubert", found.githubLogin)
-        assertNull(repository.findByGithubId(9999L))
+        found.shouldNotBeNull()
+        found.githubLogin shouldBe "hubert"
+        repository.findByGithubId(9999L).shouldBeNull()
     }
 }
