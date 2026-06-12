@@ -32,7 +32,7 @@ backup-friendly logical dumps.
 | PG persistence | named volume `pgdata`. |
 | PG backup | **daily `pg_dump` logical dumps** (sidecar reusing `postgres:18`) to a host-mounted `./backups`, retention 7 days. No PITR (deliberately; can be added later as an isolated change — see "PITR upgrade path"). |
 | DB debugging (pgAdmin) | pgAdmin in the prod compose under a **`debug` profile** (off by default), bound to **`127.0.0.1` only** (no public endpoint, not proxied by Caddy), with pgAdmin login enabled; accessed via **SSH local port-forward**. |
-| Server bootstrap | files fetched from the public repo via `curl` (raw.githubusercontent); the server only needs `compose.prod.yaml` + `.env`. |
+| Server bootstrap & updates | run on the server; `curl` a single **`deploy/update.sh`** that fetches the infra files (`README.md`, `compose.prod.yaml`, itself) from the public repo and does `docker compose pull && up -d`. The server keeps `README.md` + `update.sh` + `compose.prod.yaml` + `.env`. |
 
 ## Architecture
 
@@ -210,17 +210,51 @@ volumes:
   optional `debug`-profile pgAdmin). A committed `deploy/.env.example` documents the keys.
 - `./backups` is host-mounted → easy to copy off-server (rsync/scp).
 
-## Server operations (`deploy/README.md`)
+## Server operations
 
-Bootstrap (public repo → `curl`; only two files needed on the server):
+Everything is run **on the server**. The entry point is **`deploy/README.md`** —
+it is fetched via `curl` and explains the whole operation. The server keeps these
+files in e.g. `/opt/countdown/`: `README.md`, `update.sh`, `compose.prod.yaml`,
+and `.env` (secrets, from `.env.example`). `Caddyfile`/`web.Dockerfile` are build
+inputs only — the server never needs them.
+
+Bootstrap (first time):
 ```bash
 mkdir -p /opt/countdown && cd /opt/countdown
-curl -fsSLO https://raw.githubusercontent.com/unividuell/countdown/main/deploy/compose.prod.yaml
-curl -fsSL  https://raw.githubusercontent.com/unividuell/countdown/main/deploy/.env.example -o .env   # fill secrets
-docker compose -f compose.prod.yaml up -d
+curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/update.sh -o update.sh && chmod +x update.sh
+./update.sh        # fetches README.md, compose.prod.yaml + a .env template, then exits asking you to fill .env
+# edit .env (POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, PGADMIN_*), then:
+./update.sh        # pulls images + starts the stack
 ```
-Infra update (`deploy/update.sh`, also curl-able): re-fetch `compose.prod.yaml`,
-then `docker compose pull && docker compose up -d`.
+
+**Full update / apply infra changes — one script (`deploy/update.sh`), run on the server.** It:
+1. re-fetches the latest infra files from `main` (`compose.prod.yaml`, `README.md`, and `update.sh` itself),
+2. `docker compose pull` (latest `:latest` images),
+3. `docker compose up -d`,
+4. prunes dangling images.
+
+It never overwrites `.env` (creates it from the template only if missing, then asks you to fill it). Self-updates `update.sh` via atomic `mv` so a running invocation is unaffected.
+
+```sh
+#!/usr/bin/env sh
+set -eu
+BASE="https://raw.githubusercontent.com/unividuell/countdown/main/deploy"
+curl -fsSL "$BASE/compose.prod.yaml" -o compose.prod.yaml
+curl -fsSL "$BASE/README.md"         -o README.md
+curl -fsSL "$BASE/update.sh"         -o update.sh.new && chmod +x update.sh.new && mv update.sh.new update.sh
+if [ ! -f .env ]; then
+  curl -fsSL "$BASE/.env.example" -o .env
+  echo ".env created from template — fill in the secrets, then re-run ./update.sh"; exit 1
+fi
+docker compose pull
+docker compose up -d
+docker image prune -f
+echo "Update complete."
+```
+
+(The infra files `compose.prod.yaml`/`README.md`/`update.sh` are NOT baked into any
+image; changing them in the repo and re-running `update.sh` on the server applies
+them. Only the `Caddyfile` is image-baked, so it is rebuilt via CI.)
 
 **Prerequisite:** DNS A/AAAA record for `countdown.unividuell.org` → server IP,
 ports 80+443 open — otherwise Caddy cannot obtain a TLS certificate. (DNS not set yet.)
