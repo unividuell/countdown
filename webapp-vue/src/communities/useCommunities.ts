@@ -17,7 +17,9 @@ export function resolveLanding(active: CommunitySummary[], lastSelectedId: strin
 
 const active = ref<CommunitySummary[]>([])
 export function useCommunities() {
-  async function refresh(): Promise<void> { active.value = await listCommunities() }
+  async function refresh(): Promise<void> {
+    active.value = await listCommunities()
+  }
   async function landing(): Promise<Landing> {
     const [list, sel] = await Promise.all([listCommunities(), getSelection()])
     active.value = list

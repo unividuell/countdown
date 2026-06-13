@@ -9,9 +9,18 @@ describe('communities api', () => {
   beforeEach(() => apiFetch.mockReset())
 
   it('creates a community', async () => {
-    apiFetch.mockResolvedValue({ id: '1', name: 'Team A', slug: 'team-a', startsAt: null, phaseTwoStartRound: null })
+    apiFetch.mockResolvedValue({
+      id: '1',
+      name: 'Team A',
+      slug: 'team-a',
+      startsAt: null,
+      phaseTwoStartRound: null,
+    })
     const c = await createCommunity('Team A')
-    expect(apiFetch).toHaveBeenCalledWith('/api/communities', { method: 'POST', body: JSON.stringify({ name: 'Team A' }) })
+    expect(apiFetch).toHaveBeenCalledWith('/api/communities', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Team A' }),
+    })
     expect(c.slug).toBe('team-a')
   })
 
