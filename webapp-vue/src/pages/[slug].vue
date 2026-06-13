@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, provide, ref, watch } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { getCommunity, setSelection } from '@/api/communities'
@@ -7,7 +7,7 @@ import { ApiError } from '@/api/client'
 import type { CommunityResponse } from '@/api/types'
 import CommunitySwitcher from '@/communities/CommunitySwitcher.vue'
 import { useAuth } from '@/auth/useAuth'
-import { communityKey } from '@/communities/context'
+import { activeCommunityName, communityKey } from '@/communities/context'
 
 const route = useRoute('/[slug]')
 const router = useRouter()
@@ -21,10 +21,12 @@ async function resolve(slug: string): Promise<void> {
   try {
     community.value = await getCommunity(slug)
     state.value = 'ready'
+    activeCommunityName.value = community.value.name // drives the tab title
     void setSelection(community.value.id)
   } catch (e) {
     state.value = e instanceof ApiError && e.status === 404 ? 'no-access' : 'error'
     community.value = null
+    activeCommunityName.value = null
   }
 }
 async function refresh(): Promise<void> {
@@ -41,6 +43,10 @@ watch(
   () => route.params.slug,
   (s) => resolve(String(s)),
 )
+// Leaving the community context → tab title falls back to the app name.
+onUnmounted(() => {
+  activeCommunityName.value = null
+})
 
 async function handleLogout(): Promise<void> {
   await logout()
