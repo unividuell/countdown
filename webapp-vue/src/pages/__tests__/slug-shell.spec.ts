@@ -86,12 +86,18 @@ describe('community shell guard', () => {
 
   it('shows the ⚙ admin menu with a pending badge only for admins, and links the name to /', async () => {
     vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1', name: 'Team', slug: 'team', startsAt: null, phaseTwoStartRound: null,
-      viewerIsAdmin: true, pendingCount: 2,
+      id: '1',
+      name: 'Team',
+      slug: 'team',
+      startsAt: null,
+      phaseTwoStartRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 2,
     })
     vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
     const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell); await flushPromises()
+    const w = mount(Shell)
+    await flushPromises()
     expect(w.find('[data-test=admin-menu]').exists()).toBe(true)
     expect(w.text()).toContain('2') // pending badge
     expect(w.find('a[href="/"]').exists()).toBe(true) // name links home
@@ -99,12 +105,18 @@ describe('community shell guard', () => {
 
   it('hides the ⚙ admin menu for non-admins', async () => {
     vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1', name: 'Team', slug: 'team', startsAt: null, phaseTwoStartRound: null,
-      viewerIsAdmin: false, pendingCount: 0,
+      id: '1',
+      name: 'Team',
+      slug: 'team',
+      startsAt: null,
+      phaseTwoStartRound: null,
+      viewerIsAdmin: false,
+      pendingCount: 0,
     })
     vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
     const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell); await flushPromises()
+    const w = mount(Shell)
+    await flushPromises()
     expect(w.find('[data-test=admin-menu]').exists()).toBe(false)
   })
 })

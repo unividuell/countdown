@@ -46,17 +46,23 @@ onMounted(load)
             v-if="!m.isAdmin"
             class="rounded border px-2 py-0.5"
             @click="run(() => promoteMember(slug, m.userId))"
-          >Zu Admin</button>
+          >
+            Zu Admin
+          </button>
           <button
             v-else
             class="rounded border px-2 py-0.5"
             @click="run(() => demoteMember(slug, m.userId))"
-          >Admin entz.</button>
+          >
+            Admin entz.
+          </button>
           <button
             data-test="remove"
             class="rounded border px-2 py-0.5 text-red-600"
             @click="run(() => removeMember(slug, m.userId))"
-          >Entfernen</button>
+          >
+            Entfernen
+          </button>
         </span>
       </li>
     </ul>

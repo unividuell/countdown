@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
-import { getCommunity, updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
+import {
+  getCommunity,
+  updateCommunity,
+  generateInvite,
+  getInvite,
+  revokeInvite,
+} from '@/api/communities'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 
@@ -86,21 +92,26 @@ async function revoke(): Promise<void> {
     <div class="mt-6 border-t pt-4">
       <h2 class="mb-2 font-medium">Einladungslink</h2>
       <div v-if="inviteUrl" class="space-y-2">
-        <p class="break-all text-sm"><code>{{ inviteUrl }}</code></p>
+        <p class="break-all text-sm">
+          <code>{{ inviteUrl }}</code>
+        </p>
         <div class="flex gap-2">
           <button
             class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"
             @click="copy(inviteUrl ?? '')"
-          >{{ copied ? 'Kopiert!' : 'Kopieren' }}</button>
-          <button
-            class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"
-            @click="regenerate"
-          >Neu generieren</button>
+          >
+            {{ copied ? 'Kopiert!' : 'Kopieren' }}
+          </button>
+          <button class="rounded border px-2 py-1 text-sm hover:bg-neutral-200" @click="regenerate">
+            Neu generieren
+          </button>
           <button
             data-test="revoke-invite"
             class="rounded border px-2 py-1 text-sm text-red-600 hover:bg-neutral-200"
             @click="revoke"
-          >Widerrufen</button>
+          >
+            Widerrufen
+          </button>
         </div>
       </div>
       <div v-else>
@@ -109,7 +120,9 @@ async function revoke(): Promise<void> {
           data-test="generate-invite"
           class="rounded border px-3 py-1.5 hover:bg-neutral-200"
           @click="regenerate"
-        >Einladungslink erzeugen</button>
+        >
+          Einladungslink erzeugen
+        </button>
       </div>
     </div>
   </section>

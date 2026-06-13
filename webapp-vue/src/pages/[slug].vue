@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, provide, ref, watch } from 'vue'
+import type { Ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { getCommunity, setSelection } from '@/api/communities'
 import { ApiError } from '@/api/client'
@@ -31,12 +32,15 @@ async function refresh(): Promise<void> {
 }
 // Non-null inside the 'ready' branch (RouterView only renders then). Children inject this.
 provide(communityKey, {
-  community: community as unknown as Readonly<typeof community>,
+  community: community as unknown as Readonly<Ref<CommunityResponse>>,
   refresh,
 })
 
 onMounted(() => resolve(String(route.params.slug)))
-watch(() => route.params.slug, (s) => resolve(String(s)))
+watch(
+  () => route.params.slug,
+  (s) => resolve(String(s)),
+)
 
 async function handleLogout(): Promise<void> {
   await logout()
@@ -69,7 +73,8 @@ async function handleLogout(): Promise<void> {
             <span
               v-if="community.pendingCount > 0"
               class="ml-1 rounded-full bg-blue-600 px-1.5 text-xs text-white"
-            >{{ community.pendingCount }}</span>
+              >{{ community.pendingCount }}</span
+            >
           </button>
           <div
             v-if="adminMenuOpen"
@@ -86,11 +91,13 @@ async function handleLogout(): Promise<void> {
             <RouterLink
               :to="`/${community.slug}/members`"
               class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
-            >Mitglieder</RouterLink>
+              >Mitglieder</RouterLink
+            >
             <RouterLink
               :to="`/${community.slug}/settings`"
               class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
-            >Einstellungen</RouterLink>
+              >Einstellungen</RouterLink
+            >
           </div>
         </div>
         <CommunitySwitcher :current-slug="community!.slug" />

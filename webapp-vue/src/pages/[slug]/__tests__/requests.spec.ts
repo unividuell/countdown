@@ -3,12 +3,25 @@ import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 
 const replace = vi.fn()
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { slug: 'team' } }), useRouter: () => ({ replace }) }))
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ params: { slug: 'team' } }),
+  useRouter: () => ({ replace }),
+}))
 
 // provide an admin context by mocking the inject helper
 vi.mock('@/communities/context', () => ({
   useCommunityContext: () => ({
-    community: { value: { id: '1', name: 'Team', slug: 'team', startsAt: null, phaseTwoStartRound: null, viewerIsAdmin: true, pendingCount: 1 } },
+    community: {
+      value: {
+        id: '1',
+        name: 'Team',
+        slug: 'team',
+        startsAt: null,
+        phaseTwoStartRound: null,
+        viewerIsAdmin: true,
+        pendingCount: 1,
+      },
+    },
     refresh: vi.fn(),
   }),
 }))
@@ -22,11 +35,13 @@ describe('requests page', () => {
     ])
     const approve = vi.spyOn(api, 'approveMember').mockResolvedValue(undefined as never)
     const Requests = (await import('@/pages/[slug]/requests.vue')).default
-    const w = mount(Requests); await flushPromises()
+    const w = mount(Requests)
+    await flushPromises()
     expect(w.text()).toContain('Alice')
     expect(w.text()).not.toContain('Bob') // only PENDING shown
     list.mockResolvedValue([{ userId: 'u2', username: 'Bob', status: 'ACTIVE', isAdmin: false }])
-    await w.find('[data-test=approve]').trigger('click'); await flushPromises()
+    await w.find('[data-test=approve]').trigger('click')
+    await flushPromises()
     expect(approve).toHaveBeenCalledWith('team', 'u1')
   })
 })

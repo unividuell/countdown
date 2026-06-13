@@ -45,11 +45,15 @@ onMounted(load)
             data-test="approve"
             class="rounded border px-2 py-0.5"
             @click="run(() => approveMember(slug, m.userId))"
-          >Bestätigen</button>
+          >
+            Bestätigen
+          </button>
           <button
             class="rounded border px-2 py-0.5 text-red-600"
             @click="run(() => removeMember(slug, m.userId))"
-          >Ablehnen</button>
+          >
+            Ablehnen
+          </button>
         </span>
       </li>
     </ul>

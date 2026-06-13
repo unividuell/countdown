@@ -1,6 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import * as client from '@/api/client'
-import { createCommunity, listCommunities, joinByToken, getInvite, revokeInvite } from '@/api/communities'
+import {
+  createCommunity,
+  listCommunities,
+  joinByToken,
+  getInvite,
+  revokeInvite,
+} from '@/api/communities'
 
 vi.mock('@/api/client', async (orig) => ({ ...(await orig<typeof client>()), apiFetch: vi.fn() }))
 const apiFetch = vi.mocked(client.apiFetch)
