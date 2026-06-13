@@ -81,14 +81,14 @@ communities
   phase_two_start_round  INT NULL                           -- optional, > 0 (app-validated)
   invite_token           TEXT NULL UNIQUE                   -- current reusable link token (null = none)
   invite_token_expires_at TIMESTAMPTZ NULL
-  created_by             UUID NOT NULL                      -- iam.users.id (creator)
+  created_by             UUID NOT NULL  REFERENCES iam.users(id) ON DELETE RESTRICT   -- creator
   created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
   updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 
 community_members
   id            UUID PK DEFAULT uuidv7()
-  community_id  UUID NOT NULL  -> communities(id)
-  user_id       UUID NOT NULL                              -- iam.users.id
+  community_id  UUID NOT NULL  REFERENCES community.communities(id) ON DELETE CASCADE
+  user_id       UUID NOT NULL  REFERENCES iam.users(id) ON DELETE CASCADE
   status        TEXT NOT NULL                              -- 'PENDING' | 'ACTIVE'
   is_admin      BOOLEAN NOT NULL DEFAULT FALSE
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -96,15 +96,26 @@ community_members
   UNIQUE (community_id, user_id)
 
 community_user_selection                                    -- last-selected, per user
-  user_id       UUID PK                                    -- iam.users.id
-  community_id  UUID NOT NULL  -> communities(id)
+  user_id       UUID PK        REFERENCES iam.users(id) ON DELETE CASCADE
+  community_id  UUID NOT NULL  REFERENCES community.communities(id) ON DELETE CASCADE
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-No FK to `iam.users` is declared across the schema boundary (module hygiene — `user_id`/
-`created_by` reference iam logically; integrity enforced in app/service layer, consistent with
-modulith boundaries). FKs **within** the `community` schema (members→communities,
-selection→communities) are declared.
+**Cross-schema FKs are declared** (DB-level referential integrity), both within `community` and
+across to `iam.users`:
+- `community_members.user_id` and `community_user_selection.user_id` → `iam.users(id)`
+  **ON DELETE CASCADE** (a removed user's memberships/selection vanish with them).
+- `communities.created_by` → `iam.users(id)` **ON DELETE RESTRICT** (a community outlives its
+  creator's session; deleting a user who still owns communities is blocked — a deliberate guard;
+  user deletion is not a current flow anyway).
+- within `community`: `community_members.community_id` and `community_user_selection.community_id`
+  → `community.communities(id)` **ON DELETE CASCADE**.
+
+**Migration ordering:** because `community` migrations reference `iam.users`, the `iam` schema +
+`iam.users` must already exist when `community`'s Flyway runs. The module-based Flyway setup must
+therefore apply `iam` before `community` (declare the dependency / ordering in the Flyway
+locations config; `community`'s `V1` assumes `iam.users` is present). The plan must verify this
+ordering in an integration test (Testcontainers boots the full migration set).
 
 **Invariants:** the creator row is inserted `status=ACTIVE, is_admin=true`. A community always
 has ≥1 `ACTIVE, is_admin=true` member (enforced in the service layer: demote/remove/leave of the
@@ -202,6 +213,9 @@ function, kept in parity with the Kotlin one by tests.
   member/already pending)
 - authorization matrix per endpoint incl. super-admin override and no-access 404
 - selection get/set + login-redirect resolution counts
+- migration ordering: full Flyway set applies cleanly on a fresh DB (iam before community) so the
+  cross-schema FKs resolve; cross-schema cascade behavior (deleting an `iam.users` row removes its
+  memberships/selection; `created_by` RESTRICT blocks deleting a user who owns communities)
 
 **Frontend** (Vitest + `vi`):
 - slug preview function parity with the documented rules
@@ -222,4 +236,6 @@ function, kept in parity with the Kotlin one by tests.
 After implementation, capture into `.claude/guidelines/`: the multi-tenant `community_id`
 scoping convention, the slug-derivation parity rule (Kotlin source of truth + TS mirror + parity
 test), the module-API pattern for cross-module read access (`CommunityQuery`/`MembershipQuery`),
-and the URL-slug-as-context-source routing/guard pattern.
+the URL-slug-as-context-source routing/guard pattern, and the **cross-schema FK + module-Flyway
+ordering** convention (cross-module DB integrity is allowed here; the referenced module's
+migrations must run first).
