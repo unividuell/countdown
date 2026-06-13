@@ -34,7 +34,9 @@ jobs:
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # -DskipTests: the suite already ran in the gate step above; don't run it twice.
+        # countdown.image.tag parametrizes the pom's <image><name> (the build-image.imageName
+        # user property does NOT override a pom-set name in this plugin version).
         run: >
           ./mvnw -B spring-boot:build-image -DskipTests
-          -Dspring-boot.build-image.imageName=ghcr.io/unividuell/countdown-core:${{ steps.tag.outputs.tag }}
+          -Dcountdown.image.tag=${{ steps.tag.outputs.tag }}
           -Dspring-boot.build-image.publish=true

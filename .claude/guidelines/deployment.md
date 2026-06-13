@@ -36,8 +36,10 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   publishes with the workflow `GITHUB_TOKEN` + `packages: write`.
 - **Branch → image tag:** both workflows trigger on **`main` and `develop`**; a `Resolve image tag`
   step (`${{ github.ref_name == 'main' && 'latest' || 'staging' }}`) sets the tag — `main`→`:latest`
-  (prod), `develop`→`:staging`. Wire it into the image name (core: `build-image.imageName=…:<tag>`;
-  web: `docker build -t …:<tag>`).
+  (prod), `develop`→`:staging`. Wire it into the image name — **core: `-Dcountdown.image.tag=<tag>`**
+  (a pom property substituted into `<image><name>`; the `-Dspring-boot.build-image.imageName` user
+  property does **not** override a pom-set `<image><name>` in this plugin version — it silently
+  built `:latest`); web: `docker build -t …:<tag>`.
 
 ## Prod + staging on one host (one compose, per-env files)
 

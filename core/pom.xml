@@ -30,6 +30,10 @@
 		<java.version>25</java.version>
 		<kotlin.version>2.3.21</kotlin.version>
 		<spring-modulith.version>2.1.0</spring-modulith.version>
+		<!-- Image tag for spring-boot:build-image. Override in CI: -Dcountdown.image.tag=staging
+		     (the -Dspring-boot.build-image.imageName user property does NOT override a pom-set
+		     <image><name>, so parametrize the name here instead). -->
+		<countdown.image.tag>latest</countdown.image.tag>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -212,7 +216,7 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<image>
-						<name>ghcr.io/unividuell/countdown-core:latest</name>
+						<name>ghcr.io/unividuell/countdown-core:${countdown.image.tag}</name>
 					</image>
 					<docker>
 						<publishRegistry>
