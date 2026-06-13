@@ -10,7 +10,7 @@ import { useAuth } from '@/auth/useAuth'
 const route = useRoute('/[slug]')
 const router = useRouter()
 const community = ref<CommunityResponse | null>(null)
-const state = ref<'loading' | 'ready' | 'no-access'>('loading')
+const state = ref<'loading' | 'ready' | 'no-access' | 'error'>('loading')
 const { logout } = useAuth()
 
 async function resolve(slug: string): Promise<void> {
@@ -20,7 +20,8 @@ async function resolve(slug: string): Promise<void> {
     state.value = 'ready'
     void setSelection(community.value.id) // remember last-selected
   } catch (e) {
-    state.value = e instanceof ApiError && e.status === 404 ? 'no-access' : 'no-access'
+    // 404 = unknown slug or not a member → no-access (no info leak); anything else is a real error.
+    state.value = e instanceof ApiError && e.status === 404 ? 'no-access' : 'error'
     community.value = null
   }
 }
@@ -44,6 +45,10 @@ async function handleLogout(): Promise<void> {
     <p class="text-sm text-neutral-600">
       Diese Spielgemeinschaft existiert nicht oder du bist kein Mitglied.
     </p>
+  </div>
+  <div v-else-if="state === 'error'" class="mx-auto max-w-md py-8 text-center">
+    <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
+    <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
   </div>
   <div v-else>
     <header class="mb-4 flex items-center justify-between border-b px-4 py-2">
