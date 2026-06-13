@@ -34,6 +34,32 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   The server therefore authenticates before pulling: `docker login ghcr.io -u <user>` with a
   token that has **`read:packages`** (the credential persists in `~/.docker/config.json`). CI
   publishes with the workflow `GITHUB_TOKEN` + `packages: write`.
+- **Branch → image tag:** both workflows trigger on **`main` and `develop`**; a `Resolve image tag`
+  step (`${{ github.ref_name == 'main' && 'latest' || 'staging' }}`) sets the tag — `main`→`:latest`
+  (prod), `develop`→`:staging`. Wire it into the image name (core: `build-image.imageName=…:<tag>`;
+  web: `docker build -t …:<tag>`).
+
+## Prod + staging on one host (one compose, per-env files)
+
+Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrized
+`deploy/compose.yaml`** (renamed from `compose.prod.yaml`). They differ only by an env file:
+- `.env.prod` / `.env.staging`, each carrying **`COMPOSE_PROJECT_NAME`** (`countdown` /
+  `countdown-staging`), `IMAGE_TAG` (`latest` / `staging`), `SPRING_PROFILES_ACTIVE`
+  (`production` / `staging`), `PGADMIN_PORT` (`5050` / `5051`), `BACKUP_DIR`
+  (`./backups` / `./backups-staging`), and secrets.
+- The distinct `COMPOSE_PROJECT_NAME` gives each stack its own container/volume/network namespace →
+  staging is independently start/stoppable (`docker compose --env-file .env.staging -f compose.yaml down`
+  touches only staging) and the two postgres volumes (`countdown_pgdata` / `countdown-staging_pgdata`)
+  are separate (so a Postgres major upgrade can be rehearsed on staging first).
+- `update.sh <prod|staging>` (default `prod`) picks the env file, fetches `compose.yaml`, pulls, `up -d`.
+- **pgAdmin is per-environment** (each stack's own `debug`-profile pgAdmin connects only to its own
+  `postgres` via the service name; no shared instance/network). Distinct loopback ports
+  (`PGADMIN_PORT`) let you tunnel both at once. README documents the per-env start + SSH tunnel.
+- Edge routes `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the
+  test-user picker — see security-and-auth.md; no separate staging GitHub OAuth App).
+- **Rename migration:** prod was `compose.prod.yaml` + `.env`. Keep `COMPOSE_PROJECT_NAME=countdown`
+  when moving to `compose.yaml` + `.env.prod` so the existing volumes are reused (no data loss);
+  expect a brief prod restart on the cutover.
 
 ## Caddy edge
 

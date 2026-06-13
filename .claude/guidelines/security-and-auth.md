@@ -27,6 +27,8 @@ concern; revisit when other modules gain protected resources).
   login by navigating to `/oauth2/authorization/github`. This is deliberate —
   set `exceptionHandling { authenticationEntryPoint = HttpStatusEntryPoint(UNAUTHORIZED) }`
   and document it so it isn't mistaken for a misconfiguration.
+- The SPA's single "Login with GitHub" button navigates to **`/login/github`** (not the OAuth
+  endpoint directly) so the *server* can choose GitHub vs the test picker. See "Test login".
 - **CSRF** via `CookieCsrfTokenRepository.withHttpOnlyFalse()` +
   `CsrfTokenRequestAttributeHandler()` (plain handler so the cookie value matches
   the header — avoids the BREACH/XOR mismatch that breaks SPAs). The SPA must echo
@@ -58,6 +60,36 @@ concern; revisit when other modules gain protected resources).
   (the empty-string env default can bind a ghost element).
 - The name "super-admin" is deliberately distinct from future **community-admins**
   — don't conflate them when adding finer-grained roles later.
+
+## Test login (non-prod only — Firebase-emulator pattern)
+
+To exercise multi-user flows without real GitHub accounts, non-prod envs offer a **test login**.
+One SPA button → `/login/github`; the **server** decides by profile + a config flag:
+
+- `app.test-auth.enabled` (default `true` in `application.yaml`; `false` in
+  `application-production.yaml`; `true` in `application-staging.yaml`).
+- **Gating is doubled:** the picker controller (`/login/github` → inline-HTML test-user picker),
+  the `POST /login/github/as` login action, and the `TestUserSeeder` are **all**
+  `@Profile("!production")` **and** `@ConditionalOnProperty("app.test-auth.enabled")` → in prod they
+  are not wired at all. When the flag is off, a `GitHubLoginRedirectController`
+  (`@ConditionalOnProperty("app.test-auth.enabled", havingValue="false", matchIfMissing=true)`) maps
+  `/login/github` → `/oauth2/authorization/github`. Exactly one controller owns `/login/github`.
+- **`@ConditionalOnProperty` gotcha (Spring Boot 4):** use the full key as the value
+  (`@ConditionalOnProperty("app.test-auth.enabled")`), NOT `prefix=…, name=…` with a hyphenated
+  prefix — relaxed binding doesn't apply to the hyphenated prefix segment and the condition silently
+  never matches.
+- **Seeder** is an `ApplicationRunner` (idempotent), **not** Flyway — migrations can't be
+  profile/flag-gated and would leak test data into prod. Test users get **synthetic negative
+  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids.
+- The picker POST carries the CSRF token as a hidden `_csrf` field (server embeds
+  `csrfToken.token`); `POST /login/github/as` builds a `CountdownOAuth2User` principal and persists
+  the session via `HttpSessionSecurityContextRepository().saveContext(...)` — indistinguishable from
+  a real login.
+- **Flip locally:** set `app.test-auth.enabled=false` to replay the exact prod GitHub flow on
+  localhost (no seed, no picker). Real GitHub OAuth is otherwise exercised only in prod (staging
+  logs in via the picker; no separate staging GitHub OAuth App).
+- Tests: the test classpath also needs `app.test-auth.enabled` set; a test that counts users (e.g.
+  provisioning) must set it `false` to avoid the seeder's rows.
 
 ## Secrets
 
