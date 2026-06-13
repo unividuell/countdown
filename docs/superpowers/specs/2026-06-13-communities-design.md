@@ -120,6 +120,12 @@ Flyway locations/ordering config is needed — the code dependency is what estab
 An integration test still verifies the full migration set applies cleanly on a fresh DB
 (Testcontainers).
 
+> **Build note:** adding the new `community` module changes the module structure, so the
+> generated `META-INF/spring-modulith/application-modules.json` must be regenerated — do a
+> `./mvnw clean` build (and let the modularity test re-run the `Documenter`) before trusting
+> runtime/migration behavior. A stale file makes the new module / its migrations go unseen.
+> See `.claude/guidelines/modules-and-migrations.md`.
+
 **Invariants:** the creator row is inserted `status=ACTIVE, is_admin=true`. A community always
 has ≥1 `ACTIVE, is_admin=true` member (enforced in the service layer: demote/remove/leave of the
 last admin → rejected). Only ACTIVE members are players; PENDING members are not yet players.
