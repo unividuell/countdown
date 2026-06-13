@@ -2,7 +2,7 @@ name: build-core
 on:
   workflow_dispatch: {}
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'core/**'
       - '.github/workflows/build-core.yml'
@@ -25,10 +25,16 @@ jobs:
       - name: Test (gate before image)
         working-directory: core
         run: ./mvnw -B clean verify
+      - name: Resolve image tag
+        id: tag
+        run: echo "tag=${{ github.ref_name == 'main' && 'latest' || 'staging' }}" >> "$GITHUB_OUTPUT"
       - name: Build & publish image (Buildpacks -> ghcr)
         working-directory: core
         env:
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # -DskipTests: the suite already ran in the gate step above; don't run it twice.
-        run: ./mvnw -B spring-boot:build-image -DskipTests -Dspring-boot.build-image.publish=true
+        run: >
+          ./mvnw -B spring-boot:build-image -DskipTests
+          -Dspring-boot.build-image.imageName=ghcr.io/unividuell/countdown-core:${{ steps.tag.outputs.tag }}
+          -Dspring-boot.build-image.publish=true

@@ -2,7 +2,7 @@ name: build-web
 on:
   workflow_dispatch: {}
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'webapp-vue/**'
       - 'deploy/Caddyfile'
@@ -34,7 +34,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve image tag
+        id: tag
+        run: echo "tag=${{ github.ref_name == 'main' && 'latest' || 'staging' }}" >> "$GITHUB_OUTPUT"
       - name: Build & push web image
         run: |
-          docker build -f deploy/web.Dockerfile -t ghcr.io/unividuell/countdown-web:latest .
-          docker push ghcr.io/unividuell/countdown-web:latest
+          docker build -f deploy/web.Dockerfile -t ghcr.io/unividuell/countdown-web:${{ steps.tag.outputs.tag }} .
+          docker push ghcr.io/unividuell/countdown-web:${{ steps.tag.outputs.tag }}
