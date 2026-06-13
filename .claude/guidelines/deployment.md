@@ -125,8 +125,15 @@ for staging, by `container_name`).
 ## pgAdmin in production
 
 - Under a **`debug` compose profile** (off by default), bound to **`127.0.0.1` only** (never public,
-  not proxied by Caddy), **login required**. Access via an SSH local-port-forward
-  (`ssh -L 5050:127.0.0.1:5050 user@server`). Three layers: SSH boundary + loopback bind + pgAdmin login.
+  not proxied by Caddy). Access via an SSH local-port-forward (`ssh -L <port>:127.0.0.1:<port> user@server`).
+- **Desktop mode (no pgAdmin login):** `PGADMIN_CONFIG_SERVER_MODE=False` +
+  `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False`. The boundary is **SSH + loopback bind** — anyone
+  past SSH can read the `.env` secrets anyway, so an extra pgAdmin login is no added security, only
+  friction. Gotcha: set `PGADMIN_CONFIG_DESKTOP_USER='<email>'` to **match** `PGADMIN_DEFAULT_EMAIL`
+  (else pgAdmin looks up its built-in default and 401s); `PGADMIN_CONFIG_*` values are written into a
+  Python config verbatim, so string values need **embedded quotes**, booleans (`False`) do not.
+- Per environment (prod 5050, staging 5051 via `PGADMIN_PORT`); each pgAdmin connects only to its
+  own `postgres`.
 
 ## Shared edge (multi-project host)
 

@@ -67,6 +67,16 @@ services:
     profiles: [debug]
     restart: unless-stopped
     environment:
+      # Desktop mode: NO pgAdmin login screen and no master-password prompt. The SSH boundary
+      # + loopback bind already gate access (anyone past SSH can read the secrets anyway), so an
+      # extra pgAdmin login adds no security, only friction.
+      - 'PGADMIN_CONFIG_SERVER_MODE=False'
+      - 'PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False'
+      # The desktop auto-login identity must match the entrypoint user (PGADMIN_DEFAULT_EMAIL),
+      # else pgAdmin looks up its default 'pgadmin4@pgadmin.org', misses, and 401s.
+      # PGADMIN_CONFIG_* values are written into a Python config verbatim → string values need
+      # embedded quotes (booleans like False are valid Python as-is).
+      - "PGADMIN_CONFIG_DESKTOP_USER='${PGADMIN_EMAIL}'"
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
     ports:

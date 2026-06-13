@@ -63,7 +63,9 @@ is served by the backend at `/login/github` when `SPRING_PROFILES_ACTIVE=staging
 ## Debug the DB (pgAdmin — no public endpoint, SSH tunnel only)
 
 pgAdmin runs only under the `debug` profile and is bound to `127.0.0.1` on the server's loopback.
-Each environment gets its own port so both can run simultaneously.
+Each environment gets its own port so both can run simultaneously. It runs in **desktop mode — no
+pgAdmin login** (the SSH boundary + loopback bind already gate access; an extra login adds no
+security, only friction). Each pgAdmin connects only to its own DB.
 
 **Prod pgAdmin (port 5050):**
 ```bash
@@ -73,9 +75,9 @@ docker compose --env-file .env.prod -f compose.yaml --profile debug up -d pgadmi
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
 ssh -L 5050:127.0.0.1:5050 <user>@<server>
 
-# 3) browse http://localhost:5050 ; log in with PGADMIN_EMAIL / PGADMIN_PASSWORD (from .env.prod).
-#    The "countdown app (postgres)" server is pre-registered; enter the DB password
-#    (POSTGRES_PASSWORD) once — it persists in the pgadmin-data volume.
+# 3) browse http://localhost:5050 — opens straight in (no login). The "countdown app (postgres)"
+#    server is pre-registered; enter the DB password (POSTGRES_PASSWORD) once — it persists in the
+#    pgadmin-data volume.
 
 # 4) when done
 docker compose --env-file .env.prod -f compose.yaml --profile debug stop pgadmin
@@ -89,8 +91,7 @@ docker compose --env-file .env.staging -f compose.yaml --profile debug up -d pga
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051
 ssh -L 5051:127.0.0.1:5051 <user>@<server>
 
-# 3) browse http://localhost:5051 ; log in with PGADMIN_EMAIL / PGADMIN_PASSWORD (from .env.staging).
-#    Each pgAdmin instance connects only to its own DB.
+# 3) browse http://localhost:5051 — opens straight in (no login), connected only to the staging DB.
 
 # 4) when done
 docker compose --env-file .env.staging -f compose.yaml --profile debug stop pgadmin
