@@ -28,6 +28,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var communityQuery: org.unividuell.countdown.core.community.CommunityQuery
     @MockkBean lateinit var access: CommunityAccess
     @MockkBean lateinit var selection: SelectionService
+    @MockkBean lateinit var memberRepo: CommunityMemberRepository
 
     private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")
     private fun principal(superAdmin: Boolean = false) = authentication(
@@ -94,5 +95,41 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principal()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"communityId":"018f0000-0000-7000-8000-000000000001"}"""
         }.andExpect { status { isNoContent() } }
+    }
+
+    @Test
+    fun `GET by slug returns viewerIsAdmin and pendingCount for an admin`() {
+        val c = community("team")
+        every { access.requireActiveMember(uid, false, "team") } returns c
+        every { query.isAdmin(c.id!!, uid) } returns true
+        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 3
+        mockMvc.get("/api/communities/team") { with(principal()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.viewerIsAdmin") { value(true) }
+            jsonPath("$.pendingCount") { value(3) }
+        }
+    }
+
+    @Test
+    fun `GET by slug returns viewerIsAdmin false and pendingCount 0 for a non-admin member`() {
+        val c = community("team")
+        every { access.requireActiveMember(uid, false, "team") } returns c
+        every { query.isAdmin(c.id!!, uid) } returns false
+        mockMvc.get("/api/communities/team") { with(principal()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.viewerIsAdmin") { value(false) }
+            jsonPath("$.pendingCount") { value(0) }
+        }
+    }
+
+    @Test
+    fun `GET by slug returns viewerIsAdmin true for a super-admin`() {
+        val c = community("team")
+        every { access.requireActiveMember(uid, true, "team") } returns c
+        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 0
+        mockMvc.get("/api/communities/team") { with(principal(superAdmin = true)) }.andExpect {
+            status { isOk() }
+            jsonPath("$.viewerIsAdmin") { value(true) }
+        }
     }
 }
