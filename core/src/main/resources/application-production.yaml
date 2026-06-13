@@ -24,3 +24,7 @@ server:
       cookie:
         secure: true
         same-site: lax
+
+app:
+  test-auth:
+    enabled: false

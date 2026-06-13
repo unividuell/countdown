@@ -18,3 +18,7 @@ spring:
 
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
+  test-auth:
+    # Emulator-style test login (seeded users + picker). Default on for localhost.
+    # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
+    enabled: true
