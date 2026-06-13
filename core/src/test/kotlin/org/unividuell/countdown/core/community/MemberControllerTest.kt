@@ -65,13 +65,21 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `GET members lists enriched member data`() {
         val memberId = UUID.randomUUID()
         val c = community("team")
-        every { access.requireActiveMember(uid, false, "team") } returns c
+        every { access.requireAdmin(uid, false, "team") } returns c
         every { memberRepo.findByCommunityId(c.id!!) } returns listOf(
             CommunityMember(communityId = c.id!!, userId = memberId, status = MemberStatus.ACTIVE, isAdmin = false)
         )
         every { userQuery.findById(memberId) } returns User(id = memberId, githubId = 2L, githubLogin = "alice")
         mockMvc.get("/api/communities/team/members") { with(principal()) }
             .andExpect { status { isOk() }; jsonPath("$[0].username") { value("alice") } }
+    }
+
+    @Test
+    fun `GET members is forbidden for a non-admin`() {
+        every { access.requireAdmin(uid, false, "team") } throws NotAdminException()
+        mockMvc.get("/api/communities/team/members") { with(principal()) }.andExpect {
+            status { isForbidden() }
+        }
     }
 
     @Test

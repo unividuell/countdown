@@ -56,7 +56,7 @@ class MemberController(
 
     @GetMapping("/{slug}/members")
     fun members(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): List<MemberResponse> {
-        val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug)
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
         return memberRepo.findByCommunityId(c.id!!).map {
             MemberResponse(
                 userId = it.userId,
