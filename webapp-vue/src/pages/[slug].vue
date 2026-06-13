@@ -69,7 +69,7 @@ async function handleLogout(): Promise<void> {
             class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"
             @click="adminMenuOpen = !adminMenuOpen"
           >
-            ⚙ Verwalten
+            Verwalten
             <span
               v-if="community.pendingCount > 0"
               class="ml-1 rounded-full bg-blue-600 px-1.5 text-xs text-white"

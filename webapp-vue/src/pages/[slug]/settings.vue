@@ -25,10 +25,19 @@ function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
+// <input type="datetime-local"> works in browser-local wall-clock (no tz). Convert the
+// backend instant -> local "YYYY-MM-DDTHH:mm" for display, and the local value -> a UTC
+// ISO instant on save. Both use the browser's timezone.
+function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 onMounted(async () => {
   const c = await getCommunity(slug)
   name.value = c.name
-  startsAt.value = c.startsAt ?? ''
+  startsAt.value = c.startsAt ? toLocalInput(c.startsAt) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
@@ -40,7 +49,8 @@ async function save(): Promise<void> {
     const body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }> = {
       name: name.value.trim(),
     }
-    if (startsAt.value) body.startsAt = startsAt.value
+    // local wall-clock from the datetime-local input -> UTC ISO instant (browser tz)
+    if (startsAt.value) body.startsAt = new Date(startsAt.value).toISOString()
     if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
     await updateCommunity(slug, body)
     await refresh()
@@ -73,10 +83,10 @@ async function revoke(): Promise<void> {
         URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.
       </p>
       <label class="block text-sm"
-        >Start (ISO)<input
+        >Start<input
           v-model="startsAt"
+          type="datetime-local"
           class="mt-1 w-full rounded border px-3 py-1.5"
-          placeholder="2026-09-01T11:00:00+02:00"
       /></label>
       <label class="block text-sm"
         >Phase-2-Startrunde<input
