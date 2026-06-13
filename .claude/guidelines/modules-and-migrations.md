@@ -61,6 +61,16 @@ Rules:
 - The feature requires ArchUnit on the **runtime** classpath (provided by
   `spring-modulith-starter-core`).
 
+## Migration ordering follows the module dependency tree
+
+`SpringModulithFlywayMigrationStrategy` applies modules' migrations in **module-dependency
+order** — a module's migrations run after those of the modules it depends on. The dependency
+graph is derived from **code** (e.g. a module using another's exposed API). So **cross-schema
+FKs are fine**: if module B's table references module A's table, just make B depend on A in
+code (use A's exposed API) and A's migrations run first automatically. No manual Flyway
+locations/ordering config. Example: `community` → `iam` (uses `iam.UserQuery`), so a
+`community` migration may declare an FK to `iam.users`.
+
 ## Dependencies note
 
 Pin Spring Modulith to a **GA** version (`2.1.0`), not an RC — RC artifacts live

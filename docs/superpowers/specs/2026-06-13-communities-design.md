@@ -111,11 +111,14 @@ across to `iam.users`:
 - within `community`: `community_members.community_id` and `community_user_selection.community_id`
   → `community.communities(id)` **ON DELETE CASCADE**.
 
-**Migration ordering:** because `community` migrations reference `iam.users`, the `iam` schema +
-`iam.users` must already exist when `community`'s Flyway runs. The module-based Flyway setup must
-therefore apply `iam` before `community` (declare the dependency / ordering in the Flyway
-locations config; `community`'s `V1` assumes `iam.users` is present). The plan must verify this
-ordering in an integration test (Testcontainers boots the full migration set).
+**Migration ordering (automatic via the module dependency tree):** Spring Modulith's
+`SpringModulithFlywayMigrationStrategy` applies each module's migrations in **module-dependency
+order**. Because `community` depends on `iam` **in code** (it uses `iam.UserQuery`), Spring
+Modulith places `iam` before `community` in the dependency tree, so `iam`'s migrations
+(`iam.users`) run before `community`'s `V1` (which declares the cross-schema FK). **No manual
+Flyway locations/ordering config is needed — the code dependency is what establishes the order.**
+An integration test still verifies the full migration set applies cleanly on a fresh DB
+(Testcontainers).
 
 **Invariants:** the creator row is inserted `status=ACTIVE, is_admin=true`. A community always
 has ≥1 `ACTIVE, is_admin=true` member (enforced in the service layer: demote/remove/leave of the
@@ -236,6 +239,7 @@ function, kept in parity with the Kotlin one by tests.
 After implementation, capture into `.claude/guidelines/`: the multi-tenant `community_id`
 scoping convention, the slug-derivation parity rule (Kotlin source of truth + TS mirror + parity
 test), the module-API pattern for cross-module read access (`CommunityQuery`/`MembershipQuery`),
-the URL-slug-as-context-source routing/guard pattern, and the **cross-schema FK + module-Flyway
-ordering** convention (cross-module DB integrity is allowed here; the referenced module's
-migrations must run first).
+the URL-slug-as-context-source routing/guard pattern, and the **cross-schema FK** convention
+(cross-module DB integrity is allowed; Spring Modulith applies module migrations in
+dependency-tree order, so a code dependency on the referenced module is what makes its
+migrations run first — no manual Flyway ordering).
