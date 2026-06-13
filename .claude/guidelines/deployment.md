@@ -7,10 +7,19 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
 
 ## Images & CI
 
+- **Tests gate the image (both apps).** A red test must fail the job *before* anything is
+  built or published:
+  - `build-core`: an explicit **`./mvnw -B clean verify`** step (full suite incl. Testcontainers
+    + `ModularityTests`) runs first; the image step then uses `spring-boot:build-image -DskipTests`
+    (suite already ran — don't run it twice). Do **not** rely on `build-image`'s implicit fork to
+    the `package` phase; make the gate explicit.
+  - `build-web`: the **Docker build only runs `pnpm build`** (vue-tsc type-check + vite build) —
+    it does **NOT** run eslint or Vitest. So the workflow adds an explicit
+    **`pnpm install && pnpm lint && pnpm test`** step (setup-node + `corepack enable`) before the
+    `docker build`. Type errors fail via the image build; lint + unit tests fail via this gate.
 - **Backend** `ghcr.io/unividuell/countdown-core` — built with **Cloud Native Buildpacks** via
   `spring-boot:build-image`. Image name + `<docker><publishRegistry>` (`${env.GHCR_USERNAME}`/
-  `${env.GHCR_TOKEN}`) live in the `spring-boot-maven-plugin` config; CI runs
-  `./mvnw spring-boot:build-image -Dspring-boot.build-image.publish=true`.
+  `${env.GHCR_TOKEN}`) live in the `spring-boot-maven-plugin` config.
 - **Web** `ghcr.io/unividuell/countdown-web` — multi-stage Dockerfile (`node` build → `pnpm build`;
   then `caddy` with `dist/` + Caddyfile baked in). Postgres is the official `postgres:18`.
 - **CI runner: `ubuntu-24.04-arm`** (GitHub-hosted, native arm64 — free for the public repo).

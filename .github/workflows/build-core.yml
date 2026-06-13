@@ -19,9 +19,16 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      # Run the full suite FIRST (incl. Testcontainers + ModularityTests) so a red test
+      # fails the job before any image is built/published. Explicit, not relying on
+      # build-image's implicit fork to the package phase.
+      - name: Test (gate before image)
+        working-directory: core
+        run: ./mvnw -B clean verify
       - name: Build & publish image (Buildpacks -> ghcr)
         working-directory: core
         env:
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B spring-boot:build-image -Dspring-boot.build-image.publish=true
+        # -DskipTests: the suite already ran in the gate step above; don't run it twice.
+        run: ./mvnw -B spring-boot:build-image -DskipTests -Dspring-boot.build-image.publish=true

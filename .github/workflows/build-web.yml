@@ -16,6 +16,19 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Gate the image on lint + unit tests. The Docker build re-runs `pnpm build`
+      # (vue-tsc type-check + vite build), so type errors also fail the build below;
+      # this step adds eslint + Vitest, which the image build does NOT run.
+      - name: Lint + test (gate before image)
+        working-directory: webapp-vue
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm test
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
