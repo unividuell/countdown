@@ -20,6 +20,7 @@ implementation.
 - The plugin generates `typed-router.d.ts` (committed; the plugin recommends committing it). Add it to `tsconfig`.
 - Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time; the call vanishes in the build).
 - **Gotcha:** `definePage` is a build-time macro processed by the VueRouter plugin. Unit tests run Vitest with only `@vitejs/plugin-vue` (not the VueRouter plugin), so stub it in a setup file: `globalThis.definePage = (r) => r` (mirrors `vue-router/experimental`'s runtime no-op).
+- **Typed route params (strict TS):** Use the typed `useRoute('/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`[slug].vue`, `[slug]/members.vue`, etc.) all need the specific route name. See also `multi-tenancy.md`.
 
 ## State — composables + VueUse (no Pinia)
 
