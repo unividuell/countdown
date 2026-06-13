@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { listMembers, approveMember, promoteMember, demoteMember, removeMember } from '@/api/communities'
+import {
+  listMembers,
+  approveMember,
+  promoteMember,
+  demoteMember,
+  removeMember,
+} from '@/api/communities'
 import type { MemberResponse } from '@/api/types'
 
-const route = useRoute()
-const slug = String(route.params.slug)
+const route = useRoute('/[slug]/members')
+const slug = route.params.slug
 const members = ref<MemberResponse[]>([])
 const error = ref<string | null>(null)
 

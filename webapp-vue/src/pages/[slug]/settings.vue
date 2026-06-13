@@ -3,8 +3,8 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCommunity, updateCommunity, generateInvite } from '@/api/communities'
 
-const route = useRoute()
-const slug = String(route.params.slug)
+const route = useRoute('/[slug]/settings')
+const slug = route.params.slug
 const name = ref('')
 const startsAt = ref('')
 const phaseTwoStartRound = ref<number | null>(null)
@@ -21,11 +21,12 @@ onMounted(async () => {
 async function save(): Promise<void> {
   error.value = null
   try {
-    await updateCommunity(slug, {
+    const body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }> = {
       name: name.value.trim(),
-      startsAt: startsAt.value || undefined,
-      phaseTwoStartRound: phaseTwoStartRound.value ?? undefined,
-    })
+    }
+    if (startsAt.value) body.startsAt = startsAt.value
+    if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
+    await updateCommunity(slug, body)
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
   }
@@ -48,7 +49,9 @@ async function invite(): Promise<void> {
           minlength="3"
           maxlength="50"
       /></label>
-      <p class="text-xs text-neutral-500">URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.</p>
+      <p class="text-xs text-neutral-500">
+        URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.
+      </p>
       <label class="block text-sm"
         >Start (ISO)<input
           v-model="startsAt"
@@ -73,7 +76,9 @@ async function invite(): Promise<void> {
       >
         Einladungslink erzeugen
       </button>
-      <p v-if="inviteUrl" class="mt-2 break-all text-sm"><code>{{ inviteUrl }}</code></p>
+      <p v-if="inviteUrl" class="mt-2 break-all text-sm">
+        <code>{{ inviteUrl }}</code>
+      </p>
     </div>
   </section>
 </template>

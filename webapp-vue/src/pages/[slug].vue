@@ -7,7 +7,7 @@ import type { CommunityResponse } from '@/api/types'
 import CommunitySwitcher from '@/communities/CommunitySwitcher.vue'
 import { useAuth } from '@/auth/useAuth'
 
-const route = useRoute()
+const route = useRoute('/[slug]')
 const router = useRouter()
 const community = ref<CommunityResponse | null>(null)
 const state = ref<'loading' | 'ready' | 'no-access'>('loading')

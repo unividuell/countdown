@@ -38,6 +38,57 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/[slug]': RouteRecordInfo<
+      '/[slug]',
+      '/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | '/[slug]/'
+      | '/[slug]/members'
+      | '/[slug]/settings'
+    >,
+    '/[slug]/': RouteRecordInfo<
+      '/[slug]/',
+      '/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/[slug]/members': RouteRecordInfo<
+      '/[slug]/members',
+      '/:slug/members',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/[slug]/settings': RouteRecordInfo<
+      '/[slug]/settings',
+      '/:slug/settings',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/communities/': RouteRecordInfo<
+      '/communities/',
+      '/communities',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/communities/new': RouteRecordInfo<
+      '/communities/new',
+      '/communities/new',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/join/[token]': RouteRecordInfo<
+      '/join/[token]',
+      '/join/:token',
+      { token: ParamValue<true> },
+      { token: ParamValue<false> },
+      | never
+    >,
     '/login': RouteRecordInfo<
       '/login',
       '/login',
@@ -65,6 +116,65 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/[slug].vue': {
+      routes:
+        | '/[slug]'
+        | '/[slug]/'
+        | '/[slug]/members'
+        | '/[slug]/settings'
+      views:
+        | 'default'
+      pathParamNames:
+        | 'slug'
+    }
+    'src/pages/[slug]/index.vue': {
+      routes:
+        | '/[slug]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/[slug]/members.vue': {
+      routes:
+        | '/[slug]/members'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/[slug]/settings.vue': {
+      routes:
+        | '/[slug]/settings'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/communities/index.vue': {
+      routes:
+        | '/communities/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/communities/new.vue': {
+      routes:
+        | '/communities/new'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/join/[token].vue': {
+      routes:
+        | '/join/[token]'
+      views:
+        | never
+      pathParamNames:
+        | 'token'
     }
     'src/pages/login.vue': {
       routes:

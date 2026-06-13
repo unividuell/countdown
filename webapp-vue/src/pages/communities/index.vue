@@ -36,8 +36,8 @@ async function handleLogout(): Promise<void> {
       </li>
     </ul>
     <p v-else class="mb-6 text-sm text-neutral-600">
-      Du bist noch in keiner Spielgemeinschaft. Erstelle eine — oder öffne einen Einladungslink,
-      den du erhalten hast.
+      Du bist noch in keiner Spielgemeinschaft. Erstelle eine — oder öffne einen Einladungslink, den
+      du erhalten hast.
     </p>
     <RouterLink to="/communities/new" class="rounded border px-3 py-1.5 hover:bg-neutral-200"
       >Spielgemeinschaft erstellen</RouterLink

@@ -4,19 +4,30 @@ import * as api from '@/api/communities'
 import { ApiError } from '@/api/client'
 
 const replace = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ replace }), useRoute: () => ({ params: { token: 'tok' } }) }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ replace }),
+  useRoute: () => ({ params: { token: 'tok' } }),
+}))
 
 describe('join page', () => {
   beforeEach(() => replace.mockReset())
   it('shows waiting on JOINED_PENDING', async () => {
-    vi.spyOn(api, 'joinByToken').mockResolvedValue({ status: 'JOINED_PENDING', name: 'Team', slug: 'team' })
+    vi.spyOn(api, 'joinByToken').mockResolvedValue({
+      status: 'JOINED_PENDING',
+      name: 'Team',
+      slug: 'team',
+    })
     const W = (await import('@/pages/join/[token].vue')).default
     const w = mount(W)
     await flushPromises()
     expect(w.text()).toMatch(/Bestätigung|Team/)
   })
   it('redirects on ALREADY_ACTIVE', async () => {
-    vi.spyOn(api, 'joinByToken').mockResolvedValue({ status: 'ALREADY_ACTIVE', name: 'Team', slug: 'team' })
+    vi.spyOn(api, 'joinByToken').mockResolvedValue({
+      status: 'ALREADY_ACTIVE',
+      name: 'Team',
+      slug: 'team',
+    })
     const W = (await import('@/pages/join/[token].vue')).default
     mount(W)
     await flushPromises()
