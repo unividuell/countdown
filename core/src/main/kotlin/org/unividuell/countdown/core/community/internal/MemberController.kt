@@ -5,8 +5,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.util.UriComponentsBuilder
 import org.unividuell.countdown.core.community.MemberStatus
+import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
-import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
 import java.util.UUID
 
 @RestController
@@ -17,26 +17,23 @@ class MemberController(
     private val memberRepo: CommunityMemberRepository,
     private val userQuery: UserQuery,
 ) {
-    private val CountdownOAuth2User.uid get() = user.id!!
-    private val CountdownOAuth2User.sa get() = user.isSuperAdmin
-
     @PostMapping("/{slug}/invite")
-    fun invite(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String): InviteResponse {
-        val c = access.requireAdmin(me.uid, me.sa, slug)
+    fun invite(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): InviteResponse {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
         val info = membership.generateInvite(c.id!!)
         val url = UriComponentsBuilder.fromPath("/join/{token}").buildAndExpand(info.token).toUriString()
         return InviteResponse(url = url, expiresAt = info.expiresAt)
     }
 
     @DeleteMapping("/{slug}/invite")
-    fun revoke(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String): ResponseEntity<Void> {
-        val c = access.requireAdmin(me.uid, me.sa, slug); membership.revokeInvite(c.id!!)
+    fun revoke(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): ResponseEntity<Void> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.revokeInvite(c.id!!)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/join/{token}")
-    fun join(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable token: String): AcceptResponse {
-        val r = membership.accept(token, me.uid)
+    fun join(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable token: String): AcceptResponse {
+        val r = membership.accept(token, me.id)
         val status = when (r) {
             is AcceptResult.JoinedPending -> "JOINED_PENDING"
             is AcceptResult.AlreadyPending -> "ALREADY_PENDING"
@@ -46,8 +43,8 @@ class MemberController(
     }
 
     @GetMapping("/{slug}/members")
-    fun members(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String): List<MemberResponse> {
-        val c = access.requireActiveMember(me.uid, me.sa, slug)
+    fun members(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): List<MemberResponse> {
+        val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug)
         return memberRepo.findByCommunityId(c.id!!).map {
             MemberResponse(
                 userId = it.userId,
@@ -59,30 +56,30 @@ class MemberController(
     }
 
     @PostMapping("/{slug}/members/{userId}/approve")
-    fun approve(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
-        val c = access.requireAdmin(me.uid, me.sa, slug); membership.approve(c.id!!, userId)
+    fun approve(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.approve(c.id!!, userId)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/{slug}/members/{userId}/promote")
-    fun promote(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
-        val c = access.requireAdmin(me.uid, me.sa, slug); membership.promote(c.id!!, userId)
+    fun promote(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.promote(c.id!!, userId)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/{slug}/members/{userId}/demote")
-    fun demote(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
-        val c = access.requireAdmin(me.uid, me.sa, slug); membership.demote(c.id!!, userId)
+    fun demote(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.demote(c.id!!, userId)
         return ResponseEntity.noContent().build()
     }
 
     @DeleteMapping("/{slug}/members/{userId}")
-    fun remove(@AuthenticationPrincipal me: CountdownOAuth2User, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
+    fun remove(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @PathVariable userId: UUID): ResponseEntity<Void> {
         // self-leave: an active member may remove themselves; otherwise admin required
-        if (userId == me.uid) {
-            val c = access.requireActiveMember(me.uid, me.sa, slug); membership.leave(c.id!!, me.uid)
+        if (userId == me.id) {
+            val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug); membership.leave(c.id!!, me.id)
         } else {
-            val c = access.requireAdmin(me.uid, me.sa, slug); membership.remove(c.id!!, userId)
+            val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.remove(c.id!!, userId)
         }
         return ResponseEntity.noContent().build()
     }

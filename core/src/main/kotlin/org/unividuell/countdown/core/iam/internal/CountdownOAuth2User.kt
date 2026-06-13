@@ -3,8 +3,10 @@ package org.unividuell.countdown.core.iam.internal
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.user.OAuth2User
+import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.User
 import java.io.Serializable
+import java.util.UUID
 
 /**
  * Session principal carrying our domain [User]. Serializable for Spring Session JDBC.
@@ -17,7 +19,10 @@ import java.io.Serializable
 class CountdownOAuth2User(
     val user: User,
     private val attributes: Map<String, Any>,
-) : OAuth2User, Serializable {
+) : OAuth2User, AuthenticatedUser, Serializable {
+
+    override val id: UUID get() = requireNotNull(user.id) { "CountdownOAuth2User constructed with an unsaved User (id is null)" }
+    override val isSuperAdmin: Boolean get() = user.isSuperAdmin
 
     override fun getName(): String = requireNotNull(user.id) {
         "CountdownOAuth2User constructed with an unsaved User (id is null)"
