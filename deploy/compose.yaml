@@ -1,5 +1,3 @@
-name: countdown
-
 services:
   postgres:
     image: postgres:18
@@ -23,7 +21,7 @@ services:
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - ./backups:/backups
+      - ${BACKUP_DIR:-./backups}:/backups
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
@@ -40,10 +38,10 @@ services:
       - internal
 
   core:
-    image: ghcr.io/unividuell/countdown-core:latest
+    image: ghcr.io/unividuell/countdown-core:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      - SPRING_PROFILES_ACTIVE=production
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
@@ -52,8 +50,8 @@ services:
       - internal
 
   caddy:
-    image: ghcr.io/unividuell/countdown-web:latest
-    container_name: countdown-web
+    image: ghcr.io/unividuell/countdown-web:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-countdown}-web
     restart: unless-stopped
     volumes:
       - caddy-data:/data
@@ -72,7 +70,7 @@ services:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
     ports:
-      - "127.0.0.1:5050:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     configs:
       - source: pgadmin_servers
         target: /pgadmin4/servers.json
