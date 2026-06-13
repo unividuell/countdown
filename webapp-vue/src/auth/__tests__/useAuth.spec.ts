@@ -48,6 +48,13 @@ describe('useAuth', () => {
     await expect(auth.bootstrap()).rejects.toBeInstanceOf(ApiError)
   })
 
+  it('navigates to the server login entry (server decides github vs test picker)', () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign } as unknown as Location)
+    useAuth().loginWithGitHub()
+    expect(assign).toHaveBeenCalledWith('/login/github')
+  })
+
   it('logout posts and resets to anonymous', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(me)
     const auth = useAuth()
