@@ -79,10 +79,13 @@ for staging, by `container_name`).
   (it matches everything, incl. `/api/*`) → API requests 404→index.html instead of proxying.
   Verify route order with `caddy adapt`.
 - **Exact-path matcher gotcha:** Caddy's `path /logout/*` (slash before `*`) matches `/logout/`
-  and `/logout/x` but **NOT** the bare `/logout`. The SPA POSTs to exactly `/logout`, so it fell
-  through to the SPA `file_server`, which rejects POST with **405**. List both forms in the
-  matcher: `path /api/* /oauth2/* /login /login/* /logout /logout/*` (`/login/*` covers
-  `/login/github`). Only shows up in prod — dev hits the backend directly via the Vite proxy.
+  and `/logout/x` but **NOT** the bare `/logout`. The SPA POSTs to exactly `/logout`, so list it
+  exact AND as `/logout/*`. **But do the opposite for `/login`:** `/login` is the SPA's sign-in
+  *page* (an SPA route) — listing it exact in `@backend` proxies it to core (→ 401, the SPA page
+  unreachable on a direct URL/refresh). Only its sub-paths are backend. So the matcher is
+  `path /api/* /oauth2/* /login/* /logout /logout/*` — `/login/*` covers `/login/github` +
+  `/login/oauth2/code/*`, while exact `/login` falls through to the SPA fallback. (Only shows up in
+  prod/staging — dev hits the backend directly via the Vite proxy.)
 - **TLS + `X-Forwarded-*` are a two-hop chain** (shared edge → countdown-web → core): the inner
   Caddy must trust the edge (`servers { trusted_proxies static private_ranges }`) so
   `X-Forwarded-Proto=https` survives, and `core` sets `server.forward-headers-strategy=framework`

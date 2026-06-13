@@ -11,10 +11,11 @@
 :80 {
 	encode zstd gzip
 
-	# Match BOTH the exact path and sub-paths: `path /logout/*` does NOT match the bare
-	# `/logout` (slash before `*`), so the SPA's POST /logout would fall through to the SPA
-	# file_server and 405. List the exact forms (`/login`, `/logout`) alongside the wildcards.
-	@backend path /api/* /oauth2/* /login /login/* /logout /logout/*
+	# Backend paths. `/logout` is listed exact (the SPA POSTs to exactly /logout) AND as
+	# `/logout/*`, because `path /logout/*` (slash before `*`) does NOT match the bare /logout.
+	# `/login` is NOT listed exact on purpose: /login is the SPA's sign-in PAGE — only its
+	# sub-paths (/login/github, /login/oauth2/code/*) are backend, so use `/login/*` only.
+	@backend path /api/* /oauth2/* /login/* /logout /logout/*
 
 	# API paths -> backend. A dedicated handle block (not a bare reverse_proxy) so it is
 	# mutually exclusive with the SPA catch-all and evaluated first; otherwise the catch-all
