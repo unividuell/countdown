@@ -32,4 +32,15 @@ class CommunityMemberRepositoryTest(
         members.countActiveAdmins(c.id!!) shouldBe 1
         members.findActiveByUserId(u.id!!) shouldHaveSize 1
     }
+
+    @Test
+    fun `counts pending members`() {
+        val admin = users.save(User(githubId = System.nanoTime(), githubLogin = "a"))
+        val c = communities.save(Community(name = "Team", slug = "team-pc", createdBy = admin.id!!))
+        members.save(CommunityMember(communityId = c.id!!, userId = admin.id!!, status = MemberStatus.ACTIVE, isAdmin = true))
+        val p = users.save(User(githubId = System.nanoTime(), githubLogin = "p"))
+        members.save(CommunityMember(communityId = c.id!!, userId = p.id!!, status = MemberStatus.PENDING))
+        members.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) shouldBe 1
+        members.countByCommunityIdAndStatus(c.id!!, MemberStatus.ACTIVE) shouldBe 1
+    }
 }
