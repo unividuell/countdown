@@ -42,10 +42,14 @@ test-related ships in the prod app — neither in the SPA nor the backend.
   own `postgres`). No shared instance, no cross-stack network. Host port parametrized per env
   (`PGADMIN_PORT`); the README documents how to start/reach each.
 - **Test-user auth (emulator pattern):** one **"Login with GitHub"** button in the SPA on every
-  environment, always navigating to **`/login/github`**. The **server** decides by profile —
-  **prod → real GitHub OAuth**, **non-prod → a server-rendered test-user picker** (fixed Futurama
-  seed set). All picker endpoints + the seeder + their permit rules are **`@Profile("!production")`**
+  environment, always navigating to **`/login/github`**. The **server** decides — **real GitHub
+  OAuth** vs a **server-rendered test-user picker** (fixed Futurama seed set) — by profile **and** a
+  config switch. All picker endpoints + the seeder + their permit rules are **`@Profile("!production")`**
   → they do not exist in the prod app. The **SPA carries zero test logic** (one button, one URL).
+- **Switch `app.test-auth.enabled`:** a config flag (default **`true`** in `application.yaml`;
+  **`false`** in `application-production.yaml`; **`true`** in `application-staging.yaml`). When
+  **`false`**, the seeder and picker are off and `/login/github` redirects to real GitHub — so on
+  **localhost you can flip it to `false` to replay the exact prod GitHub flow** (and seed nothing).
 - **No separate staging GitHub OAuth App.** Staging logs in via the picker (you opted out of the
   real GitHub dance on beta). Real GitHub OAuth is exercised **only in prod**; on non-prod the
   standard `/oauth2/authorization/github` endpoint still exists (reachable for occasional manual
@@ -121,22 +125,28 @@ network). No shared instance, no `db-ops` network, no `container_name` juggling.
 button → `window.location.assign('/login/github')`. That's the entire SPA contribution; it is
 identical in prod and never references test users.
 
-**Backend routing of `/login/github`, decided by profile:**
-- `@Profile("production")` controller: `GET /login/github` → 302 `/oauth2/authorization/github`
-  (real GitHub). 
-- `@Profile("!production")` controller: `GET /login/github` → a **server-rendered test-user picker**
-  page (minimal HTML — a centered card listing the seeded users, each a POST form). Selecting a user
+**The switch `app.test-auth.enabled`** decides which behaviour is wired (in addition to the profile
+guard). Define `TEST_AUTH = (profile != production) AND (app.test-auth.enabled == true)`.
+
+**Backend routing of `/login/github`:**
+- **Picker** (`@Profile("!production")` + `@ConditionalOnProperty(name="app.test-auth.enabled",
+  havingValue="true")`): `GET /login/github` → a **server-rendered test-user picker** page (minimal
+  HTML — a centered card listing the seeded users, each a POST form). Selecting a user
   `POST /login/github/as {login}` → builds an `OAuth2AuthenticationToken` carrying a
   `CountdownOAuth2User` (same principal as the real login), stores it in the `SecurityContext` + HTTP
-  session (Spring Session JDBC), and 302s to `/`. The SPA then bootstraps `/api/me` as usual.
+  session (Spring Session JDBC), 302 → `/`. The SPA then bootstraps `/api/me` as usual.
+- **Redirect** (`@ConditionalOnProperty(name="app.test-auth.enabled", havingValue="false")`):
+  `GET /login/github` → 302 `/oauth2/authorization/github` (real GitHub). Active in prod and on any
+  non-prod env where the switch is `false`.
 
-Only one of the two controllers exists per profile (both map `/login/github`; profile-scoped so no
-clash). `/login/github` + `/login/github/as` are permitted pre-auth via a `@Profile("!production")`
-security rule (in prod only the redirect variant exists, harmlessly pointing at the already-permitted
-oauth entry).
+Exactly one is active given the per-profile flag values, so both can map `/login/github` without
+clashing. The picker paths are permitted pre-auth via a security rule gated the same way
+(`@Profile("!production")` + property); in prod that rule is absent and only the redirect (to the
+already-permitted oauth entry) exists.
 
-**Seeder** — an `ApplicationRunner` (`@Profile("!production")`, idempotent) upserts the fixed test
-users on startup (localhost + staging). **Not** Flyway (can't be profile-gated; would leak into
+**Seeder** — an `ApplicationRunner` (`@Profile("!production")` + `@ConditionalOnProperty(
+"app.test-auth.enabled"=true)`, idempotent) upserts the fixed test users on startup (localhost +
+staging, when the switch is on). **Not** Flyway (can't be profile/condition-gated; would leak into
 prod). Synthetic **negative `github_id`s** (−1…−5) so they never collide with real GitHub ids.
 
 | github_login | github_name | display_name | github_id |
@@ -162,14 +172,18 @@ and has no test branch. Defense in depth: even if a test path were hit in prod i
   registration is **inherited from the default `application.yaml`** (the localhost dev client-id) so
   the OAuth2 machinery still starts; `.env.staging` supplies a placeholder `GITHUB_CLIENT_SECRET`
   (never exercised). No new GitHub OAuth App is created for staging.
-- Profile recap: test-auth beans are `@Profile("!production")` → active under `default` (localhost)
-  and `staging`; never `production`.
+- `application-staging.yaml` sets **`app.test-auth.enabled: true`** (picker login on beta).
+- Gating recap: test-auth beans require `@Profile("!production")` **and** `app.test-auth.enabled=true`.
+  Flag defaults: `application.yaml` `true`, `application-staging.yaml` `true`,
+  `application-production.yaml` `false`. So they are active on localhost + staging, never prod.
 
 ## F. localhost (default profile)
 
-Same emulator behaviour: the button → `/login/github` → the picker (Fry/leela/Bender/prof/amy), no
-GitHub. The seeder runs locally too (idempotent). The real GitHub dev-app flow remains reachable at
-`/oauth2/authorization/github` for occasional manual testing, but is no longer the default path.
+With `app.test-auth.enabled=true` (the default): the button → `/login/github` → the picker
+(Fry/leela/Bender/prof/amy), no GitHub; the seeder runs (idempotent). **To replay the exact prod
+GitHub flow locally, set `app.test-auth.enabled=false`** (e.g. via env/`SPRING_APPLICATION_JSON` or
+editing `application.yaml`): the picker + seeder switch off and `/login/github` redirects to the real
+GitHub dev-app OAuth — identical to prod behaviour.
 
 ## Out of scope / follow-ups
 
@@ -190,4 +204,5 @@ Capture into `.claude/guidelines/deployment.md`: the one-compose + per-env-file
 `security-and-auth.md`: the **emulator-pattern test-login** — one SPA button → `/login/github`,
 profile-decided server-side (prod GitHub vs `@Profile("!production")` server-rendered picker),
 seeder as an ApplicationRunner with synthetic negative github_ids, nothing test-related in the prod
-app or SPA.
+app or SPA; and the `app.test-auth.enabled` switch (profile + property gating) that flips localhost
+to the real prod GitHub flow on demand.
