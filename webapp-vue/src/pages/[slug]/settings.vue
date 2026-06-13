@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
 import {
   getCommunity,
@@ -25,13 +26,15 @@ function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
-// <input type="datetime-local"> works in browser-local wall-clock (no tz). Convert the
-// backend instant -> local "YYYY-MM-DDTHH:mm" for display, and the local value -> a UTC
-// ISO instant on save. Both use the browser's timezone.
+// <input type="datetime-local"> is a combined date+time picker working in browser-local
+// wall-clock (no tz). Use Luxon for the conversions, in the browser's zone:
+// backend instant -> local "yyyy-MM-dd'T'HH:mm" for the input.
 function toLocalInput(iso: string): string {
-  const d = new Date(iso)
-  const p = (n: number): string => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  return DateTime.fromISO(iso).toFormat("yyyy-MM-dd'T'HH:mm")
+}
+// local wall-clock from the input -> UTC ISO instant for the backend.
+function toInstant(local: string): string | null {
+  return DateTime.fromISO(local).toUTC().toISO()
 }
 
 onMounted(async () => {
@@ -49,8 +52,10 @@ async function save(): Promise<void> {
     const body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }> = {
       name: name.value.trim(),
     }
-    // local wall-clock from the datetime-local input -> UTC ISO instant (browser tz)
-    if (startsAt.value) body.startsAt = new Date(startsAt.value).toISOString()
+    if (startsAt.value) {
+      const instant = toInstant(startsAt.value)
+      if (instant) body.startsAt = instant
+    }
     if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
     await updateCommunity(slug, body)
     await refresh()

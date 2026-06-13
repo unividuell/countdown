@@ -11,6 +11,11 @@ implementation.
 - **Vue 3**, Composition API, `<script setup lang="ts">`. **pnpm**.
 - **TypeScript, very strict**: `strict` + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`; `moduleResolution: "bundler"`. (TypeScript 6 deprecated `baseUrl` used only for path mapping — we keep the `@/*`→`src/*` alias with `"ignoreDeprecations": "6.0"` until a paths-only migration.)
 - **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
+- **Date/time: Luxon** (`luxon` + `@types/luxon`) — the project's date-time lib (also used by the
+  origin huettehuette app). Don't reach for native `Date` math. For a wall-clock UI field use
+  `<input type="datetime-local">` (combined date+time picker, browser-local, no tz) and convert
+  with Luxon in the browser's zone: instant→input `DateTime.fromISO(iso).toFormat("yyyy-MM-dd'T'HH:mm")`,
+  input→instant `DateTime.fromISO(local).toUTC().toISO()` (returns `string | null` under strict TS — guard it).
 
 ## Routing — Vue Router 5 built-in file-based routing
 
