@@ -17,6 +17,18 @@ class MemberController(
     private val memberRepo: CommunityMemberRepository,
     private val userQuery: UserQuery,
 ) {
+    @GetMapping("/{slug}/invite")
+    fun currentInvite(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): ResponseEntity<InviteResponse> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
+        val token = c.inviteToken
+        val expiresAt = c.inviteTokenExpiresAt
+        if (token == null || expiresAt == null || expiresAt.isBefore(java.time.Instant.now())) {
+            return ResponseEntity.noContent().build()
+        }
+        val url = UriComponentsBuilder.fromPath("/join/{token}").buildAndExpand(token).toUriString()
+        return ResponseEntity.ok(InviteResponse(url = url, expiresAt = expiresAt))
+    }
+
     @PostMapping("/{slug}/invite")
     fun invite(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): InviteResponse {
         val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)

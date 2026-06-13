@@ -132,4 +132,22 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.delete("/api/communities/team/members/$uid") { with(principal()); with(csrf()) }
             .andExpect { status { isNoContent() } }
     }
+
+    @Test
+    fun `GET invite returns the current link for an admin`() {
+        val c = community("team").copy(inviteToken = "tok9", inviteTokenExpiresAt = Instant.parse("2030-01-01T00:00:00Z"))
+        every { access.requireAdmin(uid, false, "team") } returns c
+        mockMvc.get("/api/communities/team/invite") { with(principal()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.url") { value(org.hamcrest.Matchers.containsString("/join/tok9")) }
+        }
+    }
+
+    @Test
+    fun `GET invite returns 204 when there is no active link`() {
+        every { access.requireAdmin(uid, false, "team") } returns community("team") // no token
+        mockMvc.get("/api/communities/team/invite") { with(principal()) }.andExpect {
+            status { isNoContent() }
+        }
+    }
 }
