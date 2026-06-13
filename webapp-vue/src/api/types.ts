@@ -20,6 +20,8 @@ export interface CommunityResponse {
   slug: string
   startsAt: string | null
   phaseTwoStartRound: number | null
+  viewerIsAdmin: boolean
+  pendingCount: number
 }
 export interface CommunitySummary {
   id: string

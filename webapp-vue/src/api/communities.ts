@@ -44,3 +44,7 @@ export const demoteMember = (slug: string, userId: string) =>
   apiFetch<void>(`/api/communities/${slug}/members/${userId}/demote`, { method: 'POST' })
 export const removeMember = (slug: string, userId: string) =>
   apiFetch<void>(`/api/communities/${slug}/members/${userId}`, { method: 'DELETE' })
+export const getInvite = (slug: string) =>
+  apiFetch<InviteResponse | undefined>(`/api/communities/${slug}/invite`).then((r) => r ?? null)
+export const revokeInvite = (slug: string) =>
+  apiFetch<void>(`/api/communities/${slug}/invite`, { method: 'DELETE' })
