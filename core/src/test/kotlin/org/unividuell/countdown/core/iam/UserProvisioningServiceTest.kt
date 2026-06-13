@@ -15,7 +15,7 @@ import org.unividuell.countdown.core.iam.internal.UserRepository
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @Transactional
-@TestPropertySource(properties = ["app.super-admin-github-logins=bossuser"])
+@TestPropertySource(properties = ["app.super-admin-github-logins=bossuser", "app.test-auth.enabled=false"])
 class UserProvisioningServiceTest(
     @Autowired val service: UserProvisioningService,
     @Autowired val repository: UserRepository,
