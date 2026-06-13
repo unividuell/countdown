@@ -29,6 +29,7 @@ function makeRouter() {
     routes: [
       { path: '/', component: Stub },
       { path: '/login', component: Stub, meta: { public: true } },
+      { path: '/join/:token', component: Stub },
     ],
   })
   registerAuthGuard(router)
@@ -39,6 +40,7 @@ describe('auth guard', () => {
   beforeEach(() => {
     vi.mocked(apiFetch).mockReset()
     _resetAuthState()
+    sessionStorage.clear()
   })
   afterEach(() => vi.restoreAllMocks())
 
@@ -70,5 +72,14 @@ describe('auth guard', () => {
     const router = makeRouter()
     await router.push('/')
     expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('stashes the intended destination when bouncing an anonymous user to login', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(401, 'unauthorized'))
+    await useAuth().bootstrap()
+    const router = makeRouter()
+    await router.push('/join/tok123')
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(sessionStorage.getItem('postLoginRedirect')).toBe('/join/tok123')
   })
 })

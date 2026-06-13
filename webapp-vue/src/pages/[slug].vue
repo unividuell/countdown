@@ -14,7 +14,7 @@ const router = useRouter()
 const community = ref<CommunityResponse | null>(null)
 const state = ref<'loading' | 'ready' | 'no-access' | 'error'>('loading')
 const adminMenuOpen = ref(false)
-const { logout } = useAuth()
+const { logout, user } = useAuth()
 
 async function resolve(slug: string): Promise<void> {
   state.value = 'loading'
@@ -101,6 +101,7 @@ async function handleLogout(): Promise<void> {
           </div>
         </div>
         <CommunitySwitcher :current-slug="community!.slug" />
+        <span data-test="current-user" class="text-sm text-neutral-600">{{ user?.username }}</span>
         <button
           data-test="logout"
           class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"

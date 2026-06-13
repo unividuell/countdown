@@ -6,7 +6,27 @@ const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace: push }) }))
 
 describe('index redirect resolver', () => {
-  beforeEach(() => push.mockReset())
+  beforeEach(() => {
+    push.mockReset()
+    sessionStorage.clear()
+  })
+
+  it('returns to the stashed post-login destination instead of the default landing', async () => {
+    sessionStorage.setItem('postLoginRedirect', '/join/tok123')
+    const landing = vi.fn()
+    vi.spyOn(comp, 'useCommunities').mockReturnValue({
+      active: { value: [] } as never,
+      refresh: vi.fn(),
+      landing,
+    })
+    const Index = (await import('@/pages/index.vue')).default
+    mount(Index)
+    await flushPromises()
+    expect(push).toHaveBeenCalledWith('/join/tok123')
+    expect(landing).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('postLoginRedirect')).toBeNull()
+  })
+
   it('redirects to the single community', async () => {
     vi.spyOn(comp, 'useCommunities').mockReturnValue({
       active: { value: [] } as never,
