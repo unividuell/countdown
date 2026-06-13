@@ -61,10 +61,16 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   when moving to `compose.yaml` + `.env.prod` so the existing volumes are reused (no data loss);
   expect a brief prod restart on the cutover.
 
-## Caddy edge
+## App web Caddy (baked into the `countdown-web` image)
 
-- Terminates TLS (automatic HTTPS / Let's Encrypt) for the domain; serves the SPA with
-  HTML5 history-mode fallback; reverse-proxies `/api`, `/oauth2`, `/login`, `/logout` to `core:8080`.
+There are **two** Caddys. TLS + host-based routing live in the separate **shared `edge-caddy`**
+(see "Shared edge" below); this section is the Caddy **inside the `countdown-web` image** — the
+SPA+API router. The same image runs for both stacks (`countdown-web` for prod, `countdown-staging-web`
+for staging, by `container_name`).
+
+- Runs **plain `:80` behind the shared edge** (Caddyfile address `:80`, **not** the domain — it does
+  no TLS). Serves the SPA with HTML5 history-mode fallback and reverse-proxies `/api`, `/oauth2`,
+  `/login` (incl. `/login/github`), `/logout` to `core:8080`.
 - **Routing gotcha:** use **two mutually-exclusive `handle` blocks** —
   `handle @backend { reverse_proxy core:8080 }` then `handle { root; try_files {path} /index.html; file_server }`.
   A bare `reverse_proxy @backend` + a catch-all `handle` compiles the SPA `file_server` *first*
@@ -73,10 +79,13 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 - **Exact-path matcher gotcha:** Caddy's `path /logout/*` (slash before `*`) matches `/logout/`
   and `/logout/x` but **NOT** the bare `/logout`. The SPA POSTs to exactly `/logout`, so it fell
   through to the SPA `file_server`, which rejects POST with **405**. List both forms in the
-  matcher: `path /api/* /oauth2/* /login /login/* /logout /logout/*`. (Only shows up in prod —
-  dev hits the backend directly via the Vite proxy, bypassing this matcher.)
-- The backend must set **`server.forward-headers-strategy=framework`** so it honours Caddy's
-  `X-Forwarded-*` and builds correct `https://<domain>/...` URLs (OAuth `redirect_uri`!) + secure cookies.
+  matcher: `path /api/* /oauth2/* /login /login/* /logout /logout/*` (`/login/*` covers
+  `/login/github`). Only shows up in prod — dev hits the backend directly via the Vite proxy.
+- **TLS + `X-Forwarded-*` are a two-hop chain** (shared edge → countdown-web → core): the inner
+  Caddy must trust the edge (`servers { trusted_proxies static private_ranges }`) so
+  `X-Forwarded-Proto=https` survives, and `core` sets `server.forward-headers-strategy=framework`
+  to build correct `https://<domain>/...` URLs (OAuth `redirect_uri`) + secure cookies. Details in
+  "Shared edge" below — don't re-derive it here.
 
 ## Backend production profile
 
