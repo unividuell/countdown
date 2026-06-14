@@ -20,6 +20,7 @@ describe('communities api', () => {
       name: 'Team A',
       slug: 'team-a',
       startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
     })
     const c = await createCommunity('Team A')

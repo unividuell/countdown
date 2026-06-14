@@ -17,6 +17,7 @@ vi.mock('@/communities/context', () => ({
         name: 'Team',
         slug: 'team',
         startsAt: null,
+        startsAtTimezone: 'Europe/Berlin',
         phaseTwoStartRound: null,
         viewerIsAdmin: true,
         pendingCount: 1,

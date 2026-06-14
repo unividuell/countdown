@@ -94,3 +94,10 @@ Pin Spring Modulith to a **GA** version (`2.1.0`), not an RC — RC artifacts li
 in the Spring milestone repo, not Maven Central. `spring-modulith-observability`
 is a POM-only aggregator in 2.x (no jar) — don't depend on it directly; use
 `spring-modulith-starter-insight` if observability is ever needed.
+
+## A module may own no tables (yet)
+
+A pure-logic module ships without a Flyway migration when it owns no state — e.g. the `countdown`
+module is a pure engine over `community` data and has **no `countdown` schema/migration**. Add the
+schema later when the module first persists something. `ModularityTests` still validates its
+dependencies (`countdown -> community`, never the reverse).

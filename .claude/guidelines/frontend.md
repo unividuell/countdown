@@ -63,3 +63,26 @@ Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`i
 
 - **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts` config, so use `.mjs`) + **Prettier**.
 - Disable `vue/multi-word-component-names` for `src/pages/**` — file-based route components are idiomatically single-word (`index.vue`, `login.vue`).
+
+## Server-authoritative ticking values (countdown pattern)
+
+For live values that must agree with the backend (the countdown), the backend owns the logic and
+emits **absolute instants** (`GET /api/communities/{slug}/countdown` -> current + next `Round` with
+`start`/`end` instants + `serverNow`). The SPA never re-derives the rounds — it ticks a local
+1 s clock, corrects skew once (`serverNow - Date.now()`), and only **subtracts + formats**
+(`src/communities/countdown.ts` is a pure projection; `useCountdown` wires the clock/fetch around
+it). At a round boundary it shifts to the pre-fetched `nextRound`, then refetches (~once/day). No
+KT/TS parity test is needed because no logic is duplicated. Decompose: pure functions (testable
+without mounting, like `resolveLanding`) + a thin composable + a thin component. Guard async loads
+with a generation counter (stale-response) and a try/catch (a failed fetch degrades the widget to
+hidden, never an unhandled rejection).
+
+**App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
+the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
+`activeCommunity` in `src/communities/context.ts` (set by the shell on resolve, cleared on unmount),
+not via `provide`/`inject`.
+
+**Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
+the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
+to store, `DateTime.fromISO(iso, { zone }).toFormat(...)` to display. Test zone-correctness with a
+fixture whose zone year/day differs from UTC (a regression dropping `{ zone }` must turn a test red).
