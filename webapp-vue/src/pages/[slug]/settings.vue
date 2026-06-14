@@ -17,6 +17,8 @@ const { community, refresh } = useCommunityContext()
 const slug = community.value.slug
 const name = ref('')
 const startsAt = ref('')
+const startsAtTimezone = ref('Europe/Berlin')
+const zones = Intl.supportedValuesOf('timeZone')
 const phaseTwoStartRound = ref<number | null>(null)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
@@ -26,21 +28,20 @@ function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
-// <input type="datetime-local"> is a combined date+time picker working in browser-local
-// wall-clock (no tz). Use Luxon for the conversions, in the browser's zone:
-// backend instant -> local "yyyy-MM-dd'T'HH:mm" for the input.
-function toLocalInput(iso: string): string {
-  return DateTime.fromISO(iso).toFormat("yyyy-MM-dd'T'HH:mm")
+// <input type="datetime-local"> holds a zone-less wall-clock string. We interpret it IN the
+// community's startsAtTimezone (not the browser zone): instant <-> "yyyy-MM-dd'T'HH:mm" in that zone.
+function toLocalInput(iso: string, zone: string): string {
+  return DateTime.fromISO(iso, { zone }).toFormat("yyyy-MM-dd'T'HH:mm")
 }
-// local wall-clock from the input -> UTC ISO instant for the backend.
-function toInstant(local: string): string | null {
-  return DateTime.fromISO(local).toUTC().toISO()
+function toInstant(local: string, zone: string): string | null {
+  return DateTime.fromISO(local, { zone }).toUTC().toISO()
 }
 
 onMounted(async () => {
   const c = await getCommunity(slug)
   name.value = c.name
-  startsAt.value = c.startsAt ? toLocalInput(c.startsAt) : ''
+  startsAtTimezone.value = c.startsAtTimezone
+  startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
@@ -49,11 +50,14 @@ onMounted(async () => {
 async function save(): Promise<void> {
   error.value = null
   try {
-    const body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }> = {
-      name: name.value.trim(),
-    }
+    const body: Partial<{
+      name: string
+      startsAt: string
+      startsAtTimezone: string
+      phaseTwoStartRound: number
+    }> = { name: name.value.trim(), startsAtTimezone: startsAtTimezone.value }
     if (startsAt.value) {
-      const instant = toInstant(startsAt.value)
+      const instant = toInstant(startsAt.value, startsAtTimezone.value)
       if (instant) body.startsAt = instant
     }
     if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
@@ -87,6 +91,14 @@ async function revoke(): Promise<void> {
       <p class="text-xs text-neutral-500">
         URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.
       </p>
+      <label class="block text-sm"
+        >Zeitzone<select
+          v-model="startsAtTimezone"
+          class="mt-1 w-full rounded border px-3 py-1.5"
+        >
+          <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
+        </select></label
+      >
       <label class="block text-sm"
         >Start<input
           v-model="startsAt"
