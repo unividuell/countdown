@@ -47,7 +47,7 @@ class CommunityController(
     @PatchMapping("/{slug}")
     fun update(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @RequestBody body: UpdateCommunityRequest): CommunityResponse {
         val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
-        val updated = communityService.update(c, body.name, body.startsAt, body.phaseTwoStartRound)
+        val updated = communityService.update(c, body.name, body.startsAt, body.startsAtTimezone, body.phaseTwoStartRound)
         val pending = memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING).toInt()
         return updated.toResponse(viewerIsAdmin = true, pendingCount = pending)
     }

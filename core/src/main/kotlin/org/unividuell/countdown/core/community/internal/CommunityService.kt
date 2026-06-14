@@ -7,6 +7,7 @@ import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberStatus
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 @Service
@@ -39,14 +40,16 @@ open class CommunityService(
     }
 
     @Transactional
-    open fun update(community: Community, name: String?, startsAt: Instant?, phaseTwoStartRound: Int?): Community {
+    open fun update(community: Community, name: String?, startsAt: Instant?, startsAtTimezone: String?, phaseTwoStartRound: Int?): Community {
         name?.let { require(it.trim().length in 3..50) { "name must be 3..50 chars" } }
         phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
+        startsAtTimezone?.let { require(ZoneId.getAvailableZoneIds().contains(it)) { "invalid timezone: $it" } }
         // slug is immutable — never recomputed
         return communities.save(
             community.copy(
                 name = name?.trim() ?: community.name,
                 startsAt = startsAt ?: community.startsAt,
+                startsAtTimezone = startsAtTimezone ?: community.startsAtTimezone,
                 phaseTwoStartRound = phaseTwoStartRound ?: community.phaseTwoStartRound,
                 updatedAt = Instant.now(),
             )

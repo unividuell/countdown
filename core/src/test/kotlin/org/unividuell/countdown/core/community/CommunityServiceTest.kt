@@ -50,4 +50,27 @@ class CommunityServiceTest(
     fun `create rejects a reserved slug`() {
         shouldThrow<SlugUnavailableException> { service.create(aUser().id!!, "join") }
     }
+
+    @Test
+    fun `update sets a valid IANA timezone`() {
+        val u = aUser()
+        val c = service.create(u.id!!, "Zone Team")
+        val updated = service.update(c, name = null, startsAt = null, startsAtTimezone = "America/New_York", phaseTwoStartRound = null)
+        updated.startsAtTimezone shouldBe "America/New_York"
+    }
+
+    @Test
+    fun `update rejects an invalid timezone`() {
+        val u = aUser()
+        val c = service.create(u.id!!, "Bad Zone")
+        shouldThrow<IllegalArgumentException> {
+            service.update(c, name = null, startsAt = null, startsAtTimezone = "Mars/Olympus", phaseTwoStartRound = null)
+        }
+    }
+
+    @Test
+    fun `new community defaults to Europe Berlin`() {
+        val c = service.create(aUser().id!!, "Default Zone")
+        c.startsAtTimezone shouldBe "Europe/Berlin"
+    }
 }

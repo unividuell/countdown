@@ -14,6 +14,7 @@ data class Community(
     val name: String,
     val slug: String,
     val startsAt: Instant? = null,
+    val startsAtTimezone: String = "Europe/Berlin",
     val phaseTwoStartRound: Int? = null,
     val inviteToken: String? = null,
     val inviteTokenExpiresAt: Instant? = null,

@@ -132,4 +132,15 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$.viewerIsAdmin") { value(true) }
         }
     }
+
+    @Test
+    fun `GET by slug returns the startsAtTimezone`() {
+        val c = community("team")
+        every { access.requireActiveMember(uid, false, "team") } returns c
+        every { query.isAdmin(c.id!!, uid) } returns false
+        mockMvc.get("/api/communities/team") { with(principal()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+        }
+    }
 }
