@@ -27,10 +27,10 @@ Not yet implemented — this is the agreed model to build the `countdown` module
 ## A round = an interval + a signed number
 
 - A **round is a half-open time interval `[start, end)` with an integer number** (and a derived
-  label). **Start-inclusive, end-exclusive.** Modelling it as an interval (not "a day") is
-  deliberate: the default round is 1 day, but later **fast rounds** (e.g. 5-minute rounds during
-  the event) plug in as shorter intervals without reworking the model. The daily computation below
-  is just the **default round generator**.
+  label). **Start-inclusive, end-exclusive.** Modelling it as an interval (not literally "a day")
+  keeps the math clean and lets multiple games **nest inside a day** later (see *fast rounds*). The
+  **daily grid is the invariant base** — fast rounds add sub-rounds *within* a day, they don't
+  replace it. The daily computation below is the base round generator.
 - **Default round = one calendar day** in the community `timezone`, anchored to `startsAt`'s
   time-of-day. If `startsAt` is `…T11:00` in `Europe/Berlin`, each round runs
   `[day 11:00, next-day 11:00)` local time.
@@ -53,6 +53,11 @@ r = (k >= 0) ? k + 1 : k        // …, −2, −1, +1, +2, …  (skips 0)
 ```
 
 The **number is also the label** (`−59`, `−1`, `+1`); displayed as `T−59` / `T+1`.
+
+**Mental model — T0 = liftoff (a moment, not a round):** like a rocket countdown, the *instant*
+`startsAt` is **T‑0** (liftoff). There is no round 0; rounds are the intervals before (`T−n`) and
+after (`T+n`). The UI may show a momentary "T‑0 — Start!" exactly at `startsAt`. Purely a labelling
+aid — the numbering above is unchanged.
 
 > **Differences from huettehuette (deliberate):** the origin used the *opposite* sign — a positive
 > count-down (`trunc(daysUntil)` → 59…1, **with a round 0** = the last day, then `floor` → −1, −2
@@ -93,7 +98,13 @@ The **number is also the label** (`−59`, `−1`, `+1`); displayed as `T−59` 
   **scoring** (tolerance / point curve) at/after that round — a concern of the future *points*
   logic, not the round grid itself. With the signed convention it holds a T-offset value; pin its
   exact meaning when the points module is specced.
-- **Fast rounds** (e.g. 5-minute rounds during the event, `T+`): a *future spec*. The
-  interval-based round model is designed to accommodate them — a fast-round window overrides the
-  default daily generator for a range of time with a shorter `roundLength`. Don't build them yet;
-  just don't model rounds in a way that assumes "round == 1 day".
+- **Fast rounds** (still vague — a *future spec*; capturing the agreed shape only): the **daily
+  interval stays the invariant base grid**. Fast rounds do **not** shorten or replace the day —
+  instead a day can hold **multiple games (sub-rounds)** of varying length. So a normal day has one
+  game; a fast-round day has several. Numbering is **two-level, `T{major}.{minor}`** where `major`
+  is the day's T-offset and `minor` the game within that day:
+  `T+1.1` (5 min), `T+1.2` (30 min), `T+2.1` (5 min), `T+2.2`, `T+2.3`, …
+  Each game is still a half-open `[start, end)` interval, nested inside its day's `[start, end)`.
+  The classic single-game-per-day is just `minor = 1` (the `.1` may be hidden in the UI). Don't
+  build this yet; just don't model rounds in a way that assumes one-game-per-day or that lets a
+  fast round break the daily grid.
