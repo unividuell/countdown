@@ -44,4 +44,16 @@ describe('App main header', () => {
     expect(w.find('a[href="/"]').text()).toBe('Hütte Hütte')
     expect(w.find('[data-test="countdown-widget"]').exists()).toBe(false)
   })
+
+  it('derives the year suffix in the community zone, not UTC (boundary case)', () => {
+    // 2025-12-31T23:30Z is already 2026-01-01 00:30 in Europe/Berlin -> edition '26 (not '25)
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte Hütte',
+      startsAt: '2025-12-31T23:30:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+    }
+    const w = mount(App, { global: { stubs } })
+    expect(w.find('a[href="/"]').text()).toContain("'26")
+  })
 })
