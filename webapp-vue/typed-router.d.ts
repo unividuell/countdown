@@ -45,6 +45,7 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | '/[slug]/'
       | '/[slug]/members'
+      | '/[slug]/requests'
       | '/[slug]/settings'
     >,
     '/[slug]/': RouteRecordInfo<
@@ -57,6 +58,13 @@ declare module 'vue-router/auto-routes' {
     '/[slug]/members': RouteRecordInfo<
       '/[slug]/members',
       '/:slug/members',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/[slug]/requests': RouteRecordInfo<
+      '/[slug]/requests',
+      '/:slug/requests',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -122,6 +130,7 @@ declare module 'vue-router/auto-routes' {
         | '/[slug]'
         | '/[slug]/'
         | '/[slug]/members'
+        | '/[slug]/requests'
         | '/[slug]/settings'
       views:
         | 'default'
@@ -139,6 +148,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/[slug]/members.vue': {
       routes:
         | '/[slug]/members'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/[slug]/requests.vue': {
+      routes:
+        | '/[slug]/requests'
       views:
         | never
       pathParamNames:
