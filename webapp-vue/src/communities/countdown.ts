@@ -15,9 +15,11 @@ export interface CountdownView {
 export interface BaseUnitConfig {
   months: boolean
   weeks: boolean
+  // days is always-on; the field is retained to mirror the origin's config shape (the cycle never turns it off).
   days: boolean
 }
 
+// Magnitude-only formatting: abs() masks sub-tick clock-skew (a few negative seconds render as 00); trunc() floors so a descending timer ticks 03->02->01->00 rather than rounding.
 const pad2 = (n?: number) => String(Math.trunc(Math.abs(n ?? 0))).padStart(2, '0')
 const whole = (n?: number) => String(Math.trunc(Math.abs(n ?? 0)))
 

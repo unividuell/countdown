@@ -38,6 +38,23 @@ describe('computeView', () => {
     expect(v.chips.some((c) => c.unit === 'd')).toBe(true)
   })
 
+  it('re-expresses the calendar diff in the given zone (DST guard, not UTC)', () => {
+    // Spring-forward 2026-03-29: Berlin clocks jump 02:00 -> 03:00. With start/now built {zone},
+    // the weeks+days calendar diff is done against Berlin wall time, so the d chip is 1; running
+    // the same diff in UTC truncates to 0. This would fail if {zone} were dropped from fromMillis/fromISO.
+    const weeksBase = { months: false, weeks: true, days: true }
+    const r: Round = { number: 1, label: 'T-1', start: '2026-03-28T22:00:00Z', end: '2026-03-29T09:00:00Z' }
+    const v = computeView(r, '2026-03-29T21:00:00Z', zone, ms('2026-03-28T22:00:00Z'), weeksBase)
+    expect(v.state).toBe('before')
+    expect(v.chips).toEqual([
+      { value: '0', unit: 'w' },
+      { value: '1', unit: 'd' }, // Berlin -> 1; UTC calendar diff would truncate to 0
+      { value: '11', unit: 'h' },
+      { value: '00', unit: 'm' },
+      { value: '00', unit: 's' },
+    ])
+  })
+
   it('counts up after start (event running)', () => {
     const r: Round = { number: -1, label: 'T+1', start: '2026-06-25T09:00:00Z', end: '2026-06-26T09:00:00Z' }
     const v = computeView(r, startsAt, zone, ms('2026-06-25T11:30:00Z'), daysBase)
