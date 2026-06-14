@@ -7,7 +7,7 @@ import { ApiError } from '@/api/client'
 import type { CommunityResponse } from '@/api/types'
 import CommunitySwitcher from '@/communities/CommunitySwitcher.vue'
 import { useAuth } from '@/auth/useAuth'
-import { activeCommunityName, communityKey } from '@/communities/context'
+import { activeCommunity, communityKey } from '@/communities/context'
 
 const route = useRoute('/[slug]')
 const router = useRouter()
@@ -21,12 +21,17 @@ async function resolve(slug: string): Promise<void> {
   try {
     community.value = await getCommunity(slug)
     state.value = 'ready'
-    activeCommunityName.value = community.value.name // drives the tab title
+    activeCommunity.value = {
+      slug: community.value.slug,
+      name: community.value.name,
+      startsAt: community.value.startsAt,
+      startsAtTimezone: community.value.startsAtTimezone,
+    }
     void setSelection(community.value.id)
   } catch (e) {
     state.value = e instanceof ApiError && e.status === 404 ? 'no-access' : 'error'
     community.value = null
-    activeCommunityName.value = null
+    activeCommunity.value = null
   }
 }
 async function refresh(): Promise<void> {
@@ -45,7 +50,7 @@ watch(
 )
 // Leaving the community context → tab title falls back to the app name.
 onUnmounted(() => {
-  activeCommunityName.value = null
+  activeCommunity.value = null
 })
 
 async function handleLogout(): Promise<void> {
@@ -67,8 +72,7 @@ async function handleLogout(): Promise<void> {
     <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
   </div>
   <div v-else>
-    <header class="mb-4 flex items-center justify-between border-b px-4 py-2">
-      <RouterLink to="/" class="font-semibold hover:underline">{{ community?.name }}</RouterLink>
+    <header class="mb-4 flex items-center justify-end border-b px-4 py-2">
       <div class="flex items-center gap-2">
         <div v-if="community?.viewerIsAdmin" data-test="admin-menu" class="relative">
           <button

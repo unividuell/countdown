@@ -33,6 +33,7 @@ describe('community shell guard', () => {
       name: 'Team',
       slug: 'team',
       startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -68,6 +69,7 @@ describe('community shell guard', () => {
       name: 'Team',
       slug: 'team',
       startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -84,12 +86,13 @@ describe('community shell guard', () => {
     expect(mockLogout).toHaveBeenCalled()
   })
 
-  it('shows the ⚙ admin menu with a pending badge only for admins, and links the name to /', async () => {
+  it('shows the ⚙ admin menu with a pending badge only for admins', async () => {
     vi.spyOn(api, 'getCommunity').mockResolvedValue({
       id: '1',
       name: 'Team',
       slug: 'team',
       startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       viewerIsAdmin: true,
       pendingCount: 2,
@@ -100,7 +103,6 @@ describe('community shell guard', () => {
     await flushPromises()
     expect(w.find('[data-test=admin-menu]').exists()).toBe(true)
     expect(w.text()).toContain('2') // pending badge
-    expect(w.find('a[href="/"]').exists()).toBe(true) // name links home
   })
 
   it('hides the ⚙ admin menu for non-admins', async () => {
@@ -109,6 +111,7 @@ describe('community shell guard', () => {
       name: 'Team',
       slug: 'team',
       startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       viewerIsAdmin: false,
       pendingCount: 0,
