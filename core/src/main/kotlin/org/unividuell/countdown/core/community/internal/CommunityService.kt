@@ -43,6 +43,7 @@ open class CommunityService(
     open fun update(community: Community, name: String?, startsAt: Instant?, startsAtTimezone: String?, phaseTwoStartRound: Int?): Community {
         name?.let { require(it.trim().length in 3..50) { "name must be 3..50 chars" } }
         phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
+        // IANA region IDs only (by design): DST-correct round math needs region zones, not fixed offsets.
         startsAtTimezone?.let { require(ZoneId.getAvailableZoneIds().contains(it)) { "invalid timezone: $it" } }
         // slug is immutable — never recomputed
         return communities.save(
