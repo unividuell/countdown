@@ -15,13 +15,20 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
   const cfg = reactive<BaseUnitConfig>({ months: false, weeks: false, days: true })
   let timer: ReturnType<typeof setInterval> | undefined
 
+  let loadSeq = 0
   async function load(s: string) {
-    const r = await getCountdown(s)
-    round.value = r.round
-    nextRound.value = r.nextRound
-    startsAt.value = r.startsAt
-    zone.value = r.startsAtTimezone
-    skewMs.value = Date.parse(r.serverNow) - Date.now()
+    const seq = ++loadSeq
+    try {
+      const r = await getCountdown(s)
+      if (seq !== loadSeq) return // a newer load superseded this one
+      round.value = r.round
+      nextRound.value = r.nextRound
+      startsAt.value = r.startsAt
+      zone.value = r.startsAtTimezone
+      skewMs.value = Date.parse(r.serverNow) - Date.now()
+    } catch {
+      // best-effort header widget: keep last-known state, retry at the next boundary tick
+    }
   }
 
   function tick() {
