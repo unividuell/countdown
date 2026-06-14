@@ -105,6 +105,7 @@ async function revoke(): Promise<void> {
           type="datetime-local"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
+      <p class="text-xs text-neutral-500">Startzeit gilt in der gewählten Zeitzone.</p>
       <label class="block text-sm"
         >Phase-2-Startrunde<input
           v-model.number="phaseTwoStartRound"
