@@ -20,4 +20,17 @@ describe('countdown api', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/communities/team/countdown')
     expect(r.round?.label).toBe('T-10')
   })
+
+  it('handles a community with no startsAt (null rounds)', async () => {
+    apiFetch.mockResolvedValue({
+      serverNow: '2026-06-14T09:00:00Z',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      round: null,
+      nextRound: null,
+    })
+    const r = await getCountdown('team')
+    expect(r.round).toBeNull()
+    expect(r.nextRound).toBeNull()
+  })
 })

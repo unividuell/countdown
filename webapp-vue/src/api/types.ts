@@ -44,6 +44,7 @@ export interface AcceptResponse {
   name: string
   slug: string
 }
+
 export interface Round {
   number: number
   label: string
