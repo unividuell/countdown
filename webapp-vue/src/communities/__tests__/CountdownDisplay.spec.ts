@@ -14,8 +14,18 @@ describe('CountdownDisplay', () => {
       serverNow: '2026-06-14T21:00:00Z',
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
-      round: { number: 10, label: 'T-10', start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
-      nextRound: { number: 9, label: 'T-9', start: '2026-06-15T09:00:00Z', end: '2026-06-16T09:00:00Z' },
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: {
+        number: 9,
+        label: 'T-9',
+        start: '2026-06-15T09:00:00Z',
+        end: '2026-06-16T09:00:00Z',
+      },
     })
     const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
     const w = mount(Cmp, { props: { slug: 'team' } })
@@ -30,7 +40,12 @@ describe('CountdownDisplay', () => {
       serverNow: '2026-06-14T21:00:00Z',
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
-      round: { number: 10, label: 'T-10', start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
       nextRound: null,
     })
     const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
@@ -45,8 +60,18 @@ describe('CountdownDisplay', () => {
       serverNow: '2026-06-14T21:00:00Z',
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
-      round: { number: 10, label: 'T-10', start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
-      nextRound: { number: 9, label: 'T-9', start: '2026-06-15T09:00:00Z', end: '2026-06-16T09:00:00Z' },
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: {
+        number: 9,
+        label: 'T-9',
+        start: '2026-06-15T09:00:00Z',
+        end: '2026-06-16T09:00:00Z',
+      },
     })
     const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
     const w = mount(Cmp, { props: { slug: 'team' } })

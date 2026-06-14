@@ -7,15 +7,21 @@ const ms = (iso: string) => Date.parse(iso)
 const daysBase = { months: false, weeks: false, days: true }
 
 const round10: Round = {
-  number: 10, label: 'T-10',
-  start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z',
+  number: 10,
+  label: 'T-10',
+  start: '2026-06-14T09:00:00Z',
+  end: '2026-06-15T09:00:00Z',
 }
 const startsAt = '2026-06-25T09:00:00Z'
 
 describe('computeView', () => {
   it('is idle without a round or startsAt', () => {
-    expect(computeView(null, startsAt, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe('idle')
-    expect(computeView(round10, null, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe('idle')
+    expect(computeView(null, startsAt, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
+      'idle',
+    )
+    expect(computeView(round10, null, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
+      'idle',
+    )
   })
 
   it('counts down before start: day count = |round.number|, h:m:s to next boundary', () => {
@@ -33,7 +39,11 @@ describe('computeView', () => {
   })
 
   it('weeks base re-expresses the time to start with a w chip', () => {
-    const v = computeView(round10, startsAt, zone, ms('2026-06-14T21:00:00Z'), { months: false, weeks: true, days: true })
+    const v = computeView(round10, startsAt, zone, ms('2026-06-14T21:00:00Z'), {
+      months: false,
+      weeks: true,
+      days: true,
+    })
     expect(v.chips.some((c) => c.unit === 'w')).toBe(true)
     expect(v.chips.some((c) => c.unit === 'd')).toBe(true)
   })
@@ -43,7 +53,12 @@ describe('computeView', () => {
     // the weeks+days calendar diff is done against Berlin wall time, so the d chip is 1; running
     // the same diff in UTC truncates to 0. This would fail if {zone} were dropped from fromMillis/fromISO.
     const weeksBase = { months: false, weeks: true, days: true }
-    const r: Round = { number: 1, label: 'T-1', start: '2026-03-28T22:00:00Z', end: '2026-03-29T09:00:00Z' }
+    const r: Round = {
+      number: 1,
+      label: 'T-1',
+      start: '2026-03-28T22:00:00Z',
+      end: '2026-03-29T09:00:00Z',
+    }
     const v = computeView(r, '2026-03-29T21:00:00Z', zone, ms('2026-03-28T22:00:00Z'), weeksBase)
     expect(v.state).toBe('before')
     expect(v.chips).toEqual([
@@ -56,7 +71,12 @@ describe('computeView', () => {
   })
 
   it('counts up after start (event running)', () => {
-    const r: Round = { number: -1, label: 'T+1', start: '2026-06-25T09:00:00Z', end: '2026-06-26T09:00:00Z' }
+    const r: Round = {
+      number: -1,
+      label: 'T+1',
+      start: '2026-06-25T09:00:00Z',
+      end: '2026-06-26T09:00:00Z',
+    }
     const v = computeView(r, startsAt, zone, ms('2026-06-25T11:30:00Z'), daysBase)
     expect(v.state).toBe('after')
     expect(v.prefix).toBe('T+')
@@ -78,7 +98,12 @@ describe('nextBaseUnitConfig cycles days -> months+weeks -> weeks -> days', () =
 })
 
 describe('boundaryAction', () => {
-  const next: Round = { number: 9, label: 'T-9', start: '2026-06-15T09:00:00Z', end: '2026-06-16T09:00:00Z' }
+  const next: Round = {
+    number: 9,
+    label: 'T-9',
+    start: '2026-06-15T09:00:00Z',
+    end: '2026-06-16T09:00:00Z',
+  }
   it('none before the boundary', () =>
     expect(boundaryAction(round10, next, ms('2026-06-15T08:59:59Z'))).toBe('none'))
   it('shift into nextRound when past the boundary but inside next', () =>

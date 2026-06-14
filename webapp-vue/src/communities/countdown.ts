@@ -62,7 +62,9 @@ export function computeView(
     }
   }
 
-  const lower = DateTime.fromISO(round.end, { zone }).diff(now, ['hours', 'minutes', 'seconds']).toObject()
+  const lower = DateTime.fromISO(round.end, { zone })
+    .diff(now, ['hours', 'minutes', 'seconds'])
+    .toObject()
   const chips: Chip[] = []
   if (cfg.months || cfg.weeks) {
     const units: DurationUnit[] = []
@@ -85,7 +87,11 @@ export function computeView(
 export type BoundaryAction = 'none' | 'shift' | 'refetch'
 
 /** Decide what to do when the clock reaches the current round's end. */
-export function boundaryAction(round: Round | null, nextRound: Round | null, nowMs: number): BoundaryAction {
+export function boundaryAction(
+  round: Round | null,
+  nextRound: Round | null,
+  nowMs: number,
+): BoundaryAction {
   if (!round || nowMs < Date.parse(round.end)) return 'none'
   if (nextRound && nowMs < Date.parse(nextRound.end)) return 'shift'
   return 'refetch'

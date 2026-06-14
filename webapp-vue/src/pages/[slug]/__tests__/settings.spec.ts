@@ -49,7 +49,10 @@ describe('settings — timezone + zone-relative startsAt', () => {
     await flushPromises()
     expect(api.updateCommunity).toHaveBeenCalledWith(
       'team',
-      expect.objectContaining({ startsAt: '2026-06-25T09:00:00.000Z', startsAtTimezone: 'Europe/Berlin' }),
+      expect.objectContaining({
+        startsAt: '2026-06-25T09:00:00.000Z',
+        startsAtTimezone: 'Europe/Berlin',
+      }),
     )
   })
 
@@ -62,13 +65,18 @@ describe('settings — timezone + zone-relative startsAt', () => {
     const Settings = (await import('@/pages/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
-    expect((w.find('input[type="datetime-local"]').element as HTMLInputElement).value).toBe('2026-06-25T05:00')
+    expect((w.find('input[type="datetime-local"]').element as HTMLInputElement).value).toBe(
+      '2026-06-25T05:00',
+    )
     expect((w.find('select').element as HTMLSelectElement).value).toBe('America/New_York')
     await w.find('form').trigger('submit')
     await flushPromises()
     expect(api.updateCommunity).toHaveBeenCalledWith(
       'team',
-      expect.objectContaining({ startsAt: '2026-06-25T09:00:00.000Z', startsAtTimezone: 'America/New_York' }),
+      expect.objectContaining({
+        startsAt: '2026-06-25T09:00:00.000Z',
+        startsAtTimezone: 'America/New_York',
+      }),
     )
   })
 })

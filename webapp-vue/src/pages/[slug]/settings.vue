@@ -92,10 +92,7 @@ async function revoke(): Promise<void> {
         URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.
       </p>
       <label class="block text-sm"
-        >Zeitzone<select
-          v-model="startsAtTimezone"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-        >
+        >Zeitzone<select v-model="startsAtTimezone" class="mt-1 w-full rounded border px-3 py-1.5">
           <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
         </select></label
       >
