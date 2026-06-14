@@ -19,6 +19,7 @@ export interface CommunityResponse {
   name: string
   slug: string
   startsAt: string | null
+  startsAtTimezone: string
   phaseTwoStartRound: number | null
   viewerIsAdmin: boolean
   pendingCount: number
@@ -42,4 +43,17 @@ export interface AcceptResponse {
   status: 'JOINED_PENDING' | 'ALREADY_PENDING' | 'ALREADY_ACTIVE'
   name: string
   slug: string
+}
+export interface Round {
+  number: number
+  label: string
+  start: string
+  end: string
+}
+export interface CountdownResponse {
+  serverNow: string
+  startsAt: string | null
+  startsAtTimezone: string
+  round: Round | null
+  nextRound: Round | null
 }

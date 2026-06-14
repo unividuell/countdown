@@ -24,7 +24,7 @@ export const getCommunity = (slug: string) =>
   apiFetch<CommunityResponse>(`/api/communities/${slug}`)
 export const updateCommunity = (
   slug: string,
-  body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }>,
+  body: Partial<{ name: string; startsAt: string; startsAtTimezone: string; phaseTwoStartRound: number }>,
 ) =>
   apiFetch<CommunityResponse>(`/api/communities/${slug}`, {
     method: 'PATCH',
