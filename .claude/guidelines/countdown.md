@@ -9,7 +9,7 @@ conventions — see below.)
 
 Not yet implemented — this is the agreed model to build the `countdown` module against.
 
-## Anchor: `startsAt` + community `timezone`
+## Anchor: `startsAt` + community `startsAtTimezone`
 
 - A community has **`startsAt`** (the event start) stored as Postgres `TIMESTAMPTZ` → mapped to a
   Kotlin **`Instant`** (an absolute moment, **zone-less**).
@@ -17,12 +17,15 @@ Not yet implemented — this is the agreed model to build the `countdown` module
   **discards the offset/zone**; on read it renders in the session zone. So `startsAt` alone only
   knows *"this instant"*, not *"11:00 in which zone"*. A fixed numeric offset wouldn't help either
   — it can't do DST (winter `+01:00` vs summer `+02:00`).
-- Therefore each community also has **`timezone`** — an **IANA zone id** (e.g. `Europe/Berlin`),
-  **admin-editable**, default `Europe/Berlin`. (New `community` column;
-  validate it's a real IANA zone.)
+- Therefore each community also has **`startsAtTimezone`** (DB column `starts_at_timezone`) — an
+  **IANA zone id** (e.g. `Europe/Berlin`), **admin-editable**, default `Europe/Berlin`. (New
+  `community` column; validate it's a real IANA zone.) The name keeps the explicit relation to the
+  field it zones — it is *the zone in which `startsAt`'s wall-clock is anchored*, not a generic
+  community timezone.
 - The round-anchor **time-of-day (e.g. 11:00) is NOT a separate field** — it falls out of
-  `startsAt` rendered in `timezone` (`startsAt.atZone(timezone)`). So **`startsAt` (instant) +
-  `timezone` (zone)** together fully define the countdown anchor and the round grid.
+  `startsAt` rendered in `startsAtTimezone` (`startsAt.atZone(startsAtTimezone)`). So **`startsAt`
+  (instant) + `startsAtTimezone` (zone)** together fully define the countdown anchor and the round
+  grid.
 
 ## A round = an interval + a signed number
 
@@ -31,62 +34,92 @@ Not yet implemented — this is the agreed model to build the `countdown` module
   keeps the math clean and lets multiple games **nest inside a day** later (see *fast rounds*). The
   **daily grid is the invariant base** — fast rounds add sub-rounds *within* a day, they don't
   replace it. The daily computation below is the base round generator.
-- **Default round = one calendar day** in the community `timezone`, anchored to `startsAt`'s
+- **Default round = one calendar day** in the community `startsAtTimezone`, anchored to `startsAt`'s
   time-of-day. If `startsAt` is `…T11:00` in `Europe/Berlin`, each round runs
   `[day 11:00, next-day 11:00)` local time.
 
-### Signed T-offset numbering (the port's convention)
+### Round numbering — count-down with a round 0 (faithful to huettehuette)
 
-The round number is the **signed offset to the start**, increasing monotonically over time. There
-is **no round 0** — `startsAt` is the boundary between `T−1` and `T+1`:
+The canonical **round number `n` is a signed integer that strictly decreases as time advances**.
+Counting *down* before the start it reaches **0 on the last day, then continues negative** once the
+event has begun:
 
-- `T−1` = `[startsAt − 1 day, startsAt)` — the last countdown day.
-- `T−n` = `[startsAt − n days, startsAt − (n−1) days)`.
-- `T+1` = `[startsAt, startsAt + 1 day)` — the first interval at/after the start (the event begins).
-- `T+n` = `[startsAt + (n−1) days, startsAt + n days)`.
+- **`n = 0`** is the **last day before the start**: `[startsAt − 1 day, startsAt)`. This is the
+  "zero days to go" window — whole-days-until-start is already `0` while up to ~24 h still tick away
+  (e.g. *0 Tage, 23 h, 12 s bis Start*). **Round 0 is real and necessary** — an earlier draft of
+  this file wrongly tried to remove it; that was the knot-that-isn't-one.
+- **`n > 0`** are the earlier countdown days; **`n < 0`** are the days at/after the start.
 
-For a uniform daily grid, with `k = floor((now − startsAt) / roundLength)` computed in `timezone`
-(DST-aware day math), the current round number is:
+Uniform interval formula (all integers `n`, zone- and DST-aware day stepping):
 
 ```
-r = (k >= 0) ? k + 1 : k        // …, −2, −1, +1, +2, …  (skips 0)
+round n = [ startsAt − (n+1) days , startsAt − n days )
 ```
 
-The **number is also the label** (`−59`, `−1`, `+1`); displayed as `T−59` / `T+1`.
+- `n =  0` → `[startsAt − 1d, startsAt)`     (last day before start)
+- `n = −1` → `[startsAt,       startsAt + 1d)` (first day of the event — `startsAt` starts it)
+- `n = 10` → `[startsAt − 11d, startsAt − 10d)`
 
-**Mental model — T0 = liftoff (a moment, not a round):** like a rocket countdown, the *instant*
-`startsAt` is **T‑0** (liftoff). There is no round 0; rounds are the intervals before (`T−n`) and
-after (`T+n`). The UI may show a momentary "T‑0 — Start!" exactly at `startsAt`. Purely a labelling
-aid — the numbering above is unchanged.
+The **current round for `now`** is the `n` whose interval contains `now` (start-inclusive),
+i.e. count zone-aware calendar days between `now` and `startsAt`. Equivalent to huettehuette's
+`trunc(daysUntil)` for `now < startsAt` and `floor(daysUntil)` after — but on **start-inclusive**
+boundaries (see *Differences* below).
 
-> **Differences from huettehuette (deliberate):** the origin used the *opposite* sign — a positive
-> count-down (`trunc(daysUntil)` → 59…1, **with a round 0** = the last day, then `floor` → −1, −2
-> after start) and label `"T-" + number`. The port flips to the signed T-offset (label == number)
-> and **start-inclusive** boundaries. The origin was **end-inclusive** at the time-of-day mark
-> (the exact 11:00:00 instant belonged to the older round); the port makes 11:00:00 belong to the
-> round it *starts*.
+**Display label** flips the sign so the event itself reads as a count-up:
+
+```
+n ≥ 0  →  "T−n"     (T−58, … , T−1, T−0)
+n < 0  →  "T+|n|"   (T+1, T+2, …)            ← n = −1 shows "T+1"
+```
+
+So the sequence over time is `T−58 … T−1 T−0 │ T+1 T+2 …`, where `│` = the **liftoff instant
+`startsAt`** (the `T−0 → T+1`, i.e. `n: 0 → −1`, boundary). There is a `T−0` but no `T+0`.
+
+**Mental model — liftoff at the `T−0 → T+1` boundary:** like a rocket count-down the days tick
+…3, 2, 1, 0 (`T−0` = the final day before liftoff), and the **liftoff instant is `startsAt`
+itself** — the boundary where round `0` ends and round `−1` (displayed `T+1`) begins. The UI may
+flash a "T−0 — Start!" around that instant; purely a labelling aid.
+
+> **Differences from huettehuette:** we deliberately **keep** huettehuette's numbering — a
+> count-down with a real **round 0** (the last day) that continues negative after the start — and
+> its **`T−` / `T+`** display (prefix + absolute value; `T+1` = first event day). The **only**
+> deliberate change is boundary inclusivity: huettehuette was **end-inclusive** (the exact
+> `11:00:00` instant belonged to the *older* round); per the spec (`[11..11)`) the port is
+> **start-inclusive** — `11:00:00` belongs to the round it *starts*.
 
 ## DST handling
 
-- Day math runs in the community `timezone` and is **calendar-aware**: a DST-transition day
-  (23 h or 25 h real time) still counts as **exactly one round** — the boundary stays glued to the
-  wall-clock time-of-day (11:00). Use zone-aware date math (`ZonedDateTime.plusDays` /
-  Luxon `plus({days})`), never `instant ± 86400s`.
-- The **within-round countdown** to the next boundary, however, reflects **real elapsed time**, so
-  on DST days the visible "time until next round" is 23 h / 25 h. (Origin split this into
-  "higher-order" calendar units + "lower-order" precise hours/min/sec — see
-  `huettehuette/stores/useCountdownStore.ts`.)
+> **Read this first:** Luxon's *“Math across DSTs”*
+> (<https://moment.github.io/luxon/#/zones?id=math-across-dsts>) is the mental model for the whole
+> round engine — it splits arithmetic into **calendar units** (days/weeks/months: anchor the
+> **wall-clock** — same local time next day, DST or not) and **precise units** (hours/minutes/
+> seconds: anchor **elapsed real time**). Java's `java.time` behaves the same: `ZonedDateTime`
+> `.plusDays()` is calendar-aware, `.plus(Duration.ofHours/…)` is exact. Worked example
+> (`America/New_York`, spring-forward 2017-03-12):
+> ```js
+> DateTime.local(2017,3,11,10).plus({days:1}).hour    //=> 10  (wall-clock preserved)
+> DateTime.local(2017,3,11,10).plus({hours:24}).hour   //=> 11  (24 h of real time → +1 h post-DST)
+> ```
+
+- **Round-boundary grid = calendar units.** Day math runs in the community `startsAtTimezone` and is
+  **calendar-aware**: a DST-transition day (23 h or 25 h real time) still counts as **exactly one
+  round** — the boundary stays glued to the wall-clock time-of-day (11:00). Use `plus({days})` /
+  `ZonedDateTime.plusDays`, **never** `instant ± 86400s`.
+- **Within-round tick = precise units.** The countdown to the next boundary reflects **real elapsed
+  time**, so on DST days the visible "time until next round" is 23 h / 25 h — use a precise
+  `diff(…, ["hours","minutes","seconds"])`. The origin splits exactly this way into "higher-order"
+  calendar units + "lower-order" precise units — see `huettehuette/stores/useCountdownStore.ts`.
 
 ## Computation & placement
 
 - **Server-authoritative.** The current-round computation is a **pure function** of
-  `(now, startsAt, timezone, roundLength)` — no DB needed for the number itself. Put it in a
+  `(now, startsAt, startsAtTimezone, roundLength)` — no DB needed for the number itself. Put it in a
   backend Spring Modulith module (working name **`countdown`**, schema-per-module), depending on
-  `community` (for `startsAt` + `timezone` + `phaseTwoStartRound`). Expose a public query
+  `community` (for `startsAt` + `startsAtTimezone` + `phaseTwoStartRound`). Expose a public query
   (current round for `now`; the round number for any instant; a round's `[start, end)`).
-- **Heavily unit-tested**, TDD: port the huettehuette test vectors (adjusting for the flipped sign
-  + start-inclusive boundary), and cover the **DST transitions** explicitly (spring-forward /
-  fall-back days) and the exact-boundary instants.
+- **Heavily unit-tested**, TDD: port the huettehuette test vectors (same numbering; adjust the
+  exact-boundary cases for the **start-inclusive** boundary), and cover the **DST transitions**
+  explicitly (spring-forward / fall-back days) and the exact-boundary instants.
 - **Frontend** shows the live countdown + current round. If the SPA computes it client-side
   (for a ticking display), keep it in **parity** with the backend function — same rule, parity
   test — exactly like the slug-derivation parity (see `multi-tenancy.md`). Alternatively render
