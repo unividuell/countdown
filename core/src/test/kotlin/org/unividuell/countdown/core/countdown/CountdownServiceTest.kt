@@ -44,6 +44,15 @@ class CountdownServiceTest(
     }
 
     @Test
+    fun `forSlug lets a super-admin see a community they do not belong to`() {
+        val owner = aUser()
+        val c = communities.create(owner.id!!, "Super Visible")
+        val superAdmin = aUser()
+        val res = countdown.forSlug(c.slug, superAdmin.id!!, isSuperAdmin = true)
+        res.startsAtTimezone shouldBe "Europe/Berlin"
+    }
+
+    @Test
     fun `forSlug exposes current and next round when configured`() {
         val owner = aUser()
         val c = communities.create(owner.id!!, "Has Start")

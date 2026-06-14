@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.countdown.internal
 
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
@@ -12,6 +13,7 @@ import java.time.ZoneId
 import java.util.UUID
 
 @Service
+@Transactional(readOnly = true)
 class CountdownService(
     private val communityQuery: CommunityQuery,
     private val membershipQuery: MembershipQuery,

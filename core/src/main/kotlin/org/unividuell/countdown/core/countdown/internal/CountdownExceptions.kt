@@ -1,4 +1,4 @@
 package org.unividuell.countdown.core.countdown.internal
 
-/** Caller is not an ACTIVE member of the community -> 404 (no info leak). */
+/** Unknown community, or caller is not an ACTIVE member -> 404 (no info leak between the two cases). */
 class CountdownAccessDeniedException(message: String = "No access") : RuntimeException(message)
