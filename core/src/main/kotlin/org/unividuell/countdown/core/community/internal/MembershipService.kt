@@ -48,12 +48,13 @@ open class MembershipService(
     open fun accept(token: String, userId: UUID): AcceptResult {
         val community = communities.findByInviteToken(token) ?: throw InviteNotFoundException()
         if (community.inviteTokenExpiresAt?.isBefore(Instant.now()) != false) throw InviteExpiredException()
-        val existing = members.findByCommunityIdAndUserId(community.id!!, userId)
+        val communityId = community.id!!
+        val existing = members.findByCommunityIdAndUserId(communityId, userId)
         return when (existing?.status) {
             MemberStatus.ACTIVE -> AcceptResult.AlreadyActive(community)
             MemberStatus.PENDING -> AcceptResult.AlreadyPending(community)
             null -> {
-                members.save(CommunityMember(communityId = community.id!!, userId = userId, status = MemberStatus.PENDING))
+                members.save(CommunityMember(communityId = communityId, userId = userId, status = MemberStatus.PENDING))
                 AcceptResult.JoinedPending(community)
             }
         }

@@ -15,8 +15,10 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
     the `package` phase; make the gate explicit.
   - `build-web`: the **Docker build only runs `pnpm build`** (vue-tsc type-check + vite build) —
     it does **NOT** run eslint or Vitest. So the workflow adds an explicit
-    **`pnpm install && pnpm lint && pnpm test`** step (setup-node + `corepack enable`) before the
-    `docker build`. Type errors fail via the image build; lint + unit tests fail via this gate.
+    **`pnpm install && pnpm lint && pnpm typecheck && pnpm test`** step (setup-node +
+    `corepack enable`) before the `docker build`. The `typecheck` is not redundant with the
+    image build: on a **pull request the image steps are skipped**, so `pnpm build` never runs
+    and vue-tsc would otherwise only see the code after merge. **The gate must stand alone.**
 - **Backend** `ghcr.io/unividuell/countdown-core` — built with **Cloud Native Buildpacks** via
   `spring-boot:build-image`. Image name + `<docker><publishRegistry>` (`${env.GHCR_USERNAME}`/
   `${env.GHCR_TOKEN}`) live in the `spring-boot-maven-plugin` config.
@@ -24,6 +26,12 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   then `caddy` with `dist/` + Caddyfile baked in). Postgres is the official `postgres:18`.
 - **CI runner: `ubuntu-24.04-arm`** (GitHub-hosted, native arm64 — free for the public repo).
   Buildpacks don't cross-build, so build arm64 on an arm64 runner (not buildx/QEMU).
+- **`pull_request` validates, `push` publishes.** Both workflows trigger on *both* events with
+  the same branch/path filters, and every image step carries
+  `if: github.event_name != 'pull_request'`. A PR therefore runs only its test gate. This
+  matters: the tag resolver is `ref_name == 'main' ? latest : staging`, so an **unguarded PR run
+  would publish over `:staging`** from an unmerged branch. When adding a step that touches ghcr,
+  guard it the same way.
 - Push to `main`, **path-filtered** so each app only rebuilds on its own changes;
   `permissions: { contents: read, packages: write }`, ghcr auth via `GITHUB_TOKEN`.
   Both workflows also declare **`workflow_dispatch`** for manual runs — and note that
@@ -36,7 +44,8 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   publishes with the workflow `GITHUB_TOKEN` + `packages: write`.
 - **Branch → image tag:** both workflows trigger on **`main` and `develop`**; a `Resolve image tag`
   step (`${{ github.ref_name == 'main' && 'latest' || 'staging' }}`) sets the tag — `main`→`:latest`
-  (prod), `develop`→`:staging`. Wire it into the image name — **core: `-Dcountdown.image.tag=<tag>`**
+  (prod), `develop`→`:staging` — see [git-workflow.md](git-workflow.md) for the branching model
+  those two branches encode. Wire the tag into the image name — **core: `-Dcountdown.image.tag=<tag>`**
   (a pom property substituted into `<image><name>`; the `-Dspring-boot.build-image.imageName` user
   property does **not** override a pom-set `<image><name>` in this plugin version — it silently
   built `:latest`); web: `docker build -t …:<tag>`.

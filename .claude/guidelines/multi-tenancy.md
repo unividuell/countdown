@@ -95,11 +95,13 @@ selection to pick the last-visited community when the user has multiple active m
 
 ### Logout reachability
 
-Since `index.vue` is now a redirect resolver (no UI), logout must appear in two places:
-1. **Community shell header** (`/[slug].vue`) — next to the `CommunitySwitcher`.
-2. **`/communities` page** — for users with no active community.
+Logout lives in exactly one place: `src/auth/MemberMenu.vue`, mounted by `App.vue` and gated on
+`status === 'authenticated'` — the same predicate `src/auth/guard.ts:15` uses to admit a protected
+route. Because `App.vue` sits above every route, this makes logout reachable on every protected
+route by construction, not by convention: there is no second copy to keep in sync, and no future
+page can be added without it.
 
-Both call `useAuth().logout()` then `router.replace('/login')`.
+Calls `useAuth().logout()` then `router.replace('/login')`.
 
 ### `exactOptionalPropertyTypes` + optional body fields
 

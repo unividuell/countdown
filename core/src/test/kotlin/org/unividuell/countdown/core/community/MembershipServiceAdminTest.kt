@@ -25,28 +25,28 @@ class MembershipServiceAdminTest(
 
     @Test
     fun `approve flips PENDING to ACTIVE`() {
-        val admin = user("admin"); val c = communityService.create(admin.id!!, "Team")
-        val joiner = user("joiner")
-        service.accept(service.generateInvite(c.id!!).token, joiner.id!!)
-        service.approve(c.id!!, joiner.id!!)
-        members.findByCommunityIdAndUserId(c.id!!, joiner.id!!)!!.status shouldBe MemberStatus.ACTIVE
+        val adminId = user("admin").id!!; val cid = communityService.create(adminId, "Team").id!!
+        val joinerId = user("joiner").id!!
+        service.accept(service.generateInvite(cid).token, joinerId)
+        service.approve(cid, joinerId)
+        members.findByCommunityIdAndUserId(cid, joinerId)!!.status shouldBe MemberStatus.ACTIVE
     }
 
     @Test
     fun `promote and demote toggle is_admin`() {
-        val admin = user("admin"); val c = communityService.create(admin.id!!, "Team")
-        val p = user("player"); service.accept(service.generateInvite(c.id!!).token, p.id!!); service.approve(c.id!!, p.id!!)
-        service.promote(c.id!!, p.id!!)
-        members.findByCommunityIdAndUserId(c.id!!, p.id!!)!!.isAdmin shouldBe true
-        service.demote(c.id!!, p.id!!)
-        members.findByCommunityIdAndUserId(c.id!!, p.id!!)!!.isAdmin shouldBe false
+        val adminId = user("admin").id!!; val cid = communityService.create(adminId, "Team").id!!
+        val pid = user("player").id!!; service.accept(service.generateInvite(cid).token, pid); service.approve(cid, pid)
+        service.promote(cid, pid)
+        members.findByCommunityIdAndUserId(cid, pid)!!.isAdmin shouldBe true
+        service.demote(cid, pid)
+        members.findByCommunityIdAndUserId(cid, pid)!!.isAdmin shouldBe false
     }
 
     @Test
     fun `cannot demote, remove or leave the last admin`() {
-        val admin = user("admin"); val c = communityService.create(admin.id!!, "Team")
-        shouldThrow<LastAdminException> { service.demote(c.id!!, admin.id!!) }
-        shouldThrow<LastAdminException> { service.remove(c.id!!, admin.id!!) }
-        shouldThrow<LastAdminException> { service.leave(c.id!!, admin.id!!) }
+        val adminId = user("admin").id!!; val cid = communityService.create(adminId, "Team").id!!
+        shouldThrow<LastAdminException> { service.demote(cid, adminId) }
+        shouldThrow<LastAdminException> { service.remove(cid, adminId) }
+        shouldThrow<LastAdminException> { service.leave(cid, adminId) }
     }
 }

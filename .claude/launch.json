@@ -6,14 +6,14 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd core && GITHUB_CLIENT_SECRET=unused-local-test-auth SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml"
+        "cd core && GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml"
       ],
       "port": 8080
     },
     {
-      "name": "webapp",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd webapp-vue && pnpm dev"],
+      "name": "frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "webapp-vue", "dev"],
       "port": 5173
     }
   ]

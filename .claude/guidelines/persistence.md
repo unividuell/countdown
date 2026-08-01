@@ -22,6 +22,30 @@ data class User(
 ) : Serializable
 ```
 
+### Unwrap the id once, then pass the id — not the entity
+
+The flip side of `@Id val id: UUID? = null` is that the id stays *typed* nullable even
+after a `save()`, where it is always populated. Unwrap it **once, at first use**, and thread
+the `UUID` onward:
+
+```kotlin
+val communityId = community.id!!                  // once
+val existing = members.findByCommunityIdAndUserId(communityId, userId)
+members.save(CommunityMember(communityId = communityId, /* ... */))
+```
+
+Repeating `community.id!!` compiles but is not free: `id` is a stable `val`, so after the
+first `!!` Kotlin smart-casts it to non-null and every later `!!` earns
+`Unnecessary non-null assertion (!!) on a non-null receiver`. Don't "fix" that by *deleting*
+the later `!!` either — the code would then silently depend on an assertion further up, and
+reordering the lines breaks it. Bind a local instead.
+
+Same idea in tests, where kotest hands the value back:
+
+```kotlin
+saved.id.shouldNotBeNull().version() shouldBe 7   // not: shouldNotBeNull(); saved.id!!.version()
+```
+
 ## Column naming: no `@Column`
 
 Spring Data JDBC's `DefaultNamingStrategy` already maps camelCase → `snake_case`

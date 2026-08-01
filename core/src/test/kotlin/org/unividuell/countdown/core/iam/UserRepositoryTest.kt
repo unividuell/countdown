@@ -22,8 +22,7 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
             User(githubId = 4711L, githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
         )
 
-        saved.id.shouldNotBeNull()
-        saved.id!!.version() shouldBe 7
+        saved.id.shouldNotBeNull().version() shouldBe 7
         saved.createdAt.shouldNotBeNull()
         saved.updatedAt.shouldNotBeNull()
     }
