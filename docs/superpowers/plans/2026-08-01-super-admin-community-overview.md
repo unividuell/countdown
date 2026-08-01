@@ -1166,7 +1166,10 @@ describe('super-admin landing page', () => {
         userId: 'u1',
         flagged: true,
         allowlisted: true,
-        createdAt: '2026-01-15T00:00:00Z',
+        // Just before midnight UTC on purpose: in Europe/Berlin (UTC+1 in January) this is
+        // 15.01., in UTC it is 14.01. — so dropping { zone } from the formatter turns the
+        // date assertion below red, which a round 00:00Z instant would not.
+        createdAt: '2026-01-14T23:30:00Z',
       },
       {
         githubLogin: 'ghost',
