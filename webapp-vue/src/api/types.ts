@@ -58,3 +58,33 @@ export interface CountdownResponse {
   round: Round | null
   nextRound: Round | null
 }
+
+export interface SuperAdminMember {
+  userId: string
+  username: string
+  githubLogin: string
+  status: 'PENDING' | 'ACTIVE'
+  isAdmin: boolean
+  joinedAt: string | null
+}
+export interface SuperAdminCommunity {
+  id: string
+  name: string
+  slug: string
+  startsAt: string | null
+  startsAtTimezone: string
+  createdAt: string | null
+  members: SuperAdminMember[]
+}
+/**
+ * `flagged` is the is_super_admin column, `allowlisted` is membership in
+ * SUPER_ADMIN_GITHUB_LOGINS. They drift because the flag is re-derived on every login.
+ */
+export interface SuperAdminUser {
+  githubLogin: string
+  username: string | null
+  userId: string | null
+  flagged: boolean
+  allowlisted: boolean
+  createdAt: string | null
+}
