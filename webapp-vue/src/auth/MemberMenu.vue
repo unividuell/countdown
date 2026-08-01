@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import IconMember from '~icons/lucide/circle-user'
 import HeaderMenu from '@/ui/HeaderMenu.vue'
 import { useAuth } from '@/auth/useAuth'
@@ -30,6 +30,15 @@ async function handleLogout(): Promise<void> {
     <div data-test="current-user" class="px-3 pt-1 pb-0.5 text-xs text-neutral-500">
       {{ user?.username }}
     </div>
+    <!-- Only rendered for the role, so the area stays undiscoverable for everyone else. -->
+    <RouterLink
+      v-if="user?.isSuperAdmin"
+      data-test="super-admin"
+      to="/super-admin"
+      class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
+    >
+      Super-Admin
+    </RouterLink>
     <button
       type="button"
       data-test="logout"

@@ -133,9 +133,12 @@ your machine's: the community overview page's `Pacific/Kiritimati` (UTC+14) is t
 and stays discriminating under any plausible host zone, whereas a fixture formatted in
 `Europe/Berlin` would not.
 
-## Unlinked areas + shell-owned access checks
+## Role-gated areas + shell-owned access checks
 
-The super-admin area (`/super-admin`) is reachable only by typing the URL — nothing links to it.
+The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: the only entry
+point is a `MemberMenu` item rendered under `v-if="user?.isSuperAdmin"`, so a viewer without the
+role sees no trace of it. Gate any such entry point on the role itself — never on a plain link
+that a non-holder can see and bounce off.
 Pattern, mirroring the `[slug].vue` shell:
 
 - `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. A static route

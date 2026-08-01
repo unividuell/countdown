@@ -18,8 +18,13 @@ This feature adds a small super-admin area with two screens:
 2. **`/super-admin/communities`** — every community with its complete member roster, marking
    each community's admins.
 
-The area is deliberately **unlinked** — reachable only by typing the URL. It is **read-only**:
+The area is deliberately hidden from anyone without the role. It is **read-only**:
 super-admins already reach every mutation through the normal community pages.
+
+> **Superseded 2026-08-01:** the area was originally specified as *unlinked* — reachable only by
+> typing the URL. It is now reached from a `MemberMenu` entry that renders only when
+> `isSuperAdmin` is set, so it stays invisible to everyone else while being usable for those who
+> hold the role. Nothing else in the design changed.
 
 ## Decisions (locked during brainstorming)
 
