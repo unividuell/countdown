@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { useAuth } from '@/auth/useAuth'
 
@@ -17,8 +18,8 @@ vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
 function mockAuth(logout: () => Promise<void>) {
   vi.mocked(useAuth).mockReturnValue({
-    user: { value: { username: 'clemens' } } as never,
-    status: { value: 'authenticated' } as never,
+    user: ref({ username: 'clemens' }) as never,
+    status: ref('authenticated') as never,
     bootstrap: vi.fn(),
     loginWithGitHub: vi.fn(),
     logout,
