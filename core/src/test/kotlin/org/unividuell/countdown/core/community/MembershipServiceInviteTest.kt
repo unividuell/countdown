@@ -29,22 +29,22 @@ class MembershipServiceInviteTest(
 
     @Test
     fun `generate produces a token with 7-day expiry and regenerate replaces it`() {
-        val c = communityService.create(user("admin").id!!, "Team")
-        val first = service.generateInvite(c.id!!)
+        val cid = communityService.create(user("admin").id!!, "Team").id!!
+        val first = service.generateInvite(cid)
         first.expiresAt.isAfter(Instant.now().plus(6, ChronoUnit.DAYS)) shouldBe true
-        val second = service.generateInvite(c.id!!)
+        val second = service.generateInvite(cid)
         (second.token != first.token) shouldBe true
         communities.findByInviteToken(first.token) shouldBe null
     }
 
     @Test
     fun `accept creates a PENDING membership`() {
-        val c = communityService.create(user("admin").id!!, "Team")
-        val token = service.generateInvite(c.id!!).token
-        val joiner = user("joiner")
-        val result = service.accept(token, joiner.id!!)
+        val cid = communityService.create(user("admin").id!!, "Team").id!!
+        val token = service.generateInvite(cid).token
+        val joinerId = user("joiner").id!!
+        val result = service.accept(token, joinerId)
         result.shouldBeInstanceOf<AcceptResult.JoinedPending>()
-        members.findByCommunityIdAndUserId(c.id!!, joiner.id!!)!!.status shouldBe MemberStatus.PENDING
+        members.findByCommunityIdAndUserId(cid, joinerId)!!.status shouldBe MemberStatus.PENDING
     }
 
     @Test
