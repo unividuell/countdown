@@ -29,25 +29,25 @@ class CommunityQueryServiceTest(
 
     @Test
     fun `query + membership reflect active communities and admin status`() {
-        val admin = user("admin"); val c = communityService.create(admin.id!!, "Team")
-        query.findBySlug("team")!!.id shouldBe c.id
-        membershipQuery.isActiveMember(c.id!!, admin.id!!) shouldBe true
-        membershipQuery.isAdmin(c.id!!, admin.id!!) shouldBe true
-        membershipQuery.activeCommunitiesOf(admin.id!!) shouldHaveSize 1
+        val adminId = user("admin").id!!; val cid = communityService.create(adminId, "Team").id!!
+        query.findBySlug("team")!!.id shouldBe cid
+        membershipQuery.isActiveMember(cid, adminId) shouldBe true
+        membershipQuery.isAdmin(cid, adminId) shouldBe true
+        membershipQuery.activeCommunitiesOf(adminId) shouldHaveSize 1
     }
 
     @Test
     fun `pending member is not active`() {
-        val admin = user("admin"); val c = communityService.create(admin.id!!, "Team")
-        val p = user("p"); membership.accept(membership.generateInvite(c.id!!).token, p.id!!)
-        membershipQuery.isActiveMember(c.id!!, p.id!!) shouldBe false
-        membershipQuery.activeCommunitiesOf(p.id!!) shouldHaveSize 0
+        val adminId = user("admin").id!!; val cid = communityService.create(adminId, "Team").id!!
+        val pid = user("p").id!!; membership.accept(membership.generateInvite(cid).token, pid)
+        membershipQuery.isActiveMember(cid, pid) shouldBe false
+        membershipQuery.activeCommunitiesOf(pid) shouldHaveSize 0
     }
 
     @Test
     fun `selection round-trips`() {
-        val u = user("u"); val c = communityService.create(u.id!!, "Team")
-        selection.set(u.id!!, c.id!!)
-        selection.get(u.id!!) shouldBe c.id
+        val uid = user("u").id!!; val cid = communityService.create(uid, "Team").id!!
+        selection.set(uid, cid)
+        selection.get(uid) shouldBe cid
     }
 }
