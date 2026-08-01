@@ -52,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
 # edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD; GITHUB_CLIENT_SECRET=unused is fine
-#   (SUPER_ADMIN_GITHUB_LOGINS=leela comes from the template on this first run — see note above for existing stacks)
+#   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
 
