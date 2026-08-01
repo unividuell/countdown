@@ -16,7 +16,11 @@
    Note: `SUPER_ADMIN_GITHUB_LOGINS` is bound to the `app.super-admin-github-logins` property; if you set it via that exact env-var name it is wired through `application.yaml`.
 3. Start Postgres + the app (Spring Boot docker-compose support starts `compose.yaml`, Postgres 18):
    ```bash
-   ./mvnw spring-boot:run
+   ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml
    ```
+   The flag is required when you run from `core/`: `compose.yaml` lives at the repo root, and
+   Spring's docker-compose support only looks in the working directory — without it the app aborts
+   at startup with `No Docker Compose file found in directory '…/core/.'`. `.claude/launch.json`
+   carries the same flag for the tooling-managed start.
 4. Log in by visiting `http://localhost:8080/oauth2/authorization/github`.
    After the GitHub redirect, `GET /api/me` returns your provisioned user (or `401` if you are not logged in).
