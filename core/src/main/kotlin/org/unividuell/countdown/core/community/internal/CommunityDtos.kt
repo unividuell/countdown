@@ -22,3 +22,13 @@ data class AcceptResponse(val status: String, val name: String, val slug: String
 fun Community.toResponse(viewerIsAdmin: Boolean, pendingCount: Int) =
     CommunityResponse(id!!, name, slug, startsAt, startsAtTimezone, phaseTwoStartRound, viewerIsAdmin, pendingCount)
 fun Community.toSummary() = CommunitySummary(id!!, name, slug)
+
+data class SuperAdminMemberResponse(
+    val userId: UUID, val username: String, val githubLogin: String,
+    val status: String, val isAdmin: Boolean, val joinedAt: Instant?,
+)
+data class SuperAdminCommunityResponse(
+    val id: UUID, val name: String, val slug: String,
+    val startsAt: Instant?, val startsAtTimezone: String, val createdAt: Instant?,
+    val members: List<SuperAdminMemberResponse>,
+)
