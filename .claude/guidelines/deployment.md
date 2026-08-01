@@ -59,18 +59,33 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   (`production` / `staging`), `PGADMIN_PORT` (`5050` / `5051`), `BACKUP_DIR`
   (`./backups` / `./backups-staging`), and secrets.
 - The distinct `COMPOSE_PROJECT_NAME` gives each stack its own container/volume/network namespace →
-  staging is independently start/stoppable (`docker compose --env-file .env.staging -f compose.yaml down`
+  staging is independently start/stoppable (`docker compose --env-file .env.staging -f compose.staging.yaml down`
   touches only staging) and the two postgres volumes (`countdown_pgdata` / `countdown-staging_pgdata`)
   are separate (so a Postgres major upgrade can be rehearsed on staging first).
-- `update.sh <prod|staging>` (default `prod`) picks the env file, fetches `compose.yaml`, pulls, `up -d`.
+- `update.sh <prod|staging>` (default `prod`) picks the env file, fetches the compose file, pulls, `up -d`.
+- **Each target tracks the branch its images come from** — prod fetches `compose.yaml` +
+  `.env.prod.example` from **`main`** (`:latest`), staging from **`develop`** (`:staging`);
+  `REF=<branch>` overrides for a one-off. Getting this wrong is not cosmetic: while both targets
+  fetched from `main`, staging ran develop images on main infrastructure, so an infra change could
+  never be exercised before it hit prod — and a compose line that existed only on develop
+  (`SUPER_ADMIN_GITHUB_LOGINS` in `core`'s `environment:`) silently reached **neither** stack.
+- **The compose file is per target on disk** (`compose.prod.yaml` / `compose.staging.yaml`), because
+  both stacks share one directory: with a single `compose.yaml`, a staging run would overwrite the
+  file prod is deployed from. Containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
+  renaming the file recreates nothing on its own. **`update.sh` and `README.md` stay pinned to `main`**
+  — they are one shared copy, and a staging run must not leave prod driving an unreleased script.
+  Corollary: a change to `update.sh` itself only takes effect on the *next* invocation (the running
+  shell keeps its old inode across the `mv`), so switching layouts takes two runs per target.
 - **pgAdmin is per-environment** (each stack's own `debug`-profile pgAdmin connects only to its own
   `postgres` via the service name; no shared instance/network). Distinct loopback ports
   (`PGADMIN_PORT`) let you tunnel both at once. README documents the per-env start + SSH tunnel.
 - Edge routes `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the
   test-user picker — see security-and-auth.md; no separate staging GitHub OAuth App).
-- **Rename migration:** prod was `compose.prod.yaml` + `.env`. Keep `COMPOSE_PROJECT_NAME=countdown`
-  when moving to `compose.yaml` + `.env.prod` so the existing volumes are reused (no data loss);
-  expect a brief prod restart on the cutover.
+- **Rename migrations** (twice now: `compose.prod.yaml` + `.env` → shared `compose.yaml` + `.env.prod`
+  → per-target `compose.<target>.yaml`): the on-disk filename is free to change because
+  `COMPOSE_PROJECT_NAME` is what identifies the stack — keep it stable and the existing volumes are
+  reused, no data loss. Expect a brief prod restart on a cutover, and delete the orphaned file
+  afterwards so nobody runs `-f` against a stale copy.
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
   `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
   before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
@@ -143,10 +158,11 @@ for staging, by `container_name`).
   `gzip` write a silent corrupt/empty archive (the pipe hides `pg_dump`'s failure). PITR is a later
   pgBackRest upgrade. **Compose gotcha:** in a `command:` block escape shell `$(...)` as `$$(...)`,
   else Compose interpolates it away.
-- **Ops:** the server runs a `curl`-able **`update.sh`** that re-fetches the infra files
-  (`compose.prod.yaml`, `README.md`, itself) from `main`, then
-  `docker compose --env-file .env -f compose.prod.yaml pull && up -d`. Only `compose.prod.yaml` + `.env`
-  (+ `README.md`/`update.sh`) live on the server; the Caddyfile is image-baked.
+- **Ops:** the server runs a `curl`-able **`update.sh <prod|staging>`** that re-fetches the infra
+  files — `compose.yaml` → `compose.<target>.yaml` from that target's branch, `README.md` + itself
+  from `main` — then `docker compose --env-file .env.<target> -f compose.<target>.yaml pull && up -d`.
+  Only the per-target compose files + `.env.prod`/`.env.staging` (+ `README.md`/`update.sh`) live on
+  the server; the Caddyfile is image-baked.
 
 ## pgAdmin in production
 
