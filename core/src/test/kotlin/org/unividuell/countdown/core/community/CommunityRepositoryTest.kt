@@ -27,8 +27,7 @@ class CommunityRepositoryTest(
         val creator = aUser()
         val saved = repository.save(Community(name = "Hütte Hütte", slug = "huette-huette", createdBy = creator.id!!))
 
-        saved.id.shouldNotBeNull()
-        saved.id!!.version() shouldBe 7
+        saved.id.shouldNotBeNull().version() shouldBe 7
         saved.createdAt.shouldNotBeNull()
         repository.findBySlug("huette-huette").shouldNotBeNull()
         repository.findBySlug("does-not-exist").shouldBeNull()

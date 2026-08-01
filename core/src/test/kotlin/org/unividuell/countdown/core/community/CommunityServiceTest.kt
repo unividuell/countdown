@@ -26,10 +26,10 @@ class CommunityServiceTest(
 
     @Test
     fun `create derives slug and makes the creator an active admin`() {
-        val creator = aUser()
-        val c = service.create(creator.id!!, "Hütte Hütte")
+        val creatorId = aUser().id!!
+        val c = service.create(creatorId, "Hütte Hütte")
         c.slug shouldBe "huette-huette"
-        val m = members.findByCommunityIdAndUserId(c.id!!, creator.id!!)!!
+        val m = members.findByCommunityIdAndUserId(c.id!!, creatorId)!!
         m.status shouldBe MemberStatus.ACTIVE
         m.isAdmin shouldBe true
     }
@@ -41,9 +41,9 @@ class CommunityServiceTest(
 
     @Test
     fun `create rejects a duplicate slug`() {
-        val u = aUser()
-        service.create(u.id!!, "Team A")
-        shouldThrow<SlugUnavailableException> { service.create(u.id!!, "team a") }
+        val uid = aUser().id!!
+        service.create(uid, "Team A")
+        shouldThrow<SlugUnavailableException> { service.create(uid, "team a") }
     }
 
     @Test

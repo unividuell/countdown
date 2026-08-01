@@ -23,24 +23,24 @@ class CommunityMemberRepositoryTest(
 ) {
     @Test
     fun `stores membership and queries by community, user and admin count`() {
-        val u = users.save(User(githubId = 2L, githubLogin = "u2"))
-        val c = communities.save(Community(name = "Team", slug = "team", createdBy = u.id!!))
-        members.save(CommunityMember(communityId = c.id!!, userId = u.id!!, status = MemberStatus.ACTIVE, isAdmin = true))
+        val uid = users.save(User(githubId = 2L, githubLogin = "u2")).id!!
+        val cid = communities.save(Community(name = "Team", slug = "team", createdBy = uid)).id!!
+        members.save(CommunityMember(communityId = cid, userId = uid, status = MemberStatus.ACTIVE, isAdmin = true))
 
-        members.findByCommunityId(c.id!!) shouldHaveSize 1
-        members.findByCommunityIdAndUserId(c.id!!, u.id!!)!!.isAdmin shouldBe true
-        members.countActiveAdmins(c.id!!) shouldBe 1
-        members.findActiveByUserId(u.id!!) shouldHaveSize 1
+        members.findByCommunityId(cid) shouldHaveSize 1
+        members.findByCommunityIdAndUserId(cid, uid)!!.isAdmin shouldBe true
+        members.countActiveAdmins(cid) shouldBe 1
+        members.findActiveByUserId(uid) shouldHaveSize 1
     }
 
     @Test
     fun `counts pending members`() {
-        val admin = users.save(User(githubId = System.nanoTime(), githubLogin = "a"))
-        val c = communities.save(Community(name = "Team", slug = "team-pc", createdBy = admin.id!!))
-        members.save(CommunityMember(communityId = c.id!!, userId = admin.id!!, status = MemberStatus.ACTIVE, isAdmin = true))
-        val p = users.save(User(githubId = System.nanoTime(), githubLogin = "p"))
-        members.save(CommunityMember(communityId = c.id!!, userId = p.id!!, status = MemberStatus.PENDING))
-        members.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) shouldBe 1
-        members.countByCommunityIdAndStatus(c.id!!, MemberStatus.ACTIVE) shouldBe 1
+        val adminId = users.save(User(githubId = System.nanoTime(), githubLogin = "a")).id!!
+        val cid = communities.save(Community(name = "Team", slug = "team-pc", createdBy = adminId)).id!!
+        members.save(CommunityMember(communityId = cid, userId = adminId, status = MemberStatus.ACTIVE, isAdmin = true))
+        val pid = users.save(User(githubId = System.nanoTime(), githubLogin = "p")).id!!
+        members.save(CommunityMember(communityId = cid, userId = pid, status = MemberStatus.PENDING))
+        members.countByCommunityIdAndStatus(cid, MemberStatus.PENDING) shouldBe 1
+        members.countByCommunityIdAndStatus(cid, MemberStatus.ACTIVE) shouldBe 1
     }
 }

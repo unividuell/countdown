@@ -22,13 +22,13 @@ class CommunityUserSelectionRepositoryTest(
 ) {
     @Test
     fun `upsert sets then overwrites the selected community`() {
-        val u = users.save(User(githubId = 3L, githubLogin = "u3"))
-        val c1 = communities.save(Community(name = "One", slug = "one", createdBy = u.id!!))
-        val c2 = communities.save(Community(name = "Two", slug = "two", createdBy = u.id!!))
+        val uid = users.save(User(githubId = 3L, githubLogin = "u3")).id!!
+        val c1id = communities.save(Community(name = "One", slug = "one", createdBy = uid)).id!!
+        val c2id = communities.save(Community(name = "Two", slug = "two", createdBy = uid)).id!!
 
-        selection.upsert(u.id!!, c1.id!!)
-        selection.findCommunityId(u.id!!) shouldBe c1.id
-        selection.upsert(u.id!!, c2.id!!)
-        selection.findCommunityId(u.id!!) shouldBe c2.id
+        selection.upsert(uid, c1id)
+        selection.findCommunityId(uid) shouldBe c1id
+        selection.upsert(uid, c2id)
+        selection.findCommunityId(uid) shouldBe c2id
     }
 }

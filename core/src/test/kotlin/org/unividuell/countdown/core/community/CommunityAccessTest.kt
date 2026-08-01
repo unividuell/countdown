@@ -31,10 +31,10 @@ class CommunityAccessTest(
 
     @Test
     fun `active non-admin can read but not admin`() {
-        val c = communityService.create(user("admin").id!!, "Team")
-        val p = user("p"); membership.accept(membership.generateInvite(c.id!!).token, p.id!!); membership.approve(c.id!!, p.id!!)
-        access.requireActiveMember(p.id!!, false, "team").slug shouldBe "team"
-        shouldThrow<NotAdminException> { access.requireAdmin(p.id!!, false, "team") }
+        val cid = communityService.create(user("admin").id!!, "Team").id!!
+        val pid = user("p").id!!; membership.accept(membership.generateInvite(cid).token, pid); membership.approve(cid, pid)
+        access.requireActiveMember(pid, false, "team").slug shouldBe "team"
+        shouldThrow<NotAdminException> { access.requireAdmin(pid, false, "team") }
     }
 
     @Test
