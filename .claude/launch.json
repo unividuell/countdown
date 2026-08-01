@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd core && GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "webapp-vue", "dev"],
+      "port": 5173
+    }
+  ]
+}

@@ -5,6 +5,11 @@ import { DateTime } from 'luxon'
 import { useTitle } from '@vueuse/core'
 import { activeCommunity } from '@/communities/context'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
+import { useAuth } from '@/auth/useAuth'
+import CommunityMenu from '@/communities/CommunityMenu.vue'
+import MemberMenu from '@/auth/MemberMenu.vue'
+
+const { status } = useAuth()
 
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
@@ -22,10 +27,16 @@ const yearSuffix = computed(() => {
 <template>
   <div class="flex min-h-screen flex-col bg-neutral-100 text-neutral-900">
     <header class="flex items-center justify-between gap-4 bg-stone-900 px-4 py-3 text-stone-50">
-      <RouterLink to="/" class="font-semibold hover:underline"
-        >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
-      >
-      <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
+      <div class="flex items-center gap-2">
+        <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
+        <RouterLink to="/" class="font-semibold hover:underline"
+          >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
+        >
+      </div>
+      <div class="flex items-center gap-3">
+        <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
+        <MemberMenu v-if="status === 'authenticated'" />
+      </div>
     </header>
     <main class="flex-1 p-4">
       <RouterView />
