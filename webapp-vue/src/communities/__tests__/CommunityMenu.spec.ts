@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
-import { useCommunities } from '@/communities/useCommunities'
+import { _resetCommunitiesState } from '@/communities/useCommunities'
 import type { ActiveCommunity } from '@/communities/context'
 
-const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
+// Real vue-router's push() always returns a Promise; CommunityMenu.vue attaches a .catch()
+// to it, so the double must resolve like the real thing rather than return undefined.
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn().mockResolvedValue(undefined) }))
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -38,7 +40,7 @@ describe('CommunityMenu', () => {
     // `active` (useCommunities.ts) is a module-level singleton, so a previous test's
     // successful load otherwise leaks into this one (Vitest doesn't reset modules
     // between `it`s in the same file) — reset it so each test starts from a clean slate.
-    useCommunities().active.value = []
+    _resetCommunitiesState()
     vi.spyOn(api, 'listCommunities').mockResolvedValue([
       { id: '1', name: 'Team Süd', slug: 'team' },
       { id: '2', name: 'Team Nord', slug: 'nord' },

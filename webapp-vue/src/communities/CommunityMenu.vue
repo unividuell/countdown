@@ -31,7 +31,7 @@ async function go(c: CommunitySummary): Promise<void> {
   } catch (e) {
     console.error('could not persist the community selection', e)
   }
-  router.push(`/${c.slug}/`)
+  router.push(`/${c.slug}/`).catch((e) => console.error('navigation failed', e))
 }
 </script>
 
