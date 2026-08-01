@@ -211,8 +211,12 @@ in `Europe/Berlin` — the same default the `community` schema uses for `starts_
 - `/super-admins`: a flagged, allowlisted user yields one row with both booleans true.
 - `/super-admins`: an allowlist entry with no user row yields `userId: null`, `flagged: false`.
 - `/super-admins`: a flagged user missing from the allowlist yields `allowlisted: false`.
-- `/super-admins`: allowlist `BossUser` against stored `bossuser` yields **one** row — the
-  regression guard for the case-insensitive merge.
+- `/super-admins`: a stored `BossUser` against the allowlist entry `bossuser` yields **one**
+  row, and a stored mixed-case user who is allowlisted but not yet flagged resolves to their
+  real row rather than a phantom `userId: null`. Together these are the regression guard for
+  the case-insensitive merge. The **stored** side must carry the odd casing: the service
+  lowercases the allowlist first, so the reverse direction leaves both `lower()` calls
+  unexercised.
 - `/super-admins`: an empty allowlist returns only flagged users.
 
 **Frontend** (Vitest + `vi` + `@vue/test-utils`, mocking `@/api/superAdmin` and `@/auth/useAuth`):

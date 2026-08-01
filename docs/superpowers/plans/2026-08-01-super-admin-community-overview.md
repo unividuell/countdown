@@ -498,6 +498,8 @@ Two facts that drive the whole task: the allowlist grants the role **case-insens
 
 Create `core/src/test/kotlin/org/unividuell/countdown/core/iam/SuperAdminRosterServiceTest.kt`. Note the two classes: an empty allowlist is a distinct Spring context *and* the guard against generating `IN ()`, which is a SQL syntax error.
 
+The casing fixture runs **stored mixed-case against a lowercase allowlist entry**, not the reverse. The service lowercases the allowlist before binding it, so an already-lowercase stored login makes both `lower(github_login)` in the SQL and `.lowercase()` in the merge key no-ops — the test stays green with either removed. A second case row covers the path that actually breaks: a stored mixed-case user who is allowlisted but *not yet flagged*. Without the SQL `lower()`, neither query finds them and the roster emits a phantom `userId: null` row instead of the real one, so asserting a non-null `userId` there is what makes the guard bite.
+
 ```kotlin
 package org.unividuell.countdown.core.iam
 
@@ -522,14 +524,14 @@ import org.unividuell.countdown.core.iam.internal.UserRepository
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @Transactional
-@TestPropertySource(properties = ["app.super-admin-github-logins=BossUser,ghost", "app.test-auth.enabled=false"])
+@TestPropertySource(properties = ["app.super-admin-github-logins=bossuser,ghost,notyetflagged", "app.test-auth.enabled=false"])
 class SuperAdminRosterServiceTest(
     @Autowired val service: SuperAdminRosterService,
     @Autowired val users: UserRepository,
 ) {
     @Test
     fun `matches an allowlist entry to a differently-cased github login exactly once`() {
-        users.save(User(githubId = 501L, githubLogin = "bossuser", displayName = "Boss", isSuperAdmin = true))
+        users.save(User(githubId = 501L, githubLogin = "BossUser", displayName = "Boss", isSuperAdmin = true))
 
         val rows = service.roster().filter { it.githubLogin.lowercase() == "bossuser" }
 
@@ -1563,6 +1565,11 @@ Append to the `## Roles` section, after the existing "super-admin vs community-a
   one a row came from — `GET /api/super-admin/super-admins` is the reference. Match the two
   **case-insensitively** (lowercased login), because that is how `SuperAdminProperties` grants
   the role; a case-sensitive join reports one person twice.
+- **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
+  Java's. The slash before a `**` glob opens a second, nested comment, so the doc comment's real
+  `*/` closes only the inner one — the compiler swallows the rest of the file and reports
+  `Unclosed comment`, pointing nowhere near the actual text. Write "the `/api/super-admin` tree"
+  in prose instead. This bit a controller KDoc that quoted the security rule verbatim.
 ```
 
 - [ ] **Step 2: Add a section to `frontend.md`**
@@ -1626,6 +1633,69 @@ the deliberate flag/allowlist drift and its case-insensitive join, the
 shell-owned access check for unlinked areas, and two traps that cost time:
 ref-shaped useAuth stubs in Vitest, and Spring Data eating a leading Is in
 derived query names."
+```
+
+---
+
+### Task 9: Finish the shared-principal migration
+
+**Files:**
+- Modify: `core/src/test/kotlin/org/unividuell/countdown/core/countdown/CountdownControllerTest.kt`
+- Modify: `core/src/test/kotlin/org/unividuell/countdown/core/community/MemberControllerTest.kt`
+
+**Interfaces:**
+- Consumes: `org.unividuell.countdown.core.TEST_USER_ID` and `org.unividuell.countdown.core.principalFor` from `TestPrincipals.kt` (created in Task 1).
+- Produces: nothing. Pure refactor — no production code, no behaviour change.
+
+Task 1 extracted the shared MockMvc principal helper and migrated `CommunityControllerTest` and `UserControllerTest`. Two further pre-existing classes were found carrying their own near-identical private `principal()` and were left alone as out of scope. This task finishes the job, so the codebase has exactly one copy.
+
+Execution slot: run this after Task 3, while the work is still in `core/`. It is numbered 9 only because it was added after the plan was written.
+
+- [ ] **Step 1: Establish the green baseline**
+
+Run: `cd core && ./mvnw test -Dtest='CountdownControllerTest,MemberControllerTest'`
+Expected: PASS. Record the test count — the same count must pass after the refactor. This is the whole safety net for a change with no new tests.
+
+- [ ] **Step 2: Migrate `CountdownControllerTest`**
+
+In `core/src/test/kotlin/org/unividuell/countdown/core/countdown/CountdownControllerTest.kt`:
+
+- delete the private `principal(...)` function;
+- replace the local `uid` UUID literal with `TEST_USER_ID`;
+- rewrite each call site — `with(principal())` becomes `with(principalFor())`, and any variant passing a super-admin flag becomes `with(principalFor(superAdmin = true))`;
+- add `import org.unividuell.countdown.core.TEST_USER_ID` and `import org.unividuell.countdown.core.principalFor`;
+- delete every import that the removal made unused — expect `OAuth2AuthenticationToken`, `SecurityMockMvcRequestPostProcessors.authentication` and `CountdownOAuth2User`, and check whether `User` and `UUID` are still referenced before keeping them.
+
+The shared helper must be used **as-is**. If a call site needs a user shape the helper's two overloads cannot express, do not widen the helper and do not reintroduce a local one — report it instead, because that shape is what the migration needs to preserve.
+
+- [ ] **Step 3: Migrate `MemberControllerTest`**
+
+Apply the identical treatment to `core/src/test/kotlin/org/unividuell/countdown/core/community/MemberControllerTest.kt`.
+
+- [ ] **Step 4: Verify the refactor changed nothing**
+
+Run: `cd core && ./mvnw test -Dtest='CountdownControllerTest,MemberControllerTest'`
+Expected: PASS with the **same test count as Step 1**. A lower count means a test was silently dropped, not fixed.
+
+- [ ] **Step 5: Verify nothing else regressed**
+
+Run: `cd core && ./mvnw test`
+Expected: PASS, full suite.
+
+- [ ] **Step 6: Confirm no copies remain**
+
+Run: `cd core && grep -rn "OAuth2AuthenticationToken" src/test/kotlin`
+Expected: exactly one hit, in `TestPrincipals.kt`. Any other hit is a helper copy this task was supposed to remove.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add core/src/test/kotlin/org/unividuell/countdown/core
+git commit -m "test(core): finish migrating to the shared principal helper
+
+CountdownControllerTest and MemberControllerTest still carried their own
+copies of the MockMvc principal helper that Task 1 extracted; the codebase
+now has exactly one."
 ```
 
 ---
