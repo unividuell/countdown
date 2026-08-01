@@ -102,7 +102,7 @@ import Icons from 'unplugin-icons/vite'
   plugins: [
     VueRouter(), // ⚠️ must come before vue()
     vue(),
-    Icons({ compiler: 'vue3' }),
+    Icons({ compiler: 'vue3', scale: 1 }),
     tailwindcss(),
   ],
 ```
@@ -116,7 +116,7 @@ import Icons from 'unplugin-icons/vite'
 ```
 
 ```ts
-  plugins: [vue(), Icons({ compiler: 'vue3' })],
+  plugins: [vue(), Icons({ compiler: 'vue3', scale: 1 })],
 ```
 
 - [ ] **Step 6: Run the test to verify it passes**
@@ -1174,7 +1174,7 @@ Add to the **Stack** section of `.claude/guidelines/frontend.md`, after the Luxo
   **devDependencies**; import as `~icons/lucide/<name>`. Deliberately *not* `@iconify/vue` (the
   origin huettehuette app's choice): its `<Icon>` resolves icon data at runtime from
   `api.iconify.design`, i.e. an external request from every user's browser plus visible pop-in.
-  **Gotcha:** `Icons({ compiler: 'vue3' })` must be registered in **both** `vite.config.ts` and
+  **Gotcha:** `Icons({ compiler: 'vue3', scale: 1 })` must be registered in **both** `vite.config.ts` and
   `vitest.config.ts` — they are separate files, and without it `~icons/*` fails to resolve in tests.
   `vue-tsc` needs `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`. The generated
   components render `1em`/`currentColor`, so size them with Tailwind (`class="size-5"`).
