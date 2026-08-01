@@ -68,8 +68,11 @@ Route mechanics: `super-admin.vue` + `super-admin/*.vue` is the same layout pair
 - Modify: `core/src/main/kotlin/org/unividuell/countdown/core/community/internal/CommunityDtos.kt`
 - Create: `core/src/main/kotlin/org/unividuell/countdown/core/community/internal/SuperAdminOverviewService.kt`
 - Create: `core/src/main/kotlin/org/unividuell/countdown/core/community/internal/SuperAdminController.kt`
+- Create: `core/src/test/kotlin/org/unividuell/countdown/core/TestPrincipals.kt`
 - Test: `core/src/test/kotlin/org/unividuell/countdown/core/community/SuperAdminOverviewServiceTest.kt`
 - Test: `core/src/test/kotlin/org/unividuell/countdown/core/community/SuperAdminControllerTest.kt`
+- Modify: `core/src/test/kotlin/org/unividuell/countdown/core/community/CommunityControllerTest.kt` (drop its local `principal` helper)
+- Modify: `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserControllerTest.kt` (drop its local `principalFor` helper)
 
 **Interfaces:**
 - Consumes: `CommunityRepository` (`findBySlug`, `findByInviteToken`, plus `CrudRepository.findAll()`), `CommunityMemberRepository` (`CrudRepository.findAll()`), the exposed types `Community`, `CommunityMember`, `MemberStatus`, `User`.
@@ -304,7 +307,51 @@ class SuperAdminOverviewService(
 Run: `cd core && ./mvnw test -Dtest=SuperAdminOverviewServiceTest`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 7: Write the failing controller test**
+- [ ] **Step 7: Extract the shared MockMvc principal helper**
+
+Two test classes already carry near-identical copies of this helper, and this plan adds two more. Extract it once before writing the third copy.
+
+Create `core/src/test/kotlin/org/unividuell/countdown/core/TestPrincipals.kt` (package `org.unividuell.countdown.core`, next to `TestcontainersConfiguration`). Return types are inferred deliberately — `authentication()`'s return type moved packages between Spring versions, and inference sidesteps the import.
+
+```kotlin
+package org.unividuell.countdown.core
+
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
+import org.unividuell.countdown.core.iam.User
+import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
+import java.util.UUID
+
+/** Stable id for the authenticated test principal, so tests can assert against a fixed UUID. */
+val TEST_USER_ID: UUID = UUID.fromString("018f0000-0000-7000-8000-000000000000")
+
+/** Authenticates a MockMvc request as [user], the shape the real OAuth2 login produces. */
+fun principalFor(user: User) =
+    authentication(
+        OAuth2AuthenticationToken(
+            CountdownOAuth2User(user, mapOf("login" to user.githubLogin)),
+            CountdownOAuth2User(user, emptyMap()).authorities,
+            "github",
+        )
+    )
+
+/** For tests that care only about the role, not the user's other fields. */
+fun principalFor(
+    id: UUID = TEST_USER_ID,
+    superAdmin: Boolean = false,
+    githubLogin: String = "octocat",
+) = principalFor(User(id = id, githubId = 1L, githubLogin = githubLogin, isSuperAdmin = superAdmin))
+```
+
+Then migrate the two existing call sites:
+
+- `core/src/test/kotlin/org/unividuell/countdown/core/community/CommunityControllerTest.kt` — delete its private `principal(superAdmin: Boolean = false)` function and the now-unused `OAuth2AuthenticationToken` / `authentication` / `CountdownOAuth2User` imports; replace `private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")` with `private val uid = TEST_USER_ID`; replace every `with(principal())` with `with(principalFor())` and every `with(principal(superAdmin = true))` with `with(principalFor(superAdmin = true))`. Add `import org.unividuell.countdown.core.TEST_USER_ID` and `import org.unividuell.countdown.core.principalFor`.
+- `core/src/test/kotlin/org/unividuell/countdown/core/iam/UserControllerTest.kt` — delete its private `principalFor(user: User)` function and the now-unused `OAuth2AuthenticationToken` / `authentication` / `CountdownOAuth2User` imports; replace `private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")` with `private val uid = TEST_USER_ID`. Its call sites already read `principalFor(user(...))` and keep working against the shared overload. Add `import org.unividuell.countdown.core.TEST_USER_ID` and `import org.unividuell.countdown.core.principalFor`.
+
+Run: `cd core && ./mvnw test -Dtest='CommunityControllerTest,UserControllerTest'`
+Expected: PASS — pure refactor, no behavior change. Fix any leftover unused-import warnings before moving on.
+
+- [ ] **Step 8: Write the failing controller test**
 
 Create `core/src/test/kotlin/org/unividuell/countdown/core/community/SuperAdminControllerTest.kt`:
 
@@ -318,16 +365,14 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.SuperAdminCommunityResponse
 import org.unividuell.countdown.core.community.internal.SuperAdminMemberResponse
 import org.unividuell.countdown.core.community.internal.SuperAdminOverviewService
-import org.unividuell.countdown.core.iam.User
-import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
+import org.unividuell.countdown.core.principalFor
 import java.time.Instant
 import java.util.UUID
 
@@ -337,18 +382,11 @@ import java.util.UUID
 class SuperAdminControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var overview: SuperAdminOverviewService
 
-    private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")
-    private fun principal(superAdmin: Boolean) = authentication(
-        OAuth2AuthenticationToken(
-            CountdownOAuth2User(User(id = uid, githubId = 1L, githubLogin = "octocat", isSuperAdmin = superAdmin), mapOf("login" to "octocat")),
-            CountdownOAuth2User(User(id = uid, githubId = 1L, githubLogin = "octocat", isSuperAdmin = superAdmin), emptyMap()).authorities,
-            "github",
-        )
-    )
+    private val uid = TEST_USER_ID
 
     @Test
     fun `forbidden for a non-super-admin`() {
-        mockMvc.get("/api/super-admin/communities") { with(principal(superAdmin = false)) }
+        mockMvc.get("/api/super-admin/communities") { with(principalFor(superAdmin = false)) }
             .andExpect { status { isForbidden() } }
     }
 
@@ -369,7 +407,7 @@ class SuperAdminControllerTest(@Autowired val mockMvc: MockMvc) {
                 ),
             ),
         )
-        mockMvc.get("/api/super-admin/communities") { with(principal(superAdmin = true)) }
+        mockMvc.get("/api/super-admin/communities") { with(principalFor(superAdmin = true)) }
             .andExpect {
                 status { isOk() }
                 jsonPath("$[0].slug") { value("alpha") }
@@ -381,12 +419,12 @@ class SuperAdminControllerTest(@Autowired val mockMvc: MockMvc) {
 }
 ```
 
-- [ ] **Step 8: Run the controller test to verify it fails**
+- [ ] **Step 9: Run the controller test to verify it fails**
 
 Run: `cd core && ./mvnw test -Dtest=SuperAdminControllerTest`
 Expected: the `super-admin` case FAILS with 404 (no handler mapped yet). The `forbidden` case already passes — the SecurityConfig rule predates this feature; keep it as the regression guard for that rule.
 
-- [ ] **Step 9: Implement the controller**
+- [ ] **Step 10: Implement the controller**
 
 Create `core/src/main/kotlin/org/unividuell/countdown/core/community/internal/SuperAdminController.kt`:
 
@@ -412,21 +450,25 @@ class SuperAdminController(private val overview: SuperAdminOverviewService) {
 }
 ```
 
-- [ ] **Step 10: Run both backend tests to verify they pass**
+- [ ] **Step 11: Run the task's backend tests to verify they pass**
 
-Run: `cd core && ./mvnw test -Dtest='SuperAdminOverviewServiceTest,SuperAdminControllerTest'`
-Expected: PASS, 4 tests.
+Run: `cd core && ./mvnw test -Dtest='SuperAdminOverviewServiceTest,SuperAdminControllerTest,CommunityControllerTest,UserControllerTest'`
+Expected: PASS — 4 new tests plus the two migrated classes still green.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
-git add core/src/main/kotlin/org/unividuell/countdown/core/iam core/src/main/kotlin/org/unividuell/countdown/core/community core/src/test/kotlin/org/unividuell/countdown/core/community
+git add core/src/main/kotlin/org/unividuell/countdown/core/iam core/src/main/kotlin/org/unividuell/countdown/core/community core/src/test/kotlin/org/unividuell/countdown/core
 git commit -m "feat(core): add the system-wide community overview for super-admins
 
 GET /api/super-admin/communities returns every community with its full member
 roster. UserQuery gains a batch findAllById because the per-row lookup in
 MemberController, bounded to one community there, would be an N+1 across the
-whole system here."
+whole system here.
+
+The MockMvc principal helper moves to a shared TestPrincipals, replacing the
+copies in CommunityControllerTest and UserControllerTest rather than adding a
+third."
 ```
 
 ---
@@ -441,7 +483,7 @@ whole system here."
 - Test: `core/src/test/kotlin/org/unividuell/countdown/core/iam/SuperAdminUserControllerTest.kt`
 
 **Interfaces:**
-- Consumes: `UserRepository`, `SuperAdminProperties` (`superAdminGithubLogins: List<String>`) — both already in `iam.internal`. Nothing from another module.
+- Consumes: `UserRepository`, `SuperAdminProperties` (`superAdminGithubLogins: List<String>`) — both already in `iam.internal`. Nothing from another module. The controller test uses `org.unividuell.countdown.core.principalFor` and `TEST_USER_ID`, the shared helper Task 1 extracted.
 - Produces:
   - `iam.internal.SuperAdminUserResponse(githubLogin: String, username: String?, userId: UUID?, flagged: Boolean, allowlisted: Boolean, createdAt: Instant?)`
   - `iam.internal.SuperAdminRosterService.roster(): List<SuperAdminUserResponse>`
@@ -658,16 +700,14 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
 import org.unividuell.countdown.core.iam.internal.SuperAdminRosterService
 import org.unividuell.countdown.core.iam.internal.SuperAdminUserResponse
+import org.unividuell.countdown.core.principalFor
 import java.time.Instant
-import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -675,18 +715,11 @@ import java.util.UUID
 class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var roster: SuperAdminRosterService
 
-    private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")
-    private fun principal(superAdmin: Boolean) = authentication(
-        OAuth2AuthenticationToken(
-            CountdownOAuth2User(User(id = uid, githubId = 1L, githubLogin = "octocat", isSuperAdmin = superAdmin), mapOf("login" to "octocat")),
-            CountdownOAuth2User(User(id = uid, githubId = 1L, githubLogin = "octocat", isSuperAdmin = superAdmin), emptyMap()).authorities,
-            "github",
-        )
-    )
+    private val uid = TEST_USER_ID
 
     @Test
     fun `forbidden for a non-super-admin`() {
-        mockMvc.get("/api/super-admin/super-admins") { with(principal(superAdmin = false)) }
+        mockMvc.get("/api/super-admin/super-admins") { with(principalFor(superAdmin = false)) }
             .andExpect { status { isForbidden() } }
     }
 
@@ -703,7 +736,7 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
                 flagged = false, allowlisted = true, createdAt = null,
             ),
         )
-        mockMvc.get("/api/super-admin/super-admins") { with(principal(superAdmin = true)) }
+        mockMvc.get("/api/super-admin/super-admins") { with(principalFor(superAdmin = true)) }
             .andExpect {
                 status { isOk() }
                 jsonPath("$[0].githubLogin") { value("boss") }
