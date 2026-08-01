@@ -60,6 +60,23 @@ concern; revisit when other modules gain protected resources).
   (the empty-string env default can bind a ghost element).
 - The name "super-admin" is deliberately distinct from future **community-admins**
   — don't conflate them when adding finer-grained roles later.
+- **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
+  authorization check and no `AuthenticatedUser` parameter — the `SecurityConfig` rule already
+  guarantees the caller. Each module contributes its own controller for its own data
+  (`community.internal.SuperAdminController`, `iam.internal.SuperAdminUserController`); there is
+  no aggregating `superadmin` module, because that would force "give me everything" ports into
+  the shared module API for the benefit of one UI.
+- **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived on every login,
+  so a newly allowlisted person has no flag until they sign in and a removed one keeps it until
+  their next sign-in. Anything reporting on super-admins must read both sources and say which
+  one a row came from — `GET /api/super-admin/super-admins` is the reference. Match the two
+  **case-insensitively** (lowercased login), because that is how `SuperAdminProperties` grants
+  the role; a case-sensitive join reports one person twice.
+- **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
+  Java's. The slash before a `**` glob opens a second, nested comment, so the doc comment's real
+  `*/` closes only the inner one — the compiler swallows the rest of the file and reports
+  `Unclosed comment`, pointing nowhere near the actual text. Write "the `/api/super-admin` tree"
+  in prose instead. This bit a controller KDoc that quoted the security rule verbatim.
 
 ## Test login (non-prod only — Firebase-emulator pattern)
 
