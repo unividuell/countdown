@@ -24,6 +24,9 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
 - A production GitHub OAuth App (callback `https://countdown.unividuell.org/login/oauth2/code/github`);
   its Client ID is committed in `application-production.yaml`, its secret goes into `.env.prod` as `GITHUB_CLIENT_SECRET`.
   Staging does not use a real GitHub OAuth App (`GITHUB_CLIENT_SECRET=unused`); login is via the built-in test-user picker.
+- `SUPER_ADMIN_GITHUB_LOGINS` in `.env.prod`/`.env.staging` grants the app-level super-admin role
+  (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
+  has the role.
 
 ## Bootstrap / Update
 
@@ -39,12 +42,13 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 # prod stack
 ./update.sh prod        # first run writes .env.prod from template + stops
-# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, PGADMIN_EMAIL/PGADMIN_PASSWORD
+# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS, PGADMIN_EMAIL/PGADMIN_PASSWORD
 ./update.sh prod        # pulls :latest images and starts the prod stack
 
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
 # edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD; GITHUB_CLIENT_SECRET=unused is fine
+#   (SUPER_ADMIN_GITHUB_LOGINS=leela is already preset)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
 

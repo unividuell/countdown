@@ -44,6 +44,7 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
     depends_on:
       - postgres
     networks:
