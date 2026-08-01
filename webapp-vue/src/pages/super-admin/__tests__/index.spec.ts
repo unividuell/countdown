@@ -17,7 +17,9 @@ describe('super-admin landing page', () => {
         userId: 'u1',
         flagged: true,
         allowlisted: true,
-        createdAt: '2026-01-15T00:00:00Z',
+        // Just before midnight UTC so Berlin (UTC+1 in January) is already on the 15th —
+        // proves formatDate uses the zone, not UTC (a round UTC midnight passes either way).
+        createdAt: '2026-01-14T23:30:00Z',
       },
       {
         githubLogin: 'ghost',
