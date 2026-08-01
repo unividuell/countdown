@@ -97,11 +97,17 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   never matches.
 - **Seeder** is an `ApplicationRunner` (idempotent), **not** Flyway — migrations can't be
   profile/flag-gated and would leak test data into prod. Test users get **synthetic negative
-  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids.
+  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids. It also re-applies
+  the super-admin allowlist on every run — insert **and** update — so a picker login grants
+  `ROLE_SUPER_ADMIN` the same way a real login would; the update half matters because the seeder
+  used to only insert, so a stale flag could never converge.
 - The picker POST carries the CSRF token as a hidden `_csrf` field (server embeds
   `csrfToken.token`); `POST /login/github/as` builds a `CountdownOAuth2User` principal and persists
   the session via `HttpSessionSecurityContextRepository().saveContext(...)` — indistinguishable from
   a real login.
+- **`loginAs` only accepts seed logins** (`TestUserSeeder.seedLogins`, also the picker's source
+  list) — it is `permitAll`, so resolving any stored `github_login` would let anyone assume any
+  registered identity, including a super-admin one now that seed users can hold the flag.
 - **Flip locally:** set `app.test-auth.enabled=false` to replay the exact prod GitHub flow on
   localhost (no seed, no picker). Real GitHub OAuth is otherwise exercised only in prod (staging
   logs in via the picker; no separate staging GitHub OAuth App).
