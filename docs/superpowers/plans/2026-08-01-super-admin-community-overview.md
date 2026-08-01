@@ -438,9 +438,12 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * System-wide community view for the super-admin area.
  *
- * No authorization check and no principal parameter on purpose: `/api/super-admin/**` is gated
- * centrally by `hasRole("SUPER_ADMIN")` in iam's SecurityConfig, so anything that reaches this
- * controller is already a super-admin.
+ * No authorization check and no principal parameter on purpose: the whole `/api/super-admin`
+ * tree is gated centrally by `hasRole("SUPER_ADMIN")` in iam's SecurityConfig, so anything that
+ * reaches this controller is already a super-admin.
+ *
+ * Note: do not write the glob form of that path inside this KDoc — Kotlin block comments nest,
+ * so an embedded slash-star-star opens a nested comment and leaves the file unclosed.
  */
 @RestController
 @RequestMapping("/api/super-admin/communities")
@@ -768,8 +771,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 /**
- * No authorization check and no principal parameter on purpose: `/api/super-admin/**` is gated
- * centrally by `hasRole("SUPER_ADMIN")` in SecurityConfig.
+ * No authorization check and no principal parameter on purpose: the super-admin path prefix is
+ * gated centrally by `hasRole("SUPER_ADMIN")` in SecurityConfig.
+ *
+ * Note: do not write the glob form of that path inside this KDoc — Kotlin block comments nest,
+ * so an embedded slash-star-star opens a nested comment and leaves the file unclosed.
  */
 @RestController
 @RequestMapping("/api/super-admin/super-admins")
