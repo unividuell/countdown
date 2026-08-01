@@ -1,7 +1,7 @@
 # countdown.unividuell.org
 
 Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
-- **Backend `core/`** — Spring Boot 4.1 · Kotlin 2.3 · Java 25 · Spring Modulith 2.1 · PostgreSQL 18.
+- **Backend `core/`** — Spring Boot 4.1 · Kotlin 2.4 · Java 25 · Spring Modulith 2.1 · PostgreSQL 18.
 - **Frontend `webapp-vue/`** — Vite 8 · Vue 3 · TypeScript (strict) · Vue Router 5 (file-based) · Tailwind v4 · pnpm.
 
 ## Coding guidelines (read before non-trivial work)
@@ -15,6 +15,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract. *(backend)*
 - **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Vue Router 5 file-based + Tailwind v4; composables/VueUse (no Pinia); `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); Vitest + `vi` (not mockk). *(webapp-vue)*
 - **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, Caddy edge (TLS + SPA + proxy), prod compose with pg_dump backup + SSH-tunnel pgAdmin.
+- **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:
 the **`iam` module** (backend) and **`webapp-vue`** (frontend).
