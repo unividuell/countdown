@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import { getCommunity, setSelection } from '@/api/communities'
 import { ApiError } from '@/api/client'
 import type { CommunityResponse } from '@/api/types'
-import CommunitySwitcher from '@/communities/CommunitySwitcher.vue'
-import { useAuth } from '@/auth/useAuth'
 import { activeCommunity, communityKey } from '@/communities/context'
 
 const route = useRoute('/[slug]')
-const router = useRouter()
 const community = ref<CommunityResponse | null>(null)
 const state = ref<'loading' | 'ready' | 'no-access' | 'error'>('loading')
-const adminMenuOpen = ref(false)
-const { logout, user } = useAuth()
 
 function publish(c: CommunityResponse): void {
   community.value = c
@@ -59,11 +54,6 @@ watch(
 onUnmounted(() => {
   activeCommunity.value = null
 })
-
-async function handleLogout(): Promise<void> {
-  await logout()
-  router.replace('/login')
-}
 </script>
 
 <template>
@@ -78,56 +68,5 @@ async function handleLogout(): Promise<void> {
     <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
     <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
   </div>
-  <div v-else>
-    <header class="mb-4 flex items-center justify-end border-b px-4 py-2">
-      <div class="flex items-center gap-2">
-        <div v-if="community?.viewerIsAdmin" data-test="admin-menu" class="relative">
-          <button
-            class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"
-            @click="adminMenuOpen = !adminMenuOpen"
-          >
-            Verwalten
-            <span
-              v-if="community.pendingCount > 0"
-              class="ml-1 rounded-full bg-blue-600 px-1.5 text-xs text-white"
-              >{{ community.pendingCount }}</span
-            >
-          </button>
-          <div
-            v-if="adminMenuOpen"
-            class="absolute right-0 z-10 mt-1 w-40 rounded border bg-white shadow"
-            @click="adminMenuOpen = false"
-          >
-            <RouterLink
-              :to="`/${community.slug}/requests`"
-              class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
-            >
-              Anfragen
-              <span v-if="community.pendingCount > 0">({{ community.pendingCount }})</span>
-            </RouterLink>
-            <RouterLink
-              :to="`/${community.slug}/members`"
-              class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
-              >Mitglieder</RouterLink
-            >
-            <RouterLink
-              :to="`/${community.slug}/settings`"
-              class="block px-3 py-1.5 text-sm hover:bg-neutral-100"
-              >Einstellungen</RouterLink
-            >
-          </div>
-        </div>
-        <CommunitySwitcher :current-slug="community!.slug" />
-        <span data-test="current-user" class="text-sm text-neutral-600">{{ user?.username }}</span>
-        <button
-          data-test="logout"
-          class="rounded border px-2 py-1 text-sm hover:bg-neutral-200"
-          @click="handleLogout"
-        >
-          Abmelden
-        </button>
-      </div>
-    </header>
-    <RouterView />
-  </div>
+  <RouterView v-else />
 </template>

@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 import { ApiError } from '@/api/client'
-import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
 
 vi.mock('vue-router', async () => {
@@ -22,24 +21,12 @@ vi.mock('vue-router', async () => {
   }
 })
 
-vi.mock('@/auth/useAuth', () => ({
-  useAuth: vi.fn(),
-}))
-
 describe('community shell guard', () => {
   beforeEach(() => {
     activeCommunity.value = null
-    vi.mocked(useAuth).mockReturnValue({
-      user: { value: null } as never,
-      status: { value: 'authenticated' } as never,
-      bootstrap: vi.fn(),
-      loginWithGitHub: vi.fn(),
-      logout: vi.fn().mockResolvedValue(undefined),
-      markAnonymous: vi.fn(),
-    })
   })
 
-  it('renders when an active member', async () => {
+  it('renders the child route when an active member', async () => {
     vi.spyOn(api, 'getCommunity').mockResolvedValue({
       id: '1',
       name: 'Team',
@@ -51,11 +38,11 @@ describe('community shell guard', () => {
       pendingCount: 0,
     })
     vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    vi.spyOn(api, 'listCommunities').mockResolvedValue([{ id: '1', name: 'Team', slug: 'team' }])
     const Shell = (await import('@/pages/[slug].vue')).default
     const w = mount(Shell)
     await flushPromises()
-    expect(w.text()).toContain('Team')
+    expect(w.find('[data-test=do-refresh]').exists()).toBe(true)
+    expect(activeCommunity.value?.name).toBe('Team')
   })
 
   it('shows no-access on 404', async () => {
@@ -66,39 +53,7 @@ describe('community shell guard', () => {
     expect(w.text()).toMatch(/kein Zugriff|nicht gefunden/i)
   })
 
-  it('renders a logout control and clicking it calls logout()', async () => {
-    const mockLogout = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(useAuth).mockReturnValue({
-      user: { value: null } as never,
-      status: { value: 'authenticated' } as never,
-      bootstrap: vi.fn(),
-      loginWithGitHub: vi.fn(),
-      logout: mockLogout,
-      markAnonymous: vi.fn(),
-    })
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: false,
-      pendingCount: 0,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    vi.spyOn(api, 'listCommunities').mockResolvedValue([{ id: '1', name: 'Team', slug: 'team' }])
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
-    const logoutBtn = w.find('[data-test="logout"]')
-    expect(logoutBtn.exists()).toBe(true)
-    await logoutBtn.trigger('click')
-    await flushPromises()
-    expect(mockLogout).toHaveBeenCalled()
-  })
-
-  it('shows the ⚙ admin menu with a pending badge only for admins', async () => {
+  it('renders no community chrome in the content area', async () => {
     vi.spyOn(api, 'getCommunity').mockResolvedValue({
       id: '1',
       name: 'Team',
@@ -113,26 +68,10 @@ describe('community shell guard', () => {
     const Shell = (await import('@/pages/[slug].vue')).default
     const w = mount(Shell)
     await flushPromises()
-    expect(w.find('[data-test=admin-menu]').exists()).toBe(true)
-    expect(w.text()).toContain('2') // pending badge
-  })
-
-  it('hides the ⚙ admin menu for non-admins', async () => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: false,
-      pendingCount: 0,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
+    expect(w.find('header').exists()).toBe(false)
+    expect(w.find('[data-test=logout]').exists()).toBe(false)
     expect(w.find('[data-test=admin-menu]').exists()).toBe(false)
+    expect(w.text()).not.toContain('Team')
   })
 
   it('publishes the admin flag and pending count into activeCommunity', async () => {
