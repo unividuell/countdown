@@ -11,4 +11,8 @@ import java.util.UUID
 class UserQueryService(private val repository: UserRepository) : UserQuery {
     @Transactional(readOnly = true)
     override fun findById(id: UUID): User? = repository.findByIdOrNull(id)
+
+    @Transactional(readOnly = true)
+    override fun findAllById(ids: Collection<UUID>): List<User> =
+        if (ids.isEmpty()) emptyList() else repository.findAllById(ids).toList()
 }

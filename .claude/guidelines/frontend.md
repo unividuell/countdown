@@ -125,4 +125,32 @@ survive an admin clearing the requests). Navigation controls live in the main he
 **Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
 the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
 to store, `DateTime.fromISO(iso, { zone }).toFormat(...)` to display. Test zone-correctness with a
-fixture whose zone year/day differs from UTC (a regression dropping `{ zone }` must turn a test red).
+fixture whose zone year/day differs from UTC. Luxon's fallback when `{ zone }` is dropped is the
+**system** zone, not UTC — `vitest.config.ts` pins `env: { TZ: 'UTC' }` so that fallback is the same
+locally as on CI (whose runner already defaults to UTC) and a dropped `{ zone }` reliably turns the
+test red either way. Still choose the fixture's own zone far from UTC, not merely different from
+your machine's: the community overview page's `Pacific/Kiritimati` (UTC+14) is the worked example
+and stays discriminating under any plausible host zone, whereas a fixture formatted in
+`Europe/Berlin` would not.
+
+## Role-gated areas + shell-owned access checks
+
+The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: the only entry
+point is a `MemberMenu` item rendered under `v-if="user?.isSuperAdmin"`, so a viewer without the
+role sees no trace of it. Gate any such entry point on the role itself — never on a plain link
+that a non-holder can see and bounce off.
+Pattern, mirroring the `[slug].vue` shell:
+
+- `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. A static route
+  segment outranks the dynamic `/:slug`, so no router config is needed — but reserve the segment
+  in the backend's `Slugs.RESERVED`, or a community with that slug becomes unreachable.
+- The shell does the role check **once** and keeps `<RouterView/>` inside the authorised branch.
+  Children then contain no access logic and, more importantly, never mount for an unauthorised
+  viewer — so they never fire a request that would 403. The backend rule is the real gate.
+- No `meta` flag and no change to `guard.ts` is needed for this; adding one would only duplicate
+  what the shell already enforces.
+
+**Test trap — `useAuth` stubs must be real refs.** A component template that reads
+`user?.isSuperAdmin` relies on Vue unwrapping the ref. The older stub style
+`user: { value: null } as never` is a plain object, so unwrapping silently yields `undefined` and
+a positive-path assertion can never pass. Return `ref({ … }) as never` from the mocked `useAuth`.

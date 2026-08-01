@@ -56,10 +56,35 @@ concern; revisit when other modules gain protected resources).
   `ROLE_SUPER_ADMIN`; `/api/super-admin/**` requires `hasRole("SUPER_ADMIN")`.
 - Granted declaratively via an allowlist of GitHub logins
   (`app.super-admin-github-logins`), **re-evaluated on every login** (so
-  adding/removing a login grants/revokes on next sign-in). Ignore blank entries
-  (the empty-string env default can bind a ghost element).
+  adding/removing a login grants/revokes on next sign-in). The empty-string env
+  default (`${SUPER_ADMIN_GITHUB_LOGINS:}`) binds to `emptyList()`, not a
+  one-element list — nobody holds the role.
+- **Compare/key against `SuperAdminProperties.normalizedSuperAdminGithubLogins`**
+  (trimmed, blanks dropped) — never re-derive that filtering per consumer. A
+  duplicated `filter { it.isNotBlank() }` with no `.trim()` in both `isSuperAdmin`
+  and `SuperAdminRosterService` let `"alice, bob"` (space after the comma)
+  silently deny `bob` the role while leaking a phantom `" bob"` row from the
+  roster endpoint — same bug, two call sites, because the normalisation wasn't
+  centralised.
 - The name "super-admin" is deliberately distinct from future **community-admins**
   — don't conflate them when adding finer-grained roles later.
+- **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
+  authorization check and no `AuthenticatedUser` parameter — the `SecurityConfig` rule already
+  guarantees the caller. Each module contributes its own controller for its own data
+  (`community.internal.SuperAdminController`, `iam.internal.SuperAdminUserController`); there is
+  no aggregating `superadmin` module, because that would force "give me everything" ports into
+  the shared module API for the benefit of one UI.
+- **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived on every login,
+  so a newly allowlisted person has no flag until they sign in and a removed one keeps it until
+  their next sign-in. Anything reporting on super-admins must read both sources and say which
+  one a row came from — `GET /api/super-admin/super-admins` is the reference. Match the two
+  **case-insensitively** (lowercased login), because that is how `SuperAdminProperties` grants
+  the role; a case-sensitive join reports one person twice.
+- **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
+  Java's. The slash before a `**` glob opens a second, nested comment, so the doc comment's real
+  `*/` closes only the inner one — the compiler swallows the rest of the file and reports
+  `Unclosed comment`, pointing nowhere near the actual text. Write "the `/api/super-admin` tree"
+  in prose instead. This bit a controller KDoc that quoted the security rule verbatim.
 
 ## Test login (non-prod only — Firebase-emulator pattern)
 
@@ -80,11 +105,17 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   never matches.
 - **Seeder** is an `ApplicationRunner` (idempotent), **not** Flyway — migrations can't be
   profile/flag-gated and would leak test data into prod. Test users get **synthetic negative
-  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids.
+  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids. It also re-applies
+  the super-admin allowlist on every run — insert **and** update — so a picker login grants
+  `ROLE_SUPER_ADMIN` the same way a real login would; the update half matters because the seeder
+  used to only insert, so a stale flag could never converge.
 - The picker POST carries the CSRF token as a hidden `_csrf` field (server embeds
   `csrfToken.token`); `POST /login/github/as` builds a `CountdownOAuth2User` principal and persists
   the session via `HttpSessionSecurityContextRepository().saveContext(...)` — indistinguishable from
   a real login.
+- **`loginAs` only accepts seed logins** (`TestUserSeeder.seedLogins`, also the picker's source
+  list) — it is `permitAll`, so resolving any stored `github_login` would let anyone assume any
+  registered identity, including a super-admin one now that seed users can hold the flag.
 - **Flip locally:** set `app.test-auth.enabled=false` to replay the exact prod GitHub flow on
   localhost (no seed, no picker). Real GitHub OAuth is otherwise exercised only in prod (staging
   logs in via the picker; no separate staging GitHub OAuth App).

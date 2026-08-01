@@ -22,7 +22,10 @@ import org.springframework.web.util.HtmlUtils
 @Controller
 @Profile("!production")
 @ConditionalOnProperty("app.test-auth.enabled")
-class DevLoginController(private val users: UserRepository) {
+class DevLoginController(
+    private val users: UserRepository,
+    private val seeder: TestUserSeeder,
+) {
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
 
@@ -30,7 +33,7 @@ class DevLoginController(private val users: UserRepository) {
     @ResponseBody
     fun picker(request: HttpServletRequest): String {
         val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
-        val buttons = users.findByGithubLoginIn(SEED_LOGINS).joinToString("\n") { u ->
+        val buttons = users.findByGithubLoginIn(seeder.seedLogins).joinToString("\n") { u ->
             val label = HtmlUtils.htmlEscape(u.username)
             """<form method="post" action="/login/github/as">
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
@@ -47,7 +50,10 @@ class DevLoginController(private val users: UserRepository) {
 
     @PostMapping("/login/github/as")
     fun loginAs(@RequestParam login: String, request: HttpServletRequest, response: HttpServletResponse): RedirectView {
-        val user = users.findByGithubLogin(login) ?: error("unknown test user: $login")
+        // permitAll: only seed logins are resolvable here, or anyone could assume any registered
+        // identity by name (and, since TestUserSeeder, potentially a super-admin one).
+        val user = users.findByGithubLogin(login)?.takeIf { login in seeder.seedLogins }
+            ?: error("unknown test user: $login")
         val principal = CountdownOAuth2User(user, mapOf("login" to user.githubLogin))
         val auth = OAuth2AuthenticationToken(principal, principal.authorities, "github")
         val context = SecurityContextHolder.createEmptyContext().apply { authentication = auth }
@@ -55,6 +61,4 @@ class DevLoginController(private val users: UserRepository) {
         securityContextRepository.saveContext(context, request, response)
         return RedirectView("/")
     }
-
-    companion object { val SEED_LOGINS = listOf("Fry", "leela", "Bender", "prof", "amy") }
 }

@@ -12,13 +12,15 @@ vi.mock('vue-router', async () => {
   return {
     useRoute: () => reactive({ fullPath: '/team/' }),
     useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
+    RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
   }
 })
 vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
-function mockAuth(logout: () => Promise<void>) {
+function mockAuth(logout: () => Promise<void>, isSuperAdmin = false) {
   vi.mocked(useAuth).mockReturnValue({
-    user: ref({ username: 'clemens' }) as never,
+    // A real ref: the template reads `user?.isSuperAdmin`, which relies on unwrapping.
+    user: ref({ username: 'clemens', isSuperAdmin }) as never,
     status: ref('authenticated') as never,
     bootstrap: vi.fn(),
     loginWithGitHub: vi.fn(),
@@ -52,6 +54,25 @@ describe('MemberMenu', () => {
     await flushPromises()
     expect(logout).toHaveBeenCalled()
     expect(replaceMock).toHaveBeenCalledWith('/login')
+  })
+
+  it('offers the super-admin area to a super-admin, above the logout entry', async () => {
+    mockAuth(vi.fn().mockResolvedValue(undefined), true)
+    const w = await open()
+    const link = w.find('[data-test=super-admin]')
+    expect(link.exists()).toBe(true)
+    expect(link.attributes('href')).toBe('/super-admin')
+    // Order matters: the entry belongs above "Abmelden", not after it.
+    const panel = w.find('[data-test=menu-panel]').html()
+    expect(panel.indexOf('data-test="super-admin"')).toBeLessThan(
+      panel.indexOf('data-test="logout"'),
+    )
+  })
+
+  it('hides the super-admin area from everyone else', async () => {
+    mockAuth(vi.fn().mockResolvedValue(undefined))
+    const w = await open()
+    expect(w.find('[data-test=super-admin]').exists()).toBe(false)
   })
 
   it('surfaces a failed logout instead of navigating away', async () => {

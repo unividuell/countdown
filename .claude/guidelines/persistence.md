@@ -115,3 +115,16 @@ database `app`.
   credentials/DB-name to an existing volume:
   `docker compose down -v` then start again.
 - Find the live mapped port any time: `docker compose port postgres 5432`.
+
+## Derived query names: watch the `is` prefix
+
+Spring Data strips a leading `Is` as an ignorable keyword, so a derived finder over a property
+already named `isSuperAdmin` is ambiguous. Write the SQL explicitly instead:
+
+```kotlin
+@Query("SELECT * FROM iam.users WHERE is_super_admin = true")
+fun findSuperAdmins(): List<User>
+```
+
+Second trap in the same file: `@Query("… IN (:logins)")` renders `IN ()` for an empty collection,
+which is a SQL syntax error. Guard at the call site rather than in the query.
