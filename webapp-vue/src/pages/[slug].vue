@@ -16,18 +16,25 @@ const state = ref<'loading' | 'ready' | 'no-access' | 'error'>('loading')
 const adminMenuOpen = ref(false)
 const { logout, user } = useAuth()
 
+function publish(c: CommunityResponse): void {
+  community.value = c
+  activeCommunity.value = {
+    slug: c.slug,
+    name: c.name,
+    startsAt: c.startsAt,
+    startsAtTimezone: c.startsAtTimezone,
+    viewerIsAdmin: c.viewerIsAdmin,
+    pendingCount: c.pendingCount,
+  }
+}
+
 async function resolve(slug: string): Promise<void> {
   state.value = 'loading'
   try {
-    community.value = await getCommunity(slug)
+    const c = await getCommunity(slug)
+    publish(c)
     state.value = 'ready'
-    activeCommunity.value = {
-      slug: community.value.slug,
-      name: community.value.name,
-      startsAt: community.value.startsAt,
-      startsAtTimezone: community.value.startsAtTimezone,
-    }
-    void setSelection(community.value.id)
+    void setSelection(c.id)
   } catch (e) {
     state.value = e instanceof ApiError && e.status === 404 ? 'no-access' : 'error'
     community.value = null
@@ -35,7 +42,7 @@ async function resolve(slug: string): Promise<void> {
   }
 }
 async function refresh(): Promise<void> {
-  if (community.value) community.value = await getCommunity(community.value.slug)
+  if (community.value) publish(await getCommunity(community.value.slug))
 }
 // Non-null inside the 'ready' branch (RouterView only renders then). Children inject this.
 provide(communityKey, {

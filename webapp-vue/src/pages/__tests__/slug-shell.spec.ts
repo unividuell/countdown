@@ -3,13 +3,24 @@ import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
+import { activeCommunity } from '@/communities/context'
 
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { slug: 'team' } }),
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  RouterView: { template: '<div>child</div>' },
-  RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
-}))
+vi.mock('vue-router', async () => {
+  const { defineComponent, inject } = await import('vue')
+  const { communityKey } = await import('@/communities/context')
+  return {
+    useRoute: () => ({ params: { slug: 'team' } }),
+    useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+    RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
+    RouterView: defineComponent({
+      setup() {
+        const ctx = inject(communityKey)
+        return { doRefresh: () => ctx?.refresh() }
+      },
+      template: '<button data-test="do-refresh" @click="doRefresh()">child</button>',
+    }),
+  }
+})
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
@@ -17,6 +28,7 @@ vi.mock('@/auth/useAuth', () => ({
 
 describe('community shell guard', () => {
   beforeEach(() => {
+    activeCommunity.value = null
     vi.mocked(useAuth).mockReturnValue({
       user: { value: null } as never,
       status: { value: 'authenticated' } as never,
@@ -121,5 +133,58 @@ describe('community shell guard', () => {
     const w = mount(Shell)
     await flushPromises()
     expect(w.find('[data-test=admin-menu]').exists()).toBe(false)
+  })
+
+  it('publishes the admin flag and pending count into activeCommunity', async () => {
+    vi.spyOn(api, 'getCommunity').mockResolvedValue({
+      id: '1',
+      name: 'Team',
+      slug: 'team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      phaseTwoStartRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 3,
+    })
+    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
+    const Shell = (await import('@/pages/[slug].vue')).default
+    mount(Shell)
+    await flushPromises()
+    expect(activeCommunity.value).toMatchObject({
+      slug: 'team',
+      name: 'Team',
+      viewerIsAdmin: true,
+      pendingCount: 3,
+    })
+  })
+
+  it('republishes activeCommunity when the context is refreshed', async () => {
+    const get = vi.spyOn(api, 'getCommunity').mockResolvedValue({
+      id: '1',
+      name: 'Team',
+      slug: 'team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      phaseTwoStartRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 3,
+    })
+    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
+    const Shell = (await import('@/pages/[slug].vue')).default
+    const w = mount(Shell)
+    await flushPromises()
+    get.mockResolvedValue({
+      id: '1',
+      name: 'Team',
+      slug: 'team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      phaseTwoStartRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 0,
+    })
+    await w.find('[data-test=do-refresh]').trigger('click')
+    await flushPromises()
+    expect(activeCommunity.value?.pendingCount).toBe(0)
   })
 })

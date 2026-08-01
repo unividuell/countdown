@@ -26,6 +26,8 @@ describe('App main header', () => {
       name: 'Hütte Hütte',
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain('Hütte Hütte')
@@ -39,6 +41,8 @@ describe('App main header', () => {
       name: 'Hütte Hütte',
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('Hütte Hütte')
@@ -52,6 +56,8 @@ describe('App main header', () => {
       name: 'Hütte Hütte',
       startsAt: '2025-12-31T23:30:00Z',
       startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain("'26")

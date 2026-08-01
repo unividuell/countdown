@@ -15,6 +15,8 @@ export interface ActiveCommunity {
   name: string
   startsAt: string | null
   startsAtTimezone: string
+  viewerIsAdmin: boolean
+  pendingCount: number
 }
 export const activeCommunity = ref<ActiveCommunity | null>(null)
 
