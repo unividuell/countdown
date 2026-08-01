@@ -1,6 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+
+// Every case mounts with attachTo: document.body, so global listeners (the outside-click
+// and Escape handlers) stay live on document after the test ends unless torn down — without
+// this, a later case's Escape keystroke can be handled by an earlier case's still-open menu too.
+enableAutoUnmount(afterEach)
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -25,11 +30,11 @@ const mountMenu = async () => {
 describe('HeaderMenu', () => {
   it('is closed initially and toggles on trigger clicks', async () => {
     const w = await mountMenu()
-    expect(w.find('[role=menu]').exists()).toBe(false)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
     await w.find('button').trigger('click')
-    expect(w.find('[role=menu]').exists()).toBe(true)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(true)
     await w.find('button').trigger('click')
-    expect(w.find('[role=menu]').exists()).toBe(false)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
   })
 
   it('exposes its state to assistive technology', async () => {
@@ -47,7 +52,7 @@ describe('HeaderMenu', () => {
     await w.find('button').trigger('click')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
-    expect(w.find('[role=menu]').exists()).toBe(false)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
     expect(document.activeElement).toBe(w.find('button').element)
   })
 
@@ -59,7 +64,7 @@ describe('HeaderMenu', () => {
     outside.dispatchEvent(new Event('pointerdown', { bubbles: true }))
     outside.dispatchEvent(new Event('click', { bubbles: true }))
     await nextTick()
-    expect(w.find('[role=menu]').exists()).toBe(false)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
   })
 
   it('closes when the route changes', async () => {
@@ -67,6 +72,18 @@ describe('HeaderMenu', () => {
     await w.find('button').trigger('click')
     route.fullPath = '/other/'
     await nextTick()
-    expect(w.find('[role=menu]').exists()).toBe(false)
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
+  })
+
+  // This is the mechanism the failed-logout story rests on: a non-navigating action inside
+  // the panel (a failed logout showing its error line) must not be closed out from under itself
+  // by a click-inside handler. Requires attachTo: document.body (see mountMenu) — the outside-click
+  // listener is registered on `document`, so a detached tree could never exercise it either way.
+  it('does not close when a click lands on content inside the panel', async () => {
+    const w = await mountMenu()
+    await w.find('button').trigger('click')
+    await w.find('a').trigger('click')
+    await nextTick()
+    expect(w.find('[data-test=menu-panel]').exists()).toBe(true)
   })
 })

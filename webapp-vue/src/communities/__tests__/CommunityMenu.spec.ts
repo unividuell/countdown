@@ -49,7 +49,7 @@ describe('CommunityMenu', () => {
 
   it('heads the admin block with the community name and links the three admin pages', async () => {
     const w = await open(admin)
-    const menu = w.find('[role=menu]')
+    const menu = w.find('[data-test=menu-panel]')
     expect(menu.text()).toContain('Team Süd')
     expect(menu.text()).toContain('Anfragen')
     expect(menu.text()).toContain('2') // pending count next to Anfragen
@@ -60,7 +60,7 @@ describe('CommunityMenu', () => {
 
   it('shows neither heading nor admin links to a non-admin', async () => {
     const w = await open({ ...admin, viewerIsAdmin: false, pendingCount: 0 })
-    const menu = w.find('[role=menu]')
+    const menu = w.find('[data-test=menu-panel]')
     expect(menu.text()).not.toContain('Anfragen')
     expect(menu.text()).not.toContain('Einstellungen')
     expect(menu.text()).not.toContain('Team Süd')

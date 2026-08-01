@@ -46,11 +46,24 @@ describe('community shell guard', () => {
   })
 
   it('shows no-access on 404', async () => {
+    // Primed as if a previous community were active, so the assertion below exercises the
+    // shell's failure-path reset rather than a value that was already null from beforeEach.
+    activeCommunity.value = {
+      slug: 'stale',
+      name: 'Stale',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: true,
+      pendingCount: 5,
+    }
     vi.spyOn(api, 'getCommunity').mockRejectedValue(new ApiError(404, 'no access'))
     const Shell = (await import('@/pages/[slug].vue')).default
     const w = mount(Shell)
     await flushPromises()
     expect(w.text()).toMatch(/kein Zugriff|nicht gefunden/i)
+    // A failed resolve must clear the header state, or a stale community menu (the wrong
+    // community's admin links and pending dot) survives a failed switch.
+    expect(activeCommunity.value).toBeNull()
   })
 
   it('renders no community chrome in the content area', async () => {
@@ -70,7 +83,7 @@ describe('community shell guard', () => {
     await flushPromises()
     expect(w.find('header').exists()).toBe(false)
     expect(w.find('[data-test=logout]').exists()).toBe(false)
-    expect(w.find('[data-test=admin-menu]').exists()).toBe(false)
+    expect(w.find('[data-test=community-menu]').exists()).toBe(false)
     expect(w.text()).not.toContain('Team')
   })
 

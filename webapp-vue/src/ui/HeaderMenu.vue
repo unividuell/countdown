@@ -45,7 +45,7 @@ watch(
     </button>
     <div
       v-if="open"
-      role="menu"
+      data-test="menu-panel"
       class="absolute z-20 mt-1 w-56 rounded border bg-white py-1 text-neutral-900 shadow"
       :class="align === 'right' ? 'right-0' : 'left-0'"
     >

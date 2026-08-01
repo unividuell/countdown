@@ -11,6 +11,7 @@ describe('icon bundling', () => {
   it('inherits colour and size from the surrounding text', () => {
     const w = mount(IconUsers)
     expect(w.attributes('width')).toBe('1em')
+    expect(w.attributes('height')).toBe('1em')
     expect(w.html()).toContain('currentColor')
   })
 })
