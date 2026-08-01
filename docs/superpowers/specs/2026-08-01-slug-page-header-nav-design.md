@@ -75,8 +75,10 @@ to `/`) and `CountdownDisplay` are unchanged.
 shared UI primitives; the feature folders (`communities/`, `auth/`) stay as they are.
 
 - Slots: `trigger` (button content) and default (panel content). Prop: `label` for `aria-label`.
-- Holds `open`; closes on outside click (`onClickOutside`), `Escape` (`onKeyStroke`), route change
-  (`watch` on `route.fullPath`) and on any click inside the panel (menu items navigate).
+- Holds `open`; closes on outside click (`onClickOutside`), `Escape` (`onKeyStroke`) and route change
+  (`watch` on `route.fullPath`). Closing is deliberately **not** wired to "any click inside the
+  panel": every navigating entry changes the route and thus closes the menu anyway, while a
+  non-navigating action (a failing logout) has to be able to keep the panel open to show its error.
 - Trigger carries `aria-haspopup="menu"` + `aria-expanded`; the panel carries `role="menu"`.
 - `Escape` returns focus to the trigger.
 - Panel: light surface on the dark header, `z-20`, positioned under its trigger — left-aligned for
