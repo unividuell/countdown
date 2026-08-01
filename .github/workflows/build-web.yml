@@ -21,7 +21,8 @@ permissions:
   contents: read
   packages: write
 jobs:
-  image:
+  # See build-core.yml: the job id is the PR check name, so it must differ per workflow.
+  web:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7

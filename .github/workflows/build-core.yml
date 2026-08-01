@@ -17,7 +17,10 @@ permissions:
   contents: read
   packages: write
 jobs:
-  image:
+  # Job id doubles as the check name on a PR — keep it distinct per workflow ('image'
+  # in both showed up as two identical checks) and name the component, not the action:
+  # on a pull_request this job verifies and builds no image at all.
+  core:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
