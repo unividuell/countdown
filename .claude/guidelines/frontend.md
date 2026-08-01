@@ -48,7 +48,7 @@ implementation.
 
 ## State — composables + VueUse (no Pinia)
 
-App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
+App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
 ## HTTP + auth (the same-origin SPA contract)
 
@@ -90,7 +90,8 @@ Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`i
 - `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
 - Admin-only pages (`members.vue`, `settings.vue`, `requests.vue`) all call `useAdminGuard()` at the top of `<script setup>`.
 - In tests, mock the entire context module: `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`. This avoids the `inject` dependency on a real Vue app wrapping.
-- `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend. The shell shows the admin ⚙ menu and pending badge only when `viewerIsAdmin` is true.
+- `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend; both are republished into `activeCommunity` for the header's community menu (see "App-level header state" below) rather than consumed inside the shell itself.
+- `refresh()` deliberately keeps no internal `try`/`catch` — a rejection is the caller's to handle, not something it swallows. It is handed to every `[slug]` child through `provide(communityKey, …)`, so this contract binds every child, not just the shell: wrap the call in your own `try`/`catch`, and don't treat the action as having succeeded until `refresh()` itself has resolved. `requests.vue` and `settings.vue` both fold their `await refresh()` into the same `try` as the mutating call, so a rejection there still lands in the `catch` instead of being reported as a silent success.
 
 ## Lint / format
 

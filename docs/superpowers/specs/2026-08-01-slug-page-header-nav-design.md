@@ -79,7 +79,11 @@ shared UI primitives; the feature folders (`communities/`, `auth/`) stay as they
   (`watch` on `route.fullPath`). Closing is deliberately **not** wired to "any click inside the
   panel": every navigating entry changes the route and thus closes the menu anyway, while a
   non-navigating action (a failing logout) has to be able to keep the panel open to show its error.
-- Trigger carries `aria-haspopup="menu"` + `aria-expanded`; the panel carries `role="menu"`.
+- Trigger carries `aria-haspopup="menu"` + `aria-expanded`; the panel itself carries no ARIA role
+  and is exposed as a plain disclosure through the trigger's `aria-expanded` alone. `role="menu"` was
+  tried and dropped: it promises `menuitem` children and arrow-key roving focus, and the panel's
+  actual children (plain `<a>`/`<button>` entries, a non-interactive label `<div>`, a divider `<div>`)
+  satisfy neither. The panel carries `data-test="menu-panel"` as its test hook instead.
 - `Escape` returns focus to the trigger.
 - Panel: light surface on the dark header, `z-20`, positioned under its trigger — left-aligned for
   the community menu, right-aligned for the member menu.
