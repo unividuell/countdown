@@ -18,6 +18,7 @@ class SlugsTest {
     fun `reserved slugs are detected`() {
         Slugs.isReserved("api") shouldBe true
         Slugs.isReserved("join") shouldBe true
+        Slugs.isReserved("super-admin") shouldBe true
         Slugs.isReserved("team-a") shouldBe false
     }
 }
