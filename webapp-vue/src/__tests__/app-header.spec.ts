@@ -1,17 +1,35 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import App from '@/App.vue'
 import { activeCommunity } from '@/communities/context'
+import { useAuth } from '@/auth/useAuth'
+
+vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
+
+function mockStatus(status: 'unknown' | 'authenticated' | 'anonymous') {
+  vi.mocked(useAuth).mockReturnValue({
+    user: ref(null) as never,
+    status: ref(status) as never,
+    bootstrap: vi.fn(),
+    loginWithGitHub: vi.fn(),
+    logout: vi.fn(),
+    markAnonymous: vi.fn(),
+  })
+}
 
 const stubs = {
   RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
   RouterView: { template: '<div />' },
   CountdownDisplay: { template: '<div data-test="countdown-widget" />', props: ['slug'] },
+  CommunityMenu: { template: '<div data-test="community-menu" />', props: ['community'] },
+  MemberMenu: { template: '<div data-test="member-menu" />' },
 }
 
 describe('App main header', () => {
   beforeEach(() => {
     activeCommunity.value = null
+    mockStatus('anonymous')
   })
 
   it('shows the app name and no countdown when no community is active', () => {
@@ -61,5 +79,26 @@ describe('App main header', () => {
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain("'26")
+  })
+
+  it('shows the community menu only inside a community', () => {
+    expect(mount(App, { global: { stubs } }).find('[data-test=community-menu]').exists()).toBe(
+      false,
+    )
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte Hütte',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    expect(mount(App, { global: { stubs } }).find('[data-test=community-menu]').exists()).toBe(true)
+  })
+
+  it('shows the member menu only for an authenticated viewer', () => {
+    expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
+    mockStatus('authenticated')
+    expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
   })
 })
