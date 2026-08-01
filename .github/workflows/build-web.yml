@@ -1,6 +1,15 @@
 name: build-web
 on:
   workflow_dispatch: {}
+  # PRs run the gate only — the image steps below are skipped, so a PR never
+  # publishes to ghcr (a non-main ref would resolve to and clobber :staging).
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'webapp-vue/**'
+      - 'deploy/Caddyfile'
+      - 'deploy/web.Dockerfile'
+      - '.github/workflows/build-web.yml'
   push:
     branches: [main, develop]
     paths:
@@ -19,25 +28,30 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      # Gate the image on lint + unit tests. The Docker build re-runs `pnpm build`
-      # (vue-tsc type-check + vite build), so type errors also fail the build below;
-      # this step adds eslint + Vitest, which the image build does NOT run.
-      - name: Lint + test (gate before image)
+      # The gate must stand on its own: on a pull_request the image steps below are
+      # skipped, so `pnpm build` (which is what runs vue-tsc in the Docker build) never
+      # happens. Hence an explicit `pnpm typecheck` here — otherwise type errors would
+      # only surface after merge. eslint + Vitest are never run by the image build.
+      - name: Lint + typecheck + test (gate before image)
         working-directory: webapp-vue
         run: |
           corepack enable
           pnpm install --frozen-lockfile
           pnpm lint
+          pnpm typecheck
           pnpm test
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Resolve image tag
+        if: github.event_name != 'pull_request'
         id: tag
         run: echo "tag=${{ github.ref_name == 'main' && 'latest' || 'staging' }}" >> "$GITHUB_OUTPUT"
       - name: Build & push web image
+        if: github.event_name != 'pull_request'
         run: |
           docker build -f deploy/web.Dockerfile -t ghcr.io/unividuell/countdown-web:${{ steps.tag.outputs.tag }} .
           docker push ghcr.io/unividuell/countdown-web:${{ steps.tag.outputs.tag }}

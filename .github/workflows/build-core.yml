@@ -1,6 +1,13 @@
 name: build-core
 on:
   workflow_dispatch: {}
+  # PRs run the test gate only — the image steps below are skipped, so a PR never
+  # publishes to ghcr (a non-main ref would resolve to and clobber :staging).
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'core/**'
+      - '.github/workflows/build-core.yml'
   push:
     branches: [main, develop]
     paths:
@@ -26,9 +33,11 @@ jobs:
         working-directory: core
         run: ./mvnw -B clean verify
       - name: Resolve image tag
+        if: github.event_name != 'pull_request'
         id: tag
         run: echo "tag=${{ github.ref_name == 'main' && 'latest' || 'staging' }}" >> "$GITHUB_OUTPUT"
       - name: Build & publish image (Buildpacks -> ghcr)
+        if: github.event_name != 'pull_request'
         working-directory: core
         env:
           GHCR_USERNAME: ${{ github.actor }}
