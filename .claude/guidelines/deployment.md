@@ -65,27 +65,25 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 - `update.sh <prod|staging>` (default `prod`) picks the env file, fetches the compose file, pulls, `up -d`.
 - **Each target tracks the branch its images come from** — prod fetches `compose.yaml` +
   `.env.prod.example` from **`main`** (`:latest`), staging from **`develop`** (`:staging`);
-  `REF=<branch>` overrides for a one-off. Getting this wrong is not cosmetic: while both targets
-  fetched from `main`, staging ran develop images on main infrastructure, so an infra change could
-  never be exercised before it hit prod — and a compose line that existed only on develop
-  (`SUPER_ADMIN_GITHUB_LOGINS` in `core`'s `environment:`) silently reached **neither** stack.
+  `REF=<branch>` overrides for a one-off. Infra must follow the same branch as the code it deploys,
+  or staging runs develop images on main infrastructure and a compose-level change can never be
+  exercised before it reaches prod.
 - **The compose file is per target on disk** (`compose.prod.yaml` / `compose.staging.yaml`), because
   both stacks share one directory: with a single `compose.yaml`, a staging run would overwrite the
   file prod is deployed from. Containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
-  renaming the file recreates nothing on its own. **`update.sh` and `README.md` stay pinned to `main`**
-  — they are one shared copy, and a staging run must not leave prod driving an unreleased script.
-  Corollary: a change to `update.sh` itself only takes effect on the *next* invocation (the running
-  shell keeps its old inode across the `mv`), so switching layouts takes two runs per target.
+  the on-disk name is free to change and renaming recreates nothing on its own.
+- **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
+  and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
+  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
+  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
 - **pgAdmin is per-environment** (each stack's own `debug`-profile pgAdmin connects only to its own
   `postgres` via the service name; no shared instance/network). Distinct loopback ports
   (`PGADMIN_PORT`) let you tunnel both at once. README documents the per-env start + SSH tunnel.
 - Edge routes `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the
   test-user picker — see security-and-auth.md; no separate staging GitHub OAuth App).
-- **Rename migrations** (twice now: `compose.prod.yaml` + `.env` → shared `compose.yaml` + `.env.prod`
-  → per-target `compose.<target>.yaml`): the on-disk filename is free to change because
-  `COMPOSE_PROJECT_NAME` is what identifies the stack — keep it stable and the existing volumes are
-  reused, no data loss. Expect a brief prod restart on a cutover, and delete the orphaned file
-  afterwards so nobody runs `-f` against a stale copy.
+- **`COMPOSE_PROJECT_NAME` is the stack's identity**, not the compose file's name or location: keep
+  it stable and the existing volumes are reused across any rename or move (no data loss); change it
+  and you silently get a second, empty stack.
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
   `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
   before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
