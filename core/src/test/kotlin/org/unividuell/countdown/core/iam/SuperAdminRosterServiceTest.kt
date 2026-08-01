@@ -1,6 +1,8 @@
 package org.unividuell.countdown.core.iam
 
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -18,12 +20,15 @@ import org.unividuell.countdown.core.iam.internal.UserRepository
  * Integration test on purpose: the roster runs hand-written SQL (`lower(github_login) IN (…)`)
  * and binds the real allowlist property — neither is exercised by a mock.
  * `test-auth.enabled=false` keeps the seeded Futurama users out of this context.
+ * The allowlist is spaced like a hand-edited "alice, bob" value on purpose: `ghost` and
+ * `notyetflagged` only resolve cleanly (no phantom " ghost"/" notyetflagged" row) if
+ * `SuperAdminProperties` trims each entry before this service consumes it.
  */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @Transactional
 @TestPropertySource(
-    properties = ["app.super-admin-github-logins=bossuser,ghost,notyetflagged", "app.test-auth.enabled=false"],
+    properties = ["app.super-admin-github-logins=bossuser, ghost, notyetflagged", "app.test-auth.enabled=false"],
 )
 class SuperAdminRosterServiceTest(
     @Autowired val service: SuperAdminRosterService,
@@ -74,6 +79,14 @@ class SuperAdminRosterServiceTest(
         row.userId.shouldBeNull()
         row.createdAt.shouldBeNull()
         row.username.shouldBeNull()
+    }
+
+    @Test
+    fun `whitespace left by a comma-separated allowlist value produces no phantom row`() {
+        val logins = service.roster().map { it.githubLogin }
+
+        logins shouldContain "ghost"
+        logins shouldNotContain " ghost"
     }
 
     @Test

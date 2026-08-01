@@ -62,6 +62,12 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 - **Rename migration:** prod was `compose.prod.yaml` + `.env`. Keep `COMPOSE_PROJECT_NAME=countdown`
   when moving to `compose.yaml` + `.env.prod` so the existing volumes are reused (no data loss);
   expect a brief prod restart on the cutover.
+- **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
+  `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
+  before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
+  `SUPER_ADMIN_GITHUB_LOGINS`). When adding one, document a one-line manual-migration note in
+  `deploy/README.md` right where an upgrading operator will read it — a first-run checklist alone
+  isn't enough, since existing stacks skip the whole "first run" path.
 - **`--env-file` is substitution-only, not passthrough:** `docker compose --env-file .env.prod`
   only makes a var available for `${VAR}` interpolation *inside* `compose.yaml` — it does **not**
   inject it into a container's process environment. A variable in `.env.prod`/`.env.staging`

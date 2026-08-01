@@ -33,6 +33,10 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,
 prints a reminder to fill in secrets, and exits without starting Docker. Fill in the values, then re-run.
 
+**Existing deployments:** `update.sh` only writes `.env.<target>` from the template when the file
+doesn't exist, so a stack bootstrapped earlier keeps its old env file — add `SUPER_ADMIN_GITHUB_LOGINS=`
+to your `.env.prod`/`.env.staging` by hand (empty, or your real allowlist); it will not appear there on its own.
+
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
@@ -48,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
 # edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD; GITHUB_CLIENT_SECRET=unused is fine
-#   (SUPER_ADMIN_GITHUB_LOGINS=leela is already preset)
+#   (SUPER_ADMIN_GITHUB_LOGINS=leela comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
 

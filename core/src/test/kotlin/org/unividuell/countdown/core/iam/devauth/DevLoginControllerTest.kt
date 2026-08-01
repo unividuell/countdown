@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.iam.devauth
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.ServletException
 import org.hamcrest.Matchers.containsString
@@ -54,6 +55,10 @@ class DevLoginControllerTest(
     @Test
     fun `POST login github as rejects a login that exists but is not a seed user`() {
         users.save(User(githubId = 4242L, githubLogin = "octocat"))
+        // Pins the rejection below to "exists but isn't a seed login" rather than "no such user":
+        // loginAs raises the identical error for both, so without this the test would keep
+        // passing even if the save/lookup above silently stopped working.
+        users.findByGithubLogin("octocat").shouldNotBeNull()
 
         // Same rejection mechanism as an unknown login: the `error(...)` call surfaces as an
         // uncaught IllegalStateException, which MockMvc propagates wrapped in a ServletException

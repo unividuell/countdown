@@ -33,12 +33,11 @@ class SuperAdminRosterService(
 ) {
     @Transactional(readOnly = true)
     fun roster(): List<SuperAdminUserResponse> {
-        // Blank entries come from a trailing/double comma or a whitespace-only value (e.g.
-        // "a," binds to ["a", ""]) — not from the empty env default, which Spring binds
-        // straight to emptyList(). Filtering them out here, before the emptiness check below,
-        // is what makes `IN ()` unreachable: that check only ever sees the already-cleaned set.
-        val allowlist = properties.superAdminGithubLogins
-            .filter { it.isNotBlank() }
+        // Blanks (from a trailing/double comma, or the empty env default) and stray whitespace
+        // (from "a, b") are already stripped by SuperAdminProperties.normalizedSuperAdminGithubLogins.
+        // Doing that before the emptiness check below is what makes `IN ()` unreachable: that
+        // check only ever sees the already-cleaned set.
+        val allowlist = properties.normalizedSuperAdminGithubLogins
             .map { it.lowercase() }
             .toSet()
 

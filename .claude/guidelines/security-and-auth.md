@@ -56,8 +56,16 @@ concern; revisit when other modules gain protected resources).
   `ROLE_SUPER_ADMIN`; `/api/super-admin/**` requires `hasRole("SUPER_ADMIN")`.
 - Granted declaratively via an allowlist of GitHub logins
   (`app.super-admin-github-logins`), **re-evaluated on every login** (so
-  adding/removing a login grants/revokes on next sign-in). Ignore blank entries
-  (the empty-string env default can bind a ghost element).
+  adding/removing a login grants/revokes on next sign-in). The empty-string env
+  default (`${SUPER_ADMIN_GITHUB_LOGINS:}`) binds to `emptyList()`, not a
+  one-element list — nobody holds the role.
+- **Compare/key against `SuperAdminProperties.normalizedSuperAdminGithubLogins`**
+  (trimmed, blanks dropped) — never re-derive that filtering per consumer. A
+  duplicated `filter { it.isNotBlank() }` with no `.trim()` in both `isSuperAdmin`
+  and `SuperAdminRosterService` let `"alice, bob"` (space after the comma)
+  silently deny `bob` the role while leaking a phantom `" bob"` row from the
+  roster endpoint — same bug, two call sites, because the normalisation wasn't
+  centralised.
 - The name "super-admin" is deliberately distinct from future **community-admins**
   — don't conflate them when adding finer-grained roles later.
 - **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
