@@ -22,8 +22,12 @@ const others = computed(() => active.value.filter((c) => c.slug !== props.commun
 const showDot = computed(() => props.community.viewerIsAdmin && props.community.pendingCount > 0)
 const label = computed(() => (showDot.value ? 'Community-Menü, offene Anfragen' : 'Community-Menü'))
 
+// Every entry is a flex row so a trailing element can be pushed right with ml-auto. Keep it
+// here rather than adding `flex` next to `block` per entry: both are display utilities, and
+// which one wins depends on Tailwind's emission order, not on the class attribute.
 // cursor-pointer is explicit: Tailwind v4's preflight resets buttons to cursor:default.
-const ENTRY = 'block w-full cursor-pointer px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
+const ENTRY =
+  'flex w-full cursor-pointer items-center px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
 
 async function go(c: CommunitySummary): Promise<void> {
   // The selection is only a "last visited" marker — losing it must not block the navigation.
@@ -56,7 +60,7 @@ async function go(c: CommunitySummary): Promise<void> {
         Anfragen
         <span
           v-if="community.pendingCount > 0"
-          class="ml-1.5 rounded-full bg-blue-600 px-1.5 text-xs text-white"
+          class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
           >{{ community.pendingCount }}</span
         >
       </RouterLink>
@@ -79,7 +83,7 @@ async function go(c: CommunitySummary): Promise<void> {
     <RouterLink
       to="/communities/new"
       data-test="create-community"
-      :class="`${ENTRY} flex items-center gap-2 text-neutral-600`"
+      :class="`${ENTRY} gap-2 text-neutral-600`"
     >
       <IconPlus class="size-4" />
       Spielgemeinschaft
