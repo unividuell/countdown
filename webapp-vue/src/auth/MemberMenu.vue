@@ -33,7 +33,7 @@ async function handleLogout(): Promise<void> {
     <button
       type="button"
       data-test="logout"
-      class="block w-full px-3 py-1.5 text-left text-sm hover:bg-neutral-100"
+      class="block w-full cursor-pointer px-3 py-1.5 text-left text-sm hover:bg-neutral-100"
       @click="handleLogout"
     >
       Abmelden

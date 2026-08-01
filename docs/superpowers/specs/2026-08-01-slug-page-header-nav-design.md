@@ -34,7 +34,9 @@ far right**, after the countdown. The content area of the `/[slug]` shell is lef
   the member icon renders everywhere the viewer is authenticated. Logout therefore has exactly one
   place in the app.
 - **Pending signal: a dot, not a number.** A small coloured dot on the community icon when
-  `viewerIsAdmin && pendingCount > 0`; the exact count stays behind "Anfragen" inside the menu.
+  `viewerIsAdmin && pendingCount > 0`; the exact count stays behind "Anfragen" inside the menu,
+  as a chip in **the same blue as the dot** — that shared colour is what tells the viewer the
+  dot they saw on the icon and the number they found in the menu are the same signal.
 - **State plumbing: extend `activeCommunity`** with `viewerIsAdmin` + `pendingCount`. Rejected:
   hoisting the community fetch into a shared composable (touches the `provide`/`inject` contract of
   all four `[slug]` child pages for no gain); rejected: `<Teleport>` from the shell into the header
@@ -119,7 +121,7 @@ Logout: `await logout()`, then `router.replace('/login')`.
 | Admin links | `viewerIsAdmin` | Anfragen (with the count when `pendingCount > 0`) · Mitglieder · Einstellungen |
 | Divider | `viewerIsAdmin` | only when the block above it exists |
 | Communities | always | every entry of `active` except the current one; click → `setSelection` + `/<slug>/` |
-| Create | always | "Spielgemeinschaft erstellen" → `/communities/new`, prefixed with `~icons/lucide/plus` so it reads as an action rather than as another community |
+| Create | always | "Spielgemeinschaft" → `/communities/new`, prefixed with `~icons/lucide/plus` so it reads as an action rather than as another community — the `+` carries the verb, so the label stays short enough not to wrap |
 
 Edge cases: a non-admin sees neither heading nor divider. A viewer who belongs to exactly one
 community gets an empty list, leaving only the create action — the icon still renders, so the header

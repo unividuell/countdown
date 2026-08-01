@@ -38,7 +38,7 @@ watch(
       :aria-label="label"
       aria-haspopup="menu"
       :aria-expanded="open"
-      class="flex items-center rounded p-1 hover:bg-stone-800"
+      class="flex cursor-pointer items-center rounded p-1 hover:bg-stone-800"
       @click="open = !open"
     >
       <slot name="trigger" />

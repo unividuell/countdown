@@ -22,7 +22,8 @@ const others = computed(() => active.value.filter((c) => c.slug !== props.commun
 const showDot = computed(() => props.community.viewerIsAdmin && props.community.pendingCount > 0)
 const label = computed(() => (showDot.value ? 'Community-Menü, offene Anfragen' : 'Community-Menü'))
 
-const ENTRY = 'block w-full px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
+// cursor-pointer is explicit: Tailwind v4's preflight resets buttons to cursor:default.
+const ENTRY = 'block w-full cursor-pointer px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
 
 async function go(c: CommunitySummary): Promise<void> {
   // The selection is only a "last visited" marker — losing it must not block the navigation.
@@ -53,7 +54,11 @@ async function go(c: CommunitySummary): Promise<void> {
       <div class="px-3 pt-1 pb-0.5 text-xs text-neutral-500">{{ community.name }}</div>
       <RouterLink :to="`/${community.slug}/requests`" :class="ENTRY">
         Anfragen
-        <span v-if="community.pendingCount > 0">({{ community.pendingCount }})</span>
+        <span
+          v-if="community.pendingCount > 0"
+          class="ml-1.5 rounded-full bg-blue-600 px-1.5 text-xs text-white"
+          >{{ community.pendingCount }}</span
+        >
       </RouterLink>
       <RouterLink :to="`/${community.slug}/members`" :class="ENTRY">Mitglieder</RouterLink>
       <RouterLink :to="`/${community.slug}/settings`" :class="ENTRY">Einstellungen</RouterLink>
@@ -77,7 +82,7 @@ async function go(c: CommunitySummary): Promise<void> {
       :class="`${ENTRY} flex items-center gap-2 text-neutral-600`"
     >
       <IconPlus class="size-4" />
-      Spielgemeinschaft erstellen
+      Spielgemeinschaft
     </RouterLink>
   </HeaderMenu>
 </template>
