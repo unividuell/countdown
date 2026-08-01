@@ -3,7 +3,8 @@ package org.unividuell.countdown.core.community.internal
 import java.text.Normalizer
 
 object Slugs {
-    val RESERVED = setOf("api", "oauth2", "login", "logout", "communities", "join")
+    // "super-admin" is a static frontend route and would shadow a community with that slug.
+    val RESERVED = setOf("api", "oauth2", "login", "logout", "communities", "join", "super-admin")
 
     fun slugify(name: String): String {
         val umlauts = name.lowercase()

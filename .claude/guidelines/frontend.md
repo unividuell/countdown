@@ -18,6 +18,16 @@ implementation.
   instant→input `DateTime.fromISO(iso, { zone }).toFormat("yyyy-MM-dd'T'HH:mm")`,
   input→instant `DateTime.fromISO(local, { zone }).toUTC().toISO()` (returns `string | null` under
   strict TS — guard it). See the **Zone-relative time entry** note below.
+- **Icons: Lucide, bundled at build time** — `unplugin-icons` + `@iconify-json/lucide`, both
+  **devDependencies**; import as `~icons/lucide/<name>`. Deliberately *not* `@iconify/vue` (the
+  origin huettehuette app's choice): its `<Icon>` resolves icon data at runtime from
+  `api.iconify.design`, i.e. an external request from every user's browser plus visible pop-in.
+  **Gotcha:** `Icons({ compiler: 'vue3', scale: 1 })` must be registered in **both** `vite.config.ts`
+  and `vitest.config.ts` — they are separate files, and without it `~icons/*` fails to resolve in
+  tests. The explicit `scale: 1` matters too: the plugin defaults to `1.2`, which would silently
+  break the "1em, inherits from the surrounding text" contract — with it, generated components
+  render exactly `1em`/`currentColor`, so size them purely with Tailwind (`class="size-5"`).
+  `vue-tsc` needs `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`.
 
 ## Routing — Vue Router 5 built-in file-based routing
 
@@ -28,10 +38,17 @@ implementation.
 - Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time; the call vanishes in the build).
 - **Gotcha:** `definePage` is a build-time macro processed by the VueRouter plugin. Unit tests run Vitest with only `@vitejs/plugin-vue` (not the VueRouter plugin), so stub it in a setup file: `globalThis.definePage = (r) => r` (mirrors `vue-router/experimental`'s runtime no-op).
 - **Typed route params (strict TS):** Use the typed `useRoute('/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`[slug].vue`, `[slug]/members.vue`, etc.) all need the specific route name. See also `multi-tenancy.md`.
+- **Gotcha:** `router.push()` / `.replace()` return a Promise; a bare, unawaited call at the end of
+  an async handler leaves its rejection on a chain nothing observes. `CommunityMenu.vue` and
+  `MemberMenu.vue` attach `.catch((e) => console.error('navigation failed', e))` to every
+  post-action navigation. Test doubles for `push`/`replace` must resolve accordingly —
+  `vi.fn().mockResolvedValue(undefined)` — a bare `vi.fn()` returns `undefined`, and calling
+  `.catch` on that throws synchronously, failing the test for a reason unrelated to the behavior
+  under test.
 
 ## State — composables + VueUse (no Pinia)
 
-App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_resetAuthState()` hook to reset the singleton between cases (module state is per-file, not per-test, in Vitest).
+App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
 ## HTTP + auth (the same-origin SPA contract)
 
@@ -48,6 +65,20 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **Vitest + @vue/test-utils + happy-dom**, unit level. JUnit-style; kotest is NOT used here.
 - **Mocking uses Vitest `vi`** (`vi.stubGlobal` for `fetch`/`location`, `vi.mock` for modules) — **NOT mockk/kotest** (those are the Kotlin backend's convention).
 - Test **real behavior**, not mock echoes: assert on the actual `RequestInit` sent to `fetch`, on `router.currentRoute` after navigation (guard tests use a `createMemoryHistory` router), etc.
+- **VueUse's `onClickOutside` does not fire under happy-dom.** `src/ui/HeaderMenu.vue`'s
+  outside-click-to-close listens directly instead — `useEventListener(document, 'click', ...)` plus
+  a `root.value?.contains(e.target as Node)` check — because a test built against `onClickOutside`
+  cannot pass under Vitest/happy-dom.
+- **A composable double whose value is bound directly in a template must be a real `ref()`, not a
+  plain `{ value }` object.** `useAuth()` returns `readonly(ref(...))`, and both `MemberMenu.vue`
+  (`{{ user?.username }}`) and `App.vue` (`v-if="status === 'authenticated'"`) bind it directly. A
+  plain `{ value: ... } as never` double isn't a ref; `<script setup>`'s template compiler falls
+  back to a runtime `isRef()` check for bindings it can't prove are refs at compile time, so the
+  interpolation quietly renders empty and the `v-if` quietly compares an object to a string — no
+  error, just wrong output. Build these doubles with `ref(...)` (see `MemberMenu.spec.ts`,
+  `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
+  `.value.field` in script and never bound in a template — e.g. `useCommunityContext()`'s
+  `community`, or `useCommunities()`'s plain-object double in `index.spec.ts`.
 
 ## Community context + admin gating
 
@@ -59,7 +90,8 @@ Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`i
 - `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
 - Admin-only pages (`members.vue`, `settings.vue`, `requests.vue`) all call `useAdminGuard()` at the top of `<script setup>`.
 - In tests, mock the entire context module: `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`. This avoids the `inject` dependency on a real Vue app wrapping.
-- `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend. The shell shows the admin ⚙ menu and pending badge only when `viewerIsAdmin` is true.
+- `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend; both are republished into `activeCommunity` for the header's community menu (see "App-level header state" below) rather than consumed inside the shell itself.
+- `refresh()` deliberately keeps no internal `try`/`catch` — a rejection is the caller's to handle, not something it swallows. It is handed to every `[slug]` child through `provide(communityKey, …)`, so this contract binds every child, not just the shell: wrap the call in your own `try`/`catch`, and don't treat the action as having succeeded until `refresh()` itself has resolved. `requests.vue` and `settings.vue` both fold their `await refresh()` into the same `try` as the mutating call, so a rejection there still lands in the `catch` instead of being reported as a silent success.
 
 ## Lint / format
 
@@ -82,9 +114,43 @@ hidden, never an unhandled rejection).
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
 the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
 `activeCommunity` in `src/communities/context.ts` (set by the shell on resolve, cleared on unmount),
-not via `provide`/`inject`.
+not via `provide`/`inject`. `ActiveCommunity` also carries `viewerIsAdmin` + `pendingCount` for the
+header's community menu. **Every path that loads the community must republish it** — the shell
+routes both `resolve()` and `refresh()` through one `publish(c: CommunityResponse)` helper.
+Publishing only on the initial resolve leaves stale header state behind (the pending dot would
+survive an admin clearing the requests). Navigation controls live in the main header
+(`CommunityMenu`, `MemberMenu` on top of the shared `src/ui/HeaderMenu.vue`), never inside the
+`[slug]` content area.
 
 **Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
 the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
 to store, `DateTime.fromISO(iso, { zone }).toFormat(...)` to display. Test zone-correctness with a
-fixture whose zone year/day differs from UTC (a regression dropping `{ zone }` must turn a test red).
+fixture whose zone year/day differs from UTC. Luxon's fallback when `{ zone }` is dropped is the
+**system** zone, not UTC — `vitest.config.ts` pins `env: { TZ: 'UTC' }` so that fallback is the same
+locally as on CI (whose runner already defaults to UTC) and a dropped `{ zone }` reliably turns the
+test red either way. Still choose the fixture's own zone far from UTC, not merely different from
+your machine's: the community overview page's `Pacific/Kiritimati` (UTC+14) is the worked example
+and stays discriminating under any plausible host zone, whereas a fixture formatted in
+`Europe/Berlin` would not.
+
+## Role-gated areas + shell-owned access checks
+
+The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: the only entry
+point is a `MemberMenu` item rendered under `v-if="user?.isSuperAdmin"`, so a viewer without the
+role sees no trace of it. Gate any such entry point on the role itself — never on a plain link
+that a non-holder can see and bounce off.
+Pattern, mirroring the `[slug].vue` shell:
+
+- `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. A static route
+  segment outranks the dynamic `/:slug`, so no router config is needed — but reserve the segment
+  in the backend's `Slugs.RESERVED`, or a community with that slug becomes unreachable.
+- The shell does the role check **once** and keeps `<RouterView/>` inside the authorised branch.
+  Children then contain no access logic and, more importantly, never mount for an unauthorised
+  viewer — so they never fire a request that would 403. The backend rule is the real gate.
+- No `meta` flag and no change to `guard.ts` is needed for this; adding one would only duplicate
+  what the shell already enforces.
+
+**Test trap — `useAuth` stubs must be real refs.** A component template that reads
+`user?.isSuperAdmin` relies on Vue unwrapping the ref. The older stub style
+`user: { value: null } as never` is a plain object, so unwrapping silently yields `undefined` and
+a positive-path assertion can never pass. Return `ref({ … }) as never` from the mocked `useAuth`.

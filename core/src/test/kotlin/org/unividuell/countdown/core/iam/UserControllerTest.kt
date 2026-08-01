@@ -9,17 +9,15 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.iam.internal.CountdownOAuth2User
 import org.unividuell.countdown.core.iam.internal.UserProfileService
-import java.util.UUID
+import org.unividuell.countdown.core.principalFor
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -29,16 +27,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean
     lateinit var profileService: UserProfileService
 
-    private val uid = UUID.fromString("018f0000-0000-7000-8000-000000000000")
-
-    private fun principalFor(user: User) =
-        authentication(
-            OAuth2AuthenticationToken(
-                CountdownOAuth2User(user, mapOf("login" to user.githubLogin)),
-                CountdownOAuth2User(user, emptyMap()).authorities,
-                "github",
-            )
-        )
+    private val uid = TEST_USER_ID
 
     private fun user(isSuperAdmin: Boolean = false, displayName: String? = null) = User(
         id = uid, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",

@@ -1,8 +1,8 @@
 # countdown — server operations
 
-Two stacks from one parametrized `compose.yaml`:
-- **prod** (`countdown.unividuell.org`) — images `:latest`, `SPRING_PROFILES_ACTIVE=production`, real GitHub OAuth.
-- **staging** (`beta.countdown.unividuell.org`) — images `:staging`, `SPRING_PROFILES_ACTIVE=staging`, test-user picker login.
+Two stacks from one parametrized compose file, fetched per target as `compose.prod.yaml` / `compose.staging.yaml`:
+- **prod** (`countdown.unividuell.org`) — branch `main`, images `:latest`, `SPRING_PROFILES_ACTIVE=production`, real GitHub OAuth.
+- **staging** (`beta.countdown.unividuell.org`) — branch `develop`, images `:staging`, `SPRING_PROFILES_ACTIVE=staging`, test-user picker login.
 
 Both live in `/opt/unividuell/countdown/` on the server, identified by `COMPOSE_PROJECT_NAME` in their per-env file.
 Images come from `ghcr.io/unividuell/countdown-*` (**private** packages — the server must `docker login ghcr.io` first, see below).
@@ -33,9 +33,22 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,
 prints a reminder to fill in secrets, and exits without starting Docker. Fill in the values, then re-run.
 
+**Each target tracks the branch its images are built from** — prod pulls its compose file and env
+template from `main` (matching `:latest`), staging from `develop` (matching `:staging`). So an infra
+change is exercised on staging before it can reach prod, the same way application code is. Deploy a
+stack from another branch for a one-off test with `REF=<branch> ./update.sh <target>`; `update.sh`
+and `README.md` themselves always come from `main`, since both stacks share one copy on disk.
+
 **Existing deployments:** `update.sh` only writes `.env.<target>` from the template when the file
 doesn't exist, so a stack bootstrapped earlier keeps its old env file — add `SUPER_ADMIN_GITHUB_LOGINS=`
 to your `.env.prod`/`.env.staging` by hand (empty, or your real allowlist); it will not appear there on its own.
+
+**Migrating off the single `compose.yaml`:** the first run per target writes the new
+`compose.<target>.yaml`; the containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
+nothing is recreated beyond what actually changed. Run `./update.sh prod` **and** `./update.sh staging`
+once, then delete the now-unread `compose.yaml`. Note that the first run still executes the *old*
+script (the self-update lands on disk for the next invocation), so it takes two runs per target to
+fully switch over.
 
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
@@ -58,8 +71,8 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
-docker compose --env-file .env.staging -f compose.yaml down
-docker compose --env-file .env.staging -f compose.yaml up -d
+docker compose --env-file .env.staging -f compose.staging.yaml down
+docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
 ## Staging login
@@ -78,7 +91,7 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
-docker compose --env-file .env.prod -f compose.yaml --profile debug up -d pgadmin
+docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
 ssh -L 5050:127.0.0.1:5050 <user>@<server>
@@ -88,13 +101,13 @@ ssh -L 5050:127.0.0.1:5050 <user>@<server>
 #    pgadmin-data volume.
 
 # 4) when done
-docker compose --env-file .env.prod -f compose.yaml --profile debug stop pgadmin
+docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pgadmin
 ```
 
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
-docker compose --env-file .env.staging -f compose.yaml --profile debug up -d pgadmin
+docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051
 ssh -L 5051:127.0.0.1:5051 <user>@<server>
@@ -102,7 +115,7 @@ ssh -L 5051:127.0.0.1:5051 <user>@<server>
 # 3) browse http://localhost:5051 — opens straight in (no login), connected only to the staging DB.
 
 # 4) when done
-docker compose --env-file .env.staging -f compose.yaml --profile debug stop pgadmin
+docker compose --env-file .env.staging -f compose.staging.yaml --profile debug stop pgadmin
 ```
 
 ## Backups & restore
@@ -117,10 +130,10 @@ Copy the backup directory off-site regularly (rsync/scp).
 ```bash
 # prod:
 gunzip -c backups/app-<timestamp>.sql.gz \
-  | docker compose --env-file .env.prod -f compose.yaml exec -T postgres psql -U admin -d app
+  | docker compose --env-file .env.prod -f compose.prod.yaml exec -T postgres psql -U admin -d app
 
 # staging:
 gunzip -c backups-staging/app-<timestamp>.sql.gz \
-  | docker compose --env-file .env.staging -f compose.yaml exec -T postgres psql -U admin -d app
+  | docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app
 ```
 Restore into an empty/fresh `app` database.

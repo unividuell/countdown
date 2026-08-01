@@ -9,6 +9,7 @@ Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
 - **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing important learnings into these guidelines.
+- **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
@@ -19,6 +20,11 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:
 the **`iam` module** (backend) and **`webapp-vue`** (frontend).
+
+> **Branching:** we use **git flow**. Start work from `develop` and open PRs with
+> `--base develop` (`develop` is the GitHub default branch; `main` is production).
+> If any tooling claims the PR base is `main`, it's reading a stale `origin/HEAD`.
+> See [git-workflow.md](.claude/guidelines/git-workflow.md).
 
 ## Build & run
 

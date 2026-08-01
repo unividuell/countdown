@@ -1,5 +1,9 @@
 package org.unividuell.countdown.core.iam.devauth
 
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import jakarta.servlet.ServletException
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,12 +14,19 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.User
+import org.unividuell.countdown.core.iam.internal.UserRepository
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
-class DevLoginControllerTest(@Autowired val mockMvc: MockMvc) {
+@Transactional
+class DevLoginControllerTest(
+    @Autowired val mockMvc: MockMvc,
+    @Autowired val users: UserRepository,
+) {
     @Test
     fun `GET login github renders the test-user picker`() {
         mockMvc.get("/login/github").andExpect {
@@ -28,6 +39,8 @@ class DevLoginControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST login github as logs in the chosen seeded user`() {
+        // Positive control for the rejection test below: proves a real seed login still
+        // succeeds, so that test's rejection can't be passing for the wrong reason.
         mockMvc.post("/login/github/as") {
             with(csrf())
             param("login", "leela")
@@ -37,5 +50,25 @@ class DevLoginControllerTest(@Autowired val mockMvc: MockMvc) {
         }
         // session now authenticated as leela
         mockMvc.get("/api/me") { /* reuse session via the same mockMvc is non-trivial; assert via principal in a focused slice if needed */ }
+    }
+
+    @Test
+    fun `POST login github as rejects a login that exists but is not a seed user`() {
+        users.save(User(githubId = 4242L, githubLogin = "octocat"))
+        // Pins the rejection below to "exists but isn't a seed login" rather than "no such user":
+        // loginAs raises the identical error for both, so without this the test would keep
+        // passing even if the save/lookup above silently stopped working.
+        users.findByGithubLogin("octocat").shouldNotBeNull()
+
+        // Same rejection mechanism as an unknown login: the `error(...)` call surfaces as an
+        // uncaught IllegalStateException, which MockMvc propagates wrapped in a ServletException
+        // rather than resolving it to a response.
+        val thrown = shouldThrow<ServletException> {
+            mockMvc.post("/login/github/as") {
+                with(csrf())
+                param("login", "octocat")
+            }
+        }
+        thrown.cause?.message shouldBe "unknown test user: octocat"
     }
 }

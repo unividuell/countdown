@@ -27,3 +27,8 @@ export function useCommunities() {
   }
   return { active, refresh, landing }
 }
+
+/** Test-only: reset the module-level singleton between test cases. */
+export function _resetCommunitiesState(): void {
+  active.value = []
+}
