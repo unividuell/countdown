@@ -45,6 +45,9 @@ describe('super-admin community overview', () => {
 
     const members = w.findAll('[data-test=member]')
     expect(members).toHaveLength(2)
+    // Per row, not just page-wide: a badge on the wrong row must fail even though the count stays 1.
+    expect(members[0]!.find('[data-test=admin-badge]').exists()).toBe(true)
+    expect(members[1]!.find('[data-test=admin-badge]').exists()).toBe(false)
     expect(w.findAll('[data-test=admin-badge]')).toHaveLength(1)
     expect(members[0]!.text()).toContain('Alice')
     expect(members[0]!.text()).toContain('02.03.2026') // formatted in the community's zone
@@ -69,6 +72,15 @@ describe('super-admin community overview', () => {
     await flushPromises()
     expect(w.text()).toContain('Keine Mitglieder')
     expect(w.findAll('[data-test=member]')).toHaveLength(0)
+  })
+
+  it('shows a hint when there are no communities at all', async () => {
+    vi.spyOn(api, 'listAllCommunities').mockResolvedValue([])
+    const Page = (await import('@/pages/super-admin/communities.vue')).default
+    const w = mount(Page)
+    await flushPromises()
+    expect(w.text()).toContain('Noch keine Spielgemeinschaften.')
+    expect(w.findAll('[data-test=community]')).toHaveLength(0)
   })
 
   it('shows an error message when the overview cannot be loaded', async () => {

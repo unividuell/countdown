@@ -31,6 +31,7 @@ class SuperAdminOverviewServiceTest {
     private val aliceId = UUID.fromString("018f0000-0000-7000-8000-0000000000c1")
     private val bobId = UUID.fromString("018f0000-0000-7000-8000-0000000000c2")
     private val ghostId = UUID.fromString("018f0000-0000-7000-8000-0000000000c3")
+    private val zoeId = UUID.fromString("018f0000-0000-7000-8000-0000000000c4")
 
     private fun community(id: UUID, name: String, slug: String) = Community(
         id = id, name = name, slug = slug, createdBy = aliceId,
@@ -54,6 +55,9 @@ class SuperAdminOverviewServiceTest {
         )
         every { members.findAll() } returns listOf(
             member(alphaId, bobId, MemberStatus.PENDING, isAdmin = false),
+            // Zoe must precede the ghost row here: sortedWith is stable, so this input order is
+            // what makes the username key (not just admin+status) responsible for their order.
+            member(alphaId, zoeId, MemberStatus.ACTIVE, isAdmin = false),
             member(alphaId, ghostId, MemberStatus.ACTIVE, isAdmin = false),
             member(alphaId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
             member(zuluId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
@@ -62,15 +66,16 @@ class SuperAdminOverviewServiceTest {
         every { users.findAllById(any()) } returns listOf(
             user(aliceId, "alice", "Alice"),
             user(bobId, "bob", "Bob"),
+            user(zoeId, "zoe", "Zoe"),
         )
 
         val result = service.overview()
 
         // case-insensitive name order: "alpha" before "Zulu"
         result.map { it.slug } shouldContainExactly listOf("alpha", "zulu")
-        result[0].members.map { it.username } shouldContainExactly listOf("Alice", "?", "Bob")
+        result[0].members.map { it.username } shouldContainExactly listOf("Alice", "?", "Zoe", "Bob")
         result[0].members[1].githubLogin shouldBe "?"
-        result[0].members[2].status shouldBe "PENDING"
+        result[0].members[3].status shouldBe "PENDING"
         result[0].members[0].isAdmin shouldBe true
         result[0].members[0].joinedAt shouldBe Instant.parse("2026-02-01T00:00:00Z")
         verify(exactly = 1) { users.findAllById(any()) }

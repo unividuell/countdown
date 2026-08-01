@@ -31,6 +31,9 @@ onMounted(async () => {
     <p v-else-if="state === 'error'" class="text-sm text-red-600">
       Die Spielgemeinschaften konnten nicht geladen werden.
     </p>
+    <p v-else-if="!communities.length" class="text-sm text-neutral-500">
+      Noch keine Spielgemeinschaften.
+    </p>
     <template v-else>
       <article v-for="c in communities" :key="c.id" data-test="community" class="mb-8">
         <header class="mb-2 flex flex-wrap items-baseline gap-3 border-b pb-1">
