@@ -77,6 +77,28 @@ describe('community route data guard', () => {
     expect(select).toHaveBeenCalledWith('c1')
   })
 
+  it('navigates even when the selection cannot be persisted', async () => {
+    // The selection write is fire-and-forget after the navigation commits.
+    // A rejection must not undo or block the navigation — it is only an internal
+    // optimization (a "last visited" marker for resumption). The guard's .catch
+    // silences it. This test verifies that guard is essential: if a future edit
+    // removes the .catch or makes the guard await the persist, the navigation would
+    // regress silently without this test catching it.
+    vi.spyOn(api, 'getCommunity').mockResolvedValue(nord)
+    vi.spyOn(api, 'setSelection').mockRejectedValue(new Error('offline'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const router = makeRouter()
+    await router.push('/nord/')
+    await flushPromises()
+    expect(router.currentRoute.value.params.slug).toBe('nord')
+    expect(communityRoute.value).toEqual({ kind: 'ready', community: nord })
+    expect(activeCommunity.value?.slug).toBe('nord')
+    expect(errorSpy).toHaveBeenCalledWith(
+      'could not persist the community selection',
+      expect.any(Error),
+    )
+  })
+
   it('keeps the current community in the header while the next one is still loading', async () => {
     const get = vi.spyOn(api, 'getCommunity').mockResolvedValueOnce(community())
     const router = makeRouter()
