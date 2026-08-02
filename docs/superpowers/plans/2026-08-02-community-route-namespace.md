@@ -685,11 +685,15 @@ would render a blank page. This task closes the gap the move opens.
 Create `webapp-vue/src/pages/__tests__/not-found.spec.ts`.
 
 The second test needs a word of explanation, because the obvious way to write it does not work.
-`definePage` is a **build-time macro** stripped by the VueRouter Vite plugin, and the unit tests run
-without that plugin (`src/test-setup.ts` stubs it as a no-op) — so the declared `meta` is simply not
-readable from the mounted component. Asserting on the source file is the honest way to guard it, and
-it does catch the real regression: someone dropping `meta.public` and thereby routing every typo
-through a GitHub login round-trip.
+`definePage` is a **build-time macro** transformed by the VueRouter Vite plugin, and Vitest does not
+load that plugin — `vitest.config.ts` registers only `vue()` and `Icons()`, which is exactly why
+`src/test-setup.ts` has to stub `definePage` as a no-op. The declared `meta` therefore never reaches
+the compiled component and cannot be read from a mount. Asserting on the source file is the honest
+guard available here, and it catches the regression that matters: someone dropping `meta.public` and
+thereby routing every typo through a GitHub login round-trip.
+
+Match with a pattern rather than a fixed string, so adding an unrelated `meta` key later does not
+turn this red for no reason:
 
 ```ts
 import { readFile } from 'node:fs/promises'
@@ -706,9 +710,11 @@ describe('the 404 page', () => {
     expect(w.find('a').attributes('href')).toBe('/')
   })
 
+  // definePage is a build-time macro and Vitest runs without the plugin that transforms it,
+  // so the meta cannot be read from the mounted component — the source is the only witness.
   it('is public, so a mistyped URL never routes through the login round-trip', async () => {
     const src = await readFile(new URL('../[...path].vue', import.meta.url), 'utf8')
-    expect(src).toContain('definePage({ meta: { public: true } })')
+    expect(src).toMatch(/definePage\(\s*\{\s*meta:\s*\{[^}]*public:\s*true/)
   })
 })
 ```
