@@ -8,8 +8,10 @@ export interface CommunityContext {
 }
 export const communityKey: InjectionKey<CommunityContext> = Symbol('community')
 
-/** The community currently in context (the `/[slug]/` shell sets it, clears on leave). Read by the
- *  App-level main header, which lives ABOVE the `[slug]` provider tree (so a module ref, not inject). */
+/** The community currently in context — published by `registerCommunityDataGuard`'s `afterEach`
+ *  (via `publishCommunity()`) and by the shell's `refresh()`, cleared by the same guard on leaving
+ *  the community area. Read by the App-level main header, which lives ABOVE the `[slug]` provider
+ *  tree (so a module ref, not inject). */
 export interface ActiveCommunity {
   slug: string
   name: string

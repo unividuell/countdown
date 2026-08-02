@@ -126,7 +126,7 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 
 Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
 
-- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard resolves (in `beforeResolve`) and publishes (in `afterEach`) before the route ever commits, so the shell itself does no fetching. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state === 'ready'` branch — so children can safely read `community.value` as non-null.
+- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard resolves (in `beforeResolve`) and publishes (in `afterEach`) before the route ever commits, so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
 - The type mismatch (`Ref<CommunityResponse | null>` vs `Readonly<Ref<CommunityResponse>>`) is bridged with `community as unknown as Readonly<Ref<CommunityResponse>>`. This is intentional: the null case is excluded structurally (children only mount after ready), and `unknown` is necessary because TypeScript cannot widen through a `Readonly` wrapper.
 - Child pages call `useCommunityContext()` (throws if context is missing) instead of `useRoute()` — they never need to re-fetch the slug from the router.
 - `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
@@ -155,9 +155,12 @@ hidden, never an unhandled rejection).
 
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
 the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
-`activeCommunity` in `src/communities/context.ts` — written by `registerCommunityDataGuard`'s
-`afterEach` (`src/communities/routeData.ts`) and by the shell's `refresh()`, both through the single
-`publishCommunity()` helper, not via `provide`/`inject`. `ActiveCommunity` also carries
+`activeCommunity` in `src/communities/context.ts` — not via `provide`/`inject`. `publishCommunity()`
+is the single path that *publishes* a loaded community: `registerCommunityDataGuard`'s `afterEach`
+(`src/communities/routeData.ts`) calls it once the community is fetched, and the shell's `refresh()`
+calls it again on every explicit reload. Clearing is separate and is the guard's own business —
+`afterEach` sets `activeCommunity` (and `communityRoute`) to `null` directly when the destination
+route carries no slug, rather than going through the helper. `ActiveCommunity` also carries
 `viewerIsAdmin` + `pendingCount` for the header's community menu. **Every path that loads the
 community must republish it** — that's why both the guard and `refresh()` funnel through
 `publishCommunity()` instead of writing `activeCommunity` directly. Publishing only on the initial
