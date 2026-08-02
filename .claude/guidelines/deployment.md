@@ -122,6 +122,25 @@ for staging, by `container_name`).
   `path /api/* /oauth2/* /login/* /logout /logout/*` — `/login/*` covers `/login/github` +
   `/login/oauth2/code/*`, while exact `/login` falls through to the SPA fallback. (Only shows up in
   prod/staging — dev hits the backend directly via the Vite proxy.)
+- **Static caching is the Caddyfile's job — `file_server` sets no `Cache-Control` at all.** It sends
+  `ETag`/`Last-Modified` but no freshness, which is exactly the case RFC 9111 §4.2.2 hands to the
+  browser's *heuristic* freshness: the cached `index.html` is reused **without revalidating**, and
+  since it names the old content-hashed assets, a tab open across a deploy keeps the entire old app
+  until a hard reload (issue #15; a full-page OAuth navigation does not help — navigations come from
+  the HTTP cache like anything else). Vite cannot fix this: it hashes `/assets/*` but cannot set HTTP
+  headers, and `<meta http-equiv="Cache-Control">` is ignored for HTTP caching. So:
+  **two mutually-exclusive `handle` blocks**, same idiom as `@backend` above —
+  `handle /assets/* { header Cache-Control "public, max-age=31536000, immutable"; file_server }`
+  then the catch-all with `header Cache-Control "no-cache"` + `try_files`. Why not one block with
+  `@assets`/`@html` matchers: (a) one header per block makes a double header structurally impossible,
+  (b) **no `try_files` in the assets block on purpose** — a missing hashed asset must `404`, since a
+  fallback would serve `index.html` under an asset URL with `immutable`, pinning an HTML document
+  there for a year. `no-cache` means "revalidate before use", not "don't store" → a cheap `304`.
+  `caddy adapt` confirms Caddy orders the `headers` handler **before** `rewrite`, so the deep-link
+  fallback (`/countdowns/42` → `/index.html`) still carries `no-cache`. Verify against a **real
+  response**, not just the config — `curl -sSI` a page *and* an asset (the local recipe: build
+  `caddy:2-alpine` + the repo Caddyfile + a fake `dist` into a throwaway image and curl it; no bind
+  mounts, see the Docker Desktop gotcha).
 - **TLS + `X-Forwarded-*` are a two-hop chain** (shared edge → countdown-web → core): the inner
   Caddy must trust the edge (`servers { trusted_proxies static private_ranges }`) so
   `X-Forwarded-Proto=https` survives, and `core` sets `server.forward-headers-strategy=framework`
