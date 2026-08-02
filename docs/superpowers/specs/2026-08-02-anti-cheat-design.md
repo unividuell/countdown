@@ -71,7 +71,8 @@ investiert in Krypto, die das falsche Problem löst.
 Daraus folgt die generelle Regel, die überall greift, wo überhaupt etwas zu holen ist:
 
 > **Die lösungstragende Darstellung von *parsebar* nach *perzeptuell* verschieben.**
-> Nicht `pattern: [7,1,2]`, sondern Pixel. Nicht `frequencies: [440,466,493]`, sondern Audio-Samples.
+> Nicht `pattern: [7,1,2]`, sondern Pixel — und was sich hörbar entscheidet, als Samples statt als
+> Werteliste.
 
 Das trifft die Messlatte exakt: Pipette und CV-Skript sind erlaubt, `JSON.parse` nicht.
 
@@ -82,7 +83,7 @@ folgt, wofür sich Komplexität lohnt:
 
 | Art des Geheimnisses | Beispiel | Wirksame Maßnahme | Erreichbares Niveau |
 |---|---|---|---|
-| Die Lösung ist ein **Fakt** | Tone Direction, Ratio-Schätzung | Server-only Seed + Server validiert | **vollständig** |
+| Die Lösung ist ein **Fakt** | eine Schätz-/Zuordnungsfrage, deren Antwort nur der Server kennt und die der Client nicht zum Rendern braucht | Server-only Seed + Server validiert | **vollständig** |
 | Die Lösung ist ein **Zeitplan** | Deduster (Reaktion) | Zukunft nicht ausliefern, progressiv aufdecken | gut gegen Menschen, offen gegen Bots |
 | Die Lösung liegt **im Sichtbaren** | Find Pattern, Puzzle Scramble | Darstellung perzeptuell machen + Erkennung | Aufwand erhöhen |
 | **Präsentations-Zufall** | Sparkles, Animationen, Deko | keine | nicht nötig |
@@ -196,15 +197,6 @@ Die „Obfuskation" verdeckt gerade das nicht, was geraten werden soll.
 persistierte Zufalls-IDs. Kein Puzzle-Präfix im Namen, keine Gruppierung über die Reihenfolge,
 `belongsToPuzzle` nicht im DTO. Danach ist Cheaten echte Bildarbeit.
 
-### Tone Direction
-
-Frequenzen im Payload = Lösung im Payload. Und Verschleiern hilft **nicht**, weil der Client die
-Umkehrung ja kennen muss.
-
-→ **Audio ausliefern statt Frequenzen.** Dann ist Cheaten Signalanalyse.
-
-Dieses Spiel ist der reine „Lösung ist ein Fakt"-Fall — hier ist vollständiger Schutz erreichbar.
-
 ### Deduster (Reaktion)
 
 Aktuell der offenste Fall: die komplette Hot-Tile-Reihenfolge wird client-seitig aus der Rundennummer
@@ -281,11 +273,30 @@ seriös beantworten kann.
 7. **Welche Anomalie-Grenzen** sind bei dieser Gruppengröße sinnvoll, und wie werden sie sichtbar
    gemacht, ohne jemanden falsch zu beschuldigen?
 
-**Vorschlag für den Einstieg:** mit einem Spiel aus der Kategorie *„Lösung ist ein Fakt"* beginnen —
-**Tone Direction** ist der klarste Fall. Dort ist vollständiger Schutz erreichbar, das Fundament wird
-sauber validiert, und es gibt keine Vermischung mit den unlösbaren Anteilen. Find Pattern danach, weil
-es das server-gerenderte Bild einführt. Deduster zuletzt, weil es zusätzlich SSE, Rhythmus und die
-Bot-Frage aufwirft.
+## Einstieg: Find Pattern
+
+Wie im Referenzprojekt beginnen wir mit **Find Pattern**. Es hat schon eine Zeitwertung ab explizitem
+Start (Phase 2) und übt damit den Kern des Fundaments (1–6) an einem echten Fall; es ist zugleich das
+Spiel, an dem sich „Payload erst beim Start" überhaupt beurteilen lässt. Commit–Reveal (7) und die
+Erkennungs-Grenzen (8) kann der erste Durchgang nachziehen — sie sind nicht Voraussetzung dafür, dass
+das Spiel fair läuft.
+
+Eine Erwartung dazu ausdrücklich geradestellen: Find Pattern liegt in der Kategorie **„Lösung liegt im
+Sichtbaren"** — der schwersten. Das Gitter *muss* ausgeliefert werden, also bleibt es scriptbar, und
+**vollständiger Schutz ist hier nicht das Erfolgskriterium.** Erfolgreich ist der erste Durchgang,
+wenn
+
+1. das **Fundament** trägt — kein Seed beim Client, Server validiert, Zeit server-gestempelt, ein
+   Guess, Serialisierungs-Test grün;
+2. der **spielspezifische Hebel** funktioniert — Suchmuster als server-gerendertes Bild, sodass der
+   Konsolen-Einzeiler nicht mehr reicht; und
+3. wir wissen, was das an **Aufwand und Spielgefühl** kostet (offene Fragen 1–3).
+
+Dass ein hartnäckiger Informatiker das Gitter danach immer noch per Skript durchsuchen kann, ist
+akzeptiert und kein Rückschlag — es ist die dokumentierte Obergrenze dieser Kategorie.
+
+Deduster würde ich zuletzt angehen: es bringt zusätzlich SSE, die Rhythmus-Frage und das Bot-Thema
+mit, und möglicherweise eine Spieldesign-Entscheidung statt einer technischen.
 
 ## Feed knowledge back
 
