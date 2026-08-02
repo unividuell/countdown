@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { joinByToken } from '@/api/communities'
 import { ApiError } from '@/api/client'
+import { communityPath } from '@/communities/routes'
 
 const route = useRoute('/join/[token]')
 const router = useRouter()
@@ -12,7 +13,7 @@ const message = ref('')
 onMounted(async () => {
   try {
     const r = await joinByToken(route.params.token)
-    if (r.status === 'ALREADY_ACTIVE') return router.replace(`/${r.slug}/`)
+    if (r.status === 'ALREADY_ACTIVE') return router.replace(communityPath(r.slug))
     state.value = 'pending'
     message.value = `Antrag für „${r.name}" gestellt — warte auf Bestätigung durch einen Spielleiter.`
   } catch (e) {

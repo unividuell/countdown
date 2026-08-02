@@ -1,12 +1,13 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCommunityContext } from '@/communities/context'
+import { communityPath } from '@/communities/routes'
 
 /** Redirects to the community root if the viewer is not an admin. Backend `requireAdmin` is the real gate. */
 export function useAdminGuard(): void {
   const router = useRouter()
   const { community } = useCommunityContext()
   onMounted(() => {
-    if (!community.value.viewerIsAdmin) void router.replace(`/${community.value.slug}/`)
+    if (!community.value.viewerIsAdmin) void router.replace(communityPath(community.value.slug))
   })
 }

@@ -7,6 +7,7 @@ import HeaderMenu from '@/ui/HeaderMenu.vue'
 import type { ActiveCommunity } from '@/communities/context'
 import type { CommunitySummary } from '@/api/types'
 import { useCommunities } from '@/communities/useCommunities'
+import { communityPath } from '@/communities/routes'
 
 const props = defineProps<{ community: ActiveCommunity }>()
 const router = useRouter()
@@ -29,7 +30,7 @@ const ENTRY =
   'flex w-full cursor-pointer items-center px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
 
 function go(c: CommunitySummary): void {
-  router.push(`/${c.slug}/`).catch((e) => console.error('navigation failed', e))
+  router.push(communityPath(c.slug)).catch((e) => console.error('navigation failed', e))
 }
 </script>
 
@@ -49,7 +50,7 @@ function go(c: CommunitySummary): void {
 
     <template v-if="community.viewerIsAdmin">
       <div class="px-3 pt-1 pb-0.5 text-xs text-neutral-500">{{ community.name }}</div>
-      <RouterLink :to="`/${community.slug}/requests`" :class="ENTRY">
+      <RouterLink :to="communityPath(community.slug, 'requests')" :class="ENTRY">
         Anfragen
         <span
           v-if="community.pendingCount > 0"
@@ -57,8 +58,12 @@ function go(c: CommunitySummary): void {
           >{{ community.pendingCount }}</span
         >
       </RouterLink>
-      <RouterLink :to="`/${community.slug}/members`" :class="ENTRY">Mitglieder</RouterLink>
-      <RouterLink :to="`/${community.slug}/settings`" :class="ENTRY">Einstellungen</RouterLink>
+      <RouterLink :to="communityPath(community.slug, 'members')" :class="ENTRY"
+        >Mitglieder</RouterLink
+      >
+      <RouterLink :to="communityPath(community.slug, 'settings')" :class="ENTRY"
+        >Einstellungen</RouterLink
+      >
       <div class="my-1 border-t border-neutral-200" />
     </template>
 

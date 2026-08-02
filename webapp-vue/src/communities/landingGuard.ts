@@ -3,6 +3,7 @@ import type { Router } from 'vue-router'
 import { consumePostLoginRedirect } from '@/auth/postLoginRedirect'
 import { pendingSelectionWrite } from '@/communities/routeData'
 import { useCommunities } from '@/communities/useCommunities'
+import { communityPath } from '@/communities/routes'
 
 /** Set when the landing resolution failed, so '/' renders a retry rather than hanging. */
 export const landingFailed = ref(false)
@@ -19,7 +20,7 @@ export async function resolveLandingTarget(): Promise<string | null> {
   if (pendingSelectionWrite) await pendingSelectionWrite.catch(() => {})
   try {
     const l = await useCommunities().landing()
-    return l.kind === 'none' || l.kind === 'choose' ? '/communities' : `/${l.slug}/`
+    return l.kind === 'none' || l.kind === 'choose' ? '/communities' : communityPath(l.slug)
   } catch (e) {
     console.error('could not resolve the landing destination', e)
     return null
