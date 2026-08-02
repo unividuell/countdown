@@ -62,38 +62,57 @@ Algorithm (current):
 2. NFKD normalisation + strip combining marks (remaining diacritics).
 3. Replace `[^a-z0-9]+` with `-`, trim leading/trailing `-`, collapse multiple `-`.
 
-Reserved slugs (`api`, `oauth2`, `login`, `logout`, `communities`, `join`) are rejected at
-creation; the full blocklist lives in `Slugs.RESERVED`.
-
 ## Frontend conventions
 
-### URL-slug-as-context routing
+### Community URLs live under `/c/`
 
-The shell page `src/pages/[slug].vue` is the **tenant context guard**:
-1. On mount / on slug change: calls `getCommunity(slug)`.
-   - Success → member, record selection via `setSelection(community.id)`, render children.
-   - 404 → show "Kein Zugriff" (no info leak to match backend).
-2. Nested routes (`/[slug]/`, `/[slug]/members`, `/[slug]/settings`) are rendered via
-   `<RouterView />` inside the shell.
-3. Static routes (`/communities`, `/communities/new`, `/join/:token`) take priority over the
-   dynamic `:slug` segment — Vue Router 5 matches them first.
+```
+Backend (Caddy → core)   /api/*   /oauth2/*   /login/*   /logout
+App pages (root)         /   /login   /communities   /communities/new
+                         /super-admin   /super-admin/communities   /join/:token
+Communities              /c/:slug/   /c/:slug/members   /c/:slug/requests   /c/:slug/settings
+Anything else            the catch-all 404 (`src/pages/[...path].vue`)
+```
 
-**Typed route params:** use `useRoute('/[slug]')`, `useRoute('/[slug]/members')` etc.
-(the typed overload from the generated `typed-router.d.ts`) rather than plain `useRoute()`.
-This avoids a union-type error under `strict` + vue-tsc.
+**Rule:** communities are confined below `/c/`; the root namespace belongs to app pages. A slug
+therefore cannot shadow a route, whatever it is called — not "nothing collides today" but
+structurally impossible. Two consequences bind future work:
+
+- **Adding a page requires no thought about slugs.** There is no blocklist to extend, and
+  reintroducing one is not allowed: a product decision about pages must never become a constraint on
+  what users may name their community. (This is what #8 removed; `Slugs.RESERVED` is gone.)
+- **Build community URLs with `communityPath(slug, sub?)`** from `src/communities/routes.ts`, never
+  by interpolating a path. It is the only place that knows the scheme.
+
+The tenant context is resolved by a **router guard**, not by the shell page:
+
+1. `registerCommunityDataGuard` (`src/communities/routeData.ts`) reads `route.params.slug` in
+   `beforeResolve`, fetches the community before the route commits, and publishes it in `afterEach`.
+   It matches on the *param*, not on a path, which is why the `/c/` move did not touch it.
+   - Success → member; the guard records the selection and the shell renders its children.
+   - 404 → "Kein Zugriff" (no info leak, matching the backend).
+2. `src/pages/c/[slug].vue` is a thin renderer over that state and does no fetching of its own.
+3. Nested routes (`/c/:slug/`, `/c/:slug/members`, …) render through `<RouterView />` inside it.
+
+**Typed route params:** use the typed `useRoute('/c/[slug]')` overload (the route name from the
+generated `typed-router.d.ts`) rather than plain `useRoute()`, which returns a union of all routes
+and fails on `.params.slug` under `strict` + vue-tsc. In practice no community page needs it — they
+read `useCommunityContext()` instead.
 
 ### Last-selected community
 
-After successfully resolving a community in the shell, `setSelection(community.id)` is called
-(fire-and-forget `void`). The `useCommunities().landing()` composable uses the server-side
-selection to pick the last-visited community when the user has multiple active memberships.
+After the router guard (`registerCommunityDataGuard`'s `afterEach` in `src/communities/routeData.ts`)
+publishes a resolved community, it calls `setSelection(community.id)` — fire-and-forget with respect
+to the navigation, but tracked in `pendingSelectionWrite` so `landingGuard.ts` can await it instead of
+racing it. The `useCommunities().landing()` composable uses the server-side selection to pick the
+last-visited community when the user has multiple active memberships.
 
 ### Post-login redirect flow (`/` resolver)
 
 `src/pages/index.vue` is a redirect resolver, not a landing page. It calls
 `useCommunities().landing()` and routes:
 - `none` / `choose` → `/communities` (chooser).
-- `one` / `last` → `/<slug>/`.
+- `one` / `last` → `/c/<slug>/` (via `communityPath`).
 
 ### Logout reachability
 

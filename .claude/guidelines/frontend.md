@@ -211,9 +211,9 @@ role sees no trace of it. Gate any such entry point on the role itself — never
 that a non-holder can see and bounce off.
 Pattern, mirroring the `[slug].vue` shell:
 
-- `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. A static route
-  segment outranks the dynamic `/:slug`, so no router config is needed — but reserve the segment
-  in the backend's `Slugs.RESERVED`, or a community with that slug becomes unreachable.
+- `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. No router config is
+  needed, and no slug needs reserving: communities live under `/c/`, so the root namespace is free
+  for pages (see [multi-tenancy.md](multi-tenancy.md)).
 - The shell does the role check **once** and keeps `<RouterView/>` inside the authorised branch.
   Children then contain no access logic and, more importantly, never mount for an unauthorised
   viewer — so they never fire a request that would 403. The backend rule is the real gate.
