@@ -41,6 +41,19 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
 > are **pre-existing** (identical count on 2.3.21) — not caused by a Kotlin bump. Don't
 > "fix" them as part of a dependency pass; that's a separate source change.
 
+### Jackson 3, not 2 — `tools.jackson.*` and immutable mappers
+
+Boot 4.1 brings **Jackson 3**, so the package root is `tools.jackson`, *not*
+`com.fasterxml.jackson` (only `jackson-annotations` still lives under `com.fasterxml`). Copying a
+Jackson 2 snippet fails with `Unresolved reference 'databind'`. Mappers are also immutable now —
+there is no `mapper.enable(...)`:
+
+```kotlin
+import tools.jackson.module.kotlin.jacksonObjectMapper
+val json = jacksonObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(value)
+// configuring features: jacksonMapperBuilder().enable(SerializationFeature.…).build()
+```
+
 ## npm (`webapp-vue/`)
 
 ```bash

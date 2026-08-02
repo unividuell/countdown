@@ -17,6 +17,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Vue Router 5 file-based + Tailwind v4; composables/VueUse (no Pinia); `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); Vitest + `vi` (not mockk). *(webapp-vue)*
 - **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, Caddy edge (TLS + SPA + proxy), prod compose with pg_dump backup + SSH-tunnel pgAdmin.
 - **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
+- **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:
 the **`iam` module** (backend) and **`webapp-vue`** (frontend).

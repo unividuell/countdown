@@ -54,6 +54,8 @@ the TypeScript mirror (`src/lib/slugify.ts`) must stay identical.
 
 **Rule:** whenever `Slugs.slugify` changes, update `slugify.ts` in the same commit,
 and keep `slugify.spec.ts` running the same test cases as `SlugsTest.kt`.
+The general rules for such Kotlin↔TS pairs live in
+[cross-runtime-parity.md](cross-runtime-parity.md).
 
 Algorithm (current):
 1. Lowercase + German umlaut transliteration (`ä→ae`, `ö→oe`, `ü→ue`, `ß→ss`).
