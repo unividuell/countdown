@@ -13,6 +13,7 @@ import {
   publishCommunity,
   registerCommunityDataGuard,
 } from '@/communities/routeData'
+import { slugParam } from './routerTestUtils'
 
 const Stub = defineComponent({ render: () => h('div') })
 
@@ -91,7 +92,7 @@ describe('community route data guard', () => {
     const router = makeRouter()
     await router.push('/nord/')
     await flushPromises()
-    expect(router.currentRoute.value.params.slug).toBe('nord')
+    expect(slugParam(router)).toBe('nord')
     expect(communityRoute.value).toEqual({ kind: 'ready', community: nord })
     expect(activeCommunity.value?.slug).toBe('nord')
     expect(errorSpy).toHaveBeenCalledWith(
@@ -116,7 +117,7 @@ describe('community route data guard', () => {
 
     // Mid-flight the user still sees the old page, so the header must still describe it.
     expect(activeCommunity.value?.slug).toBe('team')
-    expect(router.currentRoute.value.params.slug).toBe('team')
+    expect(slugParam(router)).toBe('team')
 
     release(nord)
     await nav
@@ -144,7 +145,7 @@ describe('community route data guard', () => {
     await navNord
     await flushPromises()
     expect(activeCommunity.value?.slug).toBe('west')
-    expect(router.currentRoute.value.params.slug).toBe('west')
+    expect(slugParam(router)).toBe('west')
   })
 
   it('does not refetch when moving between sub-routes of one community', async () => {
@@ -180,7 +181,7 @@ describe('community route data guard', () => {
     const router = makeRouter()
     await router.push('/ghost/')
     expect(communityRoute.value).toEqual({ kind: 'no-access' })
-    expect(router.currentRoute.value.params.slug).toBe('ghost')
+    expect(slugParam(router)).toBe('ghost')
     // A failed switch must not leave the previous community's admin links and
     // pending dot standing in the header.
     expect(activeCommunity.value).toBeNull()
@@ -264,7 +265,7 @@ describe('community route data guard', () => {
     abortNextTeamNav = false
     expect(aborted).toBeTruthy() // NavigationFailure (aborted)
     // Aborted: the URL and header stay exactly on 'nord'.
-    expect(router.currentRoute.value.params.slug).toBe('nord')
+    expect(slugParam(router)).toBe('nord')
     expect(activeCommunity.value?.slug).toBe('nord')
 
     // Simulate Task 3's second publishCommunity call site (the shell's refresh())

@@ -13,6 +13,7 @@ import {
   registerLandingRedirect,
   resolveLandingTarget,
 } from '@/communities/landingGuard'
+import { slugParam } from './routerTestUtils'
 
 const Stub = defineComponent({ render: () => h('div') })
 
@@ -64,7 +65,7 @@ describe('landing redirect guard', () => {
     vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
     const router = makeRouter()
     await router.push('/')
-    expect(router.currentRoute.value.params.slug).toBe('team')
+    expect(slugParam(router)).toBe('team')
   })
 
   it('sends a member with no communities to the overview', async () => {
@@ -133,7 +134,7 @@ describe('landing redirect guard', () => {
     // to the landing placeholder before arriving back where it started.
     expect(seen).toEqual([])
     expect(activeCommunity.value?.slug).toBe('team')
-    expect(router.currentRoute.value.params.slug).toBe('team')
+    expect(slugParam(router)).toBe('team')
     expect(get).toHaveBeenCalledTimes(1)
   })
 
@@ -168,7 +169,7 @@ describe('landing redirect guard', () => {
     expect(getSelection).toHaveBeenCalledTimes(1)
     // Resolves back to 'nord' — the community just switched to, not whatever the
     // selection said before this write landed.
-    expect(router.currentRoute.value.params.slug).toBe('nord')
+    expect(slugParam(router)).toBe('nord')
   })
 
   it('leaves no in-flight selection write behind on reset, so a later landing resolution is not blocked', async () => {
