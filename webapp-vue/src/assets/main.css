@@ -1,1 +1,23 @@
 @import 'tailwindcss';
+
+@theme {
+  /* Indeterminate navigation bar: a segment shuttles right and back. The easing is the
+     point — slow at the turns, fast through the middle — so the motion reads as deliberate
+     rather than mechanical. The 1.4s cycle is tuned for the spans this actually covers
+     (<5s): long enough not to look frantic, short enough that a one-second navigation
+     still shows most of a traverse. translateX(300%) lands a 25%-wide segment exactly on
+     the right edge. */
+  --animate-nav-shuttle: nav-shuttle 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+
+  @keyframes nav-shuttle {
+    0% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(300%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+}

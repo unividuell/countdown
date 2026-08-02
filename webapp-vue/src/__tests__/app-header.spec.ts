@@ -113,4 +113,21 @@ describe('App main header', () => {
       true,
     )
   })
+
+  it('renders the bar out of flow so appearing cannot push the content down', () => {
+    navigationPending.value = true
+    const bar = mount(App, { global: { stubs } }).find('[data-test=navigation-progress]')
+    // `absolute` is the whole reason the design can promise no layout shift — a bar that
+    // shoves <main> down 4px when it appears is the defect it was added to explain.
+    expect(bar.classes()).toContain('absolute')
+  })
+
+  it('carries a moving segment that stops for viewers who ask for reduced motion', () => {
+    navigationPending.value = true
+    const w = mount(App, { global: { stubs } })
+    const segment = w.find('[data-test=navigation-progress-segment]')
+    expect(segment.exists()).toBe(true)
+    expect(segment.classes()).toContain('animate-nav-shuttle')
+    expect(segment.classes()).toContain('motion-reduce:animate-none')
+  })
 })

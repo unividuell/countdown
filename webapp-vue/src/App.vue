@@ -40,13 +40,21 @@ const yearSuffix = computed(() => {
           <MemberMenu v-if="status === 'authenticated'" />
         </div>
       </header>
+      <!-- Absolute, so appearing costs no layout: the bar must not push <main> down. -->
       <div
         v-if="navigationPending"
         data-test="navigation-progress"
         role="progressbar"
         aria-label="Seite wird geladen"
-        class="absolute inset-x-0 top-full h-0.5 w-full animate-pulse bg-blue-500"
-      />
+        class="absolute inset-x-0 top-full h-1 overflow-hidden bg-stone-300"
+      >
+        <!-- A looping animation is physically unpleasant for some viewers, so reduced
+             motion gets a static full-width fill instead — still legibly "busy". -->
+        <div
+          data-test="navigation-progress-segment"
+          class="animate-nav-shuttle h-full w-1/4 bg-blue-600 motion-reduce:w-full motion-reduce:animate-none"
+        />
+      </div>
     </div>
     <main class="flex-1 p-4">
       <RouterView />
