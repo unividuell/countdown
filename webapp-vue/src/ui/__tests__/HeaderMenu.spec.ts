@@ -9,7 +9,7 @@ enableAutoUnmount(afterEach)
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
-  const route = reactive({ fullPath: '/team/' })
+  const route = reactive({ fullPath: '/c/team/' })
   return { useRoute: () => route, __route: route }
 })
 
@@ -70,7 +70,7 @@ describe('HeaderMenu', () => {
   it('closes when the route changes', async () => {
     const w = await mountMenu()
     await w.find('button').trigger('click')
-    route.fullPath = '/other/'
+    route.fullPath = '/c/other/'
     await nextTick()
     expect(w.find('[data-test=menu-panel]').exists()).toBe(false)
   })

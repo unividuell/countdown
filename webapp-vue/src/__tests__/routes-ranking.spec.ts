@@ -6,11 +6,13 @@ const router = createRouter({ history: createMemoryHistory(), routes })
 
 describe('generated route table', () => {
   it.each([
+    ['/', '/'],
     ['/login', '/login'],
     ['/communities', '/communities/'],
     ['/communities/new', '/communities/new'],
     ['/super-admin', '/super-admin/'],
     ['/c/team/', '/c/[slug]/'],
+    ['/join/some-token', '/join/[token]'],
   ])('%s resolves to its own route, not the catch-all', (path, expectedName) => {
     expect(router.resolve(path).name).toBe(expectedName)
   })
