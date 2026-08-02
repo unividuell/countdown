@@ -37,7 +37,7 @@ implementation.
 - The plugin generates `typed-router.d.ts` (committed; the plugin recommends committing it). Add it to `tsconfig`.
 - Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time; the call vanishes in the build).
 - **`vitest.config.ts` must register the same `VueRouter()` plugin as `vite.config.ts`, before `vue()`.** Without it, `vue-router/auto-routes` can't be resolved in tests at all, `definePage` never reaches the compiled component (its `meta` is unreachable from a mount), and — the bigger risk — no test can ever exercise the *real*, generated route table: every router-based test would have to hand-roll its own small `routes` array, which cannot catch a route-ranking regression (e.g. a catch-all shadowing a real page). Registering the plugin fixes all of that at once and needs no `definePage` stub in `src/test-setup.ts` — delete it if you find one; it's dead once the plugin is registered. A test asserting the generated table's ranking (real paths resolve to their own route, an unmatched path falls through to the catch-all) belongs in `src/__tests__/` since it's a whole-router concern, not one page's.
-- **Typed route params (strict TS):** Use the typed `useRoute('/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`[slug].vue`, `[slug]/members.vue`, etc.) all need the specific route name. See also `multi-tenancy.md`.
+- **Typed route params (strict TS):** Use the typed `useRoute('/c/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`c/[slug].vue`, `c/[slug]/members.vue`, etc.) all need the specific route name — though in practice no community page needs this any more, since they read `useCommunityContext()` instead. See also [multi-tenancy.md](multi-tenancy.md).
 - **Gotcha:** `router.push()` / `.replace()` return a Promise; a bare, unawaited call at the end of
   an async handler leaves its rejection on a chain nothing observes. `CommunityMenu.vue` and
   `MemberMenu.vue` attach `.catch((e) => console.error('navigation failed', e))` to every
@@ -129,12 +129,12 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 
 ## Community context + admin gating
 
-Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
+Pages nested under `c/[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
 
-- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard **resolves in `beforeResolve`, before the route commits, and publishes in `afterEach`, once it has committed** — so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state?.kind === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
+- The shell (`src/pages/c/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard **resolves in `beforeResolve`, before the route commits, and publishes in `afterEach`, once it has committed** — so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state?.kind === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
 - The type mismatch (`Ref<CommunityResponse | null>` vs `Readonly<Ref<CommunityResponse>>`) is bridged with `community as unknown as Readonly<Ref<CommunityResponse>>`. This is intentional: the null case is excluded structurally (children only mount after ready), and `unknown` is necessary because TypeScript cannot widen through a `Readonly` wrapper.
 - Child pages call `useCommunityContext()` (throws if context is missing) instead of `useRoute()` — they never need to re-fetch the slug from the router.
-- `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
+- `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `communityPath(slug)` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
 - Admin-only pages (`members.vue`, `settings.vue`, `requests.vue`) all call `useAdminGuard()` at the top of `<script setup>`.
 - In tests, mock the entire context module: `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`. This avoids the `inject` dependency on a real Vue app wrapping.
 - `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend; both are republished into `activeCommunity` for the header's community menu (see "App-level header state" below) rather than consumed inside the shell itself.
@@ -209,7 +209,7 @@ The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: th
 point is a `MemberMenu` item rendered under `v-if="user?.isSuperAdmin"`, so a viewer without the
 role sees no trace of it. Gate any such entry point on the role itself — never on a plain link
 that a non-holder can see and bounce off.
-Pattern, mirroring the `[slug].vue` shell:
+Pattern, mirroring the `c/[slug].vue` shell:
 
 - `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. No router config is
   needed, and no slug needs reserving: communities live under `/c/`, so the root namespace is free
