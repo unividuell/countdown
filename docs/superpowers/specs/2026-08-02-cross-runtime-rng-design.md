@@ -10,10 +10,10 @@ persistiert/ausgeliefert werden. Diese Analyse liefert die Grundlage, nicht das 
 
 ## Ergebnis
 
-**Ja — bit-identisch, nicht nur „statistisch gleich".** Nachgewiesen über vier Runtimes: Temurin 25
-(JVM), Node 24 (V8), Chromium 148 (V8, echter Browser) und JavaScriptCore (Safari-Engine).
-Übereinstimmung bis auf die IEEE754-Bits, über 1.000.000 Ziehungen hinweg, inklusive Umlaut- und
-Emoji-Seeds.
+**Ja — bit-identisch, nicht nur „statistisch gleich".** Nachgewiesen über **alle drei
+JS-Engine-Familien** (V8, JavaScriptCore, SpiderMonkey) und **fünf JVMs von fünf Herstellern**,
+darunter OpenJ9 als zweite VM-Implementierung. Übereinstimmung bis auf die IEEE754-Bits, über
+1.000.000 Ziehungen hinweg, inklusive Umlaut- und Emoji-Seeds.
 
 Das gilt allerdings **nur unter zwei harten Bedingungen**, und beide sind kontraintuitiv:
 
@@ -27,6 +27,23 @@ Punkt 2 ist der eigentliche Fallstrick. Ein Würfel oder Shuffle ist trivial por
 Normalverteilung über Box-Muller ist es **nicht**.
 
 ## Was tatsächlich gemessen wurde
+
+Abgedeckte Runtimes: **alle drei JS-Engine-Familien** — V8 (Node 24, Chromium 148), JavaScriptCore
+(Safari-Engine), SpiderMonkey (Firefox 151) — und **fünf JVMs von fünf Herstellern**, darunter eine
+zweite VM-Implementierung:
+
+| JVM | VM | Ergebnis |
+|---|---|---|
+| Eclipse Temurin 25.0.3 | HotSpot | Referenz |
+| BellSoft Liberica 25.0.4 *(die JRE, die Paketo verwendet)* | HotSpot | identisch |
+| Amazon Corretto 25.0.4 | HotSpot | identisch |
+| Azul Zulu 25.0.3 | HotSpot | identisch |
+| IBM Semeru 25.0.3 | **Eclipse OpenJ9** | identisch |
+
+Der JVM-Lauf verwendete die **kompilierte `SeededRandom`-Klasse selbst** (nicht eine
+Java-Nachbildung), in je einem Container pro JRE. Der Browser-Lauf verwendete die **aus
+`seededRandom.ts` kompilierte** Datei, gegen dieselbe Vektor-Datei: 97/97 Fälle in Firefox 151,
+97/97 in Chromium 148.
 
 | Prüfung | Runtimes | Ergebnis |
 |---|---|---|
@@ -83,6 +100,34 @@ Lokal auf Temurin 25 gegengeprüft: `RandomGeneratorFactory.of("L32X64MixRandom"
 
 **Konsequenz:** Der Generator muss selbst geschrieben und in beiden Sprachen gepflegt werden. Das
 sind ~40 Zeilen pro Seite; die Kosten liegen nicht im Code, sondern in der Absicherung gegen Drift.
+
+## Spielt die konkrete JRE eine Rolle?
+
+**Nein — und das ist keine Beobachtung, sondern eine Folge der Algorithmuswahl.** Der Container wird
+via Paketo/Buildpacks gebaut; es ist kein `BP_JVM_VERSION` gesetzt, die JRE ist also die
+Buildpack-Vorgabe (BellSoft Liberica) und kann sich mit jedem CI-Lauf ändern. Für diesen Generator
+ist das ohne Belang, weil er ausschließlich Operationen verwendet, die die **JLS** festnagelt:
+
+- Ganzzahlarithmetik ist Zweierkomplement mit stillem Überlauf (JLS 4.2.2: „The integer operators do
+  not indicate overflow or underflow in any way"), Shifts maskieren die Distanz (5 Bit bei `Int`).
+- `double`-Addition/Multiplikation/Division folgen IEEE 754, und seit **Java 17 ist `strictfp`
+  dauerhaft aktiv** (JEP 306) — es gibt keine „erweiterte Präzision" mehr, die je nach Plattform
+  abweichen könnte.
+
+Genau deshalb wurde `RandomGeneratorFactory` verworfen: dort steckt die Logik in nicht
+spezifiziertem JDK-Code, und da *hat* ein Patch-Release den Stream geändert. Was wir stattdessen
+benutzen, kann sich nicht ändern, ohne die JVM-Spezifikation zu brechen.
+
+Empirisch bestätigt (Tabelle oben): fünf Hersteller, fünf identische Ausgaben, inklusive OpenJ9 —
+einer anderen VM mit anderem JIT. Das ist die Bestätigung, nicht die Begründung.
+
+Zwei praktische Konsequenzen bleiben:
+
+- **Wenn `BP_JVM_VERSION` je unter die Bytecode-Version fällt, startet die App gar nicht.** Der
+  Kotlin-Output ist Bytecode 69 (Java 25); eine JRE 21 wirft `UnsupportedClassVersionError`. Das ist
+  ein Deployment-, kein Determinismus-Thema — es fällt beim ersten Start auf, nicht schleichend.
+- **Der Golden-Vector-Test läuft in CI ohnehin auf der Build-JVM.** Er würde eine hypothetische
+  JVM-Abweichung ohne Zusatzaufwand melden.
 
 ## Der Entwurf
 
@@ -220,11 +265,22 @@ weil ein JS-`Number` nur 2⁵³ exakt trägt. Deshalb: Seed auf 32 Bit begrenzen
 als String/Hex übertragen. Ein `Long`-Seed, den Jackson als JSON-Zahl serialisiert, ist ein
 Korrektheitsfehler, der keine Exception wirft.
 
-**Sicherheitsseitig relevant:** Wer den Seed hat, kennt alle künftigen Werte. Für Spiele mit
-verdeckter Information (Server kennt die Lösung, Client nicht) darf der Seed **nicht** ausgeliefert
-werden — dort braucht es zwei getrennte Seeds: einen server-only für verdeckte Zustände und einen
-geteilten für reine Darstellung (Animationen, Anordnung, Deko). Diese Trennung muss beim
-Feature-Design entschieden werden, nicht im Generator.
+**Cheating ist in diesem Schritt bewusst außerhalb des Scopes.** Wer den Seed im HTTP-Verkehr sieht
+und den Algorithmus kennt, kann die Reihe nachrechnen. Das ist eine Entscheidung, kein Versehen: es
+geht um Spaß, und die Messlatte ist „nicht *ganz* so einfach wie die Lösung direkt über HTTP zu
+übertragen" — die ist damit klar überschritten. Der Vorgänger huettehuette hat genau dasselbe
+Niveau: `useFindPatternGameSolution` leitet den Lösungsindex client-seitig aus dem Seed ab, dort war
+Mitlesen also ebenso möglich.
+
+Ein Folgeschritt kann das echt dichtmachen. Die Bausteine dafür (nicht Teil dieses Commits):
+
+- **Zwei Seeds, zwei Vertrauensniveaus** — ein Präsentations-Seed (ausgeliefert, treibt nur
+  Kosmetik/schon Öffentliches) und ein server-only Seed, der in *keinem* DTO-Typ auftaucht (strukturell,
+  nicht per `@JsonIgnore`); der Server wertet aus und schickt nur das Ergebnis.
+- **Commit-and-Reveal** für nachprüfbare Fairness: vorab `SHA-256(hiddenSeed || roundId)`
+  veröffentlichen, nach der Runde den Seed offenlegen, damit Spieler nachrechnen können.
+- **Obfuskation als Ergänzung, nicht als Ersatz** — huettehuette hashte Puzzle-Teil-Dateinamen
+  (`p_<puzzleId>_<hash>.jpg`), damit die URL nicht verrät, welches Teil wohin gehört.
 
 ## Absicherung gegen Drift
 
@@ -267,11 +323,8 @@ durch die Vektor-Datei festgenagelt — nicht durch eine Eigenschaft, die ein Te
 
 ## Restrisiken
 
-- **SpiderMonkey (Firefox) wurde nicht gemessen** — es war keine JS-Shell verfügbar, und ein Binary
-  dafür herunterzuladen war hier nicht angebracht. Verifiziert sind V8 und JavaScriptCore, also zwei
-  unabhängige Engine-Familien; alle benutzten Operationen sind spec-exakt, sodass eine Abweichung ein
-  Engine-Bug wäre. Wer das schließen will: die Vektor-Prüfung in einem Playwright-/WebDriver-Lauf
-  über Firefox mitlaufen lassen.
+- **Keine Engine-Familie mehr offen.** V8, JavaScriptCore und SpiderMonkey sind gemessen. Der
+  Firefox-Nachweis lässt sich jederzeit wiederholen, siehe unten.
 - **`rng` ist jetzt ein eigenes Modulith-Modul** (`org.unividuell.countdown.core.rng`, von Modulith
   als `Rng` erkannt, keine Beans, keine Tabellen, keine Flyway-Migration). `SeededRandom` ist die
   exponierte API im Basis-Paket. `ModularityTests` bleibt grün. **Nicht thread-safe und nicht als
@@ -281,11 +334,81 @@ durch die Vektor-Datei festgenagelt — nicht durch eine Eigenschaft, die ein Te
   künftigen Float-Serialisierung relevant.
 - **`Float`/`nextFloat` ist absichtlich nicht enthalten** — nicht benötigt und damit nicht verifiziert.
 
+## Erkenntnisse aus huettehuette (dem portierten Vorgänger)
+
+Die Nuxt-App war reines JS auf beiden Seiten und nutzte **`seedrandom`** (David Bau, ARC4-basiert) —
+für uns nicht übernehmbar, weil es kein JVM-Gegenstück hat. Der Blick hinein lohnt trotzdem, denn
+dort steht, was der Generator können muss:
+
+**Ein einziges Primitiv trägt alle Spiele.** `utils/seed-random.ts` ist genau
+`Math.floor(rng() * max)`, und `utils/predictable-rnd-int.ts` dasselbe mit Min/Max. Sämtliche
+Spiellogik ist also gegen **`rng() → double in [0,1)`** geschrieben, nicht gegen bounded Ints.
+
+**Das ist die wichtigste Konsequenz für die Portierung:** unser `nextInt(bound)` zieht per Rejection
+direkt aus Rohwörtern, ihr `seedRandom(rng, max)` skaliert einen Double. Beide sind
+cross-runtime-exakt, liefern aber **unterschiedliche Werte und verbrauchen unterschiedlich viele
+Wörter**. Beim Portieren eines Spiels heißt das: nicht mechanisch `seedRandom(rng, n)` durch
+`nextInt(n)` ersetzen und annehmen, es käme dasselbe heraus. Für Spiele, deren Rätsel-Charakter an
+der konkreten Verteilung hängt, ist entweder ihr Float-Pfad exakt nachzubauen (`Math.floor(nextDouble() * n)`
+— mit `nextDouble()` bit-exakt, also portabel) oder das Spiel gegen die neue API neu zu verifizieren.
+Alte Spielstände/Rätsel sind ohnehin nicht reproduzierbar, weil der Kern ein anderer ist.
+
+**Ihr Shuffle bestätigt unseren.** `usePuzzleScrambleGame.shuffleArray` ist absteigendes Fisher-Yates
+mit Bound `i + 1` — strukturgleich zu `shuffled()`. Die Laufrichtung, die bei uns nur durch die
+Vektor-Datei festgenagelt ist, entspricht damit auch der erprobten Vorlage.
+
+**Seeds waren dort durchweg Strings**, und zwar heterogen: `seedrandom(round.toString())`
+(Rundennummer), `seedrandom(gameId)`, `seedrandom(db.uid)`. Zwei Lehren:
+
+- `fromSeed(7)` und `fromSeed("7")` sind bei uns **verschiedene Ströme**. Wenn die Rundennummer der
+  Seed ist, muss festgelegt sein, welche Variante gilt — sonst driften Server und Client
+  auseinander, obwohl beide „Runde 7" meinen.
+- Die dort verwendeten Seeds (Firebase-IDs, UUIDs, Zahlen) sind ASCII. Die Umlaut-Falle wäre also
+  nicht aufgefallen — genau das macht sie gefährlich, sobald jemand einen Community-Slug als Seed
+  nimmt.
+
+**Ein zweiter Hash lauert dort**, falls Puzzle Scramble portiert wird: `hashPieceId` ist ein
+djb2-artiger 32-Bit-Hash über `charCodeAt` (UTF-16), der in Dateinamen einfließt. Wenn der Server
+diese Namen künftig mit erzeugt, ist das ein weiterer Paritäts-Vertrag — und dort gilt **UTF-16**
+(`it.code` in Kotlin), nicht UTF-8, weil die bestehenden Dateinamen daran hängen.
+
+**Presentation-Randomness gibt es schon:** `useUsers` leitete die Avatar-Hintergrundfarbe aus
+`seedrandom(db.uid)` ab. Im neuen Backend ist `bgColorHex` persistiert — die Portierung hat diese
+RNG-Abhängigkeit bereits eliminiert, und das ist die bessere Lösung.
+
+## Nachweise wiederholen
+
+**Beide Testsuiten** (das ist die eigentliche Absicherung, läuft in CI):
+
+```bash
+cd core && ./mvnw test -Dtest=SeededRandomGoldenVectorTest && cd ../webapp-vue && pnpm vitest run src/lib/rng
+```
+
+**Andere JVMs** — kompilierte Klasse pro JRE in einem Container, Ausgaben müssen identisch sein:
+Klassen + `kotlin-stdlib.jar` + ein `main`, das ein paar Ströme druckt, per `docker build` in
+`eclipse-temurin:25-jre`, `bellsoft/liberica-openjre-debian:25`, `amazoncorretto:25`,
+`azul/zulu-openjdk:25-jre`, `ibm-semeru-runtimes:open-25-jre` kopieren und `diff`en. (Bind-Mounts
+scheitern unter Docker Desktop an File Sharing — `docker build` umgeht das.)
+
+**Firefox / andere Browser** — `seededRandom.ts` mit `tsc` nach JS übersetzen, es zusammen mit
+`shared/rng/golden-vectors.json` von einem lokalen Node-Server ausliefern, im Browser alle Fälle
+prüfen und das Ergebnis per `fetch` an den Server zurückposten. Gemessen: Firefox 151 → 97/97,
+Chromium 148 → 97/97. Sinnvoll als gelegentlicher manueller Lauf; für CI wäre Playwright mit
+`firefox`/`webkit` der Weg, kostet dann aber Browser-Downloads im Build.
+
 ## Nicht Teil dieser Analyse
 
+Ziel dieses Schritts ist ausschließlich: **mit demselben Seed isoliert dieselben Werte berechnen
+können** — auf der JVM und im Browser. Das ist erreicht und abgesichert.
+
 Kein Feature, kein Endpoint, keine Persistenz: der Generator ist an nichts angeschlossen. Offen
-bleiben Seed-Herkunft (Runde? Community? UUID-v7-PK?), Seed-Lebensdauer, die Server-only/geteilt-
-Trennung pro Spiel und die Frage, ob `rng` ein Modulith-Modul wird.
+bleiben, als Folgeschritte:
+
+1. **Anti-Cheat** (eigene Diskussion) — Präsentations- vs. server-only Seed, Commit-and-Reveal,
+   Obfuskation. Siehe den Abschnitt bei den Seeds.
+2. **Seed-Herkunft und -Lebensdauer** — Runde? Community? UUID-v7-PK? Und `fromSeed(7)` vs.
+   `fromSeed("7")` verbindlich festlegen.
+3. **Portierung der Spiele** — mit der Float-vs-Rejection-Frage aus dem huettehuette-Abschnitt.
 
 ## Feed knowledge back
 

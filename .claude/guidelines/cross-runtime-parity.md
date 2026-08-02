@@ -42,6 +42,12 @@ JavaScriptCore (i.e. Chrome vs. Safari — no JVM needed to break):
 | IEEE754 `+ - * /`, division by powers of two | multi-byte TypedArray bit reinterpretation |
 | `sqrt` (IEEE 754 correctly rounded) | |
 
+A useful corollary: sticking to this list also makes the **JRE vendor and version irrelevant**. The
+JLS fixes integer two's-complement wraparound and shift masking, and since Java 17 `strictfp` is
+always on (JEP 306), so there is no platform-dependent floating-point precision left. Verified for
+the RNG across Temurin, Liberica (what Paketo ships), Corretto, Zulu and OpenJ9 — identical output.
+That is precisely what an unspecified JDK internal like `RandomGeneratorFactory` cannot promise.
+
 Consequences:
 
 - **No Gaussian / Box-Muller in shared code.** Draw it server-side and send the value, or use an
