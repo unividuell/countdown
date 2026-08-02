@@ -42,10 +42,10 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST surfaces slug conflict as 409`() {
-        every { communityService.create(uid, "join") } throws SlugUnavailableException("reserved")
+        every { communityService.create(uid, "Team A") } throws SlugUnavailableException("slug 'team-a' is taken")
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"join"}"""
+            content = """{"name":"Team A"}"""
         }.andExpect { status { isConflict() } }
     }
 

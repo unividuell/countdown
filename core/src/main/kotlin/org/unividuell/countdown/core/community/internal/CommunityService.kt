@@ -21,7 +21,6 @@ open class CommunityService(
         require(name.length in 3..50) { "name must be 3..50 chars" }
         val slug = Slugs.slugify(name)
         require(slug.length >= 3) { "derived slug must be at least 3 chars" }
-        if (Slugs.isReserved(slug)) throw SlugUnavailableException("slug '$slug' is reserved")
         if (communities.findBySlug(slug) != null) throw SlugUnavailableException("slug '$slug' is taken")
         val community = try {
             communities.save(Community(name = name, slug = slug, createdBy = creatorUserId))
