@@ -1316,9 +1316,16 @@ Capture what is genuinely non-obvious and cost time here:
   reached; writing in `afterEach` makes the header match the committed route by construction.
 - `afterEach` fires for failed navigations too and receives the `failure` argument — check it.
   Skipping failures is exactly what turns a redirect back to the current route into a true no-op.
-- Never clear app-global route state from `onUnmounted`. Vue mounts the incoming component before
-  unmounting the outgoing one, so the departing component's hook runs last and overwrites the new
-  value. Ownership belongs to the router, not to a component lifecycle.
+- Never clear app-global route state from `onUnmounted`. ~~Vue mounts the incoming component
+  before unmounting the outgoing one, so the departing component's hook runs last and overwrites
+  the new value.~~ **Correction (2026-08-02, this branch's final review):** that ordering claim is
+  false — `unmounted` runs *first*, verified twice against this repo's Vue (a bare `<component
+  :is>` swap and a real `RouterView` route swap both log `["Shell unmounted","Index mounted"]`).
+  The rule stands, the reason is different: a teardown hook fires on the way out with no knowledge
+  of what the destination needs, and clears the value a full async round-trip before the incoming
+  route could restore it. **Do not copy the struck-through sentence forward** — it reached
+  `frontend.md` from this plan and had to be corrected there. Ownership belongs to the router, not
+  to a component lifecycle.
 - `router.isReady()` only settles once the initial navigation runs, and that is started by
   `router.install()`. Awaiting it before `app.use(router)` deadlocks. Order:
   `createApp(App).use(router)` → `await router.isReady()` → `app.mount()`.

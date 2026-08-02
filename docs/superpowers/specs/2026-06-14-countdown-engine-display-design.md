@@ -112,6 +112,13 @@ schema-per-module convention but **no tables yet** (the engine is a pure functio
 community. `[slug].vue` sets it on resolve, clears on unmount. `useTitle` uses
 `activeCommunity?.name ?? 'countdown'`.
 
+> **Superseded 2026-08-02** (see `2026-08-02-navigation-flicker-design.md`): the shell no longer
+> owns `activeCommunity`. `registerCommunityDataGuard` (`src/communities/routeData.ts`) resolves
+> the community in `beforeResolve`, before the route commits, and publishes it in `afterEach`,
+> once it has committed — and never when `afterEach` receives a `failure`. `publishCommunity()` is
+> the single path that publishes; clearing is the guard's own business. The shell sets nothing and
+> clears nothing on unmount. Everything else in this section still holds.
+
 **D. API + types**: `getCountdown(slug): CountdownResponse` (`GET …/countdown`); add
 `CountdownResponse` + `Round` types; add `startsAtTimezone` to `CommunityResponse` and the
 `updateCommunity` body.
