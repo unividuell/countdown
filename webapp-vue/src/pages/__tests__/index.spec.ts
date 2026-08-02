@@ -23,7 +23,9 @@ describe('landing page', () => {
 
   it('shows nothing actionable on the happy path — the guard redirects before it renders', async () => {
     const w = await mountIndex()
-    expect(w.find('[data-test=landing-retry]').exists()).toBe(false)
+    // Not just "no retry button": nothing at all, including the old loading
+    // placeholder — that placeholder is the user-visible half of the reported bug.
+    expect(w.text()).toBe('')
   })
 
   it('offers a retry once the landing resolution has failed', async () => {
@@ -54,5 +56,21 @@ describe('landing page', () => {
     await flushPromises()
     expect(replace).not.toHaveBeenCalled()
     expect(landingFailed.value).toBe(true)
+  })
+
+  it('leaves the retry affordance in place when the navigation does not move the user', async () => {
+    landingFailed.value = true
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([{ id: 'c1', name: 'Team', slug: 'team' }])
+    vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
+    // router.replace() resolves — it does not reject — for an aborted/cancelled
+    // navigation, so a resolved-but-truthy NavigationFailure must not be mistaken
+    // for success.
+    replace.mockResolvedValueOnce({ type: 2 })
+    const w = await mountIndex()
+    await w.find('[data-test=landing-retry]').trigger('click')
+    await flushPromises()
+    expect(replace).toHaveBeenCalledWith('/team/')
+    expect(landingFailed.value).toBe(true)
+    expect(w.find('[data-test=landing-retry]').exists()).toBe(true)
   })
 })

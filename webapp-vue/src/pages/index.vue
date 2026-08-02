@@ -8,8 +8,19 @@ const router = useRouter()
 
 async function retry(): Promise<void> {
   const target = await resolveLandingTarget()
-  landingFailed.value = target === null
-  if (target) router.replace(target).catch((e) => console.error('navigation failed', e))
+  if (!target) {
+    landingFailed.value = true
+    return
+  }
+  // Only clear the error view once the navigation has actually moved the user away
+  // from here: router.replace() resolves (not rejects) on an aborted/cancelled
+  // navigation, so a failed move must not be mistaken for success and must leave the
+  // retry affordance in place instead of rendering an empty '/' over a dead session.
+  const failure = await router.replace(target).catch((e: unknown) => {
+    console.error('navigation failed', e)
+    return e
+  })
+  if (!failure) landingFailed.value = false
 }
 </script>
 
