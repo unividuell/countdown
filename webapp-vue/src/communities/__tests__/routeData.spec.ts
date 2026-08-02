@@ -9,6 +9,7 @@ import { activeCommunity } from '@/communities/context'
 import {
   _resetRouteDataState,
   communityRoute,
+  publishCommunity,
   registerCommunityDataGuard,
 } from '@/communities/routeData'
 
@@ -167,5 +168,59 @@ describe('community route data guard', () => {
     const router = makeRouter()
     await router.push('/team/')
     expect(communityRoute.value).toEqual({ kind: 'error' })
+  })
+
+  it('leaves the header untouched and does not refetch on a duplicated navigation', async () => {
+    const get = vi.spyOn(api, 'getCommunity').mockResolvedValue(community())
+    const router = makeRouter()
+    await router.push('/team/')
+    expect(get).toHaveBeenCalledTimes(1)
+
+    // Task 4's landing redirect produces exactly this shape: a push back to the
+    // route we are already on. vue-router resolves it as a 'duplicated' failure
+    // without ever running our guards — the header must stay exactly as it was.
+    const duplicate = await router.push('/team/')
+    expect(duplicate).toBeTruthy()
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(communityRoute.value).toEqual({ kind: 'ready', community: community() })
+    expect(activeCommunity.value).toMatchObject({ slug: 'team', name: 'Team Süd' })
+  })
+
+  it('does not let a stale pending fetch from an aborted navigation leak into a later same-slug navigation', async () => {
+    const get = vi.spyOn(api, 'getCommunity')
+    get.mockResolvedValueOnce(community()).mockResolvedValueOnce(nord)
+    const router = makeRouter()
+    await router.push('/team/')
+    await router.push('/nord/')
+    expect(activeCommunity.value?.slug).toBe('nord')
+
+    // A second beforeResolve guard, registered after our data guard, aborts one
+    // specific navigation back to /team/ — but only after our guard has already
+    // run and written its `pending` slot.
+    let abortNextTeamNav = false
+    router.beforeResolve((to) => (abortNextTeamNav && to.path === '/team/' ? false : true))
+
+    get.mockResolvedValueOnce(community({ pendingCount: 99 })) // the aborted fetch's stale payload
+    abortNextTeamNav = true
+    const aborted = await router.push('/team/')
+    abortNextTeamNav = false
+    expect(aborted).toBeTruthy() // NavigationFailure (aborted)
+    // Aborted: the URL and header stay exactly on 'nord'.
+    expect(router.currentRoute.value.params.slug).toBe('nord')
+    expect(activeCommunity.value?.slug).toBe('nord')
+
+    // Simulate Task 3's second publishCommunity call site (the shell's refresh())
+    // publishing fresher 'team' data out of band, i.e. NOT through this guard.
+    publishCommunity(community({ pendingCount: 0 }))
+
+    // A later, unrelated navigation to the same slug takes the "already ready"
+    // shortcut (no fetch) — the earlier aborted fetch's stale pending must not
+    // silently overwrite the fresher data just published above.
+    await router.push('/team/')
+    expect(get).toHaveBeenCalledTimes(3)
+    expect(communityRoute.value).toEqual({
+      kind: 'ready',
+      community: community({ pendingCount: 0 }),
+    })
   })
 })

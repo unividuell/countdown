@@ -58,8 +58,19 @@ export function registerCommunityDataGuard(router: Router): void {
 
   // Write after the commit. Skipping failures (aborted, cancelled, duplicated) is what
   // makes a redirect back to the route we are already on a genuine no-op.
+  //
+  // Invariant: `pending` is a single-navigation slot — it must never outlive the
+  // transition it was fetched for. Every path below that declines to apply it
+  // (failure, or a slug that doesn't match) clears it too. Otherwise a stale
+  // entry could sit here and later be picked up — by slug alone — by an
+  // unrelated navigation to the same slug that takes the "already ready"
+  // shortcut in beforeResolve above (which never rewrites `pending`), silently
+  // overwriting fresher data (e.g. from the shell's out-of-band refresh()).
   router.afterEach((to, _from, failure) => {
-    if (failure) return
+    if (failure) {
+      pending = null
+      return
+    }
     const slug = slugOf(to)
     if (!slug) {
       pending = null
@@ -67,7 +78,10 @@ export function registerCommunityDataGuard(router: Router): void {
       activeCommunity.value = null
       return
     }
-    if (pending?.slug !== slug) return
+    if (pending?.slug !== slug) {
+      pending = null
+      return
+    }
     const { state } = pending
     pending = null
     if (state.kind !== 'ready') {
