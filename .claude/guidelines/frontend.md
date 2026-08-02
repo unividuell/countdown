@@ -36,7 +36,7 @@ implementation.
 - `import { routes } from 'vue-router/auto-routes'`; pages live in `src/pages/` (`index.vue`, `[id].vue`, …).
 - The plugin generates `typed-router.d.ts` (committed; the plugin recommends committing it). Add it to `tsconfig`.
 - Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time; the call vanishes in the build).
-- **Gotcha:** `definePage` is a build-time macro processed by the VueRouter plugin. Unit tests run Vitest with only `@vitejs/plugin-vue` (not the VueRouter plugin), so stub it in a setup file: `globalThis.definePage = (r) => r` (mirrors `vue-router/experimental`'s runtime no-op).
+- **`vitest.config.ts` must register the same `VueRouter()` plugin as `vite.config.ts`, before `vue()`.** Without it, `vue-router/auto-routes` can't be resolved in tests at all, `definePage` never reaches the compiled component (its `meta` is unreachable from a mount), and — the bigger risk — no test can ever exercise the *real*, generated route table: every router-based test would have to hand-roll its own small `routes` array, which cannot catch a route-ranking regression (e.g. a catch-all shadowing a real page). Registering the plugin fixes all of that at once and needs no `definePage` stub in `src/test-setup.ts` — delete it if you find one; it's dead once the plugin is registered. A test asserting the generated table's ranking (real paths resolve to their own route, an unmatched path falls through to the catch-all) belongs in `src/__tests__/` since it's a whole-router concern, not one page's.
 - **Typed route params (strict TS):** Use the typed `useRoute('/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`[slug].vue`, `[slug]/members.vue`, etc.) all need the specific route name. See also `multi-tenancy.md`.
 - **Gotcha:** `router.push()` / `.replace()` return a Promise; a bare, unawaited call at the end of
   an async handler leaves its rejection on a chain nothing observes. `CommunityMenu.vue` and
@@ -159,7 +159,7 @@ Three projects, deliberately:
 | Project | Checks | Why separate |
 |---|---|---|
 | `tsconfig.app.json` | `src/**` **minus** tests | App code must NOT get `@types/node` — `process.env` would typecheck and then fail in the browser |
-| `tsconfig.vitest.json` | `src/**/__tests__/**` + `src/test-setup.ts` | Tests run in Node and legitimately use `node:fs` (e.g. reading `shared/rng/golden-vectors.json`) |
+| `tsconfig.vitest.json` | `src/**/__tests__/**` | Tests run in Node and legitimately use `node:fs` (e.g. reading `shared/rng/golden-vectors.json`) |
 | `tsconfig.node.json` | `vite.config.ts`, `vitest.config.ts`, `eslint.config.mjs` | Config files are Node, not browser |
 
 A test importing `node:fs` while tests were still inside the app project is what surfaced this.

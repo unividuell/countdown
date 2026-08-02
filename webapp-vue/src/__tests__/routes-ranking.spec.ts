@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import { routes } from 'vue-router/auto-routes'
+
+const router = createRouter({ history: createMemoryHistory(), routes })
+
+describe('generated route table', () => {
+  it.each([
+    ['/login', '/login'],
+    ['/communities', '/communities/'],
+    ['/communities/new', '/communities/new'],
+    ['/super-admin', '/super-admin/'],
+    ['/c/team/', '/c/[slug]/'],
+  ])('%s resolves to its own route, not the catch-all', (path, expectedName) => {
+    expect(router.resolve(path).name).toBe(expectedName)
+  })
+
+  it('an unmatched path falls through to the catch-all, marked public', () => {
+    const resolved = router.resolve('/definitely-not-a-page')
+    expect(resolved.name).toBe('/[...path]')
+    expect(resolved.meta.public).toBe(true)
+  })
+})
