@@ -31,7 +31,7 @@ describe('members admin page', () => {
       { userId: 'u2', username: 'Bob', status: 'PENDING', isAdmin: false },
     ])
     const remove = vi.spyOn(api, 'removeMember').mockResolvedValue(undefined as never)
-    const Members = (await import('@/pages/[slug]/members.vue')).default
+    const Members = (await import('@/pages/c/[slug]/members.vue')).default
     const w = mount(Members)
     await flushPromises()
     expect(w.text()).toContain('Alice')
@@ -61,7 +61,7 @@ describe('settings page', () => {
       expiresAt: '2030-01-01T00:00:00Z',
     })
     const revoke = vi.spyOn(api, 'revokeInvite').mockResolvedValue(undefined as never)
-    const Settings = (await import('@/pages/[slug]/settings.vue')).default
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
     expect(w.text()).toContain('/join/tok')
@@ -85,7 +85,7 @@ describe('settings page', () => {
       url: '/join/tok123',
       expiresAt: '2030-01-01T00:00:00Z',
     })
-    const Settings = (await import('@/pages/[slug]/settings.vue')).default
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
     await w.find('[data-test=generate-invite]').trigger('click')

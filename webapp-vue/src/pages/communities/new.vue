@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { slugify } from '@/lib/slugify'
 import { createCommunity } from '@/api/communities'
 import { ApiError } from '@/api/client'
+import { communityPath } from '@/communities/routes'
 
 const router = useRouter()
 const name = ref('')
@@ -15,11 +16,11 @@ async function submit(): Promise<void> {
   error.value = null
   try {
     const c = await createCommunity(name.value.trim())
-    router.replace(`/${c.slug}/`)
+    router.replace(communityPath(c.slug))
   } catch (e) {
     error.value =
       e instanceof ApiError && e.status === 409
-        ? 'Dieser Name ergibt einen bereits vergebenen/reservierten Slug — bitte Namen anpassen.'
+        ? 'Dieser Name ergibt einen bereits vergebenen Slug — bitte Namen anpassen.'
         : 'Erstellen fehlgeschlagen. Bitte erneut versuchen.'
   }
 }
@@ -39,7 +40,7 @@ async function submit(): Promise<void> {
         required
       />
       <p class="mt-2 text-sm text-neutral-500">
-        URL: <code>/{{ slug || '…' }}/</code>
+        URL: <code>{{ communityPath(slug || '…') }}</code>
         <span v-if="name && tooShort" class="text-amber-600"> (mind. 3 Zeichen)</span>
       </p>
       <button class="mt-4 rounded border px-3 py-1.5 hover:bg-neutral-200" :disabled="tooShort">

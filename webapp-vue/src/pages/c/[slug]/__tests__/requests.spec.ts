@@ -35,7 +35,7 @@ describe('requests page', () => {
       { userId: 'u2', username: 'Bob', status: 'ACTIVE', isAdmin: false },
     ])
     const approve = vi.spyOn(api, 'approveMember').mockResolvedValue(undefined as never)
-    const Requests = (await import('@/pages/[slug]/requests.vue')).default
+    const Requests = (await import('@/pages/c/[slug]/requests.vue')).default
     const w = mount(Requests)
     await flushPromises()
     expect(w.text()).toContain('Alice')

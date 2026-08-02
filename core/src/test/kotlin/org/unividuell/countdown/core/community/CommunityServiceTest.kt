@@ -47,8 +47,9 @@ class CommunityServiceTest(
     }
 
     @Test
-    fun `create rejects a reserved slug`() {
-        shouldThrow<SlugUnavailableException> { service.create(aUser().id!!, "join") }
+    fun `create accepts a name whose slug used to be reserved`() {
+        val c = service.create(aUser().id!!, "Super Admin")
+        c.slug shouldBe "super-admin"
     }
 
     @Test

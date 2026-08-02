@@ -10,7 +10,7 @@ const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn().mockResolvedVal
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
   return {
-    useRoute: () => reactive({ fullPath: '/team/' }),
+    useRoute: () => reactive({ fullPath: '/c/team/' }),
     useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
     RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
   }

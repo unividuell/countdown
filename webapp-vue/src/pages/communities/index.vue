@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCommunities } from '@/communities/useCommunities'
+import { communityPath } from '@/communities/routes'
 
 const { active, refresh } = useCommunities()
 
@@ -13,7 +14,7 @@ onMounted(refresh)
     <h1 class="mb-4 text-xl font-semibold">Deine Spielgemeinschaften</h1>
     <ul v-if="active.length" class="mb-6 space-y-2">
       <li v-for="c in active" :key="c.id">
-        <RouterLink :to="`/${c.slug}/`" class="text-blue-700 hover:underline">{{
+        <RouterLink :to="communityPath(c.slug)" class="text-blue-700 hover:underline">{{
           c.name
         }}</RouterLink>
       </li>

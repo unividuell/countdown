@@ -38,7 +38,7 @@ function makeRouter() {
       { path: '/', component: Stub },
       { path: '/communities', component: Stub },
       { path: '/join/:token', component: Stub },
-      { path: '/:slug', component: Stub, children: [{ path: '', component: Stub }] },
+      { path: '/c/:slug', component: Stub, children: [{ path: '', component: Stub }] },
     ],
   })
   registerLandingRedirect(router)
@@ -114,7 +114,7 @@ describe('landing redirect guard', () => {
     vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: 'c1' })
     const get = vi.mocked(api.getCommunity)
     const router = makeRouter()
-    await router.push('/team/')
+    await router.push('/c/team/')
     await flushPromises()
 
     // Watching activeCommunity and the current path in the same synchronous callback
@@ -156,7 +156,7 @@ describe('landing redirect guard', () => {
 
     const router = makeRouter()
     // Commits and starts the fire-and-forget selection write, held open below.
-    await router.push('/nord/')
+    await router.push('/c/nord/')
 
     const nav = router.push('/')
     await flushPromises()
@@ -184,7 +184,7 @@ describe('landing redirect guard', () => {
     vi.spyOn(api, 'setSelection').mockReturnValue(new Promise<void>(() => {})) // never settles
 
     const router = makeRouter()
-    await router.push('/team/')
+    await router.push('/c/team/')
     await flushPromises() // the never-settling write is now in the module slot
 
     _resetRouteDataState() // what every beforeEach does between test cases

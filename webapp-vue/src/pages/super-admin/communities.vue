@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { DateTime } from 'luxon'
 import { listAllCommunities } from '@/api/superAdmin'
 import type { SuperAdminCommunity } from '@/api/types'
+import { communityPath } from '@/communities/routes'
 
 const communities = ref<SuperAdminCommunity[]>([])
 const state = ref<'loading' | 'ready' | 'error'>('loading')
@@ -38,12 +39,15 @@ onMounted(async () => {
       <article v-for="c in communities" :key="c.id" data-test="community" class="mb-8">
         <header class="mb-2 flex flex-wrap items-baseline gap-3 border-b pb-1">
           <h2 class="font-semibold">{{ c.name }}</h2>
-          <code class="text-xs text-neutral-500">/{{ c.slug }}/</code>
+          <code class="text-xs text-neutral-500">{{ communityPath(c.slug) }}</code>
           <span class="grow"></span>
-          <RouterLink :to="`/${c.slug}/`" class="text-sm text-blue-700 hover:underline">
+          <RouterLink :to="communityPath(c.slug)" class="text-sm text-blue-700 hover:underline">
             Öffnen
           </RouterLink>
-          <RouterLink :to="`/${c.slug}/settings`" class="text-sm text-blue-700 hover:underline">
+          <RouterLink
+            :to="communityPath(c.slug, 'settings')"
+            class="text-sm text-blue-700 hover:underline"
+          >
             Einstellungen
           </RouterLink>
         </header>
