@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { Router } from 'vue-router'
 import { consumePostLoginRedirect } from '@/auth/postLoginRedirect'
+import { pendingSelectionWrite } from '@/communities/routeData'
 import { useCommunities } from '@/communities/useCommunities'
 
 /** Set when the landing resolution failed, so '/' renders a retry rather than hanging. */
@@ -12,6 +13,10 @@ export async function resolveLandingTarget(): Promise<string | null> {
   // there rather than to the default landing.
   const stashed = consumePostLoginRedirect()
   if (stashed) return stashed
+  // A community switch persists its selection fire-and-forget after it commits (see
+  // `routeData.ts`). Racing ahead of that write here would read the *previous*
+  // selection and could redirect back to the community the user just left.
+  if (pendingSelectionWrite) await pendingSelectionWrite.catch(() => {})
   try {
     const l = await useCommunities().landing()
     return l.kind === 'none' || l.kind === 'choose' ? '/communities' : `/${l.slug}/`

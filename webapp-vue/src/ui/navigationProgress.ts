@@ -16,10 +16,14 @@ function stop(): void {
 
 export function registerNavigationProgress(router: Router): void {
   router.beforeEach(() => {
-    stop()
-    timer = setTimeout(() => {
-      navigationPending.value = true
-    }, PENDING_DELAY_MS)
+    // A redirect hop ('/' -> guard -> '/nord/') runs beforeEach twice but afterEach
+    // once. Restarting here blanks the bar for a full PENDING_DELAY_MS in the middle
+    // of what the user experiences as one transition.
+    if (timer === undefined && !navigationPending.value) {
+      timer = setTimeout(() => {
+        navigationPending.value = true
+      }, PENDING_DELAY_MS)
+    }
     return true
   })
   // afterEach also fires for aborted and redirected navigations, so the bar cannot

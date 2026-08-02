@@ -25,6 +25,7 @@ const team: CommunityResponse = {
   viewerIsAdmin: false,
   pendingCount: 0,
 }
+const nord: CommunityResponse = { ...team, id: 'c2', name: 'Team Nord', slug: 'nord' }
 
 // Both guards, in the order main.ts registers them: beforeResolve hooks run in
 // registration order, so the landing redirect claims '/' before anything else.
@@ -114,8 +115,15 @@ describe('landing redirect guard', () => {
     await router.push('/team/')
     await flushPromises()
 
-    const seen: (string | null)[] = []
-    const stop = watch(activeCommunity, (v) => seen.push(v?.slug ?? null), { flush: 'sync' })
+    // Watching activeCommunity and the current path in the same synchronous callback
+    // proves '/' never commits mid-transition — not just that the header never
+    // changed — rather than inferring it from the end state.
+    const seen: { slug: string | null; path: string }[] = []
+    const stop = watch(
+      [activeCommunity, () => router.currentRoute.value.path],
+      ([v, path]) => seen.push({ slug: v?.slug ?? null, path }),
+      { flush: 'sync' },
+    )
     await router.push('/')
     await flushPromises()
     stop()
@@ -126,5 +134,39 @@ describe('landing redirect guard', () => {
     expect(activeCommunity.value?.slug).toBe('team')
     expect(router.currentRoute.value.params.slug).toBe('team')
     expect(get).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for an in-flight selection write before resolving the landing target, rather than racing it', async () => {
+    // A community switch persists its selection fire-and-forget after the navigation
+    // commits (routeData.ts). Clicking the header brand within that write's round-trip
+    // must not let the landing guard read the *previous* selection.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: 'c1', name: 'Team Süd', slug: 'team' },
+      { id: 'c2', name: 'Team Nord', slug: 'nord' },
+    ])
+    let releaseSelectionWrite!: () => void
+    const blockedSelectionWrite = new Promise<void>((r) => {
+      releaseSelectionWrite = r
+    })
+    vi.spyOn(api, 'setSelection').mockReturnValue(blockedSelectionWrite)
+    const getSelection = vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: 'c2' })
+    vi.spyOn(api, 'getCommunity').mockResolvedValue(nord)
+
+    const router = makeRouter()
+    // Commits and starts the fire-and-forget selection write, held open below.
+    await router.push('/nord/')
+
+    const nav = router.push('/')
+    await flushPromises()
+    // The write hasn't settled yet — the landing guard must not have raced ahead to
+    // read the (stale) selection.
+    expect(getSelection).not.toHaveBeenCalled()
+
+    releaseSelectionWrite()
+    await nav
+    expect(getSelection).toHaveBeenCalledTimes(1)
+    // Resolves back to 'nord' — the community just switched to, not whatever the
+    // selection said before this write landed.
+    expect(router.currentRoute.value.params.slug).toBe('nord')
   })
 })

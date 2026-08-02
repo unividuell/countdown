@@ -10,6 +10,15 @@ export type CommunityRouteState =
 
 export const communityRoute = ref<CommunityRouteState | null>(null)
 
+/**
+ * The in-flight "last visited" write, if any. It is fire-and-forget with respect to the
+ * navigation that started it (see `registerCommunityDataGuard`'s `afterEach` below), but the
+ * landing guard (`landingGuard.ts`) reads the selection this write is persisting — so it awaits
+ * this promise before resolving `/`, or a click on the header brand within the write's round-trip
+ * could read the *previous* selection and redirect back to the community the user just left.
+ */
+export let pendingSelectionWrite: Promise<void> | null = null
+
 /** The single write path into the header state — the guard and the shell's refresh() share it. */
 export function publishCommunity(c: CommunityResponse): void {
   communityRoute.value = { kind: 'ready', community: c }
@@ -90,14 +99,19 @@ export function registerCommunityDataGuard(router: Router): void {
       return
     }
     publishCommunity(state.community)
-    // A "last visited" marker only — losing it must never affect the navigation.
-    setSelection(state.community.id).catch((e) =>
-      console.error('could not persist the community selection', e),
-    )
+    // A "last visited" marker only — losing it must never affect the navigation. It is
+    // still tracked in `pendingSelectionWrite` so the landing guard can await it instead
+    // of racing it (see the doc comment on that export above).
+    pendingSelectionWrite = setSelection(state.community.id)
+      .catch((e) => console.error('could not persist the community selection', e))
+      .finally(() => {
+        pendingSelectionWrite = null
+      })
   })
 }
 
 /** Test-only: reset the module-level singleton between test cases. */
 export function _resetRouteDataState(): void {
   communityRoute.value = null
+  activeCommunity.value = null
 }

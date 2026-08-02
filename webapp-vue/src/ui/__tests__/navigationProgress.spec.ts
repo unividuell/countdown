@@ -63,4 +63,55 @@ describe('navigation progress', () => {
     await nav
     expect(navigationPending.value).toBe(false)
   })
+
+  it('stays visible across a redirect hop instead of blinking off and back on', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: Stub },
+        { path: '/landing', component: Stub },
+        { path: '/target', component: Stub },
+      ],
+    })
+
+    let releaseLanding!: () => void
+    const blockedLanding = new Promise<void>((r) => {
+      releaseLanding = r
+    })
+    let releaseTarget!: () => void
+    const blockedTarget = new Promise<void>((r) => {
+      releaseTarget = r
+    })
+
+    // Mirrors the landing guard: '/landing' redirects to '/target' once resolved.
+    // vue-router runs beforeEach twice for this one user-perceived transition (once
+    // per hop) but afterEach only once, on the final commit.
+    router.beforeResolve(async (to) => {
+      if (to.path === '/landing') {
+        await blockedLanding
+        return '/target'
+      }
+      if (to.path === '/target') {
+        await blockedTarget
+      }
+      return true
+    })
+    registerNavigationProgress(router)
+
+    const nav = router.push('/landing')
+    await vi.advanceTimersByTimeAsync(PENDING_DELAY_MS)
+    expect(navigationPending.value).toBe(true)
+
+    releaseLanding()
+    // Flush the redirect hop's beforeEach without advancing the clock: a re-armed
+    // timer would need another full PENDING_DELAY_MS before turning the bar back
+    // on, so checking right away (0 ms later) is exactly what would catch a
+    // blink-off.
+    await vi.advanceTimersByTimeAsync(0)
+    expect(navigationPending.value).toBe(true)
+
+    releaseTarget()
+    await nav
+    expect(navigationPending.value).toBe(false)
+  })
 })

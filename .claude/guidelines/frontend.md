@@ -57,20 +57,23 @@ not component lifecycle hooks — `src/communities/routeData.ts` and
   the header match the committed route by construction.
 - **`afterEach` fires for failed navigations too, and receives the `failure` argument — check it.**
   Skipping failures is what turns a redirect back to the route we're already on into a true no-op.
-- **A direct duplicate push and a guard-produced duplicate are not the same thing.**
-  `router.push('/x')` while already on `/x` short-circuits — no guard runs at all. But a guard that
-  *returns* a redirect to the route already in effect (e.g. the landing guard resolving `/` back to
-  the community you're already on) runs the navigation through `afterEach` with a `duplicated`
-  `NavigationFailure`. The whole flicker fix depends on the second case, so a test that only
-  exercises the first proves nothing about it.
+- **A direct duplicate push and a guard-produced duplicate both reach `afterEach` with a
+  `duplicated` `NavigationFailure` (type 16) — that part is not what distinguishes them.** Measured:
+  `router.push('/x')` while already on `/x` fires zero `beforeEach`/`beforeResolve` guards at all,
+  yet `afterEach` still runs with the failure. The real difference is that one: a guard-produced
+  redirect to the route already in effect (e.g. the landing guard resolving `/` back to the
+  community you're already on) *does* run `beforeResolve`, so it is the only one of the two that
+  exercises the landing guard. The whole flicker fix depends on that case, so a test that only
+  exercises the direct push proves nothing about it.
 - **`push()` / `.replace()` resolve with a `NavigationFailure` for aborted/cancelled navigations —
   they only reject when a guard throws.** A `.catch()` on a navigation therefore does not tell you
   the navigation succeeded; inspect the resolved value instead. Code that flips UI state only in a
   `.catch` path will silently mishandle an aborted navigation.
-- **Never clear app-global route state from `onUnmounted`.** Vue mounts the incoming component
-  before unmounting the outgoing one, so the departing component's hook runs *last* and would
-  overwrite the value the new route just wrote. Ownership belongs to the router, not to a component
-  lifecycle.
+- **Never clear app-global route state from `onUnmounted`.** A component teardown hook fires on the
+  way out of a route, with no knowledge of what the destination needs — so it clears state the
+  incoming route may already depend on, and it clears it a full round-trip before that route can
+  restore it (the incoming component's own fetch is async). Ownership belongs to the router, which
+  sees both ends of the transition.
 - **`router.isReady()` only settles once the initial navigation has run, and `router.install()` is
   what starts that navigation.** Awaiting `isReady()` before `app.use(router)` deadlocks. Order:
   `createApp(App).use(router)` → `await router.isReady()` → `app.mount()`.
@@ -126,7 +129,7 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 
 Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
 
-- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard resolves (in `beforeResolve`) and publishes (in `afterEach`) before the route ever commits, so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
+- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard **resolves in `beforeResolve`, before the route commits, and publishes in `afterEach`, once it has committed** — so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state?.kind === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
 - The type mismatch (`Ref<CommunityResponse | null>` vs `Readonly<Ref<CommunityResponse>>`) is bridged with `community as unknown as Readonly<Ref<CommunityResponse>>`. This is intentional: the null case is excluded structurally (children only mount after ready), and `unknown` is necessary because TypeScript cannot widen through a `Readonly` wrapper.
 - Child pages call `useCommunityContext()` (throws if context is missing) instead of `useRoute()` — they never need to re-fetch the slug from the router.
 - `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.

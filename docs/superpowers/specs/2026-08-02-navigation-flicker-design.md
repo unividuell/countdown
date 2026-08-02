@@ -33,9 +33,10 @@ where to go. Every trip through `/` therefore paints a placeholder — even when
 its `RouterView`. This costs a full round-trip of blank content on every community switch, not
 just in the reported flow.
 
-**3 · `activeCommunity` is cleared in `onUnmounted`.** Vue mounts the incoming component before
-unmounting the outgoing one, so even a correctly ordered fetch would have its result stomped by
-the departing shell's `onUnmounted` handler. The header state must not be owned by a component
+**3 · `activeCommunity` is cleared in `onUnmounted`.** The departing shell's teardown hook fires
+with no knowledge of what the destination needs, and fires a full round-trip before the incoming
+component's own (async) fetch can restore the value — so even a correctly ordered fetch would find
+the header already blanked out in between. The header state must not be owned by a component
 lifecycle hook.
 
 ## Approach
