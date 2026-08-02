@@ -21,5 +21,9 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts", "typed-router.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts", "typed-router.d.ts"],
+  // Tests are checked by tsconfig.vitest.json instead: they need Node types
+  // (`node:fs`), which app code must not get — `process.env` would typecheck
+  // in the SPA and fail at runtime.
+  "exclude": ["src/**/__tests__/**", "src/test-setup.ts"]
 }

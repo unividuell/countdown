@@ -98,6 +98,25 @@ Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`i
 - **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts` config, so use `.mjs`) + **Prettier**.
 - Disable `vue/multi-word-component-names` for `src/pages/**` — file-based route components are idiomatically single-word (`index.vue`, `login.vue`).
 
+## Typecheck must be `vue-tsc -b` — `--noEmit` checks nothing here
+
+`tsconfig.json` is a **solution file**: `"files": []` plus project references. `vue-tsc --noEmit` on
+it therefore type-checks **zero files** and always exits 0. The `typecheck` script used to be exactly
+that, so the CI gate in `build-web.yml` — added specifically so type errors surface on a PR instead of
+after merge — passed vacuously, and a broken build only showed up in the image build. Use
+**`vue-tsc -b`** (build mode walks the references; ~1000 files). If you ever change the script, verify
+it with a deliberate type error rather than trusting a green run.
+
+Three projects, deliberately:
+
+| Project | Checks | Why separate |
+|---|---|---|
+| `tsconfig.app.json` | `src/**` **minus** tests | App code must NOT get `@types/node` — `process.env` would typecheck and then fail in the browser |
+| `tsconfig.vitest.json` | `src/**/__tests__/**` + `src/test-setup.ts` | Tests run in Node and legitimately use `node:fs` (e.g. reading `shared/rng/golden-vectors.json`) |
+| `tsconfig.node.json` | `vite.config.ts`, `vitest.config.ts`, `eslint.config.mjs` | Config files are Node, not browser |
+
+A test importing `node:fs` while tests were still inside the app project is what surfaced this.
+
 ## Server-authoritative ticking values (countdown pattern)
 
 For live values that must agree with the backend (the countdown), the backend owns the logic and
