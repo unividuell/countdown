@@ -4,11 +4,13 @@ import { routes } from 'vue-router/auto-routes'
 import App from './App.vue'
 import { useAuth } from '@/auth/useAuth'
 import { registerAuthGuard } from '@/auth/guard'
+import { registerNavigationProgress } from '@/ui/navigationProgress'
 import { setUnauthorizedHandler } from '@/api/client'
 import './assets/main.css'
 
 const router = createRouter({ history: createWebHistory(), routes })
 registerAuthGuard(router)
+registerNavigationProgress(router)
 
 const { bootstrap, markAnonymous } = useAuth()
 setUnauthorizedHandler(() => {

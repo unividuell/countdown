@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import App from '@/App.vue'
 import { activeCommunity } from '@/communities/context'
 import { useAuth } from '@/auth/useAuth'
+import { navigationPending } from '@/ui/navigationProgress'
 
 vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
@@ -30,6 +31,7 @@ describe('App main header', () => {
   beforeEach(() => {
     activeCommunity.value = null
     mockStatus('anonymous')
+    navigationPending.value = false
   })
 
   it('shows the app name and no countdown when no community is active', () => {
@@ -100,5 +102,15 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
     mockStatus('authenticated')
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
+  })
+
+  it('shows the navigation progress bar only while a navigation is pending', () => {
+    expect(mount(App, { global: { stubs } }).find('[data-test=navigation-progress]').exists()).toBe(
+      false,
+    )
+    navigationPending.value = true
+    expect(mount(App, { global: { stubs } }).find('[data-test=navigation-progress]').exists()).toBe(
+      true,
+    )
   })
 })

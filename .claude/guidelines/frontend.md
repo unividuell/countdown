@@ -69,6 +69,14 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   outside-click-to-close listens directly instead — `useEventListener(document, 'click', ...)` plus
   a `root.value?.contains(e.target as Node)` check — because a test built against `onClickOutside`
   cannot pass under Vitest/happy-dom.
+- **Fake timers + router guards: use `vi.advanceTimersByTimeAsync`, not `vi.advanceTimersByTime`.**
+  Vue Router 5 resolves `beforeEach`/`beforeResolve` guards through several internal promise hops
+  (data-loader effect-scope plumbing), so a guard-armed `setTimeout` may not exist yet even after
+  `await Promise.resolve()`. The synchronous `vi.advanceTimersByTime(ms)` only fires timers that are
+  *already* registered at the moment it's called — if the guard hasn't run yet, it silently advances
+  nothing. `await vi.advanceTimersByTimeAsync(ms)` drains pending microtasks between ticks of the
+  fake clock, giving the guard a chance to actually register the timer before the clock moves past
+  it. See `src/ui/navigationProgress.ts` + its spec for the worked example.
 - **A composable double whose value is bound directly in a template must be a real `ref()`, not a
   plain `{ value }` object.** `useAuth()` returns `readonly(ref(...))`, and both `MemberMenu.vue`
   (`{{ user?.username }}`) and `App.vue` (`v-if="status === 'authenticated'"`) bind it directly. A
