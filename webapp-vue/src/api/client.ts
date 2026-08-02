@@ -11,6 +11,14 @@ export class ApiError extends Error {
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
+/**
+ * A hung request (as opposed to a failed one) never resolves on its own — nothing else in
+ * `apiFetch` bounds it. 10s is a common client-side default (long enough to tolerate normal
+ * latency plus a cold single-instance backend, short enough that a stuck navigation guard or
+ * `bootstrap()` resolves in a UX-relevant time rather than leaving the app frozen indefinitely).
+ */
+const REQUEST_TIMEOUT_MS = 10_000
+
 /** JSON-only API: callers pass an already-serialized string body. */
 export type ApiFetchOptions = Omit<RequestInit, 'body'> & { body?: string | null }
 
@@ -41,7 +49,27 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     headers.set('Content-Type', 'application/json')
   }
 
-  const res = await fetch(path, { ...options, method, headers, credentials: 'include' })
+  // AbortSignal.timeout/AbortSignal.any: Baseline widely available (Chrome 116+, Firefox 124+,
+  // Safari 17.4+ for `.any`; all evergreen). This project targets no older browsers (ESNext
+  // build target, no browserslist restricting legacy engines), so both are safe to rely on.
+  const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal
+
+  let res: Response
+  try {
+    res = await fetch(path, { ...options, method, headers, credentials: 'include', signal })
+  } catch (err) {
+    // A caller-initiated abort takes priority: report it as-is (typically a DOMException
+    // 'AbortError') rather than telling the caller the server was slow to respond.
+    if (options.signal?.aborted) throw err
+    if (timeoutSignal.aborted) {
+      // status 0: no HTTP response was ever received, mirroring the browser's own convention
+      // for network-level failures (e.g. XMLHttpRequest.status). A real status like 504 would
+      // wrongly imply some server actually responded.
+      throw new ApiError(0, `request to ${path} timed out after ${REQUEST_TIMEOUT_MS}ms`)
+    }
+    throw err
+  }
 
   if (res.status === 401) {
     try {
