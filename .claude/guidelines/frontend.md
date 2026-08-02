@@ -46,6 +46,40 @@ implementation.
   `.catch` on that throws synchronously, failing the test for a reason unrelated to the behavior
   under test.
 
+### Navigation data: resolve in `beforeResolve`, publish in `afterEach`
+
+Route-derived app state (the active community, the `/` landing target) is owned by router guards,
+not component lifecycle hooks — `src/communities/routeData.ts` and
+`src/communities/landingGuard.ts` are the reference implementation.
+
+- **Fetch in `beforeResolve`, write in `afterEach`.** Writing during `beforeResolve` lets an aborted
+  navigation leave state describing a route the user never reached; writing in `afterEach` makes
+  the header match the committed route by construction.
+- **`afterEach` fires for failed navigations too, and receives the `failure` argument — check it.**
+  Skipping failures is what turns a redirect back to the route we're already on into a true no-op.
+- **A direct duplicate push and a guard-produced duplicate are not the same thing.**
+  `router.push('/x')` while already on `/x` short-circuits — no guard runs at all. But a guard that
+  *returns* a redirect to the route already in effect (e.g. the landing guard resolving `/` back to
+  the community you're already on) runs the navigation through `afterEach` with a `duplicated`
+  `NavigationFailure`. The whole flicker fix depends on the second case, so a test that only
+  exercises the first proves nothing about it.
+- **`push()` / `.replace()` resolve with a `NavigationFailure` for aborted/cancelled navigations —
+  they only reject when a guard throws.** A `.catch()` on a navigation therefore does not tell you
+  the navigation succeeded; inspect the resolved value instead. Code that flips UI state only in a
+  `.catch` path will silently mishandle an aborted navigation.
+- **Never clear app-global route state from `onUnmounted`.** Vue mounts the incoming component
+  before unmounting the outgoing one, so the departing component's hook runs *last* and would
+  overwrite the value the new route just wrote. Ownership belongs to the router, not to a component
+  lifecycle.
+- **`router.isReady()` only settles once the initial navigation has run, and `router.install()` is
+  what starts that navigation.** Awaiting `isReady()` before `app.use(router)` deadlocks. Order:
+  `createApp(App).use(router)` → `await router.isReady()` → `app.mount()`.
+- **Guard async loads with a generation counter** so a superseded navigation cannot publish its
+  result — the same technique `useCountdown` uses for stale responses.
+- **A pending indicator needs a delay (~150 ms, `PENDING_DELAY_MS`).** An indicator that flashes on
+  a fast transition is itself the flicker it was added to explain. See the fake-timer note under
+  Testing below for how to drive this in a guard-based test.
+
 ## State — composables + VueUse (no Pinia)
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
@@ -92,7 +126,7 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 
 Pages nested under `[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
 
-- The shell (`src/pages/[slug].vue`) fetches the community, provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }`, then renders `<RouterView />` only in the `state === 'ready'` branch — so children can safely read `community.value` as non-null.
+- The shell (`src/pages/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard resolves (in `beforeResolve`) and publishes (in `afterEach`) before the route ever commits, so the shell itself does no fetching. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state === 'ready'` branch — so children can safely read `community.value` as non-null.
 - The type mismatch (`Ref<CommunityResponse | null>` vs `Readonly<Ref<CommunityResponse>>`) is bridged with `community as unknown as Readonly<Ref<CommunityResponse>>`. This is intentional: the null case is excluded structurally (children only mount after ready), and `unknown` is necessary because TypeScript cannot widen through a `Readonly` wrapper.
 - Child pages call `useCommunityContext()` (throws if context is missing) instead of `useRoute()` — they never need to re-fetch the slug from the router.
 - `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `/${slug}/` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
@@ -121,14 +155,15 @@ hidden, never an unhandled rejection).
 
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
 the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
-`activeCommunity` in `src/communities/context.ts` (set by the shell on resolve, cleared on unmount),
-not via `provide`/`inject`. `ActiveCommunity` also carries `viewerIsAdmin` + `pendingCount` for the
-header's community menu. **Every path that loads the community must republish it** — the shell
-routes both `resolve()` and `refresh()` through one `publish(c: CommunityResponse)` helper.
-Publishing only on the initial resolve leaves stale header state behind (the pending dot would
-survive an admin clearing the requests). Navigation controls live in the main header
-(`CommunityMenu`, `MemberMenu` on top of the shared `src/ui/HeaderMenu.vue`), never inside the
-`[slug]` content area.
+`activeCommunity` in `src/communities/context.ts` — written by `registerCommunityDataGuard`'s
+`afterEach` (`src/communities/routeData.ts`) and by the shell's `refresh()`, both through the single
+`publishCommunity()` helper, not via `provide`/`inject`. `ActiveCommunity` also carries
+`viewerIsAdmin` + `pendingCount` for the header's community menu. **Every path that loads the
+community must republish it** — that's why both the guard and `refresh()` funnel through
+`publishCommunity()` instead of writing `activeCommunity` directly. Publishing only on the initial
+resolve leaves stale header state behind (the pending dot would survive an admin clearing the
+requests). Navigation controls live in the main header (`CommunityMenu`, `MemberMenu` on top of the
+shared `src/ui/HeaderMenu.vue`), never inside the `[slug]` content area.
 
 **Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
 the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
