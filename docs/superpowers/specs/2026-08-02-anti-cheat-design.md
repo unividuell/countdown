@@ -14,21 +14,53 @@ portiert werden.
 ## Die Messlatte
 
 Es geht **nicht** um Geld. Die Spiele sind zum Spaß, aber sie sind kompetitiv, und Cheater sind
-Spielverderber. Die Hauptcommunity sind **Informatiker** — der erste Blick geht in den
-Netzwerk-Verkehr.
+Spielverderber. Die Hauptcommunity sind **Informatiker** — der erste Blick geht in die
+**Browser-DevTools**, und zwar in beides: den Netzwerk-Verkehr *und* die JS-Konsole samt
+Komponenten-State.
 
 Daraus die Zielformulierung, an der jede Maßnahme gemessen wird:
 
-> **Nicht „unmöglich", sondern „nicht offensichtlich".** Dass man Farben mit einer Bildschirm-Pipette
-> ausliest oder sich ein Skript schreibt, ist akzeptiert. Dass die Lösung als Feld im JSON steht oder
-> mit drei Zeilen in der Konsole fällt, ist es nicht.
+> **Nicht „unmöglich", sondern „nicht direkt greifbar".** Die Lösung darf nicht übertragen werden und
+> nicht in einer JS-Variablen stehen. Dieses Level, nicht mehr.
+
+Das ist eine schärfere Anforderung als „kein Lösungsfeld im JSON": sie schließt auch **abgeleitete,
+aber gehaltene** Werte ein. Ein `ref`, das den gesuchten Index für ein Hint-Overlay ausrechnet, ist im
+Komponenten-State sichtbar — Payload-Hygiene allein genügt also nicht. **Der Client darf die Lösung
+nie materialisieren**, nicht nur nie empfangen.
+
+Was wir *nicht verhindern können* — Bildschirm-Pipette, selbstgeschriebenes Skript — bleibt möglich.
+Es wird **geduldet, nicht gebilligt**: es wird nie eine Regel geben, die das erlaubt, und wir bauen
+auch nichts, das es bequemer macht. Nur weil eine Grenze nicht durchsetzbar ist, wollen wir sie nicht
+auch noch fördern.
 
 Und die zweite Hälfte, die aus der Zeitwertung folgt: **die Uhr ist die Verteidigung.** Weil ab dem
 Start-Klick gemessen wird, muss das Ableiten der Lösung nicht unmöglich sein — es muss *länger
-dauern als ehrliches Spielen*. Wer erst ein Skript schreibt, verliert gegen den, der hinschaut.
+dauern als ehrliches Spielen*.
 
-Der eigentliche Gegner ist damit präzise benannt: **kein billiges, wiederverwendbares
-Extraktionsskript darf gewinnen.** Einmalaufwand amortisiert sich über Runden, Neugier nicht.
+### Der Gegner ist das wiederverwendbare Skript, nicht der Neugierige
+
+Zwei Verhaltensweisen mit völlig unterschiedlicher Ökonomie, und nur eine ist gefährlich:
+
+| | Kosten | über 20 Runden |
+|---|---|---|
+| **Neugier** — manuell in DevTools stöbern, Feld suchen, ablesen | fallen **jede Runde neu an**, z. B. 40 s bei laufender Uhr | 20 × Strafe, rechnet sich nie |
+| **Skript** — einmal schreiben, danach einfügen und ausführen | **einmalig**, z. B. 30 min; dann 0,2 s pro Runde | verteilt sich auf ≈ 0 |
+
+Dieselbe Schwäche ist beim Neugierigen also harmlos und beim Skript-Schreiber tödlich. Daraus folgt,
+worauf Maßnahmen zielen müssen: **auf die Einmalkosten, nicht auf die Kosten pro Runde.**
+
+Und diese Einmalkosten müssen **intrinsisch** hoch sein. Darauf zu bauen, dass der Angreifer beim
+Entwickeln eine Runde opfert, trägt nicht — er kann sein Skript gegen den Payload einer **bereits
+beendeten** Runde schreiben und zahlt dann kompetitiv gar nichts.
+
+Deshalb zielen die beiden wichtigsten Maßnahmen auf **verschiedene** Gegner, und das sollte man beim
+Priorisieren nicht verwechseln:
+
+- **„Payload erst beim Start-Klick"** trifft den Neugierigen — aus „in Ruhe vorher anschauen" wird
+  „anschauen, während die Uhr läuft". Den Skript-Schreiber kostet es fast nichts.
+- **Die perzeptuelle Hürde** (Bild statt Array) trifft den Skript-Schreiber — sie hebt den
+  Einstiegspreis von „drei Zeilen Konsole" auf „eine Bildverarbeitung schreiben". Das ist der
+  eigentliche Gewinn dieser Maßnahme.
 
 ## Randbedingungen (vom Produkt entschieden, nicht verhandelbar)
 
@@ -43,6 +75,45 @@ Extraktionsskript darf gewinnen.** Einmalaufwand amortisiert sich über Runden, 
   huettehuette bereits so umgesetzt und wird übernommen.
 - **Kein Offline-Modus.** Latenzunabhängigkeit ist unkritisch. (Deshalb sind Runden
   server-autoritativ — siehe RNG-Spec.)
+- **Inhalte müssen zur Spielzeit prozedural entstehen — Admin-Aufwand ist ein Kostenfaktor.**
+  Siehe unten; das ist die Randbedingung, die am ehesten Maßnahmen kippt.
+
+## Der Seed als Content-Pipeline (nicht nur als Determinismus-Trick)
+
+Ein Vorteil von huettehuette, der in der Diskussion zu kurz kam und der eine **Produkt**-Anforderung
+ist, keine technische: man musste nur den Seed ablegen — oder ihn an etwas Festes hängen, etwa die
+Rundennummer — und konnte damit das ganze Spiel zur Spielzeit zuverlässig erzeugen. Das heißt:
+**praktisch unbegrenzt viele Runden eines Spieltyps, ohne Admin-Aufwand.** Kein Vorab-Generieren von
+100 Bildern, kein Ablegen in der DB, keine Pflege.
+
+Das muss erhalten bleiben, und **es bleibt erhalten**: server-autoritativ heißt nicht „vorproduziert".
+Der Server leitet Rätsel *und* Lösung zur Spielzeit aus dem versteckten Seed ab, gespeichert wird nur
+der Seed. Genau diese Eigenschaft ist der Grund, warum der Kotlin-Generator unabhängig vom
+Browser-Thema nötig ist (siehe RNG-Spec) — sie ist nicht nur Determinismus, sie ist die Content-Pipeline.
+
+### Kann der Server malen? Ja — anders als damals
+
+Der Einwand ist berechtigt und war in huettehuette ein echtes Hindernis: dort stand **keine
+node-canvas** zur Verfügung, also war server-seitiges Rendern keine Option. Auf der JVM ist das
+anders, und das entscheidet über die Find-Pattern-Empfehlung. Gemessen auf **genau der JRE, die Paketo
+ausliefert** (`bellsoft/liberica-openjre-debian:25`, headless):
+
+```
+java.desktop present=true      PNG writer available=true
+wrote png=true bytes=225       byte-identical on rewrite=true
+```
+
+Also `BufferedImage` + `Graphics2D` + `ImageIO` aus dem JDK, **ohne jede Zusatz-Abhängigkeit und ohne
+native Bibliothek**. Die Byte-Gleichheit bei Wiederholung ist praktisch nützlich: sie erlaubt stabile
+ETags/Cache-Keys pro Runde.
+
+Damit gilt: **server-gerenderte Bilder kosten keinen Admin-Aufwand und keine Vorproduktion** — sie
+entstehen zur Spielzeit aus dem Seed, genau wie die Rätseldaten. Die perzeptuelle Hürde ist also mit
+der Content-Pipeline vereinbar, nicht im Konflikt mit ihr.
+
+*Zu verifizieren:* dass die **tatsächlich gebaute** App-Image-JRE `java.desktop` enthält. Paketo
+liefert standardmäßig eine vollständige JRE, aber eine jlink-minimierte Variante könnte das Modul
+weglassen. Einzeiler gegen das gebaute Image genügt.
 
 ## Bedrohungsmodell
 
@@ -52,6 +123,8 @@ Extraktionsskript darf gewinnen.** Einmalaufwand amortisiert sich über Runden, 
 | B | Lösung aus dem Netzwerk-Payload lesen | **Zu schließen** — die Messlatte |
 | C | Manipuliertes Ergebnis einsenden („ich war korrekt / in 0,2 s") | **Zu schließen** — Server validiert |
 | D | Mehrfach spielen, Bestes einsenden | **Geschlossen** — ein Guess pro Runde |
+| D2 | Starten, in Ruhe umsehen, Muster einprägen, **Refresh**, dann mit Vorsprung spielen | **Zu schließen** — eine Uhr pro Runde, nie zurückgesetzt; Aufdecken ist Zustand |
+| B2 | Lösung im **Komponenten-State / JS-Variablen** lesen, obwohl sie nicht übertragen wurde | **Zu schließen** — Client darf sie nie materialisieren |
 | E | Bot spielt perfekt (v. a. Reaktionsspiele) | **Nicht verhinderbar** — erkennen, nicht blockieren |
 | F | Zeitmanipulation (Client-Uhr, Throttling) | **Zu schließen** — Server stempelt |
 | G | Assets inspizieren (Dateinamen, Bilder) | **Teilweise** — Obfuskation, siehe Puzzle Scramble |
@@ -74,7 +147,8 @@ Daraus folgt die generelle Regel, die überall greift, wo überhaupt etwas zu ho
 > Nicht `pattern: [7,1,2]`, sondern Pixel — und was sich hörbar entscheidet, als Samples statt als
 > Werteliste.
 
-Das trifft die Messlatte exakt: Pipette und CV-Skript sind erlaubt, `JSON.parse` nicht.
+Das trifft die Messlatte exakt: gegen Pipette und Bildverarbeitung kommen wir nicht an, gegen
+`JSON.parse` und einen Blick in den Komponenten-State sehr wohl.
 
 ## Taxonomie — welches Geheimnis, welche Maßnahme
 
@@ -86,7 +160,7 @@ folgt, wofür sich Komplexität lohnt:
 | Die Lösung ist ein **Fakt** | eine Schätz-/Zuordnungsfrage, deren Antwort nur der Server kennt und die der Client nicht zum Rendern braucht | Server-only Seed + Server validiert | **vollständig** |
 | Die Lösung ist ein **Zeitplan** | Deduster (Reaktion) | Zukunft nicht ausliefern, progressiv aufdecken | gut gegen Menschen, offen gegen Bots |
 | Die Lösung liegt **im Sichtbaren** | Find Pattern, Puzzle Scramble | Darstellung perzeptuell machen + Erkennung | Aufwand erhöhen |
-| **Präsentations-Zufall** | Sparkles, Animationen, Deko | keine | nicht nötig |
+| **Präsentations-Zufall** | Anordnung, Sparkles, Deko | keine Geheimhaltung — aber **für alle identisch** (Presentation Seed) | nicht nötig |
 
 ## Das generische Fundament
 
@@ -111,28 +185,61 @@ und vergleicht. Das ist der Punkt, an dem sich die RNG-Arbeit auszahlt: **eine R
 ihrem Seed reproduzierbar**, es muss kein generierter Zustand gespeichert werden — kein Cache, keine
 Lösungstabelle.
 
-### 3. Payload erst beim Start-Klick
+### 3. Payload erst beim Start-Klick — und nur **einmal** aufdeckbar
 
 Die Rätseldaten entstehen bzw. gehen erst raus, wenn der Start-Request kommt. Vorher existiert im
 Netzwerk-Log **nichts zu inspizieren**. Damit wird „in Ruhe vorher anschauen" zu „anschauen, während
 die Uhr läuft".
 
-*Wichtige Einschränkung:* das wirkt **nur bei zeitgewerteten Spielen**. Wo nicht auf Zeit gespielt
-wird, kostet Inspizieren nichts und die Maßnahme ist wertlos.
+Das allein genügt aber nicht, denn es gibt einen Umweg: **starten, sich in Ruhe umsehen, das Muster
+einprägen, Browser-Refresh, und dann mit dem Vorsprung durchspielen.** Dagegen zwei Regeln, in dieser
+Reihenfolge wichtig:
+
+1. **Eine Uhr pro Spieler und Runde, die nie zurückgesetzt wird.** Der Server stempelt das *erste*
+   Aufdecken; ein Refresh startet die Messung nicht neu. Das ist die eigentliche Absicherung — wer sich
+   in Ruhe umsieht, hat diese Zeit bereits bezahlt, und der Umweg bringt gar nichts mehr.
+2. **Das Aufdecken wird als Zustand geführt**, nicht nur der Guess. Ein zweiter Aufdeck-Request für
+   dasselbe (Spieler, Runde) wird erkannt und abgelehnt: *„Das Spiel ist nur einmal aufdeckbar — du
+   bist raus für diese Runde."*
+
+Regel 1 nimmt dem Trick den Nutzen, Regel 2 macht ihn explizit und sichtbar. Beide server-seitig.
+
+*Kante, die bei der Umsetzung zu entscheiden ist:* ein harter Lockout trifft auch den Unschuldigen —
+abgestürzter Tab, WLAN weg, versehentliches F5. Zwei Varianten:
+
+- **(a) harter Lockout** wie oben. Klar und abschreckend, aber ein Verbindungsabbruch kostet die Runde.
+- **(b) idempotentes Aufdecken:** derselbe Request liefert denselben Payload wieder, die Uhr läuft
+  unverändert ab dem ersten Aufdecken. Der Cheat bringt nichts (Regel 1), und niemand wird für
+  schlechtes Netz bestraft. Preis: der Trick bleibt unsichtbar, es gibt keine Meldung.
+
+Vermutlich ist ein Mittelweg richtig — (b) als Verhalten, plus ein Zähler, der wiederholtes Aufdecken
+protokolliert und ab einer Schwelle als Signal auftaucht. Am ersten Spiel zu entscheiden.
+
+*Wichtige Einschränkung:* der Payload-erst-beim-Start-Teil wirkt **nur bei zeitgewerteten Spielen**.
+Wo nicht auf Zeit gespielt wird, kostet Inspizieren nichts und die Maßnahme ist wertlos — die
+Aufdeck-Regel bleibt trotzdem sinnvoll.
 
 ### 4. Server-autoritative Zeitmessung
 
-Der Server stempelt den Eingang des Start-Requests und den Eingang des Guess. Die Differenz ist die
-Wertung; Client-Zeiten sind Anzeige. Die Runden-Engine liefert dafür schon absolute Instants.
+Der Server stempelt das erste Aufdecken und den Eingang des Guess. Die Differenz ist die Wertung;
+Client-Zeiten sind Anzeige. Die Runden-Engine liefert dafür schon absolute Instants.
 
 ### 5. Ein Guess pro Runde, server-seitig erzwungen
 
-Unique-Constraint, First-write-wins. Nicht im Client prüfen.
+Unique-Constraint, First-write-wins. Nicht im Client prüfen. Zusammen mit dem einmaligen Aufdecken aus
+(3) ergibt das den vollständigen Ablauf: **einmal aufdecken, einmal antworten** — beides
+server-protokolliert.
 
 ### 6. DTO-Hygiene, testgestützt
 
 Ein Test, der den **serialisierten** Payload prüft und fehlschlägt, wenn ein lösungsförmiges Feld
 auftaucht. Kein Kommentar, keine Konvention — ein roter Test.
+
+Und die Client-Hälfte davon, die aus der verschärften Messlatte folgt: **die Lösung darf im Frontend
+nirgends materialisiert werden.** Kein `ref`, kein `computed`, keine lokale Variable, die sie hält oder
+ausrechnet — auch nicht „nur" für ein Hint-Overlay oder eine Animation. Wer eine Rückmeldung braucht,
+holt sie als Ergebnis vom Server. Das lässt sich schlechter automatisch prüfen als der Payload und ist
+deshalb ein bewusster Review-Punkt bei jedem Spiel.
 
 ### 7. Commit–Reveal
 
@@ -173,13 +280,17 @@ Suchmuster nicht**.
 
 → **Suchmuster als server-gerendertes Bild ausliefern.** Der naive Subsequenz-Scan scheitert dann
 schon an „wonach suche ich überhaupt", und der Aufwand springt auf Pixel-Extraktion. Server-seitig ein
-winziges PNG, client-seitig ein `<img>`. Bestes Verhältnis von allen Maßnahmen hier.
+winziges PNG (225 Bytes im Messbeispiel), client-seitig ein `<img>`. Das ist die Maßnahme, die den
+Skript-Schreiber trifft, also die wichtigste hier — und sie ist mit der Content-Pipeline vereinbar:
+das Bild entsteht zur Spielzeit aus dem Seed, es wird nichts vorproduziert.
 
 → `searchPatternStartIndex` wird **nicht mehr client-seitig abgeleitet** (in huettehuette tut
-`useFindPatternGameSolution` genau das). Server leitet ab, Server validiert.
+`useFindPatternGameSolution` genau das). Server leitet ab, Server validiert. Und nach der verschärften
+Messlatte gilt zusätzlich: der Index darf auch **nicht als abgeleiteter Wert im Client-State liegen** —
+kein `computed`, kein `ref`, auch nicht für ein Hint-Overlay.
 
 *Nicht verschleiern lässt sich:* das Gitter selbst. Wer das Muster per Pixel extrahiert hat, findet es
-danach trivial. Akzeptiert.
+danach trivial — dokumentierte Obergrenze, siehe unten.
 
 ### Puzzle Scramble
 
@@ -222,7 +333,33 @@ Deduster tatsächlich portieren.
 
 ### Ratio / visuelle Spiele
 
-Präsentations-Zufall. Presentation Seed, kein Schutz nötig. `Math.random()` genügt für Deko.
+Korrektur an einer früheren Fassung dieses Dokuments: „Präsentations-Zufall braucht keinen Schutz" war
+zu grob und stand im Widerspruch zur Fairness-Anforderung. Richtig ist:
+
+> **Präsentations-Zufall braucht keine *Geheimhaltung*, aber dieselbe *Determiniertheit* wie alles
+> andere.** Auch im Ratio-Spiel muss jedes Pixel bei jedem Spieler an derselben Stelle sitzen —
+> sonst unterscheidet sich die **Wahrnehmung**, und damit die Schwierigkeit. Das ist genauso unfair
+> wie ein anderes Rätsel.
+
+`Math.random()` ist damit **nur** für Dinge zulässig, die die Wahrnehmung der Aufgabe nicht berühren
+(ein Konfetti-Effekt nach der Auflösung). Alles, was zum Bild gehört, das bewertet wird, muss für alle
+identisch sein.
+
+Zwei Wege dorthin, mit unterschiedlichen Kosten:
+
+- **Der Server schickt die Geometrie** — Koordinaten, Radien, Regionen. Kein Browser-RNG nötig, aber
+  je nach Spiel ein spürbar größerer Payload.
+- **Der Client leitet sie aus dem Presentation Seed ab** — winziger Payload, identisch für alle, und
+  das Preisgeben des Seeds schadet nicht, weil daran nichts hängt, was der Spieler nicht sehen darf.
+
+Der zweite Weg ist damit **der erste konkrete, wahrscheinliche Abnehmer für die
+TS-Referenzimplementierung**, die derzeit in Test-Scope liegt — genau der Zweck, für den ihr Header sie
+freigibt: „presentational and already public". Wenn Ratio portiert wird, wandert sie voraussichtlich
+nach `src/lib/rng/`.
+
+Wichtig dabei: dann führen Client und Server **zwei getrennte Generatoren** mit zwei Seeds. Der
+Presentation Seed darf nie derselbe sein wie der versteckte — sonst ist die ganze Trennung aus (1)
+hinfällig.
 
 ## Die Latenz-Spannung
 
@@ -262,15 +399,21 @@ seriös beantworten kann.
    wahrgenommene Fairness bei unterschiedlichen Verbindungen.
 2. **Trägt die server-seitige Zeitmessung**, oder wird die RTT-Ungerechtigkeit spürbar? Braucht es
    eine Kompensation (z. B. RTT/2 abziehen), und öffnet die ein neues Loch?
-3. **Wie teuer ist server-gerendertes Bildmaterial** wirklich — Erzeugung, Caching, Cache-Keys pro
-   Runde?
+3. **Wie teuer ist server-gerendertes Bildmaterial** in der Praxis — Erzeugung pro Request, Caching,
+   Cache-Keys pro Runde? (Dass es *geht*, ist geklärt; offen ist, was es kostet.) Dazu die
+   Verifikation, dass die gebaute Image-JRE `java.desktop` mitbringt.
 4. **Reicht Commit-auf-Lösung (a)**, oder wollen wir die volle Rundenprüfbarkeit (b) — und damit die
    TS-Referenzimplementierung als Verifikations-Werkzeug fördern?
-5. **Woraus wird der Seed abgeleitet?** Runde? Community + Runde? UUID-v7-PK? Und verbindlich
+5. **Hartes Aufdeck-Lockout (a) oder idempotentes Aufdecken (b)** — und wo liegt die Schwelle, ab der
+   wiederholtes Aufdecken zum Signal wird?
+6. **Ratio: Geometrie vom Server oder aus dem Presentation Seed?** Payload-Größe gegen einen zweiten
+   Generator im Browser — und damit die Frage, ob die TS-Referenzimplementierung nach `src/lib/rng/`
+   wandert.
+7. **Woraus wird der Seed abgeleitet?** Runde? Community + Runde? UUID-v7-PK? Und verbindlich
    festlegen: `fromSeed(7)` und `fromSeed("7")` sind **verschiedene Ströme** (siehe RNG-Spec).
-6. **Wo leben Spiel-Runden im Modulith** — eigenes `game`-Modul, Schema, Migrationen? Bewusst hier
+8. **Wo leben Spiel-Runden im Modulith** — eigenes `game`-Modul, Schema, Migrationen? Bewusst hier
    offen gelassen.
-7. **Welche Anomalie-Grenzen** sind bei dieser Gruppengröße sinnvoll, und wie werden sie sichtbar
+9. **Welche Anomalie-Grenzen** sind bei dieser Gruppengröße sinnvoll, und wie werden sie sichtbar
    gemacht, ohne jemanden falsch zu beschuldigen?
 
 ## Einstieg: Find Pattern
@@ -286,14 +429,15 @@ Sichtbaren"** — der schwersten. Das Gitter *muss* ausgeliefert werden, also bl
 **vollständiger Schutz ist hier nicht das Erfolgskriterium.** Erfolgreich ist der erste Durchgang,
 wenn
 
-1. das **Fundament** trägt — kein Seed beim Client, Server validiert, Zeit server-gestempelt, ein
-   Guess, Serialisierungs-Test grün;
+1. das **Fundament** trägt — kein Seed und keine materialisierte Lösung beim Client, Server validiert,
+   einmal aufdecken mit einer Uhr, die nie zurückgesetzt wird, ein Guess, Serialisierungs-Test grün;
 2. der **spielspezifische Hebel** funktioniert — Suchmuster als server-gerendertes Bild, sodass der
    Konsolen-Einzeiler nicht mehr reicht; und
 3. wir wissen, was das an **Aufwand und Spielgefühl** kostet (offene Fragen 1–3).
 
 Dass ein hartnäckiger Informatiker das Gitter danach immer noch per Skript durchsuchen kann, ist
-akzeptiert und kein Rückschlag — es ist die dokumentierte Obergrenze dieser Kategorie.
+eingeplant und kein Rückschlag — es ist die dokumentierte Obergrenze dieser Kategorie. Eingeplant
+heißt nicht gebilligt: wir erleichtern es nicht.
 
 Deduster würde ich zuletzt angehen: es bringt zusätzlich SSE, die Rhythmus-Frage und das Bot-Thema
 mit, und möglicherweise eine Spieldesign-Entscheidung statt einer technischen.
@@ -303,8 +447,17 @@ mit, und möglicherweise eine Spieldesign-Entscheidung statt einer technischen.
 Nach der Validierung am ersten Spiel gehören in `.claude/guidelines/` — vermutlich als neue Datei
 `game-integrity.md`:
 
-- **Hidden vs. Presentation Seed** als verbindliche Konvention, inklusive „nie im DTO-Typ".
-- **Serialisierungs-Test** gegen lösungsförmige Felder als Pflicht für jedes Spiel-DTO.
+- **Hidden vs. Presentation Seed** als verbindliche Konvention, inklusive „nie im DTO-Typ" — und dass
+  die beiden nie derselbe Wert sein dürfen.
+- **Serialisierungs-Test** gegen lösungsförmige Felder als Pflicht für jedes Spiel-DTO, plus die
+  Review-Regel, dass der Client die Lösung **nie materialisiert** (auch nicht abgeleitet).
 - Die **Taxonomie** als Entscheidungshilfe: welche Art Geheimnis → welche Maßnahme → welches Niveau.
-- **Zeitwertung ist server-autoritativ**, Client-Zeiten nur als Abgleich.
-- Der Merksatz: **von parsebar nach perzeptuell**, sonst ist die Lösung ein Konsolen-Einzeiler.
+- **Zeitwertung ist server-autoritativ**, Client-Zeiten nur als Abgleich — und **eine Uhr pro Spieler
+  und Runde, die ein Refresh nicht zurücksetzt.**
+- **Präsentations-Zufall braucht keine Geheimhaltung, aber dieselbe Determiniertheit** — identische
+  Wahrnehmung ist Teil der Fairness, nicht Kosmetik.
+- **Inhalte entstehen zur Spielzeit aus dem Seed**, nicht vorproduziert in der DB — der Admin-Aufwand
+  ist ein Designkriterium.
+- Der Merksatz: **von parsebar nach perzeptuell**, sonst ist die Lösung ein Konsolen-Einzeiler. Und der
+  Gegner ist das **wiederverwendbare Skript**, nicht der Neugierige — Maßnahmen zielen auf die
+  Einmalkosten.

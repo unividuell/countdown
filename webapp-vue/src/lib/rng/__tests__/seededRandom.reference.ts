@@ -7,8 +7,10 @@
 // Deriving an outcome in the browser would hand every player the solution — which is precisely the
 // architecture this file must not make convenient.
 //
-// Promote it to src/lib/rng/ only for randomness that is presentational and already public
-// (animation jitter, decorative layout) — and then say so at the call site.
+// Promote it to src/lib/rng/ only for randomness that is presentational and already public — and then
+// say so at the call site. The likely first case: decorative geometry that must look *identical* for
+// every player (perception is part of fairness), where deriving it from a shared public seed beats
+// shipping every coordinate. See the anti-cheat spec, "Ratio / visuelle Spiele".
 //
 // Mirror of backend SeededRandom; Kotlin is the source of truth.
 //

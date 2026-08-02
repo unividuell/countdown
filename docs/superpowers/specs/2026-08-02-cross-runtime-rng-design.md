@@ -21,8 +21,11 @@ Vertrag in `shared/rng/golden-vectors.json`.
 > *Verwendungszweck* der Browser-Seite.
 >
 > Die TS-Implementierung liegt darum in **Test-Scope**: sie hält die Portabilität nachweisbar, ohne
-> dass jemand darauf aufbaut. Fördern nach `src/lib/rng/` nur für Präsentations-Zufall (Animationen,
-> Deko) — nie für Spielausgänge.
+> dass jemand darauf aufbaut. Fördern nach `src/lib/rng/` nur für Präsentations-Zufall — nie für
+> Spielausgänge. Ein wahrscheinlicher erster Anlass steht im
+> [Anti-Cheat-Spec](2026-08-02-anti-cheat-design.md): dekorative Geometrie muss bei *jedem* Spieler
+> identisch aussehen (Wahrnehmung ist Teil der Fairness), und sie aus einem öffentlichen Seed
+> abzuleiten ist billiger, als jede Koordinate zu übertragen.
 >
 > Rückblickend war die Frage nach der Parität von der alten Nuxt-App geprägt: dort lag die Spiellogik
 > in Client-Composables gegen Firestore, es gab keinen Ort für autoritative Runden. Mit einem echten
