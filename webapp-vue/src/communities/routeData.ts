@@ -102,11 +102,17 @@ export function registerCommunityDataGuard(router: Router): void {
     // A "last visited" marker only — losing it must never affect the navigation. It is
     // still tracked in `pendingSelectionWrite` so the landing guard can await it instead
     // of racing it (see the doc comment on that export above).
-    pendingSelectionWrite = setSelection(state.community.id)
+    //
+    // `mine` is captured so the `.finally` below only clears the module slot if it is
+    // still the write it belongs to. Two switches in quick succession assign write A
+    // then write B; if A settles first, its `.finally` must not null out the slot while
+    // B — the newer, still-in-flight write — owns it.
+    const mine: Promise<void> = setSelection(state.community.id)
       .catch((e) => console.error('could not persist the community selection', e))
       .finally(() => {
-        pendingSelectionWrite = null
+        if (pendingSelectionWrite === mine) pendingSelectionWrite = null
       })
+    pendingSelectionWrite = mine
   })
 }
 
@@ -114,4 +120,5 @@ export function registerCommunityDataGuard(router: Router): void {
 export function _resetRouteDataState(): void {
   communityRoute.value = null
   activeCommunity.value = null
+  pendingSelectionWrite = null
 }

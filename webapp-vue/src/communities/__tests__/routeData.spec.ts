@@ -6,6 +6,7 @@ import * as api from '@/api/communities'
 import { ApiError } from '@/api/client'
 import type { CommunityResponse } from '@/api/types'
 import { activeCommunity } from '@/communities/context'
+import { resolveLandingTarget } from '@/communities/landingGuard'
 import {
   _resetRouteDataState,
   communityRoute,
@@ -206,6 +207,41 @@ describe('community route data guard', () => {
     expect(get).toHaveBeenCalledTimes(1)
     expect(communityRoute.value).toEqual({ kind: 'ready', community: community() })
     expect(activeCommunity.value).toMatchObject({ slug: 'team', name: 'Team Süd' })
+  })
+
+  it('does not let an older selection write clear the slot while a newer one is still in flight', async () => {
+    // Two switches in quick succession: team's write (A) is still in flight when nord's
+    // write (B) starts. If A's `.finally` clears the module slot unconditionally, a
+    // landing resolution racing in right after A settles would skip the await on B and
+    // could read the stale (pre-switch) selection.
+    vi.spyOn(api, 'getCommunity').mockResolvedValueOnce(community()).mockResolvedValueOnce(nord)
+    const select = vi.mocked(api.setSelection)
+    let releaseA!: () => void
+    let releaseB!: () => void
+    select
+      .mockReturnValueOnce(new Promise<void>((r) => (releaseA = r)))
+      .mockReturnValueOnce(new Promise<void>((r) => (releaseB = r)))
+
+    const router = makeRouter()
+    await router.push('/team/')
+    await flushPromises()
+    await router.push('/nord/')
+    await flushPromises()
+
+    // Settle the older write (A) first — the slot must stay owned by B.
+    releaseA()
+    await flushPromises()
+
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([])
+    const getSelection = vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
+    const landing = resolveLandingTarget()
+    await flushPromises()
+    // B is still pending — the landing guard must still be waiting on it.
+    expect(getSelection).not.toHaveBeenCalled()
+
+    releaseB()
+    await landing
+    expect(getSelection).toHaveBeenCalledTimes(1)
   })
 
   it('does not let a stale pending fetch from an aborted navigation leak into a later same-slug navigation', async () => {

@@ -11,6 +11,7 @@ import {
   _resetLandingState,
   landingFailed,
   registerLandingRedirect,
+  resolveLandingTarget,
 } from '@/communities/landingGuard'
 
 const Stub = defineComponent({ render: () => h('div') })
@@ -168,5 +169,33 @@ describe('landing redirect guard', () => {
     // Resolves back to 'nord' — the community just switched to, not whatever the
     // selection said before this write landed.
     expect(router.currentRoute.value.params.slug).toBe('nord')
+  })
+
+  it('leaves no in-flight selection write behind on reset, so a later landing resolution is not blocked', async () => {
+    // Mirrors this file's own test-isolation hazard: a spec that leaves a selection write
+    // unresolved (like the one above, if it failed before releasing it) must not leave a
+    // never-settling promise sitting in the module slot for the *next* test's beforeEach
+    // to skip over — otherwise every later '/' resolution in this file awaits forever.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: 'c1', name: 'Team Süd', slug: 'team' },
+    ])
+    vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
+    vi.spyOn(api, 'setSelection').mockReturnValue(new Promise<void>(() => {})) // never settles
+
+    const router = makeRouter()
+    await router.push('/team/')
+    await flushPromises() // the never-settling write is now in the module slot
+
+    _resetRouteDataState() // what every beforeEach does between test cases
+
+    let timedOut = false
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        timedOut = true
+        resolve()
+      }, 50)
+    })
+    await Promise.race([resolveLandingTarget(), timeout])
+    expect(timedOut).toBe(false)
   })
 })
