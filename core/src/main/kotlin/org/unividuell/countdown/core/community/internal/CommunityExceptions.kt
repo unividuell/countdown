@@ -1,6 +1,6 @@
 package org.unividuell.countdown.core.community.internal
 
-/** Derived slug is already taken or reserved → 409. */
+/** Derived slug is already taken → 409. */
 class SlugUnavailableException(message: String) : RuntimeException(message)
 
 /** Would leave a community with zero admins → 409. */
