@@ -465,8 +465,8 @@ können** — auf der JVM und im Browser. Das ist erreicht und abgesichert.
 Kein Feature, kein Endpoint, keine Persistenz: der Generator ist an nichts angeschlossen. Offen
 bleiben, als Folgeschritte:
 
-1. **Anti-Cheat** (eigene Diskussion) — Präsentations- vs. server-only Seed, Commit-and-Reveal,
-   Obfuskation. Siehe den Abschnitt bei den Seeds.
+1. **Anti-Cheat** — ausgearbeitet in [Anti-Cheat für die Mini-Spiele](2026-08-02-anti-cheat-design.md)
+   (Absichtserklärung; wird am ersten Mini-Game validiert).
 2. **Seed-Herkunft und -Lebensdauer** — Runde? Community? UUID-v7-PK? Und `fromSeed(7)` vs.
    `fromSeed("7")` verbindlich festlegen.
 3. **Portierung der Spiele** — mit der Float-vs-Rejection-Frage aus dem huettehuette-Abschnitt.
