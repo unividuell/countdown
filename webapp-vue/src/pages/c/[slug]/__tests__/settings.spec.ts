@@ -32,7 +32,7 @@ describe('settings — timezone + zone-relative startsAt', () => {
   })
 
   it('renders the startsAt as wall-time in the selected zone (11:00, not browser-local)', async () => {
-    const Settings = (await import('@/pages/[slug]/settings.vue')).default
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
     const startInput = w.find('input[type="datetime-local"]').element as HTMLInputElement
@@ -42,7 +42,7 @@ describe('settings — timezone + zone-relative startsAt', () => {
   })
 
   it('saves startsAt converted from the selected zone and sends startsAtTimezone', async () => {
-    const Settings = (await import('@/pages/[slug]/settings.vue')).default
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
     await w.find('form').trigger('submit')
@@ -62,7 +62,7 @@ describe('settings — timezone + zone-relative startsAt', () => {
       ...community,
       startsAtTimezone: 'America/New_York',
     })
-    const Settings = (await import('@/pages/[slug]/settings.vue')).default
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
     const w = mount(Settings)
     await flushPromises()
     expect((w.find('input[type="datetime-local"]').element as HTMLInputElement).value).toBe(
@@ -78,5 +78,12 @@ describe('settings — timezone + zone-relative startsAt', () => {
         startsAtTimezone: 'America/New_York',
       }),
     )
+  })
+
+  it('shows the community URL prefixed with /c/, not the bare slug', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    expect(w.text()).toContain('/c/team/')
   })
 })

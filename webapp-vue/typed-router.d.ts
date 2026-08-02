@@ -38,40 +38,40 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/[slug]': RouteRecordInfo<
-      '/[slug]',
-      '/:slug',
+    '/c/[slug]': RouteRecordInfo<
+      '/c/[slug]',
+      '/c/:slug',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
-      | '/[slug]/'
-      | '/[slug]/members'
-      | '/[slug]/requests'
-      | '/[slug]/settings'
+      | '/c/[slug]/'
+      | '/c/[slug]/members'
+      | '/c/[slug]/requests'
+      | '/c/[slug]/settings'
     >,
-    '/[slug]/': RouteRecordInfo<
-      '/[slug]/',
-      '/:slug',
-      { slug: ParamValue<true> },
-      { slug: ParamValue<false> },
-      | never
-    >,
-    '/[slug]/members': RouteRecordInfo<
-      '/[slug]/members',
-      '/:slug/members',
+    '/c/[slug]/': RouteRecordInfo<
+      '/c/[slug]/',
+      '/c/:slug',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
     >,
-    '/[slug]/requests': RouteRecordInfo<
-      '/[slug]/requests',
-      '/:slug/requests',
+    '/c/[slug]/members': RouteRecordInfo<
+      '/c/[slug]/members',
+      '/c/:slug/members',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
     >,
-    '/[slug]/settings': RouteRecordInfo<
-      '/[slug]/settings',
-      '/:slug/settings',
+    '/c/[slug]/requests': RouteRecordInfo<
+      '/c/[slug]/requests',
+      '/c/:slug/requests',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/settings': RouteRecordInfo<
+      '/c/[slug]/settings',
+      '/c/:slug/settings',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -147,45 +147,45 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'src/pages/[slug].vue': {
+    'src/pages/c/[slug].vue': {
       routes:
-        | '/[slug]'
-        | '/[slug]/'
-        | '/[slug]/members'
-        | '/[slug]/requests'
-        | '/[slug]/settings'
+        | '/c/[slug]'
+        | '/c/[slug]/'
+        | '/c/[slug]/members'
+        | '/c/[slug]/requests'
+        | '/c/[slug]/settings'
       views:
         | 'default'
       pathParamNames:
         | 'slug'
     }
-    'src/pages/[slug]/index.vue': {
+    'src/pages/c/[slug]/index.vue': {
       routes:
-        | '/[slug]/'
+        | '/c/[slug]/'
       views:
         | never
       pathParamNames:
         | never
     }
-    'src/pages/[slug]/members.vue': {
+    'src/pages/c/[slug]/members.vue': {
       routes:
-        | '/[slug]/members'
+        | '/c/[slug]/members'
       views:
         | never
       pathParamNames:
         | never
     }
-    'src/pages/[slug]/requests.vue': {
+    'src/pages/c/[slug]/requests.vue': {
       routes:
-        | '/[slug]/requests'
+        | '/c/[slug]/requests'
       views:
         | never
       pathParamNames:
         | never
     }
-    'src/pages/[slug]/settings.vue': {
+    'src/pages/c/[slug]/settings.vue': {
       routes:
-        | '/[slug]/settings'
+        | '/c/[slug]/settings'
       views:
         | never
       pathParamNames:

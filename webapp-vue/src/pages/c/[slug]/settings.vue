@@ -11,6 +11,7 @@ import {
 } from '@/api/communities'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
+import { communityPath } from '@/communities/routes'
 
 useAdminGuard()
 const { community, refresh } = useCommunityContext()
@@ -89,7 +90,7 @@ async function revoke(): Promise<void> {
           maxlength="50"
       /></label>
       <p class="text-xs text-neutral-500">
-        URL-Slug <code>/{{ slug }}/</code> ist unveränderlich.
+        URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
       <label class="block text-sm"
         >Zeitzone<select v-model="startsAtTimezone" class="mt-1 w-full rounded border px-3 py-1.5">

@@ -35,7 +35,7 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
 }
 
 async function mountShell() {
-  const Shell = (await import('@/pages/[slug].vue')).default
+  const Shell = (await import('@/pages/c/[slug].vue')).default
   return mount(Shell)
 }
 

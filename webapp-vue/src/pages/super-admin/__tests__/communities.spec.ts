@@ -52,7 +52,7 @@ describe('super-admin community overview', () => {
     expect(members[0]!.text()).toContain('Alice')
     expect(members[0]!.text()).toContain('02.03.2026') // formatted in the community's zone
     expect(members[1]!.text()).toContain('ausstehend')
-    expect(w.find('a[href="/team/settings"]').exists()).toBe(true)
+    expect(w.find('a[href="/c/team/settings"]').exists()).toBe(true)
   })
 
   it('shows a hint for a community without members', async () => {

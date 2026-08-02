@@ -53,9 +53,9 @@ describe('CommunityMenu', () => {
     expect(menu.text()).toContain('Team Süd')
     expect(menu.text()).toContain('Anfragen')
     expect(menu.text()).toContain('2') // pending count next to Anfragen
-    expect(menu.find('a[href="/team/requests"]').exists()).toBe(true)
-    expect(menu.find('a[href="/team/members"]').exists()).toBe(true)
-    expect(menu.find('a[href="/team/settings"]').exists()).toBe(true)
+    expect(menu.find('a[href="/c/team/requests"]').exists()).toBe(true)
+    expect(menu.find('a[href="/c/team/members"]').exists()).toBe(true)
+    expect(menu.find('a[href="/c/team/settings"]').exists()).toBe(true)
   })
 
   it('shows neither heading nor admin links to a non-admin', async () => {
@@ -106,7 +106,7 @@ describe('CommunityMenu', () => {
     const select = vi.spyOn(api, 'setSelection')
     const w = await open(admin)
     await w.find('[data-test=switch-community]').trigger('click')
-    expect(pushMock).toHaveBeenCalledWith('/nord/')
+    expect(pushMock).toHaveBeenCalledWith('/c/nord/')
     expect(select).not.toHaveBeenCalled()
   })
 

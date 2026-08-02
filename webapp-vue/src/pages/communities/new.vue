@@ -40,7 +40,7 @@ async function submit(): Promise<void> {
         required
       />
       <p class="mt-2 text-sm text-neutral-500">
-        URL: <code>/{{ slug || '…' }}/</code>
+        URL: <code>{{ communityPath(slug || '…') }}</code>
         <span v-if="name && tooShort" class="text-amber-600"> (mind. 3 Zeichen)</span>
       </p>
       <button class="mt-4 rounded border px-3 py-1.5 hover:bg-neutral-200" :disabled="tooShort">

@@ -42,7 +42,7 @@ describe('landing page', () => {
     const w = await mountIndex()
     await w.find('[data-test=landing-retry]').trigger('click')
     await flushPromises()
-    expect(replace).toHaveBeenCalledWith('/team/')
+    expect(replace).toHaveBeenCalledWith('/c/team/')
     expect(landingFailed.value).toBe(false)
   })
 
@@ -69,7 +69,7 @@ describe('landing page', () => {
     const w = await mountIndex()
     await w.find('[data-test=landing-retry]').trigger('click')
     await flushPromises()
-    expect(replace).toHaveBeenCalledWith('/team/')
+    expect(replace).toHaveBeenCalledWith('/c/team/')
     expect(landingFailed.value).toBe(true)
     expect(w.find('[data-test=landing-retry]').exists()).toBe(true)
   })

@@ -31,7 +31,7 @@ describe('join page', () => {
     const W = (await import('@/pages/join/[token].vue')).default
     mount(W)
     await flushPromises()
-    expect(replace).toHaveBeenCalledWith('/team/')
+    expect(replace).toHaveBeenCalledWith('/c/team/')
   })
   it('shows expired on 410', async () => {
     vi.spyOn(api, 'joinByToken').mockRejectedValue(new ApiError(410, 'gone'))

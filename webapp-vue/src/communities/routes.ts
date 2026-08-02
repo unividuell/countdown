@@ -5,5 +5,5 @@
 export type CommunitySubPage = 'members' | 'requests' | 'settings'
 
 export function communityPath(slug: string, sub?: CommunitySubPage): string {
-  return sub ? `/${slug}/${sub}` : `/${slug}/`
+  return sub ? `/c/${slug}/${sub}` : `/c/${slug}/`
 }
