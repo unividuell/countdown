@@ -14,6 +14,38 @@ already stepped in once.
 | `node` (image + CI) | `24` | `26` | 24 is **Active LTS**; 26 is *Current*. Production tracks Active LTS only. Node 26 becomes LTS in Oct 2026 — bump `@types/node` in the same commit. |
 | `kotlin` | latest **stable** | `-Beta` builds | `versions:display-property-updates` happily suggests `2.4.20-Beta2`. Take stable only; filter pre-release tags yourself. |
 
+## Dependabot alerts — triage before you bump
+
+An open alert is **not** evidence the tree is vulnerable. Resolve the actual version
+first; only then decide whether there is anything to fix.
+
+```bash
+cd webapp-vue
+pnpm why postcss                 # how it enters the tree (direct vs. transitive, via whom)
+ls -d node_modules/.pnpm/postcss@*   # what is physically installed
+```
+
+- pnpm does **not** hoist transitive deps, so `require('postcss/package.json')` throws
+  `MODULE_NOT_FOUND` even when the package is installed. That is a resolution artefact,
+  not evidence of absence — read `node_modules/.pnpm/` or the lockfile instead.
+- **`scope: runtime` on a lockfile alert means the lockfile *importer*, not the browser
+  bundle.** GitHub marks the whole subtree under `dependencies` as "runtime"; `postcss`
+  reaches us via `vue` → `@vue/compiler-sfc` (and via `vite`), both build-time only. The
+  check that settles it is `grep -r postcss dist/` after `pnpm build` — empty means nothing
+  shipped, whatever the alert says.
+- **Precedent — GHSA-r28c-9q8g-f849** (postcss path traversal via `sourceMappingURL`
+  auto-loading, high, `<= 8.5.17`, patched `8.5.18`): opened against
+  `webapp-vue/pnpm-lock.yaml` on 2026-08-02, *after* `fbd60b8` had already moved the
+  lockfile from `8.5.15` to `8.5.25`. Not reachable on two independent counts — the
+  installed version is past the fix, and the vulnerable path needs PostCSS to parse
+  **untrusted** CSS, whereas ours is one first-party `@import 'tailwindcss'` with no
+  `<style>` block anywhere in `src/`. Dismissed as *inaccurate*, no code change.
+
+If an alert **is** real, take the smallest fix: `pnpm update <pkg>` (lands a patched
+transitive version inside the existing ranges) before `pnpm.overrides` (only when the
+parent has not released yet). Do **not** leave a defensive `overrides` floor behind for a
+package that already resolves past the fix — it is dead config that silently goes stale.
+
 ## Maven (`core/`)
 
 ```bash
