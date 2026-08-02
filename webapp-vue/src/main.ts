@@ -34,5 +34,13 @@ bootstrap()
     console.error('[bootstrap] failed to resolve session:', err)
   })
   .finally(() => {
-    createApp(App).use(router).mount('#app')
+    // router.isReady() only settles once the initial navigation has run, and that is
+    // kicked off by router.install() — so the router must be installed on the app
+    // BEFORE awaiting it, or this hangs forever. Mounting afterwards means the first
+    // paint already carries the resolved community instead of flashing the app name.
+    const app = createApp(App).use(router)
+    router
+      .isReady()
+      .catch((err: unknown) => console.error('[router] initial navigation failed:', err))
+      .finally(() => app.mount('#app'))
   })
