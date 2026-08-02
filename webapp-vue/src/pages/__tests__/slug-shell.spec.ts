@@ -1,15 +1,14 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
-import { ApiError } from '@/api/client'
+import type { CommunityResponse } from '@/api/types'
 import { activeCommunity } from '@/communities/context'
+import { _resetRouteDataState, communityRoute } from '@/communities/routeData'
 
 vi.mock('vue-router', async () => {
   const { defineComponent, inject } = await import('vue')
   const { communityKey } = await import('@/communities/context')
   return {
-    useRoute: () => ({ params: { slug: 'team' } }),
-    useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
     RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
     RouterView: defineComponent({
       setup() {
@@ -21,122 +20,77 @@ vi.mock('vue-router', async () => {
   }
 })
 
-describe('community shell guard', () => {
+function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
+  return {
+    id: '1',
+    name: 'Team',
+    slug: 'team',
+    startsAt: null,
+    startsAtTimezone: 'Europe/Berlin',
+    phaseTwoStartRound: null,
+    viewerIsAdmin: true,
+    pendingCount: 3,
+    ...over,
+  }
+}
+
+async function mountShell() {
+  const Shell = (await import('@/pages/[slug].vue')).default
+  return mount(Shell)
+}
+
+describe('community shell', () => {
   beforeEach(() => {
+    _resetRouteDataState()
     activeCommunity.value = null
   })
+  afterEach(() => vi.restoreAllMocks())
 
-  it('renders the child route when an active member', async () => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: false,
-      pendingCount: 0,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
+  it('renders the child route when the guard resolved a community', async () => {
+    communityRoute.value = { kind: 'ready', community: community() }
+    const w = await mountShell()
     expect(w.find('[data-test=do-refresh]').exists()).toBe(true)
-    expect(activeCommunity.value?.name).toBe('Team')
   })
 
-  it('shows no-access on 404', async () => {
-    // Primed as if a previous community were active, so the assertion below exercises the
-    // shell's failure-path reset rather than a value that was already null from beforeEach.
-    activeCommunity.value = {
-      slug: 'stale',
-      name: 'Stale',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      viewerIsAdmin: true,
-      pendingCount: 5,
-    }
-    vi.spyOn(api, 'getCommunity').mockRejectedValue(new ApiError(404, 'no access'))
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
-    expect(w.text()).toMatch(/kein Zugriff|nicht gefunden/i)
-    // A failed resolve must clear the header state, or a stale community menu (the wrong
-    // community's admin links and pending dot) survives a failed switch.
-    expect(activeCommunity.value).toBeNull()
+  it('shows no-access without rendering children', async () => {
+    communityRoute.value = { kind: 'no-access' }
+    const w = await mountShell()
+    expect(w.text()).toMatch(/kein Zugriff/i)
+    expect(w.find('[data-test=do-refresh]').exists()).toBe(false)
+  })
+
+  it('shows the generic error without rendering children', async () => {
+    communityRoute.value = { kind: 'error' }
+    const w = await mountShell()
+    expect(w.text()).toMatch(/schiefgelaufen/i)
+    expect(w.find('[data-test=do-refresh]').exists()).toBe(false)
   })
 
   it('renders no community chrome in the content area', async () => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: true,
-      pendingCount: 2,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
+    communityRoute.value = { kind: 'ready', community: community() }
+    const w = await mountShell()
     expect(w.find('header').exists()).toBe(false)
     expect(w.find('[data-test=logout]').exists()).toBe(false)
     expect(w.find('[data-test=community-menu]').exists()).toBe(false)
     expect(w.text()).not.toContain('Team')
   })
 
-  it('publishes the admin flag and pending count into activeCommunity', async () => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: true,
-      pendingCount: 3,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    const Shell = (await import('@/pages/[slug].vue')).default
-    mount(Shell)
-    await flushPromises()
-    expect(activeCommunity.value).toMatchObject({
-      slug: 'team',
-      name: 'Team',
-      viewerIsAdmin: true,
-      pendingCount: 3,
-    })
-  })
-
-  it('republishes activeCommunity when the context is refreshed', async () => {
-    const get = vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: true,
-      pendingCount: 3,
-    })
-    vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
-    const Shell = (await import('@/pages/[slug].vue')).default
-    const w = mount(Shell)
-    await flushPromises()
-    get.mockResolvedValue({
-      id: '1',
-      name: 'Team',
-      slug: 'team',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      viewerIsAdmin: true,
-      pendingCount: 0,
-    })
+  it('republishes into the header when a child refreshes the context', async () => {
+    communityRoute.value = { kind: 'ready', community: community() }
+    const w = await mountShell()
+    vi.spyOn(api, 'getCommunity').mockResolvedValue(community({ pendingCount: 0 }))
     await w.find('[data-test=do-refresh]').trigger('click')
     await flushPromises()
+    // Publishing only on the initial resolve would leave a stale pending dot behind
+    // after an admin clears the requests.
     expect(activeCommunity.value?.pendingCount).toBe(0)
+  })
+
+  it('does not fetch on its own — the guard owns that', async () => {
+    const get = vi.spyOn(api, 'getCommunity')
+    communityRoute.value = { kind: 'ready', community: community() }
+    await mountShell()
+    await flushPromises()
+    expect(get).not.toHaveBeenCalled()
   })
 })
