@@ -121,6 +121,47 @@ benutzen, kann sich nicht ändern, ohne die JVM-Spezifikation zu brechen.
 Empirisch bestätigt (Tabelle oben): fünf Hersteller, fünf identische Ausgaben, inklusive OpenJ9 —
 einer anderen VM mit anderem JIT. Das ist die Bestätigung, nicht die Begründung.
 
+### Und die Prozessorarchitektur?
+
+**Ebenfalls nein, aus demselben Grund.** Die Spezifikationen beschreiben Ergebnisse, nicht Register:
+JVM-Bytecode-Ops wie `imul`/`iushr` sind unabhängig vom Befehlssatz definiert, und ECMAScript
+definiert `Math.imul` als exakte modulare 32-Bit-Multiplikation. Ein JIT darf die Semantik nicht
+verändern, egal auf welcher ISA er übersetzt. Auch die Wortbreite ist irrelevant: ein Kotlin-`Int`
+ist per Spec 32 Bit, ob die CPU 32 oder 64 Bit rechnet.
+
+Gemessen — dieselbe kompilierte `SeededRandom`-Klasse bzw. dasselbe kompilierte
+`seededRandom.js` unter QEMU:
+
+| Plattform | JVM (Temurin 25) | Node (97 Vektoren) |
+|---|---|---|
+| arm64 (Host) | Referenz | PASS |
+| linux/amd64 | identisch | PASS |
+| linux/ppc64le | identisch | PASS |
+| **linux/arm/v7 (32 Bit)** | kein JDK-25-Build | **PASS** (Node 22) |
+| **linux/s390x (Big-Endian, IBM Z)** | **identisch** | **PASS** (Node 20, Debian) |
+
+Der 32-Bit-Lauf ist der Gegenprobe wegen dabei: er zeigt, dass die Wortbreite der CPU nichts ändert.
+Die JS-Seite meldet auf s390x korrekt `endianness=BE` — die Prüfung lief also wirklich Big-Endian
+und lieferte trotzdem alle 97 Fälle identisch.
+
+**Die eine Stelle, an der die Architektur durchschlagen könnte, ist die Byte-Reihenfolge** — und die
+ist bewusst entschärft: der Generator interpretiert nie Bytes, er rechnet nur. Nur der Test-Helfer
+liest IEEE754-Bits, und der benutzt `DataView` mit **explizitem** Endianness-Flag. Ein
+`Uint32Array`-View auf denselben Puffer würde die Byte-Reihenfolge des Agents verwenden — die folgt
+in der Praxis der CPU und wäre auf s390x eine andere. Der Big-Endian-JVM-Lauf bestätigt, dass hier
+nichts durchsickert.
+
+Auf der JS-Seite ist das ebenfalls belegt: die offiziellen Node-Images decken nur Little-Endian ab
+(amd64, arm64, ppc64le) — praktisch existiert also gar kein Big-Endian-Browser-Ziel —, aber über
+Debian s390x (V8 hat dort einen gepflegten Port) lief die Prüfung trotzdem: `endianness=BE`,
+97/97 identisch.
+
+Ein Nebenaspekt gehört hierher, weil er die Verbotsliste stützt: bei den *verbotenen*
+transzendenten Funktionen **kann** die Architektur sehr wohl durchschlagen. V8 liefert eine eigene
+fdlibm-Portierung mit und ist deshalb über ISAs hinweg konsistent; JavaScriptCore und SpiderMonkey
+können an die Plattform-`libm` delegieren — dann hängt das letzte Bit an libm-Version *und*
+Architektur. Die gemessene V8-gegen-JSC-Divergenz unterschätzt das Problem also eher.
+
 Zwei praktische Konsequenzen bleiben:
 
 - **Wenn `BP_JVM_VERSION` je unter die Bytecode-Version fällt, startet die App gar nicht.** Der

@@ -42,11 +42,19 @@ JavaScriptCore (i.e. Chrome vs. Safari — no JVM needed to break):
 | IEEE754 `+ - * /`, division by powers of two | multi-byte TypedArray bit reinterpretation |
 | `sqrt` (IEEE 754 correctly rounded) | |
 
-A useful corollary: sticking to this list also makes the **JRE vendor and version irrelevant**. The
-JLS fixes integer two's-complement wraparound and shift masking, and since Java 17 `strictfp` is
-always on (JEP 306), so there is no platform-dependent floating-point precision left. Verified for
-the RNG across Temurin, Liberica (what Paketo ships), Corretto, Zulu and OpenJ9 — identical output.
-That is precisely what an unspecified JDK internal like `RandomGeneratorFactory` cannot promise.
+A useful corollary: sticking to this list also makes the **JRE vendor/version and the CPU
+architecture irrelevant**. Both specs describe results, not registers: the JLS fixes integer
+two's-complement wraparound and shift masking, ECMAScript defines `Math.imul` as exact modular 32-bit
+multiplication, and since Java 17 `strictfp` is always on (JEP 306), so no platform-dependent
+floating-point precision is left. Verified for the RNG across Temurin, Liberica (what Paketo ships),
+Corretto, Zulu and OpenJ9, and — on both runtimes — across amd64, arm64, ppc64le, 32-bit armv7 and
+big-endian s390x: identical output throughout. That is precisely what an unspecified JDK internal
+like `RandomGeneratorFactory` cannot promise.
+
+The one place architecture *can* leak in is byte order, so never reinterpret bytes to get at a
+value's bits: use `DataView` with an explicit endianness flag, never a multi-byte TypedArray view.
+Note also that the banned transcendentals are architecture-sensitive too — JSC and SpiderMonkey may
+delegate to the platform `libm`, so the last bit can depend on libm version *and* ISA.
 
 Consequences:
 
