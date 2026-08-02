@@ -1637,6 +1637,13 @@ the active community (title, `startsAt`, `startsAtTimezone`) is published via a 
 not via `provide`/`inject`.
 ```
 
+> **Superseded 2026-08-02** (see `2026-08-02-navigation-flicker-design.md`): the parenthetical
+> above — "set by the shell on resolve, cleared on unmount" — no longer describes the code. The
+> router guard `registerCommunityDataGuard` (`src/communities/routeData.ts`) resolves the community
+> in `beforeResolve`, before the route commits, and publishes it in `afterEach`, once it has
+> committed. `publishCommunity()` is the single path that publishes; clearing is the guard's own
+> business. `frontend.md` carries the current wording — take it from there, not from here.
+
 - [ ] **Step 5: Feed knowledge back — `modules-and-migrations.md`**
 
 Append a note to `.claude/guidelines/modules-and-migrations.md`:

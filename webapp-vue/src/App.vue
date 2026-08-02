@@ -8,6 +8,7 @@ import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import { useAuth } from '@/auth/useAuth'
 import CommunityMenu from '@/communities/CommunityMenu.vue'
 import MemberMenu from '@/auth/MemberMenu.vue'
+import { navigationPending } from '@/ui/navigationProgress'
 
 const { status } = useAuth()
 
@@ -26,18 +27,35 @@ const yearSuffix = computed(() => {
 
 <template>
   <div class="flex min-h-screen flex-col bg-neutral-100 text-neutral-900">
-    <header class="flex items-center justify-between gap-4 bg-stone-900 px-4 py-3 text-stone-50">
-      <div class="flex items-center gap-2">
-        <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
-        <RouterLink to="/" class="font-semibold hover:underline"
-          >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
-        >
+    <div class="relative">
+      <header class="flex items-center justify-between gap-4 bg-stone-900 px-4 py-3 text-stone-50">
+        <div class="flex items-center gap-2">
+          <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
+          <RouterLink to="/" class="font-semibold hover:underline"
+            >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
+          >
+        </div>
+        <div class="flex items-center gap-3">
+          <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
+          <MemberMenu v-if="status === 'authenticated'" />
+        </div>
+      </header>
+      <!-- Absolute, so appearing costs no layout: the bar must not push <main> down. -->
+      <div
+        v-if="navigationPending"
+        data-test="navigation-progress"
+        role="progressbar"
+        aria-label="Seite wird geladen"
+        class="absolute inset-x-0 top-full h-1 overflow-hidden bg-stone-300"
+      >
+        <!-- A looping animation is physically unpleasant for some viewers, so reduced
+             motion gets a static full-width fill instead — still legibly "busy". -->
+        <div
+          data-test="navigation-progress-segment"
+          class="animate-nav-shuttle h-full w-1/4 bg-blue-600 motion-reduce:w-full motion-reduce:animate-none"
+        />
       </div>
-      <div class="flex items-center gap-3">
-        <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
-        <MemberMenu v-if="status === 'authenticated'" />
-      </div>
-    </header>
+    </div>
     <main class="flex-1 p-4">
       <RouterView />
     </main>

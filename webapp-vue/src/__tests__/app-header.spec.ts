@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import App from '@/App.vue'
 import { activeCommunity } from '@/communities/context'
 import { useAuth } from '@/auth/useAuth'
+import { navigationPending } from '@/ui/navigationProgress'
 
 vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
@@ -30,6 +31,7 @@ describe('App main header', () => {
   beforeEach(() => {
     activeCommunity.value = null
     mockStatus('anonymous')
+    navigationPending.value = false
   })
 
   it('shows the app name and no countdown when no community is active', () => {
@@ -100,5 +102,32 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
     mockStatus('authenticated')
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
+  })
+
+  it('shows the navigation progress bar only while a navigation is pending', () => {
+    expect(mount(App, { global: { stubs } }).find('[data-test=navigation-progress]').exists()).toBe(
+      false,
+    )
+    navigationPending.value = true
+    expect(mount(App, { global: { stubs } }).find('[data-test=navigation-progress]').exists()).toBe(
+      true,
+    )
+  })
+
+  it('renders the bar out of flow so appearing cannot push the content down', () => {
+    navigationPending.value = true
+    const bar = mount(App, { global: { stubs } }).find('[data-test=navigation-progress]')
+    // `absolute` is the whole reason the design can promise no layout shift — a bar that
+    // shoves <main> down 4px when it appears is the defect it was added to explain.
+    expect(bar.classes()).toContain('absolute')
+  })
+
+  it('carries a moving segment that stops for viewers who ask for reduced motion', () => {
+    navigationPending.value = true
+    const w = mount(App, { global: { stubs } })
+    const segment = w.find('[data-test=navigation-progress-segment]')
+    expect(segment.exists()).toBe(true)
+    expect(segment.classes()).toContain('animate-nav-shuttle')
+    expect(segment.classes()).toContain('motion-reduce:animate-none')
   })
 })

@@ -7,7 +7,6 @@ import HeaderMenu from '@/ui/HeaderMenu.vue'
 import type { ActiveCommunity } from '@/communities/context'
 import type { CommunitySummary } from '@/api/types'
 import { useCommunities } from '@/communities/useCommunities'
-import { setSelection } from '@/api/communities'
 
 const props = defineProps<{ community: ActiveCommunity }>()
 const router = useRouter()
@@ -29,13 +28,7 @@ const label = computed(() => (showDot.value ? 'Community-Menü, offene Anfragen'
 const ENTRY =
   'flex w-full cursor-pointer items-center px-3 py-1.5 text-left text-sm hover:bg-neutral-100'
 
-async function go(c: CommunitySummary): Promise<void> {
-  // The selection is only a "last visited" marker — losing it must not block the navigation.
-  try {
-    await setSelection(c.id)
-  } catch (e) {
-    console.error('could not persist the community selection', e)
-  }
+function go(c: CommunitySummary): void {
   router.push(`/${c.slug}/`).catch((e) => console.error('navigation failed', e))
 }
 </script>

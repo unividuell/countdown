@@ -100,21 +100,14 @@ describe('CommunityMenu', () => {
     expect(w.find('[data-test=create-community]').attributes('href')).toBe('/communities/new')
   })
 
-  it('remembers the selection before navigating to another community', async () => {
-    const select = vi.spyOn(api, 'setSelection').mockResolvedValue(undefined as never)
+  it('navigates to the other community without waiting on a round-trip', async () => {
+    // The selection is persisted by the router guard after the navigation commits;
+    // awaiting it here would delay every switch by a request.
+    const select = vi.spyOn(api, 'setSelection')
     const w = await open(admin)
     await w.find('[data-test=switch-community]').trigger('click')
-    await flushPromises()
-    expect(select).toHaveBeenCalledWith('2')
     expect(pushMock).toHaveBeenCalledWith('/nord/')
-  })
-
-  it('navigates even when the selection cannot be persisted', async () => {
-    vi.spyOn(api, 'setSelection').mockRejectedValue(new Error('offline'))
-    const w = await open(admin)
-    await w.find('[data-test=switch-community]').trigger('click')
-    await flushPromises()
-    expect(pushMock).toHaveBeenCalledWith('/nord/')
+    expect(select).not.toHaveBeenCalled()
   })
 
   it('stays usable when the community list cannot be loaded', async () => {
