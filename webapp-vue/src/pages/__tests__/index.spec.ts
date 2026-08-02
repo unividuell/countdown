@@ -1,52 +1,58 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import * as comp from '@/communities/useCommunities'
+import * as api from '@/api/communities'
+import { _resetCommunitiesState } from '@/communities/useCommunities'
+import { _resetLandingState, landingFailed } from '@/communities/landingGuard'
 
-const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ replace: push }) }))
+const replace = vi.fn().mockResolvedValue(undefined)
+vi.mock('vue-router', () => ({ useRouter: () => ({ replace }) }))
 
-describe('index redirect resolver', () => {
+async function mountIndex() {
+  const Index = (await import('@/pages/index.vue')).default
+  return mount(Index)
+}
+
+describe('landing page', () => {
   beforeEach(() => {
-    push.mockReset()
+    replace.mockClear()
     sessionStorage.clear()
+    _resetLandingState()
+    _resetCommunitiesState()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('shows nothing actionable on the happy path — the guard redirects before it renders', async () => {
+    const w = await mountIndex()
+    expect(w.find('[data-test=landing-retry]').exists()).toBe(false)
   })
 
-  it('returns to the stashed post-login destination instead of the default landing', async () => {
-    sessionStorage.setItem('postLoginRedirect', '/join/tok123')
-    const landing = vi.fn()
-    vi.spyOn(comp, 'useCommunities').mockReturnValue({
-      active: { value: [] } as never,
-      refresh: vi.fn(),
-      landing,
-    })
-    const Index = (await import('@/pages/index.vue')).default
-    mount(Index)
-    await flushPromises()
-    expect(push).toHaveBeenCalledWith('/join/tok123')
-    expect(landing).not.toHaveBeenCalled()
-    expect(sessionStorage.getItem('postLoginRedirect')).toBeNull()
+  it('offers a retry once the landing resolution has failed', async () => {
+    landingFailed.value = true
+    const w = await mountIndex()
+    expect(w.text()).toMatch(/schiefgelaufen/i)
+    expect(w.find('[data-test=landing-retry]').exists()).toBe(true)
   })
 
-  it('redirects to the single community', async () => {
-    vi.spyOn(comp, 'useCommunities').mockReturnValue({
-      active: { value: [] } as never,
-      refresh: vi.fn(),
-      landing: vi.fn().mockResolvedValue({ kind: 'one', slug: 'a' }),
-    })
-    const Index = (await import('@/pages/index.vue')).default
-    mount(Index)
+  it('navigates to the resolved target when the retry succeeds', async () => {
+    landingFailed.value = true
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([{ id: 'c1', name: 'Team', slug: 'team' }])
+    vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
+    const w = await mountIndex()
+    await w.find('[data-test=landing-retry]').trigger('click')
     await flushPromises()
-    expect(push).toHaveBeenCalledWith('/a/')
+    expect(replace).toHaveBeenCalledWith('/team/')
+    expect(landingFailed.value).toBe(false)
   })
-  it('redirects to /communities when none', async () => {
-    vi.spyOn(comp, 'useCommunities').mockReturnValue({
-      active: { value: [] } as never,
-      refresh: vi.fn(),
-      landing: vi.fn().mockResolvedValue({ kind: 'none' }),
-    })
-    const Index = (await import('@/pages/index.vue')).default
-    mount(Index)
+
+  it('stays on the error view when the retry fails again', async () => {
+    landingFailed.value = true
+    vi.spyOn(api, 'listCommunities').mockRejectedValue(new Error('still offline'))
+    vi.spyOn(api, 'getSelection').mockResolvedValue({ communityId: null })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = await mountIndex()
+    await w.find('[data-test=landing-retry]').trigger('click')
     await flushPromises()
-    expect(push).toHaveBeenCalledWith('/communities')
+    expect(replace).not.toHaveBeenCalled()
+    expect(landingFailed.value).toBe(true)
   })
 })
