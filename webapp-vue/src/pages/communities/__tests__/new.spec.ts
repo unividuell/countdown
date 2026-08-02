@@ -12,7 +12,7 @@ describe('create community page', () => {
     const New = (await import('@/pages/communities/new.vue')).default
     const w = mount(New)
     await w.find('input').setValue('Hütte Hütte')
-    expect(w.text()).toContain('huette-huette')
+    expect(w.text()).toContain('/c/huette-huette/')
   })
   it('surfaces a 409 as a friendly message', async () => {
     vi.spyOn(api, 'createCommunity').mockRejectedValue(new ApiError(409, 'taken'))
