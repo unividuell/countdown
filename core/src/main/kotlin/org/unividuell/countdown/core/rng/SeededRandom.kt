@@ -1,8 +1,16 @@
 package org.unividuell.countdown.core.rng
 
 /**
- * xoshiro128** with splitmix32 seed expansion. The stream is byte-identical to the frontend's
- * `webapp-vue/src/lib/rng/seededRandom.ts`; the contract is pinned by `shared/rng/golden-vectors.json`.
+ * xoshiro128** with splitmix32 seed expansion. Reproducible by design: a round can be re-derived from
+ * its seed at any time, so nothing generated has to be persisted. No platform RNG offers that —
+ * `kotlin.random.Random` disclaims cross-version stability, and `L32X64MixRandom` changed its
+ * per-seed stream in an OpenJDK patch release (JDK-8282551).
+ *
+ * The stream is also reproducible in a browser runtime, pinned by `shared/rng/golden-vectors.json`
+ * against a test-scope reference implementation in
+ * `webapp-vue/src/lib/rng/__tests__/seededRandom.reference.ts`. That property is verified but
+ * deliberately unused: rounds are server-authoritative, and a seed that reaches the client reveals
+ * every future draw.
  *
  * [nextUint32] follows Blackman/Vigna's reference verbatim — https://prng.di.unimi.it/xoshiro128starstar.c
  * — i.e. **v1.1, whose scrambler reads `s1`**. The superseded v1.0 reads `s0` and yields a different

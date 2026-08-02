@@ -3,10 +3,30 @@
 **Status:** Machbarkeitsanalyse — **empirisch verifiziert** (2026-08-02)
 **Frage:** Kann dieselbe zufällige, aber reproduzierbare Zahlenreihe auf der JVM *und* im Browser
 erzeugt werden, wenn beide mit demselben Seed initialisiert werden?
-**Proof of concept:** `core/src/test/kotlin/…/rng/SeededRandom.kt`,
-`webapp-vue/src/lib/rng/seededRandom.ts`, Vertrag in `shared/rng/golden-vectors.json`.
-**Noch nicht entschieden:** wo der Generator in der Modulith-Architektur lebt, und wie Seeds
-persistiert/ausgeliefert werden. Diese Analyse liefert die Grundlage, nicht das Feature.
+**Code:** `core/src/main/kotlin/…/rng/SeededRandom.kt` (Modul `rng`),
+`webapp-vue/src/lib/rng/__tests__/seededRandom.reference.ts` (Test-Scope),
+Vertrag in `shared/rng/golden-vectors.json`.
+
+> ## Nachtrag: die Antwort ist „ja", die Konsequenz war trotzdem eine andere
+>
+> Aus der anschließenden Anti-Cheat-Diskussion folgte, dass die geteilte Ableitung **nicht gebraucht
+> wird — und für ein kompetitives Spiel schädlich wäre.** Ein Seed, aus dem der Client die Runde
+> ableiten kann, verrät ihm jede künftige Ziehung. Runden sind deshalb **server-autoritativ**: der
+> Server leitet Rätsel und Lösung aus einem Seed ab, den er nie ausliefert, und validiert die
+> Einsendung selbst. Der Client bekommt nur Renderbares.
+>
+> **Warum diese Analyse trotzdem trägt:** der Kotlin-Generator ist unabhängig davon nötig, weil der
+> Server Runden reproduzieren können muss, ohne generierten Zustand zu speichern — und *keine*
+> Plattform-RNG leistet das (siehe „Warum keine Plattform-RNG"). Was wegfällt, ist nur der
+> *Verwendungszweck* der Browser-Seite.
+>
+> Die TS-Implementierung liegt darum in **Test-Scope**: sie hält die Portabilität nachweisbar, ohne
+> dass jemand darauf aufbaut. Fördern nach `src/lib/rng/` nur für Präsentations-Zufall (Animationen,
+> Deko) — nie für Spielausgänge.
+>
+> Rückblickend war die Frage nach der Parität von der alten Nuxt-App geprägt: dort lag die Spiellogik
+> in Client-Composables gegen Firestore, es gab keinen Ort für autoritative Runden. Mit einem echten
+> Backend verschiebt sich die richtige Grenze — und damit die richtige Antwort.
 
 ## Ergebnis
 
@@ -42,8 +62,8 @@ zweite VM-Implementierung:
 
 Der JVM-Lauf verwendete die **kompilierte `SeededRandom`-Klasse selbst** (nicht eine
 Java-Nachbildung), in je einem Container pro JRE. Der Browser-Lauf verwendete die **aus
-`seededRandom.ts` kompilierte** Datei, gegen dieselbe Vektor-Datei: 97/97 Fälle in Firefox 151,
-97/97 in Chromium 148.
+`seededRandom.reference.ts` kompilierte** Datei, gegen dieselbe Vektor-Datei: 97/97 Fälle in
+Firefox 151, 97/97 in Chromium 148.
 
 | Prüfung | Runtimes | Ergebnis |
 |---|---|---|
@@ -57,8 +77,8 @@ Java-Nachbildung), in je einem Container pro JRE. Der Browser-Lauf verwendete di
 | **1.000.000 Ziehungen**, Prüfsumme mod 1e9+7 | JVM, Node, Chromium, JSC | identisch |
 | Seeds mit Umlauten/Emoji (`hütte-2026`, `Grüße`, `Silvester🎉`) | JVM, Node, Chromium | identisch |
 
-Ausgeführt als reguläre Test-Suites: **6 Kotlin-Tests** (`./mvnw test`, 116 Tests gesamt grün) und
-**104 Vitest-Tests** (`pnpm test`, 214 gesamt grün), beide gegen *dieselbe* Vektor-Datei.
+Ausgeführt als reguläre Test-Suites: **7 Kotlin-Tests** (`./mvnw test`, 117 Tests gesamt grün) und
+**105 Vitest-Tests** (`pnpm test`, 215 gesamt grün), beide gegen *dieselbe* Vektor-Datei.
 
 ### Der Gegenbeweis, der die Regeln definiert
 
@@ -431,7 +451,7 @@ Klassen + `kotlin-stdlib.jar` + ein `main`, das ein paar Ströme druckt, per `do
 `azul/zulu-openjdk:25-jre`, `ibm-semeru-runtimes:open-25-jre` kopieren und `diff`en. (Bind-Mounts
 scheitern unter Docker Desktop an File Sharing — `docker build` umgeht das.)
 
-**Firefox / andere Browser** — `seededRandom.ts` mit `tsc` nach JS übersetzen, es zusammen mit
+**Firefox / andere Browser** — `seededRandom.reference.ts` mit `tsc` nach JS übersetzen, es zusammen mit
 `shared/rng/golden-vectors.json` von einem lokalen Node-Server ausliefern, im Browser alle Fälle
 prüfen und das Ergebnis per `fetch` an den Server zurückposten. Gemessen: Firefox 151 → 97/97,
 Chromium 148 → 97/97. Sinnvoll als gelegentlicher manueller Lauf; für CI wäre Playwright mit

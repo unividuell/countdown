@@ -1,5 +1,16 @@
-// Mirror of backend SeededRandom (Kotlin is the source of truth). Byte-identical streams are a
-// contract verified against shared/rng/golden-vectors.json — see seededRandom.spec.ts.
+// Reference implementation, deliberately in TEST SCOPE — not application code, imported by nothing
+// but seededRandom.spec.ts. It exists to keep one claim live-verified: that the backend's seeded
+// stream can be reproduced in a browser runtime, bit for bit, against shared/rng/golden-vectors.json.
+//
+// It is NOT the way a game gets its randomness. Rounds are server-authoritative: the backend derives
+// the puzzle and its solution from a seed it never ships, and validates the submitted guess itself.
+// Deriving an outcome in the browser would hand every player the solution — which is precisely the
+// architecture this file must not make convenient.
+//
+// Promote it to src/lib/rng/ only for randomness that is presentational and already public
+// (animation jitter, decorative layout) — and then say so at the call site.
+//
+// Mirror of backend SeededRandom; Kotlin is the source of truth.
 //
 // nextUint32 follows Blackman/Vigna's reference verbatim — https://prng.di.unimi.it/xoshiro128starstar.c
 // — i.e. v1.1, whose scrambler reads s1. The superseded v1.0 reads s0 and yields a different stream.

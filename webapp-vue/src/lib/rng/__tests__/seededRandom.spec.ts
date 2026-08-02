@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { SeededRandom } from '@/lib/rng/seededRandom'
+import { SeededRandom } from './seededRandom.reference'
 
 // The same file the JVM suite asserts against (SeededRandomGoldenVectorTest). Reading the shared
 // file rather than restating literals here is the point: one side cannot drift without the other

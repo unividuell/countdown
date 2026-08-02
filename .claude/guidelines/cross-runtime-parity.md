@@ -6,9 +6,18 @@ project preference still stands: **keep logic in one place** (the countdown engi
 Kotlin and ships absolute instants). Duplicate a function across runtimes **only when both sides
 genuinely must compute it locally**, and then treat parity as a contract, not a hope.
 
-Worked examples: `Slugs.slugify` ↔ `slugify.ts` (string parity), `SeededRandom.kt` ↔
-`seededRandom.ts` (bit-exact numeric parity — see
+Worked examples: `Slugs.slugify` ↔ `slugify.ts` (string parity, both in production), and
+`SeededRandom.kt` ↔ `seededRandom.reference.ts` (bit-exact numeric parity — see
 [`docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md`](../../docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md)).
+
+The RNG is the cautionary case for that "only when both sides must compute it locally" clause. The
+parity is real and proven, but it turned out **not to be needed**: rounds are server-authoritative,
+because a seed the client can derive from is a seed that hands the client every future draw. So the
+TypeScript side lives in **test scope**
+(`webapp-vue/src/lib/rng/__tests__/seededRandom.reference.ts`), where it keeps the property
+verified without inviting anyone to build on it. Establish *whether* both sides must compute
+locally before you build the second implementation — a shared-stream RNG is an anti-feature for
+anything a player could gain from knowing.
 
 ## Kotlin is the source of truth
 
@@ -25,6 +34,10 @@ Duplicated literals let one side drift without turning red.
 ```
 shared/rng/golden-vectors.json     # written by Kotlin, asserted by Kotlin AND Vitest
 ```
+
+Such a file keeps earning its keep even with only one consumer: it pins the Kotlin side against
+accidental behaviour change, and it *is* the ready-made specification if the second implementation is
+ever needed. That is why dropping a mirror costs no verification.
 
 Give the file a `version` field: changing the values is a breaking change for anything persisted
 against it (e.g. a stored RNG seed).
