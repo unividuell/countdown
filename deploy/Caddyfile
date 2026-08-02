@@ -24,9 +24,26 @@
 		reverse_proxy core:8080
 	}
 
-	# everything else -> SPA with HTML5 history-mode fallback
+	# Vite's content-hashed build output: a changed file always gets a new URL, so it can be
+	# cached forever. Its own handle block (not a `header @assets` matcher inside the SPA block)
+	# keeps it mutually exclusive with the catch-all below: exactly one Cache-Control per
+	# request, and NO try_files here — a missing hashed asset must 404 rather than fall back to
+	# index.html, which would pin an HTML document under an asset URL for a year.
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# everything else -> SPA with HTML5 history-mode fallback.
+	# index.html is the unhashed entry point, so hashing cannot cover it: without an explicit
+	# Cache-Control a browser applies RFC 9111 heuristic freshness and reuses the cached copy
+	# without revalidating -> a tab open across a deploy keeps the old build (and, via the old
+	# asset hashes, the whole old app) until a hard reload. `no-cache` means "revalidate before
+	# use", not "don't store": with the ETag file_server already sends, that is a cheap 304.
 	handle {
 		root * /srv
+		header Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
