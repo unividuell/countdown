@@ -2,6 +2,8 @@ package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import org.springframework.mock.env.MockEnvironment
+import org.unividuell.countdown.core.community.internal.MemberPointsConfiguration
 import org.unividuell.countdown.core.community.internal.StubMemberPoints
 import org.unividuell.countdown.core.community.internal.ZeroMemberPoints
 import java.util.UUID
@@ -45,5 +47,57 @@ class MemberPointsTest {
         val result = StubMemberPoints().standings(communityId, viewer, many)
         val withLive = result.values.count { it.live != null }
         (withLive in 1 until many.size) shouldBe true
+    }
+
+    private val factory = MemberPointsConfiguration()
+
+    @Test
+    fun `factory returns ZeroMemberPoints when property is absent and no production profile`() {
+        val env = MockEnvironment()
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "ZeroMemberPoints"
+    }
+
+    @Test
+    fun `factory returns StubMemberPoints when property is true and no production profile (localhost)`() {
+        val env = MockEnvironment()
+        env.setProperty("app.stub-points.enabled", "true")
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "StubMemberPoints"
+    }
+
+    @Test
+    fun `factory returns StubMemberPoints when property is true and staging profile active`() {
+        val env = MockEnvironment()
+        env.setProperty("app.stub-points.enabled", "true")
+        env.setActiveProfiles("staging")
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "StubMemberPoints"
+    }
+
+    @Test
+    fun `factory returns ZeroMemberPoints when property is false and staging profile active`() {
+        val env = MockEnvironment()
+        env.setProperty("app.stub-points.enabled", "false")
+        env.setActiveProfiles("staging")
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "ZeroMemberPoints"
+    }
+
+    @Test
+    fun `factory returns ZeroMemberPoints when property is true but production profile active (safety belt)`() {
+        val env = MockEnvironment()
+        env.setProperty("app.stub-points.enabled", "true")
+        env.setActiveProfiles("production")
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "ZeroMemberPoints"
+    }
+
+    @Test
+    fun `factory returns ZeroMemberPoints when property is absent and production profile active`() {
+        val env = MockEnvironment()
+        env.setActiveProfiles("production")
+        val bean = factory.memberPointsQuery(env)
+        bean::class.simpleName shouldBe "ZeroMemberPoints"
     }
 }
