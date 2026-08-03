@@ -211,7 +211,13 @@ Die Reihe liegt im normalen Fluss und trägt nur ein `transform`; die Ruhepositi
 Definition Offset 0, und das Layout bewegt sich nie. Die Kräfte werden über die Flugzeit gerampt:
 der Sog zum Platz wächst, Kohäsion und Chaos verklingen, die Dämpfung steigt.
 
-Drei Änderungen gegenüber dem Spike:
+Die Werte bleiben die **am Spike gemessenen**: rund 0,7 s Trödeln, dann der Einsturz, ein
+Überschwinger von ~42 px, drei abklingende Nachwipper, still nach ~2,9 s. Eine kürzere Gesamtdauer
+war zwischenzeitlich erwogen und wieder verworfen: sie wäre nur der Preis für die Scroll-Sperre
+gewesen, und die entfällt (siehe Punkt 1). Ohne diesen Zwang ist die längere, verspieltere Variante
+die bessere — ein Nachwipper statt drei hätte den Fly-in knackig, aber ärmer gemacht.
+
+Zwei Änderungen gegenüber dem Spike:
 
 **1. Der Viewport ist eine Kiste — keine Scroll-Sperre mehr.** Im Spike starteten die Mitglieder
 *außerhalb* des Viewports, größtenteils angeschnitten. Das war der Grund für die Scroll-Sperre: ein
@@ -227,23 +233,14 @@ Bezahlt wird es mit dem „angeschnitten am Rand"-Bild, das im Spike ausdrückli
 Tausch ist bewusst getroffen worden, weil eine Scroll-Sperre beim Laden auf dem Telefon teurer ist
 als der Effekt wert ist.
 
-**2. Gesamtdauer 1,5 s statt 2,9 s.** Das ist ein Zielwert, aus dem sich die Konstanten ableiten, und
-nicht umgekehrt. Aufteilung: ~1,0 s Flug (`durationMs`), ~0,5 s Einschwingen. Die Einschwingzeit eines
-gedämpften Federsystems ist ≈ 4/(ζω), für 0,5 s also ζω ≈ 8; mit ζ ≈ 0,5 — dem Wert, der einen
-sichtbaren Überschwinger gibt — folgt ω ≈ 16 rad/s, und damit `seekStrength = ω² ≈ 256` sowie
-`endDamping = exp(−2ζω/60) ≈ 0,77`.
+**2. `overflow` am scrollenden Vorfahren.** Neu, weil die Reihe im Spike gar nicht scrollte: Punkt 1
+löst nur die *Dokument*-Scrollbalken, aber `overflow-x: auto` an der Reihe rechnet `overflow-y`
+ebenfalls auf `auto` und würde die fliegenden Kreise am ~62 px hohen Reihenband abschneiden. Also
+während des Flugs `overflow: visible`, erst nach dem Landen scrollbar.
 
-Die Konsequenz gehört dazu, damit sie beim Ansehen nicht überrascht: bei 1,5 s schrumpft das
-anfängliche Trödeln auf ~250 ms, und die Wippperiode von 2π/(ω√(1−ζ²)) ≈ 0,45 s lässt **etwa einen
-Nachwipper statt drei** zu. Der Fly-in wird knackiger und weniger verspielt. Diese Werte sind
-*abgeleitet*, nicht gemessen — im Gegensatz zu den Spike-Werten. Sie sind in der Umsetzung am
-laufenden Bild zu verifizieren und gegebenenfalls nachzuziehen; verbindlich ist die 1,5-s-Obergrenze,
-nicht die Zahl 256.
-
-**3. `overflow` am scrollenden Vorfahren.** Bleibt bestehen, denn Punkt 1 löst nur die
-Dokument-Scrollbalken: `overflow-x: auto` an der Reihe rechnet `overflow-y` ebenfalls auf `auto` und
-würde die fliegenden Kreise am ~62 px hohen Reihenband abschneiden. Also während des Flugs
-`overflow: visible`, erst nach dem Landen scrollbar.
+Weil die Startpositionen jetzt von innen an den Rändern hängen statt außerhalb, sind die Flugwege
+etwas kürzer als im gemessenen Spike-Lauf. Die ~2,9 s sind damit eine Obergrenze; einmal am laufenden
+Bild nachmessen genügt, die Konstanten selbst sind belegt.
 
 ### Reduced Motion
 
@@ -282,13 +279,12 @@ ruhige Meldung an derselben Stelle. Eine Community mit einem einzigen Mitglied a
   Startpositionen liegen jetzt **innerhalb** des Viewports, und neu dazu kommt die Zusage, die die
   Scroll-Sperre ersetzt: **keine Position verlässt zu irgendeinem Zeitpunkt den Viewport**, über den
   ganzen Flug geprüft, nicht nur am Start.
-- Gesamtdauer: die Animation ist nach 1,5 s fertig (`finished`), nicht erst durch die Notbremse.
+- Gesamtdauer: die Animation erreicht `finished` von selbst, nicht erst über die Notbremse — der
+  Test aus dem Spike, der genau das festnagelt, bleibt.
 
 ## Bewusste Provisorien
 
 Damit sie beim nächsten Anfassen nicht als Versehen gelesen werden:
 
 - `MemberPointsQuery` liegt im `community`-Modul, obwohl Punkte eine Spiel-Angelegenheit sind.
-- Die Konstanten der 1,5-s-Animation sind abgeleitet, nicht gemessen — bis sie in der Umsetzung am
-  laufenden Bild bestätigt sind.
 - Der Spike-Branch bleibt liegen; nur `swarm.ts` und seine Tests wandern herüber.
