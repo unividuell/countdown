@@ -99,4 +99,19 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isNoContent() }
         }
     }
+
+    @Test
+    fun `PATCH me with malformed bgColorHex responds 400`() {
+        every { profileService.update(uid, null, "12345") } throws
+                IllegalArgumentException("bgColorHex must be a valid hex colour in the form #rrggbb, got: 12345")
+
+        mockMvc.patch("/api/me") {
+            with(principalFor(user()))
+            with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":null,"bgColorHex":"12345"}"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+    }
 }
