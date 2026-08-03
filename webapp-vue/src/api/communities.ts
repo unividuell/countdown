@@ -5,6 +5,7 @@ import type {
   CommunitySummary,
   InviteResponse,
   MemberResponse,
+  RosterMemberResponse,
 } from '@/api/types'
 
 export const listCommunities = () => apiFetch<CommunitySummary[]>('/api/communities')
@@ -41,6 +42,8 @@ export const joinByToken = (token: string) =>
   apiFetch<AcceptResponse>(`/api/communities/join/${token}`, { method: 'POST' })
 export const listMembers = (slug: string) =>
   apiFetch<MemberResponse[]>(`/api/communities/${slug}/members`)
+export const getRoster = (slug: string) =>
+  apiFetch<RosterMemberResponse[]>(`/api/communities/${slug}/roster`)
 export const approveMember = (slug: string, userId: string) =>
   apiFetch<void>(`/api/communities/${slug}/members/${userId}/approve`, { method: 'POST' })
 export const promoteMember = (slug: string, userId: string) =>
