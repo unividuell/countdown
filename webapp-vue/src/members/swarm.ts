@@ -1,7 +1,7 @@
 /**
  * A tiny force-based swarm: every member is a particle that drifts in from the edge of the
- * clumps up with whoever happens to be nearby, and is eventually yanked into its slot in
- * the ranking row. Pure TypeScript, no DOM — the component only reads positions out.
+ * screen, clumps up with whoever happens to be nearby, and is eventually yanked into its
+ * slot in the ranking row. Pure TypeScript, no DOM — the component only reads positions out.
  *
  * All coordinates are viewport pixels. Force constants marked "spring" are in 1/s² (they
  * multiply a distance to yield an acceleration), so `omega = sqrt(k)` predicts how fast a
