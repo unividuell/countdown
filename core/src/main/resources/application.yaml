@@ -37,3 +37,8 @@ app:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
     enabled: true
+  stub-points:
+    # Invented-but-stable game points, so the ranking row can be judged before any game exists.
+    # Deliberately a separate flag from app.test-auth: seeded logins and invented points are
+    # independently switchable.
+    enabled: true
