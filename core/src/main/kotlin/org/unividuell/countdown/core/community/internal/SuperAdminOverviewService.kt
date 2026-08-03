@@ -10,9 +10,8 @@ import org.unividuell.countdown.core.iam.UserQuery
 /**
  * System-wide read model for the super-admin area: every community with its full roster.
  *
- * Three queries regardless of how many communities exist. MemberController resolves one user
- * per row, which is bounded by a single community; here that same shape would be an N+1 across
- * the whole system, so users are fetched in one batch.
+ * Three queries regardless of how many communities exist: users are fetched in one batch rather
+ * than one lookup per roster row.
  */
 @Service
 class SuperAdminOverviewService(
