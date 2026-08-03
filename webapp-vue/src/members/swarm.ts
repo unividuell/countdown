@@ -125,6 +125,16 @@ const INSET_MIN = 24
 const INSET_RANGE = 46
 
 /**
+ * Insetting along the edge normal moves only one axis, so a start projected near a corner is
+ * still hard against the adjacent edge — and its painted circle hangs off-screen, which is the
+ * very thing the walls exist to prevent. The upper bound is floored at [INSET_MIN] so a stage
+ * narrower than twice the inset degenerates instead of inverting.
+ */
+function clampInside(value: number, extent: number): number {
+  return Math.min(Math.max(value, INSET_MIN), Math.max(INSET_MIN, extent - INSET_MIN))
+}
+
+/**
  * Places `count` particles along the **inside** of the stage edges, spread around them but
  * deliberately not evenly: strata are sampled with jitter wider than the strata themselves, so
  * neighbours bunch up and gaps open. Each start also gets its own inset, so nobody lines up.
@@ -143,7 +153,10 @@ export function scatterStarts(
     const u = (stratum + jitter + rot + 1) % 1
     const { p, n } = pointOnRectPerimeter(stage.width, stage.height, u)
     const inset = INSET_MIN + rng() * INSET_RANGE
-    out.push({ x: p.x - n.x * inset, y: p.y - n.y * inset })
+    out.push({
+      x: clampInside(p.x - n.x * inset, stage.width),
+      y: clampInside(p.y - n.y * inset, stage.height),
+    })
   }
   return out
 }

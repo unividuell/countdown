@@ -71,15 +71,18 @@ describe('createSwarm', () => {
   })
 
   it('never lets anyone leave the stage — this is what replaces the scroll lock', () => {
+    // Swept over seeds rather than trusting one: a single lucky seed can hide a real violation.
     const targets = rowTargets(9)
-    const swarm = createSwarm({ targets, stage, tuning: defaultTuning, rng: mulberry32(11) })
-    for (let i = 0; i < 400 && !swarm.finished; i++) {
-      swarm.step(1 / 60)
-      for (const p of swarm.particles) {
-        expect(p.x).toBeGreaterThanOrEqual(0)
-        expect(p.x).toBeLessThanOrEqual(stage.width)
-        expect(p.y).toBeGreaterThanOrEqual(0)
-        expect(p.y).toBeLessThanOrEqual(stage.height)
+    for (let seed = 0; seed < 20; seed++) {
+      const swarm = createSwarm({ targets, stage, tuning: defaultTuning, rng: mulberry32(seed) })
+      for (let i = 0; i < 400 && !swarm.finished; i++) {
+        swarm.step(1 / 60)
+        for (const p of swarm.particles) {
+          expect(p.x).toBeGreaterThanOrEqual(defaultTuning.wallRadius)
+          expect(p.x).toBeLessThanOrEqual(stage.width - defaultTuning.wallRadius)
+          expect(p.y).toBeGreaterThanOrEqual(defaultTuning.wallRadius)
+          expect(p.y).toBeLessThanOrEqual(stage.height - defaultTuning.wallRadius)
+        }
       }
     }
   })
@@ -101,8 +104,17 @@ describe('createSwarm', () => {
 })
 
 describe('scatterStarts', () => {
+  // The unevenness check below stays on this one fixed seed — it's a distribution property,
+  // and averaging it over a sweep would weaken it.
   const starts = scatterStarts(stage, 9, mulberry32(42))
-  const CIRCLE_RADIUS = 24
+
+  // Swept over seeds rather than trusting one: insetting only along the edge normal leaves the
+  // tangential coordinate untouched, so a start projected near a corner can still be off the
+  // *adjacent* edge. Seed 11 is the seed that surfaced this (see the regression test below).
+  const sweepBatches = Array.from({ length: 20 }, (_, seed) =>
+    scatterStarts(stage, 9, mulberry32(seed)),
+  )
+  const sweepStarts = sweepBatches.flat()
 
   /** How far inside the stage border a point sits; negative would be outside. */
   function insideBy(s: Vec): number {
@@ -110,11 +122,21 @@ describe('scatterStarts', () => {
   }
 
   it('keeps every start fully inside the stage', () => {
-    for (const s of starts) expect(insideBy(s)).toBeGreaterThanOrEqual(CIRCLE_RADIUS)
+    for (const s of sweepStarts)
+      expect(insideBy(s)).toBeGreaterThanOrEqual(defaultTuning.wallRadius)
+  })
+
+  it('keeps the seed-11 start inside the stage', () => {
+    // Regression case: before the tangential clamp, this seed's particle 4 landed at
+    // x≈9.17, y≈46.08 — correctly inset from the top edge but ~15px off the left one. Named
+    // explicitly so a future narrowing of the sweep above can't silently drop this seed.
+    for (const s of scatterStarts(stage, 9, mulberry32(11))) {
+      expect(insideBy(s)).toBeGreaterThanOrEqual(defaultTuning.wallRadius)
+    }
   })
 
   it('hugs the edges — nobody starts out in open space', () => {
-    for (const s of starts) expect(insideBy(s)).toBeLessThan(80)
+    for (const s of sweepStarts) expect(insideBy(s)).toBeLessThan(80)
   })
 
   it('spreads them unevenly — no readable ring pattern', () => {
