@@ -57,10 +57,13 @@ class MemberController(
     @GetMapping("/{slug}/members")
     fun members(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): List<MemberResponse> {
         val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
-        return memberRepo.findByCommunityId(c.id!!).map {
+        val members = memberRepo.findByCommunityId(c.id!!)
+        val usersById = userQuery.findAllById(members.map { it.userId }.distinct()).associateBy { it.id }
+        return members.map {
             MemberResponse(
                 userId = it.userId,
-                username = userQuery.findById(it.userId)?.username ?: "?",
+                // A membership whose user row is gone stays visible rather than vanishing.
+                username = usersById[it.userId]?.username ?: "?",
                 status = it.status.name,
                 isAdmin = it.isAdmin,
             )
