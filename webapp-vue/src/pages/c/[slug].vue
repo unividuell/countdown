@@ -37,5 +37,5 @@ provide(communityKey, {
     <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
     <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
   </div>
-  <RouterView v-else-if="state?.kind === 'ready'" />
+  <RouterView v-else-if="state?.kind === 'ready'" :key="community?.slug ?? ''" />
 </template>
