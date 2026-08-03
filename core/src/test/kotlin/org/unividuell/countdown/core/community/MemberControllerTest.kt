@@ -27,6 +27,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var access: CommunityAccess
     @MockkBean lateinit var memberRepo: CommunityMemberRepository
     @MockkBean lateinit var userQuery: UserQuery
+    @MockkBean lateinit var roster: RosterService
 
     private val uid = TEST_USER_ID
     private fun community(slug: String) = Community(id = UUID.randomUUID(), name = "Team", slug = slug, createdBy = uid)
