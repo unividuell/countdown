@@ -64,4 +64,19 @@ describe('MemberRow', () => {
     expect(w.find('[data-swarm-item]').attributes('style') ?? '').not.toContain('translate3d')
     expect(w.find('[data-test="row"]').attributes('style') ?? '').toContain('visible')
   })
+
+  it('cancels its animation frame when unmounted mid-flight', async () => {
+    reduceMotion(false)
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
+    const cafSpy = vi.spyOn(window, 'cancelAnimationFrame')
+    // A single member: with happy-dom zeroing getBoundingClientRect, several members would all
+    // share the target (0, 0) and sit inside each other's collision radius forever, which is
+    // noise this lifecycle test doesn't need.
+    const w = mount(MemberRow, { props: { members: [member()] }, attachTo: document.body })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(rafSpy).toHaveBeenCalled()
+
+    w.unmount()
+    expect(cafSpy).toHaveBeenCalled()
+  })
 })

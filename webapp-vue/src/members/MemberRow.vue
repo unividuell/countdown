@@ -6,6 +6,10 @@
  * definition offset 0 and the layout never moves. Transforms are written straight to the DOM
  * rather than through reactive state — 120 substeps a second through Vue's scheduler would be
  * pointless work.
+ *
+ * Resting positions and element references are measured once on mount, so `members` is expected
+ * to stay stable for the component's lifetime. A consumer whose roster can change must remount
+ * it (for example with a `:key`) rather than mutate the prop in place.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, type Swarm } from './swarm'
