@@ -139,6 +139,28 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `equal points and join dates fall back to a stable id order`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(bob, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 1L, githubLogin = "amy"),
+            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+        )
+        every { points.standings(community.id!!, uid, any()) } returns mapOf(
+            alice to MemberPoints(stable = 0, live = null),
+            bob to MemberPoints(stable = 0, live = null),
+        )
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].shortName") { value("AMY") } // lower userId, despite bob being returned first
+        }
+    }
+
+    @Test
     fun `a member without a profile colour still gets one`() {
         admitted()
         every { memberRepo.findByCommunityId(community.id!!) } returns listOf(

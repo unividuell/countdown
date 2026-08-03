@@ -43,6 +43,6 @@ class RosterService(
     }
 
     /** Ranked by exactly what is displayed: a rank driven by points the viewer cannot see would be
-     *  inexplicable to them. Withheld live points are null, so they fall out of the sum by themselves. */
+     *  inexplicable to them. */
     private fun rank(p: MemberPoints?): Int = (p?.stable ?: 0) + (p?.live ?: 0)
 }
