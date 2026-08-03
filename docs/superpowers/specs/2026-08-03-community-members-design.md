@@ -121,12 +121,14 @@ Zwei Implementierungen:
 | `StubMemberPoints` | `@ConditionalOnProperty("app.stub-points.enabled")` | deterministische Werte aus der `userId` via `SeededRandom.fromSeed(userId.toString())`, inklusive Live-Punkte für einen Teil der Mitglieder |
 
 `app.stub-points.enabled` ist ein **eigenes** Property, absichtlich nicht an `app.test-auth.enabled`
-gekoppelt, und steht nur in `application.yaml` (lokal) auf `true`.
+gekoppelt, und steht auf `true` in `application.yaml` (lokal) **und** `application-staging.yaml`.
+Produktion überschreibt es auf `false`.
 
-> **Offene Entscheidung für die Review:** `app.test-auth.enabled` ist auf **Staging ebenfalls `true`** —
-> dort laufen geseedete Testnutzer. Erfundene Punkte wären dort also keine Lüge über echte Spieler,
-> und die Reihe ließe sich auf Staging überhaupt erst beurteilen. Beschlossen ist trotzdem: Staging
-> bekommt 0. Wenn das beim Ansehen stört, ist es eine Zeile in `application-staging.yaml`.
+Staging bekommt die Stub-Punkte, weil dort ohnehin die geseedeten Testnutzer laufen
+(`app.test-auth.enabled: true`): erfundene Punkte sind dort keine Aussage über echte Spieler, und mit
+lauter Nullen wäre die Rangliste auf Staging gar nicht beurteilbar — genau das, wofür Staging da ist.
+Das eigene Property bleibt trotzdem getrennt, damit „Testlogin an" und „erfundene Punkte an" einzeln
+abschaltbar sind.
 
 **Zur Modul-Grenze:** die Schnittstelle liegt im Consumer (`community`); ein künftiges Spiel-Modul
 implementiert sie und hängt damit von `community` ab. Das ist eine bewusst provisorische Wahl — sie
@@ -179,8 +181,8 @@ Neues Modul `webapp-vue/src/members/`:
 
 | Datei | Aufgabe |
 |---|---|
-| `swarm.ts` | die Physik, **unverändert aus dem Spike** übernommen (`git checkout claude/member-animation-spike-ed3010 -- …`) samt Tests |
-| `swarmTuning.ts` | die im Spike erarbeiteten Werte als Konstante; das Regler-Panel und `mockMembers.ts` bleiben im Spike |
+| `swarm.ts` | die Physik, aus dem Spike übernommen (`git checkout claude/member-animation-spike-ed3010 -- …`) samt Tests, mit den drei unten beschriebenen Änderungen |
+| `swarmTuning.ts` | die Konstanten; das Regler-Panel und `mockMembers.ts` bleiben im Spike |
 | `readableTextColor.ts` | Kontrastfarbe |
 | `useRoster.ts` | Laden, Lade- und Fehlerzustand |
 | `MemberRow.vue` | die Reihe — im Kern `MemberSwarm.vue` des Spikes, gefüttert aus der API |
@@ -203,30 +205,50 @@ gewischt: `overflow-x: auto` mit unterdrücktem Balken (`scrollbar-width: none` 
 `&::-webkit-scrollbar { display: none }`). Ein sichtbarer horizontaler Scrollbalken auf dem Telefon
 ist ein Layoutfehler, keine Bedienhilfe.
 
-### Die Animation, und ihre zwei ehrlichen Kosten
+### Die Animation
 
 Die Reihe liegt im normalen Fluss und trägt nur ein `transform`; die Ruheposition ist damit per
 Definition Offset 0, und das Layout bewegt sich nie. Die Kräfte werden über die Flugzeit gerampt:
-der Sog zum Platz wächst, Kohäsion und Chaos verklingen, die Dämpfung steigt. Ergebnis: rund 0,7 s
-Trödeln, dann der Einsturz, ein Überschwinger, ein paar abklingende Nachwipper, still nach ~2,9 s.
-Die Werte sind am Spike erarbeitet und gemessen, nicht geraten.
+der Sog zum Platz wächst, Kohäsion und Chaos verklingen, die Dämpfung steigt.
 
-Zwei Dinge, die im Spike geschummelt waren:
+Drei Änderungen gegenüber dem Spike:
 
-1. **Scroll-Sperre.** Die angeschnittenen Startpositionen liegen außerhalb des Viewports und
-   erzeugen sonst Scrollbalken. Während des Flugs wird `overflow: hidden` auf `documentElement`
-   gesetzt und danach wieder freigegeben — also **~2,9 s ohne Scrollen beim Laden**. Bewusst so:
-   drei Zeilen statt sechzig für eine Fixed-Overlay-Ebene, `prefers-reduced-motion` überspringt es
-   ganz, und in dem Moment schaut man ohnehin zu. Wenn es auf dem Telefon nervt, ist die
-   Overlay-Ebene das Upgrade — nicht vorher.
-2. **`overflow` am scrollenden Vorfahren.** `overflow-x: auto` rechnet `overflow-y` ebenfalls auf
-   `auto` und würde die fliegenden Kreise abschneiden. Also: während des Flugs `overflow: visible`,
-   erst nach dem Landen scrollbar.
+**1. Der Viewport ist eine Kiste — keine Scroll-Sperre mehr.** Im Spike starteten die Mitglieder
+*außerhalb* des Viewports, größtenteils angeschnitten. Das war der Grund für die Scroll-Sperre: ein
+transformiertes Element vergrößert die scrollbare Fläche seiner Vorfahren, also erzeugten die
+Startpositionen Scrollbalken, und der Spike setzte hilfsweise `overflow: hidden` auf
+`documentElement`.
+
+Stattdessen bleiben jetzt **alle Positionen vollständig innerhalb des Viewports**: die Startpositionen
+hängen von innen an den Rändern, und der Viewport bekommt Wände, an denen die Kreise abprallen
+(dieselbe Restitution wie bei den Kreis-Kreis-Stößen). Damit entsteht nie scrollbare Fläche, die
+Scroll-Sperre entfällt vollständig — und die Wandstöße machen den Flug sogar lebhafter, nicht ruhiger.
+Bezahlt wird es mit dem „angeschnitten am Rand"-Bild, das im Spike ausdrücklich gewünscht war; dieser
+Tausch ist bewusst getroffen worden, weil eine Scroll-Sperre beim Laden auf dem Telefon teurer ist
+als der Effekt wert ist.
+
+**2. Gesamtdauer 1,5 s statt 2,9 s.** Das ist ein Zielwert, aus dem sich die Konstanten ableiten, und
+nicht umgekehrt. Aufteilung: ~1,0 s Flug (`durationMs`), ~0,5 s Einschwingen. Die Einschwingzeit eines
+gedämpften Federsystems ist ≈ 4/(ζω), für 0,5 s also ζω ≈ 8; mit ζ ≈ 0,5 — dem Wert, der einen
+sichtbaren Überschwinger gibt — folgt ω ≈ 16 rad/s, und damit `seekStrength = ω² ≈ 256` sowie
+`endDamping = exp(−2ζω/60) ≈ 0,77`.
+
+Die Konsequenz gehört dazu, damit sie beim Ansehen nicht überrascht: bei 1,5 s schrumpft das
+anfängliche Trödeln auf ~250 ms, und die Wippperiode von 2π/(ω√(1−ζ²)) ≈ 0,45 s lässt **etwa einen
+Nachwipper statt drei** zu. Der Fly-in wird knackiger und weniger verspielt. Diese Werte sind
+*abgeleitet*, nicht gemessen — im Gegensatz zu den Spike-Werten. Sie sind in der Umsetzung am
+laufenden Bild zu verifizieren und gegebenenfalls nachzuziehen; verbindlich ist die 1,5-s-Obergrenze,
+nicht die Zahl 256.
+
+**3. `overflow` am scrollenden Vorfahren.** Bleibt bestehen, denn Punkt 1 löst nur die
+Dokument-Scrollbalken: `overflow-x: auto` an der Reihe rechnet `overflow-y` ebenfalls auf `auto` und
+würde die fliegenden Kreise am ~62 px hohen Reihenband abschneiden. Also während des Flugs
+`overflow: visible`, erst nach dem Landen scrollbar.
 
 ### Reduced Motion
 
-`prefers-reduced-motion: reduce` überspringt die Animation vollständig: die Reihe steht sofort, keine
-Scroll-Sperre, kein rAF-Loop.
+`prefers-reduced-motion: reduce` überspringt die Animation vollständig: die Reihe steht sofort, kein
+rAF-Loop.
 
 ### Lade- und Fehlerzustand
 
@@ -254,16 +276,19 @@ ruhige Meldung an derselben Stelle. Eine Community mit einem einzigen Mitglied a
 - `readableTextColor`: dunkler Grund → weiß, heller Grund → dunkel, plus die Grenzfälle.
 - `useRoster`: Erfolg, Fehler, und dass der Fehlerzustand nicht die Reihe rendert.
 - `MemberRow`: rendert N Kreise in der vom Server gelieferten Reihenfolge (das Frontend sortiert
-  **nicht** nach); `+N`-Badge nur bei gesetztem `live`; `prefers-reduced-motion` ohne Animation und
-  ohne Scroll-Sperre.
+  **nicht** nach); `+N`-Badge nur bei gesetztem `live`; `prefers-reduced-motion` ohne Animation.
 - Die Physik-Tests kommen aus dem Spike mit (Konvergenz, Endlichkeit, Terminierung bei feindlichem
-  Tuning, Startpositionen am Rand und unregelmäßig verteilt).
+  Tuning, Startpositionen am Rand und unregelmäßig verteilt) — mit zwei Anpassungen: die
+  Startpositionen liegen jetzt **innerhalb** des Viewports, und neu dazu kommt die Zusage, die die
+  Scroll-Sperre ersetzt: **keine Position verlässt zu irgendeinem Zeitpunkt den Viewport**, über den
+  ganzen Flug geprüft, nicht nur am Start.
+- Gesamtdauer: die Animation ist nach 1,5 s fertig (`finished`), nicht erst durch die Notbremse.
 
 ## Bewusste Provisorien
 
 Damit sie beim nächsten Anfassen nicht als Versehen gelesen werden:
 
 - `MemberPointsQuery` liegt im `community`-Modul, obwohl Punkte eine Spiel-Angelegenheit sind.
-- Staging bekommt 0 Punkte, obwohl dort Testnutzer laufen (siehe offene Entscheidung oben).
-- Die Scroll-Sperre statt einer Overlay-Ebene.
+- Die Konstanten der 1,5-s-Animation sind abgeleitet, nicht gemessen — bis sie in der Umsetzung am
+  laufenden Bild bestätigt sind.
 - Der Spike-Branch bleibt liegen; nur `swarm.ts` und seine Tests wandern herüber.
