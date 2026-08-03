@@ -43,6 +43,11 @@ export interface SwarmTuning {
   tilt: number
   /** Speed clamp in px/s, so a late overshoot cannot fling anyone into orbit. */
   maxSpeed: number
+  /**
+   * Distance kept clear of the stage edge, in px — the *visual* circle radius, not the collision
+   * one, because what must not overflow is the painted circle.
+   */
+  wallRadius: number
 }
 
 export const defaultTuning: SwarmTuning = {
@@ -64,6 +69,7 @@ export const defaultTuning: SwarmTuning = {
   chaos: 380,
   tilt: 0.02,
   maxSpeed: 1600,
+  wallRadius: 24,
 }
 
 export interface SwarmParticle {
@@ -111,18 +117,17 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 /**
- * How far past the edge a start may sit, measured from the circle's centre along the
- * outward normal. A 48px circle is half-cropped at 0 and clears the edge entirely past
- * ~24, so this range keeps most of the swarm visible-but-cut-off and lets a few slip out
- * of sight completely.
+ * How far inside the edge a start sits, measured from the circle's centre. The floor is a circle
+ * radius, so the whole circle is always on screen: a transformed element enlarges its ancestors'
+ * scrollable area, and staying inside is what removes the need to lock scrolling at all.
  */
-const OVERHANG_MIN = -6
-const OVERHANG_RANGE = 46
+const INSET_MIN = 24
+const INSET_RANGE = 46
 
 /**
- * Places `count` particles along the stage edges, spread around them but deliberately not
- * evenly: strata are sampled with jitter wider than the strata themselves, so neighbours
- * bunch up and gaps open. Each start also gets its own overhang, so nobody lines up.
+ * Places `count` particles along the **inside** of the stage edges, spread around them but
+ * deliberately not evenly: strata are sampled with jitter wider than the strata themselves, so
+ * neighbours bunch up and gaps open. Each start also gets its own inset, so nobody lines up.
  */
 export function scatterStarts(
   stage: { width: number; height: number },
@@ -137,8 +142,8 @@ export function scatterStarts(
     const jitter = (rng() - 0.5) * (1.7 / count)
     const u = (stratum + jitter + rot + 1) % 1
     const { p, n } = pointOnRectPerimeter(stage.width, stage.height, u)
-    const overhang = OVERHANG_MIN + rng() * OVERHANG_RANGE
-    out.push({ x: p.x + n.x * overhang, y: p.y + n.y * overhang })
+    const inset = INSET_MIN + rng() * INSET_RANGE
+    out.push({ x: p.x - n.x * inset, y: p.y - n.y * inset })
   }
   return out
 }
@@ -160,6 +165,16 @@ function pointOnRectPerimeter(width: number, height: number, u: number): { p: Ve
 
 export function createSwarm({ targets, stage, tuning, rng = Math.random }: SwarmOptions): Swarm {
   const starts = scatterStarts(stage, targets.length, rng)
+  // Widened to contain every target: a target outside the inset would leave the spring fighting
+  // the clamp forever, and the swarm would never come to rest.
+  const xs = targets.map((t) => t.x)
+  const ys = targets.map((t) => t.y)
+  const walls = {
+    minX: Math.min(tuning.wallRadius, ...xs),
+    maxX: Math.max(stage.width - tuning.wallRadius, ...xs),
+    minY: Math.min(tuning.wallRadius, ...ys),
+    maxY: Math.max(stage.height - tuning.wallRadius, ...ys),
+  }
   const particles: SwarmParticle[] = targets.map((target, i) => {
     const s = starts[i] ?? target
     // Barely moving at first — the acceleration has to be visibly earned.
@@ -245,6 +260,26 @@ export function createSwarm({ targets, stage, tuning, rng = Math.random }: Swarm
     }
 
     resolveCollisions()
+    bounceOffWalls()
+  }
+
+  function bounceOffWalls(): void {
+    for (const p of particles) {
+      if (p.x < walls.minX) {
+        p.x = walls.minX
+        if (p.vx < 0) p.vx = -p.vx * tuning.restitution
+      } else if (p.x > walls.maxX) {
+        p.x = walls.maxX
+        if (p.vx > 0) p.vx = -p.vx * tuning.restitution
+      }
+      if (p.y < walls.minY) {
+        p.y = walls.minY
+        if (p.vy < 0) p.vy = -p.vy * tuning.restitution
+      } else if (p.y > walls.maxY) {
+        p.y = walls.maxY
+        if (p.vy > 0) p.vy = -p.vy * tuning.restitution
+      }
+    }
   }
 
   function resolveCollisions(): void {

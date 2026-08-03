@@ -69,27 +69,52 @@ describe('createSwarm', () => {
     const { swarm } = run(hostile, 3)
     expect(swarm.finished).toBe(true)
   })
+
+  it('never lets anyone leave the stage — this is what replaces the scroll lock', () => {
+    const targets = rowTargets(9)
+    const swarm = createSwarm({ targets, stage, tuning: defaultTuning, rng: mulberry32(11) })
+    for (let i = 0; i < 400 && !swarm.finished; i++) {
+      swarm.step(1 / 60)
+      for (const p of swarm.particles) {
+        expect(p.x).toBeGreaterThanOrEqual(0)
+        expect(p.x).toBeLessThanOrEqual(stage.width)
+        expect(p.y).toBeGreaterThanOrEqual(0)
+        expect(p.y).toBeLessThanOrEqual(stage.height)
+      }
+    }
+  })
+
+  it('still settles when a target sits outside the wall inset', () => {
+    // The walls must widen to contain the targets, or the spring fights the clamp forever.
+    const targets = [
+      { x: 4, y: 4 },
+      { x: stage.width - 4, y: stage.height - 4 },
+    ]
+    const swarm = createSwarm({ targets, stage, tuning: defaultTuning, rng: mulberry32(12) })
+    let seconds = 0
+    while (!swarm.finished && seconds < 20) {
+      swarm.step(1 / 60)
+      seconds += 1 / 60
+    }
+    expect(swarm.finished).toBe(true)
+  })
 })
 
 describe('scatterStarts', () => {
   const starts = scatterStarts(stage, 9, mulberry32(42))
-
-  /** Signed distance to the stage border: positive = outside, negative = inside. */
-  function pastEdge(s: Vec): number {
-    return Math.max(-s.x, s.x - stage.width, -s.y, s.y - stage.height)
-  }
   const CIRCLE_RADIUS = 24
 
-  it('hugs the edges — nobody starts out in open space', () => {
-    for (const s of starts) {
-      expect(pastEdge(s)).toBeGreaterThan(-CIRCLE_RADIUS)
-      expect(pastEdge(s)).toBeLessThan(50)
-    }
+  /** How far inside the stage border a point sits; negative would be outside. */
+  function insideBy(s: Vec): number {
+    return Math.min(s.x, stage.width - s.x, s.y, stage.height - s.y)
+  }
+
+  it('keeps every start fully inside the stage', () => {
+    for (const s of starts) expect(insideBy(s)).toBeGreaterThanOrEqual(CIRCLE_RADIUS)
   })
 
-  it('leaves most of them cropped rather than fully off-screen', () => {
-    const cropped = starts.filter((s) => Math.abs(pastEdge(s)) < CIRCLE_RADIUS)
-    expect(cropped.length).toBeGreaterThan(starts.length / 2)
+  it('hugs the edges — nobody starts out in open space', () => {
+    for (const s of starts) expect(insideBy(s)).toBeLessThan(80)
   })
 
   it('spreads them unevenly — no readable ring pattern', () => {
