@@ -11,12 +11,22 @@ the production login flow locally (see "Real GitHub login" below).
    Spring Boot's docker-compose support brings up `compose.yaml` from the repo root
    (Postgres 18 + pgAdmin). It finds it via `spring.docker.compose.file: ../compose.yaml`
    in `application.yaml`, because the file sits one level above this module.
-2. Optionally grant yourself super-admin:
+2. Grant a seeded user super-admin — **not optional**, or you cannot create a
+   Spielgemeinschaft at all:
    ```bash
-   export SUPER_ADMIN_GITHUB_LOGINS=your-github-login   # comma-separated logins granted ROLE_SUPER_ADMIN
+   export SUPER_ADMIN_GITHUB_LOGINS=Bender   # comma-separated logins granted ROLE_SUPER_ADMIN
    ```
    The variable is bound to the `app.super-admin-github-logins` property; under this exact
-   name it is wired through `application.yaml`.
+   name it is wired through `application.yaml`, where it defaults to **empty** — so with
+   nothing exported, nobody holds the role.
+   Creating a community requires the `community_creation_allowed` clearance or super-admin,
+   no seeded user carries the clearance, and the only way to grant it is the super-admin area
+   (`/super-admin/users`) — which needs a super-admin. So without this step every
+   `POST /api/communities` answers `403`.
+   With the test-login picker on (the default), the value must be one of the **seeded** logins
+   from step 3, not your own GitHub login: only those rows exist, and only they can be picked.
+   Matching is case-insensitive, so `bender` works as well as `Bender`.
+   `.claude/launch.json`'s `backend` configuration already exports `SUPER_ADMIN_GITHUB_LOGINS=bender`.
    Optionally give members invented-but-stable game points, so the ranking row on a community
    home shows a real order instead of all zeros:
    ```bash
@@ -28,7 +38,9 @@ the production login flow locally (see "Real GitHub login" below).
 3. Log in at `http://localhost:8080/login/github` — a picker offers the seeded Futurama
    users (`Fry`, `leela`, `Bender`, `prof`, `amy`, `hermes`, `zoidberg`, `scruffy`, `zapp`,
    `kif`, `nibbler`, `mom`). Afterwards `GET /api/me` returns the
-   provisioned user (or `401` when not logged in).
+   provisioned user (or `401` when not logged in). Pick the login from step 2 to get the
+   super-admin, then clear any other seeded user for community creation under
+   `/super-admin/users` — the clearance is read live, so it takes effect without a re-login.
 
 When developing against the `webapp-vue` SPA (the normal setup), start the SPA too and use
 `http://localhost:5173` instead — Vite proxies `/api`, `/oauth2`, `/login` and `/logout` to
