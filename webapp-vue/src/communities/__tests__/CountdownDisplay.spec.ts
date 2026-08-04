@@ -89,4 +89,27 @@ describe('CountdownDisplay', () => {
     await flushPromises()
     expect(w.find('[data-test="countdown"]').exists()).toBe(false) // idle → renders nothing
   })
+
+  it('counts up without announcing the event, which the fallback card now says', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-14T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: -1,
+        label: 'T+1',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    const el = w.find('[data-test="countdown"]')
+    expect(el.exists()).toBe(true)
+    expect(el.text()).toContain('T+')
+    expect(el.text()).not.toContain('Event läuft')
+    expect(el.attributes('title')).toBeUndefined()
+  })
 })
