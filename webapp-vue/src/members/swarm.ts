@@ -105,7 +105,7 @@ const TAU = Math.PI * 2
 // Fixed substep: collisions plus a stiff late spring are unstable at raw frame times.
 const FIXED_DT = 1 / 120
 const MAX_SUBSTEPS = 12
-const MAX_TILT_DEG = 18
+export const MAX_TILT_DEG = 18
 const WANDER_TURN = 9 // rad/s of random walk on the wander heading
 // Bail-out after the time budget so a hostile tuning cannot leave the swarm jittering forever.
 const SETTLE_TIMEOUT_S = 4
@@ -117,31 +117,34 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 /**
- * How far inside the edge a start sits, measured from the circle's centre. The floor is a circle
- * radius, so the whole circle is always on screen: a transformed element enlarges its ancestors'
- * scrollable area, and staying inside is what removes the need to lock scrolling at all.
+ * How far inside the edge a start sits on top of the `wallRadius` floor, measured from the
+ * circle's centre: the floor alone would sit a start exactly on the wall, with no room before
+ * the first substep's clamp bites.
  */
-const INSET_MIN = 24
 const INSET_RANGE = 46
 
 /**
  * Insetting along the edge normal moves only one axis, so a start projected near a corner is
  * still hard against the adjacent edge — and its painted circle hangs off-screen, which is the
- * very thing the walls exist to prevent. The upper bound is floored at [INSET_MIN] so a stage
+ * very thing the walls exist to prevent. The upper bound is floored at `wallRadius` so a stage
  * narrower than twice the inset degenerates instead of inverting.
  */
-function clampInside(value: number, extent: number): number {
-  return Math.min(Math.max(value, INSET_MIN), Math.max(INSET_MIN, extent - INSET_MIN))
+function clampInside(value: number, extent: number, wallRadius: number): number {
+  return Math.min(Math.max(value, wallRadius), Math.max(wallRadius, extent - wallRadius))
 }
 
 /**
  * Places `count` particles along the **inside** of the stage edges, spread around them but
  * deliberately not evenly: strata are sampled with jitter wider than the strata themselves, so
  * neighbours bunch up and gaps open. Each start also gets its own inset, so nobody lines up.
+ *
+ * `wallRadius` is the same margin `createSwarm` clamps the walls to; starts must never be placed
+ * inside it, or the very first substep's wall clamp would yank them there itself.
  */
 export function scatterStarts(
   stage: { width: number; height: number },
   count: number,
+  wallRadius: number,
   rng: () => number,
 ): Vec[] {
   const rot = rng()
@@ -152,10 +155,10 @@ export function scatterStarts(
     const jitter = (rng() - 0.5) * (1.7 / count)
     const u = (stratum + jitter + rot + 1) % 1
     const { p, n } = pointOnRectPerimeter(stage.width, stage.height, u)
-    const inset = INSET_MIN + rng() * INSET_RANGE
+    const inset = wallRadius + rng() * INSET_RANGE
     out.push({
-      x: clampInside(p.x - n.x * inset, stage.width),
-      y: clampInside(p.y - n.y * inset, stage.height),
+      x: clampInside(p.x - n.x * inset, stage.width, wallRadius),
+      y: clampInside(p.y - n.y * inset, stage.height, wallRadius),
     })
   }
   return out
@@ -177,7 +180,7 @@ function pointOnRectPerimeter(width: number, height: number, u: number): { p: Ve
 }
 
 export function createSwarm({ targets, stage, tuning, rng = Math.random }: SwarmOptions): Swarm {
-  const starts = scatterStarts(stage, targets.length, rng)
+  const starts = scatterStarts(stage, targets.length, tuning.wallRadius, rng)
   // Widened to contain every target: a target outside the inset would leave the spring fighting
   // the clamp forever, and the swarm would never come to rest.
   const xs = targets.map((t) => t.x)

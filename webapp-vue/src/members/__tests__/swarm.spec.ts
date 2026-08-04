@@ -106,13 +106,13 @@ describe('createSwarm', () => {
 describe('scatterStarts', () => {
   // The unevenness check below stays on this one fixed seed — it's a distribution property,
   // and averaging it over a sweep would weaken it.
-  const starts = scatterStarts(stage, 9, mulberry32(42))
+  const starts = scatterStarts(stage, 9, defaultTuning.wallRadius, mulberry32(42))
 
   // Swept over seeds rather than trusting one: insetting only along the edge normal leaves the
   // tangential coordinate untouched, so a start projected near a corner can still be off the
   // *adjacent* edge. Seed 11 is the seed that surfaced this (see the regression test below).
   const sweepBatches = Array.from({ length: 20 }, (_, seed) =>
-    scatterStarts(stage, 9, mulberry32(seed)),
+    scatterStarts(stage, 9, defaultTuning.wallRadius, mulberry32(seed)),
   )
   const sweepStarts = sweepBatches.flat()
 
@@ -130,13 +130,13 @@ describe('scatterStarts', () => {
     // Regression case: before the tangential clamp, this seed's particle 4 landed at
     // x≈9.17, y≈46.08 — correctly inset from the top edge but ~15px off the left one. Named
     // explicitly so a future narrowing of the sweep above can't silently drop this seed.
-    for (const s of scatterStarts(stage, 9, mulberry32(11))) {
+    for (const s of scatterStarts(stage, 9, defaultTuning.wallRadius, mulberry32(11))) {
       expect(insideBy(s)).toBeGreaterThanOrEqual(defaultTuning.wallRadius)
     }
   })
 
   it('hugs the edges — nobody starts out in open space', () => {
-    for (const s of sweepStarts) expect(insideBy(s)).toBeLessThan(80)
+    for (const s of sweepStarts) expect(insideBy(s)).toBeLessThan(defaultTuning.wallRadius + 46)
   })
 
   it('spreads them unevenly — no readable ring pattern', () => {

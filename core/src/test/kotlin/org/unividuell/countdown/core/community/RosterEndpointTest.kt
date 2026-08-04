@@ -117,7 +117,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
-    fun `equal points fall back to join order, then to a stable id tiebreak`() {
+    fun `equal points fall back to join order`() {
         admitted()
         every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
             member(bob, MemberStatus.ACTIVE, "2026-01-02T00:00:00Z"),

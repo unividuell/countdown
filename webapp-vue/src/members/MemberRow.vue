@@ -12,9 +12,30 @@
  * it (for example with a `:key`) rather than mutate the prop in place.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { createSwarm, defaultTuning, type Swarm } from './swarm'
+import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'
 import { readableTextColor } from './readableTextColor'
 import type { RosterMemberResponse } from '@/api/types'
+
+const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
+
+/**
+ * `translate3d(...) rotate(...)` pivots on the *element's own* centre — the item column's
+ * centre, not the circle centre the swarm positions the particle at (the pill below the circle
+ * drags the column's centre down). So keeping the circle a plain `wallRadius` from the stage
+ * edge isn't enough: at full tilt, the far corner of the taller, off-centre column can still
+ * swing past the edge even though the circle itself never would. This finds, per item, how far
+ * the circle centre must stay from the edge for the whole rotated column to stay inside on
+ * every side.
+ */
+function requiredMargin(col: DOMRect, circle: DOMRect): number {
+  const hw = col.width / 2
+  const hh = col.height / 2
+  const dx = Math.abs(hw - (circle.left + circle.width / 2 - col.left))
+  const dy = Math.abs(hh - (circle.top + circle.height / 2 - col.top))
+  const hw2 = hw * Math.cos(MAX_TILT_RAD) + hh * Math.sin(MAX_TILT_RAD)
+  const hh2 = hw * Math.sin(MAX_TILT_RAD) + hh * Math.cos(MAX_TILT_RAD)
+  return Math.max(hw2 + dx, hh2 + dy)
+}
 
 const props = defineProps<{ members: RosterMemberResponse[] }>()
 
@@ -61,17 +82,32 @@ onMounted(() => {
   items = [...host.querySelectorAll<HTMLElement>('[data-swarm-item]')]
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (!reduced && items.length > 0) {
+    const margins: number[] = []
     const targets = items.map((el) => {
       // The circle, not the column: collisions are circle-to-circle, and the points pill below
       // would drag the centre downwards.
       const circle = el.querySelector<HTMLElement>('[data-swarm-circle]') ?? el
+      const col = el.getBoundingClientRect()
       const r = circle.getBoundingClientRect()
+      margins.push(requiredMargin(col, r))
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
     })
+    // Only some members carry the `+N` live badge, so columns differ in height — take the
+    // worst case across the row rather than assuming a uniform column.
+    const measuredMargin = Math.max(...margins)
+    const wallRadius =
+      measuredMargin > 0 && Number.isFinite(measuredMargin)
+        ? measuredMargin
+        : defaultTuning.wallRadius
     swarm = createSwarm({
       targets,
-      stage: { width: window.innerWidth, height: window.innerHeight },
-      tuning: defaultTuning,
+      // The layout viewport, not `window.innerWidth/Height`: those include a classic scrollbar's
+      // width, which `getBoundingClientRect` — what the targets above are measured with — does not.
+      stage: {
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+      },
+      tuning: { ...defaultTuning, wallRadius },
     })
     // Paint the scattered start before revealing, so the row never flashes in place first.
     paint()
@@ -99,9 +135,11 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         v-for="(m, index) in members"
         :key="m.userId"
         data-swarm-item
+        role="img"
         class="flex w-12 shrink-0 flex-col -space-y-1.5 will-change-transform"
         :style="{ zIndex: members.length - index }"
         :aria-label="`${m.fullName}, ${m.points.stable} Punkte`"
+        :title="m.fullName"
       >
         <div
           data-swarm-circle
@@ -118,7 +156,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         <span
           v-if="m.points.live"
           data-test="live-points"
-          class="z-20 animate-pulse self-end rounded-lg bg-rose-600 px-1 text-xs text-white ring-1 ring-yellow-400"
+          class="z-20 animate-pulse self-end rounded-lg bg-rose-600 px-1 text-xs text-white ring-1 ring-yellow-400 motion-reduce:animate-none"
         >
           +{{ m.points.live }}
         </span>

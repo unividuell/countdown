@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { RosterMemberResponse } from '@/api/types'
 import MemberRow from '../MemberRow.vue'
+import * as swarmModule from '../swarm'
 
 function member(over: Partial<RosterMemberResponse> = {}): RosterMemberResponse {
   return {
@@ -43,7 +44,12 @@ describe('MemberRow', () => {
   it('names each circle for assistive technology', () => {
     reduceMotion(true)
     const w = mount(MemberRow, { props: { members: [member({ fullName: 'Turanga Leela' })] } })
-    expect(w.find('[data-swarm-item]').attributes('aria-label')).toContain('Turanga Leela')
+    const item = w.find('[data-swarm-item]')
+    // A plain <div>'s implicit role is `generic`, for which ARIA prohibits an author-supplied
+    // name — without `role="img"`, aria-label is silently dropped from the accessibility tree.
+    expect(item.attributes('role')).toBe('img')
+    expect(item.attributes('aria-label')).toContain('Turanga Leela')
+    expect(item.attributes('title')).toContain('Turanga Leela')
   })
 
   it('shows the live badge only when live points are present', () => {
@@ -78,5 +84,35 @@ describe('MemberRow', () => {
 
     w.unmount()
     expect(cafSpy).toHaveBeenCalled()
+  })
+
+  it('feeds the swarm the layout viewport and a margin that clears the tilted column', () => {
+    reduceMotion(false)
+    // happy-dom zeroes every getBoundingClientRect, so stub a realistic geometry: a 48x58
+    // column with its 48x48 circle flush against the top (the shape a `+N` live badge produces).
+    const colRect = { left: 100, top: 100, width: 48, height: 58 } as DOMRect
+    const circleRect = { left: 100, top: 100, width: 48, height: 48 } as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.hasAttribute('data-swarm-circle')) return circleRect
+      if (this.hasAttribute('data-swarm-item')) return colRect
+      return { left: 0, top: 0, width: 0, height: 0 } as DOMRect
+    })
+    const spy = vi.spyOn(swarmModule, 'createSwarm')
+
+    const w = mount(MemberRow, { props: { members: [member()] }, attachTo: document.body })
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    const options = spy.mock.calls[0]?.[0]
+    expect(options?.stage).toEqual({
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+    })
+    // hw=24, hh=29, tilt=18°: hw2≈31.8, hh2≈35.0, circle centred 5px above the column centre
+    // (d=(0,5)) — so the binding constraint is the vertical one, margin = hh2 + 5 = 40.
+    expect(options?.tuning.wallRadius).toBeCloseTo(40, 0)
+
+    w.unmount()
   })
 })
