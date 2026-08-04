@@ -82,4 +82,20 @@ class TestUserSeederConvergenceTest(
         users.findByGithubLogin("prof").shouldNotBeNull().isSuperAdmin shouldBe true
         users.findByGithubLogin("Fry").shouldNotBeNull().isSuperAdmin shouldBe false
     }
+
+    @Test
+    fun `re-running the seeder converges a drifted githubLogin back to the seed login`() {
+        // Simulates a stale row left behind by a past roster rename: the picker joins on
+        // githubLogin, so a row stuck on the old login would become unreachable by any button.
+        val prof = users.findByGithubLogin("prof").shouldNotBeNull()
+        users.save(prof.copy(githubLogin = "farnsworth"))
+
+        seeder.run(DefaultApplicationArguments())
+
+        users.findByGithubLogin("farnsworth") shouldBe null
+        users.findByGithubLogin("prof").shouldNotBeNull().let {
+            it.githubId shouldBe -4L
+            it.displayName shouldBe "Prof Farnsworth"
+        }
+    }
 }

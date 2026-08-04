@@ -53,10 +53,12 @@ class TestUserSeeder(
     val seedLogins: List<String> = seedUsers.map { it.login }
 
     /**
-     * Mirrors `UserProvisioningService.sync`: the allowlist is authoritative and re-evaluated on
-     * every run, not just on insert — otherwise a seed user's flag, once set by hand, could never
-     * converge back to what the allowlist says (nor could a newly-allowlisted seed login ever
-     * pick up the role, since this runner only ever inserted before).
+     * Mirrors `UserProvisioningService.sync`: identity fields and the allowlist flag are
+     * authoritative and re-evaluated on every run, not just on insert — otherwise a seed row,
+     * once drifted by hand (or by a past roster edit that renamed a login without moving its
+     * pinned `githubId`), could never converge back to what `seedUsers` says. This matters
+     * specifically for `githubLogin`: the picker joins on it (`DevLoginController`), so a stale
+     * login would leave a row in the database that no button can ever reach.
      */
     override fun run(args: org.springframework.boot.ApplicationArguments) {
         seedUsers.forEach { seed ->
@@ -69,8 +71,17 @@ class TestUserSeeder(
                         displayName = seed.displayName, isSuperAdmin = isSuperAdmin,
                     )
                 )
-            } else if (existing.isSuperAdmin != isSuperAdmin) {
-                users.save(existing.copy(isSuperAdmin = isSuperAdmin))
+            } else if (existing.isSuperAdmin != isSuperAdmin ||
+                existing.githubLogin != seed.login ||
+                existing.githubName != seed.githubName ||
+                existing.displayName != seed.displayName
+            ) {
+                users.save(
+                    existing.copy(
+                        githubLogin = seed.login, githubName = seed.githubName,
+                        displayName = seed.displayName, isSuperAdmin = isSuperAdmin,
+                    )
+                )
             }
         }
     }
