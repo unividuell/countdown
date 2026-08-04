@@ -24,6 +24,18 @@ desktop layout that was written first). Concretely:
   affordance (touch swipe) covers those users.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
+- **A strip that becomes scrollable *late* must reset its own `scrollLeft`.** Firefox keeps a
+  scroll container's offset in the session-history entry and restores it on reload — and it applies
+  that offset when the element *becomes* a container. `MemberRow` only flips to `overflow-x: auto`
+  once the fly-in settles, so on a refresh the row sat at the far left through the whole animation
+  and then silently jumped back to the reader's old offset the moment it came to rest (measured in
+  Firefox: `scrollLeft` 0 → 281 exactly at the class flip; Chromium does not restore here at all,
+  so this reproduces in **Firefox only**). Fix: after the flip, `void nextTick(() => { el.scrollLeft = 0;
+  requestAnimationFrame(() => { el.scrollLeft = 0 }) })`. The write also cancels Firefox's *pending*
+  restore, and the extra frame is what covers the restore being applied in the reflow that first
+  builds the scroll frame — after the `nextTick` microtask. Do the same wherever a strip's scroll
+  position is derived from data (a ranking must open on the leader), and reset on **every** settle
+  path, `prefers-reduced-motion` included.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes
   `overflow-y` to `auto` as well, which clips transformed children — so an element that
   both scrolls and hosts an animation that escapes its box must not clip while the

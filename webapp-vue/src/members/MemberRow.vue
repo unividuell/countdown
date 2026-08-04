@@ -11,7 +11,7 @@
  * to stay stable for the component's lifetime. A consumer whose roster can change must remount
  * it (for example with a `:key`) rather than mutate the prop in place.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'
 import { readableTextColor } from './readableTextColor'
 import type { RosterMemberResponse } from '@/api/types'
@@ -65,6 +65,24 @@ function paint(): void {
   }
 }
 
+/**
+ * Firefox keeps a scroll container's offset in the session history entry and restores it on
+ * reload — but this row only *becomes* a container when it settles, so the restore lands seconds
+ * into the visit, right after the fly-in has come to rest: the row silently jumps back to
+ * wherever the reader had left it. The row is a ranking, so a reload has to start at the leader.
+ * Writing the offset ourselves also drops Firefox's pending restore; the extra frame is for the
+ * restore being applied in the reflow that first builds the scroll frame, which is after the
+ * `nextTick` this runs in.
+ */
+function scrollToLeader(): void {
+  const host = row.value
+  if (!host) return
+  host.scrollLeft = 0
+  raf = requestAnimationFrame(() => {
+    host.scrollLeft = 0
+  })
+}
+
 function finish(): void {
   swarm = null
   for (const el of items) el.style.transform = ''
@@ -73,6 +91,7 @@ function finish(): void {
   // axis at all: the circles travel far outside it, across the whole viewport. Horizontal
   // containment during the flight lives on the app root instead (see App.vue).
   settled.value = true
+  void nextTick(scrollToLeader)
 }
 
 function tick(now: number): void {
@@ -124,6 +143,7 @@ onMounted(() => {
     raf = requestAnimationFrame(tick)
   } else {
     settled.value = true
+    void nextTick(scrollToLeader)
   }
   host.style.visibility = 'visible'
 })
