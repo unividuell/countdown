@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
-import { BOOT_HOLD_MS, DOT_OFF, DOT_ON } from '@/ui/flipdot/board'
+import { BOOT_DARK_MS, BOOT_HOLD_MS, BOOT_RESOLVE_AT_MS, DOT_OFF, DOT_ON } from '@/ui/flipdot/board'
 import { bitmap } from '@/ui/flipdot/font'
 
 // happy-dom 20 ships no Web Animations API (measured: Element.prototype.animate is undefined),
@@ -34,10 +34,18 @@ function indicesDark(text: string): number[] {
   return bitmap(text).on.flatMap((on, i) => (on ? [] : [i]))
 }
 
+async function advance(ms: number): Promise<void> {
+  vi.advanceTimersByTime(ms)
+  await nextTick()
+  await nextTick()
+}
+
+// Staged, not one 400 ms jump: bulk-advancing fake timers runs both boot callbacks before any
+// microtask, so the white-up's flip would see the already-resolved board as its target. Real timers
+// always drain microtasks between callbacks.
 async function bootDone(): Promise<void> {
-  vi.advanceTimersByTime(BOOT_HOLD_MS)
-  await nextTick()
-  await nextTick()
+  await advance(BOOT_DARK_MS)
+  await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
 }
 
 function fills(w: VueWrapper): (string | undefined)[] {
@@ -162,27 +170,40 @@ describe('FlipDotBoard', () => {
   })
 
   describe('switching on', () => {
-    it('lights every dot at mount, at the resting board size', () => {
+    it('starts dark at mount, at the resting board size', () => {
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       const box = w.attributes('viewBox')
       expect(fills(w).length).toBe(5 * 7)
-      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+      expect(fills(w).every((f) => f === DOT_OFF)).toBe(true)
       expect(box).toBe(`0 0 ${5 * 4 - 1} ${7 * 4 - 1}`)
     })
 
-    it('resolves the digits out of the white field once the hold elapses', async () => {
+    it('slams the whole board on after the dark phase, without a stagger', async () => {
       const animate = stubAnimate()
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       expect(animate).not.toHaveBeenCalled()
-      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
 
-      vi.advanceTimersByTime(BOOT_HOLD_MS - 1)
-      await nextTick()
-      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+      await advance(BOOT_DARK_MS - 1)
+      expect(fills(w).every((f) => f === DOT_OFF)).toBe(true)
+      expect(animate).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
-      await nextTick()
-      await nextTick()
+      await advance(1)
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+      expect(animate).toHaveBeenCalledTimes(5 * 7)
+      expect(delays(animate).every((d) => d === 0)).toBe(true)
+    })
+
+    it('holds the white field, then resolves the digits out of it', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await advance(BOOT_DARK_MS)
+      animate.mockClear()
+
+      await advance(BOOT_HOLD_MS - 1)
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+      expect(animate).not.toHaveBeenCalled()
+
+      await advance(1)
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
       expect(animate).toHaveBeenCalledTimes(5 * 7 - 10)
     })
@@ -190,7 +211,9 @@ describe('FlipDotBoard', () => {
     it('resolves right to left, starting at the rightmost changed column', async () => {
       const animate = stubAnimate()
       mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
-      await bootDone()
+      await advance(BOOT_DARK_MS)
+      animate.mockClear()
+      await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
       const cols = bitmap('1').cols
       const dark = indicesDark('1')
       const byColumn = animate.mock.calls.map((call, n) => ({
@@ -205,25 +228,48 @@ describe('FlipDotBoard', () => {
       }
     })
 
-    it('is skipped entirely under prefers-reduced-motion — no white phase, no timer', async () => {
+    it('announces the resolve, so followers need no clock of their own', async () => {
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await advance(BOOT_DARK_MS)
+      expect(w.emitted('resolve')).toBeUndefined()
+      await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
+      expect(w.emitted('resolve')).toHaveLength(1)
+    })
+
+    it('is skipped entirely under prefers-reduced-motion — no phases, no timer', async () => {
       const animate = stubAnimate()
       vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
       expect(vi.getTimerCount()).toBe(0)
+      expect(w.emitted('resolve')).toHaveLength(1)
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
     })
 
+    it('fires no timer after being unmounted inside the dark phase', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      expect(vi.getTimerCount()).toBe(2)
+      w.unmount()
+      expect(vi.getTimerCount()).toBe(0)
+      await bootDone()
+      expect(animate).not.toHaveBeenCalled()
+      expect(w.emitted('resolve')).toBeUndefined()
+    })
+
     it('fires no timer after being unmounted inside the hold', async () => {
       const animate = stubAnimate()
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await advance(BOOT_DARK_MS)
+      animate.mockClear()
       expect(vi.getTimerCount()).toBe(1)
       w.unmount()
       expect(vi.getTimerCount()).toBe(0)
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
+      expect(w.emitted('resolve')).toBeUndefined()
     })
   })
 })

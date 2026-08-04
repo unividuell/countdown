@@ -5,7 +5,7 @@ import type { CommunityResponse } from '@/api/types'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
-import { BOOT_HOLD_MS } from '@/ui/flipdot/board'
+import { BOOT_RESOLVE_AT_MS } from '@/ui/flipdot/board'
 
 const community: CommunityResponse = {
   id: 'c1',
@@ -87,9 +87,9 @@ describe('countdown shared clock', () => {
     const header = mountHeader()
     const card = mountCard()
     await flushPromises()
-    // getTimerCount() sees every pending timer, and the card's two flip-dot boards each hold a
-    // boot timeout. Drain them so the count below is about the clock.
-    await vi.advanceTimersByTimeAsync(BOOT_HOLD_MS)
+    // getTimerCount() sees every pending timer, and the card's two flip-dot boards each hold the
+    // timeouts of their switch-on sequence. Drain them so the count below is about the clock.
+    await vi.advanceTimersByTimeAsync(BOOT_RESOLVE_AT_MS)
 
     header.unmount()
     expect(vi.getTimerCount()).toBe(1) // one consumer left, clock untouched

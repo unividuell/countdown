@@ -1,12 +1,34 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import CountdownCard from '@/communities/fallbacks/CountdownCard.vue'
+import { BOOT_DARK_MS, BOOT_RESOLVE_AT_MS, DOT_ON } from '@/ui/flipdot/board'
+import { bitmap } from '@/ui/flipdot/font'
 
 function mountCard(days: string) {
   return mount(CountdownCard, {
     props: { days, hours: '13', minutes: '42', seconds: '07' },
   })
 }
+
+function labelClasses(w: ReturnType<typeof mountCard>): string[][] {
+  return w.findAll('[data-test="countdown-label"]').map((l) => l.classes())
+}
+
+async function advance(ms: number): Promise<void> {
+  vi.advanceTimersByTime(ms)
+  await nextTick()
+  await nextTick()
+}
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('CountdownCard', () => {
   it('is square', () => {
@@ -72,5 +94,42 @@ describe('CountdownCard', () => {
     expect(text).toContain('STD')
     expect(text).toContain('MIN')
     expect(text).toContain('SEK')
+  })
+
+  // happy-dom computes no CSS, so the opacity classes are the observable proxy for the fade.
+  it('holds the labels back until the boards start resolving', async () => {
+    const w = mountCard('58')
+    expect(labelClasses(w).length).toBe(2)
+    expect(labelClasses(w).every((c) => c.includes('opacity-0'))).toBe(true)
+
+    await advance(BOOT_DARK_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-0'))).toBe(true)
+
+    await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+    expect(labelClasses(w).every((c) => c.includes('transition-opacity'))).toBe(true)
+  })
+
+  // Only the hero's event drives the labels; this pins the assumption that the strip is in step.
+  it('resolves both boards in the step the labels arrive', async () => {
+    const w = mountCard('58')
+    const lit = () => w.findAll('circle').filter((c) => c.attributes('fill') === DOT_ON).length
+
+    await advance(BOOT_DARK_MS)
+    expect(lit()).toBe(11 * 7 + 47 * 7)
+
+    await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
+    expect(lit()).toBe(
+      bitmap('58').on.filter(Boolean).length + bitmap('13:42:07').on.filter(Boolean).length,
+    )
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+  })
+
+  it('shows the labels straight away under prefers-reduced-motion', async () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    const w = mountCard('58')
+    await nextTick()
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

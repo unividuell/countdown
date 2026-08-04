@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { bitmap, type Bitmap } from './font'
-import { BOOT_HOLD_MS, DOT_OFF, DOT_ON, FLIP_MS, PITCH, RADIUS, STAGGER_MS } from './board'
+import {
+  BOOT_DARK_MS,
+  BOOT_RESOLVE_AT_MS,
+  DOT_OFF,
+  DOT_ON,
+  FLIP_MS,
+  PITCH,
+  RADIUS,
+  STAGGER_MS,
+} from './board'
 
 const props = defineProps<{ text: string; label: string }>()
+const emit = defineEmits<{ resolve: [] }>()
 
 function prefersReducedMotion(): boolean {
   return (
@@ -12,14 +22,16 @@ function prefersReducedMotion(): boolean {
   )
 }
 
-function allOn(b: Bitmap): Bitmap {
-  return { cols: b.cols, rows: b.rows, on: b.on.map(() => true) }
+function uniform(b: Bitmap, on: boolean): Bitmap {
+  return { cols: b.cols, rows: b.rows, on: b.on.map(() => on) }
 }
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
 const bm = computed(() => bitmap(props.text))
-const booting = ref(!prefersReducedMotion())
-const shown = computed(() => (booting.value ? allOn(bm.value) : bm.value))
+const phase = ref<'dark' | 'white' | 'live'>(prefersReducedMotion() ? 'live' : 'dark')
+const shown = computed(() =>
+  phase.value === 'live' ? bm.value : uniform(bm.value, phase.value === 'white'),
+)
 const gap = PITCH - 2 * RADIUS
 const viewBox = computed(() => `0 0 ${bm.value.cols * PITCH - gap} ${bm.value.rows * PITCH - gap}`)
 const dots = computed(() =>
@@ -30,7 +42,7 @@ const dots = computed(() =>
   })),
 )
 
-function flip(prev: Bitmap, next: Bitmap): void {
+function flip(prev: Bitmap, next: Bitmap, stagger: boolean): void {
   if (prev.cols !== next.cols || prefersReducedMotion()) return
   const circles = svg.value?.querySelectorAll('circle')
   if (!circles) return
@@ -62,7 +74,7 @@ function flip(prev: Bitmap, next: Bitmap): void {
       ],
       {
         duration: FLIP_MS,
-        delay: (lead - (i % next.cols)) * STAGGER_MS,
+        delay: stagger ? (lead - (i % next.cols)) * STAGGER_MS : 0,
         easing: 'ease-in-out',
         fill: 'backwards',
       },
@@ -73,26 +85,38 @@ function flip(prev: Bitmap, next: Bitmap): void {
 watch(
   bm,
   (next, prev) => {
-    if (booting.value) return
-    flip(prev, next)
+    if (phase.value !== 'live') return
+    flip(prev, next, true)
   },
   { flush: 'post' },
 )
 
-let bootTimer: ReturnType<typeof setTimeout> | undefined
+const bootTimers: ReturnType<typeof setTimeout>[] = []
+
+function enter(next: 'white' | 'live', stagger: boolean): void {
+  const prev = shown.value
+  phase.value = next
+  void nextTick(() => flip(prev, shown.value, stagger))
+}
 
 onMounted(() => {
-  if (!booting.value) return
-  bootTimer = setTimeout(() => {
-    bootTimer = undefined
-    const white = shown.value
-    booting.value = false
-    void nextTick(() => flip(white, bm.value))
-  }, BOOT_HOLD_MS)
+  if (phase.value === 'live') {
+    emit('resolve')
+    return
+  }
+  bootTimers.push(
+    // Unstaggered: a board switching on reads as one simultaneous slam, and a right-to-left white-up
+    // would take 414 ms across the 47-column strip and run into the hold that follows.
+    setTimeout(() => enter('white', false), BOOT_DARK_MS),
+    setTimeout(() => {
+      emit('resolve')
+      enter('live', true)
+    }, BOOT_RESOLVE_AT_MS),
+  )
 })
 
 onBeforeUnmount(() => {
-  if (bootTimer !== undefined) clearTimeout(bootTimer)
+  for (const timer of bootTimers) clearTimeout(timer)
 })
 </script>
 

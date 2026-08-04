@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 
 const props = defineProps<{
@@ -20,6 +20,11 @@ const heroLabel = computed(() => {
   return `${n} ${n === 1 ? 'Tag' : 'Tage'} bis zum Start`
 })
 const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
+
+// The boards own the switch-on timeline; the labels only follow it, so they wait for the hero's
+// event instead of running a second clock that would have to repeat the reduced-motion decision.
+const resolved = ref(false)
+const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0'))
 </script>
 
 <template>
@@ -31,12 +36,28 @@ const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
          from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS
          default — the hero's w-[72%] would then be 216px on every viewport. -->
     <div class="flex w-full flex-1 flex-col items-center justify-center gap-2.5">
-      <FlipDotBoard data-test="countdown-hero" :class="heroWidth" :text="days" :label="heroLabel" />
-      <p class="font-mono text-[11px] tracking-[0.14em] text-stone-500">TAGE</p>
+      <FlipDotBoard
+        data-test="countdown-hero"
+        :class="heroWidth"
+        :text="days"
+        :label="heroLabel"
+        @resolve="resolved = true"
+      />
+      <p
+        data-test="countdown-label"
+        class="font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+        :class="labelOpacity"
+      >
+        TAGE
+      </p>
     </div>
     <div class="w-[94%]">
       <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
-      <div class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500">
+      <div
+        data-test="countdown-label"
+        class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+        :class="labelOpacity"
+      >
         <span class="absolute left-[11.5%] -translate-x-1/2">STD</span>
         <span class="absolute left-1/2 -translate-x-1/2">MIN</span>
         <span class="absolute left-[88.5%] -translate-x-1/2">SEK</span>
