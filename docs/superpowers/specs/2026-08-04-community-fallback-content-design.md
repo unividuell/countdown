@@ -193,30 +193,59 @@ Navigations-Fortschrittsbalken in `App.vue`.)
 
 ### Das Einschalten
 
-Die Tafel geht an wie eine echte Anzeigetafel im Bahnhof: **erst alle Punkte weiß**, kurz gehalten,
-dann fallen die Ziffern aus dem weißen Feld heraus. Ohne das erschiene die Tafel bereits gefüllt —
-und damit als Bild, nicht als Gerät. Der Moment, in dem sie sichtbar *schaltet*, ist genau der, der
-sie zur Fallblatt-Tafel macht.
+Die Tafel geht an wie eine echte Anzeigetafel im Bahnhof: **erst dunkel, dann schlägt alles auf
+Weiß, dann fallen die Ziffern aus dem weißen Feld heraus.** Ohne das erschiene die Tafel bereits
+gefüllt — und damit als Bild, nicht als Gerät. Der Moment, in dem sie sichtbar *schaltet*, ist genau
+der, der sie zur Fallblatt-Tafel macht.
 
+| Zeitpunkt | Was passiert                                                     |
+| --------- | ---------------------------------------------------------------- |
+| 0 ms      | alle Punkte **aus** — die Tafel ist dunkel, aber sichtbar da     |
+| 100 ms    | alle Punkte kippen **an**, gleichzeitig                          |
+| 400 ms    | die Ziffern lösen sich aus dem weißen Feld, von rechts nach links |
+
+- **Dunkelphase 100 ms.** Ein gewählter Wert: lang genug, dass „aus" überhaupt als Zustand
+  registriert wird, bevor die Tafel aufschlägt; kurz genug, dass es als erster Takt des Einschaltens
+  gelesen wird und nicht als Ladezustand. Die dunkle Tafel ist dabei nicht leer — die Punkte stehen
+  sichtbar als dunkle Scheiben im Raster, das Gerät ist erkennbar da und nur ausgeschaltet.
 - **Haltezeit 300 ms.** Ein gewählter Wert: lang genug, dass das weiße Feld als bewusstes Einschalten
   gelesen wird und nicht als Zeichenfehler; kurz genug, dass die erste echte Ablesung nicht
   spürbar vorenthalten wird.
+- **Das Aufschlagen läuft ohne Staffelung, das Auflösen mit.** Das ist der einzige bewusste Bruch in
+  der Animationssprache der Tafel, und er hat zwei Gründe. Erstens liest sich eine Tafel, die angeht,
+  als ein einziger gleichzeitiger Schlag — nicht als Welle. Zweitens rechnet sich eine Welle hier
+  nicht: über die 47 Spalten der `HH:MM:SS`-Leiste dauerte sie 414 ms und liefe damit mitten in die
+  Haltezeit hinein, die ihr folgen soll. Das Auflösen dagegen *ist* die Bewegung des Zählens und
+  behält deshalb die Richtung des Übertrags.
 - **Das Auflösen benutzt denselben Kipp-Effekt** wie jede Sekunde — dieselbe Dauer, dieselbe
-  Verzögerungsregel, also auch **von rechts nach links**. Die Tafel bekommt keine zweite
-  Animationssprache für ihren ersten Moment: die Richtung, in der sie später zählt, ist die, in der
-  sie sich zuerst zeigt.
-- **Die Maße stehen von Anfang an.** Das weiße Feld hat die Spalten und Zeilen des echten Bitmaps,
-  `viewBox` und Kantenlänge ändern sich beim Auflösen nicht. Die Seite darf beim Einschalten so wenig
-  springen wie beim Laden der Daten.
+  Verzögerungsregel, also auch **von rechts nach links**. Die Richtung, in der die Tafel später
+  zählt, ist die, in der sie sich zuerst zeigt.
+- **Die Maße stehen von Anfang an.** Dunkelfeld und weißes Feld haben die Spalten und Zeilen des
+  echten Bitmaps, `viewBox` und Kantenlänge ändern sich beim Auflösen nicht. Die Seite darf beim
+  Einschalten so wenig springen wie beim Laden der Daten.
 - **Einmal pro Mount, nicht pro Wert.** Ein Sekundenwechsel bleibt ein Sekundenwechsel; das
   Einschalten ist ein Ereignis der Tafel, nicht der Zahl.
-- **Das `aria-label` trägt durchgehend den echten Wert**, auch während des weißen Feldes. Einem
+- **Das `aria-label` trägt durchgehend den echten Wert**, auch während Dunkel- und Weißphase. Einem
   Screenreader wird nie erzählt, die Tafel sei leer.
 
-**`prefers-reduced-motion`: kein Einschalten.** Nicht verkürzt — ganz ausgelassen; die Tafel steht
-sofort auf dem echten Wert. Die Zusage lautet „vollständig und aktuell, nur ohne Bewegung", und ein
-Einschaltmoment ist ausschließlich Bewegung. Ihn abzuschwächen statt zu streichen wäre ein
-Kompromiss, den die Zusage nicht deckt.
+**Die Einheiten-Labels kommen mit den Ziffern.** `TAGE`, `STD`, `MIN` und `SEK` sind während des
+Einschaltens unsichtbar und blenden bei 400 ms ein — eine kurze Opacity-Blende, 300 ms. Beschriftung
+ohne Anzeige wäre eine Bildunterschrift ohne Bild; die Labels erklären etwas, das erst ab diesem
+Moment da ist. Sie werden nur transparent, nicht entfernt: ihr Platz bleibt belegt, damit die Card
+beim Einblenden nicht umbricht.
+
+**Den Zeitpunkt gibt die Tafel selbst durch**, per Event, wenn ihr Auflösen beginnt — die Card setzt
+keinen zweiten Timer und importiert auch nicht die Konstante, um selbst zu warten. Sonst gäbe es die
+Zeitachse zweimal, und die `prefers-reduced-motion`-Entscheidung müsste in einer Komponente
+wiederholt werden, die sie nicht zu treffen hat. Die Card hört auf die Hero-Tafel; beide Tafeln
+werden gemeinsam gemountet und lösen deshalb im selben Frame auf. Dass eine Tafel ein Event über ihre
+*eigene* Animation schickt, lehrt sie nichts über Countdowns — die Primitive bleibt fachfrei.
+
+**`prefers-reduced-motion`: kein Einschalten.** Nicht verkürzt — ganz ausgelassen, Dunkelphase
+inklusive; die Tafel steht sofort auf dem echten Wert und die Labels stehen sofort da. Die Zusage
+lautet „vollständig und aktuell, nur ohne Bewegung", und ein Einschaltmoment ist ausschließlich
+Bewegung. Ihn abzuschwächen statt zu streichen wäre ein Kompromiss, den die Zusage nicht deckt. Das
+Event feuert in diesem Fall direkt beim Mount — die Card braucht dafür keinen eigenen Sonderfall.
 
 ## Gewinnerermittlung
 
@@ -288,10 +317,15 @@ Vitest + `vi`, mobile-first geprüft:
   0; Gleichstand zu zwei und zu drei; Namensformatierung je Anzahl; `live` fehlt → nur `stable`.
 - `ui/flipdot/__tests__/FlipDotBoard.spec.ts` — Anzahl der Kreise, `on`-Zustand der richtigen
   Punkte, Differenz-Update animiert nur geänderte Punkte, `prefers-reduced-motion` löst keine
-  Animation aus. Zum Einschalten: alle Punkte weiß beim Mount, nach der Haltezeit das echte Bitmap
-  und zwar animiert, Auflösen von rechts nach links, unter `prefers-reduced-motion` gar kein weißes
-  Feld, und ein Unmount innerhalb der Haltezeit feuert keinen Timer mehr. Der Ruhezustand wird
-  jeweils **nach** abgelaufener Haltezeit geprüft (`vi.useFakeTimers()`).
+  Animation aus. Zum Einschalten: alle Punkte aus beim Mount, nach der Dunkelphase alle an und zwar
+  **ohne** Staffelung, nach der Haltezeit das echte Bitmap mit Staffelung von rechts nach links, unter
+  `prefers-reduced-motion` weder Dunkel- noch Weißphase, und ein Unmount in einer der beiden Phasen
+  feuert keinen Timer mehr. Der Ruhezustand wird jeweils **nach** abgelaufener Einschaltsequenz
+  geprüft (`vi.useFakeTimers()`); die Phasen werden einzeln vorgespult, weil ein einziger Sprung über
+  beide Timer die Mikrotasks zusammenfallen ließe.
+- `communities/fallbacks/__tests__/CountdownCard.spec.ts` — zusätzlich zur Geometrie: die Labels sind
+  vor dem Auflösen transparent und danach sichtbar, beide Tafeln lösen im selben Schritt auf, und
+  unter `prefers-reduced-motion` stehen die Labels sofort.
 - `communities/fallbacks/__tests__/RoundFallback.spec.ts` — Zustandswahl über `data-test`-Marker:
   `startsAt === null` → Meldung sofort und ohne Request; `'before'` → Tafel; `'after'` → Meldung mit
   bzw. ohne Gratulation; `'idle'` → Platzhalter gleicher Größe.
