@@ -19,7 +19,7 @@ import java.time.Instant
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
-class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
+class SuperAdminRosterControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var roster: SuperAdminRosterService
 
     private val uid = TEST_USER_ID

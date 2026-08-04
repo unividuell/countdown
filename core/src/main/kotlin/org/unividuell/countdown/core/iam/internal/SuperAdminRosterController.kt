@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/super-admin/super-admins")
-class SuperAdminUserController(private val roster: SuperAdminRosterService) {
+class SuperAdminRosterController(private val roster: SuperAdminRosterService) {
     @GetMapping
     fun superAdmins(): List<SuperAdminUserResponse> = roster.roster()
 }
