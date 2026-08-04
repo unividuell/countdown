@@ -1,11 +1,17 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/countdown'
+import { _resetCountdownState } from '@/communities/useCountdown'
+
+// The countdown clock is a module-level singleton: a wrapper left mounted keeps reacting to it and
+// would fetch inside the *next* test case.
+enableAutoUnmount(afterEach)
 
 describe('CountdownDisplay', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-14T21:00:00Z')) // 12h before round end
+    _resetCountdownState()
   })
   afterEach(() => vi.useRealTimers())
 

@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/countdown'
 import type { CommunityResponse, CountdownResponse, RosterMemberResponse } from '@/api/types'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
+import { _resetCountdownState } from '@/communities/useCountdown'
 
 const community = (startsAt: string | null): CommunityResponse => ({
   id: 'c1',
@@ -41,6 +42,10 @@ function member(fullName: string, stable: number): RosterMemberResponse {
   }
 }
 
+// The countdown clock is a module-level singleton: a wrapper left mounted keeps reacting to it and
+// would fetch inside the *next* test case.
+enableAutoUnmount(afterEach)
+
 function mountFallback(startsAt: string | null, members: RosterMemberResponse[] | null = []) {
   return mount(RoundFallback, { props: { community: community(startsAt), members } })
 }
@@ -49,6 +54,7 @@ describe('RoundFallback', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-14T21:00:00Z'))
+    _resetCountdownState()
   })
   afterEach(() => {
     vi.useRealTimers()

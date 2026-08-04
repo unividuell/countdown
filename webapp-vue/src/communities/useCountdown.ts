@@ -11,15 +11,36 @@ import type { BaseUnitConfig } from '@/communities/countdown'
 // a noticeable while.
 const FAILED_LOAD_RETRY_MS = 10_000
 
+// One clock for every consumer on the page: the header widget and the fallback card are separate
+// instances, and two intervals started at different moments never resynchronise — their seconds
+// drift up to a full tick apart while showing the same instant. The skew is shared for the same
+// reason: it describes the one server's clock, not the consumer's, so any successful load corrects
+// it for everybody.
+const nowMs = ref(Date.now())
+const skewMs = ref(0)
+let timer: ReturnType<typeof setInterval> | undefined
+let subscribers = 0
+
+function subscribeToClock(): void {
+  subscribers += 1
+  if (subscribers > 1) return
+  nowMs.value = Date.now()
+  timer = setInterval(() => (nowMs.value = Date.now()), 1000)
+}
+
+function unsubscribeFromClock(): void {
+  subscribers = Math.max(0, subscribers - 1)
+  if (subscribers > 0) return
+  if (timer) clearInterval(timer)
+  timer = undefined
+}
+
 export function useCountdown(slug: Ref<string | null | undefined>) {
   const round = ref<Round | null>(null)
   const nextRound = ref<Round | null>(null)
   const startsAt = ref<string | null>(null)
   const zone = ref('UTC')
-  const skewMs = ref(0)
-  const nowMs = ref(Date.now())
   const cfg = reactive<BaseUnitConfig>({ months: false, weeks: false, days: true })
-  let timer: ReturnType<typeof setInterval> | undefined
 
   let loadSeq = 0
   // Tracked, rather than inferring "never loaded" from round === null: the backend legitimately
@@ -45,7 +66,6 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
   }
 
   function tick() {
-    nowMs.value = Date.now()
     const corr = nowMs.value + skewMs.value
     const action = boundaryAction(round.value, nextRound.value, corr)
     if (action === 'shift') {
@@ -59,11 +79,10 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
 
   onMounted(() => {
     if (slug.value) void load(slug.value)
-    timer = setInterval(tick, 1000)
+    subscribeToClock()
   })
-  onUnmounted(() => {
-    if (timer) clearInterval(timer)
-  })
+  onUnmounted(unsubscribeFromClock)
+  watch(nowMs, tick)
   watch(
     () => slug.value,
     (s) => {
@@ -85,4 +104,13 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
   }
 
   return { view, cycleBaseUnit }
+}
+
+/** Test-only: reset the module-level shared clock between test cases. */
+export function _resetCountdownState(): void {
+  if (timer) clearInterval(timer)
+  timer = undefined
+  subscribers = 0
+  nowMs.value = Date.now()
+  skewMs.value = 0
 }
