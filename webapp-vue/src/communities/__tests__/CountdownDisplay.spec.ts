@@ -90,6 +90,33 @@ describe('CountdownDisplay', () => {
     expect(w.find('[data-test="countdown"]').exists()).toBe(false) // idle → renders nothing
   })
 
+  it('retries a first load that failed, instead of staying idle forever', async () => {
+    const spy = vi
+      .spyOn(api, 'getCountdown')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({
+        serverNow: '2026-06-14T21:00:10Z',
+        startsAt: '2026-06-25T09:00:00Z',
+        startsAtTimezone: 'Europe/Berlin',
+        round: {
+          number: 10,
+          label: 'T-10',
+          start: '2026-06-14T09:00:00Z',
+          end: '2026-06-15T09:00:00Z',
+        },
+        nextRound: null,
+      })
+    spy.mockClear()
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    expect(w.find('[data-test="countdown"]').exists()).toBe(false)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flushPromises()
+    expect(spy.mock.calls.length).toBe(2) // retried once, not once per second
+    expect(w.find('[data-test="countdown"]').text()).toContain('T-')
+  })
+
   it('counts up without announcing the event, which the fallback card now says', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
