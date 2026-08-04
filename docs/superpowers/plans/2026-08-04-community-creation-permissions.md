@@ -2750,8 +2750,12 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Der Frontend-Guard und die Backend-Sperre greifen erst zusammen im laufenden System. Nach Task 16:
 
+`SUPER_ADMIN_GITHUB_LOGINS` ist leer vorbelegt und kein Seed-User trägt die Freischaltung — ohne
+einen Super-Admin gibt es also niemanden, der freischalten könnte. Der Wert muss einer der
+**geseedeten** Logins sein (Groß-/Kleinschreibung ist egal), siehe `core/README.md`:
+
 ```bash
-cd core && ./mvnw spring-boot:run
+cd core && SUPER_ADMIN_GITHUB_LOGINS=Bender ./mvnw spring-boot:run
 ```
 
 ```bash
@@ -2760,7 +2764,19 @@ cd webapp-vue && pnpm dev
 
 1. Als nicht freigeschalteter Test-User anmelden (Dev-Login-Picker). Auf `/communities` darf **kein** Erstellen-Button stehen; im Community-Menü kein `+ Spielgemeinschaft`.
 2. `/communities/new` direkt in die Adresszeile: leitet nach `/communities` zurück.
-3. `curl` mit der Session-Cookie gegen `POST /api/communities`: `403`.
-4. Als Super-Admin `/super-admin` öffnen: Nav-Liste mit „Nutzer" und „Spielgemeinschaften", darunter die Super-Admins-Tabelle.
+3. `curl` mit Session-Cookie **und** CSRF-Header gegen `POST /api/communities`: `403` mit
+   `"detail":"Not allowed to create communities"`. Der Header ist der Punkt: ohne ihn antwortet
+   schon der `CsrfFilter` mit `403`, bevor die Autorisierung überhaupt läuft — der Schritt wäre
+   dann auch ohne Sperre grün. `SESSION`- und `XSRF-TOKEN`-Cookie aus den DevTools des
+   angemeldeten Browsers übernehmen:
+   ```bash
+   SESSION=…; XSRF=…
+   curl -i -X POST http://localhost:5173/api/communities \
+     -H 'Content-Type: application/json' \
+     -H "Cookie: SESSION=$SESSION; XSRF-TOKEN=$XSRF" \
+     -H "X-XSRF-TOKEN: $XSRF" \
+     -d '{"name":"Test"}'
+   ```
+4. Als Super-Admin (der Login aus `SUPER_ADMIN_GITHUB_LOGINS`, oben) `/super-admin` öffnen: Nav-Liste mit „Nutzer" und „Spielgemeinschaften", darunter die Super-Admins-Tabelle.
 5. Über „Nutzer" den Test-User öffnen, „Freischalten" klicken — Spinner im Button sichtbar, Label bleibt an seiner Stelle.
 6. Zurück als Test-User (**ohne** neues Login, nur Seite neu laden): Erstellen ist jetzt möglich. Das ist der Punkt, an dem sich der Live-Read gegen eine Session-Kopie beweist.
