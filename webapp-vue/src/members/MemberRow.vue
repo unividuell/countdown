@@ -48,6 +48,13 @@ let lastFrame = 0
 
 const textColors = computed(() => props.members.map((m) => readableTextColor(m.bgColorHex)))
 
+// `role="img"` is Children Presentational: True, pruning the `+N` live-points badge's text node
+// from the accessibility tree — so the live points must be folded into the label itself here.
+function ariaLabel(m: RosterMemberResponse): string {
+  const live = m.points.live ? `, plus ${m.points.live} live` : ''
+  return `${m.fullName}, ${m.points.stable} Punkte${live}`
+}
+
 function paint(): void {
   if (!swarm) return
   for (let i = 0; i < items.length; i++) {
@@ -61,8 +68,10 @@ function paint(): void {
 function finish(): void {
   swarm = null
   for (const el of items) el.style.transform = ''
-  // Only now may the row clip: `overflow-x: auto` computes `overflow-y` to `auto` as well, which
-  // would cut the flying circles off at the ~62px band.
+  // Only now may the row go `overflow-x: auto` — mid-flight it's `overflow-x: clip` instead (the
+  // row's own ~372px natural width for nine members would otherwise overflow the document),
+  // paired with `overflow-y: visible` since `clip`, unlike `visible`, isn't coerced to `auto` and
+  // so won't cut the flying circles off at the ~62px band.
   settled.value = true
 }
 
@@ -127,7 +136,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     ref="row"
     data-test="row"
     class="flex w-full"
-    :class="settled ? 'no-scrollbar overflow-x-auto' : 'overflow-visible'"
+    :class="settled ? 'no-scrollbar overflow-x-auto' : 'overflow-x-clip overflow-y-visible'"
     style="visibility: hidden"
   >
     <div class="flex -space-x-2 p-0.5">
@@ -138,7 +147,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         role="img"
         class="flex w-12 shrink-0 flex-col -space-y-1.5 will-change-transform"
         :style="{ zIndex: members.length - index }"
-        :aria-label="`${m.fullName}, ${m.points.stable} Punkte`"
+        :aria-label="ariaLabel(m)"
         :title="m.fullName"
       >
         <div

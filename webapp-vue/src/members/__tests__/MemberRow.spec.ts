@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import type { RosterMemberResponse } from '@/api/types'
 import MemberRow from '../MemberRow.vue'
 import * as swarmModule from '../swarm'
@@ -25,6 +26,10 @@ function reduceMotion(reduce: boolean): void {
 }
 
 describe('MemberRow', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('renders one circle per member, in the order the server sent', () => {
     reduceMotion(true)
     const w = mount(MemberRow, {
@@ -43,13 +48,26 @@ describe('MemberRow', () => {
 
   it('names each circle for assistive technology', () => {
     reduceMotion(true)
-    const w = mount(MemberRow, { props: { members: [member({ fullName: 'Turanga Leela' })] } })
-    const item = w.find('[data-swarm-item]')
+    const w = mount(MemberRow, {
+      props: {
+        members: [
+          member({ fullName: 'Turanga Leela', points: { stable: 3 } }),
+          member({ userId: 'b', fullName: 'Philip J. Fry', points: { stable: 7, live: 5 } }),
+        ],
+      },
+    })
+    const items = w.findAll('[data-swarm-item]')
     // A plain <div>'s implicit role is `generic`, for which ARIA prohibits an author-supplied
     // name — without `role="img"`, aria-label is silently dropped from the accessibility tree.
-    expect(item.attributes('role')).toBe('img')
-    expect(item.attributes('aria-label')).toContain('Turanga Leela')
-    expect(item.attributes('title')).toContain('Turanga Leela')
+    expect(items[0]?.attributes('role')).toBe('img')
+    expect(items[0]?.attributes('title')).toContain('Turanga Leela')
+    // `role="img"` also prunes descendant text from the accessibility tree, so a member with no
+    // live points must get no dangling suffix...
+    expect(items[0]?.attributes('aria-label')).toBe('Turanga Leela, 3 Punkte')
+    // ...while one with live points must have them folded into the label, since the `+N` badge's
+    // text node is no longer exposed to assistive technology.
+    expect(items[1]?.attributes('aria-label')).toContain('5')
+    expect(items[1]?.attributes('aria-label')).toContain('Philip J. Fry, 7 Punkte')
   })
 
   it('shows the live badge only when live points are present', () => {
@@ -69,6 +87,28 @@ describe('MemberRow', () => {
     await new Promise((r) => setTimeout(r, 20))
     expect(w.find('[data-swarm-item]').attributes('style') ?? '').not.toContain('translate3d')
     expect(w.find('[data-test="row"]').attributes('style') ?? '').toContain('visible')
+  })
+
+  it('clips horizontally but stays visible vertically while flying, then goes auto once settled', async () => {
+    // Asserted via classes rather than computed style: happy-dom does not resolve the CSS
+    // Overflow 3 axis-coercion rules (that `clip` paired with `visible` is exempt, unlike
+    // `visible` paired with `hidden`/`scroll`/`auto`), so a getComputedStyle check here would
+    // not actually pin the behaviour.
+    reduceMotion(false)
+    const flying = mount(MemberRow, { props: { members: [member()] } })
+    const flyingClasses = flying.find('[data-test="row"]').classes()
+    expect(flyingClasses).toContain('overflow-x-clip')
+    expect(flyingClasses).toContain('overflow-y-visible')
+    expect(flyingClasses).not.toContain('overflow-visible')
+    flying.unmount()
+
+    // The reduced-motion path settles in `onMounted` itself; still a tick away from the DOM
+    // because the `settled` ref's class update is applied via Vue's reactive render, not
+    // written imperatively like the `visibility` style is.
+    reduceMotion(true)
+    const settled = mount(MemberRow, { props: { members: [member()] } })
+    await nextTick()
+    expect(settled.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
   })
 
   it('cancels its animation frame when unmounted mid-flight', async () => {
