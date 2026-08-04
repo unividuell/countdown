@@ -4,21 +4,20 @@ The default local setup needs **no GitHub OAuth App and no credentials** — it 
 through a seeded test-user picker (see step 3). Set up a real OAuth App only to replay
 the production login flow locally (see "Real GitHub login" below).
 
-1. Start Postgres + the app:
+1. Start Postgres + the app, granting a seeded user super-admin in the same command:
    ```bash
-   cd core && ./mvnw spring-boot:run
+   cd core && SUPER_ADMIN_GITHUB_LOGINS=Bender ./mvnw spring-boot:run
    ```
    Spring Boot's docker-compose support brings up `compose.yaml` from the repo root
    (Postgres 18 + pgAdmin). It finds it via `spring.docker.compose.file: ../compose.yaml`
    in `application.yaml`, because the file sits one level above this module.
-2. Grant a seeded user super-admin — **not optional**, or you cannot create a
-   Spielgemeinschaft at all:
-   ```bash
-   export SUPER_ADMIN_GITHUB_LOGINS=Bender   # comma-separated logins granted ROLE_SUPER_ADMIN
-   ```
-   The variable is bound to the `app.super-admin-github-logins` property; under this exact
-   name it is wired through `application.yaml`, where it defaults to **empty** — so with
-   nothing exported, nobody holds the role.
+
+   The variable has to be on the start command, not exported afterwards:
+   `app.super-admin-github-logins` is bound when the context starts, so a running app never
+   picks it up. Its value is a comma-separated list of logins granted `ROLE_SUPER_ADMIN`.
+2. Why that login is **not optional**: without it you cannot create a Spielgemeinschaft at
+   all. The variable is wired through `application.yaml` under that exact name, where it
+   defaults to **empty** — so with nothing set, nobody holds the role.
    Creating a community requires the `community_creation_allowed` clearance or super-admin,
    no seeded user carries the clearance, and the only way to grant it is the super-admin area
    (`/super-admin/users`) — which needs a super-admin. So without this step every
@@ -26,11 +25,13 @@ the production login flow locally (see "Real GitHub login" below).
    With the test-login picker on (the default), the value must be one of the **seeded** logins
    from step 3, not your own GitHub login: only those rows exist, and only they can be picked.
    Matching is case-insensitive, so `bender` works as well as `Bender`.
-   `.claude/launch.json`'s `backend` configuration already exports `SUPER_ADMIN_GITHUB_LOGINS=bender`.
+   `.claude/launch.json`'s `backend` configuration already sets `SUPER_ADMIN_GITHUB_LOGINS=bender`,
+   so starting from there needs none of this.
    Optionally give members invented-but-stable game points, so the ranking row on a community
-   home shows a real order instead of all zeros:
+   home shows a real order instead of all zeros — same command, one more flag:
    ```bash
-   cd core && ./mvnw spring-boot:run -Dspring-boot.run.arguments="--app.stub-points.enabled=true"
+   cd core && SUPER_ADMIN_GITHUB_LOGINS=Bender ./mvnw spring-boot:run \
+     -Dspring-boot.run.arguments="--app.stub-points.enabled=true"
    ```
    It is off by default and set nowhere but `application-staging.yaml` — deliberately, so no
    production config file has to mention stubbing at all. `.claude/launch.json`'s `backend`
