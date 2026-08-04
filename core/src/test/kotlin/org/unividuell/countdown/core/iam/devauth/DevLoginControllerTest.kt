@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.iam.devauth
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.ServletException
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.iam.internal.devauth.TestUserSeeder
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -26,6 +28,7 @@ import org.unividuell.countdown.core.iam.internal.UserRepository
 class DevLoginControllerTest(
     @Autowired val mockMvc: MockMvc,
     @Autowired val users: UserRepository,
+    @Autowired val seeder: TestUserSeeder,
 ) {
     @Test
     fun `GET login github renders the test-user picker`() {
@@ -70,5 +73,36 @@ class DevLoginControllerTest(
             }
         }
         thrown.cause?.message shouldBe "unknown test user: octocat"
+    }
+
+    @Test
+    fun `picker declares a mobile viewport`() {
+        // Without this the page lays out at the browser's ~980px fallback width and is then scaled
+        // down to fit — the whole reason the picker used to be unreadable on a phone.
+        mockMvc.get("/login/github").andExpect {
+            content { string(containsString("""<meta name="viewport" content="width=device-width,initial-scale=1">""")) }
+        }
+    }
+
+    @Test
+    fun `picker renders every seed user, in the seeder's declared order`() {
+        val html = mockMvc.get("/login/github").andReturn().response.contentAsString
+
+        val positions = seeder.seedUsers.map { html.indexOf("""name="login" value="${it.login}"""") }
+        positions.forEach { it shouldBeGreaterThan -1 }
+        // findByGithubLoginIn returns rows in no defined order; at twelve entries a list that
+        // reshuffles between reloads would read as a bug.
+        positions shouldBe positions.sorted()
+    }
+
+    @Test
+    fun `POST login github as logs in a newly added seed user`() {
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            param("login", "zoidberg")
+        }.andExpect {
+            status { is3xxRedirection() }
+            redirectedUrl("/")
+        }
     }
 }
