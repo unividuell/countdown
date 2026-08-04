@@ -63,19 +63,32 @@ Spring Session ohnehin bei jedem Request fährt, ist das Rauschen.
 
 ## Datenmodell
 
-`core/src/main/resources/db/migration/iam/V2__add_may_create_communities.sql`:
+`core/src/main/resources/db/migration/iam/V2__add_community_creation_allowed.sql`:
 
 ```sql
 ALTER TABLE iam.users
-    ADD COLUMN may_create_communities BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN community_creation_allowed BOOLEAN NOT NULL DEFAULT FALSE;
 ```
 
 Kein Backfill — der Start ist bewusst bei null. `DEFAULT FALSE` deckt Bestandszeilen und Neuzugänge
 gleichermaßen ab.
 
-`User` bekommt `val mayCreateCommunities: Boolean = false`. `UserProvisioningService.provision` darf
-das Feld **nicht** anfassen, sonst setzt jeder Login die Freischaltung zurück — genau die Mechanik,
-in die `is_super_admin` absichtlich hineinläuft.
+**Zwei Namen, zwei Fakten.** Die gespeicherte Erlaubnis und die effektive Berechtigung sind nicht
+dasselbe, weil `is_super_admin` nur in die zweite einfließt. Sie heißen deshalb verschieden:
+
+```kotlin
+val communityCreationAllowed: Boolean = false          // die Spalte, roh
+
+/** Effective permission: the stored clearance, or super-admin. The only place this rule lives. */
+val mayCreateCommunities: Boolean get() = isSuperAdmin || communityCreationAllowed
+```
+
+Die berechnete Property wird von Spring Data JDBC nicht persistiert — `User.username` ist der
+Präzedenzfall. Die Super-Admin-DTOs tragen die **rohe** `communityCreationAllowed` (der Schalter
+muss den gespeicherten Wert zeigen), `MeResponse` die **effektive** `mayCreateCommunities`.
+
+`UserProvisioningService.provision` darf das Feld **nicht** anfassen, sonst setzt jeder Login die
+Freischaltung zurück — genau die Mechanik, in die `is_super_admin` absichtlich hineinläuft.
 
 *(Fußnote: `User` ist `Serializable` und liegt in der Session. `serialVersionUID` ist auf `1L`
 fixiert, bestehende Sessions deserialisieren das neue Feld als `false`. Für die Berechtigung
@@ -96,7 +109,8 @@ irrelevant, weil sie nicht aus der Session gelesen wird — und die App ist noch
 fun mayCreateCommunities(id: UUID): Boolean
 ```
 
-Unbekannte id → `false`. Implementierung in `UserQueryService`.
+Unbekannte id → `false`. Implementierung in `UserQueryService`, die auf `User.mayCreateCommunities`
+zurückgreift statt die Regel zu wiederholen.
 
 `MeResponse` bekommt `mayCreateCommunities` (effektiv, also `true` für Super-Admins).
 `UserController.me` liest die Zeile frisch statt `principal.user` zurückzugeben — womit auch der
@@ -104,13 +118,21 @@ oben notierte Profil-Bug verschwindet. Fehlt die Zeile, hat die Session ihren Us
 `StaleSessionException` → `401` im `IamExceptionHandler`. Damit greift die bestehende SPA-Mechanik
 (`setUnauthorizedHandler` → `markAnonymous` → `/login`) von selbst.
 
+Der Lesepfad ist `UserProfileService.current(userId): User`, nicht `UserQuery`. Grund ist die
+Testbarkeit: `UserControllerTest` authentifiziert per `principalFor(user(...))` mit `TEST_USER_ID`,
+für den keine DB-Zeile existiert — ein Live-Read über einen echten Bean würde alle bestehenden
+`/api/me`-Tests auf `401` schicken, und eine Zeile mit fixer id lässt sich nicht ohne Umweg
+einfügen (Spring Data JDBC fährt bei nicht-null `@Id` ein UPDATE). `UserProfileService` liegt in
+dem Test bereits als `@MockkBean` und ist auch inhaltlich der richtige Ort: `GET /api/me` und
+`PATCH /api/me` lesen und schreiben dasselbe eigene Profil.
+
 **Umbenennung:** der heutige `SuperAdminUserController` bedient `/api/super-admin/super-admins` und
 wird zu `SuperAdminRosterController` (passend zu seinem `SuperAdminRosterService`). Der Name
 `SuperAdminUserController` gilt dann der neuen Nutzerverwaltung.
 
 | Endpoint | Antwort |
 |---|---|
-| `GET /api/super-admin/users` | Liste: `userId, username, githubLogin, isSuperAdmin, mayCreateCommunities, createdAt`, sortiert nach Name |
+| `GET /api/super-admin/users` | Liste: `userId, username, githubLogin, isSuperAdmin, communityCreationAllowed, createdAt`, sortiert nach Name |
 | `GET /api/super-admin/users/{id}` | Detail: zusätzlich `githubName, displayName, email, bgColorHex, updatedAt` |
 | `PUT /api/super-admin/users/{id}/community-creation` | Body `{"allowed": true}` → `200` mit dem aktualisierten Detail |
 
@@ -157,7 +179,7 @@ Konto-Menü zurück.
 Mobile-first als Zeilenliste, nicht als breite Tabelle: Name groß, `@githubLogin` klein darunter,
 rechts Badges; die ganze Zeile ist der Link ins Detail. Sortierung nach Name.
 
-Das Badge „Erstellen erlaubt" erscheint nur bei gesetztem Flag — `false` ist die stille Mehrheit und
+Das Badge „Erstellen erlaubt" erscheint nur bei gesetztem `communityCreationAllowed` — `false` ist die stille Mehrheit und
 braucht kein Etikett. Für Super-Admins erscheint stattdessen nur „Super-Admin": das subsumiert die
 Berechtigung, und zwei Badges würden zwei unabhängige Zustände suggerieren.
 
@@ -251,10 +273,11 @@ Nach TDD, jeweils erst der fallende Test.
 - `UserQueryService.mayCreateCommunities`: Flag gesetzt → `true`; Super-Admin ohne Flag → `true`;
   keins von beidem → `false`; unbekannte id → `false`.
 - `POST /api/communities`: ohne Berechtigung `403`, mit Flag `201`, als Super-Admin `201` —
-  `UserQuery` als `@MockkBean`.
-- `GET /api/me`: der Test, der den Mechanismus festnagelt — Prinzipal trägt
-  `mayCreateCommunities=false`, die DB-Zeile `true`, die Antwort muss `true` sein. Plus: Zeile
-  fehlt → `401`.
+  `UserQuery` als `@MockkBean`. Die beiden bestehenden `POST`-Tests brauchen dafür einen Stub.
+- `GET /api/me`: der Test, der den Mechanismus festnagelt — der Prinzipal trägt
+  `communityCreationAllowed=false`, die von `UserProfileService.current` gelieferte Zeile `true`,
+  die Antwort muss `true` sein. Plus: Zeile fehlt → `401`. Die bestehenden `/api/me`-Tests brauchen
+  einen `current`-Stub.
 - `PUT /api/super-admin/users/{id}/community-creation`: als Super-Admin mit `with(csrf())` → `200`
   und gedrehtes Flag; ohne CSRF → `403`; als normaler User → `403`; unauthentifiziert → `401`;
   unbekannte id → `404`.
