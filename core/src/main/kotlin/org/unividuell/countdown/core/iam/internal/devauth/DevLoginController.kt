@@ -39,7 +39,7 @@ class DevLoginController(
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
                  <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(seed.login)}"/>
                  <button type="submit">
-                   <span class="chip" style="background:${seed.accentHex}" aria-hidden="true">${seed.emoji}</span>
+                   <span class="chip" aria-hidden="true">${seed.emoji}</span>
                    <span>${HtmlUtils.htmlEscape(user.username)}</span>
                  </button>
                </form>"""
@@ -65,7 +65,7 @@ class DevLoginController(
                    font:inherit;text-align:left;cursor:pointer}
             button:hover{background:var(--hover)}
             .chip{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
-                  font-size:15px;line-height:1}
+                  border:1px solid var(--fg);font-size:15px;line-height:1}
           </style></head>
           <body><div class="card"><h1>Test-Login</h1>$buttons</div></body></html>"""
     }

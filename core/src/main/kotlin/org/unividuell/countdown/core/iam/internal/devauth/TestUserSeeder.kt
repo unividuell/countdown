@@ -9,8 +9,8 @@ import org.unividuell.countdown.core.iam.internal.SuperAdminProperties
 import org.unividuell.countdown.core.iam.internal.UserRepository
 
 /**
- * One seeded Futurama test identity. [emoji] and [accentHex] are presentation-only — they exist so
- * the picker's twelve rows stay apart at a glance, and are never persisted.
+ * One seeded Futurama test identity. [emoji] is presentation-only — it exists so the picker's twelve
+ * rows stay apart at a glance, and is never persisted.
  */
 data class SeedUser(
     val login: String,
@@ -18,7 +18,6 @@ data class SeedUser(
     val displayName: String?,
     val githubId: Long,
     val emoji: String,
-    val accentHex: String,
 )
 
 /** Seeds fixed Futurama test users for localhost + staging. Never in prod (profile + flag). */
@@ -36,18 +35,18 @@ class TestUserSeeder(
      * duplicate beside it. A new character takes the next id counting down, never a freed one.
      */
     val seedUsers: List<SeedUser> = listOf(
-        SeedUser("Fry", null, null, -1L, "🍕", "#ea580c"),
-        SeedUser("leela", "Leela", "Turanga Leela", -2L, "👁️", "#7c3aed"),
-        SeedUser("Bender", null, null, -3L, "🤖", "#64748b"),
-        SeedUser("prof", null, "Prof Farnsworth", -4L, "🔬", "#0d9488"),
-        SeedUser("amy", null, null, -5L, "💅", "#db2777"),
-        SeedUser("hermes", null, "Hermes Conrad", -6L, "📋", "#15803d"),
-        SeedUser("zoidberg", null, "Dr. Zoidberg", -7L, "🦞", "#dc2626"),
-        SeedUser("scruffy", null, "Scruffy", -8L, "🧹", "#a16207"),
-        SeedUser("zapp", null, "Zapp Brannigan", -9L, "🎖️", "#1d4ed8"),
-        SeedUser("kif", null, "Kif Kroker", -10L, "😩", "#4d7c0f"),
-        SeedUser("nibbler", null, "Nibbler", -11L, "🐾", "#0891b2"),
-        SeedUser("mom", null, "Mom", -12L, "🏭", "#831843"),
+        SeedUser("Fry", null, null, -1L, "🍕"),
+        SeedUser("leela", "Leela", "Turanga Leela", -2L, "👁️"),
+        SeedUser("Bender", null, null, -3L, "🤖"),
+        SeedUser("prof", null, "Prof Farnsworth", -4L, "🔬"),
+        SeedUser("amy", null, null, -5L, "💅"),
+        SeedUser("hermes", null, "Hermes Conrad", -6L, "📋"),
+        SeedUser("zoidberg", null, "Dr. Zoidberg", -7L, "🦞"),
+        SeedUser("scruffy", null, "Scruffy", -8L, "🧹"),
+        SeedUser("zapp", null, "Zapp Brannigan", -9L, "🎖️"),
+        SeedUser("kif", null, "Kif Kroker", -10L, "😩"),
+        SeedUser("nibbler", null, "Nibbler", -11L, "🐾"),
+        SeedUser("mom", null, "Mom", -12L, "🏭"),
     )
 
     /** Single source of truth for accepted test logins; DevLoginController restricts `loginAs` to these. */

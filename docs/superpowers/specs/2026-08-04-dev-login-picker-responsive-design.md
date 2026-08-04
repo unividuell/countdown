@@ -43,9 +43,9 @@ content is taller than the viewport — a real risk at 12 entries on a small scr
 
 ## Seed data
 
-`TestUserSeeder`'s `Triple(login, githubName, displayName) to Long` cannot carry two more fields
-legibly, so it is replaced by a `data class SeedUser(login, githubName, displayName, githubId, emoji,
-accentHex)`. `seedLogins` stays as a derived property — `DevLoginController.loginAs` uses it as the
+`TestUserSeeder`'s `Triple(login, githubName, displayName) to Long` cannot carry another field
+legibly, so it is replaced by a `data class SeedUser(login, githubName, displayName, githubId,
+emoji)`. `seedLogins` stays as a derived property — `DevLoginController.loginAs` uses it as the
 allowlist that stops a caller assuming any registered identity by name, so that contract must not
 change shape.
 
@@ -67,9 +67,9 @@ change shape.
 Rows 1–5 are unchanged from today, including the deliberate mix of null/non-null name fields, which
 keeps `User.username`'s three-way fallback (`displayName ?: githubName ?: githubLogin`) exercised.
 
-Each row also carries an `accentHex`, used only as the emoji chip's background in the picker. Twelve
-fixed literals picked by hand for readable contrast against both the light and the dark card
-background — not derived, so there is no colour algorithm to keep in sync with anything.
+The chip has no fill. A per-row accent colour was tried first and removed: many emoji carry their own
+strong colour, and a red lobster on a red disc is less legible than the same lobster on the card. The
+chip is a thin outline in the foreground colour, so the emoji is the only thing carrying colour.
 
 ## Picker markup and CSS
 
@@ -80,12 +80,13 @@ resources directory (the backend has none), no external request.
 - Card: `width:100%`, `max-width:22rem`, padding-based sizing; `min-width` dropped.
 - Page: `min-height:100dvh` with padding and `align-items:center`, so a list taller than the viewport
   scrolls instead of being clipped.
-- Each login is a `<form>`-wrapped full-width button laid out as a row: emoji chip (circle in the
-  row's `accentHex`) then the display name, left-aligned, `min-height:44px`.
+- Each login is a `<form>`-wrapped full-width button laid out as a row: emoji chip (an unfilled circle
+  outlined in `--fg`) then the display name, left-aligned, `min-height:44px`.
 - Colours and type follow the SPA's stone palette and border radii, with a
-  `@media (prefers-color-scheme: dark)` block.
+  `@media (prefers-color-scheme: dark)` block. The chip's outline uses `--fg` rather than a literal
+  black so it stays visible on the dark card.
 - The existing escaping stays: `HtmlUtils.htmlEscape` on every interpolated user value, CSRF token
-  hidden field per form. Emoji and accent colours are literals from our own source, not user input.
+  hidden field per form. The emoji are literals from our own source, not user input.
 
 ## Testing
 
