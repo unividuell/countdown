@@ -2,7 +2,7 @@ package org.unividuell.countdown.core.iam.internal.devauth
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.security.core.context.SecurityContextHolder
@@ -27,7 +27,7 @@ class DevLoginController(
     private val seeder: TestUserSeeder,
 ) {
 
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val logger = KotlinLogging.logger {}
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
 
@@ -40,7 +40,7 @@ class DevLoginController(
             val user = byLogin[seed.login] ?: run {
                 // Dropping one button beats a broken page, but a silently absent button is the
                 // hardest kind of dev-tool bug to diagnose — so say which login went missing.
-                log.warn("no database row for seed login '{}' — omitting its button", seed.login)
+                logger.warn { "no database row for seed login '${seed.login}' — omitting its button" }
                 return@mapNotNull null
             }
             """<form method="post" action="/login/github/as">
