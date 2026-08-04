@@ -71,4 +71,14 @@ describe('community home', () => {
     const w = mountPage()
     expect(w.findComponent(RoundFallback).props('members')).toBe(null)
   })
+
+  // A failed roster never retries, so null ("not known yet") would hold the card at a placeholder
+  // forever; [] is "no winner information", which the card can still say something about.
+  it('tells the fallback there is no winner when the roster failed', async () => {
+    vi.spyOn(api, 'getRoster').mockRejectedValue(new Error('boom'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = mountPage()
+    await flushPromises()
+    expect(w.findComponent(RoundFallback).props('members')).toEqual([])
+  })
 })

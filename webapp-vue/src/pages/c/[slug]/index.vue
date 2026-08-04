@@ -8,8 +8,13 @@ import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 const { community } = useCommunityContext()
 const { members, state } = useRoster(community.value.slug)
 
-// null, not [], while loading: an empty roster would read as "nobody has scored".
-const settledMembers = computed(() => (state.value === 'ready' ? members.value : null))
+// null means "not known yet" and holds the card at a placeholder, so only 'loading' gets it. A
+// failed roster never retries, so mapping it to null would hide the card forever; [] lets the
+// event-running state say its closing line, and the error above still reports the failure.
+const settledMembers = computed(() => {
+  if (state.value === 'ready') return members.value
+  return state.value === 'failed' ? [] : null
+})
 </script>
 
 <template>
