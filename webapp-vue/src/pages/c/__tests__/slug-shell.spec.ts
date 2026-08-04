@@ -5,6 +5,8 @@ import type { CommunityResponse } from '@/api/types'
 import { activeCommunity } from '@/communities/context'
 import { _resetRouteDataState, communityRoute } from '@/communities/routeData'
 
+let childMountCount = 0
+
 vi.mock('vue-router', async () => {
   const { defineComponent, inject } = await import('vue')
   const { communityKey } = await import('@/communities/context')
@@ -12,10 +14,14 @@ vi.mock('vue-router', async () => {
     RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
     RouterView: defineComponent({
       setup() {
+        // A fresh id per instance is how the test tells "remounted" from "patched in place" —
+        // a `:key` attribute assertion would pass even if the key never changed.
+        const mountId = ++childMountCount
         const ctx = inject(communityKey)
-        return { doRefresh: () => ctx?.refresh() }
+        return { doRefresh: () => ctx?.refresh(), mountId }
       },
-      template: '<button data-test="do-refresh" @click="doRefresh()">child</button>',
+      template:
+        '<button data-test="do-refresh" :data-mount-id="mountId" @click="doRefresh()">child</button>',
     }),
   }
 })
@@ -43,6 +49,7 @@ describe('community shell', () => {
   beforeEach(() => {
     _resetRouteDataState()
     activeCommunity.value = null
+    childMountCount = 0
   })
   afterEach(() => vi.restoreAllMocks())
 
@@ -50,6 +57,14 @@ describe('community shell', () => {
     communityRoute.value = { kind: 'ready', community: community() }
     const w = await mountShell()
     expect(w.find('[data-test=do-refresh]').exists()).toBe(true)
+  })
+
+  it('wraps the routed child in the fixed content column', async () => {
+    communityRoute.value = { kind: 'ready', community: community() }
+    const w = await mountShell()
+    const column = w.find('.mx-auto.max-w-xl')
+    expect(column.exists()).toBe(true)
+    expect(column.find('[data-test=do-refresh]').exists()).toBe(true)
   })
 
   it('shows no-access without rendering children', async () => {
@@ -92,5 +107,21 @@ describe('community shell', () => {
     await mountShell()
     await flushPromises()
     expect(get).not.toHaveBeenCalled()
+  })
+
+  it('remounts the routed child when switching to a different community', async () => {
+    communityRoute.value = { kind: 'ready', community: community({ slug: 'team' }) }
+    const w = await mountShell()
+    const firstMountId = w.find('[data-test=do-refresh]').attributes('data-mount-id')
+
+    // Vue Router reuses component instances across param-only navigations to the same
+    // matched route — this is the same transition a switch-community click produces.
+    communityRoute.value = { kind: 'ready', community: community({ slug: 'other' }) }
+    await flushPromises()
+
+    const secondMountId = w.find('[data-test=do-refresh]').attributes('data-mount-id')
+    // A new instance id proves the child was torn down and rebuilt, not just patched with
+    // updated props — the previous community's data-bearing page must not linger on screen.
+    expect(secondMountId).not.toBe(firstMountId)
   })
 })

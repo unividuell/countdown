@@ -19,6 +19,17 @@ data class MemberResponse(
 )
 data class AcceptResponse(val status: String, val name: String, val slug: String)
 
+@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+data class RosterPointsResponse(val stable: Int, val live: Int?)
+
+data class RosterMemberResponse(
+    val userId: UUID,
+    val shortName: String,
+    val fullName: String,
+    val bgColorHex: String,
+    val points: RosterPointsResponse,
+)
+
 fun Community.toResponse(viewerIsAdmin: Boolean, pendingCount: Int) =
     CommunityResponse(id!!, name, slug, startsAt, startsAtTimezone, phaseTwoStartRound, viewerIsAdmin, pendingCount)
 fun Community.toSummary() = CommunitySummary(id!!, name, slug)

@@ -5,6 +5,30 @@ moving runtime npm libraries small** (Firebase was the worst offender in the
 source app and is gone). The auth/session foundation is the reference
 implementation.
 
+## Mobile-first — the audience is phones
+
+**The primary device is a mobile phone.** Design and build for the narrow viewport
+first, then widen with breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a
+desktop layout that was written first). Concretely:
+
+- **No hover-only affordances.** Anything discoverable by hovering must also be
+  reachable by tap. Hover may enhance, never carry.
+- **A horizontally scrolling strip must genuinely scroll.** `overflow-x: auto` on the
+  container only helps if the container's own content is never shrunk to fit — a flex
+  child needs `shrink-0` (or an equivalent intrinsic width) or its `scrollWidth` stays
+  equal to its `clientWidth` and there's nothing to scroll, on touch or otherwise.
+  Hiding the scrollbar (`scrollbar-width: none` /
+  `&::-webkit-scrollbar { display: none }`) is then a choice, not a default: it costs
+  mouse/trackpad users their only affordance, since a strip with no visible scrollbar
+  can't be grabbed and dragged — only reach for it once you've confirmed another
+  affordance (touch swipe) covers those users.
+- **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
+  circle is deliberately at that scale.
+- **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes
+  `overflow-y` to `auto` as well, which clips transformed children — so an element that
+  both scrolls and hosts an animation that escapes its box must not clip while the
+  animation runs.
+
 ## Stack
 
 - **Vite 8** (Rolldown-based). Note: build options are `build.rolldownOptions`, not `rollupOptions`.

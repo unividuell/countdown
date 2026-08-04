@@ -16,6 +16,7 @@ class MemberController(
     private val access: CommunityAccess,
     private val memberRepo: CommunityMemberRepository,
     private val userQuery: UserQuery,
+    private val roster: RosterService,
 ) {
     @GetMapping("/{slug}/invite")
     fun currentInvite(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): ResponseEntity<InviteResponse> {
@@ -68,6 +69,12 @@ class MemberController(
                 isAdmin = it.isAdmin,
             )
         }
+    }
+
+    @GetMapping("/{slug}/roster")
+    fun roster(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): List<RosterMemberResponse> {
+        val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug)
+        return roster.of(c.id!!, me.id)
     }
 
     @PostMapping("/{slug}/members/{userId}/approve")

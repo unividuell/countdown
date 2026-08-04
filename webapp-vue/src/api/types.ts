@@ -35,6 +35,19 @@ export interface MemberResponse {
   status: 'PENDING' | 'ACTIVE'
   isAdmin: boolean
 }
+
+export interface RosterPoints {
+  stable: number
+  /** Absent when the viewer may not see live points, or when the member has not played the round. */
+  live?: number
+}
+export interface RosterMemberResponse {
+  userId: string
+  shortName: string
+  fullName: string
+  bgColorHex: string
+  points: RosterPoints
+}
 export interface InviteResponse {
   url: string
   expiresAt: string

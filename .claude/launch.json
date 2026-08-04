@@ -6,7 +6,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd core && GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml"
+        "cd core && GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run '-Dspring-boot.run.arguments=--spring.docker.compose.file=../compose.yaml --app.stub-points.enabled=true'"
       ],
       "port": 8080
     },

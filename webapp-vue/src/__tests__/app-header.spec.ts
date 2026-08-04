@@ -130,4 +130,9 @@ describe('App main header', () => {
     expect(segment.classes()).toContain('animate-nav-shuttle')
     expect(segment.classes()).toContain('motion-reduce:animate-none')
   })
+
+  it('clips horizontally at the unpadded root, not at <main>, so the member row fly-in cannot open a page scrollbar', () => {
+    const w = mount(App, { global: { stubs } })
+    expect(w.classes()).toContain('overflow-x-clip')
+  })
 })
