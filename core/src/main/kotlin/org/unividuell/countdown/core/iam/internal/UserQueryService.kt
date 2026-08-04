@@ -15,4 +15,8 @@ class UserQueryService(private val repository: UserRepository) : UserQuery {
     @Transactional(readOnly = true)
     override fun findAllById(ids: Collection<UUID>): List<User> =
         if (ids.isEmpty()) emptyList() else repository.findAllById(ids).toList()
+
+    @Transactional(readOnly = true)
+    override fun mayCreateCommunities(id: UUID): Boolean =
+        repository.findByIdOrNull(id)?.mayCreateCommunities ?: false
 }
