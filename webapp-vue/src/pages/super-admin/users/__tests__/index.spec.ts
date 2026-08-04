@@ -37,9 +37,9 @@ describe('super-admin user list', () => {
     vi.spyOn(api, 'listUsers').mockResolvedValue([
       entry({ userId: 'u1', username: 'Plain' }),
       entry({ userId: 'u2', username: 'Cleared', communityCreationAllowed: true }),
-      // A super-admin may create communities without a stored clearance. Showing both badges
-      // would suggest two independent states, so only the super-admin badge appears.
-      entry({ userId: 'u3', username: 'Boss', isSuperAdmin: true }),
+      // Both facts set at once — this is the row that proves the badges are exclusive rather
+      // than merely that a super-admin without a clearance shows one badge.
+      entry({ userId: 'u3', username: 'Boss', isSuperAdmin: true, communityCreationAllowed: true }),
     ])
     const Page = (await import('@/pages/super-admin/users/index.vue')).default
     const w = mount(Page)
