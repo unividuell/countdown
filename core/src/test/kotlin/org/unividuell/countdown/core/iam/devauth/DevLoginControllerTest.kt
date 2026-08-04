@@ -2,6 +2,8 @@ package org.unividuell.countdown.core.iam.devauth
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.ServletException
@@ -109,5 +111,19 @@ class DevLoginControllerTest(
             status { is3xxRedirection() }
             redirectedUrl("/")
         }
+    }
+
+    @Test
+    fun `picker drops the button of a seed user whose row is gone, and keeps the rest`() {
+        // @Transactional rolls this back; the row is restored for every other test.
+        users.delete(users.findByGithubLogin("zoidberg").shouldNotBeNull())
+
+        val html = mockMvc.get("/login/github").andReturn().response.contentAsString
+
+        html shouldNotContain """name="login" value="zoidberg""""
+        // The point of dropping just the one button: the page still works. Without this the test
+        // would also pass on a picker that rendered nothing at all.
+        html shouldContain """name="login" value="Fry""""
+        html shouldContain """name="login" value="mom""""
     }
 }

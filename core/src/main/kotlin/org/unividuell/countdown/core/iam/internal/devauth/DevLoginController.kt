@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.iam.internal.devauth
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.security.core.context.SecurityContextHolder
@@ -26,6 +27,8 @@ class DevLoginController(
     private val seeder: TestUserSeeder,
 ) {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     private val securityContextRepository = HttpSessionSecurityContextRepository()
 
     @GetMapping("/login/github", produces = ["text/html;charset=UTF-8"])
@@ -34,7 +37,12 @@ class DevLoginController(
         val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
         val byLogin = users.findByGithubLoginIn(seeder.seedLogins).associateBy { it.githubLogin }
         val buttons = seeder.seedUsers.mapNotNull { seed ->
-            val user = byLogin[seed.login] ?: return@mapNotNull null
+            val user = byLogin[seed.login] ?: run {
+                // Dropping one button beats a broken page, but a silently absent button is the
+                // hardest kind of dev-tool bug to diagnose — so say which login went missing.
+                log.warn("no database row for seed login '{}' — omitting its button", seed.login)
+                return@mapNotNull null
+            }
             """<form method="post" action="/login/github/as">
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
                  <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(seed.login)}"/>
