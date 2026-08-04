@@ -25,20 +25,11 @@ const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
     class="flex aspect-square w-full flex-col items-center justify-between rounded-xl bg-stone-900 px-2 py-4"
   >
     <div class="flex flex-1 flex-col items-center justify-center gap-2.5">
-      <FlipDotBoard
-        data-test="countdown-hero"
-        :class="heroWidth"
-        :text="days"
-        :label="heroLabel"
-      />
+      <FlipDotBoard data-test="countdown-hero" :class="heroWidth" :text="days" :label="heroLabel" />
       <p class="font-mono text-[11px] tracking-[0.14em] text-stone-500">TAGE</p>
     </div>
     <div class="w-[94%]">
-      <FlipDotBoard
-        data-test="countdown-strip"
-        :text="time"
-        :label="`Verbleibende Zeit ${time}`"
-      />
+      <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
       <div class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500">
         <span class="absolute left-[11.5%] -translate-x-1/2">STD</span>
         <span class="absolute left-1/2 -translate-x-1/2">MIN</span>

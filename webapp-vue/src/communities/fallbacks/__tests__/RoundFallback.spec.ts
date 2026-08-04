@@ -41,10 +41,7 @@ function member(fullName: string, stable: number): RosterMemberResponse {
   }
 }
 
-function mountFallback(
-  startsAt: string | null,
-  members: RosterMemberResponse[] | null = [],
-) {
+function mountFallback(startsAt: string | null, members: RosterMemberResponse[] | null = []) {
   return mount(RoundFallback, { props: { community: community(startsAt), members } })
 }
 
@@ -87,9 +84,7 @@ describe('RoundFallback', () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
     const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12), member('leela', 9)])
     await flushPromises()
-    expect(w.find('[data-test="fallback-winner"]').text()).toContain(
-      'Herzlichen Glückwunsch, fry!',
-    )
+    expect(w.find('[data-test="fallback-winner"]').text()).toContain('Herzlichen Glückwunsch, fry!')
     expect(w.text()).toContain('Und jetzt viel Spaß zusammen!')
   })
 

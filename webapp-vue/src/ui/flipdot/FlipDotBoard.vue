@@ -8,9 +8,7 @@ const props = defineProps<{ text: string; label: string }>()
 const svg = useTemplateRef<SVGSVGElement>('svg')
 const bm = computed(() => bitmap(props.text))
 const gap = PITCH - 2 * RADIUS
-const viewBox = computed(
-  () => `0 0 ${bm.value.cols * PITCH - gap} ${bm.value.rows * PITCH - gap}`,
-)
+const viewBox = computed(() => `0 0 ${bm.value.cols * PITCH - gap} ${bm.value.rows * PITCH - gap}`)
 const dots = computed(() =>
   bm.value.on.map((on, i) => ({
     on,

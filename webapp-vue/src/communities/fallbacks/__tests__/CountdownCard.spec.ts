@@ -10,7 +10,9 @@ function mountCard(days: string) {
 
 describe('CountdownCard', () => {
   it('is square', () => {
-    expect(mountCard('58').find('[data-test="countdown-card"]').classes()).toContain('aspect-square')
+    expect(mountCard('58').find('[data-test="countdown-card"]').classes()).toContain(
+      'aspect-square',
+    )
   })
 
   it('renders the day count as the hero board', () => {
