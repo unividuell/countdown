@@ -27,6 +27,9 @@ onMounted(async () => {
 
 <template>
   <section class="mx-auto max-w-4xl px-4 py-8">
+    <RouterLink to="/super-admin" class="mb-4 inline-block text-sm text-blue-700 hover:underline">
+      ← Super-Admin
+    </RouterLink>
     <h1 class="mb-4 text-xl font-semibold">Alle Spielgemeinschaften</h1>
     <p v-if="state === 'loading'" class="text-sm text-neutral-500">Lade…</p>
     <p v-else-if="state === 'error'" class="text-sm text-red-600">

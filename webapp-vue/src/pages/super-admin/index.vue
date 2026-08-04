@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { DateTime } from 'luxon'
 import { listSuperAdmins } from '@/api/superAdmin'
 import type { SuperAdminUser } from '@/api/types'
+import IconChevron from '~icons/lucide/chevron-right'
 
 const rows = ref<SuperAdminUser[]>([])
 const state = ref<'loading' | 'ready' | 'error'>('loading')
@@ -32,14 +33,37 @@ onMounted(async () => {
 
 <template>
   <section class="mx-auto max-w-3xl px-4 py-8">
-    <h1 class="mb-4 text-xl font-semibold">Übersicht</h1>
+    <h1 class="mb-4 text-xl font-semibold">Super-Admin</h1>
+
+    <ul class="mb-8 divide-y rounded border">
+      <li>
+        <RouterLink
+          to="/super-admin/users"
+          data-test="nav-entry"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+        >
+          Nutzer
+          <IconChevron class="ml-auto size-4 text-neutral-400" />
+        </RouterLink>
+      </li>
+      <li>
+        <RouterLink
+          to="/super-admin/communities"
+          data-test="nav-entry"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+        >
+          Spielgemeinschaften
+          <IconChevron class="ml-auto size-4 text-neutral-400" />
+        </RouterLink>
+      </li>
+    </ul>
 
     <h2 class="mb-2 font-medium">Super-Admins</h2>
     <p v-if="state === 'loading'" class="text-sm text-neutral-500">Lade…</p>
     <p v-else-if="state === 'error'" class="text-sm text-red-600">
       Die Super-Admins konnten nicht geladen werden.
     </p>
-    <table v-else class="mb-6 w-full text-left text-sm">
+    <table v-else class="w-full text-left text-sm">
       <thead>
         <tr class="border-b text-neutral-500">
           <th class="py-1 pr-4 font-medium">GitHub</th>
@@ -59,12 +83,5 @@ onMounted(async () => {
         </tr>
       </tbody>
     </table>
-
-    <RouterLink
-      to="/super-admin/communities"
-      class="rounded border px-3 py-1.5 hover:bg-neutral-200"
-    >
-      Spielgemeinschaften
-    </RouterLink>
   </section>
 </template>
