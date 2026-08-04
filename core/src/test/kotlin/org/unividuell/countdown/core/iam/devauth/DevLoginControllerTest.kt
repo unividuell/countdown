@@ -35,8 +35,10 @@ class DevLoginControllerTest(
         mockMvc.get("/login/github").andExpect {
             status { isOk() }
             content { contentTypeCompatibleWith("text/html") }
+            content { contentType("text/html;charset=UTF-8") }
             content { string(containsString("leela")) }
             content { string(containsString("Turanga Leela")) }
+            content { string(containsString("🦞")) }
         }
     }
 
