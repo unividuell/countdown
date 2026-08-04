@@ -17,6 +17,14 @@ the production login flow locally (see "Real GitHub login" below).
    ```
    The variable is bound to the `app.super-admin-github-logins` property; under this exact
    name it is wired through `application.yaml`.
+   Optionally give members invented-but-stable game points, so the ranking row on a community
+   home shows a real order instead of all zeros:
+   ```bash
+   cd core && ./mvnw spring-boot:run -Dspring-boot.run.arguments="--app.stub-points.enabled=true"
+   ```
+   It is off by default and set nowhere but `application-staging.yaml` — deliberately, so no
+   production config file has to mention stubbing at all. `.claude/launch.json`'s `backend`
+   configuration passes it for you.
 3. Log in at `http://localhost:8080/login/github` — a picker offers the seeded Futurama
    users (`Fry`, `leela`, `Bender`, `prof`, `amy`). Afterwards `GET /api/me` returns the
    provisioned user (or `401` when not logged in).

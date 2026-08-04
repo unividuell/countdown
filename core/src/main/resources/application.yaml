@@ -37,8 +37,8 @@ app:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
     enabled: true
-  stub-points:
-    # Invented-but-stable game points, so the ranking row can be judged before any game exists.
-    # Deliberately a separate flag from app.test-auth: seeded logins and invented points are
-    # independently switchable.
-    enabled: true
+  # app.stub-points.enabled is deliberately absent here. MemberPointsConfiguration defaults it to
+  # false, so invented game points are off unless an environment asks for them — staging does, and
+  # a local run can via --app.stub-points.enabled=true (see core/README.md). Setting it true here
+  # would make it true in production too, which is the only reason production ever had to override
+  # it back to false.

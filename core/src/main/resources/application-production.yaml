@@ -28,5 +28,3 @@ server:
 app:
   test-auth:
     enabled: false
-  stub-points:
-    enabled: false
