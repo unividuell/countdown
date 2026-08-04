@@ -26,7 +26,8 @@ the production login flow locally (see "Real GitHub login" below).
    production config file has to mention stubbing at all. `.claude/launch.json`'s `backend`
    configuration passes it for you.
 3. Log in at `http://localhost:8080/login/github` — a picker offers the seeded Futurama
-   users (`Fry`, `leela`, `Bender`, `prof`, `amy`). Afterwards `GET /api/me` returns the
+   users (`Fry`, `leela`, `Bender`, `prof`, `amy`, `hermes`, `zoidberg`, `scruffy`, `zapp`,
+   `kif`, `nibbler`, `mom`). Afterwards `GET /api/me` returns the
    provisioned user (or `401` when not logged in).
 
 When developing against the `webapp-vue` SPA (the normal setup), start the SPA too and use

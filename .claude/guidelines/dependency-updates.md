@@ -55,8 +55,8 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
 - **Do not** pass `-DprocessDependencyManagement=true` and act on the output: it lists the
   entire Spring Boot BOM (Jackson, Hikari, Netty, …). Those are the parent's business — the
   BOM is the single source of truth. **Only** the versions written literally in our `pom.xml`
-  are ours: the parent, `kotlin.version`, `spring-modulith.version`, and the four test deps
-  (`kotest`, `mockk`, `springmockk`).
+  are ours: the parent, `kotlin.version`, `spring-modulith.version`, `kotlin-logging.version`,
+  and the four test deps (`kotest`, `mockk`, `springmockk`).
 - `search.maven.org`'s solr index **lags badly** (it reported Boot 3.5.3 as latest while 4.1.0
   was long out). Trust `versions-maven-plugin` or
   `repo.maven.apache.org/maven2/<path>/maven-metadata.xml`, never the search API.

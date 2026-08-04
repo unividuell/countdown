@@ -148,3 +148,14 @@ fun findSuperAdmins(): List<User>
 
 Second trap in the same file: `@Query("… IN (:logins)")` renders `IN ()` for an empty collection,
 which is a SQL syntax error. Guard at the call site rather than in the query.
+
+## Derived `findBy…In` queries carry no ordering
+
+A derived `findByXIn(values: Collection<...>)` has no `ORDER BY` — Postgres is free to return rows
+in any order, and that order can change between calls even with unchanged data. Anything
+user-visible that must render in a stable, meaningful order (e.g. a fixed display order, not
+alphabetical) needs to be sorted **in code**, against an authoritative in-code list, after the
+query returns — not assumed from the query result. `DevLoginController` iterates `seedUsers` (the
+in-code, declared order) and looks each one up in a map built from
+`findByGithubLoginIn(seeder.seedLogins)`, rather than iterating the query result directly, for
+exactly this reason.

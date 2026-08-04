@@ -2,9 +2,9 @@ package org.unividuell.countdown.core.iam.internal.devauth
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
-import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository
@@ -27,25 +27,55 @@ class DevLoginController(
     private val seeder: TestUserSeeder,
 ) {
 
+    private val logger = KotlinLogging.logger {}
+
     private val securityContextRepository = HttpSessionSecurityContextRepository()
 
-    @GetMapping("/login/github", produces = [MediaType.TEXT_HTML_VALUE])
+    @GetMapping("/login/github", produces = ["text/html;charset=UTF-8"])
     @ResponseBody
     fun picker(request: HttpServletRequest): String {
         val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
-        val buttons = users.findByGithubLoginIn(seeder.seedLogins).joinToString("\n") { u ->
-            val label = HtmlUtils.htmlEscape(u.username)
+        val byLogin = users.findByGithubLoginIn(seeder.seedLogins).associateBy { it.githubLogin }
+        val buttons = seeder.seedUsers.mapNotNull { seed ->
+            val user = byLogin[seed.login] ?: run {
+                // Dropping one button beats a broken page, but a silently absent button is the
+                // hardest kind of dev-tool bug to diagnose — so say which login went missing.
+                logger.warn { "no database row for seed login '${seed.login}' — omitting its button" }
+                return@mapNotNull null
+            }
             """<form method="post" action="/login/github/as">
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
-                 <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(u.githubLogin)}"/>
-                 <button type="submit">$label</button>
+                 <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(seed.login)}"/>
+                 <button type="submit">
+                   <span class="chip" aria-hidden="true">${seed.emoji}</span>
+                   <span>${HtmlUtils.htmlEscape(user.username)}</span>
+                 </button>
                </form>"""
-        }
-        return """<!doctype html><html><head><meta charset="utf-8"><title>Test login</title>
-          <style>body{font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0}
-          .card{border:1px solid #ddd;border-radius:8px;padding:24px;min-width:260px;text-align:center}
-          h1{font-size:1rem;margin:0 0 16px} form{margin:6px 0} button{width:100%;padding:8px;cursor:pointer}</style>
-          </head><body><div class="card"><h1>Test-Login (nicht prod)</h1>$buttons</div></body></html>"""
+        }.joinToString("\n")
+        return """<!doctype html><html lang="de"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Test-Login</title>
+          <style>
+            :root{color-scheme:light dark;--bg:#fafaf9;--card:#fff;--border:#e7e5e4;--fg:#1c1917;--hover:#f5f5f4}
+            @media (prefers-color-scheme:dark){
+              :root{--bg:#1c1917;--card:#292524;--border:#44403c;--fg:#fafaf9;--hover:#44403c}
+            }
+            *{box-sizing:border-box}
+            body{margin:0;padding:1.5rem 1rem;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+                 font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+            .card{width:100%;max-width:22rem;background:var(--card);border:1px solid var(--border);
+                  border-radius:12px;padding:1.25rem}
+            h1{font-size:1.125rem;font-weight:600;margin:0 0 1rem}
+            form{margin:0 0 .5rem}
+            form:last-of-type{margin-bottom:0}
+            button{display:flex;align-items:center;gap:.75rem;width:100%;min-height:44px;padding:.5rem .75rem;
+                   border:1px solid var(--border);border-radius:8px;background:transparent;color:inherit;
+                   font:inherit;text-align:left;cursor:pointer}
+            button:hover{background:var(--hover)}
+            .chip{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+                  background:#e7e5e4;font-size:15px;line-height:1}
+          </style></head>
+          <body><div class="card"><h1>Test-Login</h1>$buttons</div></body></html>"""
     }
 
     @PostMapping("/login/github/as")
