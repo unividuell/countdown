@@ -11,8 +11,9 @@ const props = defineProps<{
   members: readonly RosterMemberResponse[] | null
 }>()
 
-// A null slug keeps useCountdown from firing: without a startsAt there is nothing to count.
-const slug = computed(() => (props.community.startsAt ? props.community.slug : null))
+// A null slug keeps useCountdown from firing: without a startsAt there is nothing to count. Tested
+// against null exactly as the template branch below is, so no third case can slip between them.
+const slug = computed(() => (props.community.startsAt === null ? null : props.community.slug))
 const { view } = useCountdown(slug)
 
 const chip = (i: number) => view.value.chips[i]?.value ?? '00'

@@ -15,7 +15,10 @@ const heroWidth = computed(() => {
   if (props.days.length === 3) return 'w-[92%]'
   return 'w-full'
 })
-const heroLabel = computed(() => `${Number(props.days)} Tage bis zum Start`)
+const heroLabel = computed(() => {
+  const n = Number(props.days)
+  return `${n} ${n === 1 ? 'Tag' : 'Tage'} bis zum Start`
+})
 const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
 </script>
 

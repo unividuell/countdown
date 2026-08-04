@@ -32,6 +32,15 @@ describe('CountdownCard', () => {
     )
   })
 
+  it('uses the German singular on the last full day', () => {
+    expect(mountCard('01').find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
+      '1 Tag bis zum Start',
+    )
+    expect(mountCard('00').find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
+      '0 Tage bis zum Start',
+    )
+  })
+
   it('widens the hero for a three-digit day count instead of overflowing', () => {
     expect(mountCard('58').find('[data-test="countdown-hero"]').classes()).toContain('w-[72%]')
     expect(mountCard('128').find('[data-test="countdown-hero"]').classes()).toContain('w-[92%]')
