@@ -51,6 +51,14 @@ describe('FlipDotBoard', () => {
     expect(() => mount(FlipDotBoard, { props: { text: '00', label: 'x' } })).not.toThrow()
   })
 
+  it('flips without a Web Animations API', async () => {
+    const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
+    await expect(w.setProps({ text: '01' })).resolves.toBeUndefined()
+    await nextTick()
+    const fills = w.findAll('circle').map((c) => c.attributes('fill'))
+    expect(fills.filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
+  })
+
   it('animates exactly the dots that changed', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
