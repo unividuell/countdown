@@ -113,7 +113,7 @@ das es nicht gibt.
 - Tafel: `bg-stone-900` (identisch mit dem App-Header), `rounded-xl`, `aspect-square`, volle Breite
   der `max-w-xl`-Spalte
 - Punkt aus: `stone-800`, Punkt an: `stone-50`
-- Labels: `font-mono`, 11 px, `tracking-widest`, `text-stone-500`
+- Labels: `font-mono`, 11 px, `tracking-[0.14em]`, `text-stone-500`
 
 ### Geometrie
 
@@ -124,8 +124,12 @@ DOM-Knoten pro Punkt statt eines Div-Baums.
 Rastereinheiten: Zellabstand 4, Punktdurchmesser 3 (also 1 Einheit Luft). Glyphen sind 5 × 7 Punkte
 mit 1 Spalte Zeichenabstand, also `spalten = zeichen * 6 - 1`.
 
-Alle Prozentangaben beziehen sich auf die **Außenbreite der Card**; die Boards haben kein eigenes
-horizontales Padding, die Luft zum Rand entsteht allein aus diesen Anteilen.
+Alle Prozentangaben beziehen sich auf die **Außenbreite der Card**; die Luft zum Rand entsteht
+allein aus diesen Anteilen. Damit das auch stimmt, trägt die Card **kein horizontales Padding**
+(nur vertikales) — sonst wäre der Prozentsatz einer vom Padding verkleinerten Content-Box —, und
+der Block um die Hero-Tafel ist ausdrücklich `w-full`: in der `items-center`-Spalte wäre er sonst
+shrink-to-fit und würde seine Breite vom einzigen breiten Kind nehmen, einem `<svg>` ohne
+`width`-Attribut, das genau 300 px beiträgt. Der Hero wäre dann auf jedem Viewport 216 px breit.
 
 **Hero (Tage).** Die Tageszahl wird auf **mindestens zwei Stellen genullt** — der letzte Tag zeigt
 `00`, nicht `0`. Damit gibt es nur zwei reguläre Fälle. Die Breite der Hero-Tafel ist ein fester

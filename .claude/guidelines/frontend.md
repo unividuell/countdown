@@ -36,6 +36,20 @@ desktop layout that was written first). Concretely:
   builds the scroll frame — after the `nextTick` microtask. Do the same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader), and reset on **every** settle
   path, `prefers-reduced-motion` included.
+- **A percentage width only means what you think inside a parent that has a width.** In a flex
+  column with `items-center`, a child is cross-axis **shrink-to-fit**: its width comes from its own
+  max-content size, so a `w-[72%]` grandchild resolves against *that*, not against the card. And a
+  widthless inline `<svg viewBox="…">` contributes exactly **300px** — the CSS default object width
+  for a replaced element with no intrinsic size. Measured in `CountdownCard.vue` before the fix, at
+  a 375px viewport and on desktop: card outer 343 / 576, the hero's wrapper **300 / 300**, so the
+  hero was **216px on every viewport** while the `w-[94%]` strip below it grew to 307 / 526 — on
+  desktop the "hero" was less than half the width of the line beneath it, hierarchy inverted. Two
+  fixes, both needed: give the wrapper `w-full` so it stretches instead of shrink-wrapping the svg,
+  and drop the card's horizontal padding so a percentage of the content box *is* a percentage of the
+  outer width the design names. Afterwards: 343 / **247** / 322 and 576 / **415** / 541. Any future
+  SVG-in-a-card hits this, and it is invisible in tests — happy-dom computes no CSS, so a spec can
+  only assert the structural proxies (the wrapper carries `w-full`, the card carries no `px-*`) and
+  the real check is a browser measurement.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes
   `overflow-y` to `auto` as well, which clips transformed children — so an element that
   both scrolls and hosts an animation that escapes its box must not clip while the
@@ -167,8 +181,10 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **happy-dom has no Web Animations API.** Measured on happy-dom 20.11:
   `typeof Element.prototype.animate === 'undefined'` (while `window.matchMedia` *does* exist and
   reports `matches: false` for every query). So any component that calls `el.animate(...)` must
-  check the capability — `typeof el.animate !== 'function'` — or every mount throws in tests, and
-  the check has to leave the resting appearance correct on its own (bind the final colour/position
+  check the capability — `typeof el.animate !== 'function'` — or **any code path that reaches
+  `el.animate(...)` throws** in tests. Note which path that is: `FlipDotBoard` animates only inside
+  its watcher, so it is the *update* that throws, not the mount — a mount-only test stays green and
+  hides it. The check has to leave the resting appearance correct on its own (bind the final colour/position
   declaratively; let the animation only cover the transition). A test that wants to *observe* the
   animation installs it itself:
   `Object.defineProperty(Element.prototype, 'animate', { value: vi.fn(), configurable: true, writable: true })`
@@ -232,6 +248,18 @@ KT/TS parity test is needed because no logic is duplicated. Decompose: pure func
 without mounting, like `resolveLanding`) + a thin composable + a thin component. Guard async loads
 with a generation counter (stale-response) and a try/catch (a failed fetch degrades the widget to
 hidden, never an unhandled rejection).
+
+**`state: 'idle'` conflates "not loaded yet" with "load failed" — every consumer must decide what
+that means for its own surface.** `computeView` returns `'idle'` whenever `round` is null, and a
+swallowed fetch error leaves `round` null, so the two are indistinguishable downstream. And the
+boundary-driven refetch cannot recover from it: `boundaryAction(null, …)` answers `'none'`, so a
+failed *first* load used to mean the composable never fetched again for the lifetime of the mount.
+The two consumers read the same `'idle'` very differently — `CountdownDisplay` (header) renders
+nothing, which is a fine degradation, while `RoundFallback`'s card is the page's most prominent slot
+and showed a permanently blank square. `tick()` therefore retries every `FAILED_LOAD_RETRY_MS`
+(10 s) until a load has succeeded, gated on an explicit "loaded" flag rather than on `round === null`
+— the backend legitimately answers `round: null` for a community without a `startsAt`, and polling
+that would be a request every 10 s per open page for nothing.
 
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
 the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
