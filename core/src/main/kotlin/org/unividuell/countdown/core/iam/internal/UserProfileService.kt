@@ -32,4 +32,14 @@ class UserProfileService(private val repository: UserRepository) {
             user.copy(displayName = displayName, bgColorHex = normalizedColor, updatedAt = Instant.now())
         )
     }
+
+    /**
+     * The caller's own row, read fresh. `GET /api/me` must not answer from the session principal:
+     * it is JDK-serialized at login and never refreshed, so both a granted clearance and an
+     * updated display name would be stale until the next sign-in.
+     */
+    @Transactional(readOnly = true)
+    fun current(userId: UUID): User =
+        repository.findByIdOrNull(userId)
+            ?: throw StaleSessionException("user $userId from the session no longer exists")
 }

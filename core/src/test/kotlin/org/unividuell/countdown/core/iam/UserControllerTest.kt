@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.principalFor
 
@@ -29,9 +30,14 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     private val uid = TEST_USER_ID
 
-    private fun user(isSuperAdmin: Boolean = false, displayName: String? = null) = User(
+    private fun user(
+        isSuperAdmin: Boolean = false,
+        displayName: String? = null,
+        communityCreationAllowed: Boolean = false,
+    ) = User(
         id = uid, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",
         email = "cat@example.com", displayName = displayName, isSuperAdmin = isSuperAdmin,
+        communityCreationAllowed = communityCreationAllowed,
     )
 
     @Test
@@ -43,6 +49,8 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `GET me returns the current user with computed username`() {
+        every { profileService.current(uid) } returns user(displayName = "Mr. Custom")
+
         mockMvc.get("/api/me") {
             with(principalFor(user(displayName = "Mr. Custom")))
         }.andExpect {
@@ -56,12 +64,47 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
+        every { profileService.current(uid) } returns user()
+
         mockMvc.get("/api/me") {
             with(principalFor(user()))
         }.andExpect {
             status { isOk() }
             cookie { exists("XSRF-TOKEN") }
         }
+    }
+
+    @Test
+    fun `GET me reports the clearance from the row, not from the session principal`() {
+        // The principal was serialized into the session without a clearance; the row has one.
+        every { profileService.current(uid) } returns user(communityCreationAllowed = true)
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(communityCreationAllowed = false)))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.mayCreateCommunities") { value(true) }
+        }
+    }
+
+    @Test
+    fun `GET me reports a super-admin as allowed to create communities`() {
+        every { profileService.current(uid) } returns user(isSuperAdmin = true)
+
+        mockMvc.get("/api/me") { with(principalFor(user(isSuperAdmin = true))) }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.mayCreateCommunities") { value(true) }
+            }
+    }
+
+    @Test
+    fun `GET me returns 401 when the session outlived its user row`() {
+        every { profileService.current(uid) } throws
+                StaleSessionException("user $uid from the session no longer exists")
+
+        mockMvc.get("/api/me") { with(principalFor(user())) }
+            .andExpect { status { isUnauthorized() } }
     }
 
     @Test

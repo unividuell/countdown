@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
@@ -77,5 +78,13 @@ class UserProfileServiceTest(
         shouldThrow<IllegalArgumentException> {
             service.update(saved.id!!, displayName = null, bgColorHex = "")
         }
+    }
+
+    @Test
+    fun `current returns the stored row and rejects a vanished user`() {
+        val saved = repository.save(User(githubId = 909L, githubLogin = "octocat"))
+
+        service.current(saved.id!!).githubLogin shouldBe "octocat"
+        shouldThrow<StaleSessionException> { service.current(UUID.randomUUID()) }
     }
 }
