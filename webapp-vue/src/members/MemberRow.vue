@@ -68,10 +68,10 @@ function paint(): void {
 function finish(): void {
   swarm = null
   for (const el of items) el.style.transform = ''
-  // Only now may the row go `overflow-x: auto` — mid-flight it's `overflow-x: clip` instead (the
-  // row's own ~372px natural width for nine members would otherwise overflow the document),
-  // paired with `overflow-y: visible` since `clip`, unlike `visible`, isn't coerced to `auto` and
-  // so won't cut the flying circles off at the ~62px band.
+  // Only now may the row go `overflow-x: auto` — it computes `overflow-y` to `auto` too, which
+  // would cut flying circles off at the ~72px band. Mid-flight the row must not clip on either
+  // axis at all: the circles travel far outside it, across the whole viewport. Horizontal
+  // containment during the flight lives on the app root instead (see App.vue).
   settled.value = true
 }
 
@@ -136,7 +136,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     ref="row"
     data-test="row"
     class="flex w-full"
-    :class="settled ? 'overflow-x-auto' : 'overflow-x-clip overflow-y-visible'"
+    :class="settled ? 'overflow-x-auto' : 'overflow-visible'"
     style="visibility: hidden"
   >
     <div class="flex shrink-0 -space-x-2 p-0.5">

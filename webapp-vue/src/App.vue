@@ -26,7 +26,11 @@ const yearSuffix = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-neutral-100 text-neutral-900">
+  <div class="flex min-h-screen flex-col overflow-x-clip bg-neutral-100 text-neutral-900">
+    <!-- The member row's fly-in travels the full viewport, and its own resting width can exceed
+         it (many members on a narrow phone). Clipping horizontally here — the unpadded root,
+         not `main` — is what keeps the page from gaining a scrollbar mid-animation without
+         confining the animation to the content column. -->
     <div class="relative">
       <header class="flex items-center justify-between gap-4 bg-stone-900 px-4 py-3 text-stone-50">
         <div class="flex items-center gap-2">

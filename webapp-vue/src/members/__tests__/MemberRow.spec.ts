@@ -89,17 +89,16 @@ describe('MemberRow', () => {
     expect(w.find('[data-test="row"]').attributes('style') ?? '').toContain('visible')
   })
 
-  it('clips horizontally but stays visible vertically while flying, then goes auto once settled', async () => {
-    // Asserted via classes rather than computed style: happy-dom does not resolve the CSS
-    // Overflow 3 axis-coercion rules (that `clip` paired with `visible` is exempt, unlike
-    // `visible` paired with `hidden`/`scroll`/`auto`), so a getComputedStyle check here would
-    // not actually pin the behaviour.
+  it('does not clip while flying, then goes auto once settled', async () => {
+    // The row itself must never clip mid-flight — circles travel far outside it, across the
+    // whole viewport. Horizontal containment during the flight lives on the app root instead
+    // (see App.vue), not here.
     reduceMotion(false)
     const flying = mount(MemberRow, { props: { members: [member()] } })
     const flyingClasses = flying.find('[data-test="row"]').classes()
-    expect(flyingClasses).toContain('overflow-x-clip')
-    expect(flyingClasses).toContain('overflow-y-visible')
-    expect(flyingClasses).not.toContain('overflow-visible')
+    expect(flyingClasses).toContain('overflow-visible')
+    expect(flyingClasses).not.toContain('overflow-x-clip')
+    expect(flyingClasses).not.toContain('overflow-y-visible')
     flying.unmount()
 
     // The reduced-motion path settles in `onMounted` itself; still a tick away from the DOM
