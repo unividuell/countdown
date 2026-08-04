@@ -157,6 +157,35 @@ describe('CommunityMenu', () => {
     const w = await open(admin)
 
     expect(w.find('[data-test=create-community]').exists()).toBe(false)
+    // Another community still follows the admin block, so the divider separates something.
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(true)
+  })
+
+  it('drops the admin divider when nothing follows it', async () => {
+    // An admin of their only community, without the clearance — the state every current
+    // non-super-admin owner is in, since nobody was grandfathered. The divider closes the admin
+    // block, so with neither a switch entry nor the create link it would be a floating rule.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: '1', name: 'Team Süd', slug: 'team' },
+    ])
+    await signIn(false)
+    const w = await open(admin)
+
+    expect(w.find('[data-test=switch-community]').exists()).toBe(false)
+    expect(w.find('[data-test=create-community]').exists()).toBe(false)
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(false)
+  })
+
+  it('keeps the admin divider when only the create link follows it', async () => {
+    // Pins the other half of the gate: with `others` empty, the clearance alone must keep it.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: '1', name: 'Team Süd', slug: 'team' },
+    ])
+    await signIn(true)
+    const w = await open(admin)
+
+    expect(w.find('[data-test=create-community]').exists()).toBe(true)
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(true)
   })
 
   it('renders no menu at all when nothing would be left in it', async () => {

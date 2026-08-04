@@ -72,7 +72,11 @@ function go(c: CommunitySummary): void {
       <RouterLink :to="communityPath(community.slug, 'settings')" :class="ENTRY"
         >Einstellungen</RouterLink
       >
-      <div class="my-1 border-t border-neutral-200" />
+      <div
+        v-if="others.length > 0 || mayCreate"
+        data-test="admin-divider"
+        class="my-1 border-t border-neutral-200"
+      />
     </template>
 
     <button
