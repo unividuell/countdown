@@ -65,7 +65,7 @@ class DevLoginController(
                    font:inherit;text-align:left;cursor:pointer}
             button:hover{background:var(--hover)}
             .chip{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
-                  border:1px solid var(--fg);font-size:15px;line-height:1}
+                  background:#e7e5e4;font-size:15px;line-height:1}
           </style></head>
           <body><div class="card"><h1>Test-Login</h1>$buttons</div></body></html>"""
     }
