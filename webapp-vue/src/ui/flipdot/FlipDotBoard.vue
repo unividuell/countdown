@@ -66,7 +66,7 @@ watch(
   <svg
     ref="svg"
     :viewBox="viewBox"
-    class="block w-full"
+    class="block"
     preserveAspectRatio="xMidYMid meet"
     role="img"
     :aria-label="label"

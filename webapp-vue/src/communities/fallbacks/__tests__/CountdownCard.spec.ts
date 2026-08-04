@@ -36,6 +36,11 @@ describe('CountdownCard', () => {
     expect(mountCard('1000').find('[data-test="countdown-hero"]').classes()).toContain('w-full')
   })
 
+  it('does not let a fallthrough w-full outrank the digit-count width', () => {
+    expect(mountCard('58').find('[data-test="countdown-hero"]').classes()).not.toContain('w-full')
+    expect(mountCard('128').find('[data-test="countdown-hero"]').classes()).not.toContain('w-full')
+  })
+
   it('labels the three time groups', () => {
     const text = mountCard('58').text()
     expect(text).toContain('TAGE')
