@@ -13,7 +13,7 @@ class CommunityExceptionHandler {
     @ExceptionHandler(CommunityAccessDeniedException::class, InviteNotFoundException::class)
     fun notFound(e: RuntimeException) = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
-    @ExceptionHandler(NotAdminException::class)
+    @ExceptionHandler(NotAdminException::class, CommunityCreationNotAllowedException::class)
     fun forbidden(e: RuntimeException) = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
 
     @ExceptionHandler(InviteExpiredException::class)
