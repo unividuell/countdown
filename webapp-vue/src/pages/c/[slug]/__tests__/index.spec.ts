@@ -5,6 +5,7 @@ import * as api from '@/api/communities'
 import { communityKey } from '@/communities/context'
 import type { CommunityResponse } from '@/api/types'
 import Page from '@/pages/c/[slug]/index.vue'
+import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 
 const community: CommunityResponse = {
   id: 'c1',
@@ -56,5 +57,18 @@ describe('community home', () => {
     const w = mountPage()
     await flushPromises()
     expect(w.find('[data-test="roster-error"]').text()).toContain('konnten nicht')
+  })
+
+  it('fills the space below the row with the fallback content', async () => {
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    await flushPromises()
+    expect(w.find('[data-test="fallback-no-date"]').text()).toContain('Noch kein Termin')
+  })
+
+  it('withholds the roster from the fallback until it has loaded', () => {
+    vi.spyOn(api, 'getRoster').mockReturnValue(new Promise(() => {}))
+    const w = mountPage()
+    expect(w.findComponent(RoundFallback).props('members')).toBe(null)
   })
 })

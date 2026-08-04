@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
 import MemberRow from '@/members/MemberRow.vue'
+import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 
 const { community } = useCommunityContext()
 const { members, state } = useRoster(community.value.slug)
+
+// null, not [], while loading: an empty roster would read as "nobody has scored".
+const settledMembers = computed(() => (state.value === 'ready' ? members.value : null))
 </script>
 
 <template>
@@ -21,4 +26,5 @@ const { members, state } = useRoster(community.value.slug)
     </p>
     <div v-else data-test="roster-placeholder" class="min-h-[62px]" aria-hidden="true" />
   </section>
+  <RoundFallback :community="community" :members="settledMembers" class="mt-6" />
 </template>
