@@ -136,16 +136,16 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     ref="row"
     data-test="row"
     class="flex w-full"
-    :class="settled ? 'no-scrollbar overflow-x-auto' : 'overflow-x-clip overflow-y-visible'"
+    :class="settled ? 'overflow-x-auto' : 'overflow-x-clip overflow-y-visible'"
     style="visibility: hidden"
   >
-    <div class="flex -space-x-2 p-0.5">
+    <div class="flex shrink-0 -space-x-2 p-0.5">
       <div
         v-for="(m, index) in members"
         :key="m.userId"
         data-swarm-item
         role="img"
-        class="flex w-12 shrink-0 flex-col -space-y-1.5 will-change-transform"
+        class="flex w-12 shrink-0 flex-col will-change-transform"
         :style="{ zIndex: members.length - index }"
         :aria-label="ariaLabel(m)"
         :title="m.fullName"
@@ -158,14 +158,14 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
           <div class="place-self-center rotate-[-40deg] text-sm font-medium">{{ m.shortName }}</div>
         </div>
         <div
-          class="h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-900 ring-1 ring-white"
+          class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-900 ring-1 ring-white"
         >
           {{ m.points.stable }}
         </div>
         <span
           v-if="m.points.live"
           data-test="live-points"
-          class="z-20 animate-pulse self-end rounded-lg bg-rose-600 px-1 text-xs text-white ring-1 ring-yellow-400 motion-reduce:animate-none"
+          class="z-20 -mt-1.5 animate-pulse self-end rounded-lg bg-rose-600 px-1 text-xs text-white ring-1 ring-yellow-400 motion-reduce:animate-none"
         >
           +{{ m.points.live }}
         </span>
@@ -173,14 +173,3 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Tailwind v4 has no scrollbar utility; on a phone this strip is swiped, and a visible
-   horizontal scrollbar there is a layout bug rather than an affordance. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-</style>

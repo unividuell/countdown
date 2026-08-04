@@ -13,10 +13,15 @@ desktop layout that was written first). Concretely:
 
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
-- **Swipeable strips, not scrollbars.** A horizontally scrolling row is scrolled with a
-  thumb: `overflow-x: auto` plus `scrollbar-width: none` and
-  `&::-webkit-scrollbar { display: none }`. A visible horizontal scrollbar on a phone is
-  a layout bug, not an affordance.
+- **A horizontally scrolling strip must genuinely scroll.** `overflow-x: auto` on the
+  container only helps if the container's own content is never shrunk to fit — a flex
+  child needs `shrink-0` (or an equivalent intrinsic width) or its `scrollWidth` stays
+  equal to its `clientWidth` and there's nothing to scroll, on touch or otherwise.
+  Hiding the scrollbar (`scrollbar-width: none` /
+  `&::-webkit-scrollbar { display: none }`) is then a choice, not a default: it costs
+  mouse/trackpad users their only affordance, since a strip with no visible scrollbar
+  can't be grabbed and dragged — only reach for it once you've confirmed another
+  affordance (touch swipe) covers those users.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes
