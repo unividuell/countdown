@@ -62,16 +62,16 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
-    fun `POST reads the clearance live rather than from the session principal`() {
-        // The principal carries no clearance; the live answer does. Reading the principal
-        // instead would 403 here — which is exactly the regression this test guards.
-        every { users.mayCreateCommunities(uid) } returns true
-        every { communityService.create(uid, "Team A") } returns community("team-a")
+    fun `POST is forbidden for a super-admin principal whose live clearance is false`() {
+        // The port is the only authority: it already folds super-admin in, so the controller must
+        // not re-combine me.isSuperAdmin. Without this case a stray `!me.isSuperAdmin &&` in the
+        // guard would pass every other POST test in this class.
+        every { users.mayCreateCommunities(uid) } returns false
         mockMvc.post("/api/communities") {
-            with(principalFor(superAdmin = false)); with(csrf())
+            with(principalFor(superAdmin = true)); with(csrf())
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
-        }.andExpect { status { isCreated() } }
+        }.andExpect { status { isForbidden() } }
     }
 
     @Test
