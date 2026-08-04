@@ -20,6 +20,7 @@ import org.unividuell.countdown.core.iam.internal.SuperAdminUserService
 import org.unividuell.countdown.core.iam.internal.UserNotFoundException
 import org.unividuell.countdown.core.principalFor
 import java.time.Instant
+import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -54,13 +55,24 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
                 userId = uid, username = "Octocat", githubLogin = "octocat",
                 isSuperAdmin = false, communityCreationAllowed = true,
                 createdAt = Instant.parse("2026-01-01T00:00:00Z"),
-            )
+            ),
+            // A second row that differs in both flags: the list UI branches its badges on
+            // isSuperAdmin, so the field has to be serialized per row rather than at all.
+            SuperAdminUserListEntry(
+                userId = UUID.fromString("018f0000-0000-7000-8000-000000000002"),
+                username = "Boss", githubLogin = "boss",
+                isSuperAdmin = true, communityCreationAllowed = false,
+                createdAt = Instant.parse("2026-01-02T00:00:00Z"),
+            ),
         )
         mockMvc.get("/api/super-admin/users") { with(principalFor(superAdmin = true)) }
             .andExpect {
                 status { isOk() }
                 jsonPath("$[0].username") { value("Octocat") }
                 jsonPath("$[0].communityCreationAllowed") { value(true) }
+                jsonPath("$[0].isSuperAdmin") { value(false) }
+                jsonPath("$[1].isSuperAdmin") { value(true) }
+                jsonPath("$[1].communityCreationAllowed") { value(false) }
             }
     }
 

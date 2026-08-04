@@ -58,7 +58,12 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
-        }.andExpect { status { isForbidden() } }
+        }.andExpect {
+            status { isForbidden() }
+            // Without a body assertion this is indistinguishable from the CsrfFilter's 403,
+            // which is returned before authorization runs at all.
+            jsonPath("$.detail") { value("Not allowed to create communities") }
+        }
     }
 
     @Test
