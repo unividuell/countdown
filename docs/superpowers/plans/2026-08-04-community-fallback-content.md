@@ -1373,7 +1373,7 @@ Expected: PASS, 5 Tests (4 bestehende + 1 neuer).
 ```bash
 git add webapp-vue/src/communities/CountdownDisplay.vue webapp-vue/src/communities/__tests__/CountdownDisplay.spec.ts
 git commit -m "$(cat <<'EOF'
-drop(webapp): stop announcing "Event läuft" in the header
+refactor(webapp): stop announcing "Event läuft" in the header
 
 The fallback card owns that statement now. Two places saying the same
 thing drift, and the header had it twice over — as visible text and as
