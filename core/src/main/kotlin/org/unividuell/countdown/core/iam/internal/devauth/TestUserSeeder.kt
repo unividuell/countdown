@@ -8,6 +8,19 @@ import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.SuperAdminProperties
 import org.unividuell.countdown.core.iam.internal.UserRepository
 
+/**
+ * One seeded Futurama test identity. [emoji] and [accentHex] are presentation-only — they exist so
+ * the picker's twelve rows stay apart at a glance, and are never persisted.
+ */
+data class SeedUser(
+    val login: String,
+    val githubName: String?,
+    val displayName: String?,
+    val githubId: Long,
+    val emoji: String,
+    val accentHex: String,
+)
+
 /** Seeds fixed Futurama test users for localhost + staging. Never in prod (profile + flag). */
 @Component
 @Profile("!production")
@@ -16,17 +29,28 @@ class TestUserSeeder(
     private val users: UserRepository,
     private val superAdminProperties: SuperAdminProperties,
 ) : ApplicationRunner {
-    // (github_login, github_name, display_name, synthetic negative github_id)
-    private val seed = listOf(
-        Triple("Fry", null as String?, null as String?) to -1L,
-        Triple("leela", "Leela", "Turanga Leela") to -2L,
-        Triple("Bender", null as String?, null as String?) to -3L,
-        Triple("prof", null as String?, "Prof Farnsworth") to -4L,
-        Triple("amy", null as String?, null as String?) to -5L,
+    /**
+     * Declaration order is the picker's render order. The synthetic negative ids are what rows are
+     * matched on, so an id already in use must never be reassigned: dev and staging databases hold
+     * -1..-5 already, and moving one would orphan its row and insert a duplicate beside it.
+     */
+    val seedUsers: List<SeedUser> = listOf(
+        SeedUser("Fry", null, null, -1L, "🍕", "#ea580c"),
+        SeedUser("leela", "Leela", "Turanga Leela", -2L, "👁️", "#7c3aed"),
+        SeedUser("Bender", null, null, -3L, "🤖", "#64748b"),
+        SeedUser("prof", null, "Prof Farnsworth", -4L, "🔬", "#0d9488"),
+        SeedUser("amy", null, null, -5L, "💅", "#db2777"),
+        SeedUser("hermes", null, "Hermes Conrad", -6L, "📋", "#15803d"),
+        SeedUser("zoidberg", null, "Dr. Zoidberg", -7L, "🦞", "#dc2626"),
+        SeedUser("scruffy", null, "Scruffy", -8L, "🧹", "#a16207"),
+        SeedUser("zapp", null, "Zapp Brannigan", -9L, "🎖️", "#1d4ed8"),
+        SeedUser("kif", null, "Kif Kroker", -10L, "😩", "#4d7c0f"),
+        SeedUser("nibbler", null, "Nibbler", -11L, "🐾", "#0891b2"),
+        SeedUser("mom", null, "Mom", -12L, "🏭", "#831843"),
     )
 
     /** Single source of truth for accepted test logins; DevLoginController restricts `loginAs` to these. */
-    val seedLogins: List<String> = seed.map { (t, _) -> t.first }
+    val seedLogins: List<String> = seedUsers.map { it.login }
 
     /**
      * Mirrors `UserProvisioningService.sync`: the allowlist is authoritative and re-evaluated on
@@ -35,14 +59,14 @@ class TestUserSeeder(
      * pick up the role, since this runner only ever inserted before).
      */
     override fun run(args: org.springframework.boot.ApplicationArguments) {
-        seed.forEach { (t, id) ->
-            val isSuperAdmin = superAdminProperties.isSuperAdmin(t.first)
-            val existing = users.findByGithubId(id)
+        seedUsers.forEach { seed ->
+            val isSuperAdmin = superAdminProperties.isSuperAdmin(seed.login)
+            val existing = users.findByGithubId(seed.githubId)
             if (existing == null) {
                 users.save(
                     User(
-                        githubId = id, githubLogin = t.first, githubName = t.second, displayName = t.third,
-                        isSuperAdmin = isSuperAdmin,
+                        githubId = seed.githubId, githubLogin = seed.login, githubName = seed.githubName,
+                        displayName = seed.displayName, isSuperAdmin = isSuperAdmin,
                     )
                 )
             } else if (existing.isSuperAdmin != isSuperAdmin) {
