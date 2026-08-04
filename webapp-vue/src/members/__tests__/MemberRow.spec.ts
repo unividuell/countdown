@@ -110,6 +110,47 @@ describe('MemberRow', () => {
     expect(settled.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
   })
 
+  // Firefox restores a scroll container's offset from session history on reload, and applies it
+  // when the element becomes one — which here is the moment the fly-in settles and the row turns
+  // `overflow-x: auto`. Both settle paths must therefore take the scroll position back: the row is
+  // a ranking, so a refresh has to show the leader, not wherever the reader left off.
+  async function afterSettle(w: ReturnType<typeof mount>, restored: number): Promise<HTMLElement> {
+    const el = w.find('[data-test="row"]').element as HTMLElement
+    // Stand in for the browser's restore, which lands in the reflow that first builds the
+    // scroll frame — i.e. after the class flip, before the row's own correction.
+    el.scrollLeft = restored
+    await nextTick()
+    await new Promise((r) => requestAnimationFrame(() => r(null)))
+    await new Promise((r) => requestAnimationFrame(() => r(null)))
+    return el
+  }
+
+  it('scrolls back to the leader when the flight settles', async () => {
+    reduceMotion(false)
+    vi.spyOn(swarmModule, 'createSwarm').mockReturnValue({
+      particles: [{ x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, tilt: 0, wander: 0 }],
+      finished: true,
+      step: () => {},
+    })
+    const w = mount(MemberRow, { props: { members: [member()] }, attachTo: document.body })
+
+    const el = await afterSettle(w, 149)
+
+    expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+    expect(el.scrollLeft).toBe(0)
+    w.unmount()
+  })
+
+  it('scrolls back to the leader under reduced motion, where there is no flight', async () => {
+    reduceMotion(true)
+    const w = mount(MemberRow, { props: { members: [member()] }, attachTo: document.body })
+
+    const el = await afterSettle(w, 149)
+
+    expect(el.scrollLeft).toBe(0)
+    w.unmount()
+  })
+
   it('cancels its animation frame when unmounted mid-flight', async () => {
     reduceMotion(false)
     const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
