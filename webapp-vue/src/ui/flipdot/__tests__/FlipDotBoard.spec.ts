@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
-import { DOT_OFF, DOT_ON } from '@/ui/flipdot/board'
+import { BOOT_HOLD_MS, DOT_OFF, DOT_ON } from '@/ui/flipdot/board'
 import { bitmap } from '@/ui/flipdot/font'
 
 // happy-dom 20 ships no Web Animations API (measured: Element.prototype.animate is undefined),
@@ -29,8 +29,32 @@ function diffCount(a: string, b: string): number {
   return indicesChanged(a, b).length
 }
 
+// Every dot starts lit, so the boot resolve flips exactly the dots that are dark at rest.
+function indicesDark(text: string): number[] {
+  return bitmap(text).on.flatMap((on, i) => (on ? [] : [i]))
+}
+
+async function bootDone(): Promise<void> {
+  vi.advanceTimersByTime(BOOT_HOLD_MS)
+  await nextTick()
+  await nextTick()
+}
+
+function fills(w: VueWrapper): (string | undefined)[] {
+  return w.findAll('circle').map((c) => c.attributes('fill'))
+}
+
+function delays(animate: ReturnType<typeof vi.fn>): number[] {
+  return animate.mock.calls.map((call) => (call[1] as { delay: number }).delay)
+}
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
 afterEach(() => {
   Reflect.deleteProperty(Element.prototype, 'animate')
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -40,16 +64,19 @@ describe('FlipDotBoard', () => {
     expect(w.findAll('circle').length).toBe(5 * 7)
   })
 
-  it('fills the lit dots with the on colour and the rest with the off colour', () => {
+  it('fills the lit dots with the on colour and the rest with the off colour', async () => {
     const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
-    const fills = w.findAll('circle').map((c) => c.attributes('fill'))
-    expect(fills.filter((f) => f === DOT_ON).length).toBe(10)
-    expect(fills.filter((f) => f === DOT_OFF).length).toBe(5 * 7 - 10)
+    await bootDone()
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+    expect(fills(w).filter((f) => f === DOT_OFF).length).toBe(5 * 7 - 10)
   })
 
-  it('exposes the text to assistive tech, which cannot read a dot matrix', () => {
+  it('exposes the text to assistive tech, which cannot read a dot matrix', async () => {
     const w = mount(FlipDotBoard, { props: { text: '58', label: '58 Tage bis zum Start' } })
     expect(w.attributes('role')).toBe('img')
+    // Also during the boot's white phase: a screen reader is never told the board is blank.
+    expect(w.attributes('aria-label')).toBe('58 Tage bis zum Start')
+    await bootDone()
     expect(w.attributes('aria-label')).toBe('58 Tage bis zum Start')
   })
 
@@ -57,18 +84,25 @@ describe('FlipDotBoard', () => {
     expect(() => mount(FlipDotBoard, { props: { text: '00', label: 'x' } })).not.toThrow()
   })
 
+  it('boots without a Web Animations API', async () => {
+    const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
+    await bootDone()
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(bitmap('00').on.filter(Boolean).length)
+  })
+
   it('flips without a Web Animations API', async () => {
     const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
+    await bootDone()
     await expect(w.setProps({ text: '01' })).resolves.toBeUndefined()
     await nextTick()
-    const fills = w.findAll('circle').map((c) => c.attributes('fill'))
-    expect(fills.filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
   })
 
   it('animates exactly the dots that changed', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
-    expect(animate).not.toHaveBeenCalled()
+    await bootDone()
+    animate.mockClear()
     await w.setProps({ text: '01' })
     await nextTick()
     expect(animate).toHaveBeenCalledTimes(diffCount('00', '01'))
@@ -77,6 +111,8 @@ describe('FlipDotBoard', () => {
   it('runs the wave right to left, the direction a countdown borrows in', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
+    await bootDone()
+    animate.mockClear()
     await w.setProps({ text: '01' })
     await nextTick()
     const cols = bitmap('01').cols
@@ -94,18 +130,21 @@ describe('FlipDotBoard', () => {
   it('measures the delay from the changed columns, not from the board edge', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '00:00:00', label: 'x' } })
+    await bootDone()
+    animate.mockClear()
     await w.setProps({ text: '00:00:01' })
     await nextTick()
-    const delays = animate.mock.calls.map((call) => (call[1] as { delay: number }).delay)
     // Only the last digit changed. It sits at columns 42-46 of 47, so an absolute offset would
     // have delayed the first dot by 42 * 9 ms while nothing else on the board moved.
-    expect(Math.min(...delays)).toBe(0)
-    expect(Math.max(...delays)).toBeLessThanOrEqual(4 * 9)
+    expect(Math.min(...delays(animate))).toBe(0)
+    expect(Math.max(...delays(animate))).toBeLessThanOrEqual(4 * 9)
   })
 
   it('does not animate when the grid geometry changes', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '99', label: 'x' } })
+    await bootDone()
+    animate.mockClear()
     await w.setProps({ text: '100' })
     await nextTick()
     expect(animate).not.toHaveBeenCalled()
@@ -119,7 +158,72 @@ describe('FlipDotBoard', () => {
     await w.setProps({ text: '01' })
     await nextTick()
     expect(animate).not.toHaveBeenCalled()
-    const fills = w.findAll('circle').map((c) => c.attributes('fill'))
-    expect(fills.filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
+  })
+
+  describe('switching on', () => {
+    it('lights every dot at mount, at the resting board size', () => {
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      const box = w.attributes('viewBox')
+      expect(fills(w).length).toBe(5 * 7)
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+      expect(box).toBe(`0 0 ${5 * 4 - 1} ${7 * 4 - 1}`)
+    })
+
+    it('resolves the digits out of the white field once the hold elapses', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      expect(animate).not.toHaveBeenCalled()
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+
+      vi.advanceTimersByTime(BOOT_HOLD_MS - 1)
+      await nextTick()
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      await nextTick()
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+      expect(animate).toHaveBeenCalledTimes(5 * 7 - 10)
+    })
+
+    it('resolves right to left, starting at the rightmost changed column', async () => {
+      const animate = stubAnimate()
+      mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await bootDone()
+      const cols = bitmap('1').cols
+      const dark = indicesDark('1')
+      const byColumn = animate.mock.calls.map((call, n) => ({
+        col: dark[n]! % cols,
+        delay: (call[1] as { delay: number }).delay,
+      }))
+      const rightmost = Math.max(...byColumn.map((d) => d.col))
+      expect(rightmost).toBe(cols - 1)
+      expect(byColumn.filter((d) => d.col === rightmost).every((d) => d.delay === 0)).toBe(true)
+      for (const d of byColumn) {
+        expect(d.delay).toBe((rightmost - d.col) * 9)
+      }
+    })
+
+    it('is skipped entirely under prefers-reduced-motion — no white phase, no timer', async () => {
+      const animate = stubAnimate()
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+      expect(vi.getTimerCount()).toBe(0)
+      await bootDone()
+      expect(animate).not.toHaveBeenCalled()
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+    })
+
+    it('fires no timer after being unmounted inside the hold', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      expect(vi.getTimerCount()).toBe(1)
+      w.unmount()
+      expect(vi.getTimerCount()).toBe(0)
+      await bootDone()
+      expect(animate).not.toHaveBeenCalled()
+    })
   })
 })
