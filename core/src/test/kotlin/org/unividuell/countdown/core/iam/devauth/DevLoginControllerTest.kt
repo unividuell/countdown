@@ -39,6 +39,9 @@ class DevLoginControllerTest(
             content { string(containsString("leela")) }
             content { string(containsString("Turanga Leela")) }
             content { string(containsString("🦞")) }
+            // The chip is decorative — the name sits in the span beside it, so without this a
+            // screen reader announces "lobster Dr. Zoidberg".
+            content { string(containsString("""<span class="chip" style="background:#dc2626" aria-hidden="true">🦞</span>""")) }
         }
     }
 

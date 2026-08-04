@@ -39,26 +39,25 @@ class DevLoginController(
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
                  <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(seed.login)}"/>
                  <button type="submit">
-                   <span class="chip" style="background:${seed.accentHex}">${seed.emoji}</span>
+                   <span class="chip" style="background:${seed.accentHex}" aria-hidden="true">${seed.emoji}</span>
                    <span>${HtmlUtils.htmlEscape(user.username)}</span>
                  </button>
                </form>"""
         }.joinToString("\n")
         return """<!doctype html><html lang="de"><head><meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Test login</title>
+          <title>Test-Login</title>
           <style>
-            :root{color-scheme:light dark;--bg:#fafaf9;--card:#fff;--border:#e7e5e4;--fg:#1c1917;--muted:#78716c;--hover:#f5f5f4}
+            :root{color-scheme:light dark;--bg:#fafaf9;--card:#fff;--border:#e7e5e4;--fg:#1c1917;--hover:#f5f5f4}
             @media (prefers-color-scheme:dark){
-              :root{--bg:#1c1917;--card:#292524;--border:#44403c;--fg:#fafaf9;--muted:#a8a29e;--hover:#44403c}
+              :root{--bg:#1c1917;--card:#292524;--border:#44403c;--fg:#fafaf9;--hover:#44403c}
             }
             *{box-sizing:border-box}
             body{margin:0;padding:1.5rem 1rem;min-height:100dvh;display:flex;align-items:center;justify-content:center;
                  font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
             .card{width:100%;max-width:22rem;background:var(--card);border:1px solid var(--border);
                   border-radius:12px;padding:1.25rem}
-            h1{font-size:.875rem;font-weight:600;margin:0 0 .25rem}
-            p{font-size:.75rem;color:var(--muted);margin:0 0 1rem}
+            h1{font-size:1.125rem;font-weight:600;margin:0 0 1rem}
             form{margin:0 0 .5rem}
             form:last-of-type{margin-bottom:0}
             button{display:flex;align-items:center;gap:.75rem;width:100%;min-height:44px;padding:.5rem .75rem;
@@ -68,7 +67,7 @@ class DevLoginController(
             .chip{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
                   font-size:15px;line-height:1}
           </style></head>
-          <body><div class="card"><h1>Test-Login</h1><p>Nicht in Produktion verfügbar.</p>$buttons</div></body></html>"""
+          <body><div class="card"><h1>Test-Login</h1>$buttons</div></body></html>"""
     }
 
     @PostMapping("/login/github/as")
