@@ -164,6 +164,19 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
   `.value.field` in script and never bound in a template — e.g. `useCommunityContext()`'s
   `community`, or `useCommunities()`'s plain-object double in `index.spec.ts`.
+- **happy-dom has no Web Animations API.** Measured on happy-dom 20.11:
+  `typeof Element.prototype.animate === 'undefined'` (while `window.matchMedia` *does* exist and
+  reports `matches: false` for every query). So any component that calls `el.animate(...)` must
+  check the capability — `typeof el.animate !== 'function'` — or every mount throws in tests, and
+  the check has to leave the resting appearance correct on its own (bind the final colour/position
+  declaratively; let the animation only cover the transition). A test that wants to *observe* the
+  animation installs it itself:
+  `Object.defineProperty(Element.prototype, 'animate', { value: vi.fn(), configurable: true, writable: true })`
+  and deletes it again in `afterEach`. `src/ui/flipdot/FlipDotBoard.vue` + its spec are the worked
+  example.
+- **Reduced motion in tests:** `vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)`
+  — happy-dom's own `matchMedia` always answers `false`, so the reduced-motion branch is unreachable
+  without the stub.
 
 ## Community context + admin gating
 
@@ -182,6 +195,11 @@ Pages nested under `c/[slug]/` receive the loaded community via Vue's `provide`/
 
 - **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts` config, so use `.mjs`) + **Prettier**.
 - Disable `vue/multi-word-component-names` for `src/pages/**` — file-based route components are idiomatically single-word (`index.vue`, `login.vue`).
+- **Tailwind v4 scans source text, so a class name must appear literally.** A computed
+  `` `w-[${pct}%]` `` is never generated — no rule ends up in the CSS and the element simply has no
+  width. Where a value varies, map it to literal class strings
+  (`if (n <= 2) return 'w-[72%]'`), as `communities/fallbacks/CountdownCard.vue` does for the
+  hero width.
 
 ## Typecheck must be `vue-tsc -b` — `--noEmit` checks nothing here
 
