@@ -71,9 +71,11 @@ concern; revisit when other modules gain protected resources).
 - **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
   authorization check and no `AuthenticatedUser` parameter — the `SecurityConfig` rule already
   guarantees the caller. Each module contributes its own controller for its own data
-  (`community.internal.SuperAdminController`, `iam.internal.SuperAdminUserController`); there is
-  no aggregating `superadmin` module, because that would force "give me everything" ports into
-  the shared module API for the benefit of one UI.
+  (`community.internal.SuperAdminController` for communities; in `iam`,
+  `SuperAdminRosterController` serves the *roster* of super-admins and
+  `SuperAdminUserController` the *user administration* — list, detail, and the
+  community-creation clearance); there is no aggregating `superadmin` module, because that would
+  force "give me everything" ports into the shared module API for the benefit of one UI.
 - **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived on every login,
   so a newly allowlisted person has no flag until they sign in and a removed one keeps it until
   their next sign-in. Anything reporting on super-admins must read both sources and say which
@@ -85,6 +87,34 @@ concern; revisit when other modules gain protected resources).
   `*/` closes only the inner one — the compiler swallows the rest of the file and reports
   `Unclosed comment`, pointing nowhere near the actual text. Write "the `/api/super-admin` tree"
   in prose instead. This bit a controller KDoc that quoted the security rule verbatim.
+
+## Per-user permissions — read them live from the row, never from the principal
+
+Finer-grained permissions than the super-admin role live in a column on `iam.users` and are
+**read live on every request**. The first one is `community_creation_allowed`, gating
+`POST /api/communities`.
+
+- **`AuthenticatedUser` is deliberately not extended with them.** `CountdownOAuth2User` (and the
+  `User` it carries) is **JDK-serialized into the Spring Session JDBC table at login and never
+  refreshed** — a clearance granted after sign-in would stay invisible in the principal until the
+  next login. So a permission read from `me` would silently be a permission read from a snapshot.
+  Adding the field to the principal is the tempting shortcut; it is the bug.
+- **Cross-module reads go through a port on the `iam` public API**, not through the principal and
+  not by reaching into `iam.internal`: `UserQuery.mayCreateCommunities(id)` loads the row and
+  returns `false` for an unknown id. `CommunityController.create` calls exactly that and throws
+  `CommunityCreationNotAllowedException` (→ 403) — it must **not** re-combine `me.isSuperAdmin`,
+  because the port already folds it in (see the two-names rule below).
+- **Two names, two facts — don't conflate them.** `User.communityCreationAllowed` is the *raw
+  column*; `User.mayCreateCommunities` is the *computed effective permission*
+  (`isSuperAdmin || communityCreationAllowed`) and the only place that rule lives. Super-admin DTOs
+  (`SuperAdminUserListEntry`, `SuperAdminUserDetail`) carry the **raw** value, so an admin toggle
+  shows what is actually stored; `GET /api/me` carries the **effective** one, because that is what
+  the SPA gates its UI on. A super-admin therefore shows `communityCreationAllowed: false` and
+  `mayCreateCommunities: true` at the same time, and that is correct.
+- **`is_super_admin` is the deliberate exception.** It is re-derived from the allowlist on *every*
+  login, so keeping it on the principal is safe and its staleness window (until the next sign-in)
+  is by design — see the drift note above. Do not generalise that exception to permissions nobody
+  re-derives at login.
 
 ## Test login (non-prod only — Firebase-emulator pattern)
 

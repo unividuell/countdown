@@ -162,6 +162,20 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
   `.value.field` in script and never bound in a template — e.g. `useCommunityContext()`'s
   `community`, or `useCommunities()`'s plain-object double in `index.spec.ts`.
+- **A fixture handed to `vi.mocked(apiFetch).mockResolvedValue(...)` is not type-checked.**
+  `vi.mocked()` does not carry `apiFetch<T>`'s call-site type argument into the mock's
+  resolved-value parameter, so a missing or misspelled field in the fixture passes `vue-tsc`
+  silently and the component just reads `undefined`. Such fixtures have to be correct by
+  construction — copy the shape from `src/api/types.ts`, and prefer a typed helper
+  (`const me: MeResponse = { … }`) when you want the compiler's help at all.
+- **`trigger('click')` is swallowed on a `disabled` element, so "clicking it does nothing" proves
+  nothing.** `DOMWrapper.trigger` (VTU 2.4) short-circuits on a disabled element and never
+  dispatches, so `await btn.trigger('click'); expect(spy).not.toHaveBeenCalled()` passes purely
+  because of the attribute — measured: removing the handler-level guard
+  (`if (locked.value) return` in `super-admin/users/[id].vue`) leaves that spec green. Assert
+  `attributes('disabled')` for what you actually mean (the affordance), and be aware that a
+  handler-level guard behind a disabled button is **not** covered by such a test; to exercise it,
+  drive the handler from a state where the button is enabled.
 
 ## Community context + admin gating
 

@@ -69,7 +69,8 @@ Algorithm (current):
 ```
 Backend (Caddy → core)   /api/*   /oauth2/*   /login/*   /logout
 App pages (root)         /   /login   /communities   /communities/new
-                         /super-admin   /super-admin/communities   /join/:token
+                         /super-admin   /super-admin/communities
+                         /super-admin/users   /super-admin/users/:id   /join/:token
 Communities              /c/:slug/   /c/:slug/members   /c/:slug/requests   /c/:slug/settings
 Anything else            the catch-all 404 (`src/pages/[...path].vue`)
 ```
