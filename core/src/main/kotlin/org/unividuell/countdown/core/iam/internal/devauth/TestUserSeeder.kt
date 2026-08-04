@@ -31,8 +31,9 @@ class TestUserSeeder(
 ) : ApplicationRunner {
     /**
      * Declaration order is the picker's render order. The synthetic negative ids are what rows are
-     * matched on, so an id already in use must never be reassigned: dev and staging databases hold
-     * -1..-5 already, and moving one would orphan its row and insert a duplicate beside it.
+     * matched on, so an id already in use must never be reassigned: every dev and staging database
+     * already holds the ids handed out so far, and moving one would orphan its row and insert a
+     * duplicate beside it. A new character takes the next id counting down, never a freed one.
      */
     val seedUsers: List<SeedUser> = listOf(
         SeedUser("Fry", null, null, -1L, "🍕", "#ea580c"),
