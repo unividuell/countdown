@@ -3,8 +3,10 @@ import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCommunities } from '@/communities/useCommunities'
 import { communityPath } from '@/communities/routes'
+import { useAuth } from '@/auth/useAuth'
 
 const { active, refresh } = useCommunities()
+const { user } = useAuth()
 
 onMounted(refresh)
 </script>
@@ -19,11 +21,21 @@ onMounted(refresh)
         }}</RouterLink>
       </li>
     </ul>
-    <p v-else class="mb-6 text-sm text-neutral-600">
+    <!--
+      Two empty states, because the copy must not point at an entry point the viewer does not
+      have. Without the clearance there is no hint that creating exists at all.
+    -->
+    <p v-else-if="user?.mayCreateCommunities" class="mb-6 text-sm text-neutral-600">
       Du bist noch in keiner Spielgemeinschaft. Erstelle eine — oder öffne einen Einladungslink, den
       du erhalten hast.
     </p>
-    <RouterLink to="/communities/new" class="rounded border px-3 py-1.5 hover:bg-neutral-200"
+    <p v-else class="mb-6 text-sm text-neutral-600">
+      Du bist noch in keiner Spielgemeinschaft. Öffne einen Einladungslink, den du erhalten hast.
+    </p>
+    <RouterLink
+      v-if="user?.mayCreateCommunities"
+      to="/communities/new"
+      class="rounded border px-3 py-1.5 hover:bg-neutral-200"
       >Spielgemeinschaft erstellen</RouterLink
     >
   </section>
