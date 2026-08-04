@@ -37,5 +37,9 @@ provide(communityKey, {
     <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
     <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
   </div>
-  <RouterView v-else-if="state?.kind === 'ready'" :key="community?.slug ?? ''" />
+  <div v-else-if="state?.kind === 'ready'" class="mx-auto max-w-xl">
+    <!-- Fixed, single-valued width: a desktop player's member row must be no wider —
+         and therefore no more informative at a glance — than a phone player's. -->
+    <RouterView :key="community?.slug ?? ''" />
+  </div>
 </template>

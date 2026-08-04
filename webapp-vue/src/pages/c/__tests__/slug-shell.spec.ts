@@ -59,6 +59,14 @@ describe('community shell', () => {
     expect(w.find('[data-test=do-refresh]').exists()).toBe(true)
   })
 
+  it('wraps the routed child in the fixed content column', async () => {
+    communityRoute.value = { kind: 'ready', community: community() }
+    const w = await mountShell()
+    const column = w.find('.mx-auto.max-w-xl')
+    expect(column.exists()).toBe(true)
+    expect(column.find('[data-test=do-refresh]').exists()).toBe(true)
+  })
+
   it('shows no-access without rendering children', async () => {
     communityRoute.value = { kind: 'no-access' }
     const w = await mountShell()
