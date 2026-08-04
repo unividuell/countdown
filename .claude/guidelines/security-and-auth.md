@@ -105,10 +105,13 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   never matches.
 - **Seeder** is an `ApplicationRunner` (idempotent), **not** Flyway — migrations can't be
   profile/flag-gated and would leak test data into prod. Test users get **synthetic negative
-  `github_id`s** (−1…−5) so they never collide with real (positive) GitHub ids. It also re-applies
-  the super-admin allowlist on every run — insert **and** update — so a picker login grants
-  `ROLE_SUPER_ADMIN` the same way a real login would; the update half matters because the seeder
-  used to only insert, so a stale flag could never converge.
+  `github_id`s**, one per seed row counting down from −1 (−1, −2, −3, …), so they never collide
+  with real (positive) GitHub ids; an id, once assigned to a row, is never reassigned. It also
+  re-applies both the identity fields (`githubLogin`, `githubName`, `displayName`) and the
+  super-admin allowlist on every run — insert **and** update — so a picker login grants
+  `ROLE_SUPER_ADMIN` the same way a real login would, and a row can never drift out of reach of
+  its own picker button; the update half matters because the seeder used to only insert, so a
+  stale value could never converge.
 - The picker POST carries the CSRF token as a hidden `_csrf` field (server embeds
   `csrfToken.token`); `POST /login/github/as` builds a `CountdownOAuth2User` principal and persists
   the session via `HttpSessionSecurityContextRepository().saveContext(...)` — indistinguishable from
@@ -121,6 +124,13 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   logs in via the picker; no separate staging GitHub OAuth App).
 - Tests: the test classpath also needs `app.test-auth.enabled` set; a test that counts users (e.g.
   provisioning) must set it `false` to avoid the seeder's rows.
+- **The picker is server-rendered HTML, not SPA — it still needs mobile-first.** It shipped once
+  without a `<meta name="viewport">` tag and rendered unreadably tiny on a phone: with no viewport
+  tag, mobile browsers lay the page out at their ~980px desktop fallback width and then scale the
+  whole thing down to fit, which looks like a CSS/sizing bug but isn't one. [frontend.md](frontend.md)'s
+  mobile-first guidance is written for `webapp-vue`, but the expectation itself — and this specific
+  gotcha — applies to any HTML the backend renders directly. If a server-rendered page looks tiny on
+  a phone, check for the viewport meta tag before touching CSS.
 
 ## Secrets
 
