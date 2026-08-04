@@ -191,6 +191,33 @@ Punktmittelpunkt kippt und nicht um den SVG-Ursprung.
 vollständig und aktuell — es entfällt nur die Bewegung. (Dieselbe Haltung wie beim
 Navigations-Fortschrittsbalken in `App.vue`.)
 
+### Das Einschalten
+
+Die Tafel geht an wie eine echte Anzeigetafel im Bahnhof: **erst alle Punkte weiß**, kurz gehalten,
+dann fallen die Ziffern aus dem weißen Feld heraus. Ohne das erschiene die Tafel bereits gefüllt —
+und damit als Bild, nicht als Gerät. Der Moment, in dem sie sichtbar *schaltet*, ist genau der, der
+sie zur Fallblatt-Tafel macht.
+
+- **Haltezeit 300 ms.** Ein gewählter Wert: lang genug, dass das weiße Feld als bewusstes Einschalten
+  gelesen wird und nicht als Zeichenfehler; kurz genug, dass die erste echte Ablesung nicht
+  spürbar vorenthalten wird.
+- **Das Auflösen benutzt denselben Kipp-Effekt** wie jede Sekunde — dieselbe Dauer, dieselbe
+  Verzögerungsregel, also auch **von rechts nach links**. Die Tafel bekommt keine zweite
+  Animationssprache für ihren ersten Moment: die Richtung, in der sie später zählt, ist die, in der
+  sie sich zuerst zeigt.
+- **Die Maße stehen von Anfang an.** Das weiße Feld hat die Spalten und Zeilen des echten Bitmaps,
+  `viewBox` und Kantenlänge ändern sich beim Auflösen nicht. Die Seite darf beim Einschalten so wenig
+  springen wie beim Laden der Daten.
+- **Einmal pro Mount, nicht pro Wert.** Ein Sekundenwechsel bleibt ein Sekundenwechsel; das
+  Einschalten ist ein Ereignis der Tafel, nicht der Zahl.
+- **Das `aria-label` trägt durchgehend den echten Wert**, auch während des weißen Feldes. Einem
+  Screenreader wird nie erzählt, die Tafel sei leer.
+
+**`prefers-reduced-motion`: kein Einschalten.** Nicht verkürzt — ganz ausgelassen; die Tafel steht
+sofort auf dem echten Wert. Die Zusage lautet „vollständig und aktuell, nur ohne Bewegung", und ein
+Einschaltmoment ist ausschließlich Bewegung. Ihn abzuschwächen statt zu streichen wäre ein
+Kompromiss, den die Zusage nicht deckt.
+
 ## Gewinnerermittlung
 
 Kein neuer Endpoint: die Landingpage lädt den Roster ohnehin, und `RosterService` sortiert ihn
@@ -261,7 +288,10 @@ Vitest + `vi`, mobile-first geprüft:
   0; Gleichstand zu zwei und zu drei; Namensformatierung je Anzahl; `live` fehlt → nur `stable`.
 - `ui/flipdot/__tests__/FlipDotBoard.spec.ts` — Anzahl der Kreise, `on`-Zustand der richtigen
   Punkte, Differenz-Update animiert nur geänderte Punkte, `prefers-reduced-motion` löst keine
-  Animation aus.
+  Animation aus. Zum Einschalten: alle Punkte weiß beim Mount, nach der Haltezeit das echte Bitmap
+  und zwar animiert, Auflösen von rechts nach links, unter `prefers-reduced-motion` gar kein weißes
+  Feld, und ein Unmount innerhalb der Haltezeit feuert keinen Timer mehr. Der Ruhezustand wird
+  jeweils **nach** abgelaufener Haltezeit geprüft (`vi.useFakeTimers()`).
 - `communities/fallbacks/__tests__/RoundFallback.spec.ts` — Zustandswahl über `data-test`-Marker:
   `startsAt === null` → Meldung sofort und ohne Request; `'before'` → Tafel; `'after'` → Meldung mit
   bzw. ohne Gratulation; `'idle'` → Platzhalter gleicher Größe.
