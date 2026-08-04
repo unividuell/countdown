@@ -20,6 +20,7 @@ const me = {
   email: null,
   bgColorHex: null,
   isSuperAdmin: false,
+  mayCreateCommunities: false,
   createdAt: null,
 }
 

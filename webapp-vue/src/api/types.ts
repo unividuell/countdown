@@ -6,6 +6,8 @@ export interface MeResponse {
   email: string | null
   bgColorHex: string | null
   isSuperAdmin: boolean
+  /** Effective permission: the stored clearance, or super-admin. */
+  mayCreateCommunities: boolean
   createdAt: string | null
 }
 
@@ -100,4 +102,30 @@ export interface SuperAdminUser {
   flagged: boolean
   allowlisted: boolean
   createdAt: string | null
+}
+
+/**
+ * `communityCreationAllowed` is the raw column, not the effective permission — a super-admin may
+ * create communities regardless, which `isSuperAdmin` reports separately.
+ */
+export interface SuperAdminUserListEntry {
+  userId: string
+  username: string
+  githubLogin: string
+  isSuperAdmin: boolean
+  communityCreationAllowed: boolean
+  createdAt: string | null
+}
+export interface SuperAdminUserDetail {
+  userId: string
+  username: string
+  githubLogin: string
+  githubName: string | null
+  displayName: string | null
+  email: string | null
+  bgColorHex: string | null
+  isSuperAdmin: boolean
+  communityCreationAllowed: boolean
+  createdAt: string | null
+  updatedAt: string | null
 }
