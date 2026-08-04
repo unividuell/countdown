@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import Icons from 'unplugin-icons/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
+import { backendPathPrefixes } from './dev-proxy.ts'
 
 const backend = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080'
 // changeOrigin:false keeps the browser's Host (localhost:5173) on the proxied request,
@@ -13,10 +14,7 @@ const backend = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080'
 // on the backend (no UI) after login. The GitHub OAuth App callback must therefore be
 // registered on the SPA origin: http://localhost:5173/login/oauth2/code/github
 const proxy = Object.fromEntries(
-  ['/api', '/oauth2', '/login', '/logout'].map((p) => [
-    p,
-    { target: backend, changeOrigin: false },
-  ]),
+  backendPathPrefixes.map((p) => [p, { target: backend, changeOrigin: false }]),
 )
 
 export default defineConfig({
