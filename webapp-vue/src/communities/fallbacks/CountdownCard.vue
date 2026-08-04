@@ -22,9 +22,12 @@ const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
 <template>
   <div
     data-test="countdown-card"
-    class="flex aspect-square w-full flex-col items-center justify-between rounded-xl bg-stone-900 px-2 py-4"
+    class="flex aspect-square w-full flex-col items-center justify-between rounded-xl bg-stone-900 py-4"
   >
-    <div class="flex flex-1 flex-col items-center justify-center gap-2.5">
+    <!-- w-full, not shrink-to-fit: inside an items-center column this block would take its width
+         from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS
+         default — the hero's w-[72%] would then be 216px on every viewport. -->
+    <div class="flex w-full flex-1 flex-col items-center justify-center gap-2.5">
       <FlipDotBoard data-test="countdown-hero" :class="heroWidth" :text="days" :label="heroLabel" />
       <p class="font-mono text-[11px] tracking-[0.14em] text-stone-500">TAGE</p>
     </div>

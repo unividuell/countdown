@@ -43,6 +43,20 @@ describe('CountdownCard', () => {
     expect(mountCard('128').find('[data-test="countdown-hero"]').classes()).not.toContain('w-full')
   })
 
+  // Structural proxies only: happy-dom computes no CSS, so neither the shrink-to-fit box nor the
+  // resulting pixel widths are observable here. Both classes are what makes the hero's percentage
+  // resolve against the card's outer width in a real browser.
+  it('stretches the hero block instead of letting it shrink-wrap the svg', () => {
+    const wrapper = mountCard('58').find('[data-test="countdown-hero"]').element.parentElement
+    expect(wrapper?.className).toContain('w-full')
+  })
+
+  it('keeps the card free of horizontal padding, so the percentages match the outer width', () => {
+    const card = mountCard('58').find('[data-test="countdown-card"]').classes()
+    expect(card.filter((c) => /^(px|pl|pr|p)-/.test(c))).toEqual([])
+    expect(card).toContain('py-4')
+  })
+
   it('labels the three time groups', () => {
     const text = mountCard('58').text()
     expect(text).toContain('TAGE')
