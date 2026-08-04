@@ -31,15 +31,24 @@ watch(
     const circles = svg.value?.querySelectorAll('circle')
     if (!circles) return
 
+    const changed: number[] = []
     for (let i = 0; i < next.on.length; i++) {
-      const was = prev.on[i] ?? false
-      const is = next.on[i] ?? false
-      if (was === is) continue
+      if ((prev.on[i] ?? false) !== (next.on[i] ?? false)) changed.push(i)
+    }
+    if (changed.length === 0) return
+
+    // Counting down, the borrow travels right to left — 20 -> 19 flips the 0, and that flips the 2 —
+    // so the wave starts at the rightmost changed column. Measured from that column rather than from
+    // the board's edge: the seconds occupy columns 42-46 of the HH:MM:SS strip, and an absolute
+    // offset would leave them waiting out the whole board before anything moved.
+    const lead = changed.reduce((rightmost, i) => Math.max(rightmost, i % next.cols), 0)
+
+    for (const i of changed) {
       const circle = circles[i]
       // happy-dom has no Web Animations API; the resting colour is already correct without it.
       if (!circle || typeof circle.animate !== 'function') return
-      const from = was ? DOT_ON : DOT_OFF
-      const to = is ? DOT_ON : DOT_OFF
+      const from = (prev.on[i] ?? false) ? DOT_ON : DOT_OFF
+      const to = from === DOT_ON ? DOT_OFF : DOT_ON
       circle.animate(
         [
           { transform: 'scaleY(1)', fill: from },
@@ -49,7 +58,7 @@ watch(
         ],
         {
           duration: FLIP_MS,
-          delay: (i % next.cols) * STAGGER_MS,
+          delay: (lead - (i % next.cols)) * STAGGER_MS,
           easing: 'ease-in-out',
           fill: 'backwards',
         },

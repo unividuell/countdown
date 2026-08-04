@@ -17,10 +17,16 @@ function stubAnimate(): ReturnType<typeof vi.fn> {
   return animate
 }
 
-function diffCount(a: string, b: string): number {
+// Ascending, which is the order the component animates in — so the nth animate() call belongs to
+// the nth entry here.
+function indicesChanged(a: string, b: string): number[] {
   const x = bitmap(a).on
   const y = bitmap(b).on
-  return x.reduce((n, on, i) => (on === (y[i] ?? false) ? n : n + 1), 0)
+  return x.flatMap((on, i) => (on === (y[i] ?? false) ? [] : [i]))
+}
+
+function diffCount(a: string, b: string): number {
+  return indicesChanged(a, b).length
 }
 
 afterEach(() => {
@@ -68,14 +74,33 @@ describe('FlipDotBoard', () => {
     expect(animate).toHaveBeenCalledTimes(diffCount('00', '01'))
   })
 
-  it('staggers the flip by column so the wave runs left to right', async () => {
+  it('runs the wave right to left, the direction a countdown borrows in', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '00', label: 'x' } })
     await w.setProps({ text: '01' })
     await nextTick()
+    const cols = bitmap('01').cols
+    const byColumn = animate.mock.calls.map((call, n) => ({
+      col: indicesChanged('00', '01')[n]! % cols,
+      delay: (call[1] as { delay: number }).delay,
+    }))
+    const rightmost = Math.max(...byColumn.map((d) => d.col))
+    expect(byColumn.filter((d) => d.col === rightmost).every((d) => d.delay === 0)).toBe(true)
+    for (const d of byColumn) {
+      expect(d.delay).toBe((rightmost - d.col) * 9)
+    }
+  })
+
+  it('measures the delay from the changed columns, not from the board edge', async () => {
+    const animate = stubAnimate()
+    const w = mount(FlipDotBoard, { props: { text: '00:00:00', label: 'x' } })
+    await w.setProps({ text: '00:00:01' })
+    await nextTick()
     const delays = animate.mock.calls.map((call) => (call[1] as { delay: number }).delay)
-    expect(Math.min(...delays)).toBeLessThan(Math.max(...delays))
-    expect(delays.every((d) => d % 9 === 0)).toBe(true)
+    // Only the last digit changed. It sits at columns 42-46 of 47, so an absolute offset would
+    // have delayed the first dot by 42 * 9 ms while nothing else on the board moved.
+    expect(Math.min(...delays)).toBe(0)
+    expect(Math.max(...delays)).toBeLessThanOrEqual(4 * 9)
   })
 
   it('does not animate when the grid geometry changes', async () => {

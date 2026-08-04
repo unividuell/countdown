@@ -176,8 +176,13 @@ Pro geändertem Punkt, per Web Animations API:
 - `scaleY` 1 → 0.12 (bei 49 %) → 0.12 (bei 50 %) → 1, die Scheibe kippt also auf die Kante und zurück
 - Farbwechsel exakt bei 50 %, im Moment der geringsten Sichtbarkeit
 - `fill: 'backwards'`, damit während der Verzögerung noch die alte Farbe steht
-- Verzögerung `spaltenindex * 9 ms` — die Welle läuft von links nach rechts, wie bei einer echten
-  Tafel, die ihre Spalten nacheinander schaltet
+- Verzögerung `(rechteste geänderte Spalte − spaltenindex) * 9 ms` — die Welle läuft **von rechts nach
+  links** und beginnt bei der äußersten Spalte, die sich überhaupt ändert. Die Richtung ist die des
+  Übertrags: beim Herunterzählen kippt 20 → 19 erst die Null, und *dadurch* die Zwei. Und gemessen
+  wird ab der geänderten Spalte, nicht ab dem Rand der Tafel — die Sekunden belegen die Spalten 42–46
+  der `HH:MM:SS`-Leiste, ein absoluter Versatz hätte sie 414 ms warten lassen, bevor sich überhaupt
+  etwas rührt. Gemessen im Browser: die Sekunde schaltet nur die Spalten 36–46, Spalte 46 startet bei
+  0 ms, Spalte 36 bei 90 ms
 
 `transform-box: fill-box; transform-origin: center` auf den Kreisen, damit `scaleY` um den
 Punktmittelpunkt kippt und nicht um den SVG-Ursprung.
