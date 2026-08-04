@@ -101,6 +101,22 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `revokes the clearance for a super-admin`() {
+        // Pins the body-to-argument binding in both directions: with only the `true` case covered,
+        // a controller ignoring the body and passing a hardcoded true would still pass.
+        every { service.setCommunityCreation(uid, false) } returns detail(allowed = false)
+
+        mockMvc.put("/api/super-admin/users/$uid/community-creation") {
+            with(principalFor(superAdmin = true)); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"allowed":false}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.communityCreationAllowed") { value(false) }
+        }
+    }
+
+    @Test
     fun `granting the clearance without a CSRF token is rejected`() {
         mockMvc.put("/api/super-admin/users/$uid/community-creation") {
             with(principalFor(superAdmin = true))
