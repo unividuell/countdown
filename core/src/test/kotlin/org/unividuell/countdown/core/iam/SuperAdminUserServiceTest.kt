@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
@@ -54,5 +55,33 @@ class SuperAdminUserServiceTest(
         detail.communityCreationAllowed shouldBe false
 
         shouldThrow<UserNotFoundException> { service.detail(UUID.randomUUID()) }
+    }
+
+    @Test
+    fun `grants and revokes the clearance`() {
+        val saved = repository.save(User(githubId = 405L, githubLogin = "octocat"))
+
+        service.setCommunityCreation(saved.id!!, allowed = true).communityCreationAllowed shouldBe true
+        repository.findByIdOrNull(saved.id!!)!!.communityCreationAllowed shouldBe true
+
+        service.setCommunityCreation(saved.id!!, allowed = false).communityCreationAllowed shouldBe false
+        repository.findByIdOrNull(saved.id!!)!!.communityCreationAllowed shouldBe false
+    }
+
+    @Test
+    fun `setting the clearance it already has does not touch updated_at`() {
+        val saved = repository.save(User(githubId = 406L, githubLogin = "octocat"))
+        val before = repository.findByIdOrNull(saved.id!!)!!.updatedAt
+
+        service.setCommunityCreation(saved.id!!, allowed = false)
+
+        repository.findByIdOrNull(saved.id!!)!!.updatedAt shouldBe before
+    }
+
+    @Test
+    fun `setting the clearance rejects an unknown id`() {
+        shouldThrow<UserNotFoundException> {
+            service.setCommunityCreation(UUID.randomUUID(), allowed = true)
+        }
     }
 }

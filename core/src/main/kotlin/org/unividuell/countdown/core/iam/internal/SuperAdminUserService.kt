@@ -45,6 +45,19 @@ class SuperAdminUserService(private val users: UserRepository) {
     @Transactional(readOnly = true)
     fun detail(id: UUID): SuperAdminUserDetail = load(id).toDetail()
 
+    /**
+     * Idempotent: setting the clearance a user already has returns the current state without an
+     * UPDATE, so a repeated PUT does not churn `updated_at`.
+     */
+    @Transactional
+    fun setCommunityCreation(id: UUID, allowed: Boolean): SuperAdminUserDetail {
+        val user = load(id)
+        if (user.communityCreationAllowed == allowed) return user.toDetail()
+        return users.save(
+            user.copy(communityCreationAllowed = allowed, updatedAt = Instant.now())
+        ).toDetail()
+    }
+
     private fun load(id: UUID): User =
         users.findByIdOrNull(id) ?: throw UserNotFoundException("user $id not found")
 
