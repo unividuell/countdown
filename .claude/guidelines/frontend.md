@@ -137,6 +137,26 @@ not component lifecycle hooks — `src/communities/routeData.ts` and
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
+**Ambient time is shared state; the domain around it is not.** `useCountdown` is instantiated twice on
+a community page (the header widget and the fallback card), and two `setInterval`s started at
+different moments never resynchronise — the two displays showed seconds up to a full tick apart at
+the same instant. So `nowMs` and `skewMs` (the *server's* clock correction, of which there is exactly
+one) live at module scope behind **one** interval, while everything domain-shaped — `round`, the
+click-cycleable base unit, the load/retry bookkeeping — stays per instance and reacts to the shared
+clock via `watch(nowMs, tick)`. Two consequences worth remembering:
+
+- **Refcount the interval**: start it when the first consumer subscribes, clear it when the last
+  unsubscribes. Clearing on the first `onUnmounted` stops the surviving consumer's clock; never
+  clearing leaks an interval on every route change. The `_reset*State()` hook must reset the
+  refcount *and* clear the interval, or the next test case mounts with a stale count and gets no
+  clock at all.
+- **A shared clock makes mount/unmount hygiene mandatory in specs.** A wrapper left mounted keeps a
+  live watcher on the module-level `ref`, so the *next* test case's tick still reaches it — a
+  component from an earlier case, whose load had failed, retried into the current case's spy and
+  broke a call-count assertion. `enableAutoUnmount(afterEach)` (already used in `HeaderMenu.spec.ts`)
+  in every spec that mounts such a component. Per-instance timers hid this: the fake-timer registry
+  is thrown away by `vi.useRealTimers()`, so a leaked instance simply stopped ticking.
+
 ## HTTP + auth (the same-origin SPA contract)
 
 The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (not redirect) for unauthenticated API, cookie CSRF (`XSRF-TOKEN` → `X-XSRF-TOKEN`).
