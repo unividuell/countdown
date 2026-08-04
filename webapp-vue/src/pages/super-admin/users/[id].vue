@@ -26,6 +26,9 @@ const allowed = computed(() => user.value?.communityCreationAllowed ?? false)
 const locked = computed(() => user.value?.isSuperAdmin ?? false)
 
 async function toggle(): Promise<void> {
+  // The invariant belongs in the handler, not only in the button's disabled attribute: a super
+  // admin's stored column has no effect on what they may do, so there is nothing to toggle.
+  if (locked.value) return
   // No optimistic UI: adopt the server's answer, or keep the state we had.
   await run(async () => {
     user.value = await setCommunityCreation(id, !allowed.value)

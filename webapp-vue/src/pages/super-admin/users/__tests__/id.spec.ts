@@ -89,6 +89,11 @@ describe('super-admin user detail', () => {
 
     expect(w.find('[data-test=toggle-clearance]').attributes('disabled')).toBeDefined()
     expect(w.text()).toContain('Super-Admins dürfen immer erstellen')
+
+    const put = vi.spyOn(api, 'setCommunityCreation')
+    await w.find('[data-test=toggle-clearance]').trigger('click')
+    await flushPromises()
+    expect(put).not.toHaveBeenCalled()
   })
 
   it('shows an error message when the user cannot be loaded', async () => {
