@@ -1,0 +1,67 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+
+const props = defineProps<{
+  days: string
+  hours: string
+  minutes: string
+  seconds: string
+}>()
+
+// Literal class names: Tailwind scans the source, so an interpolated w-[..%] is never generated.
+const heroWidth = computed(() => {
+  if (props.days.length <= 2) return 'w-[72%]'
+  if (props.days.length === 3) return 'w-[92%]'
+  return 'w-full'
+})
+const heroLabel = computed(() => {
+  const n = Number(props.days)
+  return `${n} ${n === 1 ? 'Tag' : 'Tage'} bis zum Start`
+})
+const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
+
+// The boards own the switch-on timeline; the labels only follow it, so they wait for the hero's
+// event instead of running a second clock that would have to repeat the reduced-motion decision.
+const resolved = ref(false)
+const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0'))
+</script>
+
+<template>
+  <div
+    data-test="countdown-card"
+    class="flex aspect-square w-full flex-col items-center justify-between rounded-xl bg-stone-900 py-4"
+  >
+    <!-- w-full, not shrink-to-fit: inside an items-center column this block would take its width
+         from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS
+         default — the hero's w-[72%] would then be 216px on every viewport. -->
+    <div class="flex w-full flex-1 flex-col items-center justify-center gap-2.5">
+      <FlipDotBoard
+        data-test="countdown-hero"
+        :class="heroWidth"
+        :text="days"
+        :label="heroLabel"
+        @resolve="resolved = true"
+      />
+      <p
+        data-test="countdown-label-days"
+        class="font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+        :class="labelOpacity"
+      >
+        TAGE
+      </p>
+    </div>
+    <div class="w-[94%]">
+      <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
+      <div
+        data-test="countdown-label-time"
+        class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+        :class="labelOpacity"
+      >
+        <span class="absolute left-[11.5%] -translate-x-1/2">STD</span>
+        <span class="absolute left-1/2 -translate-x-1/2">MIN</span>
+        <span class="absolute left-[88.5%] -translate-x-1/2">SEK</span>
+      </div>
+    </div>
+  </div>
+</template>
