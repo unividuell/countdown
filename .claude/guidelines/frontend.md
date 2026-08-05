@@ -36,6 +36,20 @@ desktop layout that was written first). Concretely:
   builds the scroll frame — after the `nextTick` microtask. Do the same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader), and reset on **every** settle
   path, `prefers-reduced-motion` included.
+- **A percentage width only means what you think inside a parent that has a width.** In a flex
+  column with `items-center`, a child is cross-axis **shrink-to-fit**: its width comes from its own
+  max-content size, so a `w-[72%]` grandchild resolves against *that*, not against the card. And a
+  widthless inline `<svg viewBox="…">` contributes exactly **300px** — the CSS default object width
+  for a replaced element with no intrinsic size. Measured in `CountdownCard.vue` before the fix, at
+  a 375px viewport and on desktop: card outer 343 / 576, the hero's wrapper **300 / 300**, so the
+  hero was **216px on every viewport** while the `w-[94%]` strip below it grew to 307 / 526 — on
+  desktop the "hero" was less than half the width of the line beneath it, hierarchy inverted. Two
+  fixes, both needed: give the wrapper `w-full` so it stretches instead of shrink-wrapping the svg,
+  and drop the card's horizontal padding so a percentage of the content box *is* a percentage of the
+  outer width the design names. Afterwards: 343 / **247** / 322 and 576 / **415** / 541. Any future
+  SVG-in-a-card hits this, and it is invisible in tests — happy-dom computes no CSS, so a spec can
+  only assert the structural proxies (the wrapper carries `w-full`, the card carries no `px-*`) and
+  the real check is a browser measurement.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes
   `overflow-y` to `auto` as well, which clips transformed children — so an element that
   both scrolls and hosts an animation that escapes its box must not clip while the
@@ -123,6 +137,36 @@ not component lifecycle hooks — `src/communities/routeData.ts` and
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
+**Ambient time is shared state; the domain around it is not.** `useCountdown` is instantiated twice on
+a community page (the header widget and the fallback card), and two `setInterval`s started at
+different moments never resynchronise — the two displays showed seconds up to a full tick apart at
+the same instant. So `nowMs` and `skewMs` (the *server's* clock correction, of which there is exactly
+one) live at module scope behind **one** interval, while everything domain-shaped — `round`, the
+click-cycleable base unit, the load/retry bookkeeping — stays per instance and reacts to the shared
+clock via `watch(nowMs, tick)`. Two consequences worth remembering:
+
+- **Refcount the interval**: start it when the first consumer subscribes, clear it when the last
+  unsubscribes. Clearing on the first `onUnmounted` stops the surviving consumer's clock; never
+  clearing leaks an interval on every route change. The `_reset*State()` hook must reset the
+  refcount *and* clear the interval, or the next test case mounts with a stale count and gets no
+  clock at all.
+- **A shared clock makes mount/unmount hygiene mandatory in specs.** A wrapper left mounted keeps a
+  live watcher on the module-level `ref`, so the *next* test case's tick still reaches it — a
+  component from an earlier case, whose load had failed, retried into the current case's spy and
+  broke a call-count assertion. `enableAutoUnmount(afterEach)` (already used in `HeaderMenu.spec.ts`)
+  in every spec that mounts such a component. Per-instance timers hid this: the fake-timer registry
+  is thrown away by `vi.useRealTimers()`, so a leaked instance simply stopped ticking. Unmount before
+  calling the reset hook, not after — resetting zeroes the refcount without unmounting anyone, so a
+  surviving consumer would later release a subscription it no longer holds and clear an interval a
+  newer one started. `enableAutoUnmount(afterEach)` is what guarantees that ordering.
+- **A shared clock trades freshness for agreement — don't "fix" it back.** A consumer mounting between
+  ticks inherits the last tick's `nowMs`, so its first paint can be up to a second stale. That is the
+  point: two displays of the same instant agreeing matters more than either being maximally current,
+  and re-anchoring the clock on mount reintroduces exactly the drift the singleton removed (measured:
+  header and card showed seconds a full tick apart while claiming the same instant). Where a stale
+  first paint would actually be visible, cover it — `FlipDotBoard`'s 400 ms switch-on sequence hides
+  it by construction.
+
 ## HTTP + auth (the same-origin SPA contract)
 
 The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (not redirect) for unauthenticated API, cookie CSRF (`XSRF-TOKEN` → `X-XSRF-TOKEN`).
@@ -164,6 +208,21 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
   `.value.field` in script and never bound in a template — e.g. `useCommunityContext()`'s
   `community`, or `useCommunities()`'s plain-object double in `index.spec.ts`.
+- **happy-dom has no Web Animations API.** Measured on happy-dom 20.11:
+  `typeof Element.prototype.animate === 'undefined'` (while `window.matchMedia` *does* exist and
+  reports `matches: false` for every query). So any component that calls `el.animate(...)` must
+  check the capability — `typeof el.animate !== 'function'` — or **any code path that reaches
+  `el.animate(...)` throws** in tests. Note which path that is: `FlipDotBoard` animates only inside
+  its watcher, so it is the *update* that throws, not the mount — a mount-only test stays green and
+  hides it. The check has to leave the resting appearance correct on its own (bind the final colour/position
+  declaratively; let the animation only cover the transition). A test that wants to *observe* the
+  animation installs it itself:
+  `Object.defineProperty(Element.prototype, 'animate', { value: vi.fn(), configurable: true, writable: true })`
+  and deletes it again in `afterEach`. `src/ui/flipdot/FlipDotBoard.vue` + its spec are the worked
+  example.
+- **Reduced motion in tests:** `vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)`
+  — happy-dom's own `matchMedia` always answers `false`, so the reduced-motion branch is unreachable
+  without the stub.
 
 ## Community context + admin gating
 
@@ -182,6 +241,11 @@ Pages nested under `c/[slug]/` receive the loaded community via Vue's `provide`/
 
 - **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts` config, so use `.mjs`) + **Prettier**.
 - Disable `vue/multi-word-component-names` for `src/pages/**` — file-based route components are idiomatically single-word (`index.vue`, `login.vue`).
+- **Tailwind v4 scans source text, so a class name must appear literally.** A computed
+  `` `w-[${pct}%]` `` is never generated — no rule ends up in the CSS and the element simply has no
+  width. Where a value varies, map it to literal class strings
+  (`if (n <= 2) return 'w-[72%]'`), as `communities/fallbacks/CountdownCard.vue` does for the
+  hero width.
 
 ## Typecheck must be `vue-tsc -b` — `--noEmit` checks nothing here
 
@@ -214,6 +278,18 @@ KT/TS parity test is needed because no logic is duplicated. Decompose: pure func
 without mounting, like `resolveLanding`) + a thin composable + a thin component. Guard async loads
 with a generation counter (stale-response) and a try/catch (a failed fetch degrades the widget to
 hidden, never an unhandled rejection).
+
+**`state: 'idle'` conflates "not loaded yet" with "load failed" — every consumer must decide what
+that means for its own surface.** `computeView` returns `'idle'` whenever `round` is null, and a
+swallowed fetch error leaves `round` null, so the two are indistinguishable downstream. And the
+boundary-driven refetch cannot recover from it: `boundaryAction(null, …)` answers `'none'`, so a
+failed *first* load used to mean the composable never fetched again for the lifetime of the mount.
+The two consumers read the same `'idle'` very differently — `CountdownDisplay` (header) renders
+nothing, which is a fine degradation, while `RoundFallback`'s card is the page's most prominent slot
+and showed a permanently blank square. `tick()` therefore retries every `FAILED_LOAD_RETRY_MS`
+(10 s) until a load has succeeded, gated on an explicit "loaded" flag rather than on `round === null`
+— the backend legitimately answers `round: null` for a community without a `startsAt`, and polling
+that would be a request every 10 s per open page for nothing.
 
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
 the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
