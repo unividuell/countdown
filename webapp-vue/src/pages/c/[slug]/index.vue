@@ -18,18 +18,18 @@ const settledMembers = computed(() => {
 </script>
 
 <template>
-  <section>
+  <!-- The section owns the height, so all three states are the same height by construction rather
+       than by three numbers agreeing. 72px is the row's *tall* variant: a 48px avatar, plus 10 for
+       the points badge and 10 for the live-points badge (16px each, pulled up 6 by -mt-1.5), plus
+       the row's own 2px padding top and bottom. The tall variant is reserved even for a roster where
+       nobody holds live points — that case is 62px, and reserving the smaller value is what used to
+       drop the card 10px the moment the roster landed. -->
+  <section class="flex min-h-[72px] items-center">
     <MemberRow v-if="state === 'ready'" :members="members" />
-    <!-- Same height in every state: the row can only fly once its resting places have been
-         measured, so a shorter placeholder would make the page jump when the data lands. -->
-    <p
-      v-else-if="state === 'failed'"
-      data-test="roster-error"
-      class="flex min-h-[62px] items-center text-sm text-neutral-500"
-    >
+    <p v-else-if="state === 'failed'" data-test="roster-error" class="text-sm text-neutral-500">
       Die Mitglieder konnten nicht geladen werden.
     </p>
-    <div v-else data-test="roster-placeholder" class="min-h-[62px]" aria-hidden="true" />
+    <div v-else data-test="roster-placeholder" class="w-full" aria-hidden="true" />
   </section>
   <RoundFallback :community="community" :members="settledMembers" class="mt-6" />
 </template>

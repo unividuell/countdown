@@ -40,6 +40,28 @@ describe('community home', () => {
     expect(w.find('[data-test="roster-placeholder"]').exists()).toBe(true)
   })
 
+  // happy-dom computes no layout, so this cannot measure the jump — it pins the decision that let
+  // the jump in: the height must come from one place. Three branches each carrying their own
+  // min-height is how the loading state ended up 10px shorter than a row with live-points badges.
+  it('takes the reserved height from the section, not from each state', async () => {
+    vi.spyOn(api, 'getRoster').mockResolvedValue([
+      {
+        userId: 'u1',
+        shortName: 'AMY',
+        fullName: 'amy',
+        bgColorHex: '#8e44ad',
+        points: { stable: 3, live: 5 },
+      },
+    ])
+    const w = mountPage()
+    const section = w.get('section')
+    expect(section.classes()).toContain('min-h-[72px]')
+    expect(w.get('[data-test="roster-placeholder"]').classes().join(' ')).not.toContain('min-h')
+    await flushPromises()
+    expect(w.get('section').classes()).toContain('min-h-[72px]')
+    expect(w.get('[data-test="row"]').classes().join(' ')).not.toContain('min-h')
+  })
+
   it('renders the row once the roster arrives', async () => {
     vi.spyOn(api, 'getRoster').mockResolvedValue([
       {
