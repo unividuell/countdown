@@ -42,7 +42,7 @@ const dots = computed(() =>
   })),
 )
 
-function flip(prev: Bitmap, next: Bitmap, stagger: boolean): void {
+function flip(prev: Bitmap, next: Bitmap): void {
   if (prev.cols !== next.cols || prefersReducedMotion()) return
   const circles = svg.value?.querySelectorAll('circle')
   if (!circles) return
@@ -53,10 +53,10 @@ function flip(prev: Bitmap, next: Bitmap, stagger: boolean): void {
   }
   if (changed.length === 0) return
 
-  // Counting down, the borrow travels right to left — 20 -> 19 flips the 0, and that flips the 2 —
-  // so the wave starts at the rightmost changed column. Measured from that column rather than from
-  // the board's edge: the seconds occupy columns 42-46 of the HH:MM:SS strip, and an absolute
-  // offset would leave them waiting out the whole board before anything moved.
+  // The wave starts at the rightmost column that changed and runs leftward, which is what a
+  // right-aligned readout wants: its low-order end changes most often, and it leads instead of
+  // trailing. Measured from that column and not from the board's edge — otherwise a group sitting
+  // far right waits out every unchanged column to its left before anything moves.
   const lead = changed.reduce((rightmost, i) => Math.max(rightmost, i % next.cols), 0)
 
   for (const i of changed) {
@@ -74,7 +74,7 @@ function flip(prev: Bitmap, next: Bitmap, stagger: boolean): void {
       ],
       {
         duration: FLIP_MS,
-        delay: stagger ? (lead - (i % next.cols)) * STAGGER_MS : 0,
+        delay: (lead - (i % next.cols)) * STAGGER_MS,
         easing: 'ease-in-out',
         fill: 'backwards',
       },
@@ -86,18 +86,12 @@ watch(
   bm,
   (next, prev) => {
     if (phase.value !== 'live') return
-    flip(prev, next, true)
+    flip(prev, next)
   },
   { flush: 'post' },
 )
 
 const bootTimers: ReturnType<typeof setTimeout>[] = []
-
-function enter(next: 'white' | 'live', stagger: boolean): void {
-  const prev = shown.value
-  phase.value = next
-  void nextTick(() => flip(prev, shown.value, stagger))
-}
 
 onMounted(() => {
   if (phase.value === 'live') {
@@ -105,12 +99,18 @@ onMounted(() => {
     return
   }
   bootTimers.push(
-    // Unstaggered: a board switching on reads as one simultaneous slam, and a right-to-left white-up
-    // would take 414 ms across the 47-column strip and run into the hold that follows.
-    setTimeout(() => enter('white', false), BOOT_DARK_MS),
+    // The white-up is a phase change, deliberately with no flip: every dot changes at once, so a
+    // simultaneous kick is not readable as movement, while the animation would cost one concurrent
+    // fill animation per dot — 329 on the HH:MM:SS strip — in a single main-thread frame, on an
+    // audience of phones. The colour change alone is the whole effect.
+    setTimeout(() => {
+      phase.value = 'white'
+    }, BOOT_DARK_MS),
     setTimeout(() => {
       emit('resolve')
-      enter('live', true)
+      const prev = shown.value
+      phase.value = 'live'
+      void nextTick(() => flip(prev, shown.value))
     }, BOOT_RESOLVE_AT_MS),
   )
 })

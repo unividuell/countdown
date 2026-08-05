@@ -128,6 +128,9 @@ describe('FlipDotBoard', () => {
       col: indicesChanged('00', '01')[n]! % cols,
       delay: (call[1] as { delay: number }).delay,
     }))
+    // Without this, an empty call list would satisfy every assertion below: Math.max of nothing is
+    // -Infinity, [].every() is true, and the loop never runs.
+    expect(byColumn).toHaveLength(diffCount('00', '01'))
     const rightmost = Math.max(...byColumn.map((d) => d.col))
     expect(byColumn.filter((d) => d.col === rightmost).every((d) => d.delay === 0)).toBe(true)
     for (const d of byColumn) {
@@ -178,7 +181,10 @@ describe('FlipDotBoard', () => {
       expect(box).toBe(`0 0 ${5 * 4 - 1} ${7 * 4 - 1}`)
     })
 
-    it('slams the whole board on after the dark phase, without a stagger', async () => {
+    // The slam is a phase change, not an animation: a simultaneous kick reads as nothing, and the
+    // flip would cost one concurrent fill animation per dot in a single frame. So the assertion is
+    // that every dot is lit *and* that this cost nothing.
+    it('slams the whole board on after the dark phase, without animating', async () => {
       const animate = stubAnimate()
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       expect(animate).not.toHaveBeenCalled()
@@ -188,9 +194,9 @@ describe('FlipDotBoard', () => {
       expect(animate).not.toHaveBeenCalled()
 
       await advance(1)
+      expect(fills(w).length).toBe(5 * 7)
       expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
-      expect(animate).toHaveBeenCalledTimes(5 * 7)
-      expect(delays(animate).every((d) => d === 0)).toBe(true)
+      expect(animate).not.toHaveBeenCalled()
     })
 
     it('holds the white field, then resolves the digits out of it', async () => {
@@ -220,6 +226,7 @@ describe('FlipDotBoard', () => {
         col: dark[n]! % cols,
         delay: (call[1] as { delay: number }).delay,
       }))
+      expect(byColumn).toHaveLength(dark.length)
       const rightmost = Math.max(...byColumn.map((d) => d.col))
       expect(rightmost).toBe(cols - 1)
       expect(byColumn.filter((d) => d.col === rightmost).every((d) => d.delay === 0)).toBe(true)
@@ -257,6 +264,20 @@ describe('FlipDotBoard', () => {
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
       expect(w.emitted('resolve')).toBeUndefined()
+    })
+
+    it('resolves to the value that arrived during the hold, not the one it booted with', async () => {
+      const w = mount(FlipDotBoard, { props: { text: '58', label: 'x' } })
+      await advance(BOOT_DARK_MS)
+      await w.setProps({ text: '57' })
+      await nextTick()
+      // Still the white field — a value arriving mid-boot must not short-circuit the sequence.
+      expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+
+      await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
+        bitmap('57').on.filter(Boolean).length,
+      )
     })
 
     it('fires no timer after being unmounted inside the hold', async () => {
