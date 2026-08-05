@@ -53,7 +53,7 @@ onMounted(async () => {
               data-test="clearance-badge"
               class="rounded bg-emerald-100 px-1.5 text-xs text-emerald-800"
             >
-              Erstellen erlaubt
+              Community-Manager
             </span>
           </span>
         </RouterLink>

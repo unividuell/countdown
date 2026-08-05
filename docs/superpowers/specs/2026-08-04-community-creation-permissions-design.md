@@ -179,7 +179,7 @@ Konto-Menü zurück.
 Mobile-first als Zeilenliste, nicht als breite Tabelle: Name groß, `@githubLogin` klein darunter,
 rechts Badges; die ganze Zeile ist der Link ins Detail. Sortierung nach Name.
 
-Das Badge „Erstellen erlaubt" erscheint nur bei gesetztem `communityCreationAllowed` — `false` ist die stille Mehrheit und
+Das Badge „Community-Manager" erscheint nur bei gesetztem `communityCreationAllowed` — `false` ist die stille Mehrheit und
 braucht kein Etikett. Für Super-Admins erscheint stattdessen nur „Super-Admin": das subsumiert die
 Berechtigung, und zwei Badges würden zwei unabhängige Zustände suggerieren.
 
