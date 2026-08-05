@@ -3,6 +3,37 @@ import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 import { _resetCommunitiesState } from '@/communities/useCommunities'
 import type { ActiveCommunity } from '@/communities/context'
+import * as client from '@/api/client'
+import { useAuth, _resetAuthState } from '@/auth/useAuth'
+
+vi.mock('@/api/client', async (orig) => ({
+  ...(await orig<typeof client>()),
+  apiFetch: vi.fn(),
+}))
+const apiFetch = vi.mocked(client.apiFetch)
+
+async function signIn(mayCreateCommunities: boolean): Promise<void> {
+  apiFetch.mockResolvedValue({
+    id: 'u1',
+    username: 'Alice',
+    githubLogin: 'alice',
+    githubName: null,
+    email: null,
+    bgColorHex: null,
+    isSuperAdmin: false,
+    mayCreateCommunities,
+    createdAt: null,
+  })
+  await useAuth().bootstrap()
+}
+
+/** Mounts without opening: the trigger is absent when the menu would have no entries. */
+async function render(community: ActiveCommunity) {
+  const Cmp = (await import('@/communities/CommunityMenu.vue')).default
+  const w = mount(Cmp, { props: { community } })
+  await flushPromises()
+  return w
+}
 
 // Real vue-router's push() always returns a Promise; CommunityMenu.vue attaches a .catch()
 // to it, so the double must resolve like the real thing rather than return undefined.
@@ -37,6 +68,8 @@ async function open(community: ActiveCommunity) {
 describe('CommunityMenu', () => {
   beforeEach(() => {
     pushMock.mockClear()
+    apiFetch.mockReset()
+    _resetAuthState()
     // `active` (useCommunities.ts) is a module-level singleton, so a previous test's
     // successful load otherwise leaks into this one (Vitest doesn't reset modules
     // between `it`s in the same file) — reset it so each test starts from a clean slate.
@@ -96,6 +129,7 @@ describe('CommunityMenu', () => {
   })
 
   it('offers the create action', async () => {
+    await signIn(true)
     const w = await open(admin)
     expect(w.find('[data-test=create-community]').attributes('href')).toBe('/communities/new')
   })
@@ -111,9 +145,66 @@ describe('CommunityMenu', () => {
   })
 
   it('stays usable when the community list cannot be loaded', async () => {
+    await signIn(true)
     vi.spyOn(api, 'listCommunities').mockRejectedValue(new Error('offline'))
     const w = await open(admin)
     expect(w.findAll('[data-test=switch-community]')).toHaveLength(0)
     expect(w.find('[data-test=create-community]').exists()).toBe(true)
+  })
+
+  it('hides creating a community from an uncleared viewer', async () => {
+    await signIn(false)
+    const w = await open(admin)
+
+    expect(w.find('[data-test=create-community]').exists()).toBe(false)
+    // Another community still follows the admin block, so the divider separates something.
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(true)
+  })
+
+  it('drops the admin divider when nothing follows it', async () => {
+    // An admin of their only community, without the clearance — the state every current
+    // non-super-admin owner is in, since nobody was grandfathered. The divider closes the admin
+    // block, so with neither a switch entry nor the create link it would be a floating rule.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: '1', name: 'Team Süd', slug: 'team' },
+    ])
+    await signIn(false)
+    const w = await open(admin)
+
+    expect(w.find('[data-test=switch-community]').exists()).toBe(false)
+    expect(w.find('[data-test=create-community]').exists()).toBe(false)
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(false)
+  })
+
+  it('keeps the admin divider when only the create link follows it', async () => {
+    // Pins the other half of the gate: with `others` empty, the clearance alone must keep it.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: '1', name: 'Team Süd', slug: 'team' },
+    ])
+    await signIn(true)
+    const w = await open(admin)
+
+    expect(w.find('[data-test=create-community]').exists()).toBe(true)
+    expect(w.find('[data-test=admin-divider]').exists()).toBe(true)
+  })
+
+  it('renders no menu at all when nothing would be left in it', async () => {
+    // A non-admin in exactly one community without the clearance. The create link used to be the
+    // one guaranteed entry, so without the guard this trigger would open an empty panel.
+    vi.spyOn(api, 'listCommunities').mockResolvedValue([
+      { id: '1', name: 'Team Süd', slug: 'team' },
+    ])
+    await signIn(false)
+    const w = await render({ ...admin, viewerIsAdmin: false, pendingCount: 0 })
+
+    expect(w.find('[data-test=community-menu]').exists()).toBe(false)
+  })
+
+  it('still renders the menu for a non-admin who can switch communities', async () => {
+    // Same viewer, but a second community remains as an entry — the trigger must stay.
+    await signIn(false)
+    const w = await render({ ...admin, viewerIsAdmin: false, pendingCount: 0 })
+
+    expect(w.find('[data-test=community-menu]').exists()).toBe(true)
   })
 })

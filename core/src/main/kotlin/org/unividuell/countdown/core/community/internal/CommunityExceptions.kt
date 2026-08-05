@@ -17,3 +17,6 @@ class InviteNotFoundException(message: String = "Invalid invite") : RuntimeExcep
 
 /** Invite token exists but has expired → 410. */
 class InviteExpiredException(message: String = "Invite expired") : RuntimeException(message)
+
+/** Caller is not cleared to create communities → 403. */
+class CommunityCreationNotAllowedException(message: String = "Not allowed to create communities") : RuntimeException(message)

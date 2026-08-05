@@ -27,12 +27,14 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var access: CommunityAccess
     @MockkBean lateinit var selection: SelectionService
     @MockkBean lateinit var memberRepo: CommunityMemberRepository
+    @MockkBean lateinit var users: org.unividuell.countdown.core.iam.UserQuery
 
     private val uid = TEST_USER_ID
     private fun community(slug: String) = Community(id = UUID.randomUUID(), name = "Team", slug = slug, createdBy = uid)
 
     @Test
     fun `POST creates a community`() {
+        every { users.mayCreateCommunities(uid) } returns true
         every { communityService.create(uid, "Team A") } returns community("team-a")
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
@@ -42,11 +44,39 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST surfaces slug conflict as 409`() {
+        every { users.mayCreateCommunities(uid) } returns true
         every { communityService.create(uid, "Team A") } throws SlugUnavailableException("slug 'team-a' is taken")
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `POST is forbidden without a community-creation clearance`() {
+        every { users.mayCreateCommunities(uid) } returns false
+        mockMvc.post("/api/communities") {
+            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Team A"}"""
+        }.andExpect {
+            status { isForbidden() }
+            // Without a body assertion this is indistinguishable from the CsrfFilter's 403,
+            // which is returned before authorization runs at all.
+            jsonPath("$.detail") { value("Not allowed to create communities") }
+        }
+    }
+
+    @Test
+    fun `POST is forbidden for a super-admin principal whose live clearance is false`() {
+        // The port is the only authority: it already folds super-admin in, so the controller must
+        // not re-combine me.isSuperAdmin. Without this case a stray `!me.isSuperAdmin &&` in the
+        // guard would pass every other POST test in this class.
+        every { users.mayCreateCommunities(uid) } returns false
+        mockMvc.post("/api/communities") {
+            with(principalFor(superAdmin = true)); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Team A"}"""
+        }.andExpect { status { isForbidden() } }
     }
 
     @Test

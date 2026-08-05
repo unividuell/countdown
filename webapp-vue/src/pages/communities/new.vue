@@ -1,28 +1,32 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ActionButton from '@/ui/ActionButton.vue'
+import { useAction } from '@/ui/useAction'
 import { slugify } from '@/lib/slugify'
 import { createCommunity } from '@/api/communities'
 import { ApiError } from '@/api/client'
 import { communityPath } from '@/communities/routes'
+import { useCommunityCreationGuard } from '@/communities/useCommunityCreationGuard'
+
+useCommunityCreationGuard()
 
 const router = useRouter()
 const name = ref('')
-const error = ref<string | null>(null)
 const slug = computed(() => slugify(name.value))
 const tooShort = computed(() => slug.value.length < 3)
 
+const { busy, error, run } = useAction((e) =>
+  e instanceof ApiError && e.status === 409
+    ? 'Dieser Name ergibt einen bereits vergebenen Slug — bitte Namen anpassen.'
+    : 'Erstellen fehlgeschlagen. Bitte erneut versuchen.',
+)
+
 async function submit(): Promise<void> {
-  error.value = null
-  try {
+  await run(async () => {
     const c = await createCommunity(name.value.trim())
-    router.replace(communityPath(c.slug))
-  } catch (e) {
-    error.value =
-      e instanceof ApiError && e.status === 409
-        ? 'Dieser Name ergibt einen bereits vergebenen Slug — bitte Namen anpassen.'
-        : 'Erstellen fehlgeschlagen. Bitte erneut versuchen.'
-  }
+    await router.replace(communityPath(c.slug))
+  })
 }
 </script>
 
@@ -43,9 +47,9 @@ async function submit(): Promise<void> {
         URL: <code>{{ communityPath(slug || '…') }}</code>
         <span v-if="name && tooShort" class="text-amber-600"> (mind. 3 Zeichen)</span>
       </p>
-      <button class="mt-4 rounded border px-3 py-1.5 hover:bg-neutral-200" :disabled="tooShort">
+      <ActionButton type="submit" class="mt-4" :busy="busy" :disabled="tooShort">
         Erstellen
-      </button>
+      </ActionButton>
       <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
     </form>
   </section>

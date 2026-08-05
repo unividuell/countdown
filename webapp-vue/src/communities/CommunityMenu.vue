@@ -8,10 +8,12 @@ import type { ActiveCommunity } from '@/communities/context'
 import type { CommunitySummary } from '@/api/types'
 import { useCommunities } from '@/communities/useCommunities'
 import { communityPath } from '@/communities/routes'
+import { useAuth } from '@/auth/useAuth'
 
 const props = defineProps<{ community: ActiveCommunity }>()
 const router = useRouter()
 const { active, refresh } = useCommunities()
+const { user } = useAuth()
 
 onMounted(() => {
   // A failed list leaves the admin block and the create action working.
@@ -21,6 +23,12 @@ onMounted(() => {
 const others = computed(() => active.value.filter((c) => c.slug !== props.community.slug))
 const showDot = computed(() => props.community.viewerIsAdmin && props.community.pendingCount > 0)
 const label = computed(() => (showDot.value ? 'Community-Menü, offene Anfragen' : 'Community-Menü'))
+const mayCreate = computed(() => user.value?.mayCreateCommunities ?? false)
+// The create link used to guarantee the panel was never empty. Without it, a non-admin in exactly
+// one community would open an empty dropdown — no menu is better than an empty one.
+const hasEntries = computed(
+  () => props.community.viewerIsAdmin || others.value.length > 0 || mayCreate.value,
+)
 
 // Every entry is a flex row so a trailing element can be pushed right with ml-auto. Keep it
 // here rather than adding `flex` next to `block` per entry: both are display utilities, and
@@ -35,7 +43,7 @@ function go(c: CommunitySummary): void {
 </script>
 
 <template>
-  <HeaderMenu :label="label" data-test="community-menu">
+  <HeaderMenu v-if="hasEntries" :label="label" data-test="community-menu">
     <template #trigger>
       <span class="relative flex">
         <IconUsers class="size-5" />
@@ -64,7 +72,11 @@ function go(c: CommunitySummary): void {
       <RouterLink :to="communityPath(community.slug, 'settings')" :class="ENTRY"
         >Einstellungen</RouterLink
       >
-      <div class="my-1 border-t border-neutral-200" />
+      <div
+        v-if="others.length > 0 || mayCreate"
+        data-test="admin-divider"
+        class="my-1 border-t border-neutral-200"
+      />
     </template>
 
     <button
@@ -79,6 +91,7 @@ function go(c: CommunitySummary): void {
     </button>
 
     <RouterLink
+      v-if="mayCreate"
       to="/communities/new"
       data-test="create-community"
       :class="`${ENTRY} gap-2 text-neutral-600`"

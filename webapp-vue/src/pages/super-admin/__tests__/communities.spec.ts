@@ -90,4 +90,13 @@ describe('super-admin community overview', () => {
     await flushPromises()
     expect(w.text()).toContain('konnten nicht geladen werden')
   })
+
+  it('links back to the super-admin hub', async () => {
+    vi.spyOn(api, 'listAllCommunities').mockResolvedValue([])
+    const Page = (await import('@/pages/super-admin/communities.vue')).default
+    const w = mount(Page)
+    await flushPromises()
+
+    expect(w.find('a[href="/super-admin"]').text()).toContain('Super-Admin')
+  })
 })

@@ -18,6 +18,7 @@ data class MeResponse(
     val email: String?,
     val bgColorHex: String?,
     val isSuperAdmin: Boolean,
+    val mayCreateCommunities: Boolean,
     val createdAt: Instant?,
 )
 
@@ -29,7 +30,8 @@ data class UpdateProfileRequest(
 
 private fun User.toMeResponse() = MeResponse(
     id = id!!, username = username, githubLogin = githubLogin, githubName = githubName,
-    email = email, bgColorHex = bgColorHex, isSuperAdmin = isSuperAdmin, createdAt = createdAt,
+    email = email, bgColorHex = bgColorHex, isSuperAdmin = isSuperAdmin,
+    mayCreateCommunities = mayCreateCommunities, createdAt = createdAt,
 )
 
 @RestController
@@ -38,7 +40,7 @@ class UserController(private val profileService: UserProfileService) {
 
     @GetMapping
     fun me(@AuthenticationPrincipal principal: CountdownOAuth2User): MeResponse =
-        principal.user.toMeResponse()
+        profileService.current(principal.user.id!!).toMeResponse()
 
     @PatchMapping
     fun update(

@@ -118,6 +118,8 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | '/super-admin/'
       | '/super-admin/communities'
+      | '/super-admin/users/'
+      | '/super-admin/users/[id]'
     >,
     '/super-admin/': RouteRecordInfo<
       '/super-admin/',
@@ -131,6 +133,20 @@ declare module 'vue-router/auto-routes' {
       '/super-admin/communities',
       Record<never, never>,
       Record<never, never>,
+      | never
+    >,
+    '/super-admin/users/': RouteRecordInfo<
+      '/super-admin/users/',
+      '/super-admin/users',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/super-admin/users/[id]': RouteRecordInfo<
+      '/super-admin/users/[id]',
+      '/super-admin/users/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
       | never
     >,
   }
@@ -243,6 +259,8 @@ declare module 'vue-router/auto-routes' {
         | '/super-admin'
         | '/super-admin/'
         | '/super-admin/communities'
+        | '/super-admin/users/'
+        | '/super-admin/users/[id]'
       views:
         | 'default'
       pathParamNames:
@@ -263,6 +281,22 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/super-admin/users/index.vue': {
+      routes:
+        | '/super-admin/users/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/super-admin/users/[id].vue': {
+      routes:
+        | '/super-admin/users/[id]'
+      views:
+        | never
+      pathParamNames:
+        | 'id'
     }
   }
 

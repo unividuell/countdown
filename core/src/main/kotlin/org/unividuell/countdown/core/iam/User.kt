@@ -19,6 +19,7 @@ data class User(
     val email: String? = null,
     val bgColorHex: String? = null,
     val isSuperAdmin: Boolean = false,
+    val communityCreationAllowed: Boolean = false,
     @CreatedDate
     val createdAt: Instant? = null,
     @LastModifiedDate
@@ -27,6 +28,13 @@ data class User(
     /** Name shown in the UI: user-chosen, else GitHub display name, else GitHub handle. */
     val username: String
         get() = displayName ?: githubName ?: githubLogin
+
+    /**
+     * Effective permission to create communities: the stored clearance, or super-admin.
+     * The only place this rule lives — read it instead of combining the two facts per call site.
+     */
+    val mayCreateCommunities: Boolean
+        get() = isSuperAdmin || communityCreationAllowed
 
     companion object {
         private const val serialVersionUID: Long = 1L
