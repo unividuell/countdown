@@ -11,8 +11,13 @@ function mountCard(days: string) {
   })
 }
 
+// Both label groups, so every assertion about the fade covers the two of them together — they must
+// arrive as one, not one after the other.
 function labelClasses(w: ReturnType<typeof mountCard>): string[][] {
-  return w.findAll('[data-test="countdown-label"]').map((l) => l.classes())
+  return [
+    w.get('[data-test="countdown-label-days"]').classes(),
+    w.get('[data-test="countdown-label-time"]').classes(),
+  ]
 }
 
 async function advance(ms: number): Promise<void> {

@@ -44,7 +44,7 @@ const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0
         @resolve="resolved = true"
       />
       <p
-        data-test="countdown-label"
+        data-test="countdown-label-days"
         class="font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
         :class="labelOpacity"
       >
@@ -54,7 +54,7 @@ const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0
     <div class="w-[94%]">
       <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
       <div
-        data-test="countdown-label"
+        data-test="countdown-label-time"
         class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
         :class="labelOpacity"
       >

@@ -1,11 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import * as api from '@/api/communities'
 import { communityKey } from '@/communities/context'
 import type { CommunityResponse } from '@/api/types'
 import Page from '@/pages/c/[slug]/index.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
+import { _resetCountdownState } from '@/communities/useCountdown'
+
+// The page mounts RoundFallback, which uses the module-level countdown clock.
+enableAutoUnmount(afterEach)
+beforeEach(_resetCountdownState)
 
 const community: CommunityResponse = {
   id: 'c1',

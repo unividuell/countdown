@@ -155,7 +155,17 @@ clock via `watch(nowMs, tick)`. Two consequences worth remembering:
   component from an earlier case, whose load had failed, retried into the current case's spy and
   broke a call-count assertion. `enableAutoUnmount(afterEach)` (already used in `HeaderMenu.spec.ts`)
   in every spec that mounts such a component. Per-instance timers hid this: the fake-timer registry
-  is thrown away by `vi.useRealTimers()`, so a leaked instance simply stopped ticking.
+  is thrown away by `vi.useRealTimers()`, so a leaked instance simply stopped ticking. Unmount before
+  calling the reset hook, not after — resetting zeroes the refcount without unmounting anyone, so a
+  surviving consumer would later release a subscription it no longer holds and clear an interval a
+  newer one started. `enableAutoUnmount(afterEach)` is what guarantees that ordering.
+- **A shared clock trades freshness for agreement — don't "fix" it back.** A consumer mounting between
+  ticks inherits the last tick's `nowMs`, so its first paint can be up to a second stale. That is the
+  point: two displays of the same instant agreeing matters more than either being maximally current,
+  and re-anchoring the clock on mount reintroduces exactly the drift the singleton removed (measured:
+  header and card showed seconds a full tick apart while claiming the same instant). Where a stale
+  first paint would actually be visible, cover it — `FlipDotBoard`'s 400 ms switch-on sequence hides
+  it by construction.
 
 ## HTTP + auth (the same-origin SPA contract)
 

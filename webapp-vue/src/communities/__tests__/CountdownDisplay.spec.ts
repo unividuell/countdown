@@ -123,6 +123,33 @@ describe('CountdownDisplay', () => {
     expect(w.find('[data-test="countdown"]').text()).toContain('T-')
   })
 
+  // Joining the shared clock writes nowMs, so a tick lands in the same frame as the mount and
+  // reaches the retry branch immediately. It must not read "no attempt recorded yet" as "attempted
+  // long enough ago" and fetch a second time. The clock is deliberately left stale by a full retry
+  // interval: with nowMs equal to Date.now(), subscribing writes the value it already had, no
+  // watcher fires, and this test could not fail. Verified against the regression it guards — moving
+  // load()'s lastAttemptMs assignment after its await makes this fetch twice.
+  it('fetches once on a first mount, not twice', async () => {
+    const spy = vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    spy.mockClear()
+    vi.setSystemTime(new Date('2026-06-14T21:00:10Z'))
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    expect(spy.mock.calls.length).toBe(1)
+  })
+
   it('counts up without announcing the event, which the fallback card now says', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',

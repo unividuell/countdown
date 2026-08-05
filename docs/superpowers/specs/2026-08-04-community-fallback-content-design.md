@@ -102,9 +102,17 @@ Gelesen wird `view.chips` bei `cfg = { months: false, weeks: false, days: true }
 
 Bewusst eine **eigene Instanz** und nicht die des Headers: dessen `cfg` ist per Klick umschaltbar
 (Monate/Wochen/Tage), und diese Umschaltung darf den Hero nicht mitverändern — er zeigt immer Tage.
-Der Preis ist ein zweiter `GET /api/communities/<slug>/countdown` beim Seitenaufbau und ein zweiter
-Sekunden-Timer. Beides ist billig; ein geteilter Per-Slug-Store wäre Infrastruktur für ein Problem,
-das es nicht gibt.
+Der Preis ist ein zweiter `GET /api/communities/<slug>/countdown` beim Seitenaufbau; `load()` gehört
+zur Instanz und bleibt es.
+
+**Die Uhr gehört dagegen nicht zur Instanz.** Ursprünglich hielt jede ihr eigenes `setInterval` — und
+das war keine billige Doppelung, sondern ein Fehler: die zwei Intervalle starteten in verschiedenen
+Momenten und synchronisierten nie, also zeigten Header und Card zum *selben* Zeitpunkt Sekunden, die
+bis zu eine ganze Sekunde auseinanderlagen. Geteilt ist deshalb genau die Umgebungszeit — `nowMs` und
+`skewMs`, letzteres weil es die Uhr des einen Servers beschreibt und nicht die des Konsumenten —, als
+Modul-Singleton hinter **einem** refcounteten Intervall. Alles Fachliche bleibt pro Instanz, `cfg`
+zuerst. Details und die Test-Konsequenzen in
+[`frontend.md`](../../../.claude/guidelines/frontend.md).
 
 ## Die Fallblatt-Tafel
 
@@ -179,10 +187,15 @@ Pro geändertem Punkt, per Web Animations API:
 - Verzögerung `(rechteste geänderte Spalte − spaltenindex) * 9 ms` — die Welle läuft **von rechts nach
   links** und beginnt bei der äußersten Spalte, die sich überhaupt ändert. Die Richtung ist die des
   Übertrags: beim Herunterzählen kippt 20 → 19 erst die Null, und *dadurch* die Zwei. Und gemessen
-  wird ab der geänderten Spalte, nicht ab dem Rand der Tafel — die Sekunden belegen die Spalten 42–46
-  der `HH:MM:SS`-Leiste, ein absoluter Versatz hätte sie 414 ms warten lassen, bevor sich überhaupt
-  etwas rührt. Gemessen im Browser: die Sekunde schaltet nur die Spalten 36–46, Spalte 46 startet bei
-  0 ms, Spalte 36 bei 90 ms
+  wird ab der geänderten Spalte, nicht ab dem Rand der Tafel — die Sekundenziffern belegen die Spalten
+  36–46 der `HH:MM:SS`-Leiste (die Einerstelle allein 42–46), ein absoluter Versatz hätte sie 414 ms
+  warten lassen, bevor sich überhaupt etwas rührt. Gemessen im Browser: eine Sekunde schaltet nur die
+  Spalten 36–46, Spalte 46 startet bei 0 ms, Spalte 36 bei 90 ms.
+
+  Die Regel selbst ist fachfrei formuliert — die Welle beginnt an der rechtesten geänderten Spalte,
+  was jede rechtsbündige Zahlenanzeige will, weil sich dort am häufigsten etwas ändert. Der Übertrag
+  des Countdowns ist das Beispiel, das die Regel motiviert, nicht ihre Bedingung: `ui/flipdot/` weiß
+  nichts von Countdowns.
 
 `transform-box: fill-box; transform-origin: center` auf den Kreisen, damit `scaleY` um den
 Punktmittelpunkt kippt und nicht um den SVG-Ursprung.
@@ -211,12 +224,17 @@ der, der sie zur Fallblatt-Tafel macht.
 - **Haltezeit 300 ms.** Ein gewählter Wert: lang genug, dass das weiße Feld als bewusstes Einschalten
   gelesen wird und nicht als Zeichenfehler; kurz genug, dass die erste echte Ablesung nicht
   spürbar vorenthalten wird.
-- **Das Aufschlagen läuft ohne Staffelung, das Auflösen mit.** Das ist der einzige bewusste Bruch in
-  der Animationssprache der Tafel, und er hat zwei Gründe. Erstens liest sich eine Tafel, die angeht,
-  als ein einziger gleichzeitiger Schlag — nicht als Welle. Zweitens rechnet sich eine Welle hier
-  nicht: über die 47 Spalten der `HH:MM:SS`-Leiste dauerte sie 414 ms und liefe damit mitten in die
-  Haltezeit hinein, die ihr folgen soll. Das Auflösen dagegen *ist* die Bewegung des Zählens und
-  behält deshalb die Richtung des Übertrags.
+- **Das Aufschlagen ist ein reiner Phasen-Wechsel, das Auflösen eine Animation.** Das ist der einzige
+  bewusste Bruch in der Animationssprache der Tafel, und er hat drei Gründe. Erstens liest sich eine
+  Tafel, die angeht, als ein einziger gleichzeitiger Schlag — nicht als Welle; gestaffelt bräuchte
+  sie über die 47 Spalten der `HH:MM:SS`-Leiste 414 ms und liefe mitten in die Haltezeit hinein, die
+  ihr folgen soll. Zweitens ist ein Kipp-Effekt, den alle Scheiben gleichzeitig ausführen, als
+  Bewegung gar nicht ablesbar — sichtbar bleibt allein der Farbwechsel, und den liefert der
+  Phasen-Wechsel genauso. Drittens kostet er dann nichts: die Animation wäre ein gleichzeitiger
+  `animate()`-Aufruf **pro Punkt** — 329 auf der Leiste — in einem einzigen Frame auf dem Hauptthread,
+  jeder auf `fill`, das der Compositor nicht übernehmen kann. Das wäre der schwerste Frame der App,
+  und die Zielgeräte sind Telefone. Das Auflösen dagegen *ist* die Bewegung des Zählens und behält
+  deshalb den Kipp-Effekt und die Richtung des Übertrags.
 - **Das Auflösen benutzt denselben Kipp-Effekt** wie jede Sekunde — dieselbe Dauer, dieselbe
   Verzögerungsregel, also auch **von rechts nach links**. Die Richtung, in der die Tafel später
   zählt, ist die, in der sie sich zuerst zeigt.
@@ -318,11 +336,19 @@ Vitest + `vi`, mobile-first geprüft:
 - `ui/flipdot/__tests__/FlipDotBoard.spec.ts` — Anzahl der Kreise, `on`-Zustand der richtigen
   Punkte, Differenz-Update animiert nur geänderte Punkte, `prefers-reduced-motion` löst keine
   Animation aus. Zum Einschalten: alle Punkte aus beim Mount, nach der Dunkelphase alle an und zwar
-  **ohne** Staffelung, nach der Haltezeit das echte Bitmap mit Staffelung von rechts nach links, unter
+  **ohne einen einzigen `animate()`-Aufruf**, nach der Haltezeit das echte Bitmap mit Staffelung von
+  rechts nach links, ein Wert der *während* der Sequenz eintrifft löst mit dem neuen Bitmap auf, unter
   `prefers-reduced-motion` weder Dunkel- noch Weißphase, und ein Unmount in einer der beiden Phasen
   feuert keinen Timer mehr. Der Ruhezustand wird jeweils **nach** abgelaufener Einschaltsequenz
   geprüft (`vi.useFakeTimers()`); die Phasen werden einzeln vorgespult, weil ein einziger Sprung über
   beide Timer die Mikrotasks zusammenfallen ließe.
+
+  Die Tests zur Wellenrichtung zählen die Aufrufe, bevor sie deren Verzögerungen prüfen: bei leerer
+  Aufrufliste sind `Math.max(...[])` und `[].every(...)` sonst beide „erfüllt", und der Test bestünde,
+  während gar nichts animiert.
+- `communities/__tests__/sharedClock.spec.ts` — Header und Card teilen ein Intervall: es wird genau
+  einmal gestartet, überlebt das Unmount des einen und wird erst beim Unmount des letzten geräumt, und
+  eine mitten in der Sekunde hinzukommende Anzeige zeigt sofort dieselbe Sekunde wie die bestehende.
 - `communities/fallbacks/__tests__/CountdownCard.spec.ts` — zusätzlich zur Geometrie: die Labels sind
   vor dem Auflösen transparent und danach sichtbar, beide Tafeln lösen im selben Schritt auf, und
   unter `prefers-reduced-motion` stehen die Labels sofort.

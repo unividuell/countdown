@@ -46,6 +46,9 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
   // Tracked, rather than inferring "never loaded" from round === null: the backend legitimately
   // answers round: null for a community without a startsAt, and that must not be retried at all.
   let loaded = false
+  // Recorded synchronously by load(), before its first await, which is what keeps a tick arriving in
+  // the same frame as the mount from reading 0 as "attempted long ago". The retry branch tests for 0
+  // anyway, so the invariant survives that assignment moving.
   let lastAttemptMs = 0
   async function load(s: string) {
     const seq = ++loadSeq
@@ -74,20 +77,40 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
     }
     if (!slug.value) return
     if (action !== 'none') void load(slug.value)
-    else if (!loaded && nowMs.value - lastAttemptMs >= FAILED_LOAD_RETRY_MS) void load(slug.value)
+    else if (!loaded && lastAttemptMs !== 0 && nowMs.value - lastAttemptMs >= FAILED_LOAD_RETRY_MS)
+      void load(slug.value)
+  }
+
+  // Per instance, on top of the module refcount: a community without a startsAt has nothing to tick
+  // for, and this instance must release exactly the one subscription it holds — no more, no less,
+  // whether the slug appeared late or vanished again.
+  let subscribed = false
+  function subscribe(): void {
+    if (subscribed) return
+    subscribed = true
+    subscribeToClock()
+  }
+  function unsubscribe(): void {
+    if (!subscribed) return
+    subscribed = false
+    unsubscribeFromClock()
   }
 
   onMounted(() => {
-    if (slug.value) void load(slug.value)
-    subscribeToClock()
+    if (!slug.value) return
+    void load(slug.value)
+    subscribe()
   })
-  onUnmounted(unsubscribeFromClock)
+  onUnmounted(unsubscribe)
   watch(nowMs, tick)
   watch(
     () => slug.value,
     (s) => {
-      if (s) void load(s)
-      else {
+      if (s) {
+        void load(s)
+        subscribe()
+      } else {
+        unsubscribe()
         round.value = null
         nextRound.value = null
         startsAt.value = null
@@ -106,7 +129,14 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
   return { view, cycleBaseUnit }
 }
 
-/** Test-only: reset the module-level shared clock between test cases. */
+/**
+ * Test-only: reset the module-level shared clock between test cases.
+ *
+ * Unmount every consumer before calling this. Resetting zeroes the subscriber count without
+ * unmounting anyone, so a consumer still alive across the reset would later release a subscription
+ * it no longer holds — and clear an interval a newer consumer started. `enableAutoUnmount(afterEach)`
+ * is what guarantees the ordering; every spec that mounts a consumer uses it.
+ */
 export function _resetCountdownState(): void {
   if (timer) clearInterval(timer)
   timer = undefined
