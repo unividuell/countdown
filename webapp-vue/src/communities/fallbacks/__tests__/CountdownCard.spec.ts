@@ -17,8 +17,9 @@ function mountCard(days: string) {
   })
 }
 
-// Both label groups, so every assertion about the fade covers the two of them together — they must
-// arrive as one, not one after the other.
+// Both label groups, so a single assertion can cover the case where they ought to agree — boot,
+// when both boards switch on together. The relight case below is precisely where they are allowed
+// to diverge, so it reads each group individually instead of through this helper.
 function labelClasses(w: ReturnType<typeof mountCard>): string[][] {
   return [
     w.get('[data-test="countdown-label-days"]').classes(),
@@ -121,7 +122,8 @@ describe('CountdownCard', () => {
     expect(labelClasses(w).every((c) => c.includes('transition-opacity'))).toBe(true)
   })
 
-  // Only the hero's event drives the labels; this pins the assumption that the strip is in step.
+  // Each board drives its own label from its own event, but at boot both still resolve on the same
+  // tick; this pins that assumption rather than any dependency between the two boards.
   it('resolves both boards in the step the labels arrive', async () => {
     const w = mountCard('58')
     const lit = () => w.findAll('circle').filter((c) => c.attributes('fill') === DOT_ON).length
