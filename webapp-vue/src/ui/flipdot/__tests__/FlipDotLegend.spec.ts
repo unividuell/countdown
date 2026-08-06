@@ -8,12 +8,18 @@ function mountLegend(text: string, labels: string[], visible = true) {
 }
 
 const lefts = (w: ReturnType<typeof mountLegend>) =>
-  w.findAll('span').map((s) => Number.parseFloat((s.element as HTMLElement).style.left))
+  w
+    .findAll('[data-test="legend-label"]')
+    .map((s) => Number.parseFloat((s.element as HTMLElement).style.left))
 
 describe('FlipDotLegend', () => {
   it('places one label per digit group, on its computed centre', () => {
     const w = mountLegend('13:42:07', ['STD', 'MIN', 'SEK'])
-    expect(w.findAll('span').map((s) => s.text())).toEqual(['STD', 'MIN', 'SEK'])
+    expect(w.findAll('[data-test="legend-label"]').map((s) => s.text())).toEqual([
+      'STD',
+      'MIN',
+      'SEK',
+    ])
     const expected = groupCentres('13:42:07')
     lefts(w).forEach((left, i) => expect(left).toBeCloseTo(expected[i]!, 3))
   })
@@ -21,7 +27,9 @@ describe('FlipDotLegend', () => {
   // The position is a computed percentage, so it has to be an inline style: Tailwind scans the
   // source and would never generate an interpolated left-[..%].
   it('positions with an inline style, not a utility class', () => {
-    const first = mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).findAll('span')[0]!
+    const first = mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).findAll(
+      '[data-test="legend-label"]',
+    )[0]!
     expect((first.element as HTMLElement).style.left).not.toBe('')
     expect(first.classes()).toContain('-translate-x-1/2')
   })
@@ -34,22 +42,26 @@ describe('FlipDotLegend', () => {
     const hidden = mountLegend('13:42:07', ['STD', 'MIN', 'SEK'], false)
     expect(hidden.classes()).toContain('opacity-0')
     expect(hidden.classes()).toContain('transition-opacity')
-    expect(hidden.findAll('span')).toHaveLength(3)
+    expect(hidden.findAll('[data-test="legend-label"]')).toHaveLength(3)
     expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK'], true).classes()).toContain('opacity-100')
   })
 
   it('grows and shrinks with the readout', () => {
     expect(
-      mountLegend('1:3:04:33:12', ['WO', 'TAGE', 'STD', 'MIN', 'SEK']).findAll('span'),
+      mountLegend('1:3:04:33:12', ['WO', 'TAGE', 'STD', 'MIN', 'SEK']).findAll(
+        '[data-test="legend-label"]',
+      ),
     ).toHaveLength(5)
-    expect(mountLegend('12:04:33:12', ['TAGE', 'STD', 'MIN', 'SEK']).findAll('span')).toHaveLength(
-      4,
-    )
+    expect(
+      mountLegend('12:04:33:12', ['TAGE', 'STD', 'MIN', 'SEK']).findAll(
+        '[data-test="legend-label"]',
+      ),
+    ).toHaveLength(4)
   })
 
   it('renders an empty cell rather than undefined when a label is missing', () => {
     const w = mountLegend('13:42:07', ['STD'])
-    expect(w.findAll('span')).toHaveLength(3)
+    expect(w.findAll('[data-test="legend-label"]')).toHaveLength(3)
     expect(w.text()).toBe('STD')
   })
 

@@ -55,20 +55,23 @@ const hintId = useId()
 </script>
 
 <template>
-  <div
+  <button
     v-if="view.state !== 'idle'"
     data-test="countdown"
-    role="button"
-    tabindex="0"
-    class="w-fit max-w-full select-none"
+    type="button"
+    class="w-fit max-w-full cursor-pointer select-none"
     :title="view.state === 'after' ? undefined : 'Countdown bis zum Start'"
     :aria-label="reading"
     :aria-describedby="hintId"
     @click="cycleBaseUnit"
-    @keydown.enter="cycleBaseUnit"
-    @keydown.space.prevent="cycleBaseUnit"
   >
-    <!-- Height-driven, so the dot size is the same in every state and at every viewport width; the
+    <!-- A real button, not a div wearing role="button": click, Enter, Space, focus order and Space's
+         scroll-prevention all come from the browser then, identically in every engine. The
+         hand-rolled version worked in Chromium and was reported dead in Firefox, and rather than
+         guess at the difference we stopped hand-rolling. cursor-pointer is explicit because
+         Tailwind v4's preflight gives buttons no pointer, and without one nothing marks the board
+         as a control at all — which is how it came to be reported as unclickable.
+         Height-driven, so the dot size is the same in every state and at every viewport width; the
          viewBox ratio supplies the width. max-w-full is the net for anything below 360px, where
          preserveAspectRatio then scales the dots down inside the reserved height instead of
          letting the board push the header apart — it resolves against the wrapper's w-fit width,
@@ -89,5 +92,5 @@ const hintId = useId()
          this consumer. In the card, nothing wraps the board, so it stays self-describing there. -->
     <FlipDotLegend class="mt-0.5" :text="text" :labels="labels" :visible="legendVisible" />
     <span :id="hintId" class="sr-only">Drücken, um die Zeiteinheit umzuschalten</span>
-  </div>
+  </button>
 </template>

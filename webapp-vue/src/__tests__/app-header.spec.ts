@@ -150,16 +150,19 @@ describe('App main header', () => {
     expect(w.classes()).toContain('overflow-x-clip')
   })
 
-  // The header must be the same height on every page: a countdown that appears when you enter a
-  // community would otherwise shove the content below it down by 52px.
-  it('reserves the countdown row even where no community is active', () => {
+  // No countdown, no second row: the header goes back to the height it had before the board existed
+  // rather than carrying 52px of reserved black on the login page and the community list.
+  it('drops the countdown row entirely where no community is active', () => {
     const w = mount(App, { global: { stubs } })
-    const row = w.get('[data-test="countdown-row"]')
-    expect(row.classes()).toContain('h-11')
+    expect(w.find('[data-test="countdown-row"]').exists()).toBe(false)
     expect(w.find('[data-test="countdown-widget"]').exists()).toBe(false)
   })
 
-  it('sits the countdown below the community title, at every width', () => {
+  // Narrow, the board needs a row of its own. From md there is room beside the title, and it moves
+  // up next to the account menu so the row's slack sits between the title and the two of them —
+  // otherwise a desktop header is mostly empty black. One instance either way; only its placement
+  // changes.
+  it('moves the countdown up beside the account menu from md, and keeps it below the title before', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
@@ -168,11 +171,38 @@ describe('App main header', () => {
       viewerIsAdmin: false,
       pendingCount: 0,
     }
-    const row = mount(App, { global: { stubs } }).get('[data-test="countdown-row"]')
+    const w = mount(App, { global: { stubs } })
+    const row = w.get('[data-test="countdown-row"]')
     expect(row.get('[data-test="countdown-widget"]').exists()).toBe(true)
+
+    // Narrow: its own row, spanning both columns.
     expect(row.classes()).toContain('row-start-2')
-    // No breakpoint variant anywhere on the row: one layout, one instance, at every width.
-    expect(row.classes().filter((c) => c.includes(':'))).toEqual([])
+    expect(row.classes()).toContain('col-span-2')
+    // From md: row 1, middle column, with the account menu pushed to the third.
+    expect(row.classes()).toContain('md:row-start-1')
+    expect(row.classes()).toContain('md:col-start-2')
+    expect(row.classes()).toContain('md:col-span-1')
+    expect(w.get('[data-test="account-cell"]').classes()).toContain('md:col-start-3')
+    // The third track only exists from md, which is what leaves the slack on the title's side.
+    expect(w.get('header').classes()).toContain('md:grid-cols-[1fr_auto_auto]')
+  })
+
+  // The board sits between title and account in the visual order from md, but after both in the DOM,
+  // because the narrow layout — which phones get — reads title, account, then the board below.
+  it('keeps the DOM order of the narrow layout, which is the common one', () => {
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte Hütte',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    const cells = mount(App, { global: { stubs } })
+      .get('header')
+      .findAll(':scope > div')
+      .map((d) => d.attributes('data-test'))
+    expect(cells).toEqual(['title-row', 'account-cell', 'countdown-row'])
   })
 
   // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.

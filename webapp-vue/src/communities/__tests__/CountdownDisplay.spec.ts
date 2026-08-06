@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import * as api from '@/api/countdown'
 import { _resetCountdownState } from '@/communities/useCountdown'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
@@ -234,7 +233,13 @@ describe('CountdownDisplay', () => {
     expect(w.find('[data-test="countdown-board"]').attributes('aria-hidden')).toBe('true')
   })
 
-  it('cycles from the keyboard too, because the board is a control and not a caption', async () => {
+  // A native button rather than a div wearing role="button": the hand-rolled version worked in
+  // Chromium and was reported dead in Firefox, so click, Enter, Space, focus order and Space's
+  // scroll-prevention all come from the browser now. That is what this asserts — the element's
+  // identity — because the behaviours themselves are the UA's and cannot be observed in happy-dom.
+  // A regression here would be someone turning it back into a div, which is exactly the shape the
+  // engines disagreed about.
+  it('is a real button, so the browser owns click, keyboard and focus', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
       startsAt: '2026-06-25T09:00:00Z',
@@ -251,16 +256,38 @@ describe('CountdownDisplay', () => {
     const w = mount(Cmp, { props: { slug: 'team' } })
     await flushPromises()
     const el = w.find('[data-test="countdown"]')
-    expect(el.attributes('tabindex')).toBe('0')
-
-    await el.trigger('keydown.enter')
-    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(6) // months + weeks + days
-
-    await el.trigger('keydown.space')
-    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(5) // weeks + days
+    expect(el.element.tagName).toBe('BUTTON')
+    expect(el.attributes('type')).toBe('button')
+    // No hand-rolled affordances left to drift out of sync with the native ones.
+    expect(el.attributes('role')).toBeUndefined()
+    expect(el.attributes('tabindex')).toBeUndefined()
+    // Tailwind v4's preflight gives buttons no pointer, and without one nothing marks the board as
+    // a control — which is how it came to be reported as "not clickable" in the first place.
+    expect(el.classes()).toContain('cursor-pointer')
   })
 
-  it('prevents the default Space scroll, not just handling the key', async () => {
+  // A <button>'s content model is phrasing only, so a <div> in there is invalid markup — and invalid
+  // markup inside an interactive element is precisely where engines start disagreeing.
+  it('keeps its contents valid inside a button', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    expect(w.find('[data-test="countdown"] div').exists()).toBe(false)
+  })
+
+  it('still cycles on click', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
       startsAt: '2026-06-25T09:00:00Z',
@@ -277,13 +304,12 @@ describe('CountdownDisplay', () => {
     const w = mount(Cmp, { props: { slug: 'team' } })
     await flushPromises()
     const el = w.find('[data-test="countdown"]')
-    // `trigger()` doesn't expose the event's own defaultPrevented state, so a real KeyboardEvent
-    // is dispatched here — this is what would stay green if `.prevent` were dropped from
-    // `@keydown.space`, re-introducing page scroll on every activation.
-    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })
-    el.element.dispatchEvent(event)
-    await nextTick()
-    expect(event.defaultPrevented).toBe(true)
+
+    await el.trigger('click')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(6) // months + weeks + days
+
+    await el.trigger('click')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(5) // weeks + days
   })
 
   it('describes what pressing the button does, not just what it is', async () => {
