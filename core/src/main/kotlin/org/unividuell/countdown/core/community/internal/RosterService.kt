@@ -5,6 +5,7 @@ import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberPoints
 import org.unividuell.countdown.core.community.MemberPointsQuery
 import org.unividuell.countdown.core.community.MemberStatus
+import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.UserQuery
 import java.time.Instant
 import java.util.UUID
@@ -32,11 +33,12 @@ class RosterService(
             .mapNotNull { member ->
                 val user = byId[member.userId] ?: return@mapNotNull null
                 val p = standings[member.userId] ?: MemberPoints(stable = 0, live = null)
+                val avatar = Avatar.of(user)
                 RosterMemberResponse(
                     userId = member.userId,
-                    shortName = MemberShortName.of(user.username),
+                    shortName = avatar.shortName,
                     fullName = user.username,
-                    bgColorHex = AvatarColor.resolve(user.bgColorHex, member.userId),
+                    bgColorHex = avatar.bgColorHex,
                     points = RosterPointsResponse(stable = p.stable, live = p.live),
                 )
             }

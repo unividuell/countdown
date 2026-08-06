@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.community.internal
+package org.unividuell.countdown.core.iam.internal
 
 /**
  * The 4-character avatar label, ported from the origin app's `viewSafeDisplayName`.

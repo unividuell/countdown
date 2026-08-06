@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.community.internal
+package org.unividuell.countdown.core.iam.internal
 
 import org.unividuell.countdown.core.rng.SeededRandom
 import java.util.UUID

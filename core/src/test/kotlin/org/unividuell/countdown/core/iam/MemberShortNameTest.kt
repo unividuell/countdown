@@ -1,8 +1,8 @@
-package org.unividuell.countdown.core.community
+package org.unividuell.countdown.core.iam
 
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.community.internal.MemberShortName
+import org.unividuell.countdown.core.iam.internal.MemberShortName
 
 class MemberShortNameTest {
     @Test
