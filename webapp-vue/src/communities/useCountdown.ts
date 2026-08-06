@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import { getCountdown } from '@/api/countdown'
-import type { Round } from '@/api/types'
+import type { CountdownResponse, Round } from '@/api/types'
 import { boundaryAction, computeView, nextBaseUnitConfig } from '@/communities/countdown'
 import type { BaseUnitConfig } from '@/communities/countdown'
 
@@ -35,6 +35,26 @@ function unsubscribeFromClock(): void {
   timer = undefined
 }
 
+// One request for one slug, for the same reason the clock is shared: the header and the fallback card
+// mount in the same tick on a community page and each asked for the same countdown — two XHRs a
+// millisecond apart. Boundary refetches and failed-load retries fire from the shared clock, so those
+// coincide too. A load still in flight is therefore joined instead of repeated.
+//
+// Deliberately only in-flight, not a cache: a consumer arriving later gets a fresh request rather
+// than a response that may have gone stale. And deliberately not shared *state* — each instance keeps
+// its own round data and its own base-unit config, which is what stops the header's unit cycle from
+// rewriting the card's readout. Sharing the state would mean a refcounted per-slug store with its own
+// eviction and slug-change rules; the duplicate request does not cost enough to buy that.
+const inFlight = new Map<string, Promise<CountdownResponse>>()
+
+function fetchCountdownOnce(slug: string): Promise<CountdownResponse> {
+  const pending = inFlight.get(slug)
+  if (pending) return pending
+  const request = getCountdown(slug).finally(() => inFlight.delete(slug))
+  inFlight.set(slug, request)
+  return request
+}
+
 export function useCountdown(slug: Ref<string | null | undefined>) {
   const round = ref<Round | null>(null)
   const nextRound = ref<Round | null>(null)
@@ -55,7 +75,7 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
     loaded = false
     lastAttemptMs = Date.now()
     try {
-      const r = await getCountdown(s)
+      const r = await fetchCountdownOnce(s)
       if (seq !== loadSeq) return // a newer load superseded this one
       round.value = r.round
       nextRound.value = r.nextRound
@@ -138,6 +158,7 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
  * is what guarantees the ordering; every spec that mounts a consumer uses it.
  */
 export function _resetCountdownState(): void {
+  inFlight.clear()
   if (timer) clearInterval(timer)
   timer = undefined
   subscribers = 0

@@ -85,6 +85,35 @@ describe('countdown shared clock', () => {
     expect(cardSeconds(card)).toBe(headerSeconds(header))
   })
 
+  // Both consumers mount in the same tick on a community page, and each used to ask for the same
+  // slug's countdown — two XHRs a millisecond apart, measured in the browser. A load in flight is
+  // joined now. What is *not* shared is the state built from the response, so the header's unit cycle
+  // still cannot rewrite the card's readout.
+  it('asks the backend once when both countdowns mount together', async () => {
+    const spy = stubCountdown()
+    const header = mountHeader()
+    const card = mountCard()
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    // Both are fed by it, not just whichever one issued it.
+    expect(headerSeconds(header)).toBe('00')
+    expect(cardSeconds(card)).toBe('00')
+  })
+
+  it('gives a later consumer its own request rather than a settled one', async () => {
+    const spy = stubCountdown()
+    mountHeader()
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(500)
+    mountCard()
+    await flushPromises()
+
+    // Joining covers a request still in flight, and nothing beyond it: a consumer arriving after the
+    // first load settled must not be handed a response that has had time to go stale.
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
   it('keeps ticking until the last consumer unmounts', async () => {
     const spy = stubCountdown()
     const header = mountHeader()
