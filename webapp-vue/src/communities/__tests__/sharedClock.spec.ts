@@ -5,6 +5,7 @@ import type { CommunityResponse } from '@/api/types'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import { BOOT_RESOLVE_AT_MS } from '@/ui/flipdot/board'
 
 const community: CommunityResponse = {
@@ -43,8 +44,10 @@ enableAutoUnmount(afterEach)
 const mountHeader = () => mount(CountdownDisplay, { props: { slug: 'team' } })
 const mountCard = () => mount(RoundFallback, { props: { community, members: [] } })
 
+// The header no longer renders its digits as text — they are dots on an <svg> — so the seconds
+// group is read off the board's own text prop instead of the DOM text.
 function headerSeconds(w: ReturnType<typeof mountHeader>): string | undefined {
-  return /(\d{2})s\s*$/.exec(w.find('[data-test="countdown"]').text())?.[1]
+  return w.getComponent(FlipDotBoard).props('text').split(':').pop()
 }
 
 function cardSeconds(w: ReturnType<typeof mountCard>): string | undefined {
@@ -109,6 +112,11 @@ describe('countdown shared clock', () => {
     stubCountdown()
     mountHeader() // still mounted at reset time, as a leaky test case would leave it
     await flushPromises()
+    // The header's own board holds boot timers of its own until it relights; drain them so the
+    // count below is about the clock, not the board's switch-on sequence. Restore the system
+    // clock afterwards so the drain's 400ms is invisible to the seconds arithmetic below.
+    await vi.advanceTimersByTimeAsync(BOOT_RESOLVE_AT_MS)
+    vi.setSystemTime(new Date('2026-06-14T21:00:00Z'))
     expect(vi.getTimerCount()).toBe(1)
 
     _resetCountdownState()

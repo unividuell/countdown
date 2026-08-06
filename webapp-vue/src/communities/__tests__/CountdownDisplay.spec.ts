@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/countdown'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
 
 // The countdown clock is a module-level singleton: a wrapper left mounted keeps reacting to it and
 // would fetch inside the *next* test case.
@@ -36,9 +38,11 @@ describe('CountdownDisplay', () => {
     const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
     const w = mount(Cmp, { props: { slug: 'team' } })
     await flushPromises()
-    expect(w.text()).toContain('T-')
-    expect(w.text()).toContain('10') // |round.number| days
-    expect(w.text()).toContain('12') // hours to next boundary
+    // 10 days to the start, 12 hours to the round boundary. The leading group is padded so the
+    // board keeps its width across a day boundary.
+    expect(w.getComponent(FlipDotBoard).props('text')).toBe('10:12:00:00')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toEqual(['TAGE', 'STD', 'MIN', 'SEK'])
+    expect(w.getComponent(FlipDotBoard).props('label')).toContain('10 Tage')
   })
 
   it('cycles the base unit on click', async () => {
@@ -58,7 +62,17 @@ describe('CountdownDisplay', () => {
     const w = mount(Cmp, { props: { slug: 'team' } })
     await flushPromises()
     await w.find('[data-test="countdown"]').trigger('click')
-    expect(w.text()).toMatch(/\dw/) // a weeks chip appears after one cycle
+    // months + weeks + days now, so six groups and six labels — the widest state the board has.
+    expect(w.getComponent(FlipDotLegend).props('labels')).toEqual([
+      'MON',
+      'WO',
+      'TAGE',
+      'STD',
+      'MIN',
+      'SEK',
+    ])
+    expect(w.getComponent(FlipDotBoard).props('text').split(':')).toHaveLength(6)
+    expect(w.getComponent(FlipDotBoard).props('text')).toBe('00:1:3:12:00:00')
   })
 
   it('stops fetching after unmount', async () => {
@@ -120,7 +134,7 @@ describe('CountdownDisplay', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     await flushPromises()
     expect(spy.mock.calls.length).toBe(2) // retried once, not once per second
-    expect(w.find('[data-test="countdown"]').text()).toContain('T-')
+    expect(w.find('[data-test="countdown"]').exists()).toBe(true)
   })
 
   // Joining the shared clock writes nowMs, so a tick lands in the same frame as the mount and
@@ -168,8 +182,83 @@ describe('CountdownDisplay', () => {
     await flushPromises()
     const el = w.find('[data-test="countdown"]')
     expect(el.exists()).toBe(true)
-    expect(el.text()).toContain('T+')
+    expect(w.getComponent(FlipDotBoard).props('label')).toContain('Laufzeit')
     expect(el.text()).not.toContain('Event läuft')
     expect(el.attributes('title')).toBeUndefined()
+  })
+
+  it('pads only the leading group, so the widest state still fits the header', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 5,
+        label: 'T-5',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    expect(w.getComponent(FlipDotBoard).props('text')).toBe('05:12:00:00')
+  })
+
+  it('cycles from the keyboard too, because the board is a control and not a caption', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    const el = w.find('[data-test="countdown"]')
+    expect(el.attributes('tabindex')).toBe('0')
+
+    await el.trigger('keydown.enter')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(6) // months + weeks + days
+
+    await el.trigger('keydown.space')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(5) // weeks + days
+  })
+
+  it('caps the board width instead of letting it push the header apart', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    // happy-dom computes no CSS, so the classes are the observable proxy: a fixed height with an
+    // automatic width is what keeps the dot size constant, and max-w-full is the net below 360px.
+    const board = w.find('[data-test="countdown-board"]')
+    expect(board.classes()).toContain('h-[26px]')
+    expect(board.classes()).toContain('w-auto')
+    expect(board.classes()).toContain('max-w-full')
+    // The board's percentage cap needs a definite width to resolve against, and the legend takes
+    // its own width from the same box — so the wrapper states fit-content instead of relying on
+    // shrink-to-fit.
+    const wrapper = w.find('[data-test="countdown"]')
+    expect(wrapper.classes()).toContain('w-fit')
+    expect(wrapper.classes()).toContain('max-w-full')
   })
 })
