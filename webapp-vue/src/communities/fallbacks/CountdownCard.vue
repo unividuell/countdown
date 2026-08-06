@@ -23,6 +23,7 @@ const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
 
 // The boards own the switch-on timeline; the labels only follow it, so they wait for the hero's
 // event instead of running a second clock that would have to repeat the reduced-motion decision.
+// The board relights whenever its geometry changes, so this follows in both directions.
 const resolved = ref(false)
 const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0'))
 </script>
@@ -41,7 +42,7 @@ const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0
         :class="heroWidth"
         :text="days"
         :label="heroLabel"
-        @resolve="resolved = true"
+        @phase="resolved = $event === 'live'"
       />
       <p
         data-test="countdown-label-days"

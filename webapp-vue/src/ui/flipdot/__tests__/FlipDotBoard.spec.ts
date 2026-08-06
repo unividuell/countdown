@@ -151,15 +151,39 @@ describe('FlipDotBoard', () => {
     expect(Math.max(...delays(animate))).toBeLessThanOrEqual(4 * 9)
   })
 
-  it('does not animate when the grid geometry changes', async () => {
+  it('switches itself on again when the geometry changes, instead of jumping', async () => {
     const animate = stubAnimate()
     const w = mount(FlipDotBoard, { props: { text: '99', label: 'x' } })
     await bootDone()
     animate.mockClear()
+
     await w.setProps({ text: '100' })
     await nextTick()
-    expect(animate).not.toHaveBeenCalled()
+    // White first, and already at the new size: the width change happens while nothing is legible,
+    // which is what keeps it from reading as a jump.
     expect(w.findAll('circle').length).toBe(17 * 7)
+    expect(fills(w).every((f) => f === DOT_ON)).toBe(true)
+    expect(animate).not.toHaveBeenCalled()
+    expect(w.emitted('phase')?.at(-1)).toEqual(['white'])
+
+    await advance(BOOT_HOLD_MS)
+    const litAtRest = bitmap('100').on.filter(Boolean).length
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(litAtRest)
+    expect(animate).toHaveBeenCalledTimes(17 * 7 - litAtRest)
+    expect(w.emitted('phase')?.at(-1)).toEqual(['live'])
+  })
+
+  it('swaps a changed geometry instantly under prefers-reduced-motion', async () => {
+    const animate = stubAnimate()
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    const w = mount(FlipDotBoard, { props: { text: '99', label: 'x' } })
+    await w.setProps({ text: '100' })
+    await nextTick()
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
+      bitmap('100').on.filter(Boolean).length,
+    )
+    expect(animate).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('honours prefers-reduced-motion by switching without the flip', async () => {
@@ -235,12 +259,14 @@ describe('FlipDotBoard', () => {
       }
     })
 
-    it('announces the resolve, so followers need no clock of their own', async () => {
+    it('announces every phase, so followers need no clock of their own', async () => {
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      // The dark phase is the starting state; nobody has to be told about it.
+      expect(w.emitted('phase')).toBeUndefined()
       await advance(BOOT_DARK_MS)
-      expect(w.emitted('resolve')).toBeUndefined()
+      expect(w.emitted('phase')).toEqual([['white']])
       await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
-      expect(w.emitted('resolve')).toHaveLength(1)
+      expect(w.emitted('phase')).toEqual([['white'], ['live']])
     })
 
     it('is skipped entirely under prefers-reduced-motion — no phases, no timer', async () => {
@@ -249,7 +275,7 @@ describe('FlipDotBoard', () => {
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
       expect(vi.getTimerCount()).toBe(0)
-      expect(w.emitted('resolve')).toHaveLength(1)
+      expect(w.emitted('phase')).toEqual([['live']])
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
@@ -259,11 +285,14 @@ describe('FlipDotBoard', () => {
       const animate = stubAnimate()
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
       expect(vi.getTimerCount()).toBe(2)
+      // Asserted before the unmount: @vue/test-utils drops an instance's whole emit history inside
+      // unmount(), so emitted() afterwards is undefined whatever happened — which is why the
+      // assertion that used to stand at the end of this test could never have failed.
+      expect(w.emitted('phase')).toBeUndefined()
       w.unmount()
       expect(vi.getTimerCount()).toBe(0)
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
-      expect(w.emitted('resolve')).toBeUndefined()
     })
 
     it('resolves to the value that arrived during the hold, not the one it booted with', async () => {
@@ -286,11 +315,11 @@ describe('FlipDotBoard', () => {
       await advance(BOOT_DARK_MS)
       animate.mockClear()
       expect(vi.getTimerCount()).toBe(1)
+      expect(w.emitted('phase')).toEqual([['white']]) // see the note above about unmount()
       w.unmount()
       expect(vi.getTimerCount()).toBe(0)
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
-      expect(w.emitted('resolve')).toBeUndefined()
     })
   })
 })
