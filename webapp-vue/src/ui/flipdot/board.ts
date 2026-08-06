@@ -35,7 +35,7 @@ export function groupCentres(text: string): number[] {
     if (!isDigit && start !== null) {
       // col has already advanced past the group's trailing gap, so its last column is col - 2.
       const last = col - 2
-      centres.push((((start * PITCH + last * PITCH + 2 * RADIUS) / 2) / width) * 100)
+      centres.push(((start * PITCH + last * PITCH + 2 * RADIUS) / 2 / width) * 100)
       start = null
     }
     if (ch !== '') col += glyphCols(ch) + 1
