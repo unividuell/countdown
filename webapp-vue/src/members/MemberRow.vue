@@ -11,9 +11,9 @@
  * to stay stable for the component's lifetime. A consumer whose roster can change must remount
  * it (for example with a `:key`) rather than mutate the prop in place.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'
-import { readableTextColor } from './readableTextColor'
+import Avatar from '@/ui/Avatar.vue'
 import type { RosterMemberResponse } from '@/api/types'
 
 const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
@@ -37,7 +37,7 @@ function requiredMargin(col: DOMRect, circle: DOMRect): number {
   return Math.max(hw2 + dx, hh2 + dy)
 }
 
-const props = defineProps<{ members: RosterMemberResponse[] }>()
+defineProps<{ members: RosterMemberResponse[] }>()
 
 const row = ref<HTMLElement | null>(null)
 const settled = ref(false)
@@ -45,8 +45,6 @@ let items: HTMLElement[] = []
 let swarm: Swarm | null = null
 let raf = 0
 let lastFrame = 0
-
-const textColors = computed(() => props.members.map((m) => readableTextColor(m.bgColorHex)))
 
 // `role="img"` is Children Presentational: True, pruning the `+N` live-points badge's text node
 // from the accessibility tree — so the live points must be folded into the label itself here.
@@ -170,13 +168,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         :aria-label="ariaLabel(m)"
         :title="m.fullName"
       >
-        <div
-          data-swarm-circle
-          class="flex size-12 place-content-around rounded-full ring-2 ring-white"
-          :style="{ background: m.bgColorHex, color: textColors[index] }"
-        >
-          <div class="place-self-center rotate-[-40deg] text-sm font-medium">{{ m.shortName }}</div>
-        </div>
+        <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" data-swarm-circle />
         <div
           class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-900 ring-1 ring-white"
         >

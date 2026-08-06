@@ -63,6 +63,32 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `GET me carries the avatar the roster would draw`() {
+        every { profileService.current(uid) } returns user(displayName = "Turanga Leela")
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(displayName = "Turanga Leela")))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.avatar.shortName") { value("TRNG") }
+            jsonPath("$.avatar.bgColorHex") { value(Avatar.of(user(displayName = "Turanga Leela")).bgColorHex) }
+        }
+    }
+
+    @Test
+    fun `GET me resolves the avatar colour but leaves the chosen one unset`() {
+        // The two fields answer different questions: what to paint with, and what the user picked.
+        // A profile form prefilling from bgColorHex must not see a choice that was never made.
+        every { profileService.current(uid) } returns user()
+
+        mockMvc.get("/api/me") { with(principalFor(user())) }.andExpect {
+            status { isOk() }
+            jsonPath("$.bgColorHex") { doesNotExist() }
+            jsonPath("$.avatar.bgColorHex") { value(org.hamcrest.Matchers.matchesPattern("^#[0-9a-f]{6}$")) }
+        }
+    }
+
+    @Test
     fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
         every { profileService.current(uid) } returns user()
 

@@ -1,9 +1,9 @@
-package org.unividuell.countdown.core.community
+package org.unividuell.countdown.core.iam
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.community.internal.AvatarColor
+import org.unividuell.countdown.core.iam.internal.AvatarColor
 import java.util.UUID
 
 class AvatarColorTest {

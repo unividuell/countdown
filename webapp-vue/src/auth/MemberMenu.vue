@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import IconMember from '~icons/lucide/circle-user'
+import Avatar from '@/ui/Avatar.vue'
 import HeaderMenu from '@/ui/HeaderMenu.vue'
 import { useAuth } from '@/auth/useAuth'
+import type { MeResponse } from '@/api/types'
+
+const props = defineProps<{ user: MeResponse }>()
 
 const router = useRouter()
-const { user, logout } = useAuth()
+const { logout } = useAuth()
 const failed = ref(false)
 
 async function handleLogout(): Promise<void> {
@@ -25,14 +28,14 @@ async function handleLogout(): Promise<void> {
 
 <template>
   <HeaderMenu label="Konto-Menü" align="right" data-test="member-menu">
-    <template #trigger><IconMember class="size-5" /></template>
+    <template #trigger><Avatar v-bind="props.user.avatar" size="sm" /></template>
 
     <div data-test="current-user" class="px-3 pt-1 pb-0.5 text-xs text-neutral-500">
-      {{ user?.username }}
+      {{ props.user.username }}
     </div>
     <!-- Only rendered for the role, so the area stays undiscoverable for everyone else. -->
     <RouterLink
-      v-if="user?.isSuperAdmin"
+      v-if="props.user.isSuperAdmin"
       data-test="super-admin"
       to="/super-admin"
       class="block px-3 py-1.5 text-sm hover:bg-neutral-100"

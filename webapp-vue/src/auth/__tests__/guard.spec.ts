@@ -19,6 +19,7 @@ const me = {
   githubName: null,
   email: null,
   bgColorHex: null,
+  avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
   isSuperAdmin: false,
   mayCreateCommunities: false,
   createdAt: null,

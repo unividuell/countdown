@@ -5,12 +5,26 @@ import App from '@/App.vue'
 import { activeCommunity } from '@/communities/context'
 import { useAuth } from '@/auth/useAuth'
 import { navigationPending } from '@/ui/navigationProgress'
+import type { MeResponse } from '@/api/types'
 
 vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
-function mockStatus(status: 'unknown' | 'authenticated' | 'anonymous') {
+const viewer: MeResponse = {
+  id: 'u1',
+  username: 'octo',
+  githubLogin: 'octo',
+  githubName: null,
+  email: null,
+  bgColorHex: null,
+  avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
+  isSuperAdmin: false,
+  mayCreateCommunities: false,
+  createdAt: null,
+}
+
+function mockStatus(status: 'authenticated' | 'anonymous') {
   vi.mocked(useAuth).mockReturnValue({
-    user: ref(null) as never,
+    user: ref(status === 'authenticated' ? viewer : null) as never,
     status: ref(status) as never,
     bootstrap: vi.fn(),
     loginWithGitHub: vi.fn(),
@@ -24,7 +38,7 @@ const stubs = {
   RouterView: { template: '<div />' },
   CountdownDisplay: { template: '<div data-test="countdown-widget" />', props: ['slug'] },
   CommunityMenu: { template: '<div data-test="community-menu" />', props: ['community'] },
-  MemberMenu: { template: '<div data-test="member-menu" />' },
+  MemberMenu: { template: '<div data-test="member-menu" />', props: ['user'] },
 }
 
 describe('App main header', () => {

@@ -10,7 +10,7 @@ import CommunityMenu from '@/communities/CommunityMenu.vue'
 import MemberMenu from '@/auth/MemberMenu.vue'
 import { navigationPending } from '@/ui/navigationProgress'
 
-const { status } = useAuth()
+const { user } = useAuth()
 
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
@@ -41,7 +41,7 @@ const yearSuffix = computed(() => {
         </div>
         <div class="flex items-center gap-3">
           <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
-          <MemberMenu v-if="status === 'authenticated'" />
+          <MemberMenu v-if="user" :user="user" />
         </div>
       </header>
       <!-- Absolute, so appearing costs no layout: the bar must not push <main> down. -->

@@ -20,6 +20,7 @@ async function signIn(mayCreateCommunities: boolean): Promise<void> {
     githubName: null,
     email: null,
     bgColorHex: null,
+    avatar: { shortName: 'ALIC', bgColorHex: '#8e44ad' },
     isSuperAdmin: false,
     mayCreateCommunities,
     createdAt: null,
