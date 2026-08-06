@@ -24,6 +24,7 @@ async function mountNewPage() {
     githubName: null,
     email: null,
     bgColorHex: null,
+    avatar: { shortName: 'ALIC', bgColorHex: '#8e44ad' },
     isSuperAdmin: false,
     mayCreateCommunities: true,
     createdAt: null,

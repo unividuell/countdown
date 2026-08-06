@@ -1,10 +1,18 @@
+/** How this user is drawn — resolved by the server, identical to what the roster shows. */
+export interface AvatarView {
+  shortName: string
+  bgColorHex: string
+}
+
 export interface MeResponse {
   id: string
   username: string
   githubLogin: string
   githubName: string | null
   email: string | null
+  /** The colour the user picked; null means they picked none. Not what to paint with. */
   bgColorHex: string | null
+  avatar: AvatarView
   isSuperAdmin: boolean
   /** Effective permission: the stored clearance, or super-admin. */
   mayCreateCommunities: boolean
