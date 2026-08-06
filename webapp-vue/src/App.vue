@@ -10,7 +10,7 @@ import CommunityMenu from '@/communities/CommunityMenu.vue'
 import MemberMenu from '@/auth/MemberMenu.vue'
 import { navigationPending } from '@/ui/navigationProgress'
 
-const { status } = useAuth()
+const { user, status } = useAuth()
 
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
@@ -41,7 +41,14 @@ const yearSuffix = computed(() => {
         </div>
         <div class="flex items-center gap-3">
           <CountdownDisplay v-if="activeCommunity?.startsAt" :slug="activeCommunity.slug" />
-          <MemberMenu v-if="status === 'authenticated'" />
+          <MemberMenu v-if="user" :user="user" />
+          <!-- Holds the place while /api/me is in flight, so the header content to its left
+               cannot slide when the avatar arrives. Size = the trigger's (size-8 plus its p-1). -->
+          <div
+            v-else-if="status === 'unknown'"
+            data-test="member-menu-placeholder"
+            class="size-10"
+          />
         </div>
       </header>
       <!-- Absolute, so appearing costs no layout: the bar must not push <main> down. -->

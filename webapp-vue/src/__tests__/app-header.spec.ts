@@ -5,12 +5,26 @@ import App from '@/App.vue'
 import { activeCommunity } from '@/communities/context'
 import { useAuth } from '@/auth/useAuth'
 import { navigationPending } from '@/ui/navigationProgress'
+import type { MeResponse } from '@/api/types'
 
 vi.mock('@/auth/useAuth', () => ({ useAuth: vi.fn() }))
 
+const viewer: MeResponse = {
+  id: 'u1',
+  username: 'octo',
+  githubLogin: 'octo',
+  githubName: null,
+  email: null,
+  bgColorHex: null,
+  avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
+  isSuperAdmin: false,
+  mayCreateCommunities: false,
+  createdAt: null,
+}
+
 function mockStatus(status: 'unknown' | 'authenticated' | 'anonymous') {
   vi.mocked(useAuth).mockReturnValue({
-    user: ref(null) as never,
+    user: ref(status === 'authenticated' ? viewer : null) as never,
     status: ref(status) as never,
     bootstrap: vi.fn(),
     loginWithGitHub: vi.fn(),
@@ -24,7 +38,7 @@ const stubs = {
   RouterView: { template: '<div />' },
   CountdownDisplay: { template: '<div data-test="countdown-widget" />', props: ['slug'] },
   CommunityMenu: { template: '<div data-test="community-menu" />', props: ['community'] },
-  MemberMenu: { template: '<div data-test="member-menu" />' },
+  MemberMenu: { template: '<div data-test="member-menu" />', props: ['user'] },
 }
 
 describe('App main header', () => {
@@ -102,6 +116,23 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
     mockStatus('authenticated')
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
+  })
+
+  it('holds the avatar’s place while the session is still unknown', () => {
+    // Without this the header content to its left slides sideways the moment /api/me lands.
+    mockStatus('unknown')
+    const loading = mount(App, { global: { stubs } })
+    expect(loading.find('[data-test=member-menu-placeholder]').exists()).toBe(true)
+    expect(loading.find('[data-test=member-menu]').exists()).toBe(false)
+
+    mockStatus('anonymous')
+    const anon = mount(App, { global: { stubs } })
+    expect(anon.find('[data-test=member-menu-placeholder]').exists()).toBe(false)
+
+    mockStatus('authenticated')
+    const signedIn = mount(App, { global: { stubs } })
+    expect(signedIn.find('[data-test=member-menu-placeholder]').exists()).toBe(false)
+    expect(signedIn.find('[data-test=member-menu]').exists()).toBe(true)
   })
 
   it('shows the navigation progress bar only while a navigation is pending', () => {
