@@ -32,7 +32,8 @@ Community-Roster. Der Header zeigt künftig denselben Avatar wie die Rangliste.
   benutzt von Rangliste und Header. Die weiße Outline gehört zum Avatar, nicht zur Rangliste.
 - **Kein Ersatz-Icon, kein Flackern.** Das Konto-Menü ergibt ohne Anwender keinen Sinn; der
   angemeldete Anwender wird zur Prop-Vorbedingung, statt in der Komponente wegverzweigt zu
-  werden.
+  werden. Während `/api/me` unterwegs ist, hält ein leerer Platzhalter die Geometrie — nichts
+  zu sehen, aber nichts springt.
 - **Die Farbfrage im Header wird gesehen, nicht geraten.** Voll bunt, gedämpft oder
   Schwarz-Weiß entscheidet sich am laufenden Dev-Server im Vergleich.
 
@@ -159,12 +160,25 @@ Anwender zur **Vorbedingung der Komponente**:
 ```vue
 <!-- App.vue -->
 <MemberMenu v-if="user" :user="user" />
+<!-- Hält den Platz, solange /api/me unterwegs ist: sonst springt der Header-Inhalt
+     links davon, sobald der Avatar erscheint. Maße = Trigger (size-8 Avatar + p-1). -->
+<div v-else-if="status === 'unknown'" data-test="member-menu-placeholder" class="size-10" />
 ```
 
-`const { status } = useAuth()` wird zu `const { user } = useAuth()`; `status` wird in `App.vue`
-sonst nirgends gebraucht. Die Bedingung ist verhaltensgleich: `useAuth` setzt `user` und
-`status` immer gemeinsam (`bootstrap`, `logout`, `markAnonymous`) — `status === 'authenticated'`
-und `user !== null` sind dasselbe. Neu ist nur, dass TypeScript es jetzt auch weiß.
+`App.vue` liest ab jetzt `user` **und** `status` aus `useAuth`. Die Anwesenheits-Bedingung ist
+verhaltensgleich zu vorher: `useAuth` setzt `user` und `status` immer gemeinsam (`bootstrap`,
+`logout`, `markAnonymous`) — `status === 'authenticated'` und `user !== null` sind dasselbe. Neu
+ist nur, dass TypeScript es jetzt auch weiß.
+
+`status` bleibt aber gebraucht, weil `user === null` zwei verschiedene Dinge heißen kann:
+**noch nicht bekannt** (`unknown`, Platz reservieren) und **niemand angemeldet** (`anonymous`,
+kein Platz). Der Platzhalter ist leer und ohne Rahmen — er ist reine Geometrie. Beim Übergang
+`unknown → anonymous` fällt er weg; das ist unkritisch, weil dort rechts nichts steht, wogegen
+es springen könnte.
+
+Die Maße des Platzhalters sind an den Trigger gekoppelt (`size-10` = `size-8` Avatar plus die
+`p-1` des Buttons aus `HeaderMenu.vue`). Ändert sich die Avatar-Größe im Header, muss der
+Platzhalter mit — der Kommentar an Ort und Stelle sagt das.
 
 `MemberMenu.vue` bekommt `defineProps<{ user: MeResponse }>()` und holt sich aus `useAuth` nur
 noch `logout`. Damit entfallen die Optional-Chains (`user?.username`, `user?.isSuperAdmin`), das
@@ -228,7 +242,8 @@ Kein toter Wahlschalter im Code, nachdem die Wahl getroffen ist.
   (der Mock liefert nur noch `logout`); der Trigger zeigt den Avatar mit den Initialen des
   angemeldeten Anwenders.
 - `__tests__/app-header.spec.ts`: prüft weiterhin, dass das Menü nur für angemeldete Anwender
-  im Header steht — jetzt über `user` statt über `status`.
+  im Header steht — jetzt über `user` statt über `status`. Neu: bei `status === 'unknown'` steht
+  der Platzhalter dort und kein Menü; bei `anonymous` steht keins von beidem.
 
 ## Was nicht dazugehört
 
