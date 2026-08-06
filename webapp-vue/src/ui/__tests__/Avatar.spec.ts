@@ -30,17 +30,11 @@ describe('Avatar', () => {
   it('defaults to the roster size and shrinks on request', () => {
     const lg = mount(Avatar, { props: { shortName: 'A', bgColorHex: '#8e44ad' } })
     expect(lg.classes()).toContain('size-12')
+    expect(lg.classes()).toContain('text-sm')
     const sm = mount(Avatar, { props: { shortName: 'A', bgColorHex: '#8e44ad', size: 'sm' } })
     expect(sm.classes()).toContain('size-8')
     expect(sm.classes()).not.toContain('size-12')
-  })
-
-  it('can be drained of colour without changing the colour it was given', () => {
-    const w = mount(Avatar, {
-      props: { shortName: 'A', bgColorHex: '#8e44ad', variant: 'grayscale' },
-    })
-    expect(w.classes()).toContain('grayscale')
-    expect(w.attributes('style')).toMatch(PURPLE)
+    expect(sm.classes()).toContain('text-[10px]')
   })
 
   it('lets the caller attach its own attributes to the circle', () => {

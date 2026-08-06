@@ -13,22 +13,18 @@ const props = withDefaults(
     shortName: string
     bgColorHex: string
     size?: 'sm' | 'lg'
-    variant?: 'color' | 'muted' | 'grayscale'
   }>(),
-  { size: 'lg', variant: 'color' },
+  { size: 'lg' },
 )
 
 const textColor = computed(() => readableTextColor(props.bgColorHex))
-const sizing = computed(() => (props.size === 'sm' ? 'size-8 text-xs' : 'size-12 text-sm'))
-const filter = computed(
-  () => ({ color: '', muted: 'saturate-50', grayscale: 'grayscale' })[props.variant],
-)
+const sizing = computed(() => (props.size === 'sm' ? 'size-8 text-[10px]' : 'size-12 text-sm'))
 </script>
 
 <template>
   <div
     class="flex place-content-around rounded-full ring-2 ring-white"
-    :class="[sizing, filter]"
+    :class="sizing"
     :style="{ background: bgColorHex, color: textColor }"
   >
     <div class="place-self-center rotate-[-40deg] font-medium">{{ shortName }}</div>
