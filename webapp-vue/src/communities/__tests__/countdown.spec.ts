@@ -84,6 +84,50 @@ describe('computeView', () => {
     expect(v.chips[0]).toEqual({ value: '0', unit: 'd' }) // 2h30m after start
     expect(v.chips[1]).toEqual({ value: '02', unit: 'h' })
   })
+
+  // The header's readout is a button that cycles the base unit, and it is the same button before and
+  // after the start. Ignoring the config here left it promising an action it could not perform:
+  // clicking a running community's countdown did nothing at all, in every browser.
+  it('re-expresses the elapsed time in the chosen base unit, as it does before the start', () => {
+    const r: Round = {
+      number: -43,
+      label: 'T+43',
+      start: '2026-06-25T09:00:00Z',
+      end: '2026-06-26T09:00:00Z',
+    }
+    const now = ms('2026-08-06T16:30:00Z') // 42 days and change after the start
+    const monthsWeeks = computeView(r, startsAt, zone, now, {
+      months: true,
+      weeks: true,
+      days: true,
+    })
+    expect(monthsWeeks.state).toBe('after')
+    expect(monthsWeeks.chips.map((c) => c.unit)).toEqual(['M', 'w', 'd', 'h', 'm', 's'])
+    expect(monthsWeeks.chips[0]).toEqual({ value: '1', unit: 'M' })
+    expect(monthsWeeks.chips[1]).toEqual({ value: '1', unit: 'w' })
+
+    const weeks = computeView(r, startsAt, zone, now, { months: false, weeks: true, days: true })
+    expect(weeks.chips.map((c) => c.unit)).toEqual(['w', 'd', 'h', 'm', 's'])
+    expect(weeks.chips[0]).toEqual({ value: '6', unit: 'w' })
+
+    // The lower groups are the same remainder in every base unit, and still zero-padded.
+    for (const v of [monthsWeeks, weeks]) {
+      expect(v.chips.at(-1)!.unit).toBe('s')
+      expect(v.chips.at(-1)!.value).toMatch(/^\d\d$/)
+    }
+  })
+
+  it('keeps counting up in plain days when no higher base unit is chosen', () => {
+    const r: Round = {
+      number: -43,
+      label: 'T+43',
+      start: '2026-06-25T09:00:00Z',
+      end: '2026-06-26T09:00:00Z',
+    }
+    const v = computeView(r, startsAt, zone, ms('2026-08-06T16:30:00Z'), daysBase)
+    expect(v.chips.map((c) => c.unit)).toEqual(['d', 'h', 'm', 's'])
+    expect(v.chips[0]).toEqual({ value: '42', unit: 'd' })
+  })
 })
 
 describe('nextBaseUnitConfig cycles days -> months+weeks -> weeks -> days', () => {

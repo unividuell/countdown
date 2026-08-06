@@ -42,16 +42,29 @@ Alle Maße sind am echten Font gemessen, nicht geschätzt (Mockups in `.superpow
   Font insgesamt, nicht als Parameter pro Aufrufer.
 - **Konstante Punktgröße.** Tafelhöhe 26px, Punkt ⌀2,9px — in jedem Zyklus-Zustand und bei jeder
   Viewport-Breite gleich. Die Tafel schrumpft nicht, um Platz zu machen.
-- **Die Tafel sitzt immer unter dem Community-Namen.** Auch im breiten Viewport. Es gibt keine
-  Breakpoint-Umschaltung, kein Nebeneinander, eine Instanz, ein Layout.
-- **Der Header hat überall dieselbe Höhe: 116px.** Auch auf Seiten ohne Countdown (Login,
-  Community-Liste, Super-Admin) bleibt die zweite Zeile reserviert. Beim Navigieren springt nichts.
+- **Die Tafel sitzt unter dem Community-Namen, bis daneben Platz ist.** Schmal bekommt sie eine
+  eigene Zeile über die volle Breite. **Ab `md`** wandert sie in Zeile 1 und stellt sich neben das
+  Konto-Menü, sodass der Leerraum der Zeile zwischen Titel und den beiden liegt — sonst ist ein
+  Desktop-Header überwiegend leeres Schwarz. Eine Instanz, nur ihre Grid-Platzierung wechselt.
+  `md` und nicht `sm`: der breiteste Zyklus-Zustand ist 303px, und ein langer Community-Name plus
+  diese Tafel plus Avatar braucht 636px — mehr als die 608px Inhalt bei `sm`, was die Zeile über den
+  Viewport schieben würde.
+- **Die Headerhöhe hängt an der Zeilenzahl, nicht an der Seite.** Gemessen in Chrome: **116px**
+  schmal mit Tafel (24px Padding + 40px + 8px + 44px), **68px** ab `md` mit Tafel (24px + 44px), und
+  **64px** ohne Tafel (24px + 40px) — auf Login, Community-Liste und Super-Admin gibt es keine
+  zweite Zeile, dort ist der Header also wieder so hoch wie vor dieser Arbeit. Was innerhalb einer
+  Anordnung nicht passieren darf: dass die Höhe daran hängt, *wer* schaut (siehe `App.vue` unten).
 - **360px ist die kleinste unterstützte Breite.** 320px-Geräte werden nicht bedient; ein
   `max-width` fängt sie ab, indem die Tafel dort als Einzelfall schrumpft, statt den Header zu
   sprengen.
 - **Der Zyklus bleibt** (Tage → Monate+Wochen+Tage → Wochen+Tage) und schaltet mit der
   Boot-Sequenz um: alles wird weiß, hält, rollt in die neuen Einheiten. Die Breitenänderung
   passiert unter dem weißen Blitz und ist deshalb nicht als Sprung zu sehen.
+- **Der Zyklus gilt auch nach dem Start.** `computeView` hat die Basiseinheit im `after`-Zweig
+  ignoriert; die Anzeige war dort fest `Tage/Std/Min/Sek`. Weil es derselbe Button ist wie vorher,
+  tat ein Klick auf den Countdown einer laufenden Community sichtbar *nichts* — in jedem Browser, und
+  nur bei laufenden Communities, weshalb es zunächst wie ein Engine-Unterschied aussah. Der
+  `after`-Zweig respektiert die Konfiguration jetzt genauso: `Laufzeit 1 Monat, 1 Woche, 5 Tage, …`.
 
 ### Die Extremfälle, die die Maße bestimmen
 
@@ -168,40 +181,60 @@ Die Tafel wird höhengetrieben gesetzt: `h-[26px] w-auto max-w-full`. Das `viewB
 liefert die Breite; `max-w-full` ist das Netz für alles unter 360px, wo die Tafel dann als
 Einzelfall etwas kleiner ausfällt, statt den Header zu sprengen.
 
-Der Klick-Zyklus (`cycleBaseUnit`), `role="button"`, `data-test="countdown"` und der Tooltip
-bleiben. Anders als im ursprünglichen Entwurf liest aber nicht die Tafel selbst den Stand vor: die
-Tafel ist in diesem Verbraucher `aria-hidden="true"`, und das umschließende `div[role="button"]`
-trägt `:aria-label="reading"` („Noch 12 Tage, 4 Stunden, 33 Minuten, 12 Sekunden bis zum Start"),
-damit der Wegfall von `T-` niemandem etwas nimmt. Grund: Chromium zieht das `aria-label` eines
-Kind-`<img>` nicht automatisch in den Accessible Name eines umschließenden `role="button"`-Elements
-hoch — ohne den eigenen `aria-label` am Wrapper hätte der Button gar keinen Namen. In der Card bleibt
-die Tafel selbst beschreibend, weil dort nichts sie umschließt.
+**Ein echtes `<button type="button">`, kein `div` mit `role="button"`.** Der erste Entwurf war ein
+`div` mit `role`, `tabindex="0"` und eigenen `@keydown.enter` / `@keydown.space.prevent`-Handlern.
+Es funktionierte in Chromium (echter Mausklick verifiziert) und wurde in Firefox als tot gemeldet —
+statt die Engine-Differenz zu erraten, fällt die Handarbeit weg: Klick, Tastatur, Fokusreihenfolge
+und das Unterdrücken des Seiten-Scrolls bei Leertaste kommen vom Browser und überall gleich. Zwei
+Folgen davon:
 
-Der Wrapper trägt außerdem `tabindex="0"` sowie `@keydown.enter` und `@keydown.space.prevent`
-(beide rufen `cycleBaseUnit`) — das `.prevent` auf Space verhindert, dass Aktivieren per Leertaste
-die Seite scrollt, wie es ein `role="button"` ohne natives Button-Element sonst täte. Ein
-`aria-describedby` verweist auf einen `sr-only`-Span („Drücken, um die Zeiteinheit umzuschalten"),
-getrennt vom `aria-label`, damit die Beschreibung der Handlung den Stand (den eigentlichen
-Accessible Name) nicht verdeckt.
+- Der Inhalt eines `<button>` ist auf *phrasing content* beschränkt, also darf dort kein `<div>`
+  stehen. Deshalb ist die Wurzel von `FlipDotLegend` ein `<span class="block …">` — layoutgleich.
+- `cursor-pointer` muss explizit dran: Tailwind v4 gibt Buttons keinen Zeiger mehr. Ohne ihn wies
+  nichts darauf hin, dass die Tafel überhaupt ein Bedienelement ist — die klickbare Fläche ist
+  genau die Tafel (226px von 523px Zeilenbreite bei 555px Viewport), und ein Klick daneben ins
+  Schwarze tat sichtbar nichts.
+
+Der Klick-Zyklus (`cycleBaseUnit`), `data-test="countdown"` und der Tooltip bleiben. Anders als im
+ursprünglichen Entwurf liest aber nicht die Tafel selbst den Stand vor: die Tafel ist in diesem
+Verbraucher `aria-hidden="true"`, und der Button trägt `:aria-label="reading"` („Noch 12 Tage,
+4 Stunden, 33 Minuten, 12 Sekunden bis zum Start"), damit der Wegfall von `T-` niemandem etwas
+nimmt. Grund: Chromium zieht das `aria-label` eines Kind-`<img>` nicht automatisch in den Accessible
+Name eines umschließenden Bedienelements hoch — ohne den eigenen `aria-label` hätte der Button gar
+keinen Namen gehabt. In der Card bleibt die Tafel selbst beschreibend, weil dort nichts sie
+umschließt. Ein `aria-describedby` verweist auf einen `sr-only`-Span („Drücken, um die Zeiteinheit
+umzuschalten"), getrennt vom `aria-label`, damit die Beschreibung der Handlung den Stand (den
+eigentlichen Accessible Name) nicht verdeckt.
 
 ## `App.vue` — die Header-Geometrie
 
-Der Header wird ein zweizeiliges Grid mit festen Zeilenhöhen:
+Der Header ist ein Grid, dessen Zeilenhöhen festliegen und dessen Platzierung ab `md` wechselt:
 
 ```
-grid-cols-[1fr_auto] gap-x-4 gap-y-2 px-4 py-3
-  Zeile 1, Spalte 1: CommunityMenu + Brand   (h-10)
-  Zeile 1, Spalte 2: MemberMenu               (h-10)
-  Zeile 2, über beide Spalten: CountdownDisplay   (h-11)
+grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_auto]  gap-x-4 gap-y-2 px-4 py-3
+  Titel-Zelle:  CommunityMenu + Brand   Zeile 1, Spalte 1                       (h-10)
+  Konto-Zelle:  MemberMenu              Zeile 1, Spalte 2 → ab md Spalte 3      (h-10)
+  Tafel-Zelle:  CountdownDisplay        Zeile 2 über beide Spalten
+                                        → ab md Zeile 1, Spalte 2               (h-11)
 ```
 
-24px Padding + 40px + 8px + 44px = **116px**, unabhängig von Breakpoint und Inhalt. Beide Zellen
-von Zeile 1 tragen `h-10`, nicht nur die Titel-Zelle: eine CSS-Grid-Zeile ist so hoch wie ihr
-höchstes Kind, und `MemberMenu`s Trigger ist 40px hoch (ein 32px-Avatar in einem `p-1`-Button). Die
-Höhe nur auf der Titel-Zelle zu setzen (`h-8`, 32px) hätte die Login-Seite, auf der es kein
-`MemberMenu` gibt, 8px niedriger gelassen als jede andere Seite — genau die Varianz, die die feste
-Höhe eigentlich beseitigen soll. Zeile 2 hält ihre 44px (26px Tafel + 2px + 16px Legende) auch dann,
-wenn `CountdownDisplay` nichts rendert.
+Die dritte Spur entsteht erst ab `md`; dadurch bekommt die Titel-Spur (`1fr`) den Leerraum, und Tafel
+und Konto-Menü stehen zusammen rechts. Die Tafel-Zelle steht im Markup **hinter** der Konto-Zelle,
+weil das die Lesereihenfolge der schmalen Anordnung ist (Titel, Konto, darunter die Tafel) und Phones
+der Normalfall sind; die Grid-Platzierung schiebt sie ab `md` optisch dazwischen, ohne das Markup
+umzustellen.
+
+Beide Zellen von Zeile 1 tragen `h-10`, nicht nur die Titel-Zelle: eine CSS-Grid-Zeile ist so hoch
+wie ihr höchstes Kind, und `MemberMenu`s Trigger ist 40px hoch (ein 32px-Avatar in einem
+`p-1`-Button). Die Höhe nur auf der Titel-Zelle zu setzen (`h-8`, 32px) hätte die Login-Seite, auf
+der es kein `MemberMenu` gibt, 8px niedriger gelassen als jede andere Seite — eine Höhe, die daran
+hängt, ob jemand angemeldet ist.
+
+Ohne Countdown wird die Tafel-Zelle **gar nicht gerendert** (`v-if` auf der Zelle, nicht nur auf der
+Komponente). Damit hat der Header dort nur eine Zeile und ist wieder 64px hoch statt 52px
+reserviertes Schwarz zu tragen. Existiert die Zelle, hält sie ihre 44px auch dann, wenn
+`CountdownDisplay` selbst nichts rendert — etwa während der erste Abruf läuft; so springt die Höhe
+nicht, wenn der Countdown auflöst.
 
 ## `communities/fallbacks/CountdownCard.vue` — was sich mitändert
 
@@ -242,17 +275,20 @@ Vitest mit `vi`, wie in [frontend.md](../../../.claude/guidelines/frontend.md) f
   (`toContain('T-')`) — sie prüfen künftig den Tafeltext (`12:04:33:12`) und die Labels. Neu: die
   führende Gruppe ist zweistellig gepolstert; der Klick wechselt Text *und* Labelsatz; ohne
   `startsAt` rendert die Komponente nichts (bestehend).
-- `__tests__/app-header.spec.ts`: die zweite Zeile ist auch ohne Countdown vorhanden, damit die
-  Headerhöhe nicht an der Community hängt.
+- `__tests__/app-header.spec.ts`: ohne Countdown existiert die Tafel-Zelle nicht; mit Countdown
+  trägt sie die Platzierung für schmal *und* für `md`, und die Markup-Reihenfolge bleibt die der
+  schmalen Anordnung. Dazu: beide Zellen von Zeile 1 nennen ihre Höhe, damit sie nicht daran hängt,
+  ob jemand angemeldet ist.
 - `communities/fallbacks/__tests__/CountdownCard.spec.ts`: die Strip-Labels stehen auf den
   berechneten Mitten (nicht mehr auf `11.5%`).
 
 ## Was nicht dazugehört
 
 - **Keine Buchstaben im Font.** Kein `d`, `h`, `m`, `s`, `M`, `w`, kein `T`.
-- **Keine Änderung an `computeView`, `useCountdown` oder der API.** Die Chips, der geteilte Takt
-  und die Skew-Korrektur bleiben wie sie sind; hier ändert sich ausschließlich die Darstellung.
+- **Keine Änderung an `useCountdown` oder der API.** Der geteilte Takt und die Skew-Korrektur bleiben
+  wie sie sind. (`computeView` war ursprünglich ebenfalls ausgeschlossen — bis sich zeigte, dass sein
+  `after`-Zweig die Basiseinheit ignorierte; siehe oben.)
 - **Kein Umbau des Hero-Boards** und keine neue Aufteilung der Card.
 - **Keine 320px-Unterstützung** als gestalteter Zustand.
-- **Kein `sticky` Header.** Der Header bleibt Teil des Seitenflusses; ob eine 116px hohe Tafel oben
+- **Kein `sticky` Header.** Der Header bleibt Teil des Seitenflusses; ob ein Header mit Tafel oben
   kleben soll, ist eine eigene Frage.
