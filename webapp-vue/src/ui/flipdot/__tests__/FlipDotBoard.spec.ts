@@ -145,8 +145,8 @@ describe('FlipDotBoard', () => {
     animate.mockClear()
     await w.setProps({ text: '00:00:01' })
     await nextTick()
-    // Only the last digit changed. It sits at columns 42-46 of 47, so an absolute offset would
-    // have delayed the first dot by 42 * 9 ms while nothing else on the board moved.
+    // Only the last digit changed. It sits at columns 38-42 of 43, so an absolute offset would
+    // have delayed the first dot by 38 * 9 ms while nothing else on the board moved.
     expect(Math.min(...delays(animate))).toBe(0)
     expect(Math.max(...delays(animate))).toBeLessThanOrEqual(4 * 9)
   })

@@ -50,7 +50,7 @@ describe('CountdownCard', () => {
   it('composes the strip as one clock reading', () => {
     const strip = mountCard('58').find('[data-test="countdown-strip"]')
     expect(strip.attributes('aria-label')).toContain('13:42:07')
-    expect(strip.findAll('circle').length).toBe(47 * 7)
+    expect(strip.findAll('circle').length).toBe(43 * 7)
   })
 
   it('names the day count without its padding for assistive tech', () => {
@@ -121,7 +121,7 @@ describe('CountdownCard', () => {
     const lit = () => w.findAll('circle').filter((c) => c.attributes('fill') === DOT_ON).length
 
     await advance(BOOT_DARK_MS)
-    expect(lit()).toBe(11 * 7 + 47 * 7)
+    expect(lit()).toBe(11 * 7 + 43 * 7)
 
     await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
     expect(lit()).toBe(
