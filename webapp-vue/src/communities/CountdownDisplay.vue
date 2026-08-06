@@ -49,9 +49,8 @@ const reading = computed(() => {
 
 const legendVisible = ref(false)
 
-// The board's aria-label already carries the value; a screen-reader user only needs to be told
-// what pressing does. A hidden span, not an aria-label on the wrapper, so the value stays the
-// wrapper's accessible name instead of being shadowed by an action hint.
+// A hidden span carries the action hint via aria-describedby, kept separate from aria-label so the
+// value (the wrapper's accessible name, below) isn't buried behind it.
 const hintId = useId()
 </script>
 
@@ -63,6 +62,7 @@ const hintId = useId()
     tabindex="0"
     class="w-fit max-w-full select-none"
     :title="view.state === 'after' ? undefined : 'Countdown bis zum Start'"
+    :aria-label="reading"
     :aria-describedby="hintId"
     @click="cycleBaseUnit"
     @keydown.enter="cycleBaseUnit"
@@ -77,10 +77,16 @@ const hintId = useId()
     <FlipDotBoard
       data-test="countdown-board"
       class="h-[26px] w-auto max-w-full"
+      aria-hidden="true"
       :text="text"
       :label="reading"
       @phase="legendVisible = $event === 'live'"
     />
+    <!-- aria-hidden above: name-from-content doesn't pull a child img's aria-label up into this
+         button's accessible name (verified in Chromium), so the button carries the reading itself
+         via aria-label and the board becomes decoration here. label is still passed — it's part of
+         the component's contract and documents what the board depicts — but it goes unannounced in
+         this consumer. In the card, nothing wraps the board, so it stays self-describing there. -->
     <FlipDotLegend class="mt-0.5" :text="text" :labels="labels" :visible="legendVisible" />
     <span :id="hintId" class="sr-only">Drücken, um die Zeiteinheit umzuschalten</span>
   </div>

@@ -44,6 +44,9 @@ describe('CountdownDisplay', () => {
     expect(w.getComponent(FlipDotBoard).props('text')).toBe('10:12:00:00')
     expect(w.getComponent(FlipDotLegend).props('labels')).toEqual(['TAGE', 'STD', 'MIN', 'SEK'])
     expect(w.getComponent(FlipDotBoard).props('label')).toContain('10 Tage')
+    // The button, not the board, must carry the accessible name: Chromium doesn't pull a child
+    // img's aria-label up into its role="button" ancestor's name from content.
+    expect(w.find('[data-test="countdown"]').attributes('aria-label')).toContain('10 Tage')
   })
 
   it('cycles the base unit on click', async () => {
@@ -186,6 +189,10 @@ describe('CountdownDisplay', () => {
     expect(w.getComponent(FlipDotBoard).props('label')).toContain('Laufzeit')
     expect(el.text()).not.toContain('Event läuft')
     expect(el.attributes('title')).toBeUndefined()
+    // This is the state with no title fallback at all, so the aria-label is the only thing that
+    // can name the button — worst off if it were ever missing.
+    expect(el.attributes('aria-label')).toContain('Laufzeit')
+    expect(el.attributes('aria-label')).toContain('12 Stunden')
   })
 
   it('pads only the leading group, so the widest state still fits the header', async () => {
@@ -205,6 +212,27 @@ describe('CountdownDisplay', () => {
     const w = mount(Cmp, { props: { slug: 'team' } })
     await flushPromises()
     expect(w.getComponent(FlipDotBoard).props('text')).toBe('05:12:00:00')
+  })
+
+  it('hides the board from assistive tech, since the button now carries the reading itself', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    // Guards against a future change re-announcing the value a second time, as a separate image
+    // nested inside the already-named button.
+    expect(w.find('[data-test="countdown-board"]').attributes('aria-hidden')).toBe('true')
   })
 
   it('cycles from the keyboard too, because the board is a control and not a caption', async () => {
