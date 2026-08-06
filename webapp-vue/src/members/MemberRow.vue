@@ -13,7 +13,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'
-import { readableTextColor } from './readableTextColor'
+import { readableTextColor } from '@/ui/readableTextColor'
 import type { RosterMemberResponse } from '@/api/types'
 
 const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
