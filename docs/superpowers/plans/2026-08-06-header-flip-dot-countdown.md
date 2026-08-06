@@ -669,21 +669,31 @@ board that goes through white more than once."
 
 ### Task 5: Der Card-Strip benutzt die Legende
 
+Dazu kommt eine Folge aus dem Review von Task 4: seit das Board mehrfach durch Weiß geht, ist ein
+einziges `resolved` für beide Labelgruppen falsch. Beim Übergang von dreistelligen auf zweistellige
+Tage schaltet sich nur das Hero-Board neu ein — die Strip-Labels würden 300ms wegblenden, während
+ihre Tafel durchgehend lesbar bleibt. Jede Labelgruppe folgt deshalb künftig der Phase *ihres*
+Boards.
+
 **Files:**
-- Modify: `src/communities/fallbacks/CountdownCard.vue:55-66` (Legendenzeile des Strips)
-- Modify: `src/communities/fallbacks/__tests__/CountdownCard.spec.ts` (neuer Fall)
+- Modify: `src/communities/fallbacks/CountdownCard.vue:26-28,44,55-66` (zwei Phasenquellen, Legendenzeile des Strips)
+- Modify: `src/communities/fallbacks/__tests__/CountdownCard.spec.ts` (zwei neue Fälle)
 
 **Interfaces:**
-- Consumes: `FlipDotLegend` aus Task 3, `groupCentres` aus Task 2.
+- Consumes: `FlipDotLegend` aus Task 3, `groupCentres` aus Task 2, `@phase` aus Task 4.
 - Produces: nichts Neues.
 
 - [ ] **Step 1: Den failing test schreiben**
 
-In `src/communities/fallbacks/__tests__/CountdownCard.spec.ts` den Import ergänzen:
+In `src/communities/fallbacks/__tests__/CountdownCard.spec.ts` die Importe ergänzen — `groupCentres`
+ist neu, `BOOT_HOLD_MS` kommt zu den bereits importierten Timing-Konstanten:
 
 ```ts
+import { BOOT_DARK_MS, BOOT_HOLD_MS, BOOT_RESOLVE_AT_MS, DOT_ON } from '@/ui/flipdot/board'
 import { groupCentres } from '@/ui/flipdot/board'
 ```
+
+(zusammengefasst zu einem Import, wenn Prettier das so will)
 
 und den Fall anhängen:
 
@@ -698,6 +708,23 @@ und den Fall anhängen:
         3,
       )
     })
+  })
+
+  // The hero relights when the day count loses a digit, and only the hero. Driving both label
+  // groups from one flag would blink STD/MIN/SEK out for 300ms while their strip stayed perfectly
+  // legible.
+  it('fades only the labels of the board that is relighting', async () => {
+    const w = mountCard('100')
+    await advance(BOOT_RESOLVE_AT_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+
+    await w.setProps({ days: '99' })
+    await nextTick()
+    expect(w.get('[data-test="countdown-label-days"]').classes()).toContain('opacity-0')
+    expect(w.get('[data-test="countdown-label-time"]').classes()).toContain('opacity-100')
+
+    await advance(BOOT_HOLD_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
   })
 ```
 
@@ -714,22 +741,45 @@ In `src/communities/fallbacks/CountdownCard.vue` den Import ergänzen:
 import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
 ```
 
-und den Block `<div class="w-[94%]">` im Template ersetzen:
+`resolved` und `labelOpacity` werden durch zwei Phasenquellen ersetzt — eine je Board:
+
+```ts
+// Each board owns its own switch-on timeline, and since a board relights whenever its geometry
+// changes, the two are no longer in step: the hero relights when the day count loses a digit while
+// the strip stays legible throughout. So each label group follows the phase of its own board rather
+// than a single flag for the card.
+const heroLive = ref(false)
+const stripLive = ref(false)
+```
+
+Im Template bekommt das Hero-Board `@phase="heroLive = $event === 'live'"`, seine Bildunterschrift
+`:class="heroLive ? 'opacity-100' : 'opacity-0'"`, und der Block `<div class="w-[94%]">` wird
+ersetzt:
 
 ```html
     <div class="w-[94%]">
-      <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
+      <FlipDotBoard
+        data-test="countdown-strip"
+        :text="time"
+        :label="`Verbleibende Zeit ${time}`"
+        @phase="stripLive = $event === 'live'"
+      />
       <FlipDotLegend
         data-test="countdown-label-time"
         class="mt-2"
         :text="time"
         :labels="['STD', 'MIN', 'SEK']"
-        :visible="resolved"
+        :visible="stripLive"
       />
     </div>
 ```
 
-`labelOpacity` bleibt: das Tage-Label ist ein `<p>` mit `:class="labelOpacity"` und eine mittige Bildunterschrift, keine Gruppenlegende. Nur der Zeit-Label-`<div>` mit seinen drei absolut positionierten `<span>`s verschwindet — `FlipDotLegend` bringt Opazität, Typografie und Höhe selbst mit.
+Das Tage-Label bleibt ein `<p>` — es ist eine mittige Bildunterschrift, keine Gruppenlegende. Nur der
+Zeit-Label-`<div>` mit seinen drei absolut positionierten `<span>`s verschwindet; `FlipDotLegend`
+bringt Opazität, Typografie und Höhe selbst mit.
+
+Der Kommentar über `resolved`, der die Labels „auf das Ereignis des Hero" warten lässt, beschreibt
+damit nicht mehr die Wahrheit und wird durch den oben stehenden ersetzt.
 
 - [ ] **Step 4: Tests laufen lassen, Erfolg bestätigen**
 
