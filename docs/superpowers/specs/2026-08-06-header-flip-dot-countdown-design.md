@@ -90,12 +90,16 @@ export function glyphCols(ch: string): number
 Das Leerzeichen-Glyph bleibt fünf Spalten breit; es wird von keinem Readout benutzt, aber
 `bitmap` soll dafür nicht raten müssen.
 
-Neu, als einzige Quelle für Label-Positionen:
+Neu in `ui/flipdot/board.ts`, als einzige Quelle für Label-Positionen:
 
 ```ts
 /** Centre of each run of digits, as a percentage of the board's width. */
 export function groupCentres(text: string): number[]
 ```
+
+Sie gehört in `board.ts` und nicht in `font.ts`, weil sie `PITCH` und `RADIUS` braucht: die Mitte
+eines Labels ist eine Frage der gerenderten Geometrie, nicht des Glyphenmusters. `board.ts` darf
+`font.ts` importieren, umgekehrt nicht.
 
 Diese Funktion ersetzt die fest verdrahteten Prozentwerte in `CountdownCard`. Deren heutige Werte
 (`11.5%`, `50%`, `88.5%`) sind korrekt — sie sind genau die berechneten Mitten des
@@ -117,10 +121,11 @@ Telefon nur Last ohne Wirkung).
 Bei `prefers-reduced-motion: reduce` wechselt der Inhalt sofort, ohne Blitz und ohne Welle — so wie
 das Board heute schon startet.
 
-`emit('resolve')` wird durch `emit('phase', 'dark' | 'white' | 'live')` ersetzt. Das eine Ereignis
-trägt die ganze Information, in beide Richtungen: Verbraucher können ihre Legende ausblenden, wenn
-die Tafel weiß wird, und nicht nur einmalig einblenden, wenn sie zum ersten Mal auflöst. `resolved`
-in `CountdownCard` wird zu `phase === 'live'`.
+`emit('resolve')` wird durch `emit('phase', 'white' | 'live')` ersetzt. Das eine Ereignis trägt die
+ganze Information, in beide Richtungen: Verbraucher können ihre Legende ausblenden, wenn die Tafel
+weiß wird, und nicht nur einmalig einblenden, wenn sie zum ersten Mal auflöst. `resolved` in
+`CountdownCard` wird zu `phase === 'live'`. Die Dunkelphase wird nicht gemeldet — sie ist der
+Anfangszustand, und wer folgt, startet ohnehin unsichtbar.
 
 ## `ui/flipdot/FlipDotLegend.vue` (neu)
 
@@ -135,9 +140,11 @@ Typografie wie heute (`font-mono text-[11px] tracking-[0.14em] text-stone-500`, 
 `visible` per `transition-opacity`. Sie ist `aria-hidden`, weil die Lesung im `aria-label` der
 Tafel steht und sonst doppelt vorgelesen würde.
 
-Ihre Breite erbt sie: Tafel und Legende stehen zusammen in einem `inline-block`-Wrapper, der sich
-auf die Tafelbreite zusammenzieht. Damit braucht die Legende keine Breitenrechnung — weder im
-Header, wo die Tafel höhengetrieben ist, noch in der Card, wo sie breitengetrieben ist.
+Ihre Breite erbt sie: Tafel und Legende stehen zusammen in einem Wrapper, der sich per `w-fit`
+(`fit-content`) auf die Tafelbreite zusammenzieht. Damit braucht die Legende keine Breitenrechnung —
+weder im Header, wo die Tafel höhengetrieben ist, noch in der Card, wo sie breitengetrieben ist.
+`fit-content` statt eines bloßen `inline-block`, weil die Tafel darin ein `max-width: 100%` auflösen
+muss und dafür eine bestimmte Breite braucht.
 
 ## `communities/CountdownDisplay.vue` — der Header-Countdown
 
@@ -193,9 +200,13 @@ Vitest mit `vi`, wie in [frontend.md](../../../.claude/guidelines/frontend.md) f
 
 - `ui/flipdot/__tests__/font.spec.ts`: der Doppelpunkt belegt `SEPARATOR_COLS` Spalten und leuchtet
   in seiner mittleren; `bitmap` summiert gemischte Breiten korrekt (Spaltenzahl von `12:04` gegen
-  Ziffern ohne Trenner); `groupCentres` liefert eine Mitte pro Ziffernfolge, in Reihenfolge, und
-  für den 5-Spalten-Text der alten Card genau `11.5 / 50 / 88.5` — das bindet die neue Funktion an
-  die als richtig bekannten Werte.
+  Ziffern ohne Trenner).
+- `ui/flipdot/__tests__/board.spec.ts` (neu): `groupCentres` liefert eine Mitte pro Ziffernfolge, in
+  Reihenfolge; ein Text ohne Trenner hat seine einzige Mitte bei 50%; bei symmetrischem Text
+  (`13:42:07`) liegt die mittlere Gruppe exakt auf 50% und die äußeren spiegelbildlich dazu
+  (`erste = 100 − letzte`) — die Symmetrie bindet die Arithmetik, ohne sie im Test
+  nachzubauen. Dazu ein von Hand hergeleiteter Absolutwert (`12.57%` für die erste Gruppe), damit
+  eine falsche Formel nicht durch eine zufällig symmetrische Rechnung schlüpft.
 - `ui/flipdot/__tests__/FlipDotBoard.spec.ts`: ein Textwechsel mit gleicher Spaltenzahl flippt nur
   die geänderten Punkte (bestehend); ein Wechsel mit anderer Spaltenzahl geht über Weiß und rollt
   ein, statt hart zu wechseln; `phase` wird in der Reihenfolge `white` → `live` emittiert; bei
