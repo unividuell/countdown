@@ -517,18 +517,40 @@ In `'is skipped entirely under prefers-reduced-motion — no phases, no timer'` 
       expect(w.emitted('phase')).toEqual([['live']])
 ```
 
-In `'fires no timer after being unmounted inside the dark phase'` die Zeile
-`expect(w.emitted('resolve')).toBeUndefined()` ersetzen durch:
+Die beiden Unmount-Fälle brauchen mehr als eine Umbenennung. `wrapper.unmount()` ruft in
+`@vue/test-utils` 2.4.11 `removeEventHistory(this.vm)` und löscht damit die gesamte Emit-Historie der
+Instanz — `emitted()` liefert danach `undefined`, ganz unabhängig davon, was vorher gefeuert hat. Die
+heutige Zeile `expect(w.emitted('resolve')).toBeUndefined()` **am Ende** dieser Tests konnte deshalb
+nie fehlschlagen. Die Assertion wandert vor das `unmount()`, wo die Information noch existiert, und
+die wirkungslose Zeile am Ende entfällt:
 
 ```ts
+    it('fires no timer after being unmounted inside the dark phase', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      expect(vi.getTimerCount()).toBe(2)
+      // Asserted before the unmount: @vue/test-utils drops an instance's whole emit history inside
+      // unmount(), so emitted() afterwards is undefined whatever happened — which is why the
+      // assertion that used to stand at the end of this test could never have failed.
       expect(w.emitted('phase')).toBeUndefined()
-```
+      w.unmount()
+      expect(vi.getTimerCount()).toBe(0)
+      await bootDone()
+      expect(animate).not.toHaveBeenCalled()
+    })
 
-In `'fires no timer after being unmounted inside the hold'` die Zeile
-`expect(w.emitted('resolve')).toBeUndefined()` ersetzen durch:
-
-```ts
-      expect(w.emitted('phase')).toEqual([['white']]) // white was announced before the unmount
+    it('fires no timer after being unmounted inside the hold', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await advance(BOOT_DARK_MS)
+      animate.mockClear()
+      expect(vi.getTimerCount()).toBe(1)
+      expect(w.emitted('phase')).toEqual([['white']]) // see the note above about unmount()
+      w.unmount()
+      expect(vi.getTimerCount()).toBe(0)
+      await bootDone()
+      expect(animate).not.toHaveBeenCalled()
+    })
 ```
 
 - [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
