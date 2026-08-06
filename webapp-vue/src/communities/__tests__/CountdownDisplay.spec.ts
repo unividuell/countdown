@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import * as api from '@/api/countdown'
 import { _resetCountdownState } from '@/communities/useCountdown'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
@@ -230,6 +231,56 @@ describe('CountdownDisplay', () => {
 
     await el.trigger('keydown.space')
     expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(5) // weeks + days
+  })
+
+  it('prevents the default Space scroll, not just handling the key', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    const el = w.find('[data-test="countdown"]')
+    // `trigger()` doesn't expose the event's own defaultPrevented state, so a real KeyboardEvent
+    // is dispatched here — this is what would stay green if `.prevent` were dropped from
+    // `@keydown.space`, re-introducing page scroll on every activation.
+    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })
+    el.element.dispatchEvent(event)
+    await nextTick()
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('describes what pressing the button does, not just what it is', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    const el = w.find('[data-test="countdown"]')
+    const describedById = el.attributes('aria-describedby')
+    expect(describedById).toBeTruthy()
+    const hint = w.find(`#${describedById}`)
+    expect(hint.exists()).toBe(true)
+    expect(hint.text()).toContain('Zeiteinheit')
   })
 
   it('caps the board width instead of letting it push the header apart', async () => {

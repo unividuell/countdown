@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue'
+import { computed, ref, toRef, useId } from 'vue'
 import { useCountdown } from '@/communities/useCountdown'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
@@ -48,6 +48,11 @@ const reading = computed(() => {
 })
 
 const legendVisible = ref(false)
+
+// The board's aria-label already carries the value; a screen-reader user only needs to be told
+// what pressing does. A hidden span, not an aria-label on the wrapper, so the value stays the
+// wrapper's accessible name instead of being shadowed by an action hint.
+const hintId = useId()
 </script>
 
 <template>
@@ -58,6 +63,7 @@ const legendVisible = ref(false)
     tabindex="0"
     class="w-fit max-w-full select-none"
     :title="view.state === 'after' ? undefined : 'Countdown bis zum Start'"
+    :aria-describedby="hintId"
     @click="cycleBaseUnit"
     @keydown.enter="cycleBaseUnit"
     @keydown.space.prevent="cycleBaseUnit"
@@ -76,5 +82,6 @@ const legendVisible = ref(false)
       @phase="legendVisible = $event === 'live'"
     />
     <FlipDotLegend class="mt-0.5" :text="text" :labels="labels" :visible="legendVisible" />
+    <span :id="hintId" class="sr-only">Drücken, um die Zeiteinheit umzuschalten</span>
   </div>
 </template>
