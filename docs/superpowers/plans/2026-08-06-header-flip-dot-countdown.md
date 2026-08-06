@@ -19,7 +19,7 @@
 - **Testframework ist Vitest mit `vi`**, nicht mockk. Siehe [frontend.md](../../../.claude/guidelines/frontend.md).
 - **Die Suite muss nach jeder Task grün sein.** Wo eine Änderung bestehende Erwartungen bricht, gehört die Korrektur in dieselbe Task.
 - **Branch:** die Arbeit läuft auf `claude/flip-dots-header-countdown-8bb3ef`; PRs gehen gegen `develop`.
-- **Commit-Stil:** `<type>(webapp): <imperative, kleingeschrieben>`, Begründung in den Body. Kein `Co-Authored-By` in den hier vorgegebenen Kommandos ergänzen — das setzt das Harness.
+- **Commit-Stil:** `<type>(webapp): <imperative, kleingeschrieben>`, Begründung in den Body. Jede Commit-Message endet mit der Zeile `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` — die unten vorgegebenen `git commit`-Kommandos zeigen sie nicht mit, sie ist trotzdem anzuhängen.
 - **Feste Maße, die im Code auftauchen:** Tafelhöhe 26px (`h-[26px]`), Legendenzeile 16px (`h-4`), Abstand dazwischen 2px, Header-Zeile 1 32px (`h-8`), Header-Zeile 2 44px (`h-11`), Zeilenabstand 8px (`gap-y-2`), Header-Padding `px-4 py-3` → Gesamthöhe 108px.
 
 ---
@@ -808,6 +808,32 @@ und den Fall anhängen:
     expect(w.getComponent(FlipDotBoard).props('text')).toBe('05:12:00:00')
   })
 
+  it('cycles from the keyboard too, because the board is a control and not a caption', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue({
+      serverNow: '2026-06-14T21:00:00Z',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      round: {
+        number: 10,
+        label: 'T-10',
+        start: '2026-06-14T09:00:00Z',
+        end: '2026-06-15T09:00:00Z',
+      },
+      nextRound: null,
+    })
+    const Cmp = (await import('@/communities/CountdownDisplay.vue')).default
+    const w = mount(Cmp, { props: { slug: 'team' } })
+    await flushPromises()
+    const el = w.find('[data-test="countdown"]')
+    expect(el.attributes('tabindex')).toBe('0')
+
+    await el.trigger('keydown.enter')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(6) // months + weeks + days
+
+    await el.trigger('keydown.space')
+    expect(w.getComponent(FlipDotLegend).props('labels')).toHaveLength(5) // weeks + days
+  })
+
   it('caps the board width instead of letting it push the header apart', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
@@ -906,9 +932,12 @@ const legendVisible = ref(false)
     v-if="view.state !== 'idle'"
     data-test="countdown"
     role="button"
+    tabindex="0"
     class="w-fit max-w-full select-none"
     :title="view.state === 'after' ? undefined : 'Countdown bis zum Start'"
     @click="cycleBaseUnit"
+    @keydown.enter="cycleBaseUnit"
+    @keydown.space.prevent="cycleBaseUnit"
   >
     <!-- Height-driven, so the dot size is the same in every state and at every viewport width; the
          viewBox ratio supplies the width. max-w-full is the net for anything below 360px, where
@@ -1075,5 +1104,5 @@ height."
 ## Was danach offen ist
 
 - Die Card ist von diesem Plan nur mittelbar betroffen (engerer Trenner, Legende als Komponente). Ihr Hero-Board, ihre Aufteilung und ihre Prozentbreiten bleiben, wie sie sind.
-- `role="button"` am Wrapper hat wie bisher kein `tabindex` und keinen Tastatur-Handler. Das ist der Stand vor dieser Arbeit und wird hier nicht mitgeändert — ein Countdown, der sich nur klicken lässt, ist ein eigener Vorgang.
+- Die Tastaturbedienung des Zyklus ist in Task 6 enthalten (`tabindex="0"`, Enter und Leertaste). Sie stand ursprünglich nicht im Plan: `role="button"` ohne Tastatur-Handler ist der Stand vor dieser Arbeit, wäre im Diff aber eine neu hinzugefügte Zeile — und ein Bedienelement, das nur die Maus erreicht, will man nicht neu einchecken.
 - Ob ein 108px hoher Header `sticky` sein soll, ist bewusst nicht Teil dieser Arbeit.
