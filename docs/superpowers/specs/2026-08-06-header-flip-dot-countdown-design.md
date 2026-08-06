@@ -44,7 +44,7 @@ Alle Maße sind am echten Font gemessen, nicht geschätzt (Mockups in `.superpow
   Viewport-Breite gleich. Die Tafel schrumpft nicht, um Platz zu machen.
 - **Die Tafel sitzt immer unter dem Community-Namen.** Auch im breiten Viewport. Es gibt keine
   Breakpoint-Umschaltung, kein Nebeneinander, eine Instanz, ein Layout.
-- **Der Header hat überall dieselbe Höhe: 108px.** Auch auf Seiten ohne Countdown (Login,
+- **Der Header hat überall dieselbe Höhe: 116px.** Auch auf Seiten ohne Countdown (Login,
   Community-Liste, Super-Admin) bleibt die zweite Zeile reserviert. Beim Navigieren springt nichts.
 - **360px ist die kleinste unterstützte Breite.** 320px-Geräte werden nicht bedient; ein
   `max-width` fängt sie ab, indem die Tafel dort als Einzelfall schrumpft, statt den Header zu
@@ -123,9 +123,11 @@ das Board heute schon startet.
 
 `emit('resolve')` wird durch `emit('phase', 'white' | 'live')` ersetzt. Das eine Ereignis trägt die
 ganze Information, in beide Richtungen: Verbraucher können ihre Legende ausblenden, wenn die Tafel
-weiß wird, und nicht nur einmalig einblenden, wenn sie zum ersten Mal auflöst. `resolved` in
-`CountdownCard` wird zu `phase === 'live'`. Die Dunkelphase wird nicht gemeldet — sie ist der
-Anfangszustand, und wer folgt, startet ohnehin unsichtbar.
+weiß wird, und nicht nur einmalig einblenden, wenn sie zum ersten Mal auflöst. Jeder Verbraucher
+hält dafür sein eigenes Flag statt eines geteilten `resolved` (siehe unten, Abschnitt zu
+`CountdownCard.vue`) — genau deshalb trägt das Ereignis den vollen Zustand und keine einmalige
+Kante. Die Dunkelphase wird nicht gemeldet — sie ist der Anfangszustand, und wer folgt, startet
+ohnehin unsichtbar.
 
 ## `ui/flipdot/FlipDotLegend.vue` (neu)
 
@@ -136,9 +138,13 @@ defineProps<{ text: string; labels: string[]; visible: boolean }>()
 ```
 
 Sie rendert je Label ein absolut positioniertes `<span>` auf `groupCentres(text)[i]`, in derselben
-Typografie wie heute (`font-mono text-[11px] tracking-[0.14em] text-stone-500`, `h-4`), und folgt
-`visible` per `transition-opacity`. Sie ist `aria-hidden`, weil die Lesung im `aria-label` der
-Tafel steht und sonst doppelt vorgelesen würde.
+Typografie wie heute (`font-mono text-[11px] tracking-[0.14em] text-stone-400`, `h-4`), und folgt
+`visible` per `transition-opacity`. `text-stone-400` ist eine Kontrast-Untergrenze, nicht eine
+Geschmacksfrage: auf `bg-stone-900` misst `text-stone-500` 3,65:1, unter den 4,5:1, die WCAG AA für
+11px-Text verlangt; `text-stone-400` liegt bei 6,94:1. Sie ist `aria-hidden`, weil die Lesung
+anderswo passiert: in der Card durch die Tafel selbst (dort umschließt sie nichts), im Header durch
+den umschließenden Button (dort ist die Tafel selbst ebenfalls `aria-hidden`) — nicht, weil die
+Tafel die Lesung immer selbst trägt.
 
 Ihre Breite erbt sie: Tafel und Legende stehen zusammen in einem Wrapper, der sich per `w-fit`
 (`fit-content`) auf die Tafelbreite zusammenzieht. Damit braucht die Legende keine Breitenrechnung —
@@ -163,8 +169,20 @@ liefert die Breite; `max-w-full` ist das Netz für alles unter 360px, wo die Taf
 Einzelfall etwas kleiner ausfällt, statt den Header zu sprengen.
 
 Der Klick-Zyklus (`cycleBaseUnit`), `role="button"`, `data-test="countdown"` und der Tooltip
-bleiben. Das `aria-label` der Tafel liest den Stand vollständig aus („Noch 12 Tage, 4 Stunden,
-33 Minuten, 12 Sekunden bis zum Start"), damit der Wegfall von `T-` niemandem etwas nimmt.
+bleiben. Anders als im ursprünglichen Entwurf liest aber nicht die Tafel selbst den Stand vor: die
+Tafel ist in diesem Verbraucher `aria-hidden="true"`, und das umschließende `div[role="button"]`
+trägt `:aria-label="reading"` („Noch 12 Tage, 4 Stunden, 33 Minuten, 12 Sekunden bis zum Start"),
+damit der Wegfall von `T-` niemandem etwas nimmt. Grund: Chromium zieht das `aria-label` eines
+Kind-`<img>` nicht automatisch in den Accessible Name eines umschließenden `role="button"`-Elements
+hoch — ohne den eigenen `aria-label` am Wrapper hätte der Button gar keinen Namen. In der Card bleibt
+die Tafel selbst beschreibend, weil dort nichts sie umschließt.
+
+Der Wrapper trägt außerdem `tabindex="0"` sowie `@keydown.enter` und `@keydown.space.prevent`
+(beide rufen `cycleBaseUnit`) — das `.prevent` auf Space verhindert, dass Aktivieren per Leertaste
+die Seite scrollt, wie es ein `role="button"` ohne natives Button-Element sonst täte. Ein
+`aria-describedby` verweist auf einen `sr-only`-Span („Drücken, um die Zeiteinheit umzuschalten"),
+getrennt vom `aria-label`, damit die Beschreibung der Handlung den Stand (den eigentlichen
+Accessible Name) nicht verdeckt.
 
 ## `App.vue` — die Header-Geometrie
 
@@ -172,15 +190,18 @@ Der Header wird ein zweizeiliges Grid mit festen Zeilenhöhen:
 
 ```
 grid-cols-[1fr_auto] gap-x-4 gap-y-2 px-4 py-3
-  Zeile 1, Spalte 1: CommunityMenu + Brand   (h-8)
-  Zeile 1, Spalte 2: MemberMenu
+  Zeile 1, Spalte 1: CommunityMenu + Brand   (h-10)
+  Zeile 1, Spalte 2: MemberMenu               (h-10)
   Zeile 2, über beide Spalten: CountdownDisplay   (h-11)
 ```
 
-24px Padding + 32px + 8px + 44px = **108px**, unabhängig von Breakpoint und Inhalt. Zeile 1 bekommt
-ihre 32px explizit (`h-8`) und nicht vom Avatar: auf der Login-Seite gibt es kein `MemberMenu`, und
-die Höhe darf nicht daran hängen, ob ein Anwender angemeldet ist. Zeile 2 hält ihre 44px
-(26px Tafel + 2px + 16px Legende) auch dann, wenn `CountdownDisplay` nichts rendert.
+24px Padding + 40px + 8px + 44px = **116px**, unabhängig von Breakpoint und Inhalt. Beide Zellen
+von Zeile 1 tragen `h-10`, nicht nur die Titel-Zelle: eine CSS-Grid-Zeile ist so hoch wie ihr
+höchstes Kind, und `MemberMenu`s Trigger ist 40px hoch (ein 32px-Avatar in einem `p-1`-Button). Die
+Höhe nur auf der Titel-Zelle zu setzen (`h-8`, 32px) hätte die Login-Seite, auf der es kein
+`MemberMenu` gibt, 8px niedriger gelassen als jede andere Seite — genau die Varianz, die die feste
+Höhe eigentlich beseitigen soll. Zeile 2 hält ihre 44px (26px Tafel + 2px + 16px Legende) auch dann,
+wenn `CountdownDisplay` nichts rendert.
 
 ## `communities/fallbacks/CountdownCard.vue` — was sich mitändert
 
@@ -191,8 +212,12 @@ Die Card behält ihren Aufbau. Sie erbt drei Dinge:
   Punkt ⌀5,66px statt 5,17px, Strip 50,9px statt 46,6px hoch (bei 343px Kartenbreite). Das
   Hero-Board enthält keinen Doppelpunkt und bleibt unverändert.
 - Die drei Strip-Labels ziehen in `FlipDotLegend` und stehen auf berechneten Mitten.
-- `resolved` folgt `phase === 'live'`, wodurch die Labels auch bei einem Relight mitgehen — etwa
-  beim Übergang von dreistelligen auf zweistellige Tage.
+- Es gibt kein einzelnes `resolved`. Die Card hält zwei Flags, `heroLive` und `stripLive`, je eines
+  pro Tafel, gespeist vom `phase`-Event der jeweiligen Tafel. Der Grund ist die interessanteste
+  Erkenntnis des Branches: sobald eine Tafel bei einem Geometriewechsel relighten kann, ist ein
+  einziges Flag für beide falsch. Verliert der Tage-Zähler eine Stelle, relightet nur die
+  Hero-Tafel — der Strip bleibt die ganze Zeit lesbar. Ein gemeinsames Flag würde `STD MIN SEK` für
+  die 300ms des Hero-Relights unnötig ausblenden, obwohl der Strip selbst nichts tut.
 
 ## Tests
 
@@ -229,5 +254,5 @@ Vitest mit `vi`, wie in [frontend.md](../../../.claude/guidelines/frontend.md) f
   und die Skew-Korrektur bleiben wie sie sind; hier ändert sich ausschließlich die Darstellung.
 - **Kein Umbau des Hero-Boards** und keine neue Aufteilung der Card.
 - **Keine 320px-Unterstützung** als gestalteter Zustand.
-- **Kein `sticky` Header.** Der Header bleibt Teil des Seitenflusses; ob eine 108px hohe Tafel oben
+- **Kein `sticky` Header.** Der Header bleibt Teil des Seitenflusses; ob eine 116px hohe Tafel oben
   kleben soll, ist eine eigene Frage.
