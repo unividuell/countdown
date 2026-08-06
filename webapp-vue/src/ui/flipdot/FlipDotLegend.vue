@@ -4,8 +4,9 @@ import { groupCentres } from './board'
 
 const props = defineProps<{ text: string; labels: readonly string[]; visible: boolean }>()
 
-// The board reads its own value out to assistive tech, so this row is decoration for the eye
-// only — a second reading of the same numbers would just be noise.
+// This row is aria-hidden because the value is spoken elsewhere: by the board itself in the card,
+// where nothing wraps it, and by the wrapping button in the header, where the board is aria-hidden
+// too. Either way, a second reading of the same numbers here would just be noise.
 const cells = computed(() =>
   groupCentres(props.text).map((centre, i) => ({
     left: `${centre}%`,
@@ -17,7 +18,7 @@ const cells = computed(() =>
 <template>
   <div
     aria-hidden="true"
-    class="relative h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+    class="relative h-4 font-mono text-[11px] tracking-[0.14em] text-stone-400 transition-opacity duration-300"
     :class="visible ? 'opacity-100' : 'opacity-0'"
   >
     <!-- Inline style, not a utility class: the centre is computed, and Tailwind only generates the

@@ -52,4 +52,11 @@ describe('FlipDotLegend', () => {
     expect(w.findAll('span')).toHaveLength(3)
     expect(w.text()).toBe('STD')
   })
+
+  // This is a contrast floor, not a styling preference: text-stone-500 on bg-stone-900 measures
+  // 3.65:1, below the 4.5:1 WCAG AA asks for 11px text. text-stone-400 clears it at 6.94:1. Do not
+  // dim this back without checking contrast against whichever background it lands on.
+  it('meets the contrast floor against a dark background', () => {
+    expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain('text-stone-400')
+  })
 })

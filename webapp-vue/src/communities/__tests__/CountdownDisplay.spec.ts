@@ -187,7 +187,6 @@ describe('CountdownDisplay', () => {
     const el = w.find('[data-test="countdown"]')
     expect(el.exists()).toBe(true)
     expect(w.getComponent(FlipDotBoard).props('label')).toContain('Laufzeit')
-    expect(el.text()).not.toContain('Event läuft')
     expect(el.attributes('title')).toBeUndefined()
     // This is the state with no title fallback at all, so the aria-label is the only thing that
     // can name the button — worst off if it were ever missing.

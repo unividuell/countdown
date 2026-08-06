@@ -48,7 +48,7 @@ const stripLive = ref(false)
       />
       <p
         data-test="countdown-label-days"
-        class="font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
+        class="font-mono text-[11px] tracking-[0.14em] text-stone-400 transition-opacity duration-300"
         :class="heroLive ? 'opacity-100' : 'opacity-0'"
       >
         TAGE
