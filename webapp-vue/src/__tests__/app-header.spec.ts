@@ -187,6 +187,39 @@ describe('App main header', () => {
     expect(w.get('header').classes()).toContain('md:grid-cols-[1fr_auto_auto]')
   })
 
+  // From md the row is as tall as the board plus its legend, so centring the title and the avatar in
+  // it puts them 9px below the middle of the digits — the avatar reads as having come loose from the
+  // band. Both are pinned to the top of the row in a board-tall box instead, which lands their
+  // centres on the digits' centre line and leaves the legend hanging below all three. happy-dom
+  // computes no box heights, so the classes are the observable part; the alignment itself is a
+  // browser measurement.
+  it('puts the title and the avatar on the digits centre line from md, not the whole row', () => {
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte Hütte',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    const w = mount(App, { global: { stubs } })
+    for (const cell of ['title-row', 'account-cell']) {
+      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:h-[26px]')
+      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:self-start')
+    }
+    expect(w.get('[data-test="countdown-row"]').classes()).toContain('md:self-start')
+  })
+
+  // Without a board there is nothing to align to, and the cells must keep their own 40px — otherwise
+  // a 26px override would shrink the header below the height it had before this feature existed.
+  it('leaves the row-1 cells at their own height where there is no board', () => {
+    const w = mount(App, { global: { stubs } })
+    for (const cell of ['title-row', 'account-cell']) {
+      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('h-10')
+      expect(w.get(`[data-test="${cell}"]`).classes()).not.toContain('md:h-[26px]')
+    }
+  })
+
   // The board sits between title and account in the visual order from md, but after both in the DOM,
   // because the narrow layout — which phones get — reads title, account, then the board below.
   it('keeps the DOM order of the narrow layout, which is the common one', () => {

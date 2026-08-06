@@ -23,6 +23,16 @@ const yearSuffix = computed(() => {
   const year = DateTime.fromISO(c.startsAt, { zone: c.startsAtTimezone }).year
   return ` '${String(year).slice(-2)}`
 })
+
+const hasCountdown = computed(() => Boolean(activeCommunity.value?.startsAt))
+
+// From md the board shares row 1, and the row is then as tall as the board plus its legend (44px).
+// Centring the title and the avatar in that row would sit them 9px below the middle of the digits,
+// which reads as the avatar having come loose from the band it belongs to. So both are pinned to the
+// top of the row inside a board-tall box instead: their centres land on the digits' centre line and
+// the legend hangs below all three. Only with a board to align to — without one the cells keep their
+// own 40px and the header stays at its old height.
+const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:self-start' : ''))
 </script>
 
 <template>
@@ -49,6 +59,7 @@ const yearSuffix = computed(() => {
         <div
           data-test="title-row"
           class="col-start-1 row-start-1 flex h-10 min-w-0 items-center gap-2"
+          :class="alignToBoardBand"
         >
           <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
           <RouterLink to="/" class="font-semibold hover:underline"
@@ -61,13 +72,14 @@ const yearSuffix = computed(() => {
         <div
           data-test="account-cell"
           class="col-start-2 row-start-1 flex h-10 items-center md:col-start-3"
+          :class="alignToBoardBand"
         >
           <MemberMenu v-if="user" :user="user" />
         </div>
         <div
           v-if="activeCommunity?.startsAt"
           data-test="countdown-row"
-          class="col-span-2 col-start-1 row-start-2 h-11 md:col-span-1 md:col-start-2 md:row-start-1"
+          class="col-span-2 col-start-1 row-start-2 h-11 md:col-span-1 md:col-start-2 md:row-start-1 md:self-start"
         >
           <CountdownDisplay :slug="activeCommunity.slug" />
         </div>

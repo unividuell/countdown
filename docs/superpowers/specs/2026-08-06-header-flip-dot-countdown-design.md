@@ -230,6 +230,16 @@ wie ihr höchstes Kind, und `MemberMenu`s Trigger ist 40px hoch (ein 32px-Avatar
 der es kein `MemberMenu` gibt, 8px niedriger gelassen als jede andere Seite — eine Höhe, die daran
 hängt, ob jemand angemeldet ist.
 
+**Ab `md` liegen Titel, Ziffernband und Avatar auf einer Linie.** Die Zeile ist dort 44px hoch, weil
+die Tafel-Zelle Tafel + Legende trägt. Titel und Avatar mittig in dieser Zeile zu setzen, hieße 9px
+unter der Mitte der Ziffern zu sitzen — der Avatar wirkt dann vom Band abgelöst, an dem er hängt.
+Beide Zellen werden deshalb mit `md:h-[26px] md:self-start` an den Zeilenanfang in eine
+tafelhohe Box gesetzt: die Mitten liegen dann alle auf der Mitte des Bands (gemessen: 25px unter der
+Header-Oberkante für Tafel, Titel und Avatar), die Legende hängt unter allen drei. Der Avatar ist mit
+40px höher als seine 26px-Box und ragt oben heraus — gewollt, er soll auf dem Band liegen, nicht
+darin eingepasst sein. Die Klassen hängen an `hasCountdown`: ohne Tafel gibt es kein Band, an dem
+auszurichten wäre, und ein 26px-Override würde den Header unter seine alte Höhe drücken.
+
 Ohne Countdown wird die Tafel-Zelle **gar nicht gerendert** (`v-if` auf der Zelle, nicht nur auf der
 Komponente). Damit hat der Header dort nur eine Zeile und ist wieder 64px hoch statt 52px
 reserviertes Schwarz zu tragen. Existiert die Zelle, hält sie ihre 44px auch dann, wenn
