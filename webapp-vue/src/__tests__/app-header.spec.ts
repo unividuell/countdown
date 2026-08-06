@@ -175,14 +175,18 @@ describe('App main header', () => {
     expect(row.classes().filter((c) => c.includes(':'))).toEqual([])
   })
 
-  // The row's height must not depend on whether a viewer is signed in — without the avatar, an
-  // implicit row height would make the header 100px on the login page and 108px everywhere else.
-  it('holds the title row open without the member menu', () => {
-    const anonymous = mount(App, { global: { stubs } }).get('[data-test="title-row"]')
-    expect(anonymous.classes()).toContain('h-8')
+  // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.
+  // With it on the title cell alone, the login page (no MemberMenu, whose trigger is 40px) would be
+  // 108px while every other page was 116px — the very variance the fixed height exists to remove.
+  // happy-dom computes no box heights, so the classes are all a test can see here; the measurement
+  // itself belongs to the browser step.
+  it('states row 1 height on both of its cells, so it cannot depend on being signed in', () => {
+    const anonymous = mount(App, { global: { stubs } })
+    expect(anonymous.get('[data-test="title-row"]').classes()).toContain('h-10')
+    expect(anonymous.get('[data-test="account-cell"]').classes()).toContain('h-10')
     mockStatus('authenticated')
-    expect(mount(App, { global: { stubs } }).get('[data-test="title-row"]').classes()).toContain(
-      'h-8',
-    )
+    const signedIn = mount(App, { global: { stubs } })
+    expect(signedIn.get('[data-test="title-row"]').classes()).toContain('h-10')
+    expect(signedIn.get('[data-test="account-cell"]').classes()).toContain('h-10')
   })
 })

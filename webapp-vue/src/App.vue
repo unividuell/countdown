@@ -32,23 +32,25 @@ const yearSuffix = computed(() => {
          not `main` — is what keeps the page from gaining a scrollbar mid-animation without
          confining the animation to the content column. -->
     <div class="relative">
-      <!-- Two rows with fixed heights, at every width: 24px padding + 32px + 8px + 44px = 108px.
-           The height must not depend on the page, so row 2 stays reserved where no countdown
-           lives, and row 1 gets its 32px from h-8 rather than from the avatar — on the login page
-           there is no MemberMenu to supply it. -->
+      <!-- Two rows with fixed heights, at every width: 24px padding + 40px + 8px + 44px = 116px.
+           The height must not depend on the page, so row 2 stays reserved where no countdown lives,
+           and BOTH cells of row 1 state their 40px: a grid track is as tall as its tallest item, and
+           MemberMenu's trigger is 40px (a 32px avatar in a p-1 button). Stating it on the title cell
+           alone would leave the login page, which has no MemberMenu, 8px shorter than every other
+           page — the variance this height exists to remove. -->
       <header
         class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-stone-900 px-4 py-3 text-stone-50"
       >
         <div
           data-test="title-row"
-          class="col-start-1 row-start-1 flex h-8 min-w-0 items-center gap-2"
+          class="col-start-1 row-start-1 flex h-10 min-w-0 items-center gap-2"
         >
           <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
           <RouterLink to="/" class="font-semibold hover:underline"
             >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
           >
         </div>
-        <div class="col-start-2 row-start-1 flex items-center">
+        <div data-test="account-cell" class="col-start-2 row-start-1 flex h-10 items-center">
           <MemberMenu v-if="user" :user="user" />
         </div>
         <div data-test="countdown-row" class="col-span-2 col-start-1 row-start-2 h-11">
