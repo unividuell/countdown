@@ -20,7 +20,13 @@
 - **Die Suite muss nach jeder Task grün sein.** Wo eine Änderung bestehende Erwartungen bricht, gehört die Korrektur in dieselbe Task.
 - **Branch:** die Arbeit läuft auf `claude/flip-dots-header-countdown-8bb3ef`; PRs gehen gegen `develop`.
 - **Commit-Stil:** `<type>(webapp): <imperative, kleingeschrieben>`, Begründung in den Body. Jede Commit-Message endet mit der Zeile `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` — die unten vorgegebenen `git commit`-Kommandos zeigen sie nicht mit, sie ist trotzdem anzuhängen.
-- **Feste Maße, die im Code auftauchen:** Tafelhöhe 26px (`h-[26px]`), Legendenzeile 16px (`h-4`), Abstand dazwischen 2px, Header-Zeile 1 32px (`h-8`), Header-Zeile 2 44px (`h-11`), Zeilenabstand 8px (`gap-y-2`), Header-Padding `px-4 py-3` → Gesamthöhe 108px.
+- **Feste Maße, die im Code auftauchen:** Tafelhöhe 26px (`h-[26px]`), Legendenzeile 16px (`h-4`), Abstand dazwischen 2px, Header-Zeile 1 40px (`h-10`), Header-Zeile 2 44px (`h-11`), Zeilenabstand 8px (`gap-y-2`), Header-Padding `px-4 py-3` → Gesamthöhe 116px.
+
+  Die 40px sind gemessen, nicht gewählt: `MemberMenu` rendert den 32px-Avatar in einem Trigger mit
+  `p-1` (`HeaderMenu.vue`), also 40px. Ein Grid-Track wird so hoch wie sein höchstes Item — `h-8` auf
+  der Titelzelle allein hält Zeile 1 deshalb nicht bei 32px, sondern nur die anonyme Seite. Beide
+  Zellen der Zeile 1 brauchen dasselbe `h-10`, sonst hängt die Headerhöhe daran, ob jemand angemeldet
+  ist. Genau das soll sie nicht.
 
 ---
 
@@ -1090,15 +1096,19 @@ In `src/__tests__/app-header.spec.ts` anhängen:
     expect(row.classes().filter((c) => c.includes(':'))).toEqual([])
   })
 
-  // The row's height must not depend on whether a viewer is signed in — without the avatar, an
-  // implicit row height would make the header 100px on the login page and 108px everywhere else.
-  it('holds the title row open without the member menu', () => {
-    const anonymous = mount(App, { global: { stubs } }).get('[data-test="title-row"]')
-    expect(anonymous.classes()).toContain('h-8')
+  // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.
+  // With it on the title cell alone, the login page (no MemberMenu, whose trigger is 40px) would be
+  // 108px while every other page was 116px — the very variance the fixed height exists to remove.
+  // happy-dom computes no box heights, so the classes are all a test can see here; the measurement
+  // itself belongs to the browser step.
+  it('states row 1 height on both of its cells, so it cannot depend on being signed in', () => {
+    const anonymous = mount(App, { global: { stubs } })
+    expect(anonymous.get('[data-test="title-row"]').classes()).toContain('h-10')
+    expect(anonymous.get('[data-test="account-cell"]').classes()).toContain('h-10')
     mockStatus('authenticated')
-    expect(mount(App, { global: { stubs } }).get('[data-test="title-row"]').classes()).toContain(
-      'h-8',
-    )
+    const signedIn = mount(App, { global: { stubs } })
+    expect(signedIn.get('[data-test="title-row"]').classes()).toContain('h-10')
+    expect(signedIn.get('[data-test="account-cell"]').classes()).toContain('h-10')
   })
 ```
 
@@ -1112,23 +1122,25 @@ Expected: FAIL — `[data-test="countdown-row"]` und `[data-test="title-row"]` e
 In `src/App.vue` das `<header>`-Element ersetzen (die `navigationPending`-Leiste und alles darunter bleibt unverändert):
 
 ```html
-      <!-- Two rows with fixed heights, at every width: 24px padding + 32px + 8px + 44px = 108px.
-           The height must not depend on the page, so row 2 stays reserved where no countdown
-           lives, and row 1 gets its 32px from h-8 rather than from the avatar — on the login page
-           there is no MemberMenu to supply it. -->
+      <!-- Two rows with fixed heights, at every width: 24px padding + 40px + 8px + 44px = 116px.
+           The height must not depend on the page, so row 2 stays reserved where no countdown lives,
+           and BOTH cells of row 1 state their 40px: a grid track is as tall as its tallest item, and
+           MemberMenu's trigger is 40px (a 32px avatar in a p-1 button). Stating it on the title cell
+           alone would leave the login page, which has no MemberMenu, 8px shorter than every other
+           page — the variance this height exists to remove. -->
       <header
         class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-stone-900 px-4 py-3 text-stone-50"
       >
         <div
           data-test="title-row"
-          class="col-start-1 row-start-1 flex h-8 min-w-0 items-center gap-2"
+          class="col-start-1 row-start-1 flex h-10 min-w-0 items-center gap-2"
         >
           <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
           <RouterLink to="/" class="font-semibold hover:underline"
             >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
           >
         </div>
-        <div class="col-start-2 row-start-1 flex items-center">
+        <div data-test="account-cell" class="col-start-2 row-start-1 flex h-10 items-center">
           <MemberMenu v-if="user" :user="user" />
         </div>
         <div data-test="countdown-row" class="col-span-2 col-start-1 row-start-2 h-11">
@@ -1148,11 +1160,11 @@ Run: `cd webapp-vue && pnpm dev` (bzw. den Preview-Server des Harness) und eine 
 
 Zu prüfen — und ohne diese Prüfung gilt die Task nicht als fertig, weil happy-dom kein CSS rechnet und keine der Assertions oben eine Pixelhöhe belegt:
 
-1. Der Header ist 108px hoch, auf einer Community-Seite und auf `/` gleich (DevTools: `document.querySelector('header').getBoundingClientRect().height`).
+1. Der Header ist 116px hoch — auf einer Community-Seite, auf `/` und auf `/login` derselbe Wert (DevTools: `document.querySelector('header').getBoundingClientRect().height`, und `getComputedStyle(header).gridTemplateRows` muss `40px 44px` sagen).
 2. Die Tafel steht unter dem Titel, linksbündig mit dem Community-Menü.
 3. Der Sekundentakt läuft mit der Welle von rechts.
 4. Ein Klick auf die Tafel schaltet die Basiseinheit um: alles weiß, kurz halten, dann rollen die neuen Einheiten ein — die Breitenänderung ist nicht als Sprung zu sehen.
-5. Bei 360px Viewportbreite läuft der Monats-Zustand nicht über — und bei 320px greift das Netz: die Tafel wird kleiner, der Header behält seine 108px und bekommt keinen horizontalen Scrollbalken.
+5. Bei 360px Viewportbreite läuft der Monats-Zustand nicht über — und bei 320px greift das Netz: die Tafel wird kleiner, der Header behält seine 116px und bekommt keinen horizontalen Scrollbalken.
 6. Die Legende steht unter den Gruppenmitten, in jedem der drei Zustände.
 
 - [ ] **Step 6: Commit**
@@ -1163,12 +1175,12 @@ git commit -m "feat(webapp): the header keeps one height and wears the board bel
 
 The countdown belongs to the community's name, so it sits under it — at every
 width, with no breakpoint switch and one instance. Both rows have fixed heights,
-including where no countdown lives, so the header is 108px on every page and
+including where no countdown lives, so the header is 116px on every page and
 entering a community shifts nothing below it.
 
-Row 1 gets its 32px from h-8 and not from the avatar: on the login page there is
-no MemberMenu, and a height that depends on being signed in is not a fixed
-height."
+Both cells of row 1 state their 40px, because a grid track is as tall as its
+tallest item and MemberMenu's trigger is 40px: on the login page there is no
+MemberMenu, and a height that depends on being signed in is not a fixed height."
 ```
 
 ---
@@ -1177,4 +1189,4 @@ height."
 
 - Die Card ist von diesem Plan nur mittelbar betroffen (engerer Trenner, Legende als Komponente). Ihr Hero-Board, ihre Aufteilung und ihre Prozentbreiten bleiben, wie sie sind.
 - Die Tastaturbedienung des Zyklus ist in Task 6 enthalten (`tabindex="0"`, Enter und Leertaste). Sie stand ursprünglich nicht im Plan: `role="button"` ohne Tastatur-Handler ist der Stand vor dieser Arbeit, wäre im Diff aber eine neu hinzugefügte Zeile — und ein Bedienelement, das nur die Maus erreicht, will man nicht neu einchecken.
-- Ob ein 108px hoher Header `sticky` sein soll, ist bewusst nicht Teil dieser Arbeit.
+- Ob ein 116px hoher Header `sticky` sein soll, ist bewusst nicht Teil dieser Arbeit.
