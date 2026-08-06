@@ -149,4 +149,40 @@ describe('App main header', () => {
     const w = mount(App, { global: { stubs } })
     expect(w.classes()).toContain('overflow-x-clip')
   })
+
+  // The header must be the same height on every page: a countdown that appears when you enter a
+  // community would otherwise shove the content below it down by 52px.
+  it('reserves the countdown row even where no community is active', () => {
+    const w = mount(App, { global: { stubs } })
+    const row = w.get('[data-test="countdown-row"]')
+    expect(row.classes()).toContain('h-11')
+    expect(w.find('[data-test="countdown-widget"]').exists()).toBe(false)
+  })
+
+  it('sits the countdown below the community title, at every width', () => {
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte Hütte',
+      startsAt: '2026-06-25T09:00:00Z',
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    const row = mount(App, { global: { stubs } }).get('[data-test="countdown-row"]')
+    expect(row.get('[data-test="countdown-widget"]').exists()).toBe(true)
+    expect(row.classes()).toContain('row-start-2')
+    // No breakpoint variant anywhere on the row: one layout, one instance, at every width.
+    expect(row.classes().filter((c) => c.includes(':'))).toEqual([])
+  })
+
+  // The row's height must not depend on whether a viewer is signed in — without the avatar, an
+  // implicit row height would make the header 100px on the login page and 108px everywhere else.
+  it('holds the title row open without the member menu', () => {
+    const anonymous = mount(App, { global: { stubs } }).get('[data-test="title-row"]')
+    expect(anonymous.classes()).toContain('h-8')
+    mockStatus('authenticated')
+    expect(mount(App, { global: { stubs } }).get('[data-test="title-row"]').classes()).toContain(
+      'h-8',
+    )
+  })
 })
