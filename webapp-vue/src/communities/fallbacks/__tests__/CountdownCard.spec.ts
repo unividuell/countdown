@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CountdownCard from '@/communities/fallbacks/CountdownCard.vue'
-import { BOOT_DARK_MS, BOOT_RESOLVE_AT_MS, DOT_ON } from '@/ui/flipdot/board'
+import {
+  BOOT_DARK_MS,
+  BOOT_HOLD_MS,
+  BOOT_RESOLVE_AT_MS,
+  DOT_ON,
+  groupCentres,
+} from '@/ui/flipdot/board'
 import { bitmap } from '@/ui/flipdot/font'
 
 function mountCard(days: string) {
@@ -136,5 +142,34 @@ describe('CountdownCard', () => {
     await nextTick()
     expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('positions the strip labels on the computed group centres', () => {
+    const spans = mountCard('58').get('[data-test="countdown-label-time"]').findAll('span')
+    const expected = groupCentres('13:42:07')
+    expect(spans).toHaveLength(3)
+    spans.forEach((span, i) => {
+      expect(Number.parseFloat((span.element as HTMLElement).style.left)).toBeCloseTo(
+        expected[i]!,
+        3,
+      )
+    })
+  })
+
+  // The hero relights when the day count loses a digit, and only the hero. Driving both label
+  // groups from one flag would blink STD/MIN/SEK out for 300ms while their strip stayed perfectly
+  // legible.
+  it('fades only the labels of the board that is relighting', async () => {
+    const w = mountCard('100')
+    await advance(BOOT_RESOLVE_AT_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+
+    await w.setProps({ days: '99' })
+    await nextTick()
+    expect(w.get('[data-test="countdown-label-days"]').classes()).toContain('opacity-0')
+    expect(w.get('[data-test="countdown-label-time"]').classes()).toContain('opacity-100')
+
+    await advance(BOOT_HOLD_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
   })
 })
