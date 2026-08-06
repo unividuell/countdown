@@ -29,7 +29,10 @@ Community-Roster. Der Header zeigt künftig denselben Avatar wie die Rangliste.
   `null` heißt „der Anwender hat keine Farbe gewählt". Diese Information darf die Antwort nicht
   verlieren. Die aufgelöste Farbe kommt daneben, nicht darüber.
 - **Eine gemeinsame Komponente, kein kopiertes Markup.** `Avatar.vue` in `webapp-vue/src/ui/`,
-  benutzt von Rangliste und Header.
+  benutzt von Rangliste und Header. Die weiße Outline gehört zum Avatar, nicht zur Rangliste.
+- **Kein Ersatz-Icon, kein Flackern.** Das Konto-Menü ergibt ohne Anwender keinen Sinn; der
+  angemeldete Anwender wird zur Prop-Vorbedingung, statt in der Komponente wegverzweigt zu
+  werden.
 - **Die Farbfrage im Header wird gesehen, nicht geraten.** Voll bunt, gedämpft oder
   Schwarz-Weiß entscheidet sich am laufenden Dev-Server im Vergleich.
 
@@ -123,11 +126,13 @@ withDefaults(defineProps<{
   Die Schriftgröße skaliert mit.
 - **`variant`** — `color` (unverändert), `muted` (`saturate-50`), `grayscale` (`grayscale`),
   als CSS-Filter auf dem Kreis. Reine Entscheidungshilfe, siehe unten.
-- Der Kreis ist das Wurzelelement, damit Vues Attribut-Durchreichung greift: Aufrufer hängen
-  `data-swarm-circle`, `ring-2 ring-white` oder `z-index` von außen an. Alles
-  Rangliste-Spezifische (Schwarm-Animation, Ring zum Überlappen) bleibt beim Aufrufer.
+- **Die Outline (`ring-2 ring-white`) gehört zur Komponente**, nicht zum Aufrufer. Sie ist Teil
+  des Avatars, nicht des Überlappungs-Tricks der Rangliste — der Header-Kreis bekommt sie
+  ebenso.
 - Die Neigung der Initialen (`rotate-[-40deg]`) ist Teil des Looks und zieht mit in die
   Komponente.
+- Der Kreis ist das Wurzelelement, damit Vues Attribut-Durchreichung greift: die Rangliste hängt
+  `data-swarm-circle` von außen an. Nur die Schwarm-Animation bleibt beim Aufrufer.
 
 `readableTextColor.ts` zieht von `src/members/` nach `src/ui/` — die Kontrastfarbe ist jetzt
 eine Aussage der Avatar-Darstellung, nicht der Rangliste. Die Funktion selbst bleibt unverändert;
@@ -139,34 +144,42 @@ die Komponente berechnet sie pro Avatar statt die Rangliste für alle auf einmal
 Ersetzt den Inline-Kreis durch:
 
 ```vue
-<Avatar
-  :short-name="m.shortName"
-  :bg-color-hex="m.bgColorHex"
-  data-swarm-circle
-  class="ring-2 ring-white"
-/>
+<Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" data-swarm-circle />
 ```
 
 Der `textColors`-Computed und der `readableTextColor`-Import entfallen. Sonst ändert sich in
 der Datei nichts — Schwarm, Punkte-Pille und Live-Badge bleiben, wo sie sind.
 
-### `MemberMenu.vue`
+### `MemberMenu.vue` und `App.vue` — der User wird zur Voraussetzung
 
-Der Trigger wird zum Avatar:
+Ein Konto-Menü ohne Konto ergibt keinen Sinn. Statt im Trigger zwischen Avatar und
+Ersatz-Icon zu verzweigen — was beim Laden sichtbar flackern würde — wird der angemeldete
+Anwender zur **Vorbedingung der Komponente**:
 
 ```vue
-<template #trigger>
-  <Avatar v-if="user" v-bind="user.avatar" size="sm" />
-  <IconMember v-else class="size-5" />
-</template>
+<!-- App.vue -->
+<MemberMenu v-if="user" :user="user" />
 ```
 
-Das Lucide-Icon bleibt als Rückfall stehen: `MemberMenu` wird zwar nur bei
-`status === 'authenticated'` gerendert (`App.vue:44`), aber ein Trigger-Button ohne Inhalt wäre
-ein kaputter Button, und `user` ist im Typ nullable.
+`const { status } = useAuth()` wird zu `const { user } = useAuth()`; `status` wird in `App.vue`
+sonst nirgends gebraucht. Die Bedingung ist verhaltensgleich: `useAuth` setzt `user` und
+`status` immer gemeinsam (`bootstrap`, `logout`, `markAnonymous`) — `status === 'authenticated'`
+und `user !== null` sind dasselbe. Neu ist nur, dass TypeScript es jetzt auch weiß.
 
-Der Header ist dunkel (`hover:bg-stone-800`) — der farbige Kreis steht dort auf dunklem Grund,
-anders als in der Rangliste auf hellem. Das ist der Grund, warum die Farbfrage offen bleibt.
+`MemberMenu.vue` bekommt `defineProps<{ user: MeResponse }>()` und holt sich aus `useAuth` nur
+noch `logout`. Damit entfallen die Optional-Chains (`user?.username`, `user?.isSuperAdmin`), das
+Lucide-Icon und sein Import:
+
+```vue
+<template #trigger><Avatar v-bind="user.avatar" size="sm" /></template>
+```
+
+Es gibt keinen Zwischenzustand mehr: entweder es gibt einen Anwender, dann steht sein Avatar
+da — oder es gibt keinen, dann steht das ganze Menü nicht da.
+
+Der Header ist dunkel (`bg-stone-900`) — der farbige Kreis mit weißer Outline steht dort auf
+dunklem Grund, anders als in der Rangliste auf hellem. Das ist der Grund, warum die Farbfrage
+offen bleibt.
 
 ### Typen
 
@@ -182,7 +195,8 @@ bgColorHex: string }`. Alle Test-Fixtures, die ein `MeResponse` bauen — u.a. `
 stiften. Ablauf:
 
 1. Umsetzung mit `variant="color"` im Header.
-2. Dev-Server starten, Header in allen drei Varianten zeigen.
+2. Dev-Server starten, Header in allen drei Varianten zeigen. Mitbeurteilt wird die weiße
+   Outline auf dem dunklen Header — sie ist für hellen Grund entworfen.
 3. Entscheidung.
 4. **Die nicht gewählten Varianten fliegen raus.** Bleibt es bei `color`, verschwindet der
    `variant`-Prop ganz.
@@ -207,11 +221,14 @@ Kein toter Wahlschalter im Code, nachdem die Wahl getroffen ist.
 **Frontend**
 
 - `ui/__tests__/Avatar.spec.ts` (neu): rendert `shortName`; setzt `background` auf
-  `bgColorHex`; wählt dunkle Schrift auf hellem und helle auf dunklem Grund; `size="sm"` und
-  die `variant`-Klassen schlagen durch; durchgereichte Klassen landen am Kreis.
+  `bgColorHex`; wählt dunkle Schrift auf hellem und helle auf dunklem Grund; trägt die Outline;
+  `size="sm"` und die `variant`-Klassen schlagen durch; durchgereichte Attribute landen am Kreis.
 - `MemberRow.spec.ts` bleibt unverändert — grün heißt, die Rangliste sieht aus wie vorher.
-- `MemberMenu.spec.ts`: der Trigger zeigt den Avatar mit den Initialen des angemeldeten
-  Anwenders statt des Icons.
+- `MemberMenu.spec.ts`: wird über die neue `user`-Prop montiert statt über den `useAuth`-Mock
+  (der Mock liefert nur noch `logout`); der Trigger zeigt den Avatar mit den Initialen des
+  angemeldeten Anwenders.
+- `__tests__/app-header.spec.ts`: prüft weiterhin, dass das Menü nur für angemeldete Anwender
+  im Header steht — jetzt über `user` statt über `status`.
 
 ## Was nicht dazugehört
 
