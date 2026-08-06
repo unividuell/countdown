@@ -18,6 +18,7 @@ const props = withDefaults(
 )
 
 const textColor = computed(() => readableTextColor(props.bgColorHex))
+// `lg`'s 48px is depended on by the height reservation in `pages/c/[slug]/index.vue`.
 const sizing = computed(() => (props.size === 'sm' ? 'size-8 text-[10px]' : 'size-12 text-sm'))
 </script>
 

@@ -32,8 +32,9 @@ Community-Roster. Der Header zeigt künftig denselben Avatar wie die Rangliste.
   benutzt von Rangliste und Header. Die weiße Outline gehört zum Avatar, nicht zur Rangliste.
 - **Kein Ersatz-Icon, kein Flackern.** Das Konto-Menü ergibt ohne Anwender keinen Sinn; der
   angemeldete Anwender wird zur Prop-Vorbedingung, statt in der Komponente wegverzweigt zu
-  werden. Während `/api/me` unterwegs ist, hält ein leerer Platzhalter die Geometrie — nichts
-  zu sehen, aber nichts springt.
+  werden. Es gibt keinen Platzhalter, der eine Geometrie hält, während `/api/me` unterwegs ist —
+  `main.ts` mountet die App erst, nachdem die Session aufgelöst ist, also malt der Header nie
+  einen unaufgelösten Zustand. Es gibt nichts zu überbrücken.
 - **Die Farbfrage im Header wird gesehen, nicht geraten.** Voll bunt, gedämpft oder
   Schwarz-Weiß entscheidet sich am laufenden Dev-Server im Vergleich.
 
@@ -160,25 +161,23 @@ Anwender zur **Vorbedingung der Komponente**:
 ```vue
 <!-- App.vue -->
 <MemberMenu v-if="user" :user="user" />
-<!-- Hält den Platz, solange /api/me unterwegs ist: sonst springt der Header-Inhalt
-     links davon, sobald der Avatar erscheint. Maße = Trigger (size-8 Avatar + p-1). -->
-<div v-else-if="status === 'unknown'" data-test="member-menu-placeholder" class="size-10" />
 ```
 
-`App.vue` liest ab jetzt `user` **und** `status` aus `useAuth`. Die Anwesenheits-Bedingung ist
-verhaltensgleich zu vorher: `useAuth` setzt `user` und `status` immer gemeinsam (`bootstrap`,
-`logout`, `markAnonymous`) — `status === 'authenticated'` und `user !== null` sind dasselbe. Neu
-ist nur, dass TypeScript es jetzt auch weiß.
+`App.vue` liest ab jetzt nur noch `user` aus `useAuth`; `status` wird hier nicht mehr gelesen.
 
-`status` bleibt aber gebraucht, weil `user === null` zwei verschiedene Dinge heißen kann:
-**noch nicht bekannt** (`unknown`, Platz reservieren) und **niemand angemeldet** (`anonymous`,
-kein Platz). Der Platzhalter ist leer und ohne Rahmen — er ist reine Geometrie. Beim Übergang
-`unknown → anonymous` fällt er weg; das ist unkritisch, weil dort rechts nichts steht, wogegen
-es springen könnte.
+Wo blieb der Platzhalter, der hier einmal stand? Er ist überflüssig, nicht vergessen. Er sollte
+die Geometrie überbrücken, während der Header mit `status === 'unknown'` rendert — aber dieser
+Zustand tritt beim ersten Paint nicht ein: `main.ts` ruft `bootstrap()` auf und mountet die App
+erst in dessen `.finally()` (dort steht wörtlich: „Resolve the session before mounting so the
+guard never sees 'unknown'"). Der Header zeigt also von Anfang an entweder `authenticated` oder
+`anonymous` — nie `unknown`. Ohne diesen Zustand gibt es nichts zu überbrücken, also auch keine
+Geometrie zu reservieren.
 
-Die Maße des Platzhalters sind an den Trigger gekoppelt (`size-10` = `size-8` Avatar plus die
-`p-1` des Buttons aus `HeaderMenu.vue`). Ändert sich die Avatar-Größe im Header, muss der
-Platzhalter mit — der Kommentar an Ort und Stelle sagt das.
+Der einzige Weg, wie `status` nach dem Mount doch bei `unknown` bleiben könnte, ist ein
+`bootstrap()`, das *scheitert* (Backend nicht erreichbar) — `main.ts` fängt das ab und loggt es,
+mountet aber trotzdem. Für diesen Fehlerfall wäre ein Platzhalter kein kurzer Übergang, sondern
+ein dauerhaft unsichtbarer 40px-Block rechts im Header; das ist kein Zustand, für den sich eine
+eigene Geometrie-Reservierung lohnt.
 
 `MemberMenu.vue` bekommt `defineProps<{ user: MeResponse }>()` und holt sich aus `useAuth` nur
 noch `logout`. Damit entfallen die Optional-Chains (`user?.username`, `user?.isSuperAdmin`), das
@@ -190,6 +189,11 @@ Lucide-Icon und sein Import:
 
 Es gibt keinen Zwischenzustand mehr: entweder es gibt einen Anwender, dann steht sein Avatar
 da — oder es gibt keinen, dann steht das ganze Menü nicht da.
+
+Der Trigger ist mit dem Avatar gewachsen: aus dem `size-5`-Icon (28px-Button) wird ein
+`size-8`-Avatar (40px-Button), also ist der Header für angemeldete Betrachter rund 12px höher
+als vorher. Bewusst so, live am Dev-Server abgenommen — hier festgehalten, weil das Projekt
+explizit mobile-first ist und jedes Pixel Header-Höhe zählt.
 
 Der Header ist dunkel (`bg-stone-900`) — der farbige Kreis mit weißer Outline steht dort auf
 dunklem Grund, anders als in der Rangliste auf hellem. Das ist der Grund, warum die Farbfrage
@@ -237,13 +241,16 @@ Kein toter Wahlschalter im Code, nachdem die Wahl getroffen ist.
 - `ui/__tests__/Avatar.spec.ts` (neu): rendert `shortName`; setzt `background` auf
   `bgColorHex`; wählt dunkle Schrift auf hellem und helle auf dunklem Grund; trägt die Outline;
   `size="sm"` und die `variant`-Klassen schlagen durch; durchgereichte Attribute landen am Kreis.
-- `MemberRow.spec.ts` bleibt unverändert — grün heißt, die Rangliste sieht aus wie vorher.
+- `MemberRow.spec.ts` bekommt zusätzlich zur Reihenfolge-Prüfung eine Assertion auf die Kreis-
+  Hintergrundfarbe (`bgColorHex`) und die Rangliste-Größe (`size-12`) am `[data-swarm-circle]`,
+  damit „sieht aus wie vorher" auch das Aussehen des Kreises selbst belegt, nicht nur Text und
+  Beschriftung.
 - `MemberMenu.spec.ts`: wird über die neue `user`-Prop montiert statt über den `useAuth`-Mock
   (der Mock liefert nur noch `logout`); der Trigger zeigt den Avatar mit den Initialen des
   angemeldeten Anwenders.
 - `__tests__/app-header.spec.ts`: prüft weiterhin, dass das Menü nur für angemeldete Anwender
-  im Header steht — jetzt über `user` statt über `status`. Neu: bei `status === 'unknown'` steht
-  der Platzhalter dort und kein Menü; bei `anonymous` steht keins von beidem.
+  im Header steht — jetzt ausschließlich über `user`. Es gibt keinen Fall mehr für
+  `status === 'unknown'`: dieser Zustand ist beim ersten Paint unerreichbar (siehe oben).
 
 ## Was nicht dazugehört
 

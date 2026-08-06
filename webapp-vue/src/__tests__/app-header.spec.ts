@@ -22,7 +22,7 @@ const viewer: MeResponse = {
   createdAt: null,
 }
 
-function mockStatus(status: 'unknown' | 'authenticated' | 'anonymous') {
+function mockStatus(status: 'authenticated' | 'anonymous') {
   vi.mocked(useAuth).mockReturnValue({
     user: ref(status === 'authenticated' ? viewer : null) as never,
     status: ref(status) as never,
@@ -116,23 +116,6 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
     mockStatus('authenticated')
     expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
-  })
-
-  it('holds the avatar’s place while the session is still unknown', () => {
-    // Without this the header content to its left slides sideways the moment /api/me lands.
-    mockStatus('unknown')
-    const loading = mount(App, { global: { stubs } })
-    expect(loading.find('[data-test=member-menu-placeholder]').exists()).toBe(true)
-    expect(loading.find('[data-test=member-menu]').exists()).toBe(false)
-
-    mockStatus('anonymous')
-    const anon = mount(App, { global: { stubs } })
-    expect(anon.find('[data-test=member-menu-placeholder]').exists()).toBe(false)
-
-    mockStatus('authenticated')
-    const signedIn = mount(App, { global: { stubs } })
-    expect(signedIn.find('[data-test=member-menu-placeholder]').exists()).toBe(false)
-    expect(signedIn.find('[data-test=member-menu]').exists()).toBe(true)
   })
 
   it('shows the navigation progress bar only while a navigation is pending', () => {

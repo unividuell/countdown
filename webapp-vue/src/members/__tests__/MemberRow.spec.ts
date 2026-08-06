@@ -35,7 +35,13 @@ describe('MemberRow', () => {
     const w = mount(MemberRow, {
       props: {
         members: [
-          member({ userId: 'a', shortName: 'BNDR', fullName: 'Bender', points: { stable: 10 } }),
+          member({
+            userId: 'a',
+            shortName: 'BNDR',
+            fullName: 'Bender',
+            bgColorHex: '#8e44ad',
+            points: { stable: 10 },
+          }),
           member({ userId: 'b', shortName: 'AMY', fullName: 'amy', points: { stable: 3 } }),
         ],
       },
@@ -44,6 +50,12 @@ describe('MemberRow', () => {
     expect(items).toHaveLength(2)
     expect(items[0]?.text()).toContain('BNDR')
     expect(items[1]?.text()).toContain('AMY')
+
+    // Proof that the shared Avatar still draws the roster the way it used to: the DOM may hand
+    // back an inline colour either as written or normalised to rgb() (see Avatar.spec.ts).
+    const circle = w.find('[data-swarm-circle]')
+    expect(circle.attributes('style')).toMatch(/#8e44ad|rgb\(142, 68, 173\)/)
+    expect(circle.classes()).toContain('size-12')
   })
 
   it('names each circle for assistive technology', () => {
