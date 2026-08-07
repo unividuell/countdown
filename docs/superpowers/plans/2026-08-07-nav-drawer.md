@@ -570,6 +570,19 @@ describe('NavDrawer mechanics', () => {
     expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 0px')
   })
 
+  it('keeps the scrim out of the way while closed', async () => {
+    // pointer-events-none matters as much as the opacity: a fully transparent scrim that still
+    // takes clicks would swallow every click on the page without anything to see.
+    const w = render()
+    expect(w.get('[data-test=nav-scrim]').classes()).toEqual(
+      expect.arrayContaining(['opacity-0', 'pointer-events-none']),
+    )
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    const scrim = w.get('[data-test=nav-scrim]')
+    expect(scrim.classes()).toContain('opacity-100')
+    expect(scrim.classes()).not.toContain('pointer-events-none')
+  })
+
   it('locks the page behind it while open', async () => {
     const w = render()
     await w.get('[data-test=nav-toggle]').trigger('click')
