@@ -319,19 +319,22 @@ Ebenfalls offen: **wie das Punktesystem aus dem Abstand Punkte macht.** Das Orig
 einen eigenen Rechner (`useGamePointsCalculator`) mit einer Phasenlogik; er wird beim Punkte-Spec
 portiert, nicht hier.
 
-## Abweichung von einer bestehenden Randbedingung
+## Verhältnis zur Anti-Cheat-Randbedingung
 
-[anti-cheat-design.md](2026-08-02-anti-cheat-design.md) führt als „nicht verhandelbar":
+[anti-cheat-design.md](2026-08-02-anti-cheat-design.md) führte als „nicht verhandelbar", dass
+Inhalte zur Spielzeit **prozedural** entstehen müssen. Guess Hue kollidierte damit frontal: eine
+gute Farbbeschreibung ist von Hand geschrieben, sonst ist sie keine gute Beschreibung.
 
-> Inhalte müssen zur Spielzeit prozedural entstehen — Admin-Aufwand ist ein Kostenfaktor.
+Die Kollision hat die Regel korrigiert, nicht das Spiel. Gemeint war nie das Verfahren, sondern die
+Kostenstelle: **wiederkehrender** Admin-Aufwand je Runde ist das Problem, **einmaliger** je
+Spieltyp war nie eines — irgendwer stellt immer etwas bereit. Die Randbedingung ist am 2026-08-07
+entsprechend neu formuliert, und die Content-Pipeline darf seither **erzeugen oder auswählen**.
 
-Guess Hue kollidiert damit als einziges Spiel frontal: eine gute Farbbeschreibung ist von Hand
-geschrieben, sonst ist sie keine gute Beschreibung. Erwogen und verworfen wurde eine Hybridform —
-kuratierte Anker je Sektor plus ein aus der Distanz **berechneter** Takt 2. Sie hätte die
-Randbedingung erfüllt und beliebig viele Runden erzeugt, zum Preis eines maschinell klingenden
-zweiten Takts.
+Damit erfüllt Guess Hue sie: 60 Einträge einmal geschrieben, danach kostet keine Runde mehr etwas.
+Der Seed zieht den Eintrag, jittert den Winkel und würfelt Sättigung und Helligkeit — die
+Zusammenstellung passiert zur Spielzeit, genau wie bei einem Generator.
 
-Die Entscheidung fiel bewusst für die kuratierte Liste. **Die Randbedingung ist damit nicht mehr
-ausnahmslos** und muss in der Anti-Cheat-Spec entschärft werden, sonst widersprechen sich zwei
-Dokumente im Repo. Für alle anderen Spieltypen bleibt sie gültig — Guess Hue ist die begründete
-Ausnahme, nicht der neue Normalfall.
+Erwogen und verworfen wurde trotzdem eine Hybridform: kuratierte Anker je Sektor plus ein aus der
+Distanz **berechneter** Takt 2. Sie hätte auch die alte, strenge Fassung erfüllt und beliebig viele
+Texte erzeugt — zum Preis eines maschinell klingenden zweiten Takts. Nach der Korrektur der Regel
+gibt es keinen Grund mehr, diesen Preis zu zahlen.

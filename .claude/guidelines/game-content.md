@@ -1,10 +1,13 @@
 # Game content (hand-curated puzzle data)
 
-Most games generate their content at play time from the round seed — see
-[anti-cheat-design.md](../../docs/superpowers/specs/2026-08-02-anti-cheat-design.md). Some can't:
-a good puzzle *text* is written by hand, or it isn't good. Where that happens the curated set
-**is the solution to every round of that game**, and the repository is public (the free GitHub
-Actions runners require it).
+Content is assembled at play time from the round seed — either generated or **selected from a
+hand-curated set**. Both are fine; the rule is that no round may cost admin effort, not that a
+machine must write it (see
+[anti-cheat-design.md](../../docs/superpowers/specs/2026-08-02-anti-cheat-design.md)). Curation is
+what language forces: a puzzle *text* is written by hand, or it isn't good.
+
+That makes the curated set **the solution to every round of that game** — in a repository that is
+public, because the free GitHub Actions runners require it.
 
 - **Never commit game content in plaintext.** Not in a spec, plan, commit message, PR
   description or test fixture — and not in a commit you intend to amend away. Git keeps the
