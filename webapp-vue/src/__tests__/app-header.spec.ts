@@ -37,8 +37,7 @@ const stubs = {
   RouterLink: { template: '<a :href="to"><slot/></a>', props: ['to'] },
   RouterView: { template: '<div />' },
   CountdownDisplay: { template: '<div data-test="countdown-widget" />', props: ['slug'] },
-  CommunityMenu: { template: '<div data-test="community-menu" />', props: ['community'] },
-  MemberMenu: { template: '<div data-test="member-menu" />', props: ['user'] },
+  NavDrawer: { template: '<div data-test="nav-toggle" />', props: ['user'] },
 }
 
 describe('App main header', () => {
@@ -97,25 +96,20 @@ describe('App main header', () => {
     expect(w.find('a[href="/"]').text()).toContain("'26")
   })
 
-  it('shows the community menu only inside a community', () => {
-    expect(mount(App, { global: { stubs } }).find('[data-test=community-menu]').exists()).toBe(
-      false,
-    )
-    activeCommunity.value = {
-      slug: 'huette',
-      name: 'Hütte Hütte',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      viewerIsAdmin: false,
-      pendingCount: 0,
-    }
-    expect(mount(App, { global: { stubs } }).find('[data-test=community-menu]').exists()).toBe(true)
+  it('shows no menu for an anonymous visitor', () => {
+    expect(mount(App, { global: { stubs } }).find('[data-test=nav-toggle]').exists()).toBe(false)
   })
 
-  it('shows the member menu only for an authenticated viewer', () => {
-    expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(false)
+  it('shows the menu once someone is signed in', () => {
     mockStatus('authenticated')
-    expect(mount(App, { global: { stubs } }).find('[data-test=member-menu]').exists()).toBe(true)
+    expect(mount(App, { global: { stubs } }).find('[data-test=nav-toggle]').exists()).toBe(true)
+  })
+
+  it('lifts the header above the drawer that slides in under it', () => {
+    // The drawer is z-20 and hangs off the header's bottom edge; without z-30 and a shadow the
+    // header would be overrun by it instead of sitting on top with an edge you can see.
+    const header = mount(App, { global: { stubs } }).get('header')
+    expect(header.classes()).toEqual(expect.arrayContaining(['relative', 'z-30', 'shadow-lg']))
   })
 
   it('shows the navigation progress bar only while a navigation is pending', () => {
@@ -239,7 +233,7 @@ describe('App main header', () => {
   })
 
   // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.
-  // With it on the title cell alone, the login page (no MemberMenu, whose trigger is 40px) would be
+  // With it on the title cell alone, the login page (no NavDrawer, whose toggle is 40px) would be
   // 108px while every other page was 116px — the very variance the fixed height exists to remove.
   // happy-dom computes no box heights, so the classes are all a test can see here; the measurement
   // itself belongs to the browser step.

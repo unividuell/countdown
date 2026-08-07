@@ -7,7 +7,7 @@ import { useAuth } from '@/auth/useAuth'
 // never issues a request. The backend rule on the super-admin path is the real gate; this is UX.
 //
 // The shell renders no chrome of its own: App.vue already supplies the header, and the way back
-// into the area is the MemberMenu entry, which is present on every page.
+// into the area is the NavDrawer entry, which is present on every page.
 const { user } = useAuth()
 </script>
 

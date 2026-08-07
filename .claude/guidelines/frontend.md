@@ -57,10 +57,11 @@ desktop layout that was written first). Concretely:
 - **A fixed row height has to be stated on every cell of that row.** A CSS grid track is as tall as
   its tallest item, and alignment (`items-center`) is resolved *after* track sizing, so it never feeds
   back. The header's first row learned this: with `h-8` on the title cell alone, the row grew to 40px
-  wherever `MemberMenu` rendered (a `size-8` avatar inside `HeaderMenu`'s `p-1` trigger) — 116px on
-  every signed-in page and 108px on the login page, i.e. a header height that depended on who was
-  looking. Both cells now state `h-10`. When a design promises "the same height everywhere", each cell
-  of the pinned row needs the class, and the test can only assert those classes: **happy-dom computes
+  wherever `NavDrawer`'s toggle rendered (a 32px avatar inside its `p-1` button — same geometry as
+  before) — 116px on every signed-in page and 108px on the login page, i.e. a header height that
+  depended on who was looking. Both cells now state `h-10`. When a design promises "the same height
+  everywhere", each cell of the pinned row needs the class, and the test can only assert those
+  classes: **happy-dom computes
   no box heights**, so the number itself is a browser measurement. Measure the invariant, not the
   symptom — emptying the account cell in the DOM and re-reading `gridTemplateRows` proves it directly.
 - **Read the accessibility tree, not the DOM, when a control's name matters.** Name-from-content on a
@@ -71,6 +72,32 @@ desktop layout that was written first). Concretely:
   `aria-hidden="true"` so the value is not announced twice. In the card, where nothing wraps it, the
   board stays self-describing. Two consumers, two answers — and the browser's a11y tree is the only
   place the difference shows.
+- **`max-height: 100%` does not constrain a child of a flex item.** A flex item's height counts as
+  *indefinite* for percentage resolution, so the rule never applies and the child keeps its intrinsic
+  size. Measured in the drawer's design mockup — not the shipped code, which never carried this
+  state — before the fix was chosen: 166px of rest space, the SVG stuck at 200px regardless, and the
+  scroll area 47px into overhang — nearly invisible on screen, immediate in
+  `getBoundingClientRect()`. A component that genuinely needs the child to shrink can size it with
+  container-query units against `container-type: size` (`width: min(200px, 100cqw, 100cqh)`), which
+  *are* definite. The shipped drawer doesn't need that: `NavDrawer.vue`'s mark carries `shrink-0`
+  instead and lets the scroll height grow, which is the simpler fix and the one it settled on —
+  confirmed in the browser, where the mark's SVG holds at 200px and the foot block sits outside the
+  scrolling element rather than being squeezed by it.
+- **A panel that stays permanently in the DOM needs `inert`, not just `aria-hidden`.** `NavDrawer`
+  stays mounted closed (so its width is always known and the transition needs no enter/leave
+  machinery). `aria-hidden` alone only takes it out of the accessibility tree; it remains focusable,
+  so Tab lands in an invisible menu. Set both, and bind both as `:inert="!open || undefined"`: Vue
+  omits an attribute only for `null`/`undefined`/`false`, and `false` only for genuine boolean
+  attributes — otherwise `inert="false"` ends up in the DOM and is still in effect.
+- **A width the script also needs belongs in the script.** The drawer computes `min(320px, 85vw)`
+  from `useWindowSize()` and sets it as an inline style; there is no Tailwind width class beside it.
+  Reason: the avatar's spin angle derives from that same number, and two sources for one width drift
+  the moment someone touches one of them. Verified in a real browser at 375×812: the drawer measures
+  319px (`min(320, round(0.85 × 375))`), its `top` sits at 116px — the header's own bottom edge — and
+  both the drawer's slide and the avatar's spinning wrapper compute the identical `0.3s` /
+  `cubic-bezier(0.4, 0, 0.2, 1)`. Side effect, without which there would be no test for it: a test can
+  set `window.innerWidth` and assert the angle — a width read from layout is always `0` under
+  happy-dom.
 
 ## Stack
 
@@ -106,9 +133,9 @@ desktop layout that was written first). Concretely:
 - **`vitest.config.ts` must register the same `VueRouter()` plugin as `vite.config.ts`, before `vue()`.** Without it, `vue-router/auto-routes` can't be resolved in tests at all, `definePage` never reaches the compiled component (its `meta` is unreachable from a mount), and — the bigger risk — no test can ever exercise the *real*, generated route table: every router-based test would have to hand-roll its own small `routes` array, which cannot catch a route-ranking regression (e.g. a catch-all shadowing a real page). Registering the plugin fixes all of that at once and needs no `definePage` stub in `src/test-setup.ts` — delete it if you find one; it's dead once the plugin is registered. A test asserting the generated table's ranking (real paths resolve to their own route, an unmatched path falls through to the catch-all) belongs in `src/__tests__/` since it's a whole-router concern, not one page's.
 - **Typed route params (strict TS):** Use the typed `useRoute('/c/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`c/[slug].vue`, `c/[slug]/members.vue`, etc.) all need the specific route name — though in practice no community page needs this any more, since they read `useCommunityContext()` instead. See also [multi-tenancy.md](multi-tenancy.md).
 - **Gotcha:** `router.push()` / `.replace()` return a Promise; a bare, unawaited call at the end of
-  an async handler leaves its rejection on a chain nothing observes. `CommunityMenu.vue` and
-  `MemberMenu.vue` attach `.catch((e) => console.error('navigation failed', e))` to every
-  post-action navigation. Test doubles for `push`/`replace` must resolve accordingly —
+  an async handler leaves its rejection on a chain nothing observes. `NavDrawer.vue` attaches
+  `.catch((e) => console.error('navigation failed', e))` to every post-action navigation. Test
+  doubles for `push`/`replace` must resolve accordingly —
   `vi.fn().mockResolvedValue(undefined)` — a bare `vi.fn()` returns `undefined`, and calling
   `.catch` on that throws synchronously, failing the test for a reason unrelated to the behavior
   under test.
@@ -170,7 +197,7 @@ clock via `watch(nowMs, tick)`. Two consequences worth remembering:
 - **A shared clock makes mount/unmount hygiene mandatory in specs.** A wrapper left mounted keeps a
   live watcher on the module-level `ref`, so the *next* test case's tick still reaches it — a
   component from an earlier case, whose load had failed, retried into the current case's spy and
-  broke a call-count assertion. `enableAutoUnmount(afterEach)` (already used in `HeaderMenu.spec.ts`)
+  broke a call-count assertion. `enableAutoUnmount(afterEach)` (already used in `NavDrawer.spec.ts`)
   in every spec that mounts such a component. Per-instance timers hid this: the fake-timer registry
   is thrown away by `vi.useRealTimers()`, so a leaked instance simply stopped ticking. Unmount before
   calling the reset hook, not after — resetting zeroes the refcount without unmounting anyone, so a
@@ -191,7 +218,7 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **`apiFetch`** (`src/api/client.ts`) wraps native **fetch**: `credentials: 'include'`; adds `X-XSRF-TOKEN` from the `XSRF-TOKEN` cookie on **mutating** methods only; JSON-only (body typed `string | null`); throws a typed `ApiError(status, message, body?)` on non-2xx **and on a non-JSON 200** (catches proxy/error pages); on `401` invokes a globally-registered handler then throws. The 401 handler is injected via `setUnauthorizedHandler(...)` to decouple the client from the router/auth (avoids a circular import).
 - **`apiFetch` request timeout:** every call gets a 10s `AbortSignal.timeout(...)` (chosen to tolerate normal latency/cold single-instance backend while still bounding a stuck navigation guard or `bootstrap()` to a UX-relevant time) so a *hung* request (vs. a failed one) can't hang a caller forever. A caller-supplied `signal` is composed in via `AbortSignal.any([...])` rather than replaced — both `.timeout` and `.any` are Baseline-widely-available and safe given this project targets only evergreen browsers. A timeout surfaces as `ApiError(0, ...)` (status `0` = no HTTP response was ever received, the same convention `XMLHttpRequest.status` uses for network-level failures — `504` would wrongly imply a server responded). A caller's own abort is deliberately **not** wrapped into `ApiError`: it rethrows the native `AbortError` as-is, checked via `options.signal?.aborted` before the timeout check, so a deliberate cancel is never misreported as a server timeout.
   - **Testing gotcha:** `AbortSignal.timeout`'s internal timer is not driven by `vi.useFakeTimers()`/`advanceTimersByTimeAsync` (it isn't scheduled through the fakeable global `setTimeout`), and sleeping on the real 10s makes a test slow/flaky. Instead stub `AbortSignal.timeout` itself (`vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal)`) and call `controller.abort()` directly — drive the signal, not the clock. See `src/api/__tests__/client.spec.ts`.
-- **`useAuth`** (`src/auth/useAuth.ts`): eager `bootstrap()` (`GET /api/me`) resolves the session **before the app mounts** (so the guard never sees `'unknown'`); `loginWithGitHub()` does a **full-page navigation** `window.location.assign('/oauth2/authorization/github')` (OAuth needs a real navigation, not fetch); `logout()` POSTs `/logout` then resets — it intentionally does NOT reset local state if the server call fails (session may still be alive).
+- **`useAuth`** (`src/auth/useAuth.ts`): eager `bootstrap()` (`GET /api/me`) resolves the session **before the app mounts** (so the guard never sees `'unknown'`); `loginWithGitHub()` does a **full-page navigation** `window.location.assign('/login/github')` (the server redirects on to `/oauth2/authorization/github` or the test-user picker, by profile — see [security-and-auth.md](security-and-auth.md); OAuth needs a real navigation, not fetch); `logout()` POSTs `/logout` then resets — it intentionally does NOT reset local state if the server call fails (session may still be alive).
 - **Route guard** (`src/auth/guard.ts`): **fail-closed** — only `status === 'authenticated'` may enter a non-public route; everything else redirects to `/login`. Routes are auth-required unless they set `meta.public = true`. The redirect target `/login` **must** be `meta.public` or anonymous users loop.
 - **Dev proxy:** Vite `server.proxy` forwards `/api`, `/oauth2`, `/login/`, `/logout` to the backend (prefixes live in `webapp-vue/dev-proxy.ts`, target `VITE_API_PROXY_TARGET`, default `http://localhost:8080`) so same-origin holds locally.
   - **A string proxy key is a plain prefix** (`url.startsWith(key)`) — so **`/login/` needs its trailing slash**: `/login` itself is the SPA's sign-in *page*, only its sub-paths (`/login/github`, `/login/oauth2/code/*`) are backend. Without the slash, a direct load of `http://localhost:5173/login` is proxied away and never reaches the router (prod is unaffected — the edge already scopes it to `path /login/*`, see `deploy/Caddyfile`). Keep dev and the edge in sync; `src/__tests__/dev-proxy.spec.ts` guards the split.
@@ -203,10 +230,10 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **Vitest + @vue/test-utils + happy-dom**, unit level. JUnit-style; kotest is NOT used here.
 - **Mocking uses Vitest `vi`** (`vi.stubGlobal` for `fetch`/`location`, `vi.mock` for modules) — **NOT mockk/kotest** (those are the Kotlin backend's convention).
 - Test **real behavior**, not mock echoes: assert on the actual `RequestInit` sent to `fetch`, on `router.currentRoute` after navigation (guard tests use a `createMemoryHistory` router), etc.
-- **VueUse's `onClickOutside` does not fire under happy-dom.** `src/ui/HeaderMenu.vue`'s
+- **VueUse's `onClickOutside` does not fire under happy-dom.** `src/nav/NavDrawer.vue`'s
   outside-click-to-close listens directly instead — `useEventListener(document, 'click', ...)` plus
-  a `root.value?.contains(e.target as Node)` check — because a test built against `onClickOutside`
-  cannot pass under Vitest/happy-dom.
+  a `drawer.value?.contains(e.target as Node) || trigger.value?.contains(e.target as Node)` check —
+  because a test built against `onClickOutside` cannot pass under Vitest/happy-dom.
 - **Fake timers + router guards: use `vi.advanceTimersByTimeAsync`, not `vi.advanceTimersByTime`.**
   Vue Router 5 resolves `beforeEach`/`beforeResolve` guards through several internal promise hops
   (data-loader effect-scope plumbing), so a guard-armed `setTimeout` may not exist yet even after
@@ -216,13 +243,14 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   fake clock, giving the guard a chance to actually register the timer before the clock moves past
   it. See `src/ui/navigationProgress.ts` + its spec for the worked example.
 - **A composable double whose value is bound directly in a template must be a real `ref()`, not a
-  plain `{ value }` object.** `useAuth()` returns `readonly(ref(...))`, and both `MemberMenu.vue`
-  (`{{ user?.username }}`) and `App.vue` (`v-if="status === 'authenticated'"`) bind it directly. A
+  plain `{ value }` object.** `useAuth()` returns `readonly(ref(...))`, and `App.vue` binds it
+  directly — `v-if="user"`, and forwarded into `NavDrawer`'s `user` prop via `:user="user"`. A
   plain `{ value: ... } as never` double isn't a ref; `<script setup>`'s template compiler falls
   back to a runtime `isRef()` check for bindings it can't prove are refs at compile time, so the
-  interpolation quietly renders empty and the `v-if` quietly compares an object to a string — no
-  error, just wrong output. Build these doubles with `ref(...)` (see `MemberMenu.spec.ts`,
-  `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
+  `v-if` would quietly compare an object to nothing and the forwarded prop would land as the
+  wrapper object itself — breaking every read inside `NavDrawer.vue` (`user.avatar`,
+  `v-if="user.isSuperAdmin"`) with no error, just wrong output. Build these doubles with `ref(...)`
+  (see `app-header.spec.ts`). The rule doesn't reach composables whose value is only ever read via
   `.value.field` in script and never bound in a template — e.g. `useCommunityContext()`'s
   `community`, or `useCommunities()`'s plain-object double in `index.spec.ts`.
 - **A fixture handed to `vi.mocked(apiFetch).mockResolvedValue(...)` is not type-checked.**
@@ -347,8 +375,8 @@ route carries no slug, rather than going through the helper. `ActiveCommunity` a
 community must republish it** — that's why both the guard and `refresh()` funnel through
 `publishCommunity()` instead of writing `activeCommunity` directly. Publishing only on the initial
 resolve leaves stale header state behind (the pending dot would survive an admin clearing the
-requests). Navigation controls live in the main header (`CommunityMenu`, `MemberMenu` on top of the
-shared `src/ui/HeaderMenu.vue`), never inside the `[slug]` content area.
+requests). Navigation controls live in the main header (`nav/NavDrawer.vue`, the app's only menu),
+never inside the `[slug]` content area.
 
 **Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
 the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
@@ -364,9 +392,9 @@ and stays discriminating under any plausible host zone, whereas a fixture format
 ## Role-gated areas + shell-owned access checks
 
 The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: the only entry
-point is a `MemberMenu` item rendered under `v-if="user?.isSuperAdmin"`, so a viewer without the
-role sees no trace of it. Gate any such entry point on the role itself — never on a plain link
-that a non-holder can see and bounce off.
+point is an entry in the drawer's foot block, rendered under `v-if="user.isSuperAdmin"`, so a
+viewer without the role sees no trace of it. Gate any such entry point on the role itself — never on
+a plain link that a non-holder can see and bounce off.
 Pattern, mirroring the `c/[slug].vue` shell:
 
 - `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. No router config is

@@ -6,8 +6,7 @@ import { useTitle } from '@vueuse/core'
 import { activeCommunity } from '@/communities/context'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import { useAuth } from '@/auth/useAuth'
-import CommunityMenu from '@/communities/CommunityMenu.vue'
-import MemberMenu from '@/auth/MemberMenu.vue'
+import NavDrawer from '@/nav/NavDrawer.vue'
 import { navigationPending } from '@/ui/navigationProgress'
 
 const { user } = useAuth()
@@ -50,18 +49,17 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
            row past the viewport. Without a countdown there is no second row at all and the header is
            back to its old 64px.
            Both cells of row 1 state their 40px: a grid track is as tall as its tallest item, and
-           MemberMenu's trigger is 40px (a 32px avatar in a p-1 button). Stating it on the title cell
-           alone would leave the login page, which has no MemberMenu, 8px shorter than every other
+           NavDrawer's toggle is 40px (a 32px avatar in a p-1 button). Stating it on the title cell
+           alone would leave the login page, which has no NavDrawer, 8px shorter than every other
            page. -->
       <header
-        class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-stone-900 px-4 py-3 text-stone-50 md:grid-cols-[1fr_auto_auto]"
+        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-stone-900 px-4 py-3 text-stone-50 shadow-lg md:grid-cols-[1fr_auto_auto]"
       >
         <div
           data-test="title-row"
           class="col-start-1 row-start-1 flex h-10 min-w-0 items-center gap-2"
           :class="alignToBoardBand"
         >
-          <CommunityMenu v-if="activeCommunity" :community="activeCommunity" />
           <RouterLink to="/" class="font-semibold hover:underline"
             >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
           >
@@ -74,7 +72,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
           class="col-start-2 row-start-1 flex h-10 items-center md:col-start-3"
           :class="alignToBoardBand"
         >
-          <MemberMenu v-if="user" :user="user" />
+          <NavDrawer v-if="user" :user="user" />
         </div>
         <div
           v-if="activeCommunity?.startsAt"
