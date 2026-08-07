@@ -83,10 +83,9 @@ concern; revisit when other modules gain protected resources).
   **case-insensitively** (lowercased login), because that is how `SuperAdminProperties` grants
   the role; a case-sensitive join reports one person twice.
 - **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
-  Java's. The slash before a `**` glob opens a second, nested comment, so the doc comment's real
-  `*/` closes only the inner one — the compiler swallows the rest of the file and reports
-  `Unclosed comment`, pointing nowhere near the actual text. Write "the `/api/super-admin` tree"
-  in prose instead. This bit a controller KDoc that quoted the security rule verbatim.
+  Java's: the slash before a `**` glob opens a second comment, so the doc comment's real `*/` closes
+  only the inner one and the compiler swallows the rest of the file, reporting `Unclosed comment`
+  nowhere near the actual text. Write "the `/api/super-admin` tree" in prose instead.
 
 ## Per-user permissions — read them live from the row, never from the principal
 
@@ -154,13 +153,11 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   logs in via the picker; no separate staging GitHub OAuth App).
 - Tests: the test classpath also needs `app.test-auth.enabled` set; a test that counts users (e.g.
   provisioning) must set it `false` to avoid the seeder's rows.
-- **The picker is server-rendered HTML, not SPA — it still needs mobile-first.** It shipped once
-  without a `<meta name="viewport">` tag and rendered unreadably tiny on a phone: with no viewport
-  tag, mobile browsers lay the page out at their ~980px desktop fallback width and then scale the
-  whole thing down to fit, which looks like a CSS/sizing bug but isn't one. [frontend.md](frontend.md)'s
-  mobile-first guidance is written for `webapp-vue`, but the expectation itself — and this specific
-  gotcha — applies to any HTML the backend renders directly. If a server-rendered page looks tiny on
-  a phone, check for the viewport meta tag before touching CSS.
+- **Server-rendered HTML needs `<meta name="viewport">` — and the mobile-first expectation.**
+  Without the tag, mobile browsers lay the page out at their ~980px desktop fallback width and scale
+  it down to fit, which looks like a CSS/sizing bug but isn't one; check for the tag before touching
+  CSS. [frontend-ui.md](frontend-ui.md) is written for `webapp-vue`, but the expectation applies to
+  any HTML the backend renders directly, the picker included.
 
 ## Secrets
 

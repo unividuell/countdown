@@ -1,9 +1,10 @@
 # Deployment
 
 Production runs on a single **linux/arm64** server from one Docker Compose file;
-images are built by GitHub Actions and pulled from **ghcr.io** (public, tag `latest`).
-Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
-`docs/superpowers/` and the on-server guide in `deploy/README.md`.
+images are built by GitHub Actions and pulled from **ghcr.io**. See the design spec + plan in
+`docs/superpowers/` and the on-server guide in `deploy/README.md`. Everything HTTP-facing —
+the two Caddys, TLS, routing, cache headers, the forwarded-header chain — lives in
+[deployment-edge.md](deployment-edge.md).
 
 ## Images & CI
 
@@ -32,7 +33,7 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
   matters: the tag resolver is `ref_name == 'main' ? latest : staging`, so an **unguarded PR run
   would publish over `:staging`** from an unmerged branch. When adding a step that touches ghcr,
   guard it the same way.
-- Push to `main`, **path-filtered** so each app only rebuilds on its own changes;
+- Push is **path-filtered** so each app only rebuilds on its own changes;
   `permissions: { contents: read, packages: write }`, ghcr auth via `GITHUB_TOKEN`.
   Both workflows also declare **`workflow_dispatch`** for manual runs — and note that
   **path-filtered workflows do NOT trigger on the initial branch-creation push** (no diff
@@ -54,36 +55,21 @@ Caddy is the edge (TLS + SPA + reverse-proxy). See the design spec + plan in
 
 Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrized
 `deploy/compose.yaml`** (renamed from `compose.prod.yaml`). They differ only by an env file:
+
 - `.env.prod` / `.env.staging`, each carrying **`COMPOSE_PROJECT_NAME`** (`countdown` /
   `countdown-staging`), `IMAGE_TAG` (`latest` / `staging`), `SPRING_PROFILES_ACTIVE`
-  (`production` / `staging`), `PGADMIN_PORT` (`5050` / `5051`), `BACKUP_DIR`
-  (`./backups` / `./backups-staging`), and secrets.
-- The distinct `COMPOSE_PROJECT_NAME` gives each stack its own container/volume/network namespace →
-  staging is independently start/stoppable (`docker compose --env-file .env.staging -f compose.staging.yaml down`
-  touches only staging) and the two postgres volumes (`countdown_pgdata` / `countdown-staging_pgdata`)
-  are separate (so a Postgres major upgrade can be rehearsed on staging first).
-- `update.sh <prod|staging>` (default `prod`) picks the env file, fetches the compose file, pulls, `up -d`.
-- **Each target tracks the branch its images come from** — prod fetches `compose.yaml` +
-  `.env.prod.example` from **`main`** (`:latest`), staging from **`develop`** (`:staging`);
-  `REF=<branch>` overrides for a one-off. Infra must follow the same branch as the code it deploys,
-  or staging runs develop images on main infrastructure and a compose-level change can never be
-  exercised before it reaches prod.
+  (`production` / `staging`), `PGADMIN_PORT`, `BACKUP_DIR` (`./backups` / `./backups-staging`),
+  and secrets.
+- **`COMPOSE_PROJECT_NAME` is the stack's identity**, not the compose file's name or location
+  (the compose file declares no `name:`). Keep it stable and the existing volumes are reused
+  across any rename or move; change it and you silently get a second, empty stack. The distinct
+  names are also what make staging independently start/stoppable and keep the two Postgres volumes
+  (`countdown_pgdata` / `countdown-staging_pgdata`) separate — so a Postgres major upgrade can be
+  rehearsed on staging first.
 - **The compose file is per target on disk** (`compose.prod.yaml` / `compose.staging.yaml`), because
   both stacks share one directory: with a single `compose.yaml`, a staging run would overwrite the
   file prod is deployed from. Containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
   the on-disk name is free to change and renaming recreates nothing on its own.
-- **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
-  and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
-  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
-  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
-- **pgAdmin is per-environment** (each stack's own `debug`-profile pgAdmin connects only to its own
-  `postgres` via the service name; no shared instance/network). Distinct loopback ports
-  (`PGADMIN_PORT`) let you tunnel both at once. README documents the per-env start + SSH tunnel.
-- Edge routes `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the
-  test-user picker — see security-and-auth.md; no separate staging GitHub OAuth App).
-- **`COMPOSE_PROJECT_NAME` is the stack's identity**, not the compose file's name or location: keep
-  it stable and the existing volumes are reused across any rename or move (no data loss); change it
-  and you silently get a second, empty stack.
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
   `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
   before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
@@ -92,66 +78,19 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   isn't enough, since existing stacks skip the whole "first run" path.
 - **`--env-file` is substitution-only, not passthrough:** `docker compose --env-file .env.prod`
   only makes a var available for `${VAR}` interpolation *inside* `compose.yaml` — it does **not**
-  inject it into a container's process environment. A variable in `.env.prod`/`.env.staging`
-  reaches `core` only because its `environment:` list names it (`SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}`,
-  same pattern as `GITHUB_CLIENT_SECRET`/`POSTGRES_PASSWORD`). Add a var to an `.env.*` file without
+  inject it into a container's process environment. A variable reaches `core` only because its
+  `environment:` list names it (`SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}`, same
+  pattern as `GITHUB_CLIENT_SECRET`/`POSTGRES_PASSWORD`). Add a var to an `.env.*` file without
   also adding it to the service's `environment:` (or an `env_file:`), and the app-side property binds
   empty/default with no error — it silently never reaches the JVM. Every new Spring `${...}` property
   backed by a compose-level secret needs **both** the `.env.*` entry **and** the `environment:` line.
 
-## App web Caddy (baked into the `countdown-web` image)
-
-There are **two** Caddys. TLS + host-based routing live in the separate **shared `edge-caddy`**
-(see "Shared edge" below); this section is the Caddy **inside the `countdown-web` image** — the
-SPA+API router. The same image runs for both stacks (`countdown-web` for prod, `countdown-staging-web`
-for staging, by `container_name`).
-
-- Runs **plain `:80` behind the shared edge** (Caddyfile address `:80`, **not** the domain — it does
-  no TLS). Serves the SPA with HTML5 history-mode fallback and reverse-proxies `/api`, `/oauth2`,
-  `/login` (incl. `/login/github`), `/logout` to `core:8080`.
-- **Routing gotcha:** use **two mutually-exclusive `handle` blocks** —
-  `handle @backend { reverse_proxy core:8080 }` then `handle { root; try_files {path} /index.html; file_server }`.
-  A bare `reverse_proxy @backend` + a catch-all `handle` compiles the SPA `file_server` *first*
-  (it matches everything, incl. `/api/*`) → API requests 404→index.html instead of proxying.
-  Verify route order with `caddy adapt`.
-- **Exact-path matcher gotcha:** Caddy's `path /logout/*` (slash before `*`) matches `/logout/`
-  and `/logout/x` but **NOT** the bare `/logout`. The SPA POSTs to exactly `/logout`, so list it
-  exact AND as `/logout/*`. **But do the opposite for `/login`:** `/login` is the SPA's sign-in
-  *page* (an SPA route) — listing it exact in `@backend` proxies it to core (→ 401, the SPA page
-  unreachable on a direct URL/refresh). Only its sub-paths are backend. So the matcher is
-  `path /api/* /oauth2/* /login/* /logout /logout/*` — `/login/*` covers `/login/github` +
-  `/login/oauth2/code/*`, while exact `/login` falls through to the SPA fallback. (Only shows up in
-  prod/staging — dev hits the backend directly via the Vite proxy.)
-- **Static caching is the Caddyfile's job — `file_server` sets no `Cache-Control` at all.** It sends
-  `ETag`/`Last-Modified` but no freshness, which is exactly the case RFC 9111 §4.2.2 hands to the
-  browser's *heuristic* freshness: the cached `index.html` is reused **without revalidating**, and
-  since it names the old content-hashed assets, a tab open across a deploy keeps the entire old app
-  until a hard reload (issue #15; a full-page OAuth navigation does not help — navigations come from
-  the HTTP cache like anything else). Vite cannot fix this: it hashes `/assets/*` but cannot set HTTP
-  headers, and `<meta http-equiv="Cache-Control">` is ignored for HTTP caching. So:
-  **two mutually-exclusive `handle` blocks**, same idiom as `@backend` above —
-  `handle /assets/* { header Cache-Control "public, max-age=31536000, immutable"; file_server }`
-  then the catch-all with `header Cache-Control "no-cache"` + `try_files`. Why not one block with
-  `@assets`/`@html` matchers: (a) one header per block makes a double header structurally impossible,
-  (b) **no `try_files` in the assets block on purpose** — a missing hashed asset must `404`, since a
-  fallback would serve `index.html` under an asset URL with `immutable`, pinning an HTML document
-  there for a year. `no-cache` means "revalidate before use", not "don't store" → a cheap `304`.
-  `caddy adapt` confirms Caddy orders the `headers` handler **before** `rewrite`, so the deep-link
-  fallback (`/countdowns/42` → `/index.html`) still carries `no-cache`. Verify against a **real
-  response**, not just the config — `curl -sSI` a page *and* an asset (the local recipe: build
-  `caddy:2-alpine` + the repo Caddyfile + a fake `dist` into a throwaway image and curl it; no bind
-  mounts, see the Docker Desktop gotcha).
-- **TLS + `X-Forwarded-*` are a two-hop chain** (shared edge → countdown-web → core): the inner
-  Caddy must trust the edge (`servers { trusted_proxies static private_ranges }`) so
-  `X-Forwarded-Proto=https` survives, and `core` sets `server.forward-headers-strategy=framework`
-  to build correct `https://<domain>/...` URLs (OAuth `redirect_uri`) + secure cookies. Details in
-  "Shared edge" below — don't re-derive it here.
-
 ## Backend production profile
 
 - `application-production.yaml` (profile `production`): GitHub **client-id committed** (public),
-  **client-secret via env**; explicit datasource to the compose `postgres` service; forward-headers;
-  `Secure`/`SameSite=Lax` session cookies.
+  **client-secret via env**; explicit datasource to the compose `postgres` service;
+  `server.forward-headers-strategy=framework` (see [deployment-edge.md](deployment-edge.md) for the
+  hop chain that makes it necessary); `Secure`/`SameSite=Lax` session cookies.
 - **`spring-boot-docker-compose` is excluded from the prod image** automatically — it's
   `optional`/`runtime` in the pom and the Maven plugin's `repackage`/`build-image` defaults to
   `excludeDockerCompose=true`. So **no `spring.docker.compose.enabled=false` needed** (the support
@@ -159,9 +98,9 @@ for staging, by `container_name`).
 
 ## Server compose & ops
 
-- Compose `name: countdown` (else it's derived from the dir). Postgres: named volume, **no host port**.
-  Backend: internal only. Caddy: `80:80`, `443:443`, `443:443/udp` (HTTP/3). Secrets via a server-side
-  **`.env`** (never committed).
+- **No service publishes a host port except pgAdmin** (loopback only). `postgres` and `core` are
+  reachable on the `internal` network only; `countdown-web` is reached by the shared edge over the
+  `edge` network. Secrets come from the server-side `.env.<target>` files, never committed.
 - **`postgres:18` volume mount gotcha:** Postgres 18's Docker image moved `PGDATA` into a
   version subdir and the recommended mount point to **`/var/lib/postgresql`** (not the old
   `/var/lib/postgresql/data`). Mounting the named volume at `.../data` makes 18 **refuse to
@@ -169,57 +108,52 @@ for staging, by `container_name`).
   crash-loops, which cascades (`UnknownHostException: postgres` in `core`, 502 at the edge).
   Mount the **parent**: `pgdata:/var/lib/postgresql`. (pg_dump/psql via `-h postgres` are
   unaffected — they go over the network.)
-- **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to host `./backups`
-  (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
+- **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to the host
+  `BACKUP_DIR` (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
   `until pg_isready ...; do sleep 2; done` before each dump — otherwise a not-yet-ready Postgres makes
   `gzip` write a silent corrupt/empty archive (the pipe hides `pg_dump`'s failure). PITR is a later
   pgBackRest upgrade. **Compose gotcha:** in a `command:` block escape shell `$(...)` as `$$(...)`,
   else Compose interpolates it away.
-- **Ops:** the server runs a `curl`-able **`update.sh <prod|staging>`** that re-fetches the infra
-  files — `compose.yaml` → `compose.<target>.yaml` from that target's branch, `README.md` + itself
-  from `main` — then `docker compose --env-file .env.<target> -f compose.<target>.yaml pull && up -d`.
-  Only the per-target compose files + `.env.prod`/`.env.staging` (+ `README.md`/`update.sh`) live on
-  the server; the Caddyfile is image-baked.
+
+### `update.sh <prod|staging>`
+
+The server runs a `curl`-able `update.sh` (default target `prod`) that re-fetches the infra files,
+then `docker compose --env-file .env.<target> -f compose.<target>.yaml pull && up -d`. Only the
+per-target compose files, `.env.prod`/`.env.staging`, `README.md` and `update.sh` itself live on the
+server; the Caddyfile is image-baked.
+
+- **Each target fetches `compose.yaml` from the branch its images come from** — prod from `main`
+  (`:latest`), staging from `develop` (`:staging`), saved as `compose.<target>.yaml`; `REF=<branch>`
+  overrides for a one-off. Infra must follow the same branch as the code it deploys, or staging runs
+  develop images on main infrastructure and a compose-level change can never be exercised before it
+  reaches prod.
+- **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
+  and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
+  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
+  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
 
 ## pgAdmin in production
 
 - Under a **`debug` compose profile** (off by default), bound to **`127.0.0.1` only** (never public,
   not proxied by Caddy). Access via an SSH local-port-forward (`ssh -L <port>:127.0.0.1:<port> user@server`).
+- **One pgAdmin per environment**, each connecting only to its own `postgres` via the service name —
+  no shared instance or network. Distinct loopback ports (`PGADMIN_PORT`: prod 5050, staging 5051)
+  let you tunnel both at once. `deploy/README.md` documents the per-env start + SSH tunnel.
 - **Desktop mode (no pgAdmin login):** `PGADMIN_CONFIG_SERVER_MODE=False` +
   `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False`. The boundary is **SSH + loopback bind** — anyone
   past SSH can read the `.env` secrets anyway, so an extra pgAdmin login is no added security, only
   friction. Gotcha: set `PGADMIN_CONFIG_DESKTOP_USER='<email>'` to **match** `PGADMIN_DEFAULT_EMAIL`
   (else pgAdmin looks up its built-in default and 401s); `PGADMIN_CONFIG_*` values are written into a
   Python config verbatim, so string values need **embedded quotes**, booleans (`False`) do not.
-- Per environment (prod 5050, staging 5051 via `PGADMIN_PORT`); each pgAdmin connects only to its
-  own `postgres`.
-
-## Shared edge (multi-project host)
-
-This server hosts several `unividuell.org` sites; only one process can bind 80/443. TLS +
-host-routing live in the separate **`unividuell/edge-caddy`** repo (its own guideline:
-shared-edge). countdown therefore:
-- serves `countdown-web` on **`:80`** (Caddyfile address `:80`, not the domain) — no own TLS;
-- **publishes no host ports**; the `countdown-web` container joins the external **`edge`**
-  network (stable `container_name: countdown-web`) and an `internal` net for `core`/`postgres`;
-- relies on the edge for the two-hop `X-Forwarded-*` chain (edge → countdown-web → core), so
-  `forward-headers-strategy=framework` still yields `https://countdown.unividuell.org/...`.
-- Server dir is `/opt/unividuell/countdown/`.
-
-**Two-hop scheme loss (OAuth `redirect_uri` = `http://`):** by default the inner `countdown-web`
-Caddy receives the edge hop on plaintext `:80` and **overwrites** `X-Forwarded-Proto` with `http`,
-so `core` builds an `http://` `redirect_uri` (GitHub rejects it; insecure). Fix in `countdown-web`'s
-Caddyfile with a global `servers { trusted_proxies static private_ranges }` block — the edge reaches
-it over the private `edge` network, so trusting private ranges makes Caddy **preserve** the edge's
-`X-Forwarded-Proto=https`/`-Host`. The Caddyfile is baked into the image → this needs a `build-web`
-rebuild + `docker compose pull && up -d` on the server.
 
 ## Docker Desktop gotcha (local, macOS)
 
 This project lives under `/opt`, which Docker Desktop does **not** share by default → host
 **bind mounts** (`docker run -v /opt/...`) fail with "mounts denied". Avoid them:
+
 - inject small config files via inline compose **`configs: [{ content: ... }]`** (no host mount);
 - validate a Caddyfile by piping it via **stdin** into a container
   (`docker run -i caddy:2-alpine sh -c 'cat > /tmp/Caddyfile && caddy adapt --config /tmp/Caddyfile --adapter caddyfile'`),
   not with `-v`.
+
 Named volumes are unaffected (Docker-managed).

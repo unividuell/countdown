@@ -8,15 +8,20 @@ Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
 
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
-- **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing important learnings into these guidelines.
+- **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing the transferable rules here; post-mortems and measurements stay in the commit.
 - **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
 - **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract. *(backend)*
 - **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently. *(backend)*
-- **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Vue Router 5 file-based + Tailwind v4; composables/VueUse (no Pinia); `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); Vitest + `vi` (not mockk). *(webapp-vue)*
-- **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, Caddy edge (TLS + SPA + proxy), prod compose with pg_dump backup + SSH-tunnel pgAdmin.
+- **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); lint + `vue-tsc -b`. *(webapp-vue)*
+  - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, sizing traps, accessibility.
+  - **[Routing & shells](.claude/guidelines/frontend-routing.md)** — Vue Router 5 file-based, guard-owned nav data, `[slug]` shell, role gating.
+  - **[State](.claude/guidelines/frontend-state.md)** — composables/VueUse (no Pinia), shared clock, server-authoritative ticking.
+  - **[Testing](.claude/guidelines/frontend-testing.md)** — Vitest + `vi` (not mockk), happy-dom limits, doubles.
+- **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, prod+staging compose with pg_dump backup + SSH-tunnel pgAdmin.
+  - **[Edge](.claude/guidelines/deployment-edge.md)** — the two Caddys, TLS, SPA/API routing, cache headers, the `X-Forwarded-*` chain.
 - **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
 - **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
 
