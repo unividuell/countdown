@@ -139,13 +139,23 @@ describe('SeededRandom behaviour', () => {
   })
 
   it('keeps raw words inside the unsigned 32-bit range', () => {
+    // Checked in plain arithmetic and asserted once, deliberately. The obvious form — three
+    // expect() calls inside the loop — spends 300_000 assertions on work the generator itself
+    // does in about 2ms: measured at 1479ms for this single test, against 23ms for a *million*
+    // draws in the checksum case above. Nearly all of it is assertion overhead rather than the
+    // code under test, and it left the test within a factor of 3.4 of Vitest's 5s default
+    // timeout — close enough that a loaded machine running workers in parallel tipped it over.
+    // Coverage is unchanged: any violating word still fails, and now names which draw it was.
     const random = SeededRandom.fromSeed('range-probe')
+    let violation: string | null = null
     for (let i = 0; i < 100_000; i++) {
       const word = random.nextUint32()
-      expect(Number.isInteger(word)).toBe(true)
-      expect(word).toBeGreaterThanOrEqual(0)
-      expect(word).toBeLessThanOrEqual(0xffffffff)
+      if (!Number.isInteger(word) || word < 0 || word > 0xffffffff) {
+        violation = `draw ${i} produced ${word}`
+        break
+      }
     }
+    expect(violation).toBeNull()
   })
 
   it('hashes string seeds over UTF-8 bytes, not UTF-16 code units', () => {

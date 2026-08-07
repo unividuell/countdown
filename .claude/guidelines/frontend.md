@@ -295,6 +295,17 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   activation. Dispatch a real event instead:
   `const e = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })`,
   `el.element.dispatchEvent(e)`, then `expect(e.defaultPrevented).toBe(true)`.
+- **Never put `expect()` inside a hot loop — check in plain arithmetic and assert once.** An
+  assertion costs far more than the code it guards, so a loop that draws N values and asserts on
+  each measures the harness, not the subject. Measured in `seededRandom.spec.ts`: 100 000 draws
+  with three `expect()` calls each took **1479 ms**, while the *million*-draw checksum test in the
+  same file took **23 ms** — the generator needs ~2 ms for those 100 000 draws, so ~1477 ms was
+  pure Vitest overhead. That is what made the file flaky: 1479 ms is within a factor of 3.4 of the
+  5 s default timeout, and workers running in parallel on a loaded machine tipped it over. It
+  reads as a nondeterministic test, but the test is seeded and perfectly deterministic — only its
+  *duration* varies. Rewriting it to accumulate the first violation and assert once took it to
+  **1 ms** with strictly better diagnostics (the failure now names the draw index; the old form
+  reported a bare value). Raising the timeout would have hidden the cause and kept the cost.
 
 ## Community context + admin gating
 
