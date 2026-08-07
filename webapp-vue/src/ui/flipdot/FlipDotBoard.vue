@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import { bitmap, type Bitmap } from './font'
 import {
   BOOT_DARK_MS,
+  BOOT_HOLD_MS,
   BOOT_RESOLVE_AT_MS,
   DOT_OFF,
   DOT_ON,
@@ -13,7 +14,7 @@ import {
 } from './board'
 
 const props = defineProps<{ text: string; label: string }>()
-const emit = defineEmits<{ resolve: [] }>()
+const emit = defineEmits<{ phase: ['white' | 'live'] }>()
 
 function prefersReducedMotion(): boolean {
   return (
@@ -82,36 +83,50 @@ function flip(prev: Bitmap, next: Bitmap): void {
   }
 }
 
+const bootTimers: ReturnType<typeof setTimeout>[] = []
+
+function goWhite(): void {
+  phase.value = 'white'
+  emit('phase', 'white')
+}
+
+function resolveFromWhite(): void {
+  const prev = shown.value
+  phase.value = 'live'
+  emit('phase', 'live')
+  void nextTick(() => flip(prev, shown.value))
+}
+
 watch(
   bm,
   (next, prev) => {
     if (phase.value !== 'live') return
-    flip(prev, next)
+    if (prev.cols === next.cols) {
+      flip(prev, next)
+      return
+    }
+    // A different geometry cannot be flipped dot by dot: dot i no longer means what it meant. So
+    // the board switches itself on again — white, hold, roll in — and the size change happens
+    // while nothing is legible. Reduced motion gets the bare swap, as at mount.
+    if (prefersReducedMotion()) return
+    goWhite()
+    bootTimers.push(setTimeout(resolveFromWhite, BOOT_HOLD_MS))
   },
   { flush: 'post' },
 )
 
-const bootTimers: ReturnType<typeof setTimeout>[] = []
-
 onMounted(() => {
   if (phase.value === 'live') {
-    emit('resolve')
+    emit('phase', 'live')
     return
   }
   bootTimers.push(
     // The white-up is a phase change, deliberately with no flip: every dot changes at once, so a
     // simultaneous kick is not readable as movement, while the animation would cost one concurrent
-    // fill animation per dot — 329 on the HH:MM:SS strip — in a single main-thread frame, on an
-    // audience of phones. The colour change alone is the whole effect.
-    setTimeout(() => {
-      phase.value = 'white'
-    }, BOOT_DARK_MS),
-    setTimeout(() => {
-      emit('resolve')
-      const prev = shown.value
-      phase.value = 'live'
-      void nextTick(() => flip(prev, shown.value))
-    }, BOOT_RESOLVE_AT_MS),
+    // fill animation per dot — 553 on the header's months readout — in a single main-thread frame,
+    // on an audience of phones. The colour change alone is the whole effect.
+    setTimeout(goWhite, BOOT_DARK_MS),
+    setTimeout(resolveFromWhite, BOOT_RESOLVE_AT_MS),
   )
 })
 

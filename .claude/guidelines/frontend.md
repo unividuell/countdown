@@ -54,6 +54,23 @@ desktop layout that was written first). Concretely:
   `overflow-y` to `auto` as well, which clips transformed children — so an element that
   both scrolls and hosts an animation that escapes its box must not clip while the
   animation runs.
+- **A fixed row height has to be stated on every cell of that row.** A CSS grid track is as tall as
+  its tallest item, and alignment (`items-center`) is resolved *after* track sizing, so it never feeds
+  back. The header's first row learned this: with `h-8` on the title cell alone, the row grew to 40px
+  wherever `MemberMenu` rendered (a `size-8` avatar inside `HeaderMenu`'s `p-1` trigger) — 116px on
+  every signed-in page and 108px on the login page, i.e. a header height that depended on who was
+  looking. Both cells now state `h-10`. When a design promises "the same height everywhere", each cell
+  of the pinned row needs the class, and the test can only assert those classes: **happy-dom computes
+  no box heights**, so the number itself is a browser measurement. Measure the invariant, not the
+  symptom — emptying the account cell in the DOM and re-reading `gridTemplateRows` proves it directly.
+- **Read the accessibility tree, not the DOM, when a control's name matters.** Name-from-content on a
+  `role="button"` does **not** pull a child `<svg role="img" aria-label="…">` up into the button's
+  name in Chromium. Replacing the header's text readout with a dot matrix therefore left a focusable
+  button with *no* accessible name — invisible in the DOM (every `aria-*` attribute looked right) and
+  invisible in tests. The fix: the wrapping control carries `:aria-label`, and the board inside is
+  `aria-hidden="true"` so the value is not announced twice. In the card, where nothing wraps it, the
+  board stays self-describing. Two consumers, two answers — and the browser's a11y tree is the only
+  place the difference shows.
 
 ## Stack
 
@@ -237,6 +254,19 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **Reduced motion in tests:** `vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)`
   — happy-dom's own `matchMedia` always answers `false`, so the reduced-motion branch is unreachable
   without the stub.
+- **`wrapper.unmount()` erases that instance's whole `emitted()` record.** `@vue/test-utils` 2.4.11
+  calls `removeEventHistory(this.vm)` inside `unmount()`, which does `delete events[cid]` — so
+  `wrapper.emitted('x')` after an unmount is `undefined` no matter what actually fired. Any assertion
+  about what was emitted up to the unmount has to run **before** it; a post-unmount `emitted()` check
+  cannot fail and is therefore worthless. Found the hard way in `FlipDotBoard.spec.ts`, where such a
+  line had been passing for the wrong reason. What a post-unmount test *can* still prove is that no
+  timer or animation fires afterwards (`vi.getTimerCount()`, the `animate` spy).
+- **Space on a hand-rolled control: assert `defaultPrevented`, not just the handler.**
+  `trigger('keydown.space')` cannot see whether `.prevent` is present, so a test that only checks the
+  cycle advanced stays green when someone drops it — and the page starts scrolling on every
+  activation. Dispatch a real event instead:
+  `const e = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })`,
+  `el.element.dispatchEvent(e)`, then `expect(e.defaultPrevented).toBe(true)`.
 
 ## Community context + admin gating
 

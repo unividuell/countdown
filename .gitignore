@@ -10,3 +10,6 @@
 # local dev env (ports only) — use .env.example as the template
 .env
 !.env.example
+
+# superpowers brainstorming mockups
+.superpowers/

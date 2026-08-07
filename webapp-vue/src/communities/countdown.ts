@@ -48,18 +48,23 @@ export function computeView(
   const start = DateTime.fromISO(startsAt, { zone })
 
   if (round.number < 0) {
-    const up = now.diff(start, ['days', 'hours', 'minutes', 'seconds']).toObject()
-    return {
-      state: 'after',
-      prefix: 'T+',
-      label: round.label,
-      chips: [
-        { value: whole(up.days), unit: 'd' },
-        { value: pad2(up.hours), unit: 'h' },
-        { value: pad2(up.minutes), unit: 'm' },
-        { value: pad2(up.seconds), unit: 's' },
-      ],
-    }
+    // The base unit applies here too. It used to be ignored, which made the header's readout — the
+    // same button before and after the start — do nothing at all once an event was running.
+    const units: DurationUnit[] = []
+    if (cfg.months) units.push('months')
+    if (cfg.weeks) units.push('weeks')
+    units.push('days', 'hours', 'minutes', 'seconds')
+    const up = now.diff(start, units).toObject()
+    const chips: Chip[] = []
+    if (up.months !== undefined) chips.push({ value: whole(up.months), unit: 'M' })
+    if (up.weeks !== undefined) chips.push({ value: whole(up.weeks), unit: 'w' })
+    chips.push(
+      { value: whole(up.days), unit: 'd' },
+      { value: pad2(up.hours), unit: 'h' },
+      { value: pad2(up.minutes), unit: 'm' },
+      { value: pad2(up.seconds), unit: 's' },
+    )
+    return { state: 'after', prefix: 'T+', label: round.label, chips }
   }
 
   const lower = DateTime.fromISO(round.end, { zone })

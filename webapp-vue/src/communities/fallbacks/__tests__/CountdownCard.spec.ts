@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import CountdownCard from '@/communities/fallbacks/CountdownCard.vue'
-import { BOOT_DARK_MS, BOOT_RESOLVE_AT_MS, DOT_ON } from '@/ui/flipdot/board'
+import {
+  BOOT_DARK_MS,
+  BOOT_HOLD_MS,
+  BOOT_RESOLVE_AT_MS,
+  DOT_ON,
+  groupCentres,
+} from '@/ui/flipdot/board'
 import { bitmap } from '@/ui/flipdot/font'
 
 function mountCard(days: string) {
@@ -11,8 +17,9 @@ function mountCard(days: string) {
   })
 }
 
-// Both label groups, so every assertion about the fade covers the two of them together — they must
-// arrive as one, not one after the other.
+// Both label groups, so a single assertion can cover the case where they ought to agree — boot,
+// when both boards switch on together. The relight case below is precisely where they are allowed
+// to diverge, so it reads each group individually instead of through this helper.
 function labelClasses(w: ReturnType<typeof mountCard>): string[][] {
   return [
     w.get('[data-test="countdown-label-days"]').classes(),
@@ -50,7 +57,7 @@ describe('CountdownCard', () => {
   it('composes the strip as one clock reading', () => {
     const strip = mountCard('58').find('[data-test="countdown-strip"]')
     expect(strip.attributes('aria-label')).toContain('13:42:07')
-    expect(strip.findAll('circle').length).toBe(47 * 7)
+    expect(strip.findAll('circle').length).toBe(43 * 7)
   })
 
   it('names the day count without its padding for assistive tech', () => {
@@ -115,13 +122,14 @@ describe('CountdownCard', () => {
     expect(labelClasses(w).every((c) => c.includes('transition-opacity'))).toBe(true)
   })
 
-  // Only the hero's event drives the labels; this pins the assumption that the strip is in step.
+  // Each board drives its own label from its own event, but at boot both still resolve on the same
+  // tick; this pins that assumption rather than any dependency between the two boards.
   it('resolves both boards in the step the labels arrive', async () => {
     const w = mountCard('58')
     const lit = () => w.findAll('circle').filter((c) => c.attributes('fill') === DOT_ON).length
 
     await advance(BOOT_DARK_MS)
-    expect(lit()).toBe(11 * 7 + 47 * 7)
+    expect(lit()).toBe(11 * 7 + 43 * 7)
 
     await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
     expect(lit()).toBe(
@@ -136,5 +144,34 @@ describe('CountdownCard', () => {
     await nextTick()
     expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('positions the strip labels on the computed group centres', () => {
+    const spans = mountCard('58').get('[data-test="countdown-label-time"]').findAll('span')
+    const expected = groupCentres('13:42:07')
+    expect(spans).toHaveLength(3)
+    spans.forEach((span, i) => {
+      expect(Number.parseFloat((span.element as HTMLElement).style.left)).toBeCloseTo(
+        expected[i]!,
+        3,
+      )
+    })
+  })
+
+  // The hero relights when the day count loses a digit, and only the hero. Driving both label
+  // groups from one flag would blink STD/MIN/SEK out for 300ms while their strip stayed perfectly
+  // legible.
+  it('fades only the labels of the board that is relighting', async () => {
+    const w = mountCard('100')
+    await advance(BOOT_RESOLVE_AT_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
+
+    await w.setProps({ days: '99' })
+    await nextTick()
+    expect(w.get('[data-test="countdown-label-days"]').classes()).toContain('opacity-0')
+    expect(w.get('[data-test="countdown-label-time"]').classes()).toContain('opacity-100')
+
+    await advance(BOOT_HOLD_MS)
+    expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
   })
 })

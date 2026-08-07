@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
 
 const props = defineProps<{
   days: string
@@ -21,10 +22,12 @@ const heroLabel = computed(() => {
 })
 const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
 
-// The boards own the switch-on timeline; the labels only follow it, so they wait for the hero's
-// event instead of running a second clock that would have to repeat the reduced-motion decision.
-const resolved = ref(false)
-const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0'))
+// Each board owns its own switch-on timeline, and since a board relights whenever its geometry
+// changes, the two are no longer in step: the hero relights when the day count loses a digit while
+// the strip stays legible throughout. So each label group follows the phase of its own board rather
+// than a single flag for the card.
+const heroLive = ref(false)
+const stripLive = ref(false)
 </script>
 
 <template>
@@ -41,27 +44,30 @@ const labelOpacity = computed(() => (resolved.value ? 'opacity-100' : 'opacity-0
         :class="heroWidth"
         :text="days"
         :label="heroLabel"
-        @resolve="resolved = true"
+        @phase="heroLive = $event === 'live'"
       />
       <p
         data-test="countdown-label-days"
-        class="font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
-        :class="labelOpacity"
+        class="font-mono text-[11px] tracking-[0.14em] text-stone-400 transition-opacity duration-300"
+        :class="heroLive ? 'opacity-100' : 'opacity-0'"
       >
         TAGE
       </p>
     </div>
     <div class="w-[94%]">
-      <FlipDotBoard data-test="countdown-strip" :text="time" :label="`Verbleibende Zeit ${time}`" />
-      <div
+      <FlipDotBoard
+        data-test="countdown-strip"
+        :text="time"
+        :label="`Verbleibende Zeit ${time}`"
+        @phase="stripLive = $event === 'live'"
+      />
+      <FlipDotLegend
         data-test="countdown-label-time"
-        class="relative mt-2 h-4 font-mono text-[11px] tracking-[0.14em] text-stone-500 transition-opacity duration-300"
-        :class="labelOpacity"
-      >
-        <span class="absolute left-[11.5%] -translate-x-1/2">STD</span>
-        <span class="absolute left-1/2 -translate-x-1/2">MIN</span>
-        <span class="absolute left-[88.5%] -translate-x-1/2">SEK</span>
-      </div>
+        class="mt-2"
+        :text="time"
+        :labels="['STD', 'MIN', 'SEK']"
+        :visible="stripLive"
+      />
     </div>
   </div>
 </template>
