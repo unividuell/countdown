@@ -64,6 +64,9 @@ Algorithm (current):
 
 ## Frontend conventions
 
+Only what is tenancy-specific lives here. The general SPA conventions — routing, guards, the
+`[slug]` shell, state, testing — are in [frontend.md](frontend.md) and its siblings.
+
 ### Community URLs live under `/c/`
 
 ```
@@ -85,20 +88,11 @@ structurally impossible. Two consequences bind future work:
 - **Build community URLs with `communityPath(slug, sub?)`** from `src/communities/routes.ts`, never
   by interpolating a path. It is the only place that knows the scheme.
 
-The tenant context is resolved by a **router guard**, not by the shell page:
-
-1. `registerCommunityDataGuard` (`src/communities/routeData.ts`) reads `route.params.slug` in
-   `beforeResolve`, fetches the community before the route commits, and publishes it in `afterEach`.
-   It matches on the *param*, not on a path, which is why the `/c/` move did not touch it.
-   - Success → member; the guard records the selection and the shell renders its children.
-   - 404 → "Kein Zugriff" (no info leak, matching the backend).
-2. `src/pages/c/[slug].vue` is a thin renderer over that state and does no fetching of its own.
-3. Nested routes (`/c/:slug/`, `/c/:slug/members`, …) render through `<RouterView />` inside it.
-
-**Typed route params:** use the typed `useRoute('/c/[slug]')` overload (the route name from the
-generated `typed-router.d.ts`) rather than plain `useRoute()`, which returns a union of all routes
-and fails on `.params.slug` under `strict` + vue-tsc. In practice no community page needs it — they
-read `useCommunityContext()` instead.
+The tenant context is resolved by `registerCommunityDataGuard`, a **router guard** rather than the
+shell page — the mechanics are in [frontend-routing.md](frontend-routing.md). Two things about it
+are tenancy-specific: it matches on the *param*, not on a path, which is why the `/c/` move did not
+touch it; and a 404 renders "Kein Zugriff" rather than "not found", so membership is not leaked —
+matching the backend.
 
 ### Last-selected community
 
@@ -114,28 +108,3 @@ last-visited community when the user has multiple active memberships.
 `useCommunities().landing()` and routes:
 - `none` / `choose` → `/communities` (chooser).
 - `one` / `last` → `/c/<slug>/` (via `communityPath`).
-
-### Logout reachability
-
-Logout lives in exactly one place: `src/nav/NavDrawer.vue`, mounted by `App.vue` under
-`v-if="user"` — `user` is non-null exactly when `status === 'authenticated'` (`useAuth.ts` sets
-both together), the same underlying condition `src/auth/guard.ts:15` checks to admit a protected
-route. Because `App.vue` sits above every route, this makes logout reachable on every protected
-route by construction, not by convention: there is no second copy to keep in sync, and no future
-page can be added without it.
-
-Calls `useAuth().logout()` then `router.replace('/login')`.
-
-### `exactOptionalPropertyTypes` + optional body fields
-
-With `exactOptionalPropertyTypes: true`, never pass `prop: x || undefined`.
-Build the patch body with explicit conditional assignment:
-
-```ts
-const body: Partial<{ name: string; startsAt: string; phaseTwoStartRound: number }> = {
-  name: name.value.trim(),
-}
-if (startsAt.value) body.startsAt = startsAt.value
-if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
-await updateCommunity(slug, body)
-```

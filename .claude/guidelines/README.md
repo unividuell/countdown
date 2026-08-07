@@ -8,15 +8,20 @@ new team members (and AI assistants) stay consistent.
 
 | Topic | File |
 |---|---|
-| **Feeding knowledge back** — capture important learnings into these guidelines as part of every task | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
+| **Feeding knowledge back** — every task ends by capturing the transferable rules here; the admission bar keeps post-mortems in the commit, not in the file | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
 | **Git workflow** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging | [git-workflow.md](git-workflow.md) |
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
 | Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract) | [security-and-auth.md](security-and-auth.md) |
 | Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation) | [logging.md](logging.md) |
-| Frontend — `webapp-vue` (Vue 3 · Vite 8 · Vue Router 5 file-based · Tailwind v4 · composables · fetch/auth · Vitest) | [frontend.md](frontend.md) |
-| Deployment (ghcr images · arm64 CI · Caddy edge · prod compose · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
+| Frontend — `webapp-vue` (Vue 3 · Vite 8 · Tailwind v4 · stack · `apiFetch`/`useAuth` · lint · typecheck) | [frontend.md](frontend.md) |
+| ↳ Frontend UI & layout (mobile-first · sizing traps · accessibility) | [frontend-ui.md](frontend-ui.md) |
+| ↳ Frontend routing, shells & access (Vue Router 5 file-based · guard-owned nav data · `[slug]` shell · role gating) | [frontend-routing.md](frontend-routing.md) |
+| ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking) | [frontend-state.md](frontend-state.md) |
+| ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles) | [frontend-testing.md](frontend-testing.md) |
+| Deployment (ghcr images · arm64 CI · prod+staging compose · `update.sh` · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
+| ↳ Deployment edge (the two Caddys · TLS · SPA/API routing · cache headers · `X-Forwarded-*` chain) | [deployment-edge.md](deployment-edge.md) |
 | **Dependency updates** — Maven · npm · Docker, and the versions we deliberately hold back (TS 6.x, `@types/node` 24, Node LTS) | [dependency-updates.md](dependency-updates.md) |
 | Multi-tenancy (community module · `community_id` scoping · slug-derivation parity · URL-slug routing guard) | [multi-tenancy.md](multi-tenancy.md) |
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |

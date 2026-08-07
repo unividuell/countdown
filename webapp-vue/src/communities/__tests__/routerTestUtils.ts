@@ -6,7 +6,7 @@ import type { Router } from 'vue-router'
  * routes like `/` whose params are `Record<never, never>`. These specs build a
  * router from a small, test-local route list that always has a `slug` param on the
  * routes they assert against, but vue-tsc only sees the app-wide union and rejects
- * `.params.slug` outright (see `.claude/guidelines/frontend.md` § Routing).
+ * `.params.slug` outright (see `.claude/guidelines/frontend-routing.md`).
  *
  * This narrows that union down to the `slug` case at the one point specs need it,
  * with a runtime check standing in for the static guarantee the test route list

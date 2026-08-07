@@ -98,19 +98,10 @@ database `app`.
 - **pgAdmin** runs as a second compose service; it pre-registers the `postgres`
   server (host `postgres`, the compose-internal service name) and persists its
   state in the `pgadmin-data` named volume — enter the DB password once and it
-  sticks. The `servers.json` is injected via an **inline compose `configs` entry**
-  (`configs: [{ content: ... }]`), NOT a host bind mount: the project lives under
-  `/opt`, which Docker Desktop does not share by default, so a `./pgadmin/...`
-  bind mount fails with "mounts denied". Inline `configs.content` (Compose ≥ 2.23)
-  needs no host file sharing. Named volumes are unaffected (Docker-managed).
-- **No pgAdmin login (desktop mode):** `PGADMIN_CONFIG_SERVER_MODE=False` +
-  `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False` → single-user, no login screen.
-  The desktop auto-login identity must match the entrypoint user, so set
-  `PGADMIN_CONFIG_DESKTOP_USER` to the `PGADMIN_DEFAULT_EMAIL` (else 401 against the
-  default `pgadmin4@pgadmin.org`). Gotcha: `PGADMIN_CONFIG_*` values are written into
-  a Python config verbatim — **string values need embedded quotes**
-  (`"PGADMIN_CONFIG_DESKTOP_USER='admin@local.dev'"`); booleans like `False` are fine
-  bare. Since there's no auth, the port is bound to `127.0.0.1` only.
+  sticks. Its `servers.json` is injected via an **inline compose `configs` entry**
+  (Compose ≥ 2.23), not a host bind mount, and it runs in desktop mode bound to
+  `127.0.0.1`: same configuration and the same two traps as production, so
+  [deployment.md](deployment.md) documents both once.
 - Changing `POSTGRES_*` only re-inits a **fresh** database. To apply new
   credentials/DB-name to an existing volume:
   `docker compose down -v` then start again.
