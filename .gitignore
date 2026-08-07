@@ -16,3 +16,7 @@
 
 # superpowers brainstorming mockups
 .superpowers/
+
+# Klartext-Spielinhalte auf dem Weg zur SOPS-Verschlüsselung.
+# Nie committen — auch nicht in Specs, Plänen oder Commit-Messages.
+.local/

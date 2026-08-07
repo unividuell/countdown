@@ -24,6 +24,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
   - **[Edge](.claude/guidelines/deployment-edge.md)** — the two Caddys, TLS, SPA/API routing, cache headers, the `X-Forwarded-*` chain.
 - **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
 - **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
+- **[Game content](.claude/guidelines/game-content.md)** — hand-curated puzzle data is a secret in a public repo: never in plaintext (spec, plan, commit, fixture), handed over via gitignored `.local/` → `sops -e`, sample set for tests, fail-fast outside `dev`.
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:
 the **`iam` module** (backend) and **`webapp-vue`** (frontend).
