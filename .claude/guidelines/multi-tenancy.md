@@ -117,8 +117,9 @@ last-visited community when the user has multiple active memberships.
 
 ### Logout reachability
 
-Logout lives in exactly one place: `src/nav/NavDrawer.vue`, mounted by `App.vue` and gated on
-`status === 'authenticated'` — the same predicate `src/auth/guard.ts:15` uses to admit a protected
+Logout lives in exactly one place: `src/nav/NavDrawer.vue`, mounted by `App.vue` under
+`v-if="user"` — `user` is non-null exactly when `status === 'authenticated'` (`useAuth.ts` sets
+both together), the same underlying condition `src/auth/guard.ts:15` checks to admit a protected
 route. Because `App.vue` sits above every route, this makes logout reachable on every protected
 route by construction, not by convention: there is no second copy to keep in sync, and no future
 page can be added without it.
