@@ -86,7 +86,7 @@ describe('community shell', () => {
     const w = await mountShell()
     expect(w.find('header').exists()).toBe(false)
     expect(w.find('[data-test=logout]').exists()).toBe(false)
-    expect(w.find('[data-test=community-menu]').exists()).toBe(false)
+    expect(w.find('[data-test=nav-toggle]').exists()).toBe(false)
     expect(w.text()).not.toContain('Team')
   })
 
