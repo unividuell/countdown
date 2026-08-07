@@ -15,14 +15,19 @@ import {
   useScrollLock,
   useWindowSize,
 } from '@vueuse/core'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import IconCheck from '~icons/lucide/check'
+import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
+import BrandMark from '@/ui/BrandMark.vue'
+import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
+import { communityPath } from '@/communities/routes'
 import { useCommunities } from '@/communities/useCommunities'
-import { spinDegrees } from './drawer'
+import { communityEntries, spinDegrees } from './drawer'
 import type { MeResponse } from '@/api/types'
 
-defineProps<{ user: MeResponse }>()
+const props = defineProps<{ user: MeResponse }>()
 
 /** Material's nav drawer: screen width minus 56dp, never wider than 320. */
 const DRAWER_MAX_PX = 320
@@ -35,11 +40,13 @@ const drawerTop = ref(0)
 const trigger = useTemplateRef<HTMLButtonElement>('trigger')
 const drawer = useTemplateRef<HTMLElement>('drawer')
 const route = useRoute()
+const router = useRouter()
+const { logout } = useAuth()
 const { width: viewport } = useWindowSize()
 const reduced = usePreferredReducedMotion()
 const bodyLocked = useScrollLock(document.body)
-// Only `refresh` is used here: the drawer's body is empty until Task 4 renders `active`.
-const { refresh } = useCommunities()
+const { active, refresh } = useCommunities()
+const logoutFailed = ref(false)
 
 // The width lives here rather than in a Tailwind class: the spin angle needs the same number,
 // and two sources for one width drift the moment somebody edits one of them.
@@ -50,12 +57,42 @@ const spin = computed(() =>
 )
 
 const showDot = computed(
-  () => Boolean(activeCommunity.value?.viewerIsAdmin) && (activeCommunity.value?.pendingCount ?? 0) > 0,
+  () =>
+    Boolean(activeCommunity.value?.viewerIsAdmin) && (activeCommunity.value?.pendingCount ?? 0) > 0,
 )
 const toggleLabel = computed(() => {
   const base = open.value ? 'Menü schließen' : 'Menü öffnen'
   return showDot.value ? `${base}, offene Anfragen` : base
 })
+
+const entries = computed(() => communityEntries(active.value, activeCommunity.value?.slug ?? null))
+// The list only earns its rows when there is somewhere to switch to; the create entry shares
+// the block, so the block itself outlives the list.
+const showSwitcher = computed(() => entries.value.length > 1)
+const mayCreate = computed(() => props.user.mayCreateCommunities)
+const showCommunityBlock = computed(() => showSwitcher.value || mayCreate.value)
+const admin = computed(() => (activeCommunity.value?.viewerIsAdmin ? activeCommunity.value : null))
+
+/** One row's geometry, stated once: 44px is the touch-target floor. */
+const ROW = 'flex h-11 w-full items-center gap-2.5 px-5 text-left text-sm'
+const LINK = `${ROW} cursor-pointer hover:bg-neutral-100`
+
+function go(slug: string): void {
+  router.push(communityPath(slug)).catch((e) => console.error('navigation failed', e))
+}
+
+async function handleLogout(): Promise<void> {
+  logoutFailed.value = false
+  try {
+    await logout()
+  } catch (e) {
+    // useAuth keeps local auth state on failure — the session may still be alive.
+    console.error('logout failed', e)
+    logoutFailed.value = true
+    return
+  }
+  router.replace('/login').catch((e) => console.error('navigation failed', e))
+}
 
 function loadCommunities(): void {
   // A failed list leaves every other block of the drawer working.
@@ -184,7 +221,93 @@ onKeyStroke('Tab', (e) => {
       class="fixed right-0 bottom-0 z-20 flex flex-col bg-white text-neutral-900 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
       :class="open ? 'translate-x-0' : 'translate-x-full'"
     >
-      <!-- Content lands here in the next task. -->
+      <div data-test="nav-scroll" class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-1.5">
+        <template v-if="showCommunityBlock">
+          <template v-for="e in showSwitcher ? entries : []" :key="e.id">
+            <div
+              v-if="e.current"
+              data-test="current-community"
+              aria-current="true"
+              :class="`${ROW} text-neutral-400`"
+            >
+              {{ e.name }}
+              <IconCheck class="ml-auto size-4" aria-hidden="true" />
+            </div>
+            <button
+              v-else
+              type="button"
+              data-test="switch-community"
+              :class="LINK"
+              @click="go(e.slug)"
+            >
+              {{ e.name }}
+            </button>
+          </template>
+
+          <!-- No divider above this: creating a community is the same thought as switching. -->
+          <RouterLink
+            v-if="mayCreate"
+            to="/communities/new"
+            data-test="create-community"
+            :class="`${LINK} text-neutral-600`"
+          >
+            <IconPlus class="size-4" aria-hidden="true" />
+            Spielgemeinschaft
+          </RouterLink>
+        </template>
+
+        <template v-if="admin">
+          <div class="mt-1.5 border-t border-neutral-200" />
+          <div
+            data-test="admin-heading"
+            class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
+          >
+            {{ admin.name }}
+          </div>
+          <RouterLink :to="communityPath(admin.slug, 'requests')" :class="LINK">
+            Anfragen
+            <span
+              v-if="admin.pendingCount > 0"
+              data-test="pending-count"
+              class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
+              >{{ admin.pendingCount }}</span
+            >
+          </RouterLink>
+          <RouterLink :to="communityPath(admin.slug, 'members')" :class="LINK"
+            >Mitglieder</RouterLink
+          >
+          <RouterLink :to="communityPath(admin.slug, 'settings')" :class="LINK"
+            >Einstellungen</RouterLink
+          >
+        </template>
+
+        <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
+             the scroll height instead of squeezing the mark away. -->
+        <div
+          data-test="nav-mark"
+          class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
+        >
+          <BrandMark class="w-[200px] max-w-full" />
+        </div>
+      </div>
+
+      <div data-test="nav-foot" class="flex-none pb-1.5">
+        <div class="border-t border-neutral-200" />
+        <RouterLink
+          v-if="user.isSuperAdmin"
+          to="/super-admin"
+          data-test="super-admin"
+          :class="LINK"
+        >
+          Super-Admin
+        </RouterLink>
+        <button type="button" data-test="logout" :class="LINK" @click="handleLogout">
+          Abmelden
+        </button>
+        <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-red-600">
+          Abmelden fehlgeschlagen
+        </p>
+      </div>
     </aside>
   </Teleport>
 </template>

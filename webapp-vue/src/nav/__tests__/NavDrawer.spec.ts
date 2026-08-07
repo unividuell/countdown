@@ -6,7 +6,8 @@ import { activeCommunity } from '@/communities/context'
 import { _resetCommunitiesState } from '@/communities/useCommunities'
 import { useAuth } from '@/auth/useAuth'
 import * as api from '@/api/communities'
-import type { MeResponse } from '@/api/types'
+import { communityPath } from '@/communities/routes'
+import type { CommunitySummary, MeResponse } from '@/api/types'
 
 enableAutoUnmount(afterEach)
 
@@ -279,5 +280,192 @@ describe('NavDrawer mechanics', () => {
     await w.get('[data-test=nav-toggle]').trigger('click')
     expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('true')
     spy.mockRestore()
+  })
+})
+
+const community = (id: string, name: string, slug: string): CommunitySummary => ({ id, name, slug })
+
+const THREE = [
+  community('2', 'Berghütte', 'berg'),
+  community('1', 'Almhütte', 'alm'),
+  community('3', 'Chalet', 'chalet'),
+]
+
+function asAdminOf(slug: string, name: string, pendingCount = 0) {
+  activeCommunity.value = {
+    slug,
+    name,
+    startsAt: null,
+    startsAtTimezone: 'UTC',
+    viewerIsAdmin: true,
+    pendingCount,
+  }
+}
+
+async function opened(user: MeResponse = viewer) {
+  const w = render(user)
+  await flushPromises()
+  await w.get('[data-test=nav-toggle]').trigger('click')
+  await flushPromises()
+  return w
+}
+
+describe('NavDrawer content', () => {
+  it('lists every community alphabetically, the current one greyed and not clickable', async () => {
+    vi.mocked(api.listCommunities).mockResolvedValue(THREE)
+    activeCommunity.value = {
+      slug: 'berg',
+      name: 'Berghütte',
+      startsAt: null,
+      startsAtTimezone: 'UTC',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    const w = await opened()
+
+    const rows = w.findAll('[data-test=switch-community], [data-test=current-community]')
+    expect(rows.map((r) => r.text().replace(/\s+/g, ' ').trim())).toEqual([
+      'Almhütte',
+      'Berghütte',
+      'Chalet',
+    ])
+
+    const current = w.get('[data-test=current-community]')
+    expect(current.element.tagName).toBe('DIV')
+    expect(current.attributes('aria-current')).toBe('true')
+    expect(current.classes()).toContain('text-neutral-400')
+  })
+
+  it('navigates to a community that is not the current one', async () => {
+    vi.mocked(api.listCommunities).mockResolvedValue(THREE)
+    const w = await opened()
+    await w.findAll('[data-test=switch-community]')[0]!.trigger('click')
+    expect(pushMock).toHaveBeenCalledWith(communityPath('alm'))
+  })
+
+  it('drops the switcher when the viewer is in exactly one community', async () => {
+    vi.mocked(api.listCommunities).mockResolvedValue([community('1', 'Almhütte', 'alm')])
+    const w = await opened()
+    expect(w.find('[data-test=switch-community]').exists()).toBe(false)
+    expect(w.find('[data-test=current-community]').exists()).toBe(false)
+  })
+
+  it('offers creating a community only to someone allowed to', async () => {
+    vi.mocked(api.listCommunities).mockResolvedValue([community('1', 'Almhütte', 'alm')])
+    expect((await opened()).find('[data-test=create-community]').exists()).toBe(false)
+    expect(
+      (await opened({ ...viewer, mayCreateCommunities: true }))
+        .get('[data-test=create-community]')
+        .attributes('href'),
+    ).toBe('/communities/new')
+  })
+
+  it('shows the admin block under the community name, with the pending count', async () => {
+    asAdminOf('team', 'Team Süd', 3)
+    const w = await opened()
+    expect(w.get('[data-test=admin-heading]').text()).toBe('Team Süd')
+    expect(w.get('[data-test=pending-count]').text()).toBe('3')
+    expect(w.findAll('[data-test=nav-scroll] a').map((a) => a.attributes('href'))).toEqual([
+      communityPath('team', 'requests'),
+      communityPath('team', 'members'),
+      communityPath('team', 'settings'),
+    ])
+  })
+
+  it('hides the count when nothing is pending, but keeps the entry', async () => {
+    asAdminOf('team', 'Team Süd', 0)
+    const w = await opened()
+    expect(w.find('[data-test=pending-count]').exists()).toBe(false)
+    expect(w.get('[data-test=admin-heading]').exists()).toBe(true)
+  })
+
+  it('shows no admin block to a plain member', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team Süd',
+      startsAt: null,
+      startsAtTimezone: 'UTC',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    expect((await opened()).find('[data-test=admin-heading]').exists()).toBe(false)
+  })
+
+  it('keeps the super-admin entry out of sight for everyone else', async () => {
+    expect((await opened()).find('[data-test=super-admin]').exists()).toBe(false)
+    expect(
+      (await opened({ ...viewer, isSuperAdmin: true }))
+        .get('[data-test=super-admin]')
+        .attributes('href'),
+    ).toBe('/super-admin')
+  })
+
+  it('always shows the mark and the logout entry', async () => {
+    const w = await opened()
+    expect(w.find('[data-test=nav-mark]').exists()).toBe(true)
+    expect(w.get('[data-test=nav-foot]').text()).toContain('Abmelden')
+  })
+
+  it('keeps the foot outside the scrolling area so it cannot scroll away', async () => {
+    const w = await opened()
+    const scroll = w.get('[data-test=nav-scroll]')
+    expect(scroll.classes()).toEqual(
+      expect.arrayContaining(['flex-1', 'min-h-0', 'overflow-y-auto']),
+    )
+    expect(scroll.find('[data-test=nav-foot]').exists()).toBe(false)
+    // grow + shrink-0: takes the slack, but never gives its own height back.
+    expect(w.get('[data-test=nav-mark]').classes()).toEqual(
+      expect.arrayContaining(['grow', 'shrink-0', 'basis-auto']),
+    )
+  })
+
+  it('signs out and goes to the login page', async () => {
+    const w = await opened()
+    await w.get('[data-test=logout]').trigger('click')
+    await flushPromises()
+    expect(logoutMock).toHaveBeenCalled()
+    expect(replaceMock).toHaveBeenCalledWith('/login')
+  })
+
+  it('stays open with a message when signing out fails', async () => {
+    logoutMock.mockRejectedValueOnce(new Error('offline'))
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = await opened()
+    await w.get('[data-test=logout]').trigger('click')
+    await flushPromises()
+    expect(replaceMock).not.toHaveBeenCalled()
+    expect(w.get('[data-test=logout-error]').text()).toContain('fehlgeschlagen')
+    expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('true')
+    spy.mockRestore()
+  })
+
+  it('cycles Tab focus between the toggle and the drawer content, wrapping both ways', async () => {
+    // Written after the drawer has real content (the logout button in the foot) so the cycle
+    // has more than a hypothetical element to move focus to and from.
+    const w = await opened()
+    const toggle = w.get('[data-test=nav-toggle]').element as HTMLElement
+    const focusables = Array.from(
+      w
+        .get('[data-test=nav-drawer]')
+        .element.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+    )
+    const last = focusables[focusables.length - 1]!
+
+    last.focus()
+    const forward = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    document.dispatchEvent(forward)
+    expect(forward.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(toggle)
+
+    toggle.focus()
+    const backward = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(backward)
+    expect(backward.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(last)
   })
 })
