@@ -108,7 +108,8 @@ Alles außer den Communities und Abmelden ist ein `RouterLink`; die Community-Ei
 Breite      min(320px, 85vw)          — auf 375px sind das 319px, also Materials
                                          „screen − 56dp“; links bleibt ein Streifen Seite
                                          sichtbar, der „daneben tippen schließt“ andeutet.
-Oben        Unterkante des Headers, beim Öffnen gemessen, auf ≥ 0 geklemmt
+Oben        Unterkante des Headers, beim Öffnen gemessen (`trigger.closest("header")`),
+            auf ≥ 0 geklemmt
 Unten       Viewport-Unterkante
 Dauer       300 ms
 Kurve       cubic-bezier(.4, 0, .2, 1)
@@ -124,8 +125,15 @@ verhindert, dass der gemessene Wert während der Anzeige veraltet.
 **Ebenen:** Header `z-30` + `shadow-lg`, Drawer `z-20`, Scrim `z-10`. Der Avatar liegt damit immer
 über dem Drawer.
 
-**Der Drehwinkel** kommt aus der **gemessenen** Drawer-Breite, nicht aus einer Konstante — sonst
-stimmt er auf keinem Viewport außer dem, für den er notiert wurde:
+**Die Breite gehört dem Skript, nicht dem Stylesheet.** `min(320px, 85vw)` wird aus
+`useWindowSize()` gerechnet und als Inline-Style gesetzt — es gibt keine Tailwind-Breitenklasse
+daneben. Grund: der Drehwinkel braucht dieselbe Zahl, und zwei Quellen für eine Breite driften
+auseinander, sobald jemand eine davon anfasst. Nebeneffekt, der die Tests erst möglich macht: ein
+Test kann `window.innerWidth` setzen und den resultierenden Winkel prüfen, während eine aus dem
+Layout gemessene Breite unter happy-dom immer 0 wäre.
+
+**Der Drehwinkel** kommt aus dieser Breite, nicht aus einer Konstante — sonst stimmt er auf keinem
+Viewport außer dem, für den er notiert wurde:
 
 ```ts
 /** Wie weit ein Rad vom Durchmesser `wheelPx` rollt, wenn es `travelPx` zurücklegt. */
@@ -134,7 +142,7 @@ export function spinDegrees(travelPx: number, wheelPx: number): number {
 }
 ```
 
-Bei 319px Strecke und dem 32px-Avatar: **1142,4°**, also 3,17 Umdrehungen. Im Uhrzeigersinn beim
+Bei 319px Strecke und dem 32px-Avatar: **1142,33°**, also 3,17 Umdrehungen. Im Uhrzeigersinn beim
 Öffnen (positiver Winkel), zurück auf 0 beim Schließen.
 
 **Der Drawer bleibt immer im DOM**, geschlossen per `translate-x-full`. Das hat drei Gründe: die
@@ -332,7 +340,7 @@ TDD, Vitest + `@vue/test-utils` + happy-dom.
   Codepoint-Sortierung anders einordnet als unter deutscher Kollation.
 - Die aktuelle Community ist **enthalten** und als `current` markiert; ohne aktiven Slug ist keine
   markiert.
-- `spinDegrees(319, 32)` ≈ 1142,4; `spinDegrees(0, 32) === 0`; linear in der Strecke.
+- `spinDegrees(319, 32)` ≈ 1142,33; `spinDegrees(0, 32) === 0`; linear in der Strecke.
 
 `nav/__tests__/NavDrawer.spec.ts`
 - `aria-expanded` kippt beim Klick; geschlossen trägt der Drawer `inert` und `aria-hidden`.
