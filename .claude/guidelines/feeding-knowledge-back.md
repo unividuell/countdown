@@ -41,9 +41,12 @@ obvious from the code, task-local detail — and anything secret.
   person must *do*, not what we found.
 - **No measurements inline.** Numbers, browser matrices, before/after tables go
   in the commit or PR; link it if the reasoning matters.
-- **Soft budget: ~150 lines per file, ~8 bullets per section.** Going over is the
-  signal to *condense* — pull several bullets up into one principle, drop the ones
-  that no longer bite — not to append.
+- **Soft budget: ~150 lines per file, ~8 bullets per section.** A section over
+  budget is the signal to *condense* — pull several bullets up into one principle,
+  drop the ones that no longer bite. A *file* over budget usually means it covers
+  more than one topic: **split it** (`frontend.md` → `frontend-ui.md`,
+  `-routing.md`, `-state.md`, `-testing.md`) and leave an index table in the
+  original. Neither signal is ever answered by appending.
 - Prefer **adding to the relevant existing file**; only create a new topic file
   for a genuinely new area, and then link it from [`README.md`](README.md) (and
   from the root `CLAUDE.md` if it's a new area).

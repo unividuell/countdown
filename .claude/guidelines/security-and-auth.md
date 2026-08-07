@@ -157,7 +157,7 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
 - **The picker is server-rendered HTML, not SPA — it still needs mobile-first.** It shipped once
   without a `<meta name="viewport">` tag and rendered unreadably tiny on a phone: with no viewport
   tag, mobile browsers lay the page out at their ~980px desktop fallback width and then scale the
-  whole thing down to fit, which looks like a CSS/sizing bug but isn't one. [frontend.md](frontend.md)'s
+  whole thing down to fit, which looks like a CSS/sizing bug but isn't one. [frontend-ui.md](frontend-ui.md)'s
   mobile-first guidance is written for `webapp-vue`, but the expectation itself — and this specific
   gotcha — applies to any HTML the backend renders directly. If a server-rendered page looks tiny on
   a phone, check for the viewport meta tag before touching CSS.
