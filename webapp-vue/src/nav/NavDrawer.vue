@@ -113,6 +113,7 @@ function measureTop(): void {
 
 async function setOpen(next: boolean): Promise<void> {
   if (next) {
+    logoutFailed.value = false
     measureTop()
     loadCommunities()
     open.value = true
@@ -126,6 +127,16 @@ async function setOpen(next: boolean): Promise<void> {
 
 watch(open, (v) => {
   bodyLocked.value = v
+})
+
+// drawerWidth and spin already track the viewport through useWindowSize(); drawerTop does not,
+// because measureTop() only runs at open time. Without this, a resize or orientation change
+// while the drawer is open (e.g. a community header that goes from two rows to one across the
+// `md` breakpoint) leaves drawerTop stale — either a gap of scrimmed page above the drawer, or
+// the drawer's first row hidden behind the header. Gated on open: closed, there is nothing to
+// re-measure, and the open-time call in setOpen still runs first for the initial value.
+watch(viewport, () => {
+  if (open.value) measureTop()
 })
 
 // Every navigating entry closes the drawer this way, which is why a click inside is NOT wired
@@ -154,6 +165,10 @@ useEventListener(document, 'click', (e: Event) => {
 // because it is also the close button.
 onKeyStroke('Tab', (e) => {
   if (!open.value) return
+  // Contract: this selector must list every focusable element the drawer can contain. It only
+  // covers links and buttons because that is all today's drawer has — an <input>, a <select>,
+  // or anything with [tabindex] added later must be added here too, or Tab will silently skip
+  // it. The spec's own cage test reuses this selector, so it cannot catch that omission either.
   const inDrawer = Array.from(
     drawer.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [],
   )

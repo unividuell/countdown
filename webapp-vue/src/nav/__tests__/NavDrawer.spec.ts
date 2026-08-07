@@ -49,17 +49,31 @@ const viewer: MeResponse = {
   createdAt: null,
 }
 
+// Backs the host <header>'s stubbed getBoundingClientRect (see render() below). Reassigned on
+// every render() so each test starts from its own value; setHeaderBottom() then lets a test
+// change it after mount, to drive a re-measure.
+let headerBottom = ref(0)
+
+function setHeaderBottom(value: number): void {
+  headerBottom.value = value
+}
+
 /**
  * Mounts inside a real <header>, because the drawer reads its top edge from
- * `trigger.closest('header')`. `headerBottom` stubs that edge — happy-dom's own
- * getBoundingClientRect answers 0 for everything.
+ * `trigger.closest('header')`. `headerBottom` (the parameter) seeds the stubbed edge —
+ * happy-dom's own getBoundingClientRect answers 0 for everything.
+ *
+ * The stub reads the module-level `headerBottom` ref rather than closing over the parameter
+ * value directly, so a test can change the header's reported bottom edge after mount via
+ * setHeaderBottom() without remounting.
  *
  * teleport: true renders the drawer in place; teleported to <body> it would sit outside
  * wrapper.element, where wrapper.find() cannot reach it.
  */
-function render(user: MeResponse = viewer, headerBottom = 0) {
+function render(user: MeResponse = viewer, initialHeaderBottom = 0) {
+  headerBottom = ref(initialHeaderBottom)
   const host = document.createElement('header')
-  host.getBoundingClientRect = () => ({ bottom: headerBottom }) as DOMRect
+  host.getBoundingClientRect = () => ({ bottom: headerBottom.value }) as DOMRect
   document.body.appendChild(host)
   return mount(NavDrawer, {
     props: { user },
@@ -163,7 +177,11 @@ describe('NavDrawer mechanics', () => {
   })
 
   it('keeps the avatar still under prefers-reduced-motion', async () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({
+    // Restored explicitly (not left to a global restoreMocks) because vi.clearAllMocks() in
+    // beforeEach only clears call history, not the mocked implementation — without this the
+    // stub would leak into every later test in the file and usePreferredReducedMotion would
+    // keep reporting 'reduce' regardless of what any later test needs.
+    const spy = vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: true,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -171,6 +189,7 @@ describe('NavDrawer mechanics', () => {
     const w = render()
     await w.get('[data-test=nav-toggle]').trigger('click')
     expect(w.get('[data-test=nav-spinner]').attributes('style')).toContain('rotate(0deg)')
+    spy.mockRestore()
   })
 
   it('drives travel and spin off one duration and one curve', async () => {
@@ -196,6 +215,35 @@ describe('NavDrawer mechanics', () => {
     // everything — right, because there is no header left to stay below.
     const w = render(viewer, -40)
     await w.get('[data-test=nav-toggle]').trigger('click')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 0px')
+  })
+
+  it('re-measures the drawer top when the viewport changes while open', async () => {
+    // Regression for drawerTop going stale on resize/orientation change: drawerWidth and spin
+    // already track useWindowSize()'s viewport, but drawerTop only used to be set at open time.
+    const w = render(viewer, 116)
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 116px')
+
+    // A community header collapsing from two rows (116px) to one (68px) as the viewport
+    // crosses the `md` breakpoint on rotation.
+    setHeaderBottom(68)
+    window.innerWidth = 812
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 68px')
+  })
+
+  it('does not re-measure the drawer top while closed', async () => {
+    // drawerTop starts at its initial 0 and is never touched by setOpen(true) here, since the
+    // drawer is never opened. A resize while closed must leave it exactly as it was — the
+    // watcher stays gated on `open`.
+    const w = render(viewer, 116)
+    setHeaderBottom(68)
+    window.innerWidth = 812
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
     expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 0px')
   })
 
@@ -453,6 +501,22 @@ describe('NavDrawer content', () => {
     expect(replaceMock).not.toHaveBeenCalled()
     expect(w.get('[data-test=logout-error]').text()).toContain('fehlgeschlagen')
     expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('true')
+    spy.mockRestore()
+  })
+
+  it('clears a stale logout-failure message on close and reopen', async () => {
+    logoutMock.mockRejectedValueOnce(new Error('offline'))
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = await opened()
+    await w.get('[data-test=logout]').trigger('click')
+    await flushPromises()
+    expect(w.get('[data-test=logout-error]').text()).toContain('fehlgeschlagen')
+
+    await w.get('[data-test=nav-toggle]').trigger('click') // close
+    await w.get('[data-test=nav-toggle]').trigger('click') // reopen
+    await flushPromises()
+
+    expect(w.find('[data-test=logout-error]').exists()).toBe(false)
     spy.mockRestore()
   })
 
