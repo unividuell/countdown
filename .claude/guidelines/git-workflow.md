@@ -23,8 +23,10 @@ The repo follows **git flow**: two long-lived branches, feature branches in betw
   but state it explicitly anyway: a stale local `origin/HEAD` still makes tooling
   (incl. the Claude Code session context) report `main` as the PR base. Fix a clone
   that got it wrong once with `git remote set-head origin -a`.
-- **Promotion to prod is a separate `develop` → `main` PR** (release). Nothing lands
-  on `main` that hasn't been on staging first.
+- **Promotion to prod is a `develop` → `main` merge** (release) — a PR when the release
+  wants reviewing, otherwise a local `git merge origin/develop` on `main` plus a push.
+  What is not optional is the direction: nothing lands on `main` that hasn't been on
+  `develop` first, so every change has had a staging image built from it.
 - **Hotfix (rare):** branch from `main`, PR into `main`, then merge `main` back into
   `develop` so the fix isn't lost on the next release.
 - **PR titles and descriptions are written in English**, even when the conversation
