@@ -7,6 +7,9 @@
 # Stray compiled output
 *.class
 
+# macOS Finder metadata — no leading slash, so it matches at every depth
+.DS_Store
+
 # local dev env (ports only) — use .env.example as the template
 .env
 !.env.example
