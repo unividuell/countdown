@@ -73,8 +73,16 @@ const mayCreate = computed(() => props.user.mayCreateCommunities)
 const showCommunityBlock = computed(() => showSwitcher.value || mayCreate.value)
 const admin = computed(() => (activeCommunity.value?.viewerIsAdmin ? activeCommunity.value : null))
 
-/** One row's geometry, stated once: 44px is the touch-target floor. */
-const ROW = 'flex h-11 w-full items-center gap-2.5 px-5 text-left text-sm'
+/**
+ * One row's geometry, stated once: 44px is the touch-target floor. `shrink-0` is load-bearing,
+ * not decorative — `nav-scroll` is `flex flex-col`, and flex items shrink by default. A fixed
+ * height on a flex item is a request, not a guarantee: measured on a 812x375 landscape phone,
+ * the scroll area already overflowed (clientHeight 212 vs scrollHeight 433) yet the flex
+ * algorithm still squashed every row from 44px down to 20px before letting it overflow — while
+ * `nav-mark`, which already carries `shrink-0`, kept its full 248px. The squeeze bought nothing:
+ * the container was going to scroll either way.
+ */
+const ROW = 'flex h-11 w-full shrink-0 items-center gap-2.5 px-5 text-left text-sm'
 const LINK = `${ROW} cursor-pointer hover:bg-neutral-100`
 
 function go(slug: string): void {

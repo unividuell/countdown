@@ -484,6 +484,25 @@ describe('NavDrawer content', () => {
     )
   })
 
+  it('pins every row touch target so a short viewport cannot shrink it away', async () => {
+    // nav-scroll is `flex flex-col`, and flex items shrink by default — a fixed height on a
+    // flex item is a request, not a guarantee. Measured on a real 812x375 landscape phone with
+    // the drawer open on a community page as an admin: the scroll area already overflowed
+    // (clientHeight 212, scrollHeight 433) yet every h-11 row was still squashed to 20px by the
+    // shrink algorithm before the container was allowed to overflow, while nav-mark (which
+    // already carries shrink-0) kept its full 248px. happy-dom computes no layout, so this test
+    // cannot reproduce the collapse — it pins the class contract that prevents it instead, so a
+    // row added later without shrink-0 fails here rather than on somebody's phone.
+    vi.mocked(api.listCommunities).mockResolvedValue(THREE)
+    asAdminOf('berg', 'Berghütte', 1)
+    const w = await opened()
+    const rows = w.findAll('[data-test=nav-drawer] .h-11')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.classes()).toContain('shrink-0')
+    }
+  })
+
   it('signs out and goes to the login page', async () => {
     const w = await opened()
     await w.get('[data-test=logout]').trigger('click')
