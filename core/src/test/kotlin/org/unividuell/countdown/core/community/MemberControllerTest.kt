@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.community
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.justRun
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -27,6 +28,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var access: CommunityAccess
     @MockkBean lateinit var memberRepo: CommunityMemberRepository
     @MockkBean lateinit var userQuery: UserQuery
+    @MockkBean lateinit var roster: RosterService
 
     private val uid = TEST_USER_ID
     private fun community(slug: String) = Community(id = UUID.randomUUID(), name = "Team", slug = slug, createdBy = uid)
@@ -56,15 +58,38 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `GET members lists enriched member data`() {
+        val alice = UUID.randomUUID()
+        val bob = UUID.randomUUID()
+        val c = community("team")
+        every { access.requireAdmin(uid, false, "team") } returns c
+        every { memberRepo.findByCommunityId(c.id!!) } returns listOf(
+            CommunityMember(communityId = c.id!!, userId = alice, status = MemberStatus.ACTIVE, isAdmin = false),
+            CommunityMember(communityId = c.id!!, userId = bob, status = MemberStatus.ACTIVE, isAdmin = false),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 2L, githubLogin = "alice"),
+            User(id = bob, githubId = 3L, githubLogin = "bob"),
+        )
+        mockMvc.get("/api/communities/team/members") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$[0].username") { value("alice") }
+                jsonPath("$[1].username") { value("bob") }
+            }
+        verify(exactly = 1) { userQuery.findAllById(any()) }
+    }
+
+    @Test
+    fun `GET members keeps a member whose user row is gone`() {
         val memberId = UUID.randomUUID()
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         every { memberRepo.findByCommunityId(c.id!!) } returns listOf(
             CommunityMember(communityId = c.id!!, userId = memberId, status = MemberStatus.ACTIVE, isAdmin = false)
         )
-        every { userQuery.findById(memberId) } returns User(id = memberId, githubId = 2L, githubLogin = "alice")
+        every { userQuery.findAllById(any()) } returns emptyList()
         mockMvc.get("/api/communities/team/members") { with(principalFor()) }
-            .andExpect { status { isOk() }; jsonPath("$[0].username") { value("alice") } }
+            .andExpect { status { isOk() }; jsonPath("$[0].username") { value("?") } }
     }
 
     @Test

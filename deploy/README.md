@@ -40,15 +40,9 @@ stack from another branch for a one-off test with `REF=<branch> ./update.sh <tar
 and `README.md` themselves always come from `main`, since both stacks share one copy on disk.
 
 **Existing deployments:** `update.sh` only writes `.env.<target>` from the template when the file
-doesn't exist, so a stack bootstrapped earlier keeps its old env file — add `SUPER_ADMIN_GITHUB_LOGINS=`
-to your `.env.prod`/`.env.staging` by hand (empty, or your real allowlist); it will not appear there on its own.
-
-**Migrating off the single `compose.yaml`:** the first run per target writes the new
-`compose.<target>.yaml`; the containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
-nothing is recreated beyond what actually changed. Run `./update.sh prod` **and** `./update.sh staging`
-once, then delete the now-unread `compose.yaml`. Note that the first run still executes the *old*
-script (the self-update lands on disk for the next invocation), so it takes two runs per target to
-fully switch over.
+doesn't exist, so a stack bootstrapped earlier keeps its old env file forever. When a release adds a
+new variable to the template, add it to your `.env.prod`/`.env.staging` by hand — it will not appear
+there on its own, and a missing one binds empty without any error.
 
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)

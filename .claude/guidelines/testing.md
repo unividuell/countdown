@@ -73,6 +73,17 @@ Annotate repository/service integration tests with `@Transactional` so each
 method rolls back — assertions like `repository.count()` must not see state from
 sibling tests.
 
+`app.test-auth.enabled` is `true` on the test classpath, so **`TestUserSeeder` seeds its twelve
+Futurama users into every `@SpringBootTest` context** — rows `@Transactional` cannot roll back,
+because they are committed before the test starts. Any test asserting *exact* membership over all
+users (a full `list()`, a `count()`, a roster) must switch the seeder off:
+
+```kotlin
+@TestPropertySource(properties = ["app.test-auth.enabled=false"])
+```
+
+`SuperAdminRosterServiceTest` and `SuperAdminUserServiceTest` are the precedents.
+
 ## Module verification
 
 Keep `ModularityTests` (`ApplicationModules.of(CoreApplication::class.java).verify()`)

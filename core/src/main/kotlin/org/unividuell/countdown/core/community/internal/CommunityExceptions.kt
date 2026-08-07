@@ -1,6 +1,6 @@
 package org.unividuell.countdown.core.community.internal
 
-/** Derived slug is already taken or reserved → 409. */
+/** Derived slug is already taken → 409. */
 class SlugUnavailableException(message: String) : RuntimeException(message)
 
 /** Would leave a community with zero admins → 409. */
@@ -17,3 +17,6 @@ class InviteNotFoundException(message: String = "Invalid invite") : RuntimeExcep
 
 /** Invite token exists but has expired → 410. */
 class InviteExpiredException(message: String = "Invite expired") : RuntimeException(message)
+
+/** Caller is not cleared to create communities → 403. */
+class CommunityCreationNotAllowedException(message: String = "Not allowed to create communities") : RuntimeException(message)

@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
@@ -50,5 +51,40 @@ class UserProfileServiceTest(
         shouldThrow<NoSuchElementException> {
             service.update(UUID.randomUUID(), displayName = "x", bgColorHex = null)
         }
+    }
+
+    @Test
+    fun `malformed colour throws IllegalArgumentException`() {
+        val saved = repository.save(User(githubId = 202L, githubLogin = "octocat"))
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(saved.id!!, displayName = null, bgColorHex = "12345")
+        }
+    }
+
+    @Test
+    fun `uppercase colour is persisted as lowercase`() {
+        val saved = repository.save(User(githubId = 203L, githubLogin = "octocat"))
+
+        val updated = service.update(saved.id!!, displayName = null, bgColorHex = "#8E44AD")
+
+        updated.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
+    fun `blank string throws IllegalArgumentException`() {
+        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat"))
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(saved.id!!, displayName = null, bgColorHex = "")
+        }
+    }
+
+    @Test
+    fun `current returns the stored row and rejects a vanished user`() {
+        val saved = repository.save(User(githubId = 909L, githubLogin = "octocat"))
+
+        service.current(saved.id!!).githubLogin shouldBe "octocat"
+        shouldThrow<StaleSessionException> { service.current(UUID.randomUUID()) }
     }
 }

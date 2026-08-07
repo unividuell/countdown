@@ -65,27 +65,25 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 - `update.sh <prod|staging>` (default `prod`) picks the env file, fetches the compose file, pulls, `up -d`.
 - **Each target tracks the branch its images come from** — prod fetches `compose.yaml` +
   `.env.prod.example` from **`main`** (`:latest`), staging from **`develop`** (`:staging`);
-  `REF=<branch>` overrides for a one-off. Getting this wrong is not cosmetic: while both targets
-  fetched from `main`, staging ran develop images on main infrastructure, so an infra change could
-  never be exercised before it hit prod — and a compose line that existed only on develop
-  (`SUPER_ADMIN_GITHUB_LOGINS` in `core`'s `environment:`) silently reached **neither** stack.
+  `REF=<branch>` overrides for a one-off. Infra must follow the same branch as the code it deploys,
+  or staging runs develop images on main infrastructure and a compose-level change can never be
+  exercised before it reaches prod.
 - **The compose file is per target on disk** (`compose.prod.yaml` / `compose.staging.yaml`), because
   both stacks share one directory: with a single `compose.yaml`, a staging run would overwrite the
   file prod is deployed from. Containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
-  renaming the file recreates nothing on its own. **`update.sh` and `README.md` stay pinned to `main`**
-  — they are one shared copy, and a staging run must not leave prod driving an unreleased script.
-  Corollary: a change to `update.sh` itself only takes effect on the *next* invocation (the running
-  shell keeps its old inode across the `mv`), so switching layouts takes two runs per target.
+  the on-disk name is free to change and renaming recreates nothing on its own.
+- **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
+  and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
+  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
+  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
 - **pgAdmin is per-environment** (each stack's own `debug`-profile pgAdmin connects only to its own
   `postgres` via the service name; no shared instance/network). Distinct loopback ports
   (`PGADMIN_PORT`) let you tunnel both at once. README documents the per-env start + SSH tunnel.
 - Edge routes `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the
   test-user picker — see security-and-auth.md; no separate staging GitHub OAuth App).
-- **Rename migrations** (twice now: `compose.prod.yaml` + `.env` → shared `compose.yaml` + `.env.prod`
-  → per-target `compose.<target>.yaml`): the on-disk filename is free to change because
-  `COMPOSE_PROJECT_NAME` is what identifies the stack — keep it stable and the existing volumes are
-  reused, no data loss. Expect a brief prod restart on a cutover, and delete the orphaned file
-  afterwards so nobody runs `-f` against a stale copy.
+- **`COMPOSE_PROJECT_NAME` is the stack's identity**, not the compose file's name or location: keep
+  it stable and the existing volumes are reused across any rename or move (no data loss); change it
+  and you silently get a second, empty stack.
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
   `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
   before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
@@ -124,6 +122,25 @@ for staging, by `container_name`).
   `path /api/* /oauth2/* /login/* /logout /logout/*` — `/login/*` covers `/login/github` +
   `/login/oauth2/code/*`, while exact `/login` falls through to the SPA fallback. (Only shows up in
   prod/staging — dev hits the backend directly via the Vite proxy.)
+- **Static caching is the Caddyfile's job — `file_server` sets no `Cache-Control` at all.** It sends
+  `ETag`/`Last-Modified` but no freshness, which is exactly the case RFC 9111 §4.2.2 hands to the
+  browser's *heuristic* freshness: the cached `index.html` is reused **without revalidating**, and
+  since it names the old content-hashed assets, a tab open across a deploy keeps the entire old app
+  until a hard reload (issue #15; a full-page OAuth navigation does not help — navigations come from
+  the HTTP cache like anything else). Vite cannot fix this: it hashes `/assets/*` but cannot set HTTP
+  headers, and `<meta http-equiv="Cache-Control">` is ignored for HTTP caching. So:
+  **two mutually-exclusive `handle` blocks**, same idiom as `@backend` above —
+  `handle /assets/* { header Cache-Control "public, max-age=31536000, immutable"; file_server }`
+  then the catch-all with `header Cache-Control "no-cache"` + `try_files`. Why not one block with
+  `@assets`/`@html` matchers: (a) one header per block makes a double header structurally impossible,
+  (b) **no `try_files` in the assets block on purpose** — a missing hashed asset must `404`, since a
+  fallback would serve `index.html` under an asset URL with `immutable`, pinning an HTML document
+  there for a year. `no-cache` means "revalidate before use", not "don't store" → a cheap `304`.
+  `caddy adapt` confirms Caddy orders the `headers` handler **before** `rewrite`, so the deep-link
+  fallback (`/countdowns/42` → `/index.html`) still carries `no-cache`. Verify against a **real
+  response**, not just the config — `curl -sSI` a page *and* an asset (the local recipe: build
+  `caddy:2-alpine` + the repo Caddyfile + a fake `dist` into a throwaway image and curl it; no bind
+  mounts, see the Docker Desktop gotcha).
 - **TLS + `X-Forwarded-*` are a two-hop chain** (shared edge → countdown-web → core): the inner
   Caddy must trust the edge (`servers { trusted_proxies static private_ranges }`) so
   `X-Forwarded-Proto=https` survives, and `core` sets `server.forward-headers-strategy=framework`

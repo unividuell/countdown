@@ -37,4 +37,15 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
         found.githubLogin shouldBe "hubert"
         repository.findByGithubId(9999L).shouldBeNull()
     }
+
+    @Test
+    fun `stores no community-creation clearance by default and round-trips it`() {
+        val saved = repository.save(User(githubId = 5150L, githubLogin = "newcomer"))
+        saved.communityCreationAllowed shouldBe false
+
+        val cleared = repository.save(saved.copy(communityCreationAllowed = true))
+
+        repository.findByGithubId(5150L)!!.communityCreationAllowed shouldBe true
+        cleared.mayCreateCommunities shouldBe true
+    }
 }

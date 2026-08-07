@@ -8,6 +8,7 @@ import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberStatus
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.iam.AuthenticatedUser
+import org.unividuell.countdown.core.iam.UserQuery
 
 @RestController
 @RequestMapping("/api/communities")
@@ -17,11 +18,14 @@ class CommunityController(
     private val access: CommunityAccess,
     private val selection: SelectionService,
     private val memberRepo: CommunityMemberRepository,
+    private val users: UserQuery,
 ) {
     @PostMapping
-    fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> =
-        ResponseEntity.status(HttpStatus.CREATED)
+    fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> {
+        if (!users.mayCreateCommunities(me.id)) throw CommunityCreationNotAllowedException()
+        return ResponseEntity.status(HttpStatus.CREATED)
             .body(communityService.create(me.id, body.name).toResponse(viewerIsAdmin = true, pendingCount = 0))
+    }
 
     @GetMapping
     fun mine(@AuthenticationPrincipal me: AuthenticatedUser): List<CommunitySummary> =

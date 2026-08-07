@@ -13,12 +13,4 @@ class SlugsTest {
         Slugs.slugify("  multiple   spaces  ") shouldBe "multiple-spaces"
         Slugs.slugify("Team---A") shouldBe "team-a"
     }
-
-    @Test
-    fun `reserved slugs are detected`() {
-        Slugs.isReserved("api") shouldBe true
-        Slugs.isReserved("join") shouldBe true
-        Slugs.isReserved("super-admin") shouldBe true
-        Slugs.isReserved("team-a") shouldBe false
-    }
 }

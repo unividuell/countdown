@@ -116,6 +116,26 @@ database `app`.
   `docker compose down -v` then start again.
 - Find the live mapped port any time: `docker compose port postgres 5432`.
 
+## Rendering many rows: batch the lookups, never one query per row
+
+A handler or service that enriches a row list from another aggregate must fetch the
+other side **once** and index it, not call a `findById` inside the `.map { }` — that
+is an N+1 whose cost scales with the row count and is invisible in tests that stub
+one row:
+
+```kotlin
+val members = memberRepo.findByCommunityId(communityId)
+val usersById = userQuery.findAllById(members.map { it.userId }.distinct()).associateBy { it.id }
+return members.map { MemberResponse(username = usersById[it.userId]?.username ?: "?", /* ... */) }
+```
+
+Keep the `?: "?"` fallback: a row whose counterpart is gone must stay visible rather
+than vanish or 500. Cross-module read ports (e.g. [`UserQuery`](../../core/src/main/kotlin/org/unividuell/countdown/core/iam/UserQuery.kt))
+therefore expose a `findAllById(ids)` next to `findById(id)`; the batch variant guards
+the empty collection itself (see the `IN ()` trap below). Guard the fix with
+`verify(exactly = 1) { … findAllById(any()) }` — an assertion on the response body alone
+passes either way.
+
 ## Derived query names: watch the `is` prefix
 
 Spring Data strips a leading `Is` as an ignorable keyword, so a derived finder over a property
@@ -128,3 +148,14 @@ fun findSuperAdmins(): List<User>
 
 Second trap in the same file: `@Query("… IN (:logins)")` renders `IN ()` for an empty collection,
 which is a SQL syntax error. Guard at the call site rather than in the query.
+
+## Derived `findBy…In` queries carry no ordering
+
+A derived `findByXIn(values: Collection<...>)` has no `ORDER BY` — Postgres is free to return rows
+in any order, and that order can change between calls even with unchanged data. Anything
+user-visible that must render in a stable, meaningful order (e.g. a fixed display order, not
+alphabetical) needs to be sorted **in code**, against an authoritative in-code list, after the
+query returns — not assumed from the query result. `DevLoginController` iterates `seedUsers` (the
+in-code, declared order) and looks each one up in a map built from
+`findByGithubLoginIn(seeder.seedLogins)`, rather than iterating the query result directly, for
+exactly this reason.

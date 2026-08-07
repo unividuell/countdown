@@ -1,6 +1,5 @@
 package org.unividuell.countdown.core.iam.devauth
 
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -20,14 +19,32 @@ import org.unividuell.countdown.core.iam.internal.devauth.TestUserSeeder
 @SpringBootTest
 class TestUserSeederTest(@Autowired val users: UserRepository) {
     @Test
-    fun `seeds the futurama test users with synthetic negative github ids`() {
+    fun `seeds twelve futurama test users, each on its pinned negative github id`() {
+        val expected = mapOf(
+            "Fry" to -1L, "leela" to -2L, "Bender" to -3L, "prof" to -4L, "amy" to -5L,
+            "hermes" to -6L, "zoidberg" to -7L, "scruffy" to -8L, "zapp" to -9L,
+            "kif" to -10L, "nibbler" to -11L, "mom" to -12L,
+        )
+        expected.forEach { (login, githubId) ->
+            users.findByGithubLogin(login).shouldNotBeNull().githubId shouldBe githubId
+        }
+    }
+
+    @Test
+    fun `keeps seed rows that exercise all three username fallbacks`() {
+        // displayName wins over githubName
         users.findByGithubLogin("leela").shouldNotBeNull().let {
-            it.githubId shouldBe -2L
             it.githubName shouldBe "Leela"
             it.displayName shouldBe "Turanga Leela"
+            it.username shouldBe "Turanga Leela"
         }
-        users.findByGithubLogin("Fry").shouldNotBeNull().githubId shouldBe -1L
-        listOf("Fry", "leela", "Bender", "prof", "amy").forEach { users.findByGithubLogin(it).shouldNotBeNull() }
+        // no displayName, no githubName → the handle
+        users.findByGithubLogin("Fry").shouldNotBeNull().let {
+            it.githubName shouldBe null
+            it.username shouldBe "Fry"
+        }
+        // displayName only
+        users.findByGithubLogin("prof").shouldNotBeNull().username shouldBe "Prof Farnsworth"
     }
 }
 
@@ -64,5 +81,21 @@ class TestUserSeederConvergenceTest(
 
         users.findByGithubLogin("prof").shouldNotBeNull().isSuperAdmin shouldBe true
         users.findByGithubLogin("Fry").shouldNotBeNull().isSuperAdmin shouldBe false
+    }
+
+    @Test
+    fun `re-running the seeder converges a drifted githubLogin back to the seed login`() {
+        // Simulates a stale row left behind by a past roster rename: the picker joins on
+        // githubLogin, so a row stuck on the old login would become unreachable by any button.
+        val prof = users.findByGithubLogin("prof").shouldNotBeNull()
+        users.save(prof.copy(githubLogin = "farnsworth"))
+
+        seeder.run(DefaultApplicationArguments())
+
+        users.findByGithubLogin("farnsworth") shouldBe null
+        users.findByGithubLogin("prof").shouldNotBeNull().let {
+            it.githubId shouldBe -4L
+            it.displayName shouldBe "Prof Farnsworth"
+        }
     }
 }

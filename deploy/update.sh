@@ -30,10 +30,6 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-if [ -f compose.yaml ]; then
-  echo "note: compose.yaml is left over from the single-file layout and is no longer read — 'rm compose.yaml' once both stacks have been updated."
-fi
-
 docker network create edge 2>/dev/null || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d

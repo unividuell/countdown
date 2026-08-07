@@ -10,5 +10,10 @@ export default [
     files: ['src/pages/**/*.vue'],
     rules: { 'vue/multi-word-component-names': 'off' },
   },
+  {
+    // Avatar draws one thing — a member — and a second word would only restate that.
+    files: ['src/ui/Avatar.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
   { ignores: ['dist/', 'node_modules/', '*.d.ts'] },
 ]

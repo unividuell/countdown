@@ -14,11 +14,13 @@ new team members (and AI assistants) stay consistent.
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
 | Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract) | [security-and-auth.md](security-and-auth.md) |
+| Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation) | [logging.md](logging.md) |
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Vue Router 5 file-based · Tailwind v4 · composables · fetch/auth · Vitest) | [frontend.md](frontend.md) |
 | Deployment (ghcr images · arm64 CI · Caddy edge · prod compose · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
 | **Dependency updates** — Maven · npm · Docker, and the versions we deliberately hold back (TS 6.x, `@types/node` 24, Node LTS) | [dependency-updates.md](dependency-updates.md) |
 | Multi-tenancy (community module · `community_id` scoping · slug-derivation parity · URL-slug routing guard) | [multi-tenancy.md](multi-tenancy.md) |
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
+| **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 
 ## Stack baseline
 

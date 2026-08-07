@@ -49,6 +49,12 @@ describe('super-admin landing page', () => {
     expect(rows[1]!.text()).toContain('Wartet auf ersten Login')
     expect(rows[2]!.text()).toContain('Nicht mehr auf der Allowlist')
     expect(w.find('a[href="/super-admin/communities"]').exists()).toBe(true)
+
+    const nav = w.findAll('[data-test=nav-entry]')
+    expect(nav).toHaveLength(2)
+    expect(nav.map((a) => a.text())).toEqual(['Nutzer', 'Spielgemeinschaften'])
+    expect(w.find('a[href="/super-admin/users"]').exists()).toBe(true)
+    expect(w.find('a[href="/super-admin/communities"]').exists()).toBe(true)
   })
 
   it('shows an error message when the roster cannot be loaded', async () => {
@@ -56,6 +62,16 @@ describe('super-admin landing page', () => {
     const Page = (await import('@/pages/super-admin/index.vue')).default
     const w = mount(Page)
     await flushPromises()
+    expect(w.text()).toContain('konnten nicht geladen werden')
+  })
+
+  it('keeps the nav list usable when the roster fails to load', async () => {
+    vi.spyOn(api, 'listSuperAdmins').mockRejectedValue(new Error('boom'))
+    const Page = (await import('@/pages/super-admin/index.vue')).default
+    const w = mount(Page)
+    await flushPromises()
+
+    expect(w.findAll('[data-test=nav-entry]')).toHaveLength(2)
     expect(w.text()).toContain('konnten nicht geladen werden')
   })
 })

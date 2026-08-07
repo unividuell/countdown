@@ -52,7 +52,7 @@ describe('super-admin community overview', () => {
     expect(members[0]!.text()).toContain('Alice')
     expect(members[0]!.text()).toContain('02.03.2026') // formatted in the community's zone
     expect(members[1]!.text()).toContain('ausstehend')
-    expect(w.find('a[href="/team/settings"]').exists()).toBe(true)
+    expect(w.find('a[href="/c/team/settings"]').exists()).toBe(true)
   })
 
   it('shows a hint for a community without members', async () => {
@@ -89,5 +89,14 @@ describe('super-admin community overview', () => {
     const w = mount(Page)
     await flushPromises()
     expect(w.text()).toContain('konnten nicht geladen werden')
+  })
+
+  it('links back to the super-admin hub', async () => {
+    vi.spyOn(api, 'listAllCommunities').mockResolvedValue([])
+    const Page = (await import('@/pages/super-admin/communities.vue')).default
+    const w = mount(Page)
+    await flushPromises()
+
+    expect(w.find('a[href="/super-admin"]').text()).toContain('Super-Admin')
   })
 })

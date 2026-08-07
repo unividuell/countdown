@@ -1,11 +1,21 @@
+/** How this user is drawn — resolved by the server, identical to what the roster shows. */
+export interface AvatarView {
+  shortName: string
+  bgColorHex: string
+}
+
 export interface MeResponse {
   id: string
   username: string
   githubLogin: string
   githubName: string | null
   email: string | null
+  /** The colour the user picked; null means they picked none. Not what to paint with. */
   bgColorHex: string | null
+  avatar: AvatarView
   isSuperAdmin: boolean
+  /** Effective permission: the stored clearance, or super-admin. */
+  mayCreateCommunities: boolean
   createdAt: string | null
 }
 
@@ -34,6 +44,19 @@ export interface MemberResponse {
   username: string
   status: 'PENDING' | 'ACTIVE'
   isAdmin: boolean
+}
+
+export interface RosterPoints {
+  stable: number
+  /** Absent when the viewer may not see live points, or when the member has not played the round. */
+  live?: number
+}
+export interface RosterMemberResponse {
+  userId: string
+  shortName: string
+  fullName: string
+  bgColorHex: string
+  points: RosterPoints
 }
 export interface InviteResponse {
   url: string
@@ -87,4 +110,30 @@ export interface SuperAdminUser {
   flagged: boolean
   allowlisted: boolean
   createdAt: string | null
+}
+
+/**
+ * `communityCreationAllowed` is the raw column, not the effective permission — a super-admin may
+ * create communities regardless, which `isSuperAdmin` reports separately.
+ */
+export interface SuperAdminUserListEntry {
+  userId: string
+  username: string
+  githubLogin: string
+  isSuperAdmin: boolean
+  communityCreationAllowed: boolean
+  createdAt: string | null
+}
+export interface SuperAdminUserDetail {
+  userId: string
+  username: string
+  githubLogin: string
+  githubName: string | null
+  displayName: string | null
+  email: string | null
+  bgColorHex: string | null
+  isSuperAdmin: boolean
+  communityCreationAllowed: boolean
+  createdAt: string | null
+  updatedAt: string | null
 }

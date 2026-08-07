@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
 import java.time.Instant
 import java.util.UUID
@@ -16,8 +17,12 @@ data class MeResponse(
     val githubLogin: String,
     val githubName: String?,
     val email: String?,
+    /** The colour the user picked; null means they picked none. Not what to paint with. */
     val bgColorHex: String?,
+    /** What to paint with — the same avatar the roster draws for this user. */
+    val avatar: Avatar,
     val isSuperAdmin: Boolean,
+    val mayCreateCommunities: Boolean,
     val createdAt: Instant?,
 )
 
@@ -29,7 +34,9 @@ data class UpdateProfileRequest(
 
 private fun User.toMeResponse() = MeResponse(
     id = id!!, username = username, githubLogin = githubLogin, githubName = githubName,
-    email = email, bgColorHex = bgColorHex, isSuperAdmin = isSuperAdmin, createdAt = createdAt,
+    email = email, bgColorHex = bgColorHex, avatar = Avatar.of(this),
+    isSuperAdmin = isSuperAdmin, mayCreateCommunities = mayCreateCommunities,
+    createdAt = createdAt,
 )
 
 @RestController
@@ -38,7 +45,7 @@ class UserController(private val profileService: UserProfileService) {
 
     @GetMapping
     fun me(@AuthenticationPrincipal principal: CountdownOAuth2User): MeResponse =
-        principal.user.toMeResponse()
+        profileService.current(principal.user.id!!).toMeResponse()
 
     @PatchMapping
     fun update(

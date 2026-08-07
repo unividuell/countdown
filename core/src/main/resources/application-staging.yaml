@@ -13,3 +13,8 @@ server:
 app:
   test-auth:
     enabled: true
+  stub-points:
+    # The only environment that turns invented game points on. Staging runs the seeded test users
+    # anyway, so the numbers claim nothing about real players — and with all-zero points the ranking
+    # row cannot be judged at all, which is what staging is for.
+    enabled: true

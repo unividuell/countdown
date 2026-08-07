@@ -25,4 +25,18 @@ class UserQueryServiceTest(
         query.findById(saved.id!!)?.id shouldBe saved.id
         query.findById(UUID.randomUUID()).shouldBeNull()
     }
+
+    @Test
+    fun `answers the effective community-creation permission and defaults to false`() {
+        val plain = repository.save(User(githubId = 301L, githubLogin = "plain"))
+        val cleared = repository.save(
+            User(githubId = 302L, githubLogin = "cleared", communityCreationAllowed = true)
+        )
+        val boss = repository.save(User(githubId = 303L, githubLogin = "boss", isSuperAdmin = true))
+
+        query.mayCreateCommunities(plain.id!!) shouldBe false
+        query.mayCreateCommunities(cleared.id!!) shouldBe true
+        query.mayCreateCommunities(boss.id!!) shouldBe true
+        query.mayCreateCommunities(UUID.randomUUID()) shouldBe false
+    }
 }

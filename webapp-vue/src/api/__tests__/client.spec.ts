@@ -12,6 +12,23 @@ function mockFetch(status: number, body: unknown, headers: Record<string, string
   return spy
 }
 
+/**
+ * A real hung request never settles on its own — it only ever rejects once its `signal` fires,
+ * exactly like a real `fetch` responding to abort. This mocks that shape rather than sleeping on
+ * real timers.
+ */
+function mockHangingFetch() {
+  const spy = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'))
+      })
+    })
+  })
+  vi.stubGlobal('fetch', spy)
+  return spy
+}
+
 describe('apiFetch', () => {
   beforeEach(() => {
     document.cookie = 'XSRF-TOKEN=tok123'
@@ -75,5 +92,54 @@ describe('apiFetch', () => {
   it('throws on a non-JSON 200 response', async () => {
     mockFetch(200, undefined, { 'content-type': 'text/html' })
     await expect(apiFetch('/api/me')).rejects.toMatchObject({ status: 200 })
+  })
+
+  // `AbortSignal.timeout`'s internal timer is not one `vi.useFakeTimers` can drive (it isn't
+  // scheduled through the global `setTimeout` these tests can fake) and sleeping on the real
+  // 10s would make the suite slow and flaky. Instead, stub `AbortSignal.timeout` for the
+  // duration of the test to hand back a signal from a controller under direct control, and
+  // fire it ourselves — driving the signal instead of the clock.
+  function mockTimeoutSignal() {
+    const controller = new AbortController()
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal)
+    return { controller, spy }
+  }
+
+  it('a hanging request times out as an ApiError instead of hanging forever', async () => {
+    const { controller, spy } = mockTimeoutSignal()
+    mockHangingFetch()
+    const pending = apiFetch('/api/slow')
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ status: 0, name: 'ApiError' })
+    spy.mockRestore()
+  })
+
+  it('composes with a caller-supplied AbortSignal: the timeout still fires even though the caller signal never aborts', async () => {
+    const { controller: timeoutController, spy } = mockTimeoutSignal()
+    mockHangingFetch()
+    const callerController = new AbortController()
+    const pending = apiFetch('/api/slow', { signal: callerController.signal })
+    timeoutController.abort()
+    await expect(pending).rejects.toMatchObject({ status: 0, name: 'ApiError' })
+    expect(callerController.signal.aborted).toBe(false)
+    spy.mockRestore()
+  })
+
+  it('a caller-supplied AbortSignal still aborts, distinguishable from a timeout', async () => {
+    mockHangingFetch()
+    const controller = new AbortController()
+    const pending = apiFetch('/api/slow', { signal: controller.signal })
+    controller.abort()
+    await expect(pending).rejects.not.toBeInstanceOf(ApiError)
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('an existing successful request is unaffected, and still composes an abort signal', async () => {
+    const spy = mockFetch(200, { id: '1' })
+    const out = await apiFetch<{ id: string }>('/api/me')
+    expect(out).toEqual({ id: '1' })
+    const init = spy.mock.calls[0]![1]
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+    expect(init.signal.aborted).toBe(false)
   })
 })
