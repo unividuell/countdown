@@ -31,6 +31,21 @@ desktop layout that was written first).
   landing in the reflow that first builds the scroll frame. Same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader). See `MemberRow`.
 
+### Animation on a phone's main thread
+
+- **Create a per-element animation over many elements across as many frames as it plays out
+  over, not all at once.** `Element.animate()` is not free, and one call per element in a single
+  frame is a stall the eye sees — on any animation running beside it, not just its own. Give each
+  group its animation shortly before its turn and pay the deferral out of that call's `delay`, so
+  the visible timing is untouched. What the deferral *does* cost is the hold: `fill: 'backwards'`
+  only covers an element from the moment its animation exists, so the pre-state the render has
+  already moved past has to be written out by hand until then. See `FlipDotBoard.flip`.
+- **On SVG children, `transform` is not a GPU shortcut.** Only an element that can get its own
+  compositing layer animates off the main thread, and an SVG `<circle>` or `<g>` cannot — a
+  transform on many of them costs a full style and paint pass every frame, while animating a paint
+  property like `fill` alone costs almost nothing. `will-change` does not change this; a canvas
+  renderer is the only route to the GPU, so keep the concurrent element count down instead.
+
 ### Sizing that doesn't do what it looks like
 
 - **A percentage width only means what you think inside a parent that has a width.** In a flex

@@ -2,19 +2,56 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
-import { BOOT_DARK_MS, BOOT_HOLD_MS, BOOT_RESOLVE_AT_MS, DOT_OFF, DOT_ON } from '@/ui/flipdot/board'
+import {
+  BOOT_DARK_MS,
+  BOOT_HOLD_MS,
+  BOOT_RESOLVE_AT_MS,
+  CREATE_LEAD_MS,
+  DOT_OFF,
+  DOT_ON,
+  PITCH,
+  RADIUS,
+  STAGGER_MS,
+} from '@/ui/flipdot/board'
 import { bitmap } from '@/ui/flipdot/font'
+
+// When each animation was created, which is half of what the schedule assertions need: the board
+// no longer creates them all at once, so a call's `delay` alone no longer says when it runs.
+const createdAt: number[] = []
 
 // happy-dom 20 ships no Web Animations API (measured: Element.prototype.animate is undefined),
 // so a test that wants to observe the flip has to install it.
 function stubAnimate(): ReturnType<typeof vi.fn> {
-  const animate = vi.fn()
+  const animate = vi.fn(() => {
+    createdAt.push(performance.now())
+  })
   Object.defineProperty(Element.prototype, 'animate', {
     value: animate,
     configurable: true,
     writable: true,
   })
   return animate
+}
+
+/** Column of the circle an `animate` call was made on, read back off its rendered geometry. */
+function columnOf(el: Element): number {
+  return (Number(el.getAttribute('cx')) - RADIUS) / PITCH
+}
+
+/**
+ * When each animated dot actually starts moving, relative to `t0` — creation time plus the delay
+ * the call carries. That sum is the thing the eye sees, and the thing that must not change when
+ * creation moves to a later frame.
+ */
+function schedule(
+  animate: ReturnType<typeof vi.fn>,
+  t0: number,
+): { col: number; start: number; createdAfter: number }[] {
+  return animate.mock.calls.map((call, n) => ({
+    col: columnOf(animate.mock.contexts[n] as Element),
+    start: Math.round(createdAt[n]! - t0 + (call[1] as { delay: number }).delay),
+    createdAfter: Math.round(createdAt[n]! - t0),
+  }))
 }
 
 // Ascending, which is the order the component animates in — so the nth animate() call belongs to
@@ -58,6 +95,7 @@ function delays(animate: ReturnType<typeof vi.fn>): number[] {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  createdAt.length = 0
 })
 
 afterEach(() => {
@@ -123,9 +161,10 @@ describe('FlipDotBoard', () => {
     animate.mockClear()
     await w.setProps({ text: '01' })
     await nextTick()
-    const cols = bitmap('01').cols
+    // Read the column back off the circle the call was made on: the board creates its animations
+    // column by column, so the nth call is no longer the nth changed dot in index order.
     const byColumn = animate.mock.calls.map((call, n) => ({
-      col: indicesChanged('00', '01')[n]! % cols,
+      col: columnOf(animate.mock.contexts[n] as Element),
       delay: (call[1] as { delay: number }).delay,
     }))
     // Without this, an empty call list would satisfy every assertion below: Math.max of nothing is
@@ -167,10 +206,14 @@ describe('FlipDotBoard', () => {
     expect(w.emitted('phase')?.at(-1)).toEqual(['white'])
 
     await advance(BOOT_HOLD_MS)
+    expect(w.emitted('phase')?.at(-1)).toEqual(['live'])
+
+    // The relight resolves as a wave like any other, so the board is only fully out of the white
+    // once the leftmost column has had its turn.
+    await advance((17 - 1) * STAGGER_MS + CREATE_LEAD_MS)
     const litAtRest = bitmap('100').on.filter(Boolean).length
     expect(fills(w).filter((f) => f === DOT_ON).length).toBe(litAtRest)
     expect(animate).toHaveBeenCalledTimes(17 * 7 - litAtRest)
-    expect(w.emitted('phase')?.at(-1)).toEqual(['live'])
   })
 
   it('swaps a changed geometry instantly under prefers-reduced-motion', async () => {
@@ -247,7 +290,7 @@ describe('FlipDotBoard', () => {
       const cols = bitmap('1').cols
       const dark = indicesDark('1')
       const byColumn = animate.mock.calls.map((call, n) => ({
-        col: dark[n]! % cols,
+        col: columnOf(animate.mock.contexts[n] as Element),
         delay: (call[1] as { delay: number }).delay,
       }))
       expect(byColumn).toHaveLength(dark.length)
@@ -307,6 +350,148 @@ describe('FlipDotBoard', () => {
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
         bitmap('57').on.filter(Boolean).length,
       )
+    })
+
+    // A board the width of the header changes ~70% of its dots at the reveal. Creating one
+    // animation per changed dot in a single frame is what stalled the main thread there — measured
+    // at 4x CPU throttling: a 75 ms frame, and the member swarm's flight visibly stuttering with it.
+    describe('spreading the reveal over frames', () => {
+      const WIDE = '02:15:07:33'
+      const wideDark = indicesDark(WIDE).length
+
+      // The last column of this text is lit, so the wave leads from the board's right edge.
+      const lastCol = bitmap(WIDE).cols - 1
+      const startOf = (col: number) => (lastCol - col) * STAGGER_MS
+
+      it('creates only the columns whose turn is near, not the whole board', async () => {
+        const animate = stubAnimate()
+        mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+
+        const dueNow = indicesDark(WIDE).filter(
+          (i) => startOf(i % bitmap(WIDE).cols) <= CREATE_LEAD_MS,
+        ).length
+        expect(animate).toHaveBeenCalledTimes(dueNow)
+        expect(dueNow).toBeLessThan(wideDark / 4)
+      })
+
+      it('has created every one of them by the end of the wave', async () => {
+        const animate = stubAnimate()
+        mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+        expect(animate).toHaveBeenCalledTimes(wideDark)
+      })
+
+      // The point of the whole change: nothing about the reveal may look different. A column still
+      // starts exactly `(lead - col) * STAGGER_MS` after the resolve — the later creation is paid
+      // for out of the delay, not out of the viewer's timing.
+      it('keeps every column starting when it always did', async () => {
+        const animate = stubAnimate()
+        mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        const t0 = performance.now()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+
+        const rows = schedule(animate, t0)
+        expect(rows).toHaveLength(wideDark)
+        const off = rows.filter((r) => r.start !== startOf(r.col))
+        expect(off).toEqual([])
+      })
+
+      it('creates each column ahead of its turn, never after it', async () => {
+        const animate = stubAnimate()
+        mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        const t0 = performance.now()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+
+        const late = schedule(animate, t0).filter((r) => r.createdAfter > r.start)
+        expect(late).toEqual([])
+      })
+
+      // With creation deferred, the dot's own `fill` attribute is already the resolved colour while
+      // its animation — which used to hold the pre-state via `fill: 'backwards'` — does not exist
+      // yet. Without a hold of its own, the left of the board would show its digits before the wave
+      // ever reaches it, and the flip would read as a correction rather than a reveal.
+      it('holds a dot at its pre-flip colour until its own turn', async () => {
+        const animate = stubAnimate()
+        const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+
+        // Everything still white except the dots whose animation has just been created.
+        expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
+          bitmap(WIDE).on.length - animate.mock.calls.length,
+        )
+
+        await advance(startOf(0) + CREATE_LEAD_MS)
+        expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
+          bitmap(WIDE).on.filter(Boolean).length,
+        )
+      })
+
+      it('stops creating after being unmounted mid-wave', async () => {
+        const animate = stubAnimate()
+        const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        const created = animate.mock.calls.length
+        w.unmount()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+        expect(animate).toHaveBeenCalledTimes(created)
+      })
+
+      // The header's value changes every second, so a tick lands inside the ~500 ms reveal all by
+      // itself — and cycling the unit by tapping does it on purpose. The reveal must not be
+      // abandoned there: dropping the columns that had not had their turn made the left half of the
+      // board *appear* instead of flip, which reads as the switch-on breaking off half way.
+      it('keeps the wave rolling when a new value arrives mid-reveal', async () => {
+        const animate = stubAnimate()
+        const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        await advance(4 * STAGGER_MS)
+        const t0 = performance.now()
+
+        await w.setProps({ text: '02:15:07:32' })
+        await nextTick()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+
+        // Every column still holding white when the new value arrived must have flipped since.
+        const flipped = new Set(schedule(animate, t0).map((r) => r.col))
+        const owed = new Set(
+          indicesDark('02:15:07:32')
+            .map((i) => i % bitmap(WIDE).cols)
+            .filter((col) => startOf(col) > 4 * STAGGER_MS),
+        )
+        expect([...owed].filter((col) => !flipped.has(col))).toEqual([])
+      })
+
+      it('lands on the new value, not the one the reveal started with', async () => {
+        stubAnimate()
+        const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        await advance(4 * STAGGER_MS)
+
+        await w.setProps({ text: '02:15:07:32' })
+        await nextTick()
+        await advance(startOf(0) + CREATE_LEAD_MS)
+        expect(fills(w).filter((f) => f === DOT_ON).length).toBe(
+          bitmap('02:15:07:32').on.filter(Boolean).length,
+        )
+      })
+
+      // Vue's patch does not know about the hold — it diffs against its own previous vnode — so a
+      // dot whose colour changed with the new value gets its resolved colour written straight over
+      // the white it was being held at, and lights up ahead of the wave.
+      it('holds the columns that have not had their turn through the change', async () => {
+        stubAnimate()
+        const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+        await bootDone()
+        const held = fills(w).filter((f) => f === DOT_ON).length
+
+        await w.setProps({ text: '02:15:07:32' })
+        await nextTick()
+        expect(fills(w).filter((f) => f === DOT_ON).length).toBe(held)
+      })
     })
 
     it('fires no timer after being unmounted inside the hold', async () => {

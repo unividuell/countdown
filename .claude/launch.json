@@ -13,7 +13,7 @@
     {
       "name": "frontend",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["-C", "webapp-vue", "dev"],
+      "runtimeArgs": ["-C", "webapp-vue", "dev", "--host"],
       "port": 5173
     }
   ]

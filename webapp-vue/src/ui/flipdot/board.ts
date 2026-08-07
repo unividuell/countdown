@@ -15,6 +15,19 @@ export const BOOT_HOLD_MS = 300
 export const BOOT_RESOLVE_AT_MS = BOOT_DARK_MS + BOOT_HOLD_MS
 
 /**
+ * How far ahead of its turn a column's animations are created. Creating all of a board's at the
+ * moment of the reveal is what stalled the main thread: the header board changes ~70% of its dots
+ * there, and one `Element.animate` per changed dot in a single frame measured as a 75 ms frame at
+ * 4x CPU throttling — long enough to be seen, and it lands on the frame the member swarm is flying
+ * in on. Spreading creation over the frames the wave runs in brought the worst frame to 25 ms.
+ *
+ * Three frames of slack at 60 Hz: enough that a late frame still cannot make a column start after
+ * its turn, and enough that an ordinary per-second flip — whose whole wave is shorter than this —
+ * is still created in one go, exactly as before.
+ */
+export const CREATE_LEAD_MS = 48
+
+/**
  * Centre of each run of digits, as a percentage of the board's width — where the label for that
  * group belongs. Derived from the metrics rather than written down, so it follows a change to
  * SEPARATOR_COLS and a group that grows a digit.
