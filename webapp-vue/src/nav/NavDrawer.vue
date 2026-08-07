@@ -257,7 +257,13 @@ onKeyStroke('Tab', (e) => {
         </template>
 
         <template v-if="admin">
-          <div class="mt-1.5 border-t border-neutral-200" />
+          <!-- Separates the admin block from the community block above — only when there is
+               one, otherwise it would sit flush against the header seam as a stray rule. -->
+          <div
+            v-if="showCommunityBlock"
+            data-test="admin-divider"
+            class="mt-1.5 border-t border-neutral-200"
+          />
           <div
             data-test="admin-heading"
             class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"

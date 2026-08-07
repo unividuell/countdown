@@ -379,6 +379,23 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=admin-heading]').exists()).toBe(true)
   })
 
+  it('separates the admin block from the community block above it, when there is one', async () => {
+    vi.mocked(api.listCommunities).mockResolvedValue(THREE)
+    asAdminOf('berg', 'Berghütte', 1)
+    const w = await opened()
+    expect(w.findAll('[data-test=admin-divider]')).toHaveLength(1)
+  })
+
+  it('drops the divider above the admin block when it is the first thing in the drawer', async () => {
+    // Admin of their only community, and not allowed to create another: the community block
+    // (switcher + create-entry) is absent, so the divider would otherwise sit flush against
+    // the header seam as a stray rule rather than separating two blocks.
+    vi.mocked(api.listCommunities).mockResolvedValue([community('1', 'Team Süd', 'team')])
+    asAdminOf('team', 'Team Süd', 0)
+    const w = await opened()
+    expect(w.findAll('[data-test=admin-divider]')).toHaveLength(0)
+  })
+
   it('shows no admin block to a plain member', async () => {
     activeCommunity.value = {
       slug: 'team',
