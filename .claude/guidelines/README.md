@@ -8,7 +8,7 @@ new team members (and AI assistants) stay consistent.
 
 | Topic | File |
 |---|---|
-| **Feeding knowledge back** — capture important learnings into these guidelines as part of every task | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
+| **Feeding knowledge back** — every task ends by capturing the transferable rules here; the admission bar keeps post-mortems in the commit, not in the file | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
 | **Git workflow** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging | [git-workflow.md](git-workflow.md) |
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |

@@ -8,7 +8,7 @@ Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
 
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
-- **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing important learnings into these guidelines.
+- **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing the transferable rules here; post-mortems and measurements stay in the commit.
 - **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
