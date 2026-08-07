@@ -277,18 +277,51 @@ Schlägt die Liste fehl, bleibt der Rest des Drawers bedienbar (`catch` + `conso
 | `src/nav/drawer.ts` | Reine Funktionen: `communityEntries(list, activeSlug)` und `spinDegrees(travelPx, wheelPx)`. Ohne Mounten testbar. |
 | `src/ui/BrandMark.vue` | Die 36×36-Bitmap als SVG-Punkte. |
 
-**Geändert**
-
-- `src/App.vue` — `CommunityMenu` raus, `MemberMenu` → `NavDrawer`, Header bekommt `relative z-30`
-  und `shadow-lg`.
-- `.claude/guidelines/frontend.md` — Flex-Prozenthöhen-Fallstrick, `inert`-Muster für den
-  Drawer, `container-type: size` + cq-Einheiten.
-
 **Gelöscht**
 
 - `src/ui/HeaderMenu.vue` + `src/ui/__tests__/HeaderMenu.spec.ts`
 - `src/auth/MemberMenu.vue` + `src/auth/__tests__/MemberMenu.spec.ts`
 - `src/communities/CommunityMenu.vue` + `src/communities/__tests__/CommunityMenu.spec.ts`
+
+**Geändert**
+
+- `src/App.vue` — `CommunityMenu` raus, `MemberMenu` → `NavDrawer`, Header bekommt `relative z-30`
+  und `shadow-lg`.
+
+### Aufräumen: der Rattenschwanz
+
+Über die drei Komponenten hinaus gibt es **keine** geteilte Datei, die nur dem alten Menü diente —
+`HeaderMenu.vue` *war* das Geteilte. Es gibt aber Verweise, die sonst verrotten. Zwei davon bleiben
+grün und beweisen nichts mehr; die sind der eigentliche Grund, das hier vollständig aufzuzählen.
+
+| Stelle | Was passiert | Warum es nicht liegen bleiben darf |
+|---|---|---|
+| `src/pages/c/__tests__/slug-shell.spec.ts:89` | `expect(find('[data-test=community-menu]')).toBe(false)` → auf den Marker des Drawers umhängen | **Verrottet still.** Nach dem Löschen kann dieses Attribut nirgends mehr existieren, die Zeile ist also unfälschbar wahr. Der Test soll weiter beweisen, dass die Shell keine Navigation in den Inhaltsbereich malt — dafür muss er auf etwas zeigen, das es gibt. |
+| `src/__tests__/icons.spec.ts` | `~icons/lucide/users` → `~icons/lucide/check` (oder `plus`) | **Verrottet still.** `lucide/users` hat nach dem Löschen keinen Verwender mehr in der App; der Test würde das Bündeln eines Icons prüfen, das wir gar nicht mehr ausliefern. `check` und `plus` benutzt der Drawer wirklich. |
+| `src/pages/super-admin.vue:10` | Kommentar „der Weg zurück ist der `MemberMenu`-Eintrag“ → Fußblock des Drawers | Zeigt sonst auf eine gelöschte Datei. |
+| `src/App.vue:53,54` | Kommentare über die 40px-Höhe nennen `MemberMenu` | Die Geometrie stimmt weiter (der Avatar-Schalter ist derselbe), nur der Name nicht. |
+
+Und in den Guidelines, wo mehrere Lektionen ihr Beispiel in genau diesen Dateien hatten. Die
+Lektionen bleiben richtig — nur ihre Zeiger nicht:
+
+| Datei | Zeile(n) | Neuer Bezug |
+|---|---|---|
+| `multi-tenancy.md` | 120 | „Logout lebt an genau einer Stelle“ → `nav/NavDrawer.vue` |
+| `frontend.md` | 60 | 40px-Zeilenhöhe: `MemberMenu`-Trigger → Avatar-Schalter in `NavDrawer` |
+| `frontend.md` | 109–110 | `.catch` an jeder Navigation → `NavDrawer.vue` |
+| `frontend.md` | 173 | `enableAutoUnmount(afterEach)`-Beispiel → `NavDrawer.spec.ts` |
+| `frontend.md` | 206–209 | `onClickOutside` feuert nicht unter happy-dom → `NavDrawer.vue` |
+| `frontend.md` | 219–224 | Ref-Doubles für `useAuth` → `NavDrawer.spec.ts` |
+| `frontend.md` | 350–351 | „Navigation lebt im Header (`CommunityMenu`, `MemberMenu` auf `HeaderMenu`)“ → ein Drawer |
+| `frontend.md` | 367 | Super-Admin-Einstieg ist ein `MemberMenu`-Eintrag → Fußblock des Drawers |
+
+Dazu kommen in `frontend.md` die neuen Lektionen dieser Arbeit: der Flex-Prozenthöhen-Fallstrick,
+`container-type: size` + cq-Einheiten, und das `inert`-Muster für eine dauerhaft gemountete, aber
+geschlossene Fläche.
+
+**Nicht angefasst:** `docs/superpowers/specs/2026-08-06-header-member-avatar-design.md` nennt
+`MemberMenu.vue:28`. Specs sind Protokolle eines Entscheidungsstands, keine gepflegte Dokumentation
+— rückwirkend korrigiert sagen sie nicht mehr, was damals galt.
 
 ## Tests
 
