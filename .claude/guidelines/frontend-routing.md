@@ -20,6 +20,12 @@ role-gated areas. Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 - **`router.push()` / `.replace()` return a Promise**; a bare, unawaited call at the end of an async
   handler leaves its rejection on a chain nothing observes. `NavDrawer.vue` attaches
   `.catch((e) => console.error('navigation failed', e))` to every post-action navigation.
+- **Put a control that must exist on every protected route above the router, not on the routes.**
+  Logout lives in exactly one place, `src/nav/NavDrawer.vue`, mounted by `App.vue` under
+  `v-if="user"` — and `user` is non-null exactly when `status === 'authenticated'`, the same
+  condition `src/auth/guard.ts` checks to admit a protected route. Since `App.vue` sits above every
+  route, logout is reachable by construction rather than by convention: no second copy to keep in
+  sync, and no future page can be added without it.
 
 ### Navigation data: resolve in `beforeResolve`, publish in `afterEach`
 

@@ -20,6 +20,10 @@ of the frontend conventions live beside it:
 - **Vite 8** (Rolldown-based). Note: build options are `build.rolldownOptions`, not `rollupOptions`.
 - **Vue 3**, Composition API, `<script setup lang="ts">`. **pnpm**.
 - **TypeScript, very strict**: `strict` + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`; `moduleResolution: "bundler"`. (TypeScript 6 deprecated `baseUrl` used only for path mapping — we keep the `@/*`→`src/*` alias with `"ignoreDeprecations": "6.0"` until a paths-only migration.) **Stay on the `~6.0.x` line — TypeScript 7 breaks `vue-tsc`**; see [dependency-updates.md](dependency-updates.md).
+  - **`exactOptionalPropertyTypes` + optional body fields:** never pass `prop: x || undefined`.
+    Build a partial request body with explicit conditional assignment instead —
+    `const body: Partial<{ name: string; startsAt: string }> = { name: name.value.trim() }`,
+    then `if (startsAt.value) body.startsAt = startsAt.value`.
 - **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
 - **Date/time: Luxon** (`luxon` + `@types/luxon`) — the project's date-time lib (also used by the
   origin huettehuette app). Don't reach for native `Date` math. For a wall-clock UI field use
