@@ -10,23 +10,23 @@ import org.unividuell.countdown.core.guesshue.internal.GuessHueDatasetProperties
 import java.io.File
 
 /**
- * Prüft das **echte** Datenset gegen alle fünf Regeln — und läuft nur, wenn jemand den Klartext
- * hat und darauf zeigt:
+ * Checks the **real** dataset against all five rules — and only runs when someone has the
+ * plaintext and points at it:
  *
  * ```
  * ./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=/path/to/guess-hue-dataset.yaml
  * ```
  *
- * Ohne die Property überspringt der Test sich selbst, damit die CI grün bleibt — sie hat den
- * Klartext nicht und soll ihn nicht haben.
+ * Without the property, the test skips itself so CI stays green — it doesn't have the plaintext
+ * and isn't supposed to.
  *
- * **Wichtig:** nur die Abwesenheit der Property ist ein Opt-out. Ist die Property gesetzt und die
- * Datei existiert nicht (oder ist ein Verzeichnis), muss der Test scheitern — das ist ein Fehler
- * des Aufrufers, nicht ein „Test nicht vorhanden".
+ * **Important:** only the *absence* of the property is an opt-out. If the property is set and the
+ * file doesn't exist (or is a directory), the test must fail — that's a mistake by the caller, not
+ * a "test not present".
  *
- * Bewusst ein Test und kein eigenes Prüfskript: die Regeln leben in
- * `GuessHueDatasetValidator` und sollen es an genau einer Stelle tun. Eine zweite Umsetzung in
- * einer anderen Sprache driftet, und zwar unbemerkt, weil beide Seiten grün bleiben.
+ * Deliberately a test and not a separate check script: the rules live in `GuessHueDatasetValidator`
+ * and should live there in exactly one place. A second implementation in another language would
+ * drift, and silently — both sides would keep passing.
  */
 class GuessHueProductionDatasetTest {
 

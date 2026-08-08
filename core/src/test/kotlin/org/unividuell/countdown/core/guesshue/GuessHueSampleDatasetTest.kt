@@ -8,8 +8,8 @@ import org.unividuell.countdown.core.guesshue.internal.GuessHueDatasetValidator
 import org.unividuell.countdown.core.guesshue.internal.GuessHueDatasetYamlReader
 
 /**
- * Das mitgelieferte Beispiel muss dieselben Regeln erfüllen wie das echte Datenset — sonst
- * beweisen die Tests, die darauf laufen, nichts über den Ernstfall.
+ * The bundled sample must satisfy the same rules as the real dataset — otherwise the tests that
+ * run against it prove nothing about the real thing.
  */
 class GuessHueSampleDatasetTest {
 

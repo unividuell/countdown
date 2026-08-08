@@ -3,20 +3,19 @@ package org.unividuell.countdown.core.guesshue
 import org.unividuell.countdown.core.rng.SeededRandom
 
 /**
- * Die geladene, geprüfte Liste. Die öffentliche Fläche des Moduls: der spätere Spielrahmen
- * bekommt diesen Bean und zieht daraus die Runde.
+ * The loaded, validated list. The module's public surface: the game framework built on top of it
+ * gets this bean and draws its round from it.
  *
- * Unveränderlich und ohne Zustand — der Zufall lebt im übergebenen [SeededRandom], nie hier.
+ * Immutable and stateless — the randomness lives in the [SeededRandom] passed in, never here.
  */
 class GuessHueDataset(val entries: List<GuessHueEntry>) {
 
     /**
-     * **Die Reihenfolge der Ziehungen ist Vertrag.** Eintrag, Jitter, Sättigung, Helligkeit,
-     * Startwinkel — wer sie umstellt, ändert rückwirkend jede Runde, die je aus einem Seed
-     * abgeleitet wurde.
+     * **The draw order is a contract.** Entry, jitter, saturation, lightness, init angle — reorder
+     * them and every round ever derived from a stored seed changes retroactively.
      *
-     * Nur die vorhandene [SeededRandom]-API wird benutzt. Eine neue Methode dort zöge neue Golden
-     * Vectors nach sich, und das für Arithmetik, die hierher gehört.
+     * Only the existing [SeededRandom] API is used. A new method there would drag new golden
+     * vectors along with it, for arithmetic that belongs here instead.
      */
     fun draw(random: SeededRandom): GuessHueTarget {
         val entry = random.pick(entries)
@@ -38,15 +37,15 @@ class GuessHueDataset(val entries: List<GuessHueEntry>) {
 
     companion object {
         /**
-         * Muss kleiner bleiben als die Wertungstoleranz von ±10°. Der Jitter macht eine aus
-         * beobachteten Runden gebaute Nachschlagetabelle unzuverlässig; wäre er größer als die
-         * Toleranz, könnte ein perfekter Leser des Textes unverschuldet danebenliegen.
+         * Must stay below the ±10° scoring tolerance. The jitter is what makes a lookup table
+         * built from observed rounds unreliable; if it exceeded the tolerance, a player who read
+         * the description perfectly could still be marked wrong through no fault of their own.
          */
         const val JITTER_DEGREES = 5.0
 
         /**
-         * Außerhalb dieses Korridors wird der Farbton auf dem Rad schwer unterscheidbar — ein sehr
-         * dunkles oder ausgewaschenes Ziel macht das Spiel nicht schwerer, sondern zufälliger.
+         * Outside this corridor the hue becomes hard to distinguish on the wheel — a very dark or
+         * washed-out target doesn't make the game harder, just more random.
          */
         const val SATURATION_MIN = 0.50
         const val SATURATION_MAX = 0.78

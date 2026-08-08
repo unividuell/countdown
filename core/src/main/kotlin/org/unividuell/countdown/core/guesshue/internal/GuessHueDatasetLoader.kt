@@ -3,7 +3,7 @@ package org.unividuell.countdown.core.guesshue.internal
 import org.unividuell.countdown.core.guesshue.GuessHueEntry
 import java.io.File
 
-/** Was geladen wurde, und woher — [isSample] entscheidet über den Fail-Fast im Betrieb. */
+/** What was loaded, and from where — [isSample] decides the fail-fast in deployed environments. */
 data class LoadedGuessHueDataset(
     val entries: List<GuessHueEntry>,
     val origin: String,
@@ -11,10 +11,9 @@ data class LoadedGuessHueDataset(
 )
 
 /**
- * Liest entweder die gemountete Datei oder das Beispiel aus dem Classpath. Nichts hier weiß von
- * SOPS: das Deployment entschlüsselt, die Anwendung liest schlichtes YAML von einem Pfad. Damit
- * bleibt Schlüsselverwaltung vollständig außerhalb des Anwendungscodes und die CI braucht nie
- * einen Schlüssel.
+ * Reads either the mounted file or the sample from the classpath. Nothing here knows about SOPS:
+ * the deployment decrypts, the application just reads plain YAML from a path. That keeps key
+ * management entirely outside the application code, and CI never needs a key.
  */
 class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
 
@@ -40,7 +39,7 @@ class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
         val stream = javaClass.getResourceAsStream(SAMPLE_RESOURCE)
             ?: throw GuessHueDatasetException("the bundled $SAMPLE_RESOURCE is missing from the classpath")
         val entries = stream.use { GuessHueDatasetYamlReader.read(it, SAMPLE_RESOURCE) }
-        // Bewusst ohne validateCompleteness: das Beispiel hat sechs Einträge und soll sie haben.
+        // Deliberately without validateCompleteness: the sample has six entries and should have them.
         GuessHueDatasetValidator.validateStructure(entries, SAMPLE_RESOURCE)
         return LoadedGuessHueDataset(entries, origin = SAMPLE_RESOURCE, isSample = true)
     }

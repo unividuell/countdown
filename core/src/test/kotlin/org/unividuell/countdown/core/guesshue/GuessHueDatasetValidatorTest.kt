@@ -80,10 +80,10 @@ class GuessHueDatasetValidatorTest {
 
     @Test
     fun `completeness accepts a balanced set of sixty`() {
-        // Fuenf pro 30-Grad-Sektor, 20 pro Stufe. Die Verteilung je Sektor ist bewusst UNGLEICH —
-        // eine gleiche waere gar nicht moeglich (5 ist nicht durch 3 teilbar) und traefe auch die
-        // Sache nicht: namenlose Zonen koennen nie easy tragen. Drei Muster rotieren ueber die
-        // zwoelf Sektoren, vier Sektoren je Muster, und ergeben genau 20/20/20.
+        // Five per 30-degree sector, 20 per difficulty. The distribution per sector is
+        // deliberately UNEVEN — an even one wouldn't even be possible (5 doesn't divide by 3) and
+        // would miss the point anyway: unnamed zones can never carry easy. Three patterns rotate
+        // across the twelve sectors, four sectors per pattern, adding up to exactly 20/20/20.
         val entries = (0 until 12).flatMap { sector ->
             val base = sector * 30
             val difficulties = when (sector % 3) {

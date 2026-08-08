@@ -5,9 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "app.guess-hue")
 open class GuessHueDatasetProperties(
     /**
-     * Absoluter Pfad auf das **entschlüsselte** Produktionsdatenset, das das Deployment in den
-     * Container mountet. Leer bedeutet: Beispiel aus dem Classpath — im Betrieb ein Startabbruch,
-     * siehe `GuessHueDatasetConfiguration`.
+     * Absolute path to the **decrypted** production dataset that the deployment mounts into the
+     * container. Empty means: sample from the classpath — a startup abort in a deployed
+     * environment, see `GuessHueDatasetConfiguration`.
      */
     val datasetPath: String = "",
 )

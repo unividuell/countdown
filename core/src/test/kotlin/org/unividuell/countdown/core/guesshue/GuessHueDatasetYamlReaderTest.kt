@@ -31,7 +31,7 @@ class GuessHueDatasetYamlReaderTest {
         entries.size shouldBe 2
         entries[0].hue shouldBe 0
         entries[0].difficulty shouldBe GuessHueDifficulty.EASY
-        // Der Faltblock `>-` macht aus den Zeilenumbrüchen Leerzeichen.
+        // The folded block scalar `>-` turns the line breaks into spaces.
         entries[0].description shouldContain "reinen Rot, keinen Fingerbreit daneben."
         entries[1].difficulty shouldBe GuessHueDifficulty.HARD
     }

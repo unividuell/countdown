@@ -4,12 +4,11 @@ import org.unividuell.countdown.core.guesshue.GuessHueDifficulty
 import org.unividuell.countdown.core.guesshue.GuessHueEntry
 
 /**
- * Die Schreibregeln des Specs als Code. Sie können einen schlechten Text nicht erkennen — sie
- * fangen den häufigsten Fehler: einen als `easy` markierten Eintrag, dem der kalibrierende zweite
- * Takt fehlt.
+ * The spec's writing rules as code. They cannot recognize bad prose — they catch the most common
+ * mistake instead: an entry marked `easy` that is missing the calibrating second sentence.
  *
- * Alle Verstöße einer Liste werden gesammelt und gemeinsam gemeldet. Ein Validator, der beim ersten
- * Fund abbricht, zwingt den Autor durch so viele Durchläufe, wie er Fehler gemacht hat.
+ * All violations of a list are collected and reported together. A validator that aborts on the
+ * first hit would force the author through as many runs as they made mistakes.
  */
 object GuessHueDatasetValidator {
 
@@ -18,23 +17,23 @@ object GuessHueDatasetValidator {
     const val EXPECTED_PER_SECTOR = 5
     const val SECTOR_WIDTH_DEGREES = 30
 
-    /** Schließt das Fenster einer `easy`-Beschreibung. Ohne eines davon ist sie nicht leicht. */
+    /** Closes the window of an `easy` description. Without one of these, it isn't easy. */
     private val MEASURE_WORDS = listOf(
         "Hauch", "Fingerbreit", "Handbreit", "Drittel", "Hälfte",
         "Schritt", "kaum", "knapp", "praktisch", "dicht",
     )
 
-    /** Satzende: mindestens zwei Buchstaben, dann Zeichen, dann Leerraum oder Textende. Damit
-     *  zählen Abkürzungspunkte nicht (z. B.), aber der Schlusspunkt tut es. */
+    /** Sentence end: at least two letters, then punctuation, then whitespace or end of text. That
+     *  way an abbreviation's period doesn't count (e.g. "z. B."), but a closing period does. */
     private val SENTENCE_END = Regex("\\p{L}{2,}[.!?](?=\\s|\\z)")
     private val DIGIT = Regex("\\d")
 
-    /** Maßwörter für `easy` als vorkompilierte Regex mit Wortgrenzen — aus MEASURE_WORDS
-     *  abgeleitet statt einer zweiten Liste, sonst könnten Prüfung und Fehlermeldung
-     *  (die MEASURE_WORDS direkt zitiert) unbemerkt auseinanderlaufen. */
+    /** Measure-word matchers for `easy`, precompiled with word boundaries — derived from
+     *  MEASURE_WORDS rather than kept as a second list, otherwise the check and the error message
+     *  (which quotes MEASURE_WORDS directly) could drift apart unnoticed. */
     private val MEASURE_WORD_MATCHERS = MEASURE_WORDS.map { Regex("\\b" + Regex.escape(it) + "\\b") }
 
-    /** Regeln 2–5. Gilt für jede geladene Liste, auch das Beispiel-Datenset. */
+    /** Rules 2–5. Applies to every loaded list, including the sample dataset. */
     fun validateStructure(entries: List<GuessHueEntry>, origin: String) {
         val problems = mutableListOf<String>()
 
@@ -74,7 +73,7 @@ object GuessHueDatasetValidator {
         report(problems, origin)
     }
 
-    /** Regel 1. Nur für das Produktionsdatenset — das Beispiel hat bewusst zu wenige Einträge. */
+    /** Rule 1. Only for the production dataset — the sample deliberately has too few entries. */
     fun validateCompleteness(entries: List<GuessHueEntry>, origin: String) {
         val problems = mutableListOf<String>()
 

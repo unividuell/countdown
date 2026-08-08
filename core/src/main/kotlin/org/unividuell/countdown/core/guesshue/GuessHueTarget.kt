@@ -1,11 +1,10 @@
 package org.unividuell.countdown.core.guesshue
 
 /**
- * Eine gezogene Runde, vollständig — inklusive Lösung.
+ * A drawn round, complete — including the solution.
  *
- * [hue] ist die Antwort und darf den Server vor der Auswertung nicht verlassen, auch nicht
- * abgeleitet. Zum Client gehen ausschließlich [GuessHueEntry.description] sowie [initHue],
- * [saturation] und [lightness].
+ * [hue] is the answer and must not leave the server before scoring, not even derived. Only
+ * [GuessHueEntry.description] plus [initHue], [saturation] and [lightness] go to the client.
  */
 data class GuessHueTarget(
     val entry: GuessHueEntry,

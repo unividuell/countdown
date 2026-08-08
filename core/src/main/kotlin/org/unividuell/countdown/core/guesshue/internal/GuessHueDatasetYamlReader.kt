@@ -6,12 +6,12 @@ import org.yaml.snakeyaml.Yaml
 import java.io.InputStream
 
 /**
- * SnakeYAML statt Jackson: `org.yaml:snakeyaml` liegt über den Spring-Boot-Starter ohnehin im
- * Compile-Classpath (Boot parst `application.yaml` damit), ein `jackson-dataformat-yaml` wäre eine
- * neue Dependency für drei Felder.
+ * SnakeYAML rather than Jackson: `org.yaml:snakeyaml` is already on the compile classpath via the
+ * Spring Boot starter (Boot uses it to parse `application.yaml`), so a `jackson-dataformat-yaml`
+ * would be a whole new dependency for three fields.
  *
- * Jede Meldung nennt [origin] und die Position, weil der Leser im Regelfall gegen eine Datei läuft,
- * die der Fehlersuchende nicht offen hat — sie liegt entschlüsselt auf einem Server.
+ * Every message names [origin] and the position, because whoever is debugging this typically isn't
+ * looking at the file that failed — it sits decrypted on a server, not open on their machine.
  */
 object GuessHueDatasetYamlReader {
 

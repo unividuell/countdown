@@ -65,9 +65,9 @@ class GuessHueDatasetLoaderTest {
     }
 
     /**
-     * Fünf pro Sektor, 20 pro Stufe — erfundene Texte, die die Regeln erfüllen. Die Verteilung je
-     * Sektor ist ungleich, weil fünf nicht durch drei teilbar ist: drei Muster rotieren über die
-     * zwölf Sektoren, vier Sektoren je Muster, und ergeben genau 20/20/20.
+     * Five per sector, 20 per difficulty — invented text that satisfies the rules. The
+     * distribution per sector is uneven because five doesn't divide by three: three patterns
+     * rotate across the twelve sectors, four sectors per pattern, adding up to exactly 20/20/20.
      */
     private fun sixtyBalancedEntriesAsYaml(): String = buildString {
         appendLine("entries:")

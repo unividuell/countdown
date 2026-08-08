@@ -17,8 +17,8 @@ class GuessHueDatasetConfiguration {
     fun guessHueDatasetLoader(properties: GuessHueDatasetProperties) = GuessHueDatasetLoader(properties)
 
     /**
-     * Lädt beim Start, nicht beim ersten Spielzug: ein Datensatzfehler soll das Deployment stoppen,
-     * nicht eine Runde, die schon läuft.
+     * Loads at startup, not on the first move: a dataset error should stop the deployment, not a
+     * round that's already in progress.
      */
     @Bean
     fun guessHueDataset(loader: GuessHueDatasetLoader, environment: Environment): GuessHueDataset {
@@ -43,7 +43,7 @@ class GuessHueDatasetConfiguration {
     }
 
     companion object {
-        /** Die Profile, unter denen echte Spieler mitspielen. Alles andere ist lokale Entwicklung. */
+        /** The profiles under which real players play. Everything else is local development. */
         val DEPLOYED_PROFILES = setOf("production", "staging")
     }
 }

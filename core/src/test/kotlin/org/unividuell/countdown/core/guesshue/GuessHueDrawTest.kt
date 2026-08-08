@@ -29,8 +29,8 @@ class GuessHueDrawTest {
 
     @Test
     fun `draws entry, jitter, saturation, lightness and init hue in exactly that order`() {
-        // Die Reihenfolge ist Vertrag: eine Umstellung aendert jede bereits gespielte Runde.
-        // Deshalb gegen einen von Hand nachgezogenen Stream pruefen statt gegen Magic Numbers.
+        // The order is a contract: reordering it changes every round already played. So this
+        // checks against a hand-replayed stream instead of magic numbers.
         val reference = SeededRandom.fromSeed("community-42/round-7")
         val expectedEntry = reference.pick(dataset.entries)
         val jitterDraw = reference.nextDouble()
@@ -41,9 +41,9 @@ class GuessHueDrawTest {
         val target = dataset.draw(SeededRandom.fromSeed("community-42/round-7"))
 
         target.entry shouldBe expectedEntry
-        // Die Klammerung muss die der Implementierung SPIEGELN, nicht nur denselben Wert meinen:
-        // (0.78 - 0.50) ist in IEEE754 nicht dasselbe wie das Literal 0.28, und `shouldBe` auf
-        // Double vergleicht exakt. Genau das soll es auch — der Test pinnt die Arithmetik.
+        // The parenthesisation must MIRROR the implementation's, not just intend the same value:
+        // (0.78 - 0.50) is not, in IEEE754, the same as the literal 0.28, and `shouldBe` on a
+        // Double compares exactly. That's the point — the test pins the arithmetic itself.
         target.hue shouldBe (expectedEntry.hue + jitterDraw * (2 * 5.0) - 5.0)
             .let { ((it % 360.0) + 360.0) % 360.0 }
         target.saturation shouldBe 0.50 + saturationDraw * (0.78 - 0.50)
@@ -61,8 +61,8 @@ class GuessHueDrawTest {
 
     @Test
     fun `keeps the jitter inside the tolerance and the colour inside the corridor`() {
-        // Der Jitter muss kleiner bleiben als die Toleranz von plus/minus 10 Grad, sonst kann ein
-        // perfekter Leser unverschuldet danebenliegen.
+        // The jitter must stay below the plus-or-minus 10 degree tolerance, otherwise a player who
+        // reads the description perfectly could still be marked wrong through no fault of their own.
         (0 until 2_000).forEach { seed ->
             val target = dataset.draw(SeededRandom.fromSeed(seed))
 
@@ -86,27 +86,27 @@ class GuessHueDrawTest {
 
         val hues = (0 until 500).map { nearZero.draw(SeededRandom.fromSeed(it)).hue }
 
-        // Ein Nominalwert von 2 Grad jittert auf beide Seiten der Null, und keiner darf negativ werden.
+        // A nominal value of 2 degrees jitters to both sides of zero, and none of them may go negative.
         hues.any { it > 350.0 } shouldBe true
         hues.all { it >= 0.0 } shouldBe true
     }
 
     @Test
     fun `the init hue is drawn independently of the target`() {
-        // Ein garantiert weit entfernter Start wuerde verraten, wo das Ziel NICHT liegt, und den
-        // Suchraum von 360 auf 240 Grad schneiden. Also muss er auch mal nah dran landen.
+        // A guaranteed-distant start would leak where the target is NOT, cutting the search space
+        // from 360 down to 240 degrees. So the init hue also has to land close sometimes.
         val close = (0 until 5_000).count { seed ->
             val target = dataset.draw(SeededRandom.fromSeed(seed))
             distanceOnCircle(target.initHue, target.hue) < 30.0
         }
 
-        // Bei Gleichverteilung liegen rund ein Sechstel der Startwinkel innerhalb von 30 Grad:
-        // Erwartungswert ~833, Standardabweichung ~26 (sqrt(5000 * 1/6 * 5/6)). Beide Grenzen sind
-        // noetig, nicht nur eine: die Untergrenze (~12.6 Sigma tief) widerlegt einen garantiert
-        // entfernten Start (z. B. initHue = wrap360(hue + 180)), die Obergrenze (~13.9 Sigma hoch)
-        // widerlegt einen an das Ziel gekoppelten Start (z. B. initHue = hue oder initHue teilt
-        // sich eine Ziehung mit lightness). Eine Grenze allein liesse genau die Klumpung durch, die
-        // die Unabhaengigkeit eigentlich widerlegen soll.
+        // Under a uniform distribution, roughly one sixth of the init angles fall within 30
+        // degrees: expected value ~833, standard deviation ~26 (sqrt(5000 * 1/6 * 5/6)). Both
+        // bounds are needed, not just one: the lower bound (~12.6 sigma below) rules out a
+        // guaranteed-distant start (e.g. initHue = wrap360(hue + 180)), the upper bound (~13.9
+        // sigma above) rules out a start coupled to the target (e.g. initHue = hue, or initHue
+        // sharing a draw with lightness). Either bound alone would let through exactly the
+        // clustering that independence is supposed to rule out.
         close shouldBeGreaterThanOrEqualTo 500
         close shouldBeLessThanOrEqualTo 1_200
     }
