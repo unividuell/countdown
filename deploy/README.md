@@ -28,6 +28,31 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
   has the role.
 
+## Voraussetzung: sops + age (Spielinhalte)
+
+`update.sh` entschlüsselt das Guess-Hue-Datenset auf dem Server, bevor es `compose up` ruft.
+Der Server braucht dafür einmalig `age` und `sops`:
+
+```bash
+apt-get install -y age
+curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/latest/download/sops-linux-arm64 && chmod +x /usr/local/bin/sops
+```
+
+Die Images sind arm64 (siehe [deployment.md](../.claude/guidelines/deployment.md)) — auf einem
+x86-Server stattdessen `sops-linux-amd64`.
+
+Den privaten age-Schlüssel nach `~/.config/sops/age/keys.txt` legen (oder `SOPS_AGE_KEY_FILE`
+in der `.env` setzen). Der Schlüssel gehört **nicht** ins Repo.
+
+Fehlt Schlüssel oder Werkzeug, bricht `update.sh` mit einer Meldung ab und deployt nicht — statt
+einen Container zu starten, der auf Platzhalterinhalten läuft.
+
+`GUESS_HUE_DATASET_FILE` in `.env.prod`/`.env.staging` bestimmt, wohin update.sh das entschlüsselte
+Datenset legt (eigener Name pro Target, da beide Stacks dasselbe Verzeichnis teilen); die Templates
+setzen ihn bereits passend. Bei einem bestehenden Deployment, das die Variable noch nicht kennt,
+muss sie wie jede neue Variable von Hand ergänzt werden (siehe Hinweis unten) — sonst bricht
+`compose up` mit einer klaren Fehlermeldung ab, statt mit einem leeren Pfad zu binden.
+
 ## Bootstrap / Update
 
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,

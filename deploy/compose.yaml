@@ -45,6 +45,15 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
+      - GUESS_HUE_DATASET_PATH=/config/guess-hue-dataset.yaml
+    volumes:
+      # update.sh entschluesselt hierher, bevor es `compose up` ruft. Read-only: die Anwendung
+      # liest das Datenset und schreibt es nie. Fehlt die Datei, bricht der Start ab -- gewollt,
+      # ein Spiel auf Platzhalterinhalten sieht gesund aus und ist es nicht.
+      # Eigener Dateiname pro Target ueber GUESS_HUE_DATASET_FILE (siehe .env.<target>.example):
+      # beide Stacks teilen sich dieses Verzeichnis, ein gemeinsamer Name wuerde bedeuten, dass
+      # z.B. ein staging-Update das von prod gemountete Klartext-File unter der Decke austauscht.
+      - ${GUESS_HUE_DATASET_FILE:?Set GUESS_HUE_DATASET_FILE in .env.<target>, see deploy/README.md}:/config/guess-hue-dataset.yaml:ro
     depends_on:
       - postgres
     networks:

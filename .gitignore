@@ -20,3 +20,7 @@
 # Klartext-Spielinhalte auf dem Weg zur SOPS-Verschlüsselung.
 # Nie committen — auch nicht in Specs, Plänen oder Commit-Messages.
 .local/
+
+# update.sh entschluesselt das Guess-Hue-Datenset hierher (nur relevant, falls jemand
+# update.sh lokal aus dem Repo-Checkout heraus testet -- auf dem Server ist es kein Git-Checkout).
+deploy/secrets/
