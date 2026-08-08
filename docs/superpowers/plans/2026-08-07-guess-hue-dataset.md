@@ -392,17 +392,25 @@ class GuessHueDatasetValidatorTest {
 
     @Test
     fun `completeness accepts a balanced set of sixty`() {
-        // Fuenf pro 30-Grad-Sektor, 20 pro Stufe — dieselbe Aufteilung wie im echten Datenset,
-        // hier aber mit erfundenen Texten.
+        // Fuenf pro 30-Grad-Sektor, 20 pro Stufe. Die Verteilung je Sektor ist bewusst UNGLEICH —
+        // eine gleiche waere gar nicht moeglich (5 ist nicht durch 3 teilbar) und traefe auch die
+        // Sache nicht: namenlose Zonen koennen nie easy tragen. Drei Muster rotieren ueber die
+        // zwoelf Sektoren, vier Sektoren je Muster, und ergeben genau 20/20/20.
         val entries = (0 until 12).flatMap { sector ->
             val base = sector * 30
-            listOf(
-                easy(base + 2),
-                easy(base + 8),
-                medium(base + 14),
-                medium(base + 20),
-                hard(base + 26),
-            )
+            val difficulties = when (sector % 3) {
+                0 -> listOf(GuessHueDifficulty.EASY, GuessHueDifficulty.EASY, GuessHueDifficulty.MEDIUM, GuessHueDifficulty.MEDIUM, GuessHueDifficulty.HARD)
+                1 -> listOf(GuessHueDifficulty.EASY, GuessHueDifficulty.EASY, GuessHueDifficulty.MEDIUM, GuessHueDifficulty.HARD, GuessHueDifficulty.HARD)
+                else -> listOf(GuessHueDifficulty.EASY, GuessHueDifficulty.MEDIUM, GuessHueDifficulty.MEDIUM, GuessHueDifficulty.HARD, GuessHueDifficulty.HARD)
+            }
+            difficulties.mapIndexed { index, difficulty ->
+                val hue = base + 2 + index * 6
+                when (difficulty) {
+                    GuessHueDifficulty.EASY -> easy(hue)
+                    GuessHueDifficulty.MEDIUM -> medium(hue)
+                    GuessHueDifficulty.HARD -> hard(hue)
+                }
+            }
         }
         shouldNotThrowAny { GuessHueDatasetValidator.validateCompleteness(entries, "test.yaml") }
         shouldNotThrowAny { GuessHueDatasetValidator.validateStructure(entries, "test.yaml") }
@@ -715,24 +723,27 @@ class GuessHueDatasetLoaderTest {
         thrown.message!! shouldContain "expected 60 entries"
     }
 
-    /** Fünf pro Sektor, 20 pro Stufe — erfundene Texte, die die Regeln erfüllen. */
+    /**
+     * Fünf pro Sektor, 20 pro Stufe — erfundene Texte, die die Regeln erfüllen. Die Verteilung je
+     * Sektor ist ungleich, weil fünf nicht durch drei teilbar ist: drei Muster rotieren über die
+     * zwölf Sektoren, vier Sektoren je Muster, und ergeben genau 20/20/20.
+     */
     private fun sixtyBalancedEntriesAsYaml(): String = buildString {
         appendLine("entries:")
         (0 until 12).forEach { sector ->
             val base = sector * 30
-            listOf(
-                base + 2 to "easy",
-                base + 8 to "easy",
-                base + 14 to "medium",
-                base + 20 to "medium",
-                base + 26 to "hard",
-            ).forEach { (hue, difficulty) ->
+            val difficulties = when (sector % 3) {
+                0 -> listOf("easy", "easy", "medium", "medium", "hard")
+                1 -> listOf("easy", "easy", "medium", "hard", "hard")
+                else -> listOf("easy", "medium", "medium", "hard", "hard")
+            }
+            difficulties.forEachIndexed { index, difficulty ->
                 val description = when (difficulty) {
                     "easy" -> "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
                     "medium" -> "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
                     else -> "Beispieleintrag, kein Spielinhalt."
                 }
-                appendLine("  - hue: $hue")
+                appendLine("  - hue: ${base + 2 + index * 6}")
                 appendLine("    difficulty: $difficulty")
                 appendLine("    description: \"$description\"")
             }
