@@ -27,7 +27,7 @@ const myHue = computed(() => {
   const guess = props.myGuess
   if (typeof guess !== 'object' || guess === null) return null
   const hue = (guess as { hue?: unknown }).hue
-  return typeof hue === 'number' ? hue : null
+  return typeof hue === 'number' && Number.isFinite(hue) ? hue : null
 })
 </script>
 

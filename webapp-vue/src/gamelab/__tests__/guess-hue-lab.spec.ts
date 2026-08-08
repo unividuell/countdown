@@ -67,4 +67,17 @@ describe('GuessHueLabGame', () => {
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
   })
+
+  it.each([
+    ['NaN', { hue: NaN }],
+    ['Infinity', { hue: Infinity }],
+    ['a string', { hue: '214' }],
+  ])('falls back to the payload angle for a %s guess value', (_label, myGuess) => {
+    // `typeof` alone lets `NaN` through, and the `?? payload.initHue` fallback only catches
+    // null/undefined — a non-finite or wrongly-typed value on the right key must still fall back.
+    const w = mountAdapter({ myGuess, disabled: true })
+
+    expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
+    expect(w.find('[data-test="lab-guess-card"]').exists()).toBe(false)
+  })
 })
