@@ -49,6 +49,28 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 
 - **No CSS and no box sizes are computed** — see [frontend-ui.md](frontend-ui.md); layout facts are browser
   measurements, and a spec can only assert the structural proxy.
+- **A zero rect does not make pointer geometry untestable — it makes it silently *pass*. Stub the
+  rect.** `getBoundingClientRect()` answers all zeroes, so anything derived from it collapses to the
+  same value for every input: `HueWheel`'s dead-zone guard (`distance from centre < 0.3 × radius`)
+  read `0 < 0` — true everywhere — so *every* pointer path looked correctly suppressed and the whole
+  area went untested on the grounds that it "could not be tested". It could: hand the element a box
+  and the geometry becomes ordinary arithmetic.
+  ```ts
+  vi.spyOn(el.element, 'getBoundingClientRect').mockReturnValue({
+    left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => ({}),
+  } as DOMRect)
+  ```
+  What that omission cost: a press on the confirm button in the wheel's centre bubbled to the wheel,
+  which captured the pointer and started a drag, so any thumb drift during the 1200 ms hold re-aimed
+  the wheel and the *submitted* angle was not the aimed one. Every unit test was green; it took a
+  browser to see it. `setPointerCapture` is also absent from happy-dom elements — stub it per test,
+  and be explicit about which test the stub is pinning, or the stub becomes what makes the suite pass.
+- **A synthetic `PointerEvent` is not a pointer.** `setPointerCapture` throws `NotFoundError` for an
+  id the browser is not tracking, and an exception inside a listener does **not** propagate out of
+  `dispatchEvent` — so a hand-dispatched drag silently does nothing and reads as "the feature is
+  broken". Only the real primary-mouse id tends to work. When driving a live page from the console,
+  read the value **in a later call**: Vue flushes the DOM on the next tick, so an attribute read in
+  the same turn as the dispatch still shows the old value and will send you chasing a phantom.
 - **No Web Animations API**: `Element.prototype.animate` is `undefined` (while `window.matchMedia`
   *does* exist and answers `matches: false` for every query). Any component calling `el.animate(...)`
   must check `typeof el.animate !== 'function'` or the path throws — and note *which* path:
