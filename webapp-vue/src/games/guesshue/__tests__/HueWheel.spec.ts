@@ -285,7 +285,7 @@ describe('HueWheel', () => {
       expect(w.emitted('update:hue')).toBeUndefined()
     })
 
-    it('grabs right at the band s inner edge', async () => {
+    it("grabs right at the band's inner edge", async () => {
       const w = mountWheel()
       const el = w.get('[data-test="hue-wheel"]')
       stubRect(el.element)

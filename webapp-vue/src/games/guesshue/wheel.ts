@@ -12,10 +12,9 @@ export const BOOT_SWEEP_MS = 800
  */
 export const BOOT_TRAIL_MS = 70
 
-/**
- * The wheel is a thin rainbow band, not a filled disc — the original it is ported from is a ring
- * with an empty centre, and only the ring is grabbable. Both fractions are of the wheel's radius.
- */
+// The wheel is a thin rainbow band, not a filled disc — the original it is ported from is a ring
+// with an empty centre, and only the ring is grabbable. Both fractions below are of the wheel's
+// radius.
 
 /** The rainbow band's inner edge. Inside it the wheel is empty and not grabbable. */
 export const BAND_INNER_FRACTION = 0.78

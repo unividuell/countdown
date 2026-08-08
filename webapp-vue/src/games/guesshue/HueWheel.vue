@@ -367,9 +367,9 @@ const rotatorStyle = computed(() => ({
         <!--
           Stopped here, not skipped in `onPointerDown`: a press on the confirm button bubbles
           through this wrapper on its way up, and without this the wheel would read it as a grab —
-          `setPointerCapture` and `dragging = true` — before the dead zone ever gets a say. The
-          dead zone only suppresses the immediate jump; it does not stop a drag already in
-          progress, so any pointer movement during the button's hold would re-aim the wheel. This
+          `setPointerCapture` and `dragging = true` — before the band gate on [onPointerDown] ever
+          gets a say. That gate only stops a drag from *starting*; it does not stop one already
+          running, so any pointer movement during the button's hold would re-aim the wheel. This
           wrapper is the wheel's own centre slot, so the wheel is the one that gets to say a press
           here is not its business — `HoldButton` stays ignorant of ever sitting inside one.
         -->

@@ -15,8 +15,8 @@ Mittelknopf und gibt damit einen Winkel ab. Spielbar im Game-Lab, gegen einen Se
 
 **Nicht gebaut wird die Wertung.** Kein Punktestand, keine Toleranzprüfung, keine echte
 Spielseite außerhalb des Labs. Der Guess wird angenommen, validiert und gespeichert — mehr nicht.
-Was nach der Abgabe zu sehen ist, ist ausdrücklich vorläufiges Lab-Gerüst
-(siehe *Der „Tipp steht"-Zustand*) und nicht die spätere Bestätigungsansicht.
+Was nach der Abgabe zu sehen ist, ist die Einträge-Liste des Labs (siehe *Nach der Abgabe: eine
+Liste, kein zweiter Zustand*), nicht die spätere Bestätigungsansicht.
 
 Der Schnitt ist bewusst so gelegt, dass er nichts vorwegnimmt, was der Spielrahmen später anders
 entscheiden könnte: Rundenpersistenz, Phasenlogik und die Umstellung der Wertung in Phase 2 sind
@@ -125,7 +125,7 @@ dahin steht in [game-content.md](../../../.claude/guidelines/game-content.md).
 | `ui/useHoldProgress.ts` | die Halte-Mechanik: Fortschritt, Abbruch, Abschluss | DOM-Semantik |
 | `ui/HoldButton.vue` | der Knopf mit Fortschrittsring | Farbe |
 | `games/guesshue/GuessHueBoard.vue` | die Spielkarte: Zitat, Rad, Hinweiszeile | Lab, „mein Tipp" |
-| `gamelab/GuessHueLabGame.vue` | Adapter: Payload → Board, Winkel → `{ hue }`, plus die vorläufige Tipp-Karte | — |
+| `gamelab/GuessHueLabGame.vue` | Adapter: Payload → Board, Winkel → `{ hue }` | — |
 
 Der Schnitt zwischen Board und Lab-Adapter ist der, der später zählt: die echte Spielseite bindet
 dasselbe Board an ihre eigene API, ohne dass eine Zeile Rad- oder Halte-Logik mitwandert.
@@ -157,14 +157,32 @@ Finger. Das ist der Grund, warum sich das Original auf dem Handy gut anfühlt, u
 statt vier Listener-Paaren auf `document` und einem `preventDefault` in einem non-passive
 `touchmove`. `will-change: transform` steht nur während des Ziehens.
 
-**Die Mitte ist doppelt geschützt.** Der Mittelknopf liegt als echter `<button>` obenauf und fängt
-Berührungen dort selbst; zusätzlich hält ein laufender Zug den letzten Winkel, sobald der Finger
-unter den Totzonen-Radius wandert. Ohne das macht `atan2` aus einem Millimeter Fingerbewegung in
-der Radmitte einen 90°-Sprung.
+**Nur das Band startet einen Zug.** Das Rad ist ein schmaler Regenbogen-Ring, keine gefüllte
+Scheibe: `pointerdown` gattert auf `radiusFraction`, und nur zwischen `BAND_INNER_FRACTION` (0,78)
+und dem äußeren Rand (1,0) beginnt ein Zug. Innen — dort, wo ohnehin der Mittelknopf liegt —
+passiert nichts; der Knopf fängt seine Berührungen als echter `<button>` selbst ab.
 
-Die Totzone ist **derselbe Radius wie der Mittelknopf** — 30 % des Raddurchmessers, bei `max-w-80`
-also 96 px und damit weit über der 44-px-Untergrenze für Tippziele. Ein Wert, zwei Zwecke: was der
-Knopf einfängt, ignoriert das Rad ohnehin.
+**Einmal gegriffen, folgt der Knopf überallhin.** Die Bandgrenze gilt nur fürs *Starten*; ein
+laufender Zug folgt dem Finger danach auch außerhalb des Bands und sogar außerhalb des Quadrats,
+das das Rad umschreibt — ein Daumen, der beim Drehen nach innen oder außen abdriftet, darf den Zug
+nicht verlieren. Die einzige Ausnahme ist ein kleiner Stabilitäts-Wächter um die Mitte
+(`CENTRE_HOLD_FRACTION`, 8 % des Radius): darunter hält der Winkel seinen letzten Wert, statt aus
+einem Millimeter Fingerbewegung den 90°-Sprung zu machen, den `atan2` in Zentrumsnähe sonst
+liefert. Anders als eine Totzone verhindert dieser Wächter weder einen Start noch einen laufenden
+Zug — er hält nur den Wert fest, solange der Finger zu nah an der Mitte ist.
+
+**Gesperrt zeigt sich auch am Band selbst:** sobald `disabled` steht, malt sich das Band in
+Graustufen. Knopf und Bestätigungsknopf behalten ihre Farbe — der Knopf ist die Farbvorschau und
+nach der Runde das einzige noch lesenswerte Element —, weshalb der Filter nur auf dem Ring sitzt.
+
+*(Diese Passage ersetzt eine frühere Fassung: „Totzone = 30 % = Mittelknopfradius, ein Wert, zwei
+Zwecke". Das war eine Rasierklinge, keine Entscheidung. Solange beide Radien exakt zusammenfielen,
+verdeckte der eine eine Lücke im anderen: ein Druck auf den Bestätigungsknopf durchläuft auf dem
+Weg nach oben auch das `pointerdown` des Rads, und ohne ein eigenes `.stop` an der Mitten-Slot-
+Hülle hätte das Rad ihn als Griff gelesen — was der zufällig deckungsgleiche Radius nie zeigte.
+Getrennte, unabhängig gewählte Werte — der Band-Innenradius fürs Starten, der viel kleinere
+Stabilitäts-Radius fürs Halten während eines laufenden Zugs — und ein explizites `.stop` an der
+Mitte schließen das aus, ohne sich auf eine Koinzidenz zu verlassen.)*
 
 ### Tastatur und ARIA
 
@@ -253,15 +271,39 @@ selbst geführt werden.
 Der Ring **bleibt unter `prefers-reduced-motion`** — Fortschritt ist Information, keine Zierde; nur
 der Rücklauf wird dort sofort.
 
-Er bleibt aber **nicht** über einen Tab-Wechsel hinweg: `visibilitychange` nach `hidden` **bricht
-das Halten ab**. Sonst friert die Schleife mitten im Halten ein und läuft beim Zurückkommen aus
-einem veralteten Startzeitpunkt zu Ende — ein Tipp, der abgeschickt wird, während niemand hinsah,
-ist genau das, was die Tastatur-Entscheidung oben ausschließt.
+**Abgebrochen wird auf neun Wegen, jeder mit eigenem Grund:**
+
+- **`pointerup`/`pointercancel`** — das gewöhnliche Loslassen, und der Fall, in dem die Plattform
+  die Geste von sich aus kassiert.
+- **Ein Daumen, der vom Knopf herunter aufs Rad rutscht.** Implizite Zeiger-Erfassung unterdrückt
+  `pointerleave`, solange die Berührung läuft — ohne eine eigene, kreisförmige Trefferprüfung bei
+  jedem `pointermove` käme das universelle „Daumen wegziehen, um abzubrechen" auf dem Handy nie an.
+- **Ein nicht-primärer Zeiger, oder eine rechte Maustaste, startet gar nicht erst.** Kein Abbruch,
+  sondern ein Halten, das nie beginnt — ein zweiter, gleichzeitiger Finger oder ein Rechtsklick
+  dürfen nicht mitzählen.
+- **`blur`.** Deckt, was `visibilitychange` nicht deckt: ein Fenster, das den Fokus verliert, aber
+  sichtbar bleibt — Cmd-Tab während des Haltens ist genau dieser Fall.
+- **`@contextmenu.prevent`.** Ein langer Druck neben auswählbarem Text öffnet sonst das
+  Kontextmenü, das den Fokus stiehlt, bevor `pointerup` je ankommt.
+- **`lostpointercapture`.** Der Browser kann die Zeiger-Erfassung von sich aus zurückziehen; ohne
+  diesen Handler bliebe der Zustand hängen.
+- **`disabled` schaltet sich mitten im Halten ein.** Ein deaktiviertes Element sendet keine
+  Zeiger-Events mehr — ohne diese Prüfung liefe ein laufendes Halten zu Ende und bestätigte etwas
+  obendrauf, während zu der Anfrage, die den Abbruch auslöste, schon eine in Arbeit ist.
+- **`visibilitychange` nach `hidden`.** Sonst friert die Schleife mitten im Halten ein und läuft
+  beim Zurückkommen aus einem veralteten Startzeitpunkt zu Ende — ein Tipp, der abgeschickt wird,
+  während niemand hinsah, ist genau das, was die Tastatur-Entscheidung oben ausschließt.
+
+Ein Tastatur-Zustand (`keyHeld`) folgt der Geste durch alle neun Fälle zurück: sonst bliebe eine
+per Tastatur gehaltene Taste nach einem Abbruch im Hintergrund „gedrückt", und jeder folgende
+`keydown` würde von der Wiederholungssperre verschluckt.
 
 **4. Der Einrast-Puls.** ~200 ms auf dem Mittelknopf nach dem Abschluss, dann steht das Rad.
 
-**Die Haltedauer ist eine Konstante an einer Stelle:** `HOLD_MS = 1200`. Das Original hielt 2000 ms;
-beim Wiederholen fühlt sich das lang an. Der Wert gehört im Lab hingedreht — genau dafür ist es da.
+**Die Haltedauer ist eine Konstante an einer Stelle:** `DEFAULT_HOLD_MS = 1200` in
+`ui/useHoldProgress.ts` — dort, weil die Geste sie besitzt, nicht das Rad; ein Aufrufer mit eigener
+Meinung überschreibt sie per Prop. Das Original hielt 2000 ms; beim Wiederholen fühlt sich das lang
+an. Der Wert gehört im Lab hingedreht — genau dafür ist es da.
 
 ### Der Screen
 
@@ -291,24 +333,28 @@ seiner Entscheidung nichts.
 
 Kein Kasten im Kasten: die Beschreibung bringt eine Randlinie mit, keinen eigenen Rahmen.
 
-### Der „Tipp steht"-Zustand — vorläufig
+### Nach der Abgabe: eine Liste, kein zweiter Zustand
 
-Nach dem Bestätigen rastet das Rad ein, und **unter** der Spielkarte erscheint eine **zweite
-Karte**: der abgegebene Winkel als Zahl, ein knapper Satz dazu.
+**Diese Passage ersetzt eine frühere Fassung**, die nach dem Bestätigen eine zweite, provisorische
+Karte unter der Spielkarte vorsah („Dein Tipp steht: …°"). Die gibt es nicht mehr: `LabEntries.vue`
+ist die einzige Stelle, an der Guesses erscheinen — der eigene eingeschlossen. Das war schon vorher
+die Richtung (siehe *`others` bleibt verborgen, bis geraten wurde*), nur stand der eigene Tipp bis
+hierhin noch separat.
 
-**Das ist Lab-Gerüst mit Verfallsdatum, nicht die Bestätigungsansicht.** Es steht hier, weil sich
-im Lab sonst nicht arbeiten lässt — man muss den eigenen Winkel mit denen der anderen vergleichen
-können. Die echte Ansicht nach der Abgabe ist ein eigenes Thema und wird das hier ersetzen.
+Die Lab-Seite reicht der Liste den eigenen Eintrag zuerst, dann `others`:
+`me ? [me, ...others] : others`. Vor dem eigenen Guess ist das leer — der Server hält `others`
+zurück, solange `me` null ist — und die Liste rendert dafür nichts, keinen leeren Kasten. Nach dem
+eigenen Guess enthält sie mindestens den eigenen Eintrag.
 
-Die zweite Karte ist genau deshalb eine zweite und keine Zeile im Board: **dass sie neben dem Spiel
-steht statt darin, sagt von selbst, dass sie nicht dazugehört.** Sie liegt aus demselben Grund im
-**Lab-Adapter** und nicht im Board — so verschwindet sie strukturell mit dem Lab und nicht bloß
-laut Dokument. Das Board kennt dadurch nur `initHue` und `disabled`; einen Begriff von „mein Tipp"
-hat es gar nicht erst.
+Zwei Karten nebeneinander sagten von selbst, dass die zweite nicht zum Spiel gehört — eine
+zusätzliche Liste sagt stattdessen, dass der eigene Guess derselben Buchführung angehört wie jeder
+andere. Das Board weiß dadurch weiterhin nur `initHue` und `disabled`; einen Begriff von „mein
+Tipp" hat es nach wie vor nicht.
 
-Der Lab-Adapter füttert `me.guess.hue ?? payload.initHue` als Startwinkel. Ohne das stünde das Rad
-nach einem Reload auf `initHue` statt auf dem abgegebenen Tipp — der Zustand würde lügen. `me.guess`
-steht ohnehin in der Antwort.
+**`myGuess` bleibt trotzdem im Lab-Adapter.** Es füttert `me.guess.hue ?? payload.initHue` als
+Startwinkel des Rads. Ohne das stünde das Rad nach einem Reload auf `initHue` statt auf dem
+abgegebenen Tipp — der Zustand würde lügen. `me.guess` steht ohnehin in der Antwort; nur die
+provisorische zweite Karte, die ihn zusätzlich noch einmal anzeigte, ist entfallen.
 
 Gesperrt wird über das `disabled`, das die Lab-Seite bereits setzt, sobald `me != null`.
 
@@ -329,7 +375,8 @@ Gesperrt wird über das `disabled`, das die Lab-Seite bereits setzt, sobald `me 
 - Der Bestätigungsknopf trägt `inert`, solange der Ring noch entsteht — und trägt es **nicht**,
   wenn Einflug und Aufploppen übersprungen werden. Beides ist ein Attribut, also prüfbar; der
   Ausschlag der Feder ist es nicht und gehört in die manuelle Verifikation.
-- Der Lab-Adapter rendert die zweite Karte genau dann, wenn `me != null`.
+- Die Lab-Seite reicht `LabEntries.vue` `[me, ...others]`, wenn `me` steht, sonst nur `others` — und
+  die Liste rendert sich selbst gar nicht, wenn das Ergebnis leer ist.
 
 ### Was happy-dom nicht kann
 
