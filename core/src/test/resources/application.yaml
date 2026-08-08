@@ -17,3 +17,7 @@ spring:
 app:
   test-auth:
     enabled: true
+  game-lab:
+    # This file REPLACES the main application.yaml on the test classpath — without this key the
+    # lab beans are absent from every test context and the conditions never match.
+    enabled: true

@@ -22,6 +22,31 @@ callback URL** to `http://localhost:5173/login/oauth2/code/github` (the SPA orig
 **not** `:8080`) — otherwise GitHub sends you to `:8080` after login and you land
 on the backend's raw JSON instead of the app.
 
+## Game lab (non-production only)
+
+Play a mini-game against a seed you control, inside a real community. Start at the index — it
+lists every game the lab can draw:
+
+```
+/c/<slug>/lab              # the index
+/c/<slug>/lab/sample       # a game; the page rolls a seed and writes it into the URL
+/c/<slug>/lab/sample?seed=42   # a specific round
+```
+
+Reloading replays the same round; change `seed` for a different one. Following a link from the
+index has no seed, so it starts a fresh round every time. Guesses live in the backend's memory,
+one round per (community, game) — a different seed discards the previous one.
+
+The controls (seed, reset, switch player) live in the **nav drawer**, not in the content column,
+because a game review judges the look of the page as much as the game. Nothing is linked from
+anywhere: you type the URL. The lab answers "not available" wherever `app.game-lab.enabled` is off
+(always in production). "Spieler wechseln" goes through the test-user picker and returns to the
+same seed.
+
+Adding a game: one entry in `src/gamelab/games.ts` plus its component, and a `LabGame`
+implementation in the backend's `gamelab` module. See
+`docs/superpowers/specs/2026-08-08-game-lab-design.md`.
+
 ## Scripts
 
 - `pnpm test` — unit tests (Vitest + Vue Test Utils + happy-dom)

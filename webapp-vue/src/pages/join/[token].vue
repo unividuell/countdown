@@ -15,7 +15,7 @@ onMounted(async () => {
     const r = await joinByToken(route.params.token)
     if (r.status === 'ALREADY_ACTIVE') return router.replace(communityPath(r.slug))
     state.value = 'pending'
-    message.value = `Antrag für „${r.name}" gestellt — warte auf Bestätigung durch einen Spielleiter.`
+    message.value = `Antrag für „${r.name}“ gestellt — warte auf Bestätigung durch einen Spielleiter.`
   } catch (e) {
     state.value = 'error'
     message.value =

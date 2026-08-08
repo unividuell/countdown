@@ -33,7 +33,10 @@ class DevLoginController(
 
     @GetMapping("/login/github", produces = ["text/html;charset=UTF-8"])
     @ResponseBody
-    fun picker(request: HttpServletRequest): String {
+    fun picker(
+        request: HttpServletRequest,
+        @RequestParam(required = false) redirect: String?,
+    ): String {
         val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
         val byLogin = users.findByGithubLoginIn(seeder.seedLogins).associateBy { it.githubLogin }
         val buttons = seeder.seedUsers.mapNotNull { seed ->
@@ -46,6 +49,7 @@ class DevLoginController(
             """<form method="post" action="/login/github/as">
                  <input type="hidden" name="_csrf" value="${csrf.token}"/>
                  <input type="hidden" name="login" value="${HtmlUtils.htmlEscape(seed.login)}"/>
+                 <input type="hidden" name="redirect" value="${HtmlUtils.htmlEscape(redirect ?: "")}"/>
                  <button type="submit">
                    <span class="chip" aria-hidden="true">${seed.emoji}</span>
                    <span>${HtmlUtils.htmlEscape(user.username)}</span>
@@ -79,7 +83,12 @@ class DevLoginController(
     }
 
     @PostMapping("/login/github/as")
-    fun loginAs(@RequestParam login: String, request: HttpServletRequest, response: HttpServletResponse): RedirectView {
+    fun loginAs(
+        @RequestParam login: String,
+        @RequestParam(required = false) redirect: String?,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ): RedirectView {
         // permitAll: only seed logins are resolvable here, or anyone could assume any registered
         // identity by name (and, since TestUserSeeder, potentially a super-admin one).
         val user = users.findByGithubLogin(login)?.takeIf { login in seeder.seedLogins }
@@ -89,6 +98,30 @@ class DevLoginController(
         val context = SecurityContextHolder.createEmptyContext().apply { authentication = auth }
         SecurityContextHolder.setContext(context)
         securityContextRepository.saveContext(context, request, response)
-        return RedirectView("/")
+        // Expansion off: RedirectView otherwise treats "{...}" in the URL as a URI template and
+        // resolves it against the (empty) model, throwing on any redirect containing a brace
+        // instead of just redirecting to it.
+        return RedirectView(safeRedirect(redirect)).apply { setExpandUriTemplateVariables(false) }
+    }
+
+    /**
+     * Only same-site absolute paths. `//host` and `/\host` are protocol-relative and leave the
+     * site; anything without a leading slash is not a path at all.
+     *
+     * Tab, CR and LF are rejected outright rather than sanitised, because browsers **strip those
+     * characters from a URL before resolving it**: `"/\t/evil.example"` passes a naive prefix
+     * check and is then resolved as the protocol-relative `//evil.example`. Checking the raw
+     * string is therefore not enough on its own.
+     *
+     * This endpoint is permitAll, so an unchecked redirect here would be a genuine open redirect
+     * even in a dev-only build.
+     */
+    private fun safeRedirect(candidate: String?): String {
+        if (candidate == null) return "/"
+        if (candidate.any { it == '\t' || it == '\n' || it == '\r' }) return "/"
+        val sameSite = candidate.startsWith("/") &&
+            !candidate.startsWith("//") &&
+            !candidate.startsWith("/\\")
+        return if (sameSite) candidate else "/"
     }
 }

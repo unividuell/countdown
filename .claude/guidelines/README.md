@@ -28,6 +28,7 @@ new team members (and AI assistants) stay consistent.
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 | **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
+| **Game lab** — the non-prod harness for playing a mini-game against a URL seed (two-gate pattern · self-limiting in-memory state · payload-hygiene test · the lab adapts, never the game) | [game-lab.md](game-lab.md) |
 
 ## Stack baseline
 
@@ -48,6 +49,18 @@ new team members (and AI assistants) stay consistent.
 - **Exception in the other direction:** German *data* — e.g. the placeholder
   entries standing in for the German game content — stays German; it's content,
   not code.
+- **User-facing German text uses German quotation marks: `„…“`** — opening `„`
+  (U+201E, low) and closing `“` (U+201C, high). Never a straight `"` on either
+  side, and never the English `“…”`. This binds everything a user reads: Vue
+  templates and the strings behind them, server-rendered HTML, and any message
+  that reaches the UI. It does **not** bind design docs under
+  `docs/superpowers/`, commit messages, or code comments — there the mix is
+  irrelevant because nobody reads it as typography.
+  *Watch the closing mark specifically.* Typing `„` and then reaching for the
+  key next to Enter yields `„…"`, which looks almost right in a diff and wrong
+  on screen; that mistake was in the codebase for months and got mistaken for
+  house style. When in doubt, grep: `grep -rn '„[^“]*"' webapp-vue/src` finds
+  every half-converted pair.
 
 ## Worked examples
 
