@@ -45,6 +45,18 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
+      - GUESS_HUE_DATASET_PATH=/config/guess-hue-dataset.yaml
+    volumes:
+      # update.sh decrypts to here before calling `compose up`. Read-only: the app reads the
+      # dataset and never writes it. Missing file aborts the start -- intentional, a game running
+      # on placeholder content looks healthy and isn't.
+      # Per-target filename via GUESS_HUE_DATASET_FILE: both stacks share this directory, and a
+      # shared name would mean e.g. a staging update swaps out the plaintext file prod has
+      # mounted, without prod ever knowing. update.sh sets and exports this variable itself
+      # (the shell environment outranks --env-file) -- it's deliberately absent from
+      # .env.<target>.example. Anyone calling compose by hand without update.sh must export it
+      # themselves; the message below is for exactly that case.
+      - ${GUESS_HUE_DATASET_FILE:?GUESS_HUE_DATASET_FILE is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/guess-hue-dataset.yaml:ro
     depends_on:
       - postgres
     networks:

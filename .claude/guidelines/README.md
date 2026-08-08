@@ -20,18 +20,34 @@ new team members (and AI assistants) stay consistent.
 | ↳ Frontend routing, shells & access (Vue Router 5 file-based · guard-owned nav data · `[slug]` shell · role gating) | [frontend-routing.md](frontend-routing.md) |
 | ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking) | [frontend-state.md](frontend-state.md) |
 | ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles) | [frontend-testing.md](frontend-testing.md) |
-| Deployment (ghcr images · arm64 CI · prod+staging compose · `update.sh` · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
+| Deployment (ghcr images · arm64 CI · prod+staging compose topology · backend production profile) | [deployment.md](deployment.md) |
 | ↳ Deployment edge (the two Caddys · TLS · SPA/API routing · cache headers · `X-Forwarded-*` chain) | [deployment-edge.md](deployment-edge.md) |
+| ↳ Deployment server ops (`update.sh` · secret-handling scripts · pg_dump backup · pgAdmin SSH) | [deployment-server.md](deployment-server.md) |
 | **Dependency updates** — Maven · npm · Docker, and the versions we deliberately hold back (TS 6.x, `@types/node` 24, Node LTS) | [dependency-updates.md](dependency-updates.md) |
 | Multi-tenancy (community module · `community_id` scoping · slug-derivation parity · URL-slug routing guard) | [multi-tenancy.md](multi-tenancy.md) |
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
+| **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
 
 ## Stack baseline
 
 **Backend (`core/`):** **Spring Boot 4.1**, **Kotlin 2.4**, **Java 25**, **Spring Modulith 2.1** (GA — not RC), **PostgreSQL 18** (native `uuidv7()`). Build with the Maven wrapper from `core/`: `./mvnw test`, `./mvnw spring-boot:run`; local DB via Spring Boot docker-compose support (`compose.yaml` at the repo root, pinned to `postgres:18`; see [persistence.md](persistence.md) for the port/pgAdmin setup).
 
 **Frontend (`webapp-vue/`):** **Vite 8**, **Vue 3** (Composition API), **TypeScript** (strict), **Vue Router 5** (file-based), **Tailwind v4**, **pnpm**. `pnpm dev` proxies to the backend for same-origin auth.
+
+## Language
+
+- **Source code is English** — comments, KDoc, identifiers, log messages, error
+  messages, test names — whatever language the conversation that produced it was
+  in. So are configuration and script comments, and the operator-facing READMEs.
+- **Repository metadata is English too:** commit messages (including bodies), PR
+  titles and descriptions. GitHub seeds the merge commit from the PR, so a German
+  entry sits oddly in an otherwise English history.
+- **Design docs under `docs/superpowers/` stay German** — they're prose for the
+  two of us, not repository metadata.
+- **Exception in the other direction:** German *data* — e.g. the placeholder
+  entries standing in for the German game content — stays German; it's content,
+  not code.
 
 ## Worked examples
 

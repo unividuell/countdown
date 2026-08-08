@@ -84,6 +84,14 @@ users (a full `list()`, a `count()`, a roster) must switch the seeder off:
 
 `SuperAdminRosterServiceTest` and `SuperAdminUserServiceTest` are the precedents.
 
+A start-up guard keyed on the deployed profile (e.g. "fail if this profile loaded the fallback
+data") fires inside **every** `@SpringBootTest` that activates that profile too — the test context
+is a real Spring context. Don't weaken the guard and don't add a bypass property; let the test
+supply the fixture the guard demands, imported from a **narrowly scoped** `@TestConfiguration` on
+that test class, never registered globally. A fixture registered globally would silently change
+what every other context test on that profile sees, and a later test asserting the real fallback
+behaviour would observe the fixture instead. `GuessHueTestDatasetConfiguration` is the precedent.
+
 ## Module verification
 
 Keep `ModularityTests` (`ApplicationModules.of(CoreApplication::class.java).verify()`)

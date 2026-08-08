@@ -16,3 +16,16 @@
 
 # superpowers brainstorming mockups
 .superpowers/
+
+# Plaintext game content on its way to SOPS encryption.
+# Never commit — not in specs, plans, or commit messages either.
+.local/
+
+# update.sh decrypts the Guess Hue dataset to here (only relevant if someone tests update.sh
+# locally from a repo checkout -- on the server it's not a git checkout at all).
+deploy/secrets/
+# Copy of the encrypted dataset that update.sh downloads (named per target, see update.sh) --
+# still encrypted, so no leak, but it makes `git status` dirty. The glob requires a target
+# infix, so it doesn't match deploy/guess-hue-dataset.sops.yaml itself (that committed file,
+# without an infix, stays tracked).
+deploy/guess-hue-dataset.*.sops.yaml
