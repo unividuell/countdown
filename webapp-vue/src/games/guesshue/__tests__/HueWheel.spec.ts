@@ -145,6 +145,27 @@ describe('HueWheel', () => {
     expect(w.emitted('update:hue')).toBeUndefined()
   })
 
+  it('claims touch only while a drag could actually turn the wheel', () => {
+    // happy-dom computes no CSS, so the scrolling *effect* can't be asserted here — this pins the
+    // bound style instead, which is the structural proxy for it. A locked wheel that still claims
+    // `touch-action: none` strands a swipe on a control that no longer does anything with it.
+    const enabled = mountWheel({ disabled: false })
+    const disabled = mountWheel({ disabled: true })
+
+    expect(enabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('none')
+    expect(disabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('auto')
+  })
+
+  it('lets a swipe through the empty middle scroll the page', () => {
+    // Same limitation as above: only the structural proxy (the shim's own attributes) is
+    // assertable here, not the scrolling it produces.
+    const w = mountWheel()
+    const shim = w.get('[data-test="hue-centre-shim"]')
+
+    expect(shim.attributes('aria-hidden')).toBe('true')
+    expect(shim.element.style.touchAction).toBe('auto')
+  })
+
   it('suppresses the context menu, so a long press on the wheel cannot pop it', () => {
     const w = mountWheel()
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })

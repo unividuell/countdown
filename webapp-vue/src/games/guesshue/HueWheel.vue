@@ -250,13 +250,29 @@ const rotatorStyle = computed(() => ({
   transform: `rotate(${knobAngle.value}deg)`,
   willChange: dragging.value || sweepKnob.value !== null ? 'transform' : undefined,
 }))
+
+/**
+ * `none` only while a drag could actually turn the wheel; `auto` once `disabled` locks it, so a
+ * spent round hands the gesture straight back to the page instead of stranding a swipe on a
+ * control that no longer does anything with it. Bound as a style, not a static class, so it
+ * follows the prop rather than being fixed for the component's lifetime.
+ */
+const rootStyle = computed(() => ({ touchAction: props.disabled ? 'auto' : 'none' }))
+
+/**
+ * The shim's own diameter, in percent of the wheel's width — strictly inside
+ * [BAND_INNER_FRACTION] (a percentage point short of it) so it can never shadow the band's own
+ * inner edge, only the empty circle inside it.
+ */
+const CENTRE_SHIM_PERCENT = BAND_INNER_FRACTION * 100 - 1
 </script>
 
 <template>
   <div class="w-full">
     <!--
-      `touch-none` and `select-none` were already here — a long press on the wheel is a normal
-      part of playing, so nothing under it may be selectable or raise an iOS callout.
+      `select-none` keeps nothing under a long press selectable or raising an iOS callout — a long
+      press on the wheel is a normal part of playing. `touch-action` sits in [rootStyle] instead of
+      a static class, because it must flip to `auto` once `disabled` locks the wheel.
       `@contextmenu.prevent` is the other half: without it, the same long press can pop the
       browser's context menu, which is exactly the failure mode the confirm button had to be
       hardened against too.
@@ -273,7 +289,8 @@ const rotatorStyle = computed(() => ({
       :aria-valuetext="`${hueName(props.hue)}, ${announcedHue} Grad`"
       :aria-disabled="props.disabled || undefined"
       :tabindex="props.disabled ? -1 : 0"
-      class="relative mx-auto aspect-square w-full max-w-80 touch-none rounded-full select-none"
+      class="relative mx-auto aspect-square w-full max-w-80 rounded-full select-none"
+      :style="rootStyle"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
@@ -294,6 +311,21 @@ const rotatorStyle = computed(() => ({
           :style="{ top: `${KNOB_TOP_PERCENT}%` }"
         />
       </div>
+      <!--
+        A touch-behaviour shim, not a visual one — do not delete it for painting nothing. The band
+        is the only part of the wheel a drag can turn, but the root's `touch-action: none` covers
+        its whole square, so without this a swipe starting in the empty middle would be swallowed
+        too, instead of scrolling the page. Sitting below the centre slot in stacking order, so a
+        press on the confirm button still reaches it first and keeps that button's own
+        `touch-action`; sized strictly inside the band's inner edge, so it can never shadow the
+        band itself.
+      -->
+      <div
+        data-test="hue-centre-shim"
+        aria-hidden="true"
+        class="absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full"
+        :style="{ width: `${CENTRE_SHIM_PERCENT}%`, touchAction: 'auto' }"
+      />
       <div
         class="absolute top-1/2 left-1/2 aspect-square w-[40%] -translate-x-1/2 -translate-y-1/2"
         @pointerdown.stop
