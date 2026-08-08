@@ -71,6 +71,21 @@ function indicesDark(text: string): number[] {
   return bitmap(text).on.flatMap((on, i) => (on ? [] : [i]))
 }
 
+/**
+ * Put the document in the background, the way a reader switching tabs does.
+ *
+ * Both properties, because `document.hidden` is the historical spelling and `visibilityState` the
+ * one that carries the third state — a component reading either must see the same thing.
+ */
+function setHidden(hidden: boolean): void {
+  Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
+  Object.defineProperty(document, 'visibilityState', {
+    value: hidden ? 'hidden' : 'visible',
+    configurable: true,
+  })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
 async function advance(ms: number): Promise<void> {
   vi.advanceTimersByTime(ms)
   await nextTick()
@@ -100,6 +115,8 @@ beforeEach(() => {
 
 afterEach(() => {
   Reflect.deleteProperty(Element.prototype, 'animate')
+  Reflect.deleteProperty(document, 'hidden')
+  Reflect.deleteProperty(document, 'visibilityState')
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
@@ -216,6 +233,32 @@ describe('FlipDotBoard', () => {
     expect(animate).toHaveBeenCalledTimes(17 * 7 - litAtRest)
   })
 
+  // The relight's hold is the one timer the board schedules after mount, and it keeps its own handle
+  // rather than joining the boot pair on a list that is only emptied at unmount. Its own handle is
+  // its own way to be forgotten, so the release is pinned here.
+  it('fires no relight timer after being unmounted during the hold', async () => {
+    const animate = stubAnimate()
+    const w = mount(FlipDotBoard, { props: { text: '99', label: 'x' } })
+    await bootDone()
+    // Long enough to settle everything the switch-on and the environment still have outstanding —
+    // measured: happy-dom leaves one of its own behind well past the end of the reveal. The counts
+    // below are then the board's alone, which is what makes them worth stating absolutely.
+    await advance(5000)
+    animate.mockClear()
+    expect(vi.getTimerCount()).toBe(0)
+
+    await w.setProps({ text: '100' })
+    await nextTick()
+    expect(vi.getTimerCount()).toBe(1)
+
+    // Nothing outlives the unmount — including the hold, whose handle is the one the board does not
+    // keep on the list it empties here.
+    w.unmount()
+    expect(vi.getTimerCount()).toBe(0)
+    await advance(BOOT_HOLD_MS)
+    expect(animate).not.toHaveBeenCalled()
+  })
+
   it('swaps a changed geometry instantly under prefers-reduced-motion', async () => {
     const animate = stubAnimate()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
@@ -237,6 +280,88 @@ describe('FlipDotBoard', () => {
     await nextTick()
     expect(animate).not.toHaveBeenCalled()
     expect(fills(w).filter((f) => f === DOT_ON).length).toBe(bitmap('01').on.filter(Boolean).length)
+  })
+
+  /**
+   * Gecko pauses the refresh driver for a background tab, so an animation created there never
+   * advances, never finishes and is never released. The board's value changes once a second whether
+   * anyone is looking or not, and each change used to create one animation per flipped dot — measured
+   * in Firefox: 2824 live animations after 121 s in the background, climbing linearly, against 58 in
+   * a foreground tab. Left open for a working day that is ~670k animation objects and gigabytes of
+   * resident memory; the tab was reported crashing.
+   *
+   * Nobody can see a flip in a tab that is not on screen, so the board does not animate one.
+   */
+  describe('in a background tab', () => {
+    const WIDE = '02:15:07:33'
+    const litAtRest = (text: string) => bitmap(text).on.filter(Boolean).length
+
+    it('creates no animation for a value that changes while hidden', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '00:00:00', label: 'x' } })
+      await bootDone()
+      await advance(bitmap('00:00:00').cols * STAGGER_MS + CREATE_LEAD_MS)
+      animate.mockClear()
+
+      setHidden(true)
+      await w.setProps({ text: '00:00:01' })
+      await nextTick()
+
+      expect(animate).not.toHaveBeenCalled()
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(litAtRest('00:00:01'))
+    })
+
+    // One skipped flip would be unremarkable; the leak is that it never stops. A tab left in the
+    // background ticks on for hours.
+    it('stays at zero animations across a long spell in the background', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '00:00:00', label: 'x' } })
+      await bootDone()
+      await advance(bitmap('00:00:00').cols * STAGGER_MS + CREATE_LEAD_MS)
+      animate.mockClear()
+
+      setHidden(true)
+      for (let s = 1; s <= 60; s++) {
+        await w.setProps({ text: `00:00:${String(s).padStart(2, '0')}` })
+        await advance(1000)
+      }
+
+      expect(animate).not.toHaveBeenCalled()
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(litAtRest('00:00:60'))
+    })
+
+    // The dots a running wave has not reached yet are held at their pre-flip colour by hand, and the
+    // wave that would resolve them runs on rAF — which the background tab has just stopped. Without
+    // this the board comes back showing a frozen half-flipped readout.
+    it('releases the dots a wave was still holding when it goes to the background', async () => {
+      stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: WIDE, label: 'x' } })
+      await bootDone()
+      expect(fills(w).filter((f) => f === DOT_ON).length).not.toBe(litAtRest(WIDE))
+
+      setHidden(true)
+      await nextTick()
+
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(litAtRest(WIDE))
+    })
+
+    it('flips again once the tab is back in the foreground', async () => {
+      const animate = stubAnimate()
+      const w = mount(FlipDotBoard, { props: { text: '00:00:00', label: 'x' } })
+      await bootDone()
+      await advance(bitmap('00:00:00').cols * STAGGER_MS + CREATE_LEAD_MS)
+
+      setHidden(true)
+      await w.setProps({ text: '00:00:01' })
+      await nextTick()
+      animate.mockClear()
+
+      setHidden(false)
+      await w.setProps({ text: '00:00:02' })
+      await nextTick()
+
+      expect(animate).toHaveBeenCalledTimes(diffCount('00:00:01', '00:00:02'))
+    })
   })
 
   describe('switching on', () => {
