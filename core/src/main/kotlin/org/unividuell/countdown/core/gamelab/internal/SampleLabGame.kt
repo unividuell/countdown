@@ -1,0 +1,80 @@
+package org.unividuell.countdown.core.gamelab.internal
+
+import tools.jackson.databind.JsonNode
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Component
+import org.unividuell.countdown.core.gamelab.LabGame
+import org.unividuell.countdown.core.gamelab.LabOutcome
+import org.unividuell.countdown.core.gamelab.LabPayload
+import org.unividuell.countdown.core.rng.SeededRandom
+
+/** What the player needs to play: the window. The number inside it is the answer and stays here. */
+data class SamplePayload(val lowerBound: Int, val upperBound: Int) : LabPayload
+
+/** Where the target sits relative to the guess — the player's perspective, not the target's. */
+enum class SampleDirection { HIGHER, LOWER, EXACT }
+
+data class SampleOutcome(
+    val correct: Boolean,
+    val distance: Int,
+    val direction: SampleDirection,
+) : LabOutcome
+
+/**
+ * The lab's stand-in game. Deliberately not the real one and deliberately dumb: it exists to prove
+ * the path — deterministic draw, solution never in the payload, server-side scoring, one guess per
+ * round, both resets, two players — and it stays afterwards as the lab's own smoke test and as the
+ * worked example of how a game plugs in.
+ *
+ * `distance` and `direction` together reveal the target to whoever reads them. That is fine here:
+ * a player only sees them after spending their one guess, and the lab's seed is public in the URL
+ * anyway. A real game must weigh this itself — see the anti-cheat spec.
+ */
+@Component
+@Profile("!production")
+@ConditionalOnProperty("app.game-lab.enabled")
+class SampleLabGame : LabGame {
+
+    override val id = "sample"
+    override val displayName = "Zahlenraten (Attrappe)"
+
+    override fun reveal(seed: Int): SamplePayload {
+        val (lower, upper, _) = draw(seed)
+        return SamplePayload(lower, upper)
+    }
+
+    override fun score(seed: Int, guess: JsonNode): SampleOutcome {
+        val (lower, upper, secret) = draw(seed)
+        val value = guess.get("value")
+            ?.takeIf { it.isInt }
+            ?.asInt()
+            ?: throw InvalidGuessException("guess must carry an integer 'value'")
+        if (value !in lower..upper) throw InvalidGuessException("guess must lie in $lower..$upper")
+        return SampleOutcome(
+            correct = value == secret,
+            distance = kotlin.math.abs(secret - value),
+            direction = when {
+                value < secret -> SampleDirection.HIGHER
+                value > secret -> SampleDirection.LOWER
+                else -> SampleDirection.EXACT
+            },
+        )
+    }
+
+    /**
+     * **The draw order is a contract**, same rule as `GuessHueDataset.draw`: reorder these three
+     * calls and every round ever derived from a stored seed changes. The window is drawn *before*
+     * the secret so the payload varies with the seed without carrying anything secret.
+     */
+    private fun draw(seed: Int): Triple<Int, Int, Int> {
+        val rng = SeededRandom.fromSeed(seed)
+        val lower = rng.nextIntBetween(1, 900)
+        val upper = lower + WINDOW_WIDTH
+        return Triple(lower, upper, rng.nextIntBetween(lower, upper))
+    }
+
+    private companion object {
+        const val WINDOW_WIDTH = 99
+    }
+}
