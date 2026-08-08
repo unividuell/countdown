@@ -9,6 +9,7 @@
  * cannot confirm; lifting that needs a setting, and the setting is not this component's business.
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
@@ -35,17 +36,6 @@ const button = useTemplateRef<HTMLButtonElement>('button')
 /** The outline and the button arrive as one object — this is what the entrance animates. */
 const pop = useTemplateRef<HTMLDivElement>('pop')
 const keyHeld = ref(false)
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
-function inBackground(): boolean {
-  return document.hidden
-}
 
 function canAnimate(el: Element | null): el is Element {
   // happy-dom has no Web Animations API, and neither has any point in animating an unseen tab.

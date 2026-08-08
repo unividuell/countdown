@@ -21,6 +21,7 @@ import {
   CENTRE_HOLD_FRACTION,
   KNOB_TRACK_FRACTION,
 } from './wheel'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{
   hue: number
@@ -57,17 +58,6 @@ const KEY_STEPS: Record<string, number> = {
   ArrowLeft: -1,
   PageUp: 10,
   PageDown: -10,
-}
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
-function inBackground(): boolean {
-  return document.hidden
 }
 
 /** Cubic, written as multiplication — `**` is fine here, but this reads as what it is. */

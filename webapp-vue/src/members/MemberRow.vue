@@ -14,6 +14,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'
 import Avatar from '@/ui/Avatar.vue'
+import { prefersReducedMotion } from '@/ui/motion'
 import type { RosterMemberResponse } from '@/api/types'
 
 const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
@@ -106,7 +107,7 @@ onMounted(() => {
   const host = row.value
   if (!host) return
   items = [...host.querySelectorAll<HTMLElement>('[data-swarm-item]')]
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const reduced = prefersReducedMotion()
   if (!reduced && items.length > 0) {
     const margins: number[] = []
     const targets = items.map((el) => {
