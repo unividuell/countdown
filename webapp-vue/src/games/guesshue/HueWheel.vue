@@ -317,9 +317,10 @@ const CENTRE_SHIM_PERCENT = BAND_INNER_FRACTION * 100 - 1
         :style="ringStyle"
       />
       <div aria-hidden="true" class="absolute inset-0" :style="rotatorStyle">
+        <!-- cursor-pointer is explicit: Tailwind v4's preflight resets cursors. -->
         <span
           data-test="hue-knob"
-          class="absolute left-1/2 size-[9%] -translate-x-1/2 rounded-full bg-white shadow ring-2 ring-black/20"
+          class="absolute left-1/2 size-[9%] -translate-x-1/2 cursor-pointer rounded-full bg-white shadow ring-2 ring-black/20"
           :style="{ top: `${KNOB_TOP_PERCENT}%` }"
         />
       </div>

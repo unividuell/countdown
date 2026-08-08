@@ -43,6 +43,12 @@ describe('HueWheel', () => {
     vi.restoreAllMocks()
   })
 
+  it('gives the knob its own pointer cursor, not the band it rides', () => {
+    const w = mountWheel()
+
+    expect(w.get('[data-test="hue-knob"]').classes()).toContain('cursor-pointer')
+  })
+
   it('is one slider, named and described for a screen reader', () => {
     const w = mountWheel({ hue: 240 })
     const el = w.get('[data-test="hue-wheel"]')
