@@ -35,11 +35,27 @@ Der Server braucht dafür einmalig `age` und `sops`:
 
 ```bash
 apt-get install -y age
-curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/latest/download/sops-linux-arm64 && chmod +x /usr/local/bin/sops
+curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.arm64 && chmod +x /usr/local/bin/sops
 ```
 
-Die Images sind arm64 (siehe [deployment.md](../.claude/guidelines/deployment.md)) — auf einem
-x86-Server stattdessen `sops-linux-amd64`.
+`releases/latest/download/<name>` funktioniert bei sops nicht — die Asset-Namen tragen die Version
+(`sops-v3.13.3.linux.arm64`), nicht `sops-linux-arm64`, daher der feste Tag oben. Version 3.13.3 ist
+bewusst gepinnt: Die eingecheckte `deploy/guess-hue-dataset.sops.yaml` trägt `version: 3.13.3` —
+derselbe sops auf dem Server vermeidet Format-Überraschungen zwischen Ver- und Entschlüsselung. Wird
+sops lokal aktualisiert, sollte der Server zeitnah nachziehen.
+
+Architektur vorher **auf dem Server** prüfen (`dpkg --print-architecture`), nicht annehmen — das ist
+die Architektur der Server-CPU, nicht die der Container-Images (die sind arm64, siehe
+[deployment.md](../.claude/guidelines/deployment.md)). Auf einem `amd64`-Server stattdessen
+`sops-v3.13.3.linux.amd64`. Unter Debian ist das passende `.deb`
+(`sops_3.13.3_arm64.deb`/`sops_3.13.3_amd64.deb`, per `dpkg -i`) der aufgeräumtere Weg.
+
+Für später, wenn 3.13.3 veraltet ist — den aktuellen Tag von der API ableiten statt fest zu pinnen:
+
+```bash
+TAG=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest | grep -oP '"tag_name": "\K[^"]+')
+curl -fsSL -o /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${TAG}/sops-${TAG}.linux.arm64" && chmod +x /usr/local/bin/sops
+```
 
 Der Server braucht ein **eigenes** age-Schlüsselpaar — nicht den privaten Schlüssel des Autors.
 Der Autoren-Schlüssel gehört nicht auf eine Maschine, die am Internet hängt: bei einer
