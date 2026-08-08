@@ -7,6 +7,7 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.ServletException
+import java.net.URI
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -125,5 +126,64 @@ class DevLoginControllerTest(
         // would also pass on a picker that rendered nothing at all.
         html shouldContain """name="login" value="Fry""""
         html shouldContain """name="login" value="mom""""
+    }
+
+    @Test
+    fun `the picker carries a redirect through to the login form`() {
+        // mockMvc.get(String) re-encodes a URI template, which would double-encode a query value
+        // that already carries percent-escapes (%3F, %3D here); mockMvc.get(URI) takes the URI
+        // as-is, so the escapes reach the server exactly once decoded.
+        mockMvc.get(URI("/login/github?redirect=/c/team/lab/sample%3Fseed%3D42")).andExpect {
+            status { isOk() }
+            content { string(containsString("""name="redirect" value="/c/team/lab/sample?seed=42"""")) }
+        }
+    }
+
+    @Test
+    fun `the picker escapes a redirect containing markup`() {
+        // The value is echoed into HTML; without escaping the picker is an XSS hole even in dev.
+        mockMvc.get("""/login/github?redirect=/x"><script>alert(1)</script>""").andExpect {
+            status { isOk() }
+            content { string(containsString("&lt;script&gt;")) }
+        }
+    }
+
+    @Test
+    fun `login as returns to the requested path`() {
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            param("login", "leela")
+            param("redirect", "/c/team/lab/sample?seed=42")
+        }.andExpect {
+            status { is3xxRedirection() }
+            redirectedUrl("/c/team/lab/sample?seed=42")
+        }
+    }
+
+    @Test
+    fun `login as ignores an off-site redirect`() {
+        // Protocol-relative and absolute URLs both leave the site; the picker is permitAll, so an
+        // open redirect here would be a real one.
+        listOf("//evil.example", "https://evil.example", "/\\evil.example", "evil").forEach { hostile ->
+            mockMvc.post("/login/github/as") {
+                with(csrf())
+                param("login", "leela")
+                param("redirect", hostile)
+            }.andExpect {
+                status { is3xxRedirection() }
+                redirectedUrl("/")
+            }
+        }
+    }
+
+    @Test
+    fun `login as without a redirect still lands on the app root`() {
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            param("login", "leela")
+        }.andExpect {
+            status { is3xxRedirection() }
+            redirectedUrl("/")
+        }
     }
 }
