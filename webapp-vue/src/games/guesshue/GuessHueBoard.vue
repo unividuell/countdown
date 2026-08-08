@@ -51,7 +51,7 @@ const color = computed(
         data-test="hue-description"
         class="text-xl leading-relaxed font-medium text-neutral-900 italic select-none"
       >
-        „{{ props.description }}"
+        „{{ props.description }}“
       </p>
     </blockquote>
 
