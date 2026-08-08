@@ -74,6 +74,31 @@ describe('HoldButton', () => {
     expect(style).toContain('opacity: 1')
   })
 
+  it('shows the outline at rest, before any hold has started', () => {
+    // One element, two jobs: the thin outline reads as the button's own rim at rest, and doubles
+    // as the hold-progress track once a hold starts. It must be visible from the start, not only
+    // once `progress` leaves zero, or the button never reads as a button in the first place.
+    const w = mountButton()
+
+    const style = w.get('[data-test="hold-ring"]').attributes('style')
+
+    expect(style).toContain('d4d4d4')
+    expect(style).not.toContain('opacity: 0')
+  })
+
+  it('fills the outline with colour as the hold runs', async () => {
+    const w = mountButton()
+    const ring = w.get('[data-test="hold-ring"]')
+    const atRest = ring.attributes('style')
+
+    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    vi.advanceTimersByTime(500)
+    await w.vm.$nextTick()
+
+    expect(ring.attributes('style')).not.toBe(atRest)
+    expect(ring.attributes('style')).toContain('currentColor')
+  })
+
   it('confirms after the full hold', async () => {
     const w = mountButton()
 

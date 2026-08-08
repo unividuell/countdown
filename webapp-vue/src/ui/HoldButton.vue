@@ -128,12 +128,24 @@ function onKeyUp(event: KeyboardEvent): void {
   cancel()
 }
 
+/**
+ * The thin light-grey outline around the button, and the hold-progress indicator, are the same
+ * element: one ring, two jobs. At rest it reads as the button's own rim, the way a socket outlines
+ * what sits in it; as the hold runs, colour fills it clockwise from 0° to 360°. It stays visible
+ * under `prefers-reduced-motion` for free — nothing here is a transition, `progress` is a plain
+ * number driven by `useHoldProgress`'s own `requestAnimationFrame` loop.
+ */
 const ringStyle = computed(() => ({
-  background: `conic-gradient(currentColor ${progress.value * 360}deg, transparent 0deg)`,
-  // Turns the disc into a ring; `closest-side` keeps it proportional at any wheel size.
-  mask: 'radial-gradient(closest-side, transparent 84%, #000 85%)',
-  WebkitMask: 'radial-gradient(closest-side, transparent 84%, #000 85%)',
-  opacity: progress.value > 0 ? 1 : 0,
+  // The grey base sits in `background-color`, beneath `background-image` — the conic-gradient's
+  // `transparent` half lets it show through for whatever the hold has not yet filled.
+  backgroundColor: '#d4d4d4',
+  backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
+  // `closest-side` keeps this proportional at any wheel size. The band from 90% to 92% is what
+  // makes the disc read as a ring rather than a filled circle — thin, and, combined with the
+  // outer box being noticeably larger than the button underneath (see the `-inset` below), with a
+  // visible gap between the two.
+  mask: 'radial-gradient(closest-side, transparent 90%, #000 92%)',
+  WebkitMask: 'radial-gradient(closest-side, transparent 90%, #000 92%)',
 }))
 
 /**
@@ -153,10 +165,16 @@ const buttonStyle = computed(() => ({
 
 <template>
   <div class="relative size-full">
+    <!--
+      `-inset-[10%]` inflates this box by 10% of the button's own size on every side — 1.2× the
+      button underneath. The wheel hands this component a slot 20% of its own width; at 1.2× that
+      lands the outline at ~24%, matching the original, with the gap between button and outline
+      coming from the mask above rather than from this box being any bigger than it has to be.
+    -->
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[12%] rounded-full text-neutral-900"
+      class="pointer-events-none absolute -inset-[10%] rounded-full text-neutral-900"
       :style="ringStyle"
     />
     <!--
@@ -175,6 +193,7 @@ const buttonStyle = computed(() => ({
       `watch(holding, …)` above already clears `keyHeld` once `holding` goes false — no second
       mechanism needed.
     -->
+    <!-- cursor-pointer is explicit: Tailwind v4's preflight resets buttons to cursor:default. -->
     <button
       ref="button"
       data-test="hold-button"
