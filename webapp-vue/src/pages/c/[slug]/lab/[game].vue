@@ -122,9 +122,15 @@ watch(
          drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
+    <!--
+      `:key="seed"` forces a remount on a new round rather than a prop patch on the same instance:
+      the wheel's entrance animation should replay per round, and the sample game must not keep a
+      scratch value the player typed but never submitted from the round before.
+    -->
     <component
       :is="gameComponent"
       v-if="round"
+      :key="seed"
       :payload="round.payload"
       :outcome="round.me?.outcome ?? null"
       :my-guess="round.me?.guess ?? null"

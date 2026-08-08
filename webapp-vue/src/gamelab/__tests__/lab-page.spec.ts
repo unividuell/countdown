@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
+import SampleGame from '@/gamelab/SampleGame.vue'
 import type { LabRoundResponse, SamplePayload } from '@/gamelab/types'
 
 const replace = vi.fn()
@@ -178,6 +179,14 @@ describe('lab page', () => {
       expect(w.find(`[data-test="${id}"]`).exists()).toBe(false)
       expect(document.querySelector(`[data-test="${id}"]`)).not.toBeNull()
     }
+  })
+
+  it('keys the game component by seed, so a new round remounts it instead of patching props', async () => {
+    // Without the key, a seed change swaps props on the same instance: the wheel's entrance
+    // animation never replays, and the sample game keeps a scratch value from the round before.
+    const w = await mountPage()
+
+    expect(w.findComponent(SampleGame).vm.$.vnode.key).toBe(42)
   })
 
   it('says the lab is unavailable when the backend does not have it', async () => {

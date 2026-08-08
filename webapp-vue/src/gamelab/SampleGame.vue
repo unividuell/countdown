@@ -13,7 +13,9 @@ const emit = defineEmits<{ guess: [value: unknown] }>()
 function storedValue(guess: unknown): number | null {
   if (typeof guess !== 'object' || guess === null) return null
   const value = (guess as { value?: unknown }).value
-  return typeof value === 'number' ? value : null
+  // Matches the same guard in `GuessHueLabGame.vue`: a stale round could hand back `NaN`, and
+  // `typeof NaN === 'number'` lets it straight through to the input.
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
 const value = ref<number | null>(storedValue(props.myGuess))

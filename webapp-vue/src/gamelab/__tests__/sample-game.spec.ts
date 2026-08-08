@@ -30,4 +30,14 @@ describe('SampleGame', () => {
     await w.setProps({ myGuess: null })
     expect((w.get('[data-test="sample-input"]').element as HTMLInputElement).value).toBe('')
   })
+
+  it('rejects a non-finite stored guess rather than resubmitting it', async () => {
+    // `typeof NaN === 'number'`, so a plain `typeof` guard lets it through; `submit()`'s own guard
+    // (`typeof value.value !== 'number'`) would then wave a `NaN` guess straight back out.
+    const w = mountGame({ myGuess: { value: NaN } })
+
+    await w.get('[data-test="sample-submit"]').trigger('submit')
+
+    expect(w.emitted('guess')).toBeUndefined()
+  })
 })
