@@ -366,9 +366,9 @@ class GuessHueLabGameTest {
 
     @Test
     fun `the payload matches what the dataset drew for that seed`() {
-        // Re-derives the round exactly as the game does. The duplication pins the draw order:
-        // reordering GuessHueDataset.draw breaks this test instead of silently rewriting every
-        // round ever derived from a stored seed.
+        // Pins the mapping, not the draw order — the adapter must hand on exactly what the dataset
+        // produced rather than derive anything of its own. The draw order itself is a contract of
+        // the `guesshue` module and is pinned there, by GuessHueDrawTest.
         val target = dataset.draw(SeededRandom.fromSeed(4711))
 
         val payload = game.reveal(4711) as GuessHuePayload
@@ -1504,6 +1504,15 @@ describe('HueWheel', () => {
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('241')
   })
 
+  it('never announces a value above its own maximum', () => {
+    // Rounding 359.6 up lands on 360, one past aria-valuemax — an inconsistency a screen reader
+    // reports and nobody else ever sees. The circle closes after rounding, not before.
+    const w = mountWheel({ hue: 359.6 })
+
+    expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('0')
+    expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuetext')).toBe('Rot, 0 Grad')
+  })
+
   it('is reachable by keyboard, and not while disabled', () => {
     expect(mountWheel().get('[data-test="hue-wheel"]').attributes('tabindex')).toBe('0')
     expect(
@@ -1656,6 +1665,13 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:hue': [number]; 'boot-done': [] }>()
 
 const root = useTemplateRef<HTMLDivElement>('root')
+
+/**
+ * What a screen reader is told. Rounded, because the fractions a drag produces help nobody read
+ * aloud — and folded onto the circle **after** rounding, so 359.6 announces 0 rather than a 360
+ * that sits one past `aria-valuemax`. The guess itself stays exact.
+ */
+const announcedHue = computed(() => Math.round(wrap360(props.hue)) % 360)
 
 /** During the sweep the rotator follows this instead of `hue`; `null` once the wheel is live. */
 const sweepKnob = ref<number | null>(null)
@@ -1833,8 +1849,8 @@ const rotatorStyle = computed(() => ({
       aria-roledescription="Farbrad"
       aria-valuemin="0"
       aria-valuemax="359"
-      :aria-valuenow="Math.round(wrap360(props.hue))"
-      :aria-valuetext="`${hueName(props.hue)}, ${Math.round(wrap360(props.hue))} Grad`"
+      :aria-valuenow="announcedHue"
+      :aria-valuetext="`${hueName(props.hue)}, ${announcedHue} Grad`"
       :aria-disabled="props.disabled || undefined"
       :tabindex="props.disabled ? -1 : 0"
       class="relative mx-auto aspect-square w-full max-w-80 touch-none rounded-full select-none"
