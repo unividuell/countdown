@@ -18,7 +18,7 @@ import LabEntries from '@/gamelab/LabEntries.vue'
 import { labGames } from '@/gamelab/games'
 import { parseSeed, rollSeed } from '@/gamelab/seed'
 import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
-import type { LabRoundResponse } from '@/gamelab/types'
+import type { LabEntryDto, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]')
 const router = useRouter()
@@ -61,6 +61,17 @@ async function guess(value: unknown): Promise<void> {
   if (current === null) return
   await run((slug, game) => submitLabGuess(slug, game, current, value))
 }
+
+/**
+ * The complete picture of the round: the viewer's own entry first, then everyone else's. The
+ * backend withholds `others` until the viewer has guessed, so before that this is empty — `me` is
+ * the only thing ever populated ahead of it.
+ */
+const entries = computed<LabEntryDto[]>(() => {
+  const current = round.value
+  if (!current) return []
+  return current.me ? [current.me, ...current.others] : current.others
+})
 
 // The seed is the single source of truth. An absent or unusable one is repaired into the URL
 // before anything is loaded, so a reload always replays exactly the same round.
@@ -143,6 +154,6 @@ watch(
       @guess="guess"
     />
 
-    <LabEntries :entries="round?.others ?? []" />
+    <LabEntries :entries="entries" />
   </div>
 </template>

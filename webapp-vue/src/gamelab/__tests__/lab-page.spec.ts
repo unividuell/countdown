@@ -272,6 +272,45 @@ describe('lab page', () => {
     expect(w.get('[data-test="lab-entries"]').text()).not.toContain('→')
   })
 
+  it('renders no entries list at all before the viewer has guessed', async () => {
+    // The backend withholds `others` until the viewer has guessed, and `me` is null until then
+    // too — so the combined list is legitimately empty, and that must not show as an empty box.
+    const w = await mountPage()
+
+    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
+  })
+
+  it("puts the viewer's own guess into the entries list, first", async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { value: 150 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+      },
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { value: 160 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+    const rows = w.get('[data-test="lab-entries"]').findAll('li')
+
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.text()).toContain('Fry')
+    expect(rows[1]!.text()).toContain('Bender')
+  })
+
   it('keys the game component on the round the response carries, not the seed in the URL', async () => {
     // The bug this guards: rolling writes the new seed to the URL first, and the page keys the
     // game component on that URL seed. Vue Router updates `route.query` in place for a query-only

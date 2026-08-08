@@ -51,16 +51,6 @@ describe('GuessHueLabGame', () => {
     expect(w.emitted('guess')).toEqual([[{ hue: 210.4 }]])
   })
 
-  it('shows no second card before a guess is in', () => {
-    expect(mountAdapter().find('[data-test="lab-guess-card"]').exists()).toBe(false)
-  })
-
-  it('shows the provisional card with the rounded angle once a guess is in', () => {
-    const w = mountAdapter({ myGuess: { hue: 42.5 }, disabled: true })
-
-    expect(w.get('[data-test="lab-guess-card"]').text()).toContain('43')
-  })
-
   it('survives a guess shape it does not recognise', () => {
     // `myGuess` is `unknown` by contract; a stale round from another game must not throw.
     const w = mountAdapter({ myGuess: { value: 7 }, disabled: true })
@@ -78,6 +68,5 @@ describe('GuessHueLabGame', () => {
     const w = mountAdapter({ myGuess, disabled: true })
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
-    expect(w.find('[data-test="lab-guess-card"]').exists()).toBe(false)
   })
 })

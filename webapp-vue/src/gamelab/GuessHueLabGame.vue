@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
- * Guess Hue in the lab: the board plus the two things only the lab needs — the guess wrapped into
- * the shape the endpoint takes, and a provisional card showing what was submitted.
+ * Guess Hue in the lab: the board plus the one thing only the lab needs — the guess wrapped into
+ * the shape the endpoint takes.
  *
- * That card lives here rather than in the board on purpose. Standing beside the game rather than
- * inside it says by itself that it does not belong, and living in the lab adapter means it
- * disappears together with the lab instead of by documentation. The real view after a round is a
- * separate subject and will replace it.
+ * What was submitted is no longer shown here: the lab's entries list is the one place guesses
+ * appear, including the viewer's own. `myGuess` still matters to this adapter, though — it is what
+ * gives the wheel its starting angle after a reload in a round the viewer has already spent.
  */
 import { computed } from 'vue'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
@@ -40,18 +39,4 @@ const myHue = computed(() => {
     :disabled="props.disabled"
     @guess="(hue: number) => emit('guess', { hue })"
   />
-
-  <!-- Lab scaffolding with an expiry date. It may vanish without replacement. -->
-  <div
-    v-if="myHue !== null"
-    data-test="lab-guess-card"
-    class="mt-3 rounded-xl border border-dashed border-neutral-300 bg-white p-4"
-  >
-    <p class="text-sm text-neutral-600">
-      Dein Tipp steht: <strong class="text-neutral-900">{{ Math.round(myHue) }}°</strong>
-    </p>
-    <p class="mt-1 text-xs text-neutral-400">
-      Vorläufige Labor-Anzeige — die Ansicht nach der Abgabe wird noch gebaut.
-    </p>
-  </div>
 </template>
