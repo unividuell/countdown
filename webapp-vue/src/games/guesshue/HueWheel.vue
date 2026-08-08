@@ -221,6 +221,22 @@ const bandClipId = `hue-band-clip-${useId()}`
 const KNOB_SIZE_FRACTION = 0.09
 
 /**
+ * The annulus clip, as one `<path>` with two subpaths (outer circle, inner circle), each drawn as
+ * two arcs and closed. `clip-rule="evenodd"` resolves subpaths *within one path* — unlike two
+ * sibling `<circle>` elements, which the SVG spec unions rather than subtracts — so this is what
+ * actually punches the inner circle out of the outer one instead of just adding to it. Built from
+ * [BAND_INNER_FRACTION] rather than written as a literal, so the ring this clips to never drifts
+ * from the band the gradient mask paints or the gate in [onPointerDown].
+ */
+const bandClipPath = computed(() => {
+  const outerR = 0.5
+  const innerR = BAND_INNER_FRACTION / 2
+  const circle = (r: number): string =>
+    `M ${0.5 - r},0.5 A ${r},${r} 0 1,0 ${0.5 + r},0.5 A ${r},${r} 0 1,0 ${0.5 - r},0.5 Z`
+  return `${circle(outerR)} ${circle(innerR)}`
+})
+
+/**
  * `top`, as a % of the wheel's own box, that puts the knob's *centre* on
  * [KNOB_TRACK_FRACTION] — not its top edge, which is what the raw CSS property addresses, hence
  * subtracting half the knob's own size.
@@ -328,16 +344,17 @@ const rotatorStyle = computed(() => ({
     >
       <!--
         Defines the annulus that [rotatorStyle] clips to, in `objectBoundingBox` units so it scales
-        with the wheel automatically — no measuring, no `ResizeObserver`. `clip-rule="evenodd"`
-        turns the two concentric circles into a ring (the area between them), not a filled disc.
-        Zero-sized and `aria-hidden` because it draws nothing of its own; only its `id` is used, by
-        the `clip-path: url(#…)` below.
+        with the wheel automatically — no measuring, no `ResizeObserver`. One `<path>` with two
+        subpaths (see [bandClipPath]) and `clip-rule="evenodd"` on that path — the fill rule
+        resolves subpaths *within one path*, never between sibling shapes, so two separate
+        `<circle>` elements would union into a filled disc instead of a ring. Zero-sized and
+        `aria-hidden` because it draws nothing of its own; only its `id` is used, by the
+        `clip-path: url(#…)` below.
       -->
       <svg width="0" height="0" aria-hidden="true" class="absolute">
         <defs>
           <clipPath :id="bandClipId" clipPathUnits="objectBoundingBox" clip-rule="evenodd">
-            <circle cx="0.5" cy="0.5" r="0.5" />
-            <circle cx="0.5" cy="0.5" :r="BAND_INNER_FRACTION / 2" />
+            <path :d="bandClipPath" />
           </clipPath>
         </defs>
       </svg>
