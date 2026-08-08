@@ -13,4 +13,5 @@
 creation_rules:
   - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
     age: >-
-      age1p5g60l320k68lkpw6aenv3ujj3xghfe7nmvhh7rzpaumhujtnses4262qk
+      age1p5g60l320k68lkpw6aenv3ujj3xghfe7nmvhh7rzpaumhujtnses4262qk,
+      age1fvu6jkdfld90t9ysrgvz93f3jv76f06xjx54ntmzps4j2q0nlq9sntyzpp
