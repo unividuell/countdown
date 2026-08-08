@@ -1,6 +1,6 @@
 package org.unividuell.countdown.core.gamelab
 
-import io.kotest.matchers.shouldBe
+import io.kotest.matchers.collections.shouldBeEmpty
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -11,9 +11,6 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.gamelab.internal.LabController
-import org.unividuell.countdown.core.gamelab.internal.LabRoundStore
-import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.principalFor
 
 /**
@@ -30,10 +27,16 @@ class LabDisabledTest(
 ) {
 
     @Test
-    fun `no lab bean is wired`() {
-        context.getBeanNamesForType(LabController::class.java).size shouldBe 0
-        context.getBeanNamesForType(LabService::class.java).size shouldBe 0
-        context.getBeanNamesForType(LabRoundStore::class.java).size shouldBe 0
+    fun `no bean from the gamelab package is wired`() {
+        // Package-wide rather than per-type: a per-type list falls behind the moment a new bean
+        // (or one with a mis-spelled gate) is added to the module without also being added here.
+        // Entries carry "beanName (type)" rather than just the package, so a failure names the
+        // exact offending bean instead of a bare "expected empty list".
+        context.beanDefinitionNames
+            .mapNotNull { name -> context.getType(name)?.let { name to it } }
+            .filter { (_, type) -> type.packageName.startsWith("org.unividuell.countdown.core.gamelab") }
+            .map { (name, type) -> "$name (${type.name})" }
+            .shouldBeEmpty()
     }
 
     @Test
