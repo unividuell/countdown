@@ -49,6 +49,16 @@ describe('HueWheel', () => {
     expect(w.get('[data-test="hue-knob"]').classes()).toContain('cursor-pointer')
   })
 
+  it('greys out the band once the wheel is locked, so a spent round is obvious at a glance', () => {
+    // The knob and the confirm button keep their colour — the button is the colour preview and the
+    // one thing still worth reading after the round — so the filter lives only on the ring.
+    const enabled = mountWheel({ disabled: false })
+    const disabled = mountWheel({ disabled: true })
+
+    expect(enabled.get('[data-test="hue-ring"]').attributes('style')).not.toContain('grayscale')
+    expect(disabled.get('[data-test="hue-ring"]').attributes('style')).toContain('grayscale(1)')
+  })
+
   it('is one slider, named and described for a screen reader', () => {
     const w = mountWheel({ hue: 240 })
     const el = w.get('[data-test="hue-wheel"]')
@@ -151,25 +161,39 @@ describe('HueWheel', () => {
     expect(w.emitted('update:hue')).toBeUndefined()
   })
 
-  it('claims touch only while a drag could actually turn the wheel', () => {
-    // happy-dom computes no CSS, so the scrolling *effect* can't be asserted here — this pins the
-    // bound style instead, which is the structural proxy for it. A locked wheel that still claims
-    // `touch-action: none` strands a swipe on a control that no longer does anything with it.
+  it('never claims touch on the wheel root, only on the band itself', () => {
+    // The root's own `touch-action` used to flip between `none`/`auto` with `disabled`, but a
+    // descendant can only ever narrow what an ancestor's `touch-action: none` already forbids —
+    // never widen it back. So the root has to stay `auto` unconditionally, and something scoped to
+    // the band alone (see below) is what has to claim `none` instead. happy-dom computes no CSS, so
+    // the scrolling *effect* can't be asserted here — this pins the bound style, the structural
+    // proxy for it.
     const enabled = mountWheel({ disabled: false })
     const disabled = mountWheel({ disabled: true })
 
-    expect(enabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('none')
+    expect(enabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('auto')
     expect(disabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('auto')
   })
 
-  it('lets a swipe through the empty middle scroll the page', () => {
-    // Same limitation as above: only the structural proxy (the shim's own attributes) is
-    // assertable here, not the scrolling it produces.
-    const w = mountWheel()
-    const shim = w.get('[data-test="hue-centre-shim"]')
+  it('claims touch only on the band while a drag could actually turn the wheel', () => {
+    // A locked wheel that still claims `touch-action: none` anywhere strands a swipe on a control
+    // that no longer does anything with it.
+    const enabled = mountWheel({ disabled: false })
+    const disabled = mountWheel({ disabled: true })
 
-    expect(shim.attributes('aria-hidden')).toBe('true')
-    expect(shim.element.style.touchAction).toBe('auto')
+    expect(enabled.get('[data-test="hue-rotator"]').element.style.touchAction).toBe('none')
+    expect(disabled.get('[data-test="hue-rotator"]').element.style.touchAction).toBe('auto')
+  })
+
+  it('clips the touch-claiming layer to the band, so the empty middle and the corners are free to scroll', () => {
+    // `clip-path` (unlike `mask`) is honoured by hit testing: a point outside it no longer lands on
+    // this element at all, so the `touch-action: none` above only ever applies to touches that
+    // actually land on the band. happy-dom computes no CSS, so the shape itself isn't assertable
+    // here — this pins that a clip is bound at all, which a real device or the lab has to confirm
+    // actually excludes the middle and the corners.
+    const w = mountWheel()
+
+    expect(w.get('[data-test="hue-rotator"]').element.style.clipPath).toContain('url(#')
   })
 
   it('suppresses the context menu, so a long press on the wheel cannot pop it', () => {
@@ -401,6 +425,50 @@ describe('HueWheel', () => {
       // Only the pointerdown's own commit — the pointerup ended the drag despite the throw, so
       // the pointermove after it must emit nothing.
       expect(w.emitted('update:hue')).toEqual([[0]])
+    })
+
+    it('ends the drag when the browser drops pointer capture on its own', async () => {
+      // Without a `lostpointercapture` handler `dragging` stays stuck at `true` once the browser
+      // reclaims capture unasked, and every subsequent move — anywhere on the page — would go on
+      // re-aiming the hue.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 })
+      await el.trigger('lostpointercapture', { pointerId: 1 })
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toEqual([[0]])
+    })
+
+    it('stops following a bare mouse once no button is held, the belt-and-braces for the no-capture fallback', async () => {
+      // The fallback in [onPointerDown] drags anyway when `setPointerCapture` throws. Without
+      // capture and without a boundary handler, a mouse drag that leaves the wheel and releases
+      // outside never delivers `pointerup` to the root — so without this guard, moving the mouse
+      // back over the wheel afterwards, with no button held, would silently re-aim the hue.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1, pointerType: 'mouse', buttons: 1 })
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1, pointerType: 'mouse', buttons: 0 })
+
+      expect(w.emitted('update:hue')).toEqual([[0]])
+    })
+
+    it('keeps following a real touch drag even though `buttons` reads 0 for it in some engines', async () => {
+      // The guard above is deliberately scoped to `pointerType === 'mouse'` — some engines report
+      // `buttons: 0` for an active touch contact, and gating on `buttons` alone would wrongly freeze
+      // a touch drag mid-turn.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1, pointerType: 'touch', buttons: 0 })
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1, pointerType: 'touch', buttons: 0 })
+
+      expect(w.emitted('update:hue')).toEqual([[0], [90]])
     })
   })
 })

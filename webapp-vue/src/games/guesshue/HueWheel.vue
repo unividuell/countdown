@@ -12,7 +12,7 @@
  * wheel, the key map, grab-anywhere, the rotating layer — its code is not.
  */
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
 import { angleFromPoint, hueName, radiusFraction, wrap360 } from './geometry'
 import {
   BAND_INNER_FRACTION,
@@ -151,6 +151,16 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
   if (!dragging.value) return
+  // Belt-and-braces for the "capture failed, drag anyway" fallback in [onPointerDown]: with no
+  // capture and no boundary handler, a mouse drag that leaves the wheel and releases outside never
+  // delivers `pointerup` to the root, so `dragging` is left stuck at `true`. Without this, moving
+  // the mouse back over the wheel afterwards — with no button held — would silently re-aim the hue.
+  // `buttons` reads `0` for a touch contact in some engines, so this is gated to `mouse`
+  // specifically; a real touch drag must keep following regardless of what `buttons` reports.
+  if (event.pointerType === 'mouse' && event.buttons === 0) {
+    onPointerUp(event)
+    return
+  }
   const el = root.value
   if (!el) return
   const box = el.getBoundingClientRect()
@@ -201,6 +211,12 @@ function onKeyDown(event: KeyboardEvent): void {
 
 const knobAngle = computed(() => sweepKnob.value ?? props.hue)
 
+/**
+ * Unique per mounted wheel, so two instances on the same page never collide over the same
+ * `url(#…)` reference — a plain string literal would work for exactly one wheel at a time.
+ */
+const bandClipId = `hue-band-clip-${useId()}`
+
 /** The knob's own size, as a fraction of the wheel — kept beside the track math it feeds. */
 const KNOB_SIZE_FRACTION = 0.09
 
@@ -244,40 +260,49 @@ const ringStyle = computed(() => {
           WebkitMaskComposite: 'source-in',
         } as unknown as CSSProperties)
       : {}),
-    cursor: dragging.value ? 'grabbing' : 'grab',
+    // `disabled` greys the rainbow out so a spent round is obvious at a glance — the knob and the
+    // confirm button keep their colour, so this lives only here, not on a shared ancestor. The
+    // slight fade (rather than grayscale alone) is what keeps a locked band from reading as merely
+    // desaturated instead of unmistakably spent.
+    filter: props.disabled ? 'grayscale(1) opacity(85%)' : undefined,
   } satisfies CSSProperties
 })
 
+/**
+ * The rotator is `absolute inset-0` and later in DOM order than the ring, which makes it — not the
+ * ring — the element a real pointer actually lands on over the band; the ring's own `cursor` was
+ * consequently never seen. Cursor and touch-action both move here for the same reason: whichever
+ * element the browser actually hit-tests is the only place either can take effect. The knob is a
+ * child of this element and declares its own `cursor: pointer`, which still wins for its own small
+ * area — a child is hit-tested ahead of its parent's box, so nothing here shadows it.
+ */
 const rotatorStyle = computed(() => ({
   transform: `rotate(${knobAngle.value}deg)`,
   willChange: dragging.value || sweepKnob.value !== null ? 'transform' : undefined,
+  // Clipping this element itself to the same annulus the band occupies is what makes it stop
+  // claiming the empty middle and the square's corners at all — not just visually (it paints
+  // nothing there besides the knob, which already sits inside the kept region) but for hit-testing
+  // too, unlike `mask`. That is what lets `touchAction: 'none'` below apply *only* to the band: the
+  // used touch-action for a touch is computed from whatever element it actually lands on, and a
+  // point outside the clip no longer lands on this one at all.
+  clipPath: `url(#${bandClipId})`,
+  // `none` only while a drag could actually turn the wheel; `auto` once `disabled` locks it, so a
+  // spent round hands the gesture straight back to the page instead of stranding a swipe on a
+  // control that no longer does anything with it.
+  touchAction: props.disabled ? 'auto' : 'none',
+  cursor: dragging.value ? 'grabbing' : 'grab',
 }))
-
-/**
- * `none` only while a drag could actually turn the wheel; `auto` once `disabled` locks it, so a
- * spent round hands the gesture straight back to the page instead of stranding a swipe on a
- * control that no longer does anything with it. Bound as a style, not a static class, so it
- * follows the prop rather than being fixed for the component's lifetime.
- */
-const rootStyle = computed(() => ({ touchAction: props.disabled ? 'auto' : 'none' }))
-
-/**
- * The shim's own diameter, in percent of the wheel's width — strictly inside
- * [BAND_INNER_FRACTION] (a percentage point short of it) so it can never shadow the band's own
- * inner edge, only the empty circle inside it.
- */
-const CENTRE_SHIM_PERCENT = BAND_INNER_FRACTION * 100 - 1
 </script>
 
 <template>
   <div class="w-full">
     <!--
       `select-none` keeps nothing under a long press selectable or raising an iOS callout — a long
-      press on the wheel is a normal part of playing. `touch-action` sits in [rootStyle] instead of
-      a static class, because it must flip to `auto` once `disabled` locks the wheel.
-      `@contextmenu.prevent` is the other half: without it, the same long press can pop the
-      browser's context menu, which is exactly the failure mode the confirm button had to be
-      hardened against too.
+      press on the wheel is a normal part of playing. The root's own `touch-action` is left at its
+      default (`auto`) deliberately — see [rotatorStyle] and the clip-path below for where the band
+      actually claims touch, and why the root itself must not. `@contextmenu.prevent` is the other
+      half: without it, the same long press can pop the browser's context menu, which is exactly the
+      failure mode the confirm button had to be hardened against too.
     -->
     <div
       ref="root"
@@ -292,21 +317,42 @@ const CENTRE_SHIM_PERCENT = BAND_INNER_FRACTION * 100 - 1
       :aria-disabled="props.disabled || undefined"
       :tabindex="props.disabled ? -1 : 0"
       class="relative mx-auto aspect-square w-full max-w-80 rounded-full select-none"
-      :style="rootStyle"
+      style="touch-action: auto"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
+      @lostpointercapture="onPointerUp"
       @keydown="onKeyDown"
       @contextmenu.prevent
     >
+      <!--
+        Defines the annulus that [rotatorStyle] clips to, in `objectBoundingBox` units so it scales
+        with the wheel automatically — no measuring, no `ResizeObserver`. `clip-rule="evenodd"`
+        turns the two concentric circles into a ring (the area between them), not a filled disc.
+        Zero-sized and `aria-hidden` because it draws nothing of its own; only its `id` is used, by
+        the `clip-path: url(#…)` below.
+      -->
+      <svg width="0" height="0" aria-hidden="true" class="absolute">
+        <defs>
+          <clipPath :id="bandClipId" clipPathUnits="objectBoundingBox" clip-rule="evenodd">
+            <circle cx="0.5" cy="0.5" r="0.5" />
+            <circle cx="0.5" cy="0.5" :r="BAND_INNER_FRACTION / 2" />
+          </clipPath>
+        </defs>
+      </svg>
       <div
         data-test="hue-ring"
         aria-hidden="true"
         class="absolute inset-0 rounded-full"
         :style="ringStyle"
       />
-      <div aria-hidden="true" class="absolute inset-0" :style="rotatorStyle">
+      <div
+        data-test="hue-rotator"
+        aria-hidden="true"
+        class="absolute inset-0"
+        :style="rotatorStyle"
+      >
         <!-- cursor-pointer is explicit: Tailwind v4's preflight resets cursors. -->
         <span
           data-test="hue-knob"
@@ -314,21 +360,6 @@ const CENTRE_SHIM_PERCENT = BAND_INNER_FRACTION * 100 - 1
           :style="{ top: `${KNOB_TOP_PERCENT}%` }"
         />
       </div>
-      <!--
-        A touch-behaviour shim, not a visual one — do not delete it for painting nothing. The band
-        is the only part of the wheel a drag can turn, but the root's `touch-action: none` covers
-        its whole square, so without this a swipe starting in the empty middle would be swallowed
-        too, instead of scrolling the page. Sitting below the centre slot in stacking order, so a
-        press on the confirm button still reaches it first and keeps that button's own
-        `touch-action`; sized strictly inside the band's inner edge, so it can never shadow the
-        band itself.
-      -->
-      <div
-        data-test="hue-centre-shim"
-        aria-hidden="true"
-        class="absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full"
-        :style="{ width: `${CENTRE_SHIM_PERCENT}%`, touchAction: 'auto' }"
-      />
       <div
         class="absolute top-1/2 left-1/2 aspect-square w-[40%] -translate-x-1/2 -translate-y-1/2"
         @pointerdown.stop
