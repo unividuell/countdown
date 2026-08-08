@@ -48,10 +48,14 @@ guess from every other tester, which is exactly what multi-player testing needs 
 
 ## Payload hygiene is a red test, not a comment
 
-Every `LabPayload` gets a test that serialises it and pins the **exact field set**:
+Every `LabPayload` gets a test that serialises it and pins the **exact field set**. The project
+runs Jackson 3 (`tools.jackson.databind`), whose `JsonNode` reads property names via
+`propertyNames()`, not the Jackson 2 `fieldNames()`:
 
 ```kotlin
-val fields = mapper.readTree(mapper.writeValueAsString(game.reveal(seed))).fieldNames().asSequence().toSet()
+val json = mapper.writeValueAsString(game.reveal(4711))
+val fields = mapper.readTree(json).propertyNames().toSet()
+
 fields shouldBe setOf("lowerBound", "upperBound")
 ```
 
