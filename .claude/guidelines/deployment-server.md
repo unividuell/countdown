@@ -38,6 +38,12 @@ server; the Caddyfile is image-baked.
   and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
   itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
   running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
+- **A change that needs `update.sh` and `compose.yaml` to move together cannot be staging-deployed
+  until it reaches `main`** — the script comes from `main` while compose comes from the deployed
+  branch, so staging would pair the old script with the new compose file and fail on every run.
+  Plan the release around it, or deploy that once from a copy of the branch's script under a
+  different filename (the self-update rewrites `update.sh`, not the file being run). Treat a new
+  *required* compose variable as exactly this kind of change.
 - **Any script that writes a secret to disk follows one discipline: `umask 077` while writing, a
   temp file plus `mv` into place, and `trap … EXIT INT TERM` to clean up on every exit path.** A
   plain `EXIT`-only trap looks sufficient until the actual deploy shell or signal diverges (see the

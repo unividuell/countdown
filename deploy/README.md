@@ -114,17 +114,22 @@ of binding an empty path.
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
 nothing to do with Guess Hue.
 
-**Merge window develop → main:** per the above, `update.sh` and `README.md` always come from
-`main` (`$STABLE`), while `compose.yaml` comes from the deployed branch (`$BASE`, `develop`
-for staging). Once a feature is merged into `develop` but `main` doesn't have it yet,
-`./update.sh staging` loads the **old** `update.sh` from `main` against the **new**
-`compose.yaml` from `develop`. Concretely, for this release: the old `update.sh` doesn't
-export `GUESS_HUE_DATASET_FILE` yet, and the new `compose.yaml` requires it via
-`${GUESS_HUE_DATASET_FILE:?…}` — so `pull` fails on **every** run, not just the first, because
-the script never comes from `develop`. In that window, either don't run `./update.sh staging`,
-or export `GUESS_HUE_DATASET_FILE` by hand and decrypt with `sops` by hand. The cause is
-structural: any change that has to touch `update.sh`/`compose.yaml` together hits this same
-window, not just this one.
+**Merge window develop → main.** `update.sh` and `README.md` always come from `main`
+(`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
+change that needs both to move together therefore cannot be staging-deployed while it is on
+`develop` only: the run pairs the **old** script with the **new** compose file. It fails on
+every run, not just the first, because the script never comes from `develop`.
+
+Plan for it rather than discover it: either finish the release before the next staging deploy,
+or run that one deploy from a copy of the branch's script —
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/develop/deploy/update.sh -o update-once.sh
+chmod +x update-once.sh && ./update-once.sh staging && rm -f update-once.sh
+```
+
+The copy works because the self-update writes `update.sh`, not the file being run. This was
+done once, for the Guess Hue release, and staging came up correctly on it.
 
 ## Bootstrap / Update
 
