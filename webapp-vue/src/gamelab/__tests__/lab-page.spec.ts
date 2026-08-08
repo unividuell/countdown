@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import type { LabRoundResponse, SamplePayload } from '@/gamelab/types'
@@ -44,8 +44,23 @@ async function mountPage() {
   return wrapper
 }
 
+/**
+ * The controls are teleported into the nav drawer, so they are NOT in the wrapper's tree — the
+ * page under test renders only what a player would see. This reaches them where they actually
+ * land. Mounting without the target is not merely unfindable but fatal: Vue's deferred teleport
+ * throws on a missing target and the throw eats the pending render, so the page stays empty.
+ */
+function tool(testId: string): DOMWrapper<Element> {
+  const el = document.querySelector(`[data-test="${testId}"]`)
+  if (!el) throw new Error(`no teleported control [data-test="${testId}"] in the drawer container`)
+  return new DOMWrapper(el)
+}
+
 describe('lab page', () => {
   beforeEach(() => {
+    // NavDrawer owns this container in the running app; here it stands in for it, because the
+    // page teleports its controls into it and a missing target aborts the render (see `tool`).
+    document.body.innerHTML = '<div id="drawer-page-tools"></div>'
     replace.mockReset()
     currentQuery = { seed: '42' }
     currentParams = { slug: 'team', game: 'sample' }
@@ -103,37 +118,37 @@ describe('lab page', () => {
   })
 
   it('resets the round', async () => {
-    const w = await mountPage()
-    await w.get('[data-test="lab-reset"]').trigger('click')
+    await mountPage()
+    await tool('lab-reset').trigger('click')
     await flushPromises()
     expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
   })
 
   it('forgets my own entry', async () => {
-    const w = await mountPage()
-    await w.get('[data-test="lab-forget-mine"]').trigger('click')
+    await mountPage()
+    await tool('lab-forget-mine').trigger('click')
     await flushPromises()
     expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
   })
 
   it('rolls a new seed into the URL', async () => {
-    const w = await mountPage()
-    await w.get('[data-test="lab-roll"]').trigger('click')
+    await mountPage()
+    await tool('lab-roll').trigger('click')
     const seed = Number((replace.mock.calls[0][0] as { query: { seed: number } }).query.seed)
     expect(Number.isInteger(seed)).toBe(true)
   })
 
   it('refreshes to pick up another window s guess', async () => {
-    const w = await mountPage()
-    await w.get('[data-test="lab-refresh"]').trigger('click')
+    await mountPage()
+    await tool('lab-refresh').trigger('click')
     await flushPromises()
     expect(api.openLabRound).toHaveBeenCalledTimes(2)
   })
 
   it('announces a round takeover', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, tookOverRound: true } as never)
-    const w = await mountPage()
-    expect(w.find('[data-test="lab-takeover"]').exists()).toBe(true)
+    await mountPage()
+    expect(document.querySelector('[data-test="lab-takeover"]')).not.toBeNull()
   })
 
   it('lists the other testers', async () => {
@@ -152,6 +167,17 @@ describe('lab page', () => {
     } as never)
     const w = await mountPage()
     expect(w.get('[data-test="lab-entries"]').text()).toContain('Bender')
+  })
+
+  it('keeps every lab control out of the content column', async () => {
+    // The reason the controls are teleported at all: a game review judges the look of the page,
+    // so the column must hold nothing a real player would not see. Asserting their absence here
+    // is what stops someone re-adding one inline later.
+    const w = await mountPage()
+    for (const id of ['lab-seed', 'lab-roll', 'lab-refresh', 'lab-reset', 'lab-forget-mine']) {
+      expect(w.find(`[data-test="${id}"]`).exists()).toBe(false)
+      expect(document.querySelector(`[data-test="${id}"]`)).not.toBeNull()
+    }
   })
 
   it('says the lab is unavailable when the backend does not have it', async () => {

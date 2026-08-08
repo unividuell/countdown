@@ -173,12 +173,16 @@ useEventListener(document, 'click', (e: Event) => {
 // because it is also the close button.
 onKeyStroke('Tab', (e) => {
   if (!open.value) return
-  // Contract: this selector must list every focusable element the drawer can contain. It only
-  // covers links and buttons because that is all today's drawer has — an <input>, a <select>,
-  // or anything with [tabindex] added later must be added here too, or Tab will silently skip
-  // it. The spec's own cage test reuses this selector, so it cannot catch that omission either.
+  // Contract: this selector must list every focusable element the drawer can contain. Since the
+  // drawer hosts page-published tools (see the #drawer-page-tools container below), its contents
+  // are no longer knowable from this file — so the selector covers the standard focusables rather
+  // than only what today's own markup happens to use. Anything with a non-negative [tabindex] is
+  // included for the same reason. The spec's cage test reuses this selector, so it cannot catch
+  // an omission here.
   const inDrawer = Array.from(
-    drawer.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [],
+    drawer.value?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? [],
   )
   const items = [trigger.value, ...inDrawer].filter((el): el is HTMLElement => Boolean(el))
   const first = items[0]
@@ -309,6 +313,15 @@ onKeyStroke('Tab', (e) => {
             >Einstellungen</RouterLink
           >
         </template>
+
+        <!-- Tools published by whatever page is open, via `<Teleport to="#drawer-page-tools">`.
+             Deliberately empty and deliberately ignorant: the drawer knows a page MAY contribute
+             controls, never which ones, so nothing page-specific reaches this file and a page
+             that contributes none costs a hidden empty div. `empty:hidden` keeps it out of the
+             flex flow until something lands in it — a teleported child is a real DOM child, so
+             :empty flips on its own. Contributors bring their own heading and divider, because
+             only they know whether their block deserves one. -->
+        <div id="drawer-page-tools" data-test="page-tools" class="shrink-0 empty:hidden" />
 
         <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
              the scroll height instead of squeezing the mark away. -->

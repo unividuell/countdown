@@ -87,27 +87,39 @@ watch(
     <p class="text-sm text-neutral-600">Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.</p>
   </div>
   <div v-else-if="seed !== null">
-    <h1 class="mb-1 text-lg font-semibold">{{ round?.displayName ?? 'Spiel-Labor' }}</h1>
-    <p class="mb-4 text-sm text-neutral-600">Testrunde in „{{ community.name }}“</p>
+    <!-- Everything that only exists because this is a lab lives in the nav drawer, not here. A
+         game review judges the look of the page as much as the game, so the content column must
+         hold nothing a real player would not see. `defer` lets the drawer's container mount
+         first; without it the teleport would race the drawer on a cold load. -->
+    <Teleport defer to="#drawer-page-tools">
+      <LabControls
+        :seed="seed"
+        :busy="busy"
+        :return-path="`${route.path}?seed=${seed}`"
+        @apply="writeSeed"
+        @roll="writeSeed(rollSeed())"
+        @refresh="run(openLabRound)"
+        @reset="run(resetLabRound)"
+        @forget-mine="run(forgetMyLabEntry)"
+      />
+      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-neutral-500">
+        Testrunde in „{{ community.name }}“
+        <span
+          v-if="round?.tookOverRound"
+          data-test="lab-takeover"
+          class="mt-1 block text-amber-700"
+        >
+          Seed {{ seed }} hat die vorherige Test-Runde verworfen.
+        </span>
+      </p>
+    </Teleport>
 
-    <LabControls
-      :seed="seed"
-      :busy="busy"
-      :return-path="`${route.path}?seed=${seed}`"
-      @apply="writeSeed"
-      @roll="writeSeed(rollSeed())"
-      @refresh="run(openLabRound)"
-      @reset="run(resetLabRound)"
-      @forget-mine="run(forgetMyLabEntry)"
-    />
+    <!-- The heading is the GAME's, not the lab's — a real game page carries its title the same
+         way, so it stays in the column. Everything lab-shaped went into the drawer above. -->
+    <h1 class="mb-4 text-lg font-semibold">{{ round?.displayName ?? 'Spiel-Labor' }}</h1>
 
-    <p
-      v-if="round?.tookOverRound"
-      data-test="lab-takeover"
-      class="mb-3 rounded-md bg-amber-50 p-2 text-sm text-amber-900"
-    >
-      Test-Runde auf Seed {{ seed }} umgestellt — der vorherige Stand wurde verworfen.
-    </p>
+    <!-- Stays in the column: an error is the one thing that must not wait behind a closed
+         drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
     <component
