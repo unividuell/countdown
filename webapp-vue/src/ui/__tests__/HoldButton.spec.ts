@@ -26,13 +26,19 @@ function installAnimate(): ReturnType<typeof vi.fn> {
   return animate
 }
 
+function setHidden(hidden: boolean): void {
+  Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
+}
+
 describe('HoldButton', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    setHidden(false)
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    setHidden(false)
     // @ts-expect-error — removing the stub again
     delete Element.prototype.animate
   })
@@ -47,6 +53,25 @@ describe('HoldButton', () => {
     const w = mountButton({ ready: true })
 
     expect(w.get('[data-test="hold-button"]').attributes('inert')).toBeUndefined()
+  })
+
+  it('rests hidden while it is not ready, regardless of the pop-in animation', () => {
+    // `inert` only blocks interaction; nothing about it hides the button visually. The resting
+    // style has to carry that on its own, or the button sits fully visible before its first
+    // reveal — happy-dom has no WAAPI to paper over this, so this is the structural proxy.
+    const w = mountButton({ ready: false })
+
+    const style = w.get('[data-test="hold-button"]').attributes('style')
+    expect(style).toContain('scale(0)')
+    expect(style).toContain('opacity: 0')
+  })
+
+  it('rests visible once it is ready', () => {
+    const w = mountButton({ ready: true })
+
+    const style = w.get('[data-test="hold-button"]').attributes('style')
+    expect(style).not.toContain('scale(0)')
+    expect(style).toContain('opacity: 1')
   })
 
   it('confirms after the full hold', async () => {
@@ -126,7 +151,7 @@ describe('HoldButton', () => {
     expect(keyframes.at(-1)!.transform).toContain('scale(1)')
   })
 
-  it('does not spring in when motion is reduced', async () => {
+  it('does not spring in when motion is reduced, but still ends up visible and usable', async () => {
     const animate = installAnimate()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
     const w = mountButton({ ready: false })
@@ -134,6 +159,38 @@ describe('HoldButton', () => {
     await w.setProps({ ready: true })
 
     expect(animate).not.toHaveBeenCalled()
-    expect(w.get('[data-test="hold-button"]').attributes('inert')).toBeUndefined()
+    const el = w.get('[data-test="hold-button"]')
+    expect(el.attributes('inert')).toBeUndefined()
+    // This is the regression the animation-only version could not catch: with the transition
+    // skipped, the resting style is the only thing left to show the button at all.
+    const style = el.attributes('style')
+    expect(style).not.toContain('scale(0)')
+    expect(style).toContain('opacity: 1')
+  })
+
+  it('resumes keyboard holds after the tab hides mid-hold', async () => {
+    // The composable abandons the hold itself when the tab goes to the background, but does not
+    // tell HoldButton. If `keyHeld` did not follow `holding` back down, the physical keyup — which
+    // never reaches this document once focus has moved elsewhere — would never clear it, and every
+    // later keydown would be swallowed by the repeat guard, permanently.
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+
+    el.element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    )
+    vi.advanceTimersByTime(400)
+
+    setHidden(true)
+    document.dispatchEvent(new Event('visibilitychange'))
+    setHidden(false)
+    // No matching keyup ever arrives: the key was physically released while the tab was hidden.
+
+    el.element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    )
+    vi.advanceTimersByTime(1200)
+
+    expect(w.emitted('confirm')).toHaveLength(1)
   })
 })

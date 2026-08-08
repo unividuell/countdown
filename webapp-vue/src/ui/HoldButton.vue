@@ -46,7 +46,7 @@ function canAnimate(el: Element | null): el is Element {
   return !!el && typeof el.animate === 'function' && !prefersReducedMotion() && !inBackground()
 }
 
-const { progress, start, cancel } = useHoldProgress(props.holdMs, () => {
+const { progress, holding, start, cancel } = useHoldProgress(props.holdMs, () => {
   if (canAnimate(button.value)) {
     button.value.animate(
       [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
@@ -55,6 +55,22 @@ const { progress, start, cancel } = useHoldProgress(props.holdMs, () => {
   }
   emit('confirm')
 })
+
+/**
+ * `useHoldProgress` can end a hold on its own — the tab going to the background abandons it
+ * without telling us. If `keyHeld` did not follow along, a key released while the tab was hidden
+ * would never reach this document's `keyup`, and `keyHeld` would stay `true` forever, silently
+ * swallowing every keyboard hold after that. Any path that ends the hold has to reset it.
+ */
+watch(
+  holding,
+  (isHolding) => {
+    if (!isHolding) keyHeld.value = false
+  },
+  // Sync, not the default pre-flush: the tab-hidden path must clear `keyHeld` before the next
+  // `keydown` can possibly arrive, not merely before the next render.
+  { flush: 'sync' },
+)
 
 /**
  * Absent, then a spring: too large, then under, then over, then under, settling. The amplitude
@@ -107,6 +123,20 @@ const ringStyle = computed(() => ({
   WebkitMask: 'radial-gradient(closest-side, transparent 84%, #000 85%)',
   opacity: progress.value > 0 ? 1 : 0,
 }))
+
+/**
+ * The resting appearance, bound declaratively to `ready` rather than left to the pop-in animation.
+ * `inert` makes the button unreachable while not ready, but it is not visual — an inert button is
+ * still painted at full size unless something says otherwise. The WAAPI animation above only
+ * covers the *transition*; on browsers or states where it does not run at all (happy-dom,
+ * `prefers-reduced-motion`, a backgrounded tab), this is what leaves the button correctly hidden
+ * beforehand and correctly visible afterwards.
+ */
+const buttonStyle = computed(() => ({
+  backgroundColor: props.color,
+  transform: props.ready ? 'scale(1)' : 'scale(0)',
+  opacity: props.ready ? 1 : 0,
+}))
 </script>
 
 <template>
@@ -128,7 +158,7 @@ const ringStyle = computed(() => ({
       :inert="!props.ready || undefined"
       :aria-label="props.label"
       :disabled="props.disabled"
-      :style="{ backgroundColor: props.color }"
+      :style="buttonStyle"
       class="absolute inset-0 cursor-pointer rounded-full shadow-inner ring-1 ring-black/10 disabled:cursor-not-allowed"
       @pointerdown="beginHold"
       @pointerup="cancel"
