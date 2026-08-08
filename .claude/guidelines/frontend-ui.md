@@ -55,6 +55,26 @@ desktop layout that was written first).
   otherwise it is tabbable, and a hold-to-confirm gesture on it can complete unseen. Bind it as
   `:inert="!ready || undefined"`; a plain `false` stays in the DOM and stays in effect.
 
+### A control that is not a rectangle
+
+Three traps, all invisible to tests (happy-dom computes no layout, no masks, no clipping) and all
+looking alike from the source. `HueWheel` hit every one of them.
+
+- **`touch-action` is the intersection over the hit element and every ancestor**, so a descendant can
+  only ever *remove* panning, never restore it. A `touch-action: auto` shim inside a `none` root does
+  nothing at all. Put `none` on the element that actually claims the gesture and leave the ancestors
+  alone.
+- **`mask` does not affect hit-testing; `clip-path` does.** A disc masked into a ring still swallows
+  every touch in its hole. Where the *shape* decides who gets the event, the shape has to be a clip.
+- **Sibling shapes in one `<clipPath>` are unioned, not combined by fill rule.** `clip-rule="evenodd"`
+  resolves subpaths *within a single path* — two concentric `<circle>`s therefore clip to the outer
+  disc and punch no hole. An annulus is **one `<path>` with two subpaths**. Derive its inner radius
+  from the same constant the hit test and the mask use, or the three drift apart silently.
+
+Verify these by measurement, not by reading: `document.elementFromPoint(x, y)` plus
+`getComputedStyle(el).touchAction` up the ancestor chain answers all three in one console call, and
+it is the only proof available — no unit test can see them.
+
 ### Controls inside controls
 
 - **A gesture that commits something must not be reachable by a single key.** Hold-to-confirm on the
