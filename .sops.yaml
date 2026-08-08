@@ -1,0 +1,13 @@
+# Empfaengerliste fuer verschluesselte Spielinhalte. Jeder Berechtigte steht hier mit seinem
+# age-Public-Key; aufnehmen heisst: Zeile ergaenzen und `sops updatekeys` laufen lassen.
+#
+# Entzug wirkt NICHT rueckwirkend: wer einmal Empfaenger war, kann jeden Stand der Git-History
+# entschluesseln. Jemanden entfernen heisst deshalb immer auch, den Inhalt neu zu wuerfeln.
+#
+# Der erste Zweig trifft die gitignorierte Pufferdatei, der zweite die committete Chiffre:
+# creation_rules werden auf den EINGABEpfad angewandt, nicht auf die Ausgabe. Eine Regel nur
+# auf deploy/*.sops.yaml wuerde beim Verschluesseln nie greifen.
+creation_rules:
+  - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
+    age: >-
+      age1p5g60l320k68lkpw6aenv3ujj3xghfe7nmvhh7rzpaumhujtnses4262qk
