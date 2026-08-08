@@ -362,5 +362,39 @@ describe('HueWheel', () => {
 
       expect(w.emitted('update:hue')).toEqual([[0]])
     })
+
+    it('ends the drag even when the browser has already dropped pointer capture', async () => {
+      // `hasPointerCapture` saying true is not a guarantee: the browser can drop capture between
+      // that check and the `releasePointerCapture` call two ways seen in the wild — releasing the
+      // pointer outside the browser viewport (Firefox's responsive design mode, page shrunk well
+      // inside the browser window) and the element being replaced out from under a live drag (a
+      // Vite HMR reload remounting this component mid-drag). Either way the release throws, and
+      // the important part is that `dragging` still clears — a stuck `true` would leave the wheel
+      // following the pointer forever after.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+      el.element.setPointerCapture = vi.fn()
+      el.element.hasPointerCapture = () => true
+      el.element.releasePointerCapture = () => {
+        throw new DOMException('Invalid pointer id')
+      }
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 })
+
+      let threw = false
+      try {
+        await el.trigger('pointerup', { pointerId: 1 })
+      } catch {
+        threw = true
+      }
+      expect(threw).toBe(false)
+
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 })
+
+      // Only the pointerdown's own commit — the pointerup ended the drag despite the throw, so
+      // the pointermove after it must emit nothing.
+      expect(w.emitted('update:hue')).toEqual([[0]])
+    })
   })
 })

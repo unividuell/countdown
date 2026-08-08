@@ -175,9 +175,21 @@ function onPointerMove(event: PointerEvent): void {
 
 function onPointerUp(event: PointerEvent): void {
   if (!dragging.value) return
+  // Cleared before the release below, which can throw: whatever the DOM does next, the state
+  // machine must not be left mid-drag.
   dragging.value = false
-  if (root.value?.hasPointerCapture(event.pointerId)) {
-    root.value.releasePointerCapture(event.pointerId)
+  try {
+    // `hasPointerCapture` saying true is not a guarantee — the browser can have already dropped
+    // capture by the time the release call runs. Two known routes: releasing the pointer outside
+    // the browser viewport (Firefox's responsive design mode, page shrunk well inside the browser
+    // window, drag released in the grey area around it) and the element being replaced out from
+    // under a live drag (a Vite HMR reload remounting this component mid-drag). Either way the
+    // guard alone is not sufficient, so the release itself is wrapped too.
+    if (root.value?.hasPointerCapture(event.pointerId)) {
+      root.value.releasePointerCapture(event.pointerId)
+    }
+  } catch {
+    // Already released by the browser's own account — nothing left to do.
   }
 }
 
