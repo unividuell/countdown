@@ -187,6 +187,21 @@ class DevLoginControllerTest(
     }
 
     @Test
+    fun `login as redirects to a path containing a brace instead of 500ing`() {
+        // RedirectView expands "{...}" as a URI template against the model by default; with no
+        // model entry for "b" that throws and turns a permitAll endpoint into a 500. A brace in a
+        // path is legitimate, so expansion must be off rather than braces being rejected.
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            param("login", "leela")
+            param("redirect", "/a{b}")
+        }.andExpect {
+            status { is3xxRedirection() }
+            redirectedUrl("/a{b}")
+        }
+    }
+
+    @Test
     fun `login as without a redirect still lands on the app root`() {
         mockMvc.post("/login/github/as") {
             with(csrf())

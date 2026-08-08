@@ -98,7 +98,10 @@ class DevLoginController(
         val context = SecurityContextHolder.createEmptyContext().apply { authentication = auth }
         SecurityContextHolder.setContext(context)
         securityContextRepository.saveContext(context, request, response)
-        return RedirectView(safeRedirect(redirect))
+        // Expansion off: RedirectView otherwise treats "{...}" in the URL as a URI template and
+        // resolves it against the (empty) model, throwing on any redirect containing a brace
+        // instead of just redirecting to it.
+        return RedirectView(safeRedirect(redirect)).apply { setExpandUriTemplateVariables(false) }
     }
 
     /**
