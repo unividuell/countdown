@@ -27,9 +27,13 @@ data class SampleOutcome(
  * round, both resets, two players — and it stays afterwards as the lab's own smoke test and as the
  * worked example of how a game plugs in.
  *
- * `distance` and `direction` together reveal the target to whoever reads them. That is fine here:
- * a player only sees them after spending their one guess, and the lab's seed is public in the URL
- * anyway. A real game must weigh this itself — see the anti-cheat spec.
+ * `distance` and `direction` together reveal the target to whoever reads them, and `LabRoundResponse`
+ * broadcasts every entry — `guess` and `outcome` alike — to every tester in the round, including one
+ * who has not guessed yet. So a tester can read the target off someone else's entry before spending
+ * their own attempt; this is the only client-side route to the solution, seed or no seed. That is
+ * acceptable *only* because the lab is a non-production dev tool with no competitive stake to
+ * protect. A real game must make its own, deliberate decision about whether to withhold `others`
+ * until `me != null` — see the anti-cheat spec.
  */
 @Component
 @Profile("!production")

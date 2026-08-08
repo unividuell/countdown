@@ -64,6 +64,12 @@ that merely *narrows* the answer. `SampleLabGameTest` is the worked example. The
 (the solution is never materialised in component state, not even derived) cannot be tested this way
 and stays a review point per game — see the anti-cheat spec.
 
+The field-set test pins `reveal()` only. `LabRoundResponse.others[].guess` and `.outcome` are a
+second, unpinned path out of the server that no test covers, and they are broadcast to *every*
+tester in the round — including one who has not guessed yet. `SampleLabGame` accepts this because
+the lab has no competitive stake; a real game must make a deliberate, per-game call on whether
+`others` should be withheld until `me != null`, not inherit the lab's default by copying the sample.
+
 ## What the lab deliberately cannot check
 
 The lab's seed is **public, in the URL** — requirement 2 demands it. So the lab verifies "the
