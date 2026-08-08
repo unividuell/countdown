@@ -33,6 +33,11 @@ spring:
 
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
+  guess-hue:
+    # Leer heisst: das Beispiel-Datenset aus dem Classpath. Lokal richtig, im Betrieb ein
+    # Startabbruch -- production und staging setzen GUESS_HUE_DATASET_PATH auf die Datei,
+    # die update.sh mit sops entschluesselt und compose in den Container mountet.
+    dataset-path: ${GUESS_HUE_DATASET_PATH:}
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).

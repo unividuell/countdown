@@ -1,0 +1,30 @@
+# Kein Spielinhalt. Dieses Set existiert, damit Tests und ein lokaler Start ohne das
+# verschluesselte Produktionsdatenset laufen. Die Anwendung bricht ab, wenn sie es unter
+# production oder staging laedt — siehe GuessHueDatasetConfiguration.
+entries:
+  - hue: 0
+    difficulty: easy
+    description: >-
+      Beispieleintrag Alpha, kein Spielinhalt. Er steht praktisch auf dem
+      reinen Rot, keinen Fingerbreit daneben.
+  - hue: 60
+    difficulty: medium
+    description: >-
+      Beispieleintrag Beta, kein Spielinhalt. Er liegt auf der grünen Seite von
+      reinem Gelb, nicht auf der orangen.
+  - hue: 120
+    difficulty: hard
+    description: Beispieleintrag Gamma, kein Spielinhalt.
+  - hue: 180
+    difficulty: easy
+    description: >-
+      Beispieleintrag Delta, kein Spielinhalt. Er sitzt so dicht am reinen
+      Türkis, dass daneben nichts mehr passt.
+  - hue: 240
+    difficulty: medium
+    description: >-
+      Beispieleintrag Epsilon, kein Spielinhalt. Er liegt auf der violetten
+      Seite von reinem Blau, nicht auf der türkisen.
+  - hue: 300
+    difficulty: hard
+    description: Beispieleintrag Zeta, kein Spielinhalt.
