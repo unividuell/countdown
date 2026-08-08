@@ -1433,17 +1433,31 @@ Die Ausgabe nennt den **Public Key** (`age1…`). Der private Teil liegt in der 
 #
 # Entzug wirkt NICHT rueckwirkend: wer einmal Empfaenger war, kann jeden Stand der Git-History
 # entschluesseln. Jemanden entfernen heisst deshalb immer auch, den Inhalt neu zu wuerfeln.
+#
+# Der erste Zweig trifft die gitignorierte Pufferdatei, der zweite die committete Chiffre:
+# creation_rules werden auf den EINGABEpfad angewandt, nicht auf die Ausgabe. Eine Regel nur
+# auf deploy/*.sops.yaml wuerde beim Verschluesseln nie greifen.
 creation_rules:
-  - path_regex: deploy/.*\.sops\.yaml$
+  - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
     age: >-
       age1...
 ```
 
 - [ ] **Step 4: Encrypt the buffer file (Mensch)**
 
+Zwei Fallstricke, die den Befehl laenger machen als erwartet. Die Pufferdatei liegt im
+**Haupt-Checkout**, `.sops.yaml` existiert aber vorerst nur auf diesem **Branch** — und SOPS sucht
+seine Konfiguration vom Verzeichnis der Eingabedatei aufwaerts, findet sie dort also nicht. Deshalb
+den Pfad zur Konfiguration explizit mitgeben. Aus dem Worktree heraus:
+
 ```bash
-sops -e .local/guess-hue-dataset.yaml > deploy/guess-hue-dataset.sops.yaml
+sops --config .sops.yaml \
+  --output deploy/guess-hue-dataset.sops.yaml \
+  --encrypt /opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml
 ```
+
+`--output` statt einer Shell-Umleitung, damit bei einem Fehlschlag keine leere oder halbe Datei
+entsteht.
 
 - [ ] **Step 5: Verify the ciphertext carries no plaintext**
 
@@ -1457,10 +1471,13 @@ Expected: erste Zahl ≥ 120 (Hue und Beschreibung je Eintrag), zweite Zahl `0`.
 - [ ] **Step 6: Verify the round trip**
 
 ```bash
-sops -d deploy/guess-hue-dataset.sops.yaml | diff - .local/guess-hue-dataset.yaml && echo "identisch"
+sops --config .sops.yaml --decrypt deploy/guess-hue-dataset.sops.yaml \
+  | diff - /opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml \
+  && echo "identisch"
 ```
 
-Expected: `identisch`.
+Expected: `identisch`. Schlägt das fehl, ist die Chiffre unbrauchbar — nicht committen, sondern
+Schritt 4 wiederholen.
 
 - [ ] **Step 7: Commit**
 
