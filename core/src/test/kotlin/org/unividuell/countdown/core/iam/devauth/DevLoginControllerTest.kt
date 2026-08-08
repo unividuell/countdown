@@ -163,8 +163,18 @@ class DevLoginControllerTest(
     @Test
     fun `login as ignores an off-site redirect`() {
         // Protocol-relative and absolute URLs both leave the site; the picker is permitAll, so an
-        // open redirect here would be a real one.
-        listOf("//evil.example", "https://evil.example", "/\\evil.example", "evil").forEach { hostile ->
+        // open redirect here would be a real one. The three control-character cases are not
+        // paranoia: browsers strip tab, CR and LF from a URL before resolving it, so each of them
+        // becomes `//evil.example` — protocol-relative — after a naive prefix check has passed it.
+        listOf(
+            "//evil.example",
+            "https://evil.example",
+            "/\\evil.example",
+            "evil",
+            "/\t/evil.example",
+            "/\n/evil.example",
+            "/\r/evil.example",
+        ).forEach { hostile ->
             mockMvc.post("/login/github/as") {
                 with(csrf())
                 param("login", "leela")

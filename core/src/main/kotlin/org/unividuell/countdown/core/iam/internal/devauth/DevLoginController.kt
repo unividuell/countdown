@@ -103,11 +103,22 @@ class DevLoginController(
 
     /**
      * Only same-site absolute paths. `//host` and `/\host` are protocol-relative and leave the
-     * site; anything without a leading slash is not a path at all. This endpoint is permitAll,
-     * so an unchecked redirect here would be a genuine open redirect even in a dev-only build.
+     * site; anything without a leading slash is not a path at all.
+     *
+     * Tab, CR and LF are rejected outright rather than sanitised, because browsers **strip those
+     * characters from a URL before resolving it**: `"/\t/evil.example"` passes a naive prefix
+     * check and is then resolved as the protocol-relative `//evil.example`. Checking the raw
+     * string is therefore not enough on its own.
+     *
+     * This endpoint is permitAll, so an unchecked redirect here would be a genuine open redirect
+     * even in a dev-only build.
      */
     private fun safeRedirect(candidate: String?): String {
-        val path = candidate?.takeIf { it.startsWith("/") && !it.startsWith("//") && !it.startsWith("/\\") }
-        return path ?: "/"
+        if (candidate == null) return "/"
+        if (candidate.any { it == '\t' || it == '\n' || it == '\r' }) return "/"
+        val sameSite = candidate.startsWith("/") &&
+            !candidate.startsWith("//") &&
+            !candidate.startsWith("/\\")
+        return if (sameSite) candidate else "/"
     }
 }
