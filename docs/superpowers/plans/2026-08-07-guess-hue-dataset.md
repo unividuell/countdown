@@ -1651,6 +1651,97 @@ Container auf Platzhalterinhalten sieht gesund aus und ist es nicht."
 
 ---
 
+### Task 10: Das Datenset lokal verfügbar machen (Opt-in)
+
+Ohne das echte Datenset läuft lokal das Beispiel mit sechs Einträgen — gut genug, um zu starten, zu wenig, um das Spiel zu beurteilen. Wer daran arbeitet, soll es sehen können, **bevor** deployt wird. Nicht per Default: den Schlüssel braucht nicht jeder, und ein Standard-Opt-in würde Klartext auf mehr Rechnern erzeugen als nötig.
+
+Der Schalter existiert bereits (`GUESS_HUE_DATASET_PATH`); es fehlen der bequeme Weg dorthin und die Doku. Das Skript ist kein Luxus: beim Verschlüsseln von Hand sind drei Fallstricke aufgeschlagen — SOPS findet seine Konfiguration nicht vom Eingabeverzeichnis aus, der age-Key liegt auf macOS woanders, und die Chiffre ist nach dem Round-Trip nicht byte-identisch. Ein Skript kodiert das einmal.
+
+**Files:**
+- Create: `scripts/guess-hue-dataset.sh`
+- Modify: `core/README.md`
+- Modify: `docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md` (Abschnitt *Ablage und Übergabe*)
+
+**Interfaces:**
+- Consumes: `deploy/guess-hue-dataset.sops.yaml`, `.sops.yaml`, `app.guess-hue.dataset-path` / `GUESS_HUE_DATASET_PATH`.
+- Produces: nichts für andere Tasks.
+
+- [ ] **Step 1: Write the script**
+
+`scripts/guess-hue-dataset.sh`, POSIX `sh`, `set -eu`, ausführbar. Zwei Unterbefehle:
+
+`decrypt` — entschlüsselt die committete Chiffre in die gitignorierte Pufferdatei und gibt danach die Zeile aus, die man exportieren muss.
+
+`encrypt` — verschlüsselt die Pufferdatei zurück in die Chiffre.
+
+Anforderungen, jede aus einem Fehler entstanden, den wir schon gemacht haben:
+
+- **Ein kanonischer Ort für den Klartext**, auch aus einem Worktree heraus: das Hauptverzeichnis des Repos, nicht das des Worktrees. Auflösen über `git rev-parse --path-format=absolute --git-common-dir` und davon das Elternverzeichnis nehmen. Ziel ist `<haupt>/.local/guess-hue-dataset.yaml`.
+- **`--config` explizit setzen** auf die `.sops.yaml` im Wurzelverzeichnis des aktuellen Checkouts. SOPS sucht sonst vom Verzeichnis der *Eingabedatei* aufwärts und findet sie im Hauptverzeichnis nicht, solange der Branch nicht gemerged ist.
+- **`SOPS_AGE_KEY_FILE` vorbelegen** mit `$HOME/.config/sops/age/keys.txt`, falls nicht gesetzt — auf macOS sucht SOPS sonst in `~/Library/Application Support` und scheitert beim Entschlüsseln, obwohl Verschlüsseln lief.
+- **Nicht überschreiben.** `decrypt` bricht ab, wenn die Pufferdatei existiert, es sei denn `--force` ist gesetzt; die Meldung nennt den Pfad. Sonst verliert jemand seine unverschlüsselten Änderungen.
+- **Über eine temporäre Datei schreiben** und erst bei Erfolg per `mv` an die Zielstelle, in beide Richtungen. Ein Fehlschlag darf keine halbe Datei hinterlassen.
+- **`umask 077`** um das Schreiben des Klartexts, danach wiederherstellen.
+- Fehlt `sops`, fehlt der Key oder fehlt die Chiffre: klar benennen, was fehlt und was zu tun ist. Kein nackter Tool-Fehler.
+
+- [ ] **Step 2: Verify the script both ways**
+
+```bash
+chmod +x scripts/guess-hue-dataset.sh
+./scripts/guess-hue-dataset.sh decrypt
+```
+
+Expected: die Pufferdatei entsteht, das Skript nennt die zu exportierende Zeile. Zweiter Aufruf ohne `--force`: Abbruch mit sprechender Meldung, Datei unverändert (Prüfsumme vorher/nachher vergleichen).
+
+```bash
+(cd core && ./mvnw test -Dtest=GuessHueProductionDatasetTest \
+  -Dguesshue.dataset="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)/.local/guess-hue-dataset.yaml")
+```
+
+Expected: `Tests run: 2, Failures: 0`.
+
+```bash
+./scripts/guess-hue-dataset.sh encrypt
+git diff --stat deploy/guess-hue-dataset.sops.yaml
+```
+
+Expected: die Chiffre wird neu geschrieben. Ein Diff ist normal — SOPS erneuert Nonces und `lastmodified` bei jedem Lauf, auch wenn der Inhalt gleich blieb. **Diesen Neu-Verschlüsselungs-Diff nicht committen**, wenn sich der Inhalt nicht geändert hat: `git checkout -- deploy/guess-hue-dataset.sops.yaml`.
+
+- [ ] **Step 3: Document the opt-in in core/README.md**
+
+Ergänze den bestehenden Guess-Hue-Abschnitt um den lokalen Weg: dass ohne `GUESS_HUE_DATASET_PATH` das Beispiel mit sechs Einträgen läuft, dass das zum Starten reicht aber nicht zum Beurteilen, und wie man opt-in geht:
+
+&nbsp;&nbsp;&nbsp;&nbsp;`./scripts/guess-hue-dataset.sh decrypt`
+&nbsp;&nbsp;&nbsp;&nbsp;`export GUESS_HUE_DATASET_PATH=…` *(den Pfad, den das Skript ausgibt)*
+&nbsp;&nbsp;&nbsp;&nbsp;`cd core && ./mvnw spring-boot:run`
+
+Nenne ausdrücklich, dass dafür ein age-Key nötig ist, dass ohne ihn alles außer diesem einen Komfort funktioniert, und dass der Klartext gitignoriert liegt und nie committet wird.
+
+- [ ] **Step 4: Update the spec**
+
+In `docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md`, Abschnitt *Ablage und Übergabe*: die Tabelle *Der Weg eines Eintrags* beschreibt bisher nur die Autorenrichtung. Ergänze, dass dieselbe Pufferdatei auch der **lokale Opt-in-Pfad** ist — wer am Spiel arbeitet, entschlüsselt sie und zeigt `GUESS_HUE_DATASET_PATH` darauf. Halte fest, dass das bewusst opt-in bleibt: kein Default, weil jeder zusätzliche Klartext auf einem weiteren Rechner der Preis wäre.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/guess-hue-dataset.sh core/README.md docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md
+git commit -m "feat(guesshue): make the real dataset available locally, opt-in
+
+Ohne das echte Datenset laeuft lokal das Beispiel mit sechs Eintraegen -- genug
+zum Starten, zu wenig zum Beurteilen. Wer am Spiel arbeitet, soll es sehen
+koennen, bevor deployt wird.
+
+Bewusst opt-in und nicht Default: den age-Key braucht nicht jeder, und jeder
+zusaetzliche Klartext auf einem weiteren Rechner waere der Preis.
+
+Das Skript existiert, weil beim Verschluesseln von Hand drei Fallstricke
+aufschlugen: SOPS findet seine Konfiguration nicht vom Eingabeverzeichnis aus,
+der age-Key liegt auf macOS nicht in ~/.config, und die Chiffre ist nach dem
+Round-Trip nicht byte-identisch. Einmal kodiert statt dreimal neu entdeckt."
+```
+
+---
+
 ### Task 9: Guidelines nachziehen
 
 Pflicht-Abschlussaufgabe nach [feeding-knowledge-back.md](../../../.claude/guidelines/feeding-knowledge-back.md) — einschließlich der Feststellung, dass nichts zu ändern ist.
