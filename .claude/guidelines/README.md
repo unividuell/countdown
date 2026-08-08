@@ -49,6 +49,18 @@ new team members (and AI assistants) stay consistent.
 - **Exception in the other direction:** German *data* — e.g. the placeholder
   entries standing in for the German game content — stays German; it's content,
   not code.
+- **User-facing German text uses German quotation marks: `„…“`** — opening `„`
+  (U+201E, low) and closing `“` (U+201C, high). Never a straight `"` on either
+  side, and never the English `“…”`. This binds everything a user reads: Vue
+  templates and the strings behind them, server-rendered HTML, and any message
+  that reaches the UI. It does **not** bind design docs under
+  `docs/superpowers/`, commit messages, or code comments — there the mix is
+  irrelevant because nobody reads it as typography.
+  *Watch the closing mark specifically.* Typing `„` and then reaching for the
+  key next to Enter yields `„…"`, which looks almost right in a diff and wrong
+  on screen; that mistake was in the codebase for months and got mistaken for
+  house style. When in doubt, grep: `grep -rn '„[^“]*"' webapp-vue/src` finds
+  every half-converted pair.
 
 ## Worked examples
 

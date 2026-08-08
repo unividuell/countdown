@@ -49,7 +49,7 @@ async function run(
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
     else if (err instanceof ApiError && err.status === 409)
-      error.value = 'Du hast in dieser Runde schon geraten — „Meinen Guess löschen" räumt das weg.'
+      error.value = 'Du hast in dieser Runde schon geraten — „Meinen Guess löschen“ räumt das weg.'
     else error.value = 'Die Aktion ist fehlgeschlagen.'
   } finally {
     busy.value = false
@@ -84,11 +84,11 @@ watch(
   </div>
   <div v-else-if="!gameComponent" data-test="lab-unknown-game" class="py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Unbekanntes Spiel</h1>
-    <p class="text-sm text-neutral-600">Für „{{ gameId }}" gibt es im Labor nichts zu spielen.</p>
+    <p class="text-sm text-neutral-600">Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.</p>
   </div>
   <div v-else-if="seed !== null">
     <h1 class="mb-1 text-lg font-semibold">{{ round?.displayName ?? 'Spiel-Labor' }}</h1>
-    <p class="mb-4 text-sm text-neutral-600">Testrunde in „{{ community.name }}"</p>
+    <p class="mb-4 text-sm text-neutral-600">Testrunde in „{{ community.name }}“</p>
 
     <LabControls
       :seed="seed"
