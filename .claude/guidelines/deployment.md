@@ -33,12 +33,11 @@ the two Caddys, TLS, routing, cache headers, the forwarded-header chain — live
   matters: the tag resolver is `ref_name == 'main' ? latest : staging`, so an **unguarded PR run
   would publish over `:staging`** from an unmerged branch. When adding a step that touches ghcr,
   guard it the same way.
-- Push is **path-filtered** so each app only rebuilds on its own changes;
-  `permissions: { contents: read, packages: write }`, ghcr auth via `GITHUB_TOKEN`.
-  Both workflows also declare **`workflow_dispatch`** for manual runs — and note that
-  **path-filtered workflows do NOT trigger on the initial branch-creation push** (no diff
-  base), so the first `build-web` had to be kicked off another way. Each workflow lists its
-  own file in `paths`, so editing the workflow re-triggers it.
+- Push is **path-filtered** so each app only rebuilds on its own changes (each workflow lists its
+  own file in `paths`, so editing the workflow re-triggers it); `permissions: { contents: read,
+  packages: write }`, ghcr auth via `GITHUB_TOKEN`. Both declare **`workflow_dispatch`** for manual
+  runs — needed because a path-filtered workflow does **not** trigger on the initial
+  branch-creation push (no diff base).
 - **ghcr package visibility:** the `countdown-core`/`countdown-web` packages are kept **private**.
   The server therefore authenticates before pulling: `docker login ghcr.io -u <user>` with a
   token that has **`read:packages`** (the credential persists in `~/.docker/config.json`). CI
@@ -76,14 +75,16 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   `SUPER_ADMIN_GITHUB_LOGINS`). When adding one, document a one-line manual-migration note in
   `deploy/README.md` right where an upgrading operator will read it — a first-run checklist alone
   isn't enough, since existing stacks skip the whole "first run" path.
-- **`--env-file` is substitution-only, not passthrough:** `docker compose --env-file .env.prod`
-  only makes a var available for `${VAR}` interpolation *inside* `compose.yaml` — it does **not**
-  inject it into a container's process environment. A variable reaches `core` only because its
-  `environment:` list names it (`SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}`, same
-  pattern as `GITHUB_CLIENT_SECRET`/`POSTGRES_PASSWORD`). Add a var to an `.env.*` file without
-  also adding it to the service's `environment:` (or an `env_file:`), and the app-side property binds
-  empty/default with no error — it silently never reaches the JVM. Every new Spring `${...}` property
-  backed by a compose-level secret needs **both** the `.env.*` entry **and** the `environment:` line.
+- **A var Compose must interpolate has exactly one source of truth.** `--env-file` only feeds
+  `${VAR}` interpolation *inside* `compose.yaml`; it does not inject into the container process, so
+  every var also needs the service's `environment:` line (or an `env_file:`) or it binds empty with
+  no error. And a value `update.sh` itself computes (a path derived from `$TARGET`, say) must be
+  `export`ed by the script, never round-tripped by re-reading it back out of the `.env.*` file with
+  `grep`/`cut`: a hand-rolled parser and Compose's own `--env-file` parser diverge silently on
+  quotes, trailing comments, `${VAR}` references, duplicate keys and CRLF, so the script can decrypt
+  or write to one path while Compose mounts another. Docker Compose gives the shell environment
+  precedence over `--env-file`, so `export` alone is enough — don't also put the value in the
+  `.env.*.example` template, where it would be silently overridden and only mislead.
 
 ## Backend production profile
 
@@ -106,8 +107,7 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   `/var/lib/postgresql/data`). Mounting the named volume at `.../data` makes 18 **refuse to
   start** — it logs "PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)" and
   crash-loops, which cascades (`UnknownHostException: postgres` in `core`, 502 at the edge).
-  Mount the **parent**: `pgdata:/var/lib/postgresql`. (pg_dump/psql via `-h postgres` are
-  unaffected — they go over the network.)
+  Mount the **parent**: `pgdata:/var/lib/postgresql`.
 - **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to the host
   `BACKUP_DIR` (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
   `until pg_isready ...; do sleep 2; done` before each dump — otherwise a not-yet-ready Postgres makes
@@ -131,14 +131,25 @@ server; the Caddyfile is image-baked.
   and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
   itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
   running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
+- **Never generate or decrypt a secret straight onto a live bind-mount target, and never lock it
+  down with `chmod 600`.** `sops -d ... > "$TARGET_FILE"` truncates the mount before the tool
+  produces a byte; if the tool then fails, the container's next restart finds the bind source gone
+  and Docker recreates it as an empty **directory** — a failed deploy arms a later crash-loop. Write
+  to `"$TARGET_FILE.tmp"` and `mv` into place only on success. Buildpacks images run as a fixed
+  non-root UID a bind mount can't remap, so `600` on the file locks the container out — protect the
+  **directory** instead (`700`) and leave the file itself readable (`644`).
+- **A deploy-side shell script runs under whatever `/bin/sh` the target host has** — Debian/Ubuntu's
+  is `dash`, where `trap ... EXIT` alone does not fire on `SIGINT`, so a script cleaning up a temp
+  file only on `EXIT` leaves it behind on Ctrl-C. Add explicit `INT`/`TERM` traps, and verify on the
+  real target shell, not just the dev machine's.
 
 ## pgAdmin in production
 
-- Under a **`debug` compose profile** (off by default), bound to **`127.0.0.1` only** (never public,
-  not proxied by Caddy). Access via an SSH local-port-forward (`ssh -L <port>:127.0.0.1:<port> user@server`).
-- **One pgAdmin per environment**, each connecting only to its own `postgres` via the service name —
-  no shared instance or network. Distinct loopback ports (`PGADMIN_PORT`: prod 5050, staging 5051)
-  let you tunnel both at once. `deploy/README.md` documents the per-env start + SSH tunnel.
+- **One pgAdmin per environment, opt-in and loopback-only:** under a `debug` compose profile (off
+  by default), each connects only to its own `postgres` via the service name, bound to `127.0.0.1`
+  on a distinct port (`PGADMIN_PORT`: prod 5050, staging 5051) — never public, never proxied by
+  Caddy. Access via an SSH local-port-forward (`ssh -L <port>:127.0.0.1:<port> user@server`);
+  distinct ports let you tunnel both at once. `deploy/README.md` documents the per-env start.
 - **Desktop mode (no pgAdmin login):** `PGADMIN_CONFIG_SERVER_MODE=False` +
   `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False`. The boundary is **SSH + loopback bind** — anyone
   past SSH can read the `.env` secrets anyway, so an extra pgAdmin login is no added security, only

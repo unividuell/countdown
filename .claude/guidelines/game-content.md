@@ -24,6 +24,16 @@ public, because the free GitHub Actions runners require it.
 - **Keep the decryption out of the application.** The backend reads plain YAML from a path; the
   deployment decrypts into it. No crypto library and no key handling in Kotlin, and CI never
   needs the key because the tests run against the sample.
+- **Keep the validation rules in one implementation, reached against the real plaintext through
+  an opt-in system property — never a second checker script in another language.** Two
+  implementations drift apart silently: both keep passing while checking different, ageing copies
+  of the same rules.
+- **The committed sample dataset must satisfy every rule the real one has to.** A sample exempted
+  from a rule proves nothing: the tests that run against it in CI never see the real dataset, so
+  they'd be green regardless of whether the real one actually holds the rule.
+- **An opt-in property may skip a check only when it is absent.** One that is set but points at
+  nothing — a missing file, an empty value — must fail loudly. A silent skip is indistinguishable
+  from a passing run.
 
 Concrete shape and the validation rules that make a curated set checkable:
 [the Guess Hue dataset spec](../../docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md).
