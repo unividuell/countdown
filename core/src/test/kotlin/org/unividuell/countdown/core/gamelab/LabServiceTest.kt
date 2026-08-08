@@ -14,6 +14,7 @@ import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
+import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabRoundStore
 import org.unividuell.countdown.core.gamelab.internal.LabService
@@ -156,6 +157,29 @@ class LabServiceTest {
         )
 
         (response.me!!.outcome as SampleOutcome).correct shouldBe true
+    }
+
+    @Test
+    fun `an invalid guess is rejected without consuming the player's one attempt`() {
+        // Pins the order in LabService.guess: score() runs before store.record(), so an
+        // out-of-range guess must not count against the player's single attempt — a later
+        // valid guess from the same user still has to succeed and land as `me`.
+        grantAccess()
+        val payload = game.reveal(42) as SamplePayload
+
+        shouldThrow<InvalidGuessException> {
+            service.guess(
+                "team", "sample", 42, alice.id!!, false,
+                mapper.readTree("""{"value":${payload.upperBound + 1}}"""),
+            )
+        }
+
+        val response = service.guess(
+            "team", "sample", 42, alice.id!!, false,
+            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+        )
+
+        response.me.shouldNotBeNull().userId shouldBe alice.id
     }
 
     @Test
