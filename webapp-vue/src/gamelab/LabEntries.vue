@@ -18,7 +18,9 @@ defineProps<{ entries: LabEntryDto[] }>()
         size="sm"
       />
       <span class="text-sm font-medium">{{ entry.username }}</span>
-      <code class="ml-auto text-xs text-neutral-500">{{ JSON.stringify(entry.outcome) }}</code>
+      <code class="ml-auto text-xs text-neutral-500">
+        {{ JSON.stringify(entry.guess) }} → {{ JSON.stringify(entry.outcome) }}
+      </code>
     </li>
   </ul>
 </template>

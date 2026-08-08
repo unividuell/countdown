@@ -18,7 +18,9 @@ const DIRECTIONS: Record<SampleOutcome['direction'], string> = {
 }
 
 function submit(): void {
-  if (value.value === null) return
+  // v-model.number on a cleared <input type="number"> yields '', not null — a plain `=== null`
+  // guard lets that through and the empty guess round-trips to the server as a generic failure.
+  if (typeof value.value !== 'number') return
   emit('guess', { value: value.value })
 }
 </script>
