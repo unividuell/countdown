@@ -213,6 +213,13 @@ const rotatorStyle = computed(() => ({
 
 <template>
   <div class="w-full">
+    <!--
+      `touch-none` and `select-none` were already here — a long press on the wheel is a normal
+      part of playing, so nothing under it may be selectable or raise an iOS callout.
+      `@contextmenu.prevent` is the other half: without it, the same long press can pop the
+      browser's context menu, which is exactly the failure mode the confirm button had to be
+      hardened against too.
+    -->
     <div
       ref="root"
       data-test="hue-wheel"
@@ -231,6 +238,7 @@ const rotatorStyle = computed(() => ({
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
       @keydown="onKeyDown"
+      @contextmenu.prevent
     >
       <div
         data-test="hue-ring"

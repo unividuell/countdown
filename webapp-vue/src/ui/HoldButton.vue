@@ -96,6 +96,18 @@ watch(
   },
 )
 
+/**
+ * A `disabled` element stops dispatching pointer events, so if `disabled` turns on mid-hold,
+ * `pointerup` would never arrive and the hold would run to completion — firing a confirm on top of
+ * whatever caused the disable, typically a request already in flight for the previous one.
+ */
+watch(
+  () => props.disabled,
+  (isDisabled) => {
+    if (isDisabled) cancel()
+  },
+)
+
 function beginHold(): void {
   if (props.disabled || !props.ready) return
   start()
@@ -151,6 +163,18 @@ const buttonStyle = computed(() => ({
       `|| undefined` is not decoration: Vue keeps `inert="false"` in the DOM for a plain false,
       and it would still be in effect. See frontend-ui.md.
     -->
+    <!--
+      Three more ways a hold ends besides a plain `pointerup`, each observed in the wild: a long
+      left-press near selectable text opens the browser's context menu partway through, which
+      steals focus so `pointerup` never arrives — `@contextmenu.prevent` stops the menu from
+      opening at all. `@blur` covers everything else that takes focus away, including a window
+      that loses focus while staying visible (so `visibilitychange` never fires) — Cmd-Tabbing
+      away mid-hold is exactly that case. `@lostpointercapture` covers the browser reclaiming
+      capture on its own. `touch-none`/`select-none` mean the press itself never has text or a
+      callout to fight over in the first place. All three route through `cancel()`, and the
+      `watch(holding, …)` above already clears `keyHeld` once `holding` goes false — no second
+      mechanism needed.
+    -->
     <button
       ref="button"
       data-test="hold-button"
@@ -159,11 +183,14 @@ const buttonStyle = computed(() => ({
       :aria-label="props.label"
       :disabled="props.disabled"
       :style="buttonStyle"
-      class="absolute inset-0 cursor-pointer rounded-full shadow-inner ring-1 ring-black/10 disabled:cursor-not-allowed"
+      class="absolute inset-0 cursor-pointer touch-none rounded-full shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
       @pointerdown="beginHold"
       @pointerup="cancel"
       @pointercancel="cancel"
       @pointerleave="cancel"
+      @lostpointercapture="cancel"
+      @contextmenu.prevent
+      @blur="cancel"
       @keydown="onKeyDown"
       @keyup="onKeyUp"
     />

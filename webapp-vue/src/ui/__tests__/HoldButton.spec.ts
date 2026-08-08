@@ -168,6 +168,66 @@ describe('HoldButton', () => {
     expect(style).toContain('opacity: 1')
   })
 
+  it('suppresses the context menu, so a long press cannot pop it mid-hold', () => {
+    // Reproduced with a plain mouse: a long left-press near selectable text opens the browser's
+    // context menu partway through the hold. The menu steals focus, `pointerup` never reaches the
+    // button, and the hold ran to completion — submitting a guess the user was trying to abort.
+    const w = mountButton()
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+
+    w.get('[data-test="hold-button"]').element.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('cancels a hold on blur, and a fresh hold afterwards still completes', async () => {
+    // The second route to the same bug: hold Space, Cmd-Tab away, release. The window loses focus
+    // but stays visible, so `visibilitychange` never fires and the background guard in
+    // `useHoldProgress` does not cover it — only `blur` does. The second half of this test is the
+    // regression that matters just as much: an abort must not wedge the control.
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+
+    await el.trigger('pointerdown')
+    vi.advanceTimersByTime(400)
+    await el.trigger('blur')
+    vi.advanceTimersByTime(3000)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+
+    await el.trigger('pointerdown')
+    vi.advanceTimersByTime(1200)
+
+    expect(w.emitted('confirm')).toHaveLength(1)
+  })
+
+  it('cancels a hold when the browser takes pointer capture away', async () => {
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+
+    await el.trigger('pointerdown')
+    vi.advanceTimersByTime(400)
+    await el.trigger('lostpointercapture')
+    vi.advanceTimersByTime(3000)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
+  it('cancels an in-flight hold when disabled turns on mid-hold', async () => {
+    // A `disabled` element stops dispatching pointer events, so flipping `disabled` mid-hold would
+    // otherwise mean `pointerup` never fires and the hold completes on top of whatever caused the
+    // disable in the first place — typically a request already in flight.
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+
+    await el.trigger('pointerdown')
+    vi.advanceTimersByTime(400)
+    await w.setProps({ disabled: true })
+    vi.advanceTimersByTime(3000)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
   it('resumes keyboard holds after the tab hides mid-hold', async () => {
     // The composable abandons the hold itself when the tab goes to the background, but does not
     // tell HoldButton. If `keyHeld` did not follow `holding` back down, the physical keyup — which

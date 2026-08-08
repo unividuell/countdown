@@ -145,6 +145,15 @@ describe('HueWheel', () => {
     expect(w.emitted('update:hue')).toBeUndefined()
   })
 
+  it('suppresses the context menu, so a long press on the wheel cannot pop it', () => {
+    const w = mountWheel()
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+
+    w.get('[data-test="hue-wheel"]').element.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+
   it('renders whatever is put in its centre', () => {
     const w = mount(HueWheel, {
       props: { hue: 10, saturation: 0.6, lightness: 0.45, disabled: false },
