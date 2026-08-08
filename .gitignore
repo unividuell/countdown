@@ -24,3 +24,8 @@
 # update.sh entschluesselt das Guess-Hue-Datenset hierher (nur relevant, falls jemand
 # update.sh lokal aus dem Repo-Checkout heraus testet -- auf dem Server ist es kein Git-Checkout).
 deploy/secrets/
+# Von update.sh heruntergeladene, noch verschluesselte Kopie (pro Target benannt, siehe
+# update.sh) -- verschluesselt, also kein Leck, macht aber `git status` schmutzig. Der Stern
+# verlangt einen Target-Infix, trifft also nicht deploy/guess-hue-dataset.sops.yaml selbst
+# (Task 7s committete Datei ohne Infix bleibt getrackt).
+deploy/guess-hue-dataset.*.sops.yaml

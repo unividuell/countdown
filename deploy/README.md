@@ -53,6 +53,11 @@ setzen ihn bereits passend. Bei einem bestehenden Deployment, das die Variable n
 muss sie wie jede neue Variable von Hand ergänzt werden (siehe Hinweis unten) — sonst bricht
 `compose up` mit einer klaren Fehlermeldung ab, statt mit einem leeren Pfad zu binden.
 
+`update.sh` lädt `guess-hue-dataset.sops.yaml` vom selben Branch, den es sonst für `compose.yaml`
+verwendet (`$REF` — `main` für prod, `develop` für staging). Die verschlüsselte Datei muss auf
+diesem Branch existieren, sonst bricht **jedes** `./update.sh <target>` ab, auch für Änderungen,
+die mit Guess Hue nichts zu tun haben.
+
 ## Bootstrap / Update
 
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,
