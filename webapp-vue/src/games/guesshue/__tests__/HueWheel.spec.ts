@@ -196,7 +196,10 @@ describe('HueWheel', () => {
     const RIGHT = { clientX: 200, clientY: 100 } // right: 90°
     const DOWN = { clientX: 100, clientY: 200 } // down: 180°
     const LEFT = { clientX: 0, clientY: 100 } // left: 270°
-    const CENTRE = { clientX: 100, clientY: 100 } // dead zone
+    const CENTRE = { clientX: 100, clientY: 100 } // dead centre, well inside the band's inner edge
+    const BAND_EDGE = { clientX: 100, clientY: 22 } // straight up, exactly on BAND_INNER_FRACTION
+    const JUST_INSIDE_BAND = { clientX: 100, clientY: 30 } // straight up, at 0.70 — short of 0.78
+    const PAST_THE_CIRCLE = { clientX: 100, clientY: -50 } // straight up, at 1.5 — the box's corner
 
     it('follows the ring: a press then moves emit the angle the geometry says', async () => {
       const w = mountWheel()
@@ -211,7 +214,7 @@ describe('HueWheel', () => {
       expect(w.emitted('update:hue')).toEqual([[0], [90], [180], [270]])
     })
 
-    it('emits nothing for a press inside the dead zone', async () => {
+    it('emits nothing for a press in the empty centre', async () => {
       const w = mountWheel()
       const el = w.get('[data-test="hue-wheel"]')
       stubRect(el.element)
@@ -219,6 +222,42 @@ describe('HueWheel', () => {
       await el.trigger('pointerdown', { ...CENTRE, pointerId: 1 })
 
       expect(w.emitted('update:hue')).toBeUndefined()
+    })
+
+    it('grabs right at the band s inner edge', async () => {
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...BAND_EDGE, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toEqual([[0]])
+    })
+
+    it('emits nothing for a press just short of the band, where the wheel used to be grabbable', async () => {
+      // The knife-edge this replaces: the old dead zone (0.3) happened to equal the confirm
+      // button's own radius, so nothing exposed the gap. 0.70 sits well past that old radius but
+      // still short of the band's new inner edge (0.78).
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...JUST_INSIDE_BAND, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toBeUndefined()
+    })
+
+    it('holds the last angle while a drag wanders off the band, both inward and outward', async () => {
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 }) // on the band: commits
+      await el.trigger('pointermove', { ...CENTRE, pointerId: 1 }) // inward, off the band: ignored
+      await el.trigger('pointermove', { ...PAST_THE_CIRCLE, pointerId: 1 }) // outward: ignored
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 }) // back on the band: commits
+
+      expect(w.emitted('update:hue')).toEqual([[0], [90]])
     })
 
     it('emits nothing for a move with no preceding press', async () => {

@@ -14,7 +14,7 @@
 import type { CSSProperties } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { angleFromPoint, hueName, radiusFraction, wrap360 } from './geometry'
-import { BOOT_SWEEP_MS, BOOT_TRAIL_MS, DEAD_ZONE_FRACTION } from './wheel'
+import { BAND_INNER_FRACTION, BOOT_SWEEP_MS, BOOT_TRAIL_MS, KNOB_TRACK_FRACTION } from './wheel'
 
 const props = defineProps<{
   hue: number
@@ -129,9 +129,12 @@ function applyPointer(event: PointerEvent): void {
   const el = root.value
   if (!el) return
   const box = el.getBoundingClientRect()
-  // Near the centre a millimetre of finger movement is a ninety-degree jump, so the last angle
-  // simply stands. The confirm button covers the same disc and catches presses there itself.
-  if (radiusFraction(event.clientX, event.clientY, box) < DEAD_ZONE_FRACTION) return
+  const fraction = radiusFraction(event.clientX, event.clientY, box)
+  // Only the rainbow band is grabbable: inside it is empty (and, incidentally, where the confirm
+  // button sits), and past the circle's edge is the square root element's own corners, which reach
+  // ~1.41. Checked on every move, not just the initial press, so a drag that wanders off the band
+  // holds its last angle instead of jumping.
+  if (fraction < BAND_INNER_FRACTION || fraction > 1) return
   commit(angleFromPoint(event.clientX, event.clientY, box))
 }
 
@@ -183,13 +186,28 @@ function onKeyDown(event: KeyboardEvent): void {
 
 const knobAngle = computed(() => sweepKnob.value ?? props.hue)
 
+/** The knob's own size, as a fraction of the wheel — kept beside the track math it feeds. */
+const KNOB_SIZE_FRACTION = 0.09
+
+/**
+ * `top`, as a % of the wheel's own box, that puts the knob's *centre* on
+ * [KNOB_TRACK_FRACTION] — not its top edge, which is what the raw CSS property addresses, hence
+ * subtracting half the knob's own size.
+ */
+const KNOB_TOP_PERCENT = 50 * (1 - KNOB_TRACK_FRACTION) - (KNOB_SIZE_FRACTION * 100) / 2
+
 const ringStyle = computed(() => {
   const s = `${props.saturation * 100}%`
   const l = `${props.lightness * 100}%`
-  const mask =
+  const sweepMask =
     painted.value >= 360
       ? undefined
       : `conic-gradient(from ${sweepFrom.value}deg, #000 0deg ${painted.value}deg, transparent 0deg)`
+  // The band itself: everything inside [BAND_INNER_FRACTION] is cut away, turning the disc into a
+  // ring. Composed with the sweep mask above rather than replacing it, so the entrance still paints
+  // the band progressively instead of revealing a full disc that only narrows once it is done.
+  const bandMask = `radial-gradient(closest-side, transparent ${BAND_INNER_FRACTION * 100 - 1}%, #000 ${BAND_INNER_FRACTION * 100}%)`
+  const mask = sweepMask ? `${sweepMask}, ${bandMask}` : bandMask
   return {
     // An array of values is Vue's fallback idiom: it writes them in order and the last one the
     // browser accepts survives. Without hue interpolation the stepped ring stands — which is what
@@ -202,6 +220,16 @@ const ringStyle = computed(() => {
     ] as unknown as string,
     mask,
     WebkitMask: mask,
+    // Two mask layers default to `add` (a union) — `intersect` is what turns "painted so far" AND
+    // "inside the band" into the actual visible region; without it the sweep would go on painting
+    // the disc's dead centre too, band or no band. csstype has no `maskComposite` entry either.
+    ...(sweepMask
+      ? ({
+          maskComposite: 'intersect',
+          WebkitMaskComposite: 'source-in',
+        } as unknown as CSSProperties)
+      : {}),
+    cursor: dragging.value ? 'grabbing' : 'grab',
   } satisfies CSSProperties
 })
 
@@ -249,11 +277,12 @@ const rotatorStyle = computed(() => ({
       <div aria-hidden="true" class="absolute inset-0" :style="rotatorStyle">
         <span
           data-test="hue-knob"
-          class="absolute top-[2%] left-1/2 size-[9%] -translate-x-1/2 rounded-full bg-white shadow ring-2 ring-black/20"
+          class="absolute left-1/2 size-[9%] -translate-x-1/2 rounded-full bg-white shadow ring-2 ring-black/20"
+          :style="{ top: `${KNOB_TOP_PERCENT}%` }"
         />
       </div>
       <div
-        class="absolute top-1/2 left-1/2 aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2"
+        class="absolute top-1/2 left-1/2 aspect-square w-[20%] -translate-x-1/2 -translate-y-1/2"
         @pointerdown.stop
       >
         <!--

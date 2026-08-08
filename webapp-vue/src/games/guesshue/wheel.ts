@@ -21,7 +21,12 @@ export const BOOT_TRAIL_MS = 70
 export const HOLD_MS = 1200
 
 /**
- * The dead zone in the wheel's centre, as a fraction of the radius. It is the confirm button's own
- * radius: the button covers 30 % of the wheel's width, so what it catches, the wheel ignores.
+ * The wheel is a thin rainbow band, not a filled disc — the original it is ported from is a ring
+ * with an empty centre, and only the ring is grabbable. Both fractions are of the wheel's radius.
  */
-export const DEAD_ZONE_FRACTION = 0.3
+
+/** The rainbow band's inner edge. Inside it the wheel is empty and not grabbable. */
+export const BAND_INNER_FRACTION = 0.78
+
+/** Where the knob rides — the middle of the band. */
+export const KNOB_TRACK_FRACTION = 0.89
