@@ -123,14 +123,19 @@ watch(
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
     <!--
-      `:key="seed"` forces a remount on a new round rather than a prop patch on the same instance:
-      the wheel's entrance animation should replay per round, and the sample game must not keep a
-      scratch value the player typed but never submitted from the round before.
+      Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
+      step for one tick whenever rolling writes the new seed to the URL before the matching round
+      has come back. Keying on the URL seed would remount right then, capturing the previous
+      round's data as if it were the new one (the entrance animation starts from the wrong angle
+      and never gets a second chance to run); `round.seed` only changes once the new round's data
+      is actually here, so the remount and the data land together. The sample game leans on the
+      same remount to drop a scratch value the player typed but never submitted from the round
+      before.
     -->
     <component
       :is="gameComponent"
       v-if="round"
-      :key="seed"
+      :key="round.seed"
       :payload="round.payload"
       :outcome="round.me?.outcome ?? null"
       :my-guess="round.me?.guess ?? null"
