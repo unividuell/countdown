@@ -6,10 +6,17 @@ const props = defineProps<{
   payload: SamplePayload
   outcome: SampleOutcome | null
   disabled: boolean
+  myGuess: unknown
 }>()
 const emit = defineEmits<{ guess: [value: unknown] }>()
 
-const value = ref<number | null>(null)
+function storedValue(guess: unknown): number | null {
+  if (typeof guess !== 'object' || guess === null) return null
+  const value = (guess as { value?: unknown }).value
+  return typeof value === 'number' ? value : null
+}
+
+const value = ref<number | null>(storedValue(props.myGuess))
 
 const DIRECTIONS: Record<SampleOutcome['direction'], string> = {
   HIGHER: 'Die gesuchte Zahl ist größer.',

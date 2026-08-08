@@ -127,6 +127,7 @@ watch(
       v-if="round"
       :payload="round.payload"
       :outcome="round.me?.outcome ?? null"
+      :my-guess="round.me?.guess ?? null"
       :disabled="busy || round.me !== null"
       @guess="guess"
     />

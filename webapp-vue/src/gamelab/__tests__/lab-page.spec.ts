@@ -193,4 +193,48 @@ describe('lab page', () => {
     const w = await mountPage()
     expect(w.get('[data-test="lab-unknown-game"]').exists()).toBe(true)
   })
+
+  it('hands the viewer their own stored guess to the game component', async () => {
+    // The payload carries the round, not the player. Without this the sample's input would be
+    // empty in a round the viewer has already spent — and the wheel of a real game would sit on
+    // the starting angle instead of the angle that was submitted.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { value: 150 },
+        outcome: { correct: false, distance: 5, direction: 'LOWER' },
+        at: '2026-08-08T12:00:00Z',
+      },
+    } as never)
+
+    const w = await mountPage()
+
+    expect((w.get('[data-test="sample-input"]').element as HTMLInputElement).value).toBe('150')
+  })
+
+  it('prints no arrow for an entry the game did not score', async () => {
+    // Guess Hue stores guesses without judging them, so `outcome` is legitimately null and the
+    // debug line must not read "→ null".
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { hue: 214.3 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.get('[data-test="lab-entries"]').text()).toContain('214.3')
+    expect(w.get('[data-test="lab-entries"]').text()).not.toContain('→')
+  })
 })

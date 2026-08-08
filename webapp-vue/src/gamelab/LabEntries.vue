@@ -19,7 +19,8 @@ defineProps<{ entries: LabEntryDto[] }>()
       />
       <span class="text-sm font-medium">{{ entry.username }}</span>
       <code class="ml-auto text-xs text-neutral-500">
-        {{ JSON.stringify(entry.guess) }} → {{ JSON.stringify(entry.outcome) }}
+        {{ JSON.stringify(entry.guess)
+        }}<template v-if="entry.outcome !== null"> → {{ JSON.stringify(entry.outcome) }}</template>
       </code>
     </li>
   </ul>
