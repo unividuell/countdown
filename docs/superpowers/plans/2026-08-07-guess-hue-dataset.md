@@ -1742,6 +1742,74 @@ Round-Trip nicht byte-identisch. Einmal kodiert statt dreimal neu entdeckt."
 
 ---
 
+### Task 11: Ein eigener age-Schlüssel für den Server
+
+`deploy/README.md` sagt derzeit „Den privaten age-Schlüssel nach `~/.config/sops/age/keys.txt` legen". Das liest sich als *kopier deinen* Schlüssel dorthin — und wäre falsch. Der Autoren-Schlüssel gehört nicht auf eine Maschine, die am Internet hängt: bei einer Kompromittierung müsste sonst alles rotiert werden, nicht nur der Server.
+
+Der Server bekommt ein **eigenes Schlüsselpaar**. Sein Public Key wird zweiter Empfänger in `.sops.yaml`, sein privater Teil verlässt den Server nie.
+
+**Files:**
+- Modify: `deploy/README.md`
+- Modify: `docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md` (Abschnitt *Ablage und Übergabe*)
+- Modify (durch den Menschen, sobald der Server-Key existiert): `.sops.yaml`, `deploy/guess-hue-dataset.sops.yaml`
+
+**Interfaces:** keine für andere Tasks.
+
+- [ ] **Step 1: Rewrite the key section in deploy/README.md**
+
+Ersetze die Zeile über das Ablegen des Schlüssels durch eine Anleitung, die auf dem Server ein eigenes Paar erzeugt. Sie muss drei Dinge klarmachen: dass der Schlüssel **hier entsteht** und nicht mitgebracht wird, dass nur sein **öffentlicher** Teil das Gerät verlässt, und dass ohne Eintrag in `.sops.yaml` plus `updatekeys` die Entschlüsselung auf dem Server scheitert.
+
+Inhaltlich (als `bash`-Block formatieren, nicht als Blockquote):
+
+&nbsp;&nbsp;&nbsp;&nbsp;`mkdir -p ~/.config/sops/age`
+&nbsp;&nbsp;&nbsp;&nbsp;`age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt`
+&nbsp;&nbsp;&nbsp;&nbsp;`age-keygen -y ~/.config/sops/age/keys.txt   # nur den Public Key ausgeben`
+
+Der letzte Befehl leitet den Public Key aus der Datei ab, falls die Ausgabe von `age-keygen` nicht mehr im Scrollback steht.
+
+Halte fest, dass `update.sh` `SOPS_AGE_KEY_FILE` auf genau diesen Pfad vorbelegt, und dass ein abweichender Ort über die `.env` gesetzt wird.
+
+- [ ] **Step 2: Document the two-recipient flow in deploy/README.md**
+
+Ein kurzer Absatz, der die Reihenfolge nennt: Public Key vom Server holen → lokal in `.sops.yaml` als zweiten Empfänger eintragen → `sops updatekeys deploy/guess-hue-dataset.sops.yaml` → `.sops.yaml` **und** die neu eingepackte Chiffre committen → erst danach deployen.
+
+Zwei Punkte, die dazugehören, weil sie sonst überraschen: `updatekeys` verpackt nur den Datenschlüssel neu, der Inhalt bleibt unangetastet — und es braucht den **privaten** Schlüssel des Autors, weil der Datenschlüssel einmal ausgepackt werden muss. Der Server-Key wird dabei nur als Public Key gebraucht.
+
+Und die Konsequenz für die Reihenfolge: **vor** dem ersten Deploy. Ein Server ohne eingetragenen Key bricht in `update.sh` ab, weil er die Chiffre nicht öffnen kann.
+
+- [ ] **Step 3: Note the format for multiple recipients**
+
+In `.sops.yaml` steht `age:` als gefalteter Skalar. Mehrere Empfänger werden **komma-getrennt** angegeben; SOPS trennt am Komma und schneidet Leerraum ab. Ergänze im Kommentarkopf der Datei eine Zeile, die das Format zeigt, damit der zweite Eintrag nicht geraten werden muss.
+
+Ändere die Empfängerliste **nicht** selbst — der Server-Key existiert noch nicht.
+
+- [ ] **Step 4: Update the spec**
+
+In `docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md`, Abschnitt *Ablage und Übergabe*: die Tabelle nennt „Server, außerhalb des Repos | der private age-Key". Präzisiere, dass es der **eigene** Schlüssel des Servers ist, nicht eine Kopie des Autoren-Schlüssels, und warum: getrennte Lebenszyklen, und der Autoren-Schlüssel gehört nicht auf eine exponierte Maschine.
+
+Der bereits dokumentierte Vorbehalt bleibt gültig und gehört hier verlinkt statt wiederholt: Entzug wirkt nicht rückwirkend, ein einmal eingetragener Empfänger kann jeden alten Stand entschlüsseln.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add deploy/README.md .sops.yaml docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md
+git commit -m "docs(deploy): give the server its own age key instead of a copy
+
+Das README las sich als \"kopier deinen Schluessel auf den Server\". Der
+Autoren-Schluessel gehoert nicht auf eine Maschine am Internet: bei einer
+Kompromittierung muesste sonst alles rotiert werden, nicht nur der Server.
+
+Der Server erzeugt jetzt ein eigenes Paar und wird zweiter Empfaenger in
+.sops.yaml. Sein privater Teil verlaesst ihn nie -- zurueck ins Repo geht nur
+der Public Key, und sops updatekeys verpackt den Datenschluessel neu, ohne den
+Inhalt anzufassen.
+
+Muss vor dem ersten Deploy passieren: ein Server ohne eingetragenen Key bricht
+in update.sh ab, weil er die Chiffre nicht oeffnen kann."
+```
+
+---
+
 ### Task 9: Guidelines nachziehen
 
 Pflicht-Abschlussaufgabe nach [feeding-knowledge-back.md](../../../.claude/guidelines/feeding-knowledge-back.md) — einschließlich der Feststellung, dass nichts zu ändern ist.
