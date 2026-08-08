@@ -17,15 +17,15 @@
 # superpowers brainstorming mockups
 .superpowers/
 
-# Klartext-Spielinhalte auf dem Weg zur SOPS-Verschlüsselung.
-# Nie committen — auch nicht in Specs, Plänen oder Commit-Messages.
+# Plaintext game content on its way to SOPS encryption.
+# Never commit — not in specs, plans, or commit messages either.
 .local/
 
-# update.sh entschluesselt das Guess-Hue-Datenset hierher (nur relevant, falls jemand
-# update.sh lokal aus dem Repo-Checkout heraus testet -- auf dem Server ist es kein Git-Checkout).
+# update.sh decrypts the Guess Hue dataset to here (only relevant if someone tests update.sh
+# locally from a repo checkout -- on the server it's not a git checkout at all).
 deploy/secrets/
-# Von update.sh heruntergeladene, noch verschluesselte Kopie (pro Target benannt, siehe
-# update.sh) -- verschluesselt, also kein Leck, macht aber `git status` schmutzig. Der Stern
-# verlangt einen Target-Infix, trifft also nicht deploy/guess-hue-dataset.sops.yaml selbst
-# (Task 7s committete Datei ohne Infix bleibt getrackt).
+# Copy of the encrypted dataset that update.sh downloads (named per target, see update.sh) --
+# still encrypted, so no leak, but it makes `git status` dirty. The glob requires a target
+# infix, so it doesn't match deploy/guess-hue-dataset.sops.yaml itself (that committed file,
+# without an infix, stays tracked).
 deploy/guess-hue-dataset.*.sops.yaml

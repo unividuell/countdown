@@ -1,15 +1,15 @@
-# Empfaengerliste fuer verschluesselte Spielinhalte. Jeder Berechtigte steht hier mit seinem
-# age-Public-Key; aufnehmen heisst: Zeile ergaenzen und `sops updatekeys` laufen lassen.
+# Recipient list for encrypted game content. Every authorized person is listed here with their
+# age public key; adding someone means appending a line and running `sops updatekeys`.
 #
-# Entzug wirkt NICHT rueckwirkend: wer einmal Empfaenger war, kann jeden Stand der Git-History
-# entschluesseln. Jemanden entfernen heisst deshalb immer auch, den Inhalt neu zu wuerfeln.
+# Revocation is NOT retroactive: anyone who was ever a recipient can decrypt any point in git
+# history. Removing someone therefore always also means re-rolling the content.
 #
-# Der erste Zweig trifft die gitignorierte Pufferdatei, der zweite die committete Chiffre:
-# creation_rules werden auf den EINGABEpfad angewandt, nicht auf die Ausgabe. Eine Regel nur
-# auf deploy/*.sops.yaml wuerde beim Verschluesseln nie greifen.
+# The first branch matches the gitignored plaintext buffer file, the second the committed
+# cipher: creation_rules apply to the INPUT path, not the output. A rule scoped only to
+# deploy/*.sops.yaml would never fire while encrypting.
 #
-# Mehrere Empfaenger: komma-getrennt, z.B. "age1..., age1<server-public-key>". SOPS trennt am
-# Komma und schneidet Leerraum ab -- Umbrueche im gefalteten Skalar sind unproblematisch.
+# Multiple recipients: comma-separated, e.g. "age1..., age1<server-public-key>". sops splits on
+# the comma and trims whitespace -- line breaks inside the folded scalar are harmless.
 creation_rules:
   - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
     age: >-

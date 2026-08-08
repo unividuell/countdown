@@ -1,6 +1,6 @@
-# Kein Spielinhalt. Dieses Set existiert, damit Tests und ein lokaler Start ohne das
-# verschluesselte Produktionsdatenset laufen. Die Anwendung bricht ab, wenn sie es unter
-# production oder staging laedt — siehe GuessHueDatasetConfiguration.
+# Not game content. This set exists so tests and a local start work without the encrypted
+# production dataset. The app refuses to boot with it under production or staging — see
+# GuessHueDatasetConfiguration.
 entries:
   - hue: 0
     difficulty: easy
