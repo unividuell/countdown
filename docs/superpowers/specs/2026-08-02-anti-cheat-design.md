@@ -5,6 +5,12 @@ Bewusst so: das Tragfähige daran lässt sich erst **konkret an einem Spiel** be
 Dokument ist die Grundlage, mit der wir in die Entwicklung des ersten Mini-Games gehen; was sich dort
 als falsch erweist, wird hier korrigiert, nicht verteidigt.
 
+**Erste Korrektur (2026-08-07), am ersten Spiel:** die Randbedingung „Inhalte müssen prozedural
+entstehen" war zu eng formuliert. Gemeint war der **wiederkehrende** Admin-Aufwand je Runde, nicht
+das Verfahren — siehe *Randbedingungen* und *Erzeugen oder auswählen*. Ausgelöst durch
+[das Guess-Hue-Datenset](2026-08-07-guess-hue-dataset-design.md), dessen Beschreibungen sich nicht
+sinnvoll generieren lassen.
+
 **Baut auf:** dem `rng`-Modul ([Cross-Runtime-RNG](2026-08-02-cross-runtime-rng-design.md)) und der
 server-autoritativen Countdown-/Runden-Engine
 ([Countdown Engine + Display](2026-06-14-countdown-engine-display-design.md)).
@@ -75,21 +81,43 @@ Priorisieren nicht verwechseln:
   huettehuette bereits so umgesetzt und wird übernommen.
 - **Kein Offline-Modus.** Latenzunabhängigkeit ist unkritisch. (Deshalb sind Runden
   server-autoritativ — siehe RNG-Spec.)
-- **Inhalte müssen zur Spielzeit prozedural entstehen — Admin-Aufwand ist ein Kostenfaktor.**
-  Siehe unten; das ist die Randbedingung, die am ehesten Maßnahmen kippt.
+- **Der Admin-Aufwand pro Runde muss gegen null gehen.** Nicht: Inhalte *müssen* prozedural
+  entstehen — prozedurale Erzeugung ist der bevorzugte Weg dorthin, nicht der Zweck. Es wird
+  immer einen Dev oder Admin geben, der etwas bereitstellt; die Frage ist **wie oft**.
+  **Einmaliger** Aufwand je Spieltyp, der danach beliebig viele Runden speist, ist erlaubt und
+  normal. **Wiederkehrender** Aufwand je Runde ist es nicht. Siehe unten; das ist die
+  Randbedingung, die am ehesten Maßnahmen kippt.
 
 ## Der Seed als Content-Pipeline (nicht nur als Determinismus-Trick)
 
 Ein Vorteil von huettehuette, der in der Diskussion zu kurz kam und der eine **Produkt**-Anforderung
 ist, keine technische: man musste nur den Seed ablegen — oder ihn an etwas Festes hängen, etwa die
 Rundennummer — und konnte damit das ganze Spiel zur Spielzeit zuverlässig erzeugen. Das heißt:
-**praktisch unbegrenzt viele Runden eines Spieltyps, ohne Admin-Aufwand.** Kein Vorab-Generieren von
-100 Bildern, kein Ablegen in der DB, keine Pflege.
+**praktisch unbegrenzt viele Runden eines Spieltyps, ohne wiederkehrenden Admin-Aufwand.** Kein
+Vorab-Generieren von 100 Bildern, kein Ablegen in der DB, keine Pflege.
 
 Das muss erhalten bleiben, und **es bleibt erhalten**: server-autoritativ heißt nicht „vorproduziert".
 Der Server leitet Rätsel *und* Lösung zur Spielzeit aus dem versteckten Seed ab, gespeichert wird nur
 der Seed. Genau diese Eigenschaft ist der Grund, warum der Kotlin-Generator unabhängig vom
 Browser-Thema nötig ist (siehe RNG-Spec) — sie ist nicht nur Determinismus, sie ist die Content-Pipeline.
+
+### Erzeugen oder auswählen — beides zählt
+
+Die Pipeline muss den Inhalt nicht **erzeugen**; sie darf ihn auch **auswählen**. Entscheidend ist
+allein, was pro Runde an Arbeit anfällt, und das ist in beiden Fällen nichts: der Seed zieht, der
+Server stellt zur Spielzeit zusammen.
+
+Das ist kein Schlupfloch, sondern der Fall, für den Sprache steht. Ein Bild, ein Muster, eine
+Zahlenfolge lässt sich generieren. Ein Text, der eine Farbe so ausmalt, dass ein Mensch sie auf
+zehn Grad genau trifft, lässt sich nicht generieren — jedenfalls nicht so, dass er noch Spaß macht.
+Dort ist die kuratierte Menge die Content-Pipeline: einmal geschrieben, danach speist sie beliebig
+viele Runden, und der Seed variiert obendrein Sättigung, Helligkeit und den Zielwinkel selbst.
+
+Die Grenze läuft deshalb nicht zwischen „generiert" und „kuratiert", sondern zwischen **einmalig**
+und **pro Runde**. Hundert vorproduzierte Bilder in der DB verletzen die Randbedingung auch dann,
+wenn ein Skript sie erzeugt hat — weil die hundertunderste Runde wieder Arbeit kostet. Erster
+Anwendungsfall und Prüfstein:
+[das Guess-Hue-Datenset](2026-08-07-guess-hue-dataset-design.md).
 
 ### Kann der Server malen? Ja — anders als damals
 
@@ -456,8 +484,10 @@ Nach der Validierung am ersten Spiel gehören in `.claude/guidelines/` — vermu
   und Runde, die ein Refresh nicht zurücksetzt.**
 - **Präsentations-Zufall braucht keine Geheimhaltung, aber dieselbe Determiniertheit** — identische
   Wahrnehmung ist Teil der Fairness, nicht Kosmetik.
-- **Inhalte entstehen zur Spielzeit aus dem Seed**, nicht vorproduziert in der DB — der Admin-Aufwand
-  ist ein Designkriterium.
+- **Der Seed erzeugt oder wählt den Inhalt zur Spielzeit** — nichts wird pro Runde vorproduziert.
+  Das Designkriterium ist der **wiederkehrende** Admin-Aufwand: einmalig je Spieltyp ist erlaubt,
+  je Runde nicht. Eine handkuratierte Menge, aus der der Seed zieht, erfüllt das ebenso wie ein
+  Generator.
 - Der Merksatz: **von parsebar nach perzeptuell**, sonst ist die Lösung ein Konsolen-Einzeiler. Und der
   Gegner ist das **wiederverwendbare Skript**, nicht der Neugierige — Maßnahmen zielen auf die
   Einmalkosten.

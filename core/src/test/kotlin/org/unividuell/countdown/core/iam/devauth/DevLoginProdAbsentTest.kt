@@ -9,9 +9,10 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.guesshue.GuessHueTestDatasetConfiguration
 
 /** Under the production profile: test-auth.enabled=false → picker absent, redirect controller active. */
-@Import(TestcontainersConfiguration::class)
+@Import(TestcontainersConfiguration::class, GuessHueTestDatasetConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("production")

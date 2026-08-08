@@ -66,3 +66,39 @@ To exercise the production OAuth flow instead of the picker:
    ```
    With `app.test-auth.enabled=false` there is no seeding and no picker, and
    `/login/github` redirects into the real GitHub flow.
+
+## Guess Hue: checking the dataset
+
+The production dataset doesn't live in the repo (see
+[game-content.md](../.claude/guidelines/game-content.md)). Check it after changing the
+gitignored buffer file — the buffer file lives in the main checkout, so a relative path
+from a worktree won't reach it; hence the absolute path below. `./scripts/guess-hue-dataset.sh decrypt`
+prints exactly that absolute path (also in its error message, if the buffer file already
+exists):
+
+```bash
+./scripts/guess-hue-dataset.sh decrypt   # prints "Decrypted to: <path>"
+cd core && ./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=<path from the script output>
+```
+
+Without the property the test skips itself — that's what keeps CI green even though it
+has no access to the plaintext. Locally, without a mounted dataset, the app runs on
+`guess-hue-dataset.sample.yaml`; under `production` and `staging` it refuses to start instead.
+
+### Using the real dataset locally
+
+The six-entry sample is enough to start `guess-hue`, but not to judge the game. Anyone
+working on it can load the real, 60-entry dataset locally before ever deploying —
+deliberately opt-in, not the default: not everyone needs the age key, and every extra
+plaintext copy on another machine is one more risk.
+
+```bash
+./scripts/guess-hue-dataset.sh decrypt
+export GUESS_HUE_DATASET_PATH=…   # the path the script prints
+cd core && ./mvnw spring-boot:run
+```
+
+This needs an age key (see [game-content.md](../.claude/guidelines/game-content.md)).
+Without one, everything else keeps working — only this one convenience doesn't. The
+decrypted file lands gitignored in the main checkout under `.local/guess-hue-dataset.yaml`
+and is never committed.

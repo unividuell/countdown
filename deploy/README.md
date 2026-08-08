@@ -28,6 +28,104 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
   has the role.
 
+## Prerequisite: sops + age (game content)
+
+`update.sh` decrypts the Guess Hue dataset on the server before calling `compose up`.
+The server needs `age` and `sops` installed once:
+
+```bash
+apt-get install -y age
+curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.arm64 && chmod +x /usr/local/bin/sops
+```
+
+`releases/latest/download/<name>` doesn't work for sops — asset names carry the version
+(`sops-v3.13.3.linux.arm64`, not `sops-linux-arm64`), hence the pinned tag above. Version
+3.13.3 is pinned deliberately: the checked-in `deploy/guess-hue-dataset.sops.yaml` carries
+`version: 3.13.3`, and matching the server's sops to it avoids format surprises between
+encryption and decryption. If sops gets updated locally, update the server promptly too.
+
+Check the architecture **on the server** first (`dpkg --print-architecture`) — don't assume.
+That's the server CPU's architecture, not the container images' (those are arm64, see
+[deployment.md](../.claude/guidelines/deployment.md)). On an `amd64` server, use
+`sops-v3.13.3.linux.amd64` instead. On Debian, the matching `.deb`
+(`sops_3.13.3_arm64.deb`/`sops_3.13.3_amd64.deb`, via `dpkg -i`) is the tidier route.
+
+For later, once 3.13.3 is stale — resolve the current tag from the API instead of pinning it:
+
+```bash
+TAG=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest | grep -oP '"tag_name": "\K[^"]+')
+curl -fsSL -o /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${TAG}/sops-${TAG}.linux.arm64" && chmod +x /usr/local/bin/sops
+```
+
+The server needs its **own** age key pair — not the author's private key. The author's key
+has no business on a machine that faces the internet: a compromise would force rotating
+everything, not just the server. Have the server generate its own pair, and only ever let
+the public half leave it:
+
+```bash
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
+age-keygen -y ~/.config/sops/age/keys.txt   # print just the public key
+```
+
+That last command re-derives the public key from the file, for when `age-keygen`'s original
+output has scrolled away. `update.sh` looks for `SOPS_AGE_KEY_FILE` at exactly that path by
+default. Set a different location **in the environment that `update.sh` runs in** — not in
+`.env`: that file is only ever passed to Compose via `--env-file`, never read into
+`update.sh`'s own shell, so a value there would never reach the `sops` call. Either per
+invocation:
+
+```bash
+SOPS_AGE_KEY_FILE=/opt/unividuell/secrets/age.key ./update.sh prod
+```
+
+or permanently in the deploying user's shell profile. The private key does **not** go into
+the repo.
+
+Without an entry in `.sops.yaml` **and** a subsequent `updatekeys`, this server can't open the
+cipher — so this has to happen **before the first deploy**:
+
+1. Get the public key on the server as above.
+2. Add it locally to `.sops.yaml` as a second recipient (see that file's comment header for
+   the multi-recipient format).
+3. Run `sops updatekeys deploy/guess-hue-dataset.sops.yaml`. This only re-wraps the data key —
+   the content is untouched — and needs the author's **private** key to do it (to unwrap the
+   data key once); the server key is only needed as a public key here.
+4. Commit `.sops.yaml` **and** the re-wrapped `deploy/guess-hue-dataset.sops.yaml`.
+5. Only deploy after that — a server without an entered key fails in `update.sh` because it
+   can't open the cipher.
+
+Prod and staging share one server (see above), so one server key covers both stacks; separate
+servers would each need their own.
+
+Missing key or tooling makes `update.sh` abort with a message rather than deploy — instead of
+starting a container that runs on placeholder content.
+
+`GUESS_HUE_DATASET_FILE` decides where the decrypted dataset lands (a distinct name per
+target, since both stacks share one directory). **`update.sh` sets and exports this variable
+itself** — it's deliberately absent from `.env.prod`/`.env.staging`: Compose gives shell
+environment precedence over `--env-file`, so a value there would be overridden anyway and
+would be misleading. Calling `compose up` by hand without `update.sh` means exporting
+`GUESS_HUE_DATASET_FILE` yourself; without it, `compose up` fails with a clear error instead
+of binding an empty path.
+
+`update.sh` fetches `guess-hue-dataset.sops.yaml` from the same branch it otherwise uses for
+`compose.yaml` (`$REF` — `main` for prod, `develop` for staging). The encrypted file must
+exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
+nothing to do with Guess Hue.
+
+**Merge window develop → main:** per the above, `update.sh` and `README.md` always come from
+`main` (`$STABLE`), while `compose.yaml` comes from the deployed branch (`$BASE`, `develop`
+for staging). Once a feature is merged into `develop` but `main` doesn't have it yet,
+`./update.sh staging` loads the **old** `update.sh` from `main` against the **new**
+`compose.yaml` from `develop`. Concretely, for this release: the old `update.sh` doesn't
+export `GUESS_HUE_DATASET_FILE` yet, and the new `compose.yaml` requires it via
+`${GUESS_HUE_DATASET_FILE:?…}` — so `pull` fails on **every** run, not just the first, because
+the script never comes from `develop`. In that window, either don't run `./update.sh staging`,
+or export `GUESS_HUE_DATASET_FILE` by hand and decrypt with `sops` by hand. The cause is
+structural: any change that has to touch `update.sh`/`compose.yaml` together hits this same
+window, not just this one.
+
 ## Bootstrap / Update
 
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,
@@ -66,6 +164,9 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
 docker compose --env-file .env.staging -f compose.staging.yaml down
+# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.staging, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
@@ -85,6 +186,9 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.prod, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.prod.yaml
 docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
@@ -101,6 +205,9 @@ docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pg
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.staging, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051

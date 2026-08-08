@@ -1,0 +1,17 @@
+# Recipient list for encrypted game content. Every authorized person is listed here with their
+# age public key; adding someone means appending a line and running `sops updatekeys`.
+#
+# Revocation is NOT retroactive: anyone who was ever a recipient can decrypt any point in git
+# history. Removing someone therefore always also means re-rolling the content.
+#
+# The first branch matches the gitignored plaintext buffer file, the second the committed
+# cipher: creation_rules apply to the INPUT path, not the output. A rule scoped only to
+# deploy/*.sops.yaml would never fire while encrypting.
+#
+# Multiple recipients: comma-separated, e.g. "age1..., age1<server-public-key>". sops splits on
+# the comma and trims whitespace -- line breaks inside the folded scalar are harmless.
+creation_rules:
+  - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
+    age: >-
+      age1p5g60l320k68lkpw6aenv3ujj3xghfe7nmvhh7rzpaumhujtnses4262qk,
+      age1fvu6jkdfld90t9ysrgvz93f3jv76f06xjx54ntmzps4j2q0nlq9sntyzpp

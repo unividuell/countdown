@@ -23,15 +23,17 @@ The repo follows **git flow**: two long-lived branches, feature branches in betw
   but state it explicitly anyway: a stale local `origin/HEAD` still makes tooling
   (incl. the Claude Code session context) report `main` as the PR base. Fix a clone
   that got it wrong once with `git remote set-head origin -a`.
-- **Promotion to prod is a separate `develop` → `main` PR** (release). Nothing lands
-  on `main` that hasn't been on staging first.
+- **Promotion to prod is a `develop` → `main` merge** (release) — a PR when the release
+  wants reviewing, otherwise a local `git merge origin/develop` on `main` plus a push.
+  What is not optional is the direction: nothing lands on `main` that hasn't been on
+  `develop` first, so every change has had a staging image built from it.
 - **Hotfix (rare):** branch from `main`, PR into `main`, then merge `main` back into
   `develop` so the fix isn't lost on the next release.
-- **PR titles and descriptions are written in English**, even when the conversation
-  that produced the change was in German. GitHub seeds the merge commit's message
-  from the PR title and body, so a German PR puts German into `develop`'s history
-  while every commit around it is English. Design docs under `docs/superpowers/`
-  stay German — they're prose for us, not repository metadata.
+- **Commit messages, PR titles and descriptions are English** — see
+  [README.md](README.md#language) for the full rule and the one exception. The
+  git-specific reason: GitHub seeds the merge commit's message from the PR title
+  and body, so a German PR puts German into `develop`'s history while every
+  commit around it is English.
 - **Merged branches are deleted.** The repo has *Automatically delete head branches*
   enabled, so GitHub removes the source branch on merge — locally follow up with
   `git fetch --prune` (and `git worktree remove` for Claude Code worktrees).
