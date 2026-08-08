@@ -100,10 +100,12 @@ Vergleichen statt Abschreiben.
 `{ "hue": <number> }`, `hue` in `[0, 360)`. Vier Ablehnungsgründe, alle als
 `InvalidGuessException`: Feld fehlt, keine Zahl, `< 0`, `>= 360`.
 
-Der Client schickt einen **gerundeten Ganzzahl-Winkel**. Die Serverprüfung bleibt trotzdem auf
-„Zahl in `[0, 360)`" und nicht auf „Ganzzahl" — der Guess ist ein Winkel, keine Aufzählung, und
-eine spätere Eingabeart mit feinerer Auflösung soll nicht an der Validierung scheitern. Das Runden
-ist Anzeigehygiene: es macht das rohe JSON in der Lab-Liste lesbar.
+**Der Client schickt den exakten Winkel, nicht gerundet.** Ein Winkel ist keine Aufzählung; was
+der Spieler eingestellt hat, ist eine Kommazahl, und zu runden hieße, seine Eingabe zu verändern,
+bevor sie irgendjemand bewertet hat. Gerundet wird ausschließlich, was Menschen lesen —
+`aria-valuenow` und die Zahl in der Tipp-Karte.
+
+Die Serverprüfung lautet entsprechend „Zahl in `[0, 360)`" und nicht „Ganzzahl".
 
 ### Betrieb
 
@@ -122,8 +124,8 @@ dahin steht in [game-content.md](../../../.claude/guidelines/game-content.md).
 | `games/guesshue/HueWheel.vue` | das Rad: zeigen, ziehen, Tastatur, ARIA | Spiel, Lab |
 | `ui/useHoldProgress.ts` | die Halte-Mechanik: Fortschritt, Abbruch, Abschluss | DOM-Semantik |
 | `ui/HoldButton.vue` | der Knopf mit Fortschrittsring | Farbe |
-| `games/guesshue/GuessHueBoard.vue` | der Screen: Zitat, Rad, Hinweis, Tipp-steht | Lab |
-| `gamelab/GuessHueLabGame.vue` | Adapter: Payload → Board, Winkel → `{ hue }` | — |
+| `games/guesshue/GuessHueBoard.vue` | die Spielkarte: Zitat, Rad, Hinweiszeile | Lab, „mein Tipp" |
+| `gamelab/GuessHueLabGame.vue` | Adapter: Payload → Board, Winkel → `{ hue }`, plus die vorläufige Tipp-Karte | — |
 
 Der Schnitt zwischen Board und Lab-Adapter ist der, der später zählt: die echte Spielseite bindet
 dasselbe Board an ihre eigene API, ohne dass eine Zeile Rad- oder Halte-Logik mitwandert.
@@ -173,7 +175,8 @@ Namensgebung sitzt auf dem umschließenden Steuerelement, wie in
 [frontend-ui.md](../../../.claude/guidelines/frontend-ui.md) beschrieben.
 
 Tasten: Pfeile ±1°, PageUp/PageDown ±10°, Home/End. `aria-valuenow` trägt den **gerundeten**
-Winkel — Ziehen erzeugt Nachkommastellen, die vorzulesen niemandem hilft.
+Winkel — Ziehen erzeugt Nachkommastellen, die vorzulesen niemandem hilft. Das ist Anzeige; der
+abgegebene Guess bleibt exakt (siehe *Guess-Format*).
 
 Der Farbname kommt aus einer Tabelle mit zwölf Namen im 30°-Raster, Index `round(h / 30) % 12`:
 Rot, Orange, Gelb, Gelbgrün, Grün, Blaugrün, Türkis, Azurblau, Blau, Violett, Magenta, Pink.
@@ -200,7 +203,7 @@ Schnitt. Die Lücke steht hier, statt weggeschrieben zu werden.
 
 ### Bewegung
 
-Drei Animationen, alle unter `prefers-reduced-motion` **und** `document.hidden` übersprungen —
+Vier Animationen, alle unter `prefers-reduced-motion` **und** `document.hidden` übersprungen —
 `frontend-state.md` verlangt beides, seit eine im Hintergrund-Tab angelegte Animation in Gecko nie
 zu Ende läuft und nie freigegeben wird. Übersprungen heißt: der Endzustand wird direkt gezeichnet.
 
@@ -217,7 +220,33 @@ Zwei gekoppelte Werte mit fester Verzögerung sind in einer Schleife billiger un
 synchronisierte `Element.animate()`-Aufrufe. Wer das Rad währenddessen anfasst, bekommt es sofort
 fertig gezeichnet und den Knopf unter den Finger.
 
-**2. Der Halte-Ring.** `--hold` läuft in einer rAF-Schleife von 0 auf 1; Loslassen vor dem Ende
+**2. Das Aufploppen des Bestätigungsknopfs.** Während der Ring entsteht, ist der Knopf **gar nicht
+da**. Sobald der Ring geschlossen ist, springt er auf — sehr schnell, deutlich zu groß, und findet
+dann federnd in seine Endgröße: kleiner als das Ziel, wieder etwas größer, wieder etwas kleiner,
+mit abnehmendem Ausschlag.
+
+```
+scale:  0 → 1.18 → 0.94 → 1.06 → 0.98 → 1.00
+offset: 0    0.22   0.42   0.62   0.80   1.00      /* ~400 ms gesamt */
+```
+
+Die Deckkraft zieht in den ersten ~15 % mit hoch. Der Ausschlag, nicht die Easing-Kurve, macht das
+Doing — deshalb stehen die Werte als Keyframes da und nicht als Federparameter.
+
+Das ist die eine Stelle, an der `Element.animate()` richtig ist: ein Element, eine Kurve, kein
+zweiter Wert, der mitlaufen müsste. (Der Einflug oben braucht die rAF-Schleife nur, weil dort zwei
+Werte mit fester Verzögerung gekoppelt sind.)
+
+Die Animation hat eine Aufgabe über die Zierde hinaus: **sie sagt, wo gespielt wird.** Der Knopf
+ist das einzige Element auf dem Screen, das etwas auslöst, und ohne den Auftritt ist er nur eine
+farbige Fläche in der Radmitte.
+
+Solange er nicht da ist, ist er auch nicht bedienbar — `:inert="!ready || undefined"`, sonst ließe
+sich ein unsichtbarer Knopf per Tabulator erreichen und gedrückt halten. (Die `|| undefined`-Form
+ist Pflicht: Vue lässt `inert="false"` sonst im DOM stehen und es wirkt weiter. Siehe
+`frontend-ui.md`.)
+
+**3. Der Halte-Ring.** `--hold` läuft in einer rAF-Schleife von 0 auf 1; Loslassen vor dem Ende
 lässt ihn sichtbar zurücklaufen. Kein CSS-Übergang, weil Rücklauf und Abschluss-Callback ohnehin
 selbst geführt werden.
 
@@ -229,7 +258,7 @@ das Halten ab**. Sonst friert die Schleife mitten im Halten ein und läuft beim 
 einem veralteten Startzeitpunkt zu Ende — ein Tipp, der abgeschickt wird, während niemand hinsah,
 ist genau das, was die Tastatur-Entscheidung oben ausschließt.
 
-**3. Der Einrast-Puls.** ~200 ms auf dem Mittelknopf nach dem Abschluss, dann steht das Rad.
+**4. Der Einrast-Puls.** ~200 ms auf dem Mittelknopf nach dem Abschluss, dann steht das Rad.
 
 **Die Haltedauer ist eine Konstante an einer Stelle:** `HOLD_MS = 1200`. Das Original hielt 2000 ms;
 beim Wiederholen fühlt sich das lang an. Der Wert gehört im Lab hingedreht — genau dafür ist es da.
@@ -251,6 +280,10 @@ Eine Card (`rounded-xl border border-neutral-200 bg-white`, wie `MessageCard`), 
 3. **Eine Zeile**, immer sichtbar: „Du stellst nur den Farbton ein — Sättigung und Helligkeit sind
    vorgegeben. Eine kleine Abweichung ist erlaubt."
 
+   Sie soll **nicht stören**: großzügiger Abstand zum Rad, kleinere Schrift, gedämpfte Farbe
+   (`mt-8 text-xs text-neutral-500`). Sie ist da, wenn man sie sucht, und tritt sonst zurück —
+   das ist der Grund, warum sie überhaupt ohne Aufklapp-Kasten auskommt.
+
 Kein Aufklapp-Kasten. Auf dem Handy ist vertikaler Platz das knappste Gut, und ein Kasten, den
 niemand aufklappt, hat keinen Leser. Die HSL-Lehrstunde des Originals entfällt ersatzlos: der
 Spieler sieht Sättigung und Helligkeit, er stellt sie nicht ein, und die Namen der Achsen ändern an
@@ -260,13 +293,18 @@ Kein Kasten im Kasten: die Beschreibung bringt eine Randlinie mit, keinen eigene
 
 ### Der „Tipp steht"-Zustand — vorläufig
 
-Nach dem Bestätigen: das Rad rastet ein, der abgegebene Winkel steht als Zahl da, ein knapper Satz
-dazu.
+Nach dem Bestätigen rastet das Rad ein, und **unter** der Spielkarte erscheint eine **zweite
+Karte**: der abgegebene Winkel als Zahl, ein knapper Satz dazu.
 
-**Das ist Lab-Gerüst mit Verfallsdatum, nicht die Bestätigungsansicht.** Es steht hier, weil sich im
-Lab sonst nicht arbeiten lässt — man muss den eigenen Winkel mit denen der anderen vergleichen
-können. Die echte Ansicht nach der Abgabe ist ein eigenes Thema und wird diesen Zustand ersetzen.
-Wer ihn später anfasst: er darf ohne Ersatz verschwinden.
+**Das ist Lab-Gerüst mit Verfallsdatum, nicht die Bestätigungsansicht.** Es steht hier, weil sich
+im Lab sonst nicht arbeiten lässt — man muss den eigenen Winkel mit denen der anderen vergleichen
+können. Die echte Ansicht nach der Abgabe ist ein eigenes Thema und wird das hier ersetzen.
+
+Die zweite Karte ist genau deshalb eine zweite und keine Zeile im Board: **dass sie neben dem Spiel
+steht statt darin, sagt von selbst, dass sie nicht dazugehört.** Sie liegt aus demselben Grund im
+**Lab-Adapter** und nicht im Board — so verschwindet sie strukturell mit dem Lab und nicht bloß
+laut Dokument. Das Board kennt dadurch nur `initHue` und `disabled`; einen Begriff von „mein Tipp"
+hat es gar nicht erst.
 
 Der Lab-Adapter füttert `me.guess.hue ?? payload.initHue` als Startwinkel. Ohne das stünde das Rad
 nach einem Reload auf `initHue` statt auf dem abgegebenen Tipp — der Zustand würde lügen. `me.guess`
@@ -287,7 +325,11 @@ Gesperrt wird über das `disabled`, das die Lab-Seite bereits setzt, sobald `me 
 - `useHoldProgress.spec.ts` — mit falschen Timern (inklusive `requestAnimationFrame`): Abschluss
   nach der Dauer, Abbruch davor, Rücklauf, Abbruch bei `visibilitychange`.
 - Komponententests nur strukturell: ARIA-Attribute, Tastatur-Emits, gesperrter Zustand, dass das
-  Board die Beschreibung rendert und beim Abschluss `guess` mit dem Winkel emittiert.
+  Board die Beschreibung rendert und beim Abschluss `guess` mit dem **exakten** Winkel emittiert.
+- Der Bestätigungsknopf trägt `inert`, solange der Ring noch entsteht — und trägt es **nicht**,
+  wenn Einflug und Aufploppen übersprungen werden. Beides ist ein Attribut, also prüfbar; der
+  Ausschlag der Feder ist es nicht und gehört in die manuelle Verifikation.
+- Der Lab-Adapter rendert die zweite Karte genau dann, wenn `me != null`.
 
 ### Was happy-dom nicht kann
 
