@@ -28,6 +28,8 @@ const props = defineProps<{
 const emit = defineEmits<{ confirm: [] }>()
 
 const button = useTemplateRef<HTMLButtonElement>('button')
+/** The outline and the button arrive as one object — this is what the entrance animates. */
+const pop = useTemplateRef<HTMLDivElement>('pop')
 const keyHeld = ref(false)
 
 function prefersReducedMotion(): boolean {
@@ -76,12 +78,17 @@ watch(
  * Absent, then a spring: too large, then under, then over, then under, settling. The amplitude
  * sequence is the whole effect, which is why it is written as keyframes and not as spring
  * parameters. It carries the one thing the screen otherwise never says — this is where you play.
+ *
+ * Animated on [pop], the wrapper around both the button and the outline, not the button alone —
+ * the outline is the button's sibling, not its child, so the button arriving on its own would
+ * leave the outline sitting there from the first frame while the button springs in in front of
+ * it. One wrapper, one animation, and the whole control pops in as a single object.
  */
 watch(
   () => props.ready,
   (ready) => {
-    if (!ready || !canAnimate(button.value)) return
-    button.value.animate(
+    if (!ready || !canAnimate(pop.value)) return
+    pop.value.animate(
       [
         { transform: 'scale(0)', opacity: 0, offset: 0 },
         { transform: 'scale(0.6)', opacity: 1, offset: 0.15 },
@@ -144,41 +151,55 @@ const ringStyle = computed(() => ({
   // is what makes the disc read as a ring rather than a filled circle, and, combined with the
   // outer box being noticeably larger than the button underneath (see the `-inset` below), with a
   // visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
-  // they were rescaled down from `90%`/`92%` when the box grew from ~24% to 50% of the wheel's
-  // width — kept unscaled, the same percentage of a bigger radius would paint a visibly thicker
-  // rim than before.
-  mask: 'radial-gradient(closest-side, transparent 95.2%, #000 96.2%)',
-  WebkitMask: 'radial-gradient(closest-side, transparent 95.2%, #000 96.2%)',
+  // they scale with that box's own size — kept unscaled, the same percentage of a differently
+  // sized radius would paint a visibly thicker or thinner rim than intended. Currently
+  // `94.67%`/`95.78%`, rescaled from `95.2%`/`96.2%` when the box shrank from 50% to 45% of the
+  // wheel's width (itself once rescaled from `90%`/`92%` at ~24%) — each rescale keeps the same
+  // absolute pixel weight by scaling the distance from 100% by the old-box/new-box ratio.
+  mask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+  WebkitMask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+}))
+
+/** Only the button's own colour — its resting visibility now lives on [popStyle], see below. */
+const buttonStyle = computed(() => ({
+  backgroundColor: props.color,
 }))
 
 /**
- * The resting appearance, bound declaratively to `ready` rather than left to the pop-in animation.
- * `inert` makes the button unreachable while not ready, but it is not visual — an inert button is
- * still painted at full size unless something says otherwise. The WAAPI animation above only
- * covers the *transition*; on browsers or states where it does not run at all (happy-dom,
- * `prefers-reduced-motion`, a backgrounded tab), this is what leaves the button correctly hidden
- * beforehand and correctly visible afterwards.
+ * The resting appearance of the whole control (outline and button together), bound declaratively
+ * to `ready` rather than left to the pop-in animation. `inert` makes the button unreachable while
+ * not ready, but it is not visual — an inert button is still painted at full size unless something
+ * says otherwise. The WAAPI animation above only covers the *transition*; on browsers or states
+ * where it does not run at all (happy-dom, `prefers-reduced-motion`, a backgrounded tab), this is
+ * what leaves the control correctly hidden beforehand and correctly visible afterwards. It sits on
+ * the wrapper rather than the button so the outline — a sibling, not a child, of the button — is
+ * hidden and shown along with it, not just during the animated transition between the two.
  */
-const buttonStyle = computed(() => ({
-  backgroundColor: props.color,
+const popStyle = computed(() => ({
   transform: props.ready ? 'scale(1)' : 'scale(0)',
   opacity: props.ready ? 1 : 0,
 }))
 </script>
 
 <template>
-  <div class="relative size-full">
+  <!--
+    This wrapper is the whole control, as far as sizing, resting visibility and the entrance
+    animation are concerned — the outline (below) and the button are its children, and both arrive
+    together because it, not the button alone, is what [popStyle] rests and the ready-watch above
+    animates.
+  -->
+  <div ref="pop" data-test="hold-pop" class="relative size-full" :style="popStyle">
     <!--
-      `-inset-[12.5%]` inflates this box by 12.5% of the button's own size on every side — 1.25×
-      the button underneath. The wheel hands this component a slot 40% of its own width; at 1.25×
-      that lands the outline at 50%, comfortably inside the band's inner edge at 78%, with the gap
+      `-inset-[6.25%]` inflates this box by 6.25% of the button's own size on every side — 1.125×
+      the button underneath. The wheel hands this component a slot 40% of its own width; at 1.125×
+      that lands the outline at 45%, comfortably inside the band's inner edge at 78%, with the gap
       between button and outline coming from the mask above rather than from this box being any
       bigger than it has to be.
     -->
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[12.5%] rounded-full text-neutral-900"
+      class="pointer-events-none absolute -inset-[6.25%] rounded-full text-neutral-900"
       :style="ringStyle"
     />
     <!--

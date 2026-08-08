@@ -58,10 +58,12 @@ describe('HoldButton', () => {
   it('rests hidden while it is not ready, regardless of the pop-in animation', () => {
     // `inert` only blocks interaction; nothing about it hides the button visually. The resting
     // style has to carry that on its own, or the button sits fully visible before its first
-    // reveal — happy-dom has no WAAPI to paper over this, so this is the structural proxy.
+    // reveal — happy-dom has no WAAPI to paper over this, so this is the structural proxy. It
+    // lives on the wrapper (`hold-pop`) rather than the button itself, because the wrapper is
+    // also what the entrance animation moves — ring and button hide and arrive as one object.
     const w = mountButton({ ready: false })
 
-    const style = w.get('[data-test="hold-button"]').attributes('style')
+    const style = w.get('[data-test="hold-pop"]').attributes('style')
     expect(style).toContain('scale(0)')
     expect(style).toContain('opacity: 0')
   })
@@ -69,7 +71,7 @@ describe('HoldButton', () => {
   it('rests visible once it is ready', () => {
     const w = mountButton({ ready: true })
 
-    const style = w.get('[data-test="hold-button"]').attributes('style')
+    const style = w.get('[data-test="hold-pop"]').attributes('style')
     expect(style).not.toContain('scale(0)')
     expect(style).toContain('opacity: 1')
   })
@@ -164,13 +166,16 @@ describe('HoldButton', () => {
     expect(w.emitted('confirm')).toBeUndefined()
   })
 
-  it('springs in when it becomes ready', async () => {
+  it('springs in when it becomes ready, animating the ring and button as one object', async () => {
     const animate = installAnimate()
     const w = mountButton({ ready: false })
 
     await w.setProps({ ready: true })
 
     expect(animate).toHaveBeenCalledTimes(1)
+    // The outline is a sibling of the button, not a child — the only way for it to arrive
+    // together with the button is for a shared ancestor to be what actually gets animated.
+    expect(animate.mock.contexts[0]).toBe(w.get('[data-test="hold-pop"]').element)
     const keyframes = animate.mock.calls[0]![0] as Array<{ transform: string }>
     expect(keyframes[0]!.transform).toContain('scale(0)')
     expect(keyframes.at(-1)!.transform).toContain('scale(1)')
@@ -184,11 +189,10 @@ describe('HoldButton', () => {
     await w.setProps({ ready: true })
 
     expect(animate).not.toHaveBeenCalled()
-    const el = w.get('[data-test="hold-button"]')
-    expect(el.attributes('inert')).toBeUndefined()
+    expect(w.get('[data-test="hold-button"]').attributes('inert')).toBeUndefined()
     // This is the regression the animation-only version could not catch: with the transition
-    // skipped, the resting style is the only thing left to show the button at all.
-    const style = el.attributes('style')
+    // skipped, the resting style is the only thing left to show the control at all.
+    const style = w.get('[data-test="hold-pop"]').attributes('style')
     expect(style).not.toContain('scale(0)')
     expect(style).toContain('opacity: 1')
   })
