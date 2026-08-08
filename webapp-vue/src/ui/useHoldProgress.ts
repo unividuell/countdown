@@ -4,6 +4,14 @@ import { useEventListener } from '@vueuse/core'
 /** How much faster the ring runs back than it filled. Releasing should read as undoing. */
 const REWIND_FACTOR = 2
 
+/**
+ * How long a hold-to-confirm gesture takes by default, absent an opinion from the caller.
+ *
+ * The original held for 2000 ms, which reads long on the second attempt. This is the number to
+ * turn while playing in the lab — it is the whole reason the lab exists.
+ */
+export const DEFAULT_HOLD_MS = 1200
+
 export interface HoldProgress {
   /** 0 … 1. Drives the ring; 1 means the hold completed. */
   progress: Readonly<Ref<number>>

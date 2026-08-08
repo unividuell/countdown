@@ -10,7 +10,6 @@
 import { computed, ref, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import HueWheel from './HueWheel.vue'
-import { HOLD_MS } from './wheel'
 
 const props = defineProps<{
   description: string
@@ -67,7 +66,6 @@ const color = computed(
           <HoldButton
             :ready="ready"
             :disabled="props.disabled"
-            :hold-ms="HOLD_MS"
             :color="color"
             label="Tipp bestätigen — gedrückt halten"
             @confirm="emit('guess', hue)"

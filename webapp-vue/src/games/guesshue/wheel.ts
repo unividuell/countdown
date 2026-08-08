@@ -13,14 +13,6 @@ export const BOOT_SWEEP_MS = 800
 export const BOOT_TRAIL_MS = 70
 
 /**
- * How long the confirm button must be held.
- *
- * The original held for 2000 ms, which reads long on the second attempt. This is the number to
- * turn while playing in the lab — it is the whole reason the lab exists.
- */
-export const HOLD_MS = 1200
-
-/**
  * The wheel is a thin rainbow band, not a filled disc — the original it is ported from is a ring
  * with an empty centre, and only the ring is grabbable. Both fractions are of the wheel's radius.
  */

@@ -9,21 +9,25 @@
  * cannot confirm; lifting that needs a setting, and the setting is not this component's business.
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { useHoldProgress } from '@/ui/useHoldProgress'
+import { DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
 const POP_MS = 400
 const PULSE_MS = 200
 
-const props = defineProps<{
-  /** False while the wheel is still drawing itself: the button is neither seen nor reachable. */
-  ready: boolean
-  disabled: boolean
-  label: string
-  /** The colour the button shows — the hue currently under the wheel's knob. */
-  color: string
-  holdMs: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** False while the wheel is still drawing itself: the button is neither seen nor reachable. */
+    ready: boolean
+    disabled: boolean
+    label: string
+    /** The colour the button shows — the hue currently under the wheel's knob. */
+    color: string
+    /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
+    holdMs?: number
+  }>(),
+  { holdMs: DEFAULT_HOLD_MS },
+)
 
 const emit = defineEmits<{ confirm: [] }>()
 
