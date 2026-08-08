@@ -14,7 +14,13 @@
 import type { CSSProperties } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { angleFromPoint, hueName, radiusFraction, wrap360 } from './geometry'
-import { BAND_INNER_FRACTION, BOOT_SWEEP_MS, BOOT_TRAIL_MS, KNOB_TRACK_FRACTION } from './wheel'
+import {
+  BAND_INNER_FRACTION,
+  BOOT_SWEEP_MS,
+  BOOT_TRAIL_MS,
+  CENTRE_HOLD_FRACTION,
+  KNOB_TRACK_FRACTION,
+} from './wheel'
 
 const props = defineProps<{
   hue: number
@@ -125,21 +131,18 @@ function commit(next: number): void {
   emit('update:hue', wrap360(next))
 }
 
-function applyPointer(event: PointerEvent): void {
+function onPointerDown(event: PointerEvent): void {
+  if (props.disabled) return
   const el = root.value
   if (!el) return
   const box = el.getBoundingClientRect()
   const fraction = radiusFraction(event.clientX, event.clientY, box)
-  // Only the rainbow band is grabbable: inside it is empty (and, incidentally, where the confirm
-  // button sits), and past the circle's edge is the square root element's own corners, which reach
-  // ~1.41. Checked on every move, not just the initial press, so a drag that wanders off the band
-  // holds its last angle instead of jumping.
+  // Only the rainbow band may start a drag: inside it is empty (and, incidentally, where the
+  // confirm button sits), and past the circle's edge is the square root element's own corners,
+  // which reach ~1.41. This gate applies only here, to starting a drag — once one is running,
+  // [onPointerMove] follows the pointer regardless of radius, because a knob already grabbed must
+  // keep following the hand that grabbed it.
   if (fraction < BAND_INNER_FRACTION || fraction > 1) return
-  commit(angleFromPoint(event.clientX, event.clientY, box))
-}
-
-function onPointerDown(event: PointerEvent): void {
-  if (props.disabled) return
   // Grabbing the wheel wins over its own entrance; dragging against a running animation is worse
   // than losing the last frames of it.
   finishSweep()
@@ -148,16 +151,26 @@ function onPointerDown(event: PointerEvent): void {
     // fatal if uncaught: the throw would abort this handler before `dragging` is ever set, so the
     // wheel would silently stop responding to that pointer. Dragging without capture is only worse
     // at the edges; not dragging at all is broken.
-    root.value?.setPointerCapture(event.pointerId)
+    el.setPointerCapture(event.pointerId)
   } catch {
     // Capture is an optimisation, not a precondition — fall through and drag anyway.
   }
   dragging.value = true
-  applyPointer(event)
+  commit(angleFromPoint(event.clientX, event.clientY, box))
 }
 
 function onPointerMove(event: PointerEvent): void {
-  if (dragging.value) applyPointer(event)
+  if (!dragging.value) return
+  const el = root.value
+  if (!el) return
+  const box = el.getBoundingClientRect()
+  // Pointer capture (taken in [onPointerDown]) is what still delivers these moves once the
+  // pointer has left the element — on a phone the finger inevitably drifts inward or outward
+  // while turning, and the knob has to follow it there too, not just on the band it started on.
+  // The one exception is the centre-stability guard: too close to it and `atan2` turns a
+  // millimetre of movement into a ninety-degree jump, so the angle holds its last value instead.
+  if (radiusFraction(event.clientX, event.clientY, box) < CENTRE_HOLD_FRACTION) return
+  commit(angleFromPoint(event.clientX, event.clientY, box))
 }
 
 function onPointerUp(event: PointerEvent): void {

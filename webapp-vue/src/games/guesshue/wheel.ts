@@ -30,3 +30,13 @@ export const BAND_INNER_FRACTION = 0.78
 
 /** Where the knob rides — the middle of the band. */
 export const KNOB_TRACK_FRACTION = 0.89
+
+/**
+ * Once a drag has started it follows the pointer anywhere — on the band, off it, even past the
+ * wheel's own element — because a knob you have already grabbed must keep following your hand.
+ * The one exception is this: within this fraction of the centre, `atan2` is numerically unstable,
+ * so a millimetre of pointer movement there would read as a ninety-degree jump. This is not a dead
+ * zone (it never stops a drag from starting or running) — it is a stability guard that holds the
+ * angle's last value for the moves that fall inside it.
+ */
+export const CENTRE_HOLD_FRACTION = 0.08

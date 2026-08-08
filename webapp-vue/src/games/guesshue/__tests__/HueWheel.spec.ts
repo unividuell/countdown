@@ -200,6 +200,10 @@ describe('HueWheel', () => {
     const BAND_EDGE = { clientX: 100, clientY: 22 } // straight up, exactly on BAND_INNER_FRACTION
     const JUST_INSIDE_BAND = { clientX: 100, clientY: 30 } // straight up, at 0.70 — short of 0.78
     const PAST_THE_CIRCLE = { clientX: 100, clientY: -50 } // straight up, at 1.5 — the box's corner
+    // Inward from the band, but outside the centre-stability guard (0.08): radius 0.3, due right.
+    const INWARD_OFF_BAND = { clientX: 130, clientY: 100 }
+    // Just inside the centre-stability guard: radius 0.05, due right of centre.
+    const NEAR_CENTRE = { clientX: 105, clientY: 100 }
 
     it('follows the ring: a press then moves emit the angle the geometry says', async () => {
       const w = mountWheel()
@@ -247,17 +251,48 @@ describe('HueWheel', () => {
       expect(w.emitted('update:hue')).toBeUndefined()
     })
 
-    it('holds the last angle while a drag wanders off the band, both inward and outward', async () => {
+    it('keeps following the pointer once grabbed, even outside the wheel entirely', async () => {
+      // The radius gate applies only to starting a drag. A knob already grabbed must keep
+      // following the hand that grabbed it — including a point past the wheel's own square
+      // corners (radius fraction 1.5), where a finger inevitably ends up while turning a knob on
+      // a phone. Against the pre-correction code this move was ignored and only the pointerdown
+      // angle would show up.
       const w = mountWheel()
       const el = w.get('[data-test="hue-wheel"]')
       stubRect(el.element)
 
-      await el.trigger('pointerdown', { ...UP, pointerId: 1 }) // on the band: commits
-      await el.trigger('pointermove', { ...CENTRE, pointerId: 1 }) // inward, off the band: ignored
-      await el.trigger('pointermove', { ...PAST_THE_CIRCLE, pointerId: 1 }) // outward: ignored
-      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 }) // back on the band: commits
+      await el.trigger('pointerdown', { ...RIGHT, pointerId: 1 }) // on the band: commits 90
+      await el.trigger('pointermove', { ...PAST_THE_CIRCLE, pointerId: 1 }) // far outside: commits 0
+
+      expect(w.emitted('update:hue')).toEqual([[90], [0]])
+    })
+
+    it('keeps following the pointer once grabbed, even off the band toward the centre', async () => {
+      // Symmetric case: drifting inward, off the band, but still outside the centre-stability
+      // guard. This too must follow rather than freeze.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 }) // on the band: commits 0
+      await el.trigger('pointermove', { ...INWARD_OFF_BAND, pointerId: 1 }) // inward: commits 90
 
       expect(w.emitted('update:hue')).toEqual([[0], [90]])
+    })
+
+    it('holds the last angle once a drag passes very close to the centre', async () => {
+      // The one exception to "follows the pointer anywhere": near the centre `atan2` is
+      // numerically unstable and a millimetre of movement is a ninety-degree jump, so the angle
+      // holds instead of jumping.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 }) // on the band: commits 0
+      await el.trigger('pointermove', { ...NEAR_CENTRE, pointerId: 1 }) // inside the guard: held
+      await el.trigger('pointermove', { ...CENTRE, pointerId: 1 }) // dead centre: still held
+
+      expect(w.emitted('update:hue')).toEqual([[0]])
     })
 
     it('emits nothing for a move with no preceding press', async () => {
