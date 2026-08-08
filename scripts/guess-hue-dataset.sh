@@ -74,10 +74,10 @@ CIPHER="$CHECKOUT_ROOT/deploy/guess-hue-dataset.sops.yaml"
 SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 export SOPS_AGE_KEY_FILE
 
-# Deckt beide Richtungen und auch Abbruch per Strg-C ab: scheitert nicht sops, sondern erst das
-# abschliessende "mv" (volle Platte, Rechte), wuerde ohne diesen Trap eine .tmp-Datei liegen
-# bleiben -- bei decrypt waere das eine Klartextdatei, die niemand erwartet. Vor dem Anlegen der
-# jeweiligen .tmp-Datei gesetzt, nach dem erfolgreichen mv durch Leeren der Pfadvariable entschaerft.
+# Deckt beide Richtungen ab: scheitert nicht sops, sondern erst das abschliessende "mv" (volle
+# Platte, Rechte), wuerde ohne diesen Trap eine .tmp-Datei liegen bleiben -- bei decrypt waere das
+# eine Klartextdatei, die niemand erwartet. Vor dem Anlegen der jeweiligen .tmp-Datei gesetzt, nach
+# dem erfolgreichen mv durch Leeren der Pfadvariable entschaerft.
 TMP_FILE=""
 cleanup_tmp() {
   # "if" statt "[ -n "$TMP_FILE" ] && rm -f ...": bei leerem TMP_FILE ist die Bedingung falsch,
@@ -88,7 +88,15 @@ cleanup_tmp() {
     rm -f "$TMP_FILE"
   fi
 }
+# Getrennte INT/TERM-Traps statt nur "trap cleanup_tmp EXIT INT TERM": ein EXIT-Trap allein deckt
+# Strg-C unter bash-als-/bin/sh ab (macOS-Default), nicht aber unter dash -- und dash ist /bin/sh
+# auf Debian/Ubuntu, also genau dort, wo dieses Repo deployt wird. Dort liesse ein Strg-C mitten im
+# Entschluesseln die .tmp-Datei mit dem Klartext des Datensets liegen. Die explizite Form setzt den
+# Exit-Code nach einem Signal ausserdem selbst (130/143 nach Konvention 128+Signalnummer) statt ihn
+# dem Shell-Dialekt zu ueberlassen.
 trap cleanup_tmp EXIT
+trap 'cleanup_tmp; exit 130' INT
+trap 'cleanup_tmp; exit 143' TERM
 
 case "$SUBCOMMAND" in
   decrypt)
