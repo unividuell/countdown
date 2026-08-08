@@ -51,6 +51,7 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | '/c/[slug]/'
+      | '/c/[slug]/lab/[game]'
       | '/c/[slug]/members'
       | '/c/[slug]/requests'
       | '/c/[slug]/settings'
@@ -60,6 +61,13 @@ declare module 'vue-router/auto-routes' {
       '/c/:slug',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/lab/[game]': RouteRecordInfo<
+      '/c/[slug]/lab/[game]',
+      '/c/:slug/lab/:game',
+      { slug: ParamValue<true>, game: ParamValue<true> },
+      { slug: ParamValue<false>, game: ParamValue<false> },
       | never
     >,
     '/c/[slug]/members': RouteRecordInfo<
@@ -182,6 +190,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/c/[slug]'
         | '/c/[slug]/'
+        | '/c/[slug]/lab/[game]'
         | '/c/[slug]/members'
         | '/c/[slug]/requests'
         | '/c/[slug]/settings'
@@ -197,6 +206,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/c/[slug]/lab/[game].vue': {
+      routes:
+        | '/c/[slug]/lab/[game]'
+      views:
+        | never
+      pathParamNames:
+        | 'game'
     }
     'src/pages/c/[slug]/members.vue': {
       routes:
