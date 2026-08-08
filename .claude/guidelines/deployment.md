@@ -4,7 +4,9 @@ Production runs on a single **linux/arm64** server from one Docker Compose file;
 images are built by GitHub Actions and pulled from **ghcr.io**. See the design spec + plan in
 `docs/superpowers/` and the on-server guide in `deploy/README.md`. Everything HTTP-facing —
 the two Caddys, TLS, routing, cache headers, the forwarded-header chain — lives in
-[deployment-edge.md](deployment-edge.md).
+[deployment-edge.md](deployment-edge.md). Everything that runs **on the server itself** — ops,
+backups, `update.sh`, secret-handling scripts, pgAdmin — lives in
+[deployment-server.md](deployment-server.md).
 
 ## Images & CI
 
@@ -96,66 +98,6 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   `optional`/`runtime` in the pom and the Maven plugin's `repackage`/`build-image` defaults to
   `excludeDockerCompose=true`. So **no `spring.docker.compose.enabled=false` needed** (the support
   isn't on the prod classpath; the in-tests skip-check is irrelevant there).
-
-## Server compose & ops
-
-- **No service publishes a host port except pgAdmin** (loopback only). `postgres` and `core` are
-  reachable on the `internal` network only; `countdown-web` is reached by the shared edge over the
-  `edge` network. Secrets come from the server-side `.env.<target>` files, never committed.
-- **`postgres:18` volume mount gotcha:** Postgres 18's Docker image moved `PGDATA` into a
-  version subdir and the recommended mount point to **`/var/lib/postgresql`** (not the old
-  `/var/lib/postgresql/data`). Mounting the named volume at `.../data` makes 18 **refuse to
-  start** — it logs "PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)" and
-  crash-loops, which cascades (`UnknownHostException: postgres` in `core`, 502 at the edge).
-  Mount the **parent**: `pgdata:/var/lib/postgresql`.
-- **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to the host
-  `BACKUP_DIR` (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
-  `until pg_isready ...; do sleep 2; done` before each dump — otherwise a not-yet-ready Postgres makes
-  `gzip` write a silent corrupt/empty archive (the pipe hides `pg_dump`'s failure). PITR is a later
-  pgBackRest upgrade. **Compose gotcha:** in a `command:` block escape shell `$(...)` as `$$(...)`,
-  else Compose interpolates it away.
-
-### `update.sh <prod|staging>`
-
-The server runs a `curl`-able `update.sh` (default target `prod`) that re-fetches the infra files,
-then `docker compose --env-file .env.<target> -f compose.<target>.yaml pull && up -d`. Only the
-per-target compose files, `.env.prod`/`.env.staging`, `README.md` and `update.sh` itself live on the
-server; the Caddyfile is image-baked.
-
-- **Each target fetches `compose.yaml` from the branch its images come from** — prod from `main`
-  (`:latest`), staging from `develop` (`:staging`), saved as `compose.<target>.yaml`; `REF=<branch>`
-  overrides for a one-off. Infra must follow the same branch as the code it deploys, or staging runs
-  develop images on main infrastructure and a compose-level change can never be exercised before it
-  reaches prod.
-- **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
-  and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
-  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
-  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
-- **Never generate or decrypt a secret straight onto a live bind-mount target, and never lock it
-  down with `chmod 600`.** `sops -d ... > "$TARGET_FILE"` truncates the mount before the tool
-  produces a byte; if the tool then fails, the container's next restart finds the bind source gone
-  and Docker recreates it as an empty **directory** — a failed deploy arms a later crash-loop. Write
-  to `"$TARGET_FILE.tmp"` and `mv` into place only on success. Buildpacks images run as a fixed
-  non-root UID a bind mount can't remap, so `600` on the file locks the container out — protect the
-  **directory** instead (`700`) and leave the file itself readable (`644`).
-- **A deploy-side shell script runs under whatever `/bin/sh` the target host has** — Debian/Ubuntu's
-  is `dash`, where `trap ... EXIT` alone does not fire on `SIGINT`, so a script cleaning up a temp
-  file only on `EXIT` leaves it behind on Ctrl-C. Add explicit `INT`/`TERM` traps, and verify on the
-  real target shell, not just the dev machine's.
-
-## pgAdmin in production
-
-- **One pgAdmin per environment, opt-in and loopback-only:** under a `debug` compose profile (off
-  by default), each connects only to its own `postgres` via the service name, bound to `127.0.0.1`
-  on a distinct port (`PGADMIN_PORT`: prod 5050, staging 5051) — never public, never proxied by
-  Caddy. Access via an SSH local-port-forward (`ssh -L <port>:127.0.0.1:<port> user@server`);
-  distinct ports let you tunnel both at once. `deploy/README.md` documents the per-env start.
-- **Desktop mode (no pgAdmin login):** `PGADMIN_CONFIG_SERVER_MODE=False` +
-  `PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False`. The boundary is **SSH + loopback bind** — anyone
-  past SSH can read the `.env` secrets anyway, so an extra pgAdmin login is no added security, only
-  friction. Gotcha: set `PGADMIN_CONFIG_DESKTOP_USER='<email>'` to **match** `PGADMIN_DEFAULT_EMAIL`
-  (else pgAdmin looks up its built-in default and 401s); `PGADMIN_CONFIG_*` values are written into a
-  Python config verbatim, so string values need **embedded quotes**, booleans (`False`) do not.
 
 ## Docker Desktop gotcha (local, macOS)
 

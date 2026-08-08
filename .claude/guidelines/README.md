@@ -20,8 +20,9 @@ new team members (and AI assistants) stay consistent.
 | ↳ Frontend routing, shells & access (Vue Router 5 file-based · guard-owned nav data · `[slug]` shell · role gating) | [frontend-routing.md](frontend-routing.md) |
 | ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking) | [frontend-state.md](frontend-state.md) |
 | ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles) | [frontend-testing.md](frontend-testing.md) |
-| Deployment (ghcr images · arm64 CI · prod+staging compose · `update.sh` · pg_dump backup · pgAdmin SSH) | [deployment.md](deployment.md) |
+| Deployment (ghcr images · arm64 CI · prod+staging compose topology · backend production profile) | [deployment.md](deployment.md) |
 | ↳ Deployment edge (the two Caddys · TLS · SPA/API routing · cache headers · `X-Forwarded-*` chain) | [deployment-edge.md](deployment-edge.md) |
+| ↳ Deployment server ops (`update.sh` · secret-handling scripts · pg_dump backup · pgAdmin SSH) | [deployment-server.md](deployment-server.md) |
 | **Dependency updates** — Maven · npm · Docker, and the versions we deliberately hold back (TS 6.x, `@types/node` 24, Node LTS) | [dependency-updates.md](dependency-updates.md) |
 | Multi-tenancy (community module · `community_id` scoping · slug-derivation parity · URL-slug routing guard) | [multi-tenancy.md](multi-tenancy.md) |
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
