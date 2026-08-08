@@ -81,3 +81,21 @@ Pfad aus einem Worktree trifft sie nicht, deshalb absolut:
 Ohne die Property überspringt sich der Test — so bleibt die CI grün, die den Klartext nicht hat.
 Lokal ohne gemountetes Datenset läuft die Anwendung auf `guess-hue-dataset.sample.yaml`; unter
 `production` und `staging` bricht sie damit ab.
+
+### Das echte Datenset lokal verwenden
+
+Das Sample mit sechs Einträgen reicht, um `guess-hue` zu starten, aber nicht, um das Spiel zu
+beurteilen. Wer daran arbeitet, kann das echte, 60-Einträge-Datenset lokal laden, bevor überhaupt
+deployt wird — bewusst opt-in, kein Default: den age-Key braucht nicht jeder, und jeder
+zusätzliche Klartext auf einem weiteren Rechner ist ein Risiko mehr.
+
+```bash
+./scripts/guess-hue-dataset.sh decrypt
+export GUESS_HUE_DATASET_PATH=…   # den Pfad, den das Skript ausgibt
+cd core && ./mvnw spring-boot:run
+```
+
+Dafür ist ein age-Key nötig (siehe [game-content.md](../.claude/guidelines/game-content.md)).
+Ohne ihn funktioniert alles andere weiterhin — nur dieser eine Komfort nicht. Die entschlüsselte
+Datei landet gitignored im Haupt-Checkout unter `.local/guess-hue-dataset.yaml` und wird nie
+committet.

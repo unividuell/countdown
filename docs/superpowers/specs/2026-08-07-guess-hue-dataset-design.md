@@ -215,6 +215,12 @@ und war damit exakt das Leck, gegen das der Rest des Kapitels argumentiert.
 ihnen verschwände die einzige Klartextkopie. Die Pufferdatei ist jederzeit aus der verschlüsselten
 Fassung reproduzierbar (`sops -d`); sie ist ein Durchgangsposten, kein Original.
 
+Dieselbe Pufferdatei ist auch der **lokale Opt-in-Pfad**: wer am Spiel arbeitet, entschlüsselt sie
+(`scripts/guess-hue-dataset.sh decrypt`) und zeigt `GUESS_HUE_DATASET_PATH` darauf, um vor dem
+Deployen mit den echten 60 statt dem Sechs-Einträge-Sample zu arbeiten. Das bleibt bewusst opt-in,
+kein Default: den age-Key braucht nicht jeder, und jeder zusätzliche Klartext auf einem weiteren
+Rechner wäre der Preis eines Standard-Opt-ins.
+
 ### Ablage im Betrieb
 
 | Ort | Inhalt |
