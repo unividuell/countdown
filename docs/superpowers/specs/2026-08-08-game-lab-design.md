@@ -56,6 +56,12 @@ ist der eingeplante Normalfall, kein Fehlschlag.**
 Daraus folgt auch, warum die Attrappe absichtlich dumm bleibt: an ihr hängt nichts, was das
 Umbauen teuer macht.
 
+**Und die Abhängigkeitsrichtung im Modulith folgt derselben Regel:** die `LabGame`-Anpassung eines
+echten Spiels lebt **in `gamelab`** und ruft die öffentliche API des Spielmoduls auf — nie
+umgekehrt. Kein Spielmodul implementiert `LabGame`, kein Produktionsmodul hängt am Labor. So kann
+das Labor jederzeit umgebaut oder ganz gelöscht werden, ohne ein Spiel anzufassen, und `gamelab`
+bleibt der einzige Ort, an dem non-prod-Code steht.
+
 ## Modul und Gating
 
 Ein neues Modulith-Modul **`gamelab`** (`org.unividuell.countdown.core.gamelab`). **Kein Schema,
