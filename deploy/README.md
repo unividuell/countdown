@@ -47,11 +47,13 @@ in der `.env` setzen). Der Schlüssel gehört **nicht** ins Repo.
 Fehlt Schlüssel oder Werkzeug, bricht `update.sh` mit einer Meldung ab und deployt nicht — statt
 einen Container zu starten, der auf Platzhalterinhalten läuft.
 
-`GUESS_HUE_DATASET_FILE` in `.env.prod`/`.env.staging` bestimmt, wohin update.sh das entschlüsselte
-Datenset legt (eigener Name pro Target, da beide Stacks dasselbe Verzeichnis teilen); die Templates
-setzen ihn bereits passend. Bei einem bestehenden Deployment, das die Variable noch nicht kennt,
-muss sie wie jede neue Variable von Hand ergänzt werden (siehe Hinweis unten) — sonst bricht
-`compose up` mit einer klaren Fehlermeldung ab, statt mit einem leeren Pfad zu binden.
+`GUESS_HUE_DATASET_FILE` bestimmt, wohin das entschlüsselte Datenset kommt (eigener Name pro
+Target, da beide Stacks dasselbe Verzeichnis teilen). **`update.sh` setzt und exportiert diese
+Variable selbst** — sie steht bewusst nicht in `.env.prod`/`.env.staging`: Compose gibt der
+Shell-Umgebung Vorrang vor `--env-file`, ein Wert dort würde also ohnehin überstimmt und wäre
+irreführend. Ruft man `compose up` von Hand ohne `update.sh` auf, muss man
+`GUESS_HUE_DATASET_FILE` selbst exportieren; ohne sie bricht `compose up` mit einer klaren
+Fehlermeldung ab, statt mit einem leeren Pfad zu binden.
 
 `update.sh` lädt `guess-hue-dataset.sops.yaml` vom selben Branch, den es sonst für `compose.yaml`
 verwendet (`$REF` — `main` für prod, `develop` für staging). Die verschlüsselte Datei muss auf

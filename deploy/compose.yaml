@@ -50,10 +50,13 @@ services:
       # update.sh entschluesselt hierher, bevor es `compose up` ruft. Read-only: die Anwendung
       # liest das Datenset und schreibt es nie. Fehlt die Datei, bricht der Start ab -- gewollt,
       # ein Spiel auf Platzhalterinhalten sieht gesund aus und ist es nicht.
-      # Eigener Dateiname pro Target ueber GUESS_HUE_DATASET_FILE (siehe .env.<target>.example):
-      # beide Stacks teilen sich dieses Verzeichnis, ein gemeinsamer Name wuerde bedeuten, dass
-      # z.B. ein staging-Update das von prod gemountete Klartext-File unter der Decke austauscht.
-      - ${GUESS_HUE_DATASET_FILE:?Set GUESS_HUE_DATASET_FILE in .env.<target>, see deploy/README.md}:/config/guess-hue-dataset.yaml:ro
+      # Eigener Dateiname pro Target ueber GUESS_HUE_DATASET_FILE: beide Stacks teilen sich dieses
+      # Verzeichnis, ein gemeinsamer Name wuerde bedeuten, dass z.B. ein staging-Update das von
+      # prod gemountete Klartext-File unter der Decke austauscht. update.sh setzt und exportiert
+      # diese Variable selbst (Shell-Umgebung geht --env-file vor) -- sie steht bewusst nicht in
+      # .env.<target>.example. Wer compose ohne update.sh von Hand aufruft, muss sie selbst
+      # exportieren; die Meldung unten ist fuer genau diesen Fall.
+      - ${GUESS_HUE_DATASET_FILE:?GUESS_HUE_DATASET_FILE is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/guess-hue-dataset.yaml:ro
     depends_on:
       - postgres
     networks:
