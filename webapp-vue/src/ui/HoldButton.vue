@@ -140,12 +140,15 @@ const ringStyle = computed(() => ({
   // `transparent` half lets it show through for whatever the hold has not yet filled.
   backgroundColor: '#d4d4d4',
   backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
-  // `closest-side` keeps this proportional at any wheel size. The band from 90% to 92% is what
-  // makes the disc read as a ring rather than a filled circle — thin, and, combined with the
+  // `closest-side` keeps this proportional at any wheel size. The thin band near the outer edge
+  // is what makes the disc read as a ring rather than a filled circle, and, combined with the
   // outer box being noticeably larger than the button underneath (see the `-inset` below), with a
-  // visible gap between the two.
-  mask: 'radial-gradient(closest-side, transparent 90%, #000 92%)',
-  WebkitMask: 'radial-gradient(closest-side, transparent 90%, #000 92%)',
+  // visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
+  // they were rescaled down from `90%`/`92%` when the box grew from ~24% to 50% of the wheel's
+  // width — kept unscaled, the same percentage of a bigger radius would paint a visibly thicker
+  // rim than before.
+  mask: 'radial-gradient(closest-side, transparent 95.2%, #000 96.2%)',
+  WebkitMask: 'radial-gradient(closest-side, transparent 95.2%, #000 96.2%)',
 }))
 
 /**
@@ -166,15 +169,16 @@ const buttonStyle = computed(() => ({
 <template>
   <div class="relative size-full">
     <!--
-      `-inset-[10%]` inflates this box by 10% of the button's own size on every side — 1.2× the
-      button underneath. The wheel hands this component a slot 20% of its own width; at 1.2× that
-      lands the outline at ~24%, matching the original, with the gap between button and outline
-      coming from the mask above rather than from this box being any bigger than it has to be.
+      `-inset-[12.5%]` inflates this box by 12.5% of the button's own size on every side — 1.25×
+      the button underneath. The wheel hands this component a slot 40% of its own width; at 1.25×
+      that lands the outline at 50%, comfortably inside the band's inner edge at 78%, with the gap
+      between button and outline coming from the mask above rather than from this box being any
+      bigger than it has to be.
     -->
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[10%] rounded-full text-neutral-900"
+      class="pointer-events-none absolute -inset-[12.5%] rounded-full text-neutral-900"
       :style="ringStyle"
     />
     <!--
