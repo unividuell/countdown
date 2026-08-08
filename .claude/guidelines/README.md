@@ -35,6 +35,20 @@ new team members (and AI assistants) stay consistent.
 
 **Frontend (`webapp-vue/`):** **Vite 8**, **Vue 3** (Composition API), **TypeScript** (strict), **Vue Router 5** (file-based), **Tailwind v4**, **pnpm**. `pnpm dev` proxies to the backend for same-origin auth.
 
+## Language
+
+- **Source code is English** — comments, KDoc, identifiers, log messages, error
+  messages, test names — whatever language the conversation that produced it was
+  in. So are configuration and script comments, and the operator-facing READMEs.
+- **Repository metadata is English too:** commit messages (including bodies), PR
+  titles and descriptions. GitHub seeds the merge commit from the PR, so a German
+  entry sits oddly in an otherwise English history.
+- **Design docs under `docs/superpowers/` stay German** — they're prose for the
+  two of us, not repository metadata.
+- **Exception in the other direction:** German *data* — e.g. the placeholder
+  entries standing in for the German game content — stays German; it's content,
+  not code.
+
 ## Worked examples
 
 - Backend: the **`iam` module** (user management / GitHub login) is the reference for every backend guideline.

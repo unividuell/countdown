@@ -28,103 +28,103 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
   has the role.
 
-## Voraussetzung: sops + age (Spielinhalte)
+## Prerequisite: sops + age (game content)
 
-`update.sh` entschlüsselt das Guess-Hue-Datenset auf dem Server, bevor es `compose up` ruft.
-Der Server braucht dafür einmalig `age` und `sops`:
+`update.sh` decrypts the Guess Hue dataset on the server before calling `compose up`.
+The server needs `age` and `sops` installed once:
 
 ```bash
 apt-get install -y age
 curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.arm64 && chmod +x /usr/local/bin/sops
 ```
 
-`releases/latest/download/<name>` funktioniert bei sops nicht — die Asset-Namen tragen die Version
-(`sops-v3.13.3.linux.arm64`), nicht `sops-linux-arm64`, daher der feste Tag oben. Version 3.13.3 ist
-bewusst gepinnt: Die eingecheckte `deploy/guess-hue-dataset.sops.yaml` trägt `version: 3.13.3` —
-derselbe sops auf dem Server vermeidet Format-Überraschungen zwischen Ver- und Entschlüsselung. Wird
-sops lokal aktualisiert, sollte der Server zeitnah nachziehen.
+`releases/latest/download/<name>` doesn't work for sops — asset names carry the version
+(`sops-v3.13.3.linux.arm64`, not `sops-linux-arm64`), hence the pinned tag above. Version
+3.13.3 is pinned deliberately: the checked-in `deploy/guess-hue-dataset.sops.yaml` carries
+`version: 3.13.3`, and matching the server's sops to it avoids format surprises between
+encryption and decryption. If sops gets updated locally, update the server promptly too.
 
-Architektur vorher **auf dem Server** prüfen (`dpkg --print-architecture`), nicht annehmen — das ist
-die Architektur der Server-CPU, nicht die der Container-Images (die sind arm64, siehe
-[deployment.md](../.claude/guidelines/deployment.md)). Auf einem `amd64`-Server stattdessen
-`sops-v3.13.3.linux.amd64`. Unter Debian ist das passende `.deb`
-(`sops_3.13.3_arm64.deb`/`sops_3.13.3_amd64.deb`, per `dpkg -i`) der aufgeräumtere Weg.
+Check the architecture **on the server** first (`dpkg --print-architecture`) — don't assume.
+That's the server CPU's architecture, not the container images' (those are arm64, see
+[deployment.md](../.claude/guidelines/deployment.md)). On an `amd64` server, use
+`sops-v3.13.3.linux.amd64` instead. On Debian, the matching `.deb`
+(`sops_3.13.3_arm64.deb`/`sops_3.13.3_amd64.deb`, via `dpkg -i`) is the tidier route.
 
-Für später, wenn 3.13.3 veraltet ist — den aktuellen Tag von der API ableiten statt fest zu pinnen:
+For later, once 3.13.3 is stale — resolve the current tag from the API instead of pinning it:
 
 ```bash
 TAG=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest | grep -oP '"tag_name": "\K[^"]+')
 curl -fsSL -o /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${TAG}/sops-${TAG}.linux.arm64" && chmod +x /usr/local/bin/sops
 ```
 
-Der Server braucht ein **eigenes** age-Schlüsselpaar — nicht den privaten Schlüssel des Autors.
-Der Autoren-Schlüssel gehört nicht auf eine Maschine, die am Internet hängt: bei einer
-Kompromittierung müsste sonst alles rotiert werden, nicht nur der Server. Der Server erzeugt sein
-Paar selbst, und nur der öffentliche Teil verlässt ihn wieder:
+The server needs its **own** age key pair — not the author's private key. The author's key
+has no business on a machine that faces the internet: a compromise would force rotating
+everything, not just the server. Have the server generate its own pair, and only ever let
+the public half leave it:
 
 ```bash
 mkdir -p ~/.config/sops/age
 age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
-age-keygen -y ~/.config/sops/age/keys.txt   # nur den Public Key ausgeben
+age-keygen -y ~/.config/sops/age/keys.txt   # print just the public key
 ```
 
-Der letzte Befehl leitet den Public Key aus der Datei ab, falls die Ausgabe von `age-keygen` nicht
-mehr im Scrollback steht. `update.sh` erwartet `SOPS_AGE_KEY_FILE` standardmäßig genau an diesem
-Pfad. Ein abweichender Ort wird **in der Umgebung gesetzt, in der `update.sh` läuft** — nicht in
-der `.env`: die wird nur per `--env-file` an Compose weitergereicht, nie in die Shell von
-`update.sh` selbst eingelesen, ein Wert dort erreicht den `sops`-Aufruf also nie. Entweder pro
-Aufruf:
+That last command re-derives the public key from the file, for when `age-keygen`'s original
+output has scrolled away. `update.sh` looks for `SOPS_AGE_KEY_FILE` at exactly that path by
+default. Set a different location **in the environment that `update.sh` runs in** — not in
+`.env`: that file is only ever passed to Compose via `--env-file`, never read into
+`update.sh`'s own shell, so a value there would never reach the `sops` call. Either per
+invocation:
 
 ```bash
 SOPS_AGE_KEY_FILE=/opt/unividuell/secrets/age.key ./update.sh prod
 ```
 
-oder dauerhaft im Shell-Profil des deployenden Nutzers. Der private Schlüssel gehört **nicht**
-ins Repo.
+or permanently in the deploying user's shell profile. The private key does **not** go into
+the repo.
 
-Ohne Eintrag in `.sops.yaml` **und** ein anschließendes `updatekeys` kann dieser Server die Chiffre
-nicht öffnen — das muss also **vor dem ersten Deploy** passieren:
+Without an entry in `.sops.yaml` **and** a subsequent `updatekeys`, this server can't open the
+cipher — so this has to happen **before the first deploy**:
 
-1. Public Key wie oben auf dem Server ermitteln.
-2. Lokal in `.sops.yaml` als zweiten Empfänger eintragen (siehe Kommentarkopf dort für das Format
-   bei mehreren Empfängern).
-3. `sops updatekeys deploy/guess-hue-dataset.sops.yaml` ausführen. Das packt nur den Datenschlüssel
-   neu ein — der Inhalt bleibt unangetastet — und braucht dafür den **privaten** Schlüssel des
-   Autors (um den Datenschlüssel einmal auszupacken); der Server-Key wird dabei nur als Public Key
-   gebraucht.
-4. `.sops.yaml` **und** die neu eingepackte `deploy/guess-hue-dataset.sops.yaml` committen.
-5. Erst danach deployen — ein Server ohne eingetragenen Key bricht in `update.sh` ab, weil er die
-   Chiffre nicht öffnen kann.
+1. Get the public key on the server as above.
+2. Add it locally to `.sops.yaml` as a second recipient (see that file's comment header for
+   the multi-recipient format).
+3. Run `sops updatekeys deploy/guess-hue-dataset.sops.yaml`. This only re-wraps the data key —
+   the content is untouched — and needs the author's **private** key to do it (to unwrap the
+   data key once); the server key is only needed as a public key here.
+4. Commit `.sops.yaml` **and** the re-wrapped `deploy/guess-hue-dataset.sops.yaml`.
+5. Only deploy after that — a server without an entered key fails in `update.sh` because it
+   can't open the cipher.
 
-Prod und Staging teilen sich einen Server (siehe oben), also deckt ein Server-Key beide Stacks ab;
-getrennte Server bräuchten je einen eigenen.
+Prod and staging share one server (see above), so one server key covers both stacks; separate
+servers would each need their own.
 
-Fehlt Schlüssel oder Werkzeug, bricht `update.sh` mit einer Meldung ab und deployt nicht — statt
-einen Container zu starten, der auf Platzhalterinhalten läuft.
+Missing key or tooling makes `update.sh` abort with a message rather than deploy — instead of
+starting a container that runs on placeholder content.
 
-`GUESS_HUE_DATASET_FILE` bestimmt, wohin das entschlüsselte Datenset kommt (eigener Name pro
-Target, da beide Stacks dasselbe Verzeichnis teilen). **`update.sh` setzt und exportiert diese
-Variable selbst** — sie steht bewusst nicht in `.env.prod`/`.env.staging`: Compose gibt der
-Shell-Umgebung Vorrang vor `--env-file`, ein Wert dort würde also ohnehin überstimmt und wäre
-irreführend. Ruft man `compose up` von Hand ohne `update.sh` auf, muss man
-`GUESS_HUE_DATASET_FILE` selbst exportieren; ohne sie bricht `compose up` mit einer klaren
-Fehlermeldung ab, statt mit einem leeren Pfad zu binden.
+`GUESS_HUE_DATASET_FILE` decides where the decrypted dataset lands (a distinct name per
+target, since both stacks share one directory). **`update.sh` sets and exports this variable
+itself** — it's deliberately absent from `.env.prod`/`.env.staging`: Compose gives shell
+environment precedence over `--env-file`, so a value there would be overridden anyway and
+would be misleading. Calling `compose up` by hand without `update.sh` means exporting
+`GUESS_HUE_DATASET_FILE` yourself; without it, `compose up` fails with a clear error instead
+of binding an empty path.
 
-`update.sh` lädt `guess-hue-dataset.sops.yaml` vom selben Branch, den es sonst für `compose.yaml`
-verwendet (`$REF` — `main` für prod, `develop` für staging). Die verschlüsselte Datei muss auf
-diesem Branch existieren, sonst bricht **jedes** `./update.sh <target>` ab, auch für Änderungen,
-die mit Guess Hue nichts zu tun haben.
+`update.sh` fetches `guess-hue-dataset.sops.yaml` from the same branch it otherwise uses for
+`compose.yaml` (`$REF` — `main` for prod, `develop` for staging). The encrypted file must
+exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
+nothing to do with Guess Hue.
 
-**Merge-Fenster develop → main:** `update.sh` und `README.md` kommen laut oben immer von `main`
-(`$STABLE`), `compose.yaml` dagegen vom deployten Branch (`$BASE`, für staging `develop`). Sobald
-ein Feature nach `develop` gemergt ist, aber `main` es noch nicht hat, lädt `./update.sh staging`
-also das **alte** `update.sh` von `main` gegen das **neue** `compose.yaml` von `develop`. Für
-dieses Release heißt das konkret: das alte `update.sh` exportiert `GUESS_HUE_DATASET_FILE` noch
-nicht, das neue `compose.yaml` verlangt es per `${GUESS_HUE_DATASET_FILE:?…}` — `pull` bricht bei
-**jedem** Lauf ab, nicht nur beim ersten, weil das Skript nie von `develop` kommt. In diesem
-Fenster entweder kein `./update.sh staging` laufen lassen, oder `GUESS_HUE_DATASET_FILE` von Hand
-exportieren und mit `sops` von Hand entschlüsseln. Die Ursache ist strukturell: jede Änderung, die
-`update.sh`/`compose.yaml` gemeinsam anfassen muss, trifft dasselbe Fenster, nicht nur diese.
+**Merge window develop → main:** per the above, `update.sh` and `README.md` always come from
+`main` (`$STABLE`), while `compose.yaml` comes from the deployed branch (`$BASE`, `develop`
+for staging). Once a feature is merged into `develop` but `main` doesn't have it yet,
+`./update.sh staging` loads the **old** `update.sh` from `main` against the **new**
+`compose.yaml` from `develop`. Concretely, for this release: the old `update.sh` doesn't
+export `GUESS_HUE_DATASET_FILE` yet, and the new `compose.yaml` requires it via
+`${GUESS_HUE_DATASET_FILE:?…}` — so `pull` fails on **every** run, not just the first, because
+the script never comes from `develop`. In that window, either don't run `./update.sh staging`,
+or export `GUESS_HUE_DATASET_FILE` by hand and decrypt with `sops` by hand. The cause is
+structural: any change that has to touch `update.sh`/`compose.yaml` together hits this same
+window, not just this one.
 
 ## Bootstrap / Update
 
