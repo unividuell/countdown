@@ -24,9 +24,16 @@ object GuessHueDatasetValidator {
         "Schritt", "kaum", "knapp", "praktisch", "dicht",
     )
 
-    /** Satzende = Zeichen plus Leerraum oder Textende, damit der Schlusspunkt mitzählt. */
-    private val SENTENCE_END = Regex("[.!?](?=\\s|\\z)")
+    /** Satzende: mindestens zwei Buchstaben, dann Zeichen, dann Leerraum oder Textende. Damit
+     *  zählen Abkürzungspunkte nicht (z. B.), aber der Schlusspunkt tut es. */
+    private val SENTENCE_END = Regex("\\p{L}{2,}[.!?](?=\\s|\\z)")
     private val DIGIT = Regex("\\d")
+
+    /** Maßwörter für `easy` als vorkompilierte Regex mit Wortgrenzen. */
+    private val MEASURE_WORD_MATCHERS = listOf(
+        "Hauch", "Fingerbreit", "Handbreit", "Drittel", "Hälfte",
+        "Schritt", "kaum", "knapp", "praktisch", "dicht",
+    ).map { Regex("\\b" + Regex.escape(it) + "\\b") }
 
     /** Regeln 2–5. Gilt für jede geladene Liste, auch das Beispiel-Datenset. */
     fun validateStructure(entries: List<GuessHueEntry>, origin: String) {
@@ -55,7 +62,7 @@ object GuessHueDatasetValidator {
             }
 
             if (entry.difficulty == GuessHueDifficulty.EASY &&
-                MEASURE_WORDS.none { it in entry.description }
+                MEASURE_WORD_MATCHERS.none { it.containsMatchIn(entry.description) }
             ) {
                 problems += "$where: easy needs a measure word, one of ${MEASURE_WORDS.joinToString()}"
             }

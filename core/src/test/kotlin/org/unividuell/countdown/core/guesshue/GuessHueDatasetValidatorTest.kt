@@ -103,4 +103,26 @@ class GuessHueDatasetValidatorTest {
         shouldNotThrowAny { GuessHueDatasetValidator.validateCompleteness(entries, "test.yaml") }
         shouldNotThrowAny { GuessHueDatasetValidator.validateStructure(entries, "test.yaml") }
     }
+
+    @Test
+    fun `accepts a hard entry with an abbreviation containing a period`() {
+        shouldNotThrowAny { structure(hard(10, "Beispieleintrag, z. B. mit Abkuerzung, kein Spielinhalt.")) }
+    }
+
+    @Test
+    fun `rejects an easy entry with a word containing but not using measure word`() {
+        val thrown = shouldThrow<GuessHueDatasetException> {
+            structure(easy(10, "Beispieleintrag wie ein Gedicht, kein Spielinhalt. Er liegt neben dem reinen Rot, nicht daneben."))
+        }
+        thrown.message!! shouldContain "measure word"
+    }
+
+    @Test
+    fun `rejects any entry with a description containing no sentence punctuation`() {
+        val thrown = shouldThrow<GuessHueDatasetException> {
+            structure(hard(10, "Beispieleintrag kein Spielinhalt"))
+        }
+        thrown.message!! shouldContain "exactly one sentence"
+    }
 }
+
