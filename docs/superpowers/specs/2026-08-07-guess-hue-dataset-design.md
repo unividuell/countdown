@@ -207,7 +207,7 @@ und war damit exakt das Leck, gegen das der Rest des Kapitels argumentiert.
 | Schritt | Ort | Versioniert? |
 | --- | --- | --- |
 | 1. schreiben / ändern | `.local/guess-hue-dataset.yaml` (gitignored) | nein |
-| 2. prüfen | Skript gegen die Pufferdatei, Regeln unten | — |
+| 2. prüfen | `GuessHueProductionDatasetTest` gegen die Pufferdatei, Regeln unten | — |
 | 3. verschlüsseln | `sops -e` → `guess-hue-dataset.sops.yaml` | **ja**, verschlüsselt |
 | 4. ausrollen | `update.sh` entschlüsselt auf den Server | nein |
 
@@ -291,17 +291,22 @@ entries:
 
 ### Fail-Fast
 
-Startet die Anwendung außerhalb des `dev`-Profils und hat das Beispiel-Datenset geladen (weil
-`GUESS_HUE_DATASET_PATH` fehlt oder ins Leere zeigt), **bricht sie ab**. Ein versehentlich
-ausgeliefertes Beispiel ist schlimmer als ein nicht startender Container: das Spiel wäre still und
-leise kaputt, ohne dass es jemandem auffällt.
+Hat die Anwendung das Beispiel-Datenset geladen (weil `GUESS_HUE_DATASET_PATH` fehlt oder ins Leere
+zeigt) **und** ist eines der deployten Profile aktiv — `production` oder `staging` — **bricht sie
+ab**. Das ist eine Allow-List auf genau diese zwei Profile, keine Deny-List auf „alles außer
+`dev`" — dieses Repo kennt kein `dev`-Profil; lokale Läufe und `@SpringBootTest` verwenden die
+namenlose Default-Config (`application.yaml`). Ein versehentlich ausgeliefertes Beispiel ist
+schlimmer als ein nicht startender Container: das Spiel wäre still und leise kaputt, ohne dass es
+jemandem auffällt.
 
 ## Validierung
 
 Alles davon ist mechanisch prüfbar — die Zweitakt-Regel ist damit kein Geschmacksurteil, sondern
-eine Zusicherung. Die Regeln laufen an drei Stellen: als Skript gegen die Pufferdatei beim
-Schreiben, in der Testsuite gegen das Beispiel, und beim Start der Anwendung gegen die geladene
-Liste.
+eine Zusicherung. Die Regeln leben in einer Implementierung (`GuessHueDatasetValidator`) und laufen
+von dort aus an drei Stellen: beim Start der Anwendung gegen die geladene Liste, in der Testsuite
+gegen das Beispiel, und optional gegen die echte Pufferdatei über die Opt-in-Property
+(`GuessHueProductionDatasetTest`, siehe `core/README.md`) — nie als zweites Prüfskript in einer
+anderen Sprache.
 
 **Nur für das Produktions-Datenset:**
 

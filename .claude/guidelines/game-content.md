@@ -19,8 +19,9 @@ public, because the free GitHub Actions runners require it.
   and would take the only plaintext copy with them. The buffer file is a stop on the way, not an
   original: `sops -d` reproduces it.
 - **Examples come from a committed sample set, never from the real one.** Specs, tests and
-  fixtures use obviously fake entries. The app **fails to start** outside the `dev` profile if it
-  loaded the sample, so a missing mount can't silently ship a broken game.
+  fixtures use obviously fake entries. The app **fails to start** if it loaded the sample while
+  `production` or `staging` is active — the two profiles real players run under (this repo has no
+  `dev` profile) — so a missing mount can't silently ship a broken game.
 - **Keep the decryption out of the application.** The backend reads plain YAML from a path; the
   deployment decrypts into it. No crypto library and no key handling in Kotlin, and CI never
   needs the key because the tests run against the sample.

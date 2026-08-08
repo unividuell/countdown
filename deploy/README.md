@@ -99,6 +99,17 @@ verwendet (`$REF` — `main` für prod, `develop` für staging). Die verschlüss
 diesem Branch existieren, sonst bricht **jedes** `./update.sh <target>` ab, auch für Änderungen,
 die mit Guess Hue nichts zu tun haben.
 
+**Merge-Fenster develop → main:** `update.sh` und `README.md` kommen laut oben immer von `main`
+(`$STABLE`), `compose.yaml` dagegen vom deployten Branch (`$BASE`, für staging `develop`). Sobald
+ein Feature nach `develop` gemergt ist, aber `main` es noch nicht hat, lädt `./update.sh staging`
+also das **alte** `update.sh` von `main` gegen das **neue** `compose.yaml` von `develop`. Für
+dieses Release heißt das konkret: das alte `update.sh` exportiert `GUESS_HUE_DATASET_FILE` noch
+nicht, das neue `compose.yaml` verlangt es per `${GUESS_HUE_DATASET_FILE:?…}` — `pull` bricht bei
+**jedem** Lauf ab, nicht nur beim ersten, weil das Skript nie von `develop` kommt. In diesem
+Fenster entweder kein `./update.sh staging` laufen lassen, oder `GUESS_HUE_DATASET_FILE` von Hand
+exportieren und mit `sops` von Hand entschlüsseln. Die Ursache ist strukturell: jede Änderung, die
+`update.sh`/`compose.yaml` gemeinsam anfassen muss, trifft dasselbe Fenster, nicht nur diese.
+
 ## Bootstrap / Update
 
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,

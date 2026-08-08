@@ -29,11 +29,10 @@ object GuessHueDatasetValidator {
     private val SENTENCE_END = Regex("\\p{L}{2,}[.!?](?=\\s|\\z)")
     private val DIGIT = Regex("\\d")
 
-    /** Maßwörter für `easy` als vorkompilierte Regex mit Wortgrenzen. */
-    private val MEASURE_WORD_MATCHERS = listOf(
-        "Hauch", "Fingerbreit", "Handbreit", "Drittel", "Hälfte",
-        "Schritt", "kaum", "knapp", "praktisch", "dicht",
-    ).map { Regex("\\b" + Regex.escape(it) + "\\b") }
+    /** Maßwörter für `easy` als vorkompilierte Regex mit Wortgrenzen — aus MEASURE_WORDS
+     *  abgeleitet statt einer zweiten Liste, sonst könnten Prüfung und Fehlermeldung
+     *  (die MEASURE_WORDS direkt zitiert) unbemerkt auseinanderlaufen. */
+    private val MEASURE_WORD_MATCHERS = MEASURE_WORDS.map { Regex("\\b" + Regex.escape(it) + "\\b") }
 
     /** Regeln 2–5. Gilt für jede geladene Liste, auch das Beispiel-Datenset. */
     fun validateStructure(entries: List<GuessHueEntry>, origin: String) {
