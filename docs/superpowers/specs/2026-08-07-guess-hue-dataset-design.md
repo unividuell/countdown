@@ -227,12 +227,18 @@ Rechner wäre der Preis eines Standard-Opt-ins.
 | --- | --- |
 | `deploy/guess-hue-dataset.sops.yaml` | die echten 60, SOPS-verschlüsselt gegen age-Keys |
 | `core/src/main/resources/guess-hue-dataset.sample.yaml` | sechs offensichtlich unechte Einträge, im Classpath |
-| Server, außerhalb des Repos | der private age-Key |
+| Server, außerhalb des Repos | der **eigene** private age-Key des Servers |
 | `GUESS_HUE_DATASET_PATH` | Pfad auf die entschlüsselte Datei |
 
 Die Asymmetrie ist beabsichtigt: das Beispiel **soll** in den Classpath, es ist der Fallback. Das
 verschlüsselte Datenset soll es nicht — im Jar wäre es totes Gewicht. `deploy/` ist ohnehin das
 Verzeichnis, aus dem `update.sh` alles zieht, was der Server braucht.
+
+Der Server bekommt ein eigenes Schlüsselpaar, keine Kopie des Autoren-Schlüssels: getrennte
+Lebenszyklen, denn der Autoren-Schlüssel gehört nicht auf eine exponierte Maschine — bei einer
+Kompromittierung müsste sonst alles rotiert werden, nicht nur der Server. Sein öffentlicher Teil
+wird zweiter Empfänger in `.sops.yaml` (siehe unten für den Vorbehalt zum Entzug); Details zur
+Einrichtung stehen in [`deploy/README.md`](../../../deploy/README.md).
 
 `update.sh` entschlüsselt beim Deployment in einen Pfad, den das Compose-File mountet. **Kotlin
 weiß nichts von SOPS** — das Backend liest schlichtes YAML von einem Pfad, ohne Krypto-Bibliothek

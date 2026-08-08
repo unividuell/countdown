@@ -7,6 +7,9 @@
 # Der erste Zweig trifft die gitignorierte Pufferdatei, der zweite die committete Chiffre:
 # creation_rules werden auf den EINGABEpfad angewandt, nicht auf die Ausgabe. Eine Regel nur
 # auf deploy/*.sops.yaml wuerde beim Verschluesseln nie greifen.
+#
+# Mehrere Empfaenger: komma-getrennt, z.B. "age1..., age1<server-public-key>". SOPS trennt am
+# Komma und schneidet Leerraum ab -- Umbrueche im gefalteten Skalar sind unproblematisch.
 creation_rules:
   - path_regex: (\.local/.*\.yaml|deploy/.*\.sops\.yaml)$
     age: >-

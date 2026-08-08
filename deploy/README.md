@@ -41,8 +41,38 @@ curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/lates
 Die Images sind arm64 (siehe [deployment.md](../.claude/guidelines/deployment.md)) — auf einem
 x86-Server stattdessen `sops-linux-amd64`.
 
-Den privaten age-Schlüssel nach `~/.config/sops/age/keys.txt` legen (oder `SOPS_AGE_KEY_FILE`
-in der `.env` setzen). Der Schlüssel gehört **nicht** ins Repo.
+Der Server braucht ein **eigenes** age-Schlüsselpaar — nicht den privaten Schlüssel des Autors.
+Der Autoren-Schlüssel gehört nicht auf eine Maschine, die am Internet hängt: bei einer
+Kompromittierung müsste sonst alles rotiert werden, nicht nur der Server. Der Server erzeugt sein
+Paar selbst, und nur der öffentliche Teil verlässt ihn wieder:
+
+```bash
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
+age-keygen -y ~/.config/sops/age/keys.txt   # nur den Public Key ausgeben
+```
+
+Der letzte Befehl leitet den Public Key aus der Datei ab, falls die Ausgabe von `age-keygen` nicht
+mehr im Scrollback steht. `update.sh` erwartet `SOPS_AGE_KEY_FILE` standardmäßig genau an diesem
+Pfad; ein abweichender Ort wird über die `.env` gesetzt. Der private Schlüssel gehört **nicht**
+ins Repo.
+
+Ohne Eintrag in `.sops.yaml` **und** ein anschließendes `updatekeys` kann dieser Server die Chiffre
+nicht öffnen — das muss also **vor dem ersten Deploy** passieren:
+
+1. Public Key wie oben auf dem Server ermitteln.
+2. Lokal in `.sops.yaml` als zweiten Empfänger eintragen (siehe Kommentarkopf dort für das Format
+   bei mehreren Empfängern).
+3. `sops updatekeys deploy/guess-hue-dataset.sops.yaml` ausführen. Das packt nur den Datenschlüssel
+   neu ein — der Inhalt bleibt unangetastet — und braucht dafür den **privaten** Schlüssel des
+   Autors (um den Datenschlüssel einmal auszupacken); der Server-Key wird dabei nur als Public Key
+   gebraucht.
+4. `.sops.yaml` **und** die neu eingepackte `deploy/guess-hue-dataset.sops.yaml` committen.
+5. Erst danach deployen — ein Server ohne eingetragenen Key bricht in `update.sh` ab, weil er die
+   Chiffre nicht öffnen kann.
+
+Prod und Staging teilen sich einen Server (siehe oben), also deckt ein Server-Key beide Stacks ab;
+getrennte Server bräuchten je einen eigenen.
 
 Fehlt Schlüssel oder Werkzeug, bricht `update.sh` mit einer Meldung ab und deployt nicht — statt
 einen Container zu starten, der auf Platzhalterinhalten läuft.
