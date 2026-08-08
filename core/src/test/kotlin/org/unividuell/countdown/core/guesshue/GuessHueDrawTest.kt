@@ -100,7 +100,14 @@ class GuessHueDrawTest {
             distanceOnCircle(target.initHue, target.hue) < 30.0
         }
 
-        // Bei Gleichverteilung liegen rund ein Sechstel der Startwinkel innerhalb von 30 Grad.
+        // Bei Gleichverteilung liegen rund ein Sechstel der Startwinkel innerhalb von 30 Grad:
+        // Erwartungswert ~833, Standardabweichung ~34. Beide Grenzen sind noetig, nicht nur eine:
+        // die Untergrenze (~10 Sigma tief) widerlegt einen garantiert entfernten Start (z. B.
+        // initHue = wrap360(hue + 180)), die Obergrenze (~11 Sigma hoch) widerlegt einen an das
+        // Ziel gekoppelten Start (z. B. initHue = hue oder initHue teilt sich eine Ziehung mit
+        // lightness). Eine Grenze allein liesse genau die Klumpung durch, die die Unabhaengigkeit
+        // eigentlich widerlegen soll.
         close shouldBeGreaterThanOrEqualTo 500
+        close shouldBeLessThanOrEqualTo 1_200
     }
 }
