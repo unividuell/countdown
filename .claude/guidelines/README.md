@@ -28,6 +28,7 @@ new team members (and AI assistants) stay consistent.
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 | **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
+| **Game lab** — the non-prod harness for playing a mini-game against a URL seed (two-gate pattern · self-limiting in-memory state · payload-hygiene test · the lab adapts, never the game) | [game-lab.md](game-lab.md) |
 
 ## Stack baseline
 
