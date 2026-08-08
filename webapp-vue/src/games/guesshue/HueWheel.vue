@@ -140,7 +140,15 @@ function onPointerDown(event: PointerEvent): void {
   // Grabbing the wheel wins over its own entrance; dragging against a running animation is worse
   // than losing the last frames of it.
   finishSweep()
-  root.value?.setPointerCapture(event.pointerId)
+  try {
+    // The browser rejects capture for a pointer it is not tracking (`NotFoundError`) — rare, but
+    // fatal if uncaught: the throw would abort this handler before `dragging` is ever set, so the
+    // wheel would silently stop responding to that pointer. Dragging without capture is only worse
+    // at the edges; not dragging at all is broken.
+    root.value?.setPointerCapture(event.pointerId)
+  } catch {
+    // Capture is an optimisation, not a precondition — fall through and drag anyway.
+  }
   dragging.value = true
   applyPointer(event)
 }
@@ -238,7 +246,17 @@ const rotatorStyle = computed(() => ({
       </div>
       <div
         class="absolute top-1/2 left-1/2 aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2"
+        @pointerdown.stop
       >
+        <!--
+          Stopped here, not skipped in `onPointerDown`: a press on the confirm button bubbles
+          through this wrapper on its way up, and without this the wheel would read it as a grab —
+          `setPointerCapture` and `dragging = true` — before the dead zone ever gets a say. The
+          dead zone only suppresses the immediate jump; it does not stop a drag already in
+          progress, so any pointer movement during the button's hold would re-aim the wheel. This
+          wrapper is the wheel's own centre slot, so the wheel is the one that gets to say a press
+          here is not its business — `HoldButton` stays ignorant of ever sitting inside one.
+        -->
         <slot name="center" />
       </div>
     </div>

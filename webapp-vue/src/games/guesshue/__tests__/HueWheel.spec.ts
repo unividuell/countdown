@@ -12,6 +12,25 @@ function setHidden(hidden: boolean): void {
   Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
 }
 
+/**
+ * happy-dom computes no layout: `getBoundingClientRect()` answers all zeroes, which makes
+ * `radiusFraction` read 0 everywhere and the dead zone look like it covers the whole wheel. A
+ * pointer test is worthless without a real box to measure against.
+ */
+function stubRect(el: Element): void {
+  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    top: 0,
+    width: 200,
+    height: 200,
+    right: 200,
+    bottom: 200,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect)
+}
+
 describe('HueWheel', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
@@ -159,5 +178,85 @@ describe('HueWheel', () => {
     await w.vm.$nextTick()
 
     expect(w.emitted('boot-done')).toHaveLength(1)
+  })
+
+  describe('pointer dragging', () => {
+    // A 200×200 box centred at (100, 100), radius 100 — the four points below sit exactly on the
+    // ring, one per axis, so the expected angle is never in doubt.
+    const UP = { clientX: 100, clientY: 0 } // straight up: 0°
+    const RIGHT = { clientX: 200, clientY: 100 } // right: 90°
+    const DOWN = { clientX: 100, clientY: 200 } // down: 180°
+    const LEFT = { clientX: 0, clientY: 100 } // left: 270°
+    const CENTRE = { clientX: 100, clientY: 100 } // dead zone
+
+    it('follows the ring: a press then moves emit the angle the geometry says', async () => {
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 })
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 })
+      await el.trigger('pointermove', { ...DOWN, pointerId: 1 })
+      await el.trigger('pointermove', { ...LEFT, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toEqual([[0], [90], [180], [270]])
+    })
+
+    it('emits nothing for a press inside the dead zone', async () => {
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointerdown', { ...CENTRE, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toBeUndefined()
+    })
+
+    it('emits nothing for a move with no preceding press', async () => {
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toBeUndefined()
+    })
+
+    it('does not start a drag from a press that originated in the centre slot', async () => {
+      // The regression test: a press on the confirm button bubbles through the wheel's own
+      // `pointerdown` handler on its way up. Before the fix, that was read as a grab — capture
+      // taken, `dragging` set — and a subsequent move re-aimed the wheel underneath a held button.
+      const w = mount(HueWheel, {
+        props: { hue: 210, saturation: 0.6, lightness: 0.45, disabled: false },
+        slots: { center: '<button data-test="fake-confirm">x</button>' },
+      })
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+      const button = w.get('[data-test="fake-confirm"]')
+      // The button's own box sits inside the dead zone, but that is not what is under test here —
+      // stubbing it separately would only prove the dead zone works twice.
+      stubRect(button.element)
+
+      await button.trigger('pointerdown', { ...CENTRE, pointerId: 1 })
+      await el.trigger('pointermove', { ...RIGHT, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toBeUndefined()
+    })
+
+    it('drags anyway when the browser refuses pointer capture', async () => {
+      // `setPointerCapture` throws `NotFoundError` for a pointer the browser is not tracking.
+      // Forced here regardless of what this happy-dom version happens to do natively, so the test
+      // pins the try/catch rather than an implementation detail of the test environment.
+      const w = mountWheel()
+      const el = w.get('[data-test="hue-wheel"]')
+      stubRect(el.element)
+      el.element.setPointerCapture = vi.fn(() => {
+        throw new DOMException('no such pointer', 'NotFoundError')
+      })
+
+      await el.trigger('pointerdown', { ...UP, pointerId: 1 })
+
+      expect(w.emitted('update:hue')).toEqual([[0]])
+    })
   })
 })
