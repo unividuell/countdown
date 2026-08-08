@@ -1369,12 +1369,15 @@ Am Ende von `core/README.md` folgenden Abschnitt anfügen (der innere Block ist 
 >
 > Das Produktionsdatenset liegt nicht im Repo (siehe
 > [game-content.md](../.claude/guidelines/game-content.md)). Nach einer Änderung an der
-> gitignorierten Pufferdatei prüfen — der Pfad zeigt auf den Haupt-Checkout, also aus einem
-> Worktree heraus absolut angeben:
+> gitignorierten Pufferdatei prüfen. Die Datei liegt im Haupt-Checkout; ein relativer Pfad aus
+> einem Worktree trifft sie nicht, deshalb absolut:
 >
-> &nbsp;&nbsp;&nbsp;&nbsp;`./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=../.local/guess-hue-dataset.yaml`
+> &nbsp;&nbsp;&nbsp;&nbsp;`./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=/opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml`
 >
 > Ohne die Property überspringt sich der Test — so bleibt die CI grün, die den Klartext nicht hat.
+> **Zeigt eine gesetzte Property ins Leere, scheitert der Test**, statt zu überspringen: wer sie
+> setzt, will prüfen, und ein stilles Überspringen sähe aus wie ein bestandener Lauf.
+>
 > Lokal ohne gemountetes Datenset läuft die Anwendung auf `guess-hue-dataset.sample.yaml`; unter
 > `production` und `staging` bricht sie damit ab.
 
