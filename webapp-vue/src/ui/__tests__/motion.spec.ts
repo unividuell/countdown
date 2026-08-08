@@ -6,9 +6,15 @@ function setHidden(hidden: boolean): void {
 }
 
 describe('prefersReducedMotion', () => {
+  const originalMatchMedia = window.matchMedia
+
   afterEach(() => {
     vi.restoreAllMocks()
     setHidden(false)
+    // One test below deletes `window.matchMedia` outright to exercise the no-such-API guard;
+    // restoring it here keeps that deletion from leaking into every test that runs after it,
+    // regardless of file order.
+    window.matchMedia = originalMatchMedia
   })
 
   it('reports reduced motion when the media query matches', () => {

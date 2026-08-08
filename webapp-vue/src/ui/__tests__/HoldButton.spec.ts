@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import HoldButton from '@/ui/HoldButton.vue'
+import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 function mountButton(props: Partial<InstanceType<typeof HoldButton>['$props']> = {}) {
   return mount(HoldButton, {
@@ -104,7 +105,9 @@ describe('HoldButton', () => {
     const style = w.get('[data-test="hold-ring"]').attributes('style')
 
     expect(style).toContain('d4d4d4')
-    expect(style).not.toContain('opacity: 0')
+    // Progress starts at 0, so the fill stop sits at 0deg — nothing is filled in yet, but the ring
+    // itself (the grey base above) is already there to be filled.
+    expect(style).toContain('currentColor 0deg')
   })
 
   it('fills the outline with colour as the hold runs', async () => {
@@ -117,7 +120,26 @@ describe('HoldButton', () => {
     await w.vm.$nextTick()
 
     expect(ring.attributes('style')).not.toBe(atRest)
-    expect(ring.attributes('style')).toContain('currentColor')
+  })
+
+  it('holds for DEFAULT_HOLD_MS when the caller passes no holdMs at all', async () => {
+    // mountButton always supplies a holdMs, so a caller with no opinion (the real default path)
+    // was never exercised, and nothing pinned DEFAULT_HOLD_MS's actual value.
+    const w = mount(HoldButton, {
+      props: {
+        ready: true,
+        disabled: false,
+        label: 'Tipp bestätigen',
+        color: 'hsl(210 60% 45%)',
+      },
+    })
+
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+    vi.advanceTimersByTime(DEFAULT_HOLD_MS - 100)
+    expect(w.emitted('confirm')).toBeUndefined()
+
+    vi.advanceTimersByTime(200)
+    expect(w.emitted('confirm')).toHaveLength(1)
   })
 
   it('confirms after the full hold', async () => {

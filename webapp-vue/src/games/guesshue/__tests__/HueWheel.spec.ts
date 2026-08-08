@@ -43,10 +43,16 @@ describe('HueWheel', () => {
     vi.restoreAllMocks()
   })
 
-  it('gives the knob its own pointer cursor, not the band it rides', () => {
+  it('shows the band as grabbable, and grabbing once a drag is actually underway', async () => {
     const w = mountWheel()
+    const el = w.get('[data-test="hue-wheel"]')
+    stubRect(el.element)
 
-    expect(w.get('[data-test="hue-knob"]').classes()).toContain('cursor-pointer')
+    expect(w.get('[data-test="hue-rotator"]').element.style.cursor).toBe('grab')
+
+    await el.trigger('pointerdown', { clientX: 100, clientY: 0, pointerId: 1 })
+
+    expect(w.get('[data-test="hue-rotator"]').element.style.cursor).toBe('grabbing')
   })
 
   it('greys out the band once the wheel is locked, so a spent round is obvious at a glance', () => {
