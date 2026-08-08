@@ -1423,6 +1423,16 @@ mkdir -p ~/.config/sops/age && age-keygen -o ~/.config/sops/age/keys.txt
 
 Die Ausgabe nennt den **Public Key** (`age1…`). Der private Teil liegt in der Datei und wird **nie** committet.
 
+**Auf macOS reicht das nicht.** SOPS sucht den Schlüssel im Go-Standard-Konfigverzeichnis, und das ist auf macOS `~/Library/Application Support/sops/age/keys.txt`, nicht `~/.config`. Verschlüsseln klappt trotzdem — dafür genügt der Public Key aus `.sops.yaml` — aber **Entschlüsseln scheitert** mit „identity did not match any of the recipients".
+
+`~/.config` ist trotzdem der bessere Ort, weil der Server denselben Pfad benutzt und `update.sh` ihn dort erwartet: ein Modell statt zwei. Also den Pfad explizit setzen, am besten dauerhaft im Shell-Profil:
+
+```bash
+export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+```
+
+Alle folgenden `sops --decrypt`-Aufrufe setzen das voraus.
+
 - [ ] **Step 3: Write .sops.yaml**
 
 `.sops.yaml` im Repo-Wurzelverzeichnis, `age1…` durch den echten Public Key aus Schritt 2 ersetzen:
@@ -1470,14 +1480,41 @@ Expected: erste Zahl ≥ 120 (Hue und Beschreibung je Eintrag), zweite Zahl `0`.
 
 - [ ] **Step 6: Verify the round trip**
 
+**Nicht auf Byte-Identität prüfen.** SOPS parst die YAML und gibt sie neu aus; Einrückung und
+Anführungszeichen ändern sich dabei, der Inhalt nicht. Ein `diff` gegen die Pufferdatei meldet
+deshalb sämtliche Datenzeilen als verschieden, obwohl nichts fehlt — eine Prüfung, die immer
+fehlschlägt, prüft nichts.
+
+Prüfe stattdessen semantisch: entschlüsseln in eine temporäre Datei **außerhalb des Repos**, den
+eigenen Validator darauf loslassen, und die Werte vergleichen, ohne sie auszugeben.
+
 ```bash
-sops --config .sops.yaml --decrypt deploy/guess-hue-dataset.sops.yaml \
-  | diff - /opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml \
-  && echo "identisch"
+TMP=$(mktemp -t guess-hue) && sops --config .sops.yaml --decrypt deploy/guess-hue-dataset.sops.yaml > "$TMP"
+(cd core && ./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset="$TMP")
 ```
 
-Expected: `identisch`. Schlägt das fehl, ist die Chiffre unbrauchbar — nicht committen, sondern
-Schritt 4 wiederholen.
+Expected: `Tests run: 2, Failures: 0` — die entschlüsselte Datei erfüllt alle fünf Regeln.
+
+```bash
+python3 -c "
+import re,sys
+def vals(p):
+    t=open(p,encoding='utf-8').read()
+    return (re.findall(r'hue:\s*(\d+)',t), re.findall(r'difficulty:\s*(\w+)',t),
+            [d.strip().strip('\"\'') for d in re.findall(r'description:\s*(.+)',t)])
+a=vals(sys.argv[1]); b=vals(sys.argv[2])
+print('hues', a[0]==b[0], '| difficulties', a[1]==b[1], '| descriptions', a[2]==b[2], '| n =', len(a[0]))
+" /opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml "$TMP"
+```
+
+Expected: `hues True | difficulties True | descriptions True | n = 60`.
+
+```bash
+shred -u "$TMP" 2>/dev/null || rm -f "$TMP"
+```
+
+Die temporäre Klartextkopie **muss** danach weg. Schlägt eine der beiden Prüfungen fehl, ist die
+Chiffre unbrauchbar — nicht committen, sondern Schritt 4 wiederholen.
 
 - [ ] **Step 7: Commit**
 
