@@ -42,6 +42,11 @@ app:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
     enabled: true
+  game-lab:
+    # The non-prod harness for playing a mini-game against a seed from the URL. Gated twice, like
+    # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
+    # closed the day real testers play a real round there — no code change, no deploy rebuild.
+    enabled: true
   # app.stub-points.enabled is deliberately absent here. MemberPointsConfiguration defaults it to
   # false, so invented game points are off unless an environment asks for them — staging does, and
   # a local run can via --app.stub-points.enabled=true (see core/README.md). Setting it true here

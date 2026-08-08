@@ -28,3 +28,7 @@ server:
 app:
   test-auth:
     enabled: false
+  game-lab:
+    # Belt and braces: the beans are @Profile("!production") too. Two gates because the cost is a
+    # line of yaml and the failure mode is unlimited practice against real puzzle content.
+    enabled: false
