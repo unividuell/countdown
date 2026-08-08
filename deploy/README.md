@@ -54,7 +54,16 @@ age-keygen -y ~/.config/sops/age/keys.txt   # nur den Public Key ausgeben
 
 Der letzte Befehl leitet den Public Key aus der Datei ab, falls die Ausgabe von `age-keygen` nicht
 mehr im Scrollback steht. `update.sh` erwartet `SOPS_AGE_KEY_FILE` standardmäßig genau an diesem
-Pfad; ein abweichender Ort wird über die `.env` gesetzt. Der private Schlüssel gehört **nicht**
+Pfad. Ein abweichender Ort wird **in der Umgebung gesetzt, in der `update.sh` läuft** — nicht in
+der `.env`: die wird nur per `--env-file` an Compose weitergereicht, nie in die Shell von
+`update.sh` selbst eingelesen, ein Wert dort erreicht den `sops`-Aufruf also nie. Entweder pro
+Aufruf:
+
+```bash
+SOPS_AGE_KEY_FILE=/opt/unividuell/secrets/age.key ./update.sh prod
+```
+
+oder dauerhaft im Shell-Profil des deployenden Nutzers. Der private Schlüssel gehört **nicht**
 ins Repo.
 
 Ohne Eintrag in `.sops.yaml` **und** ein anschließendes `updatekeys` kann dieser Server die Chiffre
