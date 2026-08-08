@@ -43,6 +43,13 @@ class SampleLabGame : LabGame {
     override val id = "sample"
     override val displayName = "Zahlenraten (Attrappe)"
 
+    /**
+     * The lab's stand-in has no competitive stake, so the whole round stays visible — that is what
+     * makes it useful for watching two testers at once. A real game decides this on its own terms;
+     * see the class KDoc above.
+     */
+    override val revealsOthersBeforeGuess = true
+
     override fun reveal(seed: Int): SamplePayload {
         val (lower, upper, _) = draw(seed)
         return SamplePayload(lower, upper)

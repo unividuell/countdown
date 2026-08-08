@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.gamelab
 
+import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -13,6 +14,9 @@ import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
+import org.unividuell.countdown.core.gamelab.LabGame
+import org.unividuell.countdown.core.gamelab.LabOutcome
+import org.unividuell.countdown.core.gamelab.LabPayload
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
@@ -227,5 +231,78 @@ class LabServiceTest {
         shouldThrow<IllegalArgumentException> {
             LabService(communities, memberships, users, store, listOf(game, SampleLabGame()))
         }
+    }
+
+    /**
+     * A game that accepts guesses without scoring them and hides the other testers until the
+     * viewer has guessed — the shape Guess Hue needs. Declared here rather than by flipping
+     * `SampleLabGame`, whose open behaviour is itself documented and tested.
+     */
+    private object SecretivePayload : LabPayload
+
+    private class SecretiveGame : LabGame {
+        override val id = "secretive"
+        override val displayName = "Verschwiegen"
+        override val revealsOthersBeforeGuess = false
+        override fun reveal(seed: Int) = SecretivePayload
+        override fun score(seed: Int, guess: JsonNode): LabOutcome? = null
+    }
+
+    private val secretive = SecretiveGame()
+    private val secretiveService =
+        LabService(communities, memberships, users, store, listOf(secretive))
+
+    @Test
+    fun `a game that hides the others shows none of them before I have guessed`() {
+        grantAccess()
+        secretiveService.guess(
+            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val response = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
+
+        response.me.shouldBeNull()
+        response.others.shouldBeEmpty()
+    }
+
+    @Test
+    fun `a game that hides the others shows them once I have guessed`() {
+        grantAccess()
+        secretiveService.guess(
+            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val response = secretiveService.guess(
+            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        response.me.shouldNotBeNull()
+        response.others.map { it.username } shouldContainExactly listOf("bob")
+    }
+
+    @Test
+    fun `a game that does not score stores an entry without an outcome`() {
+        grantAccess()
+
+        val response = secretiveService.guess(
+            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        response.me.shouldNotBeNull().outcome.shouldBeNull()
+    }
+
+    @Test
+    fun `the sample game keeps showing the others before I have guessed`() {
+        // The default-free property means this stays a decision, not an inheritance.
+        grantAccess()
+        val payload = game.reveal(42) as SamplePayload
+        service.guess(
+            "team", "sample", 42, bob.id!!, isSuperAdmin = false,
+            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+        )
+
+        val response = service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
+
+        response.others.map { it.username } shouldContainExactly listOf("bob")
     }
 }

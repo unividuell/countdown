@@ -31,6 +31,22 @@ interface LabGame {
     /** Derives the round from [seed]. Pure and idempotent, so no round state is ever stored. */
     fun reveal(seed: Int): LabPayload
 
-    /** Re-derives the solution from [seed] and scores [guess]. Never trusts the client. */
-    fun score(seed: Int, guess: JsonNode): LabOutcome
+    /**
+     * Whether the other testers' entries are visible before the viewer has guessed.
+     *
+     * **There is deliberately no default.** Every game states it, because inheriting it is exactly
+     * the mistake: a game whose only feedback is another player's guess gives the round away to
+     * whoever reads the list first. Decide it per game, with the anti-cheat spec in hand.
+     */
+    val revealsOthersBeforeGuess: Boolean
+
+    /**
+     * Re-derives the solution from [seed] and scores [guess]. Never trusts the client.
+     *
+     * Returns `null` for a game that accepts and **validates** guesses without scoring them yet —
+     * the guess is stored, the entry simply carries no outcome. Rejecting an invalid guess stays
+     * this method's job either way: [LabService] calls it before the store, so a malformed guess
+     * must throw rather than return `null`.
+     */
+    fun score(seed: Int, guess: JsonNode): LabOutcome?
 }

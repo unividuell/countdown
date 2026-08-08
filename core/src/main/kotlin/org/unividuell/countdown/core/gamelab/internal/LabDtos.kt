@@ -12,7 +12,7 @@ data class LabEntryDto(
     val username: String,
     val avatar: Avatar,
     val guess: JsonNode,
-    val outcome: LabOutcome,
+    val outcome: LabOutcome?,
     val at: Instant,
 )
 
