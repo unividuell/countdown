@@ -30,6 +30,25 @@ function setHidden(hidden: boolean): void {
   Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
 }
 
+/**
+ * happy-dom computes no layout: `getBoundingClientRect()` answers all zeroes, which would make the
+ * button's own circular hit test degenerate (a zero-radius circle centred on the origin). A
+ * pointer-position test is worthless without a real box to measure against.
+ */
+function stubButtonRect(el: Element): void {
+  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    top: 0,
+    width: 100,
+    height: 100,
+    right: 100,
+    bottom: 100,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect)
+}
+
 describe('HoldButton', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
@@ -93,7 +112,7 @@ describe('HoldButton', () => {
     const ring = w.get('[data-test="hold-ring"]')
     const atRest = ring.attributes('style')
 
-    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(500)
     await w.vm.$nextTick()
 
@@ -104,7 +123,7 @@ describe('HoldButton', () => {
   it('confirms after the full hold', async () => {
     const w = mountButton()
 
-    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(1200)
 
     expect(w.emitted('confirm')).toHaveLength(1)
@@ -113,7 +132,7 @@ describe('HoldButton', () => {
   it('does not confirm when released early', async () => {
     const w = mountButton()
 
-    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(400)
     await w.get('[data-test="hold-button"]').trigger('pointerup')
     vi.advanceTimersByTime(3000)
@@ -160,8 +179,32 @@ describe('HoldButton', () => {
   it('ignores a hold while disabled', async () => {
     const w = mountButton({ disabled: true })
 
-    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(3000)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
+  it('does not start a hold on a right-button press', async () => {
+    // A right mouse-down must get no response at all — not even a swallowed one. Without this
+    // check the hold starts the same as a left press, `@contextmenu.prevent` eats the browser's
+    // own context menu, and the combination reads as total silence: having seen nothing happen,
+    // the user naturally holds a moment longer and submits by accident.
+    const w = mountButton()
+
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { button: 2, isPrimary: true })
+    vi.advanceTimersByTime(1200)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
+  it('does not start a hold from a non-primary pointer', async () => {
+    // A second, simultaneous touch point (e.g. a stray finger resting on the screen) reports
+    // `isPrimary: false`; it must not be able to start or contribute to a hold either.
+    const w = mountButton()
+
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { button: 0, isPrimary: false })
+    vi.advanceTimersByTime(1200)
 
     expect(w.emitted('confirm')).toBeUndefined()
   })
@@ -217,14 +260,14 @@ describe('HoldButton', () => {
     const w = mountButton()
     const el = w.get('[data-test="hold-button"]')
 
-    await el.trigger('pointerdown')
+    await el.trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(400)
     await el.trigger('blur')
     vi.advanceTimersByTime(3000)
 
     expect(w.emitted('confirm')).toBeUndefined()
 
-    await el.trigger('pointerdown')
+    await el.trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(1200)
 
     expect(w.emitted('confirm')).toHaveLength(1)
@@ -234,12 +277,47 @@ describe('HoldButton', () => {
     const w = mountButton()
     const el = w.get('[data-test="hold-button"]')
 
-    await el.trigger('pointerdown')
+    await el.trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(400)
     await el.trigger('lostpointercapture')
     vi.advanceTimersByTime(3000)
 
     expect(w.emitted('confirm')).toBeUndefined()
+  })
+
+  it('aborts the hold when a touch slides off the button, since pointerleave never fires for it', async () => {
+    // Implicit pointer capture (set by the browser on `pointerdown` for direct manipulation) means
+    // `pointerleave`/`pointerout` are not dispatched while the point moves — only once capture is
+    // released, at `pointerup`. So on a phone the universal "slide the thumb off to cancel" gesture
+    // reaches nothing at all without a `pointermove`-driven hit test: the hold would otherwise run
+    // to completion regardless of how far the thumb has drifted.
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+    stubButtonRect(el.element)
+
+    await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+    vi.advanceTimersByTime(400)
+    // The button's stubbed box is 100×100 at the origin, radius 50 about (50, 50) — (99, 99) sits
+    // well outside that circle (distance ≈ 69), on the wheel surrounding the button.
+    await el.trigger('pointermove', { clientX: 99, clientY: 99 })
+    vi.advanceTimersByTime(3000)
+
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
+  it('keeps holding while the pointer stays within the button, even off-centre', async () => {
+    // The counterpart to the test above: the hit test must not be so eager that ordinary jitter
+    // within the button's own bounds aborts a hold that was never meant to cancel.
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+    stubButtonRect(el.element)
+
+    await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+    // (80, 80) is distance ≈ 42 from the centre — inside the radius-50 circle.
+    await el.trigger('pointermove', { clientX: 80, clientY: 80 })
+    vi.advanceTimersByTime(1200)
+
+    expect(w.emitted('confirm')).toHaveLength(1)
   })
 
   it('cancels an in-flight hold when disabled turns on mid-hold', async () => {
@@ -249,7 +327,7 @@ describe('HoldButton', () => {
     const w = mountButton()
     const el = w.get('[data-test="hold-button"]')
 
-    await el.trigger('pointerdown')
+    await el.trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(400)
     await w.setProps({ disabled: true })
     vi.advanceTimersByTime(3000)

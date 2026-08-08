@@ -109,9 +109,47 @@ watch(
   },
 )
 
-function beginHold(): void {
+/** Shared by the pointer and keyboard paths — neither has any business starting a hold on its own. */
+function startIfAllowed(): void {
   if (props.disabled || !props.ready) return
   start()
+}
+
+function beginHold(event: PointerEvent): void {
+  // A right (or any non-primary, e.g. a secondary touch point) press must get no response at all —
+  // not even a swallowed one. Without this a right mouse-down starts the hold the same as a left
+  // one, `@contextmenu.prevent` then eats the browser's own context menu, and the combination reads
+  // as total silence: having seen nothing happen, the user naturally holds a moment longer and
+  // submits by accident. Keyboard holds go through [startIfAllowed] directly, not through here —
+  // `event.button`/`isPrimary` are pointer-event concepts and have no keyboard equivalent.
+  if (event.button !== 0 || !event.isPrimary) return
+  startIfAllowed()
+}
+
+/**
+ * Implicit pointer capture (set by the browser on `pointerdown` for direct manipulation) means
+ * `pointerleave`/`pointerout` never fire while a touch drags across the button's own bounds — they
+ * fire only once capture is released, i.e. at `pointerup`. So the universal "slide the thumb off to
+ * cancel" gesture would otherwise reach nothing at all on a phone, and the hold would run to
+ * completion regardless of how far the thumb has moved. Capture is exactly what keeps delivering
+ * these moves here even once the point has left the element, which is what makes the hit test below
+ * meaningful rather than moot — and exactly why capture must not be released early to "restore"
+ * `pointerleave`: doing that would lose `pointerup` whenever the finger ends up off the element,
+ * which is the very case this handler exists to catch.
+ *
+ * A circular test, not a rectangular one, because the button paints as a circle — a rectangular
+ * test would keep the corners "inside" a shape that visually excludes them.
+ */
+function onPointerMove(event: PointerEvent): void {
+  const el = button.value
+  if (!el) return
+  const box = el.getBoundingClientRect()
+  const cx = box.left + box.width / 2
+  const cy = box.top + box.height / 2
+  const radius = Math.min(box.width, box.height) / 2
+  const dx = event.clientX - cx
+  const dy = event.clientY - cy
+  if (dx * dx + dy * dy > radius * radius) cancel()
 }
 
 function onKeyDown(event: KeyboardEvent): void {
@@ -120,7 +158,7 @@ function onKeyDown(event: KeyboardEvent): void {
   event.preventDefault()
   if (event.repeat || keyHeld.value) return
   keyHeld.value = true
-  beginHold()
+  startIfAllowed()
 }
 
 function onKeyUp(event: KeyboardEvent): void {
@@ -201,16 +239,19 @@ const popStyle = computed(() => ({
       and it would still be in effect. See frontend-ui.md.
     -->
     <!--
-      Three more ways a hold ends besides a plain `pointerup`, each observed in the wild: a long
+      Four more ways a hold ends besides a plain `pointerup`, each observed in the wild: a long
       left-press near selectable text opens the browser's context menu partway through, which
       steals focus so `pointerup` never arrives — `@contextmenu.prevent` stops the menu from
       opening at all. `@blur` covers everything else that takes focus away, including a window
       that loses focus while staying visible (so `visibilitychange` never fires) — Cmd-Tabbing
       away mid-hold is exactly that case. `@lostpointercapture` covers the browser reclaiming
-      capture on its own. `touch-none`/`select-none` mean the press itself never has text or a
-      callout to fight over in the first place. All three route through `cancel()`, and the
-      `watch(holding, …)` above already clears `keyHeld` once `holding` goes false — no second
-      mechanism needed.
+      capture on its own. `@pointermove` (handled by [onPointerMove], see above) covers the
+      touch-only case none of the others do: a thumb sliding off the button onto the wheel around
+      it, the universal "slide off to cancel" gesture — `pointerleave` never fires for it, because
+      implicit pointer capture suppresses boundary events until release. `touch-none`/`select-none`
+      mean the press itself never has text or a callout to fight over in the first place. All four
+      route through `cancel()`, and the `watch(holding, …)` above already clears `keyHeld` once
+      `holding` goes false — no second mechanism needed.
     -->
     <!-- cursor-pointer is explicit: Tailwind v4's preflight resets buttons to cursor:default. -->
     <button
@@ -223,6 +264,7 @@ const popStyle = computed(() => ({
       :style="buttonStyle"
       class="absolute inset-0 cursor-pointer touch-none rounded-full shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
       @pointerdown="beginHold"
+      @pointermove="onPointerMove"
       @pointerup="cancel"
       @pointercancel="cancel"
       @pointerleave="cancel"

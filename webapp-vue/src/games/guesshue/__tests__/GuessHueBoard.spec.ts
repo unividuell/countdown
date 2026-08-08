@@ -51,7 +51,7 @@ describe('GuessHueBoard', () => {
     const w = mountBoard({ initHue: 210.4 })
     await w.vm.$nextTick()
 
-    await w.get('[data-test="hold-button"]').trigger('pointerdown')
+    await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
     vi.advanceTimersByTime(2000)
 
     expect(w.emitted('guess')).toEqual([[210.4]])
