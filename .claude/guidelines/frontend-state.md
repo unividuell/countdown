@@ -30,6 +30,29 @@ instance and reacts via `watch(nowMs, tick)`. What follows from that:
 - Specs that mount such a component need `enableAutoUnmount(afterEach)` — see
   *Testing → Doubles & lifecycle*.
 
+**A ticking value drives work in a background tab too — animation must opt out of it.** The clock
+does not stop when the reader switches tabs, so everything reacting to it keeps running unseen.
+That is fine for arithmetic and a DOM patch; it is not fine for `Element.animate()`. Gecko pauses
+the refresh driver for a background tab, so an animation created there never advances, never
+finishes and is never released — the per-second flip accumulated 2824 live animations in two
+minutes of Firefox background time and climbed linearly (Chromium, same page: 58, flat), which over
+a working day is hundreds of thousands of animation objects, gigabytes resident, and a crashing
+tab. So:
+
+- **Gate every animation on `document.hidden`**, alongside the `prefers-reduced-motion` check that
+  is already there — the two are the same kind of bail-out, "nobody is going to see this".
+  Skipping costs nothing: the resting state is what the render already shows.
+- **Release hand-managed hold state on `visibilitychange`.** A staged reveal that parks DOM
+  attributes and resolves them from `requestAnimationFrame` loses its driver the moment the tab
+  goes to the background; without an explicit release the reader comes back to a frozen,
+  half-flipped surface.
+- **Verify in the failing engine *and* the failing state.** Chromium reclaims these animations and
+  measures flat — and so does Firefox *in the foreground*. A foreground test would have cleared
+  this bug three times over. `document.getAnimations().length`, sampled by the page itself and read
+  after the tab returns, is the cheap instrument; `about:memory` (`ghost-windows`, `explicit`
+  vs. `resident-peak`) separates a retention leak from an allocation avalanche before any code is
+  touched.
+
 ## Server-authoritative ticking values (countdown pattern)
 
 For live values that must agree with the backend (the countdown), the backend owns the logic and

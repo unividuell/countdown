@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { bitmap, type Bitmap } from './font'
 import {
   BOOT_DARK_MS,
@@ -22,6 +23,22 @@ function prefersReducedMotion(): boolean {
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
+}
+
+/**
+ * Whether the board is off screen, in which case it must not animate at all.
+ *
+ * Gecko pauses the refresh driver for a background tab: an animation created there never advances,
+ * so it never finishes and is never released. The readout changes once a second whether anyone is
+ * looking or not, and one animation per flipped dot then accumulates without bound — measured in
+ * Firefox at 2824 live animations after two minutes in the background, against 58 in a foreground
+ * tab. Over a working day that is hundreds of thousands of animation objects and gigabytes of
+ * resident memory, which is what was crashing the tab.
+ *
+ * Skipping the flip costs nothing: it is a reveal, and there is nobody there to see it.
+ */
+function inBackground(): boolean {
+  return document.hidden
 }
 
 function uniform(b: Bitmap, on: boolean): Bitmap {
@@ -87,7 +104,7 @@ function releaseWaves(): void {
 }
 
 function flip(prev: Bitmap, next: Bitmap): void {
-  if (prev.cols !== next.cols || prefersReducedMotion()) return
+  if (prev.cols !== next.cols || prefersReducedMotion() || inBackground()) return
   const circles = svg.value?.querySelectorAll('circle')
   // happy-dom has no Web Animations API; the resting colour is already correct without it. Checked
   // up front rather than per dot, so a board without one is never left holding a pre-flip colour.
@@ -177,7 +194,18 @@ function createDueColumns(): void {
   waveRaf = waves.length > 0 ? requestAnimationFrame(createDueColumns) : 0
 }
 
+// The two timers of the switch-on, which runs once per mount.
 const bootTimers: ReturnType<typeof setTimeout>[] = []
+
+/**
+ * The pending relight, of which there is at most one.
+ *
+ * A single handle rather than another entry on `bootTimers`: that array is only ever emptied at
+ * unmount, so a board that relights repeatedly — every tap on the header cycles the base unit, and
+ * each cycle changes the geometry — left a spent handle behind on every one of them, for as long as
+ * the page stayed open.
+ */
+let relightTimer: ReturnType<typeof setTimeout> | undefined
 
 function goWhite(): void {
   // A wave still running here belongs to the board that is being switched off. Its dots are held by
@@ -205,13 +233,25 @@ watch(
     }
     // A different geometry cannot be flipped dot by dot: dot i no longer means what it meant. So
     // the board switches itself on again — white, hold, roll in — and the size change happens
-    // while nothing is legible. Reduced motion gets the bare swap, as at mount.
-    if (prefersReducedMotion()) return
+    // while nothing is legible. Reduced motion gets the bare swap, as at mount, and so does a
+    // background tab: a relight nobody can see is three renders and a timer for nothing.
+    if (prefersReducedMotion() || inBackground()) return
     goWhite()
-    bootTimers.push(setTimeout(resolveFromWhite, BOOT_HOLD_MS))
+    // Cleared before it is replaced, so "at most one" holds by construction rather than by an
+    // argument about the phase guard above.
+    clearTimeout(relightTimer)
+    relightTimer = setTimeout(resolveFromWhite, BOOT_HOLD_MS)
   },
   { flush: 'post' },
 )
+
+// The dots a wave has not reached yet are held at their pre-flip colour by hand, and the wave that
+// would resolve them runs on `requestAnimationFrame` — which going to the background has just
+// stopped. Releasing them hands the hold back to the render, so the board is legible the moment the
+// reader returns instead of frozen half way through a flip.
+useEventListener(document, 'visibilitychange', () => {
+  if (inBackground()) releaseWaves()
+})
 
 onMounted(() => {
   if (phase.value === 'live') {
@@ -230,6 +270,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   for (const timer of bootTimers) clearTimeout(timer)
+  clearTimeout(relightTimer)
   releaseWaves()
 })
 </script>
