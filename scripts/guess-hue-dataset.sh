@@ -36,10 +36,22 @@ command -v sops >/dev/null 2>&1 || {
   exit 1
 }
 
-# Kanonischer Ort fuer den Klartext ist immer das Hauptverzeichnis des Repos, auch wenn dieses
-# Skript aus einem Worktree heraus laeuft -- Worktrees sind temporaer, .local/ im Hauptverzeichnis
-# ist es nicht.
-MAIN_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "Kein Git-Repo hier: $(pwd)" >&2
+  echo "Dieses Skript muss aus einem Checkout von countdown.unividuell.org heraus laufen." >&2
+  exit 1
+}
+
+# Aufgeteilt in zwei Anweisungen statt einer verschachtelten Kommandosubstitution: bei
+# $(dirname "$(git ...)") ginge der Exit-Status von "git rev-parse" verloren -- scheitert es,
+# liefe "dirname" auf leerer Eingabe weiter, laege bei "." und wuerde selbst erfolgreich sein,
+# sodass "set -e" nie feuert. Das Skript wuerde dann versuchen, den Klartext des Datensets in
+# das aktuelle Arbeitsverzeichnis zu schreiben statt nach .local/ -- ungitignored und ausserhalb
+# des Hauptverzeichnisses. Kanonischer Ort fuer den Klartext ist immer das Hauptverzeichnis des
+# Repos, auch wenn dieses Skript aus einem Worktree heraus laeuft -- Worktrees sind temporaer,
+# .local/ im Hauptverzeichnis ist es nicht.
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+MAIN_ROOT="$(dirname "$GIT_COMMON_DIR")"
 PLAINTEXT="$MAIN_ROOT/.local/guess-hue-dataset.yaml"
 
 # .sops.yaml und die committete Chiffre kommen dagegen aus dem aktuellen Checkout: solange dieser
@@ -62,6 +74,22 @@ CIPHER="$CHECKOUT_ROOT/deploy/guess-hue-dataset.sops.yaml"
 SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 export SOPS_AGE_KEY_FILE
 
+# Deckt beide Richtungen und auch Abbruch per Strg-C ab: scheitert nicht sops, sondern erst das
+# abschliessende "mv" (volle Platte, Rechte), wuerde ohne diesen Trap eine .tmp-Datei liegen
+# bleiben -- bei decrypt waere das eine Klartextdatei, die niemand erwartet. Vor dem Anlegen der
+# jeweiligen .tmp-Datei gesetzt, nach dem erfolgreichen mv durch Leeren der Pfadvariable entschaerft.
+TMP_FILE=""
+cleanup_tmp() {
+  # "if" statt "[ -n "$TMP_FILE" ] && rm -f ...": bei leerem TMP_FILE ist die Bedingung falsch,
+  # und deren eigener (nichtnullter) Exit-Status wuerde als letzter Befehl des EXIT-Traps den
+  # echten Exit-Code des Skripts ueberschreiben -- ein erfolgreicher Lauf mit geleertem TMP_FILE
+  # meldete sich dann faelschlich als Fehler.
+  if [ -n "$TMP_FILE" ]; then
+    rm -f "$TMP_FILE"
+  fi
+}
+trap cleanup_tmp EXIT
+
 case "$SUBCOMMAND" in
   decrypt)
     [ -f "$CIPHER" ] || {
@@ -83,20 +111,21 @@ case "$SUBCOMMAND" in
     }
 
     mkdir -p "$(dirname "$PLAINTEXT")"
+    TMP_FILE="$PLAINTEXT.tmp"
 
     # umask nur waehrend des Schreibens des Klartexts, danach wiederherstellen. Ueber eine
     # temporaere Datei schreiben und erst bei Erfolg per mv an die Zielstelle: ein Fehlschlag darf
-    # keine halbe Datei hinterlassen.
+    # keine halbe Datei hinterlassen (siehe auch den EXIT-Trap oben).
     OLD_UMASK="$(umask)"
     umask 077
-    if ! sops -d --config "$CONFIG" "$CIPHER" > "$PLAINTEXT.tmp"; then
+    if ! sops -d --config "$CONFIG" "$CIPHER" > "$TMP_FILE"; then
       umask "$OLD_UMASK"
-      rm -f "$PLAINTEXT.tmp"
       echo "sops konnte die Chiffre nicht entschluesseln (Meldung siehe oben)." >&2
       exit 1
     fi
     umask "$OLD_UMASK"
-    mv "$PLAINTEXT.tmp" "$PLAINTEXT"
+    mv "$TMP_FILE" "$PLAINTEXT"
+    TMP_FILE=""
 
     echo "Entschluesselt nach: $PLAINTEXT"
     echo "Zum Verwenden exportieren:"
@@ -110,12 +139,13 @@ case "$SUBCOMMAND" in
       exit 1
     }
 
-    if ! sops -e --config "$CONFIG" "$PLAINTEXT" > "$CIPHER.tmp"; then
-      rm -f "$CIPHER.tmp"
+    TMP_FILE="$CIPHER.tmp"
+    if ! sops -e --config "$CONFIG" "$PLAINTEXT" > "$TMP_FILE"; then
       echo "sops konnte die Pufferdatei nicht verschluesseln (Meldung siehe oben)." >&2
       exit 1
     fi
-    mv "$CIPHER.tmp" "$CIPHER"
+    mv "$TMP_FILE" "$CIPHER"
+    TMP_FILE=""
 
     echo "Verschluesselt nach: $CIPHER"
     ;;
