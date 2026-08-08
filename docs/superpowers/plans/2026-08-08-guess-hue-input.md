@@ -1959,7 +1959,7 @@ describe('GuessHueBoard', () => {
   it('quotes the description with German quotation marks', () => {
     const w = mountBoard({ description: 'Ein Blau wie am späten Abend.' })
 
-    expect(w.get('[data-test="hue-description"]').text()).toBe('„Ein Blau wie am späten Abend."')
+    expect(w.get('[data-test="hue-description"]').text()).toBe('„Ein Blau wie am späten Abend.“')
   })
 
   it('starts the wheel on the angle it was handed', () => {
@@ -2078,7 +2078,7 @@ const color = computed(
         data-test="hue-description"
         class="text-xl leading-relaxed font-medium text-neutral-900 italic select-none"
       >
-        „{{ props.description }}"
+        „{{ props.description }}“
       </p>
     </blockquote>
 
