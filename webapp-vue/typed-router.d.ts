@@ -51,6 +51,7 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | '/c/[slug]/'
+      | '/c/[slug]/lab/'
       | '/c/[slug]/lab/[game]'
       | '/c/[slug]/members'
       | '/c/[slug]/requests'
@@ -59,6 +60,13 @@ declare module 'vue-router/auto-routes' {
     '/c/[slug]/': RouteRecordInfo<
       '/c/[slug]/',
       '/c/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/lab/': RouteRecordInfo<
+      '/c/[slug]/lab/',
+      '/c/:slug/lab',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -190,6 +198,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/c/[slug]'
         | '/c/[slug]/'
+        | '/c/[slug]/lab/'
         | '/c/[slug]/lab/[game]'
         | '/c/[slug]/members'
         | '/c/[slug]/requests'
@@ -202,6 +211,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/c/[slug]/index.vue': {
       routes:
         | '/c/[slug]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/lab/index.vue': {
+      routes:
+        | '/c/[slug]/lab/'
       views:
         | never
       pathParamNames:
