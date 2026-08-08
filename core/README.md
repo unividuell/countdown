@@ -71,11 +71,11 @@ To exercise the production OAuth flow instead of the picker:
 
 Das Produktionsdatenset liegt nicht im Repo (siehe
 [game-content.md](../.claude/guidelines/game-content.md)). Nach einer Änderung an der
-gitignorierten Pufferdatei prüfen — der Pfad zeigt auf den Haupt-Checkout, also aus einem
-Worktree heraus absolut angeben:
+gitignorierten Pufferdatei prüfen — die Pufferdatei liegt im Haupt-Checkout, ein relativer
+Pfad aus einem Worktree trifft sie nicht, deshalb absolut:
 
 ```bash
-./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=../.local/guess-hue-dataset.yaml
+./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=/opt/unividuell/projects/countdown.unividuell.org/.local/guess-hue-dataset.yaml
 ```
 
 Ohne die Property überspringt sich der Test — so bleibt die CI grün, die den Klartext nicht hat.
