@@ -98,6 +98,9 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
 docker compose --env-file .env.staging -f compose.staging.yaml down
+# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.staging, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
@@ -117,6 +120,9 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.prod, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.prod.yaml
 docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
@@ -133,6 +139,9 @@ docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pg
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
+# environment (update.sh sets this for you; it's not in .env.staging, see above)
+export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051
