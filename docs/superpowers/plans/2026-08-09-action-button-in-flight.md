@@ -92,7 +92,7 @@
 
 - [ ] **Step 2: Run the focused test to verify the missing export fails**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/ui/__tests__/useAction.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run useAction.spec`
 
   Expected: FAIL with an import/export error because `useKeyedAction` does not exist yet.
 
@@ -135,7 +135,7 @@
 
 - [ ] **Step 4: Run the focused composable test**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/ui/__tests__/useAction.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run useAction.spec`
 
   Expected: PASS, including the existing single-action behavior.
 
@@ -192,7 +192,7 @@
 
 - [ ] **Step 2: Run the request spec to verify it fails**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/requests.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run requests.spec`
 
   Expected: FAIL because the page still renders native buttons and lacks the keyed attributes.
 
@@ -236,7 +236,7 @@
 
 - [ ] **Step 4: Run the request spec**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/requests.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run requests.spec`
 
   Expected: PASS; the existing refresh test still verifies that a successful action reloads the list and shell badge.
 
@@ -273,7 +273,7 @@
 
 - [ ] **Step 2: Run the member spec to verify it fails**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/members.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run members.spec`
 
   Expected: FAIL because no member control currently has an independent busy state.
 
@@ -300,7 +300,7 @@
 
 - [ ] **Step 4: Run the member spec**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/members.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run members.spec`
 
   Expected: PASS, including the existing ACTIVE-only filtering and the exact 409 message behavior.
 
@@ -341,7 +341,7 @@
 
 - [ ] **Step 2: Run the settings spec to verify it fails**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/settings.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run settings.spec`
 
   Expected: FAIL because native buttons expose no busy state or spinner.
 
@@ -365,7 +365,7 @@
 
 - [ ] **Step 4: Run the settings spec**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/c/'[slug]'/__tests__/settings.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run settings.spec`
 
   Expected: PASS; saving preserves its exact request body, and both invitation operations have independent visual progress.
 
@@ -402,7 +402,7 @@
 
 - [ ] **Step 2: Run the index spec to verify it fails**
 
-  Run: `pnpm --dir webapp-vue test -- --run src/pages/__tests__/index.spec.ts`
+  Run: `pnpm --dir webapp-vue exec vitest run index.spec`
 
   Expected: FAIL because the retry is still a native button with no spinner or busy attribute.
 
@@ -442,7 +442,7 @@
   Run:
 
   ```bash
-  pnpm --dir webapp-vue test -- --run src/pages/__tests__/index.spec.ts
+  pnpm --dir webapp-vue exec vitest run index.spec
   pnpm --dir webapp-vue typecheck
   pnpm --dir webapp-vue lint
   ```
@@ -465,7 +465,7 @@
   Run:
 
   ```bash
-  pnpm --dir webapp-vue test -- --run
+  pnpm --dir webapp-vue exec vitest run
   pnpm --dir webapp-vue typecheck
   pnpm --dir webapp-vue lint
   git diff --check
