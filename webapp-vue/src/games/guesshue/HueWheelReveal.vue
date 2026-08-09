@@ -76,11 +76,26 @@ function growBand(now: number): void {
 
 onMounted(() => {
   if (still) return
-  // One frame with the from-state painted first: a transition that is set and started in the same
-  // frame does not run at all.
+  // One frame with the from-state painted first: a transition that is set and started in the
+  // same frame does not run at all — that much holds in every engine. Firefox asks for more:
+  // it only starts a transition off a style the browser has *already resolved in an earlier
+  // frame*, and `onMounted` runs before style has ever been resolved for these elements, so a
+  // single rAF here fires in the very frame that would first resolve it — Vue's class patch
+  // lands in a microtask ahead of that frame's style recalc, so Firefox finds no "from" value
+  // and jumps straight to `opacity-100`. Chrome tolerates this; Firefox does not. Vue's own
+  // <Transition> never hits this because it calls forceReflow() before adding its enter-active
+  // class, and the band loop never hits it because it writes a value every frame regardless —
+  // both of those beats work here for that reason. Mirrored below: force the reflow ourselves in
+  // the first frame, then flip `shown` (and hand off to the band loop) only in a second frame, so
+  // a painted `opacity-0` frame is guaranteed to exist first. Belt and braces on purpose — this
+  // was observed failing in the wild, and one extra frame against a 900 ms delay costs nothing.
   frame = requestAnimationFrame(() => {
-    shown.value = true
-    frame = layout.value.deepestLane === 0 ? 0 : requestAnimationFrame(growBand)
+    // Read for the side effect, not the value — this is exactly Vue's own forceReflow().
+    void document.body.offsetHeight
+    frame = requestAnimationFrame(() => {
+      shown.value = true
+      frame = layout.value.deepestLane === 0 ? 0 : requestAnimationFrame(growBand)
+    })
   })
 })
 
