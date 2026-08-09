@@ -11,6 +11,8 @@
  * the drawer's rows and would read as a foreign object at any other height or inset.
  */
 import { ref, watch } from 'vue'
+import IconArrowUp from '~icons/lucide/arrow-up'
+import IconCommand from '~icons/lucide/command'
 import { parseSeed } from './seed'
 
 const props = defineProps<{ seed: number; returnPath: string; busy: boolean }>()
@@ -95,6 +97,11 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     @click="emit('reset')"
   >
     Runde zurücksetzen
+    <span aria-hidden="true" class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono">
+      <IconCommand class="size-3" />
+      <IconArrowUp class="size-3" />
+      <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">X</kbd>
+    </span>
   </button>
   <button
     type="button"
@@ -104,6 +111,11 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     @click="emit('forgetMine')"
   >
     Meinen Guess löschen
+    <span aria-hidden="true" class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono">
+      <IconCommand class="size-3" />
+      <IconArrowUp class="size-3" />
+      <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">Z</kbd>
+    </span>
   </button>
   <!-- Full page load, not router navigation: the picker is server-rendered HTML, and the redirect
        brings us back to this exact seed so a player switch does not cost the round. -->

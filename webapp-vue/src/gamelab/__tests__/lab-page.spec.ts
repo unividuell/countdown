@@ -351,4 +351,45 @@ describe('lab page', () => {
 
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 250deg')
   })
+
+  it('renders a row delete button only for index zero and a reset button when entries exist', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { value: 150 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+      },
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { value: 160 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+    const rows = w.get('[data-test="lab-entries"]').findAll('li')
+    expect(rows[0]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(true)
+    expect(rows[1]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(false)
+    expect(w.find('[data-test="lab-entries-reset"]').exists()).toBe(true)
+  })
+
+  it('renders decorative keycaps on drawer round action buttons', async () => {
+    await mountPage()
+    const resetBtn = tool('lab-reset')
+    const forgetBtn = tool('lab-forget-mine')
+
+    expect(resetBtn.find('kbd').text()).toBe('X')
+    expect(forgetBtn.find('kbd').text()).toBe('Z')
+    expect(resetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
+    expect(forgetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
+  })
 })
