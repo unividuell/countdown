@@ -76,6 +76,24 @@ introduced. Isolation is bit-for-bit what it is today: an empty migrated databas
 context configuration, `@Transactional` rollback within a class, and the seeder
 committing only into its own context's database.
 
+### The connection budget has to be consolidated too
+
+Twenty-two servers becoming one also merges twenty-two connection budgets into one. Each
+context keeps its Hikari pool open for the whole run, and the defaults multiply badly:
+ten connections per pool against Postgres' default `max_connections` of 100 is exhausted
+after ten contexts. The first full run after the change failed exactly there, with 240
+`FATAL: sorry, too many clients already`.
+
+Both ends are therefore fixed:
+
+* the shared container starts with `max_connections=400`, and
+* the test classpath caps `spring.datasource.hikari.maximum-pool-size` at 5 — a test uses
+  one connection at a time, so five is already slack.
+
+That is 80 contexts of headroom against today's twenty-two, and
+`TestcontainersConfigurationTest` asserts the server-side half so the arithmetic cannot
+quietly regress.
+
 ### What is traded
 
 Roughly twenty-two `CREATE DATABASE` statements plus their Flyway runs — milliseconds
