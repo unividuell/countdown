@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 
 const replace = vi.fn()
+const refresh = vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { slug: 'team' } }),
   useRouter: () => ({ replace }),
@@ -23,7 +24,7 @@ vi.mock('@/communities/context', () => ({
         pendingCount: 1,
       },
     },
-    refresh: vi.fn(),
+    refresh,
   }),
 }))
 
@@ -39,6 +40,7 @@ describe('requests page', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     replace.mockReset()
+    refresh.mockReset()
   })
   it('lists pending members and approves one', async () => {
     const list = vi.spyOn(api, 'listMembers').mockResolvedValue([
@@ -55,6 +57,8 @@ describe('requests page', () => {
     await w.find('[data-test=approve-u1]').trigger('click')
     await flushPromises()
     expect(approve).toHaveBeenCalledWith('team', 'u1')
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(refresh).toHaveBeenCalledTimes(1)
   })
 
   it('keeps separate request actions independently busy', async () => {
@@ -83,5 +87,12 @@ describe('requests page', () => {
 
     first.resolve()
     second.resolve()
+    await Promise.all([first.promise, second.promise])
+    await flushPromises()
+
+    expect(w.get('[data-test=approve-u1]').attributes('disabled')).toBeUndefined()
+    expect(w.get('[data-test=approve-u2]').attributes('disabled')).toBeUndefined()
+    expect(w.get('[data-test=approve-u1]').find('[data-test=spinner]').exists()).toBe(false)
+    expect(w.get('[data-test=approve-u2]').find('[data-test=spinner]').exists()).toBe(false)
   })
 })
