@@ -10,14 +10,17 @@
  * See docs/superpowers/specs/2026-08-08-game-lab-design.md.
  */
 import { computed, ref, watch } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
 import { labGames } from '@/gamelab/games'
-import { parseSeed, rollSeed } from '@/gamelab/seed'
+import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
+import { labShortcut } from '@/gamelab/shortcuts'
 import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
+import { requestDrawerClose } from '@/nav/drawerControl'
 import type { LabEntryDto, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]')
@@ -39,6 +42,7 @@ function writeSeed(next: number): void {
 
 async function run(
   action: (slug: string, game: string, seed: number) => Promise<LabRoundResponse>,
+  closeDrawer = false,
 ) {
   const current = seed.value
   if (current === null || !gameComponent.value) return
@@ -46,6 +50,7 @@ async function run(
   error.value = null
   try {
     round.value = await action(community.value.slug, gameId.value, current)
+    if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
     else if (err instanceof ApiError && err.status === 409)
@@ -61,6 +66,28 @@ async function guess(value: unknown): Promise<void> {
   if (current === null) return
   await run((slug, game) => submitLabGuess(slug, game, current, value))
 }
+
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+  if (busy.value) return
+  const shortcut = labShortcut(event)
+  if (!shortcut) return
+
+  const target = event.target as Element | null
+  if (
+    target &&
+    'matches' in target &&
+    target.matches('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
+  ) {
+    return
+  }
+
+  event.preventDefault()
+  if (shortcut === 'forgetMine') {
+    void run(forgetMyLabEntry, true)
+  } else if (shortcut === 'reset') {
+    void run(resetLabRound, true)
+  }
+})
 
 /**
  * The complete picture of the round: the viewer's own entry first, then everyone else's. The
@@ -79,7 +106,7 @@ watch(
   seed,
   (current) => {
     if (current === null) {
-      writeSeed(rollSeed())
+      writeSeed(initialSeed(gameId.value))
       return
     }
     void run(openLabRound)
@@ -109,9 +136,9 @@ watch(
         :return-path="`${route.path}?seed=${seed}`"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
-        @refresh="run(openLabRound)"
-        @reset="run(resetLabRound)"
-        @forget-mine="run(forgetMyLabEntry)"
+        @refresh="run(openLabRound, true)"
+        @reset="run(resetLabRound, true)"
+        @forget-mine="run(forgetMyLabEntry, true)"
       />
       <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-neutral-500">
         Testrunde in „{{ community.name }}“
@@ -154,6 +181,11 @@ watch(
       @guess="guess"
     />
 
-    <LabEntries :entries="entries" />
+    <LabEntries
+      :entries="entries"
+      :busy="busy"
+      :on-forget-mine="() => void run(forgetMyLabEntry)"
+      :on-reset="() => void run(resetLabRound)"
+    />
   </div>
 </template>

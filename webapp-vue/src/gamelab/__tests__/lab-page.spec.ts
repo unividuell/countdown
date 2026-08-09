@@ -3,6 +3,8 @@ import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-uti
 import { reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
+import { initialSeed } from '@/gamelab/seed'
+import * as drawerControl from '@/nav/drawerControl'
 import SampleGame from '@/gamelab/SampleGame.vue'
 import type { GuessHuePayload, LabRoundResponse, SamplePayload } from '@/gamelab/types'
 
@@ -100,6 +102,7 @@ describe('lab page', () => {
     vi.spyOn(api, 'forgetMyLabEntry')
       .mockReset()
       .mockResolvedValue({ ...round } as never)
+    vi.spyOn(drawerControl, 'requestDrawerClose').mockReset()
   })
 
   afterEach(() => {
@@ -112,20 +115,21 @@ describe('lab page', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  it('rolls a seed into the URL when there is none', async () => {
-    // Requirement 1 holds from the first frame: the URL always carries the seed, so a reload is
-    // by construction the same round.
+  it('replaces a missing seed with the stable initial seed', async () => {
     setQuery({})
     await mountPage()
-    const seed = Number((replace.mock.calls[0][0] as { query: { seed: number } }).query.seed)
-    expect(Number.isInteger(seed)).toBe(true)
+    expect(replace).toHaveBeenCalledWith({
+      query: { seed: String(initialSeed('sample')) },
+    })
     expect(api.openLabRound).not.toHaveBeenCalled()
   })
 
-  it('replaces an unusable seed rather than sending it', async () => {
+  it('replaces an unusable seed with the stable initial seed', async () => {
     setQuery({ seed: 'not-a-number' })
     await mountPage()
-    expect(replace).toHaveBeenCalled()
+    expect(replace).toHaveBeenCalledWith({
+      query: { seed: String(initialSeed('sample')) },
+    })
     expect(api.openLabRound).not.toHaveBeenCalled()
   })
 
@@ -391,5 +395,97 @@ describe('lab page', () => {
     expect(forgetBtn.find('kbd').text()).toBe('Z')
     expect(resetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
     expect(forgetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
+  })
+
+  it('requests drawer close on successful drawer actions, but not on failure or list actions', async () => {
+    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
+    await mountPage()
+
+    // Successful drawer refresh
+    await tool('lab-refresh').trigger('click')
+    await flushPromises()
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    // Successful drawer reset
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+    expect(spy).toHaveBeenCalledTimes(2)
+
+    // Successful drawer forgetMine
+    await tool('lab-forget-mine').trigger('click')
+    await flushPromises()
+    expect(spy).toHaveBeenCalledTimes(3)
+
+    // Failed drawer action does not close drawer
+    vi.spyOn(api, 'resetLabRound').mockRejectedValueOnce(new ApiError(500, 'error'))
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+    expect(spy).toHaveBeenCalledTimes(3)
+  })
+
+  it('executes shortcuts ⌘⇧Z and ⌘⇧X when not in an editable target and not busy', async () => {
+    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
+    await mountPage()
+
+    const eventZ = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(eventZ)
+    await flushPromises()
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(eventZ.defaultPrevented).toBe(true)
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    const eventX = new KeyboardEvent('keydown', {
+      key: 'x',
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(eventX)
+    await flushPromises()
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(eventX.defaultPrevented).toBe(true)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores shortcuts in input fields or when busy', async () => {
+    let resolveAction: (val: unknown) => void = () => {}
+    vi.spyOn(api, 'resetLabRound').mockImplementationOnce(
+      () => new Promise((res) => (resolveAction = res)) as never,
+    )
+    await mountPage()
+
+    const seedInput = document.querySelector('[data-test="lab-seed"]') as HTMLInputElement
+    const eventInInput = new KeyboardEvent('keydown', {
+      key: 'x',
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    seedInput.dispatchEvent(eventInInput)
+    await flushPromises()
+    expect(eventInInput.defaultPrevented).toBe(false)
+
+    await tool('lab-reset').trigger('click')
+    const eventBusy = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(eventBusy)
+    await flushPromises()
+    expect(eventBusy.defaultPrevented).toBe(false)
+
+    resolveAction(round)
+    await flushPromises()
   })
 })
