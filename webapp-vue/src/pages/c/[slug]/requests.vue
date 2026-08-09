@@ -4,26 +4,34 @@ import { listMembers, approveMember, removeMember } from '@/api/communities'
 import type { MemberResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
+import ActionButton from '@/ui/ActionButton.vue'
+import { useKeyedAction } from '@/ui/useAction'
 
 useAdminGuard()
 const { community, refresh } = useCommunityContext()
 const slug = community.value.slug
 const all = ref<MemberResponse[]>([])
-const error = ref<string | null>(null)
 const pending = computed(() => all.value.filter((m) => m.status === 'PENDING'))
+const { isBusy, error, run } = useKeyedAction()
 
 async function load(): Promise<void> {
   all.value = await listMembers(slug)
 }
-async function run(fn: () => Promise<void>): Promise<void> {
-  error.value = null
-  try {
-    await fn()
+
+function approve(userId: string): Promise<void> {
+  return run(`approve:${userId}`, async () => {
+    await approveMember(slug, userId)
     await load()
     await refresh() // update the shell pending badge
-  } catch {
-    error.value = 'Aktion fehlgeschlagen.'
-  }
+  })
+}
+
+function reject(userId: string): Promise<void> {
+  return run(`reject:${userId}`, async () => {
+    await removeMember(slug, userId)
+    await load()
+    await refresh() // update the shell pending badge
+  })
 }
 onMounted(load)
 </script>
@@ -41,19 +49,22 @@ onMounted(load)
       >
         <span>{{ m.username }}</span>
         <span class="flex gap-2">
-          <button
-            data-test="approve"
+          <ActionButton
+            :data-test="`approve-${m.userId}`"
+            :busy="isBusy(`approve:${m.userId}`)"
             class="rounded border px-2 py-0.5"
-            @click="run(() => approveMember(slug, m.userId))"
+            @click="approve(m.userId)"
           >
             Bestätigen
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
+            :data-test="`reject-${m.userId}`"
+            :busy="isBusy(`reject:${m.userId}`)"
             class="rounded border px-2 py-0.5 text-red-600"
-            @click="run(() => removeMember(slug, m.userId))"
+            @click="reject(m.userId)"
           >
             Ablehnen
-          </button>
+          </ActionButton>
         </span>
       </li>
     </ul>
