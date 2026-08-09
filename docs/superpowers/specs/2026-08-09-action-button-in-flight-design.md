@@ -47,12 +47,12 @@ erfolgreichen Navigation zurückgesetzt und bleibt nach erneutem Fehler oder ein
 abgebrochenen Navigation sichtbar.
 
 Für Zeilenaktionen ergänzt eine keyed Variante von `useAction` den UI-Baustein. Sie
-hält genau einen aktiven Schlüssel und stellt `busyKey`, `error` und `run(key, fn)`
-bereit. Ein zweiter Aufruf mit demselben oder einem anderen Schlüssel wird während
-einer laufenden Anfrage verworfen. Der betroffene `ActionButton` bindet `busy` an
-den Vergleich seines eindeutigen Schlüssels mit `busyKey`; alle anderen Zeilen
-bleiben bedienbar und zeigen keinen Spinner. Der Fehler bleibt einmalig auf
-Seitenebene sichtbar.
+hält eine reaktive Menge aktiver Schlüssel und stellt `isBusy(key)`, `error` und
+`run(key, fn)` bereit. Ein zweiter Aufruf mit demselben Schlüssel wird während
+seiner laufenden Anfrage verworfen; Aufrufe mit anderen Schlüsseln dürfen parallel
+laufen. Der betroffene `ActionButton` bindet `busy` an `isBusy` mit seinem
+eindeutigen Schlüssel; alle anderen Zeilen bleiben bedienbar und zeigen keinen
+Spinner. Der Fehler bleibt einmalig auf Seitenebene sichtbar.
 
 `requests.vue` und `members.vue` nutzen dieses gemeinsame Muster statt je eine
 lokale, nahezu gleiche `run()`-Funktion zu pflegen. Nach Erfolg laden sie ihre
@@ -66,18 +66,19 @@ Ein Zeilenschlüssel besteht aus der Aktion und der `userId`, etwa
 Damit sind auch mehrere Aktionen in derselben Zeile unterscheidbar. Der Ablauf ist:
 
 1. Der Klick ruft `run(key, apiCall)` auf.
-2. Die Composable setzt `busyKey` und löscht den vorherigen Seitenfehler.
+2. Die Composable fügt den Schlüssel zur Busy-Menge hinzu und löscht den vorherigen
+   Seitenfehler.
 3. Nur der Button mit passendem Schlüssel zeigt Spinner und `disabled`.
 4. Nach erfolgreichem API-Aufruf aktualisiert die Seite Liste und gegebenenfalls
    Community-Kontext.
 5. Bei Fehler wird die vorhandene, seitenweite deutsche Fehlermeldung gesetzt.
-6. In jedem Fall wird `busyKey` zurückgesetzt.
+6. In jedem Fall wird nur der ausgeführte Schlüssel aus der Busy-Menge entfernt.
 
 ## Fehlerbehandlung und Zugänglichkeit
 
 - Abgewiesene Requests lassen keinen Button dauerhaft deaktiviert zurück.
 - Ein zweiter Klick während derselben laufenden Aktion löst keine zweite Mutation
-  aus; andere Zeilen bleiben nicht fälschlich gesperrt.
+  aus; andere Zeilen und ihre Aktionen bleiben aktiv und können parallel laufen.
 - Alle sichtbaren deutschen Texte bleiben unverändert oder verwenden, wenn neue
   Anführungszeichen notwendig würden, `„…“`.
 - Der Retry kann Fehler weiterhin selbst behandeln, weil eine erneute Auflösung
@@ -87,8 +88,9 @@ Damit sind auch mehrere Aktionen in derselben Zeile unterscheidbar. Der Ablauf i
 
 Vitest deckt ab:
 
-- die keyed Composable: Busy-Schlüssel während der Anfrage, Rücksetzen nach Erfolg
-  und Fehler sowie das Verwerfen konkurrierender Aufrufe;
+- die keyed Composable: Busy-Schlüssel während einer Anfrage, unabhängige parallele
+  Schlüssel, Rücksetzen nach Erfolg und Fehler sowie das Verwerfen eines erneuten
+  Aufrufs desselben Schlüssels;
 - Requests und Mitglieder: Spinner und `disabled` nur an der geklickten Zeilenaktion,
   erfolgreicher API-Aufruf, Laden der aktualisierten Liste und bestehende Fehlermeldung;
 - Einstellungen: jede asynchrone Aktion erhält ihren eigenen Busy-Zustand und
