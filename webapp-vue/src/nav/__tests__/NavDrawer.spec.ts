@@ -153,6 +153,51 @@ describe('NavDrawer mechanics', () => {
     expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
   })
 
+  it('re-reads the overflow when rows arrive after the drawer is already open', async () => {
+    // Catches a cue decided once against a list still in flight: the community list and a page's
+    // teleported tools both land after open, and a drawer that overflows only then would show no
+    // hint at all — on exactly the drawer the hint exists for.
+    //
+    // The dimensions are stubbed AFTER opening on purpose: the drawer sits in a <Teleport>, and
+    // the stub re-renders its slot when `open` flips, so nodes grabbed before the click are
+    // detached copies and every stub on them is silently read past.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    await flushPromises()
+
+    const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 100 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 40 })
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
+
+    // A row lands — and nothing scrolls, resizes or re-opens to prompt a second look.
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 260 })
+    scroll.appendChild(document.createElement('div'))
+    await flushPromises()
+    await nextTick()
+
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+  })
+
+  it('leaves no close listener behind that a later request could trip over', async () => {
+    // The channel is module-level, so a subscription that outlives its component would be called
+    // for the rest of the session. That the set is emptied is `drawerControl`'s own test; this
+    // one covers the other half — unmounting mid-open must not leave a request throwing.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    w.unmount()
+
+    expect(() => requestDrawerClose()).not.toThrow()
+    expect(document.querySelector('[data-test=nav-drawer]')).toBeNull()
+  })
+
   it('names the toggle for its current action', async () => {
     const w = render()
     const toggle = w.get('[data-test=nav-toggle]')

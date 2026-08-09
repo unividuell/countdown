@@ -11,6 +11,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch 
 import {
   onKeyStroke,
   useEventListener,
+  useMutationObserver,
   usePreferredReducedMotion,
   useScrollLock,
   useWindowSize,
@@ -108,6 +109,13 @@ const navScroll = useTemplateRef<HTMLElement>('navScroll')
 const navMark = useTemplateRef<HTMLElement>('navMark')
 const scrollHintVisible = ref(false)
 
+/**
+ * The cue answers one question: is there a row below the fold the reader has not seen? The logo is
+ * the answer's edge, not `scrollHeight` — the mark grows into whatever slack is left, so a list
+ * that ends well above the bottom would otherwise keep the cue up forever, pointing at nothing but
+ * the logo. `offsetTop` is a layout value the scroll offset does not move, so it stays comparable
+ * to `scrollTop`; the `scrollHeight` branch only covers a layout that has not happened yet.
+ */
 function updateScrollHint(): void {
   const el = navScroll.value
   if (!el) {
@@ -118,6 +126,12 @@ function updateScrollHint(): void {
   const cutoff = mark && mark.offsetTop > 0 ? mark.offsetTop : el.scrollHeight - 1
   scrollHintVisible.value = el.scrollTop + el.clientHeight <= cutoff
 }
+
+// The rows are not all there when the drawer opens: the community list is still in flight, and a
+// page's tools teleport in whenever that page mounts. Both land as child mutations, and without
+// this the cue would be decided against a list that had not arrived yet — leaving no hint at all
+// on precisely the overflowing drawer it exists for.
+useMutationObserver(navScroll, updateScrollHint, { childList: true, subtree: true })
 
 function loadCommunities(): void {
   // A failed list leaves every other block of the drawer working.
@@ -377,7 +391,9 @@ onKeyStroke('Tab', (e) => {
           aria-hidden="true"
           class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-neutral-400"
         >
-          <IconChevronDown class="size-4 animate-bounce [animation-iteration-count:2]" />
+          <IconChevronDown
+            class="size-4 animate-bounce [animation-iteration-count:2] motion-reduce:animate-none"
+          />
         </div>
       </div>
 
