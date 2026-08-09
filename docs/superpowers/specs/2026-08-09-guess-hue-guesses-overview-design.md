@@ -108,7 +108,7 @@ Das ist keine Wertung: es wird nichts verglichen und nichts gepunktet.
 | `games/guesshue/HueToleranceSector.vue` | Sektor und Lösungslinie als SVG | neu |
 | `games/guesshue/HueWheelReveal.vue` | das Lese-Rad: Ring, Marker, Sektor. Keine Interaktion, kein Mitten-Slot | neu |
 | `games/guesshue/GuessHueBoard.vue` | die Eingabekarte — wie heute, nur mit `HueWheelInput` | bleibt |
-| `games/guesshue/GuessHueReveal.vue` | die Auswertungskarte: dasselbe Zitat, das Lese-Rad, eine Zahlenzeile | neu |
+| `games/guesshue/GuessHueReveal.vue` | die Auswertungskarte: dasselbe Zitat, das Lese-Rad | neu |
 
 **Zwei Räder über einem gemeinsamen Ring, nicht ein Rad mit einer Phase.** Das Eingabe-Rad ist
 Zeigergeometrie, Tastatur und ARIA-Slider; das Lese-Rad ist ein Bild. Sie teilen sich genau eine
@@ -178,8 +178,8 @@ Choreografie deutlicher als ein Sonderstil.
 
 ### Der Sektor
 
-Ein SVG mit Einheits-`viewBox` über dem Ring, `aria-hidden` (die Aussage steht als Text darunter,
-siehe *Die Zahlenzeile*).
+Ein SVG mit Einheits-`viewBox` über dem Ring, `aria-hidden` — die Aussage gehört auf das Rad als
+Ganzes, nicht auf eine seiner Schichten (siehe *Was ein Screenreader hier bekommt*).
 
 - **Gestrichelt:** zwei Grenzlinien bei `targetHue ± toleranceDeg`, dazu gestrichelte Bögen auf
   Innen- und Außenkante — das Fenster, geschlossen.
@@ -203,17 +203,34 @@ Erwogen und verworfen: die Lösungsfarbe als Scheibe in die Mitte zu legen. Das 
 damit „welche Farbe war gemeint" ohne Umweg über den Sektor — aber es macht aus einem Bild über
 Winkel ein Bild über zwei Dinge, und der Sektor sagt das Nötige bereits.
 
-### Die Zahlenzeile
+### Die Karte darf ihre Höhe ändern
 
-Die Auswertungskarte trägt an derselben Stelle, an der die Eingabekarte ihre Hinweiszeile hat
-(`mt-8 text-xs text-neutral-500`), eine Zeile mit den Zahlen: Lösung, Toleranzfenster, meine
-Abweichung.
+Unter dem Rad steht auf der Auswertungskarte **nichts**. Die Hinweiszeile der Eingabekarte („Du
+stellst nur den Farbton ein…") ist hier falsch, und eine Zeile mit den Zahlen — Lösung,
+Toleranzfenster, Abweichung — wäre ein Provisorium: an diese Stelle kommt später die
+Detailtabelle aller Tipps (im Original `GuessColorAnalysis.vue`), und die ist nicht Teil dieses
+Schnitts.
 
-Sie hat zwei Aufgaben. Erstens hält sie die Karte beim Überblenden auf gleicher Höhe — sonst
-springt das Layout mitten in der Choreografie. Zweitens ist sie die Aussage, die das Rad einem
-Screenreader schuldet: das Lese-Rad ist `role="img"` mit demselben Text als `aria-label`, und der
-Sektor darin ist `aria-hidden`. Wer das Bild nicht sieht, bekommt daraus dieselbe Information —
-das ist dieselbe Paritätsregel, unter der schon `hueName` steht.
+Die Karte wird beim Übergang also **kürzer**, und später mit der Tabelle wieder deutlich länger.
+Das ist die Entscheidung, nicht ein Nebeneffekt: eine Zeile einzuziehen, nur damit die Höhe
+gleich bleibt, würde eine Zeile bauen, die wieder verschwindet. Wie der Höhenwechsel mitten in
+der Choreografie wirkt, sehen wir im Lab — genau dafür ist es da, und wenn es stört, ist die
+Antwort ein Übergang auf der Höhe und keine Füllzeile.
+
+Beide Karten liegen während des Übergangs in **derselben Rasterzelle** (`grid-area: 1 / 1`) statt
+absolut positioniert übereinander: so bleibt die Höhe der Umgebung die der jeweils höheren Karte
+und fällt am Ende von selbst auf die der Auswertungskarte.
+
+### Was ein Screenreader hier bekommt
+
+Das Lese-Rad ist `role="img"` mit einem knappen `aria-label`, das Lösung und Toleranzfenster nennt;
+die Schichten darin (Ring, Sektor, Marker) sind `aria-hidden`.
+
+**Das ist bewusst weniger als Parität.** Wer sieht, liest aus dem Bild auch ab, wie die Tipps
+zueinander stehen; das Label sagt nur, wo die Lösung liegt. Die vollständige Aussage ist die
+Detailtabelle mit allen Tipps — sie ist die richtige Form dafür, weil sie eine Tabelle ist, und
+sie kommt in einem eigenen Schnitt. Bis dahin stünde ohne Label gar nichts da, und das wäre
+schlechter als eine bekannte Lücke.
 
 ### Choreografie
 
@@ -263,7 +280,7 @@ Endzustand sofort, wie überall in diesem Spiel.
 - `ring.spec.ts` — die Innenkante landet in der Maske; die Einflug-Maske komponiert mit ihr statt
   sie zu ersetzen; kein Graustufen-Filter mehr.
 - `HueWheelReveal.spec.ts` — ein Marker je Eintrag mit Farbe und Drehung; Einträge ohne endliches
-  `hue` fallen raus; `role="img"` trägt die Zahlenaussage; kein `role="slider"` und keine
+  `hue` fallen raus; `role="img"` mit Lösung und Fenster im Label; kein `role="slider"` und keine
   Zeiger-Handler.
 - `GuessHueLabGame.spec.ts` — die Karte wechselt bei `solution != null` und zurück, sobald es
   wieder `null` ist; Müll in `solution` lässt die Eingabekarte stehen.
@@ -276,7 +293,8 @@ ist eine Browsermessung.
 
 **Manuell verifiziert** wird gegen `/c/{slug}/lab/guess-hue?seed=…`: schmal und breit, mit mehreren
 Testnutzern für echte Stapel (inklusive des Extremfalls „alle raten dasselbe"), einmal mit
-reduzierter Bewegung, und einmal mit „Meinen Guess löschen" für den Rückweg.
+reduzierter Bewegung, und einmal mit „Meinen Guess löschen" für den Rückweg. Ausdrücklich
+mitbeurteilt wird dabei der **Höhenwechsel der Karte** — siehe *Die Karte darf ihre Höhe ändern*.
 
 ## Bewusst nicht übernommen
 
@@ -285,6 +303,8 @@ reduzierter Bewegung, und einmal mit „Meinen Guess löschen" für den Rückweg
   many times (3-4x)" steht als Kommentar darin). Marker sind bei uns dieselben absolut
   positionierten Elemente wie der Zeigerknopf, der Sektor ist ein SVG mit Einheits-`viewBox`.
   Beides skaliert von selbst und ist ohne Layout prüfbar — was happy-dom für Canvas nicht ist.
-- **Die Auswertungstabelle** (`GuessColorAnalysis.vue`). Sie gehört zur Wertung, und die ist nicht
-  gebaut. Die Einträge-Liste des Labs zeigt bereits Name und Winkel.
+- **Die Detailtabelle** (`GuessColorAnalysis.vue`). Sie ist der nächste Schnitt, nicht dieser: sie
+  gehört unter das Rad, sie bringt die vollständige Screenreader-Aussage mit, und ein Teil ihrer
+  Spalten (Differenz, Punkte) hängt an der Wertung. Solange sie fehlt, zeigt die Einträge-Liste des
+  Labs Name und Winkel.
 - **Der hervorgehobene eigene Marker.** Erwogen; die Choreografie sagt es deutlicher.
