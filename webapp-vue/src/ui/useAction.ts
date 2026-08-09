@@ -33,3 +33,32 @@ export function useAction(toMessage: (e: unknown) => string = () => DEFAULT_MESS
 
   return { busy: readonly(busy), error: readonly(error), run }
 }
+
+export function useKeyedAction(toMessage: (e: unknown) => string = () => DEFAULT_MESSAGE): {
+  isBusy: (key: string) => boolean
+  error: Readonly<Ref<string | null>>
+  run: (key: string, fn: () => Promise<void>) => Promise<void>
+} {
+  const busyKeys = ref(new Set<string>())
+  const error = ref<string | null>(null)
+
+  function isBusy(key: string): boolean {
+    return busyKeys.value.has(key)
+  }
+
+  async function run(key: string, fn: () => Promise<void>): Promise<void> {
+    if (busyKeys.value.has(key)) return
+    busyKeys.value.add(key)
+    error.value = null
+    try {
+      await fn()
+    } catch (e) {
+      console.error('action failed', e)
+      error.value = toMessage(e)
+    } finally {
+      busyKeys.value.delete(key)
+    }
+  }
+
+  return { isBusy, error: readonly(error), run }
+}
