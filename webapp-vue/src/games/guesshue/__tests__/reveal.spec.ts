@@ -155,6 +155,20 @@ describe('the sector', () => {
   it('follows the band inward as it grows', () => {
     expect(sectorPaths(90, 90, 0.5).solution).toBe('M 0.75,0.5 L 1,0.5')
   })
+
+  it('spans the intended window rather than its complement when the tolerance exceeds 90°', () => {
+    // Every other case here keeps the span at or under 180°, so the large-arc-flag's `1` branch
+    // never ran. Boundaries at 0° and 270° keep every coordinate exact even past that: target 135°
+    // with a 135° tolerance is a plausible "very easy" round, and the arc must sweep the 270°
+    // window through 135° — not the 90° gap on the other side of the circle.
+    const { window } = sectorPaths(135, 135, 0.78)
+
+    expect(window).toContain('1,1') // large-arc-flag set — the ≤180° cases above carry `0,1`
+    expect(window).toBe(
+      'M 0.5,0.11 L 0.5,0 M 0.11,0.5 L 0,0.5 ' +
+        'M 0.5,0.11 A 0.39,0.39 0 1,1 0.11,0.5 M 0.5,0 A 0.5,0.5 0 1,1 0,0.5',
+    )
+  })
 })
 
 describe('sectorInk', () => {

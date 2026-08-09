@@ -49,9 +49,10 @@ export const MIN_BAND_INNER_FRACTION = 0.25
 /**
  * The four beats of the reveal, from the moment the reveal card is inserted. Two of them are CSS
  * transitions in the components (the card crossfade at ~200 ms, and the centre button leaving the
- * outgoing card at 0 ms over 200 ms); the three numbers below drive everything the reveal wheel
- * does to itself. They are a first proposal and belong in the lab to be turned — that is what it
- * is for.
+ * outgoing card at 0 ms over 200 ms); the five numbers below drive everything the reveal wheel
+ * does to itself — three beats (`SECTOR_DELAY_MS`, `MARKERS_DELAY_MS`, `MARKER_STAGGER_MS`) and
+ * two durations (`FADE_MS`, `BAND_GROW_MS`). They are a first proposal and belong in the lab to be
+ * turned — that is what it is for.
  */
 export const SECTOR_DELAY_MS = 900
 export const MARKERS_DELAY_MS = 1900
