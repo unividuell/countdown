@@ -4,28 +4,43 @@ import { listMembers, promoteMember, demoteMember, removeMember } from '@/api/co
 import type { MemberResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
+import ActionButton from '@/ui/ActionButton.vue'
+import { useKeyedAction } from '@/ui/useAction'
 
 useAdminGuard()
 const { community } = useCommunityContext()
 const slug = community.value.slug
 const all = ref<MemberResponse[]>([])
-const error = ref<string | null>(null)
 const active = computed(() => all.value.filter((m) => m.status === 'ACTIVE'))
+const { isBusy, error, run } = useKeyedAction((e) =>
+  (e as { status?: number }).status === 409
+    ? 'Die Community braucht mindestens einen Admin.'
+    : 'Aktion fehlgeschlagen.',
+)
 
 async function load(): Promise<void> {
   all.value = await listMembers(slug)
 }
-async function run(fn: () => Promise<void>): Promise<void> {
-  error.value = null
-  try {
-    await fn()
+
+function promote(userId: string): Promise<void> {
+  return run(`promote:${userId}`, async () => {
+    await promoteMember(slug, userId)
     await load()
-  } catch (e) {
-    error.value =
-      (e as { status?: number }).status === 409
-        ? 'Die Community braucht mindestens einen Admin.'
-        : 'Aktion fehlgeschlagen.'
-  }
+  })
+}
+
+function demote(userId: string): Promise<void> {
+  return run(`demote:${userId}`, async () => {
+    await demoteMember(slug, userId)
+    await load()
+  })
+}
+
+function remove(userId: string): Promise<void> {
+  return run(`remove:${userId}`, async () => {
+    await removeMember(slug, userId)
+    await load()
+  })
 }
 onMounted(load)
 </script>
@@ -42,27 +57,32 @@ onMounted(load)
       >
         <span>{{ m.username }} <em v-if="m.isAdmin" class="text-neutral-500">(Admin)</em></span>
         <span class="flex gap-2">
-          <button
+          <ActionButton
             v-if="!m.isAdmin"
+            :data-test="`promote-${m.userId}`"
+            :busy="isBusy(`promote:${m.userId}`)"
             class="rounded border px-2 py-0.5"
-            @click="run(() => promoteMember(slug, m.userId))"
+            @click="promote(m.userId)"
           >
             Zu Admin
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
             v-else
+            :data-test="`demote-${m.userId}`"
+            :busy="isBusy(`demote:${m.userId}`)"
             class="rounded border px-2 py-0.5"
-            @click="run(() => demoteMember(slug, m.userId))"
+            @click="demote(m.userId)"
           >
             Admin entz.
-          </button>
-          <button
-            data-test="remove"
+          </ActionButton>
+          <ActionButton
+            :data-test="`remove-${m.userId}`"
+            :busy="isBusy(`remove:${m.userId}`)"
             class="rounded border px-2 py-0.5 text-red-600"
-            @click="run(() => removeMember(slug, m.userId))"
+            @click="remove(m.userId)"
           >
             Entfernen
-          </button>
+          </ActionButton>
         </span>
       </li>
     </ul>

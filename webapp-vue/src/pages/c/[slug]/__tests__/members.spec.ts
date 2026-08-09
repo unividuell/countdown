@@ -24,6 +24,14 @@ vi.mock('@/communities/context', () => ({
   }),
 }))
 
+function deferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 describe('members admin page', () => {
   it('lists only ACTIVE members and removes one', async () => {
     const list = vi.spyOn(api, 'listMembers').mockResolvedValue([
@@ -37,9 +45,44 @@ describe('members admin page', () => {
     expect(w.text()).toContain('Alice')
     expect(w.text()).not.toContain('Bob') // PENDING not shown
     list.mockResolvedValue([])
-    await w.find('[data-test=remove]').trigger('click')
+    await w.find('[data-test=remove-u1]').trigger('click')
     await flushPromises()
     expect(remove).toHaveBeenCalledWith('team', 'u1')
+  })
+
+  it('keeps separate member actions independently busy', async () => {
+    const first = deferred()
+    const second = deferred()
+    vi.spyOn(api, 'listMembers').mockResolvedValue([
+      { userId: 'u1', username: 'Alice', status: 'ACTIVE', isAdmin: false },
+      { userId: 'u2', username: 'Bob', status: 'ACTIVE', isAdmin: false },
+    ])
+    const promote = vi
+      .spyOn(api, 'promoteMember')
+      .mockImplementation((_slug, userId) => (userId === 'u1' ? first.promise : second.promise))
+    const Members = (await import('@/pages/c/[slug]/members.vue')).default
+    const w = mount(Members)
+    await flushPromises()
+
+    await w.get('[data-test=promote-u1]').trigger('click')
+    await w.get('[data-test=promote-u2]').trigger('click')
+
+    expect(promote).toHaveBeenCalledTimes(2)
+    expect(w.get('[data-test=promote-u1]').attributes('disabled')).toBeDefined()
+    expect(w.get('[data-test=promote-u2]').attributes('disabled')).toBeDefined()
+    expect(w.get('[data-test=remove-u1]').attributes('disabled')).toBeUndefined()
+    expect(w.get('[data-test=promote-u1]').find('[data-test=spinner]').exists()).toBe(true)
+    expect(w.get('[data-test=remove-u1]').find('[data-test=spinner]').exists()).toBe(false)
+
+    first.resolve()
+    second.resolve()
+    await Promise.all([first.promise, second.promise])
+    await flushPromises()
+
+    expect(w.get('[data-test=promote-u1]').attributes('disabled')).toBeUndefined()
+    expect(w.get('[data-test=promote-u2]').attributes('disabled')).toBeUndefined()
+    expect(w.get('[data-test=promote-u1]').find('[data-test=spinner]').exists()).toBe(false)
+    expect(w.get('[data-test=promote-u2]').find('[data-test=spinner]').exists()).toBe(false)
   })
 })
 
