@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.gamelab
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
@@ -113,5 +114,10 @@ class SampleLabGameTest {
     @Test
     fun `a guess without the value field is rejected`() {
         shouldThrow<InvalidGuessException> { game.score(4711, mapper.readTree("""{}""")) }
+    }
+
+    @Test
+    fun `it reveals no solution, so the interface default carries`() {
+        game.solution(4711).shouldBeNull()
     }
 }
