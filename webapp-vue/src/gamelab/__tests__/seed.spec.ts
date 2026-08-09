@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { parseSeed, rollSeed, SEED_MAX, SEED_MIN } from '@/gamelab/seed'
+import { initialSeed, parseSeed, rollSeed, SEED_MAX, SEED_MIN } from '@/gamelab/seed'
+
+function utf16CodeUnitHash(value: string): number {
+  let hash = 0x811c9dc5 | 0
+  for (const codeUnit of value) {
+    hash ^= codeUnit.charCodeAt(0)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash & SEED_MAX
+}
+
+describe('initialSeed', () => {
+  it.each([
+    ['sample', 384_008_871],
+    ['guess-hue', 635_390_241],
+    ['hütte', 1_182_022_951],
+  ])('derives the pinned FNV-1a seed for %s', (gameId, expectedSeed) => {
+    expect(initialSeed(gameId)).toBe(expectedSeed)
+  })
+
+  it('hashes UTF-8 bytes rather than UTF-16 code units', () => {
+    expect(initialSeed('hütte')).not.toBe(utf16CodeUnitHash('hütte'))
+  })
+
+  it.each(['sample', 'guess-hue', 'hütte', '', 'a'])(
+    'stays inside the non-negative seed range for %s',
+    (gameId) => {
+      // Catches a seed that reads back with a leading minus: this is the one testers quote most,
+      // and `parseSeed` would happily take it, so nothing else would notice.
+      expect(initialSeed(gameId)).toBeGreaterThanOrEqual(0)
+      expect(initialSeed(gameId)).toBeLessThanOrEqual(SEED_MAX)
+    },
+  )
+})
 
 describe('parseSeed', () => {
   it('accepts a plain integer string', () => {
