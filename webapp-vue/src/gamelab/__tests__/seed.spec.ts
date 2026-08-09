@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { parseSeed, rollSeed, SEED_MAX, SEED_MIN } from '@/gamelab/seed'
+import { initialSeed, parseSeed, rollSeed, SEED_MAX, SEED_MIN } from '@/gamelab/seed'
+
+function utf16CodeUnitHash(value: string): number {
+  let hash = 0x811c9dc5 | 0
+  for (const codeUnit of value) {
+    hash ^= codeUnit.charCodeAt(0)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash
+}
+
+describe('initialSeed', () => {
+  it.each([
+    ['sample', -1_763_474_777],
+    ['guess-hue', -1_512_093_407],
+    ['hütte', -965_460_697],
+  ])('derives the pinned signed FNV-1a seed for %s', (gameId, expectedSeed) => {
+    expect(initialSeed(gameId)).toBe(expectedSeed)
+  })
+
+  it('hashes UTF-8 bytes rather than UTF-16 code units', () => {
+    expect(initialSeed('hütte')).not.toBe(utf16CodeUnitHash('hütte'))
+  })
+})
 
 describe('parseSeed', () => {
   it('accepts a plain integer string', () => {
