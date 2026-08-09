@@ -82,6 +82,18 @@ the network tab either.
 must stay that way, because `LabService` calls `score()` before the store so a malformed guess never
 consumes the player's single attempt.
 
+## A second way out of the server, guarded separately
+
+`LabGame.solution(seed)` is the only way anything may leave the server *after* the guess — never
+fold it into `LabPayload`, which also travels *before* the guess and would lose its
+exact-field-set test's meaning if the solution could ride along early. Unlike
+`revealsOthersBeforeGuess` (no default, because there the convenient direction is unsafe),
+`solution` defaults to `null`: here the safe direction is the free one, so a game that implements
+nothing reveals nothing. The gate is one condition, evaluated server-side in `LabService` — the
+viewer has an entry of their own — and is deliberately **not** coupled to
+`revealsOthersBeforeGuess`: "seeing the others" and "seeing the solution" are two questions. Every
+`LabSolution` earns the same exact-field-set serialisation test its payload does.
+
 ## The component contract carries the viewer's own guess
 
 Every lab game component receives `myGuess` alongside `payload`. The payload is derived from the seed

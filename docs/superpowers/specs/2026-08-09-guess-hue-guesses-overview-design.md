@@ -159,8 +159,17 @@ daneben, und bei `K = 0` ändert sich am Band nichts.
 Original: bei vier identischen Tipps ist der Ring sichtbar breiter, nicht der Stapel länger ins
 Loch hinein.
 
-Boden: das Band wird nie enger als `0,25`. Ab `K ≥ 6` schrumpft `STACK_STEP` auf `(0,78 − 0,25) / K`,
-statt das Loch zu schließen — die Marker überlappen dann stärker, das Rad bleibt ein Rad.
+Boden: das Band wird nie enger als `0,25`. Ab `K ≥ 6` schrumpft `STACK_STEP` auf
+`(0,78 − 0,25) / K`, statt das Loch zu schließen. Was das bei `K = 6` tatsächlich zeigt: die
+sieben Bahnen liegen bei 0,89 · 0,80 · 0,71 · 0,63 · 0,54 · 0,45 · 0,36, die Band-Innenkante genau
+bei 0,25 — drei Viertel des Radradius sind Band. Das Rad liest sich dann als Scheibe mit kleinem
+Loch, die Marker bilden eine Spitze zur Mitte, und die Sektorlinien laufen fast bis ins Zentrum
+wie bei einem Tortenstück. Bei vier verstreuten Tipps trifft das Bild weiterhin genau die Absicht
+dieses Abschnitts; nur der tiefe Stapel bricht es.
+
+**Entschieden (2026-08-09):** das Verhalten bleibt so — der Fall ist selten genug, das
+gewöhnliche Bild stimmt, und er wird neu beurteilt, sobald die Detailtabelle unter dem Rad landet,
+die ohnehin ändert, was dort zu sehen ist.
 
 **Stapelzuordnung.** Mein Marker liegt **immer auf Bahn 0** — sonst stimmt die Überlagerung des
 Zeigerknopfs nicht mehr. Die übrigen werden nach Winkel sortiert (bei Gleichstand nach `userId`,
