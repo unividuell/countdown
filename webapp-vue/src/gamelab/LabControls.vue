@@ -99,11 +99,11 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     Runde zurücksetzen
     <span
       aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
     >
       <IconCommand class="size-3" />
       <IconArrowUp class="size-3" />
-      <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">X</kbd>
+      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">X</kbd>
     </span>
   </button>
   <button
@@ -116,11 +116,11 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     Meinen Guess löschen
     <span
       aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
     >
       <IconCommand class="size-3" />
       <IconArrowUp class="size-3" />
-      <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">Z</kbd>
+      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">Z</kbd>
     </span>
   </button>
   <!-- Full page load, not router navigation: the picker is server-rendered HTML, and the redirect
