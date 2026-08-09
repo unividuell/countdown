@@ -110,4 +110,12 @@ class GuessHueDrawTest {
         close shouldBeGreaterThanOrEqualTo 500
         close shouldBeLessThanOrEqualTo 1_200
     }
+
+    @Test
+    fun `the jitter stays inside the tolerance`() {
+        // The inequality is the reason the jitter is 5: a player who read the description
+        // perfectly must not be pushed out of the window by the jitter alone. Now that the
+        // tolerance is a constant rather than prose, it can be pinned.
+        GuessHueDataset.JITTER_DEGREES shouldBeLessThan GuessHueTolerance.DEGREES
+    }
 }

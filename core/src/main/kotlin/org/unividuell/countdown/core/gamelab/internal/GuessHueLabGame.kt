@@ -7,7 +7,9 @@ import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.gamelab.LabGame
 import org.unividuell.countdown.core.gamelab.LabOutcome
 import org.unividuell.countdown.core.gamelab.LabPayload
+import org.unividuell.countdown.core.gamelab.LabSolution
 import org.unividuell.countdown.core.guesshue.GuessHueDataset
+import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 
 /**
@@ -26,14 +28,26 @@ data class GuessHuePayload(
 ) : LabPayload
 
 /**
+ * What the round looked like, once the player has spent their guess: the angle that was sought and
+ * how wide around it counts. It leaves the server through `LabRoundResponse.solution`, never
+ * through the payload — see [LabSolution].
+ */
+data class GuessHueSolution(
+    val targetHue: Double,
+    /** Half-window, in degrees: the guess counts from `targetHue - it` to `targetHue + it`. */
+    val toleranceDeg: Double,
+) : LabSolution
+
+/**
  * Guess Hue in the lab: the input side only.
  *
  * It draws through the `guesshue` module's public API and adds nothing of its own — the round is
  * `GuessHueDataset.draw`, unchanged, so what the lab shows is what the real game will show. Per
  * the lab's direction rule, this adapter lives here and `guesshue` knows nothing about it.
  *
- * Guesses are accepted, validated and stored; they are **not** scored. Tolerance, points and the
- * view after the round are the game framework's decisions, and this class must not pre-empt them.
+ * Guesses are accepted, validated and stored; they are **not** scored. What the player sees after
+ * the round is the drawn target and the tolerance around it — a picture, not a verdict. Points and
+ * the ranking stay the game framework's decisions, and this class must not pre-empt them.
  */
 @Component
 @Profile("!production")
@@ -57,6 +71,18 @@ class GuessHueLabGame(private val dataset: GuessHueDataset) : LabGame {
             initHue = target.initHue,
             saturation = target.saturation,
             lightness = target.lightness,
+        )
+    }
+
+    /**
+     * Drawn from the same seed as [reveal], so the two describe the same round. The tolerance
+     * travels with it rather than living in the client: the client draws what it is told.
+     */
+    override fun solution(seed: Int): GuessHueSolution {
+        val target = dataset.draw(SeededRandom.fromSeed(seed))
+        return GuessHueSolution(
+            targetHue = target.hue,
+            toleranceDeg = GuessHueTolerance.DEGREES,
         )
     }
 
