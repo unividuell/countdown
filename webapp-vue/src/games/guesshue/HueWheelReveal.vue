@@ -8,7 +8,7 @@
  * where the solution is. The full statement is the detail table, which is its own cut — until then
  * a known gap beats nothing at all.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { hueName, wrap360 } from './geometry'
 import HueRing from './HueRing.vue'
 import HueToleranceSector from './HueToleranceSector.vue'
@@ -87,6 +87,22 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (frame) cancelAnimationFrame(frame)
 })
+
+/**
+ * The lab reloads a round at the same seed rather than remounting the card, so a guess can still
+ * arrive after this wheel has already settled — `still`, or a `growBand` loop that has already
+ * reached `frame = 0`. `frame === 0` is exactly "no loop is driving the band right now": while one
+ * runs, it re-reads the live target every frame on its own and must not be fought over here. Once
+ * one isn't, a late target change would otherwise sit unapplied forever, floating a new marker
+ * over a hole that never grew to meet it. No fade for this: the beats belong to the moment of the
+ * guess that started them, and this one arrives with no moment to build up to.
+ */
+watch(
+  () => layout.value.bandInnerFraction,
+  (target) => {
+    if (frame === 0) innerFraction.value = target
+  },
+)
 
 /** Rounded, and folded onto the circle *after* rounding, the same way the input wheel announces. */
 function announce(angle: number): number {

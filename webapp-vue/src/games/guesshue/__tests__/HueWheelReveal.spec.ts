@@ -166,4 +166,33 @@ describe('HueWheelReveal', () => {
 
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('68%')
   })
+
+  it('keeps the band truthful for a guess that lands after the picture already settled', async () => {
+    // The lab reloads a round at the same seed rather than remounting the card, so a guess can
+    // still arrive on an already-finished wheel. With no loop ever running (`still`), the ring
+    // must pick up the new target directly, with no animation to drive it there.
+    const w = mountWheel({ animate: false, guesses: [GUESSES[0]!] })
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('78%')
+
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    await w.setProps({ guesses: stacked })
+
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('68%')
+  })
+
+  it('keeps the band truthful for a guess that lands once the grow loop has already finished', async () => {
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    const w = mountWheel({ animate: true, guesses: stacked })
+
+    // Past the whole choreography: the loop has already eased the band to its target and set
+    // itself back to `frame = 0`.
+    vi.advanceTimersByTime(4000)
+    await w.vm.$nextTick()
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('68%')
+
+    const deeperStack = [...stacked, { userId: 'y', hue: 218, colorHex: '#222222' }]
+    await w.setProps({ guesses: deeperStack })
+
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('58%')
+  })
 })
