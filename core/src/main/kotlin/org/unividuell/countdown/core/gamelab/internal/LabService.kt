@@ -102,6 +102,11 @@ class LabService(
             game = game.id,
             displayName = game.displayName,
             payload = game.reveal(seed),
+            // The one condition, and deliberately not `revealsOthersBeforeGuess`: "seeing the
+            // others" and "seeing the solution" are two questions, and the second has only one
+            // sensible answer in the lab. Whoever deletes their guess stands in front of the gate
+            // again.
+            solution = if (mine == null) null else game.solution(seed),
             me = mine,
             // Withheld, not filtered client-side: a payload the browser never receives cannot be
             // read out of the network tab either.

@@ -9,7 +9,7 @@
  */
 import { computed, ref, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
-import HueWheel from './HueWheel.vue'
+import HueWheelInput from './HueWheelInput.vue'
 
 const props = defineProps<{
   description: string
@@ -39,7 +39,9 @@ const color = computed(
 </script>
 
 <template>
-  <div class="rounded-xl border border-neutral-200 bg-white p-4">
+  <!-- `group` exists for one descendant: the centre button reacts to the leave class the lab
+       adapter's card transition puts on this element (`hue-card-leaving`). -->
+  <div class="group rounded-xl border border-neutral-200 bg-white p-4">
     <!--
       A rule, not a box: a bordered card inside a bordered card reads as clutter. `select-none`
       is not cosmetic — without it a thumb resting beside the wheel selects the text and raises
@@ -55,7 +57,7 @@ const color = computed(
     </blockquote>
 
     <div class="mt-6">
-      <HueWheel
+      <HueWheelInput
         v-model:hue="hue"
         :saturation="props.saturation"
         :lightness="props.lightness"
@@ -63,15 +65,20 @@ const color = computed(
         @boot-done="ready = true"
       >
         <template #center>
-          <HoldButton
-            :ready="ready"
-            :disabled="props.disabled"
-            :color="color"
-            label="Tipp bestätigen — gedrückt halten"
-            @confirm="emit('guess', hue)"
-          />
+          <!-- Beat 1 of the reveal: the button leaves before the card behind it does. -->
+          <div
+            class="size-full transition duration-200 ease-in group-[.hue-card-leaving]:scale-50 group-[.hue-card-leaving]:opacity-0 motion-reduce:transition-none"
+          >
+            <HoldButton
+              :ready="ready"
+              :disabled="props.disabled"
+              :color="color"
+              label="Tipp bestätigen — gedrückt halten"
+              @confirm="emit('guess', hue)"
+            />
+          </div>
         </template>
-      </HueWheel>
+      </HueWheelInput>
     </div>
 
     <p data-test="hue-hint" class="mt-8 text-xs text-neutral-500">

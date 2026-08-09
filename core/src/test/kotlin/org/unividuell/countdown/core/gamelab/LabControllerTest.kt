@@ -41,6 +41,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         game = "sample",
         displayName = "Zahlenraten (Attrappe)",
         payload = SamplePayload(lowerBound = 100, upperBound = 199),
+        solution = null,
         me = null,
         others = emptyList(),
         tookOverRound = tookOver,

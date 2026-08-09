@@ -13,6 +13,14 @@ interface LabPayload
 interface LabOutcome
 
 /**
+ * What a game may show once the viewer has spent their guess — the solution, and whatever else is
+ * only meaningful next to it. A second way out of the server, separate from [LabPayload] on
+ * purpose: putting it in the payload would also put it in front of the guess, and the payload's
+ * field-set test would lose its meaning.
+ */
+interface LabSolution
+
+/**
  * A game the lab can host.
  *
  * **This is a guess, not a contract.** It was derived from zero existing games. When the first
@@ -49,4 +57,14 @@ interface LabGame {
      * must throw rather than return `null`.
      */
     fun score(seed: Int, guess: JsonNode): LabOutcome?
+
+    /**
+     * What may be shown once the viewer has spent their guess. `null` — the default — is a game
+     * that reveals nothing.
+     *
+     * **Here a default is right, unlike [revealsOthersBeforeGuess].** There the unsafe direction
+     * ("show it") is the convenient one, so every game has to say it out loud. Here the default
+     * *is* the safe direction: a game that implements nothing reveals nothing.
+     */
+    fun solution(seed: Int): LabSolution? = null
 }

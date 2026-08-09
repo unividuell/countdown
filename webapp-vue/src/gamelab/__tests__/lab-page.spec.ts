@@ -47,6 +47,7 @@ const round: LabRoundResponse<SamplePayload> = {
   game: 'sample',
   displayName: 'Zahlenraten (Attrappe)',
   payload: { lowerBound: 100, upperBound: 199 },
+  solution: null,
   me: null,
   others: [],
   tookOverRound: false,
@@ -327,6 +328,7 @@ describe('lab page', () => {
       game: 'guess-hue',
       displayName: 'Farbausmalung',
       payload: { description: 'Erste Runde.', initHue: 10, saturation: 0.6, lightness: 0.45 },
+      solution: null,
       me: null,
       others: [],
       tookOverRound: false,
@@ -531,5 +533,35 @@ describe('lab page', () => {
 
     resolveAction(round)
     await flushPromises()
+  })
+
+  it('hands the game everything the reveal needs', async () => {
+    // The page is the only place that knows all three: what the server revealed, who is in the
+    // round, and which of them is the viewer.
+    currentParams = { slug: 'team', game: 'guess-hue' }
+    const mineHue = {
+      userId: 'u1',
+      username: 'Fry',
+      avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+      guess: { hue: 214.5 },
+      outcome: null,
+      at: '2026-08-09T12:00:00Z',
+    }
+    const theirHue = { ...mineHue, userId: 'u2', username: 'Bender', guess: { hue: 40 } }
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      seed: 42,
+      game: 'guess-hue',
+      displayName: 'Farbausmalung',
+      payload: { description: 'Eine Runde.', initHue: 10, saturation: 0.6, lightness: 0.45 },
+      solution: { targetHue: 210, toleranceDeg: 10 },
+      me: mineHue,
+      others: [theirHue],
+      tookOverRound: false,
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(2)
   })
 })

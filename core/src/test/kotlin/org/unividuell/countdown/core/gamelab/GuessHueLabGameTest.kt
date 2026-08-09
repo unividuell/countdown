@@ -9,10 +9,12 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.gamelab.internal.GuessHueLabGame
 import org.unividuell.countdown.core.gamelab.internal.GuessHuePayload
+import org.unividuell.countdown.core.gamelab.internal.GuessHueSolution
 import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
 import org.unividuell.countdown.core.guesshue.GuessHueDataset
 import org.unividuell.countdown.core.guesshue.GuessHueDifficulty
 import org.unividuell.countdown.core.guesshue.GuessHueEntry
+import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 
 class GuessHueLabGameTest {
@@ -101,5 +103,30 @@ class GuessHueLabGameTest {
         // Without scoring, another tester's angle is the only signal in the round — and a strong
         // one, because they read the same description.
         game.revealsOthersBeforeGuess shouldBe false
+    }
+
+    @Test
+    fun `the solution carries the target and the tolerance and nothing else`() {
+        // Same reasoning as the payload's field-set test: a new number that merely *narrows*
+        // something shows up only this way.
+        val json = mapper.writeValueAsString(game.solution(4711))
+        val fields = mapper.readTree(json).propertyNames().toSet()
+
+        fields shouldBe setOf("targetHue", "toleranceDeg")
+    }
+
+    @Test
+    fun `the solution is the angle the dataset drew, with the module's tolerance`() {
+        val target = dataset.draw(SeededRandom.fromSeed(4711))
+
+        val solution = game.solution(4711) as GuessHueSolution
+
+        solution.targetHue shouldBe target.hue
+        solution.toleranceDeg shouldBe GuessHueTolerance.DEGREES
+    }
+
+    @Test
+    fun `the same seed reveals the same solution`() {
+        game.solution(4711) shouldBe game.solution(4711)
     }
 }

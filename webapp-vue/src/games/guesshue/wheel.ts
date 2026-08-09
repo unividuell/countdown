@@ -2,6 +2,7 @@
  * The timings and proportions of the wheel, in one place so they can be tuned in the lab without
  * hunting through components.
  */
+import type { CSSProperties } from 'vue'
 
 /** One full turn of the knob while the ring paints itself behind it. */
 export const BOOT_SWEEP_MS = 800
@@ -31,3 +32,29 @@ export const KNOB_TRACK_FRACTION = 0.89
  * angle's last value for the moves that fall inside it.
  */
 export const CENTRE_HOLD_FRACTION = 0.08
+
+/**
+ * The knob's own size, as a fraction of the wheel. Shared with the reveal wheel's markers, so
+ * "my guess covers the knob exactly" is built rather than recomputed.
+ */
+export const KNOB_SIZE_FRACTION = 0.09
+
+/**
+ * Where a knob-sized box sits on the wheel: `top` puts its *centre* on [trackFraction] — the raw
+ * CSS property addresses the box's upper edge, hence subtracting half the box's own size. Width
+ * and height come along so the marker and the knob cannot drift apart in size either.
+ *
+ * Rounded because the arithmetic is percentages of percentages: 50 × (1 − 0.89) − 4.5 answers
+ * 1.0000000000000036 in IEEE754.
+ */
+export function trackBoxStyle(trackFraction: number): CSSProperties {
+  const size = `${KNOB_SIZE_FRACTION * 100}%`
+  const top = 50 * (1 - trackFraction) - (KNOB_SIZE_FRACTION * 100) / 2
+  return { top: `${Math.round(top * 10000) / 10000}%`, width: size, height: size }
+}
+
+/** Cubic, written as multiplication — `**` is fine here, but this reads as what it is. */
+export function easeOutCubic(t: number): number {
+  const u = 1 - t
+  return 1 - u * u * u
+}

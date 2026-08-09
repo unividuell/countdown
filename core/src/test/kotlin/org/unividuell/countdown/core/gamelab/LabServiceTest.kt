@@ -17,6 +17,7 @@ import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.gamelab.LabGame
 import org.unividuell.countdown.core.gamelab.LabOutcome
 import org.unividuell.countdown.core.gamelab.LabPayload
+import org.unividuell.countdown.core.gamelab.LabSolution
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
@@ -234,11 +235,14 @@ class LabServiceTest {
     }
 
     /**
-     * A game that accepts guesses without scoring them and hides the other testers until the
-     * viewer has guessed — the shape Guess Hue needs. Declared here rather than by flipping
-     * `SampleLabGame`, whose open behaviour is itself documented and tested.
+     * A game that accepts guesses without scoring them, hides the other testers until the viewer
+     * has guessed, and reveals a solution once they have — the shape Guess Hue needs. Declared
+     * here rather than by flipping `SampleLabGame`, whose open behaviour is itself documented and
+     * tested.
      */
     private object SecretivePayload : LabPayload
+
+    private object SecretiveSolution : LabSolution
 
     private class SecretiveGame : LabGame {
         override val id = "secretive"
@@ -246,6 +250,7 @@ class LabServiceTest {
         override val revealsOthersBeforeGuess = false
         override fun reveal(seed: Int) = SecretivePayload
         override fun score(seed: Int, guess: JsonNode): LabOutcome? = null
+        override fun solution(seed: Int) = SecretiveSolution
     }
 
     private val secretive = SecretiveGame()
@@ -304,5 +309,74 @@ class LabServiceTest {
         val response = service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
 
         response.others.map { it.username } shouldContainExactly listOf("bob")
+    }
+
+    @Test
+    fun `the solution stays behind the guess`() {
+        // The whole gate: `me == null` is the one condition, and it is checked server-side — a
+        // solution the browser never receives cannot be read out of the network tab either.
+        grantAccess()
+        secretiveService.guess(
+            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val before = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
+
+        before.solution.shouldBeNull()
+    }
+
+    @Test
+    fun `the solution arrives with my own guess`() {
+        grantAccess()
+
+        val after = secretiveService.guess(
+            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        after.solution shouldBe SecretiveSolution
+    }
+
+    @Test
+    fun `deleting my guess puts me back in front of the gate`() {
+        grantAccess()
+        secretiveService.guess(
+            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val afterForget =
+            secretiveService.forgetMine("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
+
+        afterForget.solution.shouldBeNull()
+    }
+
+    @Test
+    fun `a super-admin who is not a member gets no solution either`() {
+        // `resolve` lets a super-admin past the membership check — the one path that skips it —
+        // but `respond` gates the solution on having an entry of one's own, not on having access.
+        // A super-admin opening someone else's round must see the same `null` a denied non-member
+        // would have gotten if they had been let in: safe by construction today, and this pins it.
+        grantAccess()
+        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        secretiveService.guess(
+            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val response = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = true)
+
+        response.solution.shouldBeNull()
+    }
+
+    @Test
+    fun `a game that reveals nothing keeps answering null after a guess`() {
+        // The default is the safe direction, so the sample game inherits it without saying a word.
+        grantAccess()
+        val payload = game.reveal(42) as SamplePayload
+
+        val response = service.guess(
+            "team", "sample", 42, alice.id!!, isSuperAdmin = false,
+            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+        )
+
+        response.solution.shouldBeNull()
     }
 }
