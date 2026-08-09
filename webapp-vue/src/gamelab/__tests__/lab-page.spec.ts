@@ -356,27 +356,28 @@ describe('lab page', () => {
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 250deg')
   })
 
-  it('renders a row delete button only for index zero and a reset button when entries exist', async () => {
+  const mine = {
+    userId: 'u1',
+    username: 'Fry',
+    avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+    guess: { value: 150 },
+    outcome: null,
+    at: '2026-08-08T12:00:00Z',
+  }
+  const theirs = {
+    userId: 'u2',
+    username: 'Bender',
+    avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+    guess: { value: 160 },
+    outcome: null,
+    at: '2026-08-08T12:00:00Z',
+  }
+
+  it('renders a row delete button only on the row the viewer owns, and a reset below the list', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
-      me: {
-        userId: 'u1',
-        username: 'Fry',
-        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
-        guess: { value: 150 },
-        outcome: null,
-        at: '2026-08-08T12:00:00Z',
-      },
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { value: 160 },
-          outcome: null,
-          at: '2026-08-08T12:00:00Z',
-        },
-      ],
+      me: mine,
+      others: [theirs],
     } as never)
 
     const w = await mountPage()
@@ -384,6 +385,49 @@ describe('lab page', () => {
     expect(rows[0]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(true)
     expect(rows[1]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(false)
     expect(w.find('[data-test="lab-entries-reset"]').exists()).toBe(true)
+  })
+
+  it('offers no row delete button when the viewer has not guessed but others are revealed', async () => {
+    // Catches a delete action keyed on the row's position: `sample` reveals others before the
+    // viewer has guessed, so the first row is then a stranger's — and the button would sit on it
+    // offering to delete „meinen Guess“.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: null,
+      others: [theirs],
+    } as never)
+
+    const w = await mountPage()
+    expect(w.get('[data-test="lab-entries"]').findAll('li')).toHaveLength(1)
+    expect(w.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(false)
+    expect(w.find('[data-test="lab-entries-reset"]').exists()).toBe(true)
+  })
+
+  it('runs the list actions without asking the drawer to close', async () => {
+    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: mine,
+      others: [theirs],
+    } as never)
+    // Deleting my guess leaves the other tester's row standing, so the list — and the reset
+    // button under it — survives for the second half of this test.
+    vi.spyOn(api, 'forgetMyLabEntry').mockResolvedValue({
+      ...round,
+      me: null,
+      others: [theirs],
+    } as never)
+    const w = await mountPage()
+
+    await w.get('[data-test="lab-entry-forget-mine"]').trigger('click')
+    await flushPromises()
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
+
+    await w.get('[data-test="lab-entries-reset"]').trigger('click')
+    await flushPromises()
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('renders decorative keycaps on drawer round action buttons', async () => {

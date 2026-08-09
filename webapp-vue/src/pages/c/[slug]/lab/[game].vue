@@ -72,11 +72,12 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
   const shortcut = labShortcut(event)
   if (!shortcut) return
 
-  const target = event.target as Element | null
+  // `closest`, not `matches`: inside a rich-text host the event target is whichever inline element
+  // the caret sits in, and only its ancestor carries `contenteditable`.
+  const target = event.target
   if (
-    target &&
-    'matches' in target &&
-    target.matches('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
+    target instanceof Element &&
+    target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
   ) {
     return
   }
@@ -181,11 +182,14 @@ watch(
       @guess="guess"
     />
 
+    <!-- No drawer close on these two: they are triggered from the column, where nothing is in
+         the way of the result. -->
     <LabEntries
       :entries="entries"
+      :mine-user-id="round?.me?.userId ?? null"
       :busy="busy"
-      :on-forget-mine="() => void run(forgetMyLabEntry)"
-      :on-reset="() => void run(resetLabRound)"
+      @forget-mine="run(forgetMyLabEntry)"
+      @reset="run(resetLabRound)"
     />
   </div>
 </template>
