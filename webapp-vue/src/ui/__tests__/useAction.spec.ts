@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { useAction } from '@/ui/useAction'
+import { useAction, useKeyedAction } from '@/ui/useAction'
 
 /** A promise plus the handles to settle it, so a test can inspect the in-flight state. */
 function deferred() {
@@ -66,5 +66,43 @@ describe('useAction', () => {
 
     await run(() => Promise.resolve())
     expect(error.value).toBeNull()
+  })
+
+  it('runs different keys in parallel while exposing only their own busy states', async () => {
+    const { isBusy, run } = useKeyedAction()
+    const first = deferred()
+    const second = deferred()
+
+    const firstCall = run('approve:u1', () => first.promise)
+    const secondCall = run('approve:u2', () => second.promise)
+
+    expect(isBusy('approve:u1')).toBe(true)
+    expect(isBusy('approve:u2')).toBe(true)
+    expect(isBusy('reject:u1')).toBe(false)
+
+    first.resolve()
+    await firstCall
+    expect(isBusy('approve:u1')).toBe(false)
+    expect(isBusy('approve:u2')).toBe(true)
+
+    second.resolve()
+    await secondCall
+    expect(isBusy('approve:u2')).toBe(false)
+  })
+
+  it('drops only a duplicate key and clears it after its rejection', async () => {
+    const { isBusy, error, run } = useKeyedAction()
+    const request = deferred()
+    const duplicate = vi.fn(() => Promise.resolve())
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const pending = run('remove:u1', () => request.promise)
+    await run('remove:u1', duplicate)
+    expect(duplicate).not.toHaveBeenCalled()
+
+    request.reject(new Error('boom'))
+    await pending
+    expect(isBusy('remove:u1')).toBe(false)
+    expect(error.value).toBe('Aktion fehlgeschlagen.')
   })
 })
