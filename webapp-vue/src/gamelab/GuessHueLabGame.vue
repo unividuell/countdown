@@ -8,7 +8,7 @@
  * its own documented job — the wheel's starting angle after a reload — and `SampleGame` hangs off
  * the same prop.
  */
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
@@ -61,12 +61,28 @@ const guesses = computed<RevealGuess[]>(() =>
 )
 
 /**
- * Whether the reveal is something that *happened* here, or something that was already true when
- * this component mounted. A reload in a spent round lands on the finished picture: suspense belongs
- * to the moment of the guess, not to the load. Read once, at setup — that is exactly the question.
+ * Whether the reveal that is about to show is something that just *happened* here, rather than
+ * something that was already true when this instance mounted. Flips true only on a live
+ * null→non-null transition of the narrowed `solution` — never on the initial value, because a
+ * `watch` without `immediate: true` does not fire for it. That is what makes an instance that
+ * mounts already-revealed start `false` and stay there: a reload must not replay the choreography.
+ *
+ * A setup-time constant cannot do this correctly: the lab page keys the game component on
+ * `round.seed`, not on whether a guess exists, so the same instance can cross the revealed
+ * boundary more than once — reload into a spent round, delete the guess (`solution` back to
+ * `null`), guess again (`solution` non-null again) — and the second live transition must re-arm
+ * the beats just as the first would have.
+ *
+ * The default `pre` flush matters here: it runs this callback before the component re-renders, so
+ * the flag is already `true` by the time `GuessHueReveal` mounts and reads `animate` — that
+ * ordering is what lets the first beat happen at all. A later change to `flush` would silently
+ * break it.
  */
-const arrivedUnrevealed = solution.value === null
-const animate = computed(() => arrivedUnrevealed && solution.value !== null)
+const hasRevealedLive = ref(false)
+watch(solution, (now, before) => {
+  if (before === null && now !== null) hasRevealedLive.value = true
+})
+const animate = computed(() => hasRevealedLive.value)
 </script>
 
 <template>

@@ -164,6 +164,13 @@ describe('GuessHueLabGame, once the round is spent', () => {
     expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(3)
   })
 
+  it('shows the reveal card with no markers at all when a valid solution has no usable entries', () => {
+    const w = mountAdapter({ solution: SOLUTION, entries: [], mineUserId: null, disabled: true })
+
+    expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(0)
+  })
+
   it.each([
     ['a non-finite angle', entry('bad', NaN)],
     ['a string angle', entry('bad', '214')],
@@ -208,5 +215,33 @@ describe('GuessHueLabGame, once the round is spent', () => {
     })
 
     expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-100')
+  })
+
+  it('re-arms the reveal after a delete-and-reguess cycle in the same instance', async () => {
+    // The lab page keys the game component on `round.seed`, not on whether a guess exists, so the
+    // same instance can cross the revealed boundary twice: reload into a spent round (no live
+    // transition — the picture above pins that state), delete the guess, guess again. The second
+    // crossing is a live transition just like the first would have been, and must get its own
+    // choreography rather than the reload's finished-picture treatment.
+    const w = mountAdapter({
+      solution: SOLUTION,
+      entries: [entry('me', 214.5), entry('a', 40, '#cc3366')],
+      mineUserId: 'me',
+      disabled: true,
+    })
+    expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-100')
+
+    await w.setProps({ solution: null, entries: [], mineUserId: null, disabled: false })
+    expect(w.find('[data-test="hue-wheel"]').exists()).toBe(true)
+
+    await w.setProps({
+      solution: SOLUTION,
+      entries: [entry('me', 214.5), entry('a', 40, '#cc3366')],
+      mineUserId: 'me',
+      disabled: true,
+    })
+    expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-0')
   })
 })
