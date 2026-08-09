@@ -7,21 +7,31 @@ function utf16CodeUnitHash(value: string): number {
     hash ^= codeUnit.charCodeAt(0)
     hash = Math.imul(hash, 0x01000193)
   }
-  return hash
+  return hash & SEED_MAX
 }
 
 describe('initialSeed', () => {
   it.each([
-    ['sample', -1_763_474_777],
-    ['guess-hue', -1_512_093_407],
-    ['hütte', -965_460_697],
-  ])('derives the pinned signed FNV-1a seed for %s', (gameId, expectedSeed) => {
+    ['sample', 384_008_871],
+    ['guess-hue', 635_390_241],
+    ['hütte', 1_182_022_951],
+  ])('derives the pinned FNV-1a seed for %s', (gameId, expectedSeed) => {
     expect(initialSeed(gameId)).toBe(expectedSeed)
   })
 
   it('hashes UTF-8 bytes rather than UTF-16 code units', () => {
     expect(initialSeed('hütte')).not.toBe(utf16CodeUnitHash('hütte'))
   })
+
+  it.each(['sample', 'guess-hue', 'hütte', '', 'a'])(
+    'stays inside the non-negative seed range for %s',
+    (gameId) => {
+      // Catches a seed that reads back with a leading minus: this is the one testers quote most,
+      // and `parseSeed` would happily take it, so nothing else would notice.
+      expect(initialSeed(gameId)).toBeGreaterThanOrEqual(0)
+      expect(initialSeed(gameId)).toBeLessThanOrEqual(SEED_MAX)
+    },
+  )
 })
 
 describe('parseSeed', () => {
