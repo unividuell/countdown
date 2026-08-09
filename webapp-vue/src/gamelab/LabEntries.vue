@@ -44,7 +44,7 @@ defineProps<{
           data-test="lab-entry-forget-mine"
           :disabled="busy"
           aria-label="Meinen Tipp löschen"
-          class="flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-default disabled:opacity-40"
+          class="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-default disabled:opacity-40"
           @click="onForgetMine"
         >
           <IconTrash2 class="size-4" />
@@ -57,7 +57,7 @@ defineProps<{
         type="button"
         data-test="lab-entries-reset"
         :disabled="busy"
-        class="flex h-11 items-center gap-1.5 rounded-md px-3 text-xs text-neutral-500 hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40"
+        class="flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs text-neutral-500 hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40"
         @click="onReset"
       >
         <IconRotateCcw class="size-3.5" />
