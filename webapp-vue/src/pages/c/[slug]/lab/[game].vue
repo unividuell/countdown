@@ -178,6 +178,9 @@ watch(
       :payload="round.payload"
       :outcome="round.me?.outcome ?? null"
       :my-guess="round.me?.guess ?? null"
+      :solution="round.solution"
+      :entries="entries"
+      :mine-user-id="round.me?.userId ?? null"
       :disabled="busy || round.me !== null"
       @guess="guess"
     />

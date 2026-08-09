@@ -40,4 +40,26 @@ describe('SampleGame', () => {
 
     expect(w.emitted('guess')).toBeUndefined()
   })
+
+  it('takes none of the reveal props into the DOM', () => {
+    // The three reveal props are part of the contract, and the sample game wants none of them.
+    // Undeclared props fall through as attributes, and an array of entries would land in the DOM
+    // as `[object Object]`.
+    const w = mount(SampleGame, {
+      props: {
+        payload: { lowerBound: 1, upperBound: 100 },
+        outcome: null,
+        disabled: false,
+        myGuess: null,
+      },
+      attrs: {
+        solution: { targetHue: 1, toleranceDeg: 2 },
+        entries: [{ userId: 'x' }],
+        'mine-user-id': 'x',
+      },
+    })
+
+    expect(w.element.outerHTML).not.toContain('object Object')
+    expect(w.attributes('mine-user-id')).toBeUndefined()
+  })
 })

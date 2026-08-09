@@ -20,6 +20,11 @@ export interface LabRoundResponse<P = unknown> {
   game: string
   displayName: string
   payload: P
+  /**
+   * What the game revealed once the viewer had spent their guess; `null` in front of that gate.
+   * `unknown` for the same reason `payload` is generic — the shape belongs to the game.
+   */
+  solution: unknown
   me: LabEntryDto | null
   others: LabEntryDto[]
   /** True when this request displaced a round that was open on a different seed. */
@@ -44,4 +49,11 @@ export interface GuessHuePayload {
   /** Fractions, not percent. */
   saturation: number
   lightness: number
+}
+
+/** Guess Hue's solution. It reaches the client only once `me` is set — see the backend's gate. */
+export interface GuessHueSolution {
+  targetHue: number
+  /** Half-window, in degrees. `0` means "no window", not "no tolerance information". */
+  toleranceDeg: number
 }

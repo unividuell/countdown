@@ -2,6 +2,13 @@
 import { ref, watch } from 'vue'
 import type { SampleOutcome, SamplePayload } from './types'
 
+/**
+ * The three reveal props are part of the lab's component contract and this game wants none of
+ * them. Undeclared props fall through as attributes, and an array of entries would land in the DOM
+ * as `entries="[object Object]"`.
+ */
+defineOptions({ inheritAttrs: false })
+
 const props = defineProps<{
   payload: SamplePayload
   outcome: SampleOutcome | null
