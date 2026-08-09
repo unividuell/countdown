@@ -97,7 +97,10 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     @click="emit('reset')"
   >
     Runde zurücksetzen
-    <span aria-hidden="true" class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono">
+    <span
+      aria-hidden="true"
+      class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono"
+    >
       <IconCommand class="size-3" />
       <IconArrowUp class="size-3" />
       <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">X</kbd>
@@ -111,7 +114,10 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
     @click="emit('forgetMine')"
   >
     Meinen Guess löschen
-    <span aria-hidden="true" class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono">
+    <span
+      aria-hidden="true"
+      class="ml-auto flex items-center gap-0.5 text-xs text-neutral-400 font-mono"
+    >
       <IconCommand class="size-3" />
       <IconArrowUp class="size-3" />
       <kbd class="rounded border border-neutral-300 px-1 py-0.5 text-[10px] font-sans">Z</kbd>
