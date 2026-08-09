@@ -88,6 +88,15 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 
 ## Doubles & lifecycle
 
+- **Under `stubs: { teleport: true }`, grab elements *after* the state change that re-renders the
+  teleported slot.** The stub re-renders its content when a reactive value inside it flips, so a
+  node captured before the change is a detached copy — and every `Object.defineProperty` stub on it
+  (`clientHeight`, `offsetTop`, a mocked rect) is then read past in silence, against the live node's
+  happy-dom zeroes. Nothing throws; the assertion simply measures the wrong element and the test
+  reports whatever the zero-geometry fallback computes. Cost: `NavDrawer`'s scroll-cue spec stubbed
+  a 100/260 overflow before opening the drawer, and the component dutifully answered from a
+  `scrollHeight` of 0. `w.get(...).element === captured` is the one-line check when a stubbed
+  measurement inexplicably has no effect.
 - **A composable double whose value is bound directly in a template must be a real `ref()`, not a
   plain `{ value }` object.** `useAuth()` returns `readonly(ref(...))` and `App.vue` binds it
   directly (`v-if="user"`, `:user="user"` into `NavDrawer`). `<script setup>`'s compiler falls back

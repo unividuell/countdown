@@ -53,10 +53,12 @@ keine Tastenkürzel.
 ## Seedloser Einstieg
 
 Fehlt der `seed`-Query-Parameter oder ist er ungültig, ersetzt die Seite ihn vor dem ersten API-Call
-durch FNV-1a-32 über die UTF-8-Bytes der Spiel-ID (`gameId`). Der Hash wird als
-vorzeichenbehafteter 32-Bit-Integer in die URL geschrieben. Damit starten alle Geräte und Tabs
-eines Spiels bei derselben initialen Runde, während man mit „Würfeln“ weiterhin eine neue,
-zufällige Runde wählen kann.
+durch FNV-1a-32 über die UTF-8-Bytes der Spiel-ID (`gameId`). Der Hash wird auf 31 Bit maskiert und
+damit nicht-negativ in die URL geschrieben — aus demselben Grund, aus dem `rollSeed` nicht-negativ
+ist, und stärker noch: dies ist der Seed, auf dem am häufigsten jemand landet und den er weitergibt,
+also darf er nicht mit einem Minus beginnen. Damit starten alle Geräte und Tabs eines Spiels bei
+derselben initialen Runde, während man mit „Würfeln“ weiterhin eine neue, zufällige Runde wählen
+kann.
 
 Die Hashfunktion ist eine Frontend-Umrechnung zur URL-Reparatur; der Server bekommt weiterhin nur
 den numerischen Seed. Sie folgt der vorhandenen FNV-1a-32-Konvention, um UTF-16-abhängige
@@ -64,11 +66,14 @@ Ergebnisse zu vermeiden.
 
 ## Tipp-Liste
 
-`LabEntries` erhält vom Aufrufer die Aktion zum Löschen des eigenen Tipps und zum Zurücksetzen der
-Runde:
+`LabEntries` meldet beide Aktionen als Events an die Seite, wie jede andere Komponente im Projekt
+auch; die Seite hält die asynchronen Abläufe:
 
-- Nur die als eigener Tipp markierte erste Zeile zeigt eine Löschaktion.
-- Oberhalb oder unterhalb der Liste steht eine Aktion zum Zurücksetzen der gesamten Runde.
+- Die Löschaktion hängt an der Identität, nicht an der Position: nur die Zeile, deren `userId` der
+  vom Aufrufer übergebenen eigenen `userId` entspricht, zeigt sie. Ein Spiel, das fremde Tipps
+  schon vor dem eigenen Rateversuch aufdeckt (`revealsOthersBeforeGuess`), setzt sonst eine fremde
+  Zeile an Position eins — und die Aktion „Meinen Guess löschen“ läge auf ihr.
+- Unterhalb der Liste steht eine Aktion zum Zurücksetzen der gesamten Runde.
 - Beide Aktionen verwenden dieselben asynchronen Abläufe wie die Drawer-Varianten und schließen
   den Drawer nicht, weil sie außerhalb davon ausgelöst werden.
 
@@ -76,20 +81,31 @@ Die Liste bleibt weiterhin vollständig unsichtbar, solange keine Einträge sich
 
 ## Mobiler Scroll-Hinweis
 
-Der scrollbare Mittelteil von `NavDrawer` bestimmt anhand von `scrollTop`, `clientHeight` und
-`scrollHeight`, ob darunter noch Inhalt sichtbar werden kann. In diesem Zustand liegt ein
-dekorativer, nicht fokussierbarer Verlauf mit Chevron am unteren Rand des Scrollbereichs. Am
-Listenende verschwindet er. Er ist keine Animation und ersetzt keine Bedienung; Scrollen per
-Touch, Maus und Tastatur bleibt unverändert.
+Der scrollbare Mittelteil von `NavDrawer` bestimmt anhand von `scrollTop`, `clientHeight` und der
+Position des Logo-Blocks, ob darunter noch eine ungesehene Zeile liegt. Das Logo ist die Kante,
+nicht `scrollHeight`: es wächst in den verbleibenden Leerraum hinein, und eine Liste, die deutlich
+oberhalb des unteren Rands endet, hielte den Hinweis sonst dauerhaft oben — mit nichts darunter
+als dem Logo.
+
+Der Hinweis wird nicht nur beim Öffnen, beim Scrollen und bei Größenänderung neu bestimmt, sondern
+auch, wenn Zeilen nachträglich eintreffen: die Spielgemeinschaftsliste ist beim Öffnen noch
+unterwegs, und die Werkzeuge einer Seite werden erst beim Mount dorthin teleportiert. Ein Drawer,
+der erst dadurch überläuft, bekäme sonst gar keinen Hinweis.
+
+In diesem Zustand liegt ein dekorativer, nicht fokussierbarer Verlauf mit Chevron am unteren Rand
+des Scrollbereichs. Am Listenende verschwindet er. Der Chevron federt zweimal und steht unter
+`prefers-reduced-motion` still; er ersetzt keine Bedienung, Scrollen per Touch, Maus und Tastatur
+bleibt unverändert.
 
 ## Fehlerbehandlung und Tests
 
 - Erfolgreiche Antworten aktualisieren den Rundenzustand. Nur erfolgreiche Drawer-Aktionen senden
   das Schließsignal.
 - Fehler behalten die bestehende sichtbare Fehlermeldung bei und lassen den Drawer offen.
-- Vitest prüft den stabilen FNV-Seed und den seedlosen Einstieg, Shortcuts einschließlich
-  Eingabefeld-Schutz und Busy-Sperre, das Schließen nur nach Erfolg, die Listenaktionen sowie das
-  Erscheinen und Verschwinden des Scroll-Hinweises.
+- Vitest prüft den stabilen FNV-Seed samt Nicht-Negativität und den seedlosen Einstieg, Shortcuts
+  einschließlich Eingabefeld-Schutz und Busy-Sperre, das Schließen nur nach Erfolg, die
+  Listenaktionen in beiden Konstellationen (mit und ohne eigenen Tipp) sowie das Erscheinen und
+  Verschwinden des Scroll-Hinweises, auch bei nachträglich eintreffenden Zeilen.
 - Bestehende API- und Backend-Verträge bleiben unverändert.
 
 ## Nicht-Ziele
