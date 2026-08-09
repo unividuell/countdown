@@ -7,6 +7,7 @@ import { _resetCommunitiesState } from '@/communities/useCommunities'
 import { useAuth } from '@/auth/useAuth'
 import * as api from '@/api/communities'
 import { communityPath } from '@/communities/routes'
+import { requestDrawerClose } from '@/nav/drawerControl'
 import type { CommunitySummary, MeResponse } from '@/api/types'
 
 enableAutoUnmount(afterEach)
@@ -115,6 +116,86 @@ describe('NavDrawer mechanics', () => {
     const drawer = w.get('[data-test=nav-drawer]')
     expect(drawer.attributes('inert')).toBeUndefined()
     expect(drawer.attributes('aria-hidden')).toBeUndefined()
+  })
+
+  it('closes an open drawer when a page requests it', async () => {
+    // Catches a missing or disconnected drawer-close command channel: a page action must be
+    // able to close the real, currently-open global drawer without knowing its internals.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+
+    requestDrawerClose()
+    await nextTick()
+
+    expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('shows a scroll cue only until the logo container comes into view', async () => {
+    // Catches a missing or stale overflow affordance: the visual cue must disappear as soon as
+    // the logo container enters the viewport, where content ends.
+    const w = render()
+    const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 200 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 150 })
+
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+
+    scroll.scrollTop = 55
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
+  })
+
+  it('re-reads the overflow when rows arrive after the drawer is already open', async () => {
+    // Catches a cue decided once against a list still in flight: the community list and a page's
+    // teleported tools both land after open, and a drawer that overflows only then would show no
+    // hint at all — on exactly the drawer the hint exists for.
+    //
+    // The dimensions are stubbed AFTER opening on purpose: the drawer sits in a <Teleport>, and
+    // the stub re-renders its slot when `open` flips, so nodes grabbed before the click are
+    // detached copies and every stub on them is silently read past.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    await flushPromises()
+
+    const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 100 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 40 })
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
+
+    // A row lands — and nothing scrolls, resizes or re-opens to prompt a second look.
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 260 })
+    scroll.appendChild(document.createElement('div'))
+    await flushPromises()
+    await nextTick()
+
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+  })
+
+  it('leaves no close listener behind that a later request could trip over', async () => {
+    // The channel is module-level, so a subscription that outlives its component would be called
+    // for the rest of the session. That the set is emptied is `drawerControl`'s own test; this
+    // one covers the other half — unmounting mid-open must not leave a request throwing.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    w.unmount()
+
+    expect(() => requestDrawerClose()).not.toThrow()
+    expect(document.querySelector('[data-test=nav-drawer]')).toBeNull()
   })
 
   it('names the toggle for its current action', async () => {
