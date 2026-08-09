@@ -50,6 +50,29 @@ describe('HueWheelReveal', () => {
     expect(markers[1]!.element.style.backgroundColor).toMatch(/#cc3366|rgb\(204, ?51, ?102\)/i)
   })
 
+  it('gives every marker a white rim and no label, as the design states', () => {
+    const w = mountWheel()
+
+    for (const marker of w.findAll('[data-test="hue-marker"]')) {
+      expect(marker.classes()).toEqual(expect.arrayContaining(['ring-2', 'ring-white']))
+      expect(marker.text()).toBe('')
+    }
+  })
+
+  it('does not style my own marker any differently from the others, beyond the fade', () => {
+    // The design is explicit that mine is not highlighted — the choreography (it grows out of
+    // the knob) says that more clearly than a special style would. `animate: true` makes the
+    // opacity actually differ between mine and the rest, so filtering it out is what isolates
+    // "everything else" rather than trivially comparing two already-identical lists.
+    const w = mountWheel({ animate: true })
+    const [mine, other] = w.findAll('[data-test="hue-marker"]')
+
+    const withoutOpacity = (classes: string[]): string[] =>
+      classes.filter((c) => !c.startsWith('opacity-')).sort()
+
+    expect(withoutOpacity(mine!.classes())).toEqual(withoutOpacity(other!.classes()))
+  })
+
   it('turns each marker to its own angle', () => {
     const rotators = mountWheel().findAll('[data-test="hue-marker-rotator"]')
 

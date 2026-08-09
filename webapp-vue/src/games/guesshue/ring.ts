@@ -1,9 +1,9 @@
 /**
  * The painted rainbow band, as one style object.
  *
- * Lifted out of `HueWheel.vue` because both wheels — the one that takes input and the one that
- * shows the result — paint exactly the same ring, and because a mask string composed by hand is
- * worth asserting on without mounting anything.
+ * Lifted out of `HueWheelInput.vue` because both wheels — the one that takes input and the one
+ * that shows the result — paint exactly the same ring, and because a mask string composed by hand
+ * is worth asserting on without mounting anything.
  */
 import type { CSSProperties } from 'vue'
 

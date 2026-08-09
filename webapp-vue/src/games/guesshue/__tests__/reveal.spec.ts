@@ -152,6 +152,27 @@ describe('the sector', () => {
     expect(solution).toBe('M 0.89,0.5 L 1,0.5')
   })
 
+  it('draws only the solution line once the half-window covers the whole circle', () => {
+    // GuessHueTolerance.DEGREES is documented on the backend as free to change without a
+    // frontend release, so a half-window at or above 180° has to fall back to the same shape as
+    // zero tolerance, not to the clamped-span arithmetic that used to draw the window's
+    // complement.
+    const { window, solution } = sectorPaths(90, 200, 0.78)
+
+    expect(window).toBeNull()
+    expect(solution).toBe('M 0.89,0.5 L 1,0.5')
+  })
+
+  it('draws only the solution line at exactly a 180° half-window', () => {
+    // The boundary case: the two endpoints of a 180° window coincide, so SVG would drop the
+    // zero-length arc and leave two bare radial lines with no closed window — drawing nothing at
+    // all is the honest picture instead.
+    const { window, solution } = sectorPaths(90, 180, 0.78)
+
+    expect(window).toBeNull()
+    expect(solution).toBe('M 0.89,0.5 L 1,0.5')
+  })
+
   it('follows the band inward as it grows', () => {
     expect(sectorPaths(90, 90, 0.5).solution).toBe('M 0.75,0.5 L 1,0.5')
   })

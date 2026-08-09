@@ -141,7 +141,11 @@ export function layoutGuesses(guesses: RevealGuess[], mineUserId: string | null)
 }
 
 export interface SectorPaths {
-  /** The dashed window: two boundary lines and the two arcs that close them. `null` at zero tolerance. */
+  /**
+   * The dashed window: two boundary lines and the two arcs that close them. `null` at zero
+   * tolerance, and `null` again once the half-window reaches 180° — a window that wide has no
+   * boundary left to draw, the whole circle counts.
+   */
   window: string | null
   /** The solid line at the solution itself. */
   solution: string
@@ -187,9 +191,23 @@ export function sectorPaths(
   const solution = radial(targetHue)
   if (toleranceDeg <= 0) return { window: null, solution }
 
+  // A half-window of 180° or more covers the whole circle: there is no boundary left to draw, the
+  // same picture as zero tolerance. Below 180° the window's actual clockwise sweep from
+  // `target − toleranceDeg` to `target + toleranceDeg` is `2 · toleranceDeg`, but clamping that
+  // span to 360° (as the code used to) keeps the large-arc-flag's `1` past 90° while the arc
+  // endpoints keep moving with the true, unclamped span — so the two boundary points end up
+  // closer together than 180° apart while the flag says "go the long way", and the arc is drawn
+  // the wrong way round: it closes the small gap between the endpoints instead of sweeping the
+  // large window between them. At exactly 180° the two endpoints coincide and SVG drops the
+  // zero-length arc entirely, leaving two radial lines and no closed window at all. `toleranceDeg`
+  // is a number `GuessHueTolerance.DEGREES` documents the backend as free to change without a
+  // frontend release, so this has to be correct for any finite value, not just the values in use
+  // today.
+  if (toleranceDeg >= 180) return { window: null, solution }
+
   const from = targetHue - toleranceDeg
   const to = targetHue + toleranceDeg
-  const span = Math.min(360, toleranceDeg * 2)
+  const span = toleranceDeg * 2
   return {
     window: [
       radial(from),

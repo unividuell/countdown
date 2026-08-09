@@ -78,6 +78,33 @@ describe('GuessHueLabGame', () => {
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
   })
+
+  it('pins the beat-1 seam: the same class name on both sides of the Transition', () => {
+    // happy-dom computes no CSS, and vue-test-utils stubs <Transition> itself by default, so no
+    // test here can see the button actually leave before the card behind it does. What can be
+    // pinned is the seam three files have to agree on without anything checking it: the leave
+    // class the adapter's <Transition> names, the group the board's root carries so a
+    // Tailwind `group-[…]` selector has something to key off, and the centre wrapper's own
+    // classes that reference it. Rename or reorder any one of the three and beat 1 silently stops
+    // happening with every other test in this suite still green.
+    const w = mountAdapter()
+
+    expect(w.get('transition-stub').attributes('leaveactiveclass')).toContain('hue-card-leaving')
+
+    const board = w.get('[data-test="hue-description"]').element.closest('.group')
+    expect(board).not.toBeNull()
+
+    const centreWrapper = w.get('[class*="hue-card-leaving"]')
+    expect(centreWrapper.classes().some((c) => c.includes('hue-card-leaving'))).toBe(true)
+  })
+
+  it("keeps the input card in the crossfade's shared grid cell", () => {
+    // Both cards need `[grid-area:1/1]` so the surroundings stay as tall as the taller card
+    // during the switch — losing it on either one would stack the cards vertically instead.
+    const board = mountAdapter().get('[data-test="hue-description"]').element.closest('.group')!
+
+    expect(board.className).toContain('[grid-area:1/1]')
+  })
 })
 
 const SOLUTION = { targetHue: 210, toleranceDeg: 10 }
@@ -169,6 +196,13 @@ describe('GuessHueLabGame, once the round is spent', () => {
 
     expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
     expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(0)
+  })
+
+  it("keeps the reveal card in the crossfade's shared grid cell", () => {
+    const w = mountAdapter({ solution: SOLUTION, entries: [], mineUserId: null, disabled: true })
+    const revealCard = w.get('[data-test="hue-wheel-reveal"]').element.closest('.rounded-xl')!
+
+    expect(revealCard.className).toContain('[grid-area:1/1]')
   })
 
   it.each([

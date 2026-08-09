@@ -32,9 +32,9 @@ export function angleFromPoint(x: number, y: number, box: Box): number {
 
 /**
  * How far the point sits from the centre, as a fraction of the wheel's radius — 0 at the centre,
- * 1 at the edge. Used for two things in `HueWheel.vue`: gating which presses may *start* a drag
- * (only the rainbow band may), and the centre-stability guard during one already running — near
- * the centre a millimetre of finger movement is a ninety-degree jump in [angleFromPoint].
+ * 1 at the edge. Used for two things in `HueWheelInput.vue`: gating which presses may *start* a
+ * drag (only the rainbow band may), and the centre-stability guard during one already running —
+ * near the centre a millimetre of finger movement is a ninety-degree jump in [angleFromPoint].
  */
 export function radiusFraction(x: number, y: number, box: Box): number {
   const radius = Math.min(box.width, box.height) / 2

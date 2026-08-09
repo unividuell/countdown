@@ -350,6 +350,23 @@ class LabServiceTest {
     }
 
     @Test
+    fun `a super-admin who is not a member gets no solution either`() {
+        // `resolve` lets a super-admin past the membership check — the one path that skips it —
+        // but `respond` gates the solution on having an entry of one's own, not on having access.
+        // A super-admin opening someone else's round must see the same `null` a denied non-member
+        // would have gotten if they had been let in: safe by construction today, and this pins it.
+        grantAccess()
+        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        secretiveService.guess(
+            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        )
+
+        val response = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = true)
+
+        response.solution.shouldBeNull()
+    }
+
+    @Test
     fun `a game that reveals nothing keeps answering null after a guess`() {
         // The default is the safe direction, so the sample game inherits it without saying a word.
         grantAccess()
