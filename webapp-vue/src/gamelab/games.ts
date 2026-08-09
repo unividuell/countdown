@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import GuessHueLabGame from './GuessHueLabGame.vue'
 import SampleGame from './SampleGame.vue'
 
 export interface LabGameEntry {
@@ -23,6 +24,7 @@ export interface LabGameEntry {
  */
 export const labGameList: readonly LabGameEntry[] = [
   { id: 'sample', title: 'Zahlenraten (Attrappe)', component: SampleGame },
+  { id: 'guess-hue', title: 'Farbausmalung', component: GuessHueLabGame },
 ]
 
 /** Lookup by URL segment, for the game page. */

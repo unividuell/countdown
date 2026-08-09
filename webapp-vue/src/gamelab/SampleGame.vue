@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { SampleOutcome, SamplePayload } from './types'
 
 const props = defineProps<{
   payload: SamplePayload
   outcome: SampleOutcome | null
   disabled: boolean
+  myGuess: unknown
 }>()
 const emit = defineEmits<{ guess: [value: unknown] }>()
 
-const value = ref<number | null>(null)
+function storedValue(guess: unknown): number | null {
+  if (typeof guess !== 'object' || guess === null) return null
+  const value = (guess as { value?: unknown }).value
+  // Matches the same guard in `GuessHueLabGame.vue`: a stale round could hand back `NaN`, and
+  // `typeof NaN === 'number'` lets it straight through to the input.
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+const value = ref<number | null>(storedValue(props.myGuess))
+// The lab page keeps this component mounted across a seed change — only the props change, not the
+// instance — so the prefill must follow `myGuess` rather than snapshot it once, or a new round
+// would keep showing the previous round's guess.
+watch(
+  () => props.myGuess,
+  (guess) => {
+    value.value = storedValue(guess)
+  },
+)
 
 const DIRECTIONS: Record<SampleOutcome['direction'], string> = {
   HIGHER: 'Die gesuchte Zahl ist größer.',

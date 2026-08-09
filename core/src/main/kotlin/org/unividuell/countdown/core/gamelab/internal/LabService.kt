@@ -96,13 +96,20 @@ class LabService(
                 at = entry.at,
             )
         }
+        val mine = dtos.firstOrNull { it.userId == me }
         return LabRoundResponse(
             seed = snapshot.seed,
             game = game.id,
             displayName = game.displayName,
             payload = game.reveal(seed),
-            me = dtos.firstOrNull { it.userId == me },
-            others = dtos.filter { it.userId != me },
+            me = mine,
+            // Withheld, not filtered client-side: a payload the browser never receives cannot be
+            // read out of the network tab either.
+            others = if (mine == null && !game.revealsOthersBeforeGuess) {
+                emptyList()
+            } else {
+                dtos.filter { it.userId != me }
+            },
             tookOverRound = snapshot.tookOverRound,
         )
     }

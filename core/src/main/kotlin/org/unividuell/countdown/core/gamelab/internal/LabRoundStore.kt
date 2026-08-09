@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicLong
 data class LabEntry(
     val userId: UUID,
     val guess: JsonNode,
-    val outcome: LabOutcome,
+    /** `null` where the game accepts guesses without scoring them. */
+    val outcome: LabOutcome?,
     /** Display order only — never a score. Timing is deliberately out of scope for the lab. */
     val at: Instant,
 )
@@ -65,7 +66,7 @@ class LabRoundStore(private val clock: Clock) {
         seed: Int,
         userId: UUID,
         guess: JsonNode,
-        outcome: LabOutcome,
+        outcome: LabOutcome?,
     ): RecordResult {
         val (round, tookOver) = openRound(Key(communityId, gameId), seed)
         val entry = LabEntry(userId, guess, outcome, clock.instant())

@@ -45,6 +45,57 @@ desktop layout that was written first).
   transform on many of them costs a full style and paint pass every frame, while animating a paint
   property like `fill` alone costs almost nothing. `will-change` does not change this; a canvas
   renderer is the only route to the GPU, so keep the concurrent element count down instead.
+- **The resting appearance must be correct without the animation; the animation may only cover the
+  transition.** `HoldButton` was written to be "absent, then spring in", but nothing bound its
+  resting state to `ready` — only the pop-in keyframes touched transform and opacity. So wherever
+  the animation was skipped (reduced motion, a hidden tab, happy-dom's missing `Element.animate`),
+  the button sat fully visible from the first frame, merely non-interactive. Bind the final state
+  declaratively, then animate.
+- **An element animated in from nothing needs `inert` until it arrives**, not merely invisible —
+  otherwise it is tabbable, and a hold-to-confirm gesture on it can complete unseen. Bind it as
+  `:inert="!ready || undefined"`; a plain `false` stays in the DOM and stays in effect.
+
+### A control that is not a rectangle
+
+Three traps, all invisible to tests (happy-dom computes no layout, no masks, no clipping) and all
+looking alike from the source. `HueWheel` hit every one of them.
+
+- **`touch-action` is the intersection over the hit element and every ancestor**, so a descendant can
+  only ever *remove* panning, never restore it. A `touch-action: auto` shim inside a `none` root does
+  nothing at all. Put `none` on the element that actually claims the gesture and leave the ancestors
+  alone.
+- **`mask` does not affect hit-testing; `clip-path` does.** A disc masked into a ring still swallows
+  every touch in its hole. Where the *shape* decides who gets the event, the shape has to be a clip.
+- **Sibling shapes in one `<clipPath>` are unioned, not combined by fill rule.** `clip-rule="evenodd"`
+  resolves subpaths *within a single path* — two concentric `<circle>`s therefore clip to the outer
+  disc and punch no hole. An annulus is **one `<path>` with two subpaths**. Derive its inner radius
+  from the same constant the hit test and the mask use, or the three drift apart silently.
+
+Verify these by measurement, not by reading: `document.elementFromPoint(x, y)` plus
+`getComputedStyle(el).touchAction` up the ancestor chain answers all three in one console call, and
+it is the only proof available — no unit test can see them.
+
+### Controls inside controls
+
+- **A gesture that commits something must not be reachable by a single key.** Hold-to-confirm on the
+  pointer and `Enter` on the keyboard are not the same safeguard: a synthetic click from voice
+  control or assistive tech fires the second and never the first. Give the keyboard the *same*
+  gesture — `keydown` starts the hold, `keyup` abandons it, `event.repeat` is ignored, and the
+  default is prevented so the button's own click never fires. It fails closed. The residual limit
+  (someone who cannot hold a key for the full duration) is real and belongs in the spec, not in a
+  cheaper fallback. `ui/HoldButton.vue` is the worked example.
+- **A container that reads raw pointer events must exempt whatever it nests.** `pointerdown` bubbles,
+  so a press on the button in `HueWheel`'s centre slot reached the wheel, which captured the pointer
+  and began a drag — and the wheel then followed every later move, so the angle finally submitted was
+  not the one the player aimed at. A radius-based dead zone does **not** cover this: it suppresses the
+  first jump and nothing after it. Put `@pointerdown.stop` on the slot wrapper — the container owns
+  its slot and decides presses there are not its business, and the nested control stays ignorant of
+  ever being nested. Watch too for a dead-zone radius that exactly equals the nested control's radius:
+  equal constants are a knife-edge, and changing either one later opens a gap in silence.
+- **Wrap `setPointerCapture` in a `try`/`catch`.** It throws `NotFoundError` for a pointer the
+  browser is not tracking, and an exception inside a listener is swallowed by `dispatchEvent` — so a
+  bare call that fails aborts the rest of the handler and leaves the control dead with no error
+  anywhere. Dragging without capture degrades only at the edges; not dragging at all is broken.
 
 ### Sizing that doesn't do what it looks like
 

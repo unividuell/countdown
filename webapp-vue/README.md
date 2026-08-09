@@ -30,6 +30,7 @@ lists every game the lab can draw:
 ```
 /c/<slug>/lab              # the index
 /c/<slug>/lab/sample       # a game; the page rolls a seed and writes it into the URL
+/c/<slug>/lab/guess-hue    # Farbausmalung — the first real game
 /c/<slug>/lab/sample?seed=42   # a specific round
 ```
 
@@ -42,6 +43,11 @@ because a game review judges the look of the page as much as the game. Nothing i
 anywhere: you type the URL. The lab answers "not available" wherever `app.game-lab.enabled` is off
 (always in production). "Spieler wechseln" goes through the test-user picker and returns to the
 same seed.
+
+Guess Hue reads its descriptions from the encrypted dataset. Without `app.guess-hue.dataset-path`
+the backend falls back to the bundled six-entry sample and says so in the startup log — the game is
+playable either way, but the texts are placeholders and nothing about the *content* can be judged
+from them. See [game-content.md](../.claude/guidelines/game-content.md) and `core/README.md`.
 
 Adding a game: one entry in `src/gamelab/games.ts` plus its component, and a `LabGame`
 implementation in the backend's `gamelab` module. See

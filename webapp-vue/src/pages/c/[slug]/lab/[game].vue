@@ -18,7 +18,7 @@ import LabEntries from '@/gamelab/LabEntries.vue'
 import { labGames } from '@/gamelab/games'
 import { parseSeed, rollSeed } from '@/gamelab/seed'
 import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
-import type { LabRoundResponse } from '@/gamelab/types'
+import type { LabEntryDto, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]')
 const router = useRouter()
@@ -61,6 +61,17 @@ async function guess(value: unknown): Promise<void> {
   if (current === null) return
   await run((slug, game) => submitLabGuess(slug, game, current, value))
 }
+
+/**
+ * The complete picture of the round: the viewer's own entry first, then everyone else's. The
+ * backend withholds `others` until the viewer has guessed, so before that this is empty — `me` is
+ * the only thing ever populated ahead of it.
+ */
+const entries = computed<LabEntryDto[]>(() => {
+  const current = round.value
+  if (!current) return []
+  return current.me ? [current.me, ...current.others] : current.others
+})
 
 // The seed is the single source of truth. An absent or unusable one is repaired into the URL
 // before anything is loaded, so a reload always replays exactly the same round.
@@ -122,15 +133,27 @@ watch(
          drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
+    <!--
+      Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
+      step for one tick whenever rolling writes the new seed to the URL before the matching round
+      has come back. Keying on the URL seed would remount right then, capturing the previous
+      round's data as if it were the new one (the entrance animation starts from the wrong angle
+      and never gets a second chance to run); `round.seed` only changes once the new round's data
+      is actually here, so the remount and the data land together. The sample game leans on the
+      same remount to drop a scratch value the player typed but never submitted from the round
+      before.
+    -->
     <component
       :is="gameComponent"
       v-if="round"
+      :key="round.seed"
       :payload="round.payload"
       :outcome="round.me?.outcome ?? null"
+      :my-guess="round.me?.guess ?? null"
       :disabled="busy || round.me !== null"
       @guess="guess"
     />
 
-    <LabEntries :entries="round?.others ?? []" />
+    <LabEntries :entries="entries" />
   </div>
 </template>

@@ -9,6 +9,7 @@ export interface LabEntryDto {
   username: string
   avatar: AvatarView
   guess: unknown
+  /** `null` where the game accepts guesses without scoring them. */
   outcome: unknown
   /** Display order only. The lab does not score time. */
   at: string
@@ -34,4 +35,13 @@ export interface SampleOutcome {
   correct: boolean
   distance: number
   direction: 'HIGHER' | 'LOWER' | 'EXACT'
+}
+
+/** Guess Hue's payload. The target hue is absent by design — see the backend's field-set test. */
+export interface GuessHuePayload {
+  description: string
+  initHue: number
+  /** Fractions, not percent. */
+  saturation: number
+  lightness: number
 }

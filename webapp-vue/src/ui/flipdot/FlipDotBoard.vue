@@ -14,32 +14,10 @@ import {
   RADIUS,
   STAGGER_MS,
 } from './board'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{ text: string; label: string }>()
 const emit = defineEmits<{ phase: ['white' | 'live'] }>()
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
-/**
- * Whether the board is off screen, in which case it must not animate at all.
- *
- * Gecko pauses the refresh driver for a background tab: an animation created there never advances,
- * so it never finishes and is never released. The readout changes once a second whether anyone is
- * looking or not, and one animation per flipped dot then accumulates without bound — measured in
- * Firefox at 2824 live animations after two minutes in the background, against 58 in a foreground
- * tab. Over a working day that is hundreds of thousands of animation objects and gigabytes of
- * resident memory, which is what was crashing the tab.
- *
- * Skipping the flip costs nothing: it is a reveal, and there is nobody there to see it.
- */
-function inBackground(): boolean {
-  return document.hidden
-}
 
 function uniform(b: Bitmap, on: boolean): Bitmap {
   return { cols: b.cols, rows: b.rows, on: b.on.map(() => on) }

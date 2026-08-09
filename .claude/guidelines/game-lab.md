@@ -70,6 +70,26 @@ tester in the round — including one who has not guessed yet. `SampleLabGame` a
 the lab has no competitive stake; a real game must make a deliberate, per-game call on whether
 `others` should be withheld until `me != null`, not inherit the lab's default by copying the sample.
 
+That decision now has a place to live. `LabGame.revealsOthersBeforeGuess` is **abstract, with no
+default** — every game states it, because a default is precisely the invitation to inherit it. Guess
+Hue answers `false`: without scoring, another tester's guess is the only signal the round carries,
+and whoever produced it had read the same description. `LabService` withholds the list **server-side**
+rather than letting the client filter it — a payload the browser never receives cannot be read out of
+the network tab either.
+
+`LabGame.score` returns `LabOutcome?`, so a game may accept and validate a guess without judging it.
+`null` means "stored, not scored"; **throwing stays the only way to refuse an invalid guess**, and it
+must stay that way, because `LabService` calls `score()` before the store so a malformed guess never
+consumes the player's single attempt.
+
+## The component contract carries the viewer's own guess
+
+Every lab game component receives `myGuess` alongside `payload`. The payload is derived from the seed
+alone — it describes the *round*, not the player — so without this a reload lands on the round's
+opening state in a round the viewer has already spent: Guess Hue's wheel would sit on the starting
+angle rather than on the angle that was submitted. Narrow it defensively; it is `unknown` by contract,
+and `typeof x === 'number'` alone lets `NaN` through all the way to the screen.
+
 ## What the lab deliberately cannot check
 
 The lab's seed is **public, in the URL** — requirement 2 demands it. So the lab verifies "the

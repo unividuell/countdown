@@ -1,12 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
-import type { LabRoundResponse, SamplePayload } from '@/gamelab/types'
+import SampleGame from '@/gamelab/SampleGame.vue'
+import type { GuessHuePayload, LabRoundResponse, SamplePayload } from '@/gamelab/types'
 
 const replace = vi.fn()
-let currentQuery: Record<string, unknown> = { seed: '42' }
+/**
+ * Reactive, and mutated in place rather than reassigned, because one test relies on the same
+ * caveat the real bug hinges on: Vue Router's `route.query` updates in place for a query-only
+ * navigation (no remount of the page), which is exactly what lets `router.replace({ query })` race
+ * ahead of a round response landing. A plain reassigned object here would not track at all.
+ */
+const currentQuery = reactive<Record<string, unknown>>({ seed: '42' })
 let currentParams: Record<string, string> = { slug: 'team', game: 'sample' }
+
+function setQuery(next: Record<string, unknown>): void {
+  for (const key of Object.keys(currentQuery)) delete currentQuery[key]
+  Object.assign(currentQuery, next)
+}
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace }),
@@ -37,9 +50,18 @@ const round: LabRoundResponse<SamplePayload> = {
   tookOverRound: false,
 }
 
+/**
+ * Tracked and unmounted after every test (see the `afterEach` below). `currentQuery` is a single
+ * reactive object shared across the whole file — a page left mounted from an earlier test would
+ * keep its `watch(seed, …)` live, and a later test's `setQuery` would fire it too, stealing
+ * `vi.spyOn` `mockResolvedValueOnce`/`mockImplementationOnce` slots meant for the current test.
+ */
+const mountedPages: VueWrapper[] = []
+
 async function mountPage() {
   const Page = (await import('@/pages/c/[slug]/lab/[game].vue')).default
   const wrapper = mount(Page)
+  mountedPages.push(wrapper)
   await flushPromises()
   return wrapper
 }
@@ -62,7 +84,7 @@ describe('lab page', () => {
     // page teleports its controls into it and a missing target aborts the render (see `tool`).
     document.body.innerHTML = '<div id="drawer-page-tools"></div>'
     replace.mockReset()
-    currentQuery = { seed: '42' }
+    setQuery({ seed: '42' })
     currentParams = { slug: 'team', game: 'sample' }
     // vi.spyOn reuses the same mock across tests once a method is already spied, so call counts
     // accumulate across the whole file unless cleared here too — same reasoning as replace above.
@@ -80,6 +102,10 @@ describe('lab page', () => {
       .mockResolvedValue({ ...round } as never)
   })
 
+  afterEach(() => {
+    for (const w of mountedPages.splice(0)) w.unmount()
+  })
+
   it('opens the round at the seed from the URL', async () => {
     await mountPage()
     expect(api.openLabRound).toHaveBeenCalledWith('team', 'sample', 42)
@@ -89,7 +115,7 @@ describe('lab page', () => {
   it('rolls a seed into the URL when there is none', async () => {
     // Requirement 1 holds from the first frame: the URL always carries the seed, so a reload is
     // by construction the same round.
-    currentQuery = {}
+    setQuery({})
     await mountPage()
     const seed = Number((replace.mock.calls[0][0] as { query: { seed: number } }).query.seed)
     expect(Number.isInteger(seed)).toBe(true)
@@ -97,7 +123,7 @@ describe('lab page', () => {
   })
 
   it('replaces an unusable seed rather than sending it', async () => {
-    currentQuery = { seed: 'not-a-number' }
+    setQuery({ seed: 'not-a-number' })
     await mountPage()
     expect(replace).toHaveBeenCalled()
     expect(api.openLabRound).not.toHaveBeenCalled()
@@ -180,6 +206,14 @@ describe('lab page', () => {
     }
   })
 
+  it('keys the game component by seed, so a new round remounts it instead of patching props', async () => {
+    // Without the key, a seed change swaps props on the same instance: the wheel's entrance
+    // animation never replays, and the sample game keeps a scratch value from the round before.
+    const w = await mountPage()
+
+    expect(w.findComponent(SampleGame).vm.$.vnode.key).toBe(42)
+  })
+
   it('says the lab is unavailable when the backend does not have it', async () => {
     // On production the beans do not exist, so the whole tree answers 404. That is the only
     // signal the SPA gets — the bundle is identical in every environment.
@@ -192,5 +226,129 @@ describe('lab page', () => {
     currentParams = { slug: 'team', game: 'nosuchgame' }
     const w = await mountPage()
     expect(w.get('[data-test="lab-unknown-game"]').exists()).toBe(true)
+  })
+
+  it('hands the viewer their own stored guess to the game component', async () => {
+    // The payload carries the round, not the player. Without this the sample's input would be
+    // empty in a round the viewer has already spent — and the wheel of a real game would sit on
+    // the starting angle instead of the angle that was submitted.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { value: 150 },
+        outcome: { correct: false, distance: 5, direction: 'LOWER' },
+        at: '2026-08-08T12:00:00Z',
+      },
+    } as never)
+
+    const w = await mountPage()
+
+    expect((w.get('[data-test="sample-input"]').element as HTMLInputElement).value).toBe('150')
+  })
+
+  it('prints no arrow for an entry the game did not score', async () => {
+    // Guess Hue stores guesses without judging them, so `outcome` is legitimately null and the
+    // debug line must not read "→ null".
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { hue: 214.3 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.get('[data-test="lab-entries"]').text()).toContain('214.3')
+    expect(w.get('[data-test="lab-entries"]').text()).not.toContain('→')
+  })
+
+  it('renders no entries list at all before the viewer has guessed', async () => {
+    // The backend withholds `others` until the viewer has guessed, and `me` is null until then
+    // too — so the combined list is legitimately empty, and that must not show as an empty box.
+    const w = await mountPage()
+
+    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
+  })
+
+  it("puts the viewer's own guess into the entries list, first", async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { value: 150 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+      },
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { value: 160 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+    const rows = w.get('[data-test="lab-entries"]').findAll('li')
+
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.text()).toContain('Fry')
+    expect(rows[1]!.text()).toContain('Bender')
+  })
+
+  it('keys the game component on the round the response carries, not the seed in the URL', async () => {
+    // The bug this guards: rolling writes the new seed to the URL first, and the page keys the
+    // game component on that URL seed. Vue Router updates `route.query` in place for a query-only
+    // change — no remount of the page itself — so the game component would remount right then,
+    // still holding the *previous* round's payload, and capture the wrong entrance angle. Keying
+    // on `round.seed` instead means the remount cannot happen until the matching payload is here.
+    currentParams = { slug: 'team', game: 'guess-hue' }
+    const first: LabRoundResponse<GuessHuePayload> = {
+      seed: 42,
+      game: 'guess-hue',
+      displayName: 'Farbausmalung',
+      payload: { description: 'Erste Runde.', initHue: 10, saturation: 0.6, lightness: 0.45 },
+      me: null,
+      others: [],
+      tookOverRound: false,
+    }
+    const second: LabRoundResponse<GuessHuePayload> = {
+      ...first,
+      seed: 99,
+      payload: { description: 'Zweite Runde.', initHue: 250, saturation: 0.6, lightness: 0.45 },
+    }
+    let resolveSecond: (value: unknown) => void = () => {}
+    vi.spyOn(api, 'openLabRound')
+      .mockReset()
+      .mockResolvedValueOnce(first as never)
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)) as never)
+
+    const w = await mountPage()
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 10deg')
+
+    // The URL seed changes ahead of the response — the exact race from the bug report.
+    setQuery({ seed: '99' })
+    await w.vm.$nextTick()
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 10deg')
+
+    resolveSecond(second)
+    await flushPromises()
+
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 250deg')
   })
 })
