@@ -48,15 +48,17 @@ describe('members admin page', () => {
     await w.find('[data-test=remove-u1]').trigger('click')
     await flushPromises()
     expect(remove).toHaveBeenCalledWith('team', 'u1')
+    expect(list).toHaveBeenCalledTimes(2)
   })
 
   it('keeps separate member actions independently busy', async () => {
     const first = deferred()
     const second = deferred()
-    vi.spyOn(api, 'listMembers').mockResolvedValue([
+    const list = vi.spyOn(api, 'listMembers').mockResolvedValue([
       { userId: 'u1', username: 'Alice', status: 'ACTIVE', isAdmin: false },
       { userId: 'u2', username: 'Bob', status: 'ACTIVE', isAdmin: false },
     ])
+    list.mockClear()
     const promote = vi
       .spyOn(api, 'promoteMember')
       .mockImplementation((_slug, userId) => (userId === 'u1' ? first.promise : second.promise))
@@ -83,6 +85,7 @@ describe('members admin page', () => {
     expect(w.get('[data-test=promote-u2]').attributes('disabled')).toBeUndefined()
     expect(w.get('[data-test=promote-u1]').find('[data-test=spinner]').exists()).toBe(false)
     expect(w.get('[data-test=promote-u2]').find('[data-test=spinner]').exists()).toBe(false)
+    expect(list).toHaveBeenCalledTimes(3)
   })
 })
 
