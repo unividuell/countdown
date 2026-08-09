@@ -7,6 +7,7 @@ import { _resetCommunitiesState } from '@/communities/useCommunities'
 import { useAuth } from '@/auth/useAuth'
 import * as api from '@/api/communities'
 import { communityPath } from '@/communities/routes'
+import { requestDrawerClose } from '@/nav/drawerControl'
 import type { CommunitySummary, MeResponse } from '@/api/types'
 
 enableAutoUnmount(afterEach)
@@ -115,6 +116,39 @@ describe('NavDrawer mechanics', () => {
     const drawer = w.get('[data-test=nav-drawer]')
     expect(drawer.attributes('inert')).toBeUndefined()
     expect(drawer.attributes('aria-hidden')).toBeUndefined()
+  })
+
+  it('closes an open drawer when a page requests it', async () => {
+    // Catches a missing or disconnected drawer-close command channel: a page action must be
+    // able to close the real, currently-open global drawer without knowing its internals.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+
+    requestDrawerClose()
+    await nextTick()
+
+    expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('shows a scroll cue only while more drawer content remains below', async () => {
+    // Catches a missing or stale overflow affordance: the visual cue must disappear exactly at
+    // the bottom, where it would otherwise falsely imply more navigation items to discover.
+    const w = render()
+    const scroll = w.get('[data-test=nav-scroll]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 200 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+
+    scroll.scrollTop = 100
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
   })
 
   it('names the toggle for its current action', async () => {

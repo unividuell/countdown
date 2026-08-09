@@ -7,7 +7,7 @@
  * and travel and spin have to share one duration, one curve and one width. Split across two
  * components that agreement would have to be maintained by hand across a seam.
  */
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import {
   onKeyStroke,
   useEventListener,
@@ -17,6 +17,7 @@ import {
 } from '@vueuse/core'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import IconCheck from '~icons/lucide/check'
+import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
 import BrandMark from '@/ui/BrandMark.vue'
@@ -25,6 +26,7 @@ import { activeCommunity } from '@/communities/context'
 import { communityPath } from '@/communities/routes'
 import { useCommunities } from '@/communities/useCommunities'
 import { communityEntries, spinDegrees } from './drawer'
+import { onDrawerCloseRequested } from './drawerControl'
 import type { MeResponse } from '@/api/types'
 
 const props = defineProps<{ user: MeResponse }>()
@@ -102,11 +104,29 @@ async function handleLogout(): Promise<void> {
   router.replace('/login').catch((e) => console.error('navigation failed', e))
 }
 
+const navScroll = useTemplateRef<HTMLElement>('navScroll')
+const scrollHintVisible = ref(false)
+
+function updateScrollHint(): void {
+  const el = navScroll.value
+  scrollHintVisible.value = Boolean(el && el.scrollTop + el.clientHeight < el.scrollHeight - 1)
+}
+
 function loadCommunities(): void {
   // A failed list leaves every other block of the drawer working.
   refresh().catch((e) => console.error('could not load the community list', e))
 }
-onMounted(loadCommunities)
+
+let unsubscribeClose: (() => void) | null = null
+onMounted(() => {
+  loadCommunities()
+  unsubscribeClose = onDrawerCloseRequested(() => {
+    if (open.value) void setOpen(false)
+  })
+})
+onUnmounted(() => {
+  unsubscribeClose?.()
+})
 
 /**
  * The header scrolls away with the page, so its bottom edge is read at open time rather than
@@ -127,6 +147,7 @@ async function setOpen(next: boolean): Promise<void> {
     open.value = true
     await nextTick()
     drawer.value?.focus()
+    updateScrollHint()
   } else {
     open.value = false
     trigger.value?.focus()
@@ -144,7 +165,10 @@ watch(open, (v) => {
 // the drawer's first row hidden behind the header. Gated on open: closed, there is nothing to
 // re-measure, and the open-time call in setOpen still runs first for the initial value.
 watch(viewport, () => {
-  if (open.value) measureTop()
+  if (open.value) {
+    measureTop()
+    updateScrollHint()
+  }
 })
 
 // Every navigating entry closes the drawer this way, which is why a click inside is NOT wired
@@ -248,88 +272,104 @@ onKeyStroke('Tab', (e) => {
       class="fixed right-0 bottom-0 z-20 flex flex-col bg-white text-neutral-900 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
       :class="open ? 'translate-x-0' : 'translate-x-full'"
     >
-      <div data-test="nav-scroll" class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-1.5">
-        <template v-if="showCommunityBlock">
-          <template v-for="e in showSwitcher ? entries : []" :key="e.id">
-            <div
-              v-if="e.current"
-              data-test="current-community"
-              aria-current="true"
-              :class="`${ROW} text-neutral-400`"
+      <div class="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref="navScroll"
+          data-test="nav-scroll"
+          class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-1.5"
+          @scroll="updateScrollHint"
+        >
+          <template v-if="showCommunityBlock">
+            <template v-for="e in showSwitcher ? entries : []" :key="e.id">
+              <div
+                v-if="e.current"
+                data-test="current-community"
+                aria-current="true"
+                :class="`${ROW} text-neutral-400`"
+              >
+                {{ e.name }}
+                <IconCheck class="ml-auto size-4" aria-hidden="true" />
+              </div>
+              <button
+                v-else
+                type="button"
+                data-test="switch-community"
+                :class="LINK"
+                @click="go(e.slug)"
+              >
+                {{ e.name }}
+              </button>
+            </template>
+
+            <!-- No divider above this: creating a community is the same thought as switching. -->
+            <RouterLink
+              v-if="mayCreate"
+              to="/communities/new"
+              data-test="create-community"
+              :class="`${LINK} text-neutral-600`"
             >
-              {{ e.name }}
-              <IconCheck class="ml-auto size-4" aria-hidden="true" />
-            </div>
-            <button
-              v-else
-              type="button"
-              data-test="switch-community"
-              :class="LINK"
-              @click="go(e.slug)"
-            >
-              {{ e.name }}
-            </button>
+              <IconPlus class="size-4" aria-hidden="true" />
+              Spielgemeinschaft
+            </RouterLink>
           </template>
 
-          <!-- No divider above this: creating a community is the same thought as switching. -->
-          <RouterLink
-            v-if="mayCreate"
-            to="/communities/new"
-            data-test="create-community"
-            :class="`${LINK} text-neutral-600`"
-          >
-            <IconPlus class="size-4" aria-hidden="true" />
-            Spielgemeinschaft
-          </RouterLink>
-        </template>
-
-        <template v-if="admin">
-          <!-- Separates the admin block from the community block above — only when there is
-               one, otherwise it would sit flush against the header seam as a stray rule. -->
-          <div
-            v-if="showCommunityBlock"
-            data-test="admin-divider"
-            class="mt-1.5 border-t border-neutral-200"
-          />
-          <div
-            data-test="admin-heading"
-            class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
-          >
-            {{ admin.name }}
-          </div>
-          <RouterLink :to="communityPath(admin.slug, 'requests')" :class="LINK">
-            Anfragen
-            <span
-              v-if="admin.pendingCount > 0"
-              data-test="pending-count"
-              class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
-              >{{ admin.pendingCount }}</span
+          <template v-if="admin">
+            <!-- Separates the admin block from the community block above — only when there is
+                 one, otherwise it would sit flush against the header seam as a stray rule. -->
+            <div
+              v-if="showCommunityBlock"
+              data-test="admin-divider"
+              class="mt-1.5 border-t border-neutral-200"
+            />
+            <div
+              data-test="admin-heading"
+              class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
             >
-          </RouterLink>
-          <RouterLink :to="communityPath(admin.slug, 'members')" :class="LINK"
-            >Mitglieder</RouterLink
-          >
-          <RouterLink :to="communityPath(admin.slug, 'settings')" :class="LINK"
-            >Einstellungen</RouterLink
-          >
-        </template>
+              {{ admin.name }}
+            </div>
+            <RouterLink :to="communityPath(admin.slug, 'requests')" :class="LINK">
+              Anfragen
+              <span
+                v-if="admin.pendingCount > 0"
+                data-test="pending-count"
+                class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
+                >{{ admin.pendingCount }}</span
+              >
+            </RouterLink>
+            <RouterLink :to="communityPath(admin.slug, 'members')" :class="LINK"
+              >Mitglieder</RouterLink
+            >
+            <RouterLink :to="communityPath(admin.slug, 'settings')" :class="LINK"
+              >Einstellungen</RouterLink
+            >
+          </template>
 
-        <!-- Tools published by whatever page is open, via `<Teleport to="#drawer-page-tools">`.
-             Deliberately empty and deliberately ignorant: the drawer knows a page MAY contribute
-             controls, never which ones, so nothing page-specific reaches this file and a page
-             that contributes none costs a hidden empty div. `empty:hidden` keeps it out of the
-             flex flow until something lands in it — a teleported child is a real DOM child, so
-             :empty flips on its own. Contributors bring their own heading and divider, because
-             only they know whether their block deserves one. -->
-        <div id="drawer-page-tools" data-test="page-tools" class="shrink-0 empty:hidden" />
+          <!-- Tools published by whatever page is open, via `<Teleport to="#drawer-page-tools">`.
+               Deliberately empty and deliberately ignorant: the drawer knows a page MAY contribute
+               controls, never which ones, so nothing page-specific reaches this file and a page
+               that contributes none costs a hidden empty div. `empty:hidden` keeps it out of the
+               flex flow until something lands in it — a teleported child is a real DOM child, so
+               :empty flips on its own. Contributors bring their own heading and divider, because
+               only they know whether their block deserves one. -->
+          <div id="drawer-page-tools" data-test="page-tools" class="shrink-0 empty:hidden" />
 
-        <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
-             the scroll height instead of squeezing the mark away. -->
+          <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
+               the scroll height instead of squeezing the mark away. -->
+          <div
+            data-test="nav-mark"
+            class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
+          >
+            <BrandMark class="w-[200px] max-w-full" />
+          </div>
+        </div>
+
         <div
-          data-test="nav-mark"
-          class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
+          v-if="scrollHintVisible"
+          data-test="nav-scroll-cue"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-neutral-400"
         >
-          <BrandMark class="w-[200px] max-w-full" />
+          <IconChevronDown class="size-4 animate-bounce" />
         </div>
       </div>
 
