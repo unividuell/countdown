@@ -3,6 +3,9 @@
  * The colour wheel. Three layers: a static ring, a rotating layer carrying the knob, and a slot in
  * the middle for whatever confirms.
  *
+ * This is the wheel that takes input; `HueWheelReveal.vue` is the one that shows the result.
+ * They share the ring and nothing else — see `HueRing.vue`.
+ *
  * Angles run clockwise from the top — the same origin and direction as CSS `conic-gradient`, so
  * nothing here needs an offset. The pointer maths lives in `geometry.ts`, because happy-dom
  * computes no layout and it could not be tested from in here.
@@ -11,15 +14,18 @@
  * name and overrode its internals in CSS. Its ideas are kept — one `role="slider"` for the whole
  * wheel, the key map, grab-anywhere, the rotating layer — its code is not.
  */
-import type { CSSProperties } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
 import { angleFromPoint, hueName, radiusFraction, wrap360 } from './geometry'
+import HueRing from './HueRing.vue'
+import type { RingSweep } from './ring'
 import {
   BAND_INNER_FRACTION,
   BOOT_SWEEP_MS,
   BOOT_TRAIL_MS,
   CENTRE_HOLD_FRACTION,
   KNOB_TRACK_FRACTION,
+  easeOutCubic,
+  trackBoxStyle,
 } from './wheel'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
@@ -60,12 +66,6 @@ const KEY_STEPS: Record<string, number> = {
   PageDown: -10,
 }
 
-/** Cubic, written as multiplication — `**` is fine here, but this reads as what it is. */
-function easeOut(t: number): number {
-  const u = 1 - t
-  return 1 - u * u * u
-}
-
 function finishSweep(): void {
   if (frame) cancelAnimationFrame(frame)
   frame = 0
@@ -91,8 +91,8 @@ function runSweep(): void {
     const knob = Math.min(1, elapsed / BOOT_SWEEP_MS)
     const trail = Math.min(1, Math.max(0, (elapsed - BOOT_TRAIL_MS) / BOOT_SWEEP_MS))
 
-    sweepKnob.value = wrap360(from + easeOut(knob) * 360)
-    painted.value = easeOut(trail) * 360
+    sweepKnob.value = wrap360(from + easeOutCubic(knob) * 360)
+    painted.value = easeOutCubic(trail) * 360
 
     if (trail >= 1) {
       finishSweep()
@@ -217,9 +217,6 @@ const knobAngle = computed(() => sweepKnob.value ?? props.hue)
  */
 const bandClipId = `hue-band-clip-${useId()}`
 
-/** The knob's own size, as a fraction of the wheel — kept beside the track math it feeds. */
-const KNOB_SIZE_FRACTION = 0.09
-
 /**
  * The annulus clip, as one `<path>` with two subpaths (outer circle, inner circle), each drawn as
  * two arcs and closed. `clip-rule="evenodd"` resolves subpaths *within one path* — unlike two
@@ -236,53 +233,13 @@ const bandClipPath = computed(() => {
   return `${circle(outerR)} ${circle(innerR)}`
 })
 
-/**
- * `top`, as a % of the wheel's own box, that puts the knob's *centre* on
- * [KNOB_TRACK_FRACTION] — not its top edge, which is what the raw CSS property addresses, hence
- * subtracting half the knob's own size.
- */
-const KNOB_TOP_PERCENT = 50 * (1 - KNOB_TRACK_FRACTION) - (KNOB_SIZE_FRACTION * 100) / 2
+/** The entrance, in the shape the ring takes it; `null` once the ring is fully painted. */
+const sweep = computed<RingSweep | null>(() =>
+  painted.value >= 360 ? null : { fromDeg: sweepFrom.value, paintedDeg: painted.value },
+)
 
-const ringStyle = computed(() => {
-  const s = `${props.saturation * 100}%`
-  const l = `${props.lightness * 100}%`
-  const sweepMask =
-    painted.value >= 360
-      ? undefined
-      : `conic-gradient(from ${sweepFrom.value}deg, #000 0deg ${painted.value}deg, transparent 0deg)`
-  // The band itself: everything inside [BAND_INNER_FRACTION] is cut away, turning the disc into a
-  // ring. Composed with the sweep mask above rather than replacing it, so the entrance still paints
-  // the band progressively instead of revealing a full disc that only narrows once it is done.
-  const bandMask = `radial-gradient(closest-side, transparent ${BAND_INNER_FRACTION * 100 - 1}%, #000 ${BAND_INNER_FRACTION * 100}%)`
-  const mask = sweepMask ? `${sweepMask}, ${bandMask}` : bandMask
-  return {
-    // An array of values is Vue's fallback idiom: it writes them in order and the last one the
-    // browser accepts survives. Without hue interpolation the stepped ring stands — which is what
-    // the original shipped, only with nine stops instead of thirteen, and it banded visibly.
-    // csstype (which Vue's CSSProperties is built on) has no notion of this idiom, so the array
-    // needs the cast — the runtime behaviour is Vue's, not a workaround.
-    backgroundImage: [
-      `conic-gradient(${Array.from({ length: 13 }, (_, i) => `hsl(${i * 30} ${s} ${l})`).join(',')})`,
-      `conic-gradient(in hsl longer hue, hsl(0 ${s} ${l}), hsl(360 ${s} ${l}))`,
-    ] as unknown as string,
-    mask,
-    WebkitMask: mask,
-    // Two mask layers default to `add` (a union) — `intersect` is what turns "painted so far" AND
-    // "inside the band" into the actual visible region; without it the sweep would go on painting
-    // the disc's dead centre too, band or no band. csstype has no `maskComposite` entry either.
-    ...(sweepMask
-      ? ({
-          maskComposite: 'intersect',
-          WebkitMaskComposite: 'source-in',
-        } as unknown as CSSProperties)
-      : {}),
-    // `disabled` greys the rainbow out so a spent round is obvious at a glance — the knob and the
-    // confirm button keep their colour, so this lives only here, not on a shared ancestor. The
-    // slight fade (rather than grayscale alone) is what keeps a locked band from reading as merely
-    // desaturated instead of unmistakably spent.
-    filter: props.disabled ? 'grayscale(1) opacity(85%)' : undefined,
-  } satisfies CSSProperties
-})
+/** Constant, not computed: the knob rides one fixed track. */
+const knobStyle = trackBoxStyle(KNOB_TRACK_FRACTION)
 
 /**
  * The rotator is `absolute inset-0` and later in DOM order than the ring, which makes it — not the
@@ -358,11 +315,11 @@ const rotatorStyle = computed(() => ({
           </clipPath>
         </defs>
       </svg>
-      <div
-        data-test="hue-ring"
-        aria-hidden="true"
-        class="absolute inset-0 rounded-full"
-        :style="ringStyle"
+      <HueRing
+        :saturation="props.saturation"
+        :lightness="props.lightness"
+        :inner-fraction="BAND_INNER_FRACTION"
+        :sweep="sweep"
       />
       <div
         data-test="hue-rotator"
@@ -373,8 +330,8 @@ const rotatorStyle = computed(() => ({
         <!-- cursor-pointer is explicit: Tailwind v4's preflight resets cursors. -->
         <span
           data-test="hue-knob"
-          class="absolute left-1/2 size-[9%] -translate-x-1/2 cursor-pointer rounded-full bg-white shadow ring-2 ring-black/20"
-          :style="{ top: `${KNOB_TOP_PERCENT}%` }"
+          class="absolute left-1/2 -translate-x-1/2 cursor-pointer rounded-full bg-white shadow ring-2 ring-black/20"
+          :style="knobStyle"
         />
       </div>
       <div

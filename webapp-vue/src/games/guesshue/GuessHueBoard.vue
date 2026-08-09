@@ -9,7 +9,7 @@
  */
 import { computed, ref, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
-import HueWheel from './HueWheel.vue'
+import HueWheelInput from './HueWheelInput.vue'
 
 const props = defineProps<{
   description: string
@@ -55,7 +55,7 @@ const color = computed(
     </blockquote>
 
     <div class="mt-6">
-      <HueWheel
+      <HueWheelInput
         v-model:hue="hue"
         :saturation="props.saturation"
         :lightness="props.lightness"
@@ -71,7 +71,7 @@ const color = computed(
             @confirm="emit('guess', hue)"
           />
         </template>
-      </HueWheel>
+      </HueWheelInput>
     </div>
 
     <p data-test="hue-hint" class="mt-8 text-xs text-neutral-500">

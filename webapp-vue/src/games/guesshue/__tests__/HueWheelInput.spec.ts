@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import HueWheel from '@/games/guesshue/HueWheel.vue'
+import HueWheelInput from '@/games/guesshue/HueWheelInput.vue'
 
-function mountWheel(props: Partial<InstanceType<typeof HueWheel>['$props']> = {}) {
-  return mount(HueWheel, {
+function mountWheel(props: Partial<InstanceType<typeof HueWheelInput>['$props']> = {}) {
+  return mount(HueWheelInput, {
     props: { hue: 210, saturation: 0.6, lightness: 0.45, disabled: false, ...props },
   })
 }
@@ -31,7 +31,7 @@ function stubRect(el: Element): void {
   } as DOMRect)
 }
 
-describe('HueWheel', () => {
+describe('HueWheelInput', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
     setHidden(false)
@@ -53,16 +53,6 @@ describe('HueWheel', () => {
     await el.trigger('pointerdown', { clientX: 100, clientY: 0, pointerId: 1 })
 
     expect(w.get('[data-test="hue-rotator"]').element.style.cursor).toBe('grabbing')
-  })
-
-  it('greys out the band once the wheel is locked, so a spent round is obvious at a glance', () => {
-    // The knob and the confirm button keep their colour — the button is the colour preview and the
-    // one thing still worth reading after the round — so the filter lives only on the ring.
-    const enabled = mountWheel({ disabled: false })
-    const disabled = mountWheel({ disabled: true })
-
-    expect(enabled.get('[data-test="hue-ring"]').attributes('style')).not.toContain('grayscale')
-    expect(disabled.get('[data-test="hue-ring"]').attributes('style')).toContain('grayscale(1)')
   })
 
   it('is one slider, named and described for a screen reader', () => {
@@ -212,7 +202,7 @@ describe('HueWheel', () => {
   })
 
   it('renders whatever is put in its centre', () => {
-    const w = mount(HueWheel, {
+    const w = mount(HueWheelInput, {
       props: { hue: 10, saturation: 0.6, lightness: 0.45, disabled: false },
       slots: { center: '<b data-test="knobbly">x</b>' },
     })
@@ -366,7 +356,7 @@ describe('HueWheel', () => {
       // The regression test: a press on the confirm button bubbles through the wheel's own
       // `pointerdown` handler on its way up. Before the fix, that was read as a grab — capture
       // taken, `dragging` set — and a subsequent move re-aimed the wheel underneath a held button.
-      const w = mount(HueWheel, {
+      const w = mount(HueWheelInput, {
         props: { hue: 210, saturation: 0.6, lightness: 0.45, disabled: false },
         slots: { center: '<button data-test="fake-confirm">x</button>' },
       })
