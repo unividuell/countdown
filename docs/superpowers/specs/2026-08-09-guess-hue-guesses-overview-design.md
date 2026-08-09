@@ -118,19 +118,26 @@ einer dünnen Komponente darum.
 **Der Umschalter sitzt im Lab-Adapter** (`gamelab/GuessHueLabGame.vue`), nicht im Board: er ist die
 Stelle, die `unknown` zu getippten Werten macht.
 
-### Zwei neue Props im Lab-Komponentenvertrag
+### Drei neue Props im Lab-Komponentenvertrag
 
 - `solution: unknown` — was der Server enthüllt hat, oder `null`
 - `entries: LabEntryDto[]` — die sichtbaren Einträge in der Reihenfolge, die die Lab-Seite ohnehin
   schon bildet (meiner zuerst)
+- `mineUserId: string | null` — welcher davon meiner ist
 
-`SampleGame.vue` ignoriert beide. `myGuess` bleibt daneben bestehen: es ist zwar aus `entries`
+**Die Zugehörigkeit hängt an der `userId`, nicht an der Position.** Dass die Lab-Seite meinen
+Eintrag voranstellt, ist eine Anzeigeentscheidung; hier hängen zwei Dinge daran, die nicht raten
+dürfen — mein Marker liegt immer auf Bahn 0, und er blendet nicht ein. `LabEntries.vue` trifft
+dieselbe Wahl aus demselben Grund und sagt es dort ausdrücklich.
+
+`SampleGame.vue` ignoriert alle drei. `myGuess` bleibt daneben bestehen: es ist zwar aus `entries`
 ableitbar, hat aber einen eigenen dokumentierten Zweck — den Startwinkel des Rads nach einem
 Reload — und `SampleGame` hängt daran.
 
-Beide werden im Adapter **defensiv verengt**, wie es der Vertrag verlangt: `solution` muss zwei
-endliche Zahlen tragen, sonst bleibt die Eingabekarte stehen; ein Eintrag ohne endliches
-`guess.hue` fällt aus der Markerliste, statt als `NaN` in eine Transformationsmatrix zu geraten.
+`solution` und `entries` werden im Adapter **defensiv verengt**, wie es der Vertrag verlangt:
+`solution` muss zwei endliche Zahlen tragen, sonst bleibt die Eingabekarte stehen; ein Eintrag ohne
+endliches `guess.hue` fällt aus der Markerliste, statt als `NaN` in eine Transformationsmatrix zu
+geraten.
 
 ### Geometrie
 
@@ -265,8 +272,13 @@ im Lab hingedreht, genau dafür ist es da.
 
 **Ein Reload spielt das nicht nach.** Die `<Transition>` bekommt kein `appear`; wer die Seite in
 einer bereits gespielten Runde neu lädt, sieht das fertige Bild. Spannung gehört zum Moment der
-Abgabe, nicht zur Ladezeit. Unter `prefers-reduced-motion` und bei `document.hidden` gilt dasselbe —
-Endzustand sofort, wie überall in diesem Spiel.
+Abgabe, nicht zur Ladezeit.
+
+**Bewegung abschalten heißt hier zweierlei**, weil die Choreografie aus zwei Mechanismen besteht.
+Die rAF-Schleife fragt beides ab, `prefers-reduced-motion` **und** `document.hidden`, wie überall in
+diesem Spiel. Die CSS-Übergänge fragen nur die Media Query — `document.hidden` lässt sich in CSS
+nicht ausdrücken, und der Grund für die zweite Frage trifft sie nicht: es leckten
+`Element.animate()`-Objekte in einem Hintergrund-Tab, ein CSS-Übergang legt keine an.
 
 ## Tests
 
