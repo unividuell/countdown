@@ -92,6 +92,27 @@ that test class, never registered globally. A fixture registered globally would 
 what every other context test on that profile sees, and a later test asserting the real fallback
 behaviour would observe the fixture instead. `GuessHueTestDatasetConfiguration` is the precedent.
 
+## One Postgres container, one database per context
+
+`TestcontainersConfiguration` keeps the container in a `companion object`, started from static
+initialisation, so it lives outside any context lifecycle — **one container per JVM**, however many
+contexts the suite builds. Never turn it back into a plain `@Bean`: a bean belongs to the test
+application context, and the suite resolves to twenty distinct context configurations, so that is
+twenty simultaneous Postgres containers. The cost is invisible on an idle machine and a cliff on a
+busy Docker host.
+
+Isolation lives one level down. The `JdbcConnectionDetails` bean **is** per context, and each
+instance issues `CREATE DATABASE countdown_test_<n>` before returning its URL, so every context
+still starts from an empty, freshly migrated database. Don't collapse that to one shared database:
+`TestUserSeeder` commits before any test runs, and the classes that set
+`app.test-auth.enabled=false` do so precisely to observe an empty table.
+
+Consolidating servers consolidates their **connection budget**. Every context holds its pool open
+for the whole run, so pool size multiplies by context count against a single `max_connections` —
+the defaults (10 per pool, 100 per server) die at ten contexts. The container therefore starts with
+`max_connections=400` and the test classpath caps `spring.datasource.hikari.maximum-pool-size` at
+5. `TestcontainersConfigurationTest` guards the server side of that arithmetic.
+
 ## Module verification
 
 Keep `ModularityTests` (`ApplicationModules.of(CoreApplication::class.java).verify()`)
