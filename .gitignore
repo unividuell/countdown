@@ -17,6 +17,9 @@
 # superpowers brainstorming mockups
 .superpowers/
 
+# Isolated Git worktrees kept beside this checkout.
+.worktrees/
+
 # Plaintext game content on its way to SOPS encryption.
 # Never commit — not in specs, plans, or commit messages either.
 .local/
