@@ -105,11 +105,18 @@ async function handleLogout(): Promise<void> {
 }
 
 const navScroll = useTemplateRef<HTMLElement>('navScroll')
+const navMark = useTemplateRef<HTMLElement>('navMark')
 const scrollHintVisible = ref(false)
 
 function updateScrollHint(): void {
   const el = navScroll.value
-  scrollHintVisible.value = Boolean(el && el.scrollTop + el.clientHeight < el.scrollHeight - 1)
+  if (!el) {
+    scrollHintVisible.value = false
+    return
+  }
+  const mark = navMark.value
+  const cutoff = mark && mark.offsetTop > 0 ? mark.offsetTop : el.scrollHeight - 1
+  scrollHintVisible.value = el.scrollTop + el.clientHeight <= cutoff
 }
 
 function loadCommunities(): void {
@@ -356,6 +363,7 @@ onKeyStroke('Tab', (e) => {
           <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
                the scroll height instead of squeezing the mark away. -->
           <div
+            ref="navMark"
             data-test="nav-mark"
             class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
           >
@@ -369,7 +377,7 @@ onKeyStroke('Tab', (e) => {
           aria-hidden="true"
           class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-neutral-400"
         >
-          <IconChevronDown class="size-4 animate-bounce" />
+          <IconChevronDown class="size-4 animate-bounce [animation-iteration-count:2]" />
         </div>
       </div>
 

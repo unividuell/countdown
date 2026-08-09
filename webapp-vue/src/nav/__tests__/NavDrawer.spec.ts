@@ -130,22 +130,24 @@ describe('NavDrawer mechanics', () => {
     expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('false')
   })
 
-  it('shows a scroll cue only while more drawer content remains below', async () => {
-    // Catches a missing or stale overflow affordance: the visual cue must disappear exactly at
-    // the bottom, where it would otherwise falsely imply more navigation items to discover.
+  it('shows a scroll cue only until the logo container comes into view', async () => {
+    // Catches a missing or stale overflow affordance: the visual cue must disappear as soon as
+    // the logo container enters the viewport, where content ends.
     const w = render()
     const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
     Object.defineProperties(scroll, {
       clientHeight: { configurable: true, value: 100 },
       scrollHeight: { configurable: true, value: 200 },
       scrollTop: { configurable: true, value: 0, writable: true },
     })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 150 })
 
     scroll.dispatchEvent(new Event('scroll'))
     await nextTick()
     expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
 
-    scroll.scrollTop = 100
+    scroll.scrollTop = 55
     scroll.dispatchEvent(new Event('scroll'))
     await nextTick()
     expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
