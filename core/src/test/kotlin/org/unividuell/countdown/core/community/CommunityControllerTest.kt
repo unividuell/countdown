@@ -22,6 +22,7 @@ import java.util.UUID
 @AutoConfigureMockMvc
 class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var communityService: CommunityService
+    @MockkBean lateinit var editions: EditionService
     @MockkBean lateinit var query: org.unividuell.countdown.core.community.MembershipQuery
     @MockkBean lateinit var communityQuery: org.unividuell.countdown.core.community.CommunityQuery
     @MockkBean lateinit var access: CommunityAccess
@@ -34,8 +35,12 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST creates a community`() {
+        val c = community("team-a")
         every { users.mayCreateCommunities(uid) } returns true
-        every { communityService.create(uid, "Team A") } returns community("team-a")
+        every { communityService.create(uid, "Team A") } returns c
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team A",
+        )
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
@@ -124,6 +129,9 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { access.requireActiveMember(uid, false, "team") } returns c
         every { query.isAdmin(c.id!!, uid) } returns true
         every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 3
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(true) }
@@ -136,6 +144,9 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(uid, false, "team") } returns c
         every { query.isAdmin(c.id!!, uid) } returns false
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(false) }
@@ -148,6 +159,9 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(uid, true, "team") } returns c
         every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 0
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
         mockMvc.get("/api/communities/team") { with(principalFor(superAdmin = true)) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(true) }
@@ -155,13 +169,18 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
-    fun `GET by slug returns the startsAtTimezone`() {
+    fun `GET by slug returns the timezone of the active edition`() {
         val c = community("team")
         every { access.requireActiveMember(uid, false, "team") } returns c
         every { query.isAdmin(c.id!!, uid) } returns false
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+            jsonPath("$.editionLabel") { value("Team 2026") }
+            jsonPath("$.gamesUntilRound") { value(0) }
         }
     }
 }

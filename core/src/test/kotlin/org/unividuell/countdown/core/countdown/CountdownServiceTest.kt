@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.countdown
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
+import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.internal.CountdownAccessDeniedException
 import org.unividuell.countdown.core.countdown.internal.CountdownService
 import org.unividuell.countdown.core.iam.User
@@ -21,6 +23,7 @@ import java.time.Instant
 class CountdownServiceTest(
     @Autowired val countdown: CountdownService,
     @Autowired val communities: CommunityService,
+    @Autowired val editions: EditionService,
     @Autowired val users: UserRepository,
 ) {
     private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
@@ -56,11 +59,33 @@ class CountdownServiceTest(
     fun `forSlug exposes current and next round when configured`() {
         val ownerId = aUser().id!!
         val c = communities.create(ownerId, "Has Start")
-        communities.update(c, name = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null)
+        communities.update(
+            c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+            startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
+            gamesFromRound = null, gamesUntilRound = null,
+        )
         val res = countdown.forSlug(c.slug, ownerId, false)
         val round = res.round!!; val nextRound = res.nextRound!!
         (round.number > 0) shouldBe true
         nextRound.number shouldBe round.number - 1
         nextRound.start shouldBe round.end
+    }
+
+    @Test
+    fun `forSlug follows the active edition when a new run starts`() {
+        val ownerId = aUser().id!!
+        val c = communities.create(ownerId, "Second Run")
+        communities.update(
+            c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+            startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
+            gamesFromRound = null, gamesUntilRound = null,
+        )
+
+        editions.startNew(requireNotNull(c.id), "Run 2100")
+
+        // The new run has no date yet, so there is no round — the old run's date is not consulted.
+        val res = countdown.forSlug(c.slug, ownerId, false)
+        res.startsAt.shouldBeNull()
+        res.round.shouldBeNull()
     }
 }

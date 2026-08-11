@@ -14,6 +14,7 @@ import org.unividuell.countdown.core.iam.UserQuery
 @RequestMapping("/api/communities")
 class CommunityController(
     private val communityService: CommunityService,
+    private val editions: EditionService,
     private val membershipQuery: MembershipQuery,
     private val access: CommunityAccess,
     private val selection: SelectionService,
@@ -23,8 +24,10 @@ class CommunityController(
     @PostMapping
     fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> {
         if (!users.mayCreateCommunities(me.id)) throw CommunityCreationNotAllowedException()
+        val community = communityService.create(me.id, body.name)
+        val edition = editions.requireActive(requireNotNull(community.id))
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(communityService.create(me.id, body.name).toResponse(viewerIsAdmin = true, pendingCount = 0))
+            .body(community.toResponse(edition, viewerIsAdmin = true, pendingCount = 0))
     }
 
     @GetMapping
@@ -43,16 +46,21 @@ class CommunityController(
     @GetMapping("/{slug}")
     fun get(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): CommunityResponse {
         val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug)
-        val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(c.id!!, me.id)
-        val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING).toInt() else 0
-        return c.toResponse(viewerIsAdmin = isAdmin, pendingCount = pending)
+        val id = requireNotNull(c.id)
+        val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(id, me.id)
+        val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt() else 0
+        return c.toResponse(editions.requireActive(id), viewerIsAdmin = isAdmin, pendingCount = pending)
     }
 
     @PatchMapping("/{slug}")
     fun update(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @RequestBody body: UpdateCommunityRequest): CommunityResponse {
         val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
-        val updated = communityService.update(c, body.name, body.startsAt, body.startsAtTimezone, body.phaseTwoStartRound)
-        val pending = memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING).toInt()
-        return updated.toResponse(viewerIsAdmin = true, pendingCount = pending)
+        val id = requireNotNull(c.id)
+        val updated = communityService.update(
+            c, body.name, body.editionLabel, body.startsAt, body.startsAtTimezone,
+            body.phaseTwoStartRound, body.gamesFromRound, body.gamesUntilRound,
+        )
+        val pending = memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt()
+        return updated.community.toResponse(updated.edition, viewerIsAdmin = true, pendingCount = pending)
     }
 }

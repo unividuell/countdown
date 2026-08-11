@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.SuperAdminOverviewService
@@ -23,8 +24,9 @@ import java.util.UUID
 class SuperAdminOverviewServiceTest {
     private val communities = mockk<CommunityRepository>()
     private val members = mockk<CommunityMemberRepository>()
+    private val editions = mockk<CommunityEditionRepository>()
     private val users = mockk<UserQuery>()
-    private val service = SuperAdminOverviewService(communities, members, users)
+    private val service = SuperAdminOverviewService(communities, members, editions, users)
 
     private val alphaId = UUID.fromString("018f0000-0000-7000-8000-0000000000a1")
     private val zuluId = UUID.fromString("018f0000-0000-7000-8000-0000000000b1")
@@ -68,6 +70,7 @@ class SuperAdminOverviewServiceTest {
             user(bobId, "bob", "Bob"),
             user(zoeId, "zoe", "Zoe"),
         )
+        every { editions.findAllActive() } returns emptyList()
 
         val result = service.overview()
 
@@ -86,6 +89,7 @@ class SuperAdminOverviewServiceTest {
         every { communities.findAll() } returns listOf(community(alphaId, "Alpha", "alpha"))
         every { members.findAll() } returns emptyList()
         every { users.findAllById(emptyList()) } returns emptyList()
+        every { editions.findAllActive() } returns emptyList()
 
         val result = service.overview()
 

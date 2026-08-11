@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
+import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.SuperAdminUserService
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -29,7 +30,8 @@ import java.util.UUID
  * Here the port and the database are real, and the principal is built from the *saved* row — so
  * the principal's id and the row's id are the same by construction, not by a shared constant.
  *
- * `CommunityService` is mocked: what a created community looks like is not part of this seam.
+ * `CommunityService` and `EditionService` are mocked: what a created community and its edition
+ * look like is not part of this seam.
  * `test-auth.enabled=false` keeps the seeded Futurama users out of the context.
  */
 @Import(TestcontainersConfiguration::class)
@@ -43,6 +45,7 @@ class CommunityCreationClearanceSeamTest(
     @Autowired val superAdminUsers: SuperAdminUserService,
 ) {
     @MockkBean lateinit var communityService: CommunityService
+    @MockkBean lateinit var editions: EditionService
 
     private fun save(login: String) =
         users.save(User(githubId = login.hashCode().toLong(), githubLogin = login))
@@ -57,8 +60,11 @@ class CommunityCreationClearanceSeamTest(
     @Test
     fun `granting the clearance turns the same caller's 403 into a 201`() {
         val user = save("octocat")
+        val communityId = UUID.randomUUID()
         every { communityService.create(user.id!!, "Team A") } returns
-            Community(id = UUID.randomUUID(), name = "Team A", slug = "team-a", createdBy = user.id!!)
+            Community(id = communityId, name = "Team A", slug = "team-a", createdBy = user.id!!)
+        every { editions.requireActive(communityId) } returns
+            CommunityEdition(id = UUID.randomUUID(), communityId = communityId, label = "Team A")
 
         createAs(user).andExpect {
             status { isForbidden() }
