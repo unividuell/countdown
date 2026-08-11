@@ -63,4 +63,22 @@ class CommunityController(
         val pending = memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt()
         return updated.community.toResponse(updated.edition, viewerIsAdmin = true, pendingCount = pending)
     }
+
+    /**
+     * Start the next run: the current one is archived, the new one inherits its setup and starts
+     * without a date. The membership stays where it belongs — on the community.
+     */
+    @PostMapping("/{slug}/editions")
+    fun startEdition(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @RequestBody body: StartEditionRequest,
+    ): ResponseEntity<CommunityResponse> {
+        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
+        val id = requireNotNull(c.id)
+        val edition = editions.startNew(id, body.label)
+        val pending = memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt()
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(c.toResponse(edition, viewerIsAdmin = true, pendingCount = pending))
+    }
 }

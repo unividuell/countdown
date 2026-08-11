@@ -183,4 +183,48 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$.gamesUntilRound") { value(0) }
         }
     }
+
+    @Test
+    fun `POST editions returns the new run with the inherited setup`() {
+        val c = community("rollover")
+        every { access.requireAdmin(uid, false, "rollover") } returns c
+        every { editions.startNew(c.id!!, "Rollover 2027") } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Rollover 2027",
+            startsAtTimezone = "America/New_York", phaseTwoStartRound = 20, gamesFromRound = 24,
+        )
+        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 0
+
+        mockMvc.post("/api/communities/rollover/editions") {
+            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            content = """{"label":"Rollover 2027"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.editionLabel") { value("Rollover 2027") }
+            jsonPath("$.startsAtTimezone") { value("America/New_York") }
+            jsonPath("$.phaseTwoStartRound") { value(20) }
+            jsonPath("$.gamesFromRound") { value(24) }
+        }
+    }
+
+    @Test
+    fun `POST editions is forbidden for a non-admin member`() {
+        every { access.requireAdmin(uid, false, "rollover") } throws NotAdminException()
+
+        mockMvc.post("/api/communities/rollover/editions") {
+            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            content = """{"label":"Nope 2027"}"""
+        }.andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `POST editions surfaces a too-short label as 400`() {
+        val c = community("rollover")
+        every { access.requireAdmin(uid, false, "rollover") } returns c
+        every { editions.startNew(c.id!!, "ab") } throws IllegalArgumentException("label must be 3..50 chars")
+
+        mockMvc.post("/api/communities/rollover/editions") {
+            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            content = """{"label":"ab"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }
