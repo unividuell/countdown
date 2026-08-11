@@ -68,6 +68,38 @@ app-side before the write. Keep the DB `DEFAULT now()` as a fallback for
 out-of-band inserts. Don't also set timestamps manually in services — auditing is
 the single source of truth.
 
+## Moving or dropping a column: expand, switch, contract
+
+Spring Data JDBC puts **every** non-transient entity field into its `SELECT` and `INSERT` — there is
+no JPA-style `insertable=false`. So a field without its column breaks every read of that table, and a
+column drop plus its field removal have to land in the **same commit**. That makes the tempting
+one-migration version ("create the new home, move everything, drop the old columns") a single
+untestable jump.
+
+Do it in three steps instead, which is also three green commits:
+
+1. **Expand** — one migration creates the new column/table and backfills it from the old. Nothing
+   reads it yet; behaviour is unchanged.
+2. **Switch** — readers *and* writers move over **together, in one commit**. They cannot be split: the
+   moment the writer writes the new home, every reader still on the old column serves stale data.
+3. **Contract** — a second migration drops the old columns, and the entity loses the fields in that
+   same commit. This step must be small; if it produces a compile-error cascade, step 2 was
+   incomplete and the cascade is the evidence.
+
+Both migrations ship in the same PR and run in the same boot, so operationally it is identical to one
+script — the split buys testability, not deploy safety.
+
+Two things the test suite cannot tell you, because Flyway runs before any row exists in a
+Testcontainers database:
+
+- **A backfill copies zero rows in tests.** Verify it against real rows — a disposable
+  `postgres:18` container, the migrations applied in order, a couple of seeded rows, then an
+  `IS DISTINCT FROM` check between old and new. Never against the developer's own dev database,
+  and never with `docker compose down -v`.
+- **`./mvnw clean test` before trusting migration behaviour.** A stale
+  `application-modules.json` under `target` makes a new module's migrations silently not run — see
+  [modules-and-migrations.md](modules-and-migrations.md).
+
 ## Serializable entities
 
 Entities that end up in the HTTP session (directly or via a principal) must be

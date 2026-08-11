@@ -65,7 +65,7 @@ von `communities` hierher**; eine Community ohne Durchlauf gibt es nach der Migr
 | `created_at` / `updated_at` | | Auditing wie überall |
 
 ```sql
-CREATE UNIQUE INDEX editions_one_active_per_community
+CREATE UNIQUE INDEX idx_editions_one_active_per_community
     ON community.editions (community_id) WHERE archived_at IS NULL;
 ```
 
@@ -89,7 +89,8 @@ Das ist ein `INSERT … SELECT` und ein `DROP COLUMN` — vier Zeilen, keine Tra
 Datenrisiko. Erwogen und **verworfen**: `community/V1` neu schreiben, sodass `editions` dort schon
 steht, und die DBs wegwerfen — produktiv ist noch nichts. Es spart genau diese vier Zeilen, während
 der eigentliche Aufwand (neun Backend-Dateien plus Tests; das Frontend bleibt unberührt, weil
-`CommunityResponse` formgleich bleibt) davon unberührt ist. **Staging läuft**, ein geändertes `V1`
+`CommunityResponse` **nur wächst**, also kein Feld verliert oder umbenennt) davon
+unberührt ist. **Staging läuft**, ein geändertes `V1`
 heißt dort Flyway-Checksum-Mismatch, und wer das Wipe vergisst, sucht einen Boot-Fehler, der wie ein
 Bug aussieht. Ein Wegwerfen lohnt sich, wenn eine Migration Daten *interpretieren* müsste — Defaults
 raten, Duplikate auflösen. Diese nicht.
@@ -659,8 +660,12 @@ leere Kandidatenliste → `null`, leere Historie → beliebiger Kandidat, und be
 dieselbe Wahl. Mit dem echten Katalog feuert die Regel nie, weil es einen Typ gibt — ohne den gefälschten
 Katalog wäre sie ungetesteter Code.
 
-**Durchlauf** — ein zweiter aktiver Durchlauf verletzt den partiellen Unique-Index; die Migration
-legt für jede bestehende Community genau eine Edition mit den übernommenen Werten an.
+**Durchlauf** — ein zweiter aktiver Durchlauf verletzt den partiellen Unique-Index.
+
+Der **Backfill** ist dagegen *kein* Integrationstest: Flyway läuft in der Testcontainers-DB vor jeder
+Zeile, dort kopiert das `INSERT … SELECT` also null Zeilen. Er wird gegen echte Zeilen verifiziert —
+ein Wegwerf-Container, die Migrationen in Reihenfolge, ein paar gesäte Zeilen, dann ein
+`IS DISTINCT FROM` zwischen alter und neuer Seite. Nie gegen die Dev-DB des Entwicklers.
 
 **Spielen** — Aufdecken erzeugt eine Zeile und setzt beim zweiten Mal `revealed_at` *nicht* zurück,
 sondern `reveal_count` hoch; Tipp ohne Aufdecken 409; zweiter Tipp 409; ungültiger Tipp verbraucht
@@ -701,7 +706,8 @@ Zusammenlegung überhaupt wert macht.
 ## Umsetzungsschnitt
 
 1. **Durchlauf** — Migration `community/V3`, `CommunityEdition` + Repository, aktive-Edition-Query,
-   `CountdownService` liest die Edition, `CommunityResponse` nach außen formgleich, API-Aktion
+   `CountdownService` liest die Edition, `CommunityResponse` nach außen **additiv** (Felder kommen
+   hinzu, keins fällt weg), API-Aktion
    „neuen Durchlauf starten“.
 2. **Ansage** — Modul `game`, Schema, `GameType` / `GameCatalog` / `GameTypeHandle`, Auflösung,
    `GuessHueGameType` mit `draw` und `present`, Ansage-Endpunkt.

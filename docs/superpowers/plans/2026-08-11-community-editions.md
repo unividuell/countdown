@@ -852,7 +852,8 @@ open class CommunityService(
 
     /**
      * The community owns its name, the run owns the schedule. One transaction over both so a
-     * rejected timezone cannot leave a renamed community behind.
+     * rejected timezone cannot leave a renamed community behind — the **rollback** is what
+     * guarantees that, not the order of the two writes.
      */
     @Transactional
     open fun update(
@@ -1168,10 +1169,13 @@ Und `GET by slug returns the startsAtTimezone` auf den Durchlauf umstellen — d
         every { query.isAdmin(c.id!!, uid) } returns false
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+            // NOT the default: Community defaults to Europe/Berlin too, so asserting the default
+            // would hold even if the controller read the timezone from the community. See testing.md.
+            startsAtTimezone = "America/New_York",
         )
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+            jsonPath("$.startsAtTimezone") { value("America/New_York") }
             jsonPath("$.editionLabel") { value("Team 2026") }
             jsonPath("$.gamesUntilRound") { value(0) }
         }

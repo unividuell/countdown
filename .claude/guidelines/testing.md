@@ -18,6 +18,24 @@ Write the failing test first, watch it fail, implement the minimum to make it
 pass, then refactor. Keep commits small. Integration tests must verify real
 behaviour against the Testcontainers Postgres, not mock echoes.
 
+## A mapping test needs a non-default value on the source side
+
+When a test proves that value X reaches field Y, and the expected value happens to be what **both**
+sides default to, the assertion holds even if the mapping is wired to something else entirely. It
+looks like coverage and is worth nothing:
+
+```kotlin
+// Community defaults to "Europe/Berlin", the stubbed edition defaults to "Europe/Berlin" too —
+// this passes whichever one the controller actually read.
+every { editions.requireActive(id) } returns CommunityEdition(communityId = id, label = "Team 2026")
+jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+```
+
+Stub a value that **only** the intended source could have produced (`"America/New_York"`), then assert
+that. Same rule for a batch keyed by id: give one row a distinctive value and a second row none, so a
+lookup on the wrong key produces the default and the test fails. If you cannot make the expected value
+differ from the default, the test is not testing the mapping — say so instead of asserting it.
+
 ## Assertion cheatsheet (kotest)
 
 ```kotlin
