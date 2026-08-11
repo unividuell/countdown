@@ -48,7 +48,7 @@ fun Community.toResponse(edition: CommunityEdition, viewerIsAdmin: Boolean, pend
         gamesUntilRound = edition.gamesUntilRound,
         viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount,
     )
-fun Community.toSummary() = CommunitySummary(id!!, name, slug)
+fun Community.toSummary() = CommunitySummary(requireNotNull(id), name, slug)
 
 data class SuperAdminMemberResponse(
     val userId: UUID, val username: String, val githubLogin: String,

@@ -175,10 +175,11 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { query.isAdmin(c.id!!, uid) } returns false
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+            startsAtTimezone = "America/New_York",
         )
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+            jsonPath("$.startsAtTimezone") { value("America/New_York") }
             jsonPath("$.editionLabel") { value("Team 2026") }
             jsonPath("$.gamesUntilRound") { value(0) }
         }

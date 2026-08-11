@@ -23,7 +23,7 @@ data class CommunityEdition(
     @Id
     val id: UUID? = null,
     val communityId: UUID,
-    /** Display name of the run, e.g. „Hüttenwochenende 2026". */
+    /** Display name of the run, e.g. „Hüttenwochenende 2026“. */
     val label: String,
     val startsAt: Instant? = null,
     val startsAtTimezone: String = DEFAULT_TIMEZONE,

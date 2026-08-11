@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
@@ -84,6 +85,23 @@ class CommunityEditionRepositoryTest(
 
         shouldThrow<DuplicateKeyException> {
             editions.save(CommunityEdition(communityId = communityId, label = "Run 2027"))
+        }
+    }
+
+    // Same rollback-only caveat as above: assert the throw, query nothing afterwards.
+    @Test
+    fun `a window whose first round is later than its last is rejected`() {
+        val communityId = aCommunity("edition-window-inverted")
+
+        // A larger round number is earlier in time, so from=5 with until=10 would end before it
+        // begins — the CHECK constraint, not just the service-level validation, rejects it.
+        shouldThrow<DataIntegrityViolationException> {
+            editions.save(
+                CommunityEdition(
+                    communityId = communityId, label = "Run 2026",
+                    gamesFromRound = 5, gamesUntilRound = 10,
+                )
+            )
         }
     }
 }
