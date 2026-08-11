@@ -12,8 +12,15 @@ Randbedingungen), [Cross-Runtime-RNG](2026-08-02-cross-runtime-rng-design.md) (`
 siehe *Was hier revidiert wird*.
 
 **Ersetzt** aus `huettehuette.unividuell.org` den Ablauf, bei dem ein Admin vorab je Runde ein Spiel
-setzte und dafür vorab einen Pool von Spielen je Typ pflegte. Beides entfällt vollständig; der
-Admin-Aufwand pro Runde geht auf null, wie die Anti-Cheat-Randbedingung es fordert.
+setzte und dafür vorab einen Pool von Spielen je Typ pflegte. Beides entfällt vollständig: der
+**wiederkehrende** Aufwand pro Runde geht auf null, wie die Anti-Cheat-Randbedingung es fordert.
+
+Was damit **nicht** gesagt ist: dass ein Admin nie etwas bereitstellt. Es wird Spiele geben, die auf
+**community-eigenen Bildern** aufbauen — die muss jemand einstellen, einmal je Community und Spieltyp.
+Das ist genau der Aufwand, den die Randbedingung erlaubt („einmalig je Spieltyp ist erlaubt, je Runde
+nicht“). Für Guess Hue ist der Aufwand tatsächlich null; die Auswahl ist deshalb so gebaut, dass ein
+Spieltyp später **ausfallen** kann, weil eine Community ihn nicht bestückt hat — siehe *Die Auswahl ist
+eine reine Funktion*.
 
 ## Scope
 
@@ -141,9 +148,11 @@ game → countdown   (CountdownEngine)
 game → iam         (Namen und Avatare in der Tippübersicht)
 game → rng         (SeededRandom für die Ziehung)
 game → guesshue    (der Datensatz, aus dem gezogen wird)
+gamelab → game     (das Lab läuft durch dieselben Klassen — siehe Das Lab zieht mit)
 ```
 
-Nichts zeigt zurück auf `game`. `ModularityTests` bekommt diese Kanten.
+`game` zeigt auf nichts davon zurück, und auf das Lab schon gar nicht. `ModularityTests` bekommt diese
+Kanten.
 
 **Die Adapter liegen im Framework, nicht im Spielmodul.** `guesshue` bleibt unangetastet und weiß
 nichts von `game`; `GuessHueGameType` liegt in `game.internal` und ruft die öffentliche API von
@@ -174,15 +183,14 @@ aktiven Durchlauf intern auf.
    round.number < games_until_round              → NoGame(AFTER_WINDOW)
 5  find(edition, round.number)                   → vorhanden? Announced.     ← 99,9 % der Requests
 6  sonst materialisieren:
-     previousType = SELECT game_type FROM game.round_games
-                    WHERE edition_id = :e AND round_number > :n
-                    ORDER BY round_number ASC LIMIT 1
-     pool = (catalog.sortedBy { id } - previousType).ifEmpty(catalog.sortedBy { id })
-     pool.isEmpty()                              → NoGame(NO_GAME_TYPE)
+     history = SELECT round_number, game_type FROM game.round_games
+               WHERE edition_id = :e AND round_number > :n
+               ORDER BY round_number ASC          -- zuletzt gespielt zuerst
      rnd    = SeededRandom.fromSeed(secureRandom.nextInt())
-     type   = rnd.pick(pool)
+     type   = selection.pick(catalog.ids.sorted(), history, rnd)
+                                                 → null? NoGame(NO_GAME_TYPE)
      params = type.draw(rnd, RoundContext(round.number, phase))
-     award  = awardFor(phase)          // Regel + Punktzahl, aus der Phase, mit eingefroren
+     award  = awardFor(round.number, phase_two_start_round)   // Regel + Punktzahl, mit eingefroren
      INSERT … ON CONFLICT (edition_id, round_number) DO NOTHING;  danach SELECT
 ```
 
@@ -210,6 +218,37 @@ wird übersprungen. Das ist die ehrliche Lesart von „falls vorhanden“.
 leer, fällt die Regel weg statt das Spiel abzusagen. Heute existiert genau ein Typ — die Regel
 schläft also und ist ungetesteter Code, wenn man sie nicht mit einem **gefälschten Katalog aus ≥ 2
 Typen** testet.
+
+### Die Auswahl ist eine reine Funktion — damit sie wachsen kann
+
+„Nicht zwei gleiche Spiele hintereinander“ ist die **erste und einfachste** Fassung der Auswahlregel und
+soll später komplexer werden. Damit das später eine kleine Änderung ist und keine Operation an der
+Materialisierung, steht die Auswahl von Anfang an als eigene, reine Funktion da — und bekommt die
+**ganze Historie** des Durchlaufs, nicht nur die Vorrunde:
+
+```kotlin
+fun interface GameSelection {
+    /** `null` = kein Typ verfügbar. [history] ist zuletzt-gespielt-zuerst sortiert. */
+    fun pick(candidates: List<String>, history: List<PastRound>, random: SeededRandom): String?
+}
+
+data class PastRound(val roundNumber: Int, val gameType: String)
+```
+
+Heute sind das drei Zeilen (Kandidaten minus `history.firstOrNull()?.gameType`, sonst alle, dann
+`random.pick`). Der Punkt ist nicht die Zeilenzahl, sondern was **nicht** mehr passieren muss, wenn die
+Regel wächst:
+
+- **„nicht innerhalb der letzten drei“, „Typen gleichmäßig verteilen“, Gewichtung** — steht alles schon
+  in `history`. Kein neues Query, kein neuer Parameter, keine Änderung am Aufrufer. Hätte die Auflösung
+  nur `previousType` geladen, wäre jede dieser Regeln eine Änderung an Query *und* Service *und* Tests.
+- **Ein Spieltyp, der in dieser Community nicht verfügbar ist** — etwa das bildbasierte Spiel, dessen
+  Bilder der Admin noch nicht eingestellt hat — ist ein Filter auf `candidates`, **vor** dem Aufruf.
+  Auch das ändert die Auswahlregel nicht.
+
+Der Preis: ein `SELECT` über die Runden des Durchlaufs statt über eine Zeile. Das sind bei einem
+zweimonatigen Countdown ≤ 60 Zeilen mit zwei Spalten, einmal je Runde und Durchlauf — im Lesepfad kommt
+es ohnehin nicht vor, weil Schritt 5 vorher abbiegt.
 
 Ein Nebeneffekt, bewusst hingenommen: wächst der Katalog von leer auf eins, *während* eine Runde
 läuft, bekommt diese Runde nachträglich ein Spiel. Sie hatte vorher keins, also hat niemand etwas
@@ -286,18 +325,40 @@ handle(t: GameType<P>)`). Damit steht kein `UNCHECKED_CAST` in irgendeinem Servi
 `LabService` es heute tut. Bean-Existenz *ist* die Freigabe: `guesshue` scheitert unter
 `production`/`staging` ohnehin am fehlenden Datensatz, siehe game-content-Guideline.
 
-Gegenüber `LabGame` sind zwei Dinge anders, beide Verbesserungen, die die Lab-Guideline ausdrücklich
-zulässt („das Lab passt sich an, nie das Spiel“): **`judge` urteilt statt zu werten**, und
-alle vier Methoden nehmen **Params statt eines Seeds**. Heute rollt `GuessHueLabGame` in `reveal`,
-`score` und `solution` je den ganzen Seed neu auf; mit eingefrorenen Params ist ein Spiel eine reine
-Funktion seiner Runde. `LabGame.score` gibt heute `LabOutcome?` zurück und wertet nichts — die
-Vergabe war dort nie zu Hause und ist es jetzt auch im Framework nicht.
+`GameType` **löst `LabGame` ab** — genau die Richtung, die die Lab-Guideline vorschreibt („das Lab passt
+sich an, nie das Spiel“). Zwei Dinge sind anders: alle vier Methoden nehmen **Params statt eines Seeds**
+(`GuessHueLabGame` rollt heute in `reveal`, `score` und `solution` je den ganzen Seed neu auf; mit
+eingefrorenen Params ist ein Spiel eine reine Funktion seiner Runde), und **`judge` urteilt statt zu
+werten**. Letzteres ist keine Verschärfung: `LabGame.score` gibt schon heute `LabOutcome?` zurück und
+wertet nichts. Die Vergabe war dort nie zu Hause und ist es jetzt auch im Framework nicht.
 
-Das Lab **bleibt seed-basiert und wird nicht auf `GameType` umgestellt** — außer dem Ausbau des
-Sichtbarkeits-Schalters bleibt es unangetastet. Guess Hue hat damit zwei Adapter, die beide auf
-`guesshue` zugreifen; doppelt ist nur die triviale Abbildung Ziehung → Payload, und das Lab ist
-laut eigener Guideline jederzeit wegwerfbar. Die Zusammenlegung steht unter *Was bewusst offen
-bleibt*.
+### Das Lab zieht mit
+
+Das Lab soll einem echten Spielablauf so nah kommen wie möglich, also **läuft es durch dieselben
+Klassen** statt neben ihnen: `LabGame`, `GuessHueLabGame`, `SampleLabGame`, `LabPayload`, `LabOutcome`
+und `LabSolution` fallen weg, `gamelab` hängt an `game` und benutzt `GameCatalog`, `GameType`,
+`GamePayload`, `GameSolution`. Zwei Adapter für dasselbe Spiel gibt es damit nicht, und die Zusage „was
+das Lab zeigt, zeigt das echte Spiel“ ist erzwungen statt behauptet.
+
+Der Lab-Runde fehlt gegenüber der echten nur die Tabelle. Sie wird gewählt statt materialisiert:
+**Spieltyp + Seed + Phase**, und dann friert der Store `params` und `award` genauso ein wie
+`round_games` es täte — aus `SeededRandom.fromSeed(seed)` statt aus `secureRandom`, damit ein Seed
+reproduzierbar dieselbe Runde ergibt. Danach ist alles identisch: `present`, `judge`, die Vergaberegel
+samt Neuauswertung, `solution` nach dem eigenen Tipp.
+
+- **Der Phasen-Wähler** ist der eigentliche Gewinn und der Grund, warum das jetzt passiert: `CLOSEST_ONLY`
+  und die wachsende Punktzahl sind von Hand nur beurteilbar, wenn man Phase 2 herbeischalten kann,
+  ohne eine Community-Schwelle zu verbiegen. Der Einsatz kommt dabei aus `awardFor` — das Lab wählt die
+  Phase, nicht die Punkte.
+- **`SampleLabGame` wird gelöscht.** Es war das Beispiel, solange es kein echtes Spiel gab; jetzt gibt es
+  eins, und ein Fake-Spiel im echten `GameCatalog` wäre gefährlich, weil es in echten Runden angesagt
+  werden könnte. Seine Rolle als Vorlage für den Feldmengen-Test übernimmt `GuessHueGameType`.
+- **Der Store behält seine Form:** eine Runde pro (Community, Spieltyp), ein anderer Seed oder eine
+  andere Phase verdrängt die vorige. Die Selbstbegrenzung aus der Lab-Guideline bleibt damit, ohne TTL
+  und ohne Aufräumjob, und die beiden Reset-Aktionen bleiben auch.
+
+Das Lab bleibt ein Zwei-Tor-Werkzeug (`@Profile("!production")` + `app.game-lab.enabled`, 404 statt
+403) und bleibt wegwerfbar: es hängt an `game`, `game` nie an ihm.
 
 `params JSONB` braucht in Spring Data JDBC einen Converter (Jackson 3 `JsonNode` ↔ `PGobject`); die
 Spalte wird als `JsonNode` gehalten und erst im `GameTypeHandle` in `P` überführt.
@@ -416,20 +477,36 @@ und wird mit der Runde eingefroren:
 
 | Regel | Phase | Vergabe |
 |---|---|---|
-| `ALL_QUALIFYING` | 1 | jeder punkte-berechtigte Tipp bekommt `award_points` (**1**) |
-| `CLOSEST_ONLY` | 2 | nur der punkte-berechtigte Tipp mit der kleinsten `deviation` bekommt `award_points` (**3**), alle anderen `0` |
+| `ALL_QUALIFYING` | 1 | jeder punkte-berechtigte Tipp bekommt `award_points` |
+| `CLOSEST_ONLY` | 2 | nur der punkte-berechtigte Tipp mit der kleinsten `deviation` bekommt `award_points`, alle anderen `0` |
 
-Beide Zahlen kommen aus **einer** Funktion `awardFor(phase, roundNumber)` im Framework — nicht aus dem
-Spiel und nicht aus zwei Konstanten an zwei Orten. Das ist die Bedingung, unter der die `3` als
-Vereinfachung tragbar ist: sie steht an genau einer Stelle, gilt für alle Spiele, und weil jede Runde
-ihren Wert eingefroren mitbekommt, ersetzt ein späterer Austausch der Funktion keine einzige
-vergangene Runde.
+Regel **und** Punktzahl kommen aus **einer** Funktion im Framework — nicht aus dem Spiel und nicht aus
+Konstanten an zwei Orten:
 
-Denn die Zielkurve ist bekannt und nicht Teil dieses Schnitts: im Original wächst die Punktzahl ab
-Phase 2 **um einen Punkt pro Runde** — `pointsOfRound(round)` in
-`huettehuette.unividuell.org/server/composables/useGamePointsCalculator.ts` liefert `1` vor Phase 2 und
-`phase2Start − round + 2` danach, also `2` in der Schwellenrunde, dann 3, 4, 5 … („Schlag den Raab“,
-so auch im Original kommentiert). Das ersetzt später den Rückgabewert von `awardFor` und sonst nichts.
+```kotlin
+data class Award(val rule: AwardRule, val points: Int)
+
+fun awardFor(roundNumber: Int, phaseTwoStartRound: Int?): Award =
+    if (phaseTwoStartRound == null || roundNumber > phaseTwoStartRound) {
+        Award(ALL_QUALIFYING, 1)
+    } else {
+        // „Schlag den Raab“: ab der Schwelle wächst der Einsatz mit jeder Runde.
+        Award(CLOSEST_ONLY, phaseTwoStartRound - roundNumber + 2)
+    }
+```
+
+Das ist der Port von `pointsOfRound` aus
+`huettehuette.unividuell.org/server/composables/useGamePointsCalculator.ts`, wo derselbe Ausdruck steht
+(dort mit `gaussSumRule` als Phasenprüfung und einer Wertetabelle im Kommentar, die als Testvektoren
+taugt): vor Phase 2 ein Punkt, ab der Schwellenrunde **2**, dann 3, 4, 5 … Bei `phase_two_start_round =
+20` also `T-20 → 2`, `T-19 → 3`, …, `T-0 → 22`, `T+1 → 23`. Nach unten offen, wie im Original — ein
+`games_until_round` unter `0` lässt den Einsatz einfach weiterwachsen.
+
+`Phase` und `Award` teilen dieselbe Prüfung `roundNumber <= phaseTwoStartRound`; sie steht an einer
+Stelle, damit Toleranz und Einsatz nicht auseinanderlaufen können.
+
+Und weil jede Runde ihren Wert **eingefroren** mitbekommt, darf der Admin `phase_two_start_round`
+danach verschieben: die Kurve gilt ab dann, vergangene Runden behalten ihren Einsatz.
 
 ### Herkunft im Original
 
@@ -522,8 +599,9 @@ verschwinden: nach der [Logging-Guideline](../../../.claude/guidelines/logging.m
 „Verhalten degradiert still“, und ohne sie steht im Support-Fall Aussage gegen Aussage.
 
 Eine Folge, die ins Frontend gehört und hier nur benannt wird: unter `CLOSEST_ONLY` sind die Punkte
-der **laufenden** Runde vorläufig, bis sie endet. „3 Punkte“ heißt dort „bester Tipp bisher“, und das
-sollte auch so dastehen.
+der **laufenden** Runde vorläufig, bis sie endet. Eine Punktzahl heißt dort „bester Tipp bisher“, und
+das sollte auch so dastehen — zumal der Einsatz ab Phase 2 mit jeder Runde steigt und damit auch das,
+was man verlieren kann.
 
 `MemberPointsQuery` erfüllt sich so:
 
@@ -546,8 +624,13 @@ TDD, mockk + kotest + MockMvc Kotlin DSL, Testcontainers über den geteilten Pos
 
 **Auflösung** — Fenstergrenzen beidseitig inklusiv; kein aktiver Durchlauf; kein `startsAt`; leerer
 Katalog; Materialisierung idempotent (zweiter Aufruf liefert dieselbe Zeile); zwei parallele
-Transaktionen ergeben **eine** Zeile; „Vorrunde“ wird über eine Lücke hinweg gefunden; **Typ-Wechsel
-mit gefälschtem Katalog aus 2 Typen** und Abwertung bei 1 Typ.
+Transaktionen ergeben **eine** Zeile; die Historie enthält die Runde über eine Lücke hinweg.
+
+**Auswahl** — `GameSelection` ist eine reine Funktion und wird ohne DB getestet: **Typ-Wechsel mit einem
+gefälschten Katalog aus 2 Typen**, Abwertung bei 1 Typ (die Regel fällt weg, das Spiel nicht),
+leere Kandidatenliste → `null`, leere Historie → beliebiger Kandidat, und bei gleichem `SeededRandom`
+dieselbe Wahl. Mit dem echten Katalog feuert die Regel nie, weil es einen Typ gibt — ohne den gefälschten
+Katalog wäre sie ungetesteter Code.
 
 **Durchlauf** — ein zweiter aktiver Durchlauf verletzt den partiellen Unique-Index; die Migration
 legt für jede bestehende Community genau eine Edition mit den übernommenen Werten an.
@@ -568,6 +651,11 @@ abgegebener, besserer Tipp nimmt dem vorherigen Besten seine Punkte** — also s
 (`toleranceDeg = null`) auf `true`, auch für einen Tipp 179° daneben; `deviation` ist in beiden Phasen
 derselbe Winkelabstand.
 
+**Punktekurve** — `awardFor` bekommt die Wertetabelle aus dem Original als Vektoren: ohne Schwelle
+überall `ALL_QUALIFYING`/1; mit `phase_two_start_round = 20` dann `T-21 → 1`, `T-20 → 2`, `T-19 → 3`,
+`T-0 → 22`, `T+1 → 23`, und ab der Schwelle `CLOSEST_ONLY`. Dazu die Kopplung: `Phase` und `Award`
+schlagen bei derselben Runde um.
+
 **Einfrieren** — `award_rule` und `award_points` einer bestehenden Runde ändern sich nicht, wenn der
 Admin danach `phase_two_start_round` verschiebt.
 
@@ -578,6 +666,11 @@ laufende Runde aus; eine Community ohne Runden ergibt `0`.
 `description, initHue, saturation, lightness`, fällt um, sobald `hue` sich einschleicht.
 `ModularityTests` grün mit den Kanten oben.
 
+**Lab** — der Zwei-Tor-Test bleibt (`app.game-lab.enabled=false` ⇒ Beans weg, Endpunkt 404); dazu neu,
+dass derselbe Seed dieselbe Runde ergibt, ein anderer Seed oder eine andere Phase die vorige verdrängt,
+und dass eine Lab-Runde in Phase 2 dieselben Punkte vergibt wie eine echte — der Test, der die
+Zusammenlegung überhaupt wert macht.
+
 ## Umsetzungsschnitt
 
 1. **Durchlauf** — Migration `community/V3`, `CommunityEdition` + Repository, aktive-Edition-Query,
@@ -585,12 +678,15 @@ laufende Runde aus; eine Community ohne Runden ergibt `0`.
    „neuen Durchlauf starten“.
 2. **Ansage** — Modul `game`, Schema, `GameType` / `GameCatalog` / `GameTypeHandle`, Auflösung,
    `GuessHueGameType` mit `draw` und `present`, Ansage-Endpunkt.
-3. **Spielen** — Aufdecken/Tippen, `judge` in Guess Hue, die beiden Vergaberegeln samt
+3. **Spielen** — Aufdecken/Tippen, `judge` in Guess Hue, `awardFor` samt beiden Vergaberegeln und
    Neuauswertung, Tippübersicht, echte Standings, Umzug von `MemberPointsConfiguration` und
-   `StubMemberPoints`, Ausbau des Lab-Schalters.
+   `StubMemberPoints`.
+4. **Lab** — Umbau auf `GameCatalog`/`GameType`, Phasen-Wähler, Löschen von `LabGame`,
+   `GuessHueLabGame`, `SampleLabGame` und dem Sichtbarkeits-Schalter; Korrektur von `game-lab.md`.
 
 2 und 3 sind getrennt beschreibbar, gehen aber vermutlich zusammen live — eine Ansage, die man nicht
-spielen kann, ist ein halbes Feature.
+spielen kann, ist ein halbes Feature. 4 kommt **nach** 3, nicht davor: das Lab zieht auf Klassen um, die
+erst dann fertig sind, und es ist Werkzeug — es darf das Spiel nicht aufhalten.
 
 ## Was hier revidiert wird
 
@@ -605,7 +701,10 @@ das an drei Stellen:
 | Frage 7 | woraus wird der Seed abgeleitet? | aus nichts — er wird gezogen und nicht gespeichert |
 | Frage 8 | wo leben Spiel-Runden im Modulith? | Modul `game`, Schema `game`, zwei Tabellen |
 
-Dazu der Lab-Schalter `revealsOthersBeforeGuess`, der entfällt.
+Dazu am Game-Lab: der Schalter `revealsOthersBeforeGuess` entfällt, und das Lab läuft nicht mehr neben
+dem Framework, sondern durch es — `LabGame`, `GuessHueLabGame` und `SampleLabGame` fallen weg. Die
+Lab-Spec beschrieb `LabGame` als „eine Vermutung, kein Vertrag“ und sagte, sie werde sich am ersten
+echten Spiel ändern. Das ist jetzt eingelöst.
 
 ## Was bewusst offen bleibt
 
@@ -614,18 +713,12 @@ Dazu der Lab-Schalter `revealsOthersBeforeGuess`, der entfällt.
   das Spiel, das darauf wertet.
 - **Commit-Reveal.** Variante (a), Commit auf die Lösung, braucht ein Salt und eine Spalte — beides
   additiv.
-- **Die wachsende Punktzahl ab Phase 2** (`phase2Start − round + 2`). `awardFor(phase, roundNumber)`
-  hat die Rundennummer schon in der Hand, die Runde friert das Ergebnis ein — der Austausch ist ein
-  Funktionsrumpf und keine Migration. Bis dahin gilt die `3`.
 - **Anomalie-Erkennung.** Braucht Runden mit echten Spielern, bevor Grenzen mehr als Raten sind.
 - **Fast Rounds.** Eine Spalte `round_minor` plus erweiterter Index, wenn es soweit ist.
-- **Lab und Framework zusammenlegen.** `LabService` könnte seine Runde über `GameCatalog` ziehen
-  (`type.draw(SeededRandom.fromSeed(seed), ctx)`) und danach dieselben `present`/`score`/`solution`
-  laufen lassen wie die Produktion — dann fielen `LabGame`, `GuessHueLabGame` und der doppelte
-  Payload-Aufbau weg, und die Zusage „was das Lab zeigt, zeigt das echte Spiel“ wäre erzwungen statt
-  behauptet. Zwei Fragen hängen daran: das Lab bräuchte einen **Phasen-Wähler** (was ein Gewinn
-  wäre), und `SampleLabGame` hat keine Produktionsentsprechung — ein Fake-Spiel im echten Katalog
-  wäre gefährlich, also müsste es weichen. Beides ist zu viel für diesen Schnitt.
+- **Reichere Auswahlregeln** („nicht innerhalb der letzten drei“, gleichmäßige Verteilung, Gewichtung,
+  Verfügbarkeit je Community). Die erste Fassung ist „nicht zwei gleiche hintereinander“; `GameSelection`
+  bekommt die ganze Historie und die Kandidatenliste, damit das später eine Änderung an einer reinen
+  Funktion ist.
 - **Wiederholungsvermeidung *innerhalb* eines Typs** („nicht dieselbe Farbe wie letzte Woche“). Mit
   eingefrorenen Params ist die Historie lesbar, also ist das später ein Filter beim Ziehen — heute
   nicht gebaut.
@@ -652,8 +745,13 @@ plus Korrekturen an `game-lab.md`:
 - **Das Spiel urteilt, das Framework vergibt.** Ein Spiel sagt „punkte-berechtigt“ und „so weit
   daneben“; wie viele Punkte das wert ist und wessen Punkte dabei verfallen, ist über alle Spiele
   gleich. Die Grenze verläuft an dem Wert, den das Framework *vergleichen*, aber nicht *berechnen*
-  kann. Die Punktzahl kommt aus **einer** Funktion und wird pro Runde eingefroren — dann darf sie
-  vereinfacht anfangen, ohne dass die Vereinfachung sich verteilt oder Historie kostet.
+  kann. Regel *und* Punktzahl kommen aus **einer** Funktion und werden pro Runde eingefroren — dann darf
+  die Balance sich jederzeit ändern, ohne Historie zu kosten.
+- **Eine Regel, die wachsen soll, bekommt ihre Eingabe vollständig** — nicht das, was die erste Fassung
+  gerade braucht. `GameSelection` nimmt die ganze Historie und die Kandidatenliste, obwohl „nicht zwei
+  gleiche hintereinander“ mit einer Zeile auskäme; dadurch ist die nächste Regel eine Änderung an einer
+  reinen Funktion und nicht an Query, Service und Tests. Das ist kein Vorgriff, solange die vollständige
+  Eingabe billig ist — hier ≤ 60 winzige Zeilen, einmal je Runde.
 - **Wer fremde Zeilen schreibt, muss serialisieren.** Eine Auswertung über die ganze Runde braucht
   eine Zeilensperre auf der Runde, sonst verliert genau der Moment, in dem sich die Punkte
   verschieben, ein Update.
