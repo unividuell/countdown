@@ -124,8 +124,6 @@ Eine Zeile pro (Runde, Spieler), angelegt beim **ersten Aufdecken** — nicht er
 | `deviation` | DOUBLE PRECISION NULL | Abstand zur Lösung, kleiner ist besser |
 | `outcome` | JSONB NULL | was der Server berechnet hat, für die Anzeige |
 | `points` | INT NULL | NULL = nicht getippt, `0` = getippt und leer ausgegangen |
-| `points_lost_to` | UUID NULL → `iam.users` | wer die Punkte abgeschossen hat — der Bullet Bill |
-| `points_lost_at` | TIMESTAMPTZ NULL | wann |
 
 `UNIQUE (round_game_id, user_id)`. **Dieser Index *ist* die Regel „ein Tipp pro Spieler pro
 Runde“** — keine Prüfung im Service.
@@ -347,7 +345,7 @@ data class RoundResponse(
     val noGameReason: NoGameReason?,      // NOT_SCHEDULED | BEFORE_WINDOW | AFTER_WINDOW | NO_GAME_TYPE
     val payload: GamePayload?,            // erst wenn revealed_at gesetzt ist
     val solution: GameSolution?,          // erst wenn guessed_at gesetzt ist
-    val me: PlayDto?,                     // revealedAt, guessedAt, guess, outcome, points, pointsLostTo
+    val me: PlayDto?,                     // revealedAt, guessedAt, guess, outcome, points
     val others: List<PlayDto>,            // leer bis guessed_at gesetzt ist
 )
 ```
@@ -446,6 +444,7 @@ Alias derselben `utils/points/phase-2.ts`, neben `gaussSumRule` und `maxToleranz
 | Vergleicher je Spiel: `distanceOnCircle(hue, target)`, `gamePlayDurationMs`, `averageReactionTimeMs` | `deviation`, ein „kleiner ist besser“-Skalar |
 | eigener Tipp nicht bester → `{ …ownGuess, points: 0 }` | Neuauswertung schreibt `0` |
 | `fireBulletBill` nullt fremde, schlechtere Tipps | Neuauswertung schreibt fremde Zeilen |
+| `bulletBill` auf der Zeile des Verdrängten | nicht portiert, siehe unten |
 
 Zwei Stellen, an denen wir bewusst nicht wörtlich portieren:
 
@@ -503,24 +502,28 @@ Wertungs-Bugfix kommt mit einem Backfill, nicht mit einem Schulterzucken über v
 existiert nur, damit der Punktestand ein `SUM` ist und nicht 900 JSON-Deserialisierungen pro
 Seitenaufruf.
 
-### Der Bullet Bill wird persistiert, weil er nicht rekonstruierbar ist
+### Kein Bullet Bill — und keine Spalte dafür
 
-Im Original bekommt der Abgeschossene `bulletBill: { firedByUid, firedAt }` auf seinen Tipp — *wer* ihm
-die Punkte genommen hat und wann. Das ist die halbe Freude an der Regel, und die reine Neuauswertung
-verliert es: aus dem Endstand lässt sich später ablesen, wer *jetzt* führt, aber nicht, wessen Tipp
-wann welchen verdrängt hat.
+Das Original schreibt dem Verdrängten `bulletBill: { firedByUid, firedAt }` auf den Tipp: wer ihm die
+Punkte genommen hat. **Nicht portiert.** Im Original hat es nie erfüllt, wofür es gedacht war — die
+Spieler haben es nicht verstanden, und es wurde am Ende in der UI ausgeblendet. Ein Feature, das schon
+einmal gescheitert ist, kostet hier keine Spalte.
 
-Deshalb schreibt die Neuauswertung zwei Spalten mit, **auf der Zeile des Getroffenen**:
-`points_lost_to` = der Spieler, dessen Tipp die Auswertung ausgelöst hat, und `points_lost_at`. Gesetzt
-wird nur beim Übergang von „hatte Punkte“ auf `0`; einmal gesetzt, bleibt es stehen, und ein späterer
-Backfill lässt es unberührt — er rechnet Punkte nach, nicht Geschichte.
+Es kostet auch keine, um den Historiker zu bedienen, denn **die Sequenz ist replaybar**: `guessed_at`,
+`qualifies` und `deviation` liegen auf der Zeile, Tipps sind unveränderlich. Wer die Tipps einer Runde
+nach `guessed_at` sortiert und die Vergabefunktion nach jedem Schritt über das Präfix laufen lässt, sieht
+jeden Übergang „hatte Punkte → 0“ samt Auslöser — genau das, was die Spalte gespeichert hätte.
+(Kollidierende Zeitstempel wären eine Lücke; die Zeilensperre auf der Runde serialisiert die Tipps
+ohnehin.)
 
-Das ist die einzige Stelle, an der die Auswertung mehr tut als rechnen, und sie tut es aus genau diesem
-Grund: alles andere ist aus persistierten Werten wiederherstellbar, dieser Moment nicht.
+Damit bleibt die Neuauswertung **reine Arithmetik ohne Zustand** — die Eigenschaft ist mehr wert als
+das Feature. Für den laufenden Betrieb bleibt eine **Log-Zeile** an der Stelle, an der jemandem Punkte
+verschwinden: nach der [Logging-Guideline](../../../.claude/guidelines/logging.md) genau der Fall
+„Verhalten degradiert still“, und ohne sie steht im Support-Fall Aussage gegen Aussage.
 
 Eine Folge, die ins Frontend gehört und hier nur benannt wird: unter `CLOSEST_ONLY` sind die Punkte
 der **laufenden** Runde vorläufig, bis sie endet. „3 Punkte“ heißt dort „bester Tipp bisher“, und das
-sollte auch so dastehen — und wer abgeschossen wurde, erfährt aus `points_lost_to`, von wem.
+sollte auch so dastehen.
 
 `MemberPointsQuery` erfüllt sich so:
 
@@ -560,10 +563,6 @@ niemand, bekommt niemand etwas. Dazu der eigentliche Regressionstest über die D
 abgegebener, besserer Tipp nimmt dem vorherigen Besten seine Punkte** — also schreibt ein Tipp auch
 *fremde* Zeilen. Und zwei gleichzeitige Tipps derselben Runde hinterlassen einen konsistenten Stand
 (die Zeilensperre; ohne sie geht genau hier ein Update verloren).
-
-**Bullet Bill** — wer verdrängt wird, bekommt `points_lost_to` auf den Verdränger und `points_lost_at`
-gesetzt; ein dritter, noch schlechterer Tipp danach überschreibt beides **nicht**, und wer die Runde
-gewinnt, hat beide Spalten leer.
 
 **Vorbedingung** — `GuessHueGameType.judge` setzt `qualifies` in Phase 1 an der Toleranz und in Phase 2
 (`toleranceDeg = null`) auf `true`, auch für einen Tipp 179° daneben; `deviation` ist in beiden Phasen
@@ -658,6 +657,10 @@ plus Korrekturen an `game-lab.md`:
 - **Wer fremde Zeilen schreibt, muss serialisieren.** Eine Auswertung über die ganze Runde braucht
   eine Zeilensperre auf der Runde, sonst verliert genau der Moment, in dem sich die Punkte
   verschieben, ein Update.
+- **Was aus Zeitstempeln replaybar ist, braucht keine Spalte.** Liegen die Eingaben unveränderlich und
+  datiert vor, ist jeder Zwischenzustand rekonstruierbar; „ich brauche eine Spalte für den Moment X“
+  gilt erst, wenn der Replay ihn *nicht* hergibt. Ein Log-Eintrag deckt den Betriebsfall, ohne die
+  Auswertung zustandsbehaftet zu machen.
 - **Ein Schalter, dessen richtige Antwort für alle Fälle gleich ist, ist ein Bug.** Er verlagert eine
   Invariante in einen Review-Punkt. `revealsOthersBeforeGuess` ist das Beispiel.
 - **Unique-Index statt Service-Prüfung**, und ein `UPDATE … WHERE guessed_at IS NULL` statt
