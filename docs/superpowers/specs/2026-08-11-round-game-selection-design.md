@@ -486,11 +486,20 @@ Konstanten an zwei Orten:
 ```kotlin
 data class Award(val rule: AwardRule, val points: Int)
 
+enum class AwardRule {
+    /** Jeder Berechtigte punktet. */
+    ALL_QUALIFYING,
+
+    /** Im Original „winner takes it all“ — `winnerTakesItAll` / `winnerTakesItAllCleaner`. */
+    CLOSEST_ONLY,
+}
+
 fun awardFor(roundNumber: Int, phaseTwoStartRound: Int?): Award =
     if (phaseTwoStartRound == null || roundNumber > phaseTwoStartRound) {
         Award(ALL_QUALIFYING, 1)
     } else {
-        // „Schlag den Raab“: ab der Schwelle wächst der Einsatz mit jeder Runde.
+        // „Schlag den Raab“: ab der Schwelle steigt der Einsatz je Runde um eins.
+        // Über Gauß summierbar — was ab hier insgesamt noch zu holen ist.
         Award(CLOSEST_ONLY, phaseTwoStartRound - roundNumber + 2)
     }
 ```
@@ -501,6 +510,14 @@ Das ist der Port von `pointsOfRound` aus
 taugt): vor Phase 2 ein Punkt, ab der Schwellenrunde **2**, dann 3, 4, 5 … Bei `phase_two_start_round =
 20` also `T-20 → 2`, `T-19 → 3`, …, `T-0 → 22`, `T+1 → 23`. Nach unten offen, wie im Original — ein
 `games_until_round` unter `0` lässt den Einsatz einfach weiterwachsen.
+
+**Beide Namen des Originals stehen als Kommentar im Code**, weil jemand später darüber reden wird:
+„winner takes it all“ an `CLOSEST_ONLY`, „Schlag den Raab“ an der Kurve. Der Bezeichner bleibt
+`CLOSEST_ONLY` — er sagt, *was* passiert, der Kommentar, *woher es kommt*.
+
+Und Gauß gehört dazu, weil er eine andere, nützliche Frage beantwortet: der Einsatz *einer* Runde ist
+eine arithmetische Folge, aber deren **Summe** sagt, was ab Phase 2 insgesamt noch zu holen ist —
+Schwelle T-20 ergibt `2+3+…+22 = 252`. Darum ging es im Original.
 
 `Phase` und `Award` teilen dieselbe Prüfung `roundNumber <= phaseTwoStartRound`; sie steht an einer
 Stelle, damit Toleranz und Einsatz nicht auseinanderlaufen können.
@@ -517,6 +534,7 @@ Alias derselben `utils/points/phase-2.ts`, neben `gaussSumRule` und `maxToleranz
 
 | Original | hier |
 |---|---|
+| `winnerTakesItAll(round, phase2Start)` schaltet um | `awardFor` liefert `CLOSEST_ONLY` |
 | `currentGuesses.filter(g => g.points > 0)` vor dem Sortieren | `qualifies` |
 | Vergleicher je Spiel: `distanceOnCircle(hue, target)`, `gamePlayDurationMs`, `averageReactionTimeMs` | `deviation`, ein „kleiner ist besser“-Skalar |
 | eigener Tipp nicht bester → `{ …ownGuess, points: 0 }` | Neuauswertung schreibt `0` |
@@ -747,6 +765,10 @@ plus Korrekturen an `game-lab.md`:
   gleich. Die Grenze verläuft an dem Wert, den das Framework *vergleichen*, aber nicht *berechnen*
   kann. Regel *und* Punktzahl kommen aus **einer** Funktion und werden pro Runde eingefroren — dann darf
   die Balance sich jederzeit ändern, ohne Historie zu kosten.
+- **Eine portierte Regel trägt den Namen des Originals im Kommentar, nicht im Bezeichner.** Der
+  Bezeichner sagt, *was* passiert (`CLOSEST_ONLY`), der Kommentar, *woher es kommt* („winner takes it
+  all“, „Schlag den Raab“) — sonst sucht später niemand die Stelle im Referenzprojekt. Kurz halten:
+  ein paar Worte, kein Aufsatz.
 - **Eine Regel, die wachsen soll, bekommt ihre Eingabe vollständig** — nicht das, was die erste Fassung
   gerade braucht. `GameSelection` nimmt die ganze Historie und die Kandidatenliste, obwohl „nicht zwei
   gleiche hintereinander“ mit einer Zeile auskäme; dadurch ist die nächste Regel eine Änderung an einer
