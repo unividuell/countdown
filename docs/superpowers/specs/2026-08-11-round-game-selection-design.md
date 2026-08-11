@@ -87,6 +87,8 @@ die drei Spalten aus `communities`.
 | `round_number` | INT NOT NULL | |
 | `game_type` | TEXT NOT NULL | die `GameType.id`, z. B. `guess-hue` |
 | `params` | JSONB NOT NULL | die eingefrorene Ziehung — **enthält die Lösung** |
+| `award_rule` | TEXT NOT NULL | `ALL_QUALIFYING` \| `CLOSEST_ONLY`, siehe *Punkte* |
+| `award_points` | INT NOT NULL | wie viele Punkte die Regel vergibt |
 | `announced_at` | TIMESTAMPTZ NOT NULL | |
 
 `UNIQUE (edition_id, round_number)`.
@@ -118,8 +120,10 @@ Eine Zeile pro (Runde, Spieler), angelegt beim **ersten Aufdecken** — nicht er
 | `reveal_count` | INT NOT NULL DEFAULT 1 | Signal, siehe *Aufdecken* |
 | `guess` | JSONB NULL | NULL = noch nicht getippt |
 | `guessed_at` | TIMESTAMPTZ NULL | der Server stempelt, nie der Client |
+| `qualifies` | BOOLEAN NULL | punkte-berechtigt — das Urteil des Spiels |
+| `deviation` | DOUBLE PRECISION NULL | Abstand zur Lösung, kleiner ist besser |
 | `outcome` | JSONB NULL | was der Server berechnet hat, für die Anzeige |
-| `points` | INT NULL | NULL = nicht getippt, `0` = getippt und daneben |
+| `points` | INT NULL | NULL = nicht getippt, `0` = getippt und leer ausgegangen |
 
 `UNIQUE (round_game_id, user_id)`. **Dieser Index *ist* die Regel „ein Tipp pro Spieler pro
 Runde“** — keine Prüfung im Service.
@@ -178,6 +182,7 @@ aktiven Durchlauf intern auf.
      rnd    = SeededRandom.fromSeed(secureRandom.nextInt())
      type   = rnd.pick(pool)
      params = type.draw(rnd, RoundContext(round.number, phase))
+     award  = awardFor(phase)          // Regel + Punktzahl, aus der Phase, mit eingefroren
      INSERT … ON CONFLICT (edition_id, round_number) DO NOTHING;  danach SELECT
 ```
 
@@ -248,15 +253,30 @@ interface GameType<P : Any> {
     val paramsType: Class<P>        // für die JSONB-Deserialisierung
 
     fun draw(random: SeededRandom, context: RoundContext): P
-    fun present(params: P): GamePayload            // was der Spieler sieht — nie die Lösung
-    fun score(params: P, guess: JsonNode): Scored  // wirft bei ungültigem Tipp
-    fun solution(params: P): GameSolution?         // erst nach dem eigenen Tipp
+    fun present(params: P): GamePayload              // was der Spieler sieht — nie die Lösung
+    fun judge(params: P, guess: JsonNode): Judgement // wirft bei ungültigem Tipp
+    fun solution(params: P): GameSolution?           // erst nach dem eigenen Tipp
 }
 
 data class RoundContext(val roundNumber: Int, val phase: Phase)
-data class Scored(val points: Int, val outcome: GameOutcome?)
 enum class Phase { ONE, TWO }
+
+/** Was das Spiel über einen Tipp sagen kann — und nur das. */
+data class Judgement(
+    val qualifies: Boolean,     // punkte-berechtigt
+    val deviation: Double,      // Abstand zur Lösung, kleiner ist besser; 0.0 = perfekt
+    val outcome: GameOutcome?,  // für die Anzeige
+)
 ```
+
+**Das Spiel urteilt, das Framework vergibt.** `judge` sagt, ob ein Tipp punkte-berechtigt ist und wie
+weit er daneben lag — nicht, wie viele Punkte er wert ist. Wie viele Punkte daraus werden und ob ein
+Tipp anderen ihre Punkte nimmt, ist über alle Spiele gleich und gehört dem Framework; siehe *Punkte*.
+
+`deviation` ist der einzige Wert, den das Framework braucht, um „am nächsten dran“ *vergleichen* zu
+können, ohne es *berechnen* zu müssen — bei Guess Hue der Winkelabstand in Grad, bei einem
+zeitgewerteten Spiel Sekunden. Ein Spiel ohne sinnvollen Abstand (reines richtig/falsch) liefert
+`0.0` für jeden Treffer; dann sind alle Treffer gleichauf, und das genügt.
 
 Der Generics-Sprung von `Map<String, GameType<*>>` auf einen konkreten `P` wird in **einer** Klasse
 `GameTypeHandle<P>` gekapselt, die den Typparameter bei der Konstruktion einfängt (`fun <P : Any>
@@ -267,10 +287,11 @@ handle(t: GameType<P>)`). Damit steht kein `UNCHECKED_CAST` in irgendeinem Servi
 `production`/`staging` ohnehin am fehlenden Datensatz, siehe game-content-Guideline.
 
 Gegenüber `LabGame` sind zwei Dinge anders, beide Verbesserungen, die die Lab-Guideline ausdrücklich
-zulässt („das Lab passt sich an, nie das Spiel“): **`score` liefert Punkte** statt `LabOutcome?`, und
+zulässt („das Lab passt sich an, nie das Spiel“): **`judge` urteilt statt zu werten**, und
 alle vier Methoden nehmen **Params statt eines Seeds**. Heute rollt `GuessHueLabGame` in `reveal`,
 `score` und `solution` je den ganzen Seed neu auf; mit eingefrorenen Params ist ein Spiel eine reine
-Funktion seiner Runde.
+Funktion seiner Runde. `LabGame.score` gibt heute `LabOutcome?` zurück und wertet nichts — die
+Vergabe war dort nie zu Hause und ist es jetzt auch im Framework nicht.
 
 Das Lab **bleibt seed-basiert und wird nicht auf `GameType` umgestellt** — außer dem Ausbau des
 Sichtbarkeits-Schalters bleibt es unangetastet. Guess Hue hat damit zwei Adapter, die beide auf
@@ -298,13 +319,19 @@ Damit kann eine spätere Verschiebung der Phasenschwelle vergangene Runden nicht
 Eigenschaft wie beim Params-Einfrieren, eine Ebene tiefer. `GuessHueTolerance.DEGREES` bleibt der
 Phase-1-Wert; Phase 2 ist eine zweite Zahl dort, kein Frontend-Release.
 
+Dasselbe gilt für die Vergabe: `award_rule` und `award_points` leiten sich bei der Ansage aus der
+Phase ab und werden **mit eingefroren**. Ein Admin, der die Phasenschwelle nachträglich verschiebt,
+ändert damit die kommenden Runden und keine vergangene. Die Zahlen selbst sind Spielbalance und leben
+als Konstanten im Framework — man darf sie jederzeit ändern, ohne Historie zu verlieren, weil jede
+Runde ihre eigene mitbringt.
+
 ## Spielen
 
 | | | |
 |---|---|---|
 | `GET  …/rounds/current` | Ansage (materialisiert) | `payload` erst nach dem Aufdecken, `solution` und `others` erst nach dem eigenen Tipp |
 | `POST …/rounds/current/reveal` | legt die `round_plays`-Zeile an | idempotent |
-| `POST …/rounds/current/guess` | validiert, wertet, schreibt | |
+| `POST …/rounds/current/guess` | urteilt, schreibt, wertet die Runde neu aus | |
 
 Die Antwort der Ansage, mit den Feldern, die je nach Zustand `null` bleiben:
 
@@ -320,6 +347,11 @@ data class RoundResponse(
 )
 ```
 
+`qualifies` und `deviation` **bleiben innen.** Sie sind die Vergleichsgrößen des Frameworks, keine
+Anzeigedaten: was der Spieler über sein Ergebnis erfährt, sagt das spielgeformte `outcome`, und wie er
+dasteht, sagt `points`. Ein generisches „so weit daneben“-Feld im DTO wäre ein zweiter Weg aus dem
+Server neben `present()` und `solution()`, und genau die wollen wir zählbar halten.
+
 **Nur die laufende Runde ist spielbar.** Ein Tipp geht nur innerhalb `[start, end)` der Runde; wer
 sie verpasst, hat null Punkte dafür. Vergangene Runden sind Anzeige. Das hält die Uhr-Semantik
 einfach und ist die Fassung, die zur Anti-Cheat-Logik passt.
@@ -331,20 +363,30 @@ Request liefert denselben Payload; `revealed_at` bleibt der erste Zeitstempel, `
 hoch und wird geloggt. Die Schwelle, ab der wiederholtes Aufdecken zum Signal wird, kommt mit dem
 ersten zeitgewerteten Spiel — sie hier zu erfinden hieße, sie ohne Datenlage zu erfinden.
 
-**Der Tipp wird vor dem Schreiben gewertet.** `score()` wirft bei einem ungültigen Tipp, und zwar
-bevor irgendetwas persistiert wird — ein Tippfehler darf den einen Versuch nicht verbrauchen.
-`LabService` macht das heute schon so und hat den Kommentar dazu.
+Der Tipp läuft in drei Schritten, in **einer** Transaktion:
 
-**„Ein Tipp pro Runde“ ist ein atomares `UPDATE`,** kein Lesen-dann-Prüfen:
-
-```sql
-UPDATE game.round_plays SET guess = ?, guessed_at = ?, outcome = ?, points = ?
- WHERE id = ? AND guessed_at IS NULL
+```
+1  SELECT … FROM game.round_games WHERE id = :r FOR UPDATE     -- serialisiert die Runde
+2  judgement = type.judge(params, guess)                        -- wirft bei ungültigem Tipp
+3  UPDATE game.round_plays SET guess = ?, guessed_at = ?, qualifies = ?, deviation = ?, outcome = ?
+    WHERE id = ? AND guessed_at IS NULL                         -- 0 Zeilen → 409
+4  Runde neu auswerten und `points` aller getippten Zeilen schreiben
 ```
 
-Null betroffene Zeilen heißt „schon getippt“ → 409. Zwei gleichzeitige Tipps können sich damit nicht
-überholen. Ein Tipp ohne vorheriges Aufdecken ist ebenfalls 409: eine Farbe zu raten, deren
-Beschreibung man nie gesehen hat, ist keine sinnvolle Anfrage, und die Uhr hängt am Aufdecken.
+**Geurteilt wird vor dem Schreiben.** `judge()` wirft bei einem ungültigen Tipp, bevor irgendetwas
+persistiert wird — ein Tippfehler darf den einen Versuch nicht verbrauchen. `LabService` macht das
+heute schon so und hat den Kommentar dazu.
+
+**„Ein Tipp pro Runde“ ist das atomare `UPDATE`,** kein Lesen-dann-Prüfen: null betroffene Zeilen
+heißt „schon getippt“ → 409. Ein Tipp ohne vorheriges Aufdecken ist ebenfalls 409 — eine Farbe zu
+raten, deren Beschreibung man nie gesehen hat, ist keine sinnvolle Anfrage, und die Uhr hängt am
+Aufdecken.
+
+**Die Zeilensperre auf `round_games` ist wegen Schritt 4 nötig,** nicht wegen Schritt 3. Zwei
+gleichzeitige Tipps derselben Runde würden dieselbe Ausgangslage lesen und sich gegenseitig
+überschreiben — ein verlorenes Update genau in dem Moment, in dem sich die Punkte verschieben. Eine
+Zeile zu sperren serialisiert die Tipps *einer* Runde; bei 15 Mitspielern ist das nicht messbar, und
+Runden untereinander behindern sich nicht.
 
 ### Sichtbarkeit: kein Schalter
 
@@ -366,14 +408,47 @@ sagt nichts über die Lösung, nur über den Fortschritt. Wer diese Anzeige will
 
 ## Punkte sind ein Cache, kein Urteil
 
-Das Spiel bestimmt die Punktzahl allein; für Guess Hue zunächst Treffer/kein Treffer, eine feinere
-Kurve ist später eine rein lokale Änderung in `GuessHueGameType.score`.
+Zwei Vergaberegeln, beide im Framework, beide für alle Spiele gleich. Welche gilt, folgt aus der Phase
+und wird mit der Runde eingefroren:
 
-`params` und `guess` sind **beide** persistiert, also ist `points` eine reine Funktion persistierter
-Werte. Die Spalte ist damit eine materialisierte Sicht, kein unwiderrufliches Urteil: ein
-Wertungs-Bugfix kommt mit einem Backfill, nicht mit einem Schulterzucken über verlorene Historie.
-Sie existiert nur, damit der Punktestand ein `SUM` ist und nicht 900 JSON-Deserialisierungen pro
+| Regel | Phase | Vergabe |
+|---|---|---|
+| `ALL_QUALIFYING` | 1 | jeder punkte-berechtigte Tipp bekommt `award_points` (**1**) |
+| `CLOSEST_ONLY` | 2 | nur der punkte-berechtigte Tipp mit der kleinsten `deviation` bekommt `award_points` (**3**), alle anderen `0` |
+
+**Punkte-Berechtigung gatet immer, auch in Phase 2.** Wer außerhalb der Toleranz liegt, gewinnt nichts
+— auch nicht als „am wenigsten falsch“. Phase 2 hebt die Toleranz *und* verengt die Vergabe: weiteres
+Tor, aber nur der Beste geht durch.
+
+**Gleichstand teilt nicht, sondern verdoppelt:** liegen zwei Tipps exakt gleich weit daneben, bekommen
+beide die volle Punktzahl. Bei Grad-Werten als `Double` praktisch unmöglich, bei einem richtig/falsch-
+Spiel (`deviation = 0.0` für jeden Treffer) dagegen der Normalfall — dort verhält sich `CLOSEST_ONLY`
+damit automatisch wie `ALL_QUALIFYING`, ohne dass es einen Sonderfall dafür braucht. Der Vergleich
+`deviation == best` auf `Double` ist hier korrekt und keine Schlamperei: verglichen werden gespeicherte
+Werte mit dem Minimum derselben gespeicherten Werte, nicht zwei unabhängig gerechnete Näherungen.
+
+### „Punkte entziehen“ ist kein Mechanismus, sondern Neuauswertung
+
+In Phase 2 kann ein später abgegebener Tipp dem bisher Besten die Punkte wieder nehmen. Dafür gibt es
+**keinen eigenen Mechanismus** — es fällt aus der Cache-Eigenschaft heraus, eine Stufe weiter gedacht:
+
+> Bisher war `points = f(params, guess)`. Jetzt ist es `points = f(award_rule, alle Urteile der
+> Runde)` — immer noch eine reine Funktion **persistierter** Werte.
+
+Also wird bei jedem Tipp die Runde neu ausgewertet und `points` für **alle** getippten Zeilen
+geschrieben. Kein Entziehen, kein Zurücksetzen, kein Job, keine Ereignisse — ein Neuberechnen über
+höchstens so vielen Zeilen, wie die Community Mitglieder hat. Und weil `qualifies` und `deviation` auf
+der Zeile liegen, braucht diese Auswertung weder das Spiel noch `params`: sie ist reine
+Framework-Arithmetik.
+
+Die Spalte `points` bleibt damit eine materialisierte Sicht und kein unwiderrufliches Urteil: ein
+Wertungs-Bugfix kommt mit einem Backfill, nicht mit einem Schulterzucken über verlorene Historie. Sie
+existiert nur, damit der Punktestand ein `SUM` ist und nicht 900 JSON-Deserialisierungen pro
 Seitenaufruf.
+
+Eine Folge, die ins Frontend gehört und hier nur benannt wird: unter `CLOSEST_ONLY` sind die Punkte
+der **laufenden** Runde vorläufig, bis sie endet. „3 Punkte“ heißt dort „bester Tipp bisher“, und das
+sollte auch so dastehen.
 
 `MemberPointsQuery` erfüllt sich so:
 
@@ -406,6 +481,17 @@ legt für jede bestehende Community genau eine Edition mit den übernommenen Wer
 sondern `reveal_count` hoch; Tipp ohne Aufdecken 409; zweiter Tipp 409; ungültiger Tipp verbraucht
 nichts und schreibt nichts; `others` leer bis `guessed_at` gesetzt ist (framework-weit, ein Test).
 
+**Vergabe** — die Auswertung ist eine reine Funktion und wird als solche getestet, ohne DB:
+`ALL_QUALIFYING` gibt jedem Treffer `award_points` und jedem Nicht-Treffer `0`; `CLOSEST_ONLY` gibt
+nur dem kleinsten `deviation` etwas; Gleichstand bekommt **beide Male die volle** Punktzahl; qualifiziert
+niemand, bekommt niemand etwas. Dazu der eigentliche Regressionstest über die DB: **ein später
+abgegebener, besserer Tipp nimmt dem vorherigen Besten seine Punkte** — also schreibt ein Tipp auch
+*fremde* Zeilen. Und zwei gleichzeitige Tipps derselben Runde hinterlassen einen konsistenten Stand
+(die Zeilensperre; ohne sie geht genau hier ein Update verloren).
+
+**Einfrieren** — `award_rule` und `award_points` einer bestehenden Runde ändern sich nicht, wenn der
+Admin danach `phase_two_start_round` verschiebt.
+
 **Punkte** — `live` bleibt `null`, bis der Betrachter selbst getippt hat; `stable` schließt die
 laufende Runde aus; eine Community ohne Runden ergibt `0`.
 
@@ -420,8 +506,9 @@ laufende Runde aus; eine Community ohne Runden ergibt `0`.
    „neuen Durchlauf starten“.
 2. **Ansage** — Modul `game`, Schema, `GameType` / `GameCatalog` / `GameTypeHandle`, Auflösung,
    `GuessHueGameType` mit `draw` und `present`, Ansage-Endpunkt.
-3. **Spielen** — Aufdecken/Tippen/Punkte, Tippübersicht, echte Standings, Umzug von
-   `MemberPointsConfiguration` und `StubMemberPoints`, Ausbau des Lab-Schalters.
+3. **Spielen** — Aufdecken/Tippen, `judge` in Guess Hue, die beiden Vergaberegeln samt
+   Neuauswertung, Tippübersicht, echte Standings, Umzug von `MemberPointsConfiguration` und
+   `StubMemberPoints`, Ausbau des Lab-Schalters.
 
 2 und 3 sind getrennt beschreibbar, gehen aber vermutlich zusammen live — eine Ansage, die man nicht
 spielen kann, ist ein halbes Feature.
@@ -478,7 +565,15 @@ plus Korrekturen an `game-lab.md`:
   einer, der die Lösung treibt. Ein Seed, der aus Rundenkoordinaten ableitbar ist, ist kein
   Geheimnis.
 - **Punkte sind ein Cache über persistierten Eingaben** — deshalb ist eine Wertungs-Korrektur ein
-  Backfill und kein Verlust.
+  Backfill und kein Verlust, und deshalb braucht „ein späterer Tipp nimmt Punkte weg“ keinen
+  Mechanismus, sondern nur eine Neuauswertung der Runde.
+- **Das Spiel urteilt, das Framework vergibt.** Ein Spiel sagt „punkte-berechtigt“ und „so weit
+  daneben“; wie viele Punkte das wert ist und wessen Punkte dabei verfallen, ist über alle Spiele
+  gleich. Die Grenze verläuft an dem Wert, den das Framework *vergleichen*, aber nicht *berechnen*
+  kann.
+- **Wer fremde Zeilen schreibt, muss serialisieren.** Eine Auswertung über die ganze Runde braucht
+  eine Zeilensperre auf der Runde, sonst verliert genau der Moment, in dem sich die Punkte
+  verschieben, ein Update.
 - **Ein Schalter, dessen richtige Antwort für alle Fälle gleich ist, ist ein Bug.** Er verlagert eine
   Invariante in einen Review-Punkt. `revealsOthersBeforeGuess` ist das Beispiel.
 - **Unique-Index statt Service-Prüfung**, und ein `UPDATE … WHERE guessed_at IS NULL` statt
