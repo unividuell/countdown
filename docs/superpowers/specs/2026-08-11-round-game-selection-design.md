@@ -85,6 +85,15 @@ drei Spalten unverändert und setzt `label` auf den **Community-Namen** (die bes
 sind alle Erstläufe), `games_from_round` auf `NULL` und `games_until_round` auf `0`. Danach fallen
 die drei Spalten aus `communities`.
 
+Das ist ein `INSERT … SELECT` und ein `DROP COLUMN` — vier Zeilen, keine Transformation, kein
+Datenrisiko. Erwogen und **verworfen**: `community/V1` neu schreiben, sodass `editions` dort schon
+steht, und die DBs wegwerfen — produktiv ist noch nichts. Es spart genau diese vier Zeilen, während
+der eigentliche Aufwand (neun Backend-Dateien plus Tests; das Frontend bleibt unberührt, weil
+`CommunityResponse` formgleich bleibt) davon unberührt ist. **Staging läuft**, ein geändertes `V1`
+heißt dort Flyway-Checksum-Mismatch, und wer das Wipe vergisst, sucht einen Boot-Fehler, der wie ein
+Bug aussieht. Ein Wegwerfen lohnt sich, wenn eine Migration Daten *interpretieren* müsste — Defaults
+raten, Duplikate auflösen. Diese nicht.
+
 ### `game.round_games` — die Ansage
 
 | Spalte | Typ | Bemerkung |
