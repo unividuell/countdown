@@ -124,6 +124,8 @@ Eine Zeile pro (Runde, Spieler), angelegt beim **ersten Aufdecken** — nicht er
 | `deviation` | DOUBLE PRECISION NULL | Abstand zur Lösung, kleiner ist besser |
 | `outcome` | JSONB NULL | was der Server berechnet hat, für die Anzeige |
 | `points` | INT NULL | NULL = nicht getippt, `0` = getippt und leer ausgegangen |
+| `points_lost_to` | UUID NULL → `iam.users` | wer die Punkte abgeschossen hat — der Bullet Bill |
+| `points_lost_at` | TIMESTAMPTZ NULL | wann |
 
 `UNIQUE (round_game_id, user_id)`. **Dieser Index *ist* die Regel „ein Tipp pro Spieler pro
 Runde“** — keine Prüfung im Service.
@@ -345,7 +347,7 @@ data class RoundResponse(
     val noGameReason: NoGameReason?,      // NOT_SCHEDULED | BEFORE_WINDOW | AFTER_WINDOW | NO_GAME_TYPE
     val payload: GamePayload?,            // erst wenn revealed_at gesetzt ist
     val solution: GameSolution?,          // erst wenn guessed_at gesetzt ist
-    val me: PlayDto?,                     // revealedAt, guessedAt, guess, outcome, points
+    val me: PlayDto?,                     // revealedAt, guessedAt, guess, outcome, points, pointsLostTo
     val others: List<PlayDto>,            // leer bis guessed_at gesetzt ist
 )
 ```
@@ -431,10 +433,32 @@ Phase 2 **um einen Punkt pro Runde** — `pointsOfRound(round)` in
 `phase2Start − round + 2` danach, also `2` in der Schwellenrunde, dann 3, 4, 5 … („Schlag den Raab“,
 so auch im Original kommentiert). Das ersetzt später den Rückgabewert von `awardFor` und sonst nichts.
 
-**Abweichung vom Original, ausdrücklich:** dort bekommt in Phase 2 **jeder** die volle, wachsende
-Punktzahl (`won = maxToleranzDetector(…) || diff ≤ toleranz`, also `won = true` für jeden Tipp); ein
-„nur der Nächste“ existiert im Referenzprojekt nicht. `CLOSEST_ONLY` ist damit eine **neue**
-Spielregel, kein Port — und der Grund, warum die Neuauswertung der Runde überhaupt gebraucht wird.
+### Herkunft im Original
+
+`CLOSEST_ONLY` ist ein **Port**, und zwar aus `server/composables/useGamePointsWriter.ts` — nicht aus
+dem Punkte-Rechner, wo man es zuerst vermutet. `winnerTakesItAll(round, phase2Start)` (der **dritte**
+Alias derselben `utils/points/phase-2.ts`, neben `gaussSumRule` und `maxToleranzDetector`) schaltet
+`winnerTakesItAllCleaner` ein, und der arbeitet genau so, wie diese Spec es beschreibt:
+
+| Original | hier |
+|---|---|
+| `currentGuesses.filter(g => g.points > 0)` vor dem Sortieren | `qualifies` |
+| Vergleicher je Spiel: `distanceOnCircle(hue, target)`, `gamePlayDurationMs`, `averageReactionTimeMs` | `deviation`, ein „kleiner ist besser“-Skalar |
+| eigener Tipp nicht bester → `{ …ownGuess, points: 0 }` | Neuauswertung schreibt `0` |
+| `fireBulletBill` nullt fremde, schlechtere Tipps | Neuauswertung schreibt fremde Zeilen |
+
+Zwei Stellen, an denen wir bewusst nicht wörtlich portieren:
+
+**Neuauswertung statt Aufräumen.** Das Original nullt gezielt die schlechteren und lässt alles andere
+liegen; wir rechnen die Runde jedes Mal komplett neu. Der Endstand ist derselbe, aber die Neuauswertung
+heilt sich selbst — sie hat keinen Zustand, der „daneben“ liegen kann.
+
+**Gleichstand einheitlich.** Das Original entscheidet das **pro Spiel**: GuessColor und Ratio lassen
+Gleichstände stehen („remove also equal ones“), ToneDirection und PuzzleScramble nullen alle außer dem
+einen Besten (`uid !== best.uid`, begründet mit „unit is milliseconds — not probability“). Wir nehmen
+framework-weit „Gleichstand behält“ — das ist die Guess-Hue-Fassung, also die des einzigen Ports.
+Braucht ein späteres Spiel den harten Einzelsieger, ist das eine **dritte Vergaberegel**, kein Haken
+im Spiel.
 
 **Die Vorbedingung gehört dem Spiel, nicht der Regel.** `CLOSEST_ONLY` vergibt an den Nächsten *unter
 den Berechtigten* — wer berechtigt ist, sagt allein `judge`. Damit fallen beide Spielarten unter
@@ -448,6 +472,10 @@ dieselbe Regel:
 - **Ein Spiel mit echter Vorbedingung** (Lauf vollständig, Muster korrekt, Trace gültig) setzt
   `qualifies` darauf und ermittelt unter den Erfüllern den aktuellen Gewinner. Erfüllt niemand die
   Vorbedingung, gewinnt niemand — und das ist dann die Aussage des Spiels, nicht die der Regel.
+
+Im Original ist genau das der `points > 0`-Filter vor dem Sortieren: bei den Schätzspielen ist er in
+Phase 2 immer wahr, bei den Können-Spielen nicht. Die Aufteilung ist also nicht neu erfunden, nur
+benannt.
 
 **Gleichstand teilt nicht, sondern verdoppelt:** liegen zwei Tipps exakt gleich weit daneben, bekommen
 beide die volle Punktzahl. Bei Grad-Werten als `Double` praktisch unmöglich, bei einem richtig/falsch-
@@ -475,9 +503,24 @@ Wertungs-Bugfix kommt mit einem Backfill, nicht mit einem Schulterzucken über v
 existiert nur, damit der Punktestand ein `SUM` ist und nicht 900 JSON-Deserialisierungen pro
 Seitenaufruf.
 
+### Der Bullet Bill wird persistiert, weil er nicht rekonstruierbar ist
+
+Im Original bekommt der Abgeschossene `bulletBill: { firedByUid, firedAt }` auf seinen Tipp — *wer* ihm
+die Punkte genommen hat und wann. Das ist die halbe Freude an der Regel, und die reine Neuauswertung
+verliert es: aus dem Endstand lässt sich später ablesen, wer *jetzt* führt, aber nicht, wessen Tipp
+wann welchen verdrängt hat.
+
+Deshalb schreibt die Neuauswertung zwei Spalten mit, **auf der Zeile des Getroffenen**:
+`points_lost_to` = der Spieler, dessen Tipp die Auswertung ausgelöst hat, und `points_lost_at`. Gesetzt
+wird nur beim Übergang von „hatte Punkte“ auf `0`; einmal gesetzt, bleibt es stehen, und ein späterer
+Backfill lässt es unberührt — er rechnet Punkte nach, nicht Geschichte.
+
+Das ist die einzige Stelle, an der die Auswertung mehr tut als rechnen, und sie tut es aus genau diesem
+Grund: alles andere ist aus persistierten Werten wiederherstellbar, dieser Moment nicht.
+
 Eine Folge, die ins Frontend gehört und hier nur benannt wird: unter `CLOSEST_ONLY` sind die Punkte
 der **laufenden** Runde vorläufig, bis sie endet. „3 Punkte“ heißt dort „bester Tipp bisher“, und das
-sollte auch so dastehen.
+sollte auch so dastehen — und wer abgeschossen wurde, erfährt aus `points_lost_to`, von wem.
 
 `MemberPointsQuery` erfüllt sich so:
 
@@ -517,6 +560,10 @@ niemand, bekommt niemand etwas. Dazu der eigentliche Regressionstest über die D
 abgegebener, besserer Tipp nimmt dem vorherigen Besten seine Punkte** — also schreibt ein Tipp auch
 *fremde* Zeilen. Und zwei gleichzeitige Tipps derselben Runde hinterlassen einen konsistenten Stand
 (die Zeilensperre; ohne sie geht genau hier ein Update verloren).
+
+**Bullet Bill** — wer verdrängt wird, bekommt `points_lost_to` auf den Verdränger und `points_lost_at`
+gesetzt; ein dritter, noch schlechterer Tipp danach überschreibt beides **nicht**, und wer die Runde
+gewinnt, hat beide Spalten leer.
 
 **Vorbedingung** — `GuessHueGameType.judge` setzt `qualifies` in Phase 1 an der Toleranz und in Phase 2
 (`toleranceDeg = null`) auf `true`, auch für einen Tipp 179° daneben; `deviation` ist in beiden Phasen
