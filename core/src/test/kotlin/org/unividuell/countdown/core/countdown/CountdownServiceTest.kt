@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.CommunityEdition
+import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.internal.CountdownAccessDeniedException
@@ -24,6 +26,7 @@ class CountdownServiceTest(
     @Autowired val countdown: CountdownService,
     @Autowired val communities: CommunityService,
     @Autowired val editions: EditionService,
+    @Autowired val editionRepository: CommunityEditionRepository,
     @Autowired val users: UserRepository,
 ) {
     private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
@@ -87,5 +90,23 @@ class CountdownServiceTest(
         val res = countdown.forSlug(c.slug, ownerId, false)
         res.startsAt.shouldBeNull()
         res.round.shouldBeNull()
+    }
+
+    @Test
+    fun `forSlug degrades gracefully when the active edition was archived without a replacement`() {
+        val ownerId = aUser().id!!
+        val c = communities.create(ownerId, "Broken Invariant")
+        val communityId = requireNotNull(c.id)
+        // Bypasses EditionService.startNew on purpose: this is the "no active edition" invariant
+        // violation that requireActive() would 500 on, reached here through the graceful reader.
+        val active = requireNotNull(editionRepository.findActiveByCommunityId(communityId))
+        editionRepository.save(active.copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")))
+
+        val res = countdown.forSlug(c.slug, ownerId, false)
+
+        res.startsAt.shouldBeNull()
+        res.round.shouldBeNull()
+        res.nextRound.shouldBeNull()
+        res.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
     }
 }

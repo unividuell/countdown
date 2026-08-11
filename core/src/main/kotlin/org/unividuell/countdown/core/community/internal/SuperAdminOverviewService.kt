@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.community.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.CommunityEdition
@@ -21,6 +22,8 @@ class SuperAdminOverviewService(
     private val editions: CommunityEditionRepository,
     private val users: UserQuery,
 ) {
+    private val logger = KotlinLogging.logger {}
+
     @Transactional(readOnly = true)
     fun overview(): List<SuperAdminCommunityResponse> {
         val allMembers = members.findAll().toList()
@@ -36,6 +39,9 @@ class SuperAdminOverviewService(
                 // Local non-null id: byCommunity is keyed on UUID, and Community.id is UUID?.
                 val id = requireNotNull(c.id)
                 val edition = activeEditions[id]
+                if (edition == null) {
+                    logger.warn { "community $id has no active edition — overview falls back to defaults" }
+                }
                 SuperAdminCommunityResponse(
                     id = id,
                     name = c.name,

@@ -43,11 +43,7 @@ open class EditionService(
             )
         } ?: fresh
         validate(edition)
-        return try {
-            editions.save(edition)
-        } catch (e: DuplicateKeyException) {
-            throw EditionConflictException("community $communityId already has an active edition", e)
-        }
+        return saveOrConflict(communityId, edition)
     }
 
     /**
@@ -82,7 +78,18 @@ open class EditionService(
             gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
         )
         validate(next)
-        return editions.save(next)
+        return saveOrConflict(edition.communityId, next)
+    }
+
+    /**
+     * Both [create] and [update] can lose the race against the partial unique index — [update]
+     * whenever it writes back a read that has since been archived by a concurrent [startNew] —
+     * and both need the same 409 rather than a raw 500.
+     */
+    private fun saveOrConflict(communityId: UUID, edition: CommunityEdition): CommunityEdition = try {
+        editions.save(edition)
+    } catch (e: DuplicateKeyException) {
+        throw EditionConflictException("community $communityId already has an active edition", e)
     }
 
     /** Validating the finished aggregate, not the arguments — one place covers create and update. */
@@ -90,7 +97,7 @@ open class EditionService(
         require(edition.label.length in 3..50) { "label must be 3..50 chars" }
         edition.phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
         // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
-        require(ZoneId.getAvailableZoneIds().contains(edition.startsAtTimezone)) {
+        require(AVAILABLE_ZONE_IDS.contains(edition.startsAtTimezone)) {
             "invalid timezone: ${edition.startsAtTimezone}"
         }
         // A larger round number is earlier in time, so the first round must not be below the last.
@@ -99,5 +106,11 @@ open class EditionService(
                 "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
             }
         }
+    }
+
+    private companion object {
+        // Fetched once: the JVM's IANA zone set does not change at runtime, and this set has ~600
+        // entries — no reason to rebuild it on every validate() call.
+        val AVAILABLE_ZONE_IDS: Set<String> = ZoneId.getAvailableZoneIds()
     }
 }

@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.countdown.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.CommunityEdition
@@ -22,6 +23,8 @@ class CountdownService(
     private val clock: Clock,
 ) : CountdownQuery {
 
+    private val logger = KotlinLogging.logger {}
+
     override fun currentRound(communityId: UUID, now: Instant): Round? {
         val edition = communityQuery.activeEditionOf(communityId) ?: return null
         val startsAt = edition.startsAt ?: return null
@@ -38,8 +41,10 @@ class CountdownService(
         val now = clock.instant()
         // No active edition is an invariant violation elsewhere, but here it reads the same as
         // "no date yet": there is nothing to count down to, so the display says so.
-        val edition = communityQuery.activeEditionOf(communityId)
-            ?: return CountdownResponse(now, null, CommunityEdition.DEFAULT_TIMEZONE, null, null)
+        val edition = communityQuery.activeEditionOf(communityId) ?: run {
+            logger.warn { "community $communityId has no active edition — countdown shows no date" }
+            return CountdownResponse(now, null, CommunityEdition.DEFAULT_TIMEZONE, null, null)
+        }
         val startsAt = edition.startsAt
             ?: return CountdownResponse(now, null, edition.startsAtTimezone, null, null)
         val zone = ZoneId.of(edition.startsAtTimezone)

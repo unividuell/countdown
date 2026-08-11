@@ -156,4 +156,37 @@ class EditionServiceTest(
 
         shouldThrow<EditionConflictException> { service.create(communityId, "Run 2027") }
     }
+
+    @Test
+    fun `startNew opens the first edition when the community has none yet`() {
+        val communityId = aCommunity("es-start-new-no-current")
+
+        val started = service.startNew(communityId, "Run 2026")
+
+        started.label shouldBe "Run 2026"
+        started.startsAt.shouldBeNull()
+        started.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+        started.gamesUntilRound shouldBe 0
+        started.archivedAt.shouldBeNull()
+        service.requireActive(communityId).label shouldBe "Run 2026"
+    }
+
+    // A DuplicateKeyException marks THIS test's transaction rollback-only, so the test asserts the
+    // throw and queries nothing afterwards, matching CommunityEditionRepositoryTest's convention.
+    @Test
+    fun `update conflicts when the edition was archived by a concurrent startNew`() {
+        val communityId = aCommunity("es-update-stale")
+        val stale = service.create(communityId, "Run 2026")
+
+        // Simulates admin B's POST .../editions committing between admin A's read and A's update:
+        // this archives `stale` and opens a fresh active edition in its place.
+        service.startNew(communityId, "Run 2027")
+
+        shouldThrow<EditionConflictException> {
+            service.update(
+                stale, label = null, startsAt = null, startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+            )
+        }
+    }
 }
