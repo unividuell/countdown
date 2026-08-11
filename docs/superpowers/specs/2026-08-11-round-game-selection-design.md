@@ -311,13 +311,16 @@ Toleranz in die Params:
 ```kotlin
 data class GuessHueParams(
     val description: String, val hue: Double, val saturation: Double,
-    val lightness: Double, val initHue: Double, val toleranceDeg: Double,
+    val lightness: Double, val initHue: Double,
+    /** Das Tor *und* der gezeichnete Bogen. `null` = keine Vorbedingung (Phase 2). */
+    val toleranceDeg: Double?,
 )
 ```
 
 Damit kann eine spätere Verschiebung der Phasenschwelle vergangene Runden nicht rückwerten — dieselbe
 Eigenschaft wie beim Params-Einfrieren, eine Ebene tiefer. `GuessHueTolerance.DEGREES` bleibt der
-Phase-1-Wert; Phase 2 ist eine zweite Zahl dort, kein Frontend-Release.
+Phase-1-Wert; in Phase 2 gibt es keine Toleranz, weil es kein Tor gibt — `toleranceDeg = null`, und
+`GuessHueSolution.toleranceDeg` wird nullable, damit die Auflösung dort keinen Bogen zeichnet.
 
 Dasselbe gilt für die Vergabe: `award_rule` und `award_points` leiten sich bei der Ansage aus der
 Phase ab und werden **mit eingefroren**. Ein Admin, der die Phasenschwelle nachträglich verschiebt,
@@ -416,9 +419,35 @@ und wird mit der Runde eingefroren:
 | `ALL_QUALIFYING` | 1 | jeder punkte-berechtigte Tipp bekommt `award_points` (**1**) |
 | `CLOSEST_ONLY` | 2 | nur der punkte-berechtigte Tipp mit der kleinsten `deviation` bekommt `award_points` (**3**), alle anderen `0` |
 
-**Punkte-Berechtigung gatet immer, auch in Phase 2.** Wer außerhalb der Toleranz liegt, gewinnt nichts
-— auch nicht als „am wenigsten falsch“. Phase 2 hebt die Toleranz *und* verengt die Vergabe: weiteres
-Tor, aber nur der Beste geht durch.
+Beide Zahlen kommen aus **einer** Funktion `awardFor(phase, roundNumber)` im Framework — nicht aus dem
+Spiel und nicht aus zwei Konstanten an zwei Orten. Das ist die Bedingung, unter der die `3` als
+Vereinfachung tragbar ist: sie steht an genau einer Stelle, gilt für alle Spiele, und weil jede Runde
+ihren Wert eingefroren mitbekommt, ersetzt ein späterer Austausch der Funktion keine einzige
+vergangene Runde.
+
+Denn die Zielkurve ist bekannt und nicht Teil dieses Schnitts: im Original wächst die Punktzahl ab
+Phase 2 **um einen Punkt pro Runde** — `pointsOfRound(round)` in
+`huettehuette.unividuell.org/server/composables/useGamePointsCalculator.ts` liefert `1` vor Phase 2 und
+`phase2Start − round + 2` danach, also `2` in der Schwellenrunde, dann 3, 4, 5 … („Schlag den Raab“,
+so auch im Original kommentiert). Das ersetzt später den Rückgabewert von `awardFor` und sonst nichts.
+
+**Abweichung vom Original, ausdrücklich:** dort bekommt in Phase 2 **jeder** die volle, wachsende
+Punktzahl (`won = maxToleranzDetector(…) || diff ≤ toleranz`, also `won = true` für jeden Tipp); ein
+„nur der Nächste“ existiert im Referenzprojekt nicht. `CLOSEST_ONLY` ist damit eine **neue**
+Spielregel, kein Port — und der Grund, warum die Neuauswertung der Runde überhaupt gebraucht wird.
+
+**Die Vorbedingung gehört dem Spiel, nicht der Regel.** `CLOSEST_ONLY` vergibt an den Nächsten *unter
+den Berechtigten* — wer berechtigt ist, sagt allein `judge`. Damit fallen beide Spielarten unter
+dieselbe Regel:
+
+- **Guess Hue: es gewinnt immer jemand.** In Phase 1 ist die Toleranz das Tor (`qualifies = |Δ| ≤
+  toleranceDeg`). In Phase 2 gibt es **kein Tor** — jeder Tipp ist berechtigt, und der Nächste
+  gewinnt, egal wie schlecht alle geraten haben. Ausgedrückt wird das als `toleranceDeg: Double?`,
+  wobei `null` „keine Vorbedingung“ heißt; ein Boolean daneben wäre ein zweiter Weg, dasselbe zu
+  sagen.
+- **Ein Spiel mit echter Vorbedingung** (Lauf vollständig, Muster korrekt, Trace gültig) setzt
+  `qualifies` darauf und ermittelt unter den Erfüllern den aktuellen Gewinner. Erfüllt niemand die
+  Vorbedingung, gewinnt niemand — und das ist dann die Aussage des Spiels, nicht die der Regel.
 
 **Gleichstand teilt nicht, sondern verdoppelt:** liegen zwei Tipps exakt gleich weit daneben, bekommen
 beide die volle Punktzahl. Bei Grad-Werten als `Double` praktisch unmöglich, bei einem richtig/falsch-
@@ -489,6 +518,10 @@ abgegebener, besserer Tipp nimmt dem vorherigen Besten seine Punkte** — also s
 *fremde* Zeilen. Und zwei gleichzeitige Tipps derselben Runde hinterlassen einen konsistenten Stand
 (die Zeilensperre; ohne sie geht genau hier ein Update verloren).
 
+**Vorbedingung** — `GuessHueGameType.judge` setzt `qualifies` in Phase 1 an der Toleranz und in Phase 2
+(`toleranceDeg = null`) auf `true`, auch für einen Tipp 179° daneben; `deviation` ist in beiden Phasen
+derselbe Winkelabstand.
+
 **Einfrieren** — `award_rule` und `award_points` einer bestehenden Runde ändern sich nicht, wenn der
 Admin danach `phase_two_start_round` verschiebt.
 
@@ -535,6 +568,9 @@ Dazu der Lab-Schalter `revealsOthersBeforeGuess`, der entfällt.
   das Spiel, das darauf wertet.
 - **Commit-Reveal.** Variante (a), Commit auf die Lösung, braucht ein Salt und eine Spalte — beides
   additiv.
+- **Die wachsende Punktzahl ab Phase 2** (`phase2Start − round + 2`). `awardFor(phase, roundNumber)`
+  hat die Rundennummer schon in der Hand, die Runde friert das Ergebnis ein — der Austausch ist ein
+  Funktionsrumpf und keine Migration. Bis dahin gilt die `3`.
 - **Anomalie-Erkennung.** Braucht Runden mit echten Spielern, bevor Grenzen mehr als Raten sind.
 - **Fast Rounds.** Eine Spalte `round_minor` plus erweiterter Index, wenn es soweit ist.
 - **Lab und Framework zusammenlegen.** `LabService` könnte seine Runde über `GameCatalog` ziehen
@@ -570,7 +606,8 @@ plus Korrekturen an `game-lab.md`:
 - **Das Spiel urteilt, das Framework vergibt.** Ein Spiel sagt „punkte-berechtigt“ und „so weit
   daneben“; wie viele Punkte das wert ist und wessen Punkte dabei verfallen, ist über alle Spiele
   gleich. Die Grenze verläuft an dem Wert, den das Framework *vergleichen*, aber nicht *berechnen*
-  kann.
+  kann. Die Punktzahl kommt aus **einer** Funktion und wird pro Runde eingefroren — dann darf sie
+  vereinfacht anfangen, ohne dass die Vereinfachung sich verteilt oder Historie kostet.
 - **Wer fremde Zeilen schreibt, muss serialisieren.** Eine Auswertung über die ganze Runde braucht
   eine Zeilensperre auf der Runde, sonst verliert genau der Moment, in dem sich die Punkte
   verschieben, ein Update.
