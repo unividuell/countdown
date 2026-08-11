@@ -189,8 +189,9 @@ class CommunityEditionRepositoryTest(
         active.map { it.label }.toSet() shouldBe setOf("A 2026", "B 2026")
     }
 
-    // Last in the file on purpose: a constraint violation marks the transaction rollback-only,
-    // so nothing may query after it inside the same test.
+    // The constraint violation marks THIS test's transaction rollback-only, so the test asserts the
+    // throw and queries nothing afterwards. Neighbouring tests are unaffected — each @Test in a
+    // @Transactional Spring test runs in its own transaction and rolls back on its own.
     @Test
     fun `a second active edition for the same community is rejected`() {
         val communityId = aCommunity("edition-only-one-active")
