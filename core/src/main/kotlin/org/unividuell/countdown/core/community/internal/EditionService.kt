@@ -1,0 +1,103 @@
+package org.unividuell.countdown.core.community.internal
+
+import org.springframework.dao.DuplicateKeyException
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.unividuell.countdown.core.community.CommunityEdition
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.util.UUID
+
+/**
+ * The lifecycle of a community's runs. A run is never deleted, only archived, and a community has
+ * exactly one active run at a time — the partial unique index is the enforcement, this service is
+ * the well-lit path to it.
+ */
+@Service
+open class EditionService(
+    private val editions: CommunityEditionRepository,
+    private val clock: Clock,
+) {
+    @Transactional(readOnly = true)
+    open fun active(communityId: UUID): CommunityEdition? = editions.findActiveByCommunityId(communityId)
+
+    /**
+     * Every community has an active edition: `CommunityService.create` makes one and the V3
+     * migration backfilled the rest. A miss is a broken invariant, not a user error — hence 500.
+     */
+    @Transactional(readOnly = true)
+    open fun requireActive(communityId: UUID): CommunityEdition =
+        active(communityId) ?: throw IllegalStateException("community $communityId has no active edition")
+
+    /** [inheritFrom] carries the setup forward when a follow-up run starts; only the date resets. */
+    @Transactional
+    open fun create(communityId: UUID, rawLabel: String, inheritFrom: CommunityEdition? = null): CommunityEdition {
+        val fresh = CommunityEdition(communityId = communityId, label = rawLabel.trim())
+        val edition = inheritFrom?.let {
+            fresh.copy(
+                startsAtTimezone = it.startsAtTimezone,
+                phaseTwoStartRound = it.phaseTwoStartRound,
+                gamesFromRound = it.gamesFromRound,
+                gamesUntilRound = it.gamesUntilRound,
+            )
+        } ?: fresh
+        validate(edition)
+        return try {
+            editions.save(edition)
+        } catch (e: DuplicateKeyException) {
+            throw EditionConflictException("community $communityId already has an active edition", e)
+        }
+    }
+
+    /**
+     * Archive the current run and open the next one. Two concurrent calls both archive and both
+     * insert; the partial index rejects the loser, which surfaces as a 409 rather than a second
+     * active run.
+     */
+    @Transactional
+    open fun startNew(communityId: UUID, rawLabel: String): CommunityEdition {
+        val current = active(communityId)
+        if (current != null) editions.save(current.copy(archivedAt = clock.instant()))
+        return create(communityId, rawLabel, inheritFrom = current)
+    }
+
+    /** "null = keep" throughout, matching `CommunityService.update`; clearing a value is out of scope. */
+    @Transactional
+    open fun update(
+        edition: CommunityEdition,
+        label: String?,
+        startsAt: Instant?,
+        startsAtTimezone: String?,
+        phaseTwoStartRound: Int?,
+        gamesFromRound: Int?,
+        gamesUntilRound: Int?,
+    ): CommunityEdition {
+        val next = edition.copy(
+            label = label?.trim() ?: edition.label,
+            startsAt = startsAt ?: edition.startsAt,
+            startsAtTimezone = startsAtTimezone ?: edition.startsAtTimezone,
+            phaseTwoStartRound = phaseTwoStartRound ?: edition.phaseTwoStartRound,
+            gamesFromRound = gamesFromRound ?: edition.gamesFromRound,
+            gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
+        )
+        validate(next)
+        return editions.save(next)
+    }
+
+    /** Validating the finished aggregate, not the arguments — one place covers create and update. */
+    private fun validate(edition: CommunityEdition) {
+        require(edition.label.length in 3..50) { "label must be 3..50 chars" }
+        edition.phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
+        // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
+        require(ZoneId.getAvailableZoneIds().contains(edition.startsAtTimezone)) {
+            "invalid timezone: ${edition.startsAtTimezone}"
+        }
+        // A larger round number is earlier in time, so the first round must not be below the last.
+        edition.gamesFromRound?.let {
+            require(it >= edition.gamesUntilRound) {
+                "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
+            }
+        }
+    }
+}
