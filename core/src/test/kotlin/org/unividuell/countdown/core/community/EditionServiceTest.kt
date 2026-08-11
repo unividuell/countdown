@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityRepository
+import org.unividuell.countdown.core.community.internal.EditionConflictException
 import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -146,5 +147,13 @@ class EditionServiceTest(
         editions.findAllActive().count { it.communityId == communityId } shouldBe 1
         val archived = editions.findAll().single { it.label == "Run 2026" }
         archived.archivedAt.shouldNotBeNull()
+    }
+
+    @Test
+    fun `create fails with EditionConflictException when trying to insert a second active edition`() {
+        val communityId = aCommunity("es-duplicate-active")
+        service.create(communityId, "Run 2026")
+
+        shouldThrow<EditionConflictException> { service.create(communityId, "Run 2027") }
     }
 }
