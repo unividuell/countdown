@@ -1,7 +1,9 @@
 package org.unividuell.countdown.core.game
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.longs.shouldBeGreaterThan
-import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -14,12 +16,14 @@ import org.unividuell.countdown.core.community.internal.CommunityEditionReposito
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.game.internal.Award
 import org.unividuell.countdown.core.game.internal.AwardRule
+import org.unividuell.countdown.core.game.internal.RoundGame
 import org.unividuell.countdown.core.game.internal.RoundGameRepository
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.ObjectMapper
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -66,7 +70,13 @@ class RoundLockTest(
         try {
             val holder = pool.submit {
                 transactions.execute {
-                    rounds.findByIdForUpdate(id).shouldNotBeNull()
+                    // Through the wrapper, not the repository directly: `store.lock` is what Task 5's
+                    // guess flow actually calls, so this is the one place its own logic — unwrapping
+                    // the id, returning the fetched row — gets exercised on the real serialisation path.
+                    val locked = store.lock(round)
+                    locked.id shouldBe id
+                    locked.roundNumber shouldBe round.roundNumber
+                    locked.gameType shouldBe round.gameType
                     holding.countDown()
                     // Held on purpose: without the lock the waiter below returns immediately, and
                     // "immediately" is the failure this test is looking for.
@@ -76,6 +86,9 @@ class RoundLockTest(
             val waited = pool.submit<Long> {
                 holding.await(5, TimeUnit.SECONDS)
                 val startedAt = System.nanoTime()
+                // Deliberately the repository, not the wrapper: the waiter's job is only to observe
+                // that the lock is held, so the timing assertion below is about the lock, not the
+                // wrapper around it.
                 transactions.execute { rounds.findByIdForUpdate(id) }
                 (System.nanoTime() - startedAt) / 1_000_000
             }
@@ -93,5 +106,23 @@ class RoundLockTest(
             communities.deleteById(communityId)
             users.deleteById(creator)
         }
+    }
+
+    @Test
+    fun `locking a round that vanished throws, naming the round`() {
+        val missingId = UUID.randomUUID()
+        val ghost = RoundGame(
+            id = missingId,
+            editionId = UUID.randomUUID(),
+            roundNumber = 1,
+            gameType = "guess-hue",
+            params = mapper.readTree("""{"hue":1.0}"""),
+            awardRule = AwardRule.ALL_QUALIFYING,
+            awardPoints = 1,
+            announcedAt = Instant.parse("2026-08-12T10:00:00Z"),
+        )
+
+        val thrown = shouldThrow<IllegalArgumentException> { store.lock(ghost) }
+        thrown.message shouldContain missingId.toString()
     }
 }
