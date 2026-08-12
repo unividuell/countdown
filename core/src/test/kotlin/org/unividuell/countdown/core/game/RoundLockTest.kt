@@ -50,24 +50,33 @@ class RoundLockTest(
 
     @Test
     fun `the second transaction waits for the first to release the round`() {
-        val creator = requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = "locker")).id)
-        val community = communities.save(
-            Community(name = "Lock Round", slug = "lock-round-${System.nanoTime()}", createdBy = creator),
-        )
-        val communityId = requireNotNull(community.id)
-        val edition = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
-        val editionId = requireNotNull(edition.id)
-        val round = store.announce(
-            edition = edition, roundNumber = 12, gameType = "guess-hue",
-            params = mapper.readTree("""{"hue":1.0}"""),
-            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
-            announcedAt = Instant.parse("2026-08-12T10:00:00Z"),
-        )
-        val id = requireNotNull(round.id)
+        // Nothing created yet, so the null-tolerant `finally` below has nothing to delete if the test
+        // fails before reaching its own assignment.
+        var creatorId: UUID? = null
+        var communityId: UUID? = null
+        var editionId: UUID? = null
+        var roundId: UUID? = null
         val holding = CountDownLatch(1)
         val pool = Executors.newFixedThreadPool(2)
 
         try {
+            val creator = requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = "locker")).id)
+            creatorId = creator
+            val community = communities.save(
+                Community(name = "Lock Round", slug = "lock-round-${System.nanoTime()}", createdBy = creator),
+            )
+            communityId = requireNotNull(community.id)
+            val edition = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+            editionId = requireNotNull(edition.id)
+            val round = store.announce(
+                edition = edition, roundNumber = 12, gameType = "guess-hue",
+                params = mapper.readTree("""{"hue":1.0}"""),
+                award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+                announcedAt = Instant.parse("2026-08-12T10:00:00Z"),
+            )
+            val id = requireNotNull(round.id)
+            roundId = id
+
             val holder = pool.submit {
                 transactions.execute {
                     // Through the wrapper, not the repository directly: `store.lock` is what Task 5's
@@ -100,11 +109,12 @@ class RoundLockTest(
             // Deliberately non-transactional (see the class comment), so every row this test commits
             // has to be torn down by hand — a global count elsewhere in the suite (an active edition
             // per community, say) would otherwise see this test's fixture as real data forever.
-            // FK order: round game before edition before community before user.
-            rounds.deleteById(id)
-            editions.deleteById(editionId)
-            communities.deleteById(communityId)
-            users.deleteById(creator)
+            // FK order: round game before edition before community before user. Each step is
+            // null-tolerant: a save that never ran left nothing behind for its `?.let` to delete.
+            roundId?.let { rounds.deleteById(it) }
+            editionId?.let { editions.deleteById(it) }
+            communityId?.let { communities.deleteById(it) }
+            creatorId?.let { users.deleteById(it) }
         }
     }
 

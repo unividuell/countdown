@@ -109,8 +109,9 @@ class PlayServiceTest(
 
         val payload = res.payload.shouldNotBeNull() as GuessHuePayload
         payload.description.shouldNotBeNull()
-        res.me.shouldNotBeNull().revealedAt.shouldNotBeNull()
-        res.me!!.guessedAt.shouldBeNull()
+        val me = res.me.shouldNotBeNull()
+        me.revealedAt.shouldNotBeNull()
+        me.guessedAt.shouldBeNull()
         // Before the guess: no solution, no other player's guess.
         res.solution.shouldBeNull()
         res.others.shouldBeEmpty()
@@ -164,10 +165,11 @@ class PlayServiceTest(
 
         val solution = res.solution.shouldNotBeNull() as GuessHueSolution
         solution.targetHue.shouldNotBeNull()
-        res.me.shouldNotBeNull().guessedAt.shouldNotBeNull()
-        res.me!!.guess shouldBe guess(payload.initHue)
+        val me = res.me.shouldNotBeNull()
+        me.guessedAt.shouldNotBeNull()
+        me.guess shouldBe guess(payload.initHue)
         // Points are written by the round's re-evaluation, in the same transaction as the guess.
-        res.me!!.points.shouldNotBeNull()
+        me.points.shouldNotBeNull()
     }
 
     @Test
@@ -199,11 +201,17 @@ class PlayServiceTest(
     }
 
     @Test
-    fun `the others' guesses appear only after one's own`() {
+    fun `the others' guesses appear only after one's own, and a revealed-but-unguessed lurker never does`() {
         val (community, owner) = aCommunity("Others Round")
         val other = aMember(community = community, login = "other")
+        // Reveals but never guesses: the row it leaves behind is the one case that actually exercises
+        // the `guessedAt != null` filter in `RoundResponses` — without a lurker, `others` would be
+        // empty for the sole reason that nobody but the viewer had guessed yet, not because the filter
+        // did anything.
+        val lurker = aMember(community = community, login = "lurker")
         play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
         play.guess(slug = community.slug, userId = other, isSuperAdmin = false, guess = guess(30.0))
+        play.reveal(slug = community.slug, userId = lurker, isSuperAdmin = false)
 
         val before = play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
         val after = play.guess(

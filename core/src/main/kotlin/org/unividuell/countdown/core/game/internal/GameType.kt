@@ -89,8 +89,12 @@ interface GameType<P : Any> {
 
     /**
      * What may be shown once the viewer has guessed. `null` — the default — is a game that reveals
-     * nothing, and the default is right here because it is the safe direction: a game that
-     * implements nothing gives nothing away.
+     * nothing *through this exit*, and the default is right here because it is the safe direction: a
+     * game that implements nothing gives nothing away here. That guarantee stops at this function's
+     * return value, though: once the viewer has guessed, `RoundResponses` sends every other player's
+     * `guess` and [Judgement.outcome] unconditionally, so a `null` solution is no protection if that
+     * outcome itself carries a distance (or anything else the target can be reconstructed from) —
+     * see [Judgement.deviation] and the withholding rule in `game-rounds.md`.
      */
     fun solution(params: P): GameSolution? = null
 }

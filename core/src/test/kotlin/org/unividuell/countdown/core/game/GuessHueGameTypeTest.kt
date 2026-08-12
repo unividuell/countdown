@@ -117,7 +117,7 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     }
 
     @Test
-    fun `the distance is the shorter way round the wheel, in both phases`() {
+    fun `the distance is symmetric - the shorter way round the wheel, in both directions`() {
         val params = draw(phase = Phase.ONE).copy(hue = 10.0)
 
         // 350 to 10 is 20 degrees the short way, not 340.

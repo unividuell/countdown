@@ -3,8 +3,8 @@ package org.unividuell.countdown.core.community
 import java.util.UUID
 
 /**
- * Game standings per member. The seam where real points will attach once the first mini-game exists;
- * today the only non-stub implementation returns zeroes.
+ * Game standings per member: the real sum over `points` for the active run's current game window, or —
+ * only when explicitly enabled and never under `production` — a stub with invented but stable numbers.
  *
  * Viewer-scoped on purpose. The origin app revealed a member's points for the round in progress only
  * once the viewer had played that round themselves, and under the anti-cheat bar — the client must

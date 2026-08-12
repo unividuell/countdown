@@ -12,7 +12,7 @@ enforced by a partial unique index on `archived_at IS NULL`.
 
 ## A larger round number is earlier
 
-Bounds are named `from`/`until`, never start/end. "The previous round" is `round_number > n`, ascending
+The game window's bounds are named `from`/`until`, never start/end. "The previous round" is `round_number > n`, ascending
 — the first row is the most recently played one. Phase two is `round_number <= phase_two_start_round`.
 The game window is inclusive on both ends, and `games_from_round = NULL` means unbounded above.
 
@@ -39,6 +39,12 @@ that gets announced comes from `presentation`, and `solution` draws only what st
 from one `SecureRandom` are fine — a CSPRNG's output is not invertible to its state.
 
 A seed derived from round coordinates is not a secret. The seed is drawn, used, and thrown away.
+
+`solution()` returning `null` only closes that one exit. Once the viewer has guessed, the framework
+sends every other player's `guess` and `Judgement.outcome` unconditionally (see the switch rule
+below) — so a game that withholds its solution must also make sure its `outcome` carries nothing the
+solution can be reconstructed from, a distance included, or the second exit gives back what the first
+one held.
 
 ## The game judges, the framework awards
 

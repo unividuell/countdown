@@ -36,7 +36,8 @@ class RoundScoring(private val plays: RoundPlayRepository) {
 
         var written = 0
         for (play in guessed) {
-            val now = points[requireNotNull(play.id)] ?: 0
+            val playId = requireNotNull(play.id)
+            val now = points[playId] ?: 0
             if (play.points == now) continue
             if ((play.points ?: 0) > now) {
                 // The one place behaviour degrades silently: somebody's points vanished, and in a
@@ -45,7 +46,7 @@ class RoundScoring(private val plays: RoundPlayRepository) {
                     "round ${round.roundNumber}: user ${play.userId} drops from ${play.points} to $now points"
                 }
             }
-            plays.save(play.copy(points = now))
+            plays.updatePoints(id = playId, points = now)
             written++
         }
         return written

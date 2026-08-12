@@ -69,6 +69,19 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
     ): Int
 
     /**
+     * Write only [points], nothing else. `RoundScoring.reevaluate` reads every guessed row of a round
+     * and rewrites just this column for whichever rows changed — a targeted `UPDATE`, not the
+     * full-row `save()` its `CrudRepository` supertype would use. The round lock serialises guesses,
+     * but not reveals: `revealOrCount` can bump `reveal_count` on any row at any time, so a `save()`
+     * from the snapshot `reevaluate` read at its start would overwrite a concurrent reveal's
+     * increment with the stale count it captured. `points` is the only column this statement may
+     * touch precisely so that race stays impossible instead of merely unlikely.
+     */
+    @Modifying
+    @Query("UPDATE game.round_plays SET points = :points WHERE id = :id")
+    fun updatePoints(id: UUID, points: Int): Int
+
+    /**
      * Points per player and round for one run — the **input** of a standings sum, not the sum.
      *
      * Grouping and window filtering happen in Kotlin on purpose: whether a round counts is

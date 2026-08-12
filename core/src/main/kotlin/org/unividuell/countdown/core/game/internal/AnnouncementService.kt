@@ -73,7 +73,6 @@ class AnnouncementService(
 
         val existing = store.find(edition = edition, roundNumber = round.number)
         return announcedOrNoGame(
-            edition = edition,
             round = round,
             roundGame = existing ?: materialise(edition = edition, round = round)
                 ?: return CurrentRound.NoGame(round = round, reason = NoGameReason.NO_GAME_TYPE),
@@ -118,7 +117,6 @@ class AnnouncementService(
      * whoever announced first, and their game is the one everybody plays.
      */
     private fun announcedOrNoGame(
-        edition: CommunityEdition,
         round: Round,
         roundGame: RoundGame,
     ): CurrentRound {
@@ -133,7 +131,6 @@ class AnnouncementService(
         }
         return CurrentRound.Announced(
             round = round,
-            edition = edition,
             roundGame = roundGame,
             handle = handle,
         )

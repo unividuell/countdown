@@ -1,6 +1,5 @@
 package org.unividuell.countdown.core.game.internal
 
-import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.countdown.Round
 
 /**
@@ -17,7 +16,6 @@ sealed interface CurrentRound {
 
     data class Announced(
         val round: Round,
-        val edition: CommunityEdition,
         val roundGame: RoundGame,
         val handle: GameTypeHandle<*>,
     ) : CurrentRound
