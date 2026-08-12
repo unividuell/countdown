@@ -80,11 +80,12 @@ class RoundPlayPointsTest(
         val roundId = requireNotNull(round.id)
         plays.revealOrCount(roundGameId = roundId, userId = user, revealedAt = at)
         val play = requireNotNull(plays.findByRoundGameIdAndUserId(roundGameId = roundId, userId = user))
+        val playId = requireNotNull(play.id)
         plays.recordGuess(
-            id = requireNotNull(play.id), guess = mapper.readTree("""{"hue":1.0}"""), guessedAt = at,
+            id = playId, guess = mapper.readTree("""{"hue":1.0}"""), guessedAt = at,
             qualifies = true, deviation = 0.0, outcome = null,
         )
-        plays.save(requireNotNull(plays.findById(requireNotNull(play.id)).orElse(null)).copy(points = points))
+        plays.save(requireNotNull(plays.findById(playId).orElse(null)).copy(points = points))
     }
 
     @Test
@@ -120,17 +121,14 @@ class RoundPlayPointsTest(
     @Test
     fun `live points stay hidden until the viewer has guessed the running round themselves`() {
         val (community, owner) = aCommunity("Points Live Gate")
+        val communityId = requireNotNull(community.id)
         val other = aUser()
         val current = currentRoundNumberOf(community)
         scored(community = community, roundNumber = current, user = other, points = 5)
 
-        val hidden = points.standings(
-            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(other),
-        )
+        val hidden = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(other))
         scored(community = community, roundNumber = current, user = owner, points = 2)
-        val shown = points.standings(
-            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(other),
-        )
+        val shown = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(other))
 
         hidden[other].shouldNotBeNull().live.shouldBeNull()
         shown[other].shouldNotBeNull().live shouldBe 5
@@ -139,25 +137,21 @@ class RoundPlayPointsTest(
     @Test
     fun `shrinking the window drops rounds out of the sum but not out of the database`() {
         val (community, owner) = aCommunity("Points Window")
+        val communityId = requireNotNull(community.id)
         val current = currentRoundNumberOf(community)
         scored(community = community, roundNumber = current + 1, user = owner, points = 3)
         scored(community = community, roundNumber = current + 2, user = owner, points = 4)
-        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val edition = requireNotNull(editions.findActiveByCommunityId(communityId))
 
         // The admin closes the window below the older round: it is no longer in play.
         editions.save(edition.copy(gamesFromRound = current + 1))
-        val shrunk = points.standings(
-            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
-        )
+        val shrunk = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
         // Re-opening brings the same number back, untouched: the points sit frozen on the row and
         // only their inclusion in the sum is dynamic.
         editions.save(
-            requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
-                .copy(gamesFromRound = null),
+            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = null),
         )
-        val reopened = points.standings(
-            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
-        )
+        val reopened = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
 
         shrunk[owner].shouldNotBeNull().stable shouldBe 3
         reopened[owner].shouldNotBeNull().stable shouldBe 7

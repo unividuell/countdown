@@ -56,7 +56,7 @@ class MemberPointsTest {
     )
 
     @Test
-    fun `factory returns ZeroMemberPoints when property is absent and no production profile`() {
+    fun `factory returns the real points when the property is absent and no production profile`() {
         val env = MockEnvironment()
         val bean = beanFor(env)
         bean::class.simpleName shouldBe "RoundPlayPoints"
@@ -80,7 +80,7 @@ class MemberPointsTest {
     }
 
     @Test
-    fun `factory returns ZeroMemberPoints when property is false and staging profile active`() {
+    fun `factory returns the real points when the property is false and staging profile active`() {
         val env = MockEnvironment()
         env.setProperty("app.stub-points.enabled", "false")
         env.setActiveProfiles("staging")
@@ -89,7 +89,7 @@ class MemberPointsTest {
     }
 
     @Test
-    fun `factory returns ZeroMemberPoints when property is true but production profile active (safety belt)`() {
+    fun `factory returns the real points when the property is true but production profile active (safety belt)`() {
         val env = MockEnvironment()
         env.setProperty("app.stub-points.enabled", "true")
         env.setActiveProfiles("production")
@@ -98,7 +98,7 @@ class MemberPointsTest {
     }
 
     @Test
-    fun `factory returns ZeroMemberPoints when property is absent and production profile active`() {
+    fun `factory returns the real points when the property is absent and production profile active`() {
         val env = MockEnvironment()
         env.setActiveProfiles("production")
         val bean = beanFor(env)
