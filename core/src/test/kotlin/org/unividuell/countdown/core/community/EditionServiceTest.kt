@@ -37,7 +37,7 @@ class EditionServiceTest(
     fun `create makes the first active edition with the defaults`() {
         val communityId = aCommunity("es-create")
 
-        val edition = service.create(communityId, "  Run 2026  ")
+        val edition = service.create(communityId = communityId, rawLabel = "  Run 2026  ")
 
         edition.label shouldBe "Run 2026"
         edition.startsAt.shouldBeNull()
@@ -56,7 +56,7 @@ class EditionServiceTest(
     @Test
     fun `update sets a valid IANA timezone and keeps unset fields`() {
         val communityId = aCommunity("es-update")
-        val edition = service.create(communityId, "Run 2026")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         val updated = service.update(
             edition, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
@@ -74,7 +74,7 @@ class EditionServiceTest(
     @Test
     fun `update rejects an invalid timezone`() {
         val communityId = aCommunity("es-bad-zone")
-        val edition = service.create(communityId, "Run 2026")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         shouldThrow<IllegalArgumentException> {
             service.update(
@@ -87,7 +87,7 @@ class EditionServiceTest(
     @Test
     fun `update rejects a phaseTwoStartRound that is not positive`() {
         val communityId = aCommunity("es-bad-phase")
-        val edition = service.create(communityId, "Run 2026")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         shouldThrow<IllegalArgumentException> {
             service.update(
@@ -100,7 +100,7 @@ class EditionServiceTest(
     @Test
     fun `update rejects a window whose first round is later than its last`() {
         val communityId = aCommunity("es-bad-window")
-        val edition = service.create(communityId, "Run 2026")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         // A larger number is earlier: from=5 with until=10 would end before it begins.
         shouldThrow<IllegalArgumentException> {
@@ -114,7 +114,7 @@ class EditionServiceTest(
     @Test
     fun `update accepts a negative last round so games can run past the start`() {
         val communityId = aCommunity("es-negative-window")
-        val edition = service.create(communityId, "Run 2026")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         val updated = service.update(
             edition, label = null, startsAt = null, startsAtTimezone = null,
@@ -127,14 +127,14 @@ class EditionServiceTest(
     @Test
     fun `startNew archives the current edition and inherits its setup`() {
         val communityId = aCommunity("es-start-new")
-        val first = service.create(communityId, "Run 2026")
+        val first = service.create(communityId = communityId, rawLabel = "Run 2026")
         service.update(
             first, label = null, startsAt = Instant.parse("2026-10-01T16:00:00Z"),
             startsAtTimezone = "America/New_York", phaseTwoStartRound = 20,
             gamesFromRound = 24, gamesUntilRound = -1,
         )
 
-        val second = service.startNew(communityId, "Run 2027")
+        val second = service.startNew(communityId = communityId, rawLabel = "Run 2027")
 
         second.label shouldBe "Run 2027"
         second.startsAt.shouldBeNull()          // the new date is not known yet
@@ -152,16 +152,16 @@ class EditionServiceTest(
     @Test
     fun `create fails with EditionConflictException when trying to insert a second active edition`() {
         val communityId = aCommunity("es-duplicate-active")
-        service.create(communityId, "Run 2026")
+        service.create(communityId = communityId, rawLabel = "Run 2026")
 
-        shouldThrow<EditionConflictException> { service.create(communityId, "Run 2027") }
+        shouldThrow<EditionConflictException> { service.create(communityId = communityId, rawLabel = "Run 2027") }
     }
 
     @Test
     fun `startNew opens the first edition when the community has none yet`() {
         val communityId = aCommunity("es-start-new-no-current")
 
-        val started = service.startNew(communityId, "Run 2026")
+        val started = service.startNew(communityId = communityId, rawLabel = "Run 2026")
 
         started.label shouldBe "Run 2026"
         started.startsAt.shouldBeNull()
@@ -176,11 +176,11 @@ class EditionServiceTest(
     @Test
     fun `update conflicts when the edition was archived by a concurrent startNew`() {
         val communityId = aCommunity("es-update-stale")
-        val stale = service.create(communityId, "Run 2026")
+        val stale = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         // Simulates admin B's POST .../editions committing between admin A's read and A's update:
         // this archives `stale` and opens a fresh active edition in its place.
-        service.startNew(communityId, "Run 2027")
+        service.startNew(communityId = communityId, rawLabel = "Run 2027")
 
         shouldThrow<EditionConflictException> {
             service.update(

@@ -28,14 +28,14 @@ class CountdownService(
     override fun currentRound(communityId: UUID, now: Instant): Round? {
         val edition = communityQuery.activeEditionOf(communityId) ?: return null
         val startsAt = edition.startsAt ?: return null
-        return engine.roundAt(now, startsAt, ZoneId.of(edition.startsAtTimezone))
+        return engine.roundAt(now = now, startsAt = startsAt, zone = ZoneId.of(edition.startsAtTimezone))
     }
 
     /** Build the display payload for [slug], gated to active members (super-admin allowed). */
     fun forSlug(slug: String, userId: UUID, isSuperAdmin: Boolean): CountdownResponse {
         val c = communityQuery.findBySlug(slug) ?: throw CountdownAccessDeniedException()
         val communityId = requireNotNull(c.id)
-        if (!isSuperAdmin && !membershipQuery.isActiveMember(communityId, userId)) {
+        if (!isSuperAdmin && !membershipQuery.isActiveMember(communityId = communityId, userId = userId)) {
             throw CountdownAccessDeniedException()
         }
         val now = clock.instant()
@@ -43,13 +43,23 @@ class CountdownService(
         // "no date yet": there is nothing to count down to, so the display says so.
         val edition = communityQuery.activeEditionOf(communityId) ?: run {
             logger.warn { "community $communityId has no active edition — countdown shows no date" }
-            return CountdownResponse(now, null, CommunityEdition.DEFAULT_TIMEZONE, null, null)
+            return CountdownResponse(
+                serverNow = now, startsAt = null,
+                startsAtTimezone = CommunityEdition.DEFAULT_TIMEZONE, round = null, nextRound = null,
+            )
         }
         val startsAt = edition.startsAt
-            ?: return CountdownResponse(now, null, edition.startsAtTimezone, null, null)
+            ?: return CountdownResponse(
+                serverNow = now, startsAt = null,
+                startsAtTimezone = edition.startsAtTimezone, round = null, nextRound = null,
+            )
         val zone = ZoneId.of(edition.startsAtTimezone)
-        val current = engine.roundAt(now, startsAt, zone)
-        val next = engine.intervalOf(current.number - 1, startsAt, zone) // later in time = number - 1
-        return CountdownResponse(now, startsAt, edition.startsAtTimezone, current.toDto(), next.toDto())
+        val current = engine.roundAt(now = now, startsAt = startsAt, zone = zone)
+        // later in time = number - 1
+        val next = engine.intervalOf(number = current.number - 1, startsAt = startsAt, zone = zone)
+        return CountdownResponse(
+            serverNow = now, startsAt = startsAt, startsAtTimezone = edition.startsAtTimezone,
+            round = current.toDto(), nextRound = next.toDto(),
+        )
     }
 }

@@ -37,7 +37,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `POST creates a community`() {
         val c = community("team-a")
         every { users.mayCreateCommunities(uid) } returns true
-        every { communityService.create(uid, "Team A") } returns c
+        every { communityService.create(creatorUserId = uid, rawName = "Team A") } returns c
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team A",
         )
@@ -158,7 +158,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `GET by slug returns viewerIsAdmin true for a super-admin`() {
         val c = community("team")
         every { access.requireActiveMember(uid, true, "team") } returns c
-        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 0
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
         )
@@ -188,12 +188,12 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `POST editions returns the new run with the inherited setup`() {
         val c = community("rollover")
-        every { access.requireAdmin(uid, false, "rollover") } returns c
-        every { editions.startNew(c.id!!, "Rollover 2027") } returns CommunityEdition(
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } returns c
+        every { editions.startNew(communityId = c.id!!, rawLabel = "Rollover 2027") } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Rollover 2027",
             startsAtTimezone = "America/New_York", phaseTwoStartRound = 20, gamesFromRound = 24,
         )
-        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 0
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
 
         mockMvc.post("/api/communities/rollover/editions") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
@@ -209,7 +209,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST editions is forbidden for a non-admin member`() {
-        every { access.requireAdmin(uid, false, "rollover") } throws NotAdminException()
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } throws NotAdminException()
 
         mockMvc.post("/api/communities/rollover/editions") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
@@ -220,8 +220,8 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `POST editions surfaces a too-short label as 400`() {
         val c = community("rollover")
-        every { access.requireAdmin(uid, false, "rollover") } returns c
-        every { editions.startNew(c.id!!, "ab") } throws IllegalArgumentException("label must be 3..50 chars")
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } returns c
+        every { editions.startNew(communityId = c.id!!, rawLabel = "ab") } throws IllegalArgumentException("label must be 3..50 chars")
 
         mockMvc.post("/api/communities/rollover/editions") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON

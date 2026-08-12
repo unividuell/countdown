@@ -59,7 +59,7 @@ class CommunityServiceTest(
 
     @Test
     fun `create makes the first active edition labelled with the community name`() {
-        val c = service.create(aUser().id!!, "Hütte 2026")
+        val c = service.create(creatorUserId = aUser().id!!, rawName = "Hütte 2026")
 
         val edition = query.activeEditionOf(requireNotNull(c.id)).shouldNotBeNull()
         edition.label shouldBe "Hütte 2026"
@@ -69,7 +69,7 @@ class CommunityServiceTest(
 
     @Test
     fun `update writes the schedule to the active edition and the name to the community`() {
-        val c = service.create(aUser().id!!, "Zone Team")
+        val c = service.create(creatorUserId = aUser().id!!, rawName = "Zone Team")
 
         val (community, edition) = service.update(
             c, name = "Zone Team Renamed", label = null,
@@ -88,7 +88,7 @@ class CommunityServiceTest(
 
     @Test
     fun `update rejects an invalid timezone`() {
-        val c = service.create(aUser().id!!, "Bad Zone")
+        val c = service.create(creatorUserId = aUser().id!!, rawName = "Bad Zone")
 
         shouldThrow<IllegalArgumentException> {
             service.update(

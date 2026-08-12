@@ -42,13 +42,14 @@ open class CommunityService(
         )
         // The first run is labelled with the community name: it is the community's first countdown,
         // and an admin renames it when a second one starts.
-        editions.create(communityId, name)
+        editions.create(communityId = communityId, rawLabel = name)
         return community
     }
 
     /**
      * The community owns its name, the run owns the schedule. One transaction over both so a
-     * rejected timezone cannot leave a renamed community behind.
+     * rejected timezone cannot leave a renamed community behind — the **rollback** is what
+     * guarantees that, not the order of the two writes.
      */
     @Transactional
     open fun update(
@@ -74,6 +75,6 @@ open class CommunityService(
         )
         // slug is immutable — never recomputed
         val saved = communities.save(community.copy(name = name?.trim() ?: community.name))
-        return CommunityWithEdition(saved, edition)
+        return CommunityWithEdition(community = saved, edition = edition)
     }
 }

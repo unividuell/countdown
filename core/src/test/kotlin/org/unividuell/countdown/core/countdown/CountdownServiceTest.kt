@@ -43,7 +43,7 @@ class CountdownServiceTest(
     fun `forSlug returns null rounds when startsAt unset`() {
         val ownerId = aUser().id!!
         val c = communities.create(ownerId, "No Start Yet")
-        val res = countdown.forSlug(c.slug, ownerId, false)
+        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         res.round shouldBe null
         res.nextRound shouldBe null
         res.startsAtTimezone shouldBe "Europe/Berlin"
@@ -67,7 +67,7 @@ class CountdownServiceTest(
             startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
             gamesFromRound = null, gamesUntilRound = null,
         )
-        val res = countdown.forSlug(c.slug, ownerId, false)
+        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         val round = res.round!!; val nextRound = res.nextRound!!
         (round.number > 0) shouldBe true
         nextRound.number shouldBe round.number - 1
@@ -77,17 +77,17 @@ class CountdownServiceTest(
     @Test
     fun `forSlug follows the active edition when a new run starts`() {
         val ownerId = aUser().id!!
-        val c = communities.create(ownerId, "Second Run")
+        val c = communities.create(creatorUserId = ownerId, rawName = "Second Run")
         communities.update(
             c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
             startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
             gamesFromRound = null, gamesUntilRound = null,
         )
 
-        editions.startNew(requireNotNull(c.id), "Run 2100")
+        editions.startNew(communityId = requireNotNull(c.id), rawLabel = "Run 2100")
 
         // The new run has no date yet, so there is no round — the old run's date is not consulted.
-        val res = countdown.forSlug(c.slug, ownerId, false)
+        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         res.startsAt.shouldBeNull()
         res.round.shouldBeNull()
     }
@@ -95,14 +95,14 @@ class CountdownServiceTest(
     @Test
     fun `forSlug degrades gracefully when the active edition was archived without a replacement`() {
         val ownerId = aUser().id!!
-        val c = communities.create(ownerId, "Broken Invariant")
+        val c = communities.create(creatorUserId = ownerId, rawName = "Broken Invariant")
         val communityId = requireNotNull(c.id)
         // Bypasses EditionService.startNew on purpose: this is the "no active edition" invariant
         // violation that requireActive() would 500 on, reached here through the graceful reader.
         val active = requireNotNull(editionRepository.findActiveByCommunityId(communityId))
         editionRepository.save(active.copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")))
 
-        val res = countdown.forSlug(c.slug, ownerId, false)
+        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 
         res.startsAt.shouldBeNull()
         res.round.shouldBeNull()

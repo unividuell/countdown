@@ -27,7 +27,7 @@ class SuperAdminOverviewServiceTest {
     private val members = mockk<CommunityMemberRepository>()
     private val editions = mockk<CommunityEditionRepository>()
     private val users = mockk<UserQuery>()
-    private val service = SuperAdminOverviewService(communities, members, editions, users)
+    private val service = SuperAdminOverviewService(communities = communities, members = members, editions = editions, users = users)
 
     private val alphaId = UUID.fromString("018f0000-0000-7000-8000-0000000000a1")
     private val zuluId = UUID.fromString("018f0000-0000-7000-8000-0000000000b1")
@@ -53,7 +53,7 @@ class SuperAdminOverviewServiceTest {
     @Test
     fun `sorts communities by name and members admins-active-pending, resolving users in one batch`() {
         every { communities.findAll() } returns listOf(
-            community(zuluId, "Zulu", "zulu"),
+            community(id = zuluId, name = "Zulu", slug = "zulu"),
             community(alphaId, "alpha", "alpha"),
         )
         every { members.findAll() } returns listOf(
@@ -101,8 +101,8 @@ class SuperAdminOverviewServiceTest {
     @Test
     fun `an edition's schedule lands on its own community, a community without one keeps the default`() {
         every { communities.findAll() } returns listOf(
-            community(alphaId, "Alpha", "alpha"),
-            community(zuluId, "Zulu", "zulu"),
+            community(id = alphaId, name = "Alpha", slug = "alpha"),
+            community(id = zuluId, name = "Zulu", slug = "zulu"),
         )
         every { members.findAll() } returns emptyList()
         every { users.findAllById(emptyList()) } returns emptyList()

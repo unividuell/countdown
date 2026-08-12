@@ -43,7 +43,7 @@ open class EditionService(
             )
         } ?: fresh
         validate(edition)
-        return saveOrConflict(communityId, edition)
+        return saveOrConflict(communityId = communityId, edition = edition)
     }
 
     /**
@@ -55,7 +55,7 @@ open class EditionService(
     open fun startNew(communityId: UUID, rawLabel: String): CommunityEdition {
         val current = active(communityId)
         if (current != null) editions.save(current.copy(archivedAt = clock.instant()))
-        return create(communityId, rawLabel, inheritFrom = current)
+        return create(communityId = communityId, rawLabel = rawLabel, inheritFrom = current)
     }
 
     /** "null = keep" throughout, matching `CommunityService.update`; clearing a value is out of scope. */
@@ -78,7 +78,7 @@ open class EditionService(
             gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
         )
         validate(next)
-        return saveOrConflict(edition.communityId, next)
+        return saveOrConflict(communityId = edition.communityId, edition = next)
     }
 
     /**

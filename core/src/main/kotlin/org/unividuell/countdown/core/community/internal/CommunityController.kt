@@ -24,10 +24,10 @@ class CommunityController(
     @PostMapping
     fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> {
         if (!users.mayCreateCommunities(me.id)) throw CommunityCreationNotAllowedException()
-        val community = communityService.create(me.id, body.name)
+        val community = communityService.create(creatorUserId = me.id, rawName = body.name)
         val edition = editions.requireActive(requireNotNull(community.id))
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(community.toResponse(edition, viewerIsAdmin = true, pendingCount = 0))
+            .body(community.toResponse(edition = edition, viewerIsAdmin = true, pendingCount = 0))
     }
 
     @GetMapping
@@ -45,23 +45,29 @@ class CommunityController(
 
     @GetMapping("/{slug}")
     fun get(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): CommunityResponse {
-        val c = access.requireActiveMember(me.id, me.isSuperAdmin, slug)
+        val c = access.requireActiveMember(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
         val id = requireNotNull(c.id)
-        val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(id, me.id)
-        val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt() else 0
-        return c.toResponse(editions.requireActive(id), viewerIsAdmin = isAdmin, pendingCount = pending)
+        val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(communityId = id, userId = me.id)
+        val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt() else 0
+        return c.toResponse(edition = editions.requireActive(id), viewerIsAdmin = isAdmin, pendingCount = pending)
     }
 
     @PatchMapping("/{slug}")
     fun update(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @RequestBody body: UpdateCommunityRequest): CommunityResponse {
-        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
+        val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
         val id = requireNotNull(c.id)
         val updated = communityService.update(
-            c, body.name, body.editionLabel, body.startsAt, body.startsAtTimezone,
-            body.phaseTwoStartRound, body.gamesFromRound, body.gamesUntilRound,
+            community = c,
+            name = body.name,
+            label = body.editionLabel,
+            startsAt = body.startsAt,
+            startsAtTimezone = body.startsAtTimezone,
+            phaseTwoStartRound = body.phaseTwoStartRound,
+            gamesFromRound = body.gamesFromRound,
+            gamesUntilRound = body.gamesUntilRound,
         )
-        val pending = memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt()
-        return updated.community.toResponse(updated.edition, viewerIsAdmin = true, pendingCount = pending)
+        val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
+        return updated.community.toResponse(edition = updated.edition, viewerIsAdmin = true, pendingCount = pending)
     }
 
     /**
@@ -74,11 +80,11 @@ class CommunityController(
         @PathVariable slug: String,
         @RequestBody body: StartEditionRequest,
     ): ResponseEntity<CommunityResponse> {
-        val c = access.requireAdmin(me.id, me.isSuperAdmin, slug)
+        val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
         val id = requireNotNull(c.id)
-        val edition = editions.startNew(id, body.label)
-        val pending = memberRepo.countByCommunityIdAndStatus(id, MemberStatus.PENDING).toInt()
+        val edition = editions.startNew(communityId = id, rawLabel = body.label)
+        val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(c.toResponse(edition, viewerIsAdmin = true, pendingCount = pending))
+            .body(c.toResponse(edition = edition, viewerIsAdmin = true, pendingCount = pending))
     }
 }
