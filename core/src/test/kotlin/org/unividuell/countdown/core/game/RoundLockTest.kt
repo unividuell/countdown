@@ -24,6 +24,14 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/**
+ * Deliberately **no** `@Transactional`: a lock between two transactions is only observable if there
+ * are two, and a class-level `@Transactional` here would wrap the single test method in one
+ * transaction that both "concurrent" transactions then share, defeating the point.
+ *
+ * The flip side: nothing this test does gets rolled back. The fixture cleans up its own rows by hand
+ * in a `finally` block, because they land in the same database every other test in the suite shares.
+ */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 class RoundLockTest(
@@ -42,9 +50,9 @@ class RoundLockTest(
         val community = communities.save(
             Community(name = "Lock Round", slug = "lock-round-${System.nanoTime()}", createdBy = creator),
         )
-        val edition = editions.save(
-            CommunityEdition(communityId = requireNotNull(community.id), label = "Run 2026"),
-        )
+        val communityId = requireNotNull(community.id)
+        val edition = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+        val editionId = requireNotNull(edition.id)
         val round = store.announce(
             edition = edition, roundNumber = 12, gameType = "guess-hue",
             params = mapper.readTree("""{"hue":1.0}"""),
@@ -76,6 +84,14 @@ class RoundLockTest(
             holder.get(30, TimeUnit.SECONDS)
         } finally {
             pool.shutdownNow()
+            // Deliberately non-transactional (see the class comment), so every row this test commits
+            // has to be torn down by hand — a global count elsewhere in the suite (an active edition
+            // per community, say) would otherwise see this test's fixture as real data forever.
+            // FK order: round game before edition before community before user.
+            rounds.deleteById(id)
+            editions.deleteById(editionId)
+            communities.deleteById(communityId)
+            users.deleteById(creator)
         }
     }
 }
