@@ -27,7 +27,7 @@ interface GameType<P : Any> {
     /** URL segment and column value, e.g. `guess-hue`. Unique across the catalogue. */
     val id: String
 
-    /** German display name, e.g. „Farbausmalung". */
+    /** German display name, e.g. „Farbausmalung“. */
     val displayName: String
 
     /** For deserialising [params] back out of the round's `params` column. */
