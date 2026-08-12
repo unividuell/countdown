@@ -16,13 +16,20 @@ import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.EditionService
+import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AnnouncementService
+import org.unividuell.countdown.core.game.internal.Award
+import org.unividuell.countdown.core.game.internal.AwardRule
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundGameRepository
+import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import tools.jackson.databind.ObjectMapper
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
@@ -34,6 +41,10 @@ class AnnouncementServiceTest(
     @Autowired val editions: EditionService,
     @Autowired val editionRepository: CommunityEditionRepository,
     @Autowired val rounds: RoundGameRepository,
+    @Autowired val store: RoundGameStore,
+    @Autowired val engine: CountdownEngine,
+    @Autowired val clock: Clock,
+    @Autowired val mapper: ObjectMapper,
     @Autowired val users: UserRepository,
 ) {
     private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
@@ -57,6 +68,20 @@ class AnnouncementServiceTest(
             phaseTwoStartRound = null, gamesFromRound = gamesFromRound, gamesUntilRound = gamesUntilRound,
         )
         return community to ownerId
+    }
+
+    /**
+     * The round number `currentRound` will resolve for [community] — computed the same way the
+     * service computes it, from the same `CountdownEngine` and `Clock` beans, so a pre-inserted row
+     * lands on the exact round the service is about to look at rather than a guessed number.
+     */
+    private fun currentRoundNumberOf(community: Community): Int {
+        val edition = requireNotNull(editionRepository.findActiveByCommunityId(requireNotNull(community.id)))
+        return engine.roundAt(
+            now = clock.instant(),
+            startsAt = requireNotNull(edition.startsAt),
+            zone = ZoneId.of(edition.startsAtTimezone),
+        ).number
     }
 
     @Test
@@ -165,5 +190,27 @@ class AnnouncementServiceTest(
         second.game shouldBe first.game
         val edition = requireNotNull(editionRepository.findActiveByCommunityId(requireNotNull(community.id)))
         rounds.historyOf(editionId = requireNotNull(edition.id), after = Int.MIN_VALUE) shouldHaveSize 1
+    }
+
+    @Test
+    fun `a round announced with a game type this build lacks has no game but still has its round`() {
+        val (community, viewer) = aCommunityWithOwner("Unknown Type Round")
+        val edition = requireNotNull(editionRepository.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundNumber = currentRoundNumberOf(community)
+
+        // Pre-inserted directly, bypassing selection/draw entirely: this is what a round announced
+        // by a deployment carrying a game type this build no longer has would look like. The only
+        // way `currentRound` can reflect "not-a-real-game" is by reading this row, not by drawing.
+        store.announce(
+            edition = edition, roundNumber = roundNumber, gameType = "not-a-real-game",
+            params = mapper.readTree("{}"), award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+            announcedAt = clock.instant(),
+        )
+
+        val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        res.noGameReason shouldBe NoGameReason.NO_GAME_TYPE
+        res.round.shouldNotBeNull()
+        res.game.shouldBeNull()
     }
 }
