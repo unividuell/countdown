@@ -689,7 +689,7 @@ fun awardFor(roundNumber: Int, phaseTwoStartRound: Int?): Award =
 
 - [ ] **Step 10: Beide Tests laufen lassen — und die eine offene Frage entscheiden**
 
-Run: `cd core && ./mvnw clean test -Dtest='AwardTest+RoundGameRepositoryTest'`
+Run: `cd core && ./mvnw clean test -Dtest='AwardTest,RoundGameRepositoryTest'`
 Expected: PASS. **`clean` ist hier Pflicht**, nicht Vorsicht: `game` ist ein neues Modulith-Modul, und die stale `application-modules.json` im `target` würde dazu führen, dass `db/migration/game/` gar nicht gescannt wird — der Test scheitert dann mit „relation game.round_games does not exist“ und nicht mit einem Hinweis auf die Ursache.
 
 **Die offene Frage:** ob ein `JsonNode` auch als Parameter einer eigenen `@Query` durch die
