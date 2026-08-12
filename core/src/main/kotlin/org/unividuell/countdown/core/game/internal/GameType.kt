@@ -35,6 +35,10 @@ interface GameType<P : Any> {
 
     fun draw(random: SeededRandom, context: RoundContext): P
 
-    /** What the player sees — never the solution, not even something it can be derived from. */
+    /**
+     * What the player sees. Must never carry the solution — and a game whose presentation values
+     * are drawn from the solution's own random stream must treat them as narrowing it, not as
+     * independent of it.
+     */
     fun present(params: P): GamePayload
 }

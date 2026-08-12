@@ -70,6 +70,7 @@ class RoundGameRepositoryTest(
 
         val found = store.find(edition = edition, roundNumber = 12).shouldNotBeNull()
         found.gameType shouldBe "guess-hue"
+        found.announcedAt shouldBe announcedAt
         store.find(edition = edition, roundNumber = 11).shouldBeNull()
     }
 

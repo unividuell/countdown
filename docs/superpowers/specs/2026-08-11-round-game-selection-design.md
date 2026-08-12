@@ -162,7 +162,7 @@ Neues Modulith-Modul **`game`**, Schema `game`, Migrationen unter `db/migration/
 ```
 game → community   (aktiver Durchlauf, Mitgliedschaft, MemberPointsQuery)
 game → countdown   (CountdownEngine)
-game → iam         (Namen und Avatare in der Tippübersicht, und `AuthenticatedUser` am Controller, ab der Ansage)
+game → iam         (Namen und Avatare in der Tippübersicht, und AuthenticatedUser am Controller, ab der Ansage)
 game → rng         (SeededRandom für die Ziehung)
 game → guesshue    (der Datensatz, aus dem gezogen wird)
 gamelab → game     (das Lab läuft durch dieselben Klassen — siehe Das Lab zieht mit)
@@ -295,6 +295,20 @@ Spiels, was bei einer Framework-Spalte nicht passierte.
 Ausgängen, `present()` und `solution()`.** Was von der Zwei-Seed-Regel überlebt, gilt jetzt auf
 Spielebene: *ein Wert, der ausgeliefert wird, darf nie derselbe sein wie einer, der die Lösung
 treibt.*
+
+**Diese Fassung ist zu schwach — die Regel gilt pro Stream, nicht pro Wert.** `GuessHueDataset.draw`
+zieht Eintrag, Hue-Jitter, Sättigung, Helligkeit und Start-Winkel nacheinander aus **einem**
+`SeededRandom`. `nextUint32` ist bijektiv (die Multiplikationen mit den ungeraden Faktoren 5 und 9
+sind invertierbar mod 2³², `rotl` ist es sowieso, und der xoshiro128\*\*-Zustandsübergang ist eine
+Bijektion), und `nextDouble` veröffentlicht 53 Bit aus zwei aufeinanderfolgenden Wörtern. Drei
+veröffentlichte Doubles reichen also, um den Generatorzustand zu rekonstruieren, ihn rückwärts
+abzuspulen und die Ziel-Hue exakt zu lesen — obwohl keiner der drei Werte selbst der Lösung gleicht
+oder aus ihr abgeleitet ist. Die scharfe Fassung: *ein Wert, der aus demselben Generator-Stream wie
+die Lösung gezogen wird, grenzt sie ein — auch wenn er ihr nicht gleicht und auch wenn er vor ihr im
+Stream steht.* Die Behebung sind **zwei unabhängig geseedete Streams**, einer für die Ziehung, einer
+für die Präsentation; das ändert `guesshue` und ist deshalb nicht diese Scheibe, sondern die
+nächste. Guess Hues Phase 2 ist die Stelle, an der es beißt: dort gibt es kein Toleranz-Tor, nur der
+nächste Tipp punktet, und exakte Rekonstruktion gewinnt dort jede Runde.
 
 Und weil der Seed nicht mehr aus `(edition, round)` abgeleitet wird, ist die offene Frage 7 der
 Anti-Cheat-Spec anders beantwortet als gestellt: er wird **gar nicht abgeleitet**. Ein gehashter Seed

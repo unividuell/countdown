@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.game
 
+import io.kotest.matchers.collections.shouldHaveAtLeastSize
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
@@ -16,6 +17,7 @@ import org.unividuell.countdown.core.game.internal.RoundContext
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
+import kotlin.math.round
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -71,10 +73,30 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     fun `the payload's starting angle is not the solution`() {
         val params = draw(phase = Phase.ONE)
 
-        // initHue is drawn independently of the target, so it narrows nothing. If a future change
-        // ever derives one from the other, this test is the one that should fail.
+        // This protects against the identity-copy regression only — wiring `hue` straight into
+        // `initHue`. It is not a proof of independence: initHue is drawn from the same SeededRandom
+        // stream as hue, so it narrows the solution in the cryptanalytic sense even though it is
+        // never equal to it. See the KDoc on GuessHuePayload.
         val payload = game.present(params)
         payload.initHue shouldBe params.initHue
         (payload.initHue == params.hue) shouldBe false
+    }
+
+    @Test
+    fun `the starting angle's offset from the solution is not fixed across seeds`() {
+        // A fixed-offset derivation such as `initHue = (hue + 137) % 360` would pass the identity
+        // check above for every seed. Requiring more than one distinct offset across many seeds is
+        // what actually catches that class of regression — rounded, because `wrap360`'s double
+        // modulo chain (`%` twice, plus an add) leaves ULP-level noise on what is mathematically the
+        // exact same offset: an *actual* fixed-offset derivation was observed to produce values like
+        // 136.99999999999994 and 137.00000000000006 across seeds, which would satisfy an unrounded
+        // "more than one distinct value" check without the offset varying in any way that matters.
+        val offsets = (1..20).map { seed ->
+            val params = draw(phase = Phase.ONE, seed = seed)
+            val offset = ((params.initHue - params.hue) % 360.0 + 360.0) % 360.0
+            round(offset * 1_000_000.0) / 1_000_000.0
+        }
+
+        offsets.toSet().shouldHaveAtLeastSize(2)
     }
 }

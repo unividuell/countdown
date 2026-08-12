@@ -25,9 +25,16 @@ data class GuessHueParams(
 /**
  * What the player needs in order to play: the text, and the colour the wheel starts on.
  *
- * `GuessHueParams.hue` — the answer — is absent, and so is anything it could be derived from. The
- * starting angle is drawn independently of the target, so it narrows nothing; saturation and
- * lightness are the same for every angle on the wheel.
+ * `GuessHueParams.hue` — the answer — is absent as a field, and none of `initHue`, `saturation` or
+ * `lightness` *is* it. But none of them is independent of it either, in the cryptanalytic sense:
+ * `GuessHueDataset.draw` pulls all of them from **one** `SeededRandom` stream, in order (entry pick,
+ * hue jitter, saturation, lightness, `initHue`), and `SeededRandom.nextDouble()`'s output is
+ * invertible back to the generator state. Three published doubles are enough to reconstruct that
+ * state, step it backwards past the jitter draw, and read the target hue exactly — even though none
+ * of the three published values equals it or is computed from it. **Do not add a fourth published
+ * field on the assumption that presentation values are safe** — the actual fix is two independently
+ * seeded streams (draw vs. presentation), which needs a change in `guesshue` and is planned for the
+ * slice that publishes this payload, not this one.
  */
 data class GuessHuePayload(
     val description: String,

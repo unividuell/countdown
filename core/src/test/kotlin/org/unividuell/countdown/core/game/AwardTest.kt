@@ -1,11 +1,14 @@
 package org.unividuell.countdown.core.game
 
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.internal.AwardRule
+import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.Phase
 import org.unividuell.countdown.core.game.internal.awardFor
+import org.unividuell.countdown.core.game.internal.windowReasonOf
 import java.util.UUID
 
 class AwardTest {
@@ -66,5 +69,29 @@ class AwardTest {
 
         Phase.of(edition = edition, roundNumber = 20) shouldBe Phase.TWO
         Phase.of(edition = edition, roundNumber = 21) shouldBe Phase.ONE
+    }
+
+    @Test
+    fun `both window edges are inside, one step past either is not`() {
+        // gamesFromRound = 24, gamesUntilRound = 0: the window is 0..24 inclusive.
+        windowReasonOf(roundNumber = 24, gamesFromRound = 24, gamesUntilRound = 0).shouldBeNull()
+        windowReasonOf(roundNumber = 0, gamesFromRound = 24, gamesUntilRound = 0).shouldBeNull()
+        windowReasonOf(roundNumber = 25, gamesFromRound = 24, gamesUntilRound = 0) shouldBe
+            NoGameReason.BEFORE_WINDOW
+        windowReasonOf(roundNumber = -1, gamesFromRound = 24, gamesUntilRound = 0) shouldBe
+            NoGameReason.AFTER_WINDOW
+    }
+
+    @Test
+    fun `a null gamesFromRound is unbounded above`() {
+        windowReasonOf(roundNumber = Int.MAX_VALUE, gamesFromRound = null, gamesUntilRound = 0)
+            .shouldBeNull()
+    }
+
+    @Test
+    fun `gamesUntilRound may be negative, and its boundary is still inclusive`() {
+        windowReasonOf(roundNumber = -5, gamesFromRound = null, gamesUntilRound = -5).shouldBeNull()
+        windowReasonOf(roundNumber = -6, gamesFromRound = null, gamesUntilRound = -5) shouldBe
+            NoGameReason.AFTER_WINDOW
     }
 }

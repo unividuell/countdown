@@ -58,14 +58,11 @@ class AnnouncementService(
             startsAt = startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
-        // A larger round number is earlier in time, so "before the window" is a number above its
-        // first round, and "after" is a number below its last.
-        edition.gamesFromRound?.let { from ->
-            if (round.number > from) return noGame(round = round, reason = NoGameReason.BEFORE_WINDOW)
-        }
-        if (round.number < edition.gamesUntilRound) {
-            return noGame(round = round, reason = NoGameReason.AFTER_WINDOW)
-        }
+        windowReasonOf(
+            roundNumber = round.number,
+            gamesFromRound = edition.gamesFromRound,
+            gamesUntilRound = edition.gamesUntilRound,
+        )?.let { reason -> return noGame(round = round, reason = reason) }
 
         val existing = store.find(edition = edition, roundNumber = round.number)
         if (existing != null) return announced(round = round, roundGame = existing)
@@ -81,6 +78,9 @@ class AnnouncementService(
             history = history,
             random = random,
         ) ?: run {
+            // Unreachable today, but not because Spring would refuse to inject an empty
+            // List<GameType<*>> — it does that happily. It is unreachable because GuessHueGameType
+            // is an unconditional bean, so the catalogue this branch guards against never empties.
             logger.warn { "no game type available for round ${round.number} of edition ${edition.id}" }
             return noGame(round = round, reason = NoGameReason.NO_GAME_TYPE)
         }
