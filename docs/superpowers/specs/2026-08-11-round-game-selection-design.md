@@ -433,6 +433,11 @@ Runde ihre eigene mitbringt.
 | `POST …/rounds/current/reveal` | legt die `round_plays`-Zeile an | idempotent |
 | `POST …/rounds/current/guess` | urteilt, schreibt, wertet die Runde neu aus | |
 
+Aufdecken und Tippen verlangen aktive Mitgliedschaft, ohne Ausnahme — anders als die Ansage bleibt der
+Super-Admin-Bypass hier zu, denn beide schreiben `round_plays`, und unter `CLOSEST_ONLY` würde der Tipp
+eines Außenstehenden die Punkte aller echten Mitglieder verschieben, ohne selbst in der Rangliste
+aufzutauchen.
+
 Die Antwort der Ansage, mit den Feldern, die je nach Zustand `null` bleiben:
 
 ```kotlin

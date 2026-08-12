@@ -27,6 +27,7 @@ import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.InvalidGuessException
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -237,5 +238,27 @@ class PlayServiceTest(
 
         announcements.currentRound(slug = community.slug, userId = owner, isSuperAdmin = false)
             .me.shouldNotBeNull().points shouldBe 0
+    }
+
+    @Test
+    fun `a super-admin who is not a member may not reveal`() {
+        val (community, _) = aCommunity("Admin Reveal Round")
+        val superAdmin = aUser("admin-reveal")
+
+        shouldThrow<RoundAccessDeniedException> {
+            play.reveal(slug = community.slug, userId = superAdmin, isSuperAdmin = true)
+        }
+    }
+
+    @Test
+    fun `a super-admin who is not a member may not guess`() {
+        val (community, _) = aCommunity("Admin Guess Round")
+        val superAdmin = aUser("admin-guess")
+
+        shouldThrow<RoundAccessDeniedException> {
+            play.guess(
+                slug = community.slug, userId = superAdmin, isSuperAdmin = true, guess = guess(10.0),
+            )
+        }
     }
 }

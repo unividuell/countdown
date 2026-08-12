@@ -71,9 +71,18 @@ class PlayService(
         return responses.of(current = current.copy(roundGame = round), viewerId = userId)
     }
 
-    /** The same gate for both actions: resolved, inside the window, and carrying a playable game. */
+    /**
+     * The same gate for both actions: resolved, inside the window, and carrying a playable game.
+     *
+     * Always resolved as a plain member, never as a super-admin. [AnnouncementService.resolve]'s
+     * bypass exists so an admin may *look* without joining — a read. Revealing and guessing are
+     * writes: `game.round_plays` carries no membership FK, and under `CLOSEST_ONLY` an outsider's
+     * guess would move every real member's points to zero without ever showing up in the standings.
+     * So [isSuperAdmin] never reaches [AnnouncementService] from here, unlike the announcement
+     * endpoint, which still passes its own flag through unchanged.
+     */
     private fun playable(slug: String, userId: UUID, isSuperAdmin: Boolean): CurrentRound.Announced =
-        when (val current = announcements.resolve(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)) {
+        when (val current = announcements.resolve(slug = slug, userId = userId, isSuperAdmin = false)) {
             is CurrentRound.Announced -> current
             is CurrentRound.NoGame -> throw NoGameToPlayException(current.reason)
         }
