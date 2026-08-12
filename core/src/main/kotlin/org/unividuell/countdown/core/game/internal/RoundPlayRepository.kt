@@ -67,4 +67,28 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
         deviation: Double,
         outcome: JsonNode?,
     ): Int
+
+    /**
+     * Points per player and round for one run — the **input** of a standings sum, not the sum.
+     *
+     * Grouping and window filtering happen in Kotlin on purpose: whether a round counts is
+     * `windowReasonOf`, one predicate shared with the announcement, and duplicating those two
+     * comparisons in SQL is exactly how the two would drift apart. The row count is bounded by
+     * members × rounds of one run — a few hundred tiny rows.
+     *
+     * `points IS NOT NULL` is precisely "has guessed": the re-evaluation writes a number for every
+     * guessed row of a round, `0` included.
+     *
+     * `IN (:userIds)` renders `IN ()` for an empty collection, which is a syntax error — the caller
+     * guards that.
+     */
+    @Query(
+        """
+        SELECT p.user_id AS user_id, g.round_number AS round_number, p.points AS points
+        FROM game.round_plays p
+        JOIN game.round_games g ON g.id = p.round_game_id
+        WHERE g.edition_id = :editionId AND p.points IS NOT NULL AND p.user_id IN (:userIds)
+        """,
+    )
+    fun pointsOf(editionId: UUID, userIds: Collection<UUID>): List<PlayPoints>
 }

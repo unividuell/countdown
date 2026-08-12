@@ -68,11 +68,8 @@ class AnnouncementService(
             startsAt = startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
-        windowReasonOf(
-            roundNumber = round.number,
-            gamesFromRound = edition.gamesFromRound,
-            gamesUntilRound = edition.gamesUntilRound,
-        )?.let { reason -> return CurrentRound.NoGame(round = round, reason = reason) }
+        windowReasonOf(edition = edition, roundNumber = round.number)
+            ?.let { reason -> return CurrentRound.NoGame(round = round, reason = reason) }
 
         val existing = store.find(edition = edition, roundNumber = round.number)
         return announcedOrNoGame(

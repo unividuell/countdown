@@ -31,6 +31,16 @@ fun windowReasonOf(roundNumber: Int, gamesFromRound: Int?, gamesUntilRound: Int)
     return null
 }
 
+/**
+ * Same check against a run: the announcement and the standings must not be able to disagree about
+ * which rounds are in play — a round outside the window carries no game *and* counts for nothing.
+ */
+fun windowReasonOf(edition: CommunityEdition, roundNumber: Int): NoGameReason? = windowReasonOf(
+    roundNumber = roundNumber,
+    gamesFromRound = edition.gamesFromRound,
+    gamesUntilRound = edition.gamesUntilRound,
+)
+
 enum class AwardRule {
     /** Every qualifying guess scores. */
     ALL_QUALIFYING,

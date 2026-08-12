@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.community.internal
+package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.community.MemberPoints
 import org.unividuell.countdown.core.community.MemberPointsQuery
@@ -10,8 +10,8 @@ import java.util.UUID
  * staging — both of which run the seeded Futurama test users anyway, so these numbers make no claim
  * about real players.
  *
- * [viewerId] is unused here because there are no rounds to gate on yet; the real implementation will
- * use it to decide whether live points may be returned at all.
+ * [viewerId] is unused here: these numbers are not tied to rounds at all, which is exactly what makes
+ * them useless for judging the live-points gate — that one belongs to [RoundPlayPoints].
  */
 class StubMemberPoints : MemberPointsQuery {
     override fun standings(communityId: UUID, viewerId: UUID, userIds: Collection<UUID>): Map<UUID, MemberPoints> =

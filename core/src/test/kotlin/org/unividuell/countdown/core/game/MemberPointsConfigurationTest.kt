@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.community
+package org.unividuell.countdown.core.game
 
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.MemberPointsQuery
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -28,6 +29,6 @@ class MemberPointsConfigurationTest(
     @Test
     fun `invented points are off with no profile active, because no shared config file enables them`() {
         val bean = applicationContext.getBean(MemberPointsQuery::class.java)
-        bean::class.simpleName shouldBe "ZeroMemberPoints"
+        bean::class.simpleName shouldBe "RoundPlayPoints"
     }
 }
