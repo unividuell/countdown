@@ -64,8 +64,18 @@ class GuessHueLabGame(private val dataset: GuessHueDataset) : LabGame {
      */
     override val revealsOthersBeforeGuess = false
 
+    /**
+     * The dataset needs two streams. In the lab the seed travels in the URL, so nothing is secret
+     * here and a derived second seed costs nothing — the point of the split is production. Plan 4
+     * replaces this class with the real `GameType` adapter.
+     */
+    private fun target(seed: Int) = dataset.draw(
+        solution = SeededRandom.fromSeed(seed),
+        presentation = SeededRandom.fromSeed(seed xor 0x5F5F5F5F.toInt()),
+    )
+
     override fun reveal(seed: Int): GuessHuePayload {
-        val target = dataset.draw(SeededRandom.fromSeed(seed))
+        val target = target(seed)
         return GuessHuePayload(
             description = target.entry.description,
             initHue = target.initHue,
@@ -79,7 +89,7 @@ class GuessHueLabGame(private val dataset: GuessHueDataset) : LabGame {
      * travels with it rather than living in the client: the client draws what it is told.
      */
     override fun solution(seed: Int): GuessHueSolution {
-        val target = dataset.draw(SeededRandom.fromSeed(seed))
+        val target = target(seed)
         return GuessHueSolution(
             targetHue = target.hue,
             toleranceDeg = GuessHueTolerance.DEGREES,

@@ -9,6 +9,7 @@ import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.game.internal.GameCatalog
 import org.unividuell.countdown.core.game.internal.GamePayload
+import org.unividuell.countdown.core.game.internal.GameRandom
 import org.unividuell.countdown.core.game.internal.GameType
 import org.unividuell.countdown.core.game.internal.Phase
 import org.unividuell.countdown.core.game.internal.RoundContext
@@ -23,8 +24,8 @@ class GameCatalogTest {
     private class FakeGame(override val id: String) : GameType<FakeParams> {
         override val displayName = "Fake $id"
         override val paramsType = FakeParams::class.java
-        override fun draw(random: SeededRandom, context: RoundContext) =
-            FakeParams(label = "$id-${context.roundNumber}", secret = random.nextInt(1000))
+        override fun draw(random: GameRandom, context: RoundContext) =
+            FakeParams(label = "$id-${context.roundNumber}", secret = random.solution.nextInt(1000))
         override fun present(params: FakeParams) = FakePayload(label = params.label)
     }
 
@@ -56,7 +57,10 @@ class GameCatalogTest {
         val handle = catalog(FakeGame("alpha")).handle("alpha").shouldNotBeNull()
 
         val json = handle.draw(
-            random = SeededRandom.fromSeed(7),
+            random = GameRandom(
+                solution = SeededRandom.fromSeed(7),
+                presentation = SeededRandom.fromSeed(8),
+            ),
             context = RoundContext(roundNumber = 12, phase = Phase.ONE),
         )
         val payload = handle.present(json)

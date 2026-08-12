@@ -1,7 +1,6 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.springframework.stereotype.Component
-import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 
@@ -21,7 +20,7 @@ class GameTypeHandle<P : Any>(
     val displayName: String get() = type.displayName
 
     /** Draw a round and turn it into the tree the `params` column stores. */
-    fun draw(random: SeededRandom, context: RoundContext): JsonNode =
+    fun draw(random: GameRandom, context: RoundContext): JsonNode =
         mapper.valueToTree(type.draw(random = random, context = context))
 
     /** What the player sees, from a stored `params` blob. */

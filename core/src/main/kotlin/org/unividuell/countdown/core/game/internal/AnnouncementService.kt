@@ -8,7 +8,6 @@ import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.countdown.Round
-import org.unividuell.countdown.core.rng.SeededRandom
 import java.security.SecureRandom
 import java.time.Clock
 import java.time.ZoneId
@@ -72,11 +71,13 @@ class AnnouncementService(
 
     private fun materialise(edition: CommunityEdition, round: Round): RoundResponse {
         val history = store.history(edition = edition, roundNumber = round.number)
-        val random = SeededRandom.fromSeed(secureRandom.nextInt())
+        val random = GameRandom.independent(secureRandom)
         val typeId = selection.pick(
             candidates = catalog.ids(),
+            // The chosen type is announced, so it is a published value and comes from the published
+            // stream — the same rule that governs the payload.
             history = history,
-            random = random,
+            random = random.presentation,
         ) ?: run {
             // Unreachable today, but not because Spring would refuse to inject an empty
             // List<GameType<*>> — it does that happily. It is unreachable because GuessHueGameType

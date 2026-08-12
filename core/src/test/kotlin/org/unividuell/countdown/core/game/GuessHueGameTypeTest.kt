@@ -1,8 +1,9 @@
 package org.unividuell.countdown.core.game
 
-import io.kotest.matchers.collections.shouldHaveAtLeastSize
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.doubles.shouldBeLessThan
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
@@ -11,13 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.game.internal.GameRandom
 import org.unividuell.countdown.core.game.internal.GuessHueGameType
 import org.unividuell.countdown.core.game.internal.Phase
 import org.unividuell.countdown.core.game.internal.RoundContext
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
-import kotlin.math.round
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -25,9 +26,12 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
 
     private val mapper = JsonMapper.builder().build()
 
-    private fun draw(phase: Phase, seed: Int = 4711) =
+    private fun draw(phase: Phase, seed: Int = 4711, presentationSeed: Int = 0x1234) =
         game.draw(
-            random = SeededRandom.fromSeed(seed),
+            random = GameRandom(
+                solution = SeededRandom.fromSeed(seed),
+                presentation = SeededRandom.fromSeed(presentationSeed),
+            ),
             context = RoundContext(roundNumber = 12, phase = phase),
         )
 
@@ -70,33 +74,13 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     }
 
     @Test
-    fun `the payload's starting angle is not the solution`() {
-        val params = draw(phase = Phase.ONE)
+    fun `nothing the player sees moves when only the secret stream changes`() {
+        // Replaces the old identity check and the rounded-offset heuristic: with two streams the
+        // property is provable rather than approximated. A payload field derived from `hue` in any
+        // way — copy, fixed offset, hash — would move here, because `hue` does.
+        val drawn = (1..20).map { seed -> draw(phase = Phase.ONE, seed = seed) }
 
-        // This protects against the identity-copy regression only — wiring `hue` straight into
-        // `initHue`. It is not a proof of independence: initHue is drawn from the same SeededRandom
-        // stream as hue, so it narrows the solution in the cryptanalytic sense even though it is
-        // never equal to it. See the KDoc on GuessHuePayload.
-        val payload = game.present(params)
-        payload.initHue shouldBe params.initHue
-        (payload.initHue == params.hue) shouldBe false
-    }
-
-    @Test
-    fun `the starting angle's offset from the solution is not fixed across seeds`() {
-        // A fixed-offset derivation such as `initHue = (hue + 137) % 360` would pass the identity
-        // check above for every seed. Requiring more than one distinct offset across many seeds is
-        // what actually catches that class of regression — rounded, because `wrap360`'s double
-        // modulo chain (`%` twice, plus an add) leaves ULP-level noise on what is mathematically the
-        // exact same offset: an *actual* fixed-offset derivation was observed to produce values like
-        // 136.99999999999994 and 137.00000000000006 across seeds, which would satisfy an unrounded
-        // "more than one distinct value" check without the offset varying in any way that matters.
-        val offsets = (1..20).map { seed ->
-            val params = draw(phase = Phase.ONE, seed = seed)
-            val offset = ((params.initHue - params.hue) % 360.0 + 360.0) % 360.0
-            round(offset * 1_000_000.0) / 1_000_000.0
-        }
-
-        offsets.toSet().shouldHaveAtLeastSize(2)
+        drawn.map { game.present(it) }.distinct() shouldHaveSize 1
+        drawn.map { it.hue }.distinct().size shouldBeGreaterThan 1
     }
 }

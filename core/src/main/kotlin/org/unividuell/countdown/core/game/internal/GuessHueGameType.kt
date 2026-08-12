@@ -3,7 +3,6 @@ package org.unividuell.countdown.core.game.internal
 import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.guesshue.GuessHueDataset
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
-import org.unividuell.countdown.core.rng.SeededRandom
 
 /**
  * The frozen round. `hue` is the answer and never leaves the server.
@@ -25,16 +24,13 @@ data class GuessHueParams(
 /**
  * What the player needs in order to play: the text, and the colour the wheel starts on.
  *
- * `GuessHueParams.hue` — the answer — is absent as a field, and none of `initHue`, `saturation` or
- * `lightness` *is* it. But none of them is independent of it either, in the cryptanalytic sense:
- * `GuessHueDataset.draw` pulls all of them from **one** `SeededRandom` stream, in order (entry pick,
- * hue jitter, saturation, lightness, `initHue`), and `SeededRandom.nextDouble()`'s output is
- * invertible back to the generator state. Three published doubles are enough to reconstruct that
- * state, step it backwards past the jitter draw, and read the target hue exactly — even though none
- * of the three published values equals it or is computed from it. **Do not add a fourth published
- * field on the assumption that presentation values are safe** — the actual fix is two independently
- * seeded streams (draw vs. presentation), which needs a change in `guesshue` and is planned for the
- * slice that publishes this payload, not this one.
+ * `GuessHueParams.hue` — the answer — is absent as a field, and now genuinely independent of every
+ * field that *is* here: all four are drawn from the presentation stream, the hue's jitter from the
+ * solution stream, and the two streams are seeded independently (see `GameRandom`). Pinned by
+ * `GuessHueDrawTest`, which holds one stream fixed while varying the other.
+ *
+ * A new field is still not free: it must come from the presentation stream, and the field-set test
+ * below must name it.
  */
 data class GuessHuePayload(
     val description: String,
@@ -58,8 +54,8 @@ class GuessHueGameType(private val dataset: GuessHueDataset) : GameType<GuessHue
     override val displayName = "Farbausmalung"
     override val paramsType = GuessHueParams::class.java
 
-    override fun draw(random: SeededRandom, context: RoundContext): GuessHueParams {
-        val target = dataset.draw(random)
+    override fun draw(random: GameRandom, context: RoundContext): GuessHueParams {
+        val target = dataset.draw(solution = random.solution, presentation = random.presentation)
         return GuessHueParams(
             description = target.entry.description,
             hue = target.hue,

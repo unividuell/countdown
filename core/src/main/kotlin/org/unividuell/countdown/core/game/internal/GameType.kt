@@ -1,7 +1,5 @@
 package org.unividuell.countdown.core.game.internal
 
-import org.unividuell.countdown.core.rng.SeededRandom
-
 /**
  * What a game shows the player. It carries what is needed to play and **never the solution** — pinned
  * by a serialisation test per game that asserts the exact field set, so a new field cannot slip in
@@ -33,12 +31,16 @@ interface GameType<P : Any> {
     /** For deserialising [params] back out of the round's `params` column. */
     val paramsType: Class<P>
 
-    fun draw(random: SeededRandom, context: RoundContext): P
+    /**
+     * Draw the round, once, at announce time. Everything the player will be shown must come from
+     * [GameRandom.presentation] — see there for why that is not a stylistic preference.
+     */
+    fun draw(random: GameRandom, context: RoundContext): P
 
     /**
-     * What the player sees. Must never carry the solution — and a game whose presentation values
-     * are drawn from the solution's own random stream must treat them as narrowing it, not as
-     * independent of it.
+     * What the player sees. Must never carry the solution, and must be drawn from
+     * [GameRandom.presentation] — a payload value from the solution's stream narrows the answer even
+     * when it does not resemble it.
      */
     fun present(params: P): GamePayload
 }

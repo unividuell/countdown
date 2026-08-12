@@ -48,7 +48,10 @@ class GuessHueLabGameTest {
         // Pins the mapping, not the draw order — the adapter must hand on exactly what the dataset
         // produced rather than derive anything of its own. The draw order itself is a contract of
         // the `guesshue` module and is pinned there, by GuessHueDrawTest.
-        val target = dataset.draw(SeededRandom.fromSeed(4711))
+        val target = dataset.draw(
+            solution = SeededRandom.fromSeed(4711),
+            presentation = SeededRandom.fromSeed(4711 xor 0x5F5F5F5F.toInt()),
+        )
 
         val payload = game.reveal(4711) as GuessHuePayload
 
@@ -117,7 +120,10 @@ class GuessHueLabGameTest {
 
     @Test
     fun `the solution is the angle the dataset drew, with the module's tolerance`() {
-        val target = dataset.draw(SeededRandom.fromSeed(4711))
+        val target = dataset.draw(
+            solution = SeededRandom.fromSeed(4711),
+            presentation = SeededRandom.fromSeed(4711 xor 0x5F5F5F5F.toInt()),
+        )
 
         val solution = game.solution(4711) as GuessHueSolution
 
