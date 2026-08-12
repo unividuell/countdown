@@ -12,6 +12,18 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     fun findByEditionIdAndRoundNumber(editionId: UUID, roundNumber: Int): RoundGame?
 
     /**
+     * The round's row, locked for the rest of the transaction.
+     *
+     * Needed because scoring writes **other players'** rows: it reads every guess of the round and
+     * writes over all of them, so two concurrent guesses would each compute from the same stale
+     * picture and one update would be lost — exactly in the moment the points move. Locking one row
+     * serialises the guesses of *one* round; different rounds do not block each other, and at fifteen
+     * players the cost is not measurable.
+     */
+    @Query("SELECT * FROM game.round_games WHERE id = :id FOR UPDATE")
+    fun findByIdForUpdate(id: UUID): RoundGame?
+
+    /**
      * The rounds of this edition that lie **earlier in time** than [after] — a larger round number is
      * earlier, so that is `round_number > :after`, ascending, which puts the most recently played
      * round first.

@@ -28,6 +28,16 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         rounds.historyOf(editionId = requireNotNull(edition.id), after = roundNumber)
 
     /**
+     * The round, locked until the transaction ends. Taken by the guess flow before it judges, so the
+     * re-evaluation that follows sees a picture nobody else can move under it.
+     */
+    @Transactional
+    fun lock(roundGame: RoundGame): RoundGame {
+        val id = requireNotNull(roundGame.id)
+        return requireNotNull(rounds.findByIdForUpdate(id)) { "round $id vanished while locking it" }
+    }
+
+    /**
      * Announce [roundNumber] — or, if somebody else got there first, return their announcement.
      * Either way the returned row is what every later reader will see.
      */
