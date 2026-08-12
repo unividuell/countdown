@@ -14,4 +14,12 @@ class GameExceptionHandler {
     @ExceptionHandler(InvalidGuessException::class)
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
+
+    @ExceptionHandler(
+        NoGameToPlayException::class,
+        NotRevealedException::class,
+        AlreadyGuessedException::class,
+    )
+    fun conflict(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")
 }
