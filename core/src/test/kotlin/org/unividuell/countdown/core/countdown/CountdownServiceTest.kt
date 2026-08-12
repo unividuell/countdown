@@ -34,15 +34,15 @@ class CountdownServiceTest(
     @Test
     fun `forSlug 404s a non-member`() {
         val owner = aUser()
-        val c = communities.create(owner.id!!, "Members Only")
+        val c = communities.create(creatorUserId = owner.id!!, rawName = "Members Only")
         val outsider = aUser()
-        shouldThrow<CountdownAccessDeniedException> { countdown.forSlug(c.slug, outsider.id!!, false) }
+        shouldThrow<CountdownAccessDeniedException> { countdown.forSlug(slug = c.slug, userId = outsider.id!!, isSuperAdmin = false) }
     }
 
     @Test
     fun `forSlug returns null rounds when startsAt unset`() {
         val ownerId = aUser().id!!
-        val c = communities.create(ownerId, "No Start Yet")
+        val c = communities.create(creatorUserId = ownerId, rawName = "No Start Yet")
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         res.round shouldBe null
         res.nextRound shouldBe null
@@ -52,16 +52,16 @@ class CountdownServiceTest(
     @Test
     fun `forSlug lets a super-admin see a community they do not belong to`() {
         val owner = aUser()
-        val c = communities.create(owner.id!!, "Super Visible")
+        val c = communities.create(creatorUserId = owner.id!!, rawName = "Super Visible")
         val superAdmin = aUser()
-        val res = countdown.forSlug(c.slug, superAdmin.id!!, isSuperAdmin = true)
+        val res = countdown.forSlug(slug = c.slug, userId = superAdmin.id!!, isSuperAdmin = true)
         res.startsAtTimezone shouldBe "Europe/Berlin"
     }
 
     @Test
     fun `forSlug exposes current and next round when configured`() {
         val ownerId = aUser().id!!
-        val c = communities.create(ownerId, "Has Start")
+        val c = communities.create(creatorUserId = ownerId, rawName = "Has Start")
         communities.update(
             c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
             startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,

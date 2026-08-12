@@ -23,10 +23,10 @@ class CommunityQueryService(
         editions.findActiveByCommunityId(communityId)
 
     override fun isActiveMember(communityId: UUID, userId: UUID): Boolean =
-        members.findByCommunityIdAndUserId(communityId, userId)?.status == MemberStatus.ACTIVE
+        members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)?.status == MemberStatus.ACTIVE
 
     override fun isAdmin(communityId: UUID, userId: UUID): Boolean =
-        members.findByCommunityIdAndUserId(communityId, userId)
+        members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)
             ?.let { it.status == MemberStatus.ACTIVE && it.isAdmin } ?: false
 
     override fun activeCommunitiesOf(userId: UUID): List<Community> =

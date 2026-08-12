@@ -61,7 +61,7 @@ class CommunityCreationClearanceSeamTest(
     fun `granting the clearance turns the same caller's 403 into a 201`() {
         val user = save("octocat")
         val communityId = UUID.randomUUID()
-        every { communityService.create(user.id!!, "Team A") } returns
+        every { communityService.create(creatorUserId = user.id!!, rawName = "Team A") } returns
             Community(id = communityId, name = "Team A", slug = "team-a", createdBy = user.id!!)
         every { editions.requireActive(communityId) } returns
             CommunityEdition(id = UUID.randomUUID(), communityId = communityId, label = "Team A")

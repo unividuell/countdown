@@ -40,7 +40,7 @@ class CommunityController(
 
     @PutMapping("/selection")
     fun setSelection(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: SelectionRequest): ResponseEntity<Void> {
-        selection.set(me.id, body.communityId); return ResponseEntity.noContent().build()
+        selection.set(userId = me.id, communityId = body.communityId); return ResponseEntity.noContent().build()
     }
 
     @GetMapping("/{slug}")

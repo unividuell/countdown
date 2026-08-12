@@ -50,7 +50,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `POST surfaces slug conflict as 409`() {
         every { users.mayCreateCommunities(uid) } returns true
-        every { communityService.create(uid, "Team A") } throws SlugUnavailableException("slug 'team-a' is taken")
+        every { communityService.create(creatorUserId = uid, rawName = "Team A") } throws SlugUnavailableException("slug 'team-a' is taken")
         mockMvc.post("/api/communities") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
@@ -93,14 +93,14 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `GET by slug requires membership`() {
-        every { access.requireActiveMember(uid, false, "secret") } throws CommunityAccessDeniedException()
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "secret") } throws CommunityAccessDeniedException()
         mockMvc.get("/api/communities/secret") { with(principalFor()) }
             .andExpect { status { isNotFound() } }
     }
 
     @Test
     fun `PATCH requires admin`() {
-        every { access.requireAdmin(uid, false, "team-a") } throws NotAdminException()
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team-a") } throws NotAdminException()
         mockMvc.patch("/api/communities/team-a") {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"New"}"""
@@ -126,9 +126,9 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `GET by slug returns viewerIsAdmin and pendingCount for an admin`() {
         val c = community("team")
-        every { access.requireActiveMember(uid, false, "team") } returns c
-        every { query.isAdmin(c.id!!, uid) } returns true
-        every { memberRepo.countByCommunityIdAndStatus(c.id!!, MemberStatus.PENDING) } returns 3
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 3
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
         )
@@ -142,8 +142,8 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `GET by slug returns viewerIsAdmin false and pendingCount 0 for a non-admin member`() {
         val c = community("team")
-        every { access.requireActiveMember(uid, false, "team") } returns c
-        every { query.isAdmin(c.id!!, uid) } returns false
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
         )
@@ -157,7 +157,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `GET by slug returns viewerIsAdmin true for a super-admin`() {
         val c = community("team")
-        every { access.requireActiveMember(uid, true, "team") } returns c
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = true, slug = "team") } returns c
         every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
@@ -171,8 +171,8 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `GET by slug returns the timezone of the active edition`() {
         val c = community("team")
-        every { access.requireActiveMember(uid, false, "team") } returns c
-        every { query.isAdmin(c.id!!, uid) } returns false
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
         every { editions.requireActive(c.id!!) } returns CommunityEdition(
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
             startsAtTimezone = "America/New_York",

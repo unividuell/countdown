@@ -89,7 +89,7 @@ open class EditionService(
     private fun saveOrConflict(communityId: UUID, edition: CommunityEdition): CommunityEdition = try {
         editions.save(edition)
     } catch (e: DuplicateKeyException) {
-        throw EditionConflictException("community $communityId already has an active edition", e)
+        throw EditionConflictException(message = "community $communityId already has an active edition", cause = e)
     }
 
     /** Validating the finished aggregate, not the arguments — one place covers create and update. */

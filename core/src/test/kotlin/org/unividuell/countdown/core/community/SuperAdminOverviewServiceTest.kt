@@ -54,22 +54,22 @@ class SuperAdminOverviewServiceTest {
     fun `sorts communities by name and members admins-active-pending, resolving users in one batch`() {
         every { communities.findAll() } returns listOf(
             community(id = zuluId, name = "Zulu", slug = "zulu"),
-            community(alphaId, "alpha", "alpha"),
+            community(id = alphaId, name = "alpha", slug = "alpha"),
         )
         every { members.findAll() } returns listOf(
-            member(alphaId, bobId, MemberStatus.PENDING, isAdmin = false),
+            member(communityId = alphaId, userId = bobId, status = MemberStatus.PENDING, isAdmin = false),
             // Zoe must precede the ghost row here: sortedWith is stable, so this input order is
             // what makes the username key (not just admin+status) responsible for their order.
-            member(alphaId, zoeId, MemberStatus.ACTIVE, isAdmin = false),
-            member(alphaId, ghostId, MemberStatus.ACTIVE, isAdmin = false),
-            member(alphaId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
-            member(zuluId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
+            member(communityId = alphaId, userId = zoeId, status = MemberStatus.ACTIVE, isAdmin = false),
+            member(communityId = alphaId, userId = ghostId, status = MemberStatus.ACTIVE, isAdmin = false),
+            member(communityId = alphaId, userId = aliceId, status = MemberStatus.ACTIVE, isAdmin = true),
+            member(communityId = zuluId, userId = aliceId, status = MemberStatus.ACTIVE, isAdmin = true),
         )
         // ghostId is deliberately absent: a membership whose user row is gone must stay visible.
         every { users.findAllById(any()) } returns listOf(
-            user(aliceId, "alice", "Alice"),
-            user(bobId, "bob", "Bob"),
-            user(zoeId, "zoe", "Zoe"),
+            user(id = aliceId, login = "alice", name = "Alice"),
+            user(id = bobId, login = "bob", name = "Bob"),
+            user(id = zoeId, login = "zoe", name = "Zoe"),
         )
         every { editions.findAllActive() } returns emptyList()
 
@@ -87,7 +87,7 @@ class SuperAdminOverviewServiceTest {
 
     @Test
     fun `a community without members yields an empty roster`() {
-        every { communities.findAll() } returns listOf(community(alphaId, "Alpha", "alpha"))
+        every { communities.findAll() } returns listOf(community(id = alphaId, name = "Alpha", slug = "alpha"))
         every { members.findAll() } returns emptyList()
         every { users.findAllById(emptyList()) } returns emptyList()
         every { editions.findAllActive() } returns emptyList()

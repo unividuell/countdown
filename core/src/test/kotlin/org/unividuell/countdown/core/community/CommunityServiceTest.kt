@@ -32,28 +32,28 @@ class CommunityServiceTest(
     @Test
     fun `create derives slug and makes the creator an active admin`() {
         val creatorId = aUser().id!!
-        val c = service.create(creatorId, "Hütte Hütte")
+        val c = service.create(creatorUserId = creatorId, rawName = "Hütte Hütte")
         c.slug shouldBe "huette-huette"
-        val m = members.findByCommunityIdAndUserId(c.id!!, creatorId)!!
+        val m = members.findByCommunityIdAndUserId(communityId = c.id!!, userId = creatorId)!!
         m.status shouldBe MemberStatus.ACTIVE
         m.isAdmin shouldBe true
     }
 
     @Test
     fun `create rejects a name shorter than 3 chars`() {
-        shouldThrow<IllegalArgumentException> { service.create(aUser().id!!, "ab") }
+        shouldThrow<IllegalArgumentException> { service.create(creatorUserId = aUser().id!!, rawName = "ab") }
     }
 
     @Test
     fun `create rejects a duplicate slug`() {
         val uid = aUser().id!!
-        service.create(uid, "Team A")
-        shouldThrow<SlugUnavailableException> { service.create(uid, "team a") }
+        service.create(creatorUserId = uid, rawName = "Team A")
+        shouldThrow<SlugUnavailableException> { service.create(creatorUserId = uid, rawName = "team a") }
     }
 
     @Test
     fun `create accepts a name whose slug used to be reserved`() {
-        val c = service.create(aUser().id!!, "Super Admin")
+        val c = service.create(creatorUserId = aUser().id!!, rawName = "Super Admin")
         c.slug shouldBe "super-admin"
     }
 
