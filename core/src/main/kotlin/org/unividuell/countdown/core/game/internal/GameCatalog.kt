@@ -24,8 +24,17 @@ class GameTypeHandle<P : Any>(
         mapper.valueToTree(type.draw(random = random, context = context))
 
     /** What the player sees, from a stored `params` blob. */
-    fun present(params: JsonNode): GamePayload =
-        type.present(mapper.treeToValue(params, type.paramsType))
+    fun present(params: JsonNode): GamePayload = type.present(paramsOf(params))
+
+    /** The game's verdict on a guess. Throws on an invalid guess; nothing is written before this. */
+    fun judge(params: JsonNode, guess: JsonNode): Judgement =
+        type.judge(params = paramsOf(params), guess = guess)
+
+    /** What may be shown after the viewer's own guess, or `null` for a game that reveals nothing. */
+    fun solution(params: JsonNode): GameSolution? = type.solution(paramsOf(params))
+
+    /** The one place the `params` column and this game's `P` meet. */
+    private fun paramsOf(params: JsonNode): P = mapper.treeToValue(params, type.paramsType)
 }
 
 /**

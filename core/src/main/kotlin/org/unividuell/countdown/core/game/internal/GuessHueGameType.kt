@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game.internal
 import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.guesshue.GuessHueDataset
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
+import tools.jackson.databind.JsonNode
 
 /**
  * The frozen round. `hue` is the answer and never leaves the server.
@@ -41,6 +42,21 @@ data class GuessHuePayload(
 ) : GamePayload
 
 /**
+ * What the player learns about their guess: how far off, and — in phase one — whether that was inside
+ * the arc. `withinTolerance` is `null` in phase two, because there is no gate to be inside of; a
+ * `false` there would claim a verdict the round never made.
+ */
+data class GuessHueOutcome(val deviationDeg: Double, val withinTolerance: Boolean?) : GameOutcome
+
+/**
+ * What the round looked like, once the player has spent their guess: the angle that was sought and how
+ * wide around it counted. Leaves the server through `RoundResponse.solution`, never the payload.
+ *
+ * [toleranceDeg] is `null` in phase two — nothing to draw, because nothing was required.
+ */
+data class GuessHueSolution(val targetHue: Double, val toleranceDeg: Double?) : GameSolution
+
+/**
  * Guess Hue as an announceable game.
  *
  * The adapter lives here and `guesshue` knows nothing about it — a change to the [GameType] contract
@@ -75,4 +91,40 @@ class GuessHueGameType(private val dataset: GuessHueDataset) : GameType<GuessHue
         saturation = params.saturation,
         lightness = params.lightness,
     )
+
+    /**
+     * The angle is read as a number in `[0, 360)`, not as an integer: an angle is not an enumeration,
+     * and an input method with a finer resolution must not fail here.
+     */
+    override fun judge(params: GuessHueParams, guess: JsonNode): Judgement {
+        val hue = guess.get("hue")
+            ?.takeIf { it.isNumber }
+            ?.asDouble()
+            ?: throw InvalidGuessException("guess must carry a numeric 'hue'")
+        if (hue < 0.0 || hue >= 360.0) throw InvalidGuessException("hue must lie in [0, 360), was $hue")
+
+        val deviation = distanceOnCircle(a = hue, b = params.hue)
+        val tolerance = params.toleranceDeg
+        return Judgement(
+            // No gate in phase two: everybody is a candidate, and the framework's CLOSEST_ONLY picks
+            // the winner. In phase one the inherited tolerance decides.
+            qualifies = tolerance == null || deviation <= tolerance,
+            deviation = deviation,
+            outcome = GuessHueOutcome(
+                deviationDeg = deviation,
+                withinTolerance = tolerance?.let { deviation <= it },
+            ),
+        )
+    }
+
+    override fun solution(params: GuessHueParams) = GuessHueSolution(
+        targetHue = params.hue,
+        toleranceDeg = params.toleranceDeg,
+    )
+}
+
+/** The original's `distanceOnCircle`: the shorter way round the wheel, so 350 to 10 is 20 degrees. */
+private fun distanceOnCircle(a: Double, b: Double): Double {
+    val d = ((a - b) % 360.0 + 360.0) % 360.0
+    return if (d > 180.0) 360.0 - d else d
 }

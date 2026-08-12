@@ -1,6 +1,8 @@
 package org.unividuell.countdown.core.game
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.ints.shouldBeGreaterThan
@@ -14,6 +16,9 @@ import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.GameRandom
 import org.unividuell.countdown.core.game.internal.GuessHueGameType
+import org.unividuell.countdown.core.game.internal.GuessHueOutcome
+import org.unividuell.countdown.core.game.internal.GuessHueSolution
+import org.unividuell.countdown.core.game.internal.InvalidGuessException
 import org.unividuell.countdown.core.game.internal.Phase
 import org.unividuell.countdown.core.game.internal.RoundContext
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
@@ -82,5 +87,86 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
 
         drawn.map { game.present(it) }.distinct() shouldHaveSize 1
         drawn.map { it.hue }.distinct().size shouldBeGreaterThan 1
+    }
+
+    private fun guess(hue: Double) = mapper.readTree("""{"hue":$hue}""")
+
+    @Test
+    fun `in phase one the tolerance is the gate`() {
+        val params = draw(phase = Phase.ONE)
+
+        val inside = game.judge(params = params, guess = guess(params.hue))
+        val outside = game.judge(params = params, guess = guess((params.hue + 40.0) % 360.0))
+
+        inside.qualifies shouldBe true
+        inside.deviation shouldBe (0.0 plusOrMinus 1e-9)
+        outside.qualifies shouldBe false
+        outside.deviation shouldBe (40.0 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `in phase two there is no gate at all, however far off the guess is`() {
+        // Phase two has no tolerance: everybody qualifies and the closest one wins, which is the
+        // framework's job. A guess 179 degrees off is still a candidate.
+        val params = draw(phase = Phase.TWO)
+
+        val judgement = game.judge(params = params, guess = guess((params.hue + 179.0) % 360.0))
+
+        judgement.qualifies shouldBe true
+        judgement.deviation shouldBe (179.0 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `the distance is the shorter way round the wheel, in both phases`() {
+        val params = draw(phase = Phase.ONE).copy(hue = 10.0)
+
+        // 350 to 10 is 20 degrees the short way, not 340.
+        game.judge(params = params, guess = guess(350.0)).deviation shouldBe (20.0 plusOrMinus 1e-9)
+        game.judge(params = params.copy(hue = 350.0), guess = guess(10.0))
+            .deviation shouldBe (20.0 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `the outcome is what the player is told, in the game's own words`() {
+        val params = draw(phase = Phase.ONE)
+
+        val hit = game.judge(params = params, guess = guess(params.hue)).outcome as GuessHueOutcome
+        val phaseTwo = game.judge(params = draw(phase = Phase.TWO), guess = guess(0.0)).outcome as GuessHueOutcome
+
+        hit.deviationDeg shouldBe (0.0 plusOrMinus 1e-9)
+        hit.withinTolerance shouldBe true
+        // No gate in phase two, so there is nothing to be inside of — null rather than a made-up true.
+        phaseTwo.withinTolerance.shouldBeNull()
+    }
+
+    @Test
+    fun `a malformed guess is rejected before anything can be written`() {
+        val params = draw(phase = Phase.ONE)
+
+        shouldThrow<InvalidGuessException> { game.judge(params = params, guess = mapper.readTree("""{}""")) }
+        shouldThrow<InvalidGuessException> {
+            game.judge(params = params, guess = mapper.readTree("""{"hue":"warm"}"""))
+        }
+        shouldThrow<InvalidGuessException> { game.judge(params = params, guess = guess(360.0)) }
+        shouldThrow<InvalidGuessException> { game.judge(params = params, guess = guess(-0.5)) }
+    }
+
+    @Test
+    fun `the solution carries exactly the answer and the arc, and nothing else`() {
+        // Second exit out of the server, pinned like the payload: a field added here reaches every
+        // player who has guessed.
+        val json = mapper.writeValueAsString(game.solution(draw(phase = Phase.ONE)))
+
+        mapper.readTree(json).propertyNames().toSet() shouldBe setOf("targetHue", "toleranceDeg")
+    }
+
+    @Test
+    fun `phase two has no arc to draw`() {
+        val params = draw(phase = Phase.TWO)
+
+        val solution = game.solution(params) as GuessHueSolution
+
+        solution.targetHue shouldBe params.hue
+        solution.toleranceDeg.shouldBeNull()
     }
 }

@@ -10,4 +10,8 @@ class GameExceptionHandler {
     @ExceptionHandler(RoundAccessDeniedException::class)
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
+
+    @ExceptionHandler(InvalidGuessException::class)
+    fun badRequest(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 }
