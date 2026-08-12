@@ -654,9 +654,31 @@ was man verlieren kann.
 
 `MemberPointsQuery` erfüllt sich so:
 
-- `stable` = `SUM(points)` über Runden des aktiven Durchlaufs mit `round_number > n` (abgeschlossen),
+- `stable` = `SUM(points)` über Runden des aktiven Durchlaufs, die **abgeschlossen** *und* **im aktuellen
+  Spielfenster** liegen — `round_number > n` und `games_until_round ≤ round_number ≤ games_from_round`,
 - `live` = die Punkte der laufenden Runde `n` — **nur wenn der Betrachter für `n` selbst getippt
   hat**, sonst `null`, genau wie die Schnittstelle es beschreibt.
+
+### Das Fenster entscheidet die Summe, nicht den Bestand
+
+Verkleinert ein Admin das Spielfenster, fallen bereits materialisierte — womöglich schon gespielte —
+Runden heraus. Sie **bleiben erhalten**: die Zeile, ihre Params, ihre Vergaberegel und die `points` auf
+den Tipps sind eingefroren und werden nicht gelöscht. Sie **zählen nur nicht mehr** in den Punktestand.
+Der Ansage-Endpunkt meldet für sie folgerichtig `AFTER_WINDOW` bzw. `BEFORE_WINDOW` — sie sind wirklich
+nicht mehr im Spiel.
+
+Zwei Folgen, beide bewusst:
+
+- **Ein Punktestand kann sinken**, wenn der Admin das Fenster verkleinert. Das folgt zwingend aus der
+  Regel und ist kein Nebeneffekt, den man wegkonstruieren sollte: das Fenster des Admins ist maßgeblich.
+- **Es ist umkehrbar.** Die Punkte stehen auf der Zeile; dynamisch ist nur ihre *Aufnahme* in die Summe.
+  Ein wieder geöffnetes Fenster bringt sie unverändert zurück — keine Neuberechnung, kein Datenverlust.
+  Das ist derselbe Grund, aus dem `points` ein Cache über persistierten Eingaben ist.
+
+Die Fensterprüfung ist dabei **dieselbe wie in der Auflösung** und nicht eine zweite Fassung derselben
+Vergleiche: `windowReasonOf(roundNumber, gamesFromRound, gamesUntilRound)` liegt neben `Phase.of` und
+`awardFor`, und die Standings-Abfrage benutzt sie mit. Beidseitig inklusiv, und ein `games_from_round`
+von `NULL` heißt oben unbeschränkt.
 
 Die **Naht bleibt in `community`, ihre Implementierungen ziehen nach `game`.**
 `MemberPointsConfiguration` baut „genau einen Bean by construction“, und `community` darf nicht auf
