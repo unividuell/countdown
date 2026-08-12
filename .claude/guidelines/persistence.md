@@ -100,6 +100,28 @@ Testcontainers database:
   `application-modules.json` under `target` makes a new module's migrations silently not run — see
   [modules-and-migrations.md](modules-and-migrations.md).
 
+## `jsonb` columns: one config class, and only these two rules
+
+A `jsonb` column maps to a **`JsonNode`** field. Two rules, both easy to get wrong:
+
+1. **Register the converters via `userConverters()`** in a subclass of `AbstractJdbcConfiguration` —
+   the hook the Spring Data JDBC reference names. Do **not** override `jdbcCustomConversions()`: that
+   method assembles the store's conversions *and* the ones the `Dialect` registers, and overriding it
+   silently drops the dialect's.
+2. **Put that class in the root package** (`org.unividuell.countdown.core`). It replaces Spring Boot's
+   `SpringBootJdbcConfiguration`, which carries `@ConditionalOnMissingBean(AbstractJdbcConfiguration)`,
+   and with it Boot's entity scanning. `AbstractJdbcConfiguration` scans `getMappingBasePackages()`
+   instead — by default the package of your config class, so the root package covers everything. Boot's
+   other addition, the `spring.data.jdbc.dialect` property, goes unread; we do not set it (the dialect
+   comes from the connection).
+
+The field must be `JsonNode`, never `String`: a `String ↔ PGobject` converter would apply to every text
+column in every entity.
+
+Reading is covered by the converter. Binding a `JsonNode` as a parameter of a custom `@Query` is not
+guaranteed — if such a statement fails on the parameter, cast in the SQL (`CAST(:params AS jsonb)`) and
+pass the serialised string for that one query only.
+
 ## Serializable entities
 
 Entities that end up in the HTTP session (directly or via a principal) must be

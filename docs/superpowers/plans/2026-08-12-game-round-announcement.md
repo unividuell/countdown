@@ -15,7 +15,7 @@
 ## Global Constraints
 
 - **Modulgrenze:** exponierte Typen im Basis-Package `…core.game`, alles andere in `…core.game.internal`. Der `GameType`-Vertrag liegt **in `internal`**, weil ihn niemand außerhalb implementiert — eine veröffentlichte API ohne Konsumenten wäre ein falsches Signal.
-- **Modulkanten dieser Scheibe:** `game → community`, `game → countdown`, `game → rng`, `game → guesshue`. **Nicht** `game → iam` (das kommt mit der Tippübersicht in Plan 3) und niemals zurück auf `game`. `ModularityTests.verify()` muss grün bleiben.
+- **Modulkanten dieser Scheibe:** `game → community`, `game → countdown`, `game → rng`, `game → guesshue`, `game → iam` (via `AuthenticatedUser` am Controller). Niemals zurück auf `game`. `ModularityTests.verify()` muss grün bleiben.
 - **`game` benutzt nur exponierte APIs anderer Module:** `CommunityQuery`, `MembershipQuery`, `CommunityEdition`, `CountdownEngine`, `Round`, `SeededRandom`, `GuessHueDataset`, `GuessHueTarget`, `GuessHueTolerance`. Nie `community.internal` — `CountdownService` ist der Präzedenzfall.
 - **Persistenz:** Spring Data JDBC, kein JPA. `id UUID PRIMARY KEY DEFAULT uuidv7()` in der DDL, `@Id val id: UUID? = null` in der Entity, IDs niemals im Code setzen. Kein `@Column`.
 - **`community.id` / `edition.id` einmal auspacken** (`val id = requireNotNull(x.id)`), dann die `UUID` weitergeben.

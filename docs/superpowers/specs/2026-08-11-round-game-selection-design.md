@@ -110,6 +110,13 @@ raten, Duplikate auflösen. Diese nicht.
 
 `UNIQUE (edition_id, round_number)`.
 
+**`params JSONB` braucht einen Converter, und zwar genau einen Haken:** eine
+`AbstractJdbcConfiguration`-Unterklasse, die `userConverters()` überschreibt (`JsonNode ↔ PGobject`).
+Nicht `jdbcCustomConversions()` überschreiben — das setzt die Conversions des Dialekts mit außer Kraft.
+Die Unterklasse ersetzt Boots `SpringBootJdbcConfiguration` (`@ConditionalOnMissingBean`), muss deshalb
+im Root-Package liegen, damit `getMappingBasePackages()` alle Entities erfasst. Das Feld ist ein
+`JsonNode`, kein `String`: ein String-Converter würde jede Textspalte jeder Entity treffen.
+
 **Keine Zeile heißt „kein Spiel“.** Kein `game_type = NULL`, kein Marker-Datensatz. Eine Runde, die
 niemand geöffnet hat, hat kein Spiel gehabt — das ist wahr und kostet nichts. Erst wenn ein Admin je
 Runde spielfrei stellen soll, kommt die Nullable-Variante, und dann bewusst.
@@ -155,7 +162,7 @@ Neues Modulith-Modul **`game`**, Schema `game`, Migrationen unter `db/migration/
 ```
 game → community   (aktiver Durchlauf, Mitgliedschaft, MemberPointsQuery)
 game → countdown   (CountdownEngine)
-game → iam         (Namen und Avatare in der Tippübersicht)
+game → iam         (Namen und Avatare in der Tippübersicht, und `AuthenticatedUser` am Controller, ab der Ansage)
 game → rng         (SeededRandom für die Ziehung)
 game → guesshue    (der Datensatz, aus dem gezogen wird)
 gamelab → game     (das Lab läuft durch dieselben Klassen — siehe Das Lab zieht mit)
