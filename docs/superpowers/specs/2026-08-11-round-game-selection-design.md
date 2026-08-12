@@ -305,10 +305,15 @@ veröffentlichte Doubles reichen also, um den Generatorzustand zu rekonstruieren
 abzuspulen und die Ziel-Hue exakt zu lesen — obwohl keiner der drei Werte selbst der Lösung gleicht
 oder aus ihr abgeleitet ist. Die scharfe Fassung: *ein Wert, der aus demselben Generator-Stream wie
 die Lösung gezogen wird, grenzt sie ein — auch wenn er ihr nicht gleicht und auch wenn er vor ihr im
-Stream steht.* Die Behebung sind **zwei unabhängig geseedete Streams**, einer für die Ziehung, einer
-für die Präsentation; das ändert `guesshue` und ist deshalb nicht diese Scheibe, sondern die
-nächste. Guess Hues Phase 2 ist die Stelle, an der es beißt: dort gibt es kein Toleranz-Tor, nur der
-nächste Tipp punktet, und exakte Rekonstruktion gewinnt dort jede Runde.
+Stream steht.* Die Behebung sind **zwei unabhängig geseedete Streams**, und sie ist mit dem Spielen
+umgesetzt: `GameRandom` hält beide, `GuessHueDataset.draw` nimmt sie getrennt, und der Schnitt verläuft
+nach **Veröffentlichung** statt nach Bedeutung — der Eintrag (und damit die Beschreibung), Sättigung,
+Helligkeit und Start-Winkel kommen aus dem Präsentationsstrom, der Lösungsstrom zieht nur den Jitter.
+Auch die Spieltyp-Wahl kommt aus dem Präsentationsstrom, weil sie angesagt wird. Übrig bleibt als
+Rundengeheimnis genau der Jitter, und den engt kein ausgeliefertes Feld ein. Was danach noch bleibt,
+ist Datensatz-Geheimhaltung — dagegen wirkt [game-content.md](../../../.claude/guidelines/game-content.md),
+nicht der Generator. Guess Hues Phase 2 war die Stelle, an der es gebissen hätte: dort gibt es kein
+Toleranz-Tor, nur der nächste Tipp punktet, und exakte Rekonstruktion hätte dort jede Runde gewonnen.
 
 Und weil der Seed nicht mehr aus `(edition, round)` abgeleitet wird, ist die offene Frage 7 der
 Anti-Cheat-Spec anders beantwortet als gestellt: er wird **gar nicht abgeleitet**. Ein gehashter Seed
