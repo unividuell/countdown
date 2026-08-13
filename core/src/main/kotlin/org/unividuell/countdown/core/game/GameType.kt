@@ -49,9 +49,10 @@ data class RoundContext(val roundNumber: Int, val phase: Phase)
 /**
  * A game the framework can announce.
  *
- * Deliberately in `internal`: the adapters live in this module, so nobody outside implements this,
- * and a published API without consumers would be a false signal. If the direction ever flips to the
- * plugin shape — game modules implementing it themselves — the contract moves to the base package.
+ * Exposed rather than `internal`: a second module now runs through these classes instead of beside
+ * them — the lab plays a round through the same steps the framework does, so it needs the same
+ * contract. The adapters implementing it, though, still live only here: it has a consumer outside
+ * this module, but no implementer outside it.
  *
  * A game is a **pure function of its params**, not of a seed: [draw] runs once, at announce time, and
  * everything afterwards reads the frozen result. That is what makes a round unchangeable when the
