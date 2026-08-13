@@ -10,15 +10,25 @@
  * The geometry copies NavDrawer's own row (h-11, px-5, text-sm) on purpose: these rows sit among
  * the drawer's rows and would read as a foreign object at any other height or inset.
  */
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import IconArrowUp from '~icons/lucide/arrow-up'
 import IconCommand from '~icons/lucide/command'
 import { parseSeed } from './seed'
+import type { LabAwardRule, LabPhase } from './types'
 
-const props = defineProps<{ seed: number; returnPath: string; busy: boolean }>()
+const props = defineProps<{
+  seed: number
+  phase: LabPhase
+  returnPath: string
+  busy: boolean
+  /** Absent while no round has loaded yet — the rule line only appears once one has. */
+  awardRule?: LabAwardRule | undefined
+  awardPoints?: number | undefined
+}>()
 const emit = defineEmits<{
   apply: [seed: number]
   roll: []
+  phaseChange: [phase: LabPhase]
   reset: []
   forgetMine: []
   refresh: []
@@ -41,6 +51,21 @@ function apply(): void {
 
 const ROW = 'flex h-11 w-full shrink-0 items-center px-5 text-left text-sm'
 const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40`
+
+const PHASES = ['ONE', 'TWO'] as const
+
+/**
+ * The rule sits here, right under the switch that changes it, rather than by the page heading:
+ * this is the control a reviewer's eye is already on when they flip phase, so the rule that just
+ * took effect is the one thing they need next to it.
+ */
+const ruleText = computed(() => {
+  if (props.awardRule === undefined || props.awardPoints === undefined) return null
+  const label = props.phase === 'TWO' ? 'Phase 2' : 'Phase 1'
+  return props.awardRule === 'CLOSEST_ONLY'
+    ? `${label} · nur der Beste, ${props.awardPoints} Punkte`
+    : `${label} · jeder Treffer ${props.awardPoints} Punkt`
+})
 </script>
 
 <template>
@@ -78,6 +103,34 @@ const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-defau
   </form>
   <p v-if="invalid" data-test="lab-seed-invalid" class="px-5 pb-1 text-xs text-red-600">
     Kein gültiger Seed — eine ganze Zahl von −2147483648 bis 2147483647.
+  </p>
+
+  <!--
+    Two buttons, not a `<select>`: there are exactly two states, and both must be reachable with a
+    thumb. `aria-pressed` carries the selected state to a screen reader — colour marks it for
+    sighted users, but is never the only signal.
+  -->
+  <div data-test="lab-phase" class="flex gap-2 px-5 py-1.5">
+    <button
+      v-for="option in PHASES"
+      :key="option"
+      type="button"
+      :data-test="`lab-phase-${option}`"
+      :aria-pressed="props.phase === option"
+      :disabled="props.busy"
+      class="h-11 flex-1 cursor-pointer rounded-md border text-sm disabled:cursor-default disabled:opacity-40"
+      :class="
+        props.phase === option
+          ? 'border-neutral-900 bg-neutral-900 font-semibold text-white'
+          : 'border-neutral-300 hover:bg-neutral-100'
+      "
+      @click="emit('phaseChange', option)"
+    >
+      {{ option === 'ONE' ? 'Phase 1' : 'Phase 2' }}
+    </button>
+  </div>
+  <p v-if="ruleText" data-test="lab-award-rule" class="px-5 pb-1.5 text-xs text-neutral-500">
+    {{ ruleText }}
   </p>
 
   <button

@@ -81,11 +81,14 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   seed: 42,
   game: 'stub',
   displayName: 'Stub',
+  phase: 'ONE',
   payload: { lowerBound: 100, upperBound: 199 },
   solution: null,
   me: null,
   others: [],
   tookOverRound: false,
+  awardRule: 'ALL_QUALIFYING',
+  awardPoints: 1,
 }
 
 /**
@@ -147,7 +150,7 @@ describe('lab page', () => {
 
   it('opens the round at the seed from the URL', async () => {
     await mountPage()
-    expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(replace).not.toHaveBeenCalled()
   })
 
@@ -178,21 +181,21 @@ describe('lab page', () => {
     const w = await mountPage()
     await w.get('[data-test="stub-guess"]').trigger('click')
     await flushPromises()
-    expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'stub', 42, { value: 123 })
+    expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', { value: 123 })
   })
 
   it('resets the round', async () => {
     await mountPage()
     await tool('lab-reset').trigger('click')
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
   })
 
   it('forgets my own entry', async () => {
     await mountPage()
     await tool('lab-forget-mine').trigger('click')
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
   })
 
   it('rolls a new seed into the URL', async () => {
@@ -207,6 +210,42 @@ describe('lab page', () => {
     await tool('lab-refresh').trigger('click')
     await flushPromises()
     expect(api.openLabRound).toHaveBeenCalledTimes(2)
+  })
+
+  it('writes the phase to the url and reopens the round', async () => {
+    await mountPage()
+
+    await tool('lab-phase-TWO').trigger('click')
+
+    expect(replace).toHaveBeenCalledWith({ query: { seed: '42', phase: 'TWO' } })
+  })
+
+  it('opens the round at the phase from the URL, defaulting to ONE', async () => {
+    setQuery({ seed: '42', phase: 'TWO' })
+    await mountPage()
+    expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'TWO')
+  })
+
+  it('reads any phase value other than TWO as ONE', async () => {
+    setQuery({ seed: '42', phase: 'junk' })
+    await mountPage()
+    expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
+  })
+
+  it('reopens the round when only the phase changes', async () => {
+    // The two mocked round shapes differ so the assertion cannot pass on the first response alone.
+    vi.spyOn(api, 'openLabRound')
+      .mockReset()
+      .mockResolvedValueOnce({ ...round, phase: 'ONE' } as never)
+      .mockResolvedValueOnce({ ...round, phase: 'TWO' } as never)
+    await mountPage()
+    expect(api.openLabRound).toHaveBeenCalledTimes(1)
+
+    setQuery({ seed: '42', phase: 'TWO' })
+    await flushPromises()
+
+    expect(api.openLabRound).toHaveBeenCalledTimes(2)
+    expect(api.openLabRound).toHaveBeenLastCalledWith('team', 'stub', 42, 'TWO')
   })
 
   it('announces a round takeover', async () => {
@@ -226,11 +265,35 @@ describe('lab page', () => {
           guess: { value: 150 },
           outcome: { correct: false, distance: 5, direction: 'LOWER' },
           at: '2026-08-08T12:00:00Z',
+          points: 0,
         },
       ],
     } as never)
     const w = await mountPage()
     expect(w.get('[data-test="lab-entries"]').text()).toContain('Bender')
+  })
+
+  it('shows the points each entry scored', async () => {
+    // The number is the whole reason to watch phase two: the closest guess scores, the rest do
+    // not, and the list is where that becomes visible.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { hue: 214.3 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+          points: 2,
+        },
+      ],
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.get('[data-test="lab-entry-points"]').text()).toBe('2')
   })
 
   it('keeps every lab control out of the content column', async () => {
@@ -278,6 +341,7 @@ describe('lab page', () => {
         guess: { value: 150 },
         outcome: { correct: false, distance: 5, direction: 'LOWER' },
         at: '2026-08-08T12:00:00Z',
+        points: 0,
       },
     } as never)
 
@@ -299,6 +363,7 @@ describe('lab page', () => {
           guess: { hue: 214.3 },
           outcome: null,
           at: '2026-08-08T12:00:00Z',
+          points: 0,
         },
       ],
     } as never)
@@ -327,6 +392,7 @@ describe('lab page', () => {
         guess: { value: 150 },
         outcome: null,
         at: '2026-08-08T12:00:00Z',
+        points: 0,
       },
       others: [
         {
@@ -336,6 +402,7 @@ describe('lab page', () => {
           guess: { value: 160 },
           outcome: null,
           at: '2026-08-08T12:00:00Z',
+          points: 0,
         },
       ],
     } as never)
@@ -383,6 +450,7 @@ describe('lab page', () => {
     guess: { value: 150 },
     outcome: null,
     at: '2026-08-08T12:00:00Z',
+    points: 0,
   }
   const theirs = {
     userId: 'u2',
@@ -391,6 +459,7 @@ describe('lab page', () => {
     guess: { value: 160 },
     outcome: null,
     at: '2026-08-08T12:00:00Z',
+    points: 0,
   }
 
   it('renders a row delete button only on the row the viewer owns, and a reset below the list', async () => {
@@ -441,11 +510,11 @@ describe('lab page', () => {
 
     await w.get('[data-test="lab-entry-forget-mine"]').trigger('click')
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
 
     await w.get('[data-test="lab-entries-reset"]').trigger('click')
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
 
     expect(spy).not.toHaveBeenCalled()
   })
@@ -500,7 +569,7 @@ describe('lab page', () => {
     })
     document.dispatchEvent(eventZ)
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(eventZ.defaultPrevented).toBe(true)
     expect(spy).toHaveBeenCalledTimes(1)
 
@@ -513,7 +582,7 @@ describe('lab page', () => {
     })
     document.dispatchEvent(eventX)
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(eventX.defaultPrevented).toBe(true)
     expect(spy).toHaveBeenCalledTimes(2)
   })
@@ -564,6 +633,7 @@ describe('lab page', () => {
       guess: { value: 150 },
       outcome: null,
       at: '2026-08-09T12:00:00Z',
+      points: 0,
     }
     const theirEntry = { ...mineEntry, userId: 'u2', username: 'Bender', guess: { value: 40 } }
     vi.spyOn(api, 'openLabRound').mockResolvedValue({

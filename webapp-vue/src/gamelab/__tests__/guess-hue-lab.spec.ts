@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueLabGame from '@/gamelab/GuessHueLabGame.vue'
+import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { GuessHuePayload } from '@/gamelab/types'
 
 const PAYLOAD: GuessHuePayload = {
@@ -48,6 +49,18 @@ describe('GuessHueLabGame', () => {
     const w = mountAdapter({ myGuess: { hue: 42.5 }, disabled: true })
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('43')
+  })
+
+  it("follows a round change from the old payload's angle to the new one's", async () => {
+    // The lab page keeps this instance mounted for as long as the response for a rolled seed
+    // hasn't landed yet, so the wheel keeps showing the *old* round's angle right up to the
+    // moment the new props actually arrive — this is what a mid-race screenshot would show.
+    const w = mountAdapter()
+    expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
+
+    await w.setProps({ payload: { ...PAYLOAD, initHue: 60.2 } })
+
+    expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('60')
   })
 
   it('sends the angle as the guess the backend expects', async () => {
@@ -178,6 +191,15 @@ describe('GuessHueLabGame, once the round is spent', () => {
 
     expect(w.find('[data-test="hue-wheel"]').exists()).toBe(true)
     expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(false)
+  })
+
+  it('reveals in phase two, where there is no tolerance window', async () => {
+    const w = mountAdapter({ solution: { targetHue: 210, toleranceDeg: null } })
+
+    // The reveal card must mount: the round is over for this viewer, and a null window is a real
+    // answer ("no gate"), not a broken payload.
+    expect(w.findComponent(GuessHueReveal).exists()).toBe(true)
+    expect(w.findComponent(GuessHueReveal).props('toleranceDeg')).toBe(0)
   })
 
   it('draws one marker per usable entry', () => {

@@ -39,14 +39,17 @@ function hueOf(guess: unknown): number | null {
 const myHue = computed(() => hueOf(props.myGuess))
 
 /**
- * Two finite numbers or nothing at all. Junk here leaves the input card standing, which is the
- * honest outcome — the alternative is `NaN` in a transformation matrix.
+ * A finite target paired with either a finite tolerance or `null` (phase two — no gate, so no
+ * arc) — or nothing at all. Junk here leaves the input card standing, which is the honest outcome
+ * — the alternative is `NaN` in a transformation matrix. A *missing* or non-numeric tolerance is
+ * still a broken payload and still disqualifies the whole solution; only `null` is meaningful.
  */
 const solution = computed<GuessHueSolution | null>(() => {
   const raw = props.solution
   if (typeof raw !== 'object' || raw === null) return null
   const { targetHue, toleranceDeg } = raw as { targetHue?: unknown; toleranceDeg?: unknown }
   if (typeof targetHue !== 'number' || !Number.isFinite(targetHue)) return null
+  if (toleranceDeg === null) return { targetHue, toleranceDeg: null }
   if (typeof toleranceDeg !== 'number' || !Number.isFinite(toleranceDeg)) return null
   return { targetHue, toleranceDeg }
 })
@@ -109,7 +112,7 @@ const animate = computed(() => hasRevealedLive.value)
         :saturation="props.payload.saturation"
         :lightness="props.payload.lightness"
         :target-hue="solution.targetHue"
-        :tolerance-deg="solution.toleranceDeg"
+        :tolerance-deg="solution.toleranceDeg ?? 0"
         :guesses="guesses"
         :mine-user-id="props.mineUserId"
         :animate="animate"
