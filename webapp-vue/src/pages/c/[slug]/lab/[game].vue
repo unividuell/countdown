@@ -147,6 +147,7 @@ watch(
         :seed="seed"
         :phase="phase"
         :busy="busy"
+        :round-phase="round?.phase"
         :award-rule="round?.awardRule"
         :award-points="round?.awardPoints"
         :return-path="`${route.path}?seed=${seed}`"

@@ -17,11 +17,19 @@ import { parseSeed } from './seed'
 import type { LabAwardRule, LabPhase } from './types'
 
 const props = defineProps<{
+  /** URL-bound — the buttons must reflect a click immediately, before any response comes back. */
   seed: number
   phase: LabPhase
   returnPath: string
   busy: boolean
-  /** Absent while no round has loaded yet — the rule line only appears once one has. */
+  /**
+   * Round-bound, not URL-bound — these three always come from the same `LabRoundResponse`, so the
+   * rule line describes a round that actually existed rather than a click paired with whatever
+   * round happened to be loaded before it. Absent while no round has loaded yet, and briefly stale
+   * (the *previous* round's snapshot) while a new one is in flight — never a mix of one round's
+   * phase with another's rule, which is the failure mode `phase` above would produce here.
+   */
+  roundPhase?: LabPhase | undefined
   awardRule?: LabAwardRule | undefined
   awardPoints?: number | undefined
 }>()
@@ -58,10 +66,22 @@ const PHASES = ['ONE', 'TWO'] as const
  * The rule sits here, right under the switch that changes it, rather than by the page heading:
  * this is the control a reviewer's eye is already on when they flip phase, so the rule that just
  * took effect is the one thing they need next to it.
+ *
+ * Built entirely from `roundPhase`/`awardRule`/`awardPoints` — never from `phase` — because those
+ * three are one snapshot from one response, while `phase` updates the instant a button is clicked
+ * and can outrun the round it describes. Reading `phase` here would pair a phase that is already
+ * true with a rule that is not yet — self-correcting on the happy path, but stuck wrong forever if
+ * the request that was meant to catch it up fails.
  */
 const ruleText = computed(() => {
-  if (props.awardRule === undefined || props.awardPoints === undefined) return null
-  const label = props.phase === 'TWO' ? 'Phase 2' : 'Phase 1'
+  if (
+    props.roundPhase === undefined ||
+    props.awardRule === undefined ||
+    props.awardPoints === undefined
+  ) {
+    return null
+  }
+  const label = props.roundPhase === 'TWO' ? 'Phase 2' : 'Phase 1'
   return props.awardRule === 'CLOSEST_ONLY'
     ? `${label} · nur der Beste, ${props.awardPoints} Punkte`
     : `${label} · jeder Treffer ${props.awardPoints} Punkt`

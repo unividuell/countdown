@@ -248,6 +248,40 @@ describe('lab page', () => {
     expect(api.openLabRound).toHaveBeenLastCalledWith('team', 'stub', 42, 'TWO')
   })
 
+  it('keeps the rule line describing the round on screen while a phase switch is in flight', async () => {
+    // The two responses carry different award pairings (phase one: ALL_QUALIFYING/1, phase two:
+    // CLOSEST_ONLY/2) and the second is held open by hand — a test that reused one pairing for
+    // both, or let both resolve immediately, could not tell a correct implementation (rule line
+    // sourced from the response) from a broken one (rule line sourced from the URL's `phase`,
+    // which updates synchronously and would already say "Phase 2" here).
+    let resolveSecond: (value: unknown) => void = () => {}
+    vi.spyOn(api, 'openLabRound')
+      .mockReset()
+      .mockResolvedValueOnce({
+        ...round,
+        phase: 'ONE',
+        awardRule: 'ALL_QUALIFYING',
+        awardPoints: 1,
+      } as never)
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)) as never)
+
+    const w = await mountPage()
+    expect(tool('lab-award-rule').text()).toBe('Phase 1 · jeder Treffer 1 Punkt')
+
+    setQuery({ seed: '42', phase: 'TWO' })
+    await w.vm.$nextTick()
+
+    // The button already follows the URL; the rule line does not yet — the phase-one round is
+    // still what is actually on screen.
+    expect(tool('lab-phase-TWO').attributes('aria-pressed')).toBe('true')
+    expect(tool('lab-award-rule').text()).toBe('Phase 1 · jeder Treffer 1 Punkt')
+
+    resolveSecond({ ...round, phase: 'TWO', awardRule: 'CLOSEST_ONLY', awardPoints: 2 })
+    await flushPromises()
+
+    expect(tool('lab-award-rule').text()).toBe('Phase 2 · nur der Beste, 2 Punkte')
+  })
+
   it('announces a round takeover', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, tookOverRound: true } as never)
     await mountPage()
