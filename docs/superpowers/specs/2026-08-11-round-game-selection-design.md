@@ -800,6 +800,18 @@ echten Spiel ändern. Das ist jetzt eingelöst.
 
 ## Was bewusst offen bleibt
 
+- **Das Frontend der echten Runde.** Der Umsetzungsschnitt oben hat vier Scheiben, und alle vier sind
+  Backend: die Endpunkte stehen (`GET …/rounds/current`, `POST …/reveal`, `POST …/guess`), aber keine
+  Seite ruft sie auf. Wer spielen will, kommt nur über das Lab hinein — und das ist ein Werkzeug für
+  Entwickler, kein Spielerzugang. Das war je Scheibe die richtige Grenze, hinterlässt aber einen
+  Zustand, in dem ein vollständiges Backend keinen Weg nach draußen hat, und gehört deshalb hierhin
+  statt nur in ein Planpapier. Die Bausteine liegen bereit: `GuessHueBoard` und `GuessHueReveal` samt
+  Toleranzbogen sind spielunabhängig genug, dass das Lab und die echte Runde sie teilen können —
+  `GuessHueBoard` nimmt seine Toleranz als Prop und weiß nichts über Phasen. Was fehlt, ist ein
+  `rounds`-API-Modul, eine Seite an der Community und die Entscheidung, wann das Aufdecken passiert:
+  es startet die Uhr und ist nicht zurücknehmbar, darf also nicht als Nebeneffekt des Seitenaufrufs
+  geschehen. Dazu die Anzeige, die weiter unten schon benannt ist: unter `CLOSEST_ONLY` sind die
+  Punkte der laufenden Runde vorläufig und sollten auch so dastehen.
 - **Zeitwertung.** Kein Spiel wertet heute auf Zeit. `revealed_at` und `guessed_at` liegen bereits
   richtig, aber welche Kompensation die RTT braucht (Anti-Cheat, offene Frage 2), entscheidet erst
   das Spiel, das darauf wertet.
