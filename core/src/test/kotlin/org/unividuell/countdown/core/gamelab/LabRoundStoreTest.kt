@@ -1,11 +1,17 @@
 package org.unividuell.countdown.core.gamelab
 
+import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.node.IntNode
-import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.game.Award
+import org.unividuell.countdown.core.game.AwardRule
+import org.unividuell.countdown.core.game.Judgement
+import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.gamelab.internal.LabRound
 import org.unividuell.countdown.core.gamelab.internal.LabRoundStore
 import org.unividuell.countdown.core.gamelab.internal.RecordResult
 import java.time.Clock
@@ -16,8 +22,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-private data class TestOutcome(val label: String) : LabOutcome
-
 class LabRoundStoreTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-08-08T12:00:00Z"), ZoneOffset.UTC)
@@ -25,48 +29,65 @@ class LabRoundStoreTest {
     private val community = UUID.randomUUID()
     private val alice = UUID.randomUUID()
     private val bob = UUID.randomUUID()
+    private val mapper = JsonMapper.builder().build()
+
+    private fun round(seed: Int, phase: Phase = Phase.ONE, rule: AwardRule = AwardRule.ALL_QUALIFYING) =
+        LabRound(
+            seed = seed,
+            phase = phase,
+            params = mapper.readTree("""{"seed":$seed}"""),
+            award = Award(rule = rule, points = if (rule == AwardRule.ALL_QUALIFYING) 1 else 7),
+        )
+
+    private fun judgement(qualifies: Boolean, deviation: Double) =
+        Judgement(qualifies = qualifies, deviation = deviation, outcome = null)
 
     private fun record(user: UUID, seed: Int = 42, value: Int = 1) =
-        store.record(community, "sample", seed, user, IntNode(value), TestOutcome("ok"))
+        store.record(
+            communityId = community, gameId = "sample", round = round(seed = seed), userId = user,
+            guess = IntNode(value), judgement = judgement(qualifies = true, deviation = 0.0),
+        )
 
     @Test
     fun `opening the same seed twice keeps the round and does not report a takeover`() {
-        store.open(community, "sample", 42).tookOverRound shouldBe false
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
+            .tookOverRound shouldBe false
         record(alice)
 
-        val again = store.open(community, "sample", 42)
+        val again = store.open(communityId = community, gameId = "sample", round = round(seed = 42))
 
         again.tookOverRound shouldBe false
-        again.seed shouldBe 42
+        again.round.seed shouldBe 42
         again.entries.map { it.userId } shouldContainExactly listOf(alice)
     }
 
     @Test
     fun `a different seed evicts the previous round and reports the takeover`() {
-        store.open(community, "sample", 42)
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
         record(alice)
 
-        val taken = store.open(community, "sample", 99)
+        val taken = store.open(communityId = community, gameId = "sample", round = round(seed = 99))
 
         taken.tookOverRound shouldBe true
-        taken.seed shouldBe 99
+        taken.round.seed shouldBe 99
         taken.entries.shouldBeEmpty()
     }
 
     @Test
     fun `the first open of a key is not a takeover`() {
         // Otherwise every fresh lab visit would claim it had discarded someone's round.
-        store.open(community, "sample", 42).tookOverRound shouldBe false
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
+            .tookOverRound shouldBe false
     }
 
     @Test
     fun `rounds of different games and communities do not evict each other`() {
-        store.open(community, "sample", 42)
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
         record(alice)
-        store.open(community, "other", 99)
-        store.open(UUID.randomUUID(), "sample", 99)
+        store.open(communityId = community, gameId = "other", round = round(seed = 99))
+        store.open(communityId = UUID.randomUUID(), gameId = "sample", round = round(seed = 99))
 
-        val still = store.open(community, "sample", 42)
+        val still = store.open(communityId = community, gameId = "sample", round = round(seed = 42))
 
         still.tookOverRound shouldBe false
         still.entries.map { it.userId } shouldContainExactly listOf(alice)
@@ -78,7 +99,7 @@ class LabRoundStoreTest {
 
         record(alice, value = 2).shouldBeInstanceOf<RecordResult.AlreadyGuessed>()
 
-        val snapshot = store.open(community, "sample", 42)
+        val snapshot = store.open(communityId = community, gameId = "sample", round = round(seed = 42))
         snapshot.entries.map { it.guess.asInt() } shouldContainExactly listOf(1)
     }
 
@@ -87,9 +108,9 @@ class LabRoundStoreTest {
         record(alice)
         record(bob)
 
-        val after = store.resetRound(community, "sample", 42)
+        val after = store.resetRound(communityId = community, gameId = "sample", round = round(seed = 42))
 
-        after.seed shouldBe 42
+        after.round.seed shouldBe 42
         after.entries.shouldBeEmpty()
     }
 
@@ -98,7 +119,9 @@ class LabRoundStoreTest {
         record(alice)
         record(bob)
 
-        val after = store.forget(community, "sample", 42, alice)
+        val after = store.forget(
+            communityId = community, gameId = "sample", round = round(seed = 42), userId = alice,
+        )
 
         after.entries.map { it.userId } shouldContainExactly listOf(bob)
     }
@@ -106,7 +129,7 @@ class LabRoundStoreTest {
     @Test
     fun `a forgotten user may guess again`() {
         record(alice)
-        store.forget(community, "sample", 42, alice)
+        store.forget(communityId = community, gameId = "sample", round = round(seed = 42), userId = alice)
 
         record(alice, value = 7).shouldBeInstanceOf<RecordResult.Recorded>()
     }
@@ -117,8 +140,8 @@ class LabRoundStoreTest {
         record(bob)
         record(alice)
 
-        store.open(community, "sample", 42).entries.map { it.userId } shouldContainExactly
-            listOf(bob, alice)
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
+            .entries.map { it.userId } shouldContainExactly listOf(bob, alice)
     }
 
     @Test
@@ -137,7 +160,92 @@ class LabRoundStoreTest {
         pool.shutdown()
         pool.awaitTermination(10, TimeUnit.SECONDS) shouldBe true
 
-        store.open(community, "sample", 42).entries.map { it.userId }.toSet() shouldBe users.toSet()
-        store.open(community, "sample", 42).entries.size shouldBe users.size
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
+            .entries.map { it.userId }.toSet() shouldBe users.toSet()
+        store.open(communityId = community, gameId = "sample", round = round(seed = 42))
+            .entries.size shouldBe users.size
+    }
+
+    @Test
+    fun `a different phase evicts the round just like a different seed does`() {
+        val community = UUID.randomUUID()
+        store.open(communityId = community, gameId = "guess-hue", round = round(seed = 1))
+
+        val switched = store.open(
+            communityId = community, gameId = "guess-hue",
+            round = round(seed = 1, phase = Phase.TWO, rule = AwardRule.CLOSEST_ONLY),
+        )
+
+        switched.tookOverRound shouldBe true
+        switched.round.phase shouldBe Phase.TWO
+        switched.entries.shouldBeEmpty()
+    }
+
+    @Test
+    fun `the round that was stored first is the one that stays`() {
+        // "Frozen" means the stored draw wins over anything a later caller offers for the same key:
+        // a round must not change under a player who is in the middle of it.
+        val community = UUID.randomUUID()
+        val first = store.open(communityId = community, gameId = "guess-hue", round = round(seed = 7))
+
+        val again = store.open(
+            communityId = community, gameId = "guess-hue",
+            round = LabRound(
+                seed = 7, phase = Phase.ONE,
+                params = mapper.readTree("""{"seed":"tampered"}"""),
+                award = Award(rule = AwardRule.CLOSEST_ONLY, points = 99),
+            ),
+        )
+
+        again.round shouldBe first.round
+        again.tookOverRound shouldBe false
+    }
+
+    @Test
+    fun `phase one gives every qualifying guess the stake`() {
+        val community = UUID.randomUUID()
+        val r = round(seed = 3)
+        val hit = UUID.randomUUID()
+        val miss = UUID.randomUUID()
+        store.record(
+            communityId = community, gameId = "g", round = r, userId = hit,
+            guess = mapper.readTree("""{"hue":1}"""),
+            judgement = judgement(qualifies = true, deviation = 4.0),
+        )
+
+        val result = store.record(
+            communityId = community, gameId = "g", round = r, userId = miss,
+            guess = mapper.readTree("""{"hue":2}"""),
+            judgement = judgement(qualifies = false, deviation = 40.0),
+        )
+
+        val entries = (result as RecordResult.Recorded).snapshot.entries.associateBy { it.userId }
+        entries.getValue(hit).points shouldBe 1
+        entries.getValue(miss).points shouldBe 0
+    }
+
+    @Test
+    fun `phase two moves the stake to the later, better guess`() {
+        // The reason the lab exists in this shape: CLOSEST_ONLY is only judgeable by hand if one can
+        // watch the points move. Same arithmetic as a real round — `pointsFor`, nothing local.
+        val community = UUID.randomUUID()
+        val r = round(seed = 3, phase = Phase.TWO, rule = AwardRule.CLOSEST_ONLY)
+        val early = UUID.randomUUID()
+        val late = UUID.randomUUID()
+        store.record(
+            communityId = community, gameId = "g", round = r, userId = early,
+            guess = mapper.readTree("""{"hue":1}"""),
+            judgement = judgement(qualifies = true, deviation = 12.0),
+        )
+
+        val result = store.record(
+            communityId = community, gameId = "g", round = r, userId = late,
+            guess = mapper.readTree("""{"hue":2}"""),
+            judgement = judgement(qualifies = true, deviation = 3.0),
+        )
+
+        val entries = (result as RecordResult.Recorded).snapshot.entries.associateBy { it.userId }
+        entries.getValue(early).points shouldBe 0
+        entries.getValue(late).points shouldBe 7
     }
 }

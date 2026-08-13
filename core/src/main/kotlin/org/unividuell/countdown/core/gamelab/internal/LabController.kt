@@ -12,11 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 
 /**
- * The lab's HTTP surface. Every call carries the seed, because the seed IS the round key and the
- * store's auto-eviction hangs off exactly that.
+ * The lab's HTTP surface. Seed **and** phase ride on every call: together they are the round key, and
+ * the store's auto-eviction hangs off exactly that pair. `phase` defaults to `ONE`, so a link without
+ * it still opens a phase-one round.
  *
  * No authorization annotation here: `SecurityConfig`'s `anyRequest authenticated` covers this path,
  * and membership is `LabService`'s job. When the lab is switched off the bean does not exist at
@@ -34,7 +36,11 @@ class LabController(private val service: LabService) {
         @PathVariable slug: String,
         @PathVariable game: String,
         @RequestParam seed: Int,
-    ) = service.open(slug, game, seed, me.id, me.isSuperAdmin)
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ) = service.open(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
 
     @PostMapping("/guess")
     fun guess(
@@ -42,8 +48,12 @@ class LabController(private val service: LabService) {
         @PathVariable slug: String,
         @PathVariable game: String,
         @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
         @RequestBody guess: JsonNode,
-    ) = service.guess(slug, game, seed, me.id, me.isSuperAdmin, guess)
+    ) = service.guess(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin, guess = guess,
+    )
 
     @PostMapping("/reset")
     fun reset(
@@ -51,7 +61,11 @@ class LabController(private val service: LabService) {
         @PathVariable slug: String,
         @PathVariable game: String,
         @RequestParam seed: Int,
-    ) = service.resetRound(slug, game, seed, me.id, me.isSuperAdmin)
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ) = service.resetRound(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
 
     @DeleteMapping("/me")
     fun forgetMine(
@@ -59,5 +73,9 @@ class LabController(private val service: LabService) {
         @PathVariable slug: String,
         @PathVariable game: String,
         @RequestParam seed: Int,
-    ) = service.forgetMine(slug, game, seed, me.id, me.isSuperAdmin)
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ) = service.forgetMine(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
 }

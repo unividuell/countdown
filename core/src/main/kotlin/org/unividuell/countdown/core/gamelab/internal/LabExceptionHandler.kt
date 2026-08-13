@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.unividuell.countdown.core.game.InvalidGuessException
 
 @RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.gamelab.internal"])
 @Profile("!production")
