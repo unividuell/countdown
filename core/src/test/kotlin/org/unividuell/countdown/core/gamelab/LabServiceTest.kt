@@ -321,6 +321,31 @@ class LabServiceTest(
     }
 
     @Test
+    fun `a guess that switches the round is judged against the round it lands in, not the one it displaced`() {
+        // The bug this pins: judging against the stored round (42) while recording under the freshly
+        // chosen one (99) would file bob's entry with a judgement computed against alice's target
+        // rather than his own — qualifying or not by accident, and contradicting the payload/solution
+        // the response otherwise shows for seed 99.
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+        )
+
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 99, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false,
+            guess = mapper.readTree("""{"hue":${targetHueFor(seed = 99)}}"""),
+        )
+
+        response.tookOverRound shouldBe true
+        response.seed shouldBe 99
+        // Bob's guess is exactly seed 99's target: it only scores if it was judged against 99, not
+        // against the round it displaced.
+        response.me.shouldNotBeNull().points shouldBe 1
+    }
+
+    @Test
     fun `the solution stays behind the guess`() {
         // The whole gate: `me == null` is the one condition, and it is checked server-side — a
         // solution the browser never receives cannot be read out of the network tab either.

@@ -73,15 +73,15 @@ class LabService(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
-        // Judge against whatever is already stored (peek() never creates or evicts), not against the
-        // freshly chosen round — judging must not be able to change the round, or a guess rejected
-        // for a stale seed/phase would destroy another tester's in-progress round along with it.
-        // Falling back to `round` only applies when nothing is stored yet, in which case record()
-        // below is about to store exactly that.
-        val judged = store.peek(communityId = communityId, gameId = gameId) ?: round
-        val judgement = handle.judge(params = judged.params, guess = guess)
+        // The round this request will actually play — the stored one if the key matches, `round`
+        // itself if it switches seed/phase (roundFor() never creates or evicts). Judging happens
+        // against this rather than against a mutation, and `record` is then told to store the same
+        // round it was judged against, so the two can never describe different rounds: not the
+        // stored one while filing the entry under a freshly chosen one, and not the other way round.
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        val judgement = handle.judge(params = playing.params, guess = guess)
         val result = store.record(
-            communityId = communityId, gameId = gameId, round = round,
+            communityId = communityId, gameId = gameId, round = playing,
             userId = userId, guess = guess, judgement = judgement,
         )
         return when (result) {

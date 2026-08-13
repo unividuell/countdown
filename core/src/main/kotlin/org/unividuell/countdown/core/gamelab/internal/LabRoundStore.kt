@@ -81,17 +81,28 @@ class LabRoundStore(private val clock: Clock) {
 
     fun open(communityId: UUID, gameId: String, round: LabRound): LabRoundSnapshot {
         val (stored, tookOver) = openRound(Key(communityId, gameId), round)
-        return stored.snapshot(tookOver)
+        // Same lock as record()/forget()/resetRound(): otherwise a read racing one of those writes
+        // could return a torn snapshot — some entries already rescored, some not yet.
+        synchronized(stored) {
+            return stored.snapshot(tookOver)
+        }
     }
 
     /**
-     * Read-only: never creates, never evicts. `LabService.guess` judges against this rather than
-     * against [open] — judging must not be able to change what round is stored, or a guess rejected
-     * for a stale seed/phase would destroy another tester's in-progress round along with it. `null`
-     * means nothing is stored yet for this key, which is exactly the case where judging against the
-     * freshly chosen round (about to be stored by [record]) is correct anyway.
+     * The round a request for [requested] will play, without creating or evicting anything: the
+     * stored round if its seed and phase match [requested], `requested` itself otherwise. The
+     * comparison is the same one [openRound] uses to decide whether to evict, kept in one place
+     * ([matches]) so the two can never disagree about which round a request belongs to.
+     *
+     * `LabService.guess` judges against this instead of mutating first — judging must not be able to
+     * change what round is stored, or a guess rejected for a stale seed/phase would destroy another
+     * tester's in-progress round along with it. When nothing is stored yet, "play `requested`" is
+     * exactly what [record] is about to store anyway, so there is no third case to handle.
      */
-    fun peek(communityId: UUID, gameId: String): LabRound? = rounds[Key(communityId, gameId)]?.frozen
+    fun roundFor(communityId: UUID, gameId: String, requested: LabRound): LabRound {
+        val stored = rounds[Key(communityId, gameId)]?.frozen
+        return if (stored != null && matches(stored, requested)) stored else requested
+    }
 
     fun record(
         communityId: UUID,
@@ -175,10 +186,7 @@ class LabRoundStore(private val clock: Clock) {
         val stored = rounds.compute(key) { _, existing ->
             // Seed *and* phase are the round key now: switching the phase chooses a different round,
             // with a different award, so the previous one cannot be kept.
-            if (existing != null &&
-                existing.frozen.seed == round.seed &&
-                existing.frozen.phase == round.phase
-            ) {
+            if (existing != null && matches(existing.frozen, round)) {
                 existing
             } else {
                 tookOver = existing != null
@@ -187,6 +195,10 @@ class LabRoundStore(private val clock: Clock) {
         }!!
         return stored to tookOver
     }
+
+    /** The one predicate for "same round": shared by [openRound]'s eviction and [roundFor]'s lookup. */
+    private fun matches(stored: LabRound, requested: LabRound): Boolean =
+        stored.seed == requested.seed && stored.phase == requested.phase
 
     private fun Round.snapshot(tookOver: Boolean) = LabRoundSnapshot(
         round = frozen,
