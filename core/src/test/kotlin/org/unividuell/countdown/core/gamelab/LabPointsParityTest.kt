@@ -101,8 +101,13 @@ class LabPointsParityTest(
      * **first** round, the one `awardFor` pays least for. That is what makes its stake comparable to
      * the lab's own first-phase-two-round stake at all — both numbers are then "threshold minus current
      * round plus two", with the "minus current round" part cancelling out to zero on both sides.
+     *
+     * Returns the threshold alongside the community: rounds are a daily grid, so the round number "now"
+     * is not necessarily the round number by the time the test plays through reveal/guess/resolve —
+     * the caller must compare against *this* pinned threshold, not against whatever round happens to be
+     * current later.
      */
-    private fun aPhaseTwoCommunity(name: String): Pair<Community, UUID> {
+    private fun aPhaseTwoCommunity(name: String): Triple<Community, UUID, Int> {
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
         val communityId = requireNotNull(community.id)
@@ -118,7 +123,7 @@ class LabPointsParityTest(
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
         editions.save(edition.copy(phaseTwoStartRound = currentRoundNumber))
-        return community to ownerId
+        return Triple(community, ownerId, currentRoundNumber)
     }
 
     @Test
@@ -147,7 +152,7 @@ class LabPointsParityTest(
         val labLoserPoints = labSecondGuess.others.single().points
 
         // --- the real half: same shape, on round_games/round_plays, threshold pinned to "now" -----
-        val (realCommunity, realEarlyId) = aPhaseTwoCommunity("Real Parity Round")
+        val (realCommunity, realEarlyId, realThreshold) = aPhaseTwoCommunity("Real Parity Round")
         val realLateId = aMember(community = realCommunity, login = "real-late")
 
         play.reveal(slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false)
@@ -178,7 +183,13 @@ class LabPointsParityTest(
 
         labWinnerPoints shouldBe 2
         labLoserPoints shouldBe 0
-        realWinnerPoints shouldBe 2
+        // Derived from the round the real half actually resolved to, not the literal 2: a day
+        // boundary between pinning `realThreshold` and this `resolve()` call would move the current
+        // round without anything being wrong, and a literal here would then fail for no reason.
+        val realExpectedPoints = awardFor(
+            roundNumber = resolved.roundGame.roundNumber, phaseTwoStartRound = realThreshold,
+        ).points
+        realWinnerPoints shouldBe realExpectedPoints
         realLoserPoints shouldBe 0
     }
 }

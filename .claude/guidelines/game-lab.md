@@ -17,6 +17,14 @@ abstraction (`LabGame`, `GuessHueLabGame`, `SampleLabGame`) beside the real game
 and that duplication is what got deleted — not a new lab-only interface invented to paper over a gap.
 The lab can still be rewritten or deleted without touching a game.
 
+One sanctioned exception, test-only: `LabPointsParityTest`
+(`core/src/test/kotlin/org/unividuell/countdown/core/gamelab/LabPointsParityTest.kt`) imports
+`AnnouncementService`, `PlayService`, `CurrentRound`, `GuessHueSolution` and `RoundPlayRepository`
+straight from `game.internal`, because proving that a lab round pays what a real round pays means
+driving the real round's own services — the reasoning is argued in full in that test's own KDoc.
+`ModularityTests.verify()` scans production sources, not tests, so production code keeps obeying the
+rule without exception.
+
 ## Non-prod tooling: the two-gate pattern
 
 Second instance after the test-user picker — from here it is the convention. Every bean of a

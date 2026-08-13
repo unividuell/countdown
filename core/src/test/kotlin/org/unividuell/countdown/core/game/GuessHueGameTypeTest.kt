@@ -157,6 +157,19 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     }
 
     @Test
+    fun `phase two's solution still carries toleranceDeg, as an explicit null`() {
+        // The frontend tells "reveal" (toleranceDeg === null) apart from "broken payload" (missing or
+        // non-numeric) by this key's presence, not its absence — so a future change to `present()`'s
+        // property inclusion that silently drops a null field would silence the reveal in the
+        // browser, and nothing but this assertion would notice.
+        val json = mapper.writeValueAsString(game.solution(draw(phase = Phase.TWO)))
+        val node = mapper.readTree(json)
+
+        node.propertyNames().toSet() shouldBe setOf("targetHue", "toleranceDeg")
+        node.get("toleranceDeg").isNull shouldBe true
+    }
+
+    @Test
     fun `phase two has no arc to draw`() {
         val params = draw(phase = Phase.TWO)
 

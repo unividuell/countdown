@@ -478,14 +478,20 @@ describe('lab page', () => {
 
     const w = await mountPage()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
 
-    // The URL seed changes ahead of the response — the exact race from the bug report.
+    // The URL seed changes ahead of the response — the exact race from the bug report. Asserting the
+    // vnode key (not just props) is what makes this discriminate the bug: keying on the URL's seed
+    // would remount right here, but the remounted instance would still receive `first.payload` since
+    // `round.value` has not changed yet — the props assertion alone cannot tell the two apart.
     setQuery({ seed: '99' })
     await w.vm.$nextTick()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
 
     resolveSecond(second)
     await flushPromises()
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(99)
 
     expect(w.findComponent(StubGame).props('payload')).toEqual(second.payload)
   })

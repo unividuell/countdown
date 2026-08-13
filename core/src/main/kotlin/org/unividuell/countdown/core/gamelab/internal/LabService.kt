@@ -130,6 +130,14 @@ class LabService(
         )
     }
 
+    /**
+     * The one gate for every action above, [guess] included: unlike `PlayService.playable`, which
+     * never lets a super-admin skip membership before a write because a real `CLOSEST_ONLY` round
+     * would move every member's points to zero for a guess that never shows up in the standings, a
+     * super-admin here may guess without being a member. Deliberate, not an oversight: lab points are
+     * not standings, and the person running a game review from outside the community is exactly who
+     * this bypass is for.
+     */
     private fun resolve(
         slug: String,
         gameId: String,

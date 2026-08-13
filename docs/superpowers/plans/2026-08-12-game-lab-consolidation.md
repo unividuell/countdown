@@ -23,7 +23,7 @@
 - **Feldmengen-Tests bleiben Pflicht** — jetzt auf `GameTypeHandle.present(params)` und `.solution(params)`, nicht mehr auf `LabGame.reveal(seed)`.
 - **Named Arguments ab zwei Argumenten** ([kotlin.md](../../../.claude/guidelines/kotlin.md)). Ausnahmen: ein Argument, Varargs, in Java deklarierte Funktionen, trailing Lambda, `infix`. IDs einmal auspacken, dann die `UUID` weitergeben — auch in Tests.
 - **Tests Backend:** JUnit 5 als Runner + **kotest matchers** (`shouldBe`, `shouldThrow`, `shouldNotBeNull`, `shouldBeNull`, `shouldHaveSize`, `shouldBeEmpty`, `shouldContainExactly`) — nie `kotlin.test` oder JUnit-Assertions. Integrationstests mit `@Import(TestcontainersConfiguration::class) @SpringBootTest`; Web-Tests mit MockMvc **Kotlin DSL**, jeder POST mit `with(csrf())`.
-- **Tests Frontend:** Vitest + `vi` (nicht mockk), happy-dom; `pnpm test`, `pnpm lint` und `pnpm type-check` müssen grün sein ([frontend-testing.md](../../../.claude/guidelines/frontend-testing.md)).
+- **Tests Frontend:** Vitest + `vi` (nicht mockk), happy-dom; `pnpm test`, `pnpm lint` und `pnpm typecheck` müssen grün sein ([frontend-testing.md](../../../.claude/guidelines/frontend-testing.md)).
 - **Mobile-first** für jedes neue Bedienelement ([frontend-ui.md](../../../.claude/guidelines/frontend-ui.md)): das Lab wird auf dem Telefon benutzt, der Phasen-Wähler muss dort mit dem Daumen bedienbar sein.
 - **Sprache:** Code, Kommentare, Testnamen, Commit-Messages **englisch**. Dieser Plan ist deutsch. Deutsche Anzeigetexte nutzen `„…“` — tiefes öffnendes, hohes schließendes Anführungszeichen, nie ein gerades `"` als Schließer.
 - **Branch:** `claude/game-lab-consolidation`, aufgesetzt auf dem ungemergeten `claude/game-playing` (stacked PR). PR-Basis ist der Vorgänger-Branch, **nicht** `develop`.
@@ -1188,7 +1188,7 @@ festgeschriebenen Erwartungswert (`384_008_871`), kein Verweis auf ein Spiel.
 
 - [ ] **Step 4: Frontend-Suite laufen lassen**
 
-Run: `cd webapp-vue && pnpm test && pnpm type-check && pnpm lint`
+Run: `cd webapp-vue && pnpm test && pnpm typecheck && pnpm lint`
 Expected: PASS, drei Testdateien weniger Bezug auf das Attrappen-Spiel, keine `sample`-Reste außer in
 `seed.spec.ts`.
 
@@ -1405,7 +1405,7 @@ Erwarteter Text, damit „Regel“ nicht als Fachbegriff dasteht: `Phase 1 · je
 
 - [ ] **Step 9: Alles laufen lassen**
 
-Run: `cd webapp-vue && pnpm test && pnpm type-check && pnpm lint`
+Run: `cd webapp-vue && pnpm test && pnpm typecheck && pnpm lint`
 Expected: PASS.
 
 - [ ] **Step 10: Committen**
