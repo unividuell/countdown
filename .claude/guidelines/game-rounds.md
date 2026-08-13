@@ -73,6 +73,10 @@ The standings sum only rounds that are **finished** and **inside the run's curre
 same `windowReasonOf` the announcement uses. Shrinking the window therefore lowers a total, and
 re-opening it restores the same number untouched.
 
+The lab's rounds run through the same `awardFor` and the same `pointsFor` as a real round, not a
+copy of either. Whoever touches one changes both, on purpose: `LabPointsParityTest` pins that a lab
+round in phase two pays exactly what a real round in phase two pays.
+
 ## Whoever writes other rows must serialise
 
 An evaluation across a whole round needs a row lock on the round (`SELECT … FOR UPDATE`), or the exact
@@ -96,9 +100,10 @@ cannot produce X. A log line covers the operational case without making the eval
 
 It moves an invariant into a per-case review. The framework carries no such switch: once the viewer has
 guessed, the others' guesses are delivered unconditionally and withheld server-side, for every game —
-there is no per-game property to set. `revealsOthersBeforeGuess` is the switch this rule forbids; it
-still lives in `gamelab` (see [game-lab.md](game-lab.md)) until that module is retired. A participation
-count ("7 of 15 have guessed") is fine at any time — it is a `COUNT`, not a filtered list of guesses.
+there is no per-game property to set. `revealsOthersBeforeGuess` was exactly that switch, in `gamelab`
+(see [game-lab.md](game-lab.md)) — it, its branch and its test are gone now that the lab enforces the
+same unconditional rule instead of asking each game to answer it. A participation count ("7 of 15 have
+guessed") is fine at any time — it is a `COUNT`, not a filtered list of guesses.
 
 ## A rule that is meant to grow gets its whole input
 

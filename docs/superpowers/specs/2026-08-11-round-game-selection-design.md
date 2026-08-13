@@ -384,8 +384,10 @@ samt Neuauswertung, `solution` nach dem eigenen Tipp.
 
 - **Der Phasen-Wähler** ist der eigentliche Gewinn und der Grund, warum das jetzt passiert: `CLOSEST_ONLY`
   und die wachsende Punktzahl sind von Hand nur beurteilbar, wenn man Phase 2 herbeischalten kann,
-  ohne eine Community-Schwelle zu verbiegen. Der Einsatz kommt dabei aus `awardFor` — das Lab wählt die
-  Phase, nicht die Punkte.
+  ohne eine Community-Schwelle zu verbiegen. Die Phase reist dafür als Query-Parameter in der URL
+  (Default `ONE`). Der Einsatz kommt dabei aus `awardFor`, aufgerufen über eine synthetische
+  Rundennummer, die das Lab an Stelle eines Gitters mitbringt — das Lab wählt die Phase, nicht die
+  Punkte.
 - **`SampleLabGame` wird gelöscht.** Es war das Beispiel, solange es kein echtes Spiel gab; jetzt gibt es
   eins, und ein Fake-Spiel im echten `GameCatalog` wäre gefährlich, weil es in echten Runden angesagt
   werden könnte. Seine Rolle als Vorlage für den Feldmengen-Test übernimmt `GuessHueGameType`.
@@ -769,6 +771,10 @@ Zusammenlegung überhaupt wert macht.
    `StubMemberPoints`.
 4. **Lab** — Umbau auf `GameCatalog`/`GameType`, Phasen-Wähler, Löschen von `LabGame`,
    `GuessHueLabGame`, `SampleLabGame` und dem Sichtbarkeits-Schalter; Korrektur von `game-lab.md`.
+   **Umgesetzt** — der Vertrag (`GameType`, `GamePayload`/`GameOutcome`/`GameSolution`, `Judgement`,
+   `GameRandom`, `GameCatalog`/`GameTypeHandle`, `Phase`, `Award`/`awardFor`, `Verdict`/`pointsFor`,
+   `InvalidGuessException`) ist dafür ins Basis-Package `game` gezogen, weil das Lab jetzt sein
+   Konsument ist.
 
 2 und 3 sind getrennt beschreibbar, gehen aber vermutlich zusammen live — eine Ansage, die man nicht
 spielen kann, ist ein halbes Feature. 4 kommt **nach** 3, nicht davor: das Lab zieht auf Klassen um, die

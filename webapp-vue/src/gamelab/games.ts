@@ -2,7 +2,7 @@ import type { Component } from 'vue'
 import GuessHueLabGame from './GuessHueLabGame.vue'
 
 export interface LabGameEntry {
-  /** Matches `LabGame.id` on the server — it is the `:game` URL segment. */
+  /** Matches `GameType.id` on the server, surfaced as `LabRoundResponse.game` — the `:game` URL segment. */
   id: string
   /**
    * Shown by the index only. The server owns the authoritative name and sends it as
