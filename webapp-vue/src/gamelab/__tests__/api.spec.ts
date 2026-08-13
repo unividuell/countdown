@@ -8,28 +8,28 @@ describe('gamelab api', () => {
   })
 
   it('opens a round with the seed as a query parameter', async () => {
-    await openLabRound('team', 'sample', 42)
-    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/sample?seed=42')
+    await openLabRound('team', 'stub', 42)
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub?seed=42')
   })
 
   it('posts a guess as JSON', async () => {
-    await submitLabGuess('team', 'sample', 42, { value: 123 })
-    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/sample/guess?seed=42', {
+    await submitLabGuess('team', 'stub', 42, { value: 123 })
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/guess?seed=42', {
       method: 'POST',
       body: '{"value":123}',
     })
   })
 
   it('resets the round', async () => {
-    await resetLabRound('team', 'sample', 42)
-    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/sample/reset?seed=42', {
+    await resetLabRound('team', 'stub', 42)
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/reset?seed=42', {
       method: 'POST',
     })
   })
 
   it('forgets my own entry', async () => {
-    await forgetMyLabEntry('team', 'sample', 42)
-    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/sample/me?seed=42', {
+    await forgetMyLabEntry('team', 'stub', 42)
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/me?seed=42', {
       method: 'DELETE',
     })
   })

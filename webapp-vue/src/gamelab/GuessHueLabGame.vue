@@ -5,8 +5,7 @@
  *
  * The switch lives here rather than in the board because this is the place that turns `unknown`
  * into typed values. `myGuess` stays beside `entries` even though it is derivable from it: it has
- * its own documented job — the wheel's starting angle after a reload — and `SampleGame` hangs off
- * the same prop.
+ * its own documented job — the wheel's starting angle after a reload.
  */
 import { computed, ref, watch } from 'vue'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'

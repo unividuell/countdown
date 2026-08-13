@@ -5,8 +5,43 @@ import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import { initialSeed } from '@/gamelab/seed'
 import * as drawerControl from '@/nav/drawerControl'
-import SampleGame from '@/gamelab/SampleGame.vue'
-import type { GuessHuePayload, LabRoundResponse, SamplePayload } from '@/gamelab/types'
+import type { LabRoundResponse } from '@/gamelab/types'
+
+/**
+ * A stub, not a real game: the page test must exercise the page's own wiring — which prop gets
+ * which value, which action calls which endpoint — without depending on any particular game's
+ * component. Retargeting at `guess-hue` instead of the old stand-in would only trade one
+ * dependency for another, breaking this file every time that component's rendering changes.
+ *
+ * `vi.hoisted` rather than a file-scope constant: `vi.mock` below is hoisted above every import,
+ * so a plain `const StubGame = defineComponent(...)` would not be initialised yet when the mock
+ * factory runs. Following the same pattern as `src/nav/__tests__/NavDrawer.spec.ts`.
+ */
+const { StubGame } = await vi.hoisted(async () => {
+  const { defineComponent } = await import('vue')
+  return {
+    StubGame: defineComponent({
+      name: 'StubGame',
+      props: {
+        payload: { type: Object, required: true },
+        outcome: { type: null, default: null },
+        myGuess: { type: null, default: null },
+        solution: { type: null, default: null },
+        entries: { type: Array, default: () => [] },
+        mineUserId: { type: String, default: null },
+        disabled: { type: Boolean, default: false },
+      },
+      emits: ['guess'],
+      template:
+        '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>',
+    }),
+  }
+})
+
+vi.mock('@/gamelab/games', () => ({
+  labGameList: [{ id: 'stub', title: 'Stub', component: StubGame }],
+  labGames: { stub: StubGame },
+}))
 
 const replace = vi.fn()
 /**
@@ -16,7 +51,7 @@ const replace = vi.fn()
  * ahead of a round response landing. A plain reassigned object here would not track at all.
  */
 const currentQuery = reactive<Record<string, unknown>>({ seed: '42' })
-let currentParams: Record<string, string> = { slug: 'team', game: 'sample' }
+let currentParams: Record<string, string> = { slug: 'team', game: 'stub' }
 
 function setQuery(next: Record<string, unknown>): void {
   for (const key of Object.keys(currentQuery)) delete currentQuery[key]
@@ -32,7 +67,7 @@ vi.mock('vue-router', () => ({
     get params() {
       return currentParams
     },
-    path: '/c/team/lab/sample',
+    path: '/c/team/lab/stub',
   }),
 }))
 vi.mock('@/communities/context', () => ({
@@ -42,10 +77,10 @@ vi.mock('@/communities/context', () => ({
   }),
 }))
 
-const round: LabRoundResponse<SamplePayload> = {
+const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   seed: 42,
-  game: 'sample',
-  displayName: 'Zahlenraten (Attrappe)',
+  game: 'stub',
+  displayName: 'Stub',
   payload: { lowerBound: 100, upperBound: 199 },
   solution: null,
   me: null,
@@ -88,7 +123,7 @@ describe('lab page', () => {
     document.body.innerHTML = '<div id="drawer-page-tools"></div>'
     replace.mockReset()
     setQuery({ seed: '42' })
-    currentParams = { slug: 'team', game: 'sample' }
+    currentParams = { slug: 'team', game: 'stub' }
     // vi.spyOn reuses the same mock across tests once a method is already spied, so call counts
     // accumulate across the whole file unless cleared here too — same reasoning as replace above.
     vi.spyOn(api, 'openLabRound')
@@ -112,7 +147,7 @@ describe('lab page', () => {
 
   it('opens the round at the seed from the URL', async () => {
     await mountPage()
-    expect(api.openLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42)
     expect(replace).not.toHaveBeenCalled()
   })
 
@@ -120,7 +155,7 @@ describe('lab page', () => {
     setQuery({})
     await mountPage()
     expect(replace).toHaveBeenCalledWith({
-      query: { seed: String(initialSeed('sample')) },
+      query: { seed: String(initialSeed('stub')) },
     })
     expect(api.openLabRound).not.toHaveBeenCalled()
   })
@@ -129,37 +164,35 @@ describe('lab page', () => {
     setQuery({ seed: 'not-a-number' })
     await mountPage()
     expect(replace).toHaveBeenCalledWith({
-      query: { seed: String(initialSeed('sample')) },
+      query: { seed: String(initialSeed('stub')) },
     })
     expect(api.openLabRound).not.toHaveBeenCalled()
   })
 
-  it('renders the stand-in game with its bounds', async () => {
+  it('passes the round payload to the game component', async () => {
     const w = await mountPage()
-    expect(w.get('[data-test="sample-bounds"]').text()).toContain('100')
-    expect(w.get('[data-test="sample-bounds"]').text()).toContain('199')
+    expect(w.findComponent(StubGame).props('payload')).toEqual(round.payload)
   })
 
-  it('submits a guess from the stand-in game', async () => {
+  it('submits a guess from the game', async () => {
     const w = await mountPage()
-    await w.get('[data-test="sample-input"]').setValue('123')
-    await w.get('[data-test="sample-submit"]').trigger('submit')
+    await w.get('[data-test="stub-guess"]').trigger('click')
     await flushPromises()
-    expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'sample', 42, { value: 123 })
+    expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'stub', 42, { value: 123 })
   })
 
   it('resets the round', async () => {
     await mountPage()
     await tool('lab-reset').trigger('click')
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
   })
 
   it('forgets my own entry', async () => {
     await mountPage()
     await tool('lab-forget-mine').trigger('click')
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
   })
 
   it('rolls a new seed into the URL', async () => {
@@ -212,11 +245,11 @@ describe('lab page', () => {
   })
 
   it('keys the game component by seed, so a new round remounts it instead of patching props', async () => {
-    // Without the key, a seed change swaps props on the same instance: the wheel's entrance
-    // animation never replays, and the sample game keeps a scratch value from the round before.
+    // Without the key, a seed change swaps props on the same instance instead of remounting it: a
+    // game that keeps any per-round local state would carry it across a round it should not see.
     const w = await mountPage()
 
-    expect(w.findComponent(SampleGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
   })
 
   it('says the lab is unavailable when the backend does not have it', async () => {
@@ -234,9 +267,8 @@ describe('lab page', () => {
   })
 
   it('hands the viewer their own stored guess to the game component', async () => {
-    // The payload carries the round, not the player. Without this the sample's input would be
-    // empty in a round the viewer has already spent — and the wheel of a real game would sit on
-    // the starting angle instead of the angle that was submitted.
+    // The payload carries the round, not the player: whatever the tester submitted must come
+    // back as `myGuess`, or a reload of an already-spent round would start the game from scratch.
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       me: {
@@ -251,7 +283,7 @@ describe('lab page', () => {
 
     const w = await mountPage()
 
-    expect((w.get('[data-test="sample-input"]').element as HTMLInputElement).value).toBe('150')
+    expect(w.findComponent(StubGame).props('myGuess')).toEqual({ value: 150 })
   })
 
   it('prints no arrow for an entry the game did not score', async () => {
@@ -320,24 +352,10 @@ describe('lab page', () => {
     // The bug this guards: rolling writes the new seed to the URL first, and the page keys the
     // game component on that URL seed. Vue Router updates `route.query` in place for a query-only
     // change — no remount of the page itself — so the game component would remount right then,
-    // still holding the *previous* round's payload, and capture the wrong entrance angle. Keying
+    // still holding the *previous* round's payload and capture the wrong entrance state. Keying
     // on `round.seed` instead means the remount cannot happen until the matching payload is here.
-    currentParams = { slug: 'team', game: 'guess-hue' }
-    const first: LabRoundResponse<GuessHuePayload> = {
-      seed: 42,
-      game: 'guess-hue',
-      displayName: 'Farbausmalung',
-      payload: { description: 'Erste Runde.', initHue: 10, saturation: 0.6, lightness: 0.45 },
-      solution: null,
-      me: null,
-      others: [],
-      tookOverRound: false,
-    }
-    const second: LabRoundResponse<GuessHuePayload> = {
-      ...first,
-      seed: 99,
-      payload: { description: 'Zweite Runde.', initHue: 250, saturation: 0.6, lightness: 0.45 },
-    }
+    const first = { ...round, seed: 42, payload: { lowerBound: 1, upperBound: 2 } }
+    const second = { ...round, seed: 99, payload: { lowerBound: 3, upperBound: 4 } }
     let resolveSecond: (value: unknown) => void = () => {}
     vi.spyOn(api, 'openLabRound')
       .mockReset()
@@ -345,17 +363,17 @@ describe('lab page', () => {
       .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)) as never)
 
     const w = await mountPage()
-    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 10deg')
+    expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
 
     // The URL seed changes ahead of the response — the exact race from the bug report.
     setQuery({ seed: '99' })
     await w.vm.$nextTick()
-    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 10deg')
+    expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
 
     resolveSecond(second)
     await flushPromises()
 
-    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('from 250deg')
+    expect(w.findComponent(StubGame).props('payload')).toEqual(second.payload)
   })
 
   const mine = {
@@ -390,9 +408,9 @@ describe('lab page', () => {
   })
 
   it('offers no row delete button when the viewer has not guessed but others are revealed', async () => {
-    // Catches a delete action keyed on the row's position: `sample` reveals others before the
-    // viewer has guessed, so the first row is then a stranger's — and the button would sit on it
-    // offering to delete „meinen Guess“.
+    // Catches a delete action keyed on the row's position instead of on `entry.userId`: if
+    // `others` were ever non-empty while `me` is null, the first row would be a stranger's — and
+    // the button would sit on it offering to delete „meinen Guess“.
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       me: null,
@@ -423,11 +441,11 @@ describe('lab page', () => {
 
     await w.get('[data-test="lab-entry-forget-mine"]').trigger('click')
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
 
     await w.get('[data-test="lab-entries-reset"]').trigger('click')
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
 
     expect(spy).not.toHaveBeenCalled()
   })
@@ -482,7 +500,7 @@ describe('lab page', () => {
     })
     document.dispatchEvent(eventZ)
     await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42)
     expect(eventZ.defaultPrevented).toBe(true)
     expect(spy).toHaveBeenCalledTimes(1)
 
@@ -495,7 +513,7 @@ describe('lab page', () => {
     })
     document.dispatchEvent(eventX)
     await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'sample', 42)
+    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42)
     expect(eventX.defaultPrevented).toBe(true)
     expect(spy).toHaveBeenCalledTimes(2)
   })
@@ -535,33 +553,35 @@ describe('lab page', () => {
     await flushPromises()
   })
 
-  it('hands the game everything the reveal needs', async () => {
+  it('hands the game every prop the component contract promises', async () => {
     // The page is the only place that knows all three: what the server revealed, who is in the
-    // round, and which of them is the viewer.
-    currentParams = { slug: 'team', game: 'guess-hue' }
-    const mineHue = {
+    // round, and which of them is the viewer — this pins the whole assembly in one place, on the
+    // props actually received rather than on any one game's rendering of them.
+    const mineEntry = {
       userId: 'u1',
       username: 'Fry',
       avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
-      guess: { hue: 214.5 },
+      guess: { value: 150 },
       outcome: null,
       at: '2026-08-09T12:00:00Z',
     }
-    const theirHue = { ...mineHue, userId: 'u2', username: 'Bender', guess: { hue: 40 } }
+    const theirEntry = { ...mineEntry, userId: 'u2', username: 'Bender', guess: { value: 40 } }
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      seed: 42,
-      game: 'guess-hue',
-      displayName: 'Farbausmalung',
-      payload: { description: 'Eine Runde.', initHue: 10, saturation: 0.6, lightness: 0.45 },
-      solution: { targetHue: 210, toleranceDeg: 10 },
-      me: mineHue,
-      others: [theirHue],
-      tookOverRound: false,
+      ...round,
+      solution: { some: 'solution' },
+      me: mineEntry,
+      others: [theirEntry],
     } as never)
 
     const w = await mountPage()
+    const stub = w.findComponent(StubGame)
 
-    expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
-    expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(2)
+    expect(stub.props('payload')).toEqual(round.payload)
+    expect(stub.props('outcome')).toBeNull()
+    expect(stub.props('myGuess')).toEqual({ value: 150 })
+    expect(stub.props('solution')).toEqual({ some: 'solution' })
+    expect(stub.props('mineUserId')).toBe('u1')
+    expect(stub.props('entries')).toEqual([mineEntry, theirEntry])
+    expect(stub.props('disabled')).toBe(true)
   })
 })

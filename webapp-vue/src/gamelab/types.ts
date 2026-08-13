@@ -31,17 +31,6 @@ export interface LabRoundResponse<P = unknown> {
   tookOverRound: boolean
 }
 
-/** The stand-in game's shapes. A real game brings its own alongside these. */
-export interface SamplePayload {
-  lowerBound: number
-  upperBound: number
-}
-export interface SampleOutcome {
-  correct: boolean
-  distance: number
-  direction: 'HIGHER' | 'LOWER' | 'EXACT'
-}
-
 /** Guess Hue's payload. The target hue is absent by design — see the backend's field-set test. */
 export interface GuessHuePayload {
   description: string
