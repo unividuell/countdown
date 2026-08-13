@@ -9,6 +9,7 @@ function mountBoard(props: Partial<InstanceType<typeof GuessHueBoard>['$props']>
       initHue: 210,
       saturation: 0.6,
       lightness: 0.45,
+      toleranceDeg: 10,
       disabled: false,
       ...props,
     },
@@ -64,6 +65,22 @@ describe('GuessHueBoard', () => {
     // Set back deliberately: present when looked for, quiet otherwise.
     expect(hint.classes()).toContain('text-xs')
     expect(hint.classes()).toContain('text-neutral-500')
+  })
+
+  it('phase one: names the tolerance, because a small miss still counts', () => {
+    const hint = mountBoard({ toleranceDeg: 10 }).get('[data-test="hue-hint"]')
+
+    expect(hint.text()).toBe(
+      'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Eine kleine Abweichung ist erlaubt.',
+    )
+  })
+
+  it('phase two: says only the closest guess scores, because there is no gate at all', () => {
+    const hint = mountBoard({ toleranceDeg: null }).get('[data-test="hue-hint"]')
+
+    expect(hint.text()).toBe(
+      'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Hier zählt nur, wer am nächsten dran liegt.',
+    )
   })
 
   it('locks the wheel and the button once the round is spent', () => {

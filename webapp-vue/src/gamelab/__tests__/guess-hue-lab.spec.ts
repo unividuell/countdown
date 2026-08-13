@@ -9,6 +9,7 @@ const PAYLOAD: GuessHuePayload = {
   initHue: 210.4,
   saturation: 0.6,
   lightness: 0.45,
+  toleranceDeg: 10,
 }
 
 function mountAdapter(props: Record<string, unknown> = {}) {

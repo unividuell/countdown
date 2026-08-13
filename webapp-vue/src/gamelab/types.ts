@@ -50,6 +50,13 @@ export interface GuessHuePayload {
   /** Fractions, not percent. */
   saturation: number
   lightness: number
+  /**
+   * Half-window in degrees, or `null` in phase two — there is no gate there, only the closest
+   * guess scores. Safe to see before guessing: it is set from the phase alone, identical for
+   * every round of that phase, so it says nothing about where the target hue lies. See the
+   * backend's `GuessHuePayload` KDoc.
+   */
+  toleranceDeg: number | null
 }
 
 /** Guess Hue's solution. It reaches the client only once `me` is set — see the backend's gate. */

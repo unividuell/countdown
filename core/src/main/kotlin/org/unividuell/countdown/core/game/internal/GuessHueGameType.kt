@@ -41,6 +41,13 @@ data class GuessHueParams(
  *
  * A new field is still not free: it must come from the presentation stream, and the field-set test
  * below must name it.
+ *
+ * [toleranceDeg] is the exception that proves the rule is about the *answer*, not about early
+ * disclosure: it is set from the phase alone (`GuessHueTolerance.DEGREES` in phase one, `null` in
+ * phase two — see `GuessHueParams.toleranceDeg`), identical for every round of that phase, so it
+ * carries no information about where `hue` lies. It already reaches the client after the guess via
+ * `GuessHueSolution.toleranceDeg`; publishing it here only moves that same, phase-constant value
+ * earlier — before the guess, so the board can say honestly whether a near miss still counts.
  */
 data class GuessHuePayload(
     val description: String,
@@ -48,6 +55,7 @@ data class GuessHuePayload(
     /** Fractions, not percent: `hsl()` in the browser takes them as-is, hex would need converting. */
     val saturation: Double,
     val lightness: Double,
+    val toleranceDeg: Double?,
 ) : GamePayload
 
 /**
@@ -99,6 +107,7 @@ class GuessHueGameType(private val dataset: GuessHueDataset) : GameType<GuessHue
         initHue = params.initHue,
         saturation = params.saturation,
         lightness = params.lightness,
+        toleranceDeg = params.toleranceDeg,
     )
 
     /**

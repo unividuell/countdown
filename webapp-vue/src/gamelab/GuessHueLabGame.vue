@@ -124,6 +124,7 @@ const animate = computed(() => hasRevealedLive.value)
         :init-hue="myHue ?? props.payload.initHue"
         :saturation="props.payload.saturation"
         :lightness="props.payload.lightness"
+        :tolerance-deg="props.payload.toleranceDeg"
         :disabled="props.disabled"
         @guess="(hue: number) => emit('guess', { hue })"
       />

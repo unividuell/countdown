@@ -116,6 +116,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             noGameReason = null,
             payload = GuessHuePayload(
                 description = "ein warmes Rot", initHue = 12.5, saturation = 0.6, lightness = 0.45,
+                toleranceDeg = 10.0,
             ),
         )
 

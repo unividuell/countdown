@@ -71,7 +71,26 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
         val json = mapper.writeValueAsString(game.present(draw(phase = Phase.ONE)))
 
         mapper.readTree(json).propertyNames().toSet() shouldBe
-            setOf("description", "initHue", "saturation", "lightness")
+            setOf("description", "initHue", "saturation", "lightness", "toleranceDeg")
+    }
+
+    @Test
+    fun `phase one's payload carries the inherited tolerance`() {
+        val json = mapper.writeValueAsString(game.present(draw(phase = Phase.ONE)))
+
+        mapper.readTree(json).get("toleranceDeg").asDouble() shouldBe GuessHueTolerance.DEGREES
+    }
+
+    @Test
+    fun `phase two's payload still carries toleranceDeg, as an explicit null`() {
+        // Mirrors the solution's phase-two null test: the frontend tells "no gate" (null) apart
+        // from "broken payload" (missing or non-numeric) by this key's presence, not its absence.
+        val json = mapper.writeValueAsString(game.present(draw(phase = Phase.TWO)))
+        val node = mapper.readTree(json)
+
+        node.propertyNames().toSet() shouldBe
+            setOf("description", "initHue", "saturation", "lightness", "toleranceDeg")
+        node.get("toleranceDeg").isNull shouldBe true
     }
 
     @Test
