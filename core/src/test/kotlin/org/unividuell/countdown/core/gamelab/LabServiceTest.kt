@@ -55,6 +55,8 @@ class LabServiceTest(
     private val communityId = UUID.randomUUID()
     private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
     private val bob = User(id = UUID.randomUUID(), githubId = 2L, githubLogin = "bob")
+    private val aliceId = requireNotNull(alice.id)
+    private val bobId = requireNotNull(bob.id)
     private val mapper = JsonMapper.builder().build()
 
     private data class TwoMembers(val me: UUID, val other: UUID)
@@ -63,12 +65,12 @@ class LabServiceTest(
     private fun aCommunityWithTwoMembers(): Pair<Community, TwoMembers> {
         val community = Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
         every { communities.findBySlug("team") } returns community
-        every { memberships.isActiveMember(communityId, any()) } returns true
+        every { memberships.isActiveMember(communityId = communityId, userId = any()) } returns true
         every { users.findAllById(any()) } answers {
             val ids = firstArg<Collection<UUID>>().toSet()
             listOf(alice, bob).filter { it.id in ids }
         }
-        return community to TwoMembers(me = alice.id!!, other = bob.id!!)
+        return community to TwoMembers(me = aliceId, other = bobId)
     }
 
     /** One valid guess per catalogue entry. A new game adds a branch here and the loop above covers it. */
@@ -77,6 +79,10 @@ class LabServiceTest(
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
+    // `roundNumber = 12` duplicates LabService's private LAB_ROUND_NUMBER with nothing linking the
+    // two: it is inert for guess-hue, whose `draw` ignores the round number entirely, but it would
+    // silently mis-derive the expected round for the first game that does not. Deliberate coupling,
+    // not an oversight — if that assumption ever breaks, this helper needs the real constant exposed.
     private fun drawnParams(seed: Int, phase: Phase = Phase.ONE) =
         catalog.handle("guess-hue")!!.draw(
             random = GameRandom.fromSeed(seed),
@@ -88,6 +94,16 @@ class LabServiceTest(
 
     private fun expectedSolution(seed: Int, phase: Phase = Phase.ONE) =
         catalog.handle("guess-hue")!!.solution(drawnParams(seed = seed, phase = phase))
+
+    /**
+     * The exact target hue for [seed], read out of the exposed [expectedSolution] via serialisation
+     * rather than by importing the game-internal params type. A guess built from this is guaranteed
+     * to qualify (deviation `0.0`) — `aValidGuessFor`'s fixed `123.5` is not, it only has to be *some*
+     * legal hue, so it qualifies or not depending on where the seed happens to draw the target.
+     */
+    private fun targetHueFor(seed: Int, phase: Phase = Phase.ONE): Double =
+        mapper.readTree(mapper.writeValueAsString(expectedSolution(seed = seed, phase = phase)))
+            .get("targetHue").asDouble()
 
     @Test
     fun `open returns the revealed payload and no entry of my own`() {
@@ -114,7 +130,7 @@ class LabServiceTest(
         shouldThrow<LabAccessDeniedException> {
             service.open(
                 slug = "ghost", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
-                userId = alice.id!!, isSuperAdmin = false,
+                userId = aliceId, isSuperAdmin = false,
             )
         }
     }
@@ -124,12 +140,12 @@ class LabServiceTest(
         // Same exception as "no such community" — the two must be indistinguishable to the caller.
         every { communities.findBySlug("team") } returns
             Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
-        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        every { memberships.isActiveMember(communityId = communityId, userId = aliceId) } returns false
 
         shouldThrow<LabAccessDeniedException> {
             service.open(
                 slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
-                userId = alice.id!!, isSuperAdmin = false,
+                userId = aliceId, isSuperAdmin = false,
             )
         }
     }
@@ -138,12 +154,12 @@ class LabServiceTest(
     fun `a super-admin who is not a member is let in`() {
         every { communities.findBySlug("team") } returns
             Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
-        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        every { memberships.isActiveMember(communityId = communityId, userId = aliceId) } returns false
         every { users.findAllById(any()) } returns emptyList()
 
         service.open(
             slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
-            userId = alice.id!!, isSuperAdmin = true,
+            userId = aliceId, isSuperAdmin = true,
         ).seed shouldBe 42
     }
 
@@ -162,16 +178,24 @@ class LabServiceTest(
     @Test
     fun `a guess lands as my own entry, carrying my name and avatar`() {
         val (community, mine) = aCommunityWithTwoMembers()
+        // The exact target, not aValidGuessFor's fixed value: the points assertion below needs a
+        // guess that is guaranteed to qualify.
+        val guess = mapper.readTree("""{"hue":${targetHueFor(seed = 42)}}""")
 
         val response = service.guess(
             slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
-            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+            userId = mine.me, isSuperAdmin = false, guess = guess,
         )
 
         val me = response.me.shouldNotBeNull()
         me.userId shouldBe mine.me
         me.username shouldBe alice.username
         me.avatar shouldBe Avatar.of(alice)
+        // Neither of these has a branch to miss — `outcome`/`points` are plain field-copies from
+        // `Judgement`/`pointsFor` — but nothing else in this test tree asserts them, so a `null`/`0`
+        // stub in either LabRoundStore.record or LabService.respond would still pass every test.
+        me.outcome.shouldNotBeNull()
+        me.points shouldBe 1
         response.others.shouldBeEmpty()
     }
 
@@ -279,6 +303,24 @@ class LabServiceTest(
     }
 
     @Test
+    fun `a guess that switches the round reports the takeover too`() {
+        // guess() used to open() and then record() as two separate store calls, so the takeover the
+        // first call saw was already gone by the second — this pins the single-call fix.
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 99, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+        )
+
+        response.tookOverRound shouldBe true
+    }
+
+    @Test
     fun `the solution stays behind the guess`() {
         // The whole gate: `me == null` is the one condition, and it is checked server-side — a
         // solution the browser never receives cannot be read out of the network tab either.
@@ -331,7 +373,7 @@ class LabServiceTest(
         // A super-admin opening someone else's round must see the same `null` a denied non-member
         // would have gotten if they had been let in: safe by construction today, and this pins it.
         val (community, mine) = aCommunityWithTwoMembers()
-        every { memberships.isActiveMember(communityId, mine.me) } returns false
+        every { memberships.isActiveMember(communityId = communityId, userId = mine.me) } returns false
         service.guess(
             slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
             userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
@@ -382,6 +424,9 @@ class LabServiceTest(
         one.awardRule shouldBe AwardRule.ALL_QUALIFYING
         one.awardPoints shouldBe 1
         two.awardRule shouldBe AwardRule.CLOSEST_ONLY
+        // The one number the lab invents (via the synthetic LAB_ROUND_NUMBER) rather than reads off a
+        // real grid — worth pinning on its own.
+        two.awardPoints shouldBe 2
         two.tookOverRound shouldBe true
     }
 

@@ -84,6 +84,15 @@ class LabRoundStore(private val clock: Clock) {
         return stored.snapshot(tookOver)
     }
 
+    /**
+     * Read-only: never creates, never evicts. `LabService.guess` judges against this rather than
+     * against [open] — judging must not be able to change what round is stored, or a guess rejected
+     * for a stale seed/phase would destroy another tester's in-progress round along with it. `null`
+     * means nothing is stored yet for this key, which is exactly the case where judging against the
+     * freshly chosen round (about to be stored by [record]) is correct anyway.
+     */
+    fun peek(communityId: UUID, gameId: String): LabRound? = rounds[Key(communityId, gameId)]?.frozen
+
     fun record(
         communityId: UUID,
         gameId: String,
@@ -93,40 +102,55 @@ class LabRoundStore(private val clock: Clock) {
         judgement: Judgement,
     ): RecordResult {
         val (stored, tookOver) = openRound(Key(communityId, gameId), round)
-        val entry = LabEntry(
-            userId = userId,
-            guess = guess,
-            qualifies = judgement.qualifies,
-            deviation = judgement.deviation,
-            outcome = judgement.outcome,
-            // Overwritten by the rescore below. A lone entry is scored by the same function as a full
-            // round rather than by a shortcut, so the two can never disagree.
-            points = 0,
-            at = clock.instant(),
-        )
-        // putIfAbsent, not put: one guess per player and round is the real game's rule, enforced here
-        // so the lab exercises it. Repeating a round is what the two reset actions are for.
-        if (stored.entries.putIfAbsent(userId, entry) != null) return RecordResult.AlreadyGuessed
-        stored.sequence[userId] = stored.counter.getAndIncrement()
-        stored.rescore()
-        return RecordResult.Recorded(stored.snapshot(tookOver))
+        // The lab's stand-in for the real game's row lock on the round (see game-rounds.md, "whoever
+        // writes other rows must serialise"): rescore() reads every entry and writes every entry
+        // back, so two concurrent testers guessing into the same round must not interleave, or both
+        // could end up holding a CLOSEST_ONLY stake. The same lock also keeps this from racing
+        // forget()/resetRound(), which mutate the same two maps.
+        synchronized(stored) {
+            val entry = LabEntry(
+                userId = userId,
+                guess = guess,
+                qualifies = judgement.qualifies,
+                deviation = judgement.deviation,
+                outcome = judgement.outcome,
+                // Overwritten by the rescore below. A lone entry is scored by the same function as a
+                // full round rather than by a shortcut, so the two can never disagree.
+                points = 0,
+                at = clock.instant(),
+            )
+            // putIfAbsent, not put: one guess per player and round is the real game's rule, enforced
+            // here so the lab exercises it. Repeating a round is what the two reset actions are for.
+            if (stored.entries.putIfAbsent(userId, entry) != null) return RecordResult.AlreadyGuessed
+            stored.sequence[userId] = stored.counter.getAndIncrement()
+            stored.rescore()
+            return RecordResult.Recorded(stored.snapshot(tookOver))
+        }
     }
 
     fun resetRound(communityId: UUID, gameId: String, round: LabRound): LabRoundSnapshot {
         val (stored, tookOver) = openRound(Key(communityId, gameId), round)
-        stored.entries.clear()
-        stored.sequence.clear()
-        return stored.snapshot(tookOver)
+        // Same lock as record(): clearing must not interleave with a concurrent record()/forget() on
+        // the same round, or a write either side is in the middle of could be lost or resurrected.
+        synchronized(stored) {
+            stored.entries.clear()
+            stored.sequence.clear()
+            return stored.snapshot(tookOver)
+        }
     }
 
     fun forget(communityId: UUID, gameId: String, round: LabRound, userId: UUID): LabRoundSnapshot {
         val (stored, tookOver) = openRound(Key(communityId, gameId), round)
-        stored.entries.remove(userId)
-        stored.sequence.remove(userId)
-        // Whoever leaves changes the standings of whoever stays: under CLOSEST_ONLY the best remaining
-        // guess takes the stake. Same reason the real game re-evaluates on every write.
-        stored.rescore()
-        return stored.snapshot(tookOver)
+        // Same lock as record(): otherwise a rescore() racing this removal could re-insert the entry
+        // that is being forgotten, and the forgotten user would come back as `AlreadyGuessed`.
+        synchronized(stored) {
+            stored.entries.remove(userId)
+            stored.sequence.remove(userId)
+            // Whoever leaves changes the standings of whoever stays: under CLOSEST_ONLY the best
+            // remaining guess takes the stake. Same reason the real game re-evaluates on every write.
+            stored.rescore()
+            return stored.snapshot(tookOver)
+        }
     }
 
     /**

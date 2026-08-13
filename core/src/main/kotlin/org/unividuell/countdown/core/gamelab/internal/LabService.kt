@@ -49,7 +49,9 @@ class LabService(
         userId: UUID,
         isSuperAdmin: Boolean,
     ): LabRoundResponse {
-        val (communityId, handle) = resolve(slug, gameId, userId, isSuperAdmin)
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
             handle = handle,
@@ -67,15 +69,19 @@ class LabService(
         isSuperAdmin: Boolean,
         guess: JsonNode,
     ): LabRoundResponse {
-        val (communityId, handle) = resolve(slug, gameId, userId, isSuperAdmin)
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
-        // judge() first: an invalid guess must not consume the player's single attempt. The stored
-        // round's params are what is judged against, not the freshly drawn ones — same rule as the
-        // real game, where the row is the authority.
-        val stored = store.open(communityId = communityId, gameId = gameId, round = round)
-        val judgement = handle.judge(params = stored.round.params, guess = guess)
+        // Judge against whatever is already stored (peek() never creates or evicts), not against the
+        // freshly chosen round — judging must not be able to change the round, or a guess rejected
+        // for a stale seed/phase would destroy another tester's in-progress round along with it.
+        // Falling back to `round` only applies when nothing is stored yet, in which case record()
+        // below is about to store exactly that.
+        val judged = store.peek(communityId = communityId, gameId = gameId) ?: round
+        val judgement = handle.judge(params = judged.params, guess = guess)
         val result = store.record(
-            communityId = communityId, gameId = gameId, round = stored.round,
+            communityId = communityId, gameId = gameId, round = round,
             userId = userId, guess = guess, judgement = judgement,
         )
         return when (result) {
@@ -92,7 +98,9 @@ class LabService(
         userId: UUID,
         isSuperAdmin: Boolean,
     ): LabRoundResponse {
-        val (communityId, handle) = resolve(slug, gameId, userId, isSuperAdmin)
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
             handle = handle,
@@ -109,7 +117,9 @@ class LabService(
         userId: UUID,
         isSuperAdmin: Boolean,
     ): LabRoundResponse {
-        val (communityId, handle) = resolve(slug, gameId, userId, isSuperAdmin)
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
             handle = handle,
