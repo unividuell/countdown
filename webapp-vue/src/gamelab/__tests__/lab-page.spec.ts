@@ -232,6 +232,19 @@ describe('lab page', () => {
     expect(api.openLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
   })
 
+  it('carries the phase into the switch-player return path, so a phase-two round survives it', async () => {
+    // LabControls builds the "Spieler wechseln" link's href from this path, and LabRoundStore evicts
+    // on seed OR phase mismatch — a return path that drops phase reopens phase one on the same key
+    // and destroys the phase-two round the other tester is still looking at.
+    setQuery({ seed: '42', phase: 'TWO' })
+    await mountPage()
+
+    const href = tool('lab-switch-player').attributes('href')
+    const redirect = new URL(href!, 'https://example.test').searchParams.get('redirect')
+
+    expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=TWO')
+  })
+
   it('reopens the round when only the phase changes', async () => {
     // The two mocked round shapes differ so the assertion cannot pass on the first response alone.
     vi.spyOn(api, 'openLabRound')

@@ -150,7 +150,7 @@ watch(
         :round-phase="round?.phase"
         :award-rule="round?.awardRule"
         :award-points="round?.awardPoints"
-        :return-path="`${route.path}?seed=${seed}`"
+        :return-path="`${route.path}?seed=${seed}&phase=${phase}`"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
         @phase-change="writePhase"
