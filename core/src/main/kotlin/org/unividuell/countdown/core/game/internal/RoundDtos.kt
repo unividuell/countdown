@@ -1,6 +1,8 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.countdown.Round
+import org.unividuell.countdown.core.game.GamePayload
+import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.iam.Avatar
 import tools.jackson.databind.JsonNode
 import java.time.Instant

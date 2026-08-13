@@ -7,15 +7,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.game.internal.GameCatalog
-import org.unividuell.countdown.core.game.internal.GameOutcome
-import org.unividuell.countdown.core.game.internal.GamePayload
-import org.unividuell.countdown.core.game.internal.GameRandom
-import org.unividuell.countdown.core.game.internal.GameSolution
-import org.unividuell.countdown.core.game.internal.GameType
-import org.unividuell.countdown.core.game.internal.Judgement
-import org.unividuell.countdown.core.game.internal.Phase
-import org.unividuell.countdown.core.game.internal.RoundContext
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper

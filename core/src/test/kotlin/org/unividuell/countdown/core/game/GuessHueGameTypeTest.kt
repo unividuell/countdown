@@ -14,13 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
-import org.unividuell.countdown.core.game.internal.GameRandom
 import org.unividuell.countdown.core.game.internal.GuessHueGameType
 import org.unividuell.countdown.core.game.internal.GuessHueOutcome
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
-import org.unividuell.countdown.core.game.internal.InvalidGuessException
-import org.unividuell.countdown.core.game.internal.Phase
-import org.unividuell.countdown.core.game.internal.RoundContext
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper

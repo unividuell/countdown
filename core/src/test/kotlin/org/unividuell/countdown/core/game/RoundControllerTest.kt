@@ -20,7 +20,6 @@ import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameDto
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
-import org.unividuell.countdown.core.game.internal.InvalidGuessException
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayDto

@@ -24,7 +24,6 @@ import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.CurrentRound
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
-import org.unividuell.countdown.core.game.internal.InvalidGuessException
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException

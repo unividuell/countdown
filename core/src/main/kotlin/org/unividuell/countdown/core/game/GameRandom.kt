@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.game.internal
+package org.unividuell.countdown.core.game
 
 import org.unividuell.countdown.core.rng.SeededRandom
 import java.security.SecureRandom
@@ -28,5 +28,19 @@ class GameRandom(val solution: SeededRandom, val presentation: SeededRandom) {
             solution = SeededRandom.fromSeed(source.nextInt()),
             presentation = SeededRandom.fromSeed(source.nextInt()),
         )
+
+        /**
+         * Both streams from one visible seed — the lab's constructor, where the seed rides in the URL
+         * and nothing is secret anyway. The presentation seed is derived so that one number
+         * reproduces a whole round; in production that derivation would be exactly the mistake
+         * [independent] avoids, which is why the two factories are separate and named for their use.
+         */
+        fun fromSeed(seed: Int) = GameRandom(
+            solution = SeededRandom.fromSeed(seed),
+            presentation = SeededRandom.fromSeed(seed xor PRESENTATION_SALT),
+        )
+
+        /** Arbitrary, fixed: it only has to make the two derived streams differ. */
+        private const val PRESENTATION_SALT = 0x5F5F5F5F.toInt()
     }
 }

@@ -15,10 +15,8 @@ import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityRepository
-import org.unividuell.countdown.core.game.internal.AwardRule
 import org.unividuell.countdown.core.game.internal.RoundGameRepository
 import org.unividuell.countdown.core.game.internal.RoundGameStore
-import org.unividuell.countdown.core.game.internal.Award
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode

@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game.internal
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.CommunityEdition
+import org.unividuell.countdown.core.game.Award
 import tools.jackson.databind.JsonNode
 import java.time.Instant
 

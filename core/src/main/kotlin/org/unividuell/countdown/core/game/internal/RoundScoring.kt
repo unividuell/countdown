@@ -3,6 +3,9 @@ package org.unividuell.countdown.core.game.internal
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.unividuell.countdown.core.game.Award
+import org.unividuell.countdown.core.game.Verdict
+import org.unividuell.countdown.core.game.pointsFor
 
 /**
  * Writes the round's points — all of them, every time somebody guesses.
@@ -25,7 +28,7 @@ class RoundScoring(private val plays: RoundPlayRepository) {
             award = Award(rule = round.awardRule, points = round.awardPoints),
             verdicts = guessed.map { play ->
                 Verdict(
-                    playId = requireNotNull(play.id),
+                    id = requireNotNull(play.id),
                     qualifies = play.qualifies == true,
                     // A guessed row always carries a deviation; treating a missing one as "infinitely
                     // far off" keeps a broken row out of the win rather than crashing the round.

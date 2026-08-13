@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.game.internal
+package org.unividuell.countdown.core.game
 
 import tools.jackson.databind.JsonNode
 
@@ -98,3 +98,10 @@ interface GameType<P : Any> {
      */
     fun solution(params: P): GameSolution? = null
 }
+
+/**
+ * The game rejected the guess's shape or range → 400. Thrown by [GameType.judge] before anything is
+ * persisted: a typo must not consume the player's single attempt. Part of the contract, and therefore
+ * exposed — the round's controller and the lab's both map it.
+ */
+class InvalidGuessException(message: String) : RuntimeException(message)

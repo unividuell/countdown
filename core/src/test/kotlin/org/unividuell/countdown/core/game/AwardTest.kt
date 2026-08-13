@@ -4,10 +4,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.CommunityEdition
-import org.unividuell.countdown.core.game.internal.AwardRule
 import org.unividuell.countdown.core.game.internal.NoGameReason
-import org.unividuell.countdown.core.game.internal.Phase
-import org.unividuell.countdown.core.game.internal.awardFor
 import org.unividuell.countdown.core.game.internal.windowReasonOf
 import java.util.UUID
 

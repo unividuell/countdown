@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.game.internal
+package org.unividuell.countdown.core.game
 
 import org.springframework.stereotype.Component
 import tools.jackson.databind.JsonNode

@@ -14,8 +14,6 @@ import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
-import org.unividuell.countdown.core.game.internal.Award
-import org.unividuell.countdown.core.game.internal.AwardRule
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayPoints
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository

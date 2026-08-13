@@ -3,10 +3,6 @@ package org.unividuell.countdown.core.game
 import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
-import org.unividuell.countdown.core.game.internal.Award
-import org.unividuell.countdown.core.game.internal.AwardRule
-import org.unividuell.countdown.core.game.internal.Verdict
-import org.unividuell.countdown.core.game.internal.pointsFor
 import java.util.UUID
 
 class ScoringTest {
@@ -23,8 +19,8 @@ class ScoringTest {
         val points = pointsFor(
             award = phaseOne,
             verdicts = listOf(
-                Verdict(playId = alice, qualifies = true, deviation = 9.0),
-                Verdict(playId = bob, qualifies = false, deviation = 40.0),
+                Verdict(id = alice, qualifies = true, deviation = 9.0),
+                Verdict(id = bob, qualifies = false, deviation = 40.0),
             ),
         )
 
@@ -37,9 +33,9 @@ class ScoringTest {
         val points = pointsFor(
             award = phaseTwo,
             verdicts = listOf(
-                Verdict(playId = alice, qualifies = true, deviation = 12.0),
-                Verdict(playId = bob, qualifies = true, deviation = 3.5),
-                Verdict(playId = carol, qualifies = false, deviation = 0.5),
+                Verdict(id = alice, qualifies = true, deviation = 12.0),
+                Verdict(id = bob, qualifies = true, deviation = 3.5),
+                Verdict(id = carol, qualifies = false, deviation = 0.5),
             ),
         )
 
@@ -53,8 +49,8 @@ class ScoringTest {
         val points = pointsFor(
             award = phaseTwo,
             verdicts = listOf(
-                Verdict(playId = alice, qualifies = true, deviation = 0.0),
-                Verdict(playId = bob, qualifies = true, deviation = 0.0),
+                Verdict(id = alice, qualifies = true, deviation = 0.0),
+                Verdict(id = bob, qualifies = true, deviation = 0.0),
             ),
         )
 
@@ -66,8 +62,8 @@ class ScoringTest {
     @Test
     fun `if nobody qualifies, nobody scores - under either rule`() {
         val verdicts = listOf(
-            Verdict(playId = alice, qualifies = false, deviation = 20.0),
-            Verdict(playId = bob, qualifies = false, deviation = 30.0),
+            Verdict(id = alice, qualifies = false, deviation = 20.0),
+            Verdict(id = bob, qualifies = false, deviation = 30.0),
         )
 
         pointsFor(award = phaseOne, verdicts = verdicts) shouldBe mapOf(alice to 0, bob to 0)

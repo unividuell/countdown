@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.game.internal
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
+import org.unividuell.countdown.core.game.AwardRule
 import tools.jackson.databind.JsonNode
 import java.time.Instant
 import java.util.UUID

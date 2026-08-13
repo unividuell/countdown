@@ -4,12 +4,6 @@ package org.unividuell.countdown.core.game.internal
 class RoundAccessDeniedException(message: String = "No access") : RuntimeException(message)
 
 /**
- * The game rejected the guess's shape or range → 400. Thrown by `judge` before anything is
- * persisted: a typo must not consume the player's single attempt.
- */
-class InvalidGuessException(message: String) : RuntimeException(message)
-
-/**
  * The current round carries no game — outside the window, no run, or a type this build lacks → 409.
  * The state is real and the request is well-formed; it simply cannot be played.
  */

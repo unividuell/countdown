@@ -1,9 +1,13 @@
-package org.unividuell.countdown.core.game.internal
+package org.unividuell.countdown.core.game
 
 import java.util.UUID
 
-/** One stored guess, reduced to what an award rule is allowed to see. */
-data class Verdict(val playId: UUID, val qualifies: Boolean, val deviation: Double)
+/**
+ * One stored guess, reduced to what an award rule is allowed to see. [id] is the caller's own key —
+ * the play row's id in a real round, the tester's user id in the lab — because the arithmetic does
+ * not care which.
+ */
+data class Verdict(val id: UUID, val qualifies: Boolean, val deviation: Double)
 
 /**
  * The points of every guess in a round: a pure function of the round's frozen [award] and the stored
@@ -32,5 +36,5 @@ fun pointsFor(award: Award, verdicts: List<Verdict>): Map<UUID, Int> {
             verdict -> verdict.qualifies && best != null && verdict.deviation == best
         }
     }
-    return verdicts.associate { it.playId to if (scores(it)) award.points else 0 }
+    return verdicts.associate { it.id to if (scores(it)) award.points else 0 }
 }

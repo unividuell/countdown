@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.countdown.Round
+import org.unividuell.countdown.core.game.GameTypeHandle
 
 /**
  * The community's current round, resolved — and, if it carries a game, materialised.
