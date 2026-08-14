@@ -25,19 +25,33 @@ class PlayService(
     private val logger = KotlinLogging.logger {}
 
     /**
-     * Idempotent: the first call writes the clock, every later one only counts up. No hard lockout —
-     * Guess Hue has no time scoring, so a refresh buys a trickster nothing while a lockout would only
-     * punish bad wifi. The threshold at which repeated reveals become a signal arrives with the first
-     * time-scored game; inventing it now would mean inventing it without data.
+     * Which statement runs depends on the game: `GameType.requiresReveal` decides.
+     *
+     * A game that requires a deliberate reveal gets exactly one — the second attempt is a 409. A game
+     * that does not stays idempotent: the first call writes the clock, every later one only counts up.
+     * No hard lockout there — Guess Hue has no time scoring, so a refresh buys a trickster nothing
+     * while a lockout would only punish bad wifi. The threshold at which repeated reveals become a
+     * signal arrives with the first time-scored game; inventing it now would mean inventing it
+     * without data.
      */
     @Transactional
     fun reveal(slug: String, userId: UUID, isSuperAdmin: Boolean): RoundResponse {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
-        plays.revealOrCount(
-            roundGameId = requireNotNull(current.roundGame.id),
-            userId = userId,
-            revealedAt = clock.instant(),
-        )
+        val roundGameId = requireNotNull(current.roundGame.id)
+        val revealedAt = clock.instant()
+        if (current.handle.requiresReveal(current.roundGame.params)) {
+            // Exactly once, decided by the statement rather than by a check — see revealOnce().
+            val opened = plays.revealOnce(
+                roundGameId = roundGameId, userId = userId, revealedAt = revealedAt,
+            )
+            if (opened == 0) throw AlreadyRevealedException()
+        } else {
+            // Idempotent, no lockout: this game does not score on time, so a refresh is free. The
+            // counter still records that somebody looked again.
+            plays.revealOrCount(
+                roundGameId = roundGameId, userId = userId, revealedAt = revealedAt,
+            )
+        }
         return responses.of(current = current, viewerId = userId)
     }
 

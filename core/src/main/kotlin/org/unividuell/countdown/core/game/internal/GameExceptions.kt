@@ -17,3 +17,10 @@ class NotRevealedException(message: String = "the round has not been revealed ye
 
 /** One guess per player and round → 409. Enforced by the `UPDATE`, not by a check. */
 class AlreadyGuessedException(message: String = "already guessed in this round") : RuntimeException(message)
+
+/**
+ * A second reveal of a round that asked for a deliberate one → 409. Only games that answer `true` to
+ * `GameType.requiresReveal` are strict here; for the others a reload is free and counted, not refused.
+ */
+class AlreadyRevealedException(message: String = "this round has already been revealed") :
+    RuntimeException(message)

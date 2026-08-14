@@ -135,6 +135,12 @@ class GuessHueGameType(private val dataset: GuessHueDataset) : GameType<GuessHue
         )
     }
 
+    /**
+     * Never, in either phase: Guess Hue does not score on time, so the clock is statistics rather
+     * than stake, and a deliberate reveal would cost the player a tap for nothing.
+     */
+    override fun requiresReveal(params: GuessHueParams) = false
+
     override fun solution(params: GuessHueParams) = GuessHueSolution(
         targetHue = params.hue,
         toleranceDeg = params.toleranceDeg,

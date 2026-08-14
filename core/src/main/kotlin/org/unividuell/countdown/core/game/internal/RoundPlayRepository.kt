@@ -43,6 +43,23 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
     fun revealOrCount(roundGameId: UUID, userId: UUID, revealedAt: Instant): Int
 
     /**
+     * Reveal **exactly once**, for a game that requires a deliberate one.
+     *
+     * `DO NOTHING` rather than `DO UPDATE`: zero affected rows means the row already existed, which
+     * the caller turns into a 409. The same atomic shape as the single guess, and for the same
+     * reason — two clicks arriving together must not both win, and a read-then-check would let them.
+     */
+    @Modifying
+    @Query(
+        """
+        INSERT INTO game.round_plays (round_game_id, user_id, revealed_at)
+        VALUES (:roundGameId, :userId, :revealedAt)
+        ON CONFLICT (round_game_id, user_id) DO NOTHING
+        """,
+    )
+    fun revealOnce(roundGameId: UUID, userId: UUID, revealedAt: Instant): Int
+
+    /**
      * Record the one guess. **This statement is the rule "one guess per player and round"** — not a
      * check in a service: `WHERE guessed_at IS NULL` makes a second attempt affect zero rows, and
      * zero rows is what the caller turns into a 409.

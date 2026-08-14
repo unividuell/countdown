@@ -82,6 +82,23 @@ interface GameType<P : Any> {
     fun present(params: P): GamePayload
 
     /**
+     * Whether this round needs a **deliberate** reveal before the player may play it.
+     *
+     * `false` means the client may show the playable game straight away; the clock (`revealed_at`)
+     * then starts when the card appears, and a reload costs nothing — pure statistics. `true` means
+     * the player opens the round with an explicit action, and may do so **exactly once**.
+     *
+     * **No default on purpose.** Every game answers it, because the convenient direction is the
+     * unsafe one: inheriting `false` would start somebody's clock without their consent. Contrast
+     * the deleted `revealsOthersBeforeGuess`, which was a bug *because* its right answer was the
+     * same everywhere — here the answers genuinely differ per game, so the switch earns its place.
+     *
+     * Takes [params] rather than a phase: the phase is already in there (Guess Hue's
+     * `toleranceDeg` shows how), and a game may just as well decide from its own content.
+     */
+    fun requiresReveal(params: P): Boolean
+
+    /**
      * Judge [guess] against the frozen params. Throws [InvalidGuessException] on a malformed or
      * out-of-range guess — **before** anything is written, so a typo does not consume the one
      * attempt the player has.

@@ -45,7 +45,11 @@ class RoundResponses(
 
         return RoundResponse(
             round = current.round.toDto(),
-            game = GameDto(id = current.handle.id, displayName = current.handle.displayName),
+            game = GameDto(
+                id = current.handle.id,
+                displayName = current.handle.displayName,
+                requiresReveal = current.handle.requiresReveal(current.roundGame.params),
+            ),
             noGameReason = null,
             payload = mine?.let { current.handle.present(current.roundGame.params) },
             solution = if (hasGuessed) current.handle.solution(current.roundGame.params) else null,

@@ -132,6 +132,17 @@ class PlayServiceTest(
     }
 
     @Test
+    fun `a game that does not ask for a deliberate reveal stays idempotent, and says so in the response`() {
+        val (community, viewer) = aCommunity("Free Reveal")
+
+        val first = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val again = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        first.game.shouldNotBeNull().requiresReveal shouldBe false
+        again.me.shouldNotBeNull().revealedAt shouldBe first.me.shouldNotBeNull().revealedAt
+    }
+
+    @Test
     fun `the announcement hands out no payload before the reveal`() {
         val (community, viewer) = aCommunity("No Payload")
 

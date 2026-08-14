@@ -30,7 +30,11 @@ enum class NoGameReason {
  */
 data class RoundDto(val number: Int, val label: String, val start: Instant, val end: Instant)
 
-data class GameDto(val id: String, val displayName: String)
+/**
+ * [requiresReveal] rides on the game rather than on the round, because it is the game's answer — and
+ * it is therefore absent exactly when there is no game to answer for.
+ */
+data class GameDto(val id: String, val displayName: String, val requiresReveal: Boolean)
 
 /**
  * One player's involvement, as far as the viewer may see it.

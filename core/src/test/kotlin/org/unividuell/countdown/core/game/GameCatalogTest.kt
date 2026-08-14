@@ -24,6 +24,7 @@ class GameCatalogTest {
         override fun draw(random: GameRandom, context: RoundContext) =
             FakeParams(label = "$id-${context.roundNumber}", secret = random.solution.nextInt(1000))
         override fun present(params: FakeParams) = FakePayload(label = params.label)
+        override fun requiresReveal(params: FakeParams) = false
         override fun judge(params: FakeParams, guess: JsonNode) = Judgement(
             qualifies = guess.get("ok")?.asBoolean() == true,
             deviation = 0.0,
@@ -96,5 +97,19 @@ class GameCatalogTest {
         judgement.qualifies shouldBe true
         judgement.outcome shouldBe FakeOutcome(seen = "alpha-12")
         handle.solution(params).shouldNotBeNull()
+    }
+
+    @Test
+    fun `the handle answers the reveal question from a stored params blob`() {
+        val handle = catalog(FakeGame("alpha")).handle("alpha").shouldNotBeNull()
+        val params = handle.draw(
+            random = GameRandom(
+                solution = SeededRandom.fromSeed(7),
+                presentation = SeededRandom.fromSeed(8),
+            ),
+            context = RoundContext(roundNumber = 12, phase = Phase.ONE),
+        )
+
+        handle.requiresReveal(params) shouldBe false
     }
 }

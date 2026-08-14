@@ -20,6 +20,7 @@ class GameExceptionHandler {
         NoGameToPlayException::class,
         NotRevealedException::class,
         AlreadyGuessedException::class,
+        AlreadyRevealedException::class,
     )
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")

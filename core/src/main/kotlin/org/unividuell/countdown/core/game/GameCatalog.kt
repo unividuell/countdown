@@ -33,6 +33,9 @@ class GameTypeHandle<P : Any>(
     /** What may be shown after the viewer's own guess, or `null` for a game that reveals nothing. */
     fun solution(params: JsonNode): GameSolution? = type.solution(paramsOf(params))
 
+    /** Whether this round needs a deliberate reveal, from a stored `params` blob. */
+    fun requiresReveal(params: JsonNode): Boolean = type.requiresReveal(paramsOf(params))
+
     /** The one place the `params` column and this game's `P` meet. */
     private fun paramsOf(params: JsonNode): P = mapper.treeToValue(params, type.paramsType)
 }

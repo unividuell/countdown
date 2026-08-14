@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.post
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.AlreadyGuessedException
+import org.unividuell.countdown.core.game.internal.AlreadyRevealedException
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameDto
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
@@ -54,7 +55,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung"),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
             noGameReason = null,
         )
 
@@ -112,7 +113,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung"),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
             noGameReason = null,
             payload = GuessHuePayload(
                 description = "ein warmes Rot", initHue = 12.5, saturation = 0.6, lightness = 0.45,
@@ -158,7 +159,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung"),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
             noGameReason = null,
             solution = GuessHueSolution(targetHue = 123.5, toleranceDeg = 15.0),
             me = PlayDto(
@@ -217,6 +218,16 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":1.0}"""
+        }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `a second reveal of a strict round is a conflict`() {
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false) } throws
+            AlreadyRevealedException()
+
+        mockMvc.post("/api/communities/team/rounds/current/reveal") {
+            with(principalFor()); with(csrf())
         }.andExpect { status { isConflict() } }
     }
 

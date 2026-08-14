@@ -167,6 +167,14 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     }
 
     @Test
+    fun `no phase of this game needs a deliberate reveal`() {
+        // It does not score on time, so a refresh buys a trickster nothing and a click in front of
+        // the wheel would be a hurdle without a purpose. The switch exists for games that do.
+        game.requiresReveal(draw(phase = Phase.ONE)) shouldBe false
+        game.requiresReveal(draw(phase = Phase.TWO)) shouldBe false
+    }
+
+    @Test
     fun `the solution carries exactly the answer and the arc, and nothing else`() {
         // Second exit out of the server, pinned like the payload: a field added here reaches every
         // player who has guessed.
