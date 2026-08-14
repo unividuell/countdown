@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.game.internal
 
+import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberPoints
 import org.unividuell.countdown.core.community.MemberPointsQuery
@@ -22,9 +23,10 @@ import java.util.UUID
  * rule, and it is decided here rather than in the client, because the client must never *materialise*
  * what it may not have.
  *
- * Deliberately **not** a `@Component`: [MemberPointsConfiguration] builds exactly one
- * `MemberPointsQuery` bean, and a second one of the same type would break that.
+ * The only `MemberPointsQuery` there is. It answers `0` for a community without played rounds all by
+ * itself, which is why no environment needs a stand-in implementation.
  */
+@Component
 class RoundPlayPoints(
     private val plays: RoundPlayRepository,
     private val communities: CommunityQuery,

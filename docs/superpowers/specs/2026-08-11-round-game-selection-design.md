@@ -701,6 +701,12 @@ dieselben Klassen mit derselben Begründung, nur eine Ebene weiter, wo sie zwisc
 Stub entscheiden *können*. `ZeroMemberPoints` wird gelöscht: `game` antwortet für eine Community ohne
 gespielte Runden von sich aus mit `0`. `community` behält `MemberPointsQuery` und `MemberPoints`.
 
+> **Nachtrag (2026-08-14):** Der Umzug hat stattgefunden, die Entscheidung danach nicht mehr:
+> mit den echten Punkten hatte `StubMemberPoints` keinen Zweck mehr — auch nicht auf Staging, dessen
+> Begründung („mit lauter Nullen ist die Rangliste nicht beurteilbar“) die echten Punkte selbst
+> erledigen. `StubMemberPoints`, `MemberPointsConfiguration` und `app.stub-points.enabled` sind
+> gelöscht; `RoundPlayPoints` ist als `@Component` der einzige `MemberPointsQuery`.
+
 ## Tests
 
 TDD, mockk + kotest + MockMvc Kotlin DSL, Testcontainers über den geteilten Postgres.

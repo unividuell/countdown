@@ -34,9 +34,10 @@ spring:
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
   guess-hue:
-    # Empty means: the sample dataset from the classpath. Right for local dev, a boot failure
-    # in production/staging — those set GUESS_HUE_DATASET_PATH to the file that update.sh
-    # decrypts with sops and compose mounts into the container.
+    # Empty means: the sample dataset from the classpath — a boot failure in production/staging,
+    # where update.sh decrypts the real file with sops and compose mounts it into the container.
+    # Locally it stays empty only on a machine without the age key: `.claude/launch.json` fills it
+    # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
@@ -47,8 +48,3 @@ app:
     # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
     # closed the day real testers play a real round there — no code change, no deploy rebuild.
     enabled: true
-  # app.stub-points.enabled is deliberately absent here. MemberPointsConfiguration defaults it to
-  # false, so invented game points are off unless an environment asks for them — staging does, and
-  # a local run can via --app.stub-points.enabled=true (see core/README.md). Setting it true here
-  # would make it true in production too, which is the only reason production ever had to override
-  # it back to false.

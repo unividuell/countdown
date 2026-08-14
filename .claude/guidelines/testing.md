@@ -136,3 +136,14 @@ the defaults (10 per pool, 100 per server) die at ten contexts. The container th
 Keep `ModularityTests` (`ApplicationModules.of(CoreApplication::class.java).verify()`)
 green. Never `@Disabled` it or relax it to hide a boundary violation — fix the
 violation instead.
+
+## After deleting a class, run the suite with `clean`
+
+`./mvnw test` never removes the `.class` file of a source file you deleted, and Spring
+component-scans `target/classes`, not your sources. A deleted `@Component` or
+`@Configuration` therefore keeps being found: deleting one of two `MemberPointsQuery`
+implementations failed 263 tests with `expected single matching bean but found 2`, against
+a tree where only one implementation existed. Read a mass failure right after a deletion as
+a stale-target suspicion first, and confirm with `./mvnw clean test` before believing
+anything the run says about the code. The same trap makes a `git stash` comparison lie:
+without `clean`, the run measures leftover classes instead of the stashed tree.

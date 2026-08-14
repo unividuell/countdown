@@ -113,6 +113,12 @@ Runde noch nicht gespielt". Beide Fälle rendern identisch (kein `+N`-Badge) und
 Richtung, weil kein Zustand existiert, in dem versehentlich etwas durchsickert. Ein zusätzliches
 `liveVisible`-Flag wäre redundant und würde eine Verzweigung einführen, die man falsch auswerten kann.
 
+> **Nachtrag (2026-08-14):** Beide Implementierungen sind wieder weg. Seit die Runden gespielt
+> werden, liefert `RoundPlayPoints` die echten Punkte und antwortet für eine Community ohne
+> gespielte Runden von sich aus mit `0` — `ZeroMemberPoints` und `StubMemberPoints` samt
+> `app.stub-points.enabled` und `MemberPointsConfiguration` sind gelöscht. Der Rest dieses
+> Abschnitts beschreibt den damaligen Stand.
+
 Zwei Implementierungen:
 
 | Bean | Aktiv | Verhalten |
