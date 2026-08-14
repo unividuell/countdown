@@ -1,5 +1,8 @@
 # Die Runde im Frontend — Design
 
+**Umgesetzt** — der Reveal-Schalter, die Rundennummer am Tipp, die geteilte Registry samt
+`GuessHueGame`, `useRound` und die Rundenkarte auf der Community-Seite stehen.
+
 ## Scope
 
 Der Spielerzugang zur echten Runde. Das Backend ist fertig — `GET /api/communities/{slug}/rounds/current`,

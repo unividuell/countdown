@@ -90,6 +90,15 @@ do not block each other.
 
 Judging happens **before** the write, so an invalid guess cannot consume the one attempt.
 
+## Whoever addresses a round says which one
+
+A guess carries the round number it believes it is playing, not just "the current one":
+`GuessRequest` pairs `roundNumber` with the guess, and `PlayService.guess` checks it against the round
+it just resolved before locking anything or judging — a mismatch is `RoundMovedOnException`, mapped to
+409. "The current round" is not the same thing for a client and a server once a day boundary passes
+between the two requests; sending the number costs one field and turns a would-be verdict against a
+target the player never saw into a result the client can react to instead.
+
 ## What is replayable from timestamps needs no column
 
 Guesses are immutable and dated, so every intermediate state can be reconstructed — which is why there
@@ -104,6 +113,19 @@ there is no per-game property to set. `revealsOthersBeforeGuess` was exactly tha
 (see [game-lab.md](game-lab.md)) — it, its branch and its test are gone now that the lab enforces the
 same unconditional rule instead of asking each game to answer it. A participation count ("7 of 15 have
 guessed") is fine at any time — it is a `COUNT`, not a filtered list of guesses.
+
+## A switch with real variance belongs to the game
+
+`GameType.requiresReveal(params)` is abstract, with **no default**, because the convenient answer
+(`false`) is the unsafe one — it starts the player's clock without their consent and knows no lockout.
+Contrast the switch above: the mechanism is the same shape, a per-case boolean, so what separates a bug
+from a contract is not the mechanism but whether the answers actually differ. Guess Hue answers `false`
+unconditionally, in both phases — it scores nothing on time, so the click would be ceremony without
+purpose — but the next time-scored game gets an honest `true`, and inheriting a default could never have
+gotten that one right by accident. "Exactly once" for that `true` case is a statement, not a
+read-then-check: `revealOnce`'s `INSERT … ON CONFLICT (round_game_id, user_id) DO NOTHING` is the same
+shape as `recordGuess`'s `WHERE guessed_at IS NULL` above — zero affected rows is the 409, so two clicks
+racing each other cannot both win.
 
 ## A rule that is meant to grow gets its whole input
 
