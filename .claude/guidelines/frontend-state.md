@@ -64,7 +64,7 @@ tab. So:
   a setup-time constant.** A component mounted on a value that survives reload (the lab keys a
   game component on the round's seed, and reloading reuses the same seed) stays mounted while its
   props change underneath it — `HueWheelReveal`'s once-computed band width and
-  `GuessHueLabGame`'s once-computed reveal gate both went stale this way, one freezing a moving
+  `GuessHueGame`'s once-computed reveal gate both went stale this way, one freezing a moving
   target, the other wedging shut so it could never re-arm. Recompute from props instead, or
   `watch` **without** `immediate`: the default `pre` flush runs the callback and updates the flag
   before the child re-renders, so the child already reads the right value on mount — changing
