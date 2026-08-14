@@ -119,53 +119,14 @@ describe('RoundCard', () => {
     expect(stub.props('disabled')).toBe(true)
   })
 
-  it('names the stake, and calls it provisional under closest-only', () => {
-    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 2 })
-
-    const closest = mountCard({
-      round: aRound({ me, awardRule: 'CLOSEST_ONLY', awardPoints: 2 }),
-      stage: 'done',
-    })
-    const closestText = closest.get('[data-test="round-award"]').text()
-    expect(closestText).toContain('2')
-    expect(closestText).toMatch(/ändern/)
-
-    const all = mountCard({
-      round: aRound({ me, awardRule: 'ALL_QUALIFYING', awardPoints: 2 }),
-      stage: 'done',
-    })
-    const allText = all.get('[data-test="round-award"]').text()
-    expect(allText).toContain('2')
-    expect(allText).not.toMatch(/ändern/)
-  })
-
-  // Phase two: everyone but the closest guess gets 0 under CLOSEST_ONLY, and that 0 is final —
-  // deviations freeze on guessing, so a later, better guess by someone else cannot make this one
-  // any worse. The general sentence's "das kann sich noch ändern" would be a lie twice over here.
-  it('gives a zero score under closest-only its own sentence, not the provisional one', () => {
+  // The card says nothing about points in prose: the member row's live badge already shows the
+  // score, and it appears exactly when the viewer has guessed. See the design doc's addendum.
+  it('leaves the score to the member row instead of restating it', () => {
     const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 0 })
     const round = aRound({ me, awardRule: 'CLOSEST_ONLY', awardPoints: 2 })
     const w = mountCard({ round, stage: 'done' })
 
-    const text = w.get('[data-test="round-award"]').text()
-    expect(text).toContain('Kein Punkt')
-    expect(text).not.toMatch(/ändern/)
-  })
-
-  it('uses the singular for exactly one point', () => {
-    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 1 })
-    const round = aRound({ me, awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
-    const w = mountCard({ round, stage: 'done' })
-
-    expect(w.get('[data-test="round-award"]').text()).toBe('Du hast 1 Punkt.')
-  })
-
-  it('shows no award line before the round has been scored', () => {
-    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: null })
-    const round = aRound({ me, awardRule: 'ALL_QUALIFYING' })
-    const w = mountCard({ round, stage: 'done' })
-
-    expect(w.find('[data-test="round-award"]').exists()).toBe(false)
+    expect(w.text()).not.toMatch(/Punkt/)
   })
 
   it('shows no notice line when nothing went wrong', () => {

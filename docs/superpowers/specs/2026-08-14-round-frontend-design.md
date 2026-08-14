@@ -135,6 +135,12 @@ laufenden Runde **vorläufig**, bis die Runde endet. Eine Punktzahl heißt dort 
 weil der Einsatz ab Phase 2 mit jeder Runde steigt, wächst mit ihm auch, was man verlieren kann. Das
 gehört sichtbar dorthin, wo die Punkte stehen.
 
+> **Nachtrag (2026-08-14):** Der Satz auf der Karte ist wieder entfernt — er stand direkt über der
+> Mitgliederzeile, deren Live-Badge dieselbe Punktzahl schon zeigt, und wiederholte sie nur in Prosa.
+> Damit steht die **Vorläufigkeit** unter `CLOSEST_ONLY` derzeit nirgends in der UI; das ist der Preis
+> und keine Nebenwirkung. `awardRule` und `awardPoints` bleiben auf `RoundResponse`: sie beschreiben
+> die Runde, und der natürliche Ort für den Einsatz ist eher **vor** dem Tipp als danach.
+
 **Die Rundennummer am Tipp.** `POST …/guess` wirkt heute auf „die aktuelle Runde“ — was immer der Server
 dafür hält. Ein Tab, der über die Tagesgrenze offen bleibt, schickt seinen Tipp dann gegen die **neue**
 Runde: geurteilt gegen ein Ziel, das der Spieler nie gesehen hat, mit einer Abweichung, die ihm nichts

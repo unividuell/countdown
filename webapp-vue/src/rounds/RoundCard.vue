@@ -37,25 +37,6 @@ const entries = computed<GameEntry[]>(() => {
   return me ? [me, ...others] : others
 })
 
-/**
- * The provisional clause only holds for a score that could still be overtaken. In `CLOSEST_ONLY`
- * a `0` is final — deviations freeze once guessed, and the best any later guess can do is get
- * closer, never worse — so a `0` gets its own, non-provisional sentence instead of the general
- * one appended to every positive score.
- */
-const awardText = computed<string | null>(() => {
-  const points = props.round?.me?.points ?? null
-  if (points === null) return null
-  const closestOnly = props.round?.awardRule === 'CLOSEST_ONLY'
-  if (points === 0) {
-    return closestOnly ? 'Kein Punkt — ein anderer Tipp lag näher.' : 'Kein Punkt diesmal.'
-  }
-  const noun = points === 1 ? 'Punkt' : 'Punkte'
-  return closestOnly
-    ? `Du hast ${points} ${noun} — bester Tipp bisher, das kann sich noch ändern.`
-    : `Du hast ${points} ${noun}.`
-})
-
 async function onReveal(): Promise<void> {
   await props.reveal()
 }
@@ -130,9 +111,5 @@ async function onGuess(value: unknown): Promise<void> {
       :disabled="busy || stage === 'done'"
       @guess="onGuess"
     />
-
-    <p v-if="awardText !== null" data-test="round-award" class="mt-4 text-sm text-neutral-600">
-      {{ awardText }}
-    </p>
   </div>
 </template>
