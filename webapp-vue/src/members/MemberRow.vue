@@ -7,9 +7,13 @@
  * rather than through reactive state — 120 substeps a second through Vue's scheduler would be
  * pointless work.
  *
- * Resting positions and element references are measured once on mount, so `members` is expected
- * to stay stable for the component's lifetime. A consumer whose roster can change must remount
- * it (for example with a `:key`) rather than mutate the prop in place.
+ * Resting positions and element references are measured once on mount, so `members` must stay
+ * stable *while the flight runs* — a roster that changes mid-flight would leave those
+ * measurements pointing at moved elements. Once the row has settled the measurements are spent
+ * (the transforms are cleared and the swarm released), so from then on `members` may change
+ * freely: new points and a new order are patched in place, keyed by `userId`. Remounting the
+ * component for that would replay the whole fly-in, which belongs to entering the community —
+ * hence `useRoster.refresh`, which updates the roster without dropping the row.
  */
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm } from './swarm'

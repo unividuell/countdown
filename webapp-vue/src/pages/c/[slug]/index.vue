@@ -8,7 +8,7 @@ import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 
 const { community } = useCommunityContext()
-const { members, state, reload: reloadRoster } = useRoster(community.value.slug)
+const { members, state, refresh: refreshRoster } = useRoster(community.value.slug)
 
 // Owned here, not by RoundCard: `useRoster` already lives on this page, and a card that also
 // decided the no-game countdown would mix two responsibilities into one component. So the round
@@ -79,7 +79,7 @@ const settledMembers = computed(() => {
     :notice="notice"
     :reveal="reveal"
     :submit="submit"
-    @guessed="reloadRoster"
+    @guessed="refreshRoster"
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
 </template>

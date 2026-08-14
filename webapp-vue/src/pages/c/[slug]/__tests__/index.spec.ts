@@ -19,7 +19,7 @@ beforeEach(_resetCountdownState)
  * `useRound` is mocked at the page level: its own derivation of `stage` from a `RoundResponse` is
  * already covered by `src/rounds/__tests__/useRound.spec.ts`, so this file only has to check the
  * page's wiring — which branch a given `stage` picks, and that a `guessed` emit reaches the
- * roster's `reload`. Real `ref`/`computed` (not plain objects) so the template's auto-unwrapping
+ * roster's `refresh`. Real `ref`/`computed` (not plain objects) so the template's auto-unwrapping
  * behaves exactly as it does for the real hook.
  */
 vi.mock('@/rounds/useRound', () => ({ useRound: vi.fn() }))
@@ -195,18 +195,64 @@ describe('community home', () => {
     expect(w.findComponent(RoundFallback).exists()).toBe(false)
   })
 
-  it('reloads the roster after a guess', async () => {
+  // The card's own contract (submit went through ⇒ emit `guessed`) is RoundCard's own test's job;
+  // these two only check what the page does with that emit — so the emit is triggered directly
+  // rather than by driving a game component to a real guess.
+  it('takes the new points and the new order after a guess', async () => {
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
-    const getRoster = vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
+    const fry = { userId: 'u2', shortName: 'FRY', fullName: 'fry', bgColorHex: '#bf40b3' }
+    const getRoster = vi
+      .spyOn(api, 'getRoster')
+      .mockResolvedValueOnce([
+        { ...fry, points: { stable: 3 } },
+        { ...amy, points: { stable: 0 } },
+      ])
+      // The server ranks by stable + live, so a guess can reorder the row: amy's live points
+      // overtake fry. The row has to follow that, badges and order both.
+      .mockResolvedValueOnce([
+        { ...amy, points: { stable: 0, live: 5 } },
+        { ...fry, points: { stable: 3 } },
+      ])
     const w = mountPage()
     await flushPromises()
+    // Spies are installed per test but never restored, so `vi.spyOn` returns the same spy and its
+    // counter carries this file's earlier tests. Clearing the calls (queued `Once` implementations
+    // survive) keeps the count below about this test.
     getRoster.mockClear()
 
-    // The card's own contract (submit went through ⇒ emit `guessed`) is RoundCard's own test's
-    // job; this only checks the page reacts to that emit by reloading the roster — so the emit is
-    // triggered directly rather than by driving a game component to a real guess.
     await w.findComponent(RoundCard).vm.$emit('guessed')
     await flushPromises()
+
     expect(getRoster).toHaveBeenCalledTimes(1)
+    expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
+      'amy, 0 Punkte, plus 5 live',
+      'fry, 3 Punkte',
+    ])
+  })
+
+  it('patches the row in place after a guess instead of flying it in again', async () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([
+      {
+        userId: 'u1',
+        shortName: 'AMY',
+        fullName: 'amy',
+        bgColorHex: '#8e44ad',
+        points: { stable: 0 },
+      },
+    ])
+    const w = mountPage()
+    await flushPromises()
+    const rowBefore = w.get('[data-test="row"]').element
+
+    await w.findComponent(RoundCard).vm.$emit('guessed')
+    await flushPromises()
+
+    // MemberRow measures its resting positions in `onMounted`, so a remount is exactly what replays
+    // the fly-in. Same DOM element ⇒ the row was patched, not torn down and rebuilt. The
+    // placeholder is the visible half of that tear-down: `state` must not dip through 'loading'.
+    expect(w.get('[data-test="row"]').element).toBe(rowBefore)
+    expect(w.find('[data-test="roster-placeholder"]').exists()).toBe(false)
   })
 })

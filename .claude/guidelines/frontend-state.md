@@ -72,6 +72,14 @@ tab. So:
   `watch` **without** `immediate`: the default `pre` flush runs the callback and updates the flag
   before the child re-renders, so the child already reads the right value on mount — changing
   `flush` would silently undo that.
+- **A refetch behind an entry animation needs its own path that never leaves `'ready'`.** When the
+  consumer renders the animated component behind `state === 'ready'`, a `reload()` that resets
+  `state` to `'loading'` unmounts it — and a component that measures on mount replays its whole
+  entrance for what was only new numbers. Splitting `useRoster` into `reload` (entering: `state`
+  may swing) and `refresh` (already on screen: replace the data, touch nothing else) is the shape;
+  the mounted list patches values and order in place, keyed by id. A failed *refresh* then keeps
+  the last known data instead of swapping the list for an error line — the action that triggered it
+  did succeed, and the next visit repairs the numbers.
 
 ## Server-authoritative ticking values (countdown pattern)
 
