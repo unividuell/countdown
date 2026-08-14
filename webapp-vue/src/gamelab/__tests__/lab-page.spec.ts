@@ -39,7 +39,7 @@ const { StubGame } = await vi.hoisted(async () => {
 })
 
 vi.mock('@/gamelab/games', () => ({
-  labGameList: [{ id: 'stub', title: 'Stub', component: StubGame }],
+  labGameList: [{ id: 'stub', title: 'Stub' }],
   labGames: { stub: StubGame },
 }))
 

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 /**
- * Guess Hue in the lab: which card the round is on, and the two things only the lab needs — the
- * guess wrapped into the shape the endpoint takes, and the server's `unknown`s narrowed to numbers.
+ * Guess Hue: which card the round is on. Narrows the payload and the solution — both `unknown` by
+ * contract — into the numbers the board and the reveal need, shows the input wheel until the
+ * viewer's guess is spent, then switches to the reading wheel, and plays the reveal choreography
+ * only when that switch just happened for real rather than on a reload into an already-spent round.
  *
  * The switch lives here rather than in the board because this is the place that turns `unknown`
  * into typed values. `myGuess` stays beside `entries` even though it is derivable from it: it has
  * its own documented job — the wheel's starting angle after a reload.
  */
 import { computed, ref, watch } from 'vue'
-import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
-import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
-import type { RevealGuess } from '@/games/guesshue/reveal'
-import type { GuessHuePayload, GuessHueSolution, LabEntryDto } from './types'
+import GuessHueBoard from './GuessHueBoard.vue'
+import GuessHueReveal from './GuessHueReveal.vue'
+import type { RevealGuess } from './reveal'
+import type { GameEntry } from '@/games/GameEntry'
+import type { GuessHuePayload, GuessHueSolution } from './types'
 
 const props = defineProps<{
   payload: GuessHuePayload
@@ -21,8 +24,8 @@ const props = defineProps<{
   myGuess: unknown
   /** What the server revealed once the viewer had spent their guess, or `null`. */
   solution: unknown
-  /** The visible entries, in the order the lab page already builds — mine first. */
-  entries: LabEntryDto[]
+  /** The visible entries, in the order the caller already builds — mine first. */
+  entries: GameEntry[]
   /** Which of them is mine. Never the position: that is a display decision. */
   mineUserId: string | null
 }>()

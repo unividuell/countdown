@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import GuessHueLabGame from '@/gamelab/GuessHueLabGame.vue'
+import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
-import type { GuessHuePayload } from '@/gamelab/types'
+import type { GuessHuePayload } from '@/games/guesshue/types'
 
 const PAYLOAD: GuessHuePayload = {
   description: 'Testbeschreibung einer Farbe.',
@@ -13,7 +13,7 @@ const PAYLOAD: GuessHuePayload = {
 }
 
 function mountAdapter(props: Record<string, unknown> = {}) {
-  return mount(GuessHueLabGame, {
+  return mount(GuessHueGame, {
     props: {
       payload: PAYLOAD,
       outcome: null,
@@ -27,7 +27,7 @@ function mountAdapter(props: Record<string, unknown> = {}) {
   })
 }
 
-describe('GuessHueLabGame', () => {
+describe('GuessHueGame', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
@@ -134,7 +134,7 @@ function entry(userId: string, hue: unknown, bgColorHex = '#3366cc') {
   }
 }
 
-describe('GuessHueLabGame, once the round is spent', () => {
+describe('GuessHueGame, once the round is spent', () => {
   // A sibling `describe`, so the reduced-motion stub above does NOT reach these — that stub would
   // make "does not replay the reveal" pass for the wrong reason. Fake frames only, so the beats
   // stay under the test's control.
