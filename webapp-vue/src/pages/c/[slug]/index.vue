@@ -58,6 +58,18 @@ const settledMembers = computed(() => {
     class="mt-6 aspect-square w-full"
     aria-hidden="true"
   />
+  <!-- Checked ahead of the card branch, not inside it — the same order the roster above already
+       uses for the same reason: a failed load must never be able to render a play affordance on
+       top of it. `stage` can still read `sealed`/`playing`/`done` off a stale response even after
+       `state` has flipped to `failed` (the GET succeeded, a later implicit reveal or guess did
+       not), so gating on `stage` alone would let a dead button win the race against this line. -->
+  <p
+    v-else-if="roundState === 'failed'"
+    data-test="round-error"
+    class="mt-6 text-sm text-neutral-500"
+  >
+    Die Runde konnte nicht geladen werden.
+  </p>
   <RoundCard
     v-else-if="stage !== 'no-game'"
     class="mt-6"
@@ -69,16 +81,5 @@ const settledMembers = computed(() => {
     :submit="submit"
     @guessed="reloadRoster"
   />
-  <!-- A failed load leaves `round` null, same as "no game" — but the two are not the same fact,
-       and the roster right above already draws this distinction for the exact same reason: a
-       transient 500 must say so, not quietly present the running-event fallback as if the round
-       had simply never existed. -->
-  <p
-    v-else-if="roundState === 'failed'"
-    data-test="round-error"
-    class="mt-6 text-sm text-neutral-500"
-  >
-    Die Runde konnte nicht geladen werden.
-  </p>
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
 </template>

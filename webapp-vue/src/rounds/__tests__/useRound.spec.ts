@@ -156,6 +156,34 @@ describe('useRound', () => {
     expect(getSpy).toHaveBeenCalledTimes(2)
   })
 
+  it('marks the load failed when the round cannot be fetched', async () => {
+    vi.spyOn(api, 'getCurrentRound').mockRejectedValue(new Error('network down'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    expect(round().state.value).toBe('failed')
+  })
+
+  it('offers no play affordance when a viewer with no row cannot even open an implicit reveal', async () => {
+    // The super-admin bypass can hand back a game with `me: null`, but `PlayService.playable`
+    // always resolves as a plain member — so the implicit reveal this viewer's `requiresReveal:
+    // false` game triggers 404s. The viewer must not be left on `sealed`: there is no
+    // game-mandated reveal for them to click through.
+    vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
+    vi.spyOn(api, 'revealRound').mockRejectedValue(new ApiError(404, 'not found'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    expect(round().state.value).toBe('failed')
+    expect(round().stage.value).toBe('no-game')
+  })
+
   it('offers a plain retry instead of reloading on a non-409 failure', async () => {
     const getSpy = vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
     vi.spyOn(api, 'revealRound').mockResolvedValue(

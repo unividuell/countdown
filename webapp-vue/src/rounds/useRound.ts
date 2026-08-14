@@ -29,7 +29,12 @@ export function useRound(slug: string): {
   const stage = computed<RoundStage>(() => {
     const current = round.value
     if (current === null || current.game === null) return 'no-game'
-    if (current.me === null) return 'sealed'
+    // `sealed` needs both halves: a viewer with no row *and* a game that actually asked for a
+    // deliberate reveal. Without the second half, a viewer who may look but not play (a
+    // super-admin bypass with no membership row, or a member removed mid-session) would be
+    // handed a button that can only ever 404 — there is no game-mandated reveal for them to
+    // click through, so the honest answer is that this round is not theirs to open.
+    if (current.me === null) return current.game.requiresReveal ? 'sealed' : 'no-game'
     return current.me.guessedAt === null ? 'playing' : 'done'
   })
 

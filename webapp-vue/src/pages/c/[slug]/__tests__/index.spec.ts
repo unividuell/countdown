@@ -182,6 +182,19 @@ describe('community home', () => {
     expect(w.findComponent(RoundCard).exists()).toBe(false)
   })
 
+  // The failed-load branch must win even when `stage` still reads a stale card-worthy value —
+  // e.g. the GET succeeded (so `stage` derived `sealed`) but a later implicit reveal 404'd (so
+  // `state` flipped to `failed`). Pins the ordering fix: `roundState === 'failed'` is checked
+  // ahead of `stage !== 'no-game'`, not the other way round.
+  it('never renders a play affordance when the round failed to load, even with a stale sealed stage', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ failed: true, stage: 'sealed' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-error"]').text()).toContain('konnte nicht')
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
   it('reloads the roster after a guess', async () => {
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
     const getRoster = vi.spyOn(api, 'getRoster').mockResolvedValue([])
