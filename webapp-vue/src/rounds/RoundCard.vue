@@ -37,11 +37,21 @@ const entries = computed<GameEntry[]>(() => {
   return me ? [me, ...others] : others
 })
 
+/**
+ * The provisional clause only holds for a score that could still be overtaken. In `CLOSEST_ONLY`
+ * a `0` is final — deviations freeze once guessed, and the best any later guess can do is get
+ * closer, never worse — so a `0` gets its own, non-provisional sentence instead of the general
+ * one appended to every positive score.
+ */
 const awardText = computed<string | null>(() => {
   const points = props.round?.me?.points ?? null
   if (points === null) return null
+  const closestOnly = props.round?.awardRule === 'CLOSEST_ONLY'
+  if (points === 0) {
+    return closestOnly ? 'Kein Punkt — ein anderer Tipp lag näher.' : 'Kein Punkt diesmal.'
+  }
   const noun = points === 1 ? 'Punkt' : 'Punkte'
-  return props.round?.awardRule === 'CLOSEST_ONLY'
+  return closestOnly
     ? `Du hast ${points} ${noun} — bester Tipp bisher, das kann sich noch ändern.`
     : `Du hast ${points} ${noun}.`
 })
@@ -62,10 +72,32 @@ async function onGuess(value: unknown): Promise<void> {
 </script>
 
 <template>
-  <div data-test="round-card" class="rounded-xl border border-neutral-200 bg-white p-6">
+  <!--
+    No chrome at this level: the game component brings its own bordered frame (see
+    GuessHueBoard/GuessHueReveal), so the sealed and the unrenderable face carry the frame
+    themselves — the only two faces that are not already framed by something else — and the
+    playing/done face renders the game bare, exactly as the lab page does. A card inside a card
+    reads as clutter and, on a phone, costs the wheel width to a doubled padding.
+  -->
+  <div data-test="round-card">
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
 
-    <div v-if="stage === 'sealed'" class="flex flex-col items-center gap-4 text-center">
+    <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
+         for a game this build cannot render is just as unrenderable as a playing one — offering
+         "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
+         later. -->
+    <p
+      v-if="component === null"
+      data-test="round-unrenderable"
+      class="rounded-xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600"
+    >
+      Für „{{ round?.game?.displayName }}“ gibt es in dieser Version noch keine Ansicht.
+    </p>
+
+    <div
+      v-else-if="stage === 'sealed'"
+      class="flex flex-col items-center gap-4 rounded-xl border border-neutral-200 bg-white p-6 text-center"
+    >
       <p class="text-base font-semibold text-neutral-900">{{ round?.game?.displayName }}</p>
       <button
         type="button"
@@ -78,23 +110,18 @@ async function onGuess(value: unknown): Promise<void> {
       </button>
     </div>
 
-    <template v-else-if="stage === 'playing' || stage === 'done'">
-      <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
-        Für „{{ round?.game?.displayName }}“ gibt es in dieser Version noch keine Ansicht.
-      </p>
-      <component
-        :is="component"
-        v-else
-        :payload="round?.payload"
-        :outcome="round?.me?.outcome ?? null"
-        :my-guess="round?.me?.guess ?? null"
-        :solution="round?.solution"
-        :entries="entries"
-        :mine-user-id="round?.me?.userId ?? null"
-        :disabled="busy || stage === 'done'"
-        @guess="onGuess"
-      />
-    </template>
+    <component
+      :is="component"
+      v-else-if="stage === 'playing' || stage === 'done'"
+      :payload="round?.payload"
+      :outcome="round?.me?.outcome ?? null"
+      :my-guess="round?.me?.guess ?? null"
+      :solution="round?.solution"
+      :entries="entries"
+      :mine-user-id="round?.me?.userId ?? null"
+      :disabled="busy || stage === 'done'"
+      @guess="onGuess"
+    />
 
     <p v-if="awardText !== null" data-test="round-award" class="mt-4 text-sm text-neutral-600">
       {{ awardText }}

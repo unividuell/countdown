@@ -139,6 +139,40 @@ describe('RoundCard', () => {
     expect(allText).not.toMatch(/ändern/)
   })
 
+  // Phase two: everyone but the closest guess gets 0 under CLOSEST_ONLY, and that 0 is final —
+  // deviations freeze on guessing, so a later, better guess by someone else cannot make this one
+  // any worse. The general sentence's "das kann sich noch ändern" would be a lie twice over here.
+  it('gives a zero score under closest-only its own sentence, not the provisional one', () => {
+    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 0 })
+    const round = aRound({ me, awardRule: 'CLOSEST_ONLY', awardPoints: 2 })
+    const w = mountCard({ round, stage: 'done' })
+
+    const text = w.get('[data-test="round-award"]').text()
+    expect(text).toContain('Kein Punkt')
+    expect(text).not.toMatch(/ändern/)
+  })
+
+  it('uses the singular for exactly one point', () => {
+    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 1 })
+    const round = aRound({ me, awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
+    const w = mountCard({ round, stage: 'done' })
+
+    expect(w.get('[data-test="round-award"]').text()).toBe('Du hast 1 Punkt.')
+  })
+
+  it('shows no award line before the round has been scored', () => {
+    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: null })
+    const round = aRound({ me, awardRule: 'ALL_QUALIFYING' })
+    const w = mountCard({ round, stage: 'done' })
+
+    expect(w.find('[data-test="round-award"]').exists()).toBe(false)
+  })
+
+  it('shows no notice line when nothing went wrong', () => {
+    const w = mountCard({ round: aRound(), stage: 'sealed', notice: null })
+    expect(w.find('[data-test="round-notice"]').exists()).toBe(false)
+  })
+
   it('emits guessed so the page can refresh the standings', async () => {
     const submit = vi.fn().mockResolvedValue(undefined)
     const round = aRound({ me: aPlay() })
@@ -180,5 +214,18 @@ describe('RoundCard', () => {
 
     expect(w.find('[data-test="round-unrenderable"]').exists()).toBe(true)
     expect(w.findComponent(StubGame).exists()).toBe(false)
+  })
+
+  // A missing renderer is exactly as unrenderable while sealed as while playing — offering
+  // "Aufdecken" first and admitting the gap only once revealed would be the same lie, one step
+  // later.
+  it('says so instead of offering a reveal when the sealed game has no renderer', () => {
+    const round = aRound({
+      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: true },
+    })
+    const w = mountCard({ round, stage: 'sealed' })
+
+    expect(w.find('[data-test="round-unrenderable"]').exists()).toBe(true)
+    expect(w.find('[data-test="round-reveal"]').exists()).toBe(false)
   })
 })

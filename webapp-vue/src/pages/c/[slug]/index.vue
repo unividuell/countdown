@@ -69,5 +69,16 @@ const settledMembers = computed(() => {
     :submit="submit"
     @guessed="reloadRoster"
   />
+  <!-- A failed load leaves `round` null, same as "no game" — but the two are not the same fact,
+       and the roster right above already draws this distinction for the exact same reason: a
+       transient 500 must say so, not quietly present the running-event fallback as if the round
+       had simply never existed. -->
+  <p
+    v-else-if="roundState === 'failed'"
+    data-test="round-error"
+    class="mt-6 text-sm text-neutral-500"
+  >
+    Die Runde konnte nicht geladen werden.
+  </p>
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
 </template>

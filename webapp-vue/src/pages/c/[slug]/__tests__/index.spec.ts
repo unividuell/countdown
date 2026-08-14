@@ -25,11 +25,16 @@ beforeEach(_resetCountdownState)
 vi.mock('@/rounds/useRound', () => ({ useRound: vi.fn() }))
 
 function mockUseRound(
-  over: { stage?: RoundStage; loading?: boolean; round?: RoundResponse | null } = {},
+  over: {
+    stage?: RoundStage
+    loading?: boolean
+    failed?: boolean
+    round?: RoundResponse | null
+  } = {},
 ): ReturnType<typeof useRound> {
   return {
     round: ref(over.round ?? null),
-    state: ref(over.loading ? 'loading' : 'ready'),
+    state: ref(over.loading ? 'loading' : over.failed ? 'failed' : 'ready'),
     stage: computed(() => over.stage ?? 'no-game'),
     busy: ref(false),
     notice: ref(null),
@@ -163,6 +168,18 @@ describe('community home', () => {
     expect(w.find('[data-test="round-placeholder"]').exists()).toBe(true)
     expect(w.findComponent(RoundCard).exists()).toBe(false)
     expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  // Mirrors the roster's own `roster-error` branch just above it: a transient 500 must say so,
+  // not fall through to the "no game" fallback — which for a running event reads as "Und jetzt
+  // viel Spaß zusammen!", i.e. the opposite of "something is wrong, try again later".
+  it('says so instead of falling back when the round failed to load', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ failed: true }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-error"]').text()).toContain('konnte nicht')
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
   })
 
   it('reloads the roster after a guess', async () => {
