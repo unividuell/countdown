@@ -38,23 +38,28 @@ export function useRound(slug: string): {
     return current.me.guessedAt === null ? 'playing' : 'done'
   })
 
-  async function reload(): Promise<void> {
-    round.value = await getCurrentRound(slug)
-  }
-
   /**
    * A game that needs no deliberate reveal is revealed as soon as its card exists — that is what keeps
    * `revealed_at` meaning „the payload went out“ rather than „some page was fetched“, and it is why the
-   * `GET` stays read-only.
+   * `GET` stays read-only. This belongs to *landing on a round*, not to *mounting the composable*: a
+   * 409 refetch can land a different round (the day boundary passed under an open tab, which is
+   * exactly the case the round-number envelope on a guess exists for) with `me: null` again, and that
+   * round deserves the same one-shot implicit reveal the first one got — otherwise a
+   * `requiresReveal: false` game strands the player behind `no-game`'s fallback until they reload the
+   * page by hand, worse than the `sealed` button they used to land on by accident.
    */
+  async function reload(): Promise<void> {
+    round.value = await getCurrentRound(slug)
+    const game = round.value.game
+    if (game !== null && round.value.me == null && !game.requiresReveal) {
+      round.value = await revealRound(slug)
+    }
+  }
+
   async function load(): Promise<void> {
     state.value = 'loading'
     try {
       await reload()
-      const game = round.value?.game ?? null
-      if (game !== null && round.value?.me == null && !game.requiresReveal) {
-        round.value = await revealRound(slug)
-      }
       state.value = 'ready'
     } catch (err) {
       console.error('[round] failed to load', err)

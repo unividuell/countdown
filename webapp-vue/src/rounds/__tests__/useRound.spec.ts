@@ -156,6 +156,40 @@ describe('useRound', () => {
     expect(getSpy).toHaveBeenCalledTimes(2)
   })
 
+  it('reveals again after a 409 lands a new round, not just refetches it', async () => {
+    // The day-boundary case the round-number envelope exists for: a 409 on `submit` means the
+    // round the client believed it was playing is gone, and the refetch lands the *next* round —
+    // with `me: null` again, exactly like the first landing. A `requiresReveal: false` game must
+    // get the same implicit reveal here that it got on mount, or the player is stranded on
+    // `no-game`'s fallback ("Und jetzt viel Spaß zusammen!") in front of a live, playable round.
+    const nextRound = {
+      number: 13,
+      label: 'T-13',
+      start: '2026-08-15T10:00:00Z',
+      end: '2026-08-16T10:00:00Z',
+    }
+    vi.spyOn(api, 'getCurrentRound')
+      .mockResolvedValueOnce(announced())
+      .mockResolvedValueOnce(announced({ round: nextRound }))
+    const revealSpy = vi
+      .spyOn(api, 'revealRound')
+      .mockResolvedValueOnce(announced({ me: aPlay(), payload: { description: 'x' } }))
+      .mockResolvedValueOnce(
+        announced({ round: nextRound, me: aPlay(), payload: { description: 'y' } }),
+      )
+    vi.spyOn(api, 'submitGuess').mockRejectedValue(new ApiError(409, 'conflict'))
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    await round().submit({ hue: 1 })
+
+    expect(revealSpy).toHaveBeenCalledTimes(2)
+    expect(round().round.value?.round?.number).toBe(13)
+    expect(round().stage.value).toBe('playing')
+  })
+
   it('marks the load failed when the round cannot be fetched', async () => {
     vi.spyOn(api, 'getCurrentRound').mockRejectedValue(new Error('network down'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
