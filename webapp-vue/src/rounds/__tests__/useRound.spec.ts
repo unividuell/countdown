@@ -155,4 +155,24 @@ describe('useRound', () => {
     expect(round().notice.value).not.toBeNull()
     expect(getSpy).toHaveBeenCalledTimes(2)
   })
+
+  it('offers a plain retry instead of reloading on a non-409 failure', async () => {
+    const getSpy = vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
+    vi.spyOn(api, 'revealRound').mockResolvedValue(
+      announced({ me: aPlay(), payload: { description: 'x' } }),
+    )
+    vi.spyOn(api, 'submitGuess').mockRejectedValue(new Error('network down'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+    getSpy.mockClear()
+
+    await round().submit({ hue: 1 })
+
+    expect(round().notice.value).toBe('Das hat nicht funktioniert. Versuch es nochmal.')
+    // The distinguishing half: a non-409 failure must not trigger the 409 branch's reload.
+    expect(getSpy).not.toHaveBeenCalled()
+  })
 })

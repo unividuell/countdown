@@ -68,7 +68,15 @@ export interface AcceptResponse {
   slug: string
 }
 
+/**
+ * Shared by `CountdownResponse` and `RoundResponse`, whose server-side DTOs
+ * (`countdown.internal.RoundDto` and `game.internal.RoundDto`) are deliberately two separate
+ * Kotlin types — each module's wire format may drift from the other's without a shared type
+ * forcing them together. The client has one consumer, and the shapes are identical today; if
+ * that ever stops being true, TypeScript will say so at the call site that first disagrees.
+ */
 export interface Round {
+  /** Signed T-offset. A larger number is *earlier* in time. */
   number: number
   label: string
   start: string
@@ -141,14 +149,6 @@ export interface SuperAdminUserDetail {
 export type NoGameReason = 'NOT_SCHEDULED' | 'BEFORE_WINDOW' | 'AFTER_WINDOW' | 'NO_GAME_TYPE'
 export type AwardRule = 'ALL_QUALIFYING' | 'CLOSEST_ONLY'
 
-export interface RoundDto {
-  /** Signed T-offset. A larger number is *earlier* in time. */
-  number: number
-  label: string
-  start: string
-  end: string
-}
-
 export interface GameDto {
   id: string
   displayName: string
@@ -171,7 +171,7 @@ export interface PlayDto {
 
 export interface RoundResponse {
   /** `null` when there is no grid at all — no run, or no target date. */
-  round: RoundDto | null
+  round: Round | null
   game: GameDto | null
   noGameReason: NoGameReason | null
   /** Only once the viewer has revealed. The shape belongs to the game. */
