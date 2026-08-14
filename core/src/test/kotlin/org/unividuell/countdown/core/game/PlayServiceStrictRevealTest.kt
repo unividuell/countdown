@@ -1,6 +1,8 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -103,7 +105,8 @@ class PlayServiceStrictRevealTest(
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )
 
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val res = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        res.game.shouldNotBeNull().requiresReveal shouldBe true
 
         shouldThrow<AlreadyRevealedException> {
             play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)

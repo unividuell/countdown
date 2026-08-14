@@ -1,8 +1,9 @@
 package org.unividuell.countdown.core.game
 
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.verify
+import io.mockk.slot
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -31,6 +32,7 @@ import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.game.internal.RoundResponse
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.principalFor
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.time.Instant
 import java.util.UUID
@@ -133,8 +135,9 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST guess passes the body through untouched`() {
+        val body = slot<JsonNode>()
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = capture(body))
         } returns RoundResponse(round = null, game = null, noGameReason = null)
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
@@ -143,9 +146,10 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect { status { isOk() } }
 
-        verify {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
-        }
+        // The inner guess, not the envelope: the envelope carries roundNumber, but that belongs to
+        // the framework, not to the game — the game must see exactly what it would have seen before
+        // the envelope existed.
+        body.captured shouldBe mapper.readTree("""{"hue":123.5}""")
     }
 
     @Test
