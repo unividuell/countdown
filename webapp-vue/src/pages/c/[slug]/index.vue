@@ -2,11 +2,27 @@
 import { computed } from 'vue'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
+import { useRound } from '@/rounds/useRound'
 import MemberRow from '@/members/MemberRow.vue'
+import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 
 const { community } = useCommunityContext()
-const { members, state } = useRoster(community.value.slug)
+const { members, state, reload: reloadRoster } = useRoster(community.value.slug)
+
+// Owned here, not by RoundCard: `useRoster` already lives on this page, and a card that also
+// decided the no-game countdown would mix two responsibilities into one component. So the round
+// is fetched exactly once, here, and its whole return goes down to RoundCard as props — a second
+// `useRound` call (e.g. inside the card) would fetch the same round twice.
+const {
+  round,
+  state: roundState,
+  stage,
+  busy,
+  notice,
+  reveal,
+  submit,
+} = useRound(community.value.slug)
 
 // null means "not known yet" and holds the card at a placeholder, so only 'loading' gets it. A
 // failed roster never retries, so mapping it to null would hide the card forever; [] lets the
@@ -31,5 +47,27 @@ const settledMembers = computed(() => {
     </p>
     <div v-else data-test="roster-placeholder" class="w-full" aria-hidden="true" />
   </section>
-  <RoundFallback :community="community" :members="settledMembers" class="mt-6" />
+
+  <!-- The round itself needs the same stable-height treatment as the roster above: while it is
+       still loading, neither the card nor the fallback is the right answer yet, and showing one
+       only to swap it for the other once the response lands would flash a countdown or a game
+       board that was never really there. -->
+  <div
+    v-if="roundState === 'loading'"
+    data-test="round-placeholder"
+    class="mt-6 aspect-square w-full"
+    aria-hidden="true"
+  />
+  <RoundCard
+    v-else-if="stage !== 'no-game'"
+    class="mt-6"
+    :round="round"
+    :stage="stage"
+    :busy="busy"
+    :notice="notice"
+    :reveal="reveal"
+    :submit="submit"
+    @guessed="reloadRoster"
+  />
+  <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
 </template>

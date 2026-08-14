@@ -1,16 +1,47 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import * as api from '@/api/communities'
 import { communityKey } from '@/communities/context'
-import type { CommunityResponse } from '@/api/types'
+import type { CommunityResponse, RoundResponse } from '@/api/types'
 import Page from '@/pages/c/[slug]/index.vue'
+import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import { useRound } from '@/rounds/useRound'
+import type { RoundStage } from '@/rounds/useRound'
 
 // The page mounts RoundFallback, which uses the module-level countdown clock.
 enableAutoUnmount(afterEach)
 beforeEach(_resetCountdownState)
+
+/**
+ * `useRound` is mocked at the page level: its own derivation of `stage` from a `RoundResponse` is
+ * already covered by `src/rounds/__tests__/useRound.spec.ts`, so this file only has to check the
+ * page's wiring — which branch a given `stage` picks, and that a `guessed` emit reaches the
+ * roster's `reload`. Real `ref`/`computed` (not plain objects) so the template's auto-unwrapping
+ * behaves exactly as it does for the real hook.
+ */
+vi.mock('@/rounds/useRound', () => ({ useRound: vi.fn() }))
+
+function mockUseRound(
+  over: { stage?: RoundStage; loading?: boolean; round?: RoundResponse | null } = {},
+): ReturnType<typeof useRound> {
+  return {
+    round: ref(over.round ?? null),
+    state: ref(over.loading ? 'loading' : 'ready'),
+    stage: computed(() => over.stage ?? 'no-game'),
+    busy: ref(false),
+    notice: ref(null),
+    reveal: vi.fn().mockResolvedValue(undefined),
+    submit: vi.fn().mockResolvedValue(undefined),
+    reload: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
+beforeEach(() => {
+  vi.mocked(useRound).mockReturnValue(mockUseRound())
+})
 
 const community: CommunityResponse = {
   id: 'c1',
@@ -107,5 +138,45 @@ describe('community home', () => {
     const w = mountPage()
     await flushPromises()
     expect(w.findComponent(RoundFallback).props('members')).toEqual([])
+  })
+
+  it('shows the round card when the round has a game', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.findComponent(RoundCard).exists()).toBe(true)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  it('falls back to the countdown when the round has no game', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'no-game' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.findComponent(RoundFallback).exists()).toBe(true)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+  })
+
+  it('does not flip between the card and the fallback while the round is loading', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ loading: true }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-placeholder"]').exists()).toBe(true)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  it('reloads the roster after a guess', async () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    const getRoster = vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    await flushPromises()
+    getRoster.mockClear()
+
+    // The card's own contract (submit went through ⇒ emit `guessed`) is RoundCard's own test's
+    // job; this only checks the page reacts to that emit by reloading the roster — so the emit is
+    // triggered directly rather than by driving a game component to a real guess.
+    await w.findComponent(RoundCard).vm.$emit('guessed')
+    await flushPromises()
+    expect(getRoster).toHaveBeenCalledTimes(1)
   })
 })
