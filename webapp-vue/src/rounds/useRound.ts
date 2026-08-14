@@ -1,0 +1,99 @@
+import { computed, onMounted, ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
+import { ApiError } from '@/api/client'
+import { getCurrentRound, revealRound, submitGuess } from '@/api/rounds'
+import type { RoundResponse } from '@/api/types'
+
+/** Which of the card's faces the current answer calls for. */
+export type RoundStage = 'no-game' | 'sealed' | 'playing' | 'done'
+
+export function useRound(slug: string): {
+  round: Ref<RoundResponse | null>
+  state: Ref<'loading' | 'ready' | 'failed'>
+  stage: ComputedRef<RoundStage>
+  busy: Ref<boolean>
+  notice: Ref<string | null>
+  reveal: () => Promise<void>
+  submit: (guess: unknown) => Promise<void>
+  reload: () => Promise<void>
+} {
+  const round = ref<RoundResponse | null>(null)
+  const state = ref<'loading' | 'ready' | 'failed'>('loading')
+  const busy = ref(false)
+  const notice = ref<string | null>(null)
+
+  /**
+   * Derived, never stored: a local „I have guessed“ can disagree with the server, the answer cannot.
+   * `sealed` is the only face that exists because a *game* asked for it.
+   */
+  const stage = computed<RoundStage>(() => {
+    const current = round.value
+    if (current === null || current.game === null) return 'no-game'
+    if (current.me === null) return 'sealed'
+    return current.me.guessedAt === null ? 'playing' : 'done'
+  })
+
+  async function reload(): Promise<void> {
+    round.value = await getCurrentRound(slug)
+  }
+
+  /**
+   * A game that needs no deliberate reveal is revealed as soon as its card exists — that is what keeps
+   * `revealed_at` meaning „the payload went out“ rather than „some page was fetched“, and it is why the
+   * `GET` stays read-only.
+   */
+  async function load(): Promise<void> {
+    state.value = 'loading'
+    try {
+      await reload()
+      const game = round.value?.game ?? null
+      if (game !== null && round.value?.me == null && !game.requiresReveal) {
+        round.value = await revealRound(slug)
+      }
+      state.value = 'ready'
+    } catch (err) {
+      console.error('[round] failed to load', err)
+      state.value = 'failed'
+    }
+  }
+
+  async function reveal(): Promise<void> {
+    await run(async () => {
+      round.value = await revealRound(slug)
+    })
+  }
+
+  async function submit(guess: unknown): Promise<void> {
+    const number = round.value?.round?.number
+    if (number === undefined) return
+    await run(async () => {
+      round.value = await submitGuess(slug, number, guess)
+    })
+  }
+
+  /**
+   * A 409 is not an error to show: the round moved on, or it was already revealed or already guessed.
+   * In every one of those cases the server knows better, so refetch and render the truth with one line
+   * of explanation instead of a failure the player cannot act on.
+   */
+  async function run(action: () => Promise<void>): Promise<void> {
+    busy.value = true
+    notice.value = null
+    try {
+      await action()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        notice.value = 'Die Runde hat sich geändert — hier ist der aktuelle Stand.'
+        await reload().catch((e) => console.error('[round] reload after 409 failed', e))
+      } else {
+        console.error('[round] action failed', err)
+        notice.value = 'Das hat nicht funktioniert. Versuch es nochmal.'
+      }
+    } finally {
+      busy.value = false
+    }
+  }
+
+  onMounted(load)
+  return { round, state, stage, busy, notice, reveal, submit, reload }
+}
