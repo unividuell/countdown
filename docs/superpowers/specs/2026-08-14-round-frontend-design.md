@@ -101,6 +101,13 @@ Trägt die Runde kein Spiel, entscheidet `noGameReason`: `NOT_SCHEDULED`, `BEFOR
 Termin“, Gewinner-Meldung). `NO_GAME_TYPE` ist keiner davon und bekommt eine eigene, nüchterne Meldung —
 es ist ein Betriebszustand, nicht ein Zeitpunkt.
 
+**Umsetzungsstand:** Heute laufen alle vier Gründe unterschiedslos in `stage === 'no-game'` und damit in
+`RoundFallback`; `noGameReason` kommt zwar auf der Leitung an, wird aber nirgends gelesen. Die eigene,
+nüchterne Meldung ist stattdessen an einen anderen Fall gegangen — die clientseitige „für dieses Spiel
+gibt es noch keine Ansicht“-Zeile in `RoundCard`, wenn die Registry keine Komponente für `game.id`
+kennt. Das trifft zufällig denselben Ton, ist aber ein anderer Sachverhalt (Build liegt hinter dem
+Content zurück, nicht: der Katalog ist leer) — die eigentliche `NO_GAME_TYPE`-Meldung bleibt offen.
+
 ## Die Karte sitzt, wo der Ersatz schon steht
 
 `webapp-vue/src/pages/c/[slug]/index.vue` rendert heute die Mitgliederzeile und darunter
@@ -185,6 +192,10 @@ der Feldmengen-Disziplin, die diese Spec-Reihe eingeführt hat.
   entscheidet erst das Spiel, das darauf wertet.
 - **Die Runde auf eigener Route.** Wenn die Community-Seite zu voll wird, zieht die Karte auf
   `/c/[slug]/round` — die Zustandsableitung und der implizite Reveal gelten dort unverändert.
+- **Der lesende, nicht-spielende Betrachter.** Ein Super-Admin, der nicht Mitglied ist, darf laut
+  Backend-Bypass zusehen, aber nicht mitspielen — die ehrliche Ansicht dafür wäre eine vierte, rein
+  lesende Kartenfläche (Rundenname und Status, kein Knopf), die es noch nicht gibt; heute bekommt
+  dieser Betrachter stattdessen die Lade-Fehlermeldung, weil der implizite Reveal für ihn scheitert.
 
 ## Feed knowledge back
 

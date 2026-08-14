@@ -24,7 +24,7 @@ class GameCatalogTest {
         override fun draw(random: GameRandom, context: RoundContext) =
             FakeParams(label = "$id-${context.roundNumber}", secret = random.solution.nextInt(1000))
         override fun present(params: FakeParams) = FakePayload(label = params.label)
-        override fun requiresReveal(params: FakeParams) = false
+        override fun requiresReveal(params: FakeParams) = params.secret % 2 == 0
         override fun judge(params: FakeParams, guess: JsonNode) = Judgement(
             qualifies = guess.get("ok")?.asBoolean() == true,
             deviation = 0.0,
@@ -102,14 +102,12 @@ class GameCatalogTest {
     @Test
     fun `the handle answers the reveal question from a stored params blob`() {
         val handle = catalog(FakeGame("alpha")).handle("alpha").shouldNotBeNull()
-        val params = handle.draw(
-            random = GameRandom(
-                solution = SeededRandom.fromSeed(7),
-                presentation = SeededRandom.fromSeed(8),
-            ),
-            context = RoundContext(roundNumber = 12, phase = Phase.ONE),
-        )
 
-        handle.requiresReveal(params) shouldBe false
+        // `FakeGame.requiresReveal` answers off `secret`'s parity, not a constant — a fake that
+        // returns the same value regardless of `params` would keep this test green even if
+        // `GameTypeHandle.requiresReveal` were hard-coded, so both directions are asserted through
+        // the handle, from blobs the handle itself never drew.
+        handle.requiresReveal(mapper.valueToTree(FakeParams(label = "even", secret = 4))) shouldBe true
+        handle.requiresReveal(mapper.valueToTree(FakeParams(label = "odd", secret = 5))) shouldBe false
     }
 }

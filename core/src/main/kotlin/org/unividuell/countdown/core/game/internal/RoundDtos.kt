@@ -78,8 +78,10 @@ data class RoundResponse(
     val others: List<PlayDto> = emptyList(),
     /**
      * The rule and the stake this round was frozen with — `null` exactly when there is no game. They
-     * belong to the round, not to the game type: the same game pays differently in phase two, and the
-     * client needs both to say that a `CLOSEST_ONLY` score is provisional („bester Tipp bisher“).
+     * belong to the round, not to the game type: the same game pays differently in phase two.
+     * `awardRule` is what the copy needs — it is how `RoundCard` says a `CLOSEST_ONLY` score is
+     * provisional („bester Tipp bisher“). `awardPoints` is published for the stake display that is
+     * not built yet; keep it, the lab's response already carries it and a later face will name it.
      */
     val awardRule: AwardRule? = null,
     val awardPoints: Int? = null,

@@ -110,9 +110,17 @@ async function onGuess(value: unknown): Promise<void> {
       </button>
     </div>
 
+    <!--
+      Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
+      `reload()`, which can land a *different* round in place (the day boundary passed underneath
+      the click) without this `RoundCard` ever unmounting. Without the key the component instance
+      would survive that change carrying the previous round's local state — a half-turned wheel
+      angle, in Guess Hue's case — the same reasoning the lab applies keyed on `round.seed`.
+    -->
     <component
       :is="component"
       v-else-if="stage === 'playing' || stage === 'done'"
+      :key="round?.round?.number"
       :payload="round?.payload"
       :outcome="round?.me?.outcome ?? null"
       :my-guess="round?.me?.guess ?? null"
