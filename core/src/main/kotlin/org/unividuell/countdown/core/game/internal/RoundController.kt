@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.iam.AuthenticatedUser
-import tools.jackson.databind.JsonNode
 
 @RestController
 @RequestMapping("/api/communities/{slug}/rounds")
@@ -34,16 +33,17 @@ class RoundController(
         @PathVariable slug: String,
     ): RoundResponse = plays.reveal(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
 
-    /** The one guess. The body is the game's own shape — the framework does not look inside. */
+    /** The one guess. The body is the game's own shape, plus the round it is meant for. */
     @PostMapping("/current/guess")
     fun guess(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
-        @RequestBody guess: JsonNode,
+        @RequestBody body: GuessRequest,
     ): RoundResponse = plays.guess(
         slug = slug,
         userId = me.id,
         isSuperAdmin = me.isSuperAdmin,
-        guess = guess,
+        roundNumber = body.roundNumber,
+        guess = body.guess,
     )
 }

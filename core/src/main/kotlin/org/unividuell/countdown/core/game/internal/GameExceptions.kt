@@ -24,3 +24,10 @@ class AlreadyGuessedException(message: String = "already guessed in this round")
  */
 class AlreadyRevealedException(message: String = "this round has already been revealed") :
     RuntimeException(message)
+
+/**
+ * The client guessed for a round that is no longer the current one → 409. Not an error to show: the
+ * client refetches and renders the round that *is* current.
+ */
+class RoundMovedOnException(current: Int) :
+    RuntimeException("the current round is now $current")

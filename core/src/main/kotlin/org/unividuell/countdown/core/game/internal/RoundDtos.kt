@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.countdown.Round
+import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.iam.Avatar
@@ -75,6 +76,20 @@ data class RoundResponse(
     /** Empty until the viewer has guessed. Unconditional: there is no game for which the other
      *  answer is right, so there is no switch to get it wrong with. */
     val others: List<PlayDto> = emptyList(),
+    /**
+     * The rule and the stake this round was frozen with — `null` exactly when there is no game. They
+     * belong to the round, not to the game type: the same game pays differently in phase two, and the
+     * client needs both to say that a `CLOSEST_ONLY` score is provisional („bester Tipp bisher“).
+     */
+    val awardRule: AwardRule? = null,
+    val awardPoints: Int? = null,
 )
+
+/**
+ * The guess, plus the round the client believes it is playing. „Current“ is not the same thing for a
+ * client and a server once a day boundary passes between the two, and the difference would show up as
+ * a verdict against a target the player never saw.
+ */
+data class GuessRequest(val roundNumber: Int, val guess: JsonNode)
 
 fun Round.toDto() = RoundDto(number = number, label = label, start = start, end = end)

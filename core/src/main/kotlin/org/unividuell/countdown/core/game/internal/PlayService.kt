@@ -56,8 +56,17 @@ class PlayService(
     }
 
     @Transactional
-    fun guess(slug: String, userId: UUID, isSuperAdmin: Boolean, guess: JsonNode): RoundResponse {
+    fun guess(
+        slug: String,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+        roundNumber: Int,
+        guess: JsonNode,
+    ): RoundResponse {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
+        // Checked before the lock and before judging: a guess meant for another round must not touch
+        // this one at all.
+        if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
         // Locked first: the re-evaluation below reads and rewrites every guess of this round.
         val round = store.lock(current.roundGame)
         val play = plays.findByRoundGameIdAndUserId(

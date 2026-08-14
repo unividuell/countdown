@@ -155,16 +155,20 @@ class LabPointsParityTest(
         val (realCommunity, realEarlyId, realThreshold) = aPhaseTwoCommunity("Real Parity Round")
         val realLateId = aMember(community = realCommunity, login = "real-late")
 
-        play.reveal(slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false)
+        val realEarlyRevealed = play.reveal(
+            slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false,
+        )
+        val realRoundNumber = realEarlyRevealed.round.shouldNotBeNull().number
         val realFirstGuess = play.guess(
-            slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false, guess = guess(0.0),
+            slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false,
+            roundNumber = realRoundNumber, guess = guess(0.0),
         )
         val realTargetHue = (realFirstGuess.solution.shouldNotBeNull() as GuessHueSolution).targetHue
 
         play.reveal(slug = realCommunity.slug, userId = realLateId, isSuperAdmin = false)
         play.guess(
             slug = realCommunity.slug, userId = realLateId, isSuperAdmin = false,
-            guess = guess(realTargetHue),
+            roundNumber = realRoundNumber, guess = guess(realTargetHue),
         )
 
         val resolved = announcements.resolve(

@@ -60,6 +60,8 @@ class RoundResponses(
             others = visible
                 .sortedWith(compareBy({ it.guessedAt }, { it.userId }))
                 .mapNotNull { dtoOf(play = it, user = byUser[it.userId]) },
+            awardRule = current.roundGame.awardRule,
+            awardPoints = current.roundGame.awardPoints,
         )
     }
 

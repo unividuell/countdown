@@ -21,6 +21,7 @@ class GameExceptionHandler {
         NotRevealedException::class,
         AlreadyGuessedException::class,
         AlreadyRevealedException::class,
+        RoundMovedOnException::class,
     )
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")

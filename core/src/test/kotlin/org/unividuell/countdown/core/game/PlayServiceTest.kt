@@ -27,6 +27,7 @@ import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
+import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -156,21 +157,59 @@ class PlayServiceTest(
     @Test
     fun `guessing without revealing is refused`() {
         val (community, viewer) = aCommunity("No Reveal")
+        val roundNumber = announcements.currentRound(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+        ).round.shouldNotBeNull().number
 
         shouldThrow<NotRevealedException> {
-            play.guess(slug = community.slug, userId = viewer, isSuperAdmin = false, guess = guess(10.0))
+            play.guess(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = roundNumber, guess = guess(10.0),
+            )
         }
+    }
+
+    @Test
+    fun `a guess for a round that has moved on is refused, and nothing is written`() {
+        // A tab left open across the day boundary would otherwise have its guess judged against a
+        // round the player never saw — with a deviation that means nothing to them.
+        val (community, viewer) = aCommunity("Stale Round")
+        val current = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val staleNumber = requireNotNull(current.round).number + 1
+
+        shouldThrow<RoundMovedOnException> {
+            play.guess(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = staleNumber, guess = guess(10.0),
+            )
+        }
+
+        announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
+            .me.shouldNotBeNull().guessedAt.shouldBeNull()
+    }
+
+    @Test
+    fun `the response carries the rule and the stake the round was frozen with`() {
+        val (community, viewer) = aCommunity("Award Fields")
+
+        val res = announcements.currentRound(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+        )
+
+        res.awardRule shouldBe AwardRule.ALL_QUALIFYING
+        res.awardPoints shouldBe 1
     }
 
     @Test
     fun `a guess reveals the solution and scores the round`() {
         val (community, viewer) = aCommunity("Guess Round")
-        val payload = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
-            .payload as GuessHuePayload
+        val revealed = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val payload = revealed.payload as GuessHuePayload
+        val roundNumber = revealed.round.shouldNotBeNull().number
 
         val res = play.guess(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
-            guess = guess(payload.initHue),
+            roundNumber = roundNumber, guess = guess(payload.initHue),
         )
 
         val solution = res.solution.shouldNotBeNull() as GuessHueSolution
@@ -185,12 +224,13 @@ class PlayServiceTest(
     @Test
     fun `an invalid guess consumes nothing and writes nothing`() {
         val (community, viewer) = aCommunity("Invalid Guess")
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val revealed = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val roundNumber = revealed.round.shouldNotBeNull().number
 
         shouldThrow<InvalidGuessException> {
             play.guess(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                guess = mapper.readTree("""{"hue":"warm"}"""),
+                roundNumber = roundNumber, guess = mapper.readTree("""{"hue":"warm"}"""),
             )
         }
 
@@ -202,11 +242,18 @@ class PlayServiceTest(
     @Test
     fun `a second guess is refused`() {
         val (community, viewer) = aCommunity("Second Guess")
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
-        play.guess(slug = community.slug, userId = viewer, isSuperAdmin = false, guess = guess(10.0))
+        val revealed = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val roundNumber = revealed.round.shouldNotBeNull().number
+        play.guess(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = roundNumber, guess = guess(10.0),
+        )
 
         shouldThrow<AlreadyGuessedException> {
-            play.guess(slug = community.slug, userId = viewer, isSuperAdmin = false, guess = guess(20.0))
+            play.guess(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = roundNumber, guess = guess(20.0),
+            )
         }
     }
 
@@ -219,13 +266,17 @@ class PlayServiceTest(
         // empty for the sole reason that nobody but the viewer had guessed yet, not because the filter
         // did anything.
         val lurker = aMember(community = community, login = "lurker")
-        play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
-        play.guess(slug = community.slug, userId = other, isSuperAdmin = false, guess = guess(30.0))
+        val otherRevealed = play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
+        play.guess(
+            slug = community.slug, userId = other, isSuperAdmin = false,
+            roundNumber = otherRevealed.round.shouldNotBeNull().number, guess = guess(30.0),
+        )
         play.reveal(slug = community.slug, userId = lurker, isSuperAdmin = false)
 
         val before = play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
         val after = play.guess(
-            slug = community.slug, userId = owner, isSuperAdmin = false, guess = guess(40.0),
+            slug = community.slug, userId = owner, isSuperAdmin = false,
+            roundNumber = before.round.shouldNotBeNull().number, guess = guess(40.0),
         )
 
         before.others.shouldBeEmpty()
@@ -238,9 +289,10 @@ class PlayServiceTest(
     fun `in phase two a better later guess takes the earlier best its points`() {
         val (community, owner) = aCommunity("Phase Two Round", phaseTwo = true)
         val other = aMember(community = community, login = "sniper")
-        play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
+        val ownerRevealed = play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
         val solution = play.guess(
-            slug = community.slug, userId = owner, isSuperAdmin = false, guess = guess(0.0),
+            slug = community.slug, userId = owner, isSuperAdmin = false,
+            roundNumber = ownerRevealed.round.shouldNotBeNull().number, guess = guess(0.0),
         ).solution as GuessHueSolution
         // The owner scored: in phase two there is no gate, so the only guess so far is the best one.
         // awardFor in phase two is (threshold - round + 2), and the threshold sits 10 rounds above
@@ -248,10 +300,10 @@ class PlayServiceTest(
         announcements.currentRound(slug = community.slug, userId = owner, isSuperAdmin = false)
             .me.shouldNotBeNull().points shouldBe 12
 
-        play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
+        val otherRevealed = play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
         play.guess(
             slug = community.slug, userId = other, isSuperAdmin = false,
-            guess = guess(solution.targetHue),
+            roundNumber = otherRevealed.round.shouldNotBeNull().number, guess = guess(solution.targetHue),
         )
 
         announcements.currentRound(slug = community.slug, userId = owner, isSuperAdmin = false)
@@ -272,10 +324,16 @@ class PlayServiceTest(
     fun `a super-admin who is not a member may not guess`() {
         val (community, _) = aCommunity("Admin Guess Round")
         val superAdmin = aUser("admin-guess")
+        // The admin bypass is a read-only privilege (see PlayService.playable) — loading the round
+        // this way still works, but guessing does not, which is exactly what this test pins.
+        val roundNumber = announcements.currentRound(
+            slug = community.slug, userId = superAdmin, isSuperAdmin = true,
+        ).round.shouldNotBeNull().number
 
         shouldThrow<RoundAccessDeniedException> {
             play.guess(
-                slug = community.slug, userId = superAdmin, isSuperAdmin = true, guess = guess(10.0),
+                slug = community.slug, userId = superAdmin, isSuperAdmin = true,
+                roundNumber = roundNumber, guess = guess(10.0),
             )
         }
     }

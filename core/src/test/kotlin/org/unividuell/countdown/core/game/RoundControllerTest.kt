@@ -27,6 +27,7 @@ import org.unividuell.countdown.core.game.internal.PlayDto
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundDto
+import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.game.internal.RoundResponse
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.principalFor
@@ -133,16 +134,18 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `POST guess passes the body through untouched`() {
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } returns RoundResponse(round = null, game = null, noGameReason = null)
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"hue":123.5}"""
+            content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect { status { isOk() } }
 
-        verify { plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any()) }
+        verify {
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
+        }
     }
 
     @Test
@@ -152,7 +155,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         // in Kotlin would otherwise reach the wire unnoticed.
         val other = UUID.randomUUID()
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } returns RoundResponse(
             round = RoundDto(
                 number = 12, label = "T-12",
@@ -189,7 +192,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.post("/api/communities/team/rounds/current/guess") {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"hue":123.5}"""
+            content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect {
             status { isOk() }
             // The framework's comparison values never reach the wire, for the viewer or for others.
@@ -211,13 +214,13 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `guessing without revealing is a conflict`() {
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } throws NotRevealedException()
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"hue":1.0}"""
+            content = """{"roundNumber":12,"guess":{"hue":1.0}}"""
         }.andExpect { status { isConflict() } }
     }
 
@@ -234,27 +237,40 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `a second guess is a conflict too`() {
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } throws AlreadyGuessedException()
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"hue":1.0}"""
+            content = """{"roundNumber":12,"guess":{"hue":1.0}}"""
         }.andExpect { status { isConflict() } }
     }
 
     @Test
     fun `a malformed guess is a bad request`() {
         every {
-            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, guess = any())
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } throws InvalidGuessException("hue must lie in [0, 360), was 400.0")
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"hue":400.0}"""
+            content = """{"roundNumber":12,"guess":{"hue":400.0}}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `a stale round number is a conflict`() {
+        every {
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 11, guess = any())
+        } throws RoundMovedOnException(current = 12)
+
+        mockMvc.post("/api/communities/team/rounds/current/guess") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":11,"guess":{"hue":1.0}}"""
+        }.andExpect { status { isConflict() } }
     }
 
     @Test
