@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import type { PlayDto, RoundResponse } from '@/api/types'
+import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import RoundCard from '@/rounds/RoundCard.vue'
 
@@ -32,15 +32,21 @@ const { StubGame } = await vi.hoisted(async () => {
 
 vi.mock('@/games/registry', () => ({ gameComponents: { 'guess-hue': StubGame } }))
 
-const aPlay = (over: Partial<PlayDto> = {}): PlayDto => ({
-  userId: 'me',
-  username: 'Fry',
-  avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },
-  revealedAt: '2026-08-14T11:00:00Z',
-  guessedAt: null,
+const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
+  userId: 'o1',
+  username: 'Leela',
+  avatar: { shortName: 'LEE', bgColorHex: '#40bf7a' },
   guess: null,
   outcome: null,
   points: null,
+  ...over,
+})
+
+const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
+  ...anOther({ userId: 'me', username: 'Fry' }),
+  avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },
+  revealedAt: '2026-08-14T11:00:00Z',
+  guessedAt: null,
   ...over,
 })
 
@@ -105,7 +111,7 @@ describe('RoundCard', () => {
 
   it('shows the result once the viewer has guessed', () => {
     const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', guess: { hue: 7 }, points: 1 })
-    const other = aPlay({ userId: 'o1', guessedAt: '2026-08-14T12:00:00Z', guess: { hue: 3 } })
+    const other = anOther({ guess: { hue: 3 } })
     const round = aRound({
       me,
       others: [other],

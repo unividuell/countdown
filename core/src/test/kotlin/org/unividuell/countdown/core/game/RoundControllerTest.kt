@@ -22,9 +22,10 @@ import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameDto
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
+import org.unividuell.countdown.core.game.internal.MyPlayDto
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.NotRevealedException
-import org.unividuell.countdown.core.game.internal.PlayDto
+import org.unividuell.countdown.core.game.internal.OtherPlayDto
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundDto
@@ -169,7 +170,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
             noGameReason = null,
             solution = GuessHueSolution(targetHue = 123.5, toleranceDeg = 15.0),
-            me = PlayDto(
+            me = MyPlayDto(
                 userId = uid,
                 username = "me",
                 avatar = Avatar(shortName = "ME", bgColorHex = "#123456"),
@@ -180,12 +181,10 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 points = 1,
             ),
             others = listOf(
-                PlayDto(
+                OtherPlayDto(
                     userId = other,
                     username = "other",
                     avatar = Avatar(shortName = "OTH", bgColorHex = "#abcdef"),
-                    revealedAt = Instant.parse("2026-08-12T10:03:00Z"),
-                    guessedAt = Instant.parse("2026-08-12T10:04:00Z"),
                     guess = mapper.readTree("""{"hue":30.0}"""),
                     outcome = mapper.readTree("""{"deviationDeg":30.0,"withinTolerance":false}"""),
                     points = 0,
@@ -212,6 +211,56 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$.others[0].guess.hue") { value(30.0) }
             jsonPath("$.solution.targetHue") { value(123.5) }
             jsonPath("$.solution.toleranceDeg") { value(15.0) }
+        }
+    }
+
+    @Test
+    fun `POST guess keeps the others' timestamps off the wire`() {
+        val other = UUID.randomUUID()
+        every {
+            plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
+        } returns RoundResponse(
+            round = RoundDto(
+                number = 12, label = "T-12",
+                start = Instant.parse("2026-08-12T10:00:00Z"),
+                end = Instant.parse("2026-08-13T10:00:00Z"),
+            ),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            noGameReason = null,
+            me = MyPlayDto(
+                userId = uid,
+                username = "me",
+                avatar = Avatar(shortName = "ME", bgColorHex = "#123456"),
+                revealedAt = Instant.parse("2026-08-12T10:01:00Z"),
+                guessedAt = Instant.parse("2026-08-12T10:02:00Z"),
+                guess = mapper.readTree("""{"hue":123.5}"""),
+                outcome = null,
+                points = 1,
+            ),
+            others = listOf(
+                OtherPlayDto(
+                    userId = other,
+                    username = "other",
+                    avatar = Avatar(shortName = "OTH", bgColorHex = "#abcdef"),
+                    guess = mapper.readTree("""{"hue":30.0}"""),
+                    outcome = null,
+                    points = 0,
+                ),
+            ),
+        )
+
+        mockMvc.post("/api/communities/team/rounds/current/guess") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
+        }.andExpect {
+            status { isOk() }
+            // When the others played is nobody's business: the viewer sees that they played, and what
+            // they guessed, never at which second.
+            jsonPath("$.others[0].revealedAt") { doesNotExist() }
+            jsonPath("$.others[0].guessedAt") { doesNotExist() }
+            // The viewer's own stamps stay — `guessedAt` is what the card's face is derived from.
+            jsonPath("$.me.guessedAt") { exists() }
         }
     }
 

@@ -53,25 +53,36 @@ class RoundResponses(
             noGameReason = null,
             payload = mine?.let { current.handle.present(current.roundGame.params) },
             solution = if (hasGuessed) current.handle.solution(current.roundGame.params) else null,
-            me = mine?.let { dtoOf(play = it, user = byUser[it.userId]) },
+            me = mine?.let { mineDtoOf(play = it, user = byUser[it.userId]) },
             // Sorted by when they guessed — the order the round actually happened in, and stable
             // where two stamps collide. A row whose user row vanished drops out rather than taking
             // the page down.
             others = visible
                 .sortedWith(compareBy({ it.guessedAt }, { it.userId }))
-                .mapNotNull { dtoOf(play = it, user = byUser[it.userId]) },
+                .mapNotNull { otherDtoOf(play = it, user = byUser[it.userId]) },
             awardRule = current.roundGame.awardRule,
             awardPoints = current.roundGame.awardPoints,
         )
     }
 
-    private fun dtoOf(play: RoundPlay, user: User?): PlayDto? = user?.let {
-        PlayDto(
+    private fun mineDtoOf(play: RoundPlay, user: User?): MyPlayDto? = user?.let {
+        MyPlayDto(
             userId = play.userId,
             username = it.username,
             avatar = Avatar.of(it),
             revealedAt = play.revealedAt,
             guessedAt = play.guessedAt,
+            guess = play.guess,
+            outcome = play.outcome,
+            points = play.points,
+        )
+    }
+
+    private fun otherDtoOf(play: RoundPlay, user: User?): OtherPlayDto? = user?.let {
+        OtherPlayDto(
+            userId = play.userId,
+            username = it.username,
+            avatar = Avatar.of(it),
             guess = play.guess,
             outcome = play.outcome,
             points = play.points,
