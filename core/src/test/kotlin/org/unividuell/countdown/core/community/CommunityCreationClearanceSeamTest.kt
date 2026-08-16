@@ -65,6 +65,7 @@ class CommunityCreationClearanceSeamTest(
             Community(id = communityId, name = "Team A", slug = "team-a", createdBy = user.id!!)
         every { editions.requireActive(communityId) } returns
             CommunityEdition(id = UUID.randomUUID(), communityId = communityId, label = "Team A")
+        every { editions.isFrozen(any()) } returns false
 
         createAs(user).andExpect {
             status { isForbidden() }

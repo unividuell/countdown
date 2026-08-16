@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.community
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.justRun
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -32,6 +33,11 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
     private val uid = TEST_USER_ID
     private fun community(slug: String) = Community(id = UUID.randomUUID(), name = "Team", slug = slug, createdBy = uid)
+
+    @BeforeEach
+    fun stubFreeze() {
+        every { editions.isFrozen(any()) } returns false
+    }
 
     @Test
     fun `POST creates a community`() {
@@ -227,5 +233,58 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
             content = """{"label":"ab"}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `GET by slug reports a frozen run`() {
+        val c = community("team")
+        val edition = CommunityEdition(id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026")
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
+        every { editions.requireActive(c.id!!) } returns edition
+        every { editions.isFrozen(edition) } returns true
+
+        mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.editionFrozen") { value(true) }
+        }
+    }
+
+    @Test
+    fun `PATCH surfaces a frozen run as 409`() {
+        val c = community("team")
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every {
+            communityService.update(
+                community = c, name = null, label = null, startsAt = any(), startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+            )
+        } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
+
+        mockMvc.patch("/api/communities/team") {
+            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
+        }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `PATCH is 409 for a super-admin too`() {
+        // The rule protects the play history, not the roles — without this case a bypass branch in
+        // the controller would pass every other test in this class.
+        val c = community("team")
+        every { access.requireAdmin(userId = uid, isSuperAdmin = true, slug = "team") } returns c
+        every {
+            communityService.update(
+                community = c, name = null, label = null, startsAt = any(), startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+            )
+        } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
+
+        mockMvc.patch("/api/communities/team") {
+            with(principalFor(superAdmin = true)); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
+        }.andExpect { status { isConflict() } }
     }
 }
