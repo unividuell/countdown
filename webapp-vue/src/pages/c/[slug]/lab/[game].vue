@@ -198,6 +198,7 @@ watch(
       :solution="round.solution"
       :entries="entries"
       :mine-user-id="round.me?.userId ?? null"
+      :award-rule="round.awardRule"
       :disabled="busy || round.me !== null"
       @guess="guess"
     />

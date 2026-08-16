@@ -15,6 +15,15 @@ the production login flow locally (see "Real GitHub login" below).
    The variable has to be on the start command, not exported afterwards:
    `app.super-admin-github-logins` is bound when the context starts, so a running app never
    picks it up. Its value is a comma-separated list of logins granted `ROLE_SUPER_ADMIN`.
+
+   **Two worktrees share one container.** `compose.yaml`'s `name: countdown` is fixed on purpose
+   (see the comment above it), which also means two backends started from two different worktrees
+   of this repo bring up the *same* Postgres container — Spring's docker-compose support skips
+   bring-up when a matching one is already running, so the second session silently attaches to the
+   first session's container. When that first session's `./mvnw spring-boot:run` stops and tears
+   the stack down, the second session starts failing every request with `Connection refused`, for a
+   reason nothing in that session's own logs explains. `docker compose -p countdown ps` shows
+   whether Postgres is still there before you go looking for a bug in the app.
 2. Why that login is **not optional**: without it you cannot create a Spielgemeinschaft at
    all. The variable is wired through `application.yaml` under that exact name, where it
    defaults to **empty** — so with nothing set, nobody holds the role.

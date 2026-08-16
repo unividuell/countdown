@@ -159,6 +159,19 @@ describe('MemberRow', () => {
     expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-neutral-900')
   })
 
+  it('paints a provisional chip in the shared live colour, not a local one', () => {
+    reduceMotion(true)
+    // One meaning, one colour: the scoreboard's live chip uses the same token. A raw `bg-rose-600`
+    // here is how the two would drift the first time either is touched.
+    const provisional = mount(MemberRow, {
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 2, provisional: true } } })],
+      },
+    })
+
+    expect(provisional.get('[data-test="live-points"]').classes()).toContain('bg-live')
+  })
+
   it('keeps the chip line for members who have not played, so the row cannot jump', () => {
     reduceMotion(true)
     // The chip is hidden, not absent: dropping it out of the flow shortens the row by its own

@@ -4,6 +4,7 @@
  * asserted on from inside a mounted component — here they are ordinary arithmetic.
  */
 import { readableTextColor } from '@/ui/readableTextColor'
+import { hslToHex } from './color'
 import { wrap360 } from './geometry'
 import { BAND_INNER_FRACTION, KNOB_TRACK_FRACTION } from './wheel'
 
@@ -13,6 +14,11 @@ export interface RevealGuess {
   hue: number
   /** The guesser's avatar colour — the marker's fill. */
   colorHex: string
+  /**
+   * When this marker fades in. Computed by `GuessHueGame` from the scoreboard's ranking, so the
+   * marker and its row are one event — the wheel keeps no timetable of its own.
+   */
+  revealDelayMs: number
 }
 
 export interface PlacedGuess extends RevealGuess {
@@ -47,18 +53,70 @@ export const COLLISION_WINDOW_DEG = 10
 export const MIN_BAND_INNER_FRACTION = 0.25
 
 /**
- * The four beats of the reveal, from the moment the reveal card is inserted. Two of them are CSS
- * transitions in the components (the card crossfade at ~200 ms, and the centre button leaving the
- * outgoing card at 0 ms over 200 ms); the five numbers below drive everything the reveal wheel
- * does to itself — three beats (`SECTOR_DELAY_MS`, `MARKERS_DELAY_MS`, `MARKER_STAGGER_MS`) and
- * two durations (`FADE_MS`, `BAND_GROW_MS`). They are a first proposal and belong in the lab to be
+ * The four beats of the reveal, from the moment the reveal card is inserted. Beat 1 is a CSS
+ * transition in the components (the centre button leaving the outgoing card at 0 ms over 200 ms),
+ * beat 2 the card crossfade at ~200 ms; the numbers below drive beats 3 and 4 — the tolerance
+ * sector and the scoreboard's head at [SECTOR_DELAY_MS], then the results: every row of the table
+ * and, with it, its marker on the wheel. They are a first proposal and belong in the lab to be
  * turned — that is what it is for.
  */
 export const SECTOR_DELAY_MS = 900
-export const MARKERS_DELAY_MS = 1900
-export const MARKER_STAGGER_MS = 90
+export const RESULTS_DELAY_MS = 1900
 export const FADE_MS = 300
 export const BAND_GROW_MS = 700
+
+/** Beat 3 writes the scoreboard's head at the same moment the sector fades in. */
+export const HEAD_DELAY_MS = SECTOR_DELAY_MS
+
+/** Between the columns of one row — the typewriter's step. */
+export const CELL_STAGGER_MS = 45
+
+/**
+ * Between rows. Deliberately shorter than a row is wide (3 · [CELL_STAGGER_MS]), so the cascades
+ * overlap and the table flows instead of stuttering row by row.
+ */
+export const ROW_STAGGER_MS = 120
+
+/** The row cascade never runs longer than this, however many people played. */
+export const TYPE_BUDGET_MS = 1200
+
+/** The column a marker rides with: the guess cell, because both are „the guess as a colour“. */
+export const TIP_COLUMN = 1
+
+/**
+ * How far apart two rows are. [ROW_STAGGER_MS] below the budget, and whatever fits above it — the
+ * same „compress rather than grow“ shape [stackStep] gives the marker lanes.
+ */
+export function rowStagger(rowCount: number): number {
+  return Math.min(ROW_STAGGER_MS, TYPE_BUDGET_MS / Math.max(1, rowCount))
+}
+
+/** A cell of the scoreboard's head: three rows (heading, solution value, band), four columns. */
+export function headCellDelayMs(row: number, column: number): number {
+  return HEAD_DELAY_MS + row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
+}
+
+/**
+ * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the wheel. One
+ * function for both is the whole point of the coupling: there is no second timetable to drift.
+ */
+export function cellDelayMs(tick: number, column: number, rowCount: number): number {
+  return RESULTS_DELAY_MS + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
+}
+
+/**
+ * Which tick a row borrows its timing from. Every row rides its own rank — except the viewer's.
+ *
+ * My marker has been on the wheel since the crossfade (it is the knob, recoloured), so a row
+ * appearing with it would say „I am not the best“ from its slot alone, before the picture had
+ * shown a single rival guess. Mine therefore waits for the first foreign marker: that is rank 1
+ * when I am rank 0, and rank 0 otherwise. Alone in the round there is nothing to give away.
+ */
+export function tickOfRow(rank: number, myRank: number | null, rowCount: number): number {
+  if (myRank === null || rank !== myRank) return rank
+  if (rowCount <= 1) return 0
+  return myRank === 0 ? 1 : 0
+}
 
 /**
  * How far each lane sits inside the previous one. Below the floor this is [STACK_STEP]; from six
@@ -230,34 +288,4 @@ function fmt(value: number): string {
  */
 export function sectorInk(hue: number, saturation: number, lightness: number): string {
   return readableTextColor(hslToHex(hue, saturation, lightness))
-}
-
-/**
- * The bridge to [readableTextColor], which parses hex and nothing else. Needed because yellow and
- * blue at the same HSL lightness are nowhere near equally bright, so the decision cannot be made
- * from `lightness` alone.
- */
-function hslToHex(hue: number, saturation: number, lightness: number): string {
-  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
-  const sector = wrap360(hue) / 60
-  const second = chroma * (1 - Math.abs((sector % 2) - 1))
-  const rgb: [number, number, number] =
-    sector < 1
-      ? [chroma, second, 0]
-      : sector < 2
-        ? [second, chroma, 0]
-        : sector < 3
-          ? [0, chroma, second]
-          : sector < 4
-            ? [0, second, chroma]
-            : sector < 5
-              ? [second, 0, chroma]
-              : [chroma, 0, second]
-  const [r, g, b] = rgb
-  const base = lightness - chroma / 2
-  const channel = (value: number): string =>
-    Math.round((value + base) * 255)
-      .toString(16)
-      .padStart(2, '0')
-  return `#${channel(r)}${channel(g)}${channel(b)}`
 }

@@ -12,8 +12,13 @@
 import { computed, ref, watch } from 'vue'
 import GuessHueBoard from './GuessHueBoard.vue'
 import GuessHueReveal from './GuessHueReveal.vue'
+import { TIP_COLUMN, cellDelayMs } from './reveal'
 import type { RevealGuess } from './reveal'
+import { scoreboardRows, solutionCell } from './scoreboard'
+import type { ScoreboardRow } from './scoreboard'
 import type { GameEntry } from '@/games/GameEntry'
+import type { AwardRule } from '@/api/types'
+import { hueOf } from './types'
 import type { GuessHuePayload, GuessHueSolution } from './types'
 
 const props = defineProps<{
@@ -28,16 +33,14 @@ const props = defineProps<{
   entries: GameEntry[]
   /** Which of them is mine. Never the position: that is a display decision. */
   mineUserId: string | null
+  /**
+   * The rule this round was frozen with. Guess Hue reads exactly one thing off it — whether a
+   * score can still be overtaken — and the scoreboard says so. `null` where there is no round.
+   */
+  awardRule: AwardRule | null
 }>()
 
 const emit = defineEmits<{ guess: [value: unknown] }>()
-
-/** Narrowed rather than cast: `unknown` by contract, and a stale round may be junk. */
-function hueOf(guess: unknown): number | null {
-  if (typeof guess !== 'object' || guess === null) return null
-  const hue = (guess as { hue?: unknown }).hue
-  return typeof hue === 'number' && Number.isFinite(hue) ? hue : null
-}
 
 const myHue = computed(() => hueOf(props.myGuess))
 
@@ -57,13 +60,54 @@ const solution = computed<GuessHueSolution | null>(() => {
   return { targetHue, toleranceDeg }
 })
 
-/** An entry the wheel cannot place drops out of the list rather than being drawn wrong. */
-const guesses = computed<RevealGuess[]>(() =>
-  props.entries.flatMap((entry) => {
-    const hue = hueOf(entry.guess)
-    return hue === null ? [] : [{ userId: entry.userId, hue, colorHex: entry.avatar.bgColorHex }]
-  }),
+/** Empty until the server has revealed: without a solution there is nothing to rank against. */
+const rows = computed<ScoreboardRow[]>(() =>
+  solution.value === null
+    ? []
+    : scoreboardRows({
+        entries: props.entries,
+        saturation: props.payload.saturation,
+        lightness: props.payload.lightness,
+        awardRule: props.awardRule,
+        mineUserId: props.mineUserId,
+      }),
 )
+
+/**
+ * The head block's solution cell. The `?? 0` is never reached in practice — the reveal card only
+ * exists once `solution` is non-null — and exists so this stays a plain computed rather than a
+ * nullable prop threaded through two components.
+ */
+const solutionCellValue = computed(() =>
+  solutionCell(solution.value?.targetHue ?? 0, props.payload.saturation, props.payload.lightness),
+)
+
+/**
+ * An entry the wheel cannot place drops out of the list rather than being drawn wrong. One the
+ * *table* cannot rank stays — a guess is not worth removing from the picture because its verdict
+ * is junk — and joins the cascade after every row.
+ */
+const guesses = computed<RevealGuess[]>(() => {
+  const tickByUser = new Map(rows.value.map((row) => [row.userId, row.tick]))
+  const rowCount = rows.value.length
+  let extra = 0
+  return props.entries.flatMap((entry) => {
+    const hue = hueOf(entry.guess)
+    if (hue === null) return []
+    const tick = tickByUser.get(entry.userId) ?? rowCount + extra++
+    return [
+      {
+        userId: entry.userId,
+        hue,
+        colorHex: entry.avatar.bgColorHex,
+        revealDelayMs: cellDelayMs(tick, TIP_COLUMN, rowCount),
+      },
+    ]
+  })
+})
+
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 /**
  * Whether the reveal that is about to show is something that just *happened* here, rather than
@@ -119,6 +163,9 @@ const animate = computed(() => hasRevealedLive.value)
         :guesses="guesses"
         :mine-user-id="props.mineUserId"
         :animate="animate"
+        :rows="rows"
+        :solution-cell="solutionCellValue"
+        :live="live"
       />
       <GuessHueBoard
         v-else

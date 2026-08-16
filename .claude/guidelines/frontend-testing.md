@@ -106,6 +106,26 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   listens directly instead — `useEventListener(document, 'click', ...)` plus a
   `drawer.value?.contains(e.target as Node) || trigger.value?.contains(e.target as Node)` check.
 
+## Browser-automation pane limits
+
+This is happy-dom's limit in reverse: happy-dom computes no layout, and the browser-automation
+pane used for manual review computes no *continuous time* — so neither one can watch an animation
+actually play.
+
+- **The pane's page runs with `document.hidden` permanently `true`**, enforced by the renderer
+  below the JS-visible flag: overriding `document.hidden`/`document.visibilityState` via
+  `Object.defineProperty` changes nothing. A `requestAnimationFrame` loop gets zero callbacks and a
+  CSS transition shows zero progress no matter how long real time passes underneath it — the page
+  is simply never rendering.
+- **A forced screenshot is the one thing that does paint**, and it paints using the true
+  wall-clock time elapsed since the previous forced paint. So
+  `interaction → screenshot → wait → screenshot` samples an animation at the instants you chose to
+  look, even though nothing renders in between.
+- **The upshot: animation *feel* is always a human's call**, never something this pane — or a unit
+  test — can verify. It's a second, independent reason (besides reduced motion and a hidden tab)
+  why a component's resting state must be correct with the animation simply absent, per
+  [frontend-ui.md](frontend-ui.md#animation-on-a-phones-main-thread).
+
 ## Doubles & lifecycle
 
 - **Under `stubs: { teleport: true }`, grab elements *after* the state change that re-renders the

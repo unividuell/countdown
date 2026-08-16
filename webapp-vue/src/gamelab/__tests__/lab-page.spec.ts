@@ -30,6 +30,7 @@ const { StubGame } = await vi.hoisted(async () => {
         entries: { type: Array, default: () => [] },
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
+        awardRule: { type: String, default: null },
       },
       emits: ['guess'],
       template:
@@ -175,6 +176,17 @@ describe('lab page', () => {
   it('passes the round payload to the game component', async () => {
     const w = await mountPage()
     expect(w.findComponent(StubGame).props('payload')).toEqual(round.payload)
+  })
+
+  it("hands the lab round's award rule to the game", async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      awardRule: 'CLOSEST_ONLY',
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.findComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
   it('submits a guess from the game', async () => {
@@ -419,6 +431,111 @@ describe('lab page', () => {
 
     expect(w.get('[data-test="lab-entries"]').text()).toContain('214.3')
     expect(w.get('[data-test="lab-entries"]').text()).not.toContain('→')
+  })
+
+  it('cuts the wire values to one decimal, and keeps them valid JSON', async () => {
+    // A hue comes off the wheel carrying seventeen digits of float noise. The reviewer reads this
+    // line against the game's own result view, which shows one decimal — two roundings of one
+    // number on one screen would be worse than either.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { hue: 319.70451294028976 },
+          outcome: { deviationDeg: 4.7888176227384065, withinTolerance: null },
+          at: '2026-08-08T12:00:00Z',
+          points: 2,
+        },
+      ],
+    } as never)
+
+    const text = (await mountPage()).get('[data-test="lab-entries"]').text()
+
+    expect(text).toContain('{"hue":319.7}')
+    expect(text).toContain('{"deviationDeg":4.8,"withinTolerance":null}')
+    expect(text).not.toContain('319.70451294028976')
+  })
+
+  it('leaves the name to the avatar, and keeps the full one for assistive tech', async () => {
+    // The four characters in the circle are the name here; a second column repeating it cost the
+    // debug line the width it actually needs. `title` and `sr-only` keep the full one reachable —
+    // `Avatar` is a bare div with no accessible name of its own.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      others: [
+        {
+          userId: 'u2',
+          username: 'Bender',
+          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
+          guess: { hue: 214.3 },
+          outcome: null,
+          at: '2026-08-08T12:00:00Z',
+          points: 0,
+        },
+      ],
+    } as never)
+
+    const row = (await mountPage()).get('[data-test="lab-entries"]').get('li')
+
+    expect(row.get('.sr-only').text()).toBe('Bender')
+    expect(row.get('[title]').attributes('title')).toBe('Bender')
+    // The only non-sr-only rendering of the name is the avatar's short form.
+    expect(row.get('.rounded-full').text()).toBe('BEND')
+  })
+
+  it('hangs the delete action on the row corner, out of the flow', async () => {
+    // One row carries it and the others do not, so in the flow it made that row lay out
+    // differently from its neighbours. Absolute positioning is what keeps every row identical.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { hue: 100 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+        points: 0,
+      },
+    } as never)
+
+    const w = await mountPage()
+    const button = w.get('[data-test="lab-entry-forget-mine"]')
+
+    expect(button.classes()).toEqual(expect.arrayContaining(['absolute', '-top-3.5', '-right-3.5']))
+    expect(button.element.closest('li')!.className).toContain('relative')
+  })
+
+  it('names both actions with their keyboard shortcut, without renaming them for a screen reader', async () => {
+    // The badge and the reset line are the only places these two actions are visible without
+    // opening the drawer, so the shortcut belongs on them. It stays `aria-hidden`, as the
+    // drawer's own hints are: „Klammer auf Befehl Umschalt Z“ is not the name of an action.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { hue: 100 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+        points: 0,
+      },
+    } as never)
+
+    const w = await mountPage()
+    const forget = w.get('[data-test="lab-entry-forget-mine"]')
+    const reset = w.get('[data-test="lab-entries-reset"]')
+
+    // `labShortcut` listens for meta+shift+z and meta+shift+x — the hints must say exactly that.
+    expect(forget.get('[aria-hidden="true"]').text()).toBe('(⌘⇧Z)')
+    expect(forget.attributes('aria-label')).toBe('Meinen Guess löschen')
+
+    expect(reset.get('[aria-hidden="true"]').text()).toBe('(⌘⇧X)')
+    expect(reset.text()).toContain('Runde zurücksetzen')
   })
 
   it('renders no entries list at all before the viewer has guessed', async () => {

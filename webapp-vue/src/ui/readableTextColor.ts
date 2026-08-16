@@ -1,6 +1,15 @@
 const DARK = '#111111'
 const LIGHT = '#ffffff'
 
+// The luminance where contrast against DARK equals contrast against LIGHT (white, luminance 1).
+// WCAG contrast is (L1 + 0.05) / (L2 + 0.05); solving (Lb + 0.05) / (Ldark + 0.05) = (1 + 0.05) /
+// (Lb + 0.05) for the background luminance Lb gives Lb = sqrt((Ldark + 0.05) * 1.05) - 0.05, where
+// Ldark is DARK's *own* relative luminance — NOT 0. DARK is #111111, not pure black: channel 0x11
+// (17/255) has linear luminance ≈0.0056054, which is why the crossover sits at ≈0.19163 rather
+// than at 0.179 (the crossover against a true #000000). If DARK's hex ever changes, recompute
+// Ldark and this constant with it, or a band of colours picks the wrong ink again.
+const CROSSOVER_LUMINANCE = 0.1916313
+
 /**
  * The only derivation left in the frontend — a statement about rendering, not about the domain.
  * Deliberately hand-rolled: chroma-js would be a runtime dependency for twelve lines.
@@ -13,8 +22,7 @@ export function readableTextColor(hex: string): string {
   if (!rgb) return LIGHT
   const [r, g, b] = rgb
   const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-  // 0.179 is where contrast against black and against white is equal.
-  return luminance > 0.179 ? DARK : LIGHT
+  return luminance > CROSSOVER_LUMINANCE ? DARK : LIGHT
 }
 
 function parse(hex: string): [number, number, number] | null {

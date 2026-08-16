@@ -3,10 +3,10 @@
  * The wheel after the round: a picture, not a control. The same ring, every guess as a marker on
  * its lane, and the tolerance window over it. No pointer handlers, no keyboard, no centre slot.
  *
- * `role="img"` with one label for the whole thing. **That is deliberately less than parity:**
- * whoever sees the picture also reads how the guesses stand to each other, and the label says only
- * where the solution is. The full statement is the detail table, which is its own cut — until then
- * a known gap beats nothing at all.
+ * `role="img"` with one label for the whole thing — deliberately less than parity: whoever sees
+ * the picture also reads how the guesses stand to each other, and the label says only where the
+ * solution is. The full statement is the scoreboard under this wheel, which says every guess,
+ * every deviation and every score as text.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { hueName, wrap360 } from './geometry'
@@ -15,8 +15,7 @@ import HueToleranceSector from './HueToleranceSector.vue'
 import {
   BAND_GROW_MS,
   FADE_MS,
-  MARKERS_DELAY_MS,
-  MARKER_STAGGER_MS,
+  RESULTS_DELAY_MS,
   SECTOR_DELAY_MS,
   layoutGuesses,
   sectorInk,
@@ -68,7 +67,7 @@ let bandStarted = -1
 function growBand(now: number): void {
   if (bandStarted < 0) bandStarted = now
   const target = layout.value.bandInnerFraction
-  const progress = Math.min(1, Math.max(0, (now - bandStarted - MARKERS_DELAY_MS) / BAND_GROW_MS))
+  const progress = Math.min(1, Math.max(0, (now - bandStarted - RESULTS_DELAY_MS) / BAND_GROW_MS))
   innerFraction.value =
     BAND_INNER_FRACTION + (target - BAND_INNER_FRACTION) * easeOutCubic(progress)
   frame = progress >= 1 ? 0 : requestAnimationFrame(growBand)
@@ -167,7 +166,7 @@ const label = computed(() => {
       <!-- Beat 4: how good was I compared to everyone else. Mine is already there — it is the
            knob, recoloured — so it neither waits nor fades. -->
       <div
-        v-for="(marker, index) in layout.markers"
+        v-for="marker in layout.markers"
         :key="marker.userId"
         data-test="hue-marker-rotator"
         aria-hidden="true"
@@ -182,7 +181,7 @@ const label = computed(() => {
             ...trackBoxStyle(marker.trackFraction),
             backgroundColor: marker.colorHex,
             transitionDuration: `${FADE_MS}ms`,
-            transitionDelay: `${MARKERS_DELAY_MS + index * MARKER_STAGGER_MS}ms`,
+            transitionDelay: `${marker.revealDelayMs}ms`,
           }"
         />
       </div>

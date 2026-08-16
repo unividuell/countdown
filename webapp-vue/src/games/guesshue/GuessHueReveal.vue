@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /**
- * The card after the round: the same quote, and the wheel as a picture.
+ * The card after the round: the same quote, the wheel as a picture, and the scoreboard under it.
  *
- * **Nothing under it.** The input card's rule is wrong here, and a line of numbers would be a
- * stand-in for the detail table that belongs in that space — which is its own cut. So the card
- * gets *shorter* at the switch, and much longer again later. That is the decision, not a side
- * effect: pulling in a line just to keep the height would build a line that disappears again.
+ * The table's box is complete from the moment this card mounts — nothing under the wheel moves
+ * afterwards, only its ink appears. That is why the card grows exactly once, during the crossfade
+ * both cards share a grid cell for, and never again.
  */
+import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
+import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 
 const props = defineProps<{
   description: string
@@ -19,6 +20,9 @@ const props = defineProps<{
   guesses: RevealGuess[]
   mineUserId: string | null
   animate: boolean
+  rows: ScoreboardRow[]
+  solutionCell: ScoreboardSolution
+  live: boolean
 }>()
 </script>
 
@@ -41,6 +45,15 @@ const props = defineProps<{
         :tolerance-deg="props.toleranceDeg"
         :guesses="props.guesses"
         :mine-user-id="props.mineUserId"
+        :animate="props.animate"
+      />
+    </div>
+
+    <div class="mt-6">
+      <GuessHueScoreboard
+        :rows="props.rows"
+        :solution="props.solutionCell"
+        :live="props.live"
         :animate="props.animate"
       />
     </div>
