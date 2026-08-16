@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  /* „Vorläufig": a score that can still be overtaken. Rose plus a pulse says that in the member
+  /* „Vorläufig“: a score that can still be overtaken. Rose plus a pulse says that in the member
      row and in the scoreboard, and one meaning must not have two colours. Aliased onto rose-600;
      if Tailwind ever tree-shakes the referenced variable away, inline the literal
      `oklch(58.6% 0.253 17.585)` here and keep the name in this comment. */

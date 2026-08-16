@@ -45,7 +45,7 @@ export interface ScoreboardSolution {
  * Whether a score can still be overtaken. Word for word the server's own rule in
  * `RoundPlayPoints.kt` (`provisional = awardRule == CLOSEST_ONLY && points > 0`), mirrored here
  * because a round's response carries the rule but not the verdict. A zero is final even under
- * „closest only": deviations freeze on guessing, so a later guess can only take points away.
+ * „closest only“: deviations freeze on guessing, so a later guess can only take points away.
  */
 export function isProvisional(points: number | null, awardRule: AwardRule | null): boolean {
   return awardRule === 'CLOSEST_ONLY' && points !== null && points > 0
