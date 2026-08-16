@@ -6,7 +6,11 @@ Zu [Issue #56](https://github.com/unividuell/countdown/issues/56).
 
 Ein Lauf, der begonnen hat, darf sein Rundenraster nicht mehr verschieben. Konkret: `startsAt` und
 `startsAtTimezone` einer `CommunityEdition` werden unveränderlich, sobald deren erste spielbare Runde
-begonnen hat. Alles andere an der Edition bleibt änderbar.
+begonnen hat. Alles andere an der Edition bleibt änderbar — nur nicht so, dass die Edition dadurch
+wieder auftaut.
+
+Dazu kommt `gamesFromRound` ins Settings-Formular: es entscheidet über den Einfrierpunkt, und was
+darüber entscheidet, muss einstellbar sein.
 
 Nicht in dieser Scheibe: eine Schaltfläche „neue Edition starten“ im Admin-UI (siehe *Was bewusst
 offen bleibt*), und irgendeine Form von Reparatur bereits verschobener Läufe.
@@ -70,6 +74,20 @@ selbst. Das Raster tut das nicht.
 
 Auch **kein Super-Admin-Bypass**: die Regel schützt die Spielhistorie, nicht die Rechte.
 
+### Aber: was eingefroren ist, bleibt eingefroren
+
+`gamesFromRound` bleibt änderbar und bestimmt zugleich den Einfrierpunkt. Wer es herabsetzt, schiebt
+den Punkt in die Zukunft — zwei PATCHes hintereinander, und der Start wäre wieder frei. Die Regel
+greift deshalb auf der **Wirkung**, nicht auf dem Feld:
+
+> Ein Update, nach dem die Edition nicht mehr eingefroren wäre, obwohl sie es war, wird abgewiesen.
+
+Das ist ein Vergleich zwischen vorher und nachher (`frozen(edition) && !frozen(next)` → 409) und
+deckt jedes Feld ab, das je in den Einfrierpunkt eingeht — heute `gamesFromRound`, morgen was auch
+immer dazukommt. Die Alternative, ein `frozen_at` zu persistieren, wäre monoton per Konstruktion,
+kostet aber eine Spalte, eine Migration und einen Zustand, der von der Wahrheit abweichen kann.
+Anheben bleibt erlaubt: das zieht den Einfrierpunkt nur weiter nach vorn.
+
 ## Wo die Regel lebt
 
 `ModularityTests` pinnt die Richtung `countdown → community`, nie umgekehrt. `community` darf
@@ -116,12 +134,27 @@ Editionskonflikt.
 `Clock`). Es ist reine Anzeige; die Durchsetzung ist der 409.
 
 **Frontend.** `types.ts` bekommt das Feld; in `pages/c/[slug]/settings.vue` werden Start und Zeitzone
-`disabled` und beim Speichern **nicht mitgeschickt**, mit einem Hinweis darunter:
+`disabled` und beim Speichern **nicht mitgeschickt**. Das Weglassen im Body ist die eigentliche
+Absicherung gegen den Round-Trip des `datetime-local`-Felds (Minutengenauigkeit hin, `Instant`
+zurück); die Gleichheitsprüfung im Backend ist der Gürtel dazu.
 
-> Der Lauf hat begonnen — Start und Zeitzone sind fix.
+Unter dem Block aus Zeitzone und Start steht ein Satz, der den Zustand erklärt, in dem das Formular
+gerade ist — nicht die Regel in ihrer allgemeinen Form:
 
-Das Weglassen im Body ist die eigentliche Absicherung gegen den Round-Trip des `datetime-local`-Felds
-(Minutengenauigkeit hin, `Instant` zurück); die Gleichheitsprüfung im Backend ist der Gürtel dazu.
+| Zustand | Text |
+|---|---|
+| offen | Änderbar, bis die erste Spielrunde beginnt — danach ist der Lauf fix. |
+| eingefroren | Der Lauf hat begonnen — Start und Zeitzone sind fix. |
+
+### `gamesFromRound` gehört ins Formular
+
+Das Feld gibt es im PATCH, aber in keinem Eingabefeld — und mit dieser Scheibe entscheidet es, **wann**
+eingefroren wird. Ein Admin, der es nicht setzen kann, sitzt beim Default `null` fest, und der friert
+sofort mit dem Datum ein. Das Formular bekommt deshalb ein Feld „Erste Spielrunde“ (`type="number"`,
+`min="1"`, leer = ab der ersten Runde), mit dem Hinweis, dass eine größere Nummer früher liegt.
+
+`gamesUntilRound` bleibt draußen: sein Default `0` ist T-0, der Tag vor dem Start, und damit für jeden
+Lauf richtig, den es bisher gibt. Ein Feld dafür wäre eine Einstellung ohne Anlass.
 
 ## Tests
 
@@ -130,10 +163,12 @@ TDD, in dieser Reihenfolge:
 - `EditionService`: Grenzfälle um den Einfrierpunkt — knapp davor änderbar, exakt darauf und danach
   409; `gamesFromRound == null` friert mit gesetztem Datum; `startsAt == null` friert nie;
   unveränderte Werte gehen auch eingefroren durch; jedes andere Feld bleibt eingefroren änderbar.
+- Das Auftauen: eingefroren, dann `gamesFromRound` herabgesetzt → 409; anheben geht durch.
 - Paritätstest gegen `CountdownEngine.intervalOf`, inklusive eines Laufs über eine DST-Grenze.
 - MockMvc: `PATCH` mit verschobenem Start → 409; `GET` trägt `editionFrozen` in beiden Ausprägungen.
-- Frontend (`settings.spec`): gesperrte Felder samt Hinweis, und der PATCH-Body enthält `startsAt`
-  und `startsAtTimezone` nicht, wenn eingefroren.
+- Frontend (`settings.spec`): gesperrte Felder samt passendem Hinweistext, der PATCH-Body enthält
+  `startsAt` und `startsAtTimezone` nicht, wenn eingefroren, und „Erste Spielrunde“ geht als
+  `gamesFromRound` mit — leer heißt „nicht mitschicken“, nicht `0`.
 
 ## Was bewusst offen bleibt
 
