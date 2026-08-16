@@ -8,7 +8,9 @@ function member(fullName: string, stable: number, live?: number): RosterMemberRe
     shortName: fullName.slice(0, 3).toUpperCase(),
     fullName,
     bgColorHex: '#8e44ad',
-    ...(live === undefined ? { points: { stable } } : { points: { stable, live } }),
+    ...(live === undefined
+      ? { points: { stable } }
+      : { points: { stable, live: { points: live, provisional: false } } }),
   }
 }
 

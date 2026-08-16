@@ -46,10 +46,19 @@ export interface MemberResponse {
   isAdmin: boolean
 }
 
+/**
+ * The running round's points. `provisional` is the server's answer to „can this still change“ — it
+ * follows from the round's frozen award rule, so the client neither derives nor second-guesses it.
+ */
+export interface LivePoints {
+  /** `0` means „played the round and came away empty“, which is a result and gets shown. */
+  points: number
+  provisional: boolean
+}
 export interface RosterPoints {
   stable: number
   /** Absent when the viewer may not see live points, or when the member has not played the round. */
-  live?: number
+  live?: LivePoints
 }
 export interface RosterMemberResponse {
   userId: string

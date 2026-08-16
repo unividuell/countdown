@@ -39,12 +39,17 @@ class RosterService(
                     shortName = avatar.shortName,
                     fullName = user.username,
                     bgColorHex = avatar.bgColorHex,
-                    points = RosterPointsResponse(stable = p.stable, live = p.live),
+                    points = RosterPointsResponse(
+                        stable = p.stable,
+                        live = p.live?.let {
+                            LivePointsResponse(points = it.points, provisional = it.provisional)
+                        },
+                    ),
                 )
             }
     }
 
     /** Ranked by exactly what is displayed: a rank driven by points the viewer cannot see would be
      *  inexplicable to them. */
-    private fun rank(p: MemberPoints?): Int = (p?.stable ?: 0) + (p?.live ?: 0)
+    private fun rank(p: MemberPoints?): Int = (p?.stable ?: 0) + (p?.live?.points ?: 0)
 }

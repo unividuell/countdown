@@ -110,6 +110,12 @@ it is the only proof available — no unit test can see them.
   as its tallest item, and alignment (`items-center`) is resolved *after* track sizing, so it
   never feeds back. Stating the height on one cell only lets the row grow wherever a taller cell
   renders — the header's height would otherwise depend on who is looking.
+- **Reserving height on the container does not stabilise what is inside it.** A `min-h` on the
+  wrapper plus `items-center` only guarantees the *box*: when a conditional element leaves the flow,
+  the content shrinks and the centring slides it. Reserve at the element that comes and goes — keep
+  it rendered and `invisible`, with its height written down (`h-4` for `text-xs`) so an empty one
+  still holds the line. `MemberRow`'s live-points chip; the section's `min-h` is then the row's only
+  height rather than a second opinion about it.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes `overflow-y` to
   `auto` as well, which clips transformed children — so an element that both scrolls and hosts
   an animation that escapes its box must not clip while the animation runs.

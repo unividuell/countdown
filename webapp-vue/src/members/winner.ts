@@ -1,7 +1,7 @@
 import type { RosterMemberResponse } from '@/api/types'
 
 export function rankOf(member: RosterMemberResponse): number {
-  return member.points.stable + (member.points.live ?? 0)
+  return member.points.stable + (member.points.live?.points ?? 0)
 }
 
 export function winners(members: readonly RosterMemberResponse[]): RosterMemberResponse[] {

@@ -19,4 +19,13 @@ interface MemberPointsQuery {
 }
 
 /** [live] is null both when the viewer may not see it and when the member has not played the round. */
-data class MemberPoints(val stable: Int, val live: Int?)
+data class MemberPoints(val stable: Int, val live: LivePoints?)
+
+/**
+ * The running round's points, and whether they can still move.
+ *
+ * A type of its own rather than two fields on [MemberPoints], so „provisional, but no live points“
+ * cannot be expressed at all. [points] is `0` for a member who played the round and came away empty —
+ * that is a result, not an absence, and only a missing [MemberPoints.live] means „did not play“.
+ */
+data class LivePoints(val points: Int, val provisional: Boolean)

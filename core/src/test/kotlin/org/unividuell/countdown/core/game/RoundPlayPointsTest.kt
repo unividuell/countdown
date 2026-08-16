@@ -68,12 +68,18 @@ class RoundPlayPointsTest(
     }
 
     /** A finished, scored round: announce it, reveal, guess, and write the points directly. */
-    private fun scored(community: Community, roundNumber: Int, user: UUID, points: Int) {
+    private fun scored(
+        community: Community,
+        roundNumber: Int,
+        user: UUID,
+        points: Int,
+        rule: AwardRule = AwardRule.ALL_QUALIFYING,
+    ) {
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val round = store.find(edition = edition, roundNumber = roundNumber) ?: store.announce(
             edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
             params = mapper.readTree("""{"hue":1.0}"""),
-            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = at,
+            award = Award(rule = rule, points = 1), announcedAt = at,
         )
         val roundId = requireNotNull(round.id)
         plays.revealOrCount(roundGameId = roundId, userId = user, revealedAt = at)
@@ -113,7 +119,78 @@ class RoundPlayPointsTest(
 
         standings[owner].shouldNotBeNull().stable shouldBe 7
         // The running round is live, not stable — and visible because the viewer guessed it.
-        standings[owner]!!.live shouldBe 9
+        standings[owner]!!.live.shouldNotBeNull().points shouldBe 9
+    }
+
+    @Test
+    fun `under ALL_QUALIFYING nobody can take the running round's points away again`() {
+        val (community, owner) = aCommunity("Points Final")
+        val current = currentRoundNumberOf(community)
+        scored(
+            community = community, roundNumber = current, user = owner, points = 1,
+            rule = AwardRule.ALL_QUALIFYING,
+        )
+
+        val standings = points.standings(
+            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
+        )
+
+        standings[owner].shouldNotBeNull().live.shouldNotBeNull().provisional shouldBe false
+    }
+
+    @Test
+    fun `under CLOSEST_ONLY the running round's points are still up for grabs`() {
+        val (community, owner) = aCommunity("Points Provisional")
+        val current = currentRoundNumberOf(community)
+        scored(
+            community = community, roundNumber = current, user = owner, points = 4,
+            rule = AwardRule.CLOSEST_ONLY,
+        )
+
+        val standings = points.standings(
+            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
+        )
+
+        standings[owner].shouldNotBeNull().live.shouldNotBeNull().provisional shouldBe true
+    }
+
+    @Test
+    fun `a beaten CLOSEST_ONLY guess is at zero for good, not provisionally`() {
+        val (community, owner) = aCommunity("Points Beaten")
+        val current = currentRoundNumberOf(community)
+        // Nobody guesses their way back into a round they are already out of: under CLOSEST_ONLY a
+        // zero can only stay a zero, so pulsing it would promise a change that cannot come.
+        scored(
+            community = community, roundNumber = current, user = owner, points = 0,
+            rule = AwardRule.CLOSEST_ONLY,
+        )
+
+        val standings = points.standings(
+            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
+        )
+
+        standings[owner].shouldNotBeNull().live.shouldNotBeNull().points shouldBe 0
+        standings[owner]!!.live!!.provisional shouldBe false
+    }
+
+    @Test
+    fun `the running round's own rule decides, not the one the window would award today`() {
+        val (community, owner) = aCommunity("Points Frozen Rule")
+        val current = currentRoundNumberOf(community)
+        scored(
+            community = community, roundNumber = current, user = owner, points = 4,
+            rule = AwardRule.CLOSEST_ONLY,
+        )
+        // The admin moves the threshold under a round that is already announced. The round keeps the
+        // rule it was frozen with — that is what makes `points` a cache over persisted inputs.
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        editions.save(edition.copy(phaseTwoStartRound = null))
+
+        val standings = points.standings(
+            communityId = requireNotNull(community.id), viewerId = owner, userIds = listOf(owner),
+        )
+
+        standings[owner].shouldNotBeNull().live.shouldNotBeNull().provisional shouldBe true
     }
 
     @Test
@@ -129,7 +206,7 @@ class RoundPlayPointsTest(
         val shown = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(other))
 
         hidden[other].shouldNotBeNull().live.shouldBeNull()
-        shown[other].shouldNotBeNull().live shouldBe 5
+        shown[other].shouldNotBeNull().live.shouldNotBeNull().points shouldBe 5
     }
 
     @Test
