@@ -109,9 +109,13 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
+			<!--
+			  Compile scope, not the Spring Boot starter default of runtime: JdbcConversionsConfiguration
+			  imports org.postgresql.util.PGobject directly to hand jsonb its type, so main code needs it
+			  on the compile classpath.
+			-->
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>

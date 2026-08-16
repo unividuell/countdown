@@ -6,10 +6,17 @@
 #
 # Usage: ./scripts/guess-hue-dataset.sh decrypt [--force]
 #        ./scripts/guess-hue-dataset.sh encrypt
+#        ./scripts/guess-hue-dataset.sh dev-path
+#
+# "dev-path" is the machine-readable variant of "decrypt" for the local dev server: it prints the
+# buffer file's path on stdout and nothing else, decrypting first if the file isn't there yet. On a
+# machine that cannot decrypt (no sops, no age key, no cipher on this branch) it prints nothing and
+# still succeeds -- the caller then passes an empty GUESS_HUE_DATASET_PATH and the backend falls
+# back to the bundled sample. See .claude/launch.json.
 set -eu
 
 usage() {
-  echo "usage: $0 decrypt [--force] | encrypt" >&2
+  echo "usage: $0 decrypt [--force] | encrypt | dev-path" >&2
   exit 2
 }
 
@@ -27,14 +34,34 @@ while [ $# -gt 0 ]; do
 done
 
 case "$SUBCOMMAND" in
-  decrypt|encrypt) ;;
+  decrypt) ;;
+  encrypt|dev-path)
+    # --force only ever meant "overwrite the buffer file", which only decrypt does. Rejecting it
+    # here instead of ignoring it keeps "dev-path --force" from reading like a way to refresh the
+    # buffer file on every server start -- that would silently discard unversioned edits.
+    [ "$FORCE" -eq 0 ] || usage
+    ;;
   *) usage ;;
 esac
 
-command -v sops >/dev/null 2>&1 || {
-  echo "sops is not installed. Install it (e.g. 'brew install sops') and try again." >&2
+# For dev-path a missing prerequisite is an answer ("no real dataset on this machine"), not a
+# failure: the dev server starts on the sample instead. decrypt and encrypt, where the caller asked
+# for the real thing by name, still fail loudly.
+unavailable() {
+  echo "$1" >&2
+  shift
+  for line in "$@"; do
+    echo "$line" >&2
+  done
+  if [ "$SUBCOMMAND" = "dev-path" ]; then
+    echo "Guess Hue: staying on the bundled sample dataset." >&2
+    exit 0
+  fi
   exit 1
 }
+
+command -v sops >/dev/null 2>&1 || unavailable \
+  "sops is not installed. Install it (e.g. 'brew install sops') and try again."
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
   echo "Not a git repo here: $(pwd)" >&2
@@ -62,10 +89,7 @@ CIPHER="$CHECKOUT_ROOT/deploy/guess-hue-dataset.sops.yaml"
 # Without --config, sops would otherwise search for .sops.yaml upward from the input file's
 # directory, not from the current checkout -- it would find none in the main worktree as long
 # as this branch isn't merged.
-[ -f "$CONFIG" ] || {
-  echo "No .sops.yaml found at $CONFIG." >&2
-  exit 1
-}
+[ -f "$CONFIG" ] || unavailable "No .sops.yaml found at $CONFIG."
 
 # On macOS, sops otherwise looks for the age key under
 # ~/Library/Application Support/sops/age/keys.txt instead of ~/.config -- encrypting (public key
@@ -97,46 +121,59 @@ trap cleanup_tmp EXIT
 trap 'cleanup_tmp; exit 130' INT
 trap 'cleanup_tmp; exit 143' TERM
 
+# Writes the buffer file, reporting only on stderr: dev-path's stdout carries the path and nothing
+# else. Overwrites unconditionally -- guarding the existing buffer file is the caller's job, because
+# only decrypt has the --force flag to override that guard with.
+decrypt_cipher() {
+  [ -f "$CIPHER" ] || unavailable "No encrypted cipher found at $CIPHER."
+
+  [ -f "$SOPS_AGE_KEY_FILE" ] || unavailable \
+    "No age key found at $SOPS_AGE_KEY_FILE." \
+    "Without it the cipher can't be decrypted -- put the key there, or set" \
+    "SOPS_AGE_KEY_FILE to the right path."
+
+  mkdir -p "$(dirname "$PLAINTEXT")"
+  TMP_FILE="$PLAINTEXT.tmp"
+
+  # umask only while writing the plaintext, restored afterward. Write to a temp file and mv it
+  # into place only on success: a failure must not leave a half-written file behind (see also
+  # the EXIT trap above).
+  OLD_UMASK="$(umask)"
+  umask 077
+  if ! sops -d --config "$CONFIG" "$CIPHER" > "$TMP_FILE"; then
+    umask "$OLD_UMASK"
+    unavailable "sops could not decrypt the cipher (see message above)."
+  fi
+  umask "$OLD_UMASK"
+  mv "$TMP_FILE" "$PLAINTEXT"
+  TMP_FILE=""
+}
+
 case "$SUBCOMMAND" in
   decrypt)
-    [ -f "$CIPHER" ] || {
-      echo "No encrypted cipher found at $CIPHER." >&2
-      exit 1
-    }
-
     if [ -f "$PLAINTEXT" ] && [ "$FORCE" -eq 0 ]; then
       echo "Buffer file already exists: $PLAINTEXT" >&2
       echo "Overwrite with --force, or unversioned changes there will be lost." >&2
       exit 1
     fi
 
-    [ -f "$SOPS_AGE_KEY_FILE" ] || {
-      echo "No age key found at $SOPS_AGE_KEY_FILE." >&2
-      echo "Without it the cipher can't be decrypted -- put the key there, or set" >&2
-      echo "SOPS_AGE_KEY_FILE to the right path." >&2
-      exit 1
-    }
-
-    mkdir -p "$(dirname "$PLAINTEXT")"
-    TMP_FILE="$PLAINTEXT.tmp"
-
-    # umask only while writing the plaintext, restored afterward. Write to a temp file and mv it
-    # into place only on success: a failure must not leave a half-written file behind (see also
-    # the EXIT trap above).
-    OLD_UMASK="$(umask)"
-    umask 077
-    if ! sops -d --config "$CONFIG" "$CIPHER" > "$TMP_FILE"; then
-      umask "$OLD_UMASK"
-      echo "sops could not decrypt the cipher (see message above)." >&2
-      exit 1
-    fi
-    umask "$OLD_UMASK"
-    mv "$TMP_FILE" "$PLAINTEXT"
-    TMP_FILE=""
+    decrypt_cipher
 
     echo "Decrypted to: $PLAINTEXT"
     echo "Export to use it:"
     echo "  export GUESS_HUE_DATASET_PATH=$PLAINTEXT"
+    ;;
+
+  dev-path)
+    # An existing buffer file is used as it is, never re-decrypted: it is the file the "encrypt"
+    # direction reads, so it may hold edits that aren't in the cipher yet. Starting a dev server
+    # must not overwrite those.
+    if [ ! -f "$PLAINTEXT" ]; then
+      decrypt_cipher
+      echo "Guess Hue: decrypted the real dataset to $PLAINTEXT" >&2
+    fi
+
+    echo "$PLAINTEXT"
     ;;
 
   encrypt)

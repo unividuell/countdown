@@ -2,11 +2,13 @@ package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.SuperAdminOverviewService
@@ -23,8 +25,9 @@ import java.util.UUID
 class SuperAdminOverviewServiceTest {
     private val communities = mockk<CommunityRepository>()
     private val members = mockk<CommunityMemberRepository>()
+    private val editions = mockk<CommunityEditionRepository>()
     private val users = mockk<UserQuery>()
-    private val service = SuperAdminOverviewService(communities, members, users)
+    private val service = SuperAdminOverviewService(communities = communities, members = members, editions = editions, users = users)
 
     private val alphaId = UUID.fromString("018f0000-0000-7000-8000-0000000000a1")
     private val zuluId = UUID.fromString("018f0000-0000-7000-8000-0000000000b1")
@@ -50,24 +53,25 @@ class SuperAdminOverviewServiceTest {
     @Test
     fun `sorts communities by name and members admins-active-pending, resolving users in one batch`() {
         every { communities.findAll() } returns listOf(
-            community(zuluId, "Zulu", "zulu"),
-            community(alphaId, "alpha", "alpha"),
+            community(id = zuluId, name = "Zulu", slug = "zulu"),
+            community(id = alphaId, name = "alpha", slug = "alpha"),
         )
         every { members.findAll() } returns listOf(
-            member(alphaId, bobId, MemberStatus.PENDING, isAdmin = false),
+            member(communityId = alphaId, userId = bobId, status = MemberStatus.PENDING, isAdmin = false),
             // Zoe must precede the ghost row here: sortedWith is stable, so this input order is
             // what makes the username key (not just admin+status) responsible for their order.
-            member(alphaId, zoeId, MemberStatus.ACTIVE, isAdmin = false),
-            member(alphaId, ghostId, MemberStatus.ACTIVE, isAdmin = false),
-            member(alphaId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
-            member(zuluId, aliceId, MemberStatus.ACTIVE, isAdmin = true),
+            member(communityId = alphaId, userId = zoeId, status = MemberStatus.ACTIVE, isAdmin = false),
+            member(communityId = alphaId, userId = ghostId, status = MemberStatus.ACTIVE, isAdmin = false),
+            member(communityId = alphaId, userId = aliceId, status = MemberStatus.ACTIVE, isAdmin = true),
+            member(communityId = zuluId, userId = aliceId, status = MemberStatus.ACTIVE, isAdmin = true),
         )
         // ghostId is deliberately absent: a membership whose user row is gone must stay visible.
         every { users.findAllById(any()) } returns listOf(
-            user(aliceId, "alice", "Alice"),
-            user(bobId, "bob", "Bob"),
-            user(zoeId, "zoe", "Zoe"),
+            user(id = aliceId, login = "alice", name = "Alice"),
+            user(id = bobId, login = "bob", name = "Bob"),
+            user(id = zoeId, login = "zoe", name = "Zoe"),
         )
+        every { editions.findAllActive() } returns emptyList()
 
         val result = service.overview()
 
@@ -83,13 +87,43 @@ class SuperAdminOverviewServiceTest {
 
     @Test
     fun `a community without members yields an empty roster`() {
-        every { communities.findAll() } returns listOf(community(alphaId, "Alpha", "alpha"))
+        every { communities.findAll() } returns listOf(community(id = alphaId, name = "Alpha", slug = "alpha"))
         every { members.findAll() } returns emptyList()
         every { users.findAllById(emptyList()) } returns emptyList()
+        every { editions.findAllActive() } returns emptyList()
 
         val result = service.overview()
 
         result shouldHaveSize 1
         result[0].members shouldBe emptyList()
+    }
+
+    @Test
+    fun `an edition's schedule lands on its own community, a community without one keeps the default`() {
+        every { communities.findAll() } returns listOf(
+            community(id = alphaId, name = "Alpha", slug = "alpha"),
+            community(id = zuluId, name = "Zulu", slug = "zulu"),
+        )
+        every { members.findAll() } returns emptyList()
+        every { users.findAllById(emptyList()) } returns emptyList()
+        // Only alpha has an active edition, with a non-default timezone and a set date: a batch
+        // keyed on the wrong column (e.g. the edition's own id) would still pass with defaults.
+        every { editions.findAllActive() } returns listOf(
+            CommunityEdition(
+                id = UUID.randomUUID(), communityId = alphaId, label = "Alpha 2026",
+                startsAt = Instant.parse("2026-06-01T00:00:00Z"), startsAtTimezone = "America/New_York",
+            ),
+        )
+
+        val result = service.overview()
+
+        val alpha = result.first { it.slug == "alpha" }
+        alpha.startsAt shouldBe Instant.parse("2026-06-01T00:00:00Z")
+        alpha.startsAtTimezone shouldBe "America/New_York"
+
+        // zulu has no active edition — it stays visible with the default rather than vanishing.
+        val zulu = result.first { it.slug == "zulu" }
+        zulu.startsAt.shouldBeNull()
+        zulu.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
     }
 }

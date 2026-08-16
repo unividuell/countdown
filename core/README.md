@@ -27,15 +27,8 @@ the production login flow locally (see "Real GitHub login" below).
    Matching is case-insensitive, so `bender` works as well as `Bender`.
    `.claude/launch.json`'s `backend` configuration already sets `SUPER_ADMIN_GITHUB_LOGINS=bender`,
    so starting from there needs none of this.
-   Optionally give members invented-but-stable game points, so the ranking row on a community
-   home shows a real order instead of all zeros — same command, one more flag:
-   ```bash
-   cd core && SUPER_ADMIN_GITHUB_LOGINS=Bender ./mvnw spring-boot:run \
-     -Dspring-boot.run.arguments="--app.stub-points.enabled=true"
-   ```
-   It is off by default and set nowhere but `application-staging.yaml` — deliberately, so no
-   production config file has to mention stubbing at all. `.claude/launch.json`'s `backend`
-   configuration passes it for you.
+   The ranking row on a community home starts at all zeros and fills up as members play rounds —
+   there is no stand-in for game points any more, in no environment.
 3. Log in at `http://localhost:8080/login/github` — a picker offers the seeded Futurama
    users (`Fry`, `leela`, `Bender`, `prof`, `amy`, `hermes`, `zoidberg`, `scruffy`, `zapp`,
    `kif`, `nibbler`, `mom`). Afterwards `GET /api/me` returns the
@@ -88,15 +81,22 @@ has no access to the plaintext. Locally, without a mounted dataset, the app runs
 ### Using the real dataset locally
 
 The six-entry sample is enough to start `guess-hue`, but not to judge the game. Anyone
-working on it can load the real, 60-entry dataset locally before ever deploying —
-deliberately opt-in, not the default: not everyone needs the age key, and every extra
-plaintext copy on another machine is one more risk.
+working on it can load the real, 60-entry dataset locally before ever deploying:
 
 ```bash
 ./scripts/guess-hue-dataset.sh decrypt
 export GUESS_HUE_DATASET_PATH=…   # the path the script prints
 cd core && ./mvnw spring-boot:run
 ```
+
+`.claude/launch.json`'s `backend` configuration does both steps for you, through
+`./scripts/guess-hue-dataset.sh dev-path` — so a fresh worktree starts on the real dataset
+without any setup. The age key stays the gate: `dev-path` prints an empty path on a machine that
+cannot decrypt, and the backend then runs on the sample, because not everyone needs the key and
+every extra plaintext copy on another machine is one more risk. Both entry points write the
+plaintext to the main checkout's gitignored `.local/`, never into a worktree, and neither ever
+overwrites a buffer file that is already there — that file is the one `encrypt` reads back, so it
+may hold entries the cipher doesn't have yet.
 
 This needs an age key (see [game-content.md](../.claude/guidelines/game-content.md)).
 Without one, everything else keeps working — only this one convenience doesn't. The

@@ -68,7 +68,15 @@ export interface AcceptResponse {
   slug: string
 }
 
+/**
+ * Shared by `CountdownResponse` and `RoundResponse`, whose server-side DTOs
+ * (`countdown.internal.RoundDto` and `game.internal.RoundDto`) are deliberately two separate
+ * Kotlin types — each module's wire format may drift from the other's without a shared type
+ * forcing them together. The client has one consumer, and the shapes are identical today; if
+ * that ever stops being true, TypeScript will say so at the call site that first disagrees.
+ */
 export interface Round {
+  /** Signed T-offset. A larger number is *earlier* in time. */
   number: number
   label: string
   start: string
@@ -136,4 +144,44 @@ export interface SuperAdminUserDetail {
   communityCreationAllowed: boolean
   createdAt: string | null
   updatedAt: string | null
+}
+
+export type NoGameReason = 'NOT_SCHEDULED' | 'BEFORE_WINDOW' | 'AFTER_WINDOW' | 'NO_GAME_TYPE'
+export type AwardRule = 'ALL_QUALIFYING' | 'CLOSEST_ONLY'
+
+export interface GameDto {
+  id: string
+  displayName: string
+  /** True when this round wants a deliberate reveal — then it may be revealed exactly once. */
+  requiresReveal: boolean
+}
+
+export interface PlayDto {
+  userId: string
+  username: string
+  avatar: AvatarView
+  revealedAt: string
+  guessedAt: string | null
+  guess: unknown
+  /** The game's own shape. `null` for a game that judges without saying anything. */
+  outcome: unknown
+  /** `null` until the round is scored; `0` means „played and came away empty“. */
+  points: number | null
+}
+
+export interface RoundResponse {
+  /** `null` when there is no grid at all — no run, or no target date. */
+  round: Round | null
+  game: GameDto | null
+  noGameReason: NoGameReason | null
+  /** Only once the viewer has revealed. The shape belongs to the game. */
+  payload: unknown
+  /** Only once the viewer has guessed. */
+  solution: unknown
+  me: PlayDto | null
+  /** Empty until the viewer has guessed — withheld by the server, not filtered here. */
+  others: PlayDto[]
+  /** `null` exactly when there is no game. Under `CLOSEST_ONLY` a score is provisional. */
+  awardRule: AwardRule | null
+  awardPoints: number | null
 }

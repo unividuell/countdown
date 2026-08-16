@@ -21,7 +21,7 @@ import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
 import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
-import type { LabEntryDto, LabRoundResponse } from '@/gamelab/types'
+import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]')
 const router = useRouter()
@@ -30,6 +30,10 @@ const { community } = useCommunityContext()
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
 const seed = computed(() => parseSeed(route.query.seed))
+// Anything other than exactly `TWO` reads as `ONE` — the lab is a dev tool, so a junk `?phase=`
+// value is visible at a glance rather than an error state, and every link that predates this
+// selector keeps opening phase one.
+const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
 
 const round = ref<LabRoundResponse | null>(null)
 const unavailable = ref(false)
@@ -40,8 +44,14 @@ function writeSeed(next: number): void {
   router.replace({ query: { ...route.query, seed: String(next) } })
 }
 
+// Same reasoning as the seed: the phase lives in the URL so a reload and a shared link show the
+// same round.
+function writePhase(next: LabPhase): void {
+  router.replace({ query: { ...route.query, phase: next } })
+}
+
 async function run(
-  action: (slug: string, game: string, seed: number) => Promise<LabRoundResponse>,
+  action: (slug: string, game: string, seed: number, phase: LabPhase) => Promise<LabRoundResponse>,
   closeDrawer = false,
 ) {
   const current = seed.value
@@ -49,7 +59,7 @@ async function run(
   busy.value = true
   error.value = null
   try {
-    round.value = await action(community.value.slug, gameId.value, current)
+    round.value = await action(community.value.slug, gameId.value, current, phase.value)
     if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
@@ -64,7 +74,7 @@ async function run(
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
   if (current === null) return
-  await run((slug, game) => submitLabGuess(slug, game, current, value))
+  await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
 }
 
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
@@ -102,10 +112,12 @@ const entries = computed<LabEntryDto[]>(() => {
 })
 
 // The seed is the single source of truth. An absent or unusable one is repaired into the URL
-// before anything is loaded, so a reload always replays exactly the same round.
+// before anything is loaded, so a reload always replays exactly the same round. Phase is a second
+// source for the same open: switching it must reopen the round exactly like a new seed does,
+// because it is the other half of the round key on the server's side.
 watch(
-  seed,
-  (current) => {
+  [seed, phase],
+  ([current]) => {
     if (current === null) {
       writeSeed(initialSeed(gameId.value))
       return
@@ -133,10 +145,15 @@ watch(
     <Teleport defer to="#drawer-page-tools">
       <LabControls
         :seed="seed"
+        :phase="phase"
         :busy="busy"
-        :return-path="`${route.path}?seed=${seed}`"
+        :round-phase="round?.phase"
+        :award-rule="round?.awardRule"
+        :award-points="round?.awardPoints"
+        :return-path="`${route.path}?seed=${seed}&phase=${phase}`"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
+        @phase-change="writePhase"
         @refresh="run(openLabRound, true)"
         @reset="run(resetLabRound, true)"
         @forget-mine="run(forgetMyLabEntry, true)"
@@ -167,9 +184,9 @@ watch(
       has come back. Keying on the URL seed would remount right then, capturing the previous
       round's data as if it were the new one (the entrance animation starts from the wrong angle
       and never gets a second chance to run); `round.seed` only changes once the new round's data
-      is actually here, so the remount and the data land together. The sample game leans on the
-      same remount to drop a scratch value the player typed but never submitted from the round
-      before.
+      is actually here, so the remount and the data land together. The same remount also discards
+      any uncommitted scratch state a game component keeps locally (a value typed but never
+      submitted) once the round it belonged to is gone.
     -->
     <component
       :is="gameComponent"

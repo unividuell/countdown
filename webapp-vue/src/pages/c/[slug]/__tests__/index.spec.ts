@@ -1,16 +1,52 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import * as api from '@/api/communities'
 import { communityKey } from '@/communities/context'
-import type { CommunityResponse } from '@/api/types'
+import type { CommunityResponse, RoundResponse } from '@/api/types'
 import Page from '@/pages/c/[slug]/index.vue'
+import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import { useRound } from '@/rounds/useRound'
+import type { RoundStage } from '@/rounds/useRound'
 
 // The page mounts RoundFallback, which uses the module-level countdown clock.
 enableAutoUnmount(afterEach)
 beforeEach(_resetCountdownState)
+
+/**
+ * `useRound` is mocked at the page level: its own derivation of `stage` from a `RoundResponse` is
+ * already covered by `src/rounds/__tests__/useRound.spec.ts`, so this file only has to check the
+ * page's wiring — which branch a given `stage` picks, and that a `guessed` emit reaches the
+ * roster's `refresh`. Real `ref`/`computed` (not plain objects) so the template's auto-unwrapping
+ * behaves exactly as it does for the real hook.
+ */
+vi.mock('@/rounds/useRound', () => ({ useRound: vi.fn() }))
+
+function mockUseRound(
+  over: {
+    stage?: RoundStage
+    loading?: boolean
+    failed?: boolean
+    round?: RoundResponse | null
+  } = {},
+): ReturnType<typeof useRound> {
+  return {
+    round: ref(over.round ?? null),
+    state: ref(over.loading ? 'loading' : over.failed ? 'failed' : 'ready'),
+    stage: computed(() => over.stage ?? 'no-game'),
+    busy: ref(false),
+    notice: ref(null),
+    reveal: vi.fn().mockResolvedValue(undefined),
+    submit: vi.fn().mockResolvedValue(undefined),
+    reload: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
+beforeEach(() => {
+  vi.mocked(useRound).mockReturnValue(mockUseRound())
+})
 
 const community: CommunityResponse = {
   id: 'c1',
@@ -107,5 +143,116 @@ describe('community home', () => {
     const w = mountPage()
     await flushPromises()
     expect(w.findComponent(RoundFallback).props('members')).toEqual([])
+  })
+
+  it('shows the round card when the round has a game', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.findComponent(RoundCard).exists()).toBe(true)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  it('falls back to the countdown when the round has no game', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'no-game' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.findComponent(RoundFallback).exists()).toBe(true)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+  })
+
+  it('does not flip between the card and the fallback while the round is loading', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ loading: true }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-placeholder"]').exists()).toBe(true)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  // Mirrors the roster's own `roster-error` branch just above it: a transient 500 must say so,
+  // not fall through to the "no game" fallback — which for a running event reads as "Und jetzt
+  // viel Spaß zusammen!", i.e. the opposite of "something is wrong, try again later".
+  it('says so instead of falling back when the round failed to load', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ failed: true }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-error"]').text()).toContain('konnte nicht')
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+  })
+
+  // The failed-load branch must win even when `stage` still reads a stale card-worthy value —
+  // e.g. the GET succeeded (so `stage` derived `sealed`) but a later implicit reveal 404'd (so
+  // `state` flipped to `failed`). Pins the ordering fix: `roundState === 'failed'` is checked
+  // ahead of `stage !== 'no-game'`, not the other way round.
+  it('never renders a play affordance when the round failed to load, even with a stale sealed stage', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ failed: true, stage: 'sealed' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    expect(w.find('[data-test="round-error"]').text()).toContain('konnte nicht')
+    expect(w.findComponent(RoundCard).exists()).toBe(false)
+    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  // The card's own contract (submit went through ⇒ emit `guessed`) is RoundCard's own test's job;
+  // these two only check what the page does with that emit — so the emit is triggered directly
+  // rather than by driving a game component to a real guess.
+  it('takes the new points and the new order after a guess', async () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
+    const fry = { userId: 'u2', shortName: 'FRY', fullName: 'fry', bgColorHex: '#bf40b3' }
+    const getRoster = vi
+      .spyOn(api, 'getRoster')
+      .mockResolvedValueOnce([
+        { ...fry, points: { stable: 3 } },
+        { ...amy, points: { stable: 0 } },
+      ])
+      // The server ranks by stable + live, so a guess can reorder the row: amy's live points
+      // overtake fry. The row has to follow that, badges and order both.
+      .mockResolvedValueOnce([
+        { ...amy, points: { stable: 0, live: 5 } },
+        { ...fry, points: { stable: 3 } },
+      ])
+    const w = mountPage()
+    await flushPromises()
+    // Spies are installed per test but never restored, so `vi.spyOn` returns the same spy and its
+    // counter carries this file's earlier tests. Clearing the calls (queued `Once` implementations
+    // survive) keeps the count below about this test.
+    getRoster.mockClear()
+
+    await w.findComponent(RoundCard).vm.$emit('guessed')
+    await flushPromises()
+
+    expect(getRoster).toHaveBeenCalledTimes(1)
+    expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
+      'amy, 0 Punkte, plus 5 live',
+      'fry, 3 Punkte',
+    ])
+  })
+
+  it('patches the row in place after a guess instead of flying it in again', async () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([
+      {
+        userId: 'u1',
+        shortName: 'AMY',
+        fullName: 'amy',
+        bgColorHex: '#8e44ad',
+        points: { stable: 0 },
+      },
+    ])
+    const w = mountPage()
+    await flushPromises()
+    const rowBefore = w.get('[data-test="row"]').element
+
+    await w.findComponent(RoundCard).vm.$emit('guessed')
+    await flushPromises()
+
+    // MemberRow measures its resting positions in `onMounted`, so a remount is exactly what replays
+    // the fly-in. Same DOM element ⇒ the row was patched, not torn down and rebuilt. The
+    // placeholder is the visible half of that tear-down: `state` must not dip through 'loading'.
+    expect(w.get('[data-test="row"]').element).toBe(rowBefore)
+    expect(w.find('[data-test="roster-placeholder"]').exists()).toBe(false)
   })
 })

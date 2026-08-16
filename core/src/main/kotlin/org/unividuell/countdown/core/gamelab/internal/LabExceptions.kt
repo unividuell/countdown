@@ -8,6 +8,3 @@ class UnknownLabGameException(message: String) : RuntimeException(message)
 
 /** One guess per player and round, as in the real game -> 409. Use a reset action to play again. */
 class AlreadyGuessedException(message: String = "already guessed in this round") : RuntimeException(message)
-
-/** The game rejected the guess's shape or range -> 400. Each game validates its own guess. */
-class InvalidGuessException(message: String) : RuntimeException(message)

@@ -41,7 +41,7 @@ class LabDisabledTest(
 
     @Test
     fun `the lab endpoint is not found`() {
-        mockMvc.get("/api/lab/team/sample?seed=42") { with(principalFor()) }
+        mockMvc.get("/api/lab/team/guess-hue?seed=42") { with(principalFor()) }
             .andExpect { status { isNotFound() } }
     }
 }

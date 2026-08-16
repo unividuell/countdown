@@ -18,6 +18,24 @@ Write the failing test first, watch it fail, implement the minimum to make it
 pass, then refactor. Keep commits small. Integration tests must verify real
 behaviour against the Testcontainers Postgres, not mock echoes.
 
+## A mapping test needs a non-default value on the source side
+
+When a test proves that value X reaches field Y, and the expected value happens to be what **both**
+sides default to, the assertion holds even if the mapping is wired to something else entirely. It
+looks like coverage and is worth nothing:
+
+```kotlin
+// Community defaults to "Europe/Berlin", the stubbed edition defaults to "Europe/Berlin" too —
+// this passes whichever one the controller actually read.
+every { editions.requireActive(id) } returns CommunityEdition(communityId = id, label = "Team 2026")
+jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+```
+
+Stub a value that **only** the intended source could have produced (`"America/New_York"`), then assert
+that. Same rule for a batch keyed by id: give one row a distinctive value and a second row none, so a
+lookup on the wrong key produces the default and the test fails. If you cannot make the expected value
+differ from the default, the test is not testing the mapping — say so instead of asserting it.
+
 ## Assertion cheatsheet (kotest)
 
 ```kotlin
@@ -118,3 +136,14 @@ the defaults (10 per pool, 100 per server) die at ten contexts. The container th
 Keep `ModularityTests` (`ApplicationModules.of(CoreApplication::class.java).verify()`)
 green. Never `@Disabled` it or relax it to hide a boundary violation — fix the
 violation instead.
+
+## After deleting a class, run the suite with `clean`
+
+`./mvnw test` never removes the `.class` file of a source file you deleted, and Spring
+component-scans `target/classes`, not your sources. A deleted `@Component` or
+`@Configuration` therefore keeps being found: deleting one of two `MemberPointsQuery`
+implementations failed 263 tests with `expected single matching bean but found 2`, against
+a tree where only one implementation existed. Read a mass failure right after a deletion as
+a stale-target suspicion first, and confirm with `./mvnw clean test` before believing
+anything the run says about the code. The same trap makes a `git stash` comparison lie:
+without `clean`, the run measures leftover classes instead of the stashed tree.

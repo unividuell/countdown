@@ -45,6 +45,9 @@ const emit = defineEmits<{
             → {{ JSON.stringify(entry.outcome) }}</template
           >
         </code>
+        <span data-test="lab-entry-points" class="text-xs font-semibold tabular-nums">
+          {{ entry.points }}
+        </span>
         <button
           v-if="entry.userId === mineUserId"
           type="button"

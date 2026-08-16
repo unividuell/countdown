@@ -11,6 +11,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing the transferable rules here; post-mortems and measurements stay in the commit.
 - **[Language](.claude/guidelines/README.md#language)** — source code, config/script comments and operator READMEs are English regardless of conversation language; commit messages and PR text too; design docs under `docs/superpowers/` and German data stay German. **User-facing German text uses `„…“`** (low opening, high closing) — never a straight `"`.
 - **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
+- **[Kotlin call sites](.claude/guidelines/kotlin.md)** — named arguments from two arguments on; the exceptions (single arg, varargs, Java-declared functions, trailing lambdas, infix).
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
@@ -27,6 +28,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
 - **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
 - **[Game content](.claude/guidelines/game-content.md)** — hand-curated puzzle data is a secret in a public repo: never in plaintext (spec, plan, commit, fixture), handed over via gitignored `.local/` → `sops -e`, sample set for tests, fail-fast under `production`/`staging`.
+- **[Game rounds](.claude/guidelines/game-rounds.md)** — the run as the round coordinate, lazy materialisation on first announcement, one round secret with two exits (the rule per *stream*), the game judges / the framework awards, `points` as a cache, a row lock when writing other players' rows.
 - **[Game lab](.claude/guidelines/game-lab.md)** — non-prod harness for manual mini-game review: two-gate (`!production` + own switch), 404 not 403, self-limiting in-memory round store, payload-hygiene test; the lab adapts to the game, never the reverse.
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:

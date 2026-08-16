@@ -4,6 +4,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.Community
+import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberStatus
 import org.unividuell.countdown.core.community.MembershipQuery
@@ -14,15 +15,18 @@ import java.util.UUID
 class CommunityQueryService(
     private val communities: CommunityRepository,
     private val members: CommunityMemberRepository,
+    private val editions: CommunityEditionRepository,
 ) : CommunityQuery, MembershipQuery {
     override fun findBySlug(slug: String): Community? = communities.findBySlug(slug)
     override fun findById(id: UUID): Community? = communities.findByIdOrNull(id)
+    override fun activeEditionOf(communityId: UUID): CommunityEdition? =
+        editions.findActiveByCommunityId(communityId)
 
     override fun isActiveMember(communityId: UUID, userId: UUID): Boolean =
-        members.findByCommunityIdAndUserId(communityId, userId)?.status == MemberStatus.ACTIVE
+        members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)?.status == MemberStatus.ACTIVE
 
     override fun isAdmin(communityId: UUID, userId: UUID): Boolean =
-        members.findByCommunityIdAndUserId(communityId, userId)
+        members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)
             ?.let { it.status == MemberStatus.ACTIVE && it.isAdmin } ?: false
 
     override fun activeCommunitiesOf(userId: UUID): List<Community> =

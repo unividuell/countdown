@@ -1,7 +1,8 @@
 package org.unividuell.countdown.core.gamelab
 
 import tools.jackson.databind.JsonNode
-import tools.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.json.JsonMapper
+import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -9,72 +10,114 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.mockk
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
-import org.unividuell.countdown.core.gamelab.LabGame
-import org.unividuell.countdown.core.gamelab.LabOutcome
-import org.unividuell.countdown.core.gamelab.LabPayload
-import org.unividuell.countdown.core.gamelab.LabSolution
+import org.unividuell.countdown.core.game.AwardRule
+import org.unividuell.countdown.core.game.GameCatalog
+import org.unividuell.countdown.core.game.GameRandom
+import org.unividuell.countdown.core.game.InvalidGuessException
+import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
-import org.unividuell.countdown.core.gamelab.internal.InvalidGuessException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
-import org.unividuell.countdown.core.gamelab.internal.LabRoundStore
 import org.unividuell.countdown.core.gamelab.internal.LabService
-import org.unividuell.countdown.core.gamelab.internal.SampleLabGame
-import org.unividuell.countdown.core.gamelab.internal.SampleOutcome
-import org.unividuell.countdown.core.gamelab.internal.SamplePayload
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.UserQuery
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneOffset
 import java.util.UUID
 
-class LabServiceTest {
+/**
+ * `LabService` against the **real** [GameCatalog] — this is exactly the property the consolidation is
+ * for, so faking the catalogue here would test nothing. Only the surrounding modules (community, iam)
+ * are mocked; `CommunityQuery`/`MembershipQuery`/`UserQuery` are the lab's only door into them, and
+ * mocking those beans in the real Spring context is what keeps this test out of `game.internal` —
+ * constructing a [org.unividuell.countdown.core.game.internal.GuessHueGameType] by hand would reach
+ * into the game module's internals, which `gamelab` may never import.
+ */
+@Import(TestcontainersConfiguration::class)
+@SpringBootTest
+class LabServiceTest(
+    @Autowired val service: LabService,
+    @Autowired val catalog: GameCatalog,
+) {
+
+    @MockkBean lateinit var communities: CommunityQuery
+    @MockkBean lateinit var memberships: MembershipQuery
+    @MockkBean lateinit var users: UserQuery
 
     private val communityId = UUID.randomUUID()
     private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
     private val bob = User(id = UUID.randomUUID(), githubId = 2L, githubLogin = "bob")
+    private val aliceId = requireNotNull(alice.id)
+    private val bobId = requireNotNull(bob.id)
+    private val mapper = JsonMapper.builder().build()
 
-    private val communities = mockk<CommunityQuery>()
-    private val memberships = mockk<MembershipQuery>()
-    private val users = mockk<UserQuery>()
-    private val store = LabRoundStore(Clock.fixed(Instant.parse("2026-08-08T12:00:00Z"), ZoneOffset.UTC))
-    private val game = SampleLabGame()
-    private val mapper = jacksonObjectMapper()
+    private data class TwoMembers(val me: UUID, val other: UUID)
 
-    private val service = LabService(communities, memberships, users, store, listOf(game))
-
-    private fun grantAccess() {
-        every { communities.findBySlug("team") } returns
-            Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
-        every { memberships.isActiveMember(communityId, any()) } returns true
+    /** The access grant every kept test needs: a community both alice and bob belong to. */
+    private fun aCommunityWithTwoMembers(): Pair<Community, TwoMembers> {
+        val community = Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
+        every { communities.findBySlug("team") } returns community
+        every { memberships.isActiveMember(communityId = communityId, userId = any()) } returns true
         every { users.findAllById(any()) } answers {
             val ids = firstArg<Collection<UUID>>().toSet()
             listOf(alice, bob).filter { it.id in ids }
         }
+        return community to TwoMembers(me = aliceId, other = bobId)
     }
 
-    private fun secretFor(seed: Int, payload: SamplePayload): Int =
-        (payload.lowerBound..payload.upperBound).first { candidate ->
-            (game.score(seed, mapper.readTree("""{"value":$candidate}""")) as SampleOutcome).correct
-        }
+    /** One valid guess per catalogue entry. A new game adds a branch here and the loop above covers it. */
+    private fun aValidGuessFor(gameId: String): JsonNode = when (gameId) {
+        "guess-hue" -> mapper.readTree("""{"hue":123.5}""")
+        else -> error("no lab test guess for game '$gameId' — add one when the game is added")
+    }
+
+    // `roundNumber = 12` duplicates LabService's private LAB_ROUND_NUMBER with nothing linking the
+    // two: it is inert for guess-hue, whose `draw` ignores the round number entirely, but it would
+    // silently mis-derive the expected round for the first game that does not. Deliberate coupling,
+    // not an oversight — if that assumption ever breaks, this helper needs the real constant exposed.
+    private fun drawnParams(seed: Int, phase: Phase = Phase.ONE) =
+        catalog.handle("guess-hue")!!.draw(
+            random = GameRandom.fromSeed(seed),
+            context = RoundContext(roundNumber = 12, phase = phase),
+        )
+
+    private fun expectedPayload(seed: Int, phase: Phase = Phase.ONE) =
+        catalog.handle("guess-hue")!!.present(drawnParams(seed = seed, phase = phase))
+
+    private fun expectedSolution(seed: Int, phase: Phase = Phase.ONE) =
+        catalog.handle("guess-hue")!!.solution(drawnParams(seed = seed, phase = phase))
+
+    /**
+     * The exact target hue for [seed], read out of the exposed [expectedSolution] via serialisation
+     * rather than by importing the game-internal params type. A guess built from this is guaranteed
+     * to qualify (deviation `0.0`) — `aValidGuessFor`'s fixed `123.5` is not, it only has to be *some*
+     * legal hue, so it qualifies or not depending on where the seed happens to draw the target.
+     */
+    private fun targetHueFor(seed: Int, phase: Phase = Phase.ONE): Double =
+        mapper.readTree(mapper.writeValueAsString(expectedSolution(seed = seed, phase = phase)))
+            .get("targetHue").asDouble()
 
     @Test
     fun `open returns the revealed payload and no entry of my own`() {
-        grantAccess()
+        val (community, mine) = aCommunityWithTwoMembers()
 
-        val response = service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
+        val response = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
 
         response.seed shouldBe 42
-        response.game shouldBe "sample"
-        response.displayName shouldBe "Zahlenraten (Attrappe)"
-        response.payload shouldBe game.reveal(42)
+        response.game shouldBe "guess-hue"
+        response.displayName shouldBe "Farbausmalung"
+        response.payload shouldBe expectedPayload(seed = 42)
         response.me.shouldBeNull()
         response.others.shouldBeEmpty()
         response.tookOverRound shouldBe false
@@ -85,7 +128,10 @@ class LabServiceTest {
         every { communities.findBySlug("ghost") } returns null
 
         shouldThrow<LabAccessDeniedException> {
-            service.open("ghost", "sample", 42, alice.id!!, isSuperAdmin = false)
+            service.open(
+                slug = "ghost", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+                userId = aliceId, isSuperAdmin = false,
+            )
         }
     }
 
@@ -94,10 +140,13 @@ class LabServiceTest {
         // Same exception as "no such community" — the two must be indistinguishable to the caller.
         every { communities.findBySlug("team") } returns
             Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
-        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        every { memberships.isActiveMember(communityId = communityId, userId = aliceId) } returns false
 
         shouldThrow<LabAccessDeniedException> {
-            service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
+            service.open(
+                slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+                userId = aliceId, isSuperAdmin = false,
+            )
         }
     }
 
@@ -105,246 +154,239 @@ class LabServiceTest {
     fun `a super-admin who is not a member is let in`() {
         every { communities.findBySlug("team") } returns
             Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
-        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
+        every { memberships.isActiveMember(communityId = communityId, userId = aliceId) } returns false
         every { users.findAllById(any()) } returns emptyList()
 
-        service.open("team", "sample", 42, alice.id!!, isSuperAdmin = true).seed shouldBe 42
+        service.open(
+            slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = aliceId, isSuperAdmin = true,
+        ).seed shouldBe 42
     }
 
     @Test
     fun `an unknown game id is rejected`() {
-        grantAccess()
+        val (community, mine) = aCommunityWithTwoMembers()
 
         shouldThrow<UnknownLabGameException> {
-            service.open("team", "nosuchgame", 42, alice.id!!, isSuperAdmin = false)
+            service.open(
+                slug = community.slug, gameId = "nosuchgame", seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false,
+            )
         }
     }
 
     @Test
     fun `a guess lands as my own entry, carrying my name and avatar`() {
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
+        val (community, mine) = aCommunityWithTwoMembers()
+        // The exact target, not aValidGuessFor's fixed value: the points assertion below needs a
+        // guess that is guaranteed to qualify.
+        val guess = mapper.readTree("""{"hue":${targetHueFor(seed = 42)}}""")
 
         val response = service.guess(
-            "team", "sample", 42, alice.id!!, false,
-            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = guess,
         )
 
         val me = response.me.shouldNotBeNull()
-        me.userId shouldBe alice.id
+        me.userId shouldBe mine.me
         me.username shouldBe alice.username
         me.avatar shouldBe Avatar.of(alice)
+        // Neither of these has a branch to miss — `outcome`/`points` are plain field-copies from
+        // `Judgement`/`pointsFor` — but nothing else in this test tree asserts them, so a `null`/`0`
+        // stub in either LabRoundStore.record or LabService.respond would still pass every test.
+        me.outcome.shouldNotBeNull()
+        me.points shouldBe 1
         response.others.shouldBeEmpty()
     }
 
     @Test
     fun `another tester's guess shows up under others`() {
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
+        // Under the unconditional gate, "others" only ever holds anything once the viewer has an
+        // entry of their own — so both testers guess here, unlike the pre-consolidation version of
+        // this test, which relied on a game that showed the round to everyone regardless.
+        val (community, mine) = aCommunityWithTwoMembers()
         service.guess(
-            "team", "sample", 42, bob.id!!, false,
-            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
-
-        val response = service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
-
-        response.me.shouldBeNull()
-        response.others.map { it.userId } shouldContainExactly listOf(bob.id)
-    }
-
-    @Test
-    fun `a correct guess is reported correct`() {
-        grantAccess()
-        val secret = secretFor(42, game.reveal(42) as SamplePayload)
 
         val response = service.guess(
-            "team", "sample", 42, alice.id!!, false, mapper.readTree("""{"value":$secret}"""),
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        (response.me!!.outcome as SampleOutcome).correct shouldBe true
+        response.me.shouldNotBeNull()
+        response.others.map { it.userId } shouldContainExactly listOf(mine.other)
     }
 
     @Test
     fun `an invalid guess is rejected without consuming the player's one attempt`() {
-        // Pins the order in LabService.guess: score() runs before store.record(), so an
+        // Pins the order in LabService.guess: judge() runs before store.record(), so an
         // out-of-range guess must not count against the player's single attempt — a later
         // valid guess from the same user still has to succeed and land as `me`.
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
+        val (community, mine) = aCommunityWithTwoMembers()
 
         shouldThrow<InvalidGuessException> {
             service.guess(
-                "team", "sample", 42, alice.id!!, false,
-                mapper.readTree("""{"value":${payload.upperBound + 1}}"""),
+                slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false, guess = mapper.readTree("""{"hue":360.0}"""),
             )
         }
 
         val response = service.guess(
-            "team", "sample", 42, alice.id!!, false,
-            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        response.me.shouldNotBeNull().userId shouldBe alice.id
+        response.me.shouldNotBeNull().userId shouldBe mine.me
     }
 
     @Test
     fun `a second guess is refused`() {
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
-        val body = mapper.readTree("""{"value":${payload.lowerBound}}""")
-        service.guess("team", "sample", 42, alice.id!!, false, body)
+        val (community, mine) = aCommunityWithTwoMembers()
+        val guess = aValidGuessFor("guess-hue")
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = guess,
+        )
 
         shouldThrow<AlreadyGuessedException> {
-            service.guess("team", "sample", 42, alice.id!!, false, body)
+            service.guess(
+                slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false, guess = guess,
+            )
         }
     }
 
     @Test
     fun `resetting the round clears everyone, forgetting mine clears only me`() {
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
-        val body = mapper.readTree("""{"value":${payload.lowerBound}}""")
-        service.guess("team", "sample", 42, alice.id!!, false, body)
-        service.guess("team", "sample", 42, bob.id!!, false, body)
+        val (community, mine) = aCommunityWithTwoMembers()
+        val guess = aValidGuessFor("guess-hue")
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = guess,
+        )
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false, guess = guess,
+        )
 
-        val afterForget = service.forgetMine("team", "sample", 42, alice.id!!, false)
+        val afterForget = service.forgetMine(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
         afterForget.me.shouldBeNull()
-        afterForget.others.map { it.userId } shouldContainExactly listOf(bob.id)
+        // Alice is back in front of the gate the moment her own entry is gone — bob's guess does
+        // not leak out just because it is still sitting in the round.
+        afterForget.others.shouldBeEmpty()
 
-        val afterReset = service.resetRound("team", "sample", 42, alice.id!!, false)
+        val afterReset = service.resetRound(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
         afterReset.others.shouldBeEmpty()
         afterReset.me.shouldBeNull()
     }
 
     @Test
     fun `opening a different seed reports the takeover`() {
-        grantAccess()
-        service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
-
-        service.open("team", "sample", 99, alice.id!!, isSuperAdmin = false)
-            .tookOverRound shouldBe true
-    }
-
-    @Test
-    fun `two games sharing an id fail the boot`() {
-        // Fail fast: a silently shadowed game would be found only by someone wondering why their
-        // lab page shows the wrong thing.
-        shouldThrow<IllegalArgumentException> {
-            LabService(communities, memberships, users, store, listOf(game, SampleLabGame()))
-        }
-    }
-
-    /**
-     * A game that accepts guesses without scoring them, hides the other testers until the viewer
-     * has guessed, and reveals a solution once they have — the shape Guess Hue needs. Declared
-     * here rather than by flipping `SampleLabGame`, whose open behaviour is itself documented and
-     * tested.
-     */
-    private object SecretivePayload : LabPayload
-
-    private object SecretiveSolution : LabSolution
-
-    private class SecretiveGame : LabGame {
-        override val id = "secretive"
-        override val displayName = "Verschwiegen"
-        override val revealsOthersBeforeGuess = false
-        override fun reveal(seed: Int) = SecretivePayload
-        override fun score(seed: Int, guess: JsonNode): LabOutcome? = null
-        override fun solution(seed: Int) = SecretiveSolution
-    }
-
-    private val secretive = SecretiveGame()
-    private val secretiveService =
-        LabService(communities, memberships, users, store, listOf(secretive))
-
-    @Test
-    fun `a game that hides the others shows none of them before I have guessed`() {
-        grantAccess()
-        secretiveService.guess(
-            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
         )
 
-        val response = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
-
-        response.me.shouldBeNull()
-        response.others.shouldBeEmpty()
+        service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 99, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        ).tookOverRound shouldBe true
     }
 
     @Test
-    fun `a game that hides the others shows them once I have guessed`() {
-        grantAccess()
-        secretiveService.guess(
-            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+    fun `a guess that switches the round reports the takeover too`() {
+        // guess() used to open() and then record() as two separate store calls, so the takeover the
+        // first call saw was already gone by the second — this pins the single-call fix.
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
         )
 
-        val response = secretiveService.guess(
-            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 99, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        response.me.shouldNotBeNull()
-        response.others.map { it.username } shouldContainExactly listOf("bob")
+        response.tookOverRound shouldBe true
     }
 
     @Test
-    fun `a game that does not score stores an entry without an outcome`() {
-        grantAccess()
-
-        val response = secretiveService.guess(
-            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
-        )
-
-        response.me.shouldNotBeNull().outcome.shouldBeNull()
-    }
-
-    @Test
-    fun `the sample game keeps showing the others before I have guessed`() {
-        // The default-free property means this stays a decision, not an inheritance.
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
+    fun `a guess that switches the round is judged against the round it lands in, not the one it displaced`() {
+        // The bug this pins: judging against the stored round (42) while recording under the freshly
+        // chosen one (99) would file bob's entry with a judgement computed against alice's target
+        // rather than his own — qualifying or not by accident, and contradicting the payload/solution
+        // the response otherwise shows for seed 99.
+        val (community, mine) = aCommunityWithTwoMembers()
         service.guess(
-            "team", "sample", 42, bob.id!!, isSuperAdmin = false,
-            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        val response = service.open("team", "sample", 42, alice.id!!, isSuperAdmin = false)
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 99, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false,
+            guess = mapper.readTree("""{"hue":${targetHueFor(seed = 99)}}"""),
+        )
 
-        response.others.map { it.username } shouldContainExactly listOf("bob")
+        response.tookOverRound shouldBe true
+        response.seed shouldBe 99
+        // Bob's guess is exactly seed 99's target: it only scores if it was judged against 99, not
+        // against the round it displaced.
+        response.me.shouldNotBeNull().points shouldBe 1
     }
 
     @Test
     fun `the solution stays behind the guess`() {
         // The whole gate: `me == null` is the one condition, and it is checked server-side — a
         // solution the browser never receives cannot be read out of the network tab either.
-        grantAccess()
-        secretiveService.guess(
-            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        val before = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
+        val before = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
 
         before.solution.shouldBeNull()
     }
 
     @Test
     fun `the solution arrives with my own guess`() {
-        grantAccess()
+        val (community, mine) = aCommunityWithTwoMembers()
 
-        val after = secretiveService.guess(
-            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val after = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        after.solution shouldBe SecretiveSolution
+        after.solution shouldBe expectedSolution(seed = 42)
     }
 
     @Test
     fun `deleting my guess puts me back in front of the gate`() {
-        grantAccess()
-        secretiveService.guess(
-            "team", "secretive", 42, alice.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        val afterForget =
-            secretiveService.forgetMine("team", "secretive", 42, alice.id!!, isSuperAdmin = false)
+        val afterForget = service.forgetMine(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
 
         afterForget.solution.shouldBeNull()
     }
@@ -355,28 +397,78 @@ class LabServiceTest {
         // but `respond` gates the solution on having an entry of one's own, not on having access.
         // A super-admin opening someone else's round must see the same `null` a denied non-member
         // would have gotten if they had been let in: safe by construction today, and this pins it.
-        grantAccess()
-        every { memberships.isActiveMember(communityId, alice.id!!) } returns false
-        secretiveService.guess(
-            "team", "secretive", 42, bob.id!!, isSuperAdmin = false, mapper.readTree("""{}"""),
+        val (community, mine) = aCommunityWithTwoMembers()
+        every { memberships.isActiveMember(communityId = communityId, userId = mine.me) } returns false
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
         )
 
-        val response = secretiveService.open("team", "secretive", 42, alice.id!!, isSuperAdmin = true)
+        val response = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = true,
+        )
 
         response.solution.shouldBeNull()
     }
 
     @Test
-    fun `a game that reveals nothing keeps answering null after a guess`() {
-        // The default is the safe direction, so the sample game inherits it without saying a word.
-        grantAccess()
-        val payload = game.reveal(42) as SamplePayload
+    fun `others stay hidden until I have guessed, for every game there is`() {
+        // The switch is gone, so this is no longer a per-game question: it holds for whatever the
+        // catalogue contains. Iterating the catalogue is what keeps it true when a game is added.
+        val (community, mine) = aCommunityWithTwoMembers()
+        for (gameId in catalog.ids()) {
+            service.guess(
+                slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
+                userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor(gameId),
+            )
 
-        val response = service.guess(
-            "team", "sample", 42, alice.id!!, isSuperAdmin = false,
-            mapper.readTree("""{"value":${payload.lowerBound}}"""),
+            val before = service.open(
+                slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false,
+            )
+
+            before.others.shouldBeEmpty()
+            before.solution.shouldBeNull()
+        }
+    }
+
+    @Test
+    fun `switching the phase draws a different round and changes the rule`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val one = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+        val two = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
         )
 
-        response.solution.shouldBeNull()
+        one.awardRule shouldBe AwardRule.ALL_QUALIFYING
+        one.awardPoints shouldBe 1
+        two.awardRule shouldBe AwardRule.CLOSEST_ONLY
+        // The one number the lab invents (via the synthetic LAB_ROUND_NUMBER) rather than reads off a
+        // real grid — worth pinning on its own.
+        two.awardPoints shouldBe 2
+        two.tookOverRound shouldBe true
+    }
+
+    @Test
+    fun `the same seed and phase give the same round twice`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val first = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 4711, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+        val second = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 4711, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        second.payload shouldBe first.payload
+        second.tookOverRound shouldBe false
     }
 }

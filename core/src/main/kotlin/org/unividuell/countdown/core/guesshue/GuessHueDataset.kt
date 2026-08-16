@@ -11,18 +11,30 @@ import org.unividuell.countdown.core.rng.SeededRandom
 class GuessHueDataset(val entries: List<GuessHueEntry>) {
 
     /**
-     * **The draw order is a contract.** Entry, jitter, saturation, lightness, init angle — reorder
-     * them and every round ever derived from a stored seed changes retroactively.
+     * **The draw order is a contract, per stream.** [presentation] draws entry, saturation,
+     * lightness and start angle in that order; [solution] draws the jitter. Reorder either and every
+     * round derived from the same pair of seeds changes.
      *
-     * Only the existing [SeededRandom] API is used. A new method there would drag new golden
-     * vectors along with it, for arithmetic that belongs here instead.
+     * Two streams, split by **publication** rather than by importance: everything the player is
+     * shown comes from [presentation], and [solution] produces the round's only secret — the jitter.
+     * One stream would not do, and not because a published value might equal the answer:
+     * `SeededRandom.nextDouble` publishes 53 bits of two consecutive words and the generator's
+     * transition is a bijection, so a few published doubles pin the state and let it be stepped
+     * **backwards** to whatever the same stream drew for the solution. The entry belongs on the
+     * published side for exactly that reason — its description is what the player reads.
+     *
+     * What remains after the split is not a generator problem: whoever knows the curated dataset can
+     * read the nominal hue off the description. That is what game-content.md protects, not this.
+     *
+     * Only the existing [SeededRandom] API is used. A new method there would drag new golden vectors
+     * along with it, for arithmetic that belongs here instead.
      */
-    fun draw(random: SeededRandom): GuessHueTarget {
-        val entry = random.pick(entries)
-        val jittered = entry.hue + random.nextDouble() * (2 * JITTER_DEGREES) - JITTER_DEGREES
-        val saturation = SATURATION_MIN + random.nextDouble() * (SATURATION_MAX - SATURATION_MIN)
-        val lightness = LIGHTNESS_MIN + random.nextDouble() * (LIGHTNESS_MAX - LIGHTNESS_MIN)
-        val initHue = random.nextDouble() * 360.0
+    fun draw(solution: SeededRandom, presentation: SeededRandom): GuessHueTarget {
+        val entry = presentation.pick(entries)
+        val saturation = SATURATION_MIN + presentation.nextDouble() * (SATURATION_MAX - SATURATION_MIN)
+        val lightness = LIGHTNESS_MIN + presentation.nextDouble() * (LIGHTNESS_MAX - LIGHTNESS_MIN)
+        val initHue = presentation.nextDouble() * 360.0
+        val jittered = entry.hue + solution.nextDouble() * (2 * JITTER_DEGREES) - JITTER_DEGREES
 
         return GuessHueTarget(
             entry = entry,

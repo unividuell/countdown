@@ -10,6 +10,17 @@ Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
+**Derive state from the answer, don't mirror it into flags.** `useRound`'s `stage` is a `computed` over
+the last `RoundResponse` — no game → `no-game`, `me == null && game.requiresReveal` → sealed, `me ==
+null` otherwise → `no-game` too (a viewer with no row and no game-mandated reveal has nothing to seal —
+offering a reveal button there would 404 every time, which is exactly the super-admin-without-membership
+case the bypass exists for), `me.guessedAt == null` → playing, else done — not a local "have I guessed
+yet" ref set by the submit handler. A local flag can disagree with the server (a second tab, a stale
+reload); the response cannot. The same composable turns
+a 409 into a reload rather than an error: a guess or reveal rejected as a conflict means the server's
+state has already moved past what the UI assumed, so the right response is to fetch that state and
+render it, with one explanatory line, not to report a failure the player can retry their way out of.
+
 **Ambient time is shared state; the domain around it is not.** `useCountdown` is instantiated twice
 on a community page (the header widget and the fallback card), and two `setInterval`s started at
 different moments never resynchronise. So `nowMs` and `skewMs` (the *server's* clock correction, of
@@ -56,11 +67,19 @@ tab. So:
   a setup-time constant.** A component mounted on a value that survives reload (the lab keys a
   game component on the round's seed, and reloading reuses the same seed) stays mounted while its
   props change underneath it — `HueWheelReveal`'s once-computed band width and
-  `GuessHueLabGame`'s once-computed reveal gate both went stale this way, one freezing a moving
+  `GuessHueGame`'s once-computed reveal gate both went stale this way, one freezing a moving
   target, the other wedging shut so it could never re-arm. Recompute from props instead, or
   `watch` **without** `immediate`: the default `pre` flush runs the callback and updates the flag
   before the child re-renders, so the child already reads the right value on mount — changing
   `flush` would silently undo that.
+- **A refetch behind an entry animation needs its own path that never leaves `'ready'`.** When the
+  consumer renders the animated component behind `state === 'ready'`, a `reload()` that resets
+  `state` to `'loading'` unmounts it — and a component that measures on mount replays its whole
+  entrance for what was only new numbers. Splitting `useRoster` into `reload` (entering: `state`
+  may swing) and `refresh` (already on screen: replace the data, touch nothing else) is the shape;
+  the mounted list patches values and order in place, keyed by id. A failed *refresh* then keeps
+  the last known data instead of swapping the list for an error line — the action that triggered it
+  did succeed, and the next visit repairs the numbers.
 
 ## Server-authoritative ticking values (countdown pattern)
 

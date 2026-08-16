@@ -10,6 +10,7 @@ new team members (and AI assistants) stay consistent.
 |---|---|
 | **Feeding knowledge back** — every task ends by capturing the transferable rules here; the admission bar keeps post-mortems in the commit, not in the file | [feeding-knowledge-back.md](feeding-knowledge-back.md) |
 | **Git workflow** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging | [git-workflow.md](git-workflow.md) |
+| Kotlin call sites — named arguments from two arguments on, and where that does not apply | [kotlin.md](kotlin.md) |
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
@@ -28,6 +29,7 @@ new team members (and AI assistants) stay consistent.
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 | **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
+| **Game rounds** — how a round gets a game and a guess becomes points (run as the round coordinate · lazy materialisation via `ON CONFLICT` · one secret, two exits split per stream · game judges, framework awards · points as a cache) | [game-rounds.md](game-rounds.md) |
 | **Game lab** — the non-prod harness for playing a mini-game against a URL seed (two-gate pattern · self-limiting in-memory state · payload-hygiene test · the lab adapts, never the game) | [game-lab.md](game-lab.md) |
 
 ## Stack baseline
