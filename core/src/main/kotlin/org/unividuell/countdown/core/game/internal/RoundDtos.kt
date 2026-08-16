@@ -38,14 +38,32 @@ data class RoundDto(val number: Int, val label: String, val start: Instant, val 
 data class GameDto(val id: String, val displayName: String, val requiresReveal: Boolean)
 
 /**
- * One player's involvement, as far as the viewer may see it.
+ * One other player's involvement, as far as the viewer may see it.
  *
  * `qualifies` and `deviation` are **not** here on purpose: they are the framework's comparison
  * values, not display data. What the player learns about a result is the game-shaped [outcome], and
  * where they stand is [points]. A generic "this far off" field would be a third way out of the server
  * next to `present()` and `solution()`, and those we want countable.
+ *
+ * Neither are the timestamps: when somebody else revealed and when they guessed says how long they
+ * sat on the round, and that is between them and the server. The type is separate from [MyPlayDto]
+ * rather than nulling the fields out, so a stamp cannot be added back for everyone by accident.
  */
-data class PlayDto(
+data class OtherPlayDto(
+    val userId: UUID,
+    val username: String,
+    val avatar: Avatar,
+    val guess: JsonNode?,
+    val outcome: JsonNode?,
+    val points: Int?,
+)
+
+/**
+ * The viewer's own row: [OtherPlayDto] plus the two stamps that are theirs to know. [guessedAt] is
+ * what the client derives „still playing“ or „done“ from; [revealedAt] is published because it is the
+ * viewer's own and costs nothing to say.
+ */
+data class MyPlayDto(
     val userId: UUID,
     val username: String,
     val avatar: Avatar,
@@ -72,10 +90,10 @@ data class RoundResponse(
     val payload: GamePayload? = null,
     /** Only once the viewer has guessed. */
     val solution: GameSolution? = null,
-    val me: PlayDto? = null,
+    val me: MyPlayDto? = null,
     /** Empty until the viewer has guessed. Unconditional: there is no game for which the other
      *  answer is right, so there is no switch to get it wrong with. */
-    val others: List<PlayDto> = emptyList(),
+    val others: List<OtherPlayDto> = emptyList(),
     /**
      * The rule and the stake this round was frozen with — `null` exactly when there is no game. They
      * belong to the round, not to the game type: the same game pays differently in phase two.

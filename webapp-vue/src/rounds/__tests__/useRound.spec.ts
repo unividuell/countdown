@@ -3,7 +3,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ApiError } from '@/api/client'
 import * as api from '@/api/rounds'
-import type { PlayDto, RoundResponse } from '@/api/types'
+import type { MyPlayDto, RoundResponse } from '@/api/types'
 import { useRound } from '../useRound'
 
 const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
@@ -19,7 +19,7 @@ const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   ...over,
 })
 
-const aPlay = (over: Partial<PlayDto> = {}): PlayDto => ({
+const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   userId: 'u1',
   username: 'Fry',
   avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },

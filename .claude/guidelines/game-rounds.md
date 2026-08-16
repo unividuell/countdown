@@ -46,6 +46,18 @@ below) — so a game that withholds its solution must also make sure its `outcom
 solution can be reconstructed from, a distance included, or the second exit gives back what the first
 one held.
 
+## The viewer's row and the others' rows are different types
+
+`MyPlayDto` and `OtherPlayDto` are two types, not one with the private fields nulled out. What the
+others played and what it scored is the round, and they get it; *when* they revealed and *when* they
+guessed says how long each of them sat on it, and that is between them and the server. Two types make
+that structural: there is no field to forget to blank, and a stamp added to the viewer's row cannot
+reach everybody else's by accident. The same reasoning as `qualifies`/`deviation` — a value the
+browser never receives cannot be read out of the network tab either — one level up, at the row.
+
+Sorting `others` by `guessedAt` stays: the order the round happened in is what the list is for, and an
+order is not a clock.
+
 ## The game judges, the framework awards
 
 A game says "eligible for points" (`qualifies`) and "this far off" (`deviation`); how many points that

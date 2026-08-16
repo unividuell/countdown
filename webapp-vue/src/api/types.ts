@@ -156,17 +156,25 @@ export interface GameDto {
   requiresReveal: boolean
 }
 
-export interface PlayDto {
+/**
+ * Another player's row. No timestamps on purpose: when somebody else revealed and when they guessed
+ * is theirs, and the server does not send it — see `OtherPlayDto` on the Kotlin side.
+ */
+export interface OtherPlayDto {
   userId: string
   username: string
   avatar: AvatarView
-  revealedAt: string
-  guessedAt: string | null
   guess: unknown
   /** The game's own shape. `null` for a game that judges without saying anything. */
   outcome: unknown
   /** `null` until the round is scored; `0` means „played and came away empty“. */
   points: number | null
+}
+
+/** The viewer's own row: the same, plus the two stamps that are theirs to know. */
+export interface MyPlayDto extends OtherPlayDto {
+  revealedAt: string
+  guessedAt: string | null
 }
 
 export interface RoundResponse {
@@ -178,9 +186,9 @@ export interface RoundResponse {
   payload: unknown
   /** Only once the viewer has guessed. */
   solution: unknown
-  me: PlayDto | null
+  me: MyPlayDto | null
   /** Empty until the viewer has guessed — withheld by the server, not filtered here. */
-  others: PlayDto[]
+  others: OtherPlayDto[]
   /** `null` exactly when there is no game. Under `CLOSEST_ONLY` a score is provisional. */
   awardRule: AwardRule | null
   awardPoints: number | null
