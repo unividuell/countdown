@@ -1,0 +1,187 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import GuessHueScoreboard from '@/games/guesshue/GuessHueScoreboard.vue'
+import { RESULTS_DELAY_MS } from '@/games/guesshue/reveal'
+import type { ScoreboardRow, ScoreboardSolution } from '@/games/guesshue/scoreboard'
+
+const SOLUTION: ScoreboardSolution = { hue: 123.4, hex: '#5ce65c', ink: '#111111' }
+
+function row(over: Partial<ScoreboardRow> & { userId: string }): ScoreboardRow {
+  return {
+    name: over.userId,
+    colorHex: '#7d2ae8',
+    ink: '#ffffff',
+    hue: 128.4,
+    guessHex: '#5ce65c',
+    guessInk: '#111111',
+    deviationDeg: 5,
+    points: 1,
+    provisional: false,
+    tick: 0,
+    ...over,
+  }
+}
+
+function mountBoard(props: Partial<InstanceType<typeof GuessHueScoreboard>['$props']> = {}) {
+  return mount(GuessHueScoreboard, {
+    props: {
+      rows: [row({ userId: 'leela' })],
+      solution: SOLUTION,
+      live: false,
+      animate: false,
+      ...props,
+    },
+  })
+}
+
+describe('GuessHueScoreboard', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('names each player from a row header, so a cell is never read bare', () => {
+    // `<th scope="row">` is what makes a screen reader say "Leela, Tipp 128,4" and not "128,4".
+    const w = mountBoard({ rows: [row({ userId: 'leela', name: 'Leela' })] })
+    const header = w.get('tbody th')
+
+    expect(header.attributes('scope')).toBe('row')
+    expect(header.text()).toBe('Leela')
+  })
+
+  it('heads all four columns', () => {
+    const w = mountBoard()
+    const band = w.findAll('thead tr:last-child th')
+
+    expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', 'Differenz', 'Pkt'])
+    expect(band.every((cell) => cell.attributes('scope') === 'col')).toBe(true)
+  })
+
+  it("keeps the head block in the original's arrangement", () => {
+    // The heading sits beside the solution stack, not above the table, and the chip sits over the
+    // column that can still change. Both span the two head rows.
+    const w = mountBoard({ live: true })
+
+    expect(w.get('thead h2').text()).toBe('Auswertung')
+    expect(w.get('thead h2').element.closest('td')!.getAttribute('rowspan')).toBe('2')
+    expect(
+      w.get('[data-test="hue-scoreboard-live"]').element.closest('td')!.getAttribute('rowspan'),
+    ).toBe('2')
+    expect(w.get('[data-test="hue-scoreboard-solution"]').attributes('headers')).toBe(
+      'hue-solution',
+    )
+    expect(w.get('#hue-solution').text()).toBe('Lösung')
+  })
+
+  it('says in the caption what the heading does not', () => {
+    const caption = mountBoard().get('caption')
+
+    expect(caption.classes()).toContain('sr-only')
+    expect(caption.text()).not.toContain('Auswertung')
+    expect(caption.text()).toContain('sortiert')
+  })
+
+  it('grounds the row in the player colour and the guess cell in the guess colour', () => {
+    const w = mountBoard({
+      rows: [
+        row({
+          userId: 'leela',
+          colorHex: '#7d2ae8',
+          ink: '#ffffff',
+          guessHex: '#5ce65c',
+          guessInk: '#111111',
+        }),
+      ],
+    })
+    const cells = w.findAll('tbody th, tbody td')
+
+    // happy-dom may or may not normalise a hex to rgb() — the test pins the colour, not that.
+    expect(cells[0]!.element.style.backgroundColor).toMatch(/#7d2ae8|rgb\(125, ?42, ?232\)/i)
+    expect(cells[1]!.element.style.backgroundColor).toMatch(/#5ce65c|rgb\(92, ?230, ?92\)/i)
+    expect(cells[2]!.element.style.backgroundColor).toMatch(/#7d2ae8|rgb\(125, ?42, ?232\)/i)
+    expect(cells[3]!.element.style.backgroundColor).toMatch(/#7d2ae8|rgb\(125, ?42, ?232\)/i)
+  })
+
+  it('writes the numbers German, with one decimal and an em dash for nothing', () => {
+    const w = mountBoard({
+      rows: [row({ userId: 'a', hue: 128.4, deviationDeg: 5, points: null })],
+    })
+    const cells = w.findAll('tbody td')
+
+    expect(cells[0]!.text()).toBe('128,4')
+    expect(cells[1]!.text()).toBe('5,0')
+    // U+2014, not a hyphen and not an en dash.
+    expect(cells[2]!.text()).toBe('—')
+  })
+
+  it('shows the live chip only where a score can still be overtaken', () => {
+    expect(mountBoard({ live: false }).find('[data-test="hue-scoreboard-live"]').exists()).toBe(
+      false,
+    )
+
+    const live = mountBoard({ live: true }).get('[data-test="hue-scoreboard-live"]')
+    expect(live.classes()).toEqual(expect.arrayContaining(['bg-live', 'animate-pulse']))
+    // The pulse means nothing over the wire; the chip has to say it.
+    expect(live.text()).toContain('ändern')
+  })
+
+  it('pulses only the points that can still move, and says so in words too', () => {
+    const w = mountBoard({
+      rows: [
+        row({ userId: 'a', provisional: true, points: 2 }),
+        row({ userId: 'b', provisional: false, points: 0 }),
+      ],
+    })
+    const [first, second] = w.findAll('[data-test="hue-scoreboard-points"]')
+
+    expect(first!.classes()).toEqual(
+      expect.arrayContaining(['animate-pulse', 'italic', 'motion-reduce:animate-none']),
+    )
+    expect(first!.text()).toContain('vorläufig')
+    expect(second!.classes()).not.toContain('animate-pulse')
+    expect(second!.text()).toBe('0')
+  })
+
+  it('is fully written the moment a reload lands on a spent round', () => {
+    const w = mountBoard({ animate: false })
+
+    for (const cell of w.findAll('thead th, thead td, tbody th, tbody td')) {
+      expect(cell.classes()).not.toContain('opacity-0')
+    }
+  })
+
+  it('types itself in, cell by cell and row by row, once it is a live reveal', async () => {
+    const w = mountBoard({
+      animate: true,
+      rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
+    })
+
+    // Two frames before anything is shown: the painted opacity-0 frame Firefox needs.
+    expect(w.get('tbody th').classes()).toContain('opacity-0')
+    vi.advanceTimersByTime(50)
+    await w.vm.$nextTick()
+    expect(w.get('tbody th').classes()).toContain('opacity-100')
+
+    const cells = w.findAll('tbody tr:first-child th, tbody tr:first-child td')
+    const delays = cells.map((cell) => cell.element.style.transitionDelay)
+    expect(delays).toEqual([
+      `${RESULTS_DELAY_MS}ms`,
+      `${RESULTS_DELAY_MS + 45}ms`,
+      `${RESULTS_DELAY_MS + 90}ms`,
+      `${RESULTS_DELAY_MS + 135}ms`,
+    ])
+
+    const second = w.get('tbody tr:nth-child(2) th')
+    expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + 120}ms`)
+  })
+
+  it('renders nothing at all when no guess could be ranked', () => {
+    const w = mountBoard({ rows: [] })
+
+    expect(w.find('table').exists()).toBe(false)
+  })
+})
