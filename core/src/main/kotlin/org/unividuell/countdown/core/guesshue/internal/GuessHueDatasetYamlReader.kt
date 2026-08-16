@@ -29,7 +29,7 @@ object GuessHueDatasetYamlReader {
             throw GuessHueDatasetException("$origin: 'entries' must be a list, was ${entries::class.simpleName}")
         }
         if (entries.isEmpty()) throw GuessHueDatasetException("$origin: 'entries' is empty")
-        return entries.mapIndexed { index, raw -> entry(raw, origin, index) }
+        return entries.mapIndexed { index, raw -> entry(raw = raw, origin = origin, index = index) }
     }
 
     private fun entry(raw: Any?, origin: String, index: Int): GuessHueEntry {
