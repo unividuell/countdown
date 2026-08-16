@@ -15,6 +15,7 @@ const community = (startsAt: string | null): CommunityResponse => ({
   gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
 })
 
 const before: CountdownResponse = {

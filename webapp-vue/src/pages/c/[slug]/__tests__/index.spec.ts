@@ -58,6 +58,7 @@ const community: CommunityResponse = {
   gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
 }
 
 function mountPage() {

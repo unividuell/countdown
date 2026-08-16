@@ -22,6 +22,7 @@ vi.mock('@/communities/context', () => ({
         gamesFromRound: null,
         viewerIsAdmin: true,
         pendingCount: 1,
+        editionFrozen: false,
       },
     },
     refresh: vi.fn(),

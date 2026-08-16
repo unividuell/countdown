@@ -19,6 +19,7 @@ vi.mock('@/communities/context', () => ({
         gamesFromRound: null,
         viewerIsAdmin: true,
         pendingCount: 0,
+        editionFrozen: false,
       },
     },
     refresh: vi.fn(),
@@ -57,6 +58,7 @@ describe('settings page', () => {
       gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
+      editionFrozen: false,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue({
       url: '/join/tok',
@@ -82,6 +84,7 @@ describe('settings page', () => {
       gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
+      editionFrozen: false,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
     vi.spyOn(api, 'generateInvite').mockResolvedValue({

@@ -22,6 +22,7 @@ const startsAtTimezone = ref('Europe/Berlin')
 const zones = Intl.supportedValuesOf('timeZone')
 const phaseTwoStartRound = ref<number | null>(null)
 const gamesFromRound = ref<number | null>(null)
+const editionFrozen = ref(false)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
@@ -46,6 +47,7 @@ onMounted(async () => {
   startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
   gamesFromRound.value = c.gamesFromRound
+  editionFrozen.value = c.editionFrozen
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -59,10 +61,13 @@ async function save(): Promise<void> {
       startsAtTimezone: string
       phaseTwoStartRound: number
       gamesFromRound: number
-    }> = { name: name.value.trim(), startsAtTimezone: startsAtTimezone.value }
-    if (startsAt.value) {
-      const instant = toInstant(startsAt.value, startsAtTimezone.value)
-      if (instant) body.startsAt = instant
+    }> = { name: name.value.trim() }
+    if (!editionFrozen.value) {
+      body.startsAtTimezone = startsAtTimezone.value
+      if (startsAt.value) {
+        const instant = toInstant(startsAt.value, startsAtTimezone.value)
+        if (instant) body.startsAt = instant
+      }
     }
     if (typeof phaseTwoStartRound.value === 'number')
       body.phaseTwoStartRound = phaseTwoStartRound.value
@@ -98,7 +103,11 @@ async function revoke(): Promise<void> {
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
       <label class="block text-sm"
-        >Zeitzone<select v-model="startsAtTimezone" class="mt-1 w-full rounded border px-3 py-1.5">
+        >Zeitzone<select
+          v-model="startsAtTimezone"
+          :disabled="editionFrozen"
+          class="mt-1 w-full rounded border px-3 py-1.5"
+        >
           <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
         </select></label
       >
@@ -106,9 +115,17 @@ async function revoke(): Promise<void> {
         >Start<input
           v-model="startsAt"
           type="datetime-local"
+          :disabled="editionFrozen"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
       <p class="text-xs text-neutral-500">Startzeit gilt in der gewählten Zeitzone.</p>
+      <p data-test="freeze-hint" class="text-xs text-neutral-500">
+        {{
+          editionFrozen
+            ? 'Der Lauf hat begonnen — Start und Zeitzone sind fix.'
+            : 'Änderbar, bis die erste Spielrunde beginnt — danach ist der Lauf fix.'
+        }}
+      </p>
       <label class="block text-sm"
         >Phase-2-Startrunde<input
           v-model.number="phaseTwoStartRound"

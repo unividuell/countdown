@@ -18,6 +18,7 @@ const community: CommunityResponse = {
   gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
 }
 
 // serverNow follows the fake client clock, so every load computes a skew of 0. Without that, an

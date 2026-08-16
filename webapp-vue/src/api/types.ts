@@ -34,6 +34,7 @@ export interface CommunityResponse {
   gamesFromRound: number | null
   viewerIsAdmin: boolean
   pendingCount: number
+  editionFrozen: boolean
 }
 export interface CommunitySummary {
   id: string

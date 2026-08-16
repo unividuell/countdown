@@ -28,6 +28,7 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
     gamesFromRound: null,
     viewerIsAdmin: false,
     pendingCount: 0,
+    editionFrozen: false,
     ...over,
   }
 }

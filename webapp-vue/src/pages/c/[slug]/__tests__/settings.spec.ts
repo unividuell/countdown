@@ -23,6 +23,7 @@ const community = {
   gamesFromRound: 24,
   viewerIsAdmin: true,
   pendingCount: 0,
+  editionFrozen: false,
 }
 
 describe('settings — timezone + zone-relative startsAt', () => {
@@ -114,6 +115,47 @@ describe('settings — timezone + zone-relative startsAt', () => {
     expect(api.updateCommunity).toHaveBeenCalledWith(
       'team',
       expect.not.objectContaining({ gamesFromRound: expect.anything() }),
+    )
+  })
+
+  it('says the grid is still open while the first game round is ahead', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeUndefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Änderbar')
+  })
+})
+
+describe('settings — a run that has begun', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+    vi.spyOn(api, 'getInvite').mockResolvedValue(null)
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+  })
+
+  it('locks start and timezone and says why', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
+    expect(w.find('select').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+  })
+
+  it('leaves start and timezone out of the request', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ startsAt: expect.anything() }),
+    )
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ startsAtTimezone: expect.anything() }),
     )
   })
 })

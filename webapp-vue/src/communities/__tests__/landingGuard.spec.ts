@@ -27,6 +27,7 @@ const team: CommunityResponse = {
   gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
 }
 const nord: CommunityResponse = { ...team, id: 'c2', name: 'Team Nord', slug: 'nord' }
 
