@@ -388,8 +388,9 @@ als Rang 0 auf Tick 1, sonst auf Tick 0, und auf Tick 0, wenn ich allein getippt
 
 **`HueWheelReveal.spec.ts`** (Ergänzung) — die Verzögerung kommt vom Marker; mein Marker hat keine.
 
-**`GuessHueReveal.spec.ts`**, **`RoundCard.spec.ts`**, Lab-Seite (Ergänzungen) — die Tabelle steht
-unter dem Rad, `award-rule` wird durchgereicht.
+**`RoundCard.spec.ts`**, Lab-Seite (Ergänzungen) — die Tabelle steht unter dem Rad, `award-rule` wird
+durchgereicht. Die Auswertungskarte selbst hat keine eigene Spec-Datei — sie ist über
+`GuessHueGame.spec.ts` mitgetestet (siehe oben).
 
 **Im Browser** wird über das **Lab** verifiziert, in Phase ONE und TWO: in einer echten Runde kostet
 das Prüfen einen unwiderruflichen Tipp. Zu beurteilen sind genau die Dinge, die kein Test sieht — ob
