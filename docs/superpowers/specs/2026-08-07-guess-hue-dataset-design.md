@@ -118,6 +118,14 @@ Für **neu geschriebene** Einträge. Sie ersetzt die Zweitakt-Regel vollständig
   Fingerbreit Richtung Gelb"), Gradzahlen und Ziffern.
 - **Erlaubt und erwünscht:** „dunkel", „blass", „kräftig", „stumpf". Seit S und L aus dem Eintrag
   kommen, stimmt es wieder.
+- **Der Anker muss ein Gegenstand sein, dessen Farbe alle gleich benennen würden.** Das ist die
+  schärfste Regel des Kapitels und die, an der die meisten Entwürfe scheitern. Ein Feuerlöscher ist
+  rot, darüber streitet niemand. Ein Bauzaun, eine Krankenhausschale, eine Straßenlaterne, eine
+  Anhängerplane, ein Schokoriegelpapier sind dagegen das, wofür sich der Hersteller in dem Jahr
+  entschieden hat — der Text zeigt dann auf gar keine Farbe. Zwei verwandte Fehler fallen unter
+  dieselbe Regel: **Nischenvokabular** (ein „Streckenposten" ist Motorsport) und **konstruierte
+  Betrachtungsbedingungen** („gegen das Fenster gehalten", „wenn das Licht günstig steht"). Wer den
+  Gegenstand nicht kennt oder ihn nie so gesehen hat, liest an einem leeren Bild vorbei.
 - **Anker und Farbwert müssen zusammenpassen.** Der Gegenstand bestimmt nicht nur den Hue, sondern
   auch Sättigung und Helligkeit des Eintrags. Das ist die eigentliche Qualitätsregel — sie ersetzt
   vier mechanische.
