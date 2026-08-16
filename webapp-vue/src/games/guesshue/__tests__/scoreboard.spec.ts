@@ -99,13 +99,21 @@ describe('scoreboardRows', () => {
     expect(rows.map((row) => row.userId)).toEqual(['fine'])
   })
 
-  it('numbers the rows by rank', () => {
-    const rows = rowsOf([
-      entry({ userId: 'far', outcome: { deviationDeg: 90 } }),
-      entry({ userId: 'near', outcome: { deviationDeg: 1 } }),
-    ])
+  it('gives each row its rank as a tick, and holds mine back to the first foreign marker', () => {
+    const rows = rowsOf(
+      [
+        entry({ userId: 'far', outcome: { deviationDeg: 90 } }),
+        entry({ userId: 'me', outcome: { deviationDeg: 40 } }),
+        entry({ userId: 'near', outcome: { deviationDeg: 1 } }),
+      ],
+      { mineUserId: 'me' },
+    )
 
-    expect(rows.map((row) => row.tick)).toEqual([0, 1])
+    expect(rows.map((row) => [row.userId, row.tick])).toEqual([
+      ['near', 0],
+      ['me', 0],
+      ['far', 2],
+    ])
   })
 })
 

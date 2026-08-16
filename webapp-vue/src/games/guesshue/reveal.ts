@@ -48,18 +48,70 @@ export const COLLISION_WINDOW_DEG = 10
 export const MIN_BAND_INNER_FRACTION = 0.25
 
 /**
- * The four beats of the reveal, from the moment the reveal card is inserted. Two of them are CSS
- * transitions in the components (the card crossfade at ~200 ms, and the centre button leaving the
- * outgoing card at 0 ms over 200 ms); the five numbers below drive everything the reveal wheel
- * does to itself — three beats (`SECTOR_DELAY_MS`, `MARKERS_DELAY_MS`, `MARKER_STAGGER_MS`) and
- * two durations (`FADE_MS`, `BAND_GROW_MS`). They are a first proposal and belong in the lab to be
+ * The four beats of the reveal, from the moment the reveal card is inserted. Beat 1 is a CSS
+ * transition in the components (the centre button leaving the outgoing card at 0 ms over 200 ms),
+ * beat 2 the card crossfade at ~200 ms; the numbers below drive beats 3 and 4 — the tolerance
+ * sector and the scoreboard's head at [SECTOR_DELAY_MS], then the results: every row of the table
+ * and, with it, its marker on the wheel. They are a first proposal and belong in the lab to be
  * turned — that is what it is for.
  */
 export const SECTOR_DELAY_MS = 900
-export const MARKERS_DELAY_MS = 1900
-export const MARKER_STAGGER_MS = 90
+export const RESULTS_DELAY_MS = 1900
 export const FADE_MS = 300
 export const BAND_GROW_MS = 700
+
+/** Beat 3 writes the scoreboard's head at the same moment the sector fades in. */
+export const HEAD_DELAY_MS = SECTOR_DELAY_MS
+
+/** Between the columns of one row — the typewriter's step. */
+export const CELL_STAGGER_MS = 45
+
+/**
+ * Between rows. Deliberately shorter than a row is wide (3 · [CELL_STAGGER_MS]), so the cascades
+ * overlap and the table flows instead of stuttering row by row.
+ */
+export const ROW_STAGGER_MS = 120
+
+/** The row cascade never runs longer than this, however many people played. */
+export const TYPE_BUDGET_MS = 1200
+
+/** The column a marker rides with: the guess cell, because both are „the guess as a colour". */
+export const TIP_COLUMN = 1
+
+/**
+ * How far apart two rows are. [ROW_STAGGER_MS] below the budget, and whatever fits above it — the
+ * same „compress rather than grow" shape [stackStep] gives the marker lanes.
+ */
+export function rowStagger(rowCount: number): number {
+  return Math.min(ROW_STAGGER_MS, TYPE_BUDGET_MS / Math.max(1, rowCount))
+}
+
+/** A cell of the scoreboard's head: three rows (heading, solution value, band), four columns. */
+export function headCellDelayMs(row: number, column: number): number {
+  return HEAD_DELAY_MS + row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
+}
+
+/**
+ * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the wheel. One
+ * function for both is the whole point of the coupling: there is no second timetable to drift.
+ */
+export function cellDelayMs(tick: number, column: number, rowCount: number): number {
+  return RESULTS_DELAY_MS + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
+}
+
+/**
+ * Which tick a row borrows its timing from. Every row rides its own rank — except the viewer's.
+ *
+ * My marker has been on the wheel since the crossfade (it is the knob, recoloured), so a row
+ * appearing with it would say „I am not the best" from its slot alone, before the picture had
+ * shown a single rival guess. Mine therefore waits for the first foreign marker: that is rank 1
+ * when I am rank 0, and rank 0 otherwise. Alone in the round there is nothing to give away.
+ */
+export function tickOfRow(rank: number, myRank: number | null, rowCount: number): number {
+  if (myRank === null || rank !== myRank) return rank
+  if (rowCount <= 1) return 0
+  return myRank === 0 ? 1 : 0
+}
 
 /**
  * How far each lane sits inside the previous one. Below the floor this is [STACK_STEP]; from six

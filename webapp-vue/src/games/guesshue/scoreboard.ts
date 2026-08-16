@@ -7,6 +7,7 @@ import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
+import { tickOfRow } from './reveal'
 import { hueOf } from './types'
 
 export interface ScoreboardRow {
@@ -71,7 +72,7 @@ export function scoreboardRows(input: {
   saturation: number
   lightness: number
   awardRule: AwardRule | null
-  /** Read in Task 5, when `tickOfRow` decides when my own row may land. */
+  /** Passed through to `tickOfRow`, which decides when my own row may land. */
   mineUserId: string | null
 }): ScoreboardRow[] {
   const ranked = input.entries.flatMap((entry) => {
@@ -96,7 +97,11 @@ export function scoreboardRows(input: {
   })
 
   ranked.sort((a, b) => a.deviationDeg - b.deviationDeg || a.userId.localeCompare(b.userId))
-  return ranked.map((row, rank) => ({ ...row, tick: rank }))
+  const myRank = ranked.findIndex((row) => row.userId === input.mineUserId)
+  return ranked.map((row, rank) => ({
+    ...row,
+    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
+  }))
 }
 
 /** Narrowed, not cast: `outcome` is `unknown` by contract, and a stale round may be junk. */

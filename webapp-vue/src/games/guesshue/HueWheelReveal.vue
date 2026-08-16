@@ -15,8 +15,8 @@ import HueToleranceSector from './HueToleranceSector.vue'
 import {
   BAND_GROW_MS,
   FADE_MS,
-  MARKERS_DELAY_MS,
-  MARKER_STAGGER_MS,
+  RESULTS_DELAY_MS,
+  ROW_STAGGER_MS,
   SECTOR_DELAY_MS,
   layoutGuesses,
   sectorInk,
@@ -68,7 +68,7 @@ let bandStarted = -1
 function growBand(now: number): void {
   if (bandStarted < 0) bandStarted = now
   const target = layout.value.bandInnerFraction
-  const progress = Math.min(1, Math.max(0, (now - bandStarted - MARKERS_DELAY_MS) / BAND_GROW_MS))
+  const progress = Math.min(1, Math.max(0, (now - bandStarted - RESULTS_DELAY_MS) / BAND_GROW_MS))
   innerFraction.value =
     BAND_INNER_FRACTION + (target - BAND_INNER_FRACTION) * easeOutCubic(progress)
   frame = progress >= 1 ? 0 : requestAnimationFrame(growBand)
@@ -182,7 +182,7 @@ const label = computed(() => {
             ...trackBoxStyle(marker.trackFraction),
             backgroundColor: marker.colorHex,
             transitionDuration: `${FADE_MS}ms`,
-            transitionDelay: `${MARKERS_DELAY_MS + index * MARKER_STAGGER_MS}ms`,
+            transitionDelay: `${RESULTS_DELAY_MS + index * ROW_STAGGER_MS}ms`,
           }"
         />
       </div>
