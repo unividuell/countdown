@@ -125,6 +125,12 @@ it is the only proof available — no unit test can see them.
   moment someone touches one of them. Side effect, without which there would be no test for it —
   a spec can set `window.innerWidth` and assert the angle, whereas a width read from layout is
   always `0` under happy-dom.
+- **A `<th>` can `truncate` too, once the table itself is `table-fixed`.** The reflex is to assume
+  long text in a table cell can't ellipsis — but `overflow: hidden` + `text-overflow: ellipsis`
+  need a *resolved* width to clip against, and that's exactly what `table-layout: fixed` hands the
+  un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
+  doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
+  `GuessHueScoreboard`.
 
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the
