@@ -1,7 +1,7 @@
 # Edition einfrieren — Design
 
 **Umgesetzt** — `frozenSince`, der 409 in `EditionService.update`, `editionFrozen` auf der Wire und
-das gesperrte Settings-Formular samt „Erste Spielrunde" stehen.
+das gesperrte Settings-Formular samt „Erste Spielrunde“ stehen.
 
 Zu [Issue #56](https://github.com/unividuell/countdown/issues/56).
 
