@@ -28,6 +28,20 @@ describe('readableTextColor', () => {
     expect(readableTextColor('#000')).toBe(LIGHT)
   })
 
+  // A seeded player colour measured in a real browser pass: relative luminance 0.17998, which sits
+  // just above the old (wrong) 0.179 threshold but below the true equal-contrast crossover
+  // (≈0.191631, since DARK is #111111, not pure black). The old code picked DARK here at a 4.14:1
+  // contrast ratio, below WCAG AA's 4.5:1 for normal text, where LIGHT gives 4.57:1.
+  it('picks light ink for a colour just below the true crossover', () => {
+    expect(readableTextColor('#bf40b3')).toBe(LIGHT)
+  })
+
+  // Same hue family, nudged just past the crossover (luminance ≈0.192286) to confirm the switch
+  // still flips to dark ink on the correct side once past it.
+  it('picks dark ink for a colour just above the true crossover', () => {
+    expect(readableTextColor('#bf4ab3')).toBe(DARK)
+  })
+
   it('falls back to light text when the colour cannot be parsed', () => {
     expect(readableTextColor('rebeccapurple')).toBe(LIGHT)
     expect(readableTextColor('')).toBe(LIGHT)
