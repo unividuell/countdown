@@ -125,6 +125,18 @@ describe('settings — timezone + zone-relative startsAt', () => {
     expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeUndefined()
     expect(w.find('[data-test="freeze-hint"]').text()).toContain('Änderbar')
   })
+
+  it('reflects a freeze the save itself just caused, without a remount', async () => {
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
+    expect(w.find('select').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+  })
 })
 
 describe('settings — a run that has begun', () => {

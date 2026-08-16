@@ -9,6 +9,7 @@ import {
   getInvite,
   revokeInvite,
 } from '@/api/communities'
+import type { CommunityResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
@@ -40,14 +41,21 @@ function toInstant(local: string, zone: string): string | null {
   return DateTime.fromISO(local, { zone }).toUTC().toISO()
 }
 
-onMounted(async () => {
-  const c = await getCommunity(slug)
+// Reflects whatever the server actually stored — called after both the initial load and every
+// save, so a save that freezes the run (or otherwise changes what was persisted) shows up without
+// waiting for a remount.
+function applyCommunity(c: CommunityResponse): void {
   name.value = c.name
   startsAtTimezone.value = c.startsAtTimezone
   startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
   gamesFromRound.value = c.gamesFromRound
   editionFrozen.value = c.editionFrozen
+}
+
+onMounted(async () => {
+  const c = await getCommunity(slug)
+  applyCommunity(c)
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -72,7 +80,8 @@ async function save(): Promise<void> {
     if (typeof phaseTwoStartRound.value === 'number')
       body.phaseTwoStartRound = phaseTwoStartRound.value
     if (typeof gamesFromRound.value === 'number') body.gamesFromRound = gamesFromRound.value
-    await updateCommunity(slug, body)
+    const updated = await updateCommunity(slug, body)
+    applyCommunity(updated)
     await refresh()
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
@@ -141,7 +150,9 @@ async function revoke(): Promise<void> {
           min="1"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
-      <p class="text-xs text-neutral-500">Größere Nummer = früher. Leer: ab der ersten Runde.</p>
+      <p class="text-xs text-neutral-500">
+        Größere Nummer = früher. Leer lässt den gespeicherten Wert unverändert.
+      </p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </form>
