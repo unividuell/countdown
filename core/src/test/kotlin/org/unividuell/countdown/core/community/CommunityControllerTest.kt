@@ -252,6 +252,22 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `GET by slug reports a run that is not frozen`() {
+        val c = community("team")
+        val edition = CommunityEdition(id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026")
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
+        every { editions.requireActive(c.id!!) } returns edition
+        every { editions.isFrozen(edition) } returns false
+
+        mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.editionFrozen") { value(false) }
+        }
+    }
+
+    @Test
     fun `PATCH surfaces a frozen run as 409`() {
         val c = community("team")
         every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team") } returns c
