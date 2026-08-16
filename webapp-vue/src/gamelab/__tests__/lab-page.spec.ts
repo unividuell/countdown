@@ -30,6 +30,7 @@ const { StubGame } = await vi.hoisted(async () => {
         entries: { type: Array, default: () => [] },
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
+        awardRule: { type: String, default: null },
       },
       emits: ['guess'],
       template:
@@ -175,6 +176,17 @@ describe('lab page', () => {
   it('passes the round payload to the game component', async () => {
     const w = await mountPage()
     expect(w.findComponent(StubGame).props('payload')).toEqual(round.payload)
+  })
+
+  it("hands the lab round's award rule to the game", async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      awardRule: 'CLOSEST_ONLY',
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.findComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
   it('submits a guess from the game', async () => {

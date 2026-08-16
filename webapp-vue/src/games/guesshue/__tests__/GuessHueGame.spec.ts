@@ -22,6 +22,7 @@ function mountAdapter(props: Record<string, unknown> = {}) {
       solution: null,
       entries: [],
       mineUserId: null,
+      awardRule: null,
       ...props,
     },
   })
@@ -130,6 +131,7 @@ function entry(userId: string, hue: unknown, bgColorHex = '#3366cc') {
     avatar: { shortName: userId.toUpperCase(), bgColorHex },
     guess: { hue },
     outcome: null,
+    points: 0,
     at: '2026-08-09T12:00:00Z',
   }
 }

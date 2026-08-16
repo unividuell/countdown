@@ -23,6 +23,7 @@ const { StubGame } = await vi.hoisted(async () => {
         entries: { type: Array, default: () => [] },
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
+        awardRule: { type: String, default: null },
       },
       emits: ['guess'],
       template: '<button data-test="stub-guess" @click="$emit(\'guess\', 123)">guess</button>',
@@ -107,6 +108,17 @@ describe('RoundCard', () => {
 
     await stub.get('[data-test="stub-guess"]').trigger('click')
     expect(submit).toHaveBeenCalledWith(123)
+  })
+
+  it("hands the round's award rule to the game", () => {
+    // The game needs it to say whether a score can still be overtaken. The rule travels, not a
+    // pre-chewed boolean: `RoundResponse` publishes it so the UI has exactly one reading of it.
+    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 1 })
+    const round = aRound({ me, awardRule: 'CLOSEST_ONLY', awardPoints: 2 })
+
+    const stub = mountCard({ round, stage: 'done' }).findComponent(StubGame)
+
+    expect(stub.props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
   it('shows the result once the viewer has guessed', () => {

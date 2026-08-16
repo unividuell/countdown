@@ -14,6 +14,8 @@ import GuessHueBoard from './GuessHueBoard.vue'
 import GuessHueReveal from './GuessHueReveal.vue'
 import type { RevealGuess } from './reveal'
 import type { GameEntry } from '@/games/GameEntry'
+import type { AwardRule } from '@/api/types'
+import { hueOf } from './types'
 import type { GuessHuePayload, GuessHueSolution } from './types'
 
 const props = defineProps<{
@@ -28,16 +30,14 @@ const props = defineProps<{
   entries: GameEntry[]
   /** Which of them is mine. Never the position: that is a display decision. */
   mineUserId: string | null
+  /**
+   * The rule this round was frozen with. Guess Hue reads exactly one thing off it — whether a
+   * score can still be overtaken — and the scoreboard says so. `null` where there is no round.
+   */
+  awardRule: AwardRule | null
 }>()
 
 const emit = defineEmits<{ guess: [value: unknown] }>()
-
-/** Narrowed rather than cast: `unknown` by contract, and a stale round may be junk. */
-function hueOf(guess: unknown): number | null {
-  if (typeof guess !== 'object' || guess === null) return null
-  const hue = (guess as { hue?: unknown }).hue
-  return typeof hue === 'number' && Number.isFinite(hue) ? hue : null
-}
 
 const myHue = computed(() => hueOf(props.myGuess))
 

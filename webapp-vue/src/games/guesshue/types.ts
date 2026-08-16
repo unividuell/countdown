@@ -31,3 +31,13 @@ export interface GuessHueSolution {
    */
   toleranceDeg: number | null
 }
+
+/**
+ * The one place a Guess Hue guess is narrowed. Narrowed rather than cast: the shape is `unknown` by
+ * contract, and a stale round from another game may be junk. `typeof` alone would let `NaN` through.
+ */
+export function hueOf(guess: unknown): number | null {
+  if (typeof guess !== 'object' || guess === null) return null
+  const hue = (guess as { hue?: unknown }).hue
+  return typeof hue === 'number' && Number.isFinite(hue) ? hue : null
+}

@@ -108,6 +108,7 @@ async function onGuess(value: unknown): Promise<void> {
       :solution="round?.solution"
       :entries="entries"
       :mine-user-id="round?.me?.userId ?? null"
+      :award-rule="round?.awardRule ?? null"
       :disabled="busy || stage === 'done'"
       @guess="onGuess"
     />
