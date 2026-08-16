@@ -8,6 +8,15 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 
 - **Vitest + @vue/test-utils + happy-dom**, unit level. JUnit-style; kotest is NOT used here.
 - **Mocking uses Vitest `vi`** (`vi.stubGlobal` for `fetch`/`location`, `vi.mock` for modules) — **NOT mockk/kotest** (those are the Kotlin backend's convention).
+- **Specs are type-checked by `pnpm typecheck` — but only because `tsconfig.vitest.json` sets
+  `"exclude": []`.** `extends` *replaces* `exclude`, it does not merge it, so inheriting
+  `tsconfig.app.json`'s `"exclude": ["src/**/__tests__/**"]` cancels the vitest project's entire
+  `include` and `vue-tsc -b` then reports success over an empty program. Nothing warns: the
+  build exits 0, and every fixture typed against `src/api/types.ts` drifts silently until a wire
+  type gains a required field and someone has to grep for the literals by hand. Never re-inherit
+  that `exclude`, and check with
+  `npx vue-tsc -b --listFiles | grep -c __tests__` (currently 79 files — a 0 means the specs
+  dropped out of the program again).
 - **Every Vite plugin the app relies on must be registered in `vitest.config.ts` as well.** It is a
   separate file from `vite.config.ts`, and a missing plugin fails as an unresolvable import or, worse,
   as a silently missing compile step: without `VueRouter()` (before `vue()`) `vue-router/auto-routes`
@@ -33,11 +42,22 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   matter what fired — a post-unmount `emitted()` check cannot fail and is therefore worthless. Assert
   before the unmount. What a post-unmount test *can* prove is that nothing fires afterwards
   (`vi.getTimerCount()`, an `animate` spy).
-- **A fixture handed to `vi.mocked(apiFetch).mockResolvedValue(...)` is not type-checked.**
-  `vi.mocked()` does not carry `apiFetch<T>`'s call-site type argument into the mock's
-  resolved-value parameter, so a missing or misspelled field passes `vue-tsc` silently and the
-  component just reads `undefined`. Copy the shape from `src/api/types.ts`, and prefer a typed
-  helper (`const me: MeResponse = { … }`) when you want the compiler's help.
+- **A fixture handed to `vi.mocked(apiFetch).mockResolvedValue(...)` is not type-checked, even
+  though the spec files are in the program.** `vi.mocked()` does not carry `apiFetch<T>`'s
+  call-site type argument into the mock's resolved-value parameter, so a missing or misspelled
+  field passes `vue-tsc` silently and the component just reads `undefined`. **Anchor the literal:**
+  `apiFetch.mockResolvedValue({ … } satisfies CommunityResponse)` costs one word and turns the
+  drift into an error on the fixture itself; a typed binding (`const me: MeResponse = { … }`) does
+  the same when the fixture is shared. Unanchored literals are the one place a wire-type change
+  still has to be found by grep.
+- **`expect(w.get(sel).exists()).toBe(true)` asserts nothing.** `get()` already throws when the
+  node is missing — VTU types its result as `Omit<DOMWrapper, 'exists'>` for exactly that reason,
+  so the call is dead weight and a type error now that specs are checked. Use `find(sel).exists()`
+  when presence *is* the claim, `get(sel)` when you go on to use the node.
+- **`w.get(sel).element` is an `Element`, so it has no `.style`.** Pass the type argument —
+  `w.get<HTMLElement>(sel)`, `w.findAll<HTMLElement>(sel)` — or, where a spec reads several bound
+  styles, a local `styleOf(w, sel)` helper keeps the assertions on one line
+  (`HueWheelInput.spec.ts`).
 - **Never put `expect()` inside a hot loop — check in plain arithmetic and assert once.** An
   assertion costs far more than the code it guards, so a loop that draws N values and asserts on
   each measures the harness, not the subject: in `seededRandom.spec.ts` that was ~1.5 s of pure

@@ -42,7 +42,7 @@ describe('HueWheelReveal', () => {
 
   it("draws one marker per guess, in the guesser's own colour", () => {
     const w = mountWheel()
-    const markers = w.findAll('[data-test="hue-marker"]')
+    const markers = w.findAll<HTMLElement>('[data-test="hue-marker"]')
 
     expect(markers).toHaveLength(2)
     // happy-dom may or may not normalise a hex to rgb() — the test pins the colour, not that.
@@ -53,7 +53,7 @@ describe('HueWheelReveal', () => {
   it('gives every marker a white rim and no label, as the design states', () => {
     const w = mountWheel()
 
-    for (const marker of w.findAll('[data-test="hue-marker"]')) {
+    for (const marker of w.findAll<HTMLElement>('[data-test="hue-marker"]')) {
       expect(marker.classes()).toEqual(expect.arrayContaining(['ring-2', 'ring-white']))
       expect(marker.text()).toBe('')
     }
@@ -65,7 +65,7 @@ describe('HueWheelReveal', () => {
     // opacity actually differ between mine and the rest, so filtering it out is what isolates
     // "everything else" rather than trivially comparing two already-identical lists.
     const w = mountWheel({ animate: true })
-    const [mine, other] = w.findAll('[data-test="hue-marker"]')
+    const [mine, other] = w.findAll<HTMLElement>('[data-test="hue-marker"]')
 
     const withoutOpacity = (classes: string[]): string[] =>
       classes.filter((c) => !c.startsWith('opacity-')).sort()
@@ -74,7 +74,7 @@ describe('HueWheelReveal', () => {
   })
 
   it('turns each marker to its own angle', () => {
-    const rotators = mountWheel().findAll('[data-test="hue-marker-rotator"]')
+    const rotators = mountWheel().findAll<HTMLElement>('[data-test="hue-marker-rotator"]')
 
     expect(rotators[0]!.element.style.transform).toBe('rotate(214.5deg)')
     expect(rotators[1]!.element.style.transform).toBe('rotate(40deg)')
@@ -83,14 +83,14 @@ describe('HueWheelReveal', () => {
   it("lands my own marker exactly where the input wheel's knob stood", () => {
     // Not recomputed here: both go through `trackBoxStyle`, which is what makes the crossfade read
     // as one circle changing colour rather than two circles swapping places.
-    const marker = mountWheel().findAll('[data-test="hue-marker"]')[0]!
+    const marker = mountWheel().findAll<HTMLElement>('[data-test="hue-marker"]')[0]!
 
     expect(marker.element.style.top).toBe(trackBoxStyle(KNOB_TRACK_FRACTION).top)
   })
 
   it('stacks a colliding guess inward without moving mine', () => {
     const w = mountWheel({ guesses: [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }] })
-    const markers = w.findAll('[data-test="hue-marker"]')
+    const markers = w.findAll<HTMLElement>('[data-test="hue-marker"]')
 
     expect(markers[0]!.element.style.top).toBe(trackBoxStyle(KNOB_TRACK_FRACTION).top)
     expect(markers[1]!.element.style.top).not.toBe(markers[0]!.element.style.top)
@@ -141,16 +141,20 @@ describe('HueWheelReveal', () => {
     const w = mountWheel({ animate: false })
 
     expect(w.get('[data-test="hue-sector"]').classes()).toContain('opacity-100')
-    expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-100')
+    expect(w.findAll<HTMLElement>('[data-test="hue-marker"]')[1]!.classes()).toContain(
+      'opacity-100',
+    )
   })
 
   it('starts the others hidden when it does animate', () => {
     const w = mountWheel({ animate: true })
 
     expect(w.get('[data-test="hue-sector"]').classes()).toContain('opacity-0')
-    expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-0')
+    expect(w.findAll<HTMLElement>('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-0')
     // Mine never fades: it is the knob, recoloured.
-    expect(w.findAll('[data-test="hue-marker"]')[0]!.classes()).toContain('opacity-100')
+    expect(w.findAll<HTMLElement>('[data-test="hue-marker"]')[0]!.classes()).toContain(
+      'opacity-100',
+    )
   })
 
   it('skips straight to the end under reduced motion', () => {

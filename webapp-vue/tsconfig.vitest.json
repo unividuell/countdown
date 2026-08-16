@@ -5,5 +5,9 @@
     "types": ["node"],
     "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/**/__tests__/**/*.ts", "env.d.ts", "typed-router.d.ts"]
+  "include": ["src/**/__tests__/**/*.ts", "env.d.ts", "typed-router.d.ts"],
+  // `exclude` is NOT merged with the base config, it is replaced — and inheriting
+  // tsconfig.app.json's `["src/**/__tests__/**"]` would cancel the include above,
+  // leaving every spec unchecked while `vue-tsc -b` still exits 0.
+  "exclude": []
 }
