@@ -7,6 +7,12 @@ import {
   getInvite,
   revokeInvite,
 } from '@/api/communities'
+import type {
+  AcceptResponse,
+  CommunityResponse,
+  CommunitySummary,
+  InviteResponse,
+} from '@/api/types'
 
 vi.mock('@/api/client', async (orig) => ({ ...(await orig<typeof client>()), apiFetch: vi.fn() }))
 const apiFetch = vi.mocked(client.apiFetch)
@@ -22,7 +28,11 @@ describe('communities api', () => {
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
-    })
+      gamesFromRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 0,
+      editionFrozen: false,
+    } satisfies CommunityResponse)
     const c = await createCommunity('Team A')
     expect(apiFetch).toHaveBeenCalledWith('/api/communities', {
       method: 'POST',
@@ -32,19 +42,26 @@ describe('communities api', () => {
   })
 
   it('lists communities', async () => {
-    apiFetch.mockResolvedValue([{ id: '1', name: 'A', slug: 'a' }])
+    apiFetch.mockResolvedValue([{ id: '1', name: 'A', slug: 'a' }] satisfies CommunitySummary[])
     expect(await listCommunities()).toHaveLength(1)
   })
 
   it('joins by token', async () => {
-    apiFetch.mockResolvedValue({ status: 'JOINED_PENDING', name: 'A', slug: 'a' })
+    apiFetch.mockResolvedValue({
+      status: 'JOINED_PENDING',
+      name: 'A',
+      slug: 'a',
+    } satisfies AcceptResponse)
     const r = await joinByToken('tok')
     expect(apiFetch).toHaveBeenCalledWith('/api/communities/join/tok', { method: 'POST' })
     expect(r.status).toBe('JOINED_PENDING')
   })
 
   it('gets the current invite (or null on 204)', async () => {
-    apiFetch.mockResolvedValue({ url: '/join/tok', expiresAt: '2030-01-01T00:00:00Z' })
+    apiFetch.mockResolvedValue({
+      url: '/join/tok',
+      expiresAt: '2030-01-01T00:00:00Z',
+    } satisfies InviteResponse)
     const r = await getInvite('team')
     expect(apiFetch).toHaveBeenCalledWith('/api/communities/team/invite')
     expect(r?.url).toBe('/join/tok')

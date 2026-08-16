@@ -4,6 +4,7 @@ import * as api from '@/api/communities'
 import * as client from '@/api/client'
 import { ApiError } from '@/api/client'
 import { useAuth, _resetAuthState } from '@/auth/useAuth'
+import type { CommunityResponse } from '@/api/types'
 
 const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace: push }) }))
@@ -59,11 +60,11 @@ describe('create community page', () => {
 
   it('guards the route and shows the submit button as busy while creating', async () => {
     // Deferred so the in-flight state is observable before the call settles.
-    let resolve!: (c: unknown) => void
+    let resolve!: (c: CommunityResponse) => void
     vi.spyOn(api, 'createCommunity').mockReturnValue(
-      new Promise((res) => {
+      new Promise<CommunityResponse>((res) => {
         resolve = res
-      }) as ReturnType<typeof api.createCommunity>,
+      }),
     )
     const w = await mountNewPage()
 
@@ -75,7 +76,18 @@ describe('create community page', () => {
     expect(button.attributes('aria-busy')).toBe('true')
     expect(button.find('[data-test=spinner]').exists()).toBe(true)
 
-    resolve({ id: 'c1', name: 'Team A', slug: 'team-a' })
+    resolve({
+      id: 'c1',
+      name: 'Team A',
+      slug: 'team-a',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      phaseTwoStartRound: null,
+      gamesFromRound: null,
+      viewerIsAdmin: true,
+      pendingCount: 0,
+      editionFrozen: false,
+    })
     await flushPromises()
     expect(w.find('button[type=submit]').attributes('aria-busy')).toBe('false')
   })

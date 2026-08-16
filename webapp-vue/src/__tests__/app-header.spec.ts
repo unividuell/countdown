@@ -167,7 +167,7 @@ describe('App main header', () => {
     }
     const w = mount(App, { global: { stubs } })
     const row = w.get('[data-test="countdown-row"]')
-    expect(row.get('[data-test="countdown-widget"]').exists()).toBe(true)
+    expect(row.find('[data-test="countdown-widget"]').exists()).toBe(true)
 
     // Narrow: its own row, spanning both columns.
     expect(row.classes()).toContain('row-start-2')
