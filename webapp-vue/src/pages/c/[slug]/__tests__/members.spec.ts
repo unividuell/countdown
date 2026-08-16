@@ -16,6 +16,7 @@ vi.mock('@/communities/context', () => ({
         startsAt: null,
         startsAtTimezone: 'Europe/Berlin',
         phaseTwoStartRound: null,
+        gamesFromRound: null,
         viewerIsAdmin: true,
         pendingCount: 0,
       },
@@ -53,6 +54,7 @@ describe('settings page', () => {
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
+      gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
     })
@@ -77,6 +79,7 @@ describe('settings page', () => {
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
+      gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
     })
