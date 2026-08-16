@@ -77,9 +77,24 @@ open class EditionService(
             gamesFromRound = gamesFromRound ?: edition.gamesFromRound,
             gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
         )
+        if (isFrozen(edition)) {
+            if (next.startsAt != edition.startsAt || next.startsAtTimezone != edition.startsAtTimezone) {
+                throw EditionFrozenException("the run's grid is fixed since ${frozenSinceDescription(edition)}")
+            }
+            if (!isFrozen(next)) {
+                throw EditionFrozenException("a frozen run must not be thawed")
+            }
+        }
         validate(next)
         return saveOrConflict(communityId = edition.communityId, edition = next)
     }
+
+    /**
+     * Whether this run's grid is fixed — its first game round has begun, so round numbers are in
+     * play and moving the grid would hand out one of them twice.
+     */
+    open fun isFrozen(edition: CommunityEdition): Boolean =
+        frozenSince(edition)?.let { !clock.instant().isBefore(it) } ?: false
 
     /**
      * Both [create] and [update] can lose the race against the partial unique index — [update]
@@ -105,6 +120,10 @@ open class EditionService(
             require(it >= edition.gamesUntilRound) {
                 "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
             }
+            // A run longer than a century of daily rounds is not a real run; the bound also keeps
+            // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
+            // seeing a round number close enough to Int.MAX_VALUE to overflow.
+            require(it <= MAX_GAMES_FROM_ROUND) { "gamesFromRound ($it) must not exceed $MAX_GAMES_FROM_ROUND" }
         }
     }
 
@@ -112,5 +131,8 @@ open class EditionService(
         // Fetched once: the JVM's IANA zone set does not change at runtime, and this set has ~600
         // entries — no reason to rebuild it on every validate() call.
         val AVAILABLE_ZONE_IDS: Set<String> = ZoneId.getAvailableZoneIds()
+
+        // A hundred years of daily rounds.
+        const val MAX_GAMES_FROM_ROUND = 36500
     }
 }

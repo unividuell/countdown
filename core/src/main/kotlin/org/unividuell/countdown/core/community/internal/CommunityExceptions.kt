@@ -23,3 +23,6 @@ class CommunityCreationNotAllowedException(message: String = "Not allowed to cre
 
 /** A community already has an active edition (partial unique index lost the race) → 409. */
 class EditionConflictException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+
+/** The run's grid is fixed because its first game round has begun → 409. */
+class EditionFrozenException(message: String) : RuntimeException(message)

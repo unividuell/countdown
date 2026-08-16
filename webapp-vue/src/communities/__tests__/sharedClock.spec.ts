@@ -15,8 +15,10 @@ const community: CommunityResponse = {
   startsAt: '2026-06-25T09:00:00Z',
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
 }
 
 // serverNow follows the fake client clock, so every load computes a skew of 0. Without that, an

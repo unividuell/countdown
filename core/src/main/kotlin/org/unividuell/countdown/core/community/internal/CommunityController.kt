@@ -27,7 +27,12 @@ class CommunityController(
         val community = communityService.create(creatorUserId = me.id, rawName = body.name)
         val edition = editions.requireActive(requireNotNull(community.id))
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(community.toResponse(edition = edition, viewerIsAdmin = true, pendingCount = 0))
+            .body(
+                community.toResponse(
+                    edition = edition, editionFrozen = editions.isFrozen(edition),
+                    viewerIsAdmin = true, pendingCount = 0,
+                ),
+            )
     }
 
     @GetMapping
@@ -49,7 +54,11 @@ class CommunityController(
         val id = requireNotNull(c.id)
         val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(communityId = id, userId = me.id)
         val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt() else 0
-        return c.toResponse(edition = editions.requireActive(id), viewerIsAdmin = isAdmin, pendingCount = pending)
+        val edition = editions.requireActive(id)
+        return c.toResponse(
+            edition = edition, editionFrozen = editions.isFrozen(edition),
+            viewerIsAdmin = isAdmin, pendingCount = pending,
+        )
     }
 
     @PatchMapping("/{slug}")
@@ -67,7 +76,10 @@ class CommunityController(
             gamesUntilRound = body.gamesUntilRound,
         )
         val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
-        return updated.community.toResponse(edition = updated.edition, viewerIsAdmin = true, pendingCount = pending)
+        return updated.community.toResponse(
+            edition = updated.edition, editionFrozen = editions.isFrozen(updated.edition),
+            viewerIsAdmin = true, pendingCount = pending,
+        )
     }
 
     /**
@@ -85,6 +97,11 @@ class CommunityController(
         val edition = editions.startNew(communityId = id, rawLabel = body.label)
         val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(c.toResponse(edition = edition, viewerIsAdmin = true, pendingCount = pending))
+            .body(
+                c.toResponse(
+                    edition = edition, editionFrozen = editions.isFrozen(edition),
+                    viewerIsAdmin = true, pendingCount = pending,
+                ),
+            )
     }
 }

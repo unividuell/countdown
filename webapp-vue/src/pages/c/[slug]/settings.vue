@@ -9,6 +9,7 @@ import {
   getInvite,
   revokeInvite,
 } from '@/api/communities'
+import type { CommunityResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
@@ -21,6 +22,8 @@ const startsAt = ref('')
 const startsAtTimezone = ref('Europe/Berlin')
 const zones = Intl.supportedValuesOf('timeZone')
 const phaseTwoStartRound = ref<number | null>(null)
+const gamesFromRound = ref<number | null>(null)
+const editionFrozen = ref(false)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
@@ -38,12 +41,21 @@ function toInstant(local: string, zone: string): string | null {
   return DateTime.fromISO(local, { zone }).toUTC().toISO()
 }
 
-onMounted(async () => {
-  const c = await getCommunity(slug)
+// Reflects whatever the server actually stored — called after both the initial load and every
+// save, so a save that freezes the run (or otherwise changes what was persisted) shows up without
+// waiting for a remount.
+function applyCommunity(c: CommunityResponse): void {
   name.value = c.name
   startsAtTimezone.value = c.startsAtTimezone
   startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
+  gamesFromRound.value = c.gamesFromRound
+  editionFrozen.value = c.editionFrozen
+}
+
+onMounted(async () => {
+  const c = await getCommunity(slug)
+  applyCommunity(c)
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -56,13 +68,20 @@ async function save(): Promise<void> {
       startsAt: string
       startsAtTimezone: string
       phaseTwoStartRound: number
-    }> = { name: name.value.trim(), startsAtTimezone: startsAtTimezone.value }
-    if (startsAt.value) {
-      const instant = toInstant(startsAt.value, startsAtTimezone.value)
-      if (instant) body.startsAt = instant
+      gamesFromRound: number
+    }> = { name: name.value.trim() }
+    if (!editionFrozen.value) {
+      body.startsAtTimezone = startsAtTimezone.value
+      if (startsAt.value) {
+        const instant = toInstant(startsAt.value, startsAtTimezone.value)
+        if (instant) body.startsAt = instant
+      }
     }
-    if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
-    await updateCommunity(slug, body)
+    if (typeof phaseTwoStartRound.value === 'number')
+      body.phaseTwoStartRound = phaseTwoStartRound.value
+    if (typeof gamesFromRound.value === 'number') body.gamesFromRound = gamesFromRound.value
+    const updated = await updateCommunity(slug, body)
+    applyCommunity(updated)
     await refresh()
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
@@ -93,7 +112,11 @@ async function revoke(): Promise<void> {
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
       <label class="block text-sm"
-        >Zeitzone<select v-model="startsAtTimezone" class="mt-1 w-full rounded border px-3 py-1.5">
+        >Zeitzone<select
+          v-model="startsAtTimezone"
+          :disabled="editionFrozen"
+          class="mt-1 w-full rounded border px-3 py-1.5"
+        >
           <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
         </select></label
       >
@@ -101,9 +124,17 @@ async function revoke(): Promise<void> {
         >Start<input
           v-model="startsAt"
           type="datetime-local"
+          :disabled="editionFrozen"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
       <p class="text-xs text-neutral-500">Startzeit gilt in der gewählten Zeitzone.</p>
+      <p data-test="freeze-hint" class="text-xs text-neutral-500">
+        {{
+          editionFrozen
+            ? 'Der Lauf hat begonnen — Start und Zeitzone sind fix.'
+            : 'Änderbar, bis die erste Spielrunde beginnt — danach ist der Lauf fix.'
+        }}
+      </p>
       <label class="block text-sm"
         >Phase-2-Startrunde<input
           v-model.number="phaseTwoStartRound"
@@ -111,6 +142,17 @@ async function revoke(): Promise<void> {
           min="1"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
+      <label class="block text-sm"
+        >Erste Spielrunde<input
+          v-model.number="gamesFromRound"
+          data-test="games-from-round"
+          type="number"
+          min="1"
+          class="mt-1 w-full rounded border px-3 py-1.5"
+      /></label>
+      <p class="text-xs text-neutral-500">
+        Größere Nummer = früher. Leer lässt den gespeicherten Wert unverändert.
+      </p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </form>
