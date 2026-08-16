@@ -1,181 +1,24 @@
+# Not game content. Stands in for a mounted production dataset in tests that activate a deployed
+# profile, so that GuessHueDatasetConfiguration's fail-fast is satisfied the way a real deployment
+# would satisfy it — see GuessHueTestDatasetConfiguration.
 entries:
-  - hue: 2
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 8
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 14
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 20
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 26
-    difficulty: hard
+  - hue: 15
+    saturation: 0.70
+    lightness: 0.45
+    generatedAt: 2026-08-16
     description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 32
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 38
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 44
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 50
-    difficulty: hard
+  - hue: 105
+    saturation: 0.40
+    lightness: 0.55
+    generatedAt: 2026-08-16
     description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 56
-    difficulty: hard
+  - hue: 195
+    saturation: 0.60
+    lightness: 0.35
+    generatedAt: 2024-03-03
     description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 62
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 68
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 74
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 80
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 86
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 92
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 98
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 104
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 110
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 116
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 122
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 128
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 134
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 140
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 146
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 152
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 158
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 164
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 170
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 176
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 182
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 188
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 194
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 200
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 206
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 212
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 218
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 224
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 230
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 236
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 242
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 248
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 254
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 260
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 266
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 272
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 278
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 284
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 290
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 296
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 302
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 308
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 314
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 320
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 326
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 332
-    difficulty: easy
-    description: "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-  - hue: 338
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 344
-    difficulty: medium
-    description: "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-  - hue: 350
-    difficulty: hard
-    description: "Beispieleintrag, kein Spielinhalt."
-  - hue: 356
-    difficulty: hard
+  - hue: 285
+    saturation: 0.50
+    lightness: 0.65
+    generatedAt: 2024-03-03
     description: "Beispieleintrag, kein Spielinhalt."

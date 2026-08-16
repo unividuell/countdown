@@ -8,6 +8,7 @@ import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.rng.SeededRandom
+import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -17,9 +18,27 @@ class GuessHueDrawTest {
         (0 until 12).flatMap { sector ->
             val base = sector * 30
             listOf(
-                GuessHueEntry(base + 2, GuessHueDifficulty.EASY, "Beispieleintrag, kein Spielinhalt. Praktisch daneben, keinen Fingerbreit weiter."),
-                GuessHueEntry(base + 14, GuessHueDifficulty.MEDIUM, "Beispieleintrag, kein Spielinhalt. Auf der einen Seite, nicht auf der anderen."),
-                GuessHueEntry(base + 26, GuessHueDifficulty.HARD, "Beispieleintrag, kein Spielinhalt."),
+                GuessHueEntry(
+                    hue = base + 2,
+                    saturation = 0.70,
+                    lightness = 0.45,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+                GuessHueEntry(
+                    hue = base + 14,
+                    saturation = 0.35,
+                    lightness = 0.62,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+                GuessHueEntry(
+                    hue = base + 26,
+                    saturation = 0.88,
+                    lightness = 0.28,
+                    generatedAt = LocalDate.of(2024, 3, 3),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
             )
         },
     )
@@ -40,15 +59,15 @@ class GuessHueDrawTest {
     )
 
     @Test
-    fun `draws entry, jitter, saturation, lightness and init hue in exactly that order`() {
+    fun `draws the entry and the init hue in exactly that order, and nothing else`() {
         // The order is a contract per stream: reordering either changes every round already played.
         // So this checks against hand-replayed streams instead of magic numbers — presentation for
-        // entry, saturation, lightness, init angle, and solution for the jitter alone.
+        // the entry and the init angle, solution for the jitter alone. Saturation and lightness are
+        // no longer drawn at all, which is what the replay below proves: the init angle uses the
+        // presentation stream's *second* draw, not its fourth.
         val solutionRef = SeededRandom.fromSeed("community-42/round-7")
         val presentationRef = SeededRandom.fromSeed("community-42/round-7/p")
         val expectedEntry = presentationRef.pick(dataset.entries)
-        val saturationDraw = presentationRef.nextDouble()
-        val lightnessDraw = presentationRef.nextDouble()
         val initDraw = presentationRef.nextDouble()
         val jitterDraw = solutionRef.nextDouble()
 
@@ -58,14 +77,25 @@ class GuessHueDrawTest {
         )
 
         target.entry shouldBe expectedEntry
-        // The parenthesisation must MIRROR the implementation's, not just intend the same value:
-        // (0.78 - 0.50) is not, in IEEE754, the same as the literal 0.28, and `shouldBe` on a
-        // Double compares exactly. That's the point — the test pins the arithmetic itself.
         target.hue shouldBe (expectedEntry.hue + jitterDraw * (2 * 5.0) - 5.0)
             .let { ((it % 360.0) + 360.0) % 360.0 }
-        target.saturation shouldBe 0.50 + saturationDraw * (0.78 - 0.50)
-        target.lightness shouldBe 0.38 + lightnessDraw * (0.52 - 0.38)
         target.initHue shouldBe initDraw * 360.0
+        target.saturation shouldBe expectedEntry.saturation
+        target.lightness shouldBe expectedEntry.lightness
+    }
+
+    @Test
+    fun `saturation and lightness are the entry's own, across the whole dataset`() {
+        // Not a restatement of the test above: that one replays a single round. This one rules out
+        // a draw that happens to agree with one entry — the fixture's three entries carry three
+        // different pairs, so a constant or a corridor would fail here.
+        val drawn = (0 until 2_000).map { drawWith(it) }
+
+        drawn.forEach { target ->
+            target.saturation shouldBe target.entry.saturation
+            target.lightness shouldBe target.entry.lightness
+        }
+        drawn.map { it.saturation }.distinct().size shouldBeGreaterThan 1
     }
 
     @Test
@@ -77,17 +107,13 @@ class GuessHueDrawTest {
     }
 
     @Test
-    fun `keeps the jitter inside the tolerance and the colour inside the corridor`() {
+    fun `keeps the jitter inside the tolerance and every angle on the wheel`() {
         // The jitter must stay below the plus-or-minus 10 degree tolerance, otherwise a player who
         // reads the description perfectly could still be marked wrong through no fault of their own.
         (0 until 2_000).forEach { seed ->
             val target = drawWith(seed)
 
             distanceOnCircle(target.hue, target.entry.hue.toDouble()) shouldBeLessThanOrEqualTo 5.0
-            target.saturation shouldBeGreaterThanOrEqualTo 0.50
-            target.saturation shouldBeLessThan 0.78
-            target.lightness shouldBeGreaterThanOrEqualTo 0.38
-            target.lightness shouldBeLessThan 0.52
             target.hue shouldBeGreaterThanOrEqualTo 0.0
             target.hue shouldBeLessThan 360.0
             target.initHue shouldBeGreaterThanOrEqualTo 0.0
@@ -98,7 +124,15 @@ class GuessHueDrawTest {
     @Test
     fun `wraps the jitter across zero degrees`() {
         val nearZero = GuessHueDataset(
-            listOf(GuessHueEntry(2, GuessHueDifficulty.HARD, "Beispieleintrag, kein Spielinhalt.")),
+            listOf(
+                GuessHueEntry(
+                    hue = 2,
+                    saturation = 0.5,
+                    lightness = 0.5,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+            ),
         )
 
         val hues = (0 until 500).map {
@@ -145,7 +179,9 @@ class GuessHueDrawTest {
     fun `the presentation values come from the presentation stream and the hue does not`() {
         // The split is by publication: everything the player is shown is drawn from one stream, the
         // jitter that hides the answer from the other. Holding one stream fixed while varying the
-        // other is what proves the split — no rounding, no heuristics.
+        // other is what proves the split — no rounding, no heuristics. Saturation and lightness ride
+        // along with the entry now rather than being drawn, which makes the claim stronger, not
+        // weaker: a value that is never drawn cannot leak a stream.
         val varyingSolution = (1..20).map { seed ->
             dataset.draw(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(4711))
         }
