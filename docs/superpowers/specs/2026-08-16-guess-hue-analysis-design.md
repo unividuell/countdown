@@ -123,12 +123,25 @@ Der Spec zur Tippübersicht hat die vollständige Aussage ausdrücklich dieser T
 können. `<th scope="row">` auf der Namenszelle ist der Unterschied: ein Screenreader sagt dann
 „Leela, Tipp 128,4" statt „128,4".
 
+**Jede Zelle steht, wo sie im Original steht.** Das ist die Vorgabe, nicht ein Näherungswert: der
+Kopfblock ist eine Zeile aus Überschrift links, Lösungsstapel über der Tipp-Spalte und `live`-Chip
+über der Pkt-Spalte, darunter das schwarze Band.
+
 ```html
 <table class="w-full table-fixed border-separate border-spacing-x-1 border-spacing-y-0.5">
-  <caption class="caption-top pb-2 text-left text-lg font-semibold">Auswertung</caption>
+  <caption class="sr-only">Alle Tipps der Runde, nach Abstand zur Lösung sortiert</caption>
   <colgroup><col /><col class="w-14" /><col class="w-14" /><col class="w-9" /></colgroup>
   <thead>
-    <tr><td /><td>Lösung ▸ 123,4</td><td /><td>live</td></tr>
+    <!-- Kopfblock, Zeile 1: die Überschrift und das Etikett über der Tipp-Spalte -->
+    <tr>
+      <td rowspan="2" class="align-middle"><h2 class="text-2xl">Auswertung</h2></td>
+      <th id="hue-solution">Lösung</th>
+      <td />
+      <td rowspan="2" class="align-bottom"><span>live</span></td>
+    </tr>
+    <!-- Kopfblock, Zeile 2: der Lösungswert unter seinem Etikett -->
+    <tr><td headers="hue-solution">123,4</td><td /></tr>
+    <!-- das Band -->
     <tr><th scope="col">Name</th><th scope="col">Tipp</th>
         <th scope="col">Differenz</th><th scope="col">Pkt</th></tr>
   </thead>
@@ -138,14 +151,29 @@ können. `<th scope="row">` auf der Namenszelle ist der Unterschied: ein Screenr
 </table>
 ```
 
-Weil Lösung und `live`-Chip **in derselben Tabelle** liegen, stehen sie per Konstruktion über „Tipp"
-bzw. „Pkt" — im Original hielten zwei getrennte Grids dieselbe Spaltenvorlage von Hand deckungsgleich.
-Dass die Lösung senkrecht über den Tipps steht, ist der klügste Teil des Originallayouts, und dass
-das Chip über der Spalte steht, die sich noch ändern kann, ist ebenso wenig Zufall.
+Weil Kopfblock und Band **in derselben Tabelle** liegen, stehen Lösung und Chip per Konstruktion über
+„Tipp" bzw. „Pkt" — im Original hielten zwei getrennte Grids dieselbe Spaltenvorlage von Hand
+deckungsgleich. Dass die Lösung senkrecht über den Tipps steht, ist der klügste Teil des
+Originallayouts; dass das Chip über der Spalte steht, die sich noch ändern kann, ist ebenso wenig
+Zufall. Die Fuge zwischen Etikett und Wert ist dieselbe `border-spacing-y-0.5` wie zwischen allen
+Zeilen — im Original war es das `gap-y-0.5` des Stapels, also derselbe Abstand.
 
-Das `<caption>` ersetzt die `<h2 class="text-2xl">` des Originals: es ist die Überschrift, die eine
-Tabelle von sich aus hat, und `text-2xl` würde in unserer Karte gegen das Zitat antreten. Es steht
-dadurch auf eigener Zeile statt neben dem Lösungskästchen.
+**Der Lösungsstapel bekommt zwei eigene Zeilen**, statt Etikett und Wert in eine `<td>` zu pressen.
+Mehr als ein `<thead>` erlaubt HTML nicht, mehrere `<tr>` darin schon. Überschrift und Chip
+überspannen die beiden Zeilen per `rowspan="2"` — `align-middle` für die Überschrift, weil das
+Original seine Kopfzeile `items-center` setzt, `align-bottom` für das Chip, weil es dort `self-end`
+steht.
+
+**Die Überschrift bleibt eine `<h2 class="text-2xl">` an ihrem Platz in Spalte 1.** Eine `<caption>`
+ist immer eine eigene Box über der vollen Tabellenbreite; sie mit absoluter Positionierung in die
+erste Spalte zu schieben hieße, ihre Breite gegen eine `auto`-Spalte unter `table-fixed` zu raten.
+Semantik darf hier das Layout nicht verschieben. Die `<caption>` bleibt deshalb `sr-only` und sagt
+etwas, das die Überschrift nicht sagt — was in der Tabelle steht und wonach sie sortiert ist —, statt
+„Auswertung" ein zweites Mal vorzulesen.
+
+**„Lösung" wird per `id`/`headers` mit seinem Wert verbunden**, nicht per `scope`: `scope="col"`
+würde das Etikett auch über die Tipps darunter legen, deren Spaltenkopf „Tipp" ist. Die
+Zuordnung ist damit explizit und hängt nicht daran, dass das Band dazwischenliegt.
 
 Breiten: `table-fixed` plus `<colgroup>` mit `auto | w-14 | w-14 | w-9` — die Zahlen des Originals.
 Auf 375 px bleiben dem Namen rund 150 px, er wird `truncate`; nichts scrollt seitwärts. Der
@@ -222,9 +250,10 @@ cellDelayMs(rank, column, rowCount) =
   RESULTS_DELAY_MS + rank * rowStagger(rowCount) + column * CELL_STAGGER_MS
 ```
 
-Der Kopf zählt drei Zeilen: `caption` (0), Lösungszeile (1), Kopfband (2). Spaltenindizes sind
-`Name 0, Tipp 1, Differenz 2, Pkt 3` — die Lösungszelle sitzt also auf Spalte 1, das Chip auf Spalte
-3, und beide erben die Staffelung ihrer Spalte.
+Der Kopf zählt drei Zeilen: Überschrift und Etikett (0), Lösungswert (1), Band (2). Spaltenindizes
+sind `Name 0, Tipp 1, Differenz 2, Pkt 3`; jede Zelle erbt die Staffelung ihrer Spalte, die beiden
+`rowspan`-Zellen die ihrer ersten Zeile. Getippt wird damit „Auswertung" → „Lösung" → `live` →
+Lösungswert → Band, also in Lesereihenfolge.
 
 Das Budget deckelt bei vielen Mitspielenden die Kaskade, statt die Runde zu verlängern — dieselbe
 Idee wie `stackStep` bei den Marker-Bahnen. Bei drei Tippenden endet die letzte Zelle bei ~2575 ms,
@@ -312,8 +341,10 @@ Award-Regel × {0, 1, null}; `guessHex` mit Sättigung und Helligkeit der Runde,
 der Zeilenzahl, ab der das Budget bindet (10 Zeilen: 120 ms, 20 Zeilen: 60 ms); der Kopf ist fertig,
 bevor Takt 4 beginnt.
 
-**`GuessHueAnalysis.spec.ts`** — `<th scope="row">` je Person und `<th scope="col">` je Spalte; die
-vier Farbzuordnungen; die Lösungszelle; das Chip nur unter `CLOSEST_ONLY`; Puls und Kursivsatz nur
+**`GuessHueAnalysis.spec.ts`** — `<th scope="row">` je Person und `<th scope="col">` je Spalte; der
+Kopfblock in Originalstellung (Überschrift und Chip mit `rowspan="2"`, der Lösungswert in Spalte 2
+der zweiten Kopfzeile, per `headers` an sein Etikett gebunden); die `<caption>` ist `sr-only` und
+wiederholt die Überschrift nicht; die vier Farbzuordnungen; das Chip nur unter `CLOSEST_ONLY`; Puls und Kursivsatz nur
 auf vorläufigen Zellen; beide `sr-only`-Texte; `animate=false` zeigt alles sofort ohne Verzögerung;
 keine Zeilen rendert nichts.
 
