@@ -158,10 +158,18 @@ spätestens nach der nächsten Durchsicht falsch. Wie viele Einträge je Kohorte
 sind, sagt die Startmeldung — siehe unten.
 
 Die übernommenen Einträge folgen der Schreibregel **nicht** und werden nicht nachträglich daran
-angepasst. Ihr Register ist ein anderes: Farbname mit Modifikator im ersten Satz, danach drei bis
-vier Sätze Stimmung und Assoziation, rund 300 Zeichen. Genau diese Verschiedenheit ist der Grund für
-die Übernahme — zwei Register nebeneinander geben dem Spiel mehr Abwechslung als eines allein, und
-das historische hatte seine Fans.
+angepasst. Ihr Register ist ein anderes: Farbname mit Modifikator im ersten Satz, danach zwei Sätze
+Stimmung und Assoziation — **genau drei Sätze**, rund 210 Zeichen. Genau diese Verschiedenheit ist
+der Grund für die Übernahme: zwei Register nebeneinander geben dem Spiel mehr Abwechslung als eines
+allein, und das historische hatte seine Fans.
+
+**Drei Sätze, nicht vier.** Die JSON-Datei im Original trägt vier (ein Eintrag fünf), aber das Spiel,
+das die Fans hatte, hat nur je drei gezeigt — der abschließende Satz („In Designanwendungen kann sie
+verwendet werden, um …") wurde irgendwo zwischen Admin-Seite und Runde entfernt und hat einen Spieler
+nie erreicht. Der erste Import hat ihn versehentlich mitgebracht; er ist am 2026-08-16 nachträglich
+gekappt worden. Das ist keine Kosmetik: der Satz stand wortgleich unter 69 von 70 Beschreibungen und
+war der Grund, warum sich das historische Register nach Textbaustein las. Über dem Farbrad steht
+seither ein Drittel weniger Text.
 
 Beim Import entfallen **zwei** der 78 Original-Einträge: ihr Text kam dort doppelt vor, bei zwei
 verschiedenen Farbwerten, und die beiden Antworten lagen mehr als 40° auseinander (die Hues 112 und
