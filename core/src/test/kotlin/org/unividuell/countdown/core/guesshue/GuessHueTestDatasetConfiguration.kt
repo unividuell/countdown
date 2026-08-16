@@ -17,10 +17,10 @@ import org.springframework.test.context.DynamicPropertyRegistrar
  * Deliberately its own `@TestConfiguration`, imported only by the test(s) that actually activate a
  * deployed profile — **not** folded into the shared `TestcontainersConfiguration` that all
  * `@SpringBootTest` classes import. Wiring it in globally would silently switch every context test
- * from the bundled 6-entry sample to this 60-entry fixture, including tests that mean to exercise
- * the sample itself. A future deployment-profile test that forgets to import this configuration
- * should fail loudly with the guard's own message telling it what to do — not run silently on a
- * fixture nobody asked for.
+ * from the bundled six-entry sample to this four-entry fixture, including tests that mean to
+ * exercise the sample itself. A future deployment-profile test that forgets to import this
+ * configuration should fail loudly with the guard's own message telling it what to do — not run
+ * silently on a fixture nobody asked for.
  */
 @TestConfiguration(proxyBeanMethods = false)
 class GuessHueTestDatasetConfiguration {

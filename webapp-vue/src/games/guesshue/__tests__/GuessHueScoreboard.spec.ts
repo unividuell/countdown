@@ -129,7 +129,7 @@ describe('GuessHueScoreboard', () => {
         }),
       ],
     })
-    const cells = w.findAll('tbody th, tbody td')
+    const cells = w.findAll<HTMLElement>('tbody th, tbody td')
 
     // happy-dom may or may not normalise a hex to rgb() — the test pins the colour, not that.
     expect(cells[0]!.element.style.backgroundColor).toMatch(/#7d2ae8|rgb\(125, ?42, ?232\)/i)
@@ -204,7 +204,7 @@ describe('GuessHueScoreboard', () => {
     await w.vm.$nextTick()
     expect(w.get('tbody th').classes()).toContain('opacity-100')
 
-    const cells = w.findAll('tbody tr:first-child th, tbody tr:first-child td')
+    const cells = w.findAll<HTMLElement>('tbody tr:first-child th, tbody tr:first-child td')
     const delays = cells.map((cell) => cell.element.style.transitionDelay)
     expect(delays).toEqual([
       `${RESULTS_DELAY_MS}ms`,
@@ -213,7 +213,7 @@ describe('GuessHueScoreboard', () => {
       `${RESULTS_DELAY_MS + 135}ms`,
     ])
 
-    const second = w.get('tbody tr:nth-child(2) th')
+    const second = w.get<HTMLElement>('tbody tr:nth-child(2) th')
     expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + 120}ms`)
   })
 

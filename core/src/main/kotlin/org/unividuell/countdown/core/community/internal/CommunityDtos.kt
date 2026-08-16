@@ -9,6 +9,7 @@ data class CommunityResponse(
     val id: UUID, val name: String, val slug: String,
     val startsAt: Instant?, val startsAtTimezone: String, val phaseTwoStartRound: Int?,
     val editionLabel: String, val gamesFromRound: Int?, val gamesUntilRound: Int,
+    val editionFrozen: Boolean,
     val viewerIsAdmin: Boolean, val pendingCount: Int,
 )
 data class CommunitySummary(val id: UUID, val name: String, val slug: String)
@@ -39,17 +40,22 @@ data class RosterMemberResponse(
     val points: RosterPointsResponse,
 )
 
-fun Community.toResponse(edition: CommunityEdition, viewerIsAdmin: Boolean, pendingCount: Int) =
-    CommunityResponse(
-        id = requireNotNull(id), name = name, slug = slug,
-        startsAt = edition.startsAt,
-        startsAtTimezone = edition.startsAtTimezone,
-        phaseTwoStartRound = edition.phaseTwoStartRound,
-        editionLabel = edition.label,
-        gamesFromRound = edition.gamesFromRound,
-        gamesUntilRound = edition.gamesUntilRound,
-        viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount,
-    )
+fun Community.toResponse(
+    edition: CommunityEdition,
+    editionFrozen: Boolean,
+    viewerIsAdmin: Boolean,
+    pendingCount: Int,
+) = CommunityResponse(
+    id = requireNotNull(id), name = name, slug = slug,
+    startsAt = edition.startsAt,
+    startsAtTimezone = edition.startsAtTimezone,
+    phaseTwoStartRound = edition.phaseTwoStartRound,
+    editionLabel = edition.label,
+    gamesFromRound = edition.gamesFromRound,
+    gamesUntilRound = edition.gamesUntilRound,
+    editionFrozen = editionFrozen,
+    viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount,
+)
 fun Community.toSummary() = CommunitySummary(id = requireNotNull(id), name = name, slug = slug)
 
 data class SuperAdminMemberResponse(

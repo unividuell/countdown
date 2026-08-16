@@ -213,7 +213,7 @@ describe('lab page', () => {
   it('rolls a new seed into the URL', async () => {
     await mountPage()
     await tool('lab-roll').trigger('click')
-    const seed = Number((replace.mock.calls[0][0] as { query: { seed: number } }).query.seed)
+    const seed = Number((replace.mock.calls[0]![0] as { query: { seed: number } }).query.seed)
     expect(Number.isInteger(seed)).toBe(true)
   })
 
@@ -379,13 +379,13 @@ describe('lab page', () => {
     // signal the SPA gets — the bundle is identical in every environment.
     vi.spyOn(api, 'openLabRound').mockRejectedValue(new ApiError(404, 'not found'))
     const w = await mountPage()
-    expect(w.get('[data-test="lab-unavailable"]').exists()).toBe(true)
+    expect(w.find('[data-test="lab-unavailable"]').exists()).toBe(true)
   })
 
   it('reports an unknown game id without blowing up', async () => {
     currentParams = { slug: 'team', game: 'nosuchgame' }
     const w = await mountPage()
-    expect(w.get('[data-test="lab-unknown-game"]').exists()).toBe(true)
+    expect(w.find('[data-test="lab-unknown-game"]').exists()).toBe(true)
   })
 
   it('hands the viewer their own stored guess to the game component', async () => {

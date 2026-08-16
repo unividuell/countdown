@@ -369,10 +369,10 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
     })
 
     const markerDelay = w
-      .findAll('[data-test="hue-marker"]')
+      .findAll<HTMLElement>('[data-test="hue-marker"]')
       .map((marker) => marker.element.style.transitionDelay)
     const tipDelay = w
-      .findAll('tbody td:first-of-type')
+      .findAll<HTMLElement>('tbody td:first-of-type')
       .map((cell) => cell.element.style.transitionDelay)
 
     // The wheel places mine first and then sorts everyone else by angle — with only one other
@@ -391,7 +391,8 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
     })
 
     const rows = w.findAll('tbody tr')
-    const nameDelay = (index: number) => rows[index]!.get('th').element.style.transitionDelay
+    const nameDelay = (index: number) =>
+      rows[index]!.get<HTMLElement>('th').element.style.transitionDelay
 
     expect(nameDelay(0)).toBe(`${RESULTS_DELAY_MS}ms`)
     expect(nameDelay(1)).toBe(`${RESULTS_DELAY_MS}ms`)

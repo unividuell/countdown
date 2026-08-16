@@ -72,25 +72,34 @@ To exercise the production OAuth flow instead of the picker:
 ## Guess Hue: checking the dataset
 
 The production dataset doesn't live in the repo (see
-[game-content.md](../.claude/guidelines/game-content.md)). Check it after changing the
-gitignored buffer file — the buffer file lives in the main checkout, so a relative path
-from a worktree won't reach it; hence the absolute path below. `./scripts/guess-hue-dataset.sh decrypt`
-prints exactly that absolute path (also in its error message, if the buffer file already
-exists):
+[game-content.md](../.claude/guidelines/game-content.md)). There is no test that grades it.
+What can be checked mechanically — every field present and typed, `hue` in `0..359`,
+`saturation` and `lightness` in `0.0..1.0`, a `YYYY-MM-DD` date, a non-blank description —
+the app checks while parsing, on every single start. Whether the texts are any good is
+looked at, not asserted.
+
+So the check is: point the app at the buffer file and read its first Guess Hue log line.
+The buffer file lives in the main checkout, so a relative path from a worktree won't reach
+it; `./scripts/guess-hue-dataset.sh decrypt` prints the absolute one (also in its error
+message, if the file is already there).
 
 ```bash
 ./scripts/guess-hue-dataset.sh decrypt   # prints "Decrypted to: <path>"
-cd core && ./mvnw test -Dtest=GuessHueProductionDatasetTest -Dguesshue.dataset=<path from the script output>
+cd core && GUESS_HUE_DATASET_PATH=<path from the script output> ./mvnw spring-boot:run
 ```
 
-Without the property the test skips itself — that's what keeps CI green even though it
-has no access to the plaintext. Locally, without a mounted dataset, the app runs on
-`guess-hue-dataset.sample.yaml`; under `production` and `staging` it refuses to start instead.
+It either names the dataset and how it is composed —
+`Guess Hue loaded 118 entries from … — 70 from 2024-03-03, 48 from 2026-08-16` — or it
+refuses to start and names the entry index and the field that is wrong. That line is also
+the only place the current entry counts live; no document repeats them.
+
+Locally, without a mounted dataset, the app runs on `guess-hue-dataset.sample.yaml`; under
+`production` and `staging` it refuses to start instead.
 
 ### Using the real dataset locally
 
 The six-entry sample is enough to start `guess-hue`, but not to judge the game. Anyone
-working on it can load the real, 60-entry dataset locally before ever deploying:
+working on it can load the real dataset locally before ever deploying:
 
 ```bash
 ./scripts/guess-hue-dataset.sh decrypt

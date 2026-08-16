@@ -505,7 +505,7 @@ describe('NavDrawer content', () => {
     asAdminOf('team', 'Team Süd', 0)
     const w = await opened()
     expect(w.find('[data-test=pending-count]').exists()).toBe(false)
-    expect(w.get('[data-test=admin-heading]').exists()).toBe(true)
+    expect(w.find('[data-test=admin-heading]').exists()).toBe(true)
   })
 
   it('separates the admin block from the community block above it, when there is one', async () => {

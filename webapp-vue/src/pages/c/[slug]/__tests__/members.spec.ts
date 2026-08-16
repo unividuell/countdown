@@ -16,8 +16,10 @@ vi.mock('@/communities/context', () => ({
         startsAt: null,
         startsAtTimezone: 'Europe/Berlin',
         phaseTwoStartRound: null,
+        gamesFromRound: null,
         viewerIsAdmin: true,
         pendingCount: 0,
+        editionFrozen: false,
       },
     },
     refresh: vi.fn(),
@@ -53,8 +55,10 @@ describe('settings page', () => {
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
+      gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
+      editionFrozen: false,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue({
       url: '/join/tok',
@@ -77,8 +81,10 @@ describe('settings page', () => {
       startsAt: null,
       startsAtTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
+      gamesFromRound: null,
       viewerIsAdmin: true,
       pendingCount: 0,
+      editionFrozen: false,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
     vi.spyOn(api, 'generateInvite').mockResolvedValue({

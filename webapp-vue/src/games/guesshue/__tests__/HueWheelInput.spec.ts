@@ -12,6 +12,11 @@ function setHidden(hidden: boolean): void {
   Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
 }
 
+/** `get()` alone answers a `DOMWrapper<Element>`, which carries no `style`. */
+function styleOf(w: ReturnType<typeof mountWheel>, selector: string): CSSStyleDeclaration {
+  return w.get<HTMLElement>(selector).element.style
+}
+
 /**
  * happy-dom computes no layout: `getBoundingClientRect()` answers all zeroes, which makes
  * `radiusFraction` read 0 everywhere and the dead zone look like it covers the whole wheel. A
@@ -48,11 +53,11 @@ describe('HueWheelInput', () => {
     const el = w.get('[data-test="hue-wheel"]')
     stubRect(el.element)
 
-    expect(w.get('[data-test="hue-rotator"]').element.style.cursor).toBe('grab')
+    expect(styleOf(w, '[data-test="hue-rotator"]').cursor).toBe('grab')
 
     await el.trigger('pointerdown', { clientX: 100, clientY: 0, pointerId: 1 })
 
-    expect(w.get('[data-test="hue-rotator"]').element.style.cursor).toBe('grabbing')
+    expect(styleOf(w, '[data-test="hue-rotator"]').cursor).toBe('grabbing')
   })
 
   it('is one slider, named and described for a screen reader', () => {
@@ -167,8 +172,8 @@ describe('HueWheelInput', () => {
     const enabled = mountWheel({ disabled: false })
     const disabled = mountWheel({ disabled: true })
 
-    expect(enabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('auto')
-    expect(disabled.get('[data-test="hue-wheel"]').element.style.touchAction).toBe('auto')
+    expect(styleOf(enabled, '[data-test="hue-wheel"]').touchAction).toBe('auto')
+    expect(styleOf(disabled, '[data-test="hue-wheel"]').touchAction).toBe('auto')
   })
 
   it('claims touch only on the band while a drag could actually turn the wheel', () => {
@@ -177,8 +182,8 @@ describe('HueWheelInput', () => {
     const enabled = mountWheel({ disabled: false })
     const disabled = mountWheel({ disabled: true })
 
-    expect(enabled.get('[data-test="hue-rotator"]').element.style.touchAction).toBe('none')
-    expect(disabled.get('[data-test="hue-rotator"]').element.style.touchAction).toBe('auto')
+    expect(styleOf(enabled, '[data-test="hue-rotator"]').touchAction).toBe('none')
+    expect(styleOf(disabled, '[data-test="hue-rotator"]').touchAction).toBe('auto')
   })
 
   it('clips the touch-claiming layer to the band, so the empty middle and the corners are free to scroll', () => {
@@ -189,7 +194,7 @@ describe('HueWheelInput', () => {
     // actually excludes the middle and the corners.
     const w = mountWheel()
 
-    expect(w.get('[data-test="hue-rotator"]').element.style.clipPath).toContain('url(#')
+    expect(styleOf(w, '[data-test="hue-rotator"]').clipPath).toContain('url(#')
   })
 
   it('suppresses the context menu, so a long press on the wheel cannot pop it', () => {
