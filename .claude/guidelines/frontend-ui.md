@@ -54,6 +54,19 @@ desktop layout that was written first).
 - **An element animated in from nothing needs `inert` until it arrives**, not merely invisible —
   otherwise it is tabbable, and a hold-to-confirm gesture on it can complete unseen. Bind it as
   `:inert="!ready || undefined"`; a plain `false` stays in the DOM and stays in effect.
+- **A looping animation and a fade must never share an element, when both drive `opacity`.** A
+  running animation outranks a plain class, and Tailwind's `pulse` declares only
+  `50% { opacity: .5 }` — its implicit 0%/100% endpoints take the element's *underlying* opacity.
+  So `animate-pulse` beside `opacity-0` does not stay hidden: it drives 0 → .5 → 0 every two
+  seconds, and the element blinks into view from the first frame, ignoring the
+  `transition-delay` that was supposed to hold it back. Measured in Chromium: computed opacity
+  reads `0.5` at t=1000ms with `opacity-0` still on the element. Put them on two elements — the
+  fade outside, the loop inside. Nesting is what makes it safe: an `opacity-0` ancestor
+  composites its whole subtree away whatever the child animates to. `GuessHueScoreboard`'s live
+  chip and its provisional points cell are the worked examples. Note the shape of the trap:
+  either class alone is correct, only the pair is wrong — so it survives every review that reads
+  them one at a time, and no happy-dom test can see it. What a test *can* pin is the structural
+  rule: no element carries both.
 
 ### A control that is not a rectangle
 

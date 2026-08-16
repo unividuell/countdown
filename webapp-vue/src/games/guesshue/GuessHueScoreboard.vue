@@ -128,14 +128,19 @@ function guessGround(row: ScoreboardRow) {
         </th>
         <td />
         <td rowspan="2" class="align-bottom">
+          <!-- Two elements, not one: the fade outside, the pulse inside. See the points cell. -->
           <span
             v-if="props.live"
-            data-test="hue-scoreboard-live"
-            class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic transition-opacity motion-reduce:animate-none"
+            class="block transition-opacity"
             :class="opacity"
             :style="head(0, 3)"
           >
-            live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
+            <span
+              data-test="hue-scoreboard-live"
+              class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+            >
+              live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
+            </span>
           </span>
         </td>
       </tr>
@@ -191,17 +196,24 @@ function guessGround(row: ScoreboardRow) {
         >
           {{ degrees(row.deviationDeg) }}
         </td>
+        <!--
+          The pulse may never share an element with the fade. Tailwind's `pulse` declares only
+          `50% { opacity: .5 }`, so its implicit endpoints take the element's underlying opacity
+          and the animation outranks the class: on an element that also carries `opacity-0` it
+          drives 0 → .5 → 0 rather than leaving it hidden, and the cell blinks into view from the
+          first frame instead of waiting for its `transition-delay`. Nesting fixes it, because an
+          `opacity-0` ancestor composites its whole subtree away whatever the child animates to.
+        -->
         <td
           data-test="hue-scoreboard-points"
           class="px-0.5 text-end tabular-nums transition-opacity"
-          :class="[
-            opacity,
-            row.provisional ? 'animate-pulse italic motion-reduce:animate-none' : '',
-          ]"
+          :class="[opacity, row.provisional ? 'italic' : '']"
           :style="[ground(row), body(row.tick, 3)]"
         >
-          {{ pointsLabel(row.points)
-          }}<span v-if="row.provisional" class="sr-only"> (vorläufig)</span>
+          <span :class="row.provisional ? 'animate-pulse motion-reduce:animate-none' : ''">{{
+            pointsLabel(row.points)
+          }}</span
+          ><span v-if="row.provisional" class="sr-only"> (vorläufig)</span>
         </td>
       </tr>
     </tbody>

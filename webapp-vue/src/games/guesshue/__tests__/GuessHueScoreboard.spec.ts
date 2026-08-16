@@ -170,12 +170,40 @@ describe('GuessHueScoreboard', () => {
     })
     const [first, second] = w.findAll('[data-test="hue-scoreboard-points"]')
 
-    expect(first!.classes()).toEqual(
-      expect.arrayContaining(['animate-pulse', 'italic', 'motion-reduce:animate-none']),
-    )
+    // The cell itself slants; the pulse sits one element deeper, so the fade above it can still
+    // hide the whole thing — see the test below for why the two may not share an element.
+    expect(first!.classes()).toContain('italic')
+    expect(first!.get('.animate-pulse').classes()).toContain('motion-reduce:animate-none')
     expect(first!.text()).toContain('vorläufig')
-    expect(second!.classes()).not.toContain('animate-pulse')
+
+    expect(second!.classes()).not.toContain('italic')
+    expect(second!.find('.animate-pulse').exists()).toBe(false)
     expect(second!.text()).toBe('0')
+  })
+
+  it('never puts the pulse on an element the fade is meant to hide', () => {
+    // Tailwind's `pulse` declares only `50% { opacity: .5 }`, so the implicit 0%/100% endpoints
+    // take the element's *underlying* opacity — and an animation outranks a plain class. On an
+    // element that also carries `opacity-0` the animation therefore drives it 0 → .5 → 0 every
+    // two seconds instead of leaving it hidden, so the cell blinks into view from the first
+    // frame, long before its own `transition-delay` is up. Measured in Chromium: that element's
+    // computed opacity reads 0.5 at t=1000ms while `opacity-0` is on it.
+    //
+    // The two must therefore live on two elements — an outer one the fade hides, an inner one
+    // that pulses inside it. Nesting is what makes that safe: an `opacity-0` ancestor composites
+    // its whole subtree away no matter what the child's own opacity animates to.
+    const w = mountBoard({
+      live: true,
+      rows: [row({ userId: 'a', provisional: true, points: 2 })],
+    })
+
+    const pulsing = w.findAll('.animate-pulse')
+    expect(pulsing.length).toBeGreaterThan(0)
+    for (const el of pulsing) {
+      expect(el.classes()).not.toContain('transition-opacity')
+      expect(el.classes()).not.toContain('opacity-0')
+      expect(el.classes()).not.toContain('opacity-100')
+    }
   })
 
   it('is fully written the moment a reload lands on a spent round', () => {
