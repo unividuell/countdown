@@ -21,7 +21,7 @@ import {
 } from '@/games/guesshue/reveal'
 
 function guess(userId: string, hue: number): RevealGuess {
-  return { userId, hue, colorHex: '#3366cc' }
+  return { userId, hue, colorHex: '#3366cc', revealDelayMs: 0 }
 }
 
 describe('lanes', () => {

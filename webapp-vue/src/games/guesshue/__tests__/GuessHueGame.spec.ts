@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
+import { RESULTS_DELAY_MS } from '@/games/guesshue/reveal'
 import type { GuessHuePayload } from '@/games/guesshue/types'
 
 const PAYLOAD: GuessHuePayload = {
@@ -124,15 +125,21 @@ describe('GuessHueGame', () => {
 
 const SOLUTION = { targetHue: 210, toleranceDeg: 10 }
 
-function entry(userId: string, hue: unknown, bgColorHex = '#3366cc') {
+function entry(
+  userId: string,
+  hue: unknown,
+  bgColorHex = '#3366cc',
+  over: Record<string, unknown> = {},
+) {
   return {
     userId,
     username: userId,
     avatar: { shortName: userId.toUpperCase(), bgColorHex },
     guess: { hue },
-    outcome: null,
-    points: 0,
+    outcome: { deviationDeg: 0 },
+    points: 1,
     at: '2026-08-09T12:00:00Z',
+    ...over,
   }
 }
 
@@ -302,5 +309,102 @@ describe('GuessHueGame, once the round is spent', () => {
     })
     expect(w.find('[data-test="hue-wheel-reveal"]').exists()).toBe(true)
     expect(w.findAll('[data-test="hue-marker"]')[1]!.classes()).toContain('opacity-0')
+  })
+})
+
+describe('GuessHueGame, the scoreboard under the wheel', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  function spentRound(props: Record<string, unknown> = {}) {
+    return mountAdapter({
+      solution: SOLUTION,
+      mineUserId: 'me',
+      myGuess: { hue: 214.5 },
+      disabled: true,
+      ...props,
+    })
+  }
+
+  it('shows the table under the wheel once the round is spent', () => {
+    const w = spentRound({
+      entries: [entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 4.5 } })],
+    })
+
+    expect(w.find('[data-test="hue-scoreboard"]').exists()).toBe(true)
+    expect(w.get('[data-test="hue-scoreboard"]').text()).toContain('me')
+  })
+
+  it('calls the round live exactly when a score can still be overtaken', () => {
+    const entries = [entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 4.5 } })]
+
+    expect(
+      spentRound({ entries, awardRule: 'CLOSEST_ONLY' })
+        .find('[data-test="hue-scoreboard-live"]')
+        .exists(),
+    ).toBe(true)
+    expect(
+      spentRound({ entries, awardRule: 'ALL_QUALIFYING' })
+        .find('[data-test="hue-scoreboard-live"]')
+        .exists(),
+    ).toBe(false)
+  })
+
+  // The two timing tests do not pass `animate`: `GuessHueGame` has no such prop — it derives the
+  // flag from a live null→non-null transition of `solution`, which mounting straight into a spent
+  // round is not. That costs these tests nothing: `transitionDelay` is written into every cell's
+  // and marker's `style` unconditionally, and only the opacity class waits for the beats.
+  it('gives a marker and its row the same moment', () => {
+    const w = spentRound({
+      entries: [
+        entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 40 } }),
+        entry('near', 211, '#cc3366', { outcome: { deviationDeg: 1 } }),
+      ],
+    })
+
+    const markerDelay = w
+      .findAll('[data-test="hue-marker"]')
+      .map((marker) => marker.element.style.transitionDelay)
+    const tipDelay = w
+      .findAll('tbody td:first-of-type')
+      .map((cell) => cell.element.style.transitionDelay)
+
+    // The wheel keeps entry order, the table rank order — so "near" is the wheel's second marker
+    // and the table's first row. Both must carry the same number.
+    expect(markerDelay[1]).toBe(tipDelay[0])
+  })
+
+  it('never lands my row before the first foreign marker', () => {
+    // I am rank 1 of 2, so my row rides tick 0 — the moment the leader's marker arrives.
+    const w = spentRound({
+      entries: [
+        entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 40 } }),
+        entry('near', 211, '#cc3366', { outcome: { deviationDeg: 1 } }),
+      ],
+    })
+
+    const rows = w.findAll('tbody tr')
+    const nameDelay = (index: number) => rows[index]!.get('th').element.style.transitionDelay
+
+    expect(nameDelay(0)).toBe(`${RESULTS_DELAY_MS}ms`)
+    expect(nameDelay(1)).toBe(`${RESULTS_DELAY_MS}ms`)
+  })
+
+  it('keeps an unrankable guess in the picture and out of the table', () => {
+    const w = spentRound({
+      entries: [
+        entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 4.5 } }),
+        entry('broken', 90, '#cc3366', { outcome: null }),
+      ],
+    })
+
+    expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(2)
+    expect(w.findAll('tbody tr')).toHaveLength(1)
   })
 })

@@ -5,8 +5,8 @@ import type { RevealGuess } from '@/games/guesshue/reveal'
 import { KNOB_TRACK_FRACTION, trackBoxStyle } from '@/games/guesshue/wheel'
 
 const GUESSES: RevealGuess[] = [
-  { userId: 'me', hue: 214.5, colorHex: '#3366cc' },
-  { userId: 'other', hue: 40, colorHex: '#cc3366' },
+  { userId: 'me', hue: 214.5, colorHex: '#3366cc', revealDelayMs: 2000 },
+  { userId: 'other', hue: 40, colorHex: '#cc3366', revealDelayMs: 2500 },
 ]
 
 function mountWheel(props: Partial<InstanceType<typeof HueWheelReveal>['$props']> = {}) {
@@ -89,7 +89,9 @@ describe('HueWheelReveal', () => {
   })
 
   it('stacks a colliding guess inward without moving mine', () => {
-    const w = mountWheel({ guesses: [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }] })
+    const w = mountWheel({
+      guesses: [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }],
+    })
     const markers = w.findAll('[data-test="hue-marker"]')
 
     expect(markers[0]!.element.style.top).toBe(trackBoxStyle(KNOB_TRACK_FRACTION).top)
@@ -171,7 +173,7 @@ describe('HueWheelReveal', () => {
   })
 
   it('grows the band inward once the last beat is due', async () => {
-    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }]
     const w = mountWheel({ animate: true, guesses: stacked })
 
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('78%')
@@ -183,7 +185,7 @@ describe('HueWheelReveal', () => {
   })
 
   it('has the band at its final width immediately when it does not animate', () => {
-    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }]
 
     const w = mountWheel({ animate: false, guesses: stacked })
 
@@ -197,14 +199,14 @@ describe('HueWheelReveal', () => {
     const w = mountWheel({ animate: false, guesses: [GUESSES[0]!] })
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('78%')
 
-    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }]
     await w.setProps({ guesses: stacked })
 
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('68%')
   })
 
   it('keeps the band truthful for a guess that lands once the grow loop has already finished', async () => {
-    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111' }]
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }]
     const w = mountWheel({ animate: true, guesses: stacked })
 
     // Past the whole choreography: the loop has already eased the band to its target and set
@@ -213,9 +215,22 @@ describe('HueWheelReveal', () => {
     await w.vm.$nextTick()
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('68%')
 
-    const deeperStack = [...stacked, { userId: 'y', hue: 218, colorHex: '#222222' }]
+    const deeperStack = [
+      ...stacked,
+      { userId: 'y', hue: 218, colorHex: '#222222', revealDelayMs: 0 },
+    ]
     await w.setProps({ guesses: deeperStack })
 
     expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('58%')
+  })
+
+  it("takes each marker's moment from the guess, and computes none of its own", () => {
+    // The scoreboard owns the timetable now: a marker and its row are the same event, and a
+    // second calculation here is exactly how the two would drift apart.
+    const w = mountWheel({ animate: true })
+    const markers = w.findAll('[data-test="hue-marker"]')
+
+    expect(markers[0]!.element.style.transitionDelay).toBe('2000ms')
+    expect(markers[1]!.element.style.transitionDelay).toBe('2500ms')
   })
 })

@@ -14,6 +14,11 @@ export interface RevealGuess {
   hue: number
   /** The guesser's avatar colour — the marker's fill. */
   colorHex: string
+  /**
+   * When this marker fades in. Computed by `GuessHueGame` from the scoreboard's ranking, so the
+   * marker and its row are one event — the wheel keeps no timetable of its own.
+   */
+  revealDelayMs: number
 }
 
 export interface PlacedGuess extends RevealGuess {
@@ -75,12 +80,12 @@ export const ROW_STAGGER_MS = 120
 /** The row cascade never runs longer than this, however many people played. */
 export const TYPE_BUDGET_MS = 1200
 
-/** The column a marker rides with: the guess cell, because both are „the guess as a colour". */
+/** The column a marker rides with: the guess cell, because both are „the guess as a colour“. */
 export const TIP_COLUMN = 1
 
 /**
  * How far apart two rows are. [ROW_STAGGER_MS] below the budget, and whatever fits above it — the
- * same „compress rather than grow" shape [stackStep] gives the marker lanes.
+ * same „compress rather than grow“ shape [stackStep] gives the marker lanes.
  */
 export function rowStagger(rowCount: number): number {
   return Math.min(ROW_STAGGER_MS, TYPE_BUDGET_MS / Math.max(1, rowCount))
@@ -103,7 +108,7 @@ export function cellDelayMs(tick: number, column: number, rowCount: number): num
  * Which tick a row borrows its timing from. Every row rides its own rank — except the viewer's.
  *
  * My marker has been on the wheel since the crossfade (it is the knob, recoloured), so a row
- * appearing with it would say „I am not the best" from its slot alone, before the picture had
+ * appearing with it would say „I am not the best“ from its slot alone, before the picture had
  * shown a single rival guess. Mine therefore waits for the first foreign marker: that is rank 1
  * when I am rank 0, and rank 0 otherwise. Alone in the round there is nothing to give away.
  */
