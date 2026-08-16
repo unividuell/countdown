@@ -69,18 +69,21 @@ function shortJson(value: unknown): string {
           {{ entry.points }}
         </span>
 
-        <!-- `after:-inset-2.5` carries the tap target to 48px without the badge itself growing to
-             match; the visible circle stays small enough to sit on a 48px row's corner. -->
+        <!-- The shortcut rides along because this badge is the only place the action is visible
+             without opening the drawer. `aria-hidden`, like the drawer's own hints: `aria-label`
+             already names the action, and „Klammer auf Befehl Umschalt Z" is not a name.
+             `after:-inset-2.5` carries the tap target to 44px without the pill growing to match. -->
         <button
           v-if="entry.userId === mineUserId"
           type="button"
           data-test="lab-entry-forget-mine"
           :disabled="busy"
           aria-label="Meinen Guess löschen"
-          class="absolute -top-2 -right-2 flex size-7 cursor-pointer items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-400 after:absolute after:-inset-2.5 after:content-[''] hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-default disabled:opacity-40"
+          class="absolute -top-3.5 -right-3.5 flex cursor-pointer items-center gap-1 rounded-full border border-neutral-200 bg-white px-2 py-1.5 text-neutral-400 after:absolute after:-inset-2.5 after:content-[''] hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-default disabled:opacity-40"
           @click="emit('forgetMine')"
         >
           <IconX class="size-3.5" />
+          <span aria-hidden="true" class="font-mono text-[10px] leading-none">(⌘⇧Z)</span>
         </button>
       </li>
     </ul>
@@ -95,6 +98,7 @@ function shortJson(value: unknown): string {
       >
         <IconRotateCcw class="size-3.5" />
         Runde zurücksetzen
+        <span aria-hidden="true" class="font-mono text-[10px]">(⌘⇧X)</span>
       </button>
     </div>
   </div>

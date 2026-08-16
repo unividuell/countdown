@@ -505,8 +505,37 @@ describe('lab page', () => {
     const w = await mountPage()
     const button = w.get('[data-test="lab-entry-forget-mine"]')
 
-    expect(button.classes()).toEqual(expect.arrayContaining(['absolute', '-top-2', '-right-2']))
+    expect(button.classes()).toEqual(expect.arrayContaining(['absolute', '-top-3.5', '-right-3.5']))
     expect(button.element.closest('li')!.className).toContain('relative')
+  })
+
+  it('names both actions with their keyboard shortcut, without renaming them for a screen reader', async () => {
+    // The badge and the reset line are the only places these two actions are visible without
+    // opening the drawer, so the shortcut belongs on them. It stays `aria-hidden`, as the
+    // drawer's own hints are: „Klammer auf Befehl Umschalt Z“ is not the name of an action.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      me: {
+        userId: 'u1',
+        username: 'Fry',
+        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
+        guess: { hue: 100 },
+        outcome: null,
+        at: '2026-08-08T12:00:00Z',
+        points: 0,
+      },
+    } as never)
+
+    const w = await mountPage()
+    const forget = w.get('[data-test="lab-entry-forget-mine"]')
+    const reset = w.get('[data-test="lab-entries-reset"]')
+
+    // `labShortcut` listens for meta+shift+z and meta+shift+x — the hints must say exactly that.
+    expect(forget.get('[aria-hidden="true"]').text()).toBe('(⌘⇧Z)')
+    expect(forget.attributes('aria-label')).toBe('Meinen Guess löschen')
+
+    expect(reset.get('[aria-hidden="true"]').text()).toBe('(⌘⇧X)')
+    expect(reset.text()).toContain('Runde zurücksetzen')
   })
 
   it('renders no entries list at all before the viewer has guessed', async () => {
