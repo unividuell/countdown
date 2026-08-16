@@ -21,3 +21,13 @@ fun frozenSince(edition: CommunityEdition): Instant? {
         .minusDays(firstGameRound.toLong() + 1)
         .toInstant()
 }
+
+/**
+ * Human-readable form of [frozenSince] for error messages. The unbounded window's [Instant.MIN]
+ * would otherwise print as a year with nine digits and a leading minus sign in a public 409 body.
+ */
+fun frozenSinceDescription(edition: CommunityEdition): String =
+    when (val since = frozenSince(edition)) {
+        Instant.MIN -> "its first round"
+        else -> "$since"
+    }

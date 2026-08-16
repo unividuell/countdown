@@ -79,7 +79,7 @@ open class EditionService(
         )
         if (isFrozen(edition)) {
             if (next.startsAt != edition.startsAt || next.startsAtTimezone != edition.startsAtTimezone) {
-                throw EditionFrozenException("the run's grid is fixed since ${frozenSince(edition)}")
+                throw EditionFrozenException("the run's grid is fixed since ${frozenSinceDescription(edition)}")
             }
             if (!isFrozen(next)) {
                 throw EditionFrozenException("a frozen run must not be thawed")

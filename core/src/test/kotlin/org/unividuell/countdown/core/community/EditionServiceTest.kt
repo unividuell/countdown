@@ -315,6 +315,29 @@ class EditionServiceTest(
         updated.gamesFromRound shouldBe 40
     }
 
+    // gamesFromRound == null is an unbounded window: frozenSince answers Instant.MIN, which must
+    // never reach a public 409 body as "-1000000000-01-01T00:00:00Z".
+    @Test
+    fun `the frozen-since message is readable for an unbounded window`() {
+        val communityId = aCommunity("es-frozen-unbounded-message")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+        val started = service.update(
+            edition, label = null, startsAt = Instant.now().minus(1, ChronoUnit.DAYS),
+            startsAtTimezone = null, phaseTwoStartRound = null,
+            gamesFromRound = null, gamesUntilRound = null,
+        )
+
+        val thrown = shouldThrow<EditionFrozenException> {
+            service.update(
+                started, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
+                startsAtTimezone = null, phaseTwoStartRound = null,
+                gamesFromRound = null, gamesUntilRound = null,
+            )
+        }
+
+        thrown.message shouldBe "the run's grid is fixed since its first round"
+    }
+
     @Test
     fun `update moves the start freely while there is no date yet`() {
         val communityId = aCommunity("es-no-date")
