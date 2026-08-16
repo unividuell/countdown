@@ -64,7 +64,11 @@ describe('MemberRow', () => {
       props: {
         members: [
           member({ fullName: 'Turanga Leela', points: { stable: 3 } }),
-          member({ userId: 'b', fullName: 'Philip J. Fry', points: { stable: 7, live: 5 } }),
+          member({
+            userId: 'b',
+            fullName: 'Philip J. Fry',
+            points: { stable: 7, live: { points: 5, provisional: true } },
+          }),
         ],
       },
     })
@@ -77,20 +81,93 @@ describe('MemberRow', () => {
     // live points must get no dangling suffix...
     expect(items[0]?.attributes('aria-label')).toBe('Turanga Leela, 3 Punkte')
     // ...while one with live points must have them folded into the label, since the `+N` badge's
-    // text node is no longer exposed to assistive technology.
-    expect(items[1]?.attributes('aria-label')).toContain('5')
-    expect(items[1]?.attributes('aria-label')).toContain('Philip J. Fry, 7 Punkte')
+    // text node is no longer exposed to assistive technology. „vorläufig“ belongs in there too: the
+    // colour and the pulse that carry it visually say nothing to a screen reader.
+    expect(items[1]?.attributes('aria-label')).toBe(
+      'Philip J. Fry, 7 Punkte, diese Runde vorläufig +5',
+    )
   })
 
-  it('shows the live badge only when live points are present', () => {
+  it('spells out a settled round and an empty one for assistive technology', () => {
     reduceMotion(true)
-    const without = mount(MemberRow, { props: { members: [member()] } })
-    expect(without.find('[data-test="live-points"]').exists()).toBe(false)
+    const w = mount(MemberRow, {
+      props: {
+        members: [
+          member({
+            fullName: 'Hermes',
+            points: { stable: 7, live: { points: 5, provisional: false } },
+          }),
+          member({
+            userId: 'b',
+            fullName: 'Zoidberg',
+            points: { stable: 2, live: { points: 0, provisional: false } },
+          }),
+        ],
+      },
+    })
+    const items = w.findAll('[data-swarm-item]')
+    expect(items[0]?.attributes('aria-label')).toBe('Hermes, 7 Punkte, diese Runde +5')
+    expect(items[1]?.attributes('aria-label')).toBe('Zoidberg, 2 Punkte, diese Runde ohne Punkte')
+  })
 
+  it('shows the live chip for everyone who played, a scoreless round included', () => {
+    reduceMotion(true)
     const with_ = mount(MemberRow, {
-      props: { members: [member({ points: { stable: 3, live: 5 } })] },
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 5, provisional: true } } })],
+      },
     })
     expect(with_.find('[data-test="live-points"]').text()).toBe('+5')
+
+    // Played and came away empty is a result the row has to say out loud — the old `v-if` on the
+    // number itself swallowed it, because `0` is falsy.
+    const empty = mount(MemberRow, {
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 0, provisional: false } } })],
+      },
+    })
+    expect(empty.find('[data-test="live-points"]').text()).toBe('💀')
+  })
+
+  it('pulses only while the points can still be taken away', () => {
+    reduceMotion(true)
+    const provisional = mount(MemberRow, {
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 5, provisional: true } } })],
+      },
+    })
+    expect(provisional.find('[data-test="live-points"]').classes()).toContain('animate-pulse')
+
+    // Settled points hold still and go dark — a chip that keeps pulsing after the number is final
+    // promises a change that cannot come, and one in the badge's yellow stacks into it.
+    const settled = mount(MemberRow, {
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 5, provisional: false } } })],
+      },
+    })
+    const classes = settled.find('[data-test="live-points"]').classes()
+    expect(classes).not.toContain('animate-pulse')
+    expect(classes).toContain('bg-neutral-900')
+    expect(classes).not.toContain('bg-yellow-400')
+
+    // Scored or scoreless, a finished round is the same state and wears the same chip.
+    const empty = mount(MemberRow, {
+      props: {
+        members: [member({ points: { stable: 3, live: { points: 0, provisional: false } } })],
+      },
+    })
+    expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-neutral-900')
+  })
+
+  it('keeps the chip line for members who have not played, so the row cannot jump', () => {
+    reduceMotion(true)
+    // The chip is hidden, not absent: dropping it out of the flow shortens the row by its own
+    // height, and the surrounding section centres what is left — which is the vertical jump the
+    // roster made the moment the first live points landed.
+    const w = mount(MemberRow, { props: { members: [member()] } })
+    const chip = w.find('[data-test="live-points"]')
+    expect(chip.exists()).toBe(true)
+    expect(chip.classes()).toContain('invisible')
   })
 
   it('does not animate when the viewer asked for reduced motion', async () => {

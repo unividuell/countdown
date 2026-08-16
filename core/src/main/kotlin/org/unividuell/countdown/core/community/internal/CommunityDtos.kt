@@ -26,8 +26,10 @@ data class MemberResponse(
 )
 data class AcceptResponse(val status: String, val name: String, val slug: String)
 
+data class LivePointsResponse(val points: Int, val provisional: Boolean)
+
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-data class RosterPointsResponse(val stable: Int, val live: Int?)
+data class RosterPointsResponse(val stable: Int, val live: LivePointsResponse?)
 
 data class RosterMemberResponse(
     val userId: UUID,

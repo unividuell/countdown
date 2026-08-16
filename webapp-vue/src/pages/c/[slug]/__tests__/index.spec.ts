@@ -86,7 +86,7 @@ describe('community home', () => {
         shortName: 'AMY',
         fullName: 'amy',
         bgColorHex: '#8e44ad',
-        points: { stable: 3, live: 5 },
+        points: { stable: 3, live: { points: 5, provisional: true } },
       },
     ])
     const w = mountPage()
@@ -211,7 +211,7 @@ describe('community home', () => {
       // The server ranks by stable + live, so a guess can reorder the row: amy's live points
       // overtake fry. The row has to follow that, badges and order both.
       .mockResolvedValueOnce([
-        { ...amy, points: { stable: 0, live: 5 } },
+        { ...amy, points: { stable: 0, live: { points: 5, provisional: true } } },
         { ...fry, points: { stable: 3 } },
       ])
     const w = mountPage()
@@ -226,7 +226,7 @@ describe('community home', () => {
 
     expect(getRoster).toHaveBeenCalledTimes(1)
     expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
-      'amy, 0 Punkte, plus 5 live',
+      'amy, 0 Punkte, diese Runde vorläufig +5',
       'fry, 3 Punkte',
     ])
   })

@@ -35,11 +35,12 @@ const settledMembers = computed(() => {
 
 <template>
   <!-- The section owns the height, so all three states are the same height by construction rather
-       than by three numbers agreeing. 72px is the row's *tall* variant: a 48px avatar, plus 10 for
-       the points badge and 10 for the live-points badge (16px each, pulled up 6 by -mt-1.5), plus
-       the row's own 2px padding top and bottom. The tall variant is reserved even for a roster where
-       nobody holds live points — that case is 62px, and reserving the smaller value is what used to
-       drop the card 10px the moment the roster landed. -->
+       than by three numbers agreeing. 72px is what the row measures: a 48px avatar, plus 10 for the
+       points badge and 10 for the live-points chip (16px each, pulled up 6 by -mt-1.5), plus the
+       row's own 2px padding top and bottom. The chip holds its line even for a member who has not
+       played (see MemberRow), so this is the row's only height — reserving anything smaller is what
+       used to drop the card the moment the roster landed, and letting the chip leave the flow is
+       what used to lift the ranking the moment the first live points arrived. -->
   <section class="flex min-h-[72px] items-center">
     <MemberRow v-if="state === 'ready'" :members="members" />
     <p v-else-if="state === 'failed'" data-test="roster-error" class="text-sm text-neutral-500">

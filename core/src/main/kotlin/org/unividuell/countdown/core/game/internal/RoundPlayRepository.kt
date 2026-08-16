@@ -109,12 +109,18 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
      * `points IS NOT NULL` is precisely "has guessed": the re-evaluation writes a number for every
      * guessed row of a round, `0` included.
      *
+     * `award_rule` rides along because whether a number can still move is the round's own frozen
+     * property. Reading it here costs nothing — the join is already there — and asking `awardFor`
+     * again instead would answer for the *thresholds of today*, which an admin may have moved under
+     * a round that was announced long before.
+     *
      * `IN (:userIds)` renders `IN ()` for an empty collection, which is a syntax error — the caller
      * guards that.
      */
     @Query(
         """
-        SELECT p.user_id AS user_id, g.round_number AS round_number, p.points AS points
+        SELECT p.user_id AS user_id, g.round_number AS round_number, p.points AS points,
+               g.award_rule AS award_rule
         FROM game.round_plays p
         JOIN game.round_games g ON g.id = p.round_game_id
         WHERE g.edition_id = :editionId AND p.points IS NOT NULL AND p.user_id IN (:userIds)

@@ -80,6 +80,12 @@ Two consequences worth knowing before touching it:
   `points` for all guessed rows. No removal step, no job, no events — and the re-evaluation is
   stateless, so it heals itself.
 - **A scoring bugfix is a backfill**, not a shrug about lost history.
+- **Whoever needs a round's rule reads the frozen row, never `awardFor` again.** A recomputation
+  answers for *today's* thresholds, and an admin may have moved them under a round announced long
+  before — so `pointsOf` carries `award_rule` along with the points. Whether a number can still move
+  follows from that rule and nothing else: `CLOSEST_ONLY` and `> 0` is up for grabs, a zero is a
+  round already lost and no later guess brings it back. Decide it here; the client is told, not asked
+  to derive.
 
 The standings sum only rounds that are **finished** and **inside the run's current window**, using the
 same `windowReasonOf` the announcement uses. Shrinking the window therefore lowers a total, and

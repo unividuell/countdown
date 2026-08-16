@@ -2,9 +2,11 @@ package org.unividuell.countdown.core.game.internal
 
 import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.community.CommunityQuery
+import org.unividuell.countdown.core.community.LivePoints
 import org.unividuell.countdown.core.community.MemberPoints
 import org.unividuell.countdown.core.community.MemberPointsQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
+import org.unividuell.countdown.core.game.AwardRule
 import java.time.Clock
 import java.time.ZoneId
 import java.util.UUID
@@ -21,7 +23,8 @@ import java.util.UUID
  *
  * `live` is the running round, and only for a viewer who has guessed it themselves — the origin app's
  * rule, and it is decided here rather than in the client, because the client must never *materialise*
- * what it may not have.
+ * what it may not have. It carries its own `provisional`: „can still move“ follows from the round's
+ * frozen award rule, which the client has no business re-deriving.
  *
  * The only `MemberPointsQuery` there is. It answers `0` for a community without played rounds all by
  * itself, which is why no environment needs a stand-in implementation.
@@ -63,11 +66,24 @@ class RoundPlayPoints(
             .mapValues { (_, rounds) -> rounds.sumOf { it.points } }
         val running = scored.filter { it.roundNumber == current }
         val live = if (running.any { it.userId == viewerId }) {
-            running.associate { it.userId to it.points }
+            running.associate { it.userId to liveOf(it) }
         } else {
             emptyMap()
         }
 
         return userIds.associateWith { MemberPoints(stable = stable[it] ?: 0, live = live[it]) }
     }
+
+    /**
+     * Whether the running round's number can still move — the one thing a viewer cannot read off the
+     * number itself.
+     *
+     * Under `ALL_QUALIFYING` every qualifying guess scores and no later guess touches an earlier one,
+     * so the number is already final. Under `CLOSEST_ONLY` a closer guess takes the points, but only
+     * from somebody who still holds them: a zero is a round already lost, and no guess brings it back.
+     */
+    private fun liveOf(play: PlayPoints): LivePoints = LivePoints(
+        points = play.points,
+        provisional = play.awardRule == AwardRule.CLOSEST_ONLY && play.points > 0,
+    )
 }

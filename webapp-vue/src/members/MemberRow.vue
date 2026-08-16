@@ -51,11 +51,49 @@ let swarm: Swarm | null = null
 let raf = 0
 let lastFrame = 0
 
-// `role="img"` is Children Presentational: True, pruning the `+N` live-points badge's text node
-// from the accessibility tree — so the live points must be folded into the label itself here.
+// `role="img"` is Children Presentational: True, pruning the live-points chip's text node from the
+// accessibility tree — so the live points must be folded into the label itself here. „vorläufig“
+// travels with them: visually it is carried by a colour and a pulse, neither of which a screen
+// reader passes on.
 function ariaLabel(m: RosterMemberResponse): string {
-  const live = m.points.live ? `, plus ${m.points.live} live` : ''
-  return `${m.fullName}, ${m.points.stable} Punkte${live}`
+  return `${m.fullName}, ${m.points.stable} Punkte${liveSuffix(m)}`
+}
+
+function liveSuffix(m: RosterMemberResponse): string {
+  const live = m.points.live
+  if (live === undefined) return ''
+  if (live.points === 0) return ', diese Runde ohne Punkte'
+  return live.provisional
+    ? `, diese Runde vorläufig +${live.points}`
+    : `, diese Runde +${live.points}`
+}
+
+/** Empty for a member who has not played: the chip stays in the flow, holding the row's height. */
+function liveLabel(m: RosterMemberResponse): string {
+  const live = m.points.live
+  if (live === undefined) return ''
+  // A nought beside the stable badge's nought read as one two-digit number; the skull says „played,
+  // came away empty“ without competing with a number. The screen-reader wording lives in
+  // `liveSuffix`, so the emoji never has to carry it.
+  return live.points > 0 ? `+${live.points}` : '💀'
+}
+
+/**
+ * Whether the number can still move is the server's answer (`provisional`), not a re-derivation from
+ * the award rule here.
+ *
+ * One colour per meaning, so the state is never carried by punctuation: yellow is the standing total,
+ * dark is „this round is done“, rose and pulsing is „still up for grabs“. A settled chip in the
+ * badge's own yellow was the obvious reading of „same colour as stable“ and the wrong one — stacked
+ * under one avatar, `5` above `+6` reads as one two-line number, with a 12px plus sign as the only
+ * thing telling them apart.
+ */
+function liveChipClass(m: RosterMemberResponse): string {
+  const live = m.points.live
+  if (live === undefined) return 'invisible'
+  return live.provisional
+    ? 'animate-pulse bg-rose-600 text-white ring-yellow-400 motion-reduce:animate-none'
+    : 'bg-neutral-900 text-white ring-white'
 }
 
 function paint(): void {
@@ -123,8 +161,8 @@ onMounted(() => {
       margins.push(requiredMargin(col, r))
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
     })
-    // Only some members carry the `+N` live badge, so columns differ in height — take the
-    // worst case across the row rather than assuming a uniform column.
+    // Worst case across the row rather than a single measured column: the live chip holds its line
+    // for everyone, but an avatar that renders a shade taller than its neighbours still would not.
     const measuredMargin = Math.max(...margins)
     const wallRadius =
       measuredMargin > 0 && Number.isFinite(measuredMargin)
@@ -179,13 +217,16 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         >
           {{ m.points.stable }}
         </div>
+        <!-- Always in the flow, only ever hidden: a chip that comes and goes takes the row's height
+             with it, and the section around it centres what is left — which is the vertical jump the
+             ranking made the moment the first live points landed. `h-4` is what `text-xs` gives the
+             chip anyway, written down so an empty one keeps it. -->
         <span
-          v-if="m.points.live"
           data-test="live-points"
-          class="z-20 -mt-1.5 animate-pulse self-end rounded-lg bg-rose-600 px-1 text-xs text-white ring-1 ring-yellow-400 motion-reduce:animate-none"
+          class="z-20 -mt-1.5 h-4 self-end rounded-lg px-1 text-xs whitespace-nowrap ring-1"
+          :class="liveChipClass(m)"
+          >{{ liveLabel(m) }}</span
         >
-          +{{ m.points.live }}
-        </span>
       </div>
     </div>
   </div>

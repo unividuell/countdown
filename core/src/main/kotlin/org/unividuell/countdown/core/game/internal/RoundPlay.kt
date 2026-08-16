@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.game.internal
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
+import org.unividuell.countdown.core.game.AwardRule
 import tools.jackson.databind.JsonNode
 import java.time.Instant
 import java.util.UUID
@@ -36,4 +37,10 @@ data class RoundPlay(
 )
 
 /** One scored guess, reduced to what a standings sum needs: whose, which round, how much. */
-data class PlayPoints(val userId: UUID, val roundNumber: Int, val points: Int)
+data class PlayPoints(
+    val userId: UUID,
+    val roundNumber: Int,
+    val points: Int,
+    /** The round's own, frozen at announcement — not what `awardFor` would say about it today. */
+    val awardRule: AwardRule,
+)
