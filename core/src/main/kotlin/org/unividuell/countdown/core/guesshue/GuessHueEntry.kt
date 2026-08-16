@@ -1,21 +1,26 @@
 package org.unividuell.countdown.core.guesshue
 
-/**
- * Author metadata, not a runtime switch. Nothing reads this field at game time — the difficulty
- * mix falls out of the data alone, because the seed draws uniformly across all entries. It exists
- * so the spec's two-sentence rule is checkable rather than a matter of taste.
- */
-enum class GuessHueDifficulty { EASY, MEDIUM, HARD }
+import java.time.LocalDate
 
 /**
- * An entry is a colour *family*, not a colour value: [hue] is the **nominal** angle the round
- * jitters around, and saturation and lightness aren't part of it at all — those are drawn fresh
- * per round.
+ * One curated colour, complete. [hue] is the **nominal** angle the round jitters around;
+ * [saturation] and [lightness] are the entry's own and reach the round untouched.
+ *
+ * They belong to the entry rather than to the draw because the description talks about them: "a
+ * dark emerald" is only true if the wheel shows one, and an object has a characteristic saturation
+ * and lightness, not just a hue. Drawing them per round — which this dataset did until 2026-08-16 —
+ * had the wheel contradict the text and cost the descriptions half their vocabulary.
+ *
+ * [generatedAt] is author statistics: which cohort an entry belongs to. It never leaves the server,
+ * which the payload field-set test in `GuessHueGameTypeTest` is what enforces. Its only reader is
+ * `GuessHueCohorts`, in the startup log.
  *
  * See `docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md`.
  */
 data class GuessHueEntry(
     val hue: Int,
-    val difficulty: GuessHueDifficulty,
+    val saturation: Double,
+    val lightness: Double,
+    val generatedAt: LocalDate,
     val description: String,
 )

@@ -8,6 +8,7 @@ import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.rng.SeededRandom
+import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -17,9 +18,27 @@ class GuessHueDrawTest {
         (0 until 12).flatMap { sector ->
             val base = sector * 30
             listOf(
-                GuessHueEntry(base + 2, GuessHueDifficulty.EASY, "Beispieleintrag, kein Spielinhalt. Praktisch daneben, keinen Fingerbreit weiter."),
-                GuessHueEntry(base + 14, GuessHueDifficulty.MEDIUM, "Beispieleintrag, kein Spielinhalt. Auf der einen Seite, nicht auf der anderen."),
-                GuessHueEntry(base + 26, GuessHueDifficulty.HARD, "Beispieleintrag, kein Spielinhalt."),
+                GuessHueEntry(
+                    hue = base + 2,
+                    saturation = 0.70,
+                    lightness = 0.45,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+                GuessHueEntry(
+                    hue = base + 14,
+                    saturation = 0.35,
+                    lightness = 0.62,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+                GuessHueEntry(
+                    hue = base + 26,
+                    saturation = 0.88,
+                    lightness = 0.28,
+                    generatedAt = LocalDate.of(2024, 3, 3),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
             )
         },
     )
@@ -98,7 +117,15 @@ class GuessHueDrawTest {
     @Test
     fun `wraps the jitter across zero degrees`() {
         val nearZero = GuessHueDataset(
-            listOf(GuessHueEntry(2, GuessHueDifficulty.HARD, "Beispieleintrag, kein Spielinhalt.")),
+            listOf(
+                GuessHueEntry(
+                    hue = 2,
+                    saturation = 0.5,
+                    lightness = 0.5,
+                    generatedAt = LocalDate.of(2026, 8, 16),
+                    description = "Beispieleintrag, kein Spielinhalt.",
+                ),
+            ),
         )
 
         val hues = (0 until 500).map {
