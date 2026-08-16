@@ -92,7 +92,7 @@ function liveChipClass(m: RosterMemberResponse): string {
   const live = m.points.live
   if (live === undefined) return 'invisible'
   return live.provisional
-    ? 'animate-pulse bg-rose-600 text-white ring-yellow-400 motion-reduce:animate-none'
+    ? 'animate-pulse bg-live text-white ring-yellow-400 motion-reduce:animate-none'
     : 'bg-neutral-900 text-white ring-white'
 }
 
