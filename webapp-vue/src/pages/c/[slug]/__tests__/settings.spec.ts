@@ -20,6 +20,7 @@ const community = {
   startsAt: '2026-06-25T09:00:00Z', // 11:00 in Europe/Berlin (summer)
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: 24,
   viewerIsAdmin: true,
   pendingCount: 0,
 }
@@ -85,5 +86,34 @@ describe('settings — timezone + zone-relative startsAt', () => {
     const w = mount(Settings)
     await flushPromises()
     expect(w.text()).toContain('/c/team/')
+  })
+
+  it('renders gamesFromRound and sends it back', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    const field = w.find('[data-test="games-from-round"]')
+    expect((field.element as HTMLInputElement).value).toBe('24')
+
+    await field.setValue(40)
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.objectContaining({ gamesFromRound: 40 }),
+    )
+  })
+
+  it('omits gamesFromRound when the field is cleared', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('[data-test="games-from-round"]').setValue('')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ gamesFromRound: expect.anything() }),
+    )
   })
 })

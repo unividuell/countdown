@@ -24,6 +24,7 @@ const team: CommunityResponse = {
   startsAt: null,
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
 }

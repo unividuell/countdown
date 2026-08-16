@@ -31,6 +31,7 @@ export interface CommunityResponse {
   startsAt: string | null
   startsAtTimezone: string
   phaseTwoStartRound: number | null
+  gamesFromRound: number | null
   viewerIsAdmin: boolean
   pendingCount: number
 }

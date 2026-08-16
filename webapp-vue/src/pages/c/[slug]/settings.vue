@@ -21,6 +21,7 @@ const startsAt = ref('')
 const startsAtTimezone = ref('Europe/Berlin')
 const zones = Intl.supportedValuesOf('timeZone')
 const phaseTwoStartRound = ref<number | null>(null)
+const gamesFromRound = ref<number | null>(null)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
@@ -44,6 +45,7 @@ onMounted(async () => {
   startsAtTimezone.value = c.startsAtTimezone
   startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
   phaseTwoStartRound.value = c.phaseTwoStartRound
+  gamesFromRound.value = c.gamesFromRound
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -56,12 +58,15 @@ async function save(): Promise<void> {
       startsAt: string
       startsAtTimezone: string
       phaseTwoStartRound: number
+      gamesFromRound: number
     }> = { name: name.value.trim(), startsAtTimezone: startsAtTimezone.value }
     if (startsAt.value) {
       const instant = toInstant(startsAt.value, startsAtTimezone.value)
       if (instant) body.startsAt = instant
     }
-    if (phaseTwoStartRound.value !== null) body.phaseTwoStartRound = phaseTwoStartRound.value
+    if (typeof phaseTwoStartRound.value === 'number')
+      body.phaseTwoStartRound = phaseTwoStartRound.value
+    if (typeof gamesFromRound.value === 'number') body.gamesFromRound = gamesFromRound.value
     await updateCommunity(slug, body)
     await refresh()
   } catch {
@@ -111,6 +116,15 @@ async function revoke(): Promise<void> {
           min="1"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
+      <label class="block text-sm"
+        >Erste Spielrunde<input
+          v-model.number="gamesFromRound"
+          data-test="games-from-round"
+          type="number"
+          min="1"
+          class="mt-1 w-full rounded border px-3 py-1.5"
+      /></label>
+      <p class="text-xs text-neutral-500">Größere Nummer = früher. Leer: ab der ersten Runde.</p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </form>

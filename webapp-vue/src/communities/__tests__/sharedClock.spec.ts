@@ -15,6 +15,7 @@ const community: CommunityResponse = {
   startsAt: '2026-06-25T09:00:00Z',
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
 }

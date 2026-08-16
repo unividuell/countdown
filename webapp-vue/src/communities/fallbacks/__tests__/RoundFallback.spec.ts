@@ -12,6 +12,7 @@ const community = (startsAt: string | null): CommunityResponse => ({
   startsAt,
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
 })
