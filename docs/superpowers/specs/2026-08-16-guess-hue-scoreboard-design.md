@@ -1,4 +1,4 @@
-# Guess Hue — die Auswertungstabelle
+# Guess Hue — das Scoreboard
 
 **Status:** beschlossenes Design (2026-08-16).
 
@@ -10,6 +10,11 @@ Award-Regel und die Einträge.
 **Portiert aus:** `huettehuette.unividuell.org`,
 `components/games/guessColor/GuessColorAnalysis.vue`. Übernommen wird das **Layout und die
 Farblogik**, nicht der Code.
+
+**Der Bezeichner heißt `Scoreboard`, nicht `Analysis`.** Der Originalname hat dort schon für
+Verwirrung gesorgt: was diese Tabelle tut, ist punkten und ranken, und eine echte *Analyse* — pro
+Spiel, mit Verteilungen und Verläufen — kann später als eigene Abteilung dazukommen und braucht den
+Namen dann. Der Anzeigetext bleibt „Auswertung".
 
 ## Scope
 
@@ -85,10 +90,10 @@ statt in zwei Aufrufern.
 
 ### Die Zeile
 
-`analysis.ts`, rein:
+`scoreboard.ts`, rein:
 
 ```ts
-export interface AnalysisRow {
+export interface ScoreboardRow {
   userId: string
   name: string
   colorHex: string        // Spielerfarbe — der Grund der Zeile
@@ -190,8 +195,9 @@ vollständige Name bleibt als Textknoten im DOM, Hilfstechnik bekommt ihn also u
 
 Zahlen rechtsbündig und `tabular-nums` — das fehlte im Original und fällt in einer pulsierenden
 Spalte auf. Eine Nachkommastelle, mit **Komma**, weil die UI deutsch ist. Punkte ganzzahlig;
-`points === null` ergibt „–" (kommt praktisch nicht vor, jede getippte Zeile ist gewertet, aber der
-Typ lässt es zu).
+`points === null` ergibt einen **Geviertstrich „—"** (U+2014, nicht der Bindestrich und nicht der
+Halbgeviertstrich) — kommt praktisch nicht vor, jede getippte Zeile ist gewertet, aber der Typ lässt
+es zu.
 
 **Live.** Das Chip erscheint nur unter `CLOSEST_ONLY`; eine Pkt-Zelle wird kursiv und pulsiert nur,
 wenn zusätzlich `points > 0`. Das Chip ist dabei die **Legende** für den Puls: das gemeinsame Signal
@@ -213,9 +219,9 @@ trägt nirgends allein eine Aussage: jeder Wert steht auch als Zahl da.
 | Takt | wann | was | was man erfährt |
 | --- | --- | --- | --- |
 | 1 | 0 ms | der Mittelknopf verlässt die abgehende Karte | die Eingabe ist vorbei |
-| 2 | 200 ms | Karten-Überblendung; die Tabelle steht ab hier als **leerer Kasten** | das ist mein Tipp |
+| 2 | 200 ms | Karten-Überblendung; die Tabelle steht ab hier als **leerer Kasten**, mein Marker liegt auf dem Rad | das ist mein Tipp |
 | 3 | 900 ms | Toleranzsektor **und** Tabellenkopf | hier ist die Lösung |
-| 4 | 1900 ms | die Auswertung: Zeile für Zeile, und mit jeder Zeile ihr Marker | so standen alle dazu |
+| 4 | 1900 ms | die Auswertung: Zeile für Zeile, und mit jeder Zeile ihr Marker; meine eigene Zeile kommt mit dem ersten fremden Marker | so standen alle dazu |
 
 Takt 3 sagt zweimal dasselbe — die Lösung als Sektor und als Zahl in ihrer Farbe. Takt 4 ebenso.
 
@@ -287,16 +293,43 @@ sich von der Lösungslinie nach außen auf, statt einmal um das Rad zu laufen. D
 Lesart, nicht nur die konsistentere — „wie weit war ich weg" ist die Frage, die man an das Bild
 stellt.
 
-Drei Ränder:
+Zwei Ränder:
 
-- **Mein eigener Marker fadet nicht ein.** Er ist der Knopf, umgefärbt, und liegt seit Takt 2 da.
-  Wenn meine Zeile kommt, passiert auf dem Rad nichts — richtig so, und es bekommt keinen
-  Extra-Effekt: mein Tipp war die ganze Zeit da, jetzt steht dabei, was er wert war.
 - Ein Tipp mit brauchbarer Hue, aber kaputtem `outcome`, steht auf dem Rad und nicht in der Tabelle.
   Sein Marker fällt ans **Ende** der Kaskade: `rank = rowCount + k`, wobei `k` seine nullbasierte
   Position unter den übrigen Tipps ohne Zeile ist. Einen Tipp aus dem Bild zu nehmen, weil seine
   Auswertung Müll ist, wäre der schlechtere Tausch.
 - `growBand` wächst weiterhin ab `RESULTS_DELAY_MS` über `BAND_GROW_MS`, unabhängig von der Kaskade.
+
+### Meine eigene Zeile wartet auf den ersten fremden Marker
+
+Mein Marker liegt seit Takt 2 da — er ist der Knopf, umgefärbt, und fadet nie ein. Die naheliegende
+Regel wäre deshalb volle Synchronität: Marker sichtbar heißt Zeile sichtbar. Sie fällt aus, weil die
+**Position** meiner Zeile mehr sagt als mein Marker. Eine Zeile im vierten Slot heißt „ich bin nicht
+der beste", und das stünde auf der Karte, bevor das Rad einen einzigen fremden Tipp gezeigt hat.
+
+Deshalb: **meine Zeile erscheint mit dem ersten fremden Marker.** In diesem Moment liegen zwei
+Marker auf dem Rad, die Frage „bin ich der beste" ist aus dem Bild zu beantworten, und die Tabelle
+sagt nichts, was das Rad nicht zeigt.
+
+```ts
+// der Rang des besten fremden Tipps; 0, wenn niemand sonst getippt hat
+myRowTick = myRank === 0 ? 1 : 0
+```
+
+Alle übrigen Zeilen erscheinen an ihrem eigenen Rang. Meine kann dadurch **vor** Zeilen erscheinen,
+die über ihr stehen; die Lücken darüber füllen sich in den folgenden Ticks.
+
+> **Bekannte Restlücke.** Wenn ich nicht der beste bin, steht meine Zeile ab Tick 0 in ihrem Slot,
+> und die leeren Slots darüber sind abzählbar — die Tabelle verrät damit nicht nur „nicht der beste",
+> sondern gleich, *wie viele* vor mir liegen, während das Rad erst zwei Marker zeigt. Der Kasten hat
+> ja feste Zeilenplätze, sonst würde sich das Layout bewegen.
+>
+> Die leckfreie Variante wäre `myRowTick = max(myRank, 1)`: meine Zeile läuft in der Kaskade an ihrem
+> Rang mit, und nur der Fall „ich bin Rang 0" wird um einen Tick verschoben, damit ich meinen Sieg
+> nicht ohne Gegenmarker erfahre. Beide Regeln fallen zusammen, wenn ich Rang 0 bin. Sie ist eine
+> Zeile Unterschied und kann jederzeit getauscht werden; die hier beschlossene Regel zeigt die eigene
+> Zeile früher, die Alternative hält die Tabelle strenger hinter dem Rad zurück.
 
 ## „Vorläufig" bekommt eine Farbe
 
@@ -315,9 +348,9 @@ Stylesheet geprüft — sonst steht dort der Literalwert mit `rose-600` im Komme
 | --- | --- | --- |
 | `games/GameEntry.ts` | drei Felder mehr, plus die Grenze im KDoc | Änderung |
 | `games/guesshue/color.ts` | `hslToHex` — aus `reveal.ts` gelöst, jetzt von Rad und Tabelle gebraucht | neu (Umzug) |
-| `games/guesshue/analysis.ts` | rein: Zeilen bauen, sortieren, „vorläufig" entscheiden | neu |
+| `games/guesshue/scoreboard.ts` | rein: Zeilen bauen, sortieren, „vorläufig" entscheiden | neu |
 | `games/guesshue/reveal.ts` | die Takte und `cellDelayMs`; `MARKER_STAGGER_MS` weicht `ROW_STAGGER_MS`, `MARKERS_DELAY_MS` heißt `RESULTS_DELAY_MS`; `RevealGuess.revealDelayMs` | Änderung |
-| `games/guesshue/GuessHueAnalysis.vue` | die Tabelle, sonst nichts | neu |
+| `games/guesshue/GuessHueScoreboard.vue` | die Tabelle, sonst nichts | neu |
 | `games/guesshue/HueWheelReveal.vue` | liest die Verzögerung vom Marker statt sie zu rechnen | Änderung |
 | `games/guesshue/GuessHueReveal.vue` | die Tabelle unter dem Rad; der Kommentar „nichts darunter" wird eingelöst | Änderung |
 | `games/guesshue/GuessHueGame.vue` | baut Zeilen **und** Marker, verteilt die Ränge | Änderung |
@@ -333,7 +366,7 @@ zu bleiben.
 
 Vitest mit `vi`; happy-dom rechnet kein Layout, geprüft wird die strukturelle Stellvertretung.
 
-**`analysis.spec.ts`** — Zeilenbau aus Einträgen; Sortierung nach Abstand mit `userId` als
+**`scoreboard.spec.ts`** — Zeilenbau aus Einträgen; Sortierung nach Abstand mit `userId` als
 Gleichstandsregel; Ausfall einer Zeile ohne numerisches `deviationDeg`; `provisional` als Matrix aus
 Award-Regel × {0, 1, null}; `guessHex` mit Sättigung und Helligkeit der Runde, nicht des Tipps.
 
@@ -341,7 +374,7 @@ Award-Regel × {0, 1, null}; `guessHex` mit Sättigung und Helligkeit der Runde,
 der Zeilenzahl, ab der das Budget bindet (10 Zeilen: 120 ms, 20 Zeilen: 60 ms); der Kopf ist fertig,
 bevor Takt 4 beginnt.
 
-**`GuessHueAnalysis.spec.ts`** — `<th scope="row">` je Person und `<th scope="col">` je Spalte; der
+**`GuessHueScoreboard.spec.ts`** — `<th scope="row">` je Person und `<th scope="col">` je Spalte; der
 Kopfblock in Originalstellung (Überschrift und Chip mit `rowspan="2"`, der Lösungswert in Spalte 2
 der zweiten Kopfzeile, per `headers` an sein Etikett gebunden); die `<caption>` ist `sr-only` und
 wiederholt die Überschrift nicht; die vier Farbzuordnungen; das Chip nur unter `CLOSEST_ONLY`; Puls und Kursivsatz nur
@@ -350,7 +383,8 @@ keine Zeilen rendert nichts.
 
 **`GuessHueGame.spec.ts`** (Ergänzung) — Rang und `revealDelayMs` landen auf dem Marker derselben
 `userId` wie auf der Zeile; ein Tipp ohne Auswertung steht im Rad und nicht in der Tabelle und
-bekommt einen Rang hinter allen Zeilen.
+bekommt einen Rang hinter allen Zeilen; **meine Zeile erscheint nie vor dem ersten fremden Marker** —
+als Rang 0 auf Tick 1, sonst auf Tick 0, und auf Tick 0, wenn ich allein getippt habe.
 
 **`HueWheelReveal.spec.ts`** (Ergänzung) — die Verzögerung kommt vom Marker; mein Marker hat keine.
 
