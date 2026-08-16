@@ -121,24 +121,33 @@ Für **neu geschriebene** Einträge. Sie ersetzt die Zweitakt-Regel vollständig
 - **Anker und Farbwert müssen zusammenpassen.** Der Gegenstand bestimmt nicht nur den Hue, sondern
   auch Sättigung und Helligkeit des Eintrags. Das ist die eigentliche Qualitätsregel — sie ersetzt
   vier mechanische.
-- **Grob ein Drittel nennt gar keinen Farbnamen.** Die schrägen Einträge sind kein Betriebsunfall.
-  Sie sind der Gesprächsstoff, und das Original hat gezeigt, dass die Runde sie erträgt.
+- **Einträge ganz ohne Farbnamen bleiben die Ausnahme.** Sie sind der Gesprächsstoff, und das
+  Original hat gezeigt, dass die Runde sie erträgt — aber sie sind wirklich schwer, und eine Liste,
+  in der zu viele davon stehen, ist keine schwere Liste, sondern eine willkürliche. Ein paar pro
+  Runde Schreibarbeit, nicht ein Drittel. *(Korrigiert am 2026-08-16 nach der ersten Durchsicht:
+  die erste Fassung dieses Kapitels forderte grob ein Drittel. Von den vier namenlosen Einträgen
+  des ersten Schwungs sind zwei sofort wieder aussortiert worden.)*
 
-**Kein Raster.** Die erste Fassung verteilte 60 Einträge in zwölf Sektoren zu je fünf, rund 6°
-auseinander. Das ist gestrichen: der Gegenstand hat den Hue, den er hat. Es bleibt eine einzige,
-grobe Abdeckungsregel — **kein Loch größer als etwa 15°** zwischen benachbarten Nominalwerten, damit
-keine Gegend des Kreises im Spiel nie vorkommt. Sie wird beim Schreiben an der Vorschau geprüft, nicht
-von Code; für eine Liste ohne feste Größe gibt es auch keine Quote mehr zu erfüllen.
+**Kein Raster, und keine Abdeckungspflicht.** Die erste Fassung verteilte 60 Einträge in zwölf
+Sektoren zu je fünf, rund 6° auseinander; die Überarbeitung ersetzte das zunächst durch eine
+Höchstlücke von 15°. Auch die ist gestrichen. Der Gegenstand hat den Hue, den er hat, und **eine
+Lücke auf dem Kreis ist kein Mangel** — sie kostet niemanden etwas, während ein erzwungener Eintrag,
+den es nur gibt, weil dort ein Loch war, jede Runde kostet, in der er gezogen wird. Die Vorschau
+zeigt die Lücken weiterhin an; sie sind ein Hinweis, wo sich Schreiben lohnt, keine Vorgabe.
 
 ## Bestand und Herkunft
 
 Das Datenset hat **keine feste Größe**. Nachlegen ist jederzeit möglich und kostet nichts als den
 Text.
 
-| Herkunft | Anzahl | `generatedAt` | Register |
-| --- | --- | --- | --- |
-| aus `huettehuette` übernommen | 76 | `2024-03-03` | das historische, siehe unten |
-| neu geschrieben | 60 | `2026-08-16` | die Schreibregel oben |
+| Herkunft | `generatedAt` | Register |
+| --- | --- | --- |
+| aus `huettehuette` übernommen | `2024-03-03` | das historische, siehe unten |
+| neu geschrieben | `2026-08-16` | die Schreibregel oben |
+
+Absichtlich ohne Stückzahlen: die Liste wächst und schrumpft, und eine Zahl in einem Spec ist
+spätestens nach der nächsten Durchsicht falsch. Wie viele Einträge je Kohorte tatsächlich geladen
+sind, sagt die Startmeldung — siehe unten.
 
 Die übernommenen Einträge folgen der Schreibregel **nicht** und werden nicht nachträglich daran
 angepasst. Ihr Register ist ein anderes: Farbname mit Modifikator im ersten Satz, danach drei bis
@@ -158,9 +167,10 @@ Reine Autoren-Statistik: wann ein Eintrag entstand. **Es verlässt das Backend n
 Payload noch in der Solution. Der Feldmengen-Test über `GuessHuePayload` hält es draußen.
 
 Damit es nicht das Schicksal von `difficulty` teilt und unbemerkt verrottet, hat es genau einen
-Leser: die bestehende Startmeldung in `GuessHueDatasetConfiguration` nennt zusätzlich die Kohorten
-(`Guess Hue loaded 136 entries from … — 76 from 2024-03-03, 60 from 2026-08-16`). Ein Feld ohne
-Leser gehört in einen Kommentar, nicht ins Schema.
+Leser: die bestehende Startmeldung in `GuessHueDatasetConfiguration` nennt zusätzlich die Kohorten,
+älteste zuerst — `Guess Hue loaded N entries from … — X from 2024-03-03, Y from 2026-08-16`. Ein
+Feld ohne Leser gehört in einen Kommentar, nicht ins Schema. Diese Zeile ist zugleich die einzige
+Stelle, an der die aktuellen Stückzahlen stehen; kein Dokument wiederholt sie.
 
 ## Die Runde
 
@@ -229,6 +239,14 @@ unterscheidbar bleibt. Das war nicht falsch — der Ring wird komplett in diesen
 Eintrag bei `S 0.09` ergibt einen grauen Ring —, aber es war die Ursache der Monotonie, und das
 Original ist jahrelang ohne diese Grenze gelaufen. Ein extremer Eintrag macht eine einzelne Runde
 schwerer; ein Korridor macht alle Runden gleich.
+
+Die Grenze verschwindet damit nicht, sie wechselt den Ort: **statt vom Code geklemmt zu werden,
+wird ein unbrauchbarer Eintrag beim Durchsehen gestrichen.** Das ist keine Theorie — bei der ersten
+Durchsicht am 2026-08-16 waren sechs der sieben aussortierten Alt-Einträge genau die, bei denen die
+Vorschau „Ring fast grau" oder „Ring fast weiß" markiert hatte. Ein Klemmen im Code hätte sie
+behalten und dabei ihren Text zur Lüge gemacht: ein blasses Graugrün, das auf einmal sattgrün
+erscheint, beschreibt nichts mehr. Deshalb markiert die Vorschau diese Fälle, und deshalb
+entscheidet sie ein Mensch.
 
 ## Ablage und Übergabe
 
