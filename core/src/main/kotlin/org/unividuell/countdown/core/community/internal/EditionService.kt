@@ -120,6 +120,10 @@ open class EditionService(
             require(it >= edition.gamesUntilRound) {
                 "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
             }
+            // A run longer than a century of daily rounds is not a real run; the bound also keeps
+            // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
+            // seeing a round number close enough to Int.MAX_VALUE to overflow.
+            require(it <= MAX_GAMES_FROM_ROUND) { "gamesFromRound ($it) must not exceed $MAX_GAMES_FROM_ROUND" }
         }
     }
 
@@ -127,5 +131,8 @@ open class EditionService(
         // Fetched once: the JVM's IANA zone set does not change at runtime, and this set has ~600
         // entries — no reason to rebuild it on every validate() call.
         val AVAILABLE_ZONE_IDS: Set<String> = ZoneId.getAvailableZoneIds()
+
+        // A hundred years of daily rounds.
+        const val MAX_GAMES_FROM_ROUND = 36500
     }
 }

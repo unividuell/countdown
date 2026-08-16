@@ -1,6 +1,8 @@
 package org.unividuell.countdown.core.community
 
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.internal.frozenSince
@@ -55,5 +57,19 @@ class EditionFreezeTest {
         val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = -1)
 
         frozenSince(e) shouldBe Instant.parse("2026-06-25T09:00:00Z")
+    }
+
+    // `gamesFromRound + 1` must not run in Int: at Int.MAX_VALUE it wraps to Int.MIN_VALUE, and
+    // `minusDays` of a negative count adds days instead of subtracting — the freeze point then lands
+    // millions of years in the future rather than in the past, and `isFrozen` is false forever.
+    @Test
+    fun `an enormous gamesFromRound still lands in the past, not millions of years in the future`() {
+        val startsAt = Instant.parse("2026-06-25T09:00:00Z")
+        val e = edition(startsAt = startsAt, gamesFromRound = Int.MAX_VALUE)
+
+        val since = frozenSince(e)
+
+        since.shouldNotBeNull()
+        since shouldBeLessThan startsAt
     }
 }

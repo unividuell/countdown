@@ -18,6 +18,6 @@ fun frozenSince(edition: CommunityEdition): Instant? {
     val startsAt = edition.startsAt ?: return null
     val firstGameRound = edition.gamesFromRound ?: return Instant.MIN
     return startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
-        .minusDays((firstGameRound + 1).toLong())
+        .minusDays(firstGameRound.toLong() + 1)
         .toInstant()
 }

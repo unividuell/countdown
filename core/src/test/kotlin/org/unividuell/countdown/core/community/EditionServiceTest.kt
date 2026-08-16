@@ -114,6 +114,32 @@ class EditionServiceTest(
     }
 
     @Test
+    fun `update rejects a gamesFromRound above the hundred-year bound`() {
+        val communityId = aCommunity("es-round-too-big")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(
+                edition, label = null, startsAt = null, startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = 36501, gamesUntilRound = null,
+            )
+        }
+    }
+
+    @Test
+    fun `update accepts a gamesFromRound exactly at the hundred-year bound`() {
+        val communityId = aCommunity("es-round-at-bound")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+
+        val updated = service.update(
+            edition, label = null, startsAt = null, startsAtTimezone = null,
+            phaseTwoStartRound = null, gamesFromRound = 36500, gamesUntilRound = null,
+        )
+
+        updated.gamesFromRound shouldBe 36500
+    }
+
+    @Test
     fun `update accepts a negative last round so games can run past the start`() {
         val communityId = aCommunity("es-negative-window")
         val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
