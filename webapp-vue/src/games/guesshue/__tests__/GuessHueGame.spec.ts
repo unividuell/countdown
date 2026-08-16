@@ -375,8 +375,9 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
       .findAll('tbody td:first-of-type')
       .map((cell) => cell.element.style.transitionDelay)
 
-    // The wheel keeps entry order, the table rank order — so "near" is the wheel's second marker
-    // and the table's first row. Both must carry the same number.
+    // The wheel places mine first and then sorts everyone else by angle — with only one other
+    // guess here, that leaves "near" as the wheel's second marker regardless of angle. The table
+    // sorts by rank, so "near" is also its first row. Both must carry the same number.
     expect(markerDelay[1]).toBe(tipDelay[0])
   })
 

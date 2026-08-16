@@ -77,6 +77,38 @@ describe('GuessHueScoreboard', () => {
     expect(w.get('#hue-solution').text()).toBe('Lösung')
   })
 
+  it('lines the solution value up under „Lösung“ and over „Tipp“, in column 2 and no other', () => {
+    // The head block spans two rows. Row 1's own cells are, in order, the rowspanned heading
+    // (column 1), the „Lösung“ label (column 2), the gap, and the rowspanned live chip — so the
+    // label is the row's *second* own cell. Row 2 only supplies the columns the rowspan cells
+    // do not, so its first own cell is also column 2: the solution value has to be that first
+    // cell, or a filler pushed in front of it would silently slide it into column 3 while every
+    // other assertion here — the `rowspan`, the `headers` link, the band order — stays green.
+    const w = mountBoard({ live: true })
+    const [row1, row2, bandRow] = w.findAll('thead tr')
+
+    expect(row1!.findAll('td, th')[1]!.attributes('id')).toBe('hue-solution')
+    expect(row2!.findAll('td, th')[0]!.attributes('data-test')).toBe('hue-scoreboard-solution')
+    expect(bandRow!.findAll('th')[1]!.text()).toBe('Tipp')
+  })
+
+  it('anchors the head band in near-black — the anchor that makes the colour below read as a table', () => {
+    const w = mountBoard({ live: true })
+    const headCells = [w.get('#hue-solution'), ...w.findAll('thead tr:last-child th')]
+
+    expect(headCells.length).toBe(5)
+    for (const cell of headCells) {
+      expect(cell.classes()).toContain('bg-neutral-900')
+    }
+  })
+
+  it("keeps a thin white gutter between every cell via the table's own border-spacing", () => {
+    const w = mountBoard()
+
+    expect(w.get('table').classes()).toContain('border-spacing-x-1')
+    expect(w.get('table').classes()).toContain('border-spacing-y-0.5')
+  })
+
   it('says in the caption what the heading does not', () => {
     const caption = mountBoard().get('caption')
 
@@ -147,10 +179,16 @@ describe('GuessHueScoreboard', () => {
   })
 
   it('is fully written the moment a reload lands on a spent round', () => {
+    // `.transition-opacity` is the static class every cell bound to `:class="opacity"` also
+    // carries, so this selects exactly the cells the fade actually touches — unlike selecting
+    // every `td`/`th`, which would also catch the layout's empty placeholder cells that carry no
+    // opacity class at all and would pass this assertion no matter what the component did.
     const w = mountBoard({ animate: false })
+    const cells = w.findAll('.transition-opacity')
 
-    for (const cell of w.findAll('thead th, thead td, tbody th, tbody td')) {
-      expect(cell.classes()).not.toContain('opacity-0')
+    expect(cells.length).toBeGreaterThan(0)
+    for (const cell of cells) {
+      expect(cell.classes()).toContain('opacity-100')
     }
   })
 

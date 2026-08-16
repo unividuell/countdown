@@ -13,7 +13,7 @@
  * ever moves — see the design doc.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { FADE_MS, cellDelayMs, headCellDelayMs } from './reveal'
+import { FADE_MS, TIP_COLUMN, cellDelayMs, headCellDelayMs } from './reveal'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
@@ -180,7 +180,7 @@ function guessGround(row: ScoreboardRow) {
         <td
           class="px-0.5 text-end tabular-nums transition-opacity"
           :class="opacity"
-          :style="[guessGround(row), body(row.tick, 1)]"
+          :style="[guessGround(row), body(row.tick, TIP_COLUMN)]"
         >
           {{ degrees(row.hue) }}
         </td>
