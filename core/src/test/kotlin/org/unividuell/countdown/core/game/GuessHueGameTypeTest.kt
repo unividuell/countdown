@@ -16,7 +16,6 @@ import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.GuessHueGameType
 import org.unividuell.countdown.core.game.internal.GuessHueOutcome
-import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
@@ -200,7 +199,7 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     fun `phase two has no arc to draw`() {
         val params = draw(phase = Phase.TWO)
 
-        val solution = game.solution(params) as GuessHueSolution
+        val solution = game.solution(params)
 
         solution.targetHue shouldBe params.hue
         solution.toleranceDeg.shouldBeNull()
