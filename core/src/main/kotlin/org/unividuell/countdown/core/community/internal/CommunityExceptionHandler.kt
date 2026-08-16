@@ -7,7 +7,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.community.internal"])
 class CommunityExceptionHandler {
-    @ExceptionHandler(SlugUnavailableException::class, LastAdminException::class, EditionConflictException::class)
+    @ExceptionHandler(
+        SlugUnavailableException::class,
+        LastAdminException::class,
+        EditionConflictException::class,
+        EditionFrozenException::class,
+    )
     fun conflict(e: RuntimeException) = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")
 
     @ExceptionHandler(CommunityAccessDeniedException::class, InviteNotFoundException::class)

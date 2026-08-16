@@ -13,10 +13,12 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.EditionConflictException
+import org.unividuell.countdown.core.community.internal.EditionFrozenException
 import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
@@ -188,5 +190,116 @@ class EditionServiceTest(
                 phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
             )
         }
+    }
+
+    // The suite runs against the real clock, so the fixtures are relative to it: a run that starts
+    // in 10 days has round 24 behind it (25 days before the start) and round 2 ahead of it (3 days
+    // before the start). That is one edition that is frozen and, one field later, would not be.
+    private fun aStartedRun(slug: String): CommunityEdition {
+        val communityId = aCommunity(slug)
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+        return service.update(
+            edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
+            startsAtTimezone = null, phaseTwoStartRound = null,
+            gamesFromRound = 24, gamesUntilRound = null,
+        )
+    }
+
+    @Test
+    fun `a run whose first game round has begun is frozen`() {
+        service.isFrozen(aStartedRun("es-frozen")) shouldBe true
+    }
+
+    @Test
+    fun `a run whose first game round is still ahead is not frozen`() {
+        val communityId = aCommunity("es-not-yet")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+
+        val dated = service.update(
+            edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
+            startsAtTimezone = null, phaseTwoStartRound = null,
+            gamesFromRound = 2, gamesUntilRound = null,
+        )
+
+        service.isFrozen(dated) shouldBe false
+    }
+
+    @Test
+    fun `update rejects moving the start of a frozen run`() {
+        val started = aStartedRun("es-frozen-start")
+
+        shouldThrow<EditionFrozenException> {
+            service.update(
+                started, label = null, startsAt = Instant.now().plus(12, ChronoUnit.DAYS),
+                startsAtTimezone = null, phaseTwoStartRound = null,
+                gamesFromRound = null, gamesUntilRound = null,
+            )
+        }
+    }
+
+    @Test
+    fun `update rejects re-zoning a frozen run`() {
+        val started = aStartedRun("es-frozen-zone")
+
+        shouldThrow<EditionFrozenException> {
+            service.update(
+                started, label = null, startsAt = null, startsAtTimezone = "America/New_York",
+                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+            )
+        }
+    }
+
+    @Test
+    fun `update accepts the unchanged grid of a frozen run so a rename still works`() {
+        val started = aStartedRun("es-frozen-rename")
+
+        val updated = service.update(
+            started, label = "Run 2026 reloaded", startsAt = started.startsAt,
+            startsAtTimezone = started.startsAtTimezone, phaseTwoStartRound = 20,
+            gamesFromRound = null, gamesUntilRound = null,
+        )
+
+        updated.label shouldBe "Run 2026 reloaded"
+        updated.phaseTwoStartRound shouldBe 20
+    }
+
+    @Test
+    fun `update rejects a first game round that would thaw a frozen run`() {
+        val started = aStartedRun("es-frozen-thaw")
+
+        // Round 2 begins three days before the start, which is still ahead — the same edition
+        // would no longer be frozen, and the next PATCH could move the date.
+        shouldThrow<EditionFrozenException> {
+            service.update(
+                started, label = null, startsAt = null, startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = 2, gamesUntilRound = null,
+            )
+        }
+    }
+
+    @Test
+    fun `update accepts a first game round that only pulls the freeze point forward`() {
+        val started = aStartedRun("es-frozen-earlier")
+
+        val updated = service.update(
+            started, label = null, startsAt = null, startsAtTimezone = null,
+            phaseTwoStartRound = null, gamesFromRound = 40, gamesUntilRound = null,
+        )
+
+        updated.gamesFromRound shouldBe 40
+    }
+
+    @Test
+    fun `update moves the start freely while there is no date yet`() {
+        val communityId = aCommunity("es-no-date")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+
+        val updated = service.update(
+            edition, label = null, startsAt = Instant.parse("2020-01-01T10:00:00Z"),
+            startsAtTimezone = null, phaseTwoStartRound = null,
+            gamesFromRound = null, gamesUntilRound = null,
+        )
+
+        updated.startsAt shouldBe Instant.parse("2020-01-01T10:00:00Z")
     }
 }

@@ -77,9 +77,24 @@ open class EditionService(
             gamesFromRound = gamesFromRound ?: edition.gamesFromRound,
             gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
         )
+        if (isFrozen(edition)) {
+            if (next.startsAt != edition.startsAt || next.startsAtTimezone != edition.startsAtTimezone) {
+                throw EditionFrozenException("the run's grid is fixed since ${frozenSince(edition)}")
+            }
+            if (!isFrozen(next)) {
+                throw EditionFrozenException("a frozen run must not be thawed")
+            }
+        }
         validate(next)
         return saveOrConflict(communityId = edition.communityId, edition = next)
     }
+
+    /**
+     * Whether this run's grid is fixed — its first game round has begun, so round numbers are in
+     * play and moving the grid would hand out one of them twice.
+     */
+    open fun isFrozen(edition: CommunityEdition): Boolean =
+        frozenSince(edition)?.let { !clock.instant().isBefore(it) } ?: false
 
     /**
      * Both [create] and [update] can lose the race against the partial unique index — [update]
