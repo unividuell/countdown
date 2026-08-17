@@ -285,4 +285,13 @@ describe('community route data guard', () => {
       community: community({ pendingCount: 0 }),
     })
   })
+
+  it('publishes the viewer identity into the header state', () => {
+    publishCommunity({
+      ...community(),
+      viewerIdentity: { username: 'Zwerg', avatar: { shortName: 'ZWRG', bgColorHex: '#8e44ad' } },
+    })
+
+    expect(activeCommunity.value?.viewerIdentity?.avatar.shortName).toBe('ZWRG')
+  })
 })

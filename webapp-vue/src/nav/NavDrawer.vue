@@ -75,6 +75,11 @@ const showSwitcher = computed(() => entries.value.length > 1)
 const mayCreate = computed(() => props.user.mayCreateCommunities)
 const showCommunityBlock = computed(() => showSwitcher.value || mayCreate.value)
 const admin = computed(() => (activeCommunity.value?.viewerIsAdmin ? activeCommunity.value : null))
+// What the header shows is what the others see right now: inside a community that is the
+// community-bound identity, everywhere else the global one.
+const toggleAvatar = computed(
+  () => activeCommunity.value?.viewerIdentity?.avatar ?? props.user.avatar,
+)
 const profilePath = computed(() =>
   activeCommunity.value ? communityPath(activeCommunity.value.slug, 'profile') : '/profile',
 )
@@ -265,7 +270,7 @@ onKeyStroke('Tab', (e) => {
       class="relative flex transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:transition-none"
       :style="{ transform: `rotate(${spin}deg)` }"
     >
-      <Avatar v-bind="user.avatar" size="sm" />
+      <Avatar v-bind="toggleAvatar" size="sm" />
       <span
         v-if="showDot"
         data-test="pending-dot"
