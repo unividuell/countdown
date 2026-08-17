@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
@@ -9,6 +10,9 @@ import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 
 const { community } = useCommunityContext()
 const { members, state, refreshAfterGuess } = useRoster(community.value.slug)
+// The row rearranges itself after a guess, and only the viewer's own climb boxes its way forward
+// (see members/reorder.ts). The session and the roster meet here, nowhere further down.
+const { user } = useAuth()
 
 // Owned here, not by RoundCard: `useRoster` already lives on this page, and a card that also
 // decided the no-game countdown would mix two responsibilities into one component. So the round
@@ -42,7 +46,7 @@ const settledMembers = computed(() => {
        used to drop the card the moment the roster landed, and letting the chip leave the flow is
        what used to lift the ranking the moment the first live points arrived. -->
   <section class="flex min-h-[72px] items-center">
-    <MemberRow v-if="state === 'ready'" :members="members" />
+    <MemberRow v-if="state === 'ready'" :members="members" :me-id="user?.id" />
     <p v-else-if="state === 'failed'" data-test="roster-error" class="text-sm text-neutral-500">
       Die Mitglieder konnten nicht geladen werden.
     </p>

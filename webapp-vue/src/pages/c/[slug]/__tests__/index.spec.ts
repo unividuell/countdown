@@ -2,8 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { computed, ref } from 'vue'
 import * as api from '@/api/communities'
+import * as client from '@/api/client'
 import { communityKey } from '@/communities/context'
-import type { CommunityResponse, RosterMemberResponse, RoundResponse } from '@/api/types'
+import type {
+  CommunityResponse,
+  MeResponse,
+  RosterMemberResponse,
+  RoundResponse,
+} from '@/api/types'
+import { _resetAuthState, useAuth } from '@/auth/useAuth'
+import MemberRow from '@/members/MemberRow.vue'
 import Page from '@/pages/c/[slug]/index.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
@@ -15,6 +23,7 @@ import type { RoundStage } from '@/rounds/useRound'
 // The page mounts RoundFallback, which uses the module-level countdown clock.
 enableAutoUnmount(afterEach)
 beforeEach(_resetCountdownState)
+beforeEach(_resetAuthState)
 // Unconditional, so a case that fails between `useFakeTimers` and its last assertion cannot leave
 // the rest of the file on a frozen clock. A no-op when the timers are already real.
 afterEach(() => vi.useRealTimers())
@@ -102,6 +111,39 @@ describe('community home', () => {
     await flushPromises()
     expect(w.get('section').classes()).toContain('min-h-[72px]')
     expect(w.get('[data-test="row"]').classes().join(' ')).not.toContain('min-h')
+  })
+
+  it('tells the row who the viewer is, so their own rise can box its way through', async () => {
+    // Only the viewer's own climb gets the shoving treatment (see members/reorder.ts), and the row
+    // has no way to know who that is — the page is where the session and the roster meet.
+    const viewer: MeResponse = {
+      id: 'u1',
+      username: 'amy',
+      githubLogin: 'amy',
+      githubName: null,
+      email: null,
+      bgColorHex: null,
+      avatar: { shortName: 'AMY', bgColorHex: '#8e44ad' },
+      isSuperAdmin: false,
+      mayCreateCommunities: false,
+      createdAt: null,
+    }
+    vi.spyOn(client, 'apiFetch').mockResolvedValue(viewer)
+    await useAuth().bootstrap()
+    vi.spyOn(api, 'getRoster').mockResolvedValue([
+      {
+        userId: 'u1',
+        shortName: 'AMY',
+        fullName: 'amy',
+        bgColorHex: '#8e44ad',
+        points: { stable: 3 },
+      },
+    ])
+
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.findComponent(MemberRow).props('meId')).toBe('u1')
   })
 
   it('renders the row once the roster arrives', async () => {

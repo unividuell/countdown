@@ -80,6 +80,14 @@ export interface SwarmParticle {
   /** Resting place. Carried on the particle so consumers never zip two arrays. */
   tx: number
   ty: number
+  /**
+   * Multiplier on `seekStrength` for this particle alone, 1 unless the target said otherwise.
+   * Same displacement, a stiffer spring: this is what makes one member arrive while the others
+   * are still on their way, so that it meets them and has to push through.
+   */
+  seekScale: number
+  /** The bulge this particle takes on its way, faded in and out; see `SwarmTarget.detour`. */
+  detour: Vec
   /** Banking angle in degrees, derived from horizontal speed. */
   tilt: number
   /** Wander heading, random-walked so the drift curves instead of jittering. */
@@ -93,9 +101,32 @@ export interface Swarm {
   step(dt: number): void
 }
 
+/**
+ * A resting place, plus whatever the caller wants to say about the journey there. Everything but
+ * the coordinates is optional, so a plain `Vec` is a valid target and the fly-in passes exactly
+ * that — the extras are what a rearrangement needs and an entrance does not.
+ */
+export interface SwarmTarget extends Vec {
+  /**
+   * Where this particle begins. Omitted, it is scattered along the stage edge — the entrance.
+   * Given, the caller already knows where its member stands and wants it moved from there, so it
+   * also starts at rest: the entrance's little random kick would be a second arrival.
+   */
+  start?: Vec
+  /** Multiplier on `seekStrength` for this particle alone. Defaults to 1. */
+  seekScale?: number
+  /**
+   * A bulge in the path, faded in over the first half of the flight and out over the second, so
+   * it is gone by the time the particle arrives. Two bodies on one line cannot pass each other —
+   * contact resolution turns an overtaking into a jam — so whoever means to get past leaves the
+   * line for the length of the journey and drops back into it on arrival.
+   */
+  detour?: Vec
+}
+
 export interface SwarmOptions {
   /** Resting centre of each member, in viewport coordinates. */
-  targets: Vec[]
+  targets: SwarmTarget[]
   stage: { width: number; height: number }
   tuning: SwarmTuning
   rng?: () => number
@@ -179,8 +210,18 @@ function pointOnRectPerimeter(width: number, height: number, u: number): { p: Ve
   return { p: { x: 0, y: height - d }, n: { x: -1, y: 0 } }
 }
 
+function initialDrift(rng: () => number): Vec {
+  const a = rng() * TAU
+  const speed = rng() * 30
+  return { x: Math.cos(a) * speed, y: Math.sin(a) * speed }
+}
+
 export function createSwarm({ targets, stage, tuning, rng = Math.random }: SwarmOptions): Swarm {
-  const starts = scatterStarts(stage, targets.length, tuning.wallRadius, rng)
+  // Only when somebody actually needs one: the scatter consumes the rng, and the entrance's
+  // sequence of draws must not depend on how many targets happened to bring their own start.
+  const scattered = targets.some((t) => !t.start)
+    ? scatterStarts(stage, targets.length, tuning.wallRadius, rng)
+    : []
   // Widened to contain every target: a target outside the inset would leave the spring fighting
   // the clamp forever, and the swarm would never come to rest.
   const xs = targets.map((t) => t.x)
@@ -192,17 +233,19 @@ export function createSwarm({ targets, stage, tuning, rng = Math.random }: Swarm
     maxY: Math.max(stage.height - tuning.wallRadius, ...ys),
   }
   const particles: SwarmParticle[] = targets.map((target, i) => {
-    const s = starts[i] ?? target
-    // Barely moving at first — the acceleration has to be visibly earned.
-    const a = rng() * TAU
-    const speed = rng() * 30
+    const s = target.start ?? scattered[i] ?? target
+    // Barely moving at first — the acceleration has to be visibly earned. Only for the entrance:
+    // a member already standing somewhere is at rest, and a kick would read as a nudge nobody gave.
+    const drift = target.start ? { x: 0, y: 0 } : initialDrift(rng)
     return {
       x: s.x,
       y: s.y,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed,
+      vx: drift.x,
+      vy: drift.y,
       tx: target.x,
       ty: target.y,
+      seekScale: target.seekScale ?? 1,
+      detour: target.detour ?? { x: 0, y: 0 },
       tilt: 0,
       wander: rng() * TAU,
     }
@@ -231,10 +274,13 @@ export function createSwarm({ targets, stage, tuning, rng = Math.random }: Swarm
     const chaosK = tuning.chaos * Math.pow(1 - t, 2)
     const retention = Math.pow(lerp(tuning.damping, tuning.endDamping, Math.pow(t, 1.6)), dt * 60)
     const neighborR2 = tuning.neighborRadius * tuning.neighborRadius
+    // Zero at both ends of the flight, widest halfway: a particle chases its detour out of the
+    // line and is pulled back into it as the bulge closes, without the target itself ever moving.
+    const bulge = Math.sin(Math.PI * t)
 
     for (const p of particles) {
-      let ax = (p.tx - p.x) * seekK
-      let ay = (p.ty - p.y) * seekK
+      let ax = (p.tx + p.detour.x * bulge - p.x) * seekK * p.seekScale
+      let ay = (p.ty + p.detour.y * bulge - p.y) * seekK * p.seekScale
 
       if (cohesionK > 0) {
         let sx = 0
