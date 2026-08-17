@@ -159,4 +159,18 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
             content = """{"displayName":"Zwerg","bgColorHex":null}"""
         }.andExpect { status { isNotFound() } }
     }
+
+    @Test
+    fun `a malformed colour on the preview is a 400`() {
+        admitted()
+        every {
+            profiles.preview(userId = any(), displayName = any(), bgColorHex = any())
+        } throws IllegalArgumentException("bgColorHex must be a valid hex colour")
+
+        mockMvc.post("/api/communities/team/me/avatar-preview") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":null,"bgColorHex":"rebeccapurple"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }

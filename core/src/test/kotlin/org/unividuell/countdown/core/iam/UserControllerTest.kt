@@ -3,15 +3,14 @@ package org.unividuell.countdown.core.iam
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestMethodOrder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
@@ -26,11 +25,6 @@ import org.unividuell.countdown.core.principalFor
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
-// `with(csrf())` installs a test token repository into the shared CsrfFilter for the rest of
-// this class's requests, so any later GET that checks for a fresh XSRF-TOKEN cookie only sees
-// one if it runs before the first `with(csrf())` call. JUnit's default (hash-based) method order
-// shuffles with every added test, so pin an order where every GET precedes every mutating call.
-@TestMethodOrder(MethodOrderer.MethodName::class)
 class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @MockkBean
@@ -96,7 +90,13 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         }
     }
 
+    // `with(csrf())` permanently swaps the shared, context-cached CsrfFilter's token repository
+    // for a test double, for every later request in this class — so once any test uses it, a
+    // plain GET here would stop getting a fresh XSRF-TOKEN cookie, no matter which test ran first.
+    // Forcing a pristine context right before this assertion removes that dependency entirely,
+    // rather than relying on this test happening to run before the first `with(csrf())` call.
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
         every { profileService.current(uid) } returns user()
 
@@ -244,5 +244,19 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":null}"""
         }.andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `a preview with an over-length name is a 400`() {
+        val tooLong = "x".repeat(33)
+        every {
+            profileService.preview(userId = uid, displayName = tooLong, bgColorHex = null)
+        } throws IllegalArgumentException("displayName must be at most 32 characters, got 33")
+
+        mockMvc.post("/api/me/avatar-preview") {
+            with(principalFor(user())); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"$tooLong","bgColorHex":null}"""
+        }.andExpect { status { isBadRequest() } }
     }
 }
