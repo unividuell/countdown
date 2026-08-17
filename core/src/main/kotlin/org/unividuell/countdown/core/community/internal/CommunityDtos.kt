@@ -62,6 +62,15 @@ fun Community.toResponse(
 )
 fun Community.toSummary() = CommunitySummary(id = requireNotNull(id), name = name, slug = slug)
 
+data class MemberProfileResponse(
+    /** The raw override; null on either field means the global profile applies to it. */
+    val displayName: String?,
+    val bgColorHex: String?,
+    /** What that resolves to — what the roster draws for this member today. */
+    val identity: MemberIdentity,
+)
+data class UpdateMemberProfileRequest(val displayName: String?, val bgColorHex: String?)
+
 data class SuperAdminMemberResponse(
     val userId: UUID, val username: String, val githubLogin: String,
     val status: String, val isAdmin: Boolean, val joinedAt: Instant?,
