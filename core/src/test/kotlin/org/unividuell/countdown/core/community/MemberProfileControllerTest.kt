@@ -13,6 +13,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
@@ -120,5 +121,42 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         }.andExpect { status { isNoContent() } }
 
         verify { profiles.clear(communityId = community.id!!, userId = uid) }
+    }
+
+    @Test
+    fun `POST avatar-preview answers the identity without writing`() {
+        admitted()
+        every {
+            profiles.preview(userId = uid, displayName = "Zwerg", bgColorHex = "#8e44ad")
+        } returns identity
+
+        mockMvc.post("/api/communities/team/me/avatar-preview") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.username") { value("Zwerg") }
+            jsonPath("$.avatar.shortName") { value("ZWRG") }
+        }
+
+        verify(exactly = 0) {
+            profiles.put(
+                communityId = any(), userId = any(), displayName = any(), bgColorHex = any(),
+            )
+        }
+    }
+
+    @Test
+    fun `a preview for a non-member is a 404`() {
+        every {
+            access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team")
+        } throws CommunityAccessDeniedException()
+
+        mockMvc.post("/api/communities/team/me/avatar-preview") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":null}"""
+        }.andExpect { status { isNotFound() } }
     }
 }

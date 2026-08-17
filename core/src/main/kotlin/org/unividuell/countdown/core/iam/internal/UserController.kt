@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.iam.internal
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -34,6 +35,9 @@ data class UpdateProfileRequest(
     val bgColorHex: String?,
 )
 
+/** The identity a set of candidate values would produce. Same shape as the community twin. */
+data class AvatarPreviewResponse(val username: String, val avatar: Avatar)
+
 private fun User.toMeResponse() = MeResponse(
     id = id!!, username = username, displayName = displayName,
     githubLogin = githubLogin, githubName = githubName,
@@ -56,4 +60,15 @@ class UserController(private val profileService: UserProfileService) {
         @RequestBody body: UpdateProfileRequest,
     ): MeResponse =
         profileService.update(principal.user.id!!, body.displayName, body.bgColorHex).toMeResponse()
+
+    @PostMapping("/avatar-preview")
+    fun avatarPreview(
+        @AuthenticationPrincipal principal: CountdownOAuth2User,
+        @RequestBody body: UpdateProfileRequest,
+    ): AvatarPreviewResponse =
+        profileService.preview(
+            userId = principal.user.id!!,
+            displayName = body.displayName,
+            bgColorHex = body.bgColorHex,
+        )
 }

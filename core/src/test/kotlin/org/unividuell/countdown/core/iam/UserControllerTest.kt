@@ -3,7 +3,9 @@ package org.unividuell.countdown.core.iam
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestMethodOrder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -16,6 +18,7 @@ import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.AvatarPreviewResponse
 import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.principalFor
@@ -23,6 +26,11 @@ import org.unividuell.countdown.core.principalFor
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
+// `with(csrf())` installs a test token repository into the shared CsrfFilter for the rest of
+// this class's requests, so any later GET that checks for a fresh XSRF-TOKEN cookie only sees
+// one if it runs before the first `with(csrf())` call. JUnit's default (hash-based) method order
+// shuffles with every added test, so pin an order where every GET precedes every mutating call.
+@TestMethodOrder(MethodOrderer.MethodName::class)
 class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @MockkBean
@@ -208,5 +216,33 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$.displayName") { value(null) }
             jsonPath("$.username") { value("The Octocat") }
         }
+    }
+
+    @Test
+    fun `POST avatar-preview answers what saving would produce`() {
+        every {
+            profileService.preview(userId = uid, displayName = "Zwerg", bgColorHex = "#8e44ad")
+        } returns AvatarPreviewResponse(
+            username = "Zwerg", avatar = Avatar(shortName = "ZWRG", bgColorHex = "#8e44ad"),
+        )
+
+        mockMvc.post("/api/me/avatar-preview") {
+            with(principalFor(user())); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.username") { value("Zwerg") }
+            jsonPath("$.avatar.shortName") { value("ZWRG") }
+        }
+    }
+
+    @Test
+    fun `a preview without auth returns 401`() {
+        mockMvc.post("/api/me/avatar-preview") {
+            with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":null}"""
+        }.andExpect { status { isUnauthorized() } }
     }
 }
