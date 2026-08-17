@@ -4,6 +4,7 @@
  *
  * The avatar beside the fields is the server's answer, not a local guess — see useProfileDraft.
  */
+import { watch } from 'vue'
 import Avatar from '@/ui/Avatar.vue'
 import ActionButton from '@/ui/ActionButton.vue'
 import { useAuth } from '@/auth/useAuth'
@@ -17,13 +18,29 @@ const { user, bootstrap } = useAuth()
 const draft = useProfileDraft(previewAvatar)
 const { busy, error, run } = useAction(() => 'Speichern fehlgeschlagen.')
 
-// Seeded synchronously, not in onMounted: the router guard only admits 'authenticated', so
-// `user.value` is already resolved by the time this component is created — and the very first
-// render must already show the stored avatar, not a placeholder that pops in a tick later.
-const me = user.value
-if (me) {
-  draft.seed(me.displayName, me.bgColorHex, { username: me.username, avatar: me.avatar })
-}
+// `immediate: true` here is not the anti-pattern frontend-state.md's "watch without immediate"
+// recipe warns about — that recipe covers a *prop* changing under an already-mounted component,
+// where the default `pre` flush updates the flag before the child re-renders. `user` is a
+// module-level ref that is normally already populated when this component is created (the
+// router guard only admits 'authenticated'), so the callback must also run synchronously at
+// setup on that path — `immediate: false` would never fire there and the block would render
+// empty. It also still reacts if `user` only resolves after this component has mounted.
+//
+// `seeded` guards against clobbering an edit in progress: once the draft holds real data, only
+// this component's own `save()` may replace it. `save()` itself calls `bootstrap()`, which
+// replaces `user.value` again — without this guard that would re-trigger the watcher and
+// re-seed over whatever the next edit already typed while that `bootstrap()` round-trip was
+// still in flight.
+let seeded = false
+watch(
+  user,
+  (me) => {
+    if (!me || seeded) return
+    seeded = true
+    draft.seed(me.displayName, me.bgColorHex, { username: me.username, avatar: me.avatar })
+  },
+  { immediate: true },
+)
 
 function save(): Promise<void> {
   return run(async () => {

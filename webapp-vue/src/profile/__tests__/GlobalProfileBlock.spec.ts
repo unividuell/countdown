@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import GlobalProfileBlock from '@/profile/GlobalProfileBlock.vue'
 import * as api from '@/api/profile'
 import { PREVIEW_DEBOUNCE_MS } from '@/profile/useProfileDraft'
@@ -23,8 +23,12 @@ const me: MeResponse = {
 }
 
 const bootstrap = vi.fn().mockResolvedValue(undefined)
+// A shared, mutable ref (not a fresh `ref(me)` per `useAuth()` call): the "resolves after mount"
+// test below needs to flip the session from unresolved to resolved underneath an already-mounted
+// component, the same way the real module-level `user` ref behaves.
+const currentUser = ref<MeResponse | null>(me)
 vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => ({ user: ref(me), bootstrap }),
+  useAuth: () => ({ user: currentUser, bootstrap }),
 }))
 vi.mock('@/api/profile', () => ({
   updateProfile: vi.fn(),
@@ -32,6 +36,7 @@ vi.mock('@/api/profile', () => ({
 }))
 
 beforeEach(() => {
+  currentUser.value = me
   vi.mocked(api.updateProfile).mockResolvedValue({ ...me, displayName: 'Leela', username: 'Leela' })
   vi.mocked(api.previewAvatar).mockResolvedValue({
     username: 'Leela',
@@ -101,6 +106,24 @@ describe('GlobalProfileBlock', () => {
     await flushPromises()
 
     expect(w.get('[data-test="global-error"]').text()).toContain('fehlgeschlagen')
+  })
+
+  it('seeds once the session resolves after this component has already mounted', async () => {
+    currentUser.value = null
+    const w = mount(GlobalProfileBlock)
+
+    const input = w.get('[data-test="global-name"]').element as HTMLInputElement
+    expect(input.value).toBe('')
+    expect(input.placeholder).toBe('')
+    expect(w.find('[data-test="global-preview"]').exists()).toBe(false)
+
+    currentUser.value = me
+    await nextTick()
+
+    expect((w.get('[data-test="global-name"]').element as HTMLInputElement).placeholder).toBe(
+      'The Octocat',
+    )
+    expect(w.get('[data-test="global-preview"]').text()).toBe('THCT')
   })
 
   it('previews while typing, after the debounce', async () => {
