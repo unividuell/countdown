@@ -87,6 +87,7 @@ describe('create community page', () => {
       viewerIsAdmin: true,
       pendingCount: 0,
       editionFrozen: false,
+      viewerIdentity: null,
     })
     await flushPromises()
     expect(w.find('button[type=submit]').attributes('aria-busy')).toBe('false')

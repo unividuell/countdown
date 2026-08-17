@@ -59,6 +59,7 @@ describe('settings page', () => {
       viewerIsAdmin: true,
       pendingCount: 0,
       editionFrozen: false,
+      viewerIdentity: null,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue({
       url: '/join/tok',
@@ -85,6 +86,7 @@ describe('settings page', () => {
       viewerIsAdmin: true,
       pendingCount: 0,
       editionFrozen: false,
+      viewerIdentity: null,
     })
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
     vi.spyOn(api, 'generateInvite').mockResolvedValue({

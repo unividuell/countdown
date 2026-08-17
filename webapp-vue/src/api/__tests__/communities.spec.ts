@@ -32,6 +32,7 @@ describe('communities api', () => {
       viewerIsAdmin: true,
       pendingCount: 0,
       editionFrozen: false,
+      viewerIdentity: null,
     } satisfies CommunityResponse)
     const c = await createCommunity('Team A')
     expect(apiFetch).toHaveBeenCalledWith('/api/communities', {

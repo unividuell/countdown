@@ -29,6 +29,7 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
     viewerIsAdmin: false,
     pendingCount: 0,
     editionFrozen: false,
+    viewerIdentity: null,
     ...over,
   }
 }

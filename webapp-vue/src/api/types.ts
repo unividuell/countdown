@@ -12,6 +12,8 @@ export interface MeResponse {
   email: string | null
   /** The colour the user picked; null means they picked none. Not what to paint with. */
   bgColorHex: string | null
+  /** The raw chosen name; null means none was chosen. `username` is what to show. */
+  displayName: string | null
   avatar: AvatarView
   isSuperAdmin: boolean
   /** Effective permission: the stored clearance, or super-admin. */
@@ -22,6 +24,19 @@ export interface MeResponse {
 export interface UpdateProfileRequest {
   displayName: string | null
   bgColorHex: string | null
+}
+
+/** A person and how they are drawn — the server's answer, never recomputed here. */
+export interface IdentityView {
+  username: string
+  avatar: AvatarView
+}
+
+export interface MemberProfileResponse {
+  /** The raw override; null on either field means the global profile applies to it. */
+  displayName: string | null
+  bgColorHex: string | null
+  identity: IdentityView
 }
 
 export interface CommunityResponse {
@@ -35,6 +50,8 @@ export interface CommunityResponse {
   viewerIsAdmin: boolean
   pendingCount: number
   editionFrozen: boolean
+  /** How the viewer appears here; null when they have no membership row in this community. */
+  viewerIdentity: IdentityView | null
 }
 export interface CommunitySummary {
   id: string

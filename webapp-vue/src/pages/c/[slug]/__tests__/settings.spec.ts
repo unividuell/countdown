@@ -24,6 +24,7 @@ const community = {
   viewerIsAdmin: true,
   pendingCount: 0,
   editionFrozen: false,
+  viewerIdentity: null,
 }
 
 describe('settings — timezone + zone-relative startsAt', () => {
