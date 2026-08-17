@@ -26,8 +26,10 @@ data class Avatar(val shortName: String, val bgColorHex: String) {
                 nameOverride?.takeIf { it.isNotBlank() } ?: user.username,
             ),
             bgColorHex = AvatarColor.resolve(
-                bgColorHexOverride?.takeIf { it.isNotBlank() } ?: user.bgColorHex,
-                requireNotNull(user.id) { "an unsaved user has no id to derive a colour from" },
+                profileHex = bgColorHexOverride?.takeIf { it.isNotBlank() } ?: user.bgColorHex,
+                userId = requireNotNull(user.id) {
+                    "an unsaved user has no id to derive a colour from"
+                },
             ),
         )
     }

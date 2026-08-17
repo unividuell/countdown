@@ -59,7 +59,11 @@ class UserController(private val profileService: UserProfileService) {
         @AuthenticationPrincipal principal: CountdownOAuth2User,
         @RequestBody body: UpdateProfileRequest,
     ): MeResponse =
-        profileService.update(principal.user.id!!, body.displayName, body.bgColorHex).toMeResponse()
+        profileService.update(
+            userId = principal.user.id!!,
+            displayName = body.displayName,
+            bgColorHex = body.bgColorHex,
+        ).toMeResponse()
 
     @PostMapping("/avatar-preview")
     fun avatarPreview(

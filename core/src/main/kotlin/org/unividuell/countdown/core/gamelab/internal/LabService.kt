@@ -27,7 +27,8 @@ import java.util.UUID
  * than a promise.
  *
  * Community context comes from the `community` module's PUBLIC api (`CommunityQuery` +
- * `MembershipQuery`), never from `community.internal` — `CountdownService` is the precedent.
+ * `MembershipQuery` + `MemberIdentityQuery`), never from `community.internal` — `CountdownService`
+ * is the precedent.
  */
 @Service
 @Profile("!production")

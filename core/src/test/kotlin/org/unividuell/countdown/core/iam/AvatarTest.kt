@@ -64,7 +64,7 @@ class AvatarTest {
     @Test
     fun `a missing override falls through to the user, then to the derived colour`() {
         val plain = Avatar.of(user())
-        val overridden = Avatar.of(user(), nameOverride = null, bgColorHexOverride = null)
+        val overridden = Avatar.of(user = user(), nameOverride = null, bgColorHexOverride = null)
 
         overridden shouldBe plain
     }
