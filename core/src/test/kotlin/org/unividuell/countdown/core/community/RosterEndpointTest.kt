@@ -196,4 +196,41 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$[0].bgColorHex") { value(org.hamcrest.Matchers.matchesRegex("#[0-9a-f]{6}")) }
         }
     }
+
+    @Test
+    fun `a member's per-community name and colour win in the roster`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z")
+                .copy(displayName = "Zwerg", bgColorHex = "#8e44ad"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+        )
+        every { points.standings(community.id!!, uid, any()) } returns emptyMap()
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].fullName") { value("Zwerg") }
+            jsonPath("$[0].shortName") { value("ZWRG") }
+            jsonPath("$[0].bgColorHex") { value("#8e44ad") }
+        }
+    }
+
+    @Test
+    fun `without an override the roster shows the global identity`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+        )
+        every { points.standings(community.id!!, uid, any()) } returns emptyMap()
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].fullName") { value("Amy Wong") }
+        }
+    }
 }
