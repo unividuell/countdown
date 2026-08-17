@@ -80,6 +80,14 @@ tab. So:
   the mounted list patches values and order in place, keyed by id. A failed *refresh* then keeps
   the last known data instead of swapping the list for an error line — the action that triggered it
   did succeed, and the next visit repairs the numbers.
+- **A surface beside a game must not pre-empt that game's reveal — hold the fetch, not the widget.**
+  The roster's answer carries the round's points the instant the guess is accepted, so refreshing on
+  the `guessed` emit prints the result above a scoreboard still building up to it. `useRoster`'s
+  third entrance, `refreshAfterGuess`, waits `SPOILER_HOLD_MS` and then does exactly what `refresh`
+  does — holding only the *chip* would leak the new order instead. That constant is the roster's own
+  budget, never a copy of a game's timetable: a new game fits inside it or raises it, and nothing
+  synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
+  choreography left to protect, and lag for that reader is the wrong way round.
 
 ## Server-authoritative ticking values (countdown pattern)
 

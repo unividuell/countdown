@@ -3,17 +3,21 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { computed, ref } from 'vue'
 import * as api from '@/api/communities'
 import { communityKey } from '@/communities/context'
-import type { CommunityResponse, RoundResponse } from '@/api/types'
+import type { CommunityResponse, RosterMemberResponse, RoundResponse } from '@/api/types'
 import Page from '@/pages/c/[slug]/index.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
 import type { RoundStage } from '@/rounds/useRound'
 
 // The page mounts RoundFallback, which uses the module-level countdown clock.
 enableAutoUnmount(afterEach)
 beforeEach(_resetCountdownState)
+// Unconditional, so a case that fails between `useFakeTimers` and its last assertion cannot leave
+// the rest of the file on a frozen clock. A no-op when the timers are already real.
+afterEach(() => vi.useRealTimers())
 
 /**
  * `useRound` is mocked at the page level: its own derivation of `stage` from a `RoundResponse` is
@@ -200,31 +204,47 @@ describe('community home', () => {
   // The card's own contract (submit went through ⇒ emit `guessed`) is RoundCard's own test's job;
   // these two only check what the page does with that emit — so the emit is triggered directly
   // rather than by driving a game component to a real guess.
-  it('takes the new points and the new order after a guess', async () => {
+  //
+  // What the page must route it into is `refreshAfterGuess`, not `refresh`: the round's points are
+  // in the roster's answer the moment the guess is accepted, and the ranking would print them
+  // above a game that is still revealing them. The hold itself belongs to `useRoster` and is
+  // tested there; here it is only the wiring — hence the fake timers.
+  it('takes the new points and the new order once the game has shown them', async () => {
+    vi.useFakeTimers()
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
     const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
     const fry = { userId: 'u2', shortName: 'FRY', fullName: 'fry', bgColorHex: '#bf40b3' }
-    const getRoster = vi
-      .spyOn(api, 'getRoster')
-      .mockResolvedValueOnce([
-        { ...fry, points: { stable: 3 } },
-        { ...amy, points: { stable: 0 } },
-      ])
-      // The server ranks by stable + live, so a guess can reorder the row: amy's live points
-      // overtake fry. The row has to follow that, badges and order both.
-      .mockResolvedValueOnce([
-        { ...amy, points: { stable: 0, live: { points: 5, provisional: true } } },
-        { ...fry, points: { stable: 3 } },
-      ])
+    const getRoster = vi.spyOn(api, 'getRoster')
+    // Reset, not a queue of `Once`s: spies are installed per test and never restored here, so both
+    // the call counter *and* unconsumed queue entries carry over from this file's earlier tests.
+    getRoster.mockReset()
+    let answer: RosterMemberResponse[] = [
+      { ...fry, points: { stable: 3 } },
+      { ...amy, points: { stable: 0 } },
+    ]
+    getRoster.mockImplementation(async () => answer)
     const w = mountPage()
-    await flushPromises()
-    // Spies are installed per test but never restored, so `vi.spyOn` returns the same spy and its
-    // counter carries this file's earlier tests. Clearing the calls (queued `Once` implementations
-    // survive) keeps the count below about this test.
+    await vi.advanceTimersByTimeAsync(0)
     getRoster.mockClear()
+    // The server ranks by stable + live, so a guess can reorder the row: amy's live points overtake
+    // fry. The row has to follow that, badges and order both — but not before its time.
+    answer = [
+      { ...amy, points: { stable: 0, live: { points: 5, provisional: true } } },
+      { ...fry, points: { stable: 3 } },
+    ]
 
     await w.findComponent(RoundCard).vm.$emit('guessed')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS - 1)
+
+    expect(getRoster).not.toHaveBeenCalled()
+    expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
+      'fry, 3 Punkte',
+      'amy, 0 Punkte',
+    ])
+
+    await vi.advanceTimersByTimeAsync(1)
+    // The hold expiring only asks; the answer lands a microtask after that tick.
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(getRoster).toHaveBeenCalledTimes(1)
     expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
@@ -234,8 +254,11 @@ describe('community home', () => {
   })
 
   it('patches the row in place after a guess instead of flying it in again', async () => {
+    vi.useFakeTimers()
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
-    vi.spyOn(api, 'getRoster').mockResolvedValue([
+    const getRoster = vi.spyOn(api, 'getRoster')
+    getRoster.mockReset()
+    getRoster.mockResolvedValue([
       {
         userId: 'u1',
         shortName: 'AMY',
@@ -245,11 +268,12 @@ describe('community home', () => {
       },
     ])
     const w = mountPage()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
     const rowBefore = w.get('[data-test="row"]').element
 
     await w.findComponent(RoundCard).vm.$emit('guessed')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+    await vi.advanceTimersByTimeAsync(0)
 
     // MemberRow measures its resting positions in `onMounted`, so a remount is exactly what replays
     // the fly-in. Same DOM element ⇒ the row was patched, not torn down and rebuilt. The
