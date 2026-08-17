@@ -180,12 +180,27 @@ leeren Zustand, dieser dritte Zustand braucht also ein eigenes Bedienelement.
 (`UserStatusProfile.vue` im Ursprungsprojekt, dort 4/5 zu 1/5). Kompakt genug fürs Telefon, und der
 Farbwähler bleibt ein Daumenziel.
 
-**Vorschau, die beim Tippen mitzieht.** Je Block ein `Avatar`, reaktiv an den Feldern, nicht am
-Gespeicherten. Das ist der Zweck der Seite: die vier Zeichen, die `MemberShortName` aus einem Namen
-macht, will niemand raten. Auch das kommt aus der Vorlage, die ihre Änderungen live nach oben meldet.
+**Vorschau, aber nicht mittippend.** Je Block ein `Avatar`, der zeigt, was der Server zuletzt
+geantwortet hat — und der nach dem Speichern die Identität aus der Antwort übernimmt (`PUT` und
+`PATCH` liefern sie mit, genau dafür).
 
-**Speichern je Block** mit eigenem Knopf über `useAction` (Pending und Fehler gibt es dort schon),
-plus eine kurze Bestätigung nach dem Schreiben — die Vorlage färbt ihren Knopf dafür grün. Nach dem
+Die Vorlage meldet ihre Änderungen live nach oben, und eine mittippende Vorschau wäre hier reizvoll:
+die vier Zeichen, die aus einem Namen werden, sind nicht offensichtlich. Sie ist trotzdem
+ausgeschlossen. `MemberShortName` ist Kotlin und existiert nur dort; das Frontend bekommt
+`shortName` fertig geliefert und `Avatar.vue` nimmt ihn als Eigenschaft entgegen. Eine Vorschau vor
+dem Speichern bräuchte eine TS-Portierung derselben Reduktionsregeln — ein zweiter Bestand derselben
+Logik in zwei Laufzeiten, den [cross-runtime-parity.md](../../../.claude/guidelines/cross-runtime-parity.md)
+nur mit goldenen Vektoren und aus zwingendem Grund erlaubt. Hier gibt es keinen: eine Vorschau nach
+dem Speichern beantwortet dieselbe Frage, einen Klick später.
+
+Aus demselben Grund zieht auch die Farbe nicht live in den Vorschau-Avatar. Der `<input
+type="color">` ist sein eigener Farbfleck und zeigt die Wahl bereits an; zwei Flächen, von denen eine
+den alten und eine den neuen Wert zeigt, erklären weniger als eine.
+
+**Speichern je Block** mit `ActionButton` und `useAction` (Pending und Fehler gibt es dort schon),
+darunter ein eigener Bereich für die Fehlermeldung — `<p v-if="error" class="text-sm text-red-600">`,
+wie in `settings.vue`. Kein neues Knopfverhalten, insbesondere kein grüner Erfolgszustand wie in der
+Vorlage: die Bestätigung ist der Vorschau-Avatar, der die Antwort des Servers übernimmt. Nach dem
 globalen Speichern ruft der Block `bootstrap()` aus `useAuth`, damit der Header sofort stimmt.
 
 Abmelden bleibt im Drawer. Die Vorlage mischt es ins selbe Panel; hier ist die Seite reines Profil.
@@ -230,7 +245,9 @@ dabei nicht.
   die Farbe auf `null`, Speichern schickt `PATCH` und ruft `bootstrap()`.
 - `CommunityProfileBlock`: Schalter aus zeigt keine Felder; Einschalten belegt mit den wirksamen
   Werten vor; Speichern schickt `PUT`, Ausschalten `DELETE`.
-- Vorschau: eine Änderung im Namensfeld ändert die vier Zeichen im Avatar, ohne Speichern.
+- Vorschau: sie übernimmt die Identität aus der Antwort des Schreibens — und sie ändert sich
+  *nicht*, solange nur getippt wird. Beides geprüft, damit niemand die Portierung von
+  `MemberShortName` nachträglich für einen Fehler hält.
 - `NavDrawer`: die Zeile existiert und zeigt innerhalb einer Gemeinschaft auf `/c/‹slug›/profile`,
   außerhalb auf `/profile`.
 - Header-Avatar: mit gesetztem `viewerIdentity` zeichnet der Drawer-Auslöser dessen Avatar, sonst den
