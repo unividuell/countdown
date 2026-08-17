@@ -17,6 +17,8 @@ import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
+import org.unividuell.countdown.core.community.MemberIdentity
+import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GameCatalog
@@ -30,16 +32,15 @@ import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
-import org.unividuell.countdown.core.iam.UserQuery
 import java.util.UUID
 
 /**
  * `LabService` against the **real** [GameCatalog] — this is exactly the property the consolidation is
  * for, so faking the catalogue here would test nothing. Only the surrounding modules (community, iam)
- * are mocked; `CommunityQuery`/`MembershipQuery`/`UserQuery` are the lab's only door into them, and
- * mocking those beans in the real Spring context is what keeps this test out of `game.internal` —
- * constructing a [org.unividuell.countdown.core.game.internal.GuessHueGameType] by hand would reach
- * into the game module's internals, which `gamelab` may never import.
+ * are mocked; `CommunityQuery`/`MembershipQuery`/`MemberIdentityQuery` are the lab's only door into
+ * them, and mocking those beans in the real Spring context is what keeps this test out of
+ * `game.internal` — constructing a [org.unividuell.countdown.core.game.internal.GuessHueGameType] by
+ * hand would reach into the game module's internals, which `gamelab` may never import.
  */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -50,7 +51,7 @@ class LabServiceTest(
 
     @MockkBean lateinit var communities: CommunityQuery
     @MockkBean lateinit var memberships: MembershipQuery
-    @MockkBean lateinit var users: UserQuery
+    @MockkBean lateinit var identities: MemberIdentityQuery
 
     private val communityId = UUID.randomUUID()
     private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
@@ -66,9 +67,12 @@ class LabServiceTest(
         val community = Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
         every { communities.findBySlug("team") } returns community
         every { memberships.isActiveMember(communityId = communityId, userId = any()) } returns true
-        every { users.findAllById(any()) } answers {
-            val ids = firstArg<Collection<UUID>>().toSet()
+        every {
+            identities.of(communityId = any(), userIds = any<Collection<UUID>>())
+        } answers {
+            val ids = secondArg<Collection<UUID>>().toSet()
             listOf(alice, bob).filter { it.id in ids }
+                .associate { requireNotNull(it.id) to MemberIdentity(username = it.username, avatar = Avatar.of(it)) }
         }
         return community to TwoMembers(me = aliceId, other = bobId)
     }
@@ -155,7 +159,7 @@ class LabServiceTest(
         every { communities.findBySlug("team") } returns
             Community(id = communityId, name = "Team", slug = "team", createdBy = UUID.randomUUID())
         every { memberships.isActiveMember(communityId = communityId, userId = aliceId) } returns false
-        every { users.findAllById(any()) } returns emptyList()
+        every { identities.of(communityId = any(), userIds = any<Collection<UUID>>()) } returns emptyMap()
 
         service.open(
             slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
@@ -470,5 +474,27 @@ class LabServiceTest(
 
         second.payload shouldBe first.payload
         second.tookOverRound shouldBe false
+    }
+
+    @Test
+    fun `a lab entry is labelled the way the community labels that member`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        every {
+            identities.of(communityId = any(), userIds = any<Collection<UUID>>())
+        } returns mapOf(
+            mine.me to MemberIdentity(
+                username = "Zwerg",
+                avatar = Avatar(shortName = "ZWRG", bgColorHex = "#8e44ad"),
+            ),
+        )
+
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+        )
+
+        val entry = response.me.shouldNotBeNull()
+        entry.username shouldBe "Zwerg"
+        entry.avatar.shortName shouldBe "ZWRG"
     }
 }
