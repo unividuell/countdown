@@ -621,6 +621,31 @@ describe('NavDrawer content', () => {
     spy.mockRestore()
   })
 
+  it('offers the profile, pointing at the community one while inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+    }
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe(
+      communityPath('team', 'profile'),
+    )
+  })
+
+  it('points at the global profile outside a community', async () => {
+    activeCommunity.value = null
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe('/profile')
+  })
+
   it('cycles Tab focus between the toggle and the drawer content, wrapping both ways', async () => {
     // Written after the drawer has real content (the logout button in the foot) so the cycle
     // has more than a hypothetical element to move focus to and from.

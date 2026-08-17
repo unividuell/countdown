@@ -75,6 +75,9 @@ const showSwitcher = computed(() => entries.value.length > 1)
 const mayCreate = computed(() => props.user.mayCreateCommunities)
 const showCommunityBlock = computed(() => showSwitcher.value || mayCreate.value)
 const admin = computed(() => (activeCommunity.value?.viewerIsAdmin ? activeCommunity.value : null))
+const profilePath = computed(() =>
+  activeCommunity.value ? communityPath(activeCommunity.value.slug, 'profile') : '/profile',
+)
 
 /**
  * One row's geometry, stated once: 44px is the touch-target floor. `shrink-0` is load-bearing,
@@ -399,6 +402,9 @@ onKeyStroke('Tab', (e) => {
 
       <div data-test="nav-foot" class="flex-none pb-1.5">
         <div class="border-t border-neutral-200" />
+        <RouterLink :to="profilePath" data-test="edit-profile" :class="LINK">
+          Profil bearbeiten
+        </RouterLink>
         <RouterLink
           v-if="user.isSuperAdmin"
           to="/super-admin"
