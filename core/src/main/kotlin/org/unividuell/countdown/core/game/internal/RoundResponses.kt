@@ -1,9 +1,8 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.springframework.stereotype.Component
-import org.unividuell.countdown.core.iam.Avatar
-import org.unividuell.countdown.core.iam.User
-import org.unividuell.countdown.core.iam.UserQuery
+import org.unividuell.countdown.core.community.MemberIdentity
+import org.unividuell.countdown.core.community.MemberIdentityQuery
 import java.util.UUID
 
 /**
@@ -15,7 +14,7 @@ import java.util.UUID
 @Component
 class RoundResponses(
     private val plays: RoundPlayRepository,
-    private val users: UserQuery,
+    private val identities: MemberIdentityQuery,
 ) {
 
     fun of(current: CurrentRound, viewerId: UUID): RoundResponse = when (current) {
@@ -40,8 +39,10 @@ class RoundResponses(
         } else {
             emptyList()
         }
-        val byUser = users.findAllById((visible + listOfNotNull(mine)).map { it.userId })
-            .associateBy { it.id }
+        val byId = identities.of(
+            communityId = current.communityId,
+            userIds = (visible + listOfNotNull(mine)).map { it.userId },
+        )
 
         return RoundResponse(
             round = current.round.toDto(),
@@ -53,23 +54,23 @@ class RoundResponses(
             noGameReason = null,
             payload = mine?.let { current.handle.present(current.roundGame.params) },
             solution = if (hasGuessed) current.handle.solution(current.roundGame.params) else null,
-            me = mine?.let { mineDtoOf(play = it, user = byUser[it.userId]) },
+            me = mine?.let { mineDtoOf(play = it, identity = byId[it.userId]) },
             // Sorted by when they guessed — the order the round actually happened in, and stable
             // where two stamps collide. A row whose user row vanished drops out rather than taking
             // the page down.
             others = visible
                 .sortedWith(compareBy({ it.guessedAt }, { it.userId }))
-                .mapNotNull { otherDtoOf(play = it, user = byUser[it.userId]) },
+                .mapNotNull { otherDtoOf(play = it, identity = byId[it.userId]) },
             awardRule = current.roundGame.awardRule,
             awardPoints = current.roundGame.awardPoints,
         )
     }
 
-    private fun mineDtoOf(play: RoundPlay, user: User?): MyPlayDto? = user?.let {
+    private fun mineDtoOf(play: RoundPlay, identity: MemberIdentity?): MyPlayDto? = identity?.let {
         MyPlayDto(
             userId = play.userId,
             username = it.username,
-            avatar = Avatar.of(it),
+            avatar = it.avatar,
             revealedAt = play.revealedAt,
             guessedAt = play.guessedAt,
             guess = play.guess,
@@ -78,11 +79,11 @@ class RoundResponses(
         )
     }
 
-    private fun otherDtoOf(play: RoundPlay, user: User?): OtherPlayDto? = user?.let {
+    private fun otherDtoOf(play: RoundPlay, identity: MemberIdentity?): OtherPlayDto? = identity?.let {
         OtherPlayDto(
             userId = play.userId,
             username = it.username,
-            avatar = Avatar.of(it),
+            avatar = it.avatar,
             guess = play.guess,
             outcome = play.outcome,
             points = play.points,

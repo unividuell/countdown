@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.CommunityQuery
+import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AnnouncementService
@@ -17,7 +18,6 @@ import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.game.internal.RoundResponses
-import org.unividuell.countdown.core.iam.UserQuery
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -43,7 +43,9 @@ class AnnouncementServiceNoGameTypeTest {
     private val clock = Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC)
     // Never exercised: the NO_GAME_TYPE branch under test returns before RoundResponses touches
     // either dependency.
-    private val responses = RoundResponses(plays = mockk<RoundPlayRepository>(), users = mockk<UserQuery>())
+    private val responses = RoundResponses(
+        plays = mockk<RoundPlayRepository>(), identities = mockk<MemberIdentityQuery>(),
+    )
 
     private val service = AnnouncementService(
         communities = communities, memberships = memberships, engine = engine,

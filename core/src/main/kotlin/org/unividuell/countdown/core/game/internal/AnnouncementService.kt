@@ -64,23 +64,31 @@ class AnnouncementService(
             throw RoundAccessDeniedException()
         }
         val edition = communities.activeEditionOf(communityId)
-            ?: return CurrentRound.NoGame(round = null, reason = NoGameReason.NOT_SCHEDULED)
+            ?: return CurrentRound.NoGame(
+                communityId = communityId, round = null, reason = NoGameReason.NOT_SCHEDULED,
+            )
         val startsAt = edition.startsAt
-            ?: return CurrentRound.NoGame(round = null, reason = NoGameReason.NOT_SCHEDULED)
+            ?: return CurrentRound.NoGame(
+                communityId = communityId, round = null, reason = NoGameReason.NOT_SCHEDULED,
+            )
 
         val round = engine.roundAt(
             now = clock.instant(),
             startsAt = startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
-        windowReasonOf(edition = edition, roundNumber = round.number)
-            ?.let { reason -> return CurrentRound.NoGame(round = round, reason = reason) }
+        windowReasonOf(edition = edition, roundNumber = round.number)?.let { reason ->
+            return CurrentRound.NoGame(communityId = communityId, round = round, reason = reason)
+        }
 
         val existing = store.find(edition = edition, roundNumber = round.number)
         return announcedOrNoGame(
+            communityId = communityId,
             round = round,
             roundGame = existing ?: materialise(edition = edition, round = round)
-                ?: return CurrentRound.NoGame(round = round, reason = NoGameReason.NO_GAME_TYPE),
+                ?: return CurrentRound.NoGame(
+                    communityId = communityId, round = round, reason = NoGameReason.NO_GAME_TYPE,
+                ),
         )
     }
 
@@ -122,6 +130,7 @@ class AnnouncementService(
      * whoever announced first, and their game is the one everybody plays.
      */
     private fun announcedOrNoGame(
+        communityId: UUID,
         round: Round,
         roundGame: RoundGame,
     ): CurrentRound {
@@ -132,9 +141,10 @@ class AnnouncementService(
             logger.warn {
                 "round ${round.number} announced as '${roundGame.gameType}', which this build has no game for"
             }
-            return CurrentRound.NoGame(round = round, reason = NoGameReason.NO_GAME_TYPE)
+            return CurrentRound.NoGame(communityId = communityId, round = round, reason = NoGameReason.NO_GAME_TYPE)
         }
         return CurrentRound.Announced(
+            communityId = communityId,
             round = round,
             roundGame = roundGame,
             handle = handle,
