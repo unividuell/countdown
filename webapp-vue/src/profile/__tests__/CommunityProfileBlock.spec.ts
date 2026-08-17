@@ -46,6 +46,29 @@ describe('CommunityProfileBlock', () => {
     expect(w.get('[data-test="override-inherited"]').text()).toContain('Amy Wong')
   })
 
+  // A super-admin passes the community's access gate without belonging to it, so there is no
+  // membership row to carry an override — `GET .../me/profile` answers 404. Offering the form
+  // anyway would put a live Speichern button in front of a DELETE that 404s as well.
+  it('says the viewer is no member here instead of offering a form that cannot work', async () => {
+    vi.mocked(api.getMemberProfile).mockRejectedValue(new ApiError(404, 'not found'))
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="override-none"]').text()).toContain('kein Mitglied')
+    expect(w.find('[data-test="override-switch"]').exists()).toBe(false)
+    expect(w.find('[data-test="override-save"]').exists()).toBe(false)
+    expect(w.find('[data-test="override-inherited"]').exists()).toBe(false)
+  })
+
+  it('does not blame a missing membership for an error that says nothing of the kind', async () => {
+    vi.mocked(api.getMemberProfile).mockRejectedValue(new ApiError(500, 'boom'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = render()
+    await flushPromises()
+
+    expect(w.find('[data-test="override-none"]').exists()).toBe(false)
+  })
+
   it('starts switched on and prefilled when an override is stored', async () => {
     vi.mocked(api.getMemberProfile).mockResolvedValue({ ...overridden })
     const w = render()

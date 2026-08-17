@@ -17,7 +17,8 @@ import {
 } from '@/api/profile'
 import { clampName, NAME_MAX, useProfileDraft } from '@/profile/useProfileDraft'
 import { saveErrorMessage } from '@/profile/saveError'
-import type { IdentityView } from '@/api/types'
+import { ApiError } from '@/api/client'
+import type { IdentityView, MemberProfileResponse } from '@/api/types'
 
 const props = defineProps<{ slug: string; communityName: string }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -27,6 +28,12 @@ const { busy, error, run } = useAction(saveErrorMessage)
 const enabled = ref(false)
 /** What applies without an override — the sentence shown while the switch is off. */
 const inherited = ref<IdentityView | null>(null)
+/**
+ * No membership row here to carry an override. A super-admin passes `requireActiveMember` without
+ * belonging, and then every path of this block asks for a row that does not exist: the GET 404s,
+ * and a Speichern would send a DELETE that 404s too.
+ */
+const noMembership = ref(false)
 
 // `GET .../me/profile` answers the *effective* identity, which equals the inherited one only
 // while no override is stored. For a member who has one, this is the only way to ask "what would
@@ -42,7 +49,20 @@ async function refreshInherited(): Promise<void> {
 }
 
 async function load(): Promise<void> {
-  const profile = await getMemberProfile(props.slug)
+  let profile: MemberProfileResponse
+  try {
+    profile = await getMemberProfile(props.slug)
+  } catch (e) {
+    // The shell already renders "Kein Zugriff" for a slug the viewer cannot reach at all, so a
+    // 404 that got as far as this block means the community exists for them and the membership
+    // row does not.
+    if (e instanceof ApiError && e.status === 404) {
+      noMembership.value = true
+      return
+    }
+    throw e
+  }
+  noMembership.value = false
   enabled.value = profile.displayName !== null || profile.bgColorHex !== null
   draft.seed(profile.displayName, profile.bgColorHex, profile.identity)
   if (enabled.value) {
@@ -96,55 +116,61 @@ function save(): Promise<void> {
   <section class="rounded border border-neutral-200 p-4">
     <h2 class="mb-1 text-lg font-semibold">Bei {{ props.communityName }}</h2>
 
-    <label class="mb-3 flex items-center gap-2 text-sm">
-      <input
-        v-model="enabled"
-        data-test="override-switch"
-        type="checkbox"
-        class="size-4 cursor-pointer"
-      />
-      Eigener Auftritt hier
-    </label>
-
-    <p
-      v-if="!enabled && inherited"
-      data-test="override-inherited"
-      class="flex items-center gap-3 text-sm"
-    >
-      <Avatar v-bind="inherited.avatar" size="sm" />
-      <span class="text-neutral-600"
-        >Hier gilt dein globales Profil: „{{ inherited.username }}“.</span
-      >
+    <p v-if="noMembership" data-test="override-none" class="text-sm text-neutral-600">
+      Du bist hier kein Mitglied. Einen eigenen Auftritt gibt es nur, wo du dazugehörst.
     </p>
 
-    <div v-if="enabled" class="flex items-center gap-3">
-      <Avatar
-        v-if="draft.preview.value"
-        data-test="override-preview"
-        v-bind="draft.preview.value.avatar"
-      />
-      <div class="flex min-w-0 flex-1 items-center gap-2">
+    <template v-else>
+      <label class="mb-3 flex items-center gap-2 text-sm">
         <input
-          v-model="draft.name.value"
-          data-test="override-name"
-          type="text"
-          :maxlength="NAME_MAX"
-          class="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1.5"
+          v-model="enabled"
+          data-test="override-switch"
+          type="checkbox"
+          class="size-4 cursor-pointer"
         />
-        <input
-          v-model="draft.colorInput.value"
-          data-test="override-color"
-          type="color"
-          aria-label="Hintergrundfarbe"
-          class="h-9 w-12 shrink-0 cursor-pointer rounded border border-neutral-300"
-          @input="draft.colorSet.value = true"
-        />
-      </div>
-    </div>
+        Eigener Auftritt hier
+      </label>
 
-    <div class="mt-3">
-      <ActionButton data-test="override-save" :busy="busy" @click="save">Speichern</ActionButton>
-    </div>
-    <p v-if="error" data-test="override-error" class="mt-2 text-sm text-red-600">{{ error }}</p>
+      <p
+        v-if="!enabled && inherited"
+        data-test="override-inherited"
+        class="flex items-center gap-3 text-sm"
+      >
+        <Avatar v-bind="inherited.avatar" size="sm" />
+        <span class="text-neutral-600"
+          >Hier gilt dein globales Profil: „{{ inherited.username }}“.</span
+        >
+      </p>
+
+      <div v-if="enabled" class="flex items-center gap-3">
+        <Avatar
+          v-if="draft.preview.value"
+          data-test="override-preview"
+          v-bind="draft.preview.value.avatar"
+        />
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <input
+            v-model="draft.name.value"
+            data-test="override-name"
+            type="text"
+            :maxlength="NAME_MAX"
+            class="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1.5"
+          />
+          <input
+            v-model="draft.colorInput.value"
+            data-test="override-color"
+            type="color"
+            aria-label="Hintergrundfarbe"
+            class="h-9 w-12 shrink-0 cursor-pointer rounded border border-neutral-300"
+            @input="draft.colorSet.value = true"
+          />
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <ActionButton data-test="override-save" :busy="busy" @click="save">Speichern</ActionButton>
+      </div>
+      <p v-if="error" data-test="override-error" class="mt-2 text-sm text-red-600">{{ error }}</p>
+    </template>
   </section>
 </template>
