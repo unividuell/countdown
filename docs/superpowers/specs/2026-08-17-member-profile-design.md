@@ -135,6 +135,24 @@ durch. Für ihn gibt es dann keine Mitgliedszeile, in die ein Override gehörte.
 Schreibpfade zielen deshalb ausdrücklich auf die *eigene* Mitgliedszeile und antworten 404, wenn es
 sie nicht gibt — statt still null Zeilen zu aktualisieren und 200 zu melden.
 
+**Vorschau — zwei weitere Endpunkte**, je einer neben seinem Schreibpfad:
+
+```
+POST /api/me/avatar-preview                       { displayName, bgColorHex } → 200 { username, avatar }
+POST /api/communities/{slug}/me/avatar-preview    { displayName, bgColorHex } → 200 { username, avatar }
+```
+
+`POST`, nicht `GET`: der Name gehört nicht in eine URL und damit nicht in Zugriffsprotokolle und
+Zwischenspeicher.
+
+Beide führen **keine eigene Logik** aus. Sie rufen dieselbe Auflösung wie der Ernstfall, nur mit
+einer ungespeicherten Zeile: der globale Endpunkt bildet `user.copy(displayName = …, bgColorHex = …)`
+und reicht ihn durch `Avatar.of`, der community-gebundene ruft `MemberIdentityResolver` mit den
+Kandidatenwerten statt den gespeicherten Spalten. Damit ist die Vorschau nicht *ungefähr* das
+Ergebnis des Speicherns, sondern beweisbar dasselbe — und `MemberShortName` bleibt eine einzige
+Implementierung in einer einzigen Laufzeit. Es gilt dieselbe Validierung wie beim Schreiben: was der
+Server nicht speichern würde, zeigt er auch nicht als Vorschau.
+
 **Für den Header** bekommt `CommunityResponse` ein `viewerIdentity: { username, avatar }` — die
 effektive Identität des Betrachters in dieser Gemeinschaft. Guard-eigene Navigationsdaten, wie
 `viewerIsAdmin` und `pendingCount` daneben; bewußt nur der effektive Wert, kein Formularzustand.
@@ -180,28 +198,38 @@ leeren Zustand, dieser dritte Zustand braucht also ein eigenes Bedienelement.
 (`UserStatusProfile.vue` im Ursprungsprojekt, dort 4/5 zu 1/5). Kompakt genug fürs Telefon, und der
 Farbwähler bleibt ein Daumenziel.
 
-**Vorschau, aber nicht mittippend.** Je Block ein `Avatar`, der zeigt, was der Server zuletzt
-geantwortet hat — und der nach dem Speichern die Identität aus der Antwort übernimmt (`PUT` und
-`PATCH` liefern sie mit, genau dafür).
+**Vorschau, die beim Tippen mitzieht.** Je Block ein `Avatar`, der zeigt, wie man nach dem Speichern
+aussähe. Das ist der Zweck der Seite: die vier Zeichen, die aus einem Namen werden, will niemand
+raten — und die Vorlage macht es genauso.
 
-Die Vorlage meldet ihre Änderungen live nach oben, und eine mittippende Vorschau wäre hier reizvoll:
-die vier Zeichen, die aus einem Namen werden, sind nicht offensichtlich. Sie ist trotzdem
-ausgeschlossen. `MemberShortName` ist Kotlin und existiert nur dort; das Frontend bekommt
-`shortName` fertig geliefert und `Avatar.vue` nimmt ihn als Eigenschaft entgegen. Eine Vorschau vor
-dem Speichern bräuchte eine TS-Portierung derselben Reduktionsregeln — ein zweiter Bestand derselben
-Logik in zwei Laufzeiten, den [cross-runtime-parity.md](../../../.claude/guidelines/cross-runtime-parity.md)
-nur mit goldenen Vektoren und aus zwingendem Grund erlaubt. Hier gibt es keinen: eine Vorschau nach
-dem Speichern beantwortet dieselbe Frage, einen Klick später.
+Gerechnet wird sie trotzdem nicht im Browser. `MemberShortName` ist Kotlin und bleibt es; das
+Frontend bekommt `shortName` fertig geliefert. Eine Portierung der Reduktionsregeln nach TS wäre ein
+zweiter Bestand derselben Logik in zwei Laufzeiten, den
+[cross-runtime-parity.md](../../../.claude/guidelines/cross-runtime-parity.md) nur mit goldenen
+Vektoren und aus zwingendem Grund erlaubt. Stattdessen fragt der Block den Server: `POST` auf den
+passenden `avatar-preview`-Endpunkt, entprellt auf 300 ms nach dem letzten Tastendruck
+(`watchDebounced` aus VueUse, das im Haus ohnehin die Zeitgeber stellt).
 
-Aus demselben Grund zieht auch die Farbe nicht live in den Vorschau-Avatar. Der `<input
-type="color">` ist sein eigener Farbfleck und zeigt die Wahl bereits an; zwei Flächen, von denen eine
-den alten und eine den neuen Wert zeigt, erklären weniger als eine.
+Zwei Dinge gehören zu dieser Entscheidung dazu:
+
+- **Veraltete Antworten fallen unter den Tisch.** Jede Anfrage bekommt eine laufende Nummer, und nur
+  die jüngste darf die Vorschau setzen — sonst überschreibt eine langsame Antwort auf „Kle“ die
+  schnellere auf „Klemens“. Dasselbe Muster wie im Community-Guard (`routeData.ts`, `seq`).
+- **Auch die Farbe kommt aus der Antwort**, nicht direkt aus dem Farbwähler. Naheliegend wäre, den
+  gewählten Hexwert sofort in die Vorschau zu schreiben — aber sobald das Feld leer ist, gilt die
+  abgeleitete Farbe, und dann stünde die halbe Kette doch wieder im Browser. Ein `<input
+  type="color">` ist ohnehin sein eigener Farbfleck und quittiert die Wahl sofort; die 300 ms bis
+  zum Avatar fallen nicht auf.
+
+Scheitert eine Vorschau-Anfrage, bleibt schlicht der letzte gültige Avatar stehen: eine Vorschau ist
+kein Grund, dem Nutzer einen Fehler vor die Nase zu setzen, und der Fehlerbereich gehört dem
+Speichern.
 
 **Speichern je Block** mit `ActionButton` und `useAction` (Pending und Fehler gibt es dort schon),
 darunter ein eigener Bereich für die Fehlermeldung — `<p v-if="error" class="text-sm text-red-600">`,
 wie in `settings.vue`. Kein neues Knopfverhalten, insbesondere kein grüner Erfolgszustand wie in der
-Vorlage: die Bestätigung ist der Vorschau-Avatar, der die Antwort des Servers übernimmt. Nach dem
-globalen Speichern ruft der Block `bootstrap()` aus `useAuth`, damit der Header sofort stimmt.
+Vorlage. Nach dem globalen Speichern ruft der Block `bootstrap()` aus `useAuth`, damit der Header
+sofort stimmt.
 
 Abmelden bleibt im Drawer. Die Vorlage mischt es ins selbe Panel; hier ist die Seite reines Profil.
 
@@ -232,8 +260,14 @@ dabei nicht.
 - `ProfileFields` — trimmen, leer → `null`, Maximallänge, Hexmuster, Kleinschreibung.
 - Service mit mockk: `PUT` schreibt beide Spalten, `DELETE` nullt beide, Nicht-Mitglied fliegt raus,
   und der Super-Admin ohne Mitgliedschaft bekommt 404 statt einer Antwort ohne Wirkung.
-- MockMvc für die drei Endpunkte: 401 unangemeldet, 404 für Fremde, 400 bei kaputtem Hex und bei zu
-  langem Namen, und der Sollzustand-Fall (`null` löscht).
+- MockMvc für die drei Schreib-/Lese-Endpunkte: 401 unangemeldet, 404 für Fremde, 400 bei kaputtem
+  Hex und bei zu langem Namen, und der Sollzustand-Fall (`null` löscht).
+- Die beiden Vorschau-Endpunkte: dieselben Zugriffs- und Validierungsantworten wie ihre
+  Schreibpfade, und — der eigentliche Test — dieselbe Identität wie ein anschließendes Speichern
+  derselben Werte. Ein Vorschau-Ergebnis, das vom Gespeicherten abweicht, ist der einzige Fehler,
+  den dieser Entwurf überhaupt zulassen kann; er wird direkt geprüft.
+- Und das Gegenstück: die Vorschau schreibt nichts. Nach einem `POST` steht in der Mitgliedszeile
+  und in `iam.users` unverändert das Alte.
 - Das Feature einmal ganz durchgezogen: derselbe Nutzer mit Override in Gemeinschaft A und ohne in
   B — `/roster` und die Rundenantwort zeigen in A Spitzname und Farbe, in B das Globale. Das ist der
   Test, der bei einem Regress als erster kippt.
@@ -245,9 +279,10 @@ dabei nicht.
   die Farbe auf `null`, Speichern schickt `PATCH` und ruft `bootstrap()`.
 - `CommunityProfileBlock`: Schalter aus zeigt keine Felder; Einschalten belegt mit den wirksamen
   Werten vor; Speichern schickt `PUT`, Ausschalten `DELETE`.
-- Vorschau: sie übernimmt die Identität aus der Antwort des Schreibens — und sie ändert sich
-  *nicht*, solange nur getippt wird. Beides geprüft, damit niemand die Portierung von
-  `MemberShortName` nachträglich für einen Fehler hält.
+- Vorschau: Tippen löst nach der Entprellzeit genau *eine* Anfrage aus (Zeitgeber über `vi`
+  gesteuert, nicht gewartet); die Antwort landet im Avatar; eine verspätet eintreffende ältere
+  Antwort wird verworfen; eine gescheiterte Anfrage läßt den letzten Avatar stehen und erzeugt
+  keine Fehlermeldung.
 - `NavDrawer`: die Zeile existiert und zeigt innerhalb einer Gemeinschaft auf `/c/‹slug›/profile`,
   außerhalb auf `/profile`.
 - Header-Avatar: mit gesetztem `viewerIdentity` zeichnet der Drawer-Auslöser dessen Avatar, sonst den
