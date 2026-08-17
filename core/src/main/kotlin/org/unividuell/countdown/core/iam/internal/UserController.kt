@@ -14,6 +14,8 @@ import java.util.UUID
 data class MeResponse(
     val id: UUID,
     val username: String,
+    /** The raw chosen name; null means none was chosen. `username` is what to show. */
+    val displayName: String?,
     val githubLogin: String,
     val githubName: String?,
     val email: String?,
@@ -33,7 +35,8 @@ data class UpdateProfileRequest(
 )
 
 private fun User.toMeResponse() = MeResponse(
-    id = id!!, username = username, githubLogin = githubLogin, githubName = githubName,
+    id = id!!, username = username, displayName = displayName,
+    githubLogin = githubLogin, githubName = githubName,
     email = email, bgColorHex = bgColorHex, avatar = Avatar.of(this),
     isSuperAdmin = isSuperAdmin, mayCreateCommunities = mayCreateCommunities,
     createdAt = createdAt,

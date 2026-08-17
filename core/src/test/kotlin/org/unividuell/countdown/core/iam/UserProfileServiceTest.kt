@@ -72,12 +72,12 @@ class UserProfileServiceTest(
     }
 
     @Test
-    fun `blank string throws IllegalArgumentException`() {
-        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat"))
+    fun `blank string clears the colour`() {
+        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat", bgColorHex = "#111111"))
 
-        shouldThrow<IllegalArgumentException> {
-            service.update(saved.id!!, displayName = null, bgColorHex = "")
-        }
+        val updated = service.update(saved.id!!, displayName = null, bgColorHex = "")
+
+        updated.bgColorHex.shouldBeNull()
     }
 
     @Test
@@ -86,5 +86,33 @@ class UserProfileServiceTest(
 
         service.current(saved.id!!).githubLogin shouldBe "octocat"
         shouldThrow<StaleSessionException> { service.current(UUID.randomUUID()) }
+    }
+
+    @Test
+    fun `trims the display name and lowercases the colour`() {
+        val saved = repository.save(User(githubId = 210L, githubLogin = "octocat"))
+
+        val updated = service.update(saved.id!!, displayName = "  Leela  ", bgColorHex = "#8E44AD")
+
+        updated.displayName shouldBe "Leela"
+        updated.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
+    fun `a blank display name clears the field`() {
+        val saved = repository.save(
+            User(githubId = 211L, githubLogin = "octocat", displayName = "old")
+        )
+
+        service.update(saved.id!!, displayName = "   ", bgColorHex = null).displayName.shouldBeNull()
+    }
+
+    @Test
+    fun `a name beyond the limit throws IllegalArgumentException`() {
+        val saved = repository.save(User(githubId = 212L, githubLogin = "octocat"))
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(saved.id!!, displayName = "x".repeat(33), bgColorHex = null)
+        }
     }
 }

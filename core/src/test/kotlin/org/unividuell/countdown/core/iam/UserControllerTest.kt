@@ -183,4 +183,30 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isBadRequest() }
         }
     }
+
+    @Test
+    fun `GET me carries the raw chosen name next to the effective one`() {
+        every { profileService.current(uid) } returns user(displayName = "Mr. Custom")
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(displayName = "Mr. Custom")))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.displayName") { value("Mr. Custom") }
+            jsonPath("$.username") { value("Mr. Custom") }
+        }
+    }
+
+    @Test
+    fun `GET me reports no chosen name when there is none`() {
+        every { profileService.current(uid) } returns user(displayName = null)
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(displayName = null)))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.displayName") { value(null) }
+            jsonPath("$.username") { value("The Octocat") }
+        }
+    }
 }
