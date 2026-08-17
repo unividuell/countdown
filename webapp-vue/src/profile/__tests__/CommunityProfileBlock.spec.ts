@@ -3,6 +3,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import CommunityProfileBlock from '@/profile/CommunityProfileBlock.vue'
 import * as api from '@/api/profile'
+import { ApiError } from '@/api/client'
 
 enableAutoUnmount(afterEach)
 
@@ -65,6 +66,29 @@ describe('CommunityProfileBlock', () => {
     expect((w.get('[data-test="override-color"]').element as HTMLInputElement).value).toBe(
       '#123456',
     )
+  })
+
+  // The inherited name can be a GitHub name, which the design deliberately leaves unbounded, and
+  // `maxlength` does not apply to a value assigned in code. Prefilling it raw would arm the form
+  // with a value every preview and every save rejects.
+  it('cuts an inherited name the server would refuse when it prefills', async () => {
+    const long = 'Bartholomew '.repeat(4).trim()
+    vi.mocked(api.getMemberProfile).mockResolvedValue({
+      displayName: null,
+      bgColorHex: null,
+      identity: { username: long, avatar: { shortName: 'BRTH', bgColorHex: '#123456' } },
+    })
+    vi.mocked(api.previewMemberAvatar).mockResolvedValue({
+      username: long,
+      avatar: { shortName: 'BRTH', bgColorHex: '#123456' },
+    })
+    const w = render()
+    await flushPromises()
+    await w.get('[data-test="override-switch"]').setValue(true)
+
+    const field = w.get('[data-test="override-name"]').element as HTMLInputElement
+    expect(field.value).toBe(long.slice(0, 32))
+    expect(field.value.length).toBe(32)
   })
 
   it('the switch alone writes nothing', async () => {
@@ -135,5 +159,23 @@ describe('CommunityProfileBlock', () => {
     await flushPromises()
 
     expect(w.get('[data-test="override-error"]').text()).toContain('fehlgeschlagen')
+  })
+
+  it('repeats what the server objected to, rather than only that something failed', async () => {
+    vi.mocked(api.putMemberProfile).mockRejectedValue(
+      new ApiError(400, 'request failed: 400', {
+        detail: 'displayName must be at most 32 characters, got 33',
+      }),
+    )
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = render()
+    await flushPromises()
+    await w.get('[data-test="override-switch"]').setValue(true)
+    await w.get('[data-test="override-save"]').trigger('click')
+    await flushPromises()
+
+    expect(w.get('[data-test="override-error"]').text()).toContain(
+      'displayName must be at most 32 characters',
+    )
   })
 })

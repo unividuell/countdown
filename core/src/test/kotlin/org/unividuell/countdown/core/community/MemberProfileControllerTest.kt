@@ -107,7 +107,13 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(csrf())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":null,"bgColorHex":"rebeccapurple"}"""
-        }.andExpect { status { isBadRequest() } }
+        }.andExpect {
+            status { isBadRequest() }
+            // The form shows this sentence rather than a generic failure, so the shape it is
+            // carried in — problem+json with a `detail` — is part of the contract.
+            content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+            jsonPath("$.detail") { value("bgColorHex must be a valid hex colour") }
+        }
     }
 
     @Test

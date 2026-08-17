@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { nextTick } from 'vue'
-import { PREVIEW_DEBOUNCE_MS, useProfileDraft } from '@/profile/useProfileDraft'
+import {
+  clampName,
+  NAME_MAX,
+  PREVIEW_DEBOUNCE_MS,
+  useProfileDraft,
+} from '@/profile/useProfileDraft'
 import type { IdentityView } from '@/api/types'
 
 const identity = (username: string, shortName: string, bgColorHex = '#8e44ad'): IdentityView => ({
@@ -30,6 +35,25 @@ describe('useProfileDraft', () => {
     expect(draft.colorSet.value).toBe(false)
     expect(draft.colorInput.value).toBe('#123456')
     expect(draft.body.value).toEqual({ displayName: null, bgColorHex: null })
+  })
+
+  // `maxlength` constrains typing, not assignment, and a row stored before the server grew its
+  // own limit can be longer than the server would now accept. Seeding it raw would put the form
+  // in a state whose every preview 400s while the avatar on screen shows the previous answer —
+  // a preview that saving provably cannot produce.
+  it('cuts a stored name that is longer than the server would now accept', () => {
+    const draft = useProfileDraft(vi.fn())
+    const tooLong = 'x'.repeat(NAME_MAX + 1)
+    draft.seed(tooLong, null, identity(tooLong, 'XXXX'))
+
+    expect(draft.name.value).toHaveLength(NAME_MAX)
+    expect(draft.body.value.displayName).toBe('x'.repeat(NAME_MAX))
+  })
+
+  it('clampName leaves a name the server accepts untouched', () => {
+    expect(clampName('Zwerg')).toBe('Zwerg')
+    expect(clampName(null)).toBe('')
+    expect(clampName('y'.repeat(99))).toHaveLength(NAME_MAX)
   })
 
   it('asks the server once, after the debounce, and takes the answer', async () => {

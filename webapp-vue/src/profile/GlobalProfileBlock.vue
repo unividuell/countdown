@@ -10,9 +10,8 @@ import ActionButton from '@/ui/ActionButton.vue'
 import { useAuth } from '@/auth/useAuth'
 import { useAction } from '@/ui/useAction'
 import { previewAvatar, updateProfile } from '@/api/profile'
-import { useProfileDraft } from '@/profile/useProfileDraft'
-
-const NAME_MAX = 32
+import { NAME_MAX, useProfileDraft } from '@/profile/useProfileDraft'
+import { saveErrorMessage } from '@/profile/saveError'
 
 // Saving here can change what applies inside a community too — whatever surrounds this block owns
 // that knowledge, so it is told rather than asked. On `/profile` there is nothing to tell, and an
@@ -21,7 +20,7 @@ const emit = defineEmits<{ saved: [] }>()
 
 const { user, bootstrap } = useAuth()
 const draft = useProfileDraft(previewAvatar)
-const { busy, error, run } = useAction(() => 'Speichern fehlgeschlagen.')
+const { busy, error, run } = useAction(saveErrorMessage)
 
 // `immediate: true` here is not the anti-pattern frontend-state.md's "watch without immediate"
 // recipe warns about — that recipe covers a *prop* changing under an already-mounted component,

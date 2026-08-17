@@ -5,6 +5,23 @@ import type { IdentityView, UpdateProfileRequest } from '@/api/types'
 /** How long a field may rest before the server is asked what it would draw. */
 export const PREVIEW_DEBOUNCE_MS = 300
 
+/**
+ * What `ProfileFields.MAX_NAME_LENGTH` allows, stated once for this runtime. Two blocks share the
+ * limit, and a form constraint has to exist on both sides of the wire anyway.
+ */
+export const NAME_MAX = 32
+
+/**
+ * The value a name field may hold. `maxlength` governs typing, never assignment, and both blocks
+ * prefill from values the server does not bound — an inherited `githubName`, or a `display_name`
+ * stored before the server grew this limit. A field holding more than the server accepts turns
+ * every preview into a 400 and leaves the last good avatar on screen: a preview that saving
+ * cannot produce, which is the one failure this design must not have.
+ */
+export function clampName(raw: string | null | undefined): string {
+  return (raw ?? '').slice(0, NAME_MAX)
+}
+
 /** Only used until the first seed lands, and never sent: `colorSet` decides what is sent. */
 const PLACEHOLDER_COLOR = '#888888'
 
@@ -42,7 +59,7 @@ export function useProfileDraft(
     bgColorHex: string | null,
     identity: IdentityView,
   ): void {
-    name.value = displayName ?? ''
+    name.value = clampName(displayName)
     colorSet.value = bgColorHex !== null
     // The picker needs a colour even when none is chosen: it opens on what is drawn today.
     colorInput.value = bgColorHex ?? identity.avatar.bgColorHex

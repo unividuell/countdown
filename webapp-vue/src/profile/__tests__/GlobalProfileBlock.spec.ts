@@ -3,6 +3,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { nextTick, ref } from 'vue'
 import GlobalProfileBlock from '@/profile/GlobalProfileBlock.vue'
 import * as api from '@/api/profile'
+import { ApiError } from '@/api/client'
 import { PREVIEW_DEBOUNCE_MS } from '@/profile/useProfileDraft'
 import type { MeResponse } from '@/api/types'
 
@@ -127,6 +128,29 @@ describe('GlobalProfileBlock', () => {
     await flushPromises()
 
     expect(w.get('[data-test="global-error"]').text()).toContain('fehlgeschlagen')
+  })
+
+  it('repeats what the server objected to, rather than only that something failed', async () => {
+    vi.mocked(api.updateProfile).mockRejectedValue(
+      new ApiError(400, 'request failed: 400', {
+        detail: 'bgColorHex must be a valid hex colour in the form #rrggbb, got: 12345',
+      }),
+    )
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = mount(GlobalProfileBlock)
+    await w.get('[data-test="global-save"]').trigger('click')
+    await flushPromises()
+
+    expect(w.get('[data-test="global-error"]').text()).toContain('bgColorHex must be a valid hex')
+  })
+
+  // The row may predate the server's own length limit: `PATCH /api/me` used to store the name raw
+  // and V5 does not normalise what is already there.
+  it('cuts a stored name longer than the server would now accept', () => {
+    currentUser.value = { ...me, displayName: 'z'.repeat(40), username: 'z'.repeat(40) }
+    const w = mount(GlobalProfileBlock)
+
+    expect((w.get('[data-test="global-name"]').element as HTMLInputElement).value).toHaveLength(32)
   })
 
   it('seeds once the session resolves after this component has already mounted', async () => {

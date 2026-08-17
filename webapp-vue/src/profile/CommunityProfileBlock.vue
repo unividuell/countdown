@@ -15,16 +15,15 @@ import {
   previewMemberAvatar,
   putMemberProfile,
 } from '@/api/profile'
-import { useProfileDraft } from '@/profile/useProfileDraft'
+import { clampName, NAME_MAX, useProfileDraft } from '@/profile/useProfileDraft'
+import { saveErrorMessage } from '@/profile/saveError'
 import type { IdentityView } from '@/api/types'
-
-const NAME_MAX = 32
 
 const props = defineProps<{ slug: string; communityName: string }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const draft = useProfileDraft((body) => previewMemberAvatar(props.slug, body))
-const { busy, error, run } = useAction(() => 'Speichern fehlgeschlagen.')
+const { busy, error, run } = useAction(saveErrorMessage)
 const enabled = ref(false)
 /** What applies without an override — the sentence shown while the switch is off. */
 const inherited = ref<IdentityView | null>(null)
@@ -69,7 +68,7 @@ onMounted(() => {
 watch(enabled, (on) => {
   if (on) {
     draft.colorSet.value = true
-    if (!draft.name.value) draft.name.value = inherited.value?.username ?? ''
+    if (!draft.name.value) draft.name.value = clampName(inherited.value?.username)
   } else {
     refreshInherited()
   }

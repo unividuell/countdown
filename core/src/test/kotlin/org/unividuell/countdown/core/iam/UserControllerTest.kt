@@ -189,6 +189,12 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             content = """{"displayName":null,"bgColorHex":"12345"}"""
         }.andExpect {
             status { isBadRequest() }
+            // The profile form shows this sentence instead of a generic failure, so the shape it
+            // travels in — problem+json with a `detail` — is part of the contract.
+            content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+            jsonPath("$.detail") {
+                value("bgColorHex must be a valid hex colour in the form #rrggbb, got: 12345")
+            }
         }
     }
 
