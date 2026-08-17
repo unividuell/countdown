@@ -40,4 +40,43 @@ class AvatarTest {
         val b = Avatar.of(user(id = UUID.fromString("0190f1b2-0000-7000-8000-000000000002")))
         (a.bgColorHex == b.bgColorHex) shouldBe false
     }
+
+    @Test
+    fun `an override name wins over the user's own`() {
+        val avatar = Avatar.of(
+            user = user(displayName = "Turanga Leela"),
+            nameOverride = "Zwerg",
+            bgColorHexOverride = null,
+        )
+        avatar.shortName shouldBe "ZWRG"
+    }
+
+    @Test
+    fun `an override colour wins over the user's own`() {
+        val avatar = Avatar.of(
+            user = user(bgColorHex = "#111111"),
+            nameOverride = null,
+            bgColorHexOverride = "#8e44ad",
+        )
+        avatar.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
+    fun `a missing override falls through to the user, then to the derived colour`() {
+        val plain = Avatar.of(user())
+        val overridden = Avatar.of(user(), nameOverride = null, bgColorHexOverride = null)
+
+        overridden shouldBe plain
+    }
+
+    @Test
+    fun `a blank override counts as none`() {
+        val avatar = Avatar.of(
+            user = user(displayName = "Turanga Leela", bgColorHex = "#111111"),
+            nameOverride = "   ",
+            bgColorHexOverride = "",
+        )
+        avatar.shortName shouldBe "TRNG"
+        avatar.bgColorHex shouldBe "#111111"
+    }
 }
