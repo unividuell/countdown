@@ -75,6 +75,10 @@ watch(enabled, (on) => {
   }
 })
 
+// The page calls this after a GLOBAL save: what this block inherits has just changed, and the
+// sentence above quotes it by name.
+defineExpose({ refreshInherited })
+
 function save(): Promise<void> {
   return run(async () => {
     if (enabled.value) {

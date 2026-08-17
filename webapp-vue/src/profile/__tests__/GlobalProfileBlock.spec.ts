@@ -36,6 +36,9 @@ vi.mock('@/api/profile', () => ({
 }))
 
 beforeEach(() => {
+  // Without this, a `toHaveBeenCalled` here proves only that SOME earlier test in this file
+  // clicked Save — every case below saves.
+  vi.clearAllMocks()
   currentUser.value = me
   vi.mocked(api.updateProfile).mockResolvedValue({ ...me, displayName: 'Leela', username: 'Leela' })
   vi.mocked(api.previewAvatar).mockResolvedValue({
@@ -96,6 +99,24 @@ describe('GlobalProfileBlock', () => {
     await flushPromises()
 
     expect(bootstrap).toHaveBeenCalled()
+  })
+
+  it('announces the save, so whatever surrounds it can catch up too', async () => {
+    const w = mount(GlobalProfileBlock)
+    await w.get('[data-test="global-save"]').trigger('click')
+    await flushPromises()
+
+    expect(w.emitted('saved')).toHaveLength(1)
+  })
+
+  it('announces nothing when the save failed', async () => {
+    vi.mocked(api.updateProfile).mockRejectedValue(new Error('nope'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = mount(GlobalProfileBlock)
+    await w.get('[data-test="global-save"]').trigger('click')
+    await flushPromises()
+
+    expect(w.emitted('saved')).toBeUndefined()
   })
 
   it('shows a message when saving fails', async () => {

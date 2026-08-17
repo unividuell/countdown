@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { defineComponent } from 'vue'
 import CommunityProfileBlock from '@/profile/CommunityProfileBlock.vue'
 import * as api from '@/api/profile'
 
@@ -100,6 +101,28 @@ describe('CommunityProfileBlock', () => {
 
     expect(api.deleteMemberProfile).toHaveBeenCalledWith('team')
     expect(api.putMemberProfile).not.toHaveBeenCalled()
+  })
+
+  // Through a parent's template ref, which is how the page reaches it: a method that is not
+  // `defineExpose`d is invisible there, however reachable it may be from inside the component.
+  it('asks again what applies without an override when it is told the global profile moved', async () => {
+    const parent = defineComponent({
+      components: { CommunityProfileBlock },
+      template: '<CommunityProfileBlock ref="block" slug="team" community-name="Team" />',
+    })
+    const w = mount(parent)
+    await flushPromises()
+    expect(w.get('[data-test="override-inherited"]').text()).toContain('Amy Wong')
+
+    vi.mocked(api.previewMemberAvatar).mockResolvedValue({
+      username: 'Zwerg',
+      avatar: { shortName: 'ZWRG', bgColorHex: '#8e44ad' },
+    })
+    const block = w.vm.$refs.block as { refreshInherited: () => Promise<void> }
+    await block.refreshInherited()
+    await flushPromises()
+
+    expect(w.get('[data-test="override-inherited"]').text()).toContain('Zwerg')
   })
 
   it('shows a message when saving fails', async () => {

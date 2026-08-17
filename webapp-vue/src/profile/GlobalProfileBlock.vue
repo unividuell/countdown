@@ -14,6 +14,11 @@ import { useProfileDraft } from '@/profile/useProfileDraft'
 
 const NAME_MAX = 32
 
+// Saving here can change what applies inside a community too — whatever surrounds this block owns
+// that knowledge, so it is told rather than asked. On `/profile` there is nothing to tell, and an
+// emit nobody listens to costs nothing.
+const emit = defineEmits<{ saved: [] }>()
+
 const { user, bootstrap } = useAuth()
 const draft = useProfileDraft(previewAvatar)
 const { busy, error, run } = useAction(() => 'Speichern fehlgeschlagen.')
@@ -50,6 +55,7 @@ function save(): Promise<void> {
       avatar: saved.avatar,
     })
     await bootstrap()
+    emit('saved')
   })
 }
 </script>
