@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -42,5 +43,32 @@ class CommunityMemberRepositoryTest(
         members.save(CommunityMember(communityId = cid, userId = pid, status = MemberStatus.PENDING))
         members.countByCommunityIdAndStatus(cid, MemberStatus.PENDING) shouldBe 1
         members.countByCommunityIdAndStatus(cid, MemberStatus.ACTIVE) shouldBe 1
+    }
+
+    @Test
+    fun `carries the per-community name and colour, both optional`() {
+        val uid = users.save(User(githubId = System.nanoTime(), githubLogin = "u-profile")).id!!
+        val cid = communities.save(Community(name = "Team", slug = "team-profile", createdBy = uid)).id!!
+        members.save(
+            CommunityMember(
+                communityId = cid, userId = uid, status = MemberStatus.ACTIVE,
+                displayName = "Zwerg", bgColorHex = "#8e44ad",
+            )
+        )
+
+        val row = members.findByCommunityIdAndUserId(cid, uid)!!
+        row.displayName shouldBe "Zwerg"
+        row.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
+    fun `a membership without an override stores nothing in either column`() {
+        val uid = users.save(User(githubId = System.nanoTime(), githubLogin = "u-plain")).id!!
+        val cid = communities.save(Community(name = "Team", slug = "team-plain", createdBy = uid)).id!!
+        members.save(CommunityMember(communityId = cid, userId = uid, status = MemberStatus.ACTIVE))
+
+        val row = members.findByCommunityIdAndUserId(cid, uid)!!
+        row.displayName.shouldBeNull()
+        row.bgColorHex.shouldBeNull()
     }
 }

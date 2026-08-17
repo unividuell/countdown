@@ -17,6 +17,9 @@ data class CommunityMember(
     val userId: UUID,
     val status: MemberStatus,
     val isAdmin: Boolean = false,
+    /** How this member appears in THIS community; null means the global profile applies. */
+    val displayName: String? = null,
+    val bgColorHex: String? = null,
     @CreatedDate
     val createdAt: Instant? = null,
     @LastModifiedDate
