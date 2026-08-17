@@ -80,6 +80,13 @@ tab. So:
   the mounted list patches values and order in place, keyed by id. A failed *refresh* then keeps
   the last known data instead of swapping the list for an error line — the action that triggered it
   did succeed, and the next visit repairs the numbers.
+- **Animating the reorder a refetch brings: one owner per transform, and a way out of the line.**
+  An entrance that measured its geometry on mount cannot be re-aimed, so data changing mid-flight
+  *ends* it rather than starting a second movement on the same elements — and the rearrangement asks
+  `prefers-reduced-motion` and `document.hidden` again at its own moment, not once at setup. Under
+  contact physics, note that a row laid out in a single line cannot reorder at all: two bodies on a
+  line cannot pass, so whoever overtakes has to leave the line and be back in it on arrival — kept
+  in it, they jam and the movement ends on its bail-out timeout instead of arriving.
 - **A surface beside a game must not pre-empt that game's reveal — hold the fetch, not the widget.**
   The roster's answer carries the round's points the instant the guess is accepted, so refreshing on
   the `guessed` emit prints the result above a scoreboard still building up to it. `useRoster`'s

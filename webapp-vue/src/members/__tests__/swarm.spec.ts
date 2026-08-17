@@ -14,6 +14,9 @@ function mulberry32(seed: number): () => number {
 
 const stage = { width: 1280, height: 800 }
 
+/** Seek and contact only, so a case about one of those is not reading someone else's chaos. */
+const calm: SwarmTuning = { ...defaultTuning, chaos: 0, cohesion: 0, seekRamp: 1 }
+
 /** The overlapping row: 48px circles, 8px overlap, centred on the stage. */
 function rowTargets(n: number): Vec[] {
   const spacing = 40
@@ -85,6 +88,60 @@ describe('createSwarm', () => {
         }
       }
     }
+  })
+
+  it('begins exactly where a target says, at rest, rather than at the stage edge', () => {
+    // The reorder hands the swarm the places the avatars already stand in. Scattering them to the
+    // stage edge first — or handing out the fly-in's little random kick — would be a second
+    // entrance, not a rearrangement.
+    const starts = rowTargets(3).map((t, i) => ({ x: t.x + 40 * (i + 1), y: t.y }))
+    const targets = rowTargets(3).map((t, i) => ({ ...t, start: starts[i]! }))
+
+    const swarm = createSwarm({ targets, stage, tuning: defaultTuning, rng: mulberry32(5) })
+
+    expect(swarm.particles.map((p) => ({ x: p.x, y: p.y }))).toEqual(starts)
+    expect(swarm.particles.map((p) => [p.vx, p.vy])).toEqual([
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ])
+  })
+
+  it('pulls a boosted particle in ahead of an identical unboosted one', () => {
+    // What makes one avatar shove and the others yield: the same displacement on a stiffer spring.
+    // Placed far apart so this measures the spring alone, with no collision in between.
+    const targets = [
+      { x: 400, y: 100, start: { x: 460, y: 100 }, seekScale: 3 },
+      { x: 400, y: 400, start: { x: 460, y: 400 }, seekScale: 1 },
+    ]
+
+    const swarm = createSwarm({ targets, stage, tuning: calm, rng: mulberry32(5) })
+    for (let i = 0; i < 15; i++) swarm.step(1 / 60)
+
+    const [boosted, plain] = swarm.particles
+    expect(Math.abs(boosted!.x - boosted!.tx)).toBeLessThan(Math.abs(plain!.x - plain!.tx))
+  })
+
+  it('carries a detour off the straight line and is back on it by the time it arrives', () => {
+    // A row of avatars is a single line, and two bodies on one line cannot pass each other: contact
+    // resolution turns the overtaking into a jam, both of them stuck and pushing. Whoever means to
+    // get past has to leave the line — and be back in it exactly on arrival.
+    const targets = [{ x: 200, y: 300, start: { x: 300, y: 300 }, detour: { x: 0, y: -40 } }]
+
+    const swarm = createSwarm({ targets, stage, tuning: calm, rng: mulberry32(5) })
+    let peak = 0
+    let seconds = 0
+    while (!swarm.finished && seconds < 10) {
+      swarm.step(1 / 60)
+      seconds += 1 / 60
+      peak = Math.max(peak, 300 - swarm.particles[0]!.y)
+    }
+
+    expect(peak).toBeGreaterThan(10)
+    // Chasing a bulge that is closing again, the particle trails it a little — so what has to hold
+    // is that it is home, on the line, and not much later than a particle that never left it.
+    expect(seconds).toBeLessThan(calm.durationMs / 1000 + 1)
+    expect([swarm.particles[0]!.x, swarm.particles[0]!.y]).toEqual([200, 300])
   })
 
   it('still settles when a target sits outside the wall inset', () => {
