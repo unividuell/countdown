@@ -27,6 +27,18 @@ class MemberIdentityService(
         }.toMap()
     }
 
-    override fun of(communityId: UUID, userId: UUID): MemberIdentity? =
-        of(communityId = communityId, userIds = listOf(userId))[userId]
+    /**
+     * Its own read, not the batch one with a list of one: the community guard asks this on every
+     * `GET /api/communities/{slug}`, and answering for a single member by scanning every membership
+     * row of the community is a full table read per page view.
+     */
+    override fun of(communityId: UUID, userId: UUID): MemberIdentity? {
+        val user = users.findById(userId) ?: return null
+        val row = members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)
+        return MemberIdentityResolver.resolve(
+            user = user,
+            displayName = row?.displayName,
+            bgColorHex = row?.bgColorHex,
+        )
+    }
 }

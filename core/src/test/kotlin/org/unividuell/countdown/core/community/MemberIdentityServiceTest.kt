@@ -5,6 +5,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.MemberIdentityService
@@ -57,10 +58,33 @@ class MemberIdentityServiceTest {
 
     @Test
     fun `the single lookup answers null for a user with no user row`() {
-        every { members.findByCommunityId(cid) } returns listOf(member(alice))
-        every { users.findAllById(any()) } returns emptyList()
+        every { members.findByCommunityIdAndUserId(communityId = cid, userId = alice) } returns member(alice)
+        every { users.findById(alice) } returns null
 
         service.of(communityId = cid, userId = alice).shouldBeNull()
+    }
+
+    @Test
+    fun `the single lookup reads one membership row, not the whole community`() {
+        every { members.findByCommunityIdAndUserId(communityId = cid, userId = alice) } returns
+            member(alice, displayName = "Zwerg")
+        every { users.findById(alice) } returns
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong")
+
+        service.of(communityId = cid, userId = alice)!!.username shouldBe "Zwerg"
+
+        // The guard calls this on every community load; scanning every member row to answer for
+        // one of them is a full table read per page view.
+        verify(exactly = 0) { members.findByCommunityId(any()) }
+    }
+
+    @Test
+    fun `the single lookup falls back to the global identity without a membership row`() {
+        every { members.findByCommunityIdAndUserId(communityId = cid, userId = alice) } returns null
+        every { users.findById(alice) } returns
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong")
+
+        service.of(communityId = cid, userId = alice)!!.username shouldBe "Amy Wong"
     }
 
     @Test
