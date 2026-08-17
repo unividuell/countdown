@@ -186,8 +186,11 @@ bleibt Aufgabe von `truncate`, nicht der Validierung.
 
 **Der Community-Block** trägt einen Schalter „eigener Auftritt hier“. Aus: ein Satz, der sagt, was
 stattdessen gilt, samt globaler Vorschau. An: Namensfeld und Farbwähler, vorbelegt mit den *aktuell
-wirksamen* Werten — beim Einschalten darf sich nichts unsichtbar ändern. Der Schalter schreibt
-`PUT` beziehungsweise `DELETE`.
+wirksamen* Werten — beim Einschalten darf sich nichts unsichtbar ändern.
+
+Geschrieben wird erst beim Speichern: `PUT`, solange der Schalter an ist, `DELETE`, wenn er aus ist.
+Der Schalter selbst schreibt nichts — ein Umlegen, das sofort wirkt, wäre das einzige Bedienelement
+der Seite, das den Speichern-Knopf übergeht.
 
 **Der globale Block** hat dasselbe Feldpaar. Das Namensfeld leer bedeutet: GitHub-Name, der als
 Platzhalter sichtbar steht. Der Farbwähler bekommt zusätzlich einen kleinen Knopf „Automatisch“, der
