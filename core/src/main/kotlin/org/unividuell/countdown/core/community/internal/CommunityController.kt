@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import org.unividuell.countdown.core.community.CommunityQuery
+import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MemberStatus
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.iam.AuthenticatedUser
@@ -20,6 +21,7 @@ class CommunityController(
     private val selection: SelectionService,
     private val memberRepo: CommunityMemberRepository,
     private val users: UserQuery,
+    private val identities: MemberIdentityQuery,
 ) {
     @PostMapping
     fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> {
@@ -31,6 +33,7 @@ class CommunityController(
                 community.toResponse(
                     edition = edition, editionFrozen = editions.isFrozen(edition),
                     viewerIsAdmin = true, pendingCount = 0,
+                    viewerIdentity = identities.of(communityId = requireNotNull(community.id), userId = me.id),
                 ),
             )
     }
@@ -58,6 +61,7 @@ class CommunityController(
         return c.toResponse(
             edition = edition, editionFrozen = editions.isFrozen(edition),
             viewerIsAdmin = isAdmin, pendingCount = pending,
+            viewerIdentity = identities.of(communityId = id, userId = me.id),
         )
     }
 
@@ -79,6 +83,7 @@ class CommunityController(
         return updated.community.toResponse(
             edition = updated.edition, editionFrozen = editions.isFrozen(updated.edition),
             viewerIsAdmin = true, pendingCount = pending,
+            viewerIdentity = identities.of(communityId = id, userId = me.id),
         )
     }
 
@@ -101,6 +106,7 @@ class CommunityController(
                 c.toResponse(
                     edition = edition, editionFrozen = editions.isFrozen(edition),
                     viewerIsAdmin = true, pendingCount = pending,
+                    viewerIdentity = identities.of(communityId = id, userId = me.id),
                 ),
             )
     }

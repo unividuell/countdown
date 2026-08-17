@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.community.internal
 
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
+import org.unividuell.countdown.core.community.MemberIdentity
 import java.time.Instant
 import java.util.UUID
 
@@ -11,6 +12,8 @@ data class CommunityResponse(
     val editionLabel: String, val gamesFromRound: Int?, val gamesUntilRound: Int,
     val editionFrozen: Boolean,
     val viewerIsAdmin: Boolean, val pendingCount: Int,
+    /** How the viewer appears here; null when they have no membership row in this community. */
+    val viewerIdentity: MemberIdentity?,
 )
 data class CommunitySummary(val id: UUID, val name: String, val slug: String)
 data class CreateCommunityRequest(val name: String)
@@ -45,6 +48,7 @@ fun Community.toResponse(
     editionFrozen: Boolean,
     viewerIsAdmin: Boolean,
     pendingCount: Int,
+    viewerIdentity: MemberIdentity?,
 ) = CommunityResponse(
     id = requireNotNull(id), name = name, slug = slug,
     startsAt = edition.startsAt,
@@ -54,7 +58,7 @@ fun Community.toResponse(
     gamesFromRound = edition.gamesFromRound,
     gamesUntilRound = edition.gamesUntilRound,
     editionFrozen = editionFrozen,
-    viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount,
+    viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount, viewerIdentity = viewerIdentity,
 )
 fun Community.toSummary() = CommunitySummary(id = requireNotNull(id), name = name, slug = slug)
 
