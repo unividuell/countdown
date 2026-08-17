@@ -63,6 +63,11 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   - **A string proxy key is a plain prefix** (`url.startsWith(key)`) — so **`/login/` needs its trailing slash**: `/login` itself is the SPA's sign-in *page*, only its sub-paths (`/login/github`, `/login/oauth2/code/*`) are backend. Without the slash, a direct load of `http://localhost:5173/login` is proxied away and never reaches the router (prod is unaffected — the edge already scopes it to `path /login/*`, see `deploy/Caddyfile`). Keep dev and the edge in sync; `src/__tests__/dev-proxy.spec.ts` guards the split.
   - **Use `changeOrigin: false`** (transparent proxy): the backend must see the browser's `Host` (`localhost:5173`) so it builds OAuth2 `redirect_uri` + post-login redirects on the SPA origin. With `changeOrigin: true` the backend sees `:8080`, GitHub redirects the browser to `:8080`, and the user lands on the backend (raw JSON / `/error`) instead of the SPA after login. The **GitHub OAuth App callback must be the SPA origin** in dev: `http://localhost:5173/login/oauth2/code/github`.
 - **UX:** surface API failures to the user; never leave a promise rejection unhandled in a click handler; log bootstrap failures rather than swallowing them.
+- **`ApiError.body` carries a ProblemDetail — use its `detail` where the user can act on it.** Every
+  backend 4xx is a Spring `ProblemDetail`, served as `application/problem+json`; `apiFetch` parses
+  any `application/…+json`, so `error.body.detail` is the server's own sentence about *this*
+  request. A validation failure the user can fix (a rejected colour, a name over the limit) must
+  show it; keep the constant „… fehlgeschlagen." for everything that has no explanation.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),
