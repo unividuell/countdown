@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { MockInstance } from 'vitest'
 import { defineComponent, h, watch } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
-import { useRoster } from '../useRoster'
+import type { RosterMemberResponse } from '@/api/types'
+import { SPOILER_HOLD_MS, useRoster } from '../useRoster'
 
 /** useRoster loads on mount, so it needs a host component. */
 function host(slug = 'team') {
@@ -100,5 +102,115 @@ describe('useRoster', () => {
     mount(Cmp)
     await flushPromises()
     expect(spy).toHaveBeenCalledWith('hütte')
+  })
+
+  /**
+   * The live-points chip is a spoiler of whatever the game is showing right now: the round's points
+   * are in the roster's answer the moment the guess is accepted, while the reveal is still building
+   * up to them. So the guess gets its own entrance that holds — see `refreshAfterGuess`.
+   *
+   * `advanceTimersByTimeAsync`, never the synchronous form: `getRoster` resolves through a promise
+   * chain, and only the async form drains microtasks between ticks (the same reason the navigation
+   * progress spec uses it). It is also how the mount's own load is settled here — `flushPromises`
+   * schedules through `setImmediate`, which fake timers replace.
+   */
+  describe('after a guess', () => {
+    let matchMedia: MockInstance | undefined
+
+    afterEach(() => {
+      vi.useRealTimers()
+      // This file installs its spies without restoring them; a stubbed `matches: true` left behind
+      // would silently switch every later case to the reduced-motion path.
+      matchMedia?.mockRestore()
+      matchMedia = undefined
+    })
+
+    /**
+     * A roster on screen showing one member, with a second one waiting in the next answer — so a
+     * refresh that went through is visible as a length, not only as a call count.
+     *
+     * `mockReset` before anything else, and a plain implementation rather than `mockResolvedValueOnce`:
+     * this file installs its spies without restoring them, so the *queue* survives across tests too,
+     * and an earlier case's unconsumed `Once` would be what the mount here reads.
+     */
+    async function mounted(): Promise<{
+      roster: () => ReturnType<typeof useRoster>
+      getRoster: MockInstance<typeof api.getRoster>
+      unmount: () => void
+    }> {
+      const bob = {
+        ...alice,
+        userId: '0190f1b2-0000-7000-8000-000000000002',
+        points: { stable: 9 },
+      }
+      const getRoster = vi.spyOn(api, 'getRoster')
+      getRoster.mockReset()
+      let answer: RosterMemberResponse[] = [alice]
+      getRoster.mockImplementation(async () => answer)
+      vi.useFakeTimers()
+      const { Cmp, roster } = host()
+      const w = mount(Cmp)
+      await vi.advanceTimersByTimeAsync(0)
+      getRoster.mockClear()
+      answer = [alice, bob]
+      return { roster, getRoster, unmount: () => w.unmount() }
+    }
+
+    it('keeps the round out of the ranking while the game is still revealing it', async () => {
+      const { roster, getRoster } = await mounted()
+
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS - 1)
+
+      expect(getRoster).not.toHaveBeenCalled()
+    })
+
+    it('takes the new points once the reveal has had its say', async () => {
+      const { roster, getRoster } = await mounted()
+
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+      // The hold expiring only *asks*; the answer lands a microtask after that tick.
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(getRoster).toHaveBeenCalledTimes(1)
+      expect(roster().members.value).toHaveLength(2)
+    })
+
+    it('drops a pending hold when the row leaves the page', async () => {
+      const { roster, getRoster, unmount } = await mounted()
+
+      roster().refreshAfterGuess()
+      unmount()
+      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+
+      expect(getRoster).not.toHaveBeenCalled()
+    })
+
+    it('arms one hold, not two, when a guess is announced twice', async () => {
+      const { roster, getRoster } = await mounted()
+
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS / 2)
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+
+      expect(getRoster).toHaveBeenCalledTimes(1)
+    })
+
+    // There is no choreography to protect when the visitor has asked for less motion — the
+    // scoreboard shows its whole table at once — so holding the numbers back would be lag for
+    // nothing, and exactly the wrong way round for the reader who asked for it.
+    it('holds nothing back when the visitor asked for less motion', async () => {
+      const { roster, getRoster } = await mounted()
+      matchMedia = vi
+        .spyOn(window, 'matchMedia')
+        .mockReturnValue({ matches: true } as MediaQueryList)
+
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(getRoster).toHaveBeenCalledTimes(1)
+    })
   })
 })
