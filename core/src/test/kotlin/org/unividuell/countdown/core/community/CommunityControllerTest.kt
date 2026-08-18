@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.*
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.*
+import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.principalFor
 import java.util.UUID
 
@@ -30,6 +31,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var selection: SelectionService
     @MockkBean lateinit var memberRepo: CommunityMemberRepository
     @MockkBean lateinit var users: org.unividuell.countdown.core.iam.UserQuery
+    @MockkBean lateinit var identities: MemberIdentityQuery
 
     private val uid = TEST_USER_ID
     private fun community(slug: String) = Community(id = UUID.randomUUID(), name = "Team", slug = slug, createdBy = uid)
@@ -37,6 +39,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @BeforeEach
     fun stubFreeze() {
         every { editions.isFrozen(any()) } returns false
+        every { identities.of(communityId = any(), userId = any()) } returns null
     }
 
     @Test
@@ -302,5 +305,43 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             contentType = MediaType.APPLICATION_JSON
             content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
         }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `GET community carries how the viewer appears here`() {
+        val c = community("team")
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
+        every {
+            identities.of(communityId = any(), userId = TEST_USER_ID)
+        } returns MemberIdentity(
+            username = "Zwerg",
+            avatar = Avatar(shortName = "ZWRG", bgColorHex = "#8e44ad"),
+        )
+
+        mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.viewerIdentity.username") { value("Zwerg") }
+            jsonPath("$.viewerIdentity.avatar.shortName") { value("ZWRG") }
+        }
+    }
+
+    @Test
+    fun `a super-admin who is not a member has no identity here`() {
+        val c = community("team")
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = true, slug = "team") } returns c
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
+        every { editions.requireActive(c.id!!) } returns CommunityEdition(
+            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
+        )
+        every { identities.of(communityId = any(), userId = TEST_USER_ID) } returns null
+
+        mockMvc.get("/api/communities/team") { with(principalFor(superAdmin = true)) }.andExpect {
+            status { isOk() }
+            jsonPath("$.viewerIdentity") { value(null) }
+        }
     }
 }

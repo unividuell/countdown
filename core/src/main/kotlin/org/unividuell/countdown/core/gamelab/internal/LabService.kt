@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.unividuell.countdown.core.community.CommunityQuery
+import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameCatalog
@@ -12,8 +13,6 @@ import org.unividuell.countdown.core.game.GameTypeHandle
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.game.awardFor
-import org.unividuell.countdown.core.iam.Avatar
-import org.unividuell.countdown.core.iam.UserQuery
 import tools.jackson.databind.JsonNode
 import java.util.UUID
 
@@ -28,7 +27,8 @@ import java.util.UUID
  * than a promise.
  *
  * Community context comes from the `community` module's PUBLIC api (`CommunityQuery` +
- * `MembershipQuery`), never from `community.internal` — `CountdownService` is the precedent.
+ * `MembershipQuery` + `MemberIdentityQuery`), never from `community.internal` — `CountdownService`
+ * is the precedent.
  */
 @Service
 @Profile("!production")
@@ -36,7 +36,7 @@ import java.util.UUID
 class LabService(
     private val communities: CommunityQuery,
     private val memberships: MembershipQuery,
-    private val users: UserQuery,
+    private val identities: MemberIdentityQuery,
     private val store: LabRoundStore,
     private val catalog: GameCatalog,
 ) {
@@ -54,6 +54,7 @@ class LabService(
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
+            communityId = communityId,
             handle = handle,
             snapshot = store.open(communityId = communityId, gameId = gameId, round = round),
             me = userId,
@@ -85,7 +86,9 @@ class LabService(
             userId = userId, guess = guess, judgement = judgement,
         )
         return when (result) {
-            is RecordResult.Recorded -> respond(handle = handle, snapshot = result.snapshot, me = userId)
+            is RecordResult.Recorded -> respond(
+                communityId = communityId, handle = handle, snapshot = result.snapshot, me = userId,
+            )
             RecordResult.AlreadyGuessed -> throw AlreadyGuessedException()
         }
     }
@@ -103,6 +106,7 @@ class LabService(
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
+            communityId = communityId,
             handle = handle,
             snapshot = store.resetRound(communityId = communityId, gameId = gameId, round = round),
             me = userId,
@@ -122,6 +126,7 @@ class LabService(
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         return respond(
+            communityId = communityId,
             handle = handle,
             snapshot = store.forget(
                 communityId = communityId, gameId = gameId, round = round, userId = userId,
@@ -177,6 +182,7 @@ class LabService(
     }
 
     private fun respond(
+        communityId: UUID,
         handle: GameTypeHandle<*>,
         snapshot: LabRoundSnapshot,
         me: UUID,
@@ -186,15 +192,17 @@ class LabService(
         // another tester's guess before one's own is right, so there is no switch to get it wrong
         // with. A payload the browser never receives cannot be read out of the network tab either.
         val visible = if (mine == null) emptyList() else snapshot.entries.filter { it.userId != me }
-        val byUser = users.findAllById((visible + listOfNotNull(mine)).map { it.userId })
-            .associateBy { it.id }
+        val byId = identities.of(
+            communityId = communityId,
+            userIds = (visible + listOfNotNull(mine)).map { it.userId },
+        )
         // A tester whose user row vanished mid-session drops out of the list rather than taking the
         // whole page down with them.
-        fun dtoOf(entry: LabEntry) = byUser[entry.userId]?.let { user ->
+        fun dtoOf(entry: LabEntry) = byId[entry.userId]?.let { identity ->
             LabEntryDto(
                 userId = entry.userId,
-                username = user.username,
-                avatar = Avatar.of(user),
+                username = identity.username,
+                avatar = identity.avatar,
                 guess = entry.guess,
                 outcome = entry.outcome,
                 points = entry.points,

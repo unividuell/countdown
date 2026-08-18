@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.AvatarPreviewResponse
 import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -72,12 +74,12 @@ class UserProfileServiceTest(
     }
 
     @Test
-    fun `blank string throws IllegalArgumentException`() {
-        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat"))
+    fun `blank string clears the colour`() {
+        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat", bgColorHex = "#111111"))
 
-        shouldThrow<IllegalArgumentException> {
-            service.update(saved.id!!, displayName = null, bgColorHex = "")
-        }
+        val updated = service.update(saved.id!!, displayName = null, bgColorHex = "")
+
+        updated.bgColorHex.shouldBeNull()
     }
 
     @Test
@@ -86,5 +88,72 @@ class UserProfileServiceTest(
 
         service.current(saved.id!!).githubLogin shouldBe "octocat"
         shouldThrow<StaleSessionException> { service.current(UUID.randomUUID()) }
+    }
+
+    @Test
+    fun `trims the display name and lowercases the colour`() {
+        val saved = repository.save(User(githubId = 210L, githubLogin = "octocat"))
+
+        val updated = service.update(saved.id!!, displayName = "  Leela  ", bgColorHex = "#8E44AD")
+
+        updated.displayName shouldBe "Leela"
+        updated.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
+    fun `a blank display name clears the field`() {
+        val saved = repository.save(
+            User(githubId = 211L, githubLogin = "octocat", displayName = "old")
+        )
+
+        service.update(saved.id!!, displayName = "   ", bgColorHex = null).displayName.shouldBeNull()
+    }
+
+    @Test
+    fun `a name beyond the limit throws IllegalArgumentException`() {
+        val saved = repository.save(User(githubId = 212L, githubLogin = "octocat"))
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(saved.id!!, displayName = "x".repeat(33), bgColorHex = null)
+        }
+    }
+
+    @Test
+    fun `preview computes exactly what update would produce`() {
+        val saved = repository.save(
+            User(githubId = 300L, githubLogin = "amy", displayName = "old name"),
+        )
+
+        val previewed = service.preview(
+            userId = saved.id!!, displayName = "  Zwerg  ", bgColorHex = "#8E44AD",
+        )
+        val updated = service.update(
+            userId = saved.id!!, displayName = "  Zwerg  ", bgColorHex = "#8E44AD",
+        )
+
+        previewed shouldBe AvatarPreviewResponse(username = updated.username, avatar = Avatar.of(updated))
+    }
+
+    @Test
+    fun `preview leaves the stored row untouched`() {
+        val saved = repository.save(User(githubId = 301L, githubLogin = "amy", displayName = "old name"))
+
+        service.preview(userId = saved.id!!, displayName = "Zwerg", bgColorHex = "#8e44ad")
+
+        repository.findByIdOrNull(saved.id!!)!!.displayName shouldBe "old name"
+    }
+
+    @Test
+    fun `clearing the name in preview falls back to the GitHub name, not the stored one`() {
+        val saved = repository.save(
+            User(
+                githubId = 302L, githubLogin = "octocat",
+                githubName = "The Octocat", displayName = "Stored Name",
+            ),
+        )
+
+        val previewed = service.preview(userId = saved.id!!, displayName = null, bgColorHex = null)
+
+        previewed.username shouldBe "The Octocat"
     }
 }

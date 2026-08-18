@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.countdown.Round
 import org.unividuell.countdown.core.game.GameTypeHandle
+import java.util.UUID
 
 /**
  * The community's current round, resolved — and, if it carries a game, materialised.
@@ -12,10 +13,19 @@ import org.unividuell.countdown.core.game.GameTypeHandle
  */
 sealed interface CurrentRound {
 
+    /** Whose round this is. Every consumer that draws a person needs it, and it is known before
+     *  the round is: the gate resolves the community first. */
+    val communityId: UUID
+
     /** [round] is `null` when there is no grid at all — no active run, or no target date. */
-    data class NoGame(val round: Round?, val reason: NoGameReason) : CurrentRound
+    data class NoGame(
+        override val communityId: UUID,
+        val round: Round?,
+        val reason: NoGameReason,
+    ) : CurrentRound
 
     data class Announced(
+        override val communityId: UUID,
         val round: Round,
         val roundGame: RoundGame,
         val handle: GameTypeHandle<*>,

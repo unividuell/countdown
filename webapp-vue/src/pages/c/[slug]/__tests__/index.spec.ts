@@ -72,6 +72,7 @@ const community: CommunityResponse = {
   viewerIsAdmin: false,
   pendingCount: 0,
   editionFrozen: false,
+  viewerIdentity: null,
 }
 
 function mountPage() {
@@ -123,6 +124,7 @@ describe('community home', () => {
       githubName: null,
       email: null,
       bgColorHex: null,
+      displayName: null,
       avatar: { shortName: 'AMY', bgColorHex: '#8e44ad' },
       isSuperAdmin: false,
       mayCreateCommunities: false,

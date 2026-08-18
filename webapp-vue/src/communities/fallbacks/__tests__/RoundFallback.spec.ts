@@ -16,6 +16,7 @@ const community = (startsAt: string | null): CommunityResponse => ({
   viewerIsAdmin: false,
   pendingCount: 0,
   editionFrozen: false,
+  viewerIdentity: null,
 })
 
 const before: CountdownResponse = {

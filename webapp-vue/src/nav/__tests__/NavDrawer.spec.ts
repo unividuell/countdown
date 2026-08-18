@@ -44,6 +44,7 @@ const viewer: MeResponse = {
   githubName: null,
   email: null,
   bgColorHex: null,
+  displayName: null,
   avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
   isSuperAdmin: false,
   mayCreateCommunities: false,
@@ -216,6 +217,7 @@ describe('NavDrawer mechanics', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: true,
       pendingCount: 2,
+      viewerIdentity: null,
     }
     const w = render()
     await nextTick()
@@ -233,6 +235,7 @@ describe('NavDrawer mechanics', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 7,
+      viewerIdentity: null,
     }
     const w = render()
     await nextTick()
@@ -428,6 +431,7 @@ function asAdminOf(slug: string, name: string, pendingCount = 0) {
     startsAtTimezone: 'UTC',
     viewerIsAdmin: true,
     pendingCount,
+    viewerIdentity: null,
   }
 }
 
@@ -449,6 +453,7 @@ describe('NavDrawer content', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = await opened()
 
@@ -533,6 +538,7 @@ describe('NavDrawer content', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     expect((await opened()).find('[data-test=admin-heading]').exists()).toBe(false)
   })
@@ -620,6 +626,32 @@ describe('NavDrawer content', () => {
     spy.mockRestore()
   })
 
+  it('offers the profile, pointing at the community one while inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: null,
+    }
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe(
+      communityPath('team', 'profile'),
+    )
+  })
+
+  it('points at the global profile outside a community', async () => {
+    activeCommunity.value = null
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe('/profile')
+  })
+
   it('cycles Tab focus between the toggle and the drawer content, wrapping both ways', async () => {
     // Written after the drawer has real content (the logout button in the foot) so the cycle
     // has more than a hypothetical element to move focus to and from.
@@ -648,5 +680,32 @@ describe('NavDrawer content', () => {
     document.dispatchEvent(backward)
     expect(backward.defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(last)
+  })
+
+  it('draws the community identity in the header while inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: {
+        username: 'Zwerg',
+        avatar: { shortName: 'ZWRG', bgColorHex: '#8e44ad' },
+      },
+    }
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="nav-toggle"]').text()).toBe('ZWRG')
+  })
+
+  it('falls back to the global avatar where there is no community identity', async () => {
+    activeCommunity.value = null
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="nav-toggle"]').text()).toBe('OCTO')
   })
 })

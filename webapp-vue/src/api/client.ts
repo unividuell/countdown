@@ -33,8 +33,13 @@ function readCookie(name: string): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null
 }
 
+// `application/problem+json` is what the backend answers every 4xx with, and it is JSON — the
+// RFC 6839 `+json` suffix says so. Matching `application/json` alone would throw away the only
+// body that carries the server's own explanation.
+const JSON_CONTENT_TYPE = /^application\/(.+\+)?json\b/
+
 async function readJsonBody(res: Response): Promise<unknown> {
-  if (!res.headers.get('content-type')?.includes('application/json')) return undefined
+  if (!JSON_CONTENT_TYPE.test(res.headers.get('content-type') ?? '')) return undefined
   return res.json().catch(() => undefined)
 }
 

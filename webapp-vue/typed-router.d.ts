@@ -54,6 +54,7 @@ declare module 'vue-router/auto-routes' {
       | '/c/[slug]/lab/'
       | '/c/[slug]/lab/[game]'
       | '/c/[slug]/members'
+      | '/c/[slug]/profile'
       | '/c/[slug]/requests'
       | '/c/[slug]/settings'
     >,
@@ -81,6 +82,13 @@ declare module 'vue-router/auto-routes' {
     '/c/[slug]/members': RouteRecordInfo<
       '/c/[slug]/members',
       '/c/:slug/members',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/profile': RouteRecordInfo<
+      '/c/[slug]/profile',
+      '/c/:slug/profile',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -123,6 +131,13 @@ declare module 'vue-router/auto-routes' {
     '/login': RouteRecordInfo<
       '/login',
       '/login',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/profile': RouteRecordInfo<
+      '/profile',
+      '/profile',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -201,6 +216,7 @@ declare module 'vue-router/auto-routes' {
         | '/c/[slug]/lab/'
         | '/c/[slug]/lab/[game]'
         | '/c/[slug]/members'
+        | '/c/[slug]/profile'
         | '/c/[slug]/requests'
         | '/c/[slug]/settings'
       views:
@@ -235,6 +251,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/c/[slug]/members.vue': {
       routes:
         | '/c/[slug]/members'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/profile.vue': {
+      routes:
+        | '/c/[slug]/profile'
       views:
         | never
       pathParamNames:
@@ -283,6 +307,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/login.vue': {
       routes:
         | '/login'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/profile.vue': {
+      routes:
+        | '/profile'
       views:
         | never
       pathParamNames:

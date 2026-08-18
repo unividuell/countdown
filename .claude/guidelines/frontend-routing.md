@@ -70,6 +70,12 @@ Pages nested under `c/[slug]/` receive the loaded community via Vue's `provide`/
 - Admin-only pages (`members.vue`, `settings.vue`, `requests.vue`) all call `useAdminGuard()` at the top of `<script setup>`.
 - In tests, mock the entire context module: `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`. This avoids the `inject` dependency on a real Vue app wrapping.
 - `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend; both are republished into `activeCommunity` for the header's community menu (see "App-level header state" in [frontend-state.md](frontend-state.md)) rather than consumed inside the shell itself.
+- **A page that changes guard-owned data must call `refresh()` — navigating away and back will
+  not.** `beforeResolve` returns early when the destination slug is the one already loaded, so
+  `activeCommunity` (viewer identity, `viewerIsAdmin`, `pendingCount`) survives a round trip
+  through its own community untouched, and a header reading it keeps showing the pre-save state.
+  Where the writing component must also work outside a community, give it a `saved` emit and let
+  the page own the `refresh()` — the component then needs no community context to exist.
 - `refresh()` deliberately keeps no internal `try`/`catch` — a rejection is the caller's to handle, not something it swallows. It is handed to every `[slug]` child through `provide(communityKey, …)`, so this contract binds every child, not just the shell: wrap the call in your own `try`/`catch`, and don't treat the action as having succeeded until `refresh()` itself has resolved. `requests.vue` and `settings.vue` both fold their `await refresh()` into the same `try` as the mutating call, so a rejection there still lands in the `catch` instead of being reported as a silent success.
 
 ## Role-gated areas + shell-owned access checks

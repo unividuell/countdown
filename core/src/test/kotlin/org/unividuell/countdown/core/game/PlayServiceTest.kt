@@ -102,6 +102,22 @@ class PlayServiceTest(
     }
 
     @Test
+    fun `the round payload names a player the way their community does`() {
+        val (community, viewer) = aCommunity("Named Round")
+        val member = requireNotNull(
+            members.findByCommunityIdAndUserId(communityId = requireNotNull(community.id), userId = viewer),
+        )
+        members.save(member.copy(displayName = "Zwerg", bgColorHex = "#8e44ad"))
+
+        val res = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        val me = res.me.shouldNotBeNull()
+        me.username shouldBe "Zwerg"
+        me.avatar.shortName shouldBe "ZWRG"
+        me.avatar.bgColorHex shouldBe "#8e44ad"
+    }
+
+    @Test
     fun `revealing hands out the payload and starts the clock`() {
         val (community, viewer) = aCommunity("Reveal Round")
 

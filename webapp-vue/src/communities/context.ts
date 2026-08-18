@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import { inject, ref } from 'vue'
-import type { CommunityResponse } from '@/api/types'
+import type { CommunityResponse, IdentityView } from '@/api/types'
 
 export interface CommunityContext {
   community: Readonly<Ref<CommunityResponse>>
@@ -19,6 +19,8 @@ export interface ActiveCommunity {
   startsAtTimezone: string
   viewerIsAdmin: boolean
   pendingCount: number
+  /** How the viewer appears HERE; null when there is no community-bound identity. */
+  viewerIdentity: IdentityView | null
 }
 export const activeCommunity = ref<ActiveCommunity | null>(null)
 

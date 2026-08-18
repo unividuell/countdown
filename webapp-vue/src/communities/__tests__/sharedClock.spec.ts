@@ -19,6 +19,7 @@ const community: CommunityResponse = {
   viewerIsAdmin: false,
   pendingCount: 0,
   editionFrozen: false,
+  viewerIdentity: null,
 }
 
 // serverNow follows the fake client clock, so every load computes a skew of 0. Without that, an

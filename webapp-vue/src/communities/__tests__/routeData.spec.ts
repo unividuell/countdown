@@ -29,6 +29,7 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
     viewerIsAdmin: false,
     pendingCount: 0,
     editionFrozen: false,
+    viewerIdentity: null,
     ...over,
   }
 }
@@ -283,5 +284,14 @@ describe('community route data guard', () => {
       kind: 'ready',
       community: community({ pendingCount: 0 }),
     })
+  })
+
+  it('publishes the viewer identity into the header state', () => {
+    publishCommunity({
+      ...community(),
+      viewerIdentity: { username: 'Zwerg', avatar: { shortName: 'ZWRG', bgColorHex: '#8e44ad' } },
+    })
+
+    expect(activeCommunity.value?.viewerIdentity?.avatar.shortName).toBe('ZWRG')
   })
 })

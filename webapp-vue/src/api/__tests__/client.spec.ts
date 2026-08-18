@@ -89,6 +89,28 @@ describe('apiFetch', () => {
     })
   })
 
+  // Spring answers every 4xx of ours with a ProblemDetail, and that is served as
+  // `application/problem+json` — an exact `application/json` match would drop the only body
+  // carrying the server's reason, which the profile form shows to the user.
+  it('parses an error body served as problem+json', async () => {
+    mockFetch(
+      400,
+      { detail: 'displayName must be at most 32 characters, got 33' },
+      {
+        'content-type': 'application/problem+json',
+      },
+    )
+    await expect(apiFetch('/api/me')).rejects.toMatchObject({
+      status: 400,
+      body: { detail: 'displayName must be at most 32 characters, got 33' },
+    })
+  })
+
+  it('leaves a non-JSON error body alone', async () => {
+    mockFetch(502, 'gateway down', { 'content-type': 'text/plain' })
+    await expect(apiFetch('/api/me')).rejects.toMatchObject({ status: 502, body: undefined })
+  })
+
   it('throws on a non-JSON 200 response', async () => {
     mockFetch(200, undefined, { 'content-type': 'text/html' })
     await expect(apiFetch('/api/me')).rejects.toMatchObject({ status: 200 })

@@ -16,6 +16,7 @@ const viewer: MeResponse = {
   githubName: null,
   email: null,
   bgColorHex: null,
+  displayName: null,
   avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
   isSuperAdmin: false,
   mayCreateCommunities: false,
@@ -61,6 +62,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain('Hütte Hütte')
@@ -76,6 +78,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('Hütte Hütte')
@@ -91,6 +94,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain("'26")
@@ -164,6 +168,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     const row = w.get('[data-test="countdown-row"]')
@@ -195,6 +200,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
@@ -224,6 +230,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const cells = mount(App, { global: { stubs } })
       .get('header')
