@@ -99,6 +99,12 @@
 			<groupId>tools.jackson.module</groupId>
 			<artifactId>jackson-module-kotlin</artifactId>
 		</dependency>
+		<dependency>
+			<!-- Pure-java MP3 decoder for the snippet pipeline - no ffmpeg in the image. -->
+			<groupId>javazoom</groupId>
+			<artifactId>jlayer</artifactId>
+			<version>1.0.1</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
