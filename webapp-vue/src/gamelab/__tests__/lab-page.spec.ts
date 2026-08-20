@@ -90,6 +90,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   tookOverRound: false,
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  myStage: 0,
 }
 
 /**

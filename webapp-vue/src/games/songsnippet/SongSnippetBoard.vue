@@ -140,26 +140,33 @@ onUnmounted(() => {
     </div>
 
     <div class="flex flex-col items-center gap-1">
-      <HoldButton
-        :ready="true"
-        :disabled="disabled || picked === null"
-        label="Tipp abgeben"
-        color="#f59e0b"
-        @confirm="picked !== null && emit('guess', picked)"
-      />
+      <!-- `HoldButton`'s root is `size-full` — a percentage of a parent this `items-center` column
+           never gives a width (see frontend-ui.md's sizing-trap note), so the explicit `h-20 w-20`
+           square below is what the button actually resolves its own size against. -->
+      <div class="h-20 w-20">
+        <HoldButton
+          :ready="true"
+          :disabled="disabled || picked === null"
+          label="Tipp abgeben"
+          color="#f59e0b"
+          @confirm="picked !== null && emit('guess', picked)"
+        />
+      </div>
       <span class="text-xs text-neutral-500">
         {{ phaseTwo ? 'kann die gesamte Runde verbrennen' : 'verbrennt höchstens diese Stufe' }}
       </span>
     </div>
 
     <div class="flex flex-col items-center gap-1">
-      <HoldButton
-        :ready="true"
-        :disabled="disabled"
-        label="Aufgeben"
-        color="#a3a3a3"
-        @confirm="emit('giveUp')"
-      />
+      <div class="h-14 w-14">
+        <HoldButton
+          :ready="true"
+          :disabled="disabled"
+          label="Aufgeben"
+          color="#a3a3a3"
+          @confirm="emit('giveUp')"
+        />
+      </div>
     </div>
   </div>
 </template>

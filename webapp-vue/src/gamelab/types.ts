@@ -22,6 +22,8 @@ export interface LabEntryDto {
   at: string
   /** The server always sends a number — `0` means "guessed and scored nothing". */
   points: number
+  /** The stage this entry was recorded at — same idea as `LabRoundResponse.myStage`, per entry. */
+  stage: number
 }
 
 export interface LabRoundResponse<P = unknown> {
@@ -41,4 +43,6 @@ export interface LabRoundResponse<P = unknown> {
   tookOverRound: boolean
   awardRule: LabAwardRule
   awardPoints: number
+  /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
+  myStage: number
 }

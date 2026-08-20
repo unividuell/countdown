@@ -20,7 +20,10 @@ export interface LabGameEntry {
  * game missing from here has no index entry and no renderer — the two lists are kept in step by
  * hand because there are, and will be, few of them.
  */
-export const labGameList: readonly LabGameEntry[] = [{ id: 'guess-hue', title: 'Farbausmalung' }]
+export const labGameList: readonly LabGameEntry[] = [
+  { id: 'guess-hue', title: 'Farbausmalung' },
+  { id: 'song-snippet', title: 'Anspielung' },
+]
 
 /** Lookup by URL segment, for the game page. */
 export const labGames: Record<string, Component> = gameComponents

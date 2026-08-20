@@ -19,7 +19,15 @@ import LabEntries from '@/gamelab/LabEntries.vue'
 import { labGames } from '@/gamelab/games'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
-import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
+import {
+  forgetMyLabEntry,
+  giveUpLabRound,
+  labAssetUrl,
+  openLabRound,
+  resetLabRound,
+  skipLabStage,
+  submitLabGuess,
+} from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
@@ -75,6 +83,14 @@ async function guess(value: unknown): Promise<void> {
   const current = seed.value
   if (current === null) return
   await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
+}
+
+/** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries one extra
+ * argument beyond `run`'s four-argument action shape. */
+async function skip(fromStage: number): Promise<void> {
+  const current = seed.value
+  if (current === null) return
+  await run((slug, game, s, p) => skipLabStage(slug, game, s, p, fromStage))
 }
 
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
@@ -200,7 +216,13 @@ watch(
       :mine-user-id="round.me?.userId ?? null"
       :award-rule="round.awardRule"
       :disabled="busy || round.me !== null"
+      :stage="round.myStage"
+      :asset-url="
+        (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
+      "
       @guess="guess"
+      @skip="skip"
+      @give-up="run(giveUpLabRound)"
     />
 
     <!-- No drawer close on these two: they are triggered from the column, where nothing is in
