@@ -1,5 +1,7 @@
 package org.unividuell.countdown.core.game.internal
 
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -67,4 +69,26 @@ class RoundController(
     ): RoundResponse = plays.giveUp(
         slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin, roundNumber = body.roundNumber,
     )
+
+    /**
+     * The round's binary assets, stage-gated. Round number and key ride in the URL so each pair is
+     * its own privately cacheable resource — without the round number, yesterday's cache would
+     * replay the wrong round.
+     */
+    @GetMapping("/current/assets/{roundNumber}/{key}")
+    fun asset(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable roundNumber: Int,
+        @PathVariable key: Int,
+    ): ResponseEntity<ByteArray> {
+        val asset = plays.asset(
+            slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin,
+            roundNumber = roundNumber, key = key,
+        )
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, asset.mediaType)
+            .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable")
+            .body(asset.bytes)
+    }
 }

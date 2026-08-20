@@ -4,6 +4,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.RoundAsset
+import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
@@ -147,6 +149,23 @@ class PlayService(
         if (spent == 0) throw AlreadyGuessedException()
         scoring.reevaluate(round)
         return responses.of(current = current.copy(roundGame = round), viewerId = userId)
+    }
+
+    /**
+     * One stored asset of the current round. The gate is framework state: unlocked stages stay
+     * fetchable ([key] <= the caller's stage), the solution asset opens with the spent guess.
+     */
+    @Transactional(readOnly = true)
+    fun asset(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int, key: Int): RoundAsset {
+        val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
+        if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
+        val roundGameId = requireNotNull(current.roundGame.id)
+        val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
+            ?: throw NotRevealedException()
+        val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage
+        if (!allowed) throw AssetForbiddenException()
+        return current.handle.asset(params = current.roundGame.params, roundGameId = roundGameId, key = key)
+            ?: throw AssetNotFoundException()
     }
 
     /**
