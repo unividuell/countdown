@@ -28,6 +28,8 @@ data class RoundPlay(
     val userId: UUID,
     val revealedAt: Instant,
     val revealCount: Int = 1,
+    /** Staged progression, 0-based. Advanced by skip or (phase one) a wrong non-terminal guess. */
+    val stage: Int = 0,
     val guess: JsonNode? = null,
     val guessedAt: Instant? = null,
     val qualifies: Boolean? = null,
