@@ -32,6 +32,7 @@ import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
+import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import java.util.UUID
 
 /**
@@ -41,8 +42,12 @@ import java.util.UUID
  * them, and mocking those beans in the real Spring context is what keeps this test out of
  * `game.internal` — constructing a [org.unividuell.countdown.core.game.internal.GuessHueGameType] by
  * hand would reach into the game module's internals, which `gamelab` may never import.
+ *
+ * [SongSnippetTestCatalogConfiguration] keeps `song-snippet` — addressed directly by id below, same as
+ * `guess-hue` — off the network and off the empty pool the test classpath's Deezer properties would
+ * otherwise leave it with.
  */
-@Import(TestcontainersConfiguration::class)
+@Import(TestcontainersConfiguration::class, SongSnippetTestCatalogConfiguration::class)
 @SpringBootTest
 class LabServiceTest(
     @Autowired val service: LabService,
@@ -80,6 +85,9 @@ class LabServiceTest(
     /** One valid guess per catalogue entry. A new game adds a branch here and the loop above covers it. */
     private fun aValidGuessFor(gameId: String): JsonNode = when (gameId) {
         "guess-hue" -> mapper.readTree("""{"hue":123.5}""")
+        // Shape-valid, not necessarily correct — same relationship to song-snippet's real target as
+        // this file's fixed hue has to guess-hue's: a legal guess is all "for every game there is" needs.
+        "song-snippet" -> mapper.readTree("""{"trackId":1}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 

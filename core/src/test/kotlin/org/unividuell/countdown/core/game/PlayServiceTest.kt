@@ -27,17 +27,27 @@ import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
+import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import java.security.SecureRandom
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 
+/**
+ * Every test here plays guess-hue specifically — its payload cast, its `{"hue":...}` guess shape, its
+ * `GuessHueSolution` — so `aCommunity` pins the current round to "guess-hue" via a direct
+ * [RoundGameStore.announce], bypassing [org.unividuell.countdown.core.game.internal.GameSelection]
+ * entirely: the same, already-documented pattern [PlayServiceStagedTest] and [RoundAssetGateTest] use
+ * for their own fake game types. Necessary now that the catalogue carries a second unconditional game
+ * (`song-snippet`), which selection could otherwise draw instead for any round created here.
+ */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @Transactional
@@ -52,6 +62,8 @@ class PlayServiceTest(
     @Autowired val clock: Clock,
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
+    @Autowired val store: RoundGameStore,
+    @Autowired val catalog: GameCatalog,
 ) {
     private fun aUser(login: String): UUID =
         requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
@@ -75,7 +87,25 @@ class PlayServiceTest(
             val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
             editions.save(edition.copy(phaseTwoStartRound = currentRoundNumberOf(community) + 10))
         }
+        announceGuessHue(community)
         return community to ownerId
+    }
+
+    private fun announceGuessHue(community: Community) {
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundNumber = currentRoundNumberOf(community)
+        val phase = Phase.of(edition = edition, roundNumber = roundNumber)
+        store.announce(
+            edition = edition,
+            roundNumber = roundNumber,
+            gameType = "guess-hue",
+            params = requireNotNull(catalog.handle("guess-hue")).draw(
+                random = GameRandom.independent(SecureRandom()),
+                context = RoundContext(roundNumber = roundNumber, phase = phase),
+            ),
+            award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = edition.phaseTwoStartRound),
+            announcedAt = clock.instant(),
+        )
     }
 
     private fun currentRoundNumberOf(community: Community): Int {

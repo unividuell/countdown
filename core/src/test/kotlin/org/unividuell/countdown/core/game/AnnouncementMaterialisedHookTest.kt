@@ -19,6 +19,7 @@ import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.time.Clock
@@ -31,17 +32,22 @@ import java.util.concurrent.CopyOnWriteArrayList
  * The three hooks [AnnouncementService.materialise] must fire, exercised through a fake [GameType]
  * that records every call it receives — [RecordingGame].
  *
- * The catalogue here carries two games — `guess-hue` (unconditional bean) and `recording-fake` (this
- * file's `@Import`) — so [org.unividuell.countdown.core.game.internal.GameSelection] may draw either
- * one for a freshly materialised round; see [PlayServiceStrictRevealTest] for why that risk is not
- * shared with the default context. Test (a) below therefore does not fight the selection: it asserts
- * conditionally on whichever type actually won. Test (b) needs no such guard — `releaseEarlierRounds`
- * calls every handle in the catalogue regardless of which type materialised the current round, so
- * `recording-fake` always sees the cleanup call. Test (c) plants two earlier rounds of different types
- * directly via [RoundGameStore.announce] and asserts, again conditionally on the winner, that only the
- * same-type params reached the draw.
+ * The catalogue here carries three games — `guess-hue` and `song-snippet` (both unconditional beans)
+ * and `recording-fake` (this file's `@Import`) — so [org.unividuell.countdown.core.game.internal.GameSelection]
+ * may draw any one of them for a freshly materialised round; see [PlayServiceStrictRevealTest] for why
+ * that risk is not shared with the default context. Test (a) below therefore does not fight the
+ * selection: it asserts conditionally on whichever type actually won. Test (b) needs no such guard —
+ * `releaseEarlierRounds` calls every handle in the catalogue regardless of which type materialised the
+ * current round, so `recording-fake` always sees the cleanup call. Test (c) plants two earlier rounds
+ * of different types directly via [RoundGameStore.announce] and asserts, again conditionally on the
+ * winner, that only the same-type params reached the draw. [SongSnippetTestCatalogConfiguration] keeps
+ * a `song-snippet` win from reaching the network or an empty pool.
  */
-@Import(TestcontainersConfiguration::class, AnnouncementMaterialisedHookTest.RecordingGame::class)
+@Import(
+    TestcontainersConfiguration::class,
+    AnnouncementMaterialisedHookTest.RecordingGame::class,
+    SongSnippetTestCatalogConfiguration::class,
+)
 @SpringBootTest
 @Transactional
 class AnnouncementMaterialisedHookTest(
