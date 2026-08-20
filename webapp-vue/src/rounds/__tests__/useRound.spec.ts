@@ -23,6 +23,7 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   userId: 'u1',
   username: 'Fry',
   avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },
+  stage: 0,
   revealedAt: '2026-08-14T11:00:00Z',
   guessedAt: null,
   guess: null,
@@ -132,6 +133,43 @@ describe('useRound', () => {
     await round().submit({ hue: 1 })
 
     expect(submitSpy).toHaveBeenCalledWith('team', 12, { hue: 1 })
+  })
+
+  it('sends the round number and the believed stage on skip', async () => {
+    vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
+    vi.spyOn(api, 'revealRound').mockResolvedValue(
+      announced({ me: aPlay(), payload: { description: 'x' } }),
+    )
+    const skipSpy = vi
+      .spyOn(api, 'skipStage')
+      .mockResolvedValue(announced({ me: aPlay({ stage: 1 }) }))
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    await round().skip(0)
+
+    expect(skipSpy).toHaveBeenCalledWith('team', 12, 0)
+  })
+
+  it('sends the round number on give-up', async () => {
+    vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
+    vi.spyOn(api, 'revealRound').mockResolvedValue(
+      announced({ me: aPlay(), payload: { description: 'x' } }),
+    )
+    const giveUpSpy = vi
+      .spyOn(api, 'giveUpRound')
+      .mockResolvedValue(announced({ me: aPlay({ guessedAt: '2026-08-14T12:00:00Z', points: 0 }) }))
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    await round().giveUp()
+
+    expect(giveUpSpy).toHaveBeenCalledWith('team', 12)
+    expect(round().stage.value).toBe('done')
   })
 
   it('reloads instead of claiming an error on a 409', async () => {

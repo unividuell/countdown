@@ -24,9 +24,14 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        stage: { type: Number, default: 0 },
+        assetUrl: { type: Function, default: null },
       },
-      emits: ['guess'],
-      template: '<button data-test="stub-guess" @click="$emit(\'guess\', 123)">guess</button>',
+      emits: ['guess', 'skip', 'give-up'],
+      template:
+        '<button data-test="stub-guess" @click="$emit(\'guess\', 123)">guess</button>' +
+        '<button data-test="stub-skip" @click="$emit(\'skip\', 1)">skip</button>' +
+        '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>',
     }),
   }
 })
@@ -37,6 +42,7 @@ const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   userId: 'o1',
   username: 'Leela',
   avatar: { shortName: 'LEE', bgColorHex: '#40bf7a' },
+  stage: 0,
   guess: null,
   outcome: null,
   points: null,
@@ -71,6 +77,9 @@ function mountCard(props: {
   notice?: string | null
   reveal?: () => Promise<void>
   submit?: (guess: unknown) => Promise<void>
+  skip?: (fromStage: number) => Promise<void>
+  giveUp?: () => Promise<void>
+  assetUrl?: (key: number) => string
 }): VueWrapper {
   return mount(RoundCard, {
     props: {
@@ -78,6 +87,9 @@ function mountCard(props: {
       notice: null,
       reveal: vi.fn().mockResolvedValue(undefined),
       submit: vi.fn().mockResolvedValue(undefined),
+      skip: vi.fn().mockResolvedValue(undefined),
+      giveUp: vi.fn().mockResolvedValue(undefined),
+      assetUrl: vi.fn().mockReturnValue('https://example.invalid/asset'),
       ...props,
     },
   })
@@ -119,6 +131,28 @@ describe('RoundCard', () => {
     const stub = mountCard({ round, stage: 'done' }).findComponent(StubGame)
 
     expect(stub.props('awardRule')).toBe('CLOSEST_ONLY')
+  })
+
+  it("hands the game its own stage and the round's asset-url builder", () => {
+    const assetUrl = vi.fn().mockReturnValue('https://example.invalid/asset/7')
+    const round = aRound({ me: aPlay({ stage: 2 }) })
+    const stub = mountCard({ round, stage: 'playing', assetUrl }).findComponent(StubGame)
+
+    expect(stub.props('stage')).toBe(2)
+    expect(stub.props('assetUrl')).toBe(assetUrl)
+  })
+
+  it('reaches skip and give-up through to the callbacks the page supplied', async () => {
+    const skip = vi.fn().mockResolvedValue(undefined)
+    const giveUp = vi.fn().mockResolvedValue(undefined)
+    const round = aRound({ me: aPlay() })
+    const w = mountCard({ round, stage: 'playing', skip, giveUp })
+
+    await w.get('[data-test="stub-skip"]').trigger('click')
+    expect(skip).toHaveBeenCalledWith(1)
+
+    await w.get('[data-test="stub-give-up"]').trigger('click')
+    expect(giveUp).toHaveBeenCalledOnce()
   })
 
   it('shows the result once the viewer has guessed', () => {

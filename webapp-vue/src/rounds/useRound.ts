@@ -1,7 +1,7 @@
 import { computed, onMounted, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { ApiError } from '@/api/client'
-import { getCurrentRound, revealRound, submitGuess } from '@/api/rounds'
+import { getCurrentRound, giveUpRound, revealRound, skipStage, submitGuess } from '@/api/rounds'
 import type { RoundResponse } from '@/api/types'
 
 /** Which of the card's faces the current answer calls for. */
@@ -15,6 +15,8 @@ export function useRound(slug: string): {
   notice: Ref<string | null>
   reveal: () => Promise<void>
   submit: (guess: unknown) => Promise<void>
+  skip: (fromStage: number) => Promise<void>
+  giveUp: () => Promise<void>
   reload: () => Promise<void>
 } {
   const round = ref<RoundResponse | null>(null)
@@ -81,6 +83,22 @@ export function useRound(slug: string): {
     })
   }
 
+  async function skip(fromStage: number): Promise<void> {
+    const number = round.value?.round?.number
+    if (number === undefined) return
+    await run(async () => {
+      round.value = await skipStage(slug, number, fromStage)
+    })
+  }
+
+  async function giveUp(): Promise<void> {
+    const number = round.value?.round?.number
+    if (number === undefined) return
+    await run(async () => {
+      round.value = await giveUpRound(slug, number)
+    })
+  }
+
   /**
    * A 409 is not an error to show: the round moved on, or it was already revealed or already guessed.
    * In every one of those cases the server knows better, so refetch and render the truth with one line
@@ -105,5 +123,5 @@ export function useRound(slug: string): {
   }
 
   onMounted(load)
-  return { round, state, stage, busy, notice, reveal, submit, reload }
+  return { round, state, stage, busy, notice, reveal, submit, skip, giveUp, reload }
 }

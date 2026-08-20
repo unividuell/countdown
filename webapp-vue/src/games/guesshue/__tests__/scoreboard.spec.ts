@@ -9,6 +9,7 @@ const LIGHTNESS = 0.45
 function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
   return {
     username: over.userId,
+    stage: 0,
     guess: { hue: 210 },
     outcome: { deviationDeg: 0, withinTolerance: true },
     points: 1,

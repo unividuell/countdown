@@ -12,6 +12,8 @@ export type GameEntry = {
   userId: string
   /** The display name, as the server resolved it. */
   username: string
+  /** Final stage of a finished play. */
+  stage: number
   guess: unknown
   /** What the game said about this guess. `null` for a game that judges without saying anything. */
   outcome: unknown
