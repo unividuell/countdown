@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
+import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 
 /**
  * Every game the client can render, by the id the server announces (`GameDto.id` for a real round,
@@ -11,4 +12,5 @@ import GuessHueGame from './guesshue/GuessHueGame.vue'
  */
 export const gameComponents: Record<string, Component> = {
   'guess-hue': GuessHueGame,
+  'song-snippet': SongSnippetGame,
 }
