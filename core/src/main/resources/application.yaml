@@ -39,6 +39,10 @@ app:
     # Locally it stays empty only on a machine without the age key: `.claude/launch.json` fills it
     # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
+  song-snippet:
+    # Public Deezer editorial playlists the pool merges ("Deutschland, deine Hits" 00er + 10er).
+    # A public catalogue, not game content — no sops, unlike guess-hue.
+    playlist-ids: 10396822102,10396828062
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
