@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game
 
 import tools.jackson.databind.JsonNode
+import java.util.UUID
 
 /**
  * What a game shows the player. It carries what is needed to play and **never the solution** — pinned
@@ -43,8 +44,22 @@ data class Judgement(
     val outcome: GameOutcome?,
 )
 
-/** What a game may know about the round it is drawing for. */
-data class RoundContext(val roundNumber: Int, val phase: Phase)
+/** What a game may know about the round it is drawing for. [previousParams] are the frozen params
+ *  of this edition's earlier rounds OF THE SAME GAME TYPE — for draws that avoid repetition. */
+data class RoundContext(
+    val roundNumber: Int,
+    val phase: Phase,
+    val previousParams: List<JsonNode> = emptyList(),
+)
+
+/** The asset key under which a round's solution audio/artefact hides behind the solution gate. */
+const val SOLUTION_ASSET_KEY = 99
+
+/**
+ * One binary artefact of a round — bytes plus how to serve them. A plain class, not a data class:
+ * ByteArray equality is identity, and nothing ever compares assets.
+ */
+class RoundAsset(val mediaType: String, val bytes: ByteArray)
 
 /**
  * A game the framework can announce.
@@ -115,6 +130,29 @@ interface GameType<P : Any> {
      * see [Judgement.deviation] and the withholding rule in `game-rounds.md`.
      */
     fun solution(params: P): GameSolution? = null
+
+    /** How many stages this game's rounds have. 1 — the default — means: no staged progression. */
+    fun stages(params: P): Int = 1
+
+    /**
+     * Compute the round's binary assets, keyed by stage plus [SOLUTION_ASSET_KEY]. Expensive — may
+     * perform network I/O. Called once per round by whoever owns the storage: [materialised] for a
+     * real round, the lab's in-memory store for a lab round.
+     */
+    fun produceAssets(params: P): Map<Int, RoundAsset> = emptyMap()
+
+    /**
+     * After the round row exists: produce and persist this round's assets — the game owns its
+     * storage. Must be idempotent: on an announce race both first callers run the materialisation
+     * branch, so the loser calls this a second time.
+     */
+    fun materialised(params: P, roundGameId: UUID) {}
+
+    /** One stored asset of a real round. The framework gates WHO may fetch; the game only fetches. */
+    fun asset(params: P, roundGameId: UUID, key: Int): RoundAsset? = null
+
+    /** These rounds no longer need their assets — delete what you stored for them. */
+    fun releaseAssets(roundGameIds: List<UUID>) {}
 }
 
 /**

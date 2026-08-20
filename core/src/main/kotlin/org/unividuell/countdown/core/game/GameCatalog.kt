@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game
 import org.springframework.stereotype.Component
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import java.util.UUID
 
 /**
  * One game, with its generic parameter captured, so the rest of the module can hold
@@ -35,6 +36,23 @@ class GameTypeHandle<P : Any>(
 
     /** Whether this round needs a deliberate reveal, from a stored `params` blob. */
     fun requiresReveal(params: JsonNode): Boolean = type.requiresReveal(paramsOf(params))
+
+    /** How many stages a round of this game has, from a stored `params` blob. */
+    fun stages(params: JsonNode): Int = type.stages(paramsOf(params))
+
+    /** Compute (expensively) the round's assets — the lab's path; the real round goes through [materialised]. */
+    fun produceAssets(params: JsonNode): Map<Int, RoundAsset> = type.produceAssets(paramsOf(params))
+
+    /** Produce and persist the round's assets — the game owns its storage. Idempotent. */
+    fun materialised(params: JsonNode, roundGameId: UUID) =
+        type.materialised(params = paramsOf(params), roundGameId = roundGameId)
+
+    /** One stored asset. The caller gates; this only fetches. */
+    fun asset(params: JsonNode, roundGameId: UUID, key: Int): RoundAsset? =
+        type.asset(params = paramsOf(params), roundGameId = roundGameId, key = key)
+
+    /** Forwarded verbatim — no params involved. */
+    fun releaseAssets(roundGameIds: List<UUID>) = type.releaseAssets(roundGameIds)
 
     /** The one place the `params` column and this game's `P` meet. */
     private fun paramsOf(params: JsonNode): P = mapper.treeToValue(params, type.paramsType)
