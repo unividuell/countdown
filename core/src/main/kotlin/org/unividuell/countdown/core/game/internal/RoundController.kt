@@ -46,4 +46,25 @@ class RoundController(
         roundNumber = body.roundNumber,
         guess = body.guess,
     )
+
+    /** Voluntary stage advance — „mehr hören“. Guarded by the stage the client believes it is on. */
+    @PostMapping("/current/skip")
+    fun skip(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @RequestBody body: SkipRequest,
+    ): RoundResponse = plays.skip(
+        slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin,
+        roundNumber = body.roundNumber, fromStage = body.fromStage,
+    )
+
+    /** The explicit exit without an answer. */
+    @PostMapping("/current/give-up")
+    fun giveUp(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @RequestBody body: GiveUpRequest,
+    ): RoundResponse = plays.giveUp(
+        slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin, roundNumber = body.roundNumber,
+    )
 }

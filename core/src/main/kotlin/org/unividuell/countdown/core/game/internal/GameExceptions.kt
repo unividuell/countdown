@@ -31,3 +31,6 @@ class AlreadyRevealedException(message: String = "this round has already been re
  */
 class RoundMovedOnException(current: Int) :
     RuntimeException("the current round is now $current")
+
+/** The staged reveal moved under the click (raced skip, raced wrong guess, or the top) → 409. */
+class StageMovedOnException(message: String = "the stage has moved on") : RuntimeException(message)

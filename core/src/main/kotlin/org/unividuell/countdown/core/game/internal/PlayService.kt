@@ -3,6 +3,8 @@ package org.unividuell.countdown.core.game.internal
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.time.Clock
@@ -76,12 +78,31 @@ class PlayService(
 
         // judge() before any write: an invalid guess must not consume the one attempt.
         val judgement = current.handle.judge(params = round.params, guess = guess)
+        val stages = current.handle.stages(round.params)
+        val action = guessActionFor(
+            rule = round.awardRule,
+            qualifies = judgement.qualifies,
+            stage = play.stage,
+            stages = stages,
+        )
+        if (action == GuessAction.ADVANCE_STAGE) {
+            // Judged and discarded on purpose: in phase one a wrong guess below the last stage only
+            // burns the stage. The terminal write below stays the only guess the row ever keeps.
+            val advanced = plays.advanceStage(
+                roundGameId = requireNotNull(round.id), userId = userId, expectedStage = play.stage,
+            )
+            if (advanced == 0) throw StageMovedOnException()
+            return responses.of(current = current.copy(roundGame = round), viewerId = userId)
+        }
+        // For a staged game the distance IS the stage — framework state the game cannot know. A
+        // single-stage game keeps the game's own distance.
+        val deviation = if (stages > 1) play.stage.toDouble() else judgement.deviation
         val recorded = plays.recordGuess(
             id = requireNotNull(play.id),
             guess = guess,
             guessedAt = clock.instant(),
             qualifies = judgement.qualifies,
-            deviation = judgement.deviation,
+            deviation = deviation,
             // Stored as the game shaped it — the framework never looks inside.
             outcome = judgement.outcome?.let { mapper.valueToTree(it) },
         )
@@ -94,13 +115,48 @@ class PlayService(
         return responses.of(current = current.copy(roundGame = round), viewerId = userId)
     }
 
+    /** Voluntary stage advance. Own row only — no round lock needed, the guard is the statement. */
+    @Transactional
+    fun skip(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int, fromStage: Int): RoundResponse {
+        val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
+        if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
+        val stages = current.handle.stages(current.roundGame.params)
+        // No skip off the top: the exits up there are the terminal guess, or giving up.
+        if (fromStage < 0 || fromStage >= stages - 1) throw StageMovedOnException()
+        val roundGameId = requireNotNull(current.roundGame.id)
+        val advanced = plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = fromStage)
+        if (advanced == 0) {
+            plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
+                ?: throw NotRevealedException()
+            throw StageMovedOnException()
+        }
+        return responses.of(current = current, viewerId = userId)
+    }
+
+    /** The explicit exit without an answer: spends the guess, scores 0, opens the solution gate. */
+    @Transactional
+    fun giveUp(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int): RoundResponse {
+        val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
+        if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
+        // Locked like a guess: the re-evaluation below reads and rewrites every guess of this round.
+        val round = store.lock(current.roundGame)
+        val roundGameId = requireNotNull(round.id)
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
+            ?: throw NotRevealedException()
+        val spent = plays.giveUp(roundGameId = roundGameId, userId = userId, guessedAt = clock.instant())
+        if (spent == 0) throw AlreadyGuessedException()
+        scoring.reevaluate(round)
+        return responses.of(current = current.copy(roundGame = round), viewerId = userId)
+    }
+
     /**
-     * The same gate for both actions: resolved, inside the window, and carrying a playable game.
+     * The same gate for every action: resolved, inside the window, and carrying a playable game.
      *
      * Always resolved as a plain member, never as a super-admin. [AnnouncementService.resolve]'s
-     * bypass exists so an admin may *look* without joining — a read. Revealing and guessing are
-     * writes: `game.round_plays` carries no membership FK, and under `CLOSEST_ONLY` an outsider's
-     * guess would move every real member's points to zero without ever showing up in the standings.
+     * bypass exists so an admin may *look* without joining — a read. Revealing, guessing, skipping
+     * and giving up are all writes: `game.round_plays` carries no membership FK, and under
+     * `CLOSEST_ONLY` an outsider's guess would move every real member's points to zero without ever
+     * showing up in the standings.
      * So [isSuperAdmin] never reaches [AnnouncementService] from here, unlike the announcement
      * endpoint, which still passes its own flag through unchanged.
      */
