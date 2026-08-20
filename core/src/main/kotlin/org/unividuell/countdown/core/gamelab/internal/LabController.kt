@@ -3,6 +3,8 @@ package org.unividuell.countdown.core.gamelab.internal
 import tools.jackson.databind.JsonNode
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -78,4 +80,50 @@ class LabController(private val service: LabService) {
         slug = slug, gameId = game, seed = seed, phase = phase,
         userId = me.id, isSuperAdmin = me.isSuperAdmin,
     )
+
+    /** Voluntary stage advance — „mehr hören“. Guarded by the stage the client believes it is on. */
+    @PostMapping("/skip")
+    fun skip(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+        @RequestBody body: LabSkipRequest,
+    ) = service.skip(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin, fromStage = body.fromStage,
+    )
+
+    /** The explicit exit without an answer. */
+    @PostMapping("/give-up")
+    fun giveUp(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ) = service.giveUp(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
+
+    /** The round's binary assets, stage-gated exactly like the real round's. */
+    @GetMapping("/assets/{key}")
+    fun asset(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @PathVariable key: Int,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ): ResponseEntity<ByteArray> {
+        val asset = service.asset(
+            slug = slug, gameId = game, seed = seed, phase = phase,
+            userId = me.id, isSuperAdmin = me.isSuperAdmin, key = key,
+        )
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_TYPE, asset.mediaType)
+            .body(asset.bytes)
+    }
 }

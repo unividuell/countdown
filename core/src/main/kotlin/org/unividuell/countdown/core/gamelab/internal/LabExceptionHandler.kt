@@ -13,15 +13,23 @@ import org.unividuell.countdown.core.game.InvalidGuessException
 @ConditionalOnProperty("app.game-lab.enabled")
 class LabExceptionHandler {
 
-    @ExceptionHandler(LabAccessDeniedException::class, UnknownLabGameException::class)
+    @ExceptionHandler(
+        LabAccessDeniedException::class,
+        UnknownLabGameException::class,
+        LabAssetNotFoundException::class,
+    )
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
-    @ExceptionHandler(AlreadyGuessedException::class)
+    @ExceptionHandler(AlreadyGuessedException::class, LabStageMovedOnException::class)
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "already guessed")
 
     @ExceptionHandler(InvalidGuessException::class)
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
+
+    @ExceptionHandler(LabAssetForbiddenException::class)
+    fun forbidden(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
 }

@@ -53,6 +53,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         me = null,
         others = emptyList(),
         tookOverRound = tookOver,
+        myStage = 0,
     )
 
     @Test
