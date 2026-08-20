@@ -6,6 +6,7 @@ import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.Award
 import tools.jackson.databind.JsonNode
 import java.time.Instant
+import java.util.UUID
 
 /**
  * The table, expressed in the terms the rest of the module thinks in: a run and a round number.
@@ -65,4 +66,17 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
             rounds.findByEditionIdAndRoundNumber(editionId = editionId, roundNumber = roundNumber),
         ) { "round $roundNumber of edition $editionId vanished right after it was announced" }
     }
+
+    /** The frozen params of this edition's earlier rounds of [gameType] — what a draw may avoid. */
+    @Transactional(readOnly = true)
+    fun previousParams(edition: CommunityEdition, gameType: String): List<JsonNode> =
+        rounds.findByEditionIdAndGameType(
+            editionId = requireNotNull(edition.id),
+            gameType = gameType,
+        ).map { it.params }
+
+    /** Every round id of [edition] except [roundNumber] — the rounds whose assets may go. */
+    @Transactional(readOnly = true)
+    fun roundIdsExcept(edition: CommunityEdition, roundNumber: Int): List<UUID> =
+        rounds.idsOfOtherRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
 }
