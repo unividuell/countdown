@@ -46,6 +46,9 @@ watch(
 
 function onGuess(hit: SongSuggestion): void {
   notice.value = null
+  // A skip whose request never landed (a raced 409) leaves its flag standing; clearing it here
+  // keeps that stale flag from swallowing the verdict on this guess.
+  skipPending = false
   emit('guess', { trackId: hit.trackId, artist: hit.artist, title: hit.title })
 }
 
@@ -61,7 +64,7 @@ function onSkip(fromStage: number): void {
     :solution="solution as SongSnippetSolution"
     :durations="durations"
     :entries="entries"
-    :mine-user-id="mineUserId"
+    :award-rule="awardRule"
     :asset-url="assetUrl"
   />
   <SongSnippetBoard

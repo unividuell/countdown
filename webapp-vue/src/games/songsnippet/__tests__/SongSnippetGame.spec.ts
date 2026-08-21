@@ -53,4 +53,19 @@ describe('SongSnippetGame', () => {
       'Falsch — nächste Stufe frei.',
     )
   })
+
+  it('still reports a wrong guess after a skip whose request never landed', async () => {
+    // A raced skip 409s: the stage never grows, so the skip's own flag is still standing. It must
+    // not swallow the verdict on the guess that follows.
+    const w = mountGame(0)
+    const board = w.findComponent({ name: 'SongSnippetBoard' })
+
+    await board.vm.$emit('skip', 0)
+    await board.vm.$emit('guess', { trackId: 1, artist: 'Eagles', title: 'Hotel California' })
+    await w.setProps({ stage: 1 })
+
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).props('notice')).toBe(
+      'Falsch — nächste Stufe frei.',
+    )
+  })
 })

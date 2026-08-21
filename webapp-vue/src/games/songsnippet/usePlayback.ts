@@ -2,6 +2,13 @@ import { onUnmounted, ref } from 'vue'
 import type { Ref } from 'vue'
 
 /**
+ * The one clip currently sounding, across every instance of this composable. Two players exist on
+ * the reveal alone (the solution and whichever wrong guess was tapped), and hearing both at once
+ * is never what anybody wanted — so starting one stops the other, here rather than in each caller.
+ */
+let sounding: { pause: () => void } | null = null
+
+/**
  * One audio element, owned here. `restart()` is the play button's whole semantics: always from the
  * start, never a toggle — pausing is a separate, smaller control. Position is sampled with
  * requestAnimationFrame while playing, because `timeupdate` (~4 Hz) is too coarse for a progress
@@ -25,11 +32,16 @@ export function usePlayback(): {
     positionSeconds.value = audio.currentTime
     if (!audio.paused) raf = requestAnimationFrame(sample)
   }
+  const self = { pause: (): void => audio.pause() }
+
   audio.addEventListener('play', () => {
+    if (sounding !== null && sounding !== self) sounding.pause()
+    sounding = self
     playing.value = true
     raf = requestAnimationFrame(sample)
   })
   const stop = (): void => {
+    if (sounding === self) sounding = null
     playing.value = false
     cancelAnimationFrame(raf)
     positionSeconds.value = audio.currentTime

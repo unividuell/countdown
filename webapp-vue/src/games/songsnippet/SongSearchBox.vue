@@ -12,30 +12,14 @@ const emit = defineEmits<{ select: [SongSuggestion] }>()
 
 const query = ref('')
 const suggestions = ref<SongSuggestion[]>([])
-const selected = ref<SongSuggestion | null>(null)
 
 /** Only the newest answer may win — the routeData/useProfileDraft guard. */
 let generation = 0
 let abort: AbortController | null = null
 
-/**
- * The exact text `choose()` last wrote into `query`. Compared against the *settled* value the
- * debounced watcher sees, not against the write itself: a one-shot "skip the next callback" flag
- * would misfire here, because `watchDebounced` coalesces bursts — if the user keeps typing within
- * the debounce window right after a pick, the callback that finally fires reflects that *later*
- * edit, not the pick's own write, and a one-shot flag would wrongly swallow it. Comparing text
- * instead answers the actual question — "is the query still exactly what was just picked?" — no
- * matter how many writes happened in between.
- */
-let selectedLabel = ''
-
 watchDebounced(
   query,
   async (q) => {
-    // The pick's own text landing in `query` must not re-search or reopen the dropdown — but any
-    // edit away from it (even back to the same text is treated as a fresh choice) is real input.
-    if (selected.value !== null && q === selectedLabel) return
-    selected.value = null
     abort?.abort()
     if (q.trim().length < MIN_QUERY_LENGTH) {
       suggestions.value = []
@@ -53,11 +37,21 @@ watchDebounced(
   { debounce: SEARCH_DEBOUNCE_MS },
 )
 
-function choose(hit: SongSuggestion): void {
-  selected.value = hit
-  selectedLabel = `${hit.artist} — ${hit.title}`
-  query.value = selectedLabel
+/**
+ * Emptied, not filled with the pick: picking IS submitting the guess, so the field's next job is
+ * the next guess — and an empty query cannot re-trigger the search the way the pick's own text
+ * could. Bumping the generation makes an in-flight answer inert instead of repopulating a dropdown
+ * the player already closed.
+ */
+function reset(): void {
+  abort?.abort()
+  generation++
+  query.value = ''
   suggestions.value = []
+}
+
+function choose(hit: SongSuggestion): void {
+  reset()
   emit('select', hit)
 }
 </script>
@@ -68,10 +62,20 @@ function choose(hit: SongSuggestion): void {
       v-model="query"
       type="text"
       data-test="song-search"
-      class="h-11 w-full rounded-full border border-neutral-300 bg-white px-4 text-sm"
-      placeholder="Song suchen…"
+      class="h-11 w-full rounded-full border border-neutral-300 bg-white pr-11 pl-4 text-sm"
+      placeholder="Song suchen und tippen…"
       :disabled="disabled"
     />
+    <button
+      v-if="query.length > 0"
+      type="button"
+      data-test="song-search-clear"
+      class="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-lg text-neutral-400 hover:text-neutral-600"
+      aria-label="Eingabe löschen"
+      @click="reset()"
+    >
+      ×
+    </button>
     <ul
       v-if="suggestions.length > 0"
       class="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
-import HoldButton from '@/ui/HoldButton.vue'
 import { fetchAssetBlob } from '@/api/assets'
+import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
 import { usePlayback } from './usePlayback'
@@ -24,14 +24,13 @@ const emit = defineEmits<{
 }>()
 
 const playback = usePlayback()
-const picked = ref<SongSuggestion | null>(null)
 const loadingStage = ref(false)
 
 const totalSeconds = computed(() => props.durations[props.durations.length - 1] ?? 15)
 const unlockedSeconds = computed(() => props.durations[props.stage] ?? 0)
 const lastStage = computed(() => props.stage >= props.durations.length - 1)
 const phaseTwo = computed(() => props.awardRule === 'CLOSEST_ONLY')
-const stageLabel = computed(() => `${String(unlockedSeconds.value).replace('.', ',')}s`)
+const skipCost = computed(() => (phaseTwo.value ? 'kann den Sieg kosten' : 'kostet nur Ruhm'))
 
 let objectUrl: string | null = null
 /**
@@ -43,7 +42,7 @@ let objectUrl: string | null = null
 let stageGeneration = 0
 watch(
   () => props.stage,
-  async (stage) => {
+  async (stage, previous) => {
     const mine = ++stageGeneration
     loadingStage.value = true
     try {
@@ -52,6 +51,10 @@ watch(
       if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
       objectUrl = URL.createObjectURL(blob)
       playback.setSource(objectUrl)
+      // A stage only ever grows by skipping or by guessing wrong, and both mean „let me hear the
+      // longer one" — so the new clip plays itself. `previous` is undefined on the immediate run:
+      // arriving at a round must not start sounding on its own.
+      if (previous !== undefined) playback.restart()
     } catch (err) {
       console.error('[song-snippet] stage audio failed', err)
     } finally {
@@ -66,15 +69,34 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-5 rounded-xl border border-neutral-200 bg-white p-5">
-    <!-- Reserved from the start: the real cover lands in exactly this box after the reveal, so
-         the layout never jumps on submitting a guess. -->
-    <div
-      class="mx-auto flex h-32 w-32 items-center justify-center rounded-xl bg-neutral-100 text-5xl text-neutral-400"
-      data-test="cover-placeholder"
-    >
-      ?
+  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-5">
+    <!-- The cover's row, laid out exactly like the reveal's: the box stays horizontally centered
+         (both side tracks `minmax(0,1fr)`, so neither one's content can push it off-axis) and only
+         the give-up button rides along in the right track. -->
+    <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start">
+      <span class="min-w-0" />
+      <div
+        class="flex h-32 w-32 items-center justify-center rounded-xl bg-neutral-100 text-5xl text-neutral-400"
+        data-test="cover-placeholder"
+      >
+        ?
+      </div>
+      <span class="min-w-0 justify-self-end">
+        <button
+          type="button"
+          data-test="give-up"
+          class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+          :disabled="disabled"
+          @click="emit('giveUp')"
+        >
+          Aufgeben
+        </button>
+      </span>
     </div>
+
+    <!-- The slot the reveal fills with „Titel · Artist“, held open here so nothing below it moves
+         when the round resolves. -->
+    <p class="h-6 text-center text-sm leading-6" aria-hidden="true" data-test="title-slot"></p>
 
     <StageBar
       :durations="durations"
@@ -83,12 +105,21 @@ onUnmounted(() => {
       :position-seconds="playback.positionSeconds.value"
     />
 
-    <!-- The big play button stays horizontally centered; the smaller pause pays for the
-         asymmetry, never the centering. `minmax(0,1fr)` (not a bare `1fr`) on both side tracks —
-         a bare `1fr` keeps room for its content's own auto-minimum width, so the wider right
-         column (pause button + label) would push the center track off-axis. -->
+    <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
+         skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift the
+         middle. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-      <span class="min-w-0" />
+      <span class="min-w-0 justify-self-end pr-4">
+        <button
+          type="button"
+          data-test="pause"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
+          aria-label="Pause"
+          @click="playback.pause()"
+        >
+          <PlayerIcon name="pause" />
+        </button>
+      </span>
       <button
         type="button"
         data-test="play"
@@ -97,76 +128,34 @@ onUnmounted(() => {
         aria-label="Von vorn abspielen"
         @click="playback.restart()"
       >
-        ▶
+        <PlayerIcon name="play" />
       </button>
-      <span class="flex min-w-0 items-center gap-3 justify-self-start pl-4">
-        <button
-          type="button"
-          data-test="pause"
-          class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-sm"
-          aria-label="Pause"
-          @click="playback.pause()"
-        >
-          ⏸
-        </button>
-        <span class="font-mono text-sm text-amber-600" data-test="stage-label">{{
-          stageLabel
-        }}</span>
-      </span>
-    </div>
-
-    <p v-if="notice" class="text-center text-sm text-amber-700" data-test="song-notice">
-      {{ notice }}
-    </p>
-
-    <div class="flex items-start gap-3">
-      <div class="min-w-0 flex-1">
-        <SongSearchBox :disabled="disabled" @select="picked = $event" />
-      </div>
-      <div class="flex flex-col items-end">
+      <span class="min-w-0 justify-self-start pl-4">
+        <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
+             costs glory, quiet red once it can cost the round. -->
         <button
           type="button"
           data-test="skip"
-          class="h-11 cursor-pointer rounded-full border border-neutral-300 px-4 text-sm disabled:opacity-40"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
+          :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
           :disabled="disabled || lastStage"
+          aria-label="Nächste Stufe freischalten"
+          :title="`Nächste Stufe freischalten — ${skipCost}`"
           @click="emit('skip', stage)"
         >
-          ⏭ Skip
+          <PlayerIcon name="skip" />
         </button>
-        <span class="mt-1 text-xs text-neutral-500">
-          {{ phaseTwo ? 'kann den Sieg kosten' : 'kostet nur Ruhm' }}
-        </span>
-      </div>
-    </div>
-
-    <div class="flex flex-col items-center gap-1">
-      <!-- `HoldButton`'s root is `size-full` — a percentage of a parent this `items-center` column
-           never gives a width (see frontend-ui.md's sizing-trap note), so the explicit `h-20 w-20`
-           square below is what the button actually resolves its own size against. -->
-      <div class="h-20 w-20">
-        <HoldButton
-          :ready="true"
-          :disabled="disabled || picked === null"
-          label="Tipp abgeben"
-          color="#f59e0b"
-          @confirm="picked !== null && emit('guess', picked)"
-        />
-      </div>
-      <span class="text-xs text-neutral-500">
-        {{ phaseTwo ? 'kann die gesamte Runde verbrennen' : 'verbrennt höchstens diese Stufe' }}
       </span>
     </div>
 
-    <div class="flex flex-col items-center gap-1">
-      <div class="h-14 w-14">
-        <HoldButton
-          :ready="true"
-          :disabled="disabled"
-          label="Aufgeben"
-          color="#a3a3a3"
-          @confirm="emit('giveUp')"
-        />
-      </div>
+    <!-- Always present, so a verdict appearing never pushes the search field down. -->
+    <p class="h-5 text-center text-sm text-amber-700" data-test="song-notice">{{ notice }}</p>
+
+    <div>
+      <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />
+      <p class="mt-1.5 text-center text-xs text-neutral-500">
+        {{ phaseTwo ? 'kann die gesamte Runde verbrennen' : 'verbrennt höchstens diese Stufe' }}
+      </p>
     </div>
   </div>
 </template>

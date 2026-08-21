@@ -1,15 +1,51 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { Mock } from 'vitest'
+import type { Ref } from 'vue'
 import type { GameEntry } from '@/games/GameEntry'
 import SongSnippetReveal from '@/games/songsnippet/SongSnippetReveal.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
 import type { TrackPreview } from '@/games/songsnippet/api'
+
+interface PlaybackStub {
+  positionSeconds: Ref<number>
+  playing: Ref<boolean>
+  setSource: Mock
+  restart: Mock
+  pause: Mock
+  dispose: Mock
+}
 
 const { resolveTrack } = vi.hoisted(() => ({ resolveTrack: vi.fn() }))
 vi.mock('@/games/songsnippet/api', () => ({ resolveTrack }))
 
 const { fetchAssetBlob } = vi.hoisted(() => ({ fetchAssetBlob: vi.fn() }))
 vi.mock('@/api/assets', () => ({ fetchAssetBlob }))
+
+/**
+ * The real composable owns an `Audio` element happy-dom cannot sound, and `playing` is exactly the
+ * state the play/pause toggle reads — so it is stubbed, and the stubs are collected in call order:
+ * `[0]` is the solution player the component creates first, `[1]` the one for guesses.
+ */
+const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
+vi.mock('@/games/songsnippet/usePlayback', async () => {
+  const { ref } = await import('vue')
+  const { vi: vitest } = await import('vitest')
+  return {
+    usePlayback: () => {
+      const stub: PlaybackStub = {
+        positionSeconds: ref(0),
+        playing: ref(false),
+        setSource: vitest.fn(),
+        restart: vitest.fn(),
+        pause: vitest.fn(),
+        dispose: vitest.fn(),
+      }
+      playbacks.push(stub)
+      return stub
+    },
+  }
+})
 
 const DURATIONS = [0.1, 0.5, 2, 8, 15]
 
@@ -36,26 +72,75 @@ function mountReveal(props: {
   solution?: SongSnippetSolution
   durations?: number[]
   entries?: GameEntry[]
-  mineUserId?: string | null
+  awardRule?: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null
 }) {
   return mount(SongSnippetReveal, {
     props: {
       solution: props.solution ?? SOLUTION,
       durations: props.durations ?? DURATIONS,
       entries: props.entries ?? [],
-      mineUserId: props.mineUserId ?? null,
+      awardRule: props.awardRule ?? null,
       assetUrl: (key: number) => `/assets/${key}`,
     },
   })
 }
 
+const wrongGuess = (userId: string, trackId: number | null = 920082) =>
+  entry({
+    userId,
+    guess:
+      trackId === null
+        ? { artist: 'Jackson 5', title: 'ABC' }
+        : { trackId, artist: 'Jackson 5', title: 'ABC' },
+    outcome: { correct: false },
+  })
+
 describe('SongSnippetReveal', () => {
   beforeEach(() => {
     resolveTrack.mockReset()
     fetchAssetBlob.mockReset()
+    playbacks.length = 0
+    URL.createObjectURL = vi.fn(() => 'blob:solution')
+    URL.revokeObjectURL = vi.fn()
   })
 
-  it('sorts the scoreboard by points, descending', () => {
+  it('puts the Deezer link on the cover itself, opening in a new tab', () => {
+    const w = mountReveal({})
+
+    const link = w.get('[data-test="deezer-link"]')
+    expect(link.attributes('href')).toBe(SOLUTION.link)
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.attributes('rel')).toContain('noopener')
+    expect(link.get('img[data-test="cover"]').attributes('src')).toBe(SOLUTION.coverUrl)
+  })
+
+  it('falls back to the note emoji when there is no cover, keeping the link', () => {
+    const w = mountReveal({ solution: { ...SOLUTION, coverUrl: null } })
+
+    expect(w.find('img[data-test="cover"]').exists()).toBe(false)
+    expect(w.get('[data-test="deezer-link"]').text()).toContain('🎵')
+  })
+
+  it('names the song on one line, title and artist split by a middle dot', () => {
+    const w = mountReveal({})
+
+    expect(w.get('[data-test="solution-line"]').text()).toBe('Das geht ab · Die Atzen')
+  })
+
+  it('heads the scoreboard like Guess Hue: a title and the four column labels', () => {
+    const w = mountReveal({ entries: [entry({ userId: 'a' })] })
+
+    const table = w.get('[data-test="song-scoreboard"]')
+    expect(table.get('h2').text()).toBe('Auswertung')
+    expect(table.findAll('thead th').map((th) => th.text())).toEqual([
+      'Name',
+      'Tipp',
+      'Zeit',
+      'Pkt',
+    ])
+  })
+
+  it('ranks the rows and paints each one in its player colour', () => {
     const entries = [
       entry({ userId: 'low', points: 1 }),
       entry({ userId: 'high', points: 5 }),
@@ -63,106 +148,27 @@ describe('SongSnippetReveal', () => {
     ]
     const w = mountReveal({ entries })
 
-    const names = w
-      .get('[data-test="song-scoreboard"]')
-      .findAll('tr')
-      .map((tr) => tr.get('td').text())
-
-    expect(names).toEqual(['high', 'mid', 'low'])
+    const rows = w.get('[data-test="song-scoreboard"]').findAll('tbody tr')
+    expect(rows.map((tr) => tr.get('th').text())).toEqual(['high', 'mid', 'low'])
+    expect(rows[0]!.get('th').attributes('style')).toContain('background-color')
   })
 
-  it("bolds the viewer's own row and no other", () => {
-    const entries = [entry({ userId: 'me', points: 1 }), entry({ userId: 'them', points: 2 })]
-    const w = mountReveal({ entries, mineUserId: 'me' })
-
-    const rows = w.get('[data-test="song-scoreboard"]').findAll('tr')
-    const mine = rows.find((tr) => tr.text().includes('me'))!
-    const theirs = rows.find((tr) => tr.text().includes('them'))!
-
-    expect(mine.classes()).toContain('font-semibold')
-    expect(theirs.classes()).not.toContain('font-semibold')
-  })
-
-  it('labels a correct guess in green, with no anhören button', () => {
+  it('offers playback for a wrong guess that carries a track id, and for nothing else', () => {
     const entries = [
-      entry({
-        userId: 'winner',
-        guess: { trackId: 1, artist: 'Die Atzen', title: 'Das geht ab' },
-        outcome: { correct: true },
-      }),
+      wrongGuess('wrong'),
+      entry({ userId: 'right', guess: { trackId: 1 }, outcome: { correct: true } }),
+      wrongGuess('no-id', null),
+      entry({ userId: 'quitter', guess: null }),
     ]
     const w = mountReveal({ entries })
 
-    const label = w.get('[data-test="song-scoreboard"] tr')
-    expect(label.text()).toContain('Die Atzen — Das geht ab')
-    expect(label.get('span').classes()).toContain('text-emerald-700')
-    expect(label.find('[data-test="play-guess"]').exists()).toBe(false)
+    const rows = w.get('[data-test="song-scoreboard"]').findAll('tbody tr')
+    const playable = rows.filter((tr) => tr.find('[data-test="play-guess"]').exists())
+    expect(playable).toHaveLength(1)
+    expect(playable[0]!.get('th').text()).toBe('wrong')
   })
 
-  it('labels a wrong guess in neutral, with an anhören button when it carries a trackId', () => {
-    const entries = [
-      entry({
-        userId: 'wrong',
-        guess: { trackId: 920082, artist: 'Jackson 5', title: 'ABC' },
-        outcome: { correct: false },
-      }),
-    ]
-    const w = mountReveal({ entries })
-
-    const row = w.get('[data-test="song-scoreboard"] tr')
-    expect(row.text()).toContain('Jackson 5 — ABC')
-    expect(row.get('span').classes()).toContain('text-neutral-500')
-    expect(row.get('[data-test="play-guess"]').text()).toBe('anhören')
-  })
-
-  it('hides the anhören button for a wrong guess without a trackId', () => {
-    const entries = [
-      entry({
-        userId: 'wrong',
-        guess: { artist: 'Jackson 5', title: 'ABC' },
-        outcome: { correct: false },
-      }),
-    ]
-    const w = mountReveal({ entries })
-
-    expect(w.find('[data-test="play-guess"]').exists()).toBe(false)
-  })
-
-  it('renders „— aufgegeben —“ for a guess-less entry, with no anhören button', () => {
-    const entries = [entry({ userId: 'quitter', guess: null, outcome: null })]
-    const w = mountReveal({ entries })
-
-    const row = w.get('[data-test="song-scoreboard"] tr')
-    expect(row.text()).toContain('— aufgegeben —')
-    expect(row.find('[data-test="play-guess"]').exists()).toBe(false)
-  })
-
-  it('renders the reached stage duration in the stage column', () => {
-    const entries = [entry({ userId: 'a', stage: 3 })]
-    const w = mountReveal({ entries, durations: DURATIONS })
-
-    expect(w.get('[data-test="song-scoreboard"] tr').text()).toContain('8s')
-  })
-
-  it('renders the solution title, artist, cover and Deezer link', () => {
-    const w = mountReveal({})
-
-    expect(w.get('img[data-test="cover"]').attributes('src')).toBe(SOLUTION.coverUrl)
-    expect(w.text()).toContain(SOLUTION.title)
-    expect(w.text()).toContain(SOLUTION.artist)
-    const link = w.get('a')
-    expect(link.attributes('href')).toBe(SOLUTION.link)
-    expect(link.text()).toBe('Auf Deezer öffnen')
-  })
-
-  it('falls back to the note emoji when there is no cover', () => {
-    const w = mountReveal({ solution: { ...SOLUTION, coverUrl: null } })
-
-    expect(w.find('img[data-test="cover"]').exists()).toBe(false)
-    expect(w.text()).toContain('🎵')
-  })
-
-  it("resolves and plays a wrong guess's track when its anhören button is clicked", async () => {
+  it("resolves a wrong guess's track and plays it from Deezer", async () => {
     resolveTrack.mockResolvedValue({
       trackId: 920082,
       artist: 'Jackson 5',
@@ -171,32 +177,70 @@ describe('SongSnippetReveal', () => {
       link: 'https://www.deezer.com/track/920082',
       previewUrl: 'https://cdnt-preview.dzcdn.net/whatever.mp3',
     } satisfies TrackPreview)
-    const entries = [
-      entry({
-        userId: 'wrong',
-        guess: { trackId: 920082, artist: 'Jackson 5', title: 'ABC' },
-        outcome: { correct: false },
-      }),
-    ]
-    const w = mountReveal({ entries })
+    const w = mountReveal({ entries: [wrongGuess('wrong')] })
 
     await w.get('[data-test="play-guess"]').trigger('click')
+    await Promise.resolve()
 
     expect(resolveTrack).toHaveBeenCalledWith(920082)
+    const guessPlayer = playbacks[1]!
+    expect(guessPlayer.setSource).toHaveBeenCalledWith(
+      'https://cdnt-preview.dzcdn.net/whatever.mp3',
+    )
+    expect(guessPlayer.restart).toHaveBeenCalled()
   })
 
-  it('does nothing when the anhören button is clicked for a guess without a trackId', async () => {
-    // Defensive: the button is not rendered for this case (see above), but a wiring change that
-    // let it through must not silently resolve an undefined track id either.
-    const entries = [
-      entry({
-        userId: 'wrong',
-        guess: { artist: 'Jackson 5', title: 'ABC' },
-        outcome: { correct: false },
-      }),
-    ]
-    mountReveal({ entries })
+  it('turns the same button into pause while that guess sounds, and pauses on the next tap', async () => {
+    resolveTrack.mockResolvedValue({
+      trackId: 920082,
+      artist: 'Jackson 5',
+      title: 'ABC',
+      coverUrl: null,
+      link: 'https://www.deezer.com/track/920082',
+      previewUrl: 'https://cdnt-preview.dzcdn.net/whatever.mp3',
+    } satisfies TrackPreview)
+    const w = mountReveal({ entries: [wrongGuess('wrong')] })
+    const button = w.get('[data-test="play-guess"]')
+    expect(button.attributes('aria-label')).toBe('Tipp anhören')
 
-    expect(resolveTrack).not.toHaveBeenCalled()
+    await button.trigger('click')
+    await Promise.resolve()
+    // What the `play` event would report on a real element.
+    playbacks[1]!.playing.value = true
+    await w.vm.$nextTick()
+
+    expect(button.attributes('aria-label')).toBe('Pause')
+
+    await button.trigger('click')
+    expect(playbacks[1]!.pause).toHaveBeenCalled()
+    expect(resolveTrack).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads the solution clip on the first tap only, then replays it', async () => {
+    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
+    const w = mountReveal({})
+
+    await w.get('[data-test="play-solution"]').trigger('click')
+    await Promise.resolve()
+    await w.get('[data-test="play-solution"]').trigger('click')
+    await Promise.resolve()
+
+    expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/99')
+    expect(playbacks[0]!.restart).toHaveBeenCalledTimes(2)
+  })
+
+  it('flags points as live only while the closest guess alone is paid', () => {
+    const entries = [entry({ userId: 'a', points: 5 })]
+
+    expect(
+      mountReveal({ entries, awardRule: 'CLOSEST_ONLY' })
+        .find('[data-test="song-scoreboard-live"]')
+        .exists(),
+    ).toBe(true)
+    expect(
+      mountReveal({ entries, awardRule: 'ALL_QUALIFYING' })
+        .find('[data-test="song-scoreboard-live"]')
+        .exists(),
+    ).toBe(false)
   })
 })
