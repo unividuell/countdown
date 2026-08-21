@@ -151,3 +151,21 @@ racing each other cannot both win.
 game twice in a row" would need one row. That makes the next rule a change to a pure function instead
 of to a query, a service and their tests. Legitimate as long as the full input is cheap — here a few
 dozen two-column rows, once per round.
+
+## Stages generalise the framework, not the game
+
+`round_plays.stage` belongs to the framework, not to any one game: a single-stage game (Guess Hue)
+just always writes the constant `0`. For a staged round, the recorded `deviation` **is** the stage —
+the framework overrides whatever the game returns with the stage number, and the game's own
+`deviation` is a meaningless `0.0` that never reaches storage. "A wrong guess below the last stage
+advances the round instead of recording it" is not universal — it holds only under `ALL_QUALIFYING`;
+`CLOSEST_ONLY` (phase two) is always terminal on the first guess, whatever the stage, because only one
+guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
+the lab replays the exact rule a real round applies instead of a copy of it. Giving up is `guessed_at`
+set with no `guess` — re-evaluation reads that as not qualifying, awards zero points, and opens the
+solution gate the same way a judged-and-lost guess would. Binary round assets follow the same
+stage-gating: they live behind the framework's own URL
+(`/api/communities/{slug}/rounds/current/assets/{roundNumber}/{key}`, where key `99` is the solution,
+reachable only once the guess is spent), while a catalogue-wide lookup (search, track metadata) is
+served from the module's own URL (`/api/song-snippet/...`) — searching the whole catalogue reveals
+nothing about which song the round chose, so it needs no round gate at all.
