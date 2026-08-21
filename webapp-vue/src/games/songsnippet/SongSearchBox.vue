@@ -10,7 +10,7 @@
  * identifying weight, with title and artist written over its foot on white so they stay legible
  * whatever the artwork does.
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import TickerLine from './TickerLine.vue'
 import { searchSongs } from './api'
@@ -30,6 +30,7 @@ const suggestions = ref<SongSuggestion[]>([])
 /** True from the moment a request goes out until its answer lands — the empty slots then spin. */
 const searching = ref(false)
 const field = ref<HTMLInputElement | null>(null)
+const box = ref<HTMLElement | null>(null)
 
 /** Only the newest answer may win — the routeData/useProfileDraft guard. */
 let generation = 0
@@ -58,6 +59,19 @@ watchDebounced(
     }
   },
   { debounce: SEARCH_DEBOUNCE_MS },
+)
+
+/**
+ * A new set of hits is read from its first row: whatever the player scrolled down to belonged to the
+ * previous search, and leaving the box parked there hides the very hits that just arrived. After the
+ * DOM has taken them, so the box is measured against its new content and not the old one.
+ */
+watch(
+  suggestions,
+  () => {
+    if (box.value !== null) box.value.scrollTop = 0
+  },
+  { flush: 'post' },
 )
 
 /**
@@ -132,6 +146,7 @@ const blanks = computed(() => {
          keeps the height proportional on any width. The sliver of the third row is what says „there
          is more" — the scrollbar itself is hidden so the grid keeps the card's full width. -->
     <div
+      ref="box"
       class="scrollbar-hidden mt-2 aspect-[15/11] overflow-y-auto"
       data-test="song-suggestions-box"
     >

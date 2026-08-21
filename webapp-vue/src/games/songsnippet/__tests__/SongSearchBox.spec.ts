@@ -157,6 +157,20 @@ describe('SongSearchBox', () => {
     expect(w.findAll('[data-test="song-hit-blank"]')).toHaveLength(1)
   })
 
+  it('scrolls the strip back to the top whenever new hits arrive', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    await typeAndSettle(w, 'hotel')
+
+    const box = w.get('[data-test="song-suggestions-box"]').element
+    box.scrollTop = 40
+    searchSongs.mockResolvedValue([
+      { trackId: 3, artist: 'Nena', title: '99 Luftballons', coverUrl: null },
+    ])
+    await typeAndSettle(w, 'luftballons')
+
+    expect(box.scrollTop).toBe(0)
+  })
+
   it('writes each hit over its own cover, title above artist', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
     await typeAndSettle(w, 'hotel')
