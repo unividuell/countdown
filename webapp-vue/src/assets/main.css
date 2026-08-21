@@ -47,14 +47,12 @@
   }
 }
 
-/* A scroll container that keeps its full width: a classic scrollbar would eat into the strip of
-   search hits from the right, leaving the grid narrower than the card and off its centre. The
-   partly-shown row beneath is the affordance instead — and on touch, where this game is played,
-   the scrollbar was an overlay anyway. */
-@utility scrollbar-hidden {
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+/* How wide one cover is — in the band of search hits on the board, and as the single cover on the
+   reveal. One value for both, because the player picks the cover in the band and then finds the
+   solution's cover in that same place: any difference between the two would show up as a jump when
+   the round resolves. 43.5% is 1/2.3, so the band shows two covers and a slice of the third, which
+   is what says „there is more to the side". Capped, because on a card wide enough for it a cover at
+   43.5% stops being a cover and becomes a poster. */
+@utility song-cover {
+  width: min(43.5%, 9rem);
 }

@@ -12,6 +12,27 @@ function mountBar(totalSeconds: number, unlockedSeconds = totalSeconds) {
 }
 
 describe('StageBar', () => {
+  it('floats a notice above the bar, and holds nothing open for it when there is none', () => {
+    expect(mountBar(15).find('[data-test="song-notice"]').exists()).toBe(false)
+
+    const told = mount(StageBar, {
+      props: {
+        durations: DURATIONS,
+        totalSeconds: 15,
+        unlockedSeconds: 0.5,
+        positionSeconds: 0,
+        notice: 'Falsch — nächste Stufe frei.',
+      },
+    })
+    const line = told.get('[data-test="song-notice"]')
+
+    expect(line.text()).toBe('Falsch — nächste Stufe frei.')
+    // Above the bar and out of the flow, so it takes no height from the card and eats no taps.
+    expect(line.classes()).toContain('absolute')
+    expect(line.classes()).toContain('bottom-full')
+    expect(line.classes()).toContain('pointer-events-none')
+  })
+
   it('pins the last rung to the right edge only when it really sits there', () => {
     const labels = (w: ReturnType<typeof mountBar>) =>
       w.get('[data-test="stage-steps"]').findAll('span')

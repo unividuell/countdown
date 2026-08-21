@@ -96,11 +96,12 @@ describe('SongSearchBox', () => {
     expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
   })
 
-  it('holds three rows of three open whatever the search found, so the card never moves', async () => {
+  it('holds its own width open with empty slots, so the card below never moves', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
     const slots = () =>
       w.findAll('[data-test="song-hit"]').length + w.findAll('[data-test="song-hit-blank"]').length
 
+    // Enough to run off the right edge of any viewport, so the band never stops abruptly.
     expect(slots()).toBe(9)
 
     await typeAndSettle(w, 'hotel')
@@ -140,7 +141,7 @@ describe('SongSearchBox', () => {
     w.unmount()
   })
 
-  it('shows every hit it was given, filling the last row up', async () => {
+  it('shows every hit it was given, however far off the side they run', async () => {
     const many = Array.from({ length: 8 }, (_, i) => ({
       trackId: i + 10,
       artist: `artist ${i}`,
@@ -153,22 +154,41 @@ describe('SongSearchBox', () => {
     await typeAndSettle(w, 'hotel')
 
     expect(w.findAll('[data-test="song-hit"]')).toHaveLength(8)
-    // Eight hits are two full rows and a third holding two — one blank finishes it.
+    // One slot short of the band's resting length, so one blank is left holding it.
     expect(w.findAll('[data-test="song-hit-blank"]')).toHaveLength(1)
   })
 
-  it('scrolls the strip back to the top whenever new hits arrive', async () => {
+  it('scrolls the band back to the left whenever new hits arrive', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
     await typeAndSettle(w, 'hotel')
 
-    const box = w.get('[data-test="song-suggestions-box"]').element
-    box.scrollTop = 40
+    const box = w.get('[data-test="song-suggestions"]').element
+    box.scrollLeft = 240
     searchSongs.mockResolvedValue([
       { trackId: 3, artist: 'Nena', title: '99 Luftballons', coverUrl: null },
     ])
     await typeAndSettle(w, 'luftballons')
 
-    expect(box.scrollTop).toBe(0)
+    expect(box.scrollLeft).toBe(0)
+  })
+
+  it('sizes every slot like the cover the reveal shows, and holds the field in the title slot', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    await typeAndSettle(w, 'hotel')
+
+    // `song-cover` is the one measurement the band and the reveal's cover share.
+    for (const slot of [
+      ...w.findAll('[data-test="song-hit"]'),
+      ...w.findAll('[data-test="song-hit-blank"]'),
+    ]) {
+      expect(slot.classes()).toContain('song-cover')
+      expect(slot.classes()).toContain('aspect-square')
+      // A flex child that may shrink turns a scrolling band into a squeezed row.
+      expect(slot.classes()).toContain('shrink-0')
+    }
+    expect(
+      w.get('[data-test="song-search"]').element.parentElement?.parentElement?.className,
+    ).toContain('h-12')
   })
 
   it('writes each hit over its own cover, title above artist', async () => {

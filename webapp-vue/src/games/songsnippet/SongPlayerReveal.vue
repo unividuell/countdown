@@ -51,14 +51,15 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <!-- The cover lands in exactly the box the question mark held, in exactly the row the board
-         lays out the same way. The link rides on the cover itself; there is no separate link line
-         to push the bar down. -->
+    <!-- The cover lands at the height the board's band of hits held, and at the size one of those
+         covers had — `song-cover` is that one measurement, shared by both screens. The link rides
+         on the cover itself; there is no separate link line to push the bar down. -->
     <div class="flex justify-center">
       <a
         :href="solution.link"
         target="_blank"
         rel="noopener"
+        class="song-cover block aspect-square"
         data-test="deezer-link"
         aria-label="Auf Deezer öffnen"
         title="Auf Deezer öffnen"
@@ -67,12 +68,12 @@ onUnmounted(() => {
           v-if="solution.coverUrl"
           :src="solution.coverUrl"
           alt=""
-          class="h-32 w-32 rounded-xl object-cover"
+          class="h-full w-full rounded-xl object-cover"
           data-test="cover"
         />
         <span
           v-else
-          class="flex h-32 w-32 items-center justify-center rounded-xl bg-neutral-100 text-5xl"
+          class="flex h-full w-full items-center justify-center rounded-xl bg-neutral-100 text-5xl"
         >
           🎵
         </span>
@@ -80,8 +81,8 @@ onUnmounted(() => {
     </div>
 
     <!-- Two lines, because either of them can be long: „Das geht ab [wir feiern die ganze Nacht]"
-         next to its artist had nowhere to go on a phone. The board holds the same two lines empty,
-         so the bar below sits at the same height there. -->
+         next to its artist had nowhere to go on a phone. On the board this same slot holds the
+         search field, so the bar below sits at the same height on both screens. -->
     <div class="h-12" data-test="solution-line">
       <p class="truncate text-center text-sm leading-6 font-medium">{{ solution.title }}</p>
       <p class="truncate text-center text-sm leading-6 text-neutral-500">{{ solution.artist }}</p>

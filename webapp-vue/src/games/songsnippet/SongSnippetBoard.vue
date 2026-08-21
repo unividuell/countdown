@@ -27,9 +27,9 @@ const playback = usePlayback()
 const loadingStage = ref(false)
 
 /**
- * How long a verdict stands. It is a remark, not a state: „falsch" is already told by the bar
- * growing and the field emptying, so the sentence only has to be caught once. Long enough to read
- * twelve words, short enough that it is gone before the next guess.
+ * How long a verdict stands before the bar drops it again. It is a remark, not a state: „falsch" is
+ * already told by the bar growing and the field emptying, so the sentence only has to be caught
+ * once. Long enough to read twelve words, short enough that it is gone before the next guess.
  */
 const VERDICT_MS = 2000
 const verdict = ref<string | null>(null)
@@ -93,57 +93,18 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4">
-    <!-- The cover's row, laid out exactly like the reveal's: nothing sits beside the box, so the
-         box is simply centred. -->
-    <div class="flex justify-center">
-      <div
-        class="flex h-32 w-32 items-center justify-center rounded-xl bg-neutral-100 text-5xl text-neutral-400"
-        data-test="cover-placeholder"
-      >
-        ?
-      </div>
-    </div>
+    <!-- The hits first, then the field, then the bar: the band stands where the reveal puts the
+         cover, and the field where it puts the title, so resolving the round moves nothing. Both
+         rows belong to the search box, which spaces them exactly like this card does. -->
+    <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />
 
-    <!-- The two lines the reveal fills with the title and the artist, held open here so nothing
-         below them moves when the round resolves — and the room the give-up button borrows while
-         they are still empty. -->
-    <div class="flex h-12 items-center justify-end" data-test="title-slot">
-      <button
-        type="button"
-        data-test="give-up"
-        class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
-        :disabled="disabled"
-        @click="emit('giveUp')"
-      >
-        Aufgeben
-      </button>
-    </div>
-
-    <!-- „Falsch — nächste Stufe frei." appears over the bar, which is where the news actually is:
-         a stage just came free. Floating, so it costs no height and pushes nothing; gone by
-         itself, because a verdict that stays turns into a label. -->
-    <div class="relative">
-      <Transition
-        enter-active-class="transition-opacity duration-150"
-        enter-from-class="opacity-0"
-        leave-active-class="transition-opacity duration-500"
-        leave-to-class="opacity-0"
-      >
-        <p
-          v-if="verdict"
-          class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-xs whitespace-nowrap text-amber-700"
-          data-test="song-notice"
-        >
-          {{ verdict }}
-        </p>
-      </Transition>
-      <StageBar
-        :durations="durations"
-        :total-seconds="totalSeconds"
-        :unlocked-seconds="unlockedSeconds"
-        :position-seconds="playback.positionSeconds.value"
-      />
-    </div>
+    <StageBar
+      :durations="durations"
+      :total-seconds="totalSeconds"
+      :unlocked-seconds="unlockedSeconds"
+      :position-seconds="playback.positionSeconds.value"
+      :notice="verdict"
+    />
 
     <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
          skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift the
@@ -171,13 +132,10 @@ onUnmounted(() => {
         <PlayerIcon name="play" />
       </button>
       <span class="min-w-0 justify-self-start pl-4">
-        <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
-             costs glory, quiet red once it can cost the round. -->
         <button
           type="button"
           data-test="skip"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
-          :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 border-neutral-300 text-xl text-neutral-700 disabled:opacity-40"
           :disabled="disabled || lastStage"
           aria-label="Nächste Stufe freischalten"
           :title="`Nächste Stufe freischalten — ${skipCost}`"
@@ -188,6 +146,18 @@ onUnmounted(() => {
       </span>
     </div>
 
-    <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />
+    <!-- Last and to the side: giving up is the one thing here nobody should reach for by accident,
+         so it sits below everything the round is actually played with. -->
+    <div class="flex justify-end">
+      <button
+        type="button"
+        data-test="give-up"
+        class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+        :disabled="disabled"
+        @click="emit('giveUp')"
+      >
+        Aufgeben
+      </button>
+    </div>
   </div>
 </template>

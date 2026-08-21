@@ -8,6 +8,13 @@ const props = defineProps<{
   totalSeconds: number
   unlockedSeconds: number
   positionSeconds: number
+  /**
+   * A remark to float above the bar — „Falsch — nächste Stufe frei." and nothing else so far. It
+   * belongs here rather than in the board because the bar is what it is about, and because
+   * „above the bar" is a measurement only the bar has. Omitted by the reveal, which has no
+   * verdicts.
+   */
+  notice?: string | null
 }>()
 
 /**
@@ -47,7 +54,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
 </script>
 
 <template>
-  <div>
+  <div class="relative">
     <div
       class="relative h-5 w-full overflow-hidden rounded-full bg-neutral-200"
       data-test="stage-bar"
@@ -73,6 +80,23 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
         :style="{ left: `${step.fraction * 100}%` }"
       />
     </div>
+    <!-- Above the bar, where the news is: a stage just came free. Floating, so it costs no height
+         and pushes nothing; gone by itself, because a verdict that stays turns into a label. -->
+    <Transition
+      enter-active-class="transition-opacity duration-150"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-500"
+      leave-to-class="opacity-0"
+    >
+      <p
+        v-if="notice"
+        class="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-xs whitespace-nowrap text-amber-700"
+        data-test="song-notice"
+      >
+        {{ notice }}
+      </p>
+    </Transition>
+
     <!-- The ladder in writing, each rung under its own gap. -->
     <div class="relative mt-1 h-4" data-test="stage-steps">
       <span

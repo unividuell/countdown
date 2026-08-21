@@ -78,6 +78,15 @@ describe('SongPlayerReveal', () => {
     expect(w.get('[data-test="deezer-link"]').text()).toContain('🎵')
   })
 
+  it('takes the cover and the title from the board, so the round resolves without a jump', () => {
+    const w = mountPlayer()
+
+    // The band's covers carry the same class, and the board's search field the same slot height.
+    expect(w.get('[data-test="deezer-link"]').classes()).toContain('song-cover')
+    expect(w.get('[data-test="deezer-link"]').classes()).toContain('aspect-square')
+    expect(w.get('[data-test="solution-line"]').classes()).toContain('h-12')
+  })
+
   it('names the song on two lines, since either of them can be long', () => {
     const lines = mountPlayer()
       .get('[data-test="solution-line"]')

@@ -100,13 +100,14 @@ describe('SongSnippetBoard', () => {
     expect(top.get('[data-test="skip"]').attributes('disabled')).toBeDefined()
   })
 
-  it('warns by outline colour: quiet green while a skip costs only glory, red once it costs more', () => {
-    expect(
-      mountBoard({ awardRule: 'ALL_QUALIFYING' }).get('[data-test="skip"]').classes(),
-    ).toContain('border-emerald-300')
-    expect(mountBoard({ awardRule: 'CLOSEST_ONLY' }).get('[data-test="skip"]').classes()).toContain(
-      'border-rose-300',
-    )
+  it('says what a skip costs in its title, and keeps its outline plain either way', () => {
+    const cheap = mountBoard({ awardRule: 'ALL_QUALIFYING' }).get('[data-test="skip"]')
+    const dear = mountBoard({ awardRule: 'CLOSEST_ONLY' }).get('[data-test="skip"]')
+
+    expect(cheap.attributes('title')).toContain('kostet nur Ruhm')
+    expect(dear.attributes('title')).toContain('kann den Sieg kosten')
+    expect(cheap.classes()).toContain('border-neutral-300')
+    expect(dear.classes()).toContain('border-neutral-300')
   })
 
   it('gives up on a single press of an ordinary button', async () => {
@@ -118,14 +119,13 @@ describe('SongSnippetBoard', () => {
   })
 
   it('loads the stage clip on arrival without sounding it', async () => {
-    const w = mountBoard({ stage: 0 })
+    mountBoard({ stage: 0 })
     await Promise.resolve()
     await Promise.resolve()
 
     expect(fetchAssetBlob).toHaveBeenCalledWith('/assets/0')
     expect(playbacks[0]!.setSource).toHaveBeenCalledWith('blob:stage')
     expect(playbacks[0]!.restart).not.toHaveBeenCalled()
-    expect(w.get('[data-test="cover-placeholder"]').text()).toBe('?')
   })
 
   it('plays the longer clip by itself once the stage grows', async () => {
@@ -141,7 +141,7 @@ describe('SongSnippetBoard', () => {
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
   })
 
-  it('floats a verdict over the bar and takes it away again by itself', async () => {
+  it('floats a verdict above the bar and takes it away again by itself', async () => {
     vi.useFakeTimers()
     try {
       const w = mountBoard({})
@@ -152,6 +152,7 @@ describe('SongSnippetBoard', () => {
       expect(line.text()).toBe('Falsch — nächste Stufe frei.')
       // Floating: it borrows the space above the bar rather than taking any of its own.
       expect(line.classes()).toContain('absolute')
+      expect(line.classes()).toContain('bottom-full')
 
       vi.advanceTimersByTime(2000)
       await w.vm.$nextTick()
@@ -180,14 +181,17 @@ describe('SongSnippetBoard', () => {
     }
   })
 
-  it('holds the title slot open so the reveal does not shift the bar', () => {
+  it("lays the card out in the reveal's own order, with give-up last of all", () => {
     const w = mountBoard({})
 
-    const slot = w.get('[data-test="title-slot"]')
-    // Two lines, the height the reveal's title and artist take — and where give-up waits while
-    // they are empty.
-    expect(slot.classes()).toContain('h-12')
-    expect(slot.find('[data-test="give-up"]').exists()).toBe(true)
+    const rows = [...w.element.children].map(
+      (row) =>
+        row.getAttribute('data-test') ??
+        row.querySelector('[data-test]')?.getAttribute('data-test'),
+    )
+    // Hits and field first (both the search box's), then the bar, then the transport — the reveal
+    // fills the same rows with the cover and the title, so nothing moves when the round resolves.
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'pause', 'give-up'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
