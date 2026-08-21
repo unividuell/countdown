@@ -6,7 +6,6 @@
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
-import { secondsLabel } from './stagebar'
 
 export interface ScoreRow {
   userId: string
@@ -21,7 +20,7 @@ export interface ScoreRow {
   trackId: number | null
   /** Whether the game judged this guess right — decides only whether it is playable, not its ink. */
   correct: boolean
-  /** How much audio this player needed, e.g. „2s“. */
+  /** How much audio this player needed, e.g. „2,0s“ — always one decimal, see [oneDecimal]. */
   timeLabel: string
   /** The stage behind [timeLabel] — the tie-breaker: less audio ranks higher. */
   stage: number
@@ -32,6 +31,16 @@ export interface ScoreRow {
 
 /** U+2014, standing in for a guess nobody made. A hyphen would read as a minus. */
 const GAVE_UP = '— aufgegeben —'
+
+/**
+ * One decimal, always — „0,1s“ over „15,0s“ rather than over „15s“. The column is right-aligned and
+ * tabular, so a fixed number of decimals is what puts every comma on the same axis; the same reason
+ * Guess Hue prints its degrees this way.
+ */
+const oneDecimal = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+})
 
 /**
  * Every entry as a row, best first: most points, then least audio, then user id so a reload shows
@@ -52,7 +61,7 @@ export function scoreRows(input: {
       guessLabel: guess?.title === undefined ? GAVE_UP : `${guess.title} · ${guess.artist ?? '?'}`,
       trackId: guess?.trackId ?? null,
       correct: (entry.outcome as { correct?: boolean } | null)?.correct === true,
-      timeLabel: secondsLabel(input.durations[entry.stage] ?? 0),
+      timeLabel: `${oneDecimal.format(input.durations[entry.stage] ?? 0)}s`,
       stage: entry.stage,
       points: entry.points,
       provisional: isProvisional(entry.points, input.awardRule),

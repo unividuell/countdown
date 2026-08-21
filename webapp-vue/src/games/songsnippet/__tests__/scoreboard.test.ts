@@ -65,11 +65,16 @@ describe('scoreRows', () => {
     expect(rows.find((r) => r.userId === 'wrong')!.correct).toBe(false)
   })
 
-  it('labels the reached stage in seconds', () => {
-    const rows = rowsOf([entry({ userId: 'a', stage: 0 }), entry({ userId: 'b', stage: 3 })])
+  it('labels the reached stage with one decimal, so every comma lines up', () => {
+    const rows = rowsOf([
+      entry({ userId: 'a', stage: 0 }),
+      entry({ userId: 'b', stage: 3 }),
+      entry({ userId: 'c', stage: 4 }),
+    ])
 
     expect(rows.find((r) => r.userId === 'a')!.timeLabel).toBe('0,1s')
-    expect(rows.find((r) => r.userId === 'b')!.timeLabel).toBe('8s')
+    expect(rows.find((r) => r.userId === 'b')!.timeLabel).toBe('8,0s')
+    expect(rows.find((r) => r.userId === 'c')!.timeLabel).toBe('15,0s')
   })
 
   it('paints the row in the player colour, with ink that reads against it', () => {
