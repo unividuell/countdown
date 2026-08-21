@@ -42,6 +42,19 @@ app:
   song-snippet:
     # Public Deezer editorial playlists the pool merges ("Deutschland, deine Hits" 00er + 10er).
     # A public catalogue, not game content — no sops, unlike guess-hue.
+    #
+    # Where an id comes from — the web player is the short way:
+    #   https://www.deezer.com/playlist/10396822102 -> 10396822102 (the number IS the id)
+    # The API is the way to go looking, and needs no key:
+    #   curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    # Its hits carry `id`, `title`, `nb_tracks` and `user.name` — an editorial list is owned by a
+    # "Deezer <country> Editor", which is how you tell one from somebody's private mixtape. To
+    # browse by genre instead of searching, start at https://api.deezer.com/editorial.
+    #
+    # Worth checking before adding one: only tracks that carry a `preview` are playable, so a list
+    # full of unreadable ones quietly shrinks the pool
+    #   curl -s 'https://api.deezer.com/playlist/<id>/tracks?limit=400'
+    # and only the first 400 tracks are read (a longer playlist logs a warning and is truncated).
     playlist-ids: 10396822102,10396828062
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
