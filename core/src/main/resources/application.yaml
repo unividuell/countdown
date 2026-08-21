@@ -40,22 +40,32 @@ app:
     # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
   song-snippet:
-    # Public Deezer editorial playlists the pool merges ("Deutschland, deine Hits" 00er + 10er).
-    # A public catalogue, not game content — no sops, unlike guess-hue.
+    # The pool: five decades of public Deezer editorial playlists, merged and de-duplicated
+    # (228 playable tracks, no overlap, as of 2026-08-21). A public catalogue, not game content —
+    # no sops, unlike guess-hue. A track without a `preview` cannot be played and is dropped, so a
+    # list's usable size is well below its track count; only the first 400 tracks are read.
     #
-    # Where an id comes from — the web player is the short way:
-    #   https://www.deezer.com/playlist/10396822102 -> 10396822102 (the number IS the id)
-    # The API is the way to go looking, and needs no key:
+    # Finding ids: the number in a playlist's web URL IS the id —
+    # https://www.deezer.com/playlist/10457025082. To go looking, the API needs no key, and the
+    # editor's own catalogue is the best entry point, because everything in it is editorial:
+    #   curl -s 'https://api.deezer.com/playlist/10457025082'        # -> creator.id 374224155
+    #   curl -s 'https://api.deezer.com/user/374224155/playlists?limit=200'   # 169 lists
+    # Free-text search works too, where `user.name` separates an editorial list ("Deezer <country>
+    # Editor") from somebody's private mixtape:
     #   curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
-    # Its hits carry `id`, `title`, `nb_tracks` and `user.name` — an editorial list is owned by a
-    # "Deezer <country> Editor", which is how you tell one from somebody's private mixtape. To
-    # browse by genre instead of searching, start at https://api.deezer.com/editorial.
+    # Popularity, when two candidates compete: a playlist carries `fans` (the 80er list ~7800, the
+    # 20er one ~650) — but only on /playlist/{id}; the search results omit the field.
     #
-    # Worth checking before adding one: only tracks that carry a `preview` are playable, so a list
-    # full of unreadable ones quietly shrinks the pool
-    #   curl -s 'https://api.deezer.com/playlist/<id>/tracks?limit=400'
-    # and only the first 400 tracks are read (a longer playlist logs a warning and is truncated).
-    playlist-ids: 10396822102,10396828062
+    # „Deutschland, deine Hits" stops at the 10er, so the 20er slot holds its summer edition. If
+    # that ages badly, the same editor also keeps per-year lists: „Die Hits 2020" (2497427204),
+    # „Die Hits 2021" (9658614362), „2023/2024/2025 Super Hits" (11909432461, 13235297463,
+    # 14512679763).
+    playlist-ids:
+      - 10457025082 # Deutschland, deine Hits - 80er
+      - 10453961322 # Deutschland, deine Hits - 90er
+      - 10396822102 # Deutschland, deine Hits - 00er
+      - 10396828062 # Deutschland, deine Hits - 10er
+      - 11605921024 # Deutschland, deine Sommer Hits - 20er
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
