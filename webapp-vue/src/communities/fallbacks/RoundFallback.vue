@@ -52,5 +52,10 @@ const winnerNames = computed(() =>
     data-test="fallback-running"
     title="Und jetzt viel Spaß zusammen!"
   />
-  <div v-else data-test="fallback-placeholder" class="aspect-square w-full" aria-hidden="true" />
+  <div
+    v-else
+    data-test="fallback-placeholder"
+    class="round-bleed aspect-square"
+    aria-hidden="true"
+  />
 </template>

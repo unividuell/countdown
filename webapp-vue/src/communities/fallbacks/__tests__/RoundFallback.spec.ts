@@ -79,6 +79,19 @@ describe('RoundFallback', () => {
     expect(w.find('[data-test="fallback-placeholder"]').exists()).toBe(true)
   })
 
+  // Same reasoning as the round placeholder on the community page: this square's height is its
+  // width, so a placeholder that does not bleed reserves 32px too little for the countdown card
+  // that replaces it.
+  it('reserves the width the countdown will actually have', () => {
+    vi.spyOn(api, 'getCountdown').mockReturnValue(new Promise(() => {}))
+    const w = mountFallback('2026-08-11T09:00:00Z')
+    const placeholder = w.get('[data-test="fallback-placeholder"]')
+
+    expect(placeholder.classes()).toContain('round-bleed')
+    expect(placeholder.classes()).toContain('aspect-square')
+    expect(placeholder.classes()).not.toContain('w-full')
+  })
+
   it('shows the board while the countdown runs', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue(before)
     const w = mountFallback('2026-08-11T09:00:00Z')
