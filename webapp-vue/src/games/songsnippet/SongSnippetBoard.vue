@@ -48,6 +48,20 @@ watch(
   },
 )
 
+/**
+ * The waiting ring, painted the way `HoldButton` paints its own: a conic sweep carved down to a rim
+ * by a radial mask, so what shows is a thin arc travelling around the button rather than a disc.
+ * The rim is given in pixels rather than as a percentage of the radius — this ring has exactly one
+ * size, and a length says what it looks like without having to be rescaled if that size changes.
+ */
+const RING_MASK =
+  'radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))'
+const loadingRing = {
+  backgroundImage: 'conic-gradient(transparent 0deg 280deg, currentColor 280deg 360deg)',
+  mask: RING_MASK,
+  WebkitMask: RING_MASK,
+}
+
 const totalSeconds = computed(() => props.durations[props.durations.length - 1] ?? 15)
 const unlockedSeconds = computed(() => props.durations[props.stage] ?? 0)
 const lastStage = computed(() => props.stage >= props.durations.length - 1)
@@ -128,16 +142,29 @@ onUnmounted(() => {
           <PlayerIcon name="pause" />
         </button>
       </span>
-      <button
-        type="button"
-        data-test="play"
-        class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
-        :disabled="loadingStage"
-        aria-label="Von vorn abspielen"
-        @click="playback.restart()"
-      >
-        <PlayerIcon name="play" />
-      </button>
+      <!-- The ring is absolute, so it hangs outside the button without taking any width from the
+           row. Its box is pinned to the button's own size rather than left to the grid: a wrapper
+           that ends up wider than tall turns the ring's `closest-side` mask into an ellipse. -->
+      <span class="relative block size-20">
+        <button
+          type="button"
+          data-test="play"
+          class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
+          :disabled="loadingStage"
+          aria-label="Von vorn abspielen"
+          @click="playback.restart()"
+        >
+          <PlayerIcon name="play" />
+        </button>
+        <span
+          v-if="loadingStage"
+          class="animate-song-loading pointer-events-none absolute -inset-[6.25%] rounded-full text-amber-500 motion-reduce:animate-none"
+          data-test="play-loading"
+          role="status"
+          aria-label="Ausschnitt wird geladen"
+          :style="loadingRing"
+        />
+      </span>
       <span class="min-w-0 justify-self-start pl-4">
         <button
           type="button"

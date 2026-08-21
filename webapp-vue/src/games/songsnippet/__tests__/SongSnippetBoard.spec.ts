@@ -141,6 +141,30 @@ describe('SongSnippetBoard', () => {
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
   })
 
+  it('rings the play button while the clip is on its way, and takes the ring away after', async () => {
+    let deliver: (blob: Blob) => void = () => {}
+    fetchAssetBlob.mockReturnValue(
+      new Promise<Blob>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    const w = mountBoard({ stage: 0 })
+
+    // Cutting and fetching a stage takes 600-900ms of song pipeline; the greyed-out button alone
+    // does not say that anything is happening.
+    expect(w.get('[data-test="play-loading"]').attributes('aria-label')).toBe(
+      'Ausschnitt wird geladen',
+    )
+    expect(w.get('[data-test="play"]').attributes('disabled')).toBeDefined()
+
+    deliver(new Blob(['x']))
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
+    expect(w.get('[data-test="play"]').attributes('disabled')).toBeUndefined()
+  })
+
   it('does not sound a stage clip that lands after the round resolved', async () => {
     let deliver: (blob: Blob) => void = () => {}
     const w = mountBoard({ stage: 0 })
