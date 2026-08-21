@@ -287,4 +287,23 @@ describe('SongSnippetBoard', () => {
     expect(one.text()).not.toContain('verbrennt')
     expect(two.text()).not.toContain('verbrennen')
   })
+
+  // The frame belongs to the host now (`rounds/RoundCard.vue` and the lab's game page).
+  it('brings no frame of its own', () => {
+    const classes = mountBoard({}).classes()
+
+    expect(classes).not.toContain('rounded-xl')
+    expect(classes).not.toContain('border')
+    expect(classes).not.toContain('border-neutral-200')
+    expect(classes).not.toContain('bg-white')
+    expect(classes).not.toContain('p-4')
+  })
+
+  it('keeps the column spacing the search box and the bar are placed by', () => {
+    const classes = mountBoard({}).classes()
+
+    expect(classes).toContain('flex')
+    expect(classes).toContain('flex-col')
+    expect(classes).toContain('gap-4')
+  })
 })

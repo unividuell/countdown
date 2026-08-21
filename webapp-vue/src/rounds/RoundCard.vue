@@ -11,6 +11,7 @@ import type { RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
+import RoundSurface from '@/ui/RoundSurface.vue'
 
 const props = defineProps<{
   round: RoundResponse | null
@@ -56,68 +57,58 @@ async function onGuess(value: unknown): Promise<void> {
 </script>
 
 <template>
-  <!--
-    No chrome at this level: the game component brings its own bordered frame (see
-    GuessHueBoard/GuessHueReveal), so the sealed and the unrenderable face carry the frame
-    themselves — the only two faces that are not already framed by something else — and the
-    playing/done face renders the game bare, exactly as the lab page does. A card inside a card
-    reads as clutter and, on a phone, costs the wheel width to a doubled padding.
-  -->
   <div data-test="round-card">
+    <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
+         about the round on the board, and inside the frame it would push the board down. -->
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
 
-    <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
-         for a game this build cannot render is just as unrenderable as a playing one — offering
-         "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
-         later. -->
-    <p
-      v-if="component === null"
-      data-test="round-unrenderable"
-      class="rounded-xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600"
-    >
-      Für „{{ round?.game?.displayName }}“ gibt es in dieser Version noch keine Ansicht.
-    </p>
+    <RoundSurface>
+      <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
+           for a game this build cannot render is just as unrenderable as a playing one — offering
+           "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
+           later. -->
+      <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
+        Für „{{ round?.game?.displayName }}“ gibt es in dieser Version noch keine Ansicht.
+      </p>
 
-    <div
-      v-else-if="stage === 'sealed'"
-      class="flex flex-col items-center gap-4 rounded-xl border border-neutral-200 bg-white p-6 text-center"
-    >
-      <p class="text-base font-semibold text-neutral-900">{{ round?.game?.displayName }}</p>
-      <button
-        type="button"
-        data-test="round-reveal"
-        class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-        :disabled="busy"
-        @click="onReveal"
-      >
-        Aufdecken
-      </button>
-    </div>
+      <div v-else-if="stage === 'sealed'" class="flex flex-col items-center gap-4 text-center">
+        <p class="text-base font-semibold text-neutral-900">{{ round?.game?.displayName }}</p>
+        <button
+          type="button"
+          data-test="round-reveal"
+          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+          :disabled="busy"
+          @click="onReveal"
+        >
+          Aufdecken
+        </button>
+      </div>
 
-    <!--
-      Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
-      `reload()`, which can land a *different* round in place (the day boundary passed underneath
-      the click) without this `RoundCard` ever unmounting. Without the key the component instance
-      would survive that change carrying the previous round's local state — a half-turned wheel
-      angle, in Guess Hue's case — the same reasoning the lab applies keyed on `round.seed`.
-    -->
-    <component
-      :is="component"
-      v-else-if="stage === 'playing' || stage === 'done'"
-      :key="round?.round?.number"
-      :payload="round?.payload"
-      :outcome="round?.me?.outcome ?? null"
-      :my-guess="round?.me?.guess ?? null"
-      :solution="round?.solution"
-      :entries="entries"
-      :mine-user-id="round?.me?.userId ?? null"
-      :award-rule="round?.awardRule ?? null"
-      :disabled="busy || stage === 'done'"
-      :stage="round?.me?.stage ?? 0"
-      :asset-url="assetUrl"
-      @guess="onGuess"
-      @skip="props.skip"
-      @give-up="props.giveUp"
-    />
+      <!--
+        Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
+        `reload()`, which can land a *different* round in place (the day boundary passed underneath
+        the click) without this `RoundCard` ever unmounting. Without the key the component instance
+        would survive that change carrying the previous round's local state — a half-turned wheel
+        angle, in Guess Hue's case — the same reasoning the lab applies keyed on `round.seed`.
+      -->
+      <component
+        :is="component"
+        v-else-if="stage === 'playing' || stage === 'done'"
+        :key="round?.round?.number"
+        :payload="round?.payload"
+        :outcome="round?.me?.outcome ?? null"
+        :my-guess="round?.me?.guess ?? null"
+        :solution="round?.solution"
+        :entries="entries"
+        :mine-user-id="round?.me?.userId ?? null"
+        :award-rule="round?.awardRule ?? null"
+        :disabled="busy || stage === 'done'"
+        :stage="round?.me?.stage ?? 0"
+        :asset-url="assetUrl"
+        @guess="onGuess"
+        @skip="props.skip"
+        @give-up="props.giveUp"
+      />
+    </RoundSurface>
   </div>
 </template>

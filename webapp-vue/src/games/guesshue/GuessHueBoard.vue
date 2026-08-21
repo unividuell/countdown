@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * One card: the round. A text paints a colour in words, the wheel is turned until it matches, the
+ * One board: the round. A text paints a colour in words, the wheel is turned until it matches, the
  * button in its centre is held to confirm.
  *
  * It knows nothing about "my guess" and nothing about the lab — it is handed a starting angle and
@@ -53,9 +53,10 @@ const hint = computed(() =>
 </script>
 
 <template>
-  <!-- `group` exists for one descendant: the centre button reacts to the leave class the lab
-       adapter's card transition puts on this element (`hue-card-leaving`). -->
-  <div class="group rounded-xl border border-neutral-200 bg-white p-4">
+  <!-- `group` exists for one descendant: the centre button reacts to the leave class the reveal
+       transition puts on this element (`hue-card-leaving`). The frame around all this belongs to
+       whoever mounts the game — see `ui/RoundSurface.vue`. -->
+  <div class="group">
     <!--
       A rule, not a box: a bordered card inside a bordered card reads as clutter. `select-none`
       is not cosmetic — without it a thumb resting beside the wheel selects the text and raises
