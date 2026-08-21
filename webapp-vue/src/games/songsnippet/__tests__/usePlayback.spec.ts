@@ -207,6 +207,20 @@ describe('usePlayback with an audio graph', () => {
     expect(playback.playing.value).toBe(false)
   })
 
+  it('lets a pause reach a start that is still on its way', async () => {
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-0')
+    playback.restart()
+
+    // Tapped pause while the decode was still out — a real window on a phone, where the reveal's
+    // first tap waits on a fetch and a decode before anything sounds.
+    playback.pause()
+    await settle()
+
+    expect(context().nodes).toHaveLength(0)
+    expect(playback.playing.value).toBe(false)
+  })
+
   it('falls back to the element for a clip the decoder refuses', async () => {
     const { playback } = withPlayback(usePlayback)
     playback.setSource('blob:broken')

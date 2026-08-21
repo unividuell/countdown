@@ -88,8 +88,6 @@ async function guess(value: unknown): Promise<void> {
 /** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries one extra
  * argument beyond `run`'s four-argument action shape. */
 async function skip(fromStage: number): Promise<void> {
-  const current = seed.value
-  if (current === null) return
   await run((slug, game, s, p) => skipLabStage(slug, game, s, p, fromStage))
 }
 

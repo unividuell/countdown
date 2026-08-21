@@ -226,11 +226,15 @@ export function usePlayback(): {
   }
 
   function pause(): void {
+    // Bumped whether or not anything is sounding yet: `playGraph` waits on a resume and a decode
+    // before it starts, and a pause tapped inside that window would otherwise be answered by the
+    // clip starting. That window is real — the reveal's first tap waits on a fetch too.
+    generation++
     if (node !== null) {
-      generation++
       finish(elapsed())
       return
     }
+    playing.value = false
     element.pause()
   }
 

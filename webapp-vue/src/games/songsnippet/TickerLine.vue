@@ -32,7 +32,8 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => observer?.disconnect())
-watch(() => props.text, measure)
+// After the DOM has the new text: measured before it, `scrollWidth` still describes the old one.
+watch(() => props.text, measure, { flush: 'post' })
 </script>
 
 <template>

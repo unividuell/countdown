@@ -32,15 +32,32 @@ const loaded = ref(false)
 let objectUrl: string | null = null
 /** The board's reason, on this side of the round: a fetch can outlive the card that started it. */
 let alive = true
+/**
+ * One fetch, however impatiently the button is tapped. `loaded` cannot do this job on its own — it
+ * is set after the await, so every tap before the first answer would start another fetch, and of the
+ * object URLs they created only the last would ever be revoked.
+ */
+let loading = false
 
 /** Loaded on the first tap, not on mount — browser policies want a gesture anyway. */
 async function playSolution(): Promise<void> {
   if (!loaded.value && props.assetUrl) {
-    const blob = await fetchAssetBlob(props.assetUrl(SOLUTION_ASSET_KEY))
-    if (!alive) return
-    objectUrl = URL.createObjectURL(blob)
-    playback.setSource(objectUrl)
-    loaded.value = true
+    if (loading) return
+    loading = true
+    try {
+      const blob = await fetchAssetBlob(props.assetUrl(SOLUTION_ASSET_KEY))
+      if (!alive) return
+      objectUrl = URL.createObjectURL(blob)
+      playback.setSource(objectUrl)
+      loaded.value = true
+    } catch (err) {
+      // The board logs its own failed stage the same way. Without this, a failed solution fetch
+      // leaves an unhandled rejection behind, since a click handler's promise has no other owner.
+      console.error('[song-snippet] solution audio failed', err)
+      return
+    } finally {
+      loading = false
+    }
   }
   playback.restart()
 }

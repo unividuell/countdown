@@ -31,8 +31,8 @@
      them, the line travels: still at both ends so it can be read, then a slow pass leftwards by
      exactly its own overflow — `--song-ticker-shift`, which the component measures per line and
      sets, because CSS cannot know how far a given string overshoots its box. 9s for a full cycle
-     of which two thirds is standing still; four of these run at once, so anything faster turns
-     the row into a flicker. */
+     of which two thirds is standing still; a full band of hits runs two of these per cover, so
+     anything faster turns the row into a flicker. */
   --animate-song-ticker: song-ticker 9s ease-in-out infinite;
 
   @keyframes song-ticker {

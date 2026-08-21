@@ -78,6 +78,27 @@ describe('SongPlayerReveal', () => {
     expect(w.get('[data-test="deezer-link"]').text()).toContain('🎵')
   })
 
+  it('fetches the solution once however often it is tapped, and lets go of nothing twice', async () => {
+    let deliver: (blob: Blob) => void = () => {}
+    fetchAssetBlob.mockReturnValue(
+      new Promise<Blob>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    const w = mountPlayer()
+
+    // Two impatient taps while the 30s solution is still on the wire.
+    await w.get('[data-test="play-solution"]').trigger('click')
+    await w.get('[data-test="play-solution"]').trigger('click')
+    deliver(new Blob(['x']))
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(fetchAssetBlob).toHaveBeenCalledTimes(1)
+    // One object URL, so the one `onUnmounted` revokes is the only one there ever was.
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+  })
+
   it('takes the cover and the title from the board, so the round resolves without a jump', () => {
     const w = mountPlayer()
 
