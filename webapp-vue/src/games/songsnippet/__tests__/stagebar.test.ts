@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barFraction, secondsLabel, stageMarks, stageSteps } from '../stagebar'
+import { barFraction, scaleEndLabel, secondsLabel, stageMarks, stageSteps } from '../stagebar'
 
 const DURATIONS = [0.1, 0.5, 2, 8, 15]
 
@@ -39,7 +39,7 @@ describe('stageSteps', () => {
     expect(steps.map((s) => s.label)).toEqual(['0,1', '0,5', '2', '8', '15s'])
     expect(steps[0]!.fraction).toBeCloseTo(Math.sqrt(0.1 / 15), 10)
     expect(steps[4]!.fraction).toBe(1)
-    expect(steps.map((s) => s.last)).toEqual([false, false, false, false, true])
+    expect(steps.map((s) => s.atEnd)).toEqual([false, false, false, false, true])
   })
 
   it('opens exactly the stages the unlocked seconds cover, and marks the furthest one', () => {
@@ -53,7 +53,20 @@ describe('stageSteps', () => {
     const steps = stageSteps(DURATIONS, 30, 30)
 
     expect(steps.every((s) => s.open)).toBe(true)
-    expect(steps[4]!.current).toBe(true)
+  })
+
+  it('singles out no rung where the scale runs past the ladder — nothing there is „in play“', () => {
+    expect(stageSteps(DURATIONS, 30, 30).some((s) => s.current)).toBe(false)
+    // The board's own last stage still is: there the ladder and the scale end together.
+    expect(stageSteps(DURATIONS, 15, 15)[4]!.current).toBe(true)
+  })
+
+  it('says no rung ends a scale the ladder falls short of, and drops the unit with it', () => {
+    const steps = stageSteps(DURATIONS, 30, 30)
+
+    expect(steps.some((s) => s.atEnd)).toBe(false)
+    expect(steps[4]!.fraction).toBeCloseTo(Math.sqrt(15 / 30), 10)
+    expect(steps[4]!.label).toBe('15')
   })
 
   it('opens nothing before the first stage is reached', () => {
@@ -61,5 +74,15 @@ describe('stageSteps', () => {
 
     expect(steps.some((s) => s.open)).toBe(false)
     expect(steps.some((s) => s.current)).toBe(false)
+  })
+})
+
+describe('scaleEndLabel', () => {
+  it('labels the end of a scale the ladder falls short of', () => {
+    expect(scaleEndLabel(DURATIONS, 30)).toBe('30s')
+  })
+
+  it('stays quiet where a rung already ends the bar', () => {
+    expect(scaleEndLabel(DURATIONS, 15)).toBeNull()
   })
 })

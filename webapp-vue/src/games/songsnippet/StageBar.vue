@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { barFraction, stageSteps } from './stagebar'
+import { barFraction, scaleEndLabel, stageSteps } from './stagebar'
 
 const props = defineProps<{
   durations: number[]
@@ -14,6 +14,7 @@ const playheadPct = computed(() =>
   Math.min(barFraction(props.positionSeconds, props.totalSeconds) * 100, unlockedPct.value),
 )
 const steps = computed(() => stageSteps(props.durations, props.totalSeconds, props.unlockedSeconds))
+const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSeconds))
 </script>
 
 <template>
@@ -33,10 +34,10 @@ const steps = computed(() => stageSteps(props.durations, props.totalSeconds, pro
         :style="{ width: `${playheadPct}%` }"
       />
       <!-- The boundaries are gaps, not strokes: the card's own ground cutting through, so the bar
-           reads as separate rungs instead of one bar with tick marks on it. The last boundary is
-           the bar's end and needs none. -->
+           reads as separate rungs instead of one bar with tick marks on it. A boundary that falls
+           on the bar's right edge needs none — there the bar simply stops. -->
       <div
-        v-for="step in steps.filter((s) => !s.last)"
+        v-for="step in steps.filter((s) => !s.atEnd)"
         :key="step.label"
         class="absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white"
         data-test="stage-gap"
@@ -50,7 +51,7 @@ const steps = computed(() => stageSteps(props.durations, props.totalSeconds, pro
         :key="step.label"
         class="absolute text-[10px] leading-4 tabular-nums"
         :class="[
-          step.last ? '-translate-x-full' : '-translate-x-1/2',
+          step.atEnd ? '-translate-x-full' : '-translate-x-1/2',
           step.current
             ? 'font-medium text-amber-600'
             : step.open
@@ -60,6 +61,15 @@ const steps = computed(() => stageSteps(props.durations, props.totalSeconds, pro
         :style="{ left: `${step.fraction * 100}%` }"
       >
         {{ step.label }}
+      </span>
+      <!-- Where the ladder stops short of the bar, the scale itself gets the last word. -->
+      <span
+        v-if="endLabel"
+        class="absolute -translate-x-full text-[10px] leading-4 tabular-nums text-neutral-500"
+        data-test="stage-scale-end"
+        :style="{ left: '100%' }"
+      >
+        {{ endLabel }}
       </span>
     </div>
   </div>

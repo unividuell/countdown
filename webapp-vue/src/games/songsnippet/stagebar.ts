@@ -16,25 +16,34 @@ export function stageMarks(durations: number[], totalSeconds: number): number[] 
 
 /** One rung of the ladder: where its boundary sits, what it says, and how far the player got. */
 export interface StageStep {
-  /** German label: comma as the decimal separator, the unit only where it is not repeated. */
+  /** German label: comma as the decimal separator, the unit only on whoever ends the scale. */
   label: string
   /** Position of the boundary on the bar, 0..1, on the same scale the fill uses. */
   fraction: number
   /** Already audible. A closed step's label renders dimmed. */
   open: boolean
-  /** The furthest step the player has opened — the one the play button is about to sound. */
+  /**
+   * The rung the play button is about to sound — the furthest one opened. Nothing is current where
+   * the scale runs past the whole ladder: the reveal plays 30s of hook, not a stage, so singling
+   * one out there would mark a rung that means nothing.
+   */
   current: boolean
-  /** Ends the bar: no gap is drawn there, and its label hangs off the right edge instead. */
-  last: boolean
+  /**
+   * Sits exactly at the bar's right edge, which happens only when this rung's duration IS the
+   * scale. Then it needs no gap (the bar simply stops) and its label hangs off that edge instead
+   * of being centred under one. On the reveal's 30s scale no rung reaches the end — the 15s one
+   * lands at 71%, and a label pinned right there would float mid-bar with the rest running past.
+   */
+  atEnd: boolean
 }
 
 /**
- * The ladder as the bar shows it — a step per stage, with the boundary positions the gaps and the
- * labels below them share. Pure, because it is the half of the bar a test can assert on: happy-dom
- * computes no layout, so the numbers have to be checkable without one.
+ * The ladder as the bar shows it — a rung per stage, with the boundary positions that the gaps and
+ * the labels below them share. Pure, because it is the half of the bar a test can assert on:
+ * happy-dom computes no layout, so the numbers have to be checkable without one.
  *
  * [unlockedSeconds] decides openness by duration rather than by index, which is what lets the
- * reveal hand in the full 30s and get every step open without knowing anything about stages.
+ * reveal hand in the full 30s and get every rung open without knowing anything about stages.
  */
 export function stageSteps(
   durations: number[],
@@ -42,16 +51,33 @@ export function stageSteps(
   unlockedSeconds: number,
 ): StageStep[] {
   const openCount = durations.filter((d) => d <= unlockedSeconds).length
-  return durations.map((d, index) => ({
-    label: secondsLabel(d, index === durations.length - 1),
-    fraction: barFraction(d, totalSeconds),
-    open: index < openCount,
-    current: index === openCount - 1,
-    last: index === durations.length - 1,
-  }))
+  const longest = durations[durations.length - 1] ?? 0
+  const playsWholeScale = unlockedSeconds > longest
+  return durations.map((d, index) => {
+    const fraction = barFraction(d, totalSeconds)
+    const atEnd = fraction >= 1
+    return {
+      label: secondsLabel(d, atEnd),
+      fraction,
+      open: index < openCount,
+      current: !playsWholeScale && index === openCount - 1,
+      atEnd,
+    }
+  })
 }
 
-/** `0.1` → „0,1“; on the bar the unit rides on the last rung only, where it labels the whole scale. */
+/**
+ * The scale's own right edge, for a bar the ladder does not reach: the reveal plays 30s while the
+ * rungs stop at 15s, and an unlabelled end reads as if the ladder simply ran out there. `null`
+ * where a rung already ends the bar — the board's 15s scale needs no second label for the same
+ * spot.
+ */
+export function scaleEndLabel(durations: number[], totalSeconds: number): string | null {
+  const longest = durations[durations.length - 1] ?? 0
+  return longest >= totalSeconds ? null : secondsLabel(totalSeconds)
+}
+
+/** `0.1` → „0,1“; the unit rides on whoever labels the end of the scale. */
 export function secondsLabel(seconds: number, withUnit = true): string {
   return `${String(seconds).replace('.', ',')}${withUnit ? 's' : ''}`
 }
