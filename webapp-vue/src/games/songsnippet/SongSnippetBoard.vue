@@ -26,6 +26,28 @@ const emit = defineEmits<{
 const playback = usePlayback()
 const loadingStage = ref(false)
 
+/**
+ * How long a verdict stands. It is a remark, not a state: „falsch" is already told by the bar
+ * growing and the field emptying, so the sentence only has to be caught once. Long enough to read
+ * twelve words, short enough that it is gone before the next guess.
+ */
+const VERDICT_MS = 2000
+const verdict = ref<string | null>(null)
+let verdictTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  () => props.notice,
+  (notice) => {
+    clearTimeout(verdictTimer)
+    verdict.value = notice
+    if (notice !== null) {
+      verdictTimer = setTimeout(() => {
+        verdict.value = null
+      }, VERDICT_MS)
+    }
+  },
+)
+
 const totalSeconds = computed(() => props.durations[props.durations.length - 1] ?? 15)
 const unlockedSeconds = computed(() => props.durations[props.stage] ?? 0)
 const lastStage = computed(() => props.stage >= props.durations.length - 1)
@@ -65,6 +87,7 @@ watch(
 )
 onUnmounted(() => {
   if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
+  clearTimeout(verdictTimer)
 })
 </script>
 
@@ -96,63 +119,73 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <StageBar
-      :durations="durations"
-      :total-seconds="totalSeconds"
-      :unlocked-seconds="unlockedSeconds"
-      :position-seconds="playback.positionSeconds.value"
-    />
+    <!-- „Falsch — nächste Stufe frei." appears over the bar, which is where the news actually is:
+         a stage just came free. Floating, so it costs no height and pushes nothing; gone by
+         itself, because a verdict that stays turns into a label. -->
+    <div class="relative">
+      <Transition
+        enter-active-class="transition-opacity duration-150"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-500"
+        leave-to-class="opacity-0"
+      >
+        <p
+          v-if="verdict"
+          class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-xs whitespace-nowrap text-amber-700"
+          data-test="song-notice"
+        >
+          {{ verdict }}
+        </p>
+      </Transition>
+      <StageBar
+        :durations="durations"
+        :total-seconds="totalSeconds"
+        :unlocked-seconds="unlockedSeconds"
+        :position-seconds="playback.positionSeconds.value"
+      />
+    </div>
 
     <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
          skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift the
-         middle. The verdict line belongs to this block, right under the buttons that earn it. -->
-    <div>
-      <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-        <span class="min-w-0 justify-self-end pr-4">
-          <button
-            type="button"
-            data-test="pause"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
-            aria-label="Pause"
-            @click="playback.pause()"
-          >
-            <PlayerIcon name="pause" />
-          </button>
-        </span>
+         middle. -->
+    <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+      <span class="min-w-0 justify-self-end pr-4">
         <button
           type="button"
-          data-test="play"
-          class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
-          :disabled="loadingStage"
-          aria-label="Von vorn abspielen"
-          @click="playback.restart()"
+          data-test="pause"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
+          aria-label="Pause"
+          @click="playback.pause()"
         >
-          <PlayerIcon name="play" />
+          <PlayerIcon name="pause" />
         </button>
-        <span class="min-w-0 justify-self-start pl-4">
-          <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
-               costs glory, quiet red once it can cost the round. -->
-          <button
-            type="button"
-            data-test="skip"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
-            :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
-            :disabled="disabled || lastStage"
-            aria-label="Nächste Stufe freischalten"
-            :title="`Nächste Stufe freischalten — ${skipCost}`"
-            @click="emit('skip', stage)"
-          >
-            <PlayerIcon name="skip" />
-          </button>
-        </span>
-      </div>
-
-      <!-- „Falsch — nächste Stufe frei." lands here, after a wrong guess in phase one. The line
-           holds its height while empty: otherwise the verdict's arrival would shove the search
-           field down by its own height, at the very moment the player reaches for it again. -->
-      <p class="mt-1 h-4 text-center text-xs text-amber-700" data-test="song-notice">
-        {{ notice }}
-      </p>
+      </span>
+      <button
+        type="button"
+        data-test="play"
+        class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
+        :disabled="loadingStage"
+        aria-label="Von vorn abspielen"
+        @click="playback.restart()"
+      >
+        <PlayerIcon name="play" />
+      </button>
+      <span class="min-w-0 justify-self-start pl-4">
+        <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
+             costs glory, quiet red once it can cost the round. -->
+        <button
+          type="button"
+          data-test="skip"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
+          :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
+          :disabled="disabled || lastStage"
+          aria-label="Nächste Stufe freischalten"
+          :title="`Nächste Stufe freischalten — ${skipCost}`"
+          @click="emit('skip', stage)"
+        >
+          <PlayerIcon name="skip" />
+        </button>
+      </span>
     </div>
 
     <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />

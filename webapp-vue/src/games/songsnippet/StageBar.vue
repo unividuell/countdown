@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { barFraction, scaleEndLabel, stageSteps } from './stagebar'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{
   durations: number[]
@@ -9,7 +10,35 @@ const props = defineProps<{
   positionSeconds: number
 }>()
 
-const unlockedPct = computed(() => barFraction(props.unlockedSeconds, props.totalSeconds) * 100)
+/**
+ * The unlocked fill grows into its new width rather than jumping there: unlocking a stage is the
+ * one moment this bar is about anything, and the eye follows a movement where it would miss a
+ * repaint. A `width` transition does it, so every later change animates for free — including the
+ * very first, which needs the bar to have been painted at zero once. Hence [grown]: false for a
+ * frame, then true. The same two frames `HueWheelReveal` needs, and for the same reason — Firefox
+ * only transitions off a style it has already resolved.
+ */
+const grown = ref(false)
+let frame = 0
+
+onMounted(() => {
+  if (prefersReducedMotion() || inBackground() || typeof requestAnimationFrame !== 'function') {
+    grown.value = true
+    return
+  }
+  frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(() => {
+      grown.value = true
+    })
+  })
+})
+onBeforeUnmount(() => {
+  if (frame) cancelAnimationFrame(frame)
+})
+
+const unlockedPct = computed(() =>
+  grown.value ? barFraction(props.unlockedSeconds, props.totalSeconds) * 100 : 0,
+)
 const playheadPct = computed(() =>
   Math.min(barFraction(props.positionSeconds, props.totalSeconds) * 100, unlockedPct.value),
 )
@@ -24,7 +53,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
       data-test="stage-bar"
     >
       <div
-        class="absolute inset-y-0 left-0 bg-amber-200"
+        class="absolute inset-y-0 left-0 bg-amber-200 transition-[width] duration-500 ease-out motion-reduce:transition-none"
         data-test="stage-unlocked"
         :style="{ width: `${unlockedPct}%` }"
       />

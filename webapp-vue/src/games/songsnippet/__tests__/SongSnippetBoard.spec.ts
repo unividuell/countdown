@@ -141,13 +141,43 @@ describe('SongSnippetBoard', () => {
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the verdict line present so nothing below it moves when a verdict arrives', () => {
-    expect(mountBoard({ notice: null }).find('[data-test="song-notice"]').exists()).toBe(true)
-    expect(
-      mountBoard({ notice: 'Falsch — nächste Stufe frei.' })
-        .get('[data-test="song-notice"]')
-        .text(),
-    ).toBe('Falsch — nächste Stufe frei.')
+  it('floats a verdict over the bar and takes it away again by itself', async () => {
+    vi.useFakeTimers()
+    try {
+      const w = mountBoard({})
+      expect(w.find('[data-test="song-notice"]').exists()).toBe(false)
+
+      await w.setProps({ notice: 'Falsch — nächste Stufe frei.' })
+      const line = w.get('[data-test="song-notice"]')
+      expect(line.text()).toBe('Falsch — nächste Stufe frei.')
+      // Floating: it borrows the space above the bar rather than taking any of its own.
+      expect(line.classes()).toContain('absolute')
+
+      vi.advanceTimersByTime(2000)
+      await w.vm.$nextTick()
+
+      expect(w.find('[data-test="song-notice"]').exists()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('restarts the welcome of a second verdict, rather than letting it inherit the first', async () => {
+    vi.useFakeTimers()
+    try {
+      const w = mountBoard({ notice: 'Falsch — nächste Stufe frei.' })
+      vi.advanceTimersByTime(1500)
+
+      await w.setProps({ notice: null })
+      await w.setProps({ notice: 'Falsch — nächste Stufe frei.' })
+      vi.advanceTimersByTime(1500)
+      await w.vm.$nextTick()
+
+      // The second verdict gets its own two seconds, not the remainder of the first.
+      expect(w.find('[data-test="song-notice"]').exists()).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('holds the title slot open so the reveal does not shift the bar', () => {
