@@ -4,10 +4,13 @@ spring:
   docker:
     compose:
       # compose.yaml lives at the repo root, one level above this module. Without this the
-      # lifecycle manager looks in the process working directory (`core/`, for both
-      # `./mvnw spring-boot:run` and an IDE run config) and fails the boot with
-      # "No Docker Compose file found". The path is relative to that same working
-      # directory. Inert outside local dev: spring-boot-maven-plugin's
+      # lifecycle manager looks in the process working directory and fails the boot with
+      # "No Docker Compose file found". The path is relative to that same working directory,
+      # which is `core/` for `./mvnw spring-boot:run` — the Maven project's own directory — but
+      # the *project root* for an IDE run configuration, where `../` points above the repo and
+      # the boot dies with "'files' content [../compose.yaml] must exist" instead. An IDE
+      # configuration therefore has to set its working directory to `core/`; the shared one in
+      # `.run/CoreApplication.run.xml` does. Inert outside local dev: spring-boot-maven-plugin's
       # `excludeDockerCompose` defaults to true, so the packaged image has no
       # docker-compose support at all, and the support skips itself in tests.
       file: ../compose.yaml

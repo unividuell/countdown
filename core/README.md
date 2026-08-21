@@ -12,6 +12,13 @@ the production login flow locally (see "Real GitHub login" below).
    (Postgres 18 + pgAdmin). It finds it via `spring.docker.compose.file: ../compose.yaml`
    in `application.yaml`, because the file sits one level above this module.
 
+   **From IntelliJ:** use the shared *CoreApplication* configuration (`.run/` at the repo root)
+   rather than the one the IDE offers to generate. The only thing it does differently is set the
+   working directory to `core/`, and that is the whole difference between booting and
+   `'files' content [../compose.yaml] must exist` — an IDE run configuration starts in the project
+   root, where `../compose.yaml` points above the repo. Add `SUPER_ADMIN_GITHUB_LOGINS` to its
+   environment for the same effect as the command above.
+
    The variable has to be on the start command, not exported afterwards:
    `app.super-admin-github-logins` is bound when the context starts, so a running app never
    picks it up. Its value is a comma-separated list of logins granted `ROLE_SUPER_ADMIN`.
