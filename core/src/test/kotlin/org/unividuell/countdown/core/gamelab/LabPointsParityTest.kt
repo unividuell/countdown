@@ -16,18 +16,23 @@ import org.unividuell.countdown.core.community.internal.CommunityMemberRepositor
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.AwardRule
+import org.unividuell.countdown.core.game.GameCatalog
+import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.game.awardFor
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.CurrentRound
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import java.security.SecureRandom
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -55,6 +60,11 @@ import java.util.UUID
  * production code keeps obeying it without exception. `LabServiceTest`'s way — mock the surrounding
  * modules, never reach into `game.internal` — remains the rule for lab tests generally; this file is
  * the one exception, because parity cannot be shown from one side alone.
+ *
+ * The real half's guess-hue shapes (`{"hue":...}`, [GuessHueSolution]) are hard-coded on purpose — this
+ * is a parity test for `awardFor`/`pointsFor`, not a test of game selection — so [announceGuessHue]
+ * pins the real half's round directly via [RoundGameStore.announce], the same documented pattern
+ * [PlayServiceTest] uses, rather than letting the now two-game catalogue's selection choose.
  */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -71,6 +81,8 @@ class LabPointsParityTest(
     @Autowired val clock: Clock,
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
+    @Autowired val store: RoundGameStore,
+    @Autowired val catalog: GameCatalog,
 ) {
 
     private fun aUser(login: String): UUID =
@@ -126,6 +138,28 @@ class LabPointsParityTest(
         return Triple(community, ownerId, currentRoundNumber)
     }
 
+    /** Pins the community's current round to "guess-hue", bypassing GameSelection — see the class doc. */
+    private fun announceGuessHue(community: Community, phaseTwoStartRound: Int?) {
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundNumber = engine.roundAt(
+            now = clock.instant(),
+            startsAt = requireNotNull(edition.startsAt),
+            zone = ZoneId.of(edition.startsAtTimezone),
+        ).number
+        val phase = Phase.of(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound)
+        store.announce(
+            edition = edition,
+            roundNumber = roundNumber,
+            gameType = "guess-hue",
+            params = requireNotNull(catalog.handle("guess-hue")).draw(
+                random = GameRandom.independent(SecureRandom()),
+                context = RoundContext(roundNumber = roundNumber, phase = phase),
+            ),
+            award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound),
+            announcedAt = clock.instant(),
+        )
+    }
+
     @Test
     fun `a lab round in phase two awards what a real round in phase two awards`() {
         // The number both halves must land on, pinned independently of either side's own machinery:
@@ -154,6 +188,7 @@ class LabPointsParityTest(
         // --- the real half: same shape, on round_games/round_plays, threshold pinned to "now" -----
         val (realCommunity, realEarlyId, realThreshold) = aPhaseTwoCommunity("Real Parity Round")
         val realLateId = aMember(community = realCommunity, login = "real-late")
+        announceGuessHue(community = realCommunity, phaseTwoStartRound = realThreshold)
 
         val realEarlyRevealed = play.reveal(
             slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false,

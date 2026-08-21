@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuth } from '@/auth/useAuth'
+import { roundAssetUrl } from '@/api/rounds'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
@@ -26,7 +27,13 @@ const {
   notice,
   reveal,
   submit,
+  skip,
+  giveUp,
 } = useRound(community.value.slug)
+
+/** The asset lives at `{slug}/rounds/current/assets/{roundNumber}/{key}` — the current round's own. */
+const assetUrl = (key: number): string =>
+  roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
 
 // null means "not known yet" and holds the card at a placeholder, so only 'loading' gets it. A
 // failed roster never retries, so mapping it to null would hide the card forever; [] lets the
@@ -84,6 +91,9 @@ const settledMembers = computed(() => {
     :notice="notice"
     :reveal="reveal"
     :submit="submit"
+    :skip="skip"
+    :give-up="giveUp"
+    :asset-url="assetUrl"
     @guessed="refreshAfterGuess"
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />

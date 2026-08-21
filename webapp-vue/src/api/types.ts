@@ -192,6 +192,8 @@ export interface OtherPlayDto {
   userId: string
   username: string
   avatar: AvatarView
+  /** Final stage of a finished play — an "other" row is only ever listed once its player is done. */
+  stage: number
   guess: unknown
   /** The game's own shape. `null` for a game that judges without saying anything. */
   outcome: unknown

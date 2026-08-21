@@ -19,3 +19,20 @@ export const submitGuess = (slug: string, roundNumber: number, guess: unknown) =
     method: 'POST',
     body: JSON.stringify({ roundNumber, guess }),
   })
+
+/** [fromStage] is the stage the caller believes it is on — the server 409s a mismatch. */
+export const skipStage = (slug: string, roundNumber: number, fromStage: number) =>
+  apiFetch<RoundResponse>(roundUrl(slug, '/skip'), {
+    method: 'POST',
+    body: JSON.stringify({ roundNumber, fromStage }),
+  })
+
+export const giveUpRound = (slug: string, roundNumber: number) =>
+  apiFetch<RoundResponse>(roundUrl(slug, '/give-up'), {
+    method: 'POST',
+    body: JSON.stringify({ roundNumber }),
+  })
+
+/** Round number and key ride in the URL so each pair is its own privately cacheable resource. */
+export const roundAssetUrl = (slug: string, roundNumber: number, key: number): string =>
+  roundUrl(slug, `/assets/${roundNumber}/${key}`)

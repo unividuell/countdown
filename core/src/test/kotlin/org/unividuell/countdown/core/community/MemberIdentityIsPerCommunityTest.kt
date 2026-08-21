@@ -16,6 +16,7 @@ import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import java.time.Instant
 import java.util.UUID
 
@@ -26,8 +27,13 @@ import java.util.UUID
  * answer, and a lookup by user alone — the one mistake that would leak the nickname from A into B —
  * satisfies all of those mocks. Only a second community with rows of its own can tell the two
  * implementations apart.
+ *
+ * `play.reveal` below goes through the real materialisation, which may draw `song-snippet` just as
+ * well as `guess-hue` — this test only reads the viewer's identity off the response, not the game's
+ * payload, so [SongSnippetTestCatalogConfiguration] is imported purely to keep that draw from
+ * reaching the network or an empty pool, not to steer which game wins.
  */
-@Import(TestcontainersConfiguration::class)
+@Import(TestcontainersConfiguration::class, SongSnippetTestCatalogConfiguration::class)
 @SpringBootTest
 @Transactional
 class MemberIdentityIsPerCommunityTest(

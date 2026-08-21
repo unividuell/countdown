@@ -31,3 +31,13 @@ class AlreadyRevealedException(message: String = "this round has already been re
  */
 class RoundMovedOnException(current: Int) :
     RuntimeException("the current round is now $current")
+
+/** The staged reveal moved under the click (raced skip, raced wrong guess, or the top) → 409. */
+class StageMovedOnException(message: String = "the stage has moved on") : RuntimeException(message)
+
+/** The key lies above the caller's stage, or behind a solution gate that is still closed → 403. */
+class AssetForbiddenException(message: String = "this asset is not yours to fetch yet") :
+    RuntimeException(message)
+
+/** The gate allowed it, but the game has nothing stored under this key → 404. */
+class AssetNotFoundException(message: String = "no such asset") : RuntimeException(message)

@@ -26,4 +26,50 @@
       transform: translateX(0);
     }
   }
+
+  /* A search hit's title has about 85px on a phone, and most titles are longer. Rather than cut
+     them, the line travels: still at both ends so it can be read, then a slow pass leftwards by
+     exactly its own overflow — `--song-ticker-shift`, which the component measures per line and
+     sets, because CSS cannot know how far a given string overshoots its box. 9s for a full cycle
+     of which two thirds is standing still; a full band of hits runs two of these per cover, so
+     anything faster turns the row into a flicker. */
+  --animate-song-ticker: song-ticker 9s ease-in-out infinite;
+
+  @keyframes song-ticker {
+    0%,
+    30% {
+      transform: translateX(0);
+    }
+    70%,
+    100% {
+      transform: translateX(var(--song-ticker-shift, 0));
+    }
+  }
+
+  /* The ring around the play button while a stage's clip is being cut and fetched — 600-900ms of
+     song pipeline that the greyed-out button alone does not explain. Built like `HoldButton`'s ring,
+     because that is what a ring around a round button already means here: a rim of the button's own
+     colour, a gap between the two, one arc travelling. Anticlockwise, which is the one thing that
+     tells the two apart at a glance: the hold button fills clockwise towards something, this one
+     only waits. 1.1s per turn — slow enough to read as waiting rather than urgency. */
+  --animate-song-loading: song-loading 1.1s linear infinite;
+
+  @keyframes song-loading {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+}
+
+/* How wide one cover is — in the band of search hits on the board, and as the single cover on the
+   reveal. One value for both, because the player picks the cover in the band and then finds the
+   solution's cover in that same place: any difference between the two would show up as a jump when
+   the round resolves. 43.5% is 1/2.3, so the band shows two covers and a slice of the third, which
+   is what says „there is more to the side". Capped, because on a card wide enough for it a cover at
+   43.5% stops being a cover and becomes a poster. */
+@utility song-cover {
+  width: min(43.5%, 9rem);
 }

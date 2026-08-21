@@ -23,6 +23,8 @@ data class LabEntryDto(
     val outcome: GameOutcome?,
     val points: Int,
     val at: Instant,
+    /** The stage this entry was recorded at — same idea as [LabRoundResponse.myStage], per entry. */
+    val stage: Int,
 )
 
 /**
@@ -47,4 +49,9 @@ data class LabRoundResponse(
     val me: LabEntryDto?,
     val others: List<LabEntryDto>,
     val tookOverRound: Boolean,
+    /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
+    val myStage: Int,
 )
+
+/** The body of a skip request — mirrors `SkipRequest` in the real round's `RoundDtos`. */
+data class LabSkipRequest(val fromStage: Int)

@@ -86,6 +86,34 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
     ): Int
 
     /**
+     * Advance the staged reveal by one, guarded like the guess: `stage = :expectedStage` makes a
+     * raced second click affect zero rows, and zero rows is the caller's 409. `guessed_at IS NULL`
+     * keeps a finished play frozen.
+     */
+    @Modifying
+    @Query(
+        """
+        UPDATE game.round_plays SET stage = stage + 1
+        WHERE round_game_id = :roundGameId AND user_id = :userId
+          AND stage = :expectedStage AND guessed_at IS NULL
+        """,
+    )
+    fun advanceStage(roundGameId: UUID, userId: UUID, expectedStage: Int): Int
+
+    /**
+     * Spend the round without an answer: `guessed_at` set, `guess` and the verdict columns stay
+     * NULL — the re-evaluation reads that as "not qualifying" and writes 0 points.
+     */
+    @Modifying
+    @Query(
+        """
+        UPDATE game.round_plays SET guessed_at = :guessedAt
+        WHERE round_game_id = :roundGameId AND user_id = :userId AND guessed_at IS NULL
+        """,
+    )
+    fun giveUp(roundGameId: UUID, userId: UUID, guessedAt: Instant): Int
+
+    /**
      * Write only [points], nothing else. `RoundScoring.reevaluate` reads every guessed row of a round
      * and rewrites just this column for whichever rows changed — a targeted `UPDATE`, not the
      * full-row `save()` its `CrudRepository` supertype would use. The round lock serialises guesses,

@@ -149,6 +149,15 @@ database `app`.
   source) can connect reliably — Spring reads whatever port is mapped, so both
   share it. Same trick for `PGADMIN_PORT`. This keeps the zero-config free-port
   default while allowing a fixed port per project (one number, chosen once).
+- **The IntelliJ data source is committed**, at `.idea/dataSources.xml` — the one file in `.idea/`
+  that is not ignored (`.gitignore` uses `.idea/*` for it, since git cannot re-include a file whose
+  parent directory is excluded). That is the only place a database connection can be shared: there
+  is no `.run/` equivalent for it, unlike run configurations. It holds no password — IntelliJ keeps
+  those in the OS credential store — and its siblings stay ignored on purpose:
+  `dataSources.local.xml` is per-user state, `dataSources/` a multi-megabyte introspection cache.
+  A committed connection is only worth anything with `POSTGRES_PORT` set, so every checkout needs
+  its own `.env` (`cp .env.example .env`); without one the container takes a random port and the
+  shared URL is wrong for everybody, including whoever wrote it.
 - **pgAdmin** runs as a second compose service; it pre-registers the `postgres`
   server (host `postgres`, the compose-internal service name) and persists its
   state in the `pgadmin-data` named volume — enter the DB password once and it

@@ -109,7 +109,7 @@ class AnnouncementService(
             return null
         }
         val handle = requireNotNull(catalog.handle(typeId)) { "selection picked unknown type '$typeId'" }
-        return store.announce(
+        val announced = store.announce(
             edition = edition,
             roundNumber = round.number,
             gameType = typeId,
@@ -118,11 +118,35 @@ class AnnouncementService(
                 context = RoundContext(
                     roundNumber = round.number,
                     phase = Phase.of(edition = edition, roundNumber = round.number),
+                    previousParams = store.previousParams(edition = edition, gameType = typeId),
                 ),
             ),
             award = awardFor(roundNumber = round.number, phaseTwoStartRound = edition.phaseTwoStartRound),
             announcedAt = clock.instant(),
         )
+        // On a lost announce race, `announced` is the WINNER's row, possibly of a different type
+        // than `typeId` drew — so the hook must run against the type the persisted row actually
+        // carries, not against this caller's `handle`. Both first callers reach this line and call
+        // the winner's hook, which is exactly why it must be idempotent.
+        val materialisedHandle = requireNotNull(catalog.handle(announced.gameType)) {
+            "announced round carries unknown type '${announced.gameType}'"
+        }
+        materialisedHandle.materialised(params = announced.params, roundGameId = requireNotNull(announced.id))
+        releaseEarlierRounds(edition = edition, current = round.number)
+        return announced
+    }
+
+    /**
+     * Only the current round is playable — past rounds are display-only and have no asset
+     * endpoint — so whatever any game stored for earlier rounds may go. Every game is asked;
+     * each deletes only what it owns (a no-op for most).
+     */
+    private fun releaseEarlierRounds(edition: CommunityEdition, current: Int) {
+        val earlier = store.roundIdsExcept(edition = edition, roundNumber = current)
+        if (earlier.isEmpty()) return
+        for (id in catalog.ids()) {
+            catalog.handle(id)?.releaseAssets(earlier)
+        }
     }
 
     /**

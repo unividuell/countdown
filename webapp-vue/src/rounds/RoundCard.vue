@@ -19,6 +19,9 @@ const props = defineProps<{
   notice: string | null
   reveal: () => Promise<void>
   submit: (guess: unknown) => Promise<void>
+  skip: (fromStage: number) => Promise<void>
+  giveUp: () => Promise<void>
+  assetUrl: (key: number) => string
 }>()
 
 const emit = defineEmits<{ guessed: [] }>()
@@ -110,7 +113,11 @@ async function onGuess(value: unknown): Promise<void> {
       :mine-user-id="round?.me?.userId ?? null"
       :award-rule="round?.awardRule ?? null"
       :disabled="busy || stage === 'done'"
+      :stage="round?.me?.stage ?? 0"
+      :asset-url="assetUrl"
       @guess="onGuess"
+      @skip="props.skip"
+      @give-up="props.giveUp"
     />
   </div>
 </template>

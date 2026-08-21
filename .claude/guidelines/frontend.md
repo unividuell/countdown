@@ -69,6 +69,14 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `error.body.detail` is the server's own sentence about *this* request. A validation failure the
   user can fix (a rejected colour, a name over the limit) must show it; keep the constant
   „… fehlgeschlagen.“ for everything that has no explanation.
+- **`apiFetch` stays JSON-only — binary responses go through `fetchAssetBlob`.** Round assets (e.g.
+  song-snippet audio) are bytes, not JSON, so they bypass the shared client entirely: `fetchAssetBlob`
+  (`src/api/assets.ts`) is a credentialed `fetch` that turns the response into a `Blob`, which the
+  caller turns into an object URL for an `<audio>`/`<img>` element. Object URLs are not garbage
+  collected by the DOM — revoke the previous one whenever it is replaced or the component unmounts, or
+  it leaks. Where responses for the same slot can race (e.g. rapid stage advances re-requesting the
+  next clip), guard the assignment with a generation counter so a slow, stale response can't clobber a
+  newer one that already landed.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),

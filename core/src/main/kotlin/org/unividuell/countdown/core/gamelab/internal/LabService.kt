@@ -10,10 +10,16 @@ import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.GameTypeHandle
+import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.awardFor
+import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.NullNode
 import java.util.UUID
 
 /**
@@ -80,10 +86,31 @@ class LabService(
         // round it was judged against, so the two can never describe different rounds: not the
         // stored one while filing the entry under a freshly chosen one, and not the other way round.
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val judgement = handle.judge(params = playing.params, guess = guess)
+        val stages = handle.stages(playing.params)
+        // Judged and (on advance) discarded on purpose: in phase one a wrong guess below the last
+        // stage only burns the stage — the same rule `PlayService.guess` applies to a real round.
+        if (guessActionFor(
+                rule = playing.award.rule, qualifies = judgement.qualifies, stage = stage, stages = stages,
+            ) == GuessAction.ADVANCE_STAGE
+        ) {
+            val advanced = store.advanceStage(
+                communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = stage,
+            )
+            if (!advanced) throw LabStageMovedOnException()
+            return respond(
+                communityId = communityId, handle = handle,
+                snapshot = store.open(communityId = communityId, gameId = gameId, round = playing),
+                me = userId,
+            )
+        }
+        // For a staged game the distance IS the stage — framework state the game cannot know. A
+        // single-stage game keeps the game's own distance.
+        val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
-            userId = userId, guess = guess, judgement = judgement,
+            userId = userId, guess = guess, judgement = adjusted,
         )
         return when (result) {
             is RecordResult.Recorded -> respond(
@@ -91,6 +118,94 @@ class LabService(
             )
             RecordResult.AlreadyGuessed -> throw AlreadyGuessedException()
         }
+    }
+
+    /** Voluntary stage advance — the lab's own "skip", replaying `PlayService.skip`'s guard. */
+    fun skip(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+        fromStage: Int,
+    ): LabRoundResponse {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        val stages = handle.stages(playing.params)
+        // No skip off the top: the exits up there are the terminal guess, or giving up.
+        if (fromStage < 0 || fromStage >= stages - 1) throw LabStageMovedOnException()
+        val advanced = store.advanceStage(
+            communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = fromStage,
+        )
+        if (!advanced) throw LabStageMovedOnException()
+        return respond(
+            communityId = communityId, handle = handle,
+            snapshot = store.open(communityId = communityId, gameId = gameId, round = playing),
+            me = userId,
+        )
+    }
+
+    /** The explicit exit without an answer: spends the guess, scores 0, opens the solution gate. */
+    fun giveUp(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+    ): LabRoundResponse {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
+        val result = store.record(
+            communityId = communityId, gameId = gameId, round = playing, userId = userId,
+            guess = NullNode.instance,
+            judgement = Judgement(qualifies = false, deviation = stage.toDouble(), outcome = null),
+        )
+        return when (result) {
+            is RecordResult.Recorded -> respond(
+                communityId = communityId, handle = handle, snapshot = result.snapshot, me = userId,
+            )
+            RecordResult.AlreadyGuessed -> throw AlreadyGuessedException()
+        }
+    }
+
+    /**
+     * One of the round's binary assets. The gate is framework state, replayed exactly like
+     * `PlayService.asset`: unlocked stages stay fetchable (`key` <= the tester's stage), the solution
+     * asset opens once the tester has an entry of their own — guessed or given up, either spends it.
+     */
+    fun asset(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+        key: Int,
+    ): RoundAsset {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
+        val snapshot = store.open(communityId = communityId, gameId = gameId, round = playing)
+        val hasGuessed = snapshot.entries.any { it.userId == userId }
+        val allowed = if (key == SOLUTION_ASSET_KEY) hasGuessed else key in 0..stage
+        if (!allowed) throw LabAssetForbiddenException()
+        val assets = store.assetsOf(
+            communityId = communityId, gameId = gameId, round = playing,
+            produce = { handle.produceAssets(playing.params) },
+        )
+        return assets[key] ?: throw LabAssetNotFoundException()
     }
 
     fun resetRound(
@@ -207,6 +322,7 @@ class LabService(
                 outcome = entry.outcome,
                 points = entry.points,
                 at = entry.at,
+                stage = entry.stage,
             )
         }
 
@@ -224,6 +340,7 @@ class LabService(
             me = mine?.let(::dtoOf),
             others = visible.mapNotNull(::dtoOf),
             tookOverRound = snapshot.tookOverRound,
+            myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me),
         )
     }
 

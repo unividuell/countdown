@@ -135,6 +135,7 @@ function entry(
     userId,
     username: userId,
     avatar: { shortName: userId.toUpperCase(), bgColorHex },
+    stage: 0,
     guess: { hue },
     outcome: { deviationDeg: 0 },
     points: 1,

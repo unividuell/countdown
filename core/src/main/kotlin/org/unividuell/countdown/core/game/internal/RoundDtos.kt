@@ -53,6 +53,11 @@ data class OtherPlayDto(
     val userId: UUID,
     val username: String,
     val avatar: Avatar,
+    /**
+     * Safe although timestamps are not: an "other" row is listed only once that player is finished
+     * (see RoundResponses) — a final stage is a result, not a live tactic.
+     */
+    val stage: Int,
     val guess: JsonNode?,
     val outcome: JsonNode?,
     val points: Int?,
@@ -67,6 +72,7 @@ data class MyPlayDto(
     val userId: UUID,
     val username: String,
     val avatar: Avatar,
+    val stage: Int,
     val revealedAt: Instant,
     val guessedAt: Instant?,
     val guess: JsonNode?,
@@ -111,5 +117,11 @@ data class RoundResponse(
  * a verdict against a target the player never saw.
  */
 data class GuessRequest(val roundNumber: Int, val guess: JsonNode)
+
+/** Advance the staged reveal: from the stage the client believes it is on. */
+data class SkipRequest(val roundNumber: Int, val fromStage: Int)
+
+/** Spend the round without an answer. */
+data class GiveUpRequest(val roundNumber: Int)
 
 fun Round.toDto() = RoundDto(number = number, label = label, start = start, end = end)

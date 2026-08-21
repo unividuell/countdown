@@ -32,3 +32,30 @@ export const resetLabRound = <P>(slug: string, game: string, seed: number, phase
 
 export const forgetMyLabEntry = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/me'), { method: 'DELETE' })
+
+/** Voluntary stage advance — „mehr hören“, guarded server-side by the stage the client believes it is on. */
+export const skipLabStage = <P>(
+  slug: string,
+  game: string,
+  seed: number,
+  phase: LabPhase,
+  fromStage: number,
+) =>
+  apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/skip'), {
+    method: 'POST',
+    body: JSON.stringify({ fromStage }),
+  })
+
+/** The explicit exit without an answer. */
+export const giveUpLabRound = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
+  apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/give-up'), { method: 'POST' })
+
+/** The round's binary assets, stage-gated exactly like the real round's — a plain URL, not a fetch:
+ * callers pass it to `fetchAssetBlob` themselves, the same way the real round's `assetUrl` works. */
+export const labAssetUrl = (
+  slug: string,
+  game: string,
+  seed: number,
+  phase: LabPhase,
+  key: number,
+): string => labUrl(slug, game, seed, phase, `/assets/${key}`)

@@ -30,6 +30,11 @@ desktop layout that was written first).
   — the write also cancels the pending restore, and the extra frame covers the restore
   landing in the reflow that first builds the scroll frame. Same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader). See `MemberRow`.
+- **Replacing a strip's content resets its scroll offset**, in every browser and both axes:
+  the offset belonged to the old content, and a box left parked in the middle hides the very
+  items that just arrived — on a phone it reads as „the search never answered". Reset in a
+  `watch` on the data with `{ flush: 'post' }`, so the box is measured against its new content
+  and not the old one. See `SongSearchBox`.
 
 ### Animation on a phone's main thread
 
@@ -129,6 +134,16 @@ it is the only proof available — no unit test can see them.
   it rendered and `invisible`, with its height written down (`h-4` for `text-xs`) so an empty one
   still holds the line. `MemberRow`'s live-points chip; the section's `min-h` is then the row's only
   height rather than a second opinion about it.
+- **An overlay does not reach into a rounded corner the way the content behind it does.** A caption
+  laid over the foot of an image (`absolute inset-x-0 bottom-0 bg-white`) inside a
+  `rounded-xl overflow-hidden` tile gets clipped out of the two bottom corner arcs, while the image
+  behind it still paints there — so every dark image shows a dark crescent in both corners. Neither
+  a matching `rounded-b-*` on the overlay, a radius on the image, nor a `mask` fixes it; giving the
+  tile a different background proves the culprit (colour the tile red and the crescents stay dark).
+  **Stack instead of overlay:** the tile itself carries the caption's white, the image sits in a
+  `flex-1 min-h-0` block above it, and the corners then belong to a single painted layer with
+  nothing behind them. It looks identical — an opaque overlay hid the same pixels — and the tile
+  stays square, so a shared size still matches. See `SongSearchBox`.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes `overflow-y` to
   `auto` as well, which clips transformed children — so an element that both scrolls and hosts
   an animation that escapes its box must not clip while the animation runs.
@@ -144,6 +159,18 @@ it is the only proof available — no unit test can see them.
   un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
   doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
   `GuessHueScoreboard`.
+
+- **Two screens that must not jump share one measurement, not two matching numbers.** Where a
+  round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of
+  the band's search hits, then the solution's own), the size belongs in a single `@utility`
+  (`song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
+  `h-32 w-32` on one side and an equal-looking value on the other, which drifts the moment either
+  is touched. The same for a slot one screen fills with a control and the other with text: give
+  both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
+  then assert is exactly that — both ends carry the shared class — which is the checkable half of
+  „nothing moves". And where the two screens show the same *control* rather than merely the same
+  size, make it one component (`PlayButton`) instead of two copies of its markup: then the agreement
+  is structural and there is nothing left to drift.
 
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the

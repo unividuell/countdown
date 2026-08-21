@@ -10,6 +10,18 @@ Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
+**Disposal must be final, and an async path must be mortal.** A composable that owns something
+outside Vue (an audio node, a socket, an object URL) is torn down in `onUnmounted` — but an `await`
+that was already in flight when the component went away *still resumes*, and a generation counter
+guarding it does not help: an unmount bumps nothing. The callback then calls back into a composable
+whose component is gone, and what it starts belongs to nobody — Song Snippet's snippet went on
+sounding into the reveal, whose transport addresses its own player and so could not stop it, and the
+object URL it created after the unmount handler had run was never revoked. Two rules, and both are
+needed: the composable keeps a `disposed` flag that makes its entry points no-ops for good (so *any*
+caller's late callback is harmless), and each async path in a component checks an `alive` flag —
+cleared in `onUnmounted` — right after every `await`, before it creates or hands over anything. See
+`usePlayback`, `SongSnippetBoard`, `SongPlayerReveal`.
+
 **Derive state from the answer, don't mirror it into flags.** `useRound`'s `stage` is a `computed` over
 the last `RoundResponse` — no game → `no-game`, `me == null && game.requiresReveal` → sealed, `me ==
 null` otherwise → `no-game` too (a viewer with no row and no game-mandated reveal has nothing to seal —
@@ -95,6 +107,38 @@ tab. So:
   budget, never a copy of a game's timetable: a new game fits inside it or raises it, and nothing
   synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
   choreography left to protect, and lag for that reader is the wrong way round.
+
+## Sound — a short clip needs the graph, not the `<audio>` element
+
+An `<audio>` element opens an output stream per playback and tears it down when the clip ends.
+On Android that opening and closing costs tens to hundreds of milliseconds, so a clip whose
+**entire** content is 0.1 s lives inside that window: its tail gets flushed away, or nothing is
+heard at all, and `currentTime` already stands at the end before the first frame paints (observed
+on Firefox for Android; Chrome for Android does not show it). **Anything under about a second goes
+through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
+the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
+already running. `usePlayback` (`src/games/songsnippet/`) is the worked example.
+
+- **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
+  graph may be mid-render and drop the first samples of a clip that starts in the present.
+- **Read the position from the graph's clock** — `ctx.currentTime - startedAt`, clamped to
+  `[0, buffer.duration]`. The element's `timeupdate` is ~4 Hz (useless over 0.1 s) and its
+  `currentTime` reports the decoder's progress rather than what has been heard.
+- **Keep the element as a fallback** for browsers without an `AudioContext` and for a clip
+  `decodeAudioData` rejects — resolve the decode to `null` rather than rejecting, and let the
+  element carry the same source all along, so falling back costs no second load.
+- **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
+  resumes (our play button is „always from the start", pause is its own control). Check that
+  before choosing the graph; a resume needs an offset you keep yourself.
+- **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
+  from the outside; a `console.warn` is what makes it a report instead of a mystery.
+- **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
+  Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
+  routing any remote source through the graph.
+- **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
+  constructor. Both the context and the „only one clip sounds" registry are module state, so a
+  stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
+  stubbed into a queue you step by hand (the sampler re-requests itself).
 
 ## Server-authoritative ticking values (countdown pattern)
 

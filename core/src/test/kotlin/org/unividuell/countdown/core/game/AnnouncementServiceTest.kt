@@ -24,13 +24,22 @@ import org.unividuell.countdown.core.game.internal.RoundGameRepository
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import tools.jackson.databind.ObjectMapper
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 
-@Import(TestcontainersConfiguration::class)
+/**
+ * `song-snippet` is a second unconditional bean alongside `guess-hue` (see [SongSnippetGameType][
+ * org.unividuell.countdown.core.game.internal.SongSnippetGameType]), so [GameSelection][
+ * org.unividuell.countdown.core.game.internal.GameSelection] may draw either one for a freshly
+ * materialised round here — [SongSnippetTestCatalogConfiguration] keeps that draw from reaching the
+ * network or an empty pool, and the one assertion below that used to hard-code "guess-hue" now
+ * accepts whichever type actually won.
+ */
+@Import(TestcontainersConfiguration::class, SongSnippetTestCatalogConfiguration::class)
 @SpringBootTest
 @Transactional
 class AnnouncementServiceTest(
@@ -130,8 +139,11 @@ class AnnouncementServiceTest(
 
         // With a target date in 2099, the current round number is far above zero.
         res.round.shouldNotBeNull().number shouldBeGreaterThan 0
-        res.game.shouldNotBeNull().id shouldBe "guess-hue"
-        res.game!!.displayName shouldBe "Farbausmalung"
+        // Whichever type won: this asserts a game was announced at all, not which one — the
+        // catalogue now carries two unconditional games and GameSelection may draw either.
+        val displayNameById = mapOf("guess-hue" to "Farbausmalung", "song-snippet" to "Anspielung")
+        val id = res.game.shouldNotBeNull().id
+        res.game!!.displayName shouldBe requireNotNull(displayNameById[id]) { "unexpected game id '$id'" }
         res.noGameReason.shouldBeNull()
     }
 
