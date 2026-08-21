@@ -62,6 +62,12 @@ let objectUrl: string | null = null
  * cancellation) is what makes a stale response inert.
  */
 let stageGeneration = 0
+/**
+ * A fetch outlives the card it was started from: resolving the round swaps this board for the
+ * reveal, and the callback still runs. It must then do nothing at all — not create an object URL
+ * nobody will revoke, and not hand a clip to a player that has been disposed.
+ */
+let alive = true
 watch(
   () => props.stage,
   async (stage, previous) => {
@@ -69,7 +75,7 @@ watch(
     loadingStage.value = true
     try {
       const blob = await fetchAssetBlob(props.assetUrl(stage))
-      if (mine !== stageGeneration) return
+      if (mine !== stageGeneration || !alive) return
       if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
       objectUrl = URL.createObjectURL(blob)
       playback.setSource(objectUrl)
@@ -86,6 +92,7 @@ watch(
   { immediate: true },
 )
 onUnmounted(() => {
+  alive = false
   if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
   clearTimeout(verdictTimer)
 })

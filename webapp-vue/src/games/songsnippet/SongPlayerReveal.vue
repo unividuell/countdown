@@ -30,11 +30,14 @@ const props = defineProps<{
 const playback = usePlayback()
 const loaded = ref(false)
 let objectUrl: string | null = null
+/** The board's reason, on this side of the round: a fetch can outlive the card that started it. */
+let alive = true
 
 /** Loaded on the first tap, not on mount — browser policies want a gesture anyway. */
 async function playSolution(): Promise<void> {
   if (!loaded.value && props.assetUrl) {
     const blob = await fetchAssetBlob(props.assetUrl(SOLUTION_ASSET_KEY))
+    if (!alive) return
     objectUrl = URL.createObjectURL(blob)
     playback.setSource(objectUrl)
     loaded.value = true
@@ -45,6 +48,7 @@ async function playSolution(): Promise<void> {
 /** Same lifecycle as the board's own snippet blob: the object URL outlives nothing beyond this
  * component. */
 onUnmounted(() => {
+  alive = false
   if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
 })
 </script>

@@ -33,6 +33,12 @@ const props = defineProps<{
  */
 const player = usePlayback()
 const playingTrackId = ref<number | null>(null)
+/**
+ * The row whose preview URL is being fetched. A tap here costs a round trip to Deezer before any
+ * sound arrives, and on a phone that is long enough to look like nothing happened — so the row says
+ * it is working rather than leaving the player to tap again.
+ */
+const resolvingTrackId = ref<number | null>(null)
 
 async function toggle(row: ScoreRow): Promise<void> {
   if (row.trackId === null) return
@@ -40,6 +46,7 @@ async function toggle(row: ScoreRow): Promise<void> {
     player.pause()
     return
   }
+  resolvingTrackId.value = row.trackId
   try {
     const track = await resolveTrack(row.trackId)
     playingTrackId.value = row.trackId
@@ -47,11 +54,23 @@ async function toggle(row: ScoreRow): Promise<void> {
     player.restart()
   } catch (err) {
     console.error('[song-snippet] guess preview failed', err)
+  } finally {
+    // Only the newest tap may put the spinner away; an older one leaves it to its successor.
+    if (resolvingTrackId.value === row.trackId) resolvingTrackId.value = null
   }
 }
 
+/**
+ * Both ask „is this row the one" — and both have to rule out the rows that are nobody's: a row
+ * without a track (a player who gave up) carries `trackId: null`, which would match a `null` state
+ * and claim every idle moment as its own.
+ */
 function isPlaying(row: ScoreRow): boolean {
-  return playingTrackId.value === row.trackId && player.playing.value
+  return row.trackId !== null && playingTrackId.value === row.trackId && player.playing.value
+}
+
+function isResolving(row: ScoreRow): boolean {
+  return row.trackId !== null && resolvingTrackId.value === row.trackId
 }
 
 /** U+2014. An unscored row says „nothing here“, and a hyphen would read as a minus. */
@@ -126,8 +145,15 @@ function ground(row: ScoreRow) {
               class="flex min-w-0 items-center gap-1"
               :class="row.trackId === null ? 'justify-center' : ''"
             >
+              <span
+                v-if="isResolving(row)"
+                class="size-3.5 shrink-0 animate-spin rounded-full border-2 border-current/30 border-t-current motion-reduce:animate-none"
+                data-test="guess-spinner"
+                role="status"
+                aria-label="Tipp wird geladen"
+              />
               <button
-                v-if="row.trackId !== null"
+                v-else-if="row.trackId !== null"
                 type="button"
                 class="shrink-0 cursor-pointer text-sm"
                 data-test="play-guess"

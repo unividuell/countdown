@@ -9,10 +9,10 @@ const props = defineProps<{
   unlockedSeconds: number
   positionSeconds: number
   /**
-   * A remark to float above the bar — „Falsch — nächste Stufe frei." and nothing else so far. It
-   * belongs here rather than in the board because the bar is what it is about, and because
-   * „above the bar" is a measurement only the bar has. Omitted by the reveal, which has no
-   * verdicts.
+   * A remark for the room above the bar — „Falsch — nächste Stufe frei." and nothing else so far.
+   * It belongs here rather than in the board because the bar is what it is about, and because the
+   * room it needs is height only the bar can reserve without the two screens drifting apart.
+   * Omitted by the reveal, which has no verdicts.
    */
   notice?: string | null
 }>()
@@ -54,7 +54,10 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
 </script>
 
 <template>
-  <div class="relative">
+  <!-- The room above the bar belongs to the verdict that appears there. Reserved here rather than on
+       the board, so both screens keep the bar at the same height — the reveal has no verdicts, but it
+       does have to agree with the board about where the bar sits. -->
+  <div class="relative pt-7">
     <div
       class="relative h-5 w-full overflow-hidden rounded-full bg-neutral-200"
       data-test="stage-bar"
@@ -80,8 +83,8 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
         :style="{ left: `${step.fraction * 100}%` }"
       />
     </div>
-    <!-- Above the bar, where the news is: a stage just came free. Floating, so it costs no height
-         and pushes nothing; gone by itself, because a verdict that stays turns into a label. -->
+    <!-- Above the bar, where the news is: a stage just came free. In the room the bar reserved for
+         it, so it pushes nothing; gone by itself, because a verdict that stays turns into a label. -->
     <Transition
       enter-active-class="transition-opacity duration-150"
       enter-from-class="opacity-0"
@@ -90,7 +93,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
     >
       <p
         v-if="notice"
-        class="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-xs whitespace-nowrap text-amber-700"
+        class="pointer-events-none absolute inset-x-0 top-0 flex h-7 items-center justify-center text-sm whitespace-nowrap text-amber-700"
         data-test="song-notice"
       >
         {{ notice }}

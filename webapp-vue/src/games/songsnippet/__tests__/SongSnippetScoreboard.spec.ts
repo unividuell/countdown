@@ -131,6 +131,9 @@ describe('SongSnippetScoreboard', () => {
       .findAll('tbody tr')
       .filter((tr) => tr.find('[data-test="play-guess"]').exists())
     expect(playable.map((tr) => tr.get('th').text())).toEqual(['wrong', 'right'])
+    // And a row with nothing to play shows nothing at all — no spinner claiming to be loading
+    // something it will never have. `trackId: null` must not match the idle state's own null.
+    expect(w.findAll('[data-test="guess-spinner"]')).toHaveLength(0)
   })
 
   it('leads with the button and puts the guess behind it', () => {
@@ -166,20 +169,58 @@ describe('SongSnippetScoreboard', () => {
     expect(playbacks[0]!.restart).toHaveBeenCalled()
   })
 
+  it('spins in place of the play button while the preview is being fetched', async () => {
+    let deliver: (preview: TrackPreview) => void = () => {}
+    resolveTrack.mockReturnValue(
+      new Promise<TrackPreview>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    const w = mountBoard([row({ userId: 'wrong' })])
+
+    await w.get('[data-test="play-guess"]').trigger('click')
+
+    expect(w.find('[data-test="play-guess"]').exists()).toBe(false)
+    expect(w.get('[data-test="guess-spinner"]').attributes('aria-label')).toBe('Tipp wird geladen')
+
+    deliver(PREVIEW)
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="guess-spinner"]').exists()).toBe(false)
+    expect(w.find('[data-test="play-guess"]').exists()).toBe(true)
+  })
+
+  it('stops spinning when the preview cannot be resolved at all', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    resolveTrack.mockRejectedValue(new Error('offline'))
+    const w = mountBoard([row({ userId: 'wrong' })])
+
+    await w.get('[data-test="play-guess"]').trigger('click')
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="guess-spinner"]').exists()).toBe(false)
+    expect(w.find('[data-test="play-guess"]').exists()).toBe(true)
+  })
+
   it('turns the same button into pause while that guess sounds, and pauses on the next tap', async () => {
     resolveTrack.mockResolvedValue(PREVIEW)
     const w = mountBoard([row({ userId: 'wrong' })])
-    const button = w.get('[data-test="play-guess"]')
-    expect(button.attributes('aria-label')).toBe('Tipp anhören')
+    // Re-queried at every step: the spinner takes the button's place while the fetch is out, so a
+    // wrapper held across the tap would point at an element that is no longer in the tree.
+    const button = () => w.get('[data-test="play-guess"]')
+    expect(button().attributes('aria-label')).toBe('Tipp anhören')
 
-    await button.trigger('click')
+    await button().trigger('click')
     await Promise.resolve()
+    await w.vm.$nextTick()
     // What the `play` event would report on a real element.
     playbacks[0]!.playing.value = true
     await w.vm.$nextTick()
-    expect(button.attributes('aria-label')).toBe('Pause')
+    expect(button().attributes('aria-label')).toBe('Pause')
 
-    await button.trigger('click')
+    await button().trigger('click')
     expect(playbacks[0]!.pause).toHaveBeenCalled()
     expect(resolveTrack).toHaveBeenCalledTimes(1)
   })

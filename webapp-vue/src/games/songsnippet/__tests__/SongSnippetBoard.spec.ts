@@ -141,6 +141,29 @@ describe('SongSnippetBoard', () => {
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
   })
 
+  it('does not sound a stage clip that lands after the round resolved', async () => {
+    let deliver: (blob: Blob) => void = () => {}
+    const w = mountBoard({ stage: 0 })
+    await Promise.resolve()
+    await Promise.resolve()
+    fetchAssetBlob.mockReturnValue(
+      new Promise<Blob>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    await w.setProps({ stage: 1 })
+
+    // The guess landed, the card is gone — and only now does its own fetch come back.
+    w.unmount()
+    deliver(new Blob(['x']))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Neither a clip nobody can stop nor an object URL nobody will revoke.
+    expect(playbacks[0]!.restart).not.toHaveBeenCalled()
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+  })
+
   it('floats a verdict above the bar and takes it away again by itself', async () => {
     vi.useFakeTimers()
     try {
@@ -150,9 +173,9 @@ describe('SongSnippetBoard', () => {
       await w.setProps({ notice: 'Falsch — nächste Stufe frei.' })
       const line = w.get('[data-test="song-notice"]')
       expect(line.text()).toBe('Falsch — nächste Stufe frei.')
-      // Floating: it borrows the space above the bar rather than taking any of its own.
+      // In the room the bar reserves for it, so it costs the card no height of its own.
       expect(line.classes()).toContain('absolute')
-      expect(line.classes()).toContain('bottom-full')
+      expect(line.classes()).toContain('top-0')
 
       vi.advanceTimersByTime(2000)
       await w.vm.$nextTick()

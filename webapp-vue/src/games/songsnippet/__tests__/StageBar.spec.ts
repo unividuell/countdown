@@ -27,10 +27,12 @@ describe('StageBar', () => {
     const line = told.get('[data-test="song-notice"]')
 
     expect(line.text()).toBe('Falsch — nächste Stufe frei.')
-    // Above the bar and out of the flow, so it takes no height from the card and eats no taps.
+    // Out of the flow, in room the bar itself holds open — and deaf to taps meant for the card.
     expect(line.classes()).toContain('absolute')
-    expect(line.classes()).toContain('bottom-full')
+    expect(line.classes()).toContain('top-0')
     expect(line.classes()).toContain('pointer-events-none')
+    // Reserved on the bar, so the board and the reveal cannot drift apart over it.
+    expect(told.get('[data-test="stage-bar"]').element.parentElement?.className).toContain('pt-7')
   })
 
   it('pins the last rung to the right edge only when it really sits there', () => {

@@ -218,6 +218,20 @@ describe('usePlayback with an audio graph', () => {
     expect(context().nodes).toHaveLength(0)
   })
 
+  it('stays silent for good once disposed, however late its own fetch lands', async () => {
+    const { playback, unmount } = withPlayback(usePlayback)
+    unmount()
+
+    // What a stage fetch that outlived the board does when it finally resolves.
+    playback.setSource('blob:stage-4')
+    playback.restart()
+    await settle()
+
+    expect(FakeContext.instances).toHaveLength(0)
+    expect(play).not.toHaveBeenCalled()
+    expect(playback.playing.value).toBe(false)
+  })
+
   it('lets go of the clip when its component goes away', async () => {
     const { playback, unmount } = withPlayback(usePlayback)
     playback.setSource('blob:stage-0')

@@ -85,6 +85,14 @@ export function usePlayback(): {
    * which makes a decode still in flight — and the `onended` of a node already stopped — inert.
    */
   let generation = 0
+  /**
+   * Disposal is final. A component that goes away while one of its own fetches is still in flight
+   * would otherwise come back through it — `setSource` + `restart` from a callback whose component
+   * no longer exists starts a clip on the shared graph that nothing owns and no transport can
+   * reach, which is exactly how a snippet went on sounding into the reveal with its pause button
+   * unable to touch it. Nothing here revives; the callback lands on a player that is done.
+   */
+  let disposed = false
 
   const self = { pause: (): void => pause() }
 
@@ -194,6 +202,7 @@ export function usePlayback(): {
   }
 
   function setSource(url: string): void {
+    if (disposed) return
     generation++
     silence()
     element.pause()
@@ -207,6 +216,7 @@ export function usePlayback(): {
   }
 
   function restart(): void {
+    if (disposed) return
     const context = graph()
     if (context === null || decoded === null) {
       playElement()
@@ -225,6 +235,7 @@ export function usePlayback(): {
   }
 
   function dispose(): void {
+    disposed = true
     generation++
     finish(positionSeconds.value)
     element.pause()
