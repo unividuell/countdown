@@ -154,8 +154,11 @@ class PlayService(
     /**
      * One stored asset of the current round. The gate is framework state: unlocked stages stay
      * fetchable ([key] <= the caller's stage), the solution asset opens with the spent guess.
+     *
+     * Not `readOnly`: like [AnnouncementService.currentRound], the first fetch of an un-materialised
+     * round inserts via [AnnouncementService.resolve].
      */
-    @Transactional(readOnly = true)
+    @Transactional
     fun asset(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int, key: Int): RoundAsset {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
         if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)

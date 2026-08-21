@@ -168,4 +168,8 @@ stage-gating: they live behind the framework's own URL
 (`/api/communities/{slug}/rounds/current/assets/{roundNumber}/{key}`, where key `99` is the solution,
 reachable only once the guess is spent), while a catalogue-wide lookup (search, track metadata) is
 served from the module's own URL (`/api/song-snippet/...`) — searching the whole catalogue reveals
-nothing about which song the round chose, so it needs no round gate at all.
+nothing about which song the round chose, so it needs no round gate at all. Cleanup itself only fires
+on the *next* materialisation within the same edition, so the final round's own audio outlives the
+edition — released only once a later round, or a manual cleanup, actually gets around to it —
+deliberately bounded rather than open-ended: storage never holds more than one round's ladder per
+community per edition.

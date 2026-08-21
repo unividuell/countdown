@@ -28,18 +28,30 @@ const durations = computed(() =>
 )
 const revealed = computed(() => props.solution !== null && props.solution !== undefined)
 
-/** A stage that grew without the play ending is exactly „falsch geraten oder geskippt“. */
+/** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
+ *  skip, flagged below before the re-emit so the watch can tell the two apart. */
 const notice = ref<string | null>(null)
+let skipPending = false
 watch(
   () => props.stage ?? 0,
   (now, before) => {
-    if (now > before && !revealed.value) notice.value = 'Falsch — nächste Stufe frei.'
+    if (now <= before || revealed.value) return
+    if (skipPending) {
+      skipPending = false
+      return
+    }
+    notice.value = 'Falsch — nächste Stufe frei.'
   },
 )
 
 function onGuess(hit: SongSuggestion): void {
   notice.value = null
   emit('guess', { trackId: hit.trackId, artist: hit.artist, title: hit.title })
+}
+
+function onSkip(fromStage: number): void {
+  skipPending = true
+  emit('skip', fromStage)
 }
 </script>
 
@@ -61,7 +73,7 @@ function onGuess(hit: SongSuggestion): void {
     :asset-url="assetUrl ?? (() => '')"
     :notice="notice"
     @guess="onGuess"
-    @skip="emit('skip', $event)"
+    @skip="onSkip"
     @give-up="emit('giveUp')"
   />
 </template>
