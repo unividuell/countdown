@@ -237,4 +237,14 @@ describe('HueWheelReveal', () => {
     expect(markers[0]!.element.style.transitionDelay).toBe('2000ms')
     expect(markers[1]!.element.style.transitionDelay).toBe('2500ms')
   })
+
+  // Same measurement as the input wheel, by name: the reveal crossfades onto that circle, so any
+  // difference in width shows up as a jump the moment the round resolves.
+  it('takes its width from the shared wheel measurement', () => {
+    const classes = mountWheel().get('[data-test="hue-wheel-reveal"]').classes()
+
+    expect(classes).toContain('hue-wheel')
+    expect(classes).not.toContain('max-w-80')
+    expect(classes).not.toContain('w-full')
+  })
 })

@@ -90,3 +90,21 @@
     margin-inline: 0;
   }
 }
+
+/* How wide the colour wheel is — on the wheel that takes input and on the wheel that shows the
+   result. One value for both, because the reveal lays its markers on the input wheel's own radius
+   and angle ("my marker covers the knob exactly" is built, not recomputed): any difference between
+   the two is a jump the moment the round resolves.
+   27rem is the widest common phone (430px), so on every real phone the cap never bites and the
+   wheel is as wide as the band allows. It exists for what lies above: without it an unfolded
+   foldable would draw a 608px wheel, which is a poster rather than a control, and the confirm
+   button in its centre would sit below half the page. From sm the card is back and 20rem keeps the
+   wheel the size it has always been. */
+@utility hue-wheel {
+  width: 100%;
+  max-width: 27rem;
+
+  @media (width >= theme(--breakpoint-sm)) {
+    max-width: 20rem;
+  }
+}

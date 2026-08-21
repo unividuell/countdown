@@ -138,7 +138,7 @@ const label = computed(() => {
       data-test="hue-wheel-reveal"
       role="img"
       :aria-label="label"
-      class="relative mx-auto aspect-square w-full max-w-80 rounded-full select-none"
+      class="hue-wheel relative mx-auto aspect-square rounded-full select-none"
     >
       <HueRing
         :saturation="props.saturation"

@@ -472,4 +472,14 @@ describe('HueWheelInput', () => {
       expect(w.emitted('update:hue')).toEqual([[0], [90]])
     })
   })
+
+  // The board and the reveal draw the same circle in the same place, so their width is one
+  // measurement with a name rather than two identical literals — see `@utility hue-wheel`.
+  it('takes its width from the shared wheel measurement', () => {
+    const classes = mountWheel().get('[data-test="hue-wheel"]').classes()
+
+    expect(classes).toContain('hue-wheel')
+    expect(classes).not.toContain('max-w-80')
+    expect(classes).not.toContain('w-full')
+  })
 })
