@@ -9,6 +9,7 @@
  */
 import { onUnmounted, ref } from 'vue'
 import { fetchAssetBlob } from '@/api/assets'
+import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import { usePlayback } from './usePlayback'
@@ -35,15 +36,17 @@ let alive = true
 /**
  * One fetch, however impatiently the button is tapped. `loaded` cannot do this job on its own — it
  * is set after the await, so every tap before the first answer would start another fetch, and of the
- * object URLs they created only the last would ever be revoked.
+ * object URLs they created only the last would ever be revoked. A ref rather than a plain flag,
+ * because the button draws its waiting ring from it: 30 seconds of hook is a longer wait than the
+ * board's own, and the first tap pays for it.
  */
-let loading = false
+const loading = ref(false)
 
 /** Loaded on the first tap, not on mount — browser policies want a gesture anyway. */
 async function playSolution(): Promise<void> {
   if (!loaded.value && props.assetUrl) {
-    if (loading) return
-    loading = true
+    if (loading.value) return
+    loading.value = true
     try {
       const blob = await fetchAssetBlob(props.assetUrl(SOLUTION_ASSET_KEY))
       if (!alive) return
@@ -56,7 +59,7 @@ async function playSolution(): Promise<void> {
       console.error('[song-snippet] solution audio failed', err)
       return
     } finally {
-      loading = false
+      loading.value = false
     }
   }
   playback.restart()
@@ -129,15 +132,7 @@ onUnmounted(() => {
           <PlayerIcon name="pause" />
         </button>
       </span>
-      <button
-        type="button"
-        data-test="play-solution"
-        class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900"
-        aria-label="Auflösung abspielen"
-        @click="playSolution"
-      >
-        <PlayerIcon name="play" />
-      </button>
+      <PlayButton label="Auflösung abspielen" :waiting="loading" @press="playSolution()" />
       <span class="min-w-0" />
     </div>
   </div>

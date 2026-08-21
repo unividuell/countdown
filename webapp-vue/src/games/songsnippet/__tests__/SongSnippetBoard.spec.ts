@@ -61,6 +61,7 @@ function mountBoard(props: {
   awardRule?: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null
   disabled?: boolean
   notice?: string | null
+  assetUrl?: ((key: number) => string) | null
 }) {
   return mount(SongSnippetBoard, {
     props: {
@@ -68,7 +69,7 @@ function mountBoard(props: {
       stage: props.stage ?? 0,
       awardRule: props.awardRule ?? null,
       disabled: props.disabled ?? false,
-      assetUrl: (key: number) => `/assets/${key}`,
+      assetUrl: props.assetUrl === undefined ? (key: number) => `/assets/${key}` : props.assetUrl,
       notice: props.notice ?? null,
     },
   })
@@ -163,6 +164,44 @@ describe('SongSnippetBoard', () => {
 
     expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
     expect(w.get('[data-test="play"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('says a clip did not load and makes the play button the retry', async () => {
+    fetchAssetBlob.mockRejectedValueOnce(new Error('offline'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = mountBoard({ stage: 0 })
+    await Promise.resolve()
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    // The one control that gets out of this, named — a stage can come free two ways and neither
+    // is worth mentioning here.
+    expect(w.get('[data-test="song-notice"]').text()).toBe(
+      'Ausschnitt nicht geladen — Play antippen.',
+    )
+    const play = w.get('[data-test="play"]')
+    expect(play.attributes('disabled')).toBeUndefined()
+    expect(play.attributes('aria-label')).toBe('Ausschnitt erneut laden')
+
+    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
+    await play.trigger('click')
+    await Promise.resolve()
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    // Loaded and sounding, and the line is gone rather than sitting there stale.
+    expect(fetchAssetBlob).toHaveBeenCalledTimes(2)
+    expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
+    expect(w.find('[data-test="song-notice"]').exists()).toBe(false)
+  })
+
+  it('fetches nothing and offers nothing to press for a round that carries no audio', async () => {
+    const w = mountBoard({ assetUrl: null })
+    await Promise.resolve()
+
+    expect(fetchAssetBlob).not.toHaveBeenCalled()
+    expect(w.get('[data-test="play"]').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
   })
 
   it('does not sound a stage clip that lands after the round resolved', async () => {

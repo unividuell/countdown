@@ -168,7 +168,9 @@ it is the only proof available — no unit test can see them.
   is touched. The same for a slot one screen fills with a control and the other with text: give
   both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
   then assert is exactly that — both ends carry the shared class — which is the checkable half of
-  „nothing moves".
+  „nothing moves". And where the two screens show the same *control* rather than merely the same
+  size, make it one component (`PlayButton`) instead of two copies of its markup: then the agreement
+  is structural and there is nothing left to drift.
 
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the

@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import { fetchAssetBlob } from '@/api/assets'
+import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
@@ -13,7 +14,12 @@ const props = defineProps<{
   stage: number
   awardRule: AwardRule | null
   disabled: boolean
-  assetUrl: (key: number) => string
+  /**
+   * `null` where the round carries no audio at all — a caller that has none to give. Then there is
+   * nothing to fetch and nothing to play, and the play button says so by staying out of reach,
+   * rather than the board fetching the empty string and getting the page itself back.
+   */
+  assetUrl: ((key: number) => string) | null
   notice: string | null
 }>()
 
@@ -49,18 +55,11 @@ watch(
 )
 
 /**
- * The waiting ring, painted the way `HoldButton` paints its own: a conic sweep carved down to a rim
- * by a radial mask, so what shows is a thin arc travelling around the button rather than a disc.
- * The rim is given in pixels rather than as a percentage of the radius — this ring has exactly one
- * size, and a length says what it looks like without having to be rescaled if that size changes.
+ * The bar shows one line at a time, and a failure outranks a verdict: „falsch" is news about the
+ * round, „nicht geladen" is news about whether the round can be played at all. Unlike the verdict
+ * it does not expire — it stands until a retry clears it.
  */
-const RING_MASK =
-  'radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))'
-const loadingRing = {
-  backgroundImage: 'conic-gradient(transparent 0deg 280deg, currentColor 280deg 360deg)',
-  mask: RING_MASK,
-  WebkitMask: RING_MASK,
-}
+const barNotice = computed(() => (stageError.value ? LOAD_FAILED : verdict.value))
 
 const totalSeconds = computed(() => props.durations[props.durations.length - 1] ?? 15)
 const unlockedSeconds = computed(() => props.durations[props.stage] ?? 0)
@@ -82,29 +81,56 @@ let stageGeneration = 0
  * nobody will revoke, and not hand a clip to a player that has been disposed.
  */
 let alive = true
+
+/**
+ * A clip that never arrived leaves the player with a button that would do nothing at all, and
+ * nothing on screen to say why. So the failure is a state: it names the one control that gets out
+ * of it, because a stage can come free from a skip or from a wrong guess and neither is worth
+ * mentioning here — pressing play is what tries again.
+ */
+const stageError = ref(false)
+const LOAD_FAILED = 'Ausschnitt nicht geladen — Play antippen.'
+
+async function loadStage(stage: number, andPlay: boolean): Promise<void> {
+  const url = props.assetUrl
+  if (url === null) return
+  const mine = ++stageGeneration
+  loadingStage.value = true
+  stageError.value = false
+  try {
+    const blob = await fetchAssetBlob(url(stage))
+    if (mine !== stageGeneration || !alive) return
+    if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
+    objectUrl = URL.createObjectURL(blob)
+    playback.setSource(objectUrl)
+    if (andPlay) playback.restart()
+  } catch (err) {
+    console.error('[song-snippet] stage audio failed', err)
+    if (mine === stageGeneration && alive) stageError.value = true
+  } finally {
+    if (mine === stageGeneration) loadingStage.value = false
+  }
+}
+
 watch(
   () => props.stage,
-  async (stage, previous) => {
-    const mine = ++stageGeneration
-    loadingStage.value = true
-    try {
-      const blob = await fetchAssetBlob(props.assetUrl(stage))
-      if (mine !== stageGeneration || !alive) return
-      if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
-      objectUrl = URL.createObjectURL(blob)
-      playback.setSource(objectUrl)
-      // A stage only ever grows by skipping or by guessing wrong, and both mean „let me hear the
-      // longer one" — so the new clip plays itself. `previous` is undefined on the immediate run:
-      // arriving at a round must not start sounding on its own.
-      if (previous !== undefined) playback.restart()
-    } catch (err) {
-      console.error('[song-snippet] stage audio failed', err)
-    } finally {
-      if (mine === stageGeneration) loadingStage.value = false
-    }
+  (stage, previous) => {
+    // A stage only ever grows by skipping or by guessing wrong, and both mean „let me hear the
+    // longer one" — so the new clip plays itself. `previous` is undefined on the immediate run:
+    // arriving at a round must not start sounding on its own.
+    void loadStage(stage, previous !== undefined)
   },
   { immediate: true },
 )
+
+/** Play, or — when the last attempt failed — the retry that has to come before playing. */
+function onPlay(): void {
+  if (stageError.value) {
+    void loadStage(props.stage, true)
+    return
+  }
+  playback.restart()
+}
 onUnmounted(() => {
   alive = false
   if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
@@ -124,7 +150,7 @@ onUnmounted(() => {
       :total-seconds="totalSeconds"
       :unlocked-seconds="unlockedSeconds"
       :position-seconds="playback.positionSeconds.value"
-      :notice="verdict"
+      :notice="barNotice"
     />
 
     <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
@@ -142,29 +168,12 @@ onUnmounted(() => {
           <PlayerIcon name="pause" />
         </button>
       </span>
-      <!-- The ring is absolute, so it hangs outside the button without taking any width from the
-           row. Its box is pinned to the button's own size rather than left to the grid: a wrapper
-           that ends up wider than tall turns the ring's `closest-side` mask into an ellipse. -->
-      <span class="relative block size-20">
-        <button
-          type="button"
-          data-test="play"
-          class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
-          :disabled="loadingStage"
-          aria-label="Von vorn abspielen"
-          @click="playback.restart()"
-        >
-          <PlayerIcon name="play" />
-        </button>
-        <span
-          v-if="loadingStage"
-          class="animate-song-loading pointer-events-none absolute -inset-[6.25%] rounded-full text-amber-500 motion-reduce:animate-none"
-          data-test="play-loading"
-          role="status"
-          aria-label="Ausschnitt wird geladen"
-          :style="loadingRing"
-        />
-      </span>
+      <PlayButton
+        :label="stageError ? 'Ausschnitt erneut laden' : 'Von vorn abspielen'"
+        :waiting="loadingStage"
+        :disabled="assetUrl === null"
+        @press="onPlay()"
+      />
       <span class="min-w-0 justify-self-start pl-4">
         <button
           type="button"

@@ -88,7 +88,7 @@ function onSkip(fromStage: number): void {
     :stage="stage ?? 0"
     :award-rule="awardRule"
     :disabled="disabled"
-    :asset-url="assetUrl ?? (() => '')"
+    :asset-url="assetUrl ?? null"
     :notice="notice"
     @guess="onGuess"
     @skip="onSkip"

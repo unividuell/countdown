@@ -78,6 +78,29 @@ describe('SongPlayerReveal', () => {
     expect(w.get('[data-test="deezer-link"]').text()).toContain('🎵')
   })
 
+  it('rings its own button while the 30s hook is on the wire', async () => {
+    let deliver: (blob: Blob) => void = () => {}
+    fetchAssetBlob.mockReturnValue(
+      new Promise<Blob>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    const w = mountPlayer()
+    expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
+
+    await w.get('[data-test="play"]').trigger('click')
+
+    expect(w.find('[data-test="play-loading"]').exists()).toBe(true)
+    expect(w.get('[data-test="play"]').attributes('disabled')).toBeDefined()
+
+    deliver(new Blob(['x']))
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
+    expect(playbacks[0]!.restart).toHaveBeenCalled()
+  })
+
   it('fetches the solution once however often it is tapped, and lets go of nothing twice', async () => {
     let deliver: (blob: Blob) => void = () => {}
     fetchAssetBlob.mockReturnValue(
@@ -88,8 +111,8 @@ describe('SongPlayerReveal', () => {
     const w = mountPlayer()
 
     // Two impatient taps while the 30s solution is still on the wire.
-    await w.get('[data-test="play-solution"]').trigger('click')
-    await w.get('[data-test="play-solution"]').trigger('click')
+    await w.get('[data-test="play"]').trigger('click')
+    await w.get('[data-test="play"]').trigger('click')
     deliver(new Blob(['x']))
     await Promise.resolve()
     await w.vm.$nextTick()
@@ -121,9 +144,9 @@ describe('SongPlayerReveal', () => {
     fetchAssetBlob.mockResolvedValue(new Blob(['x']))
     const w = mountPlayer()
 
-    await w.get('[data-test="play-solution"]').trigger('click')
+    await w.get('[data-test="play"]').trigger('click')
     await Promise.resolve()
-    await w.get('[data-test="play-solution"]').trigger('click')
+    await w.get('[data-test="play"]').trigger('click')
     await Promise.resolve()
 
     expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/99')
