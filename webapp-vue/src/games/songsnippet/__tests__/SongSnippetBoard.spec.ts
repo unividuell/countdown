@@ -155,6 +155,7 @@ describe('SongSnippetBoard', () => {
 
     const slot = w.get('[data-test="title-slot"]')
     expect(slot.text()).toBe('')
-    expect(slot.classes()).toContain('h-6')
+    // Two lines, the height the reveal's title and artist take.
+    expect(slot.classes()).toContain('h-12')
   })
 })

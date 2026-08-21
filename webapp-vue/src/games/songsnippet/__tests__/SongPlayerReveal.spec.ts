@@ -78,8 +78,13 @@ describe('SongPlayerReveal', () => {
     expect(w.get('[data-test="deezer-link"]').text()).toContain('🎵')
   })
 
-  it('names the song on one line, title and artist split by a middle dot', () => {
-    expect(mountPlayer().get('[data-test="solution-line"]').text()).toBe('Das geht ab · Die Atzen')
+  it('names the song on two lines, since either of them can be long', () => {
+    const lines = mountPlayer()
+      .get('[data-test="solution-line"]')
+      .findAll('p')
+      .map((p) => p.text())
+
+    expect(lines).toEqual(['Das geht ab', 'Die Atzen'])
   })
 
   it('loads the solution clip on the first tap only, then replays it', async () => {

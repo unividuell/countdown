@@ -81,9 +81,13 @@ onUnmounted(() => {
       <span class="min-w-0" />
     </div>
 
-    <p class="h-6 truncate text-center text-sm leading-6" data-test="solution-line">
-      {{ solution.title }} · {{ solution.artist }}
-    </p>
+    <!-- Two lines, because either of them can be long: „Das geht ab [wir feiern die ganze Nacht]"
+         next to its artist had nowhere to go on a phone. The board holds the same two lines empty,
+         so the bar below sits at the same height there. -->
+    <div class="h-12" data-test="solution-line">
+      <p class="truncate text-center text-sm leading-6 font-medium">{{ solution.title }}</p>
+      <p class="truncate text-center text-sm leading-6 text-neutral-500">{{ solution.artist }}</p>
+    </div>
 
     <StageBar
       :durations="durations"

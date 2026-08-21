@@ -94,9 +94,9 @@ onUnmounted(() => {
       </span>
     </div>
 
-    <!-- The slot the reveal fills with „Titel · Artist“, held open here so nothing below it moves
-         when the round resolves. -->
-    <p class="h-6 text-center text-sm leading-6" aria-hidden="true" data-test="title-slot"></p>
+    <!-- The two lines the reveal fills with the title and the artist, held open here so nothing
+         below them moves when the round resolves. -->
+    <div class="h-12" aria-hidden="true" data-test="title-slot"></div>
 
     <StageBar
       :durations="durations"
