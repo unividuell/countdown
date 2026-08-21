@@ -63,7 +63,7 @@ class DeezerSongCatalog(
     override fun search(query: String): List<CatalogTrack> {
         synchronized(searchCache) { searchCache[query] }?.let { return it }
         val body = client.get()
-            .uri { it.path("/search").queryParam("q", query).queryParam("limit", 8).build() }
+            .uri { it.path("/search").queryParam("q", query).queryParam("limit", SEARCH_LIMIT).build() }
             .retrieve()
             .body(DeezerTrackListJson::class.java) ?: DeezerTrackListJson()
         val hits = body.data.mapNotNull { it.toCatalogTrack() }
@@ -100,5 +100,15 @@ class DeezerSongCatalog(
             coverUrl = album?.cover_medium,
             link = link,
         )
+    }
+
+    private companion object {
+        /**
+         * How many hits a search answers with. Deezer imposes no such bound — this one is the
+         * webapp's: it lays the hits out three to a row and shows every one it gets, so a multiple
+         * of three is what fills the last row. Nine is three such rows, of which the strip shows
+         * two and a sliver, and scrolls to the rest.
+         */
+        const val SEARCH_LIMIT = 9
     }
 }

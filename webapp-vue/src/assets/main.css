@@ -26,4 +26,35 @@
       transform: translateX(0);
     }
   }
+
+  /* A search hit's title has about 85px on a phone, and most titles are longer. Rather than cut
+     them, the line travels: still at both ends so it can be read, then a slow pass leftwards by
+     exactly its own overflow — `--song-ticker-shift`, which the component measures per line and
+     sets, because CSS cannot know how far a given string overshoots its box. 9s for a full cycle
+     of which two thirds is standing still; four of these run at once, so anything faster turns
+     the row into a flicker. */
+  --animate-song-ticker: song-ticker 9s ease-in-out infinite;
+
+  @keyframes song-ticker {
+    0%,
+    30% {
+      transform: translateX(0);
+    }
+    70%,
+    100% {
+      transform: translateX(var(--song-ticker-shift, 0));
+    }
+  }
+}
+
+/* A scroll container that keeps its full width: a classic scrollbar would eat into the strip of
+   search hits from the right, leaving the grid narrower than the card and off its centre. The
+   partly-shown row beneath is the affordance instead — and on touch, where this game is played,
+   the scrollbar was an overlay anyway. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

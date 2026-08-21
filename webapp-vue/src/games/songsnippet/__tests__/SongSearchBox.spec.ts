@@ -35,28 +35,28 @@ describe('SongSearchBox', () => {
 
     await typeAndSettle(w, 'ho')
     expect(searchSongs).not.toHaveBeenCalled()
-    expect(w.find('[data-test="song-suggestions"]').exists()).toBe(false)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
 
     await typeAndSettle(w, 'hotel')
     expect(searchSongs).toHaveBeenCalledWith('hotel', expect.anything())
-    expect(w.findAll('[data-test="song-suggestions"] li')).toHaveLength(2)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(2)
   })
 
   it('emits the pick and empties itself — picking is submitting, so the field is free again', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
     await typeAndSettle(w, 'hotel')
 
-    await w.get('[data-test="song-suggestions"] button').trigger('click')
+    await w.get('[data-test="song-hit"]').trigger('click')
 
     expect(w.emitted('select')).toEqual([[HITS[0]]])
     expect(w.get<HTMLInputElement>('[data-test="song-search"]').element.value).toBe('')
-    expect(w.find('[data-test="song-suggestions"]').exists()).toBe(false)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
   })
 
   it('does not search again for the text a pick left behind', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
     await typeAndSettle(w, 'hotel')
-    await w.get('[data-test="song-suggestions"] button').trigger('click')
+    await w.get('[data-test="song-hit"]').trigger('click')
 
     vi.advanceTimersByTime(400)
     await Promise.resolve()
@@ -69,12 +69,12 @@ describe('SongSearchBox', () => {
     expect(w.find('[data-test="song-search-clear"]').exists()).toBe(false)
 
     await typeAndSettle(w, 'hotel')
-    expect(w.findAll('[data-test="song-suggestions"] li')).toHaveLength(2)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(2)
 
     await w.get('[data-test="song-search-clear"]').trigger('click')
 
     expect(w.get<HTMLInputElement>('[data-test="song-search"]').element.value).toBe('')
-    expect(w.find('[data-test="song-suggestions"]').exists()).toBe(false)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
     expect(w.find('[data-test="song-search-clear"]').exists()).toBe(false)
   })
 
@@ -93,6 +93,79 @@ describe('SongSearchBox', () => {
     await Promise.resolve()
     await w.vm.$nextTick()
 
-    expect(w.find('[data-test="song-suggestions"]').exists()).toBe(false)
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
+  })
+
+  it('holds three rows of three open whatever the search found, so the card never moves', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    const slots = () =>
+      w.findAll('[data-test="song-hit"]').length + w.findAll('[data-test="song-hit-blank"]').length
+
+    expect(slots()).toBe(9)
+
+    await typeAndSettle(w, 'hotel')
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(2)
+    expect(slots()).toBe(9)
+  })
+
+  it('spins every waiting slot while a request is out, and stops when it lands', async () => {
+    let settle: (hits: SongSuggestion[]) => void = () => {}
+    searchSongs.mockReturnValue(
+      new Promise<SongSuggestion[]>((resolve) => {
+        settle = resolve
+      }),
+    )
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(0)
+
+    await typeAndSettle(w, 'hotel')
+    expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(9)
+
+    settle(HITS)
+    await Promise.resolve()
+    await w.vm.$nextTick()
+
+    expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(0)
+  })
+
+  it('keeps the field focused when clearing, so the keyboard stays up', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false }, attachTo: document.body })
+    await typeAndSettle(w, 'hotel')
+    const input = w.get<HTMLInputElement>('[data-test="song-search"]').element
+    input.focus()
+
+    await w.get('[data-test="song-search-clear"]').trigger('click')
+
+    expect(document.activeElement).toBe(input)
+    w.unmount()
+  })
+
+  it('shows every hit it was given, filling the last row up', async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      trackId: i + 10,
+      artist: `artist ${i}`,
+      title: `title ${i}`,
+      coverUrl: null,
+    }))
+    searchSongs.mockResolvedValue(many)
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+
+    await typeAndSettle(w, 'hotel')
+
+    expect(w.findAll('[data-test="song-hit"]')).toHaveLength(8)
+    // Eight hits are two full rows and a third holding two — one blank finishes it.
+    expect(w.findAll('[data-test="song-hit-blank"]')).toHaveLength(1)
+  })
+
+  it('writes each hit over its own cover, title above artist', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    await typeAndSettle(w, 'hotel')
+
+    const first = w.findAll('[data-test="song-hit"]')[0]!
+    expect(first.findAll('[data-test="ticker-text"]').map((s) => s.text())).toEqual([
+      'Hotel California',
+      'Eagles',
+    ])
+    expect(first.attributes('aria-label')).toBe('Hotel California von Eagles tippen')
   })
 })

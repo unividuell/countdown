@@ -59,7 +59,7 @@ class DeezerSongCatalogTest {
     @Test
     fun `search maps the essentials and title_short wins over the versioned title`() {
         val catalog = catalogAgainst { server ->
-            server.expect(requestTo("https://api.deezer.com/search?q=hotel%20california%20eagles&limit=8"))
+            server.expect(requestTo("https://api.deezer.com/search?q=hotel%20california%20eagles&limit=9"))
                 .andRespond(withSuccess(fixture("deezer-search-hotel-california.json"), MediaType.APPLICATION_JSON))
         }
         val hits = catalog.search("hotel california eagles")
