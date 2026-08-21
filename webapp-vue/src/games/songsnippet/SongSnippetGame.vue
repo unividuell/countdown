@@ -4,6 +4,7 @@ import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
+import { scoreRows } from './scoreboard'
 import { isSongSnippetPayload } from './types'
 import type { SongSnippetSolution } from './types'
 import type { SongSuggestion } from './api'
@@ -27,6 +28,20 @@ const durations = computed(() =>
   isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],
 )
 const revealed = computed(() => props.solution !== null && props.solution !== undefined)
+
+/**
+ * Worked out here rather than in the reveal card, the way Guess Hue does it: this is the place that
+ * already turns `unknown` into something typed, and it leaves the card as pure composition.
+ */
+const rows = computed(() =>
+  scoreRows({
+    entries: props.entries,
+    durations: durations.value,
+    awardRule: props.awardRule,
+  }),
+)
+/** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
+const live = computed(() => rows.value.some((row) => row.provisional))
 
 /** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
  *  skip, flagged below before the re-emit so the watch can tell the two apart. */
@@ -63,8 +78,8 @@ function onSkip(fromStage: number): void {
     v-if="revealed"
     :solution="solution as SongSnippetSolution"
     :durations="durations"
-    :entries="entries"
-    :award-rule="awardRule"
+    :rows="rows"
+    :live="live"
     :asset-url="assetUrl"
   />
   <SongSnippetBoard

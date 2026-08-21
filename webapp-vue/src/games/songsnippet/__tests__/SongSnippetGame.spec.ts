@@ -11,12 +11,16 @@ vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
   },
 }))
 vi.mock('@/games/songsnippet/SongSnippetReveal.vue', () => ({
-  default: { name: 'SongSnippetReveal', template: '<div data-test="reveal-stub" />' },
+  default: {
+    name: 'SongSnippetReveal',
+    props: ['solution', 'durations', 'rows', 'live', 'assetUrl'],
+    template: '<div data-test="reveal-stub" />',
+  },
 }))
 
 const DURATIONS = [0.1, 0.5, 2, 8, 15]
 
-function mountGame(stage = 0) {
+function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
   return mount(SongSnippetGame, {
     props: {
       payload: { stageDurationsSeconds: DURATIONS },
@@ -29,8 +33,28 @@ function mountGame(stage = 0) {
       disabled: false,
       stage,
       assetUrl: (key: number) => `/assets/${key}`,
+      ...overrides,
     },
   })
+}
+
+const SOLUTION = {
+  artist: 'Die Atzen',
+  title: 'Das geht ab',
+  coverUrl: null,
+  link: 'https://www.deezer.com/track/702871922',
+}
+
+function entry(userId: string, points: number, stage: number) {
+  return {
+    userId,
+    username: userId,
+    stage,
+    guess: { trackId: 1, artist: 'Eagles', title: 'Hotel California' },
+    outcome: { correct: true },
+    points,
+    avatar: { bgColorHex: '#406abf' },
+  }
 }
 
 describe('SongSnippetGame', () => {
@@ -67,5 +91,33 @@ describe('SongSnippetGame', () => {
     expect(w.findComponent({ name: 'SongSnippetBoard' }).props('notice')).toBe(
       'Falsch — nächste Stufe frei.',
     )
+  })
+
+  it('works the scoreboard out for the reveal, ranked and flagged, so the card stays composition', async () => {
+    const w = mountGame(4, {
+      solution: SOLUTION,
+      awardRule: 'CLOSEST_ONLY',
+      entries: [entry('slow', 5, 3), entry('fast', 5, 1), entry('empty', 0, 4)],
+    })
+
+    const reveal = w.findComponent({ name: 'SongSnippetReveal' })
+    expect(reveal.props('rows').map((row: { userId: string }) => row.userId)).toEqual([
+      'fast',
+      'slow',
+      'empty',
+    ])
+    expect(reveal.props('rows')[0].timeLabel).toBe('0,5s')
+    // A positive score under „closest only“ can still be overtaken.
+    expect(reveal.props('live')).toBe(true)
+  })
+
+  it('calls nothing live once every score is settled', async () => {
+    const w = mountGame(4, {
+      solution: SOLUTION,
+      awardRule: 'ALL_QUALIFYING',
+      entries: [entry('a', 1, 0)],
+    })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(false)
   })
 })
