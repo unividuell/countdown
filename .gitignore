@@ -1,5 +1,13 @@
-# IntelliJ IDEA
-.idea/
+# IntelliJ IDEA. `.idea/*` rather than `.idea/`, because git cannot re-include a file whose
+# parent directory is excluded — with `.idea/` the negation below would simply do nothing.
+.idea/*
+# The database connections, which is the one thing in here worth sharing: same Postgres, same
+# port (see .env.example), so everybody gets the connection instead of rebuilding it. It holds no
+# password — IntelliJ keeps those in the OS credential store. Its siblings stay out on purpose:
+# `dataSources.local.xml` is per-user (schema visibility, user name, driver versions),
+# `dataSources/` is a multi-megabyte introspection cache, and `db-forest-config.xml` is local
+# tool-window state.
+!.idea/dataSources.xml
 *.iml
 *.iws
 *.ipr
