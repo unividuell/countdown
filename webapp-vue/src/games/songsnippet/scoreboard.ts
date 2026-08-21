@@ -20,7 +20,10 @@ export interface ScoreRow {
   trackId: number | null
   /** Whether the game judged this guess right — decides only whether it is playable, not its ink. */
   correct: boolean
-  /** How much audio this player needed, e.g. „2,0s“ — always one decimal, see [oneDecimal]. */
+  /**
+   * How much audio this player needed, e.g. „2,0“ — always one decimal, see [oneDecimal]. Bare:
+   * the unit stands in the column head („Zeit [s]“) rather than after every number.
+   */
   timeLabel: string
   /** The stage behind [timeLabel] — the tie-breaker: less audio ranks higher. */
   stage: number
@@ -33,7 +36,7 @@ export interface ScoreRow {
 const GAVE_UP = '— aufgegeben —'
 
 /**
- * One decimal, always — „0,1s“ over „15,0s“ rather than over „15s“. The column is right-aligned and
+ * One decimal, always — „0,1“ over „15,0“ rather than over „15“. The column is right-aligned and
  * tabular, so a fixed number of decimals is what puts every comma on the same axis; the same reason
  * Guess Hue prints its degrees this way.
  */
@@ -61,7 +64,7 @@ export function scoreRows(input: {
       guessLabel: guess?.title === undefined ? GAVE_UP : `${guess.title} · ${guess.artist ?? '?'}`,
       trackId: guess?.trackId ?? null,
       correct: (entry.outcome as { correct?: boolean } | null)?.correct === true,
-      timeLabel: `${oneDecimal.format(input.durations[entry.stage] ?? 0)}s`,
+      timeLabel: oneDecimal.format(input.durations[entry.stage] ?? 0),
       stage: entry.stage,
       points: entry.points,
       provisional: isProvisional(entry.points, input.awardRule),

@@ -106,7 +106,7 @@ describe('SongSnippetGame', () => {
       'slow',
       'empty',
     ])
-    expect(reveal.props('rows')[0].timeLabel).toBe('0,5s')
+    expect(reveal.props('rows')[0].timeLabel).toBe('0,5')
     // A positive score under „closest only“ can still be overtaken.
     expect(reveal.props('live')).toBe(true)
   })

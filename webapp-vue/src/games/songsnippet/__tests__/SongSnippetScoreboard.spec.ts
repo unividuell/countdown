@@ -56,7 +56,7 @@ function row(overrides: Partial<ScoreRow> & { userId: string }): ScoreRow {
     guessLabel: 'ABC · Jackson 5',
     trackId: 920082,
     correct: false,
-    timeLabel: '15,0s',
+    timeLabel: '15,0',
     stage: 4,
     points: 0,
     provisional: false,
@@ -82,7 +82,13 @@ describe('SongSnippetScoreboard', () => {
     const w = mountBoard([row({ userId: 'a' })])
 
     expect(w.get('h2').text()).toBe('Auswertung')
-    expect(w.findAll('thead th').map((th) => th.text())).toEqual(['Name', 'Tipp', 'Zeit', 'Pkt'])
+    // The unit stands here, once, instead of after every number below.
+    expect(w.findAll('thead th').map((th) => th.text())).toEqual([
+      'Name',
+      'Tipp',
+      'Zeit [s]',
+      'Pkt',
+    ])
   })
 
   it('keeps the order it was handed and paints every row in its player colour', () => {
@@ -99,11 +105,11 @@ describe('SongSnippetScoreboard', () => {
   })
 
   it('shows the guess, the time and the score of each row', () => {
-    const w = mountBoard([row({ userId: 'a', timeLabel: '2,0s', points: 3 })])
+    const w = mountBoard([row({ userId: 'a', timeLabel: '2,0', points: 3 })])
 
     const cells = w.get('tbody tr').findAll('td')
     expect(w.get('[data-test="guess-label"]').text()).toBe('ABC · Jackson 5')
-    expect(cells[1]!.text()).toBe('2,0s')
+    expect(cells[1]!.text()).toBe('2,0')
     expect(cells[2]!.text()).toBe('3')
   })
 
