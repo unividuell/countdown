@@ -70,33 +70,31 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4">
-    <!-- The cover's row, laid out exactly like the reveal's: the box stays horizontally centered
-         (both side tracks `minmax(0,1fr)`, so neither one's content can push it off-axis) and only
-         the give-up button rides along in the right track. -->
-    <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start">
-      <span class="min-w-0" />
+    <!-- The cover's row, laid out exactly like the reveal's: nothing sits beside the box, so the
+         box is simply centred. -->
+    <div class="flex justify-center">
       <div
         class="flex h-32 w-32 items-center justify-center rounded-xl bg-neutral-100 text-5xl text-neutral-400"
         data-test="cover-placeholder"
       >
         ?
       </div>
-      <span class="min-w-0 justify-self-end">
-        <button
-          type="button"
-          data-test="give-up"
-          class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
-          :disabled="disabled"
-          @click="emit('giveUp')"
-        >
-          Aufgeben
-        </button>
-      </span>
     </div>
 
     <!-- The two lines the reveal fills with the title and the artist, held open here so nothing
-         below them moves when the round resolves. -->
-    <div class="h-12" aria-hidden="true" data-test="title-slot"></div>
+         below them moves when the round resolves — and the room the give-up button borrows while
+         they are still empty. -->
+    <div class="flex h-12 items-center justify-end" data-test="title-slot">
+      <button
+        type="button"
+        data-test="give-up"
+        class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+        :disabled="disabled"
+        @click="emit('giveUp')"
+      >
+        Aufgeben
+      </button>
+    </div>
 
     <StageBar
       :durations="durations"
@@ -107,55 +105,56 @@ onUnmounted(() => {
 
     <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
          skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift the
-         middle. -->
-    <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-      <span class="min-w-0 justify-self-end pr-4">
-        <button
-          type="button"
-          data-test="pause"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
-          aria-label="Pause"
-          @click="playback.pause()"
-        >
-          <PlayerIcon name="pause" />
-        </button>
-      </span>
-      <button
-        type="button"
-        data-test="play"
-        class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
-        :disabled="loadingStage"
-        aria-label="Von vorn abspielen"
-        @click="playback.restart()"
-      >
-        <PlayerIcon name="play" />
-      </button>
-      <span class="min-w-0 justify-self-start pl-4">
-        <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
-             costs glory, quiet red once it can cost the round. -->
-        <button
-          type="button"
-          data-test="skip"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
-          :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
-          :disabled="disabled || lastStage"
-          aria-label="Nächste Stufe freischalten"
-          :title="`Nächste Stufe freischalten — ${skipCost}`"
-          @click="emit('skip', stage)"
-        >
-          <PlayerIcon name="skip" />
-        </button>
-      </span>
-    </div>
-
-    <!-- Always present, so a verdict appearing never pushes the search field down. -->
-    <p class="h-5 text-center text-sm text-amber-700" data-test="song-notice">{{ notice }}</p>
-
+         middle. The verdict line belongs to this block, right under the buttons that earn it. -->
     <div>
-      <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />
-      <p class="mt-1.5 text-center text-xs text-neutral-500">
-        {{ phaseTwo ? 'kann die gesamte Runde verbrennen' : 'verbrennt höchstens diese Stufe' }}
+      <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+        <span class="min-w-0 justify-self-end pr-4">
+          <button
+            type="button"
+            data-test="pause"
+            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
+            aria-label="Pause"
+            @click="playback.pause()"
+          >
+            <PlayerIcon name="pause" />
+          </button>
+        </span>
+        <button
+          type="button"
+          data-test="play"
+          class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
+          :disabled="loadingStage"
+          aria-label="Von vorn abspielen"
+          @click="playback.restart()"
+        >
+          <PlayerIcon name="play" />
+        </button>
+        <span class="min-w-0 justify-self-start pl-4">
+          <!-- Outline only, and its colour is the whole warning: quiet green while a skip merely
+               costs glory, quiet red once it can cost the round. -->
+          <button
+            type="button"
+            data-test="skip"
+            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 text-xl text-neutral-700 disabled:opacity-40"
+            :class="phaseTwo ? 'border-rose-300' : 'border-emerald-300'"
+            :disabled="disabled || lastStage"
+            aria-label="Nächste Stufe freischalten"
+            :title="`Nächste Stufe freischalten — ${skipCost}`"
+            @click="emit('skip', stage)"
+          >
+            <PlayerIcon name="skip" />
+          </button>
+        </span>
+      </div>
+
+      <!-- „Falsch — nächste Stufe frei." lands here, after a wrong guess in phase one. The line
+           holds its height while empty: otherwise the verdict's arrival would shove the search
+           field down by its own height, at the very moment the player reaches for it again. -->
+      <p class="mt-1 h-4 text-center text-xs text-amber-700" data-test="song-notice">
+        {{ notice }}
       </p>
     </div>
+
+    <SongSearchBox :disabled="disabled" @select="emit('guess', $event)" />
   </div>
 </template>

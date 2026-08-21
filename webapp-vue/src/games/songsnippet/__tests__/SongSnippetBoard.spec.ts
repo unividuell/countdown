@@ -154,8 +154,17 @@ describe('SongSnippetBoard', () => {
     const w = mountBoard({})
 
     const slot = w.get('[data-test="title-slot"]')
-    expect(slot.text()).toBe('')
-    // Two lines, the height the reveal's title and artist take.
+    // Two lines, the height the reveal's title and artist take — and where give-up waits while
+    // they are empty.
     expect(slot.classes()).toContain('h-12')
+    expect(slot.find('[data-test="give-up"]').exists()).toBe(true)
+  })
+
+  it('says nothing about what a guess costs — the skip outline carries that', () => {
+    const one = mountBoard({ awardRule: 'ALL_QUALIFYING' })
+    const two = mountBoard({ awardRule: 'CLOSEST_ONLY' })
+
+    expect(one.text()).not.toContain('verbrennt')
+    expect(two.text()).not.toContain('verbrennen')
   })
 })

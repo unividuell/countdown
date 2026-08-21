@@ -54,8 +54,7 @@ onUnmounted(() => {
     <!-- The cover lands in exactly the box the question mark held, in exactly the row the board
          lays out the same way. The link rides on the cover itself; there is no separate link line
          to push the bar down. -->
-    <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start">
-      <span class="min-w-0" />
+    <div class="flex justify-center">
       <a
         :href="solution.link"
         target="_blank"
@@ -78,7 +77,6 @@ onUnmounted(() => {
           🎵
         </span>
       </a>
-      <span class="min-w-0" />
     </div>
 
     <!-- Two lines, because either of them can be long: „Das geht ab [wir feiern die ganze Nacht]"
