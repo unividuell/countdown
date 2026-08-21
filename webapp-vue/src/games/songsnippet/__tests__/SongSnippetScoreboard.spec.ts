@@ -56,7 +56,7 @@ function row(overrides: Partial<ScoreRow> & { userId: string }): ScoreRow {
     guessLabel: 'ABC · Jackson 5',
     trackId: 920082,
     correct: false,
-    timeLabel: '15s',
+    timeLabel: '15,0s',
     stage: 4,
     points: 0,
     provisional: false,
@@ -99,11 +99,11 @@ describe('SongSnippetScoreboard', () => {
   })
 
   it('shows the guess, the time and the score of each row', () => {
-    const w = mountBoard([row({ userId: 'a', timeLabel: '2s', points: 3 })])
+    const w = mountBoard([row({ userId: 'a', timeLabel: '2,0s', points: 3 })])
 
     const cells = w.get('tbody tr').findAll('td')
     expect(w.get('[data-test="guess-label"]').text()).toBe('ABC · Jackson 5')
-    expect(cells[1]!.text()).toBe('2s')
+    expect(cells[1]!.text()).toBe('2,0s')
     expect(cells[2]!.text()).toBe('3')
   })
 
@@ -113,7 +113,7 @@ describe('SongSnippetScoreboard', () => {
     expect(w.get('[data-test="song-scoreboard-points"]').text()).toBe('—')
   })
 
-  it('offers playback for a wrong guess with a track id, and for nothing else', () => {
+  it('offers playback for every guess that carries a track id, right or wrong', () => {
     const w = mountBoard([
       row({ userId: 'wrong' }),
       row({ userId: 'right', correct: true }),
@@ -124,8 +124,28 @@ describe('SongSnippetScoreboard', () => {
     const playable = w
       .findAll('tbody tr')
       .filter((tr) => tr.find('[data-test="play-guess"]').exists())
-    expect(playable).toHaveLength(1)
-    expect(playable[0]!.get('th').text()).toBe('wrong')
+    expect(playable.map((tr) => tr.get('th').text())).toEqual(['wrong', 'right'])
+  })
+
+  it('leads with the button and puts the guess behind it', () => {
+    const w = mountBoard([row({ userId: 'a' })])
+
+    const cell = w.get('tbody tr').findAll('td')[0]!
+    const order = [...cell.element.querySelectorAll('[data-test]')].map((e) =>
+      e.getAttribute('data-test'),
+    )
+    expect(order).toEqual(['play-guess', 'guess-label'])
+  })
+
+  it('centres a row that has nothing to play, since it has nothing to line up with', () => {
+    const w = mountBoard([
+      row({ userId: 'quitter', trackId: null, guessLabel: '— aufgegeben —' }),
+      row({ userId: 'guesser' }),
+    ])
+
+    const cells = w.findAll('tbody tr').map((tr) => tr.findAll('td')[0]!.get('span'))
+    expect(cells[0]!.classes()).toContain('justify-center')
+    expect(cells[1]!.classes()).not.toContain('justify-center')
   })
 
   it("resolves a wrong guess's track and plays it from Deezer", async () => {

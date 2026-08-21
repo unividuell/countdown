@@ -8,8 +8,9 @@
  * *is* the player, in the colour their avatar has above the card. Nothing about being right is said
  * in type or in green; the guess, the time and the score say it.
  *
- * The one thing this table does beyond showing: a wrong guess can be played from it, because the
- * one question a reveal leaves open is „what did they hear instead?“.
+ * The one thing this table does beyond showing: every guess can be played from it — the wrong ones
+ * because „what did they hear instead?“ is the question a reveal leaves open, the right ones because
+ * a row that plays and a row that does not would look like a verdict, and the verdict is the score.
  */
 import { ref } from 'vue'
 import PlayerIcon from './PlayerIcon.vue'
@@ -114,11 +115,15 @@ function ground(row: ScoreRow) {
           {{ row.name }}
         </th>
         <td class="px-0.5" :style="ground(row)">
-          <span class="flex min-w-0 items-center gap-1">
-            <span class="truncate" data-test="guess-label">{{ row.guessLabel }}</span>
-            <!-- Only a wrong guess is worth hearing: the right one is the solution above. -->
+          <!-- The button leads, so every playable row starts on the same axis and the titles line
+               up behind it. A row with nothing to play has nothing to line up with: its dash sits
+               in the middle of the cell instead. -->
+          <span
+            class="flex min-w-0 items-center gap-1"
+            :class="row.trackId === null ? 'justify-center' : ''"
+          >
             <button
-              v-if="!row.correct && row.trackId !== null"
+              v-if="row.trackId !== null"
               type="button"
               class="shrink-0 cursor-pointer text-sm"
               data-test="play-guess"
@@ -127,6 +132,7 @@ function ground(row: ScoreRow) {
             >
               <PlayerIcon :name="isPlaying(row) ? 'pause' : 'play'" />
             </button>
+            <span class="truncate" data-test="guess-label">{{ row.guessLabel }}</span>
           </span>
         </td>
         <td class="px-0.5 text-end tabular-nums" :style="ground(row)">{{ row.timeLabel }}</td>
