@@ -69,7 +69,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-5">
+  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4">
     <!-- The cover's row, laid out exactly like the reveal's: the box stays horizontally centered
          (both side tracks `minmax(0,1fr)`, so neither one's content can push it off-axis) and only
          the give-up button rides along in the right track. -->

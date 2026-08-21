@@ -21,7 +21,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-5">
+  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4">
     <SongPlayerReveal
       :solution="props.solution"
       :durations="props.durations"
