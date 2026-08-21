@@ -73,3 +73,20 @@
 @utility song-cover {
   width: min(43.5%, 9rem);
 }
+
+/* The round slot's full-bleed on a phone: the band spans the viewport by giving back exactly the
+   page gutter — `main p-4` in `App.vue` — and from `sm` the card is back inside the content column,
+   so the bleed switches off. Spelled by name everywhere the slot's geometry has to agree (the
+   surface, the countdown card, the two height-reserving placeholders), because four equal literals
+   are three chances to drift.
+   `calc(var(--spacing) * -4)` is what Tailwind itself emits for `-mx-4`, so this and `main`'s
+   padding are one measurement rather than two that happen to match. An element carrying this must
+   NOT also carry `w-full`: with a definite width the margin equation is over-constrained, CSS drops
+   the right margin, and the box merely shifts sideways instead of widening. */
+@utility round-bleed {
+  margin-inline: calc(var(--spacing) * -4);
+
+  @media (width >= theme(--breakpoint-sm)) {
+    margin-inline: 0;
+  }
+}
