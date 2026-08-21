@@ -50,12 +50,13 @@ const hint = computed(() =>
     ? 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Hier zählt nur, wer am nächsten dran liegt.'
     : 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Eine kleine Abweichung ist erlaubt.',
 )
+
+// `group` exists for one descendant: the centre button reacts to the leave class the reveal
+// transition puts on this element (`hue-card-leaving`). The frame around all this belongs to
+// whoever mounts the game — see `ui/RoundSurface.vue`.
 </script>
 
 <template>
-  <!-- `group` exists for one descendant: the centre button reacts to the leave class the reveal
-       transition puts on this element (`hue-card-leaving`). The frame around all this belongs to
-       whoever mounts the game — see `ui/RoundSurface.vue`. -->
   <div class="group">
     <!--
       A rule, not a box: a bordered card inside a bordered card reads as clutter. `select-none`

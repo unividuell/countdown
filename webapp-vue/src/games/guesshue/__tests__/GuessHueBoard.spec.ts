@@ -101,13 +101,8 @@ describe('GuessHueBoard', () => {
   // The frame belongs to the host now (`rounds/RoundCard.vue` and the lab's game page). A board
   // that frames itself puts a second border inside the surface — and two of them for the length of
   // the reveal crossfade.
-  //
-  // `.find('div')`, not `.classes()` on the mount itself: the root has a leading comment sibling
-  // (see the file's template), which makes Vue treat the component as multi-root — `@vue/test-utils`
-  // then reports the classes of the mount's parent element instead of the board's own root, and a
-  // direct `.classes()` call here would silently check nothing at all.
   it('brings no frame of its own', () => {
-    const classes = mountBoard().find('div').classes()
+    const classes = mountBoard().classes()
 
     expect(classes).not.toContain('rounded-xl')
     expect(classes).not.toContain('border')
@@ -117,6 +112,6 @@ describe('GuessHueBoard', () => {
   })
 
   it('keeps the group hook the reveal transition writes its leave class onto', () => {
-    expect(mountBoard().find('div').classes()).toContain('group')
+    expect(mountBoard().classes()).toContain('group')
   })
 })

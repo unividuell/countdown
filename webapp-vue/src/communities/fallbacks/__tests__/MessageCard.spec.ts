@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MessageCard from '@/communities/fallbacks/MessageCard.vue'
+import RoundSurface from '@/ui/RoundSurface.vue'
 
 describe('MessageCard', () => {
   it('shows the title', () => {
@@ -28,7 +29,7 @@ describe('MessageCard', () => {
   it('is drawn on the shared surface rather than a frame of its own', () => {
     const w = mount(MessageCard, { props: { title: 'x' } })
 
-    expect(w.attributes('data-test')).toBe('round-surface')
+    expect(w.findComponent(RoundSurface).exists()).toBe(true)
     expect(w.classes()).not.toContain('rounded-xl')
   })
 

@@ -82,7 +82,11 @@
    `calc(var(--spacing) * -4)` is what Tailwind itself emits for `-mx-4`, so this and `main`'s
    padding are one measurement rather than two that happen to match. An element carrying this must
    NOT also carry `w-full`: with a definite width the margin equation is over-constrained, CSS drops
-   the right margin, and the box merely shifts sideways instead of widening. */
+   the right margin, and the box merely shifts sideways instead of widening.
+   The `sm:rounded-xl` corner sits beside this utility rather than inside it: `CountdownCard` cannot
+   take the surface component (its hero width is a percentage of the whole card, not of a slot
+   inside one), so it takes this utility alone and has to repeat the radius by hand — a consumer
+   that cannot use the component still has to look like it. */
 @utility round-bleed {
   margin-inline: calc(var(--spacing) * -4);
 

@@ -195,6 +195,21 @@ None of these are visible in tests: **happy-dom computes no CSS and no box sizes
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the
 numbers themselves are a browser measurement.
 
+- **A comment sitting beside the root element makes the component multi-root — in dev and in
+  tests, never in the production build.** Vue's compiler treats a leading (or trailing) template
+  comment as a second root node, and `@vue/test-utils` then resolves a *mount-level* `.classes()`
+  or `.attributes()` call to the wrapper it inserts around a multi-root component, not to the
+  component's own root element — so a `not.toContain('rounded-xl')`-style assertion keeps passing
+  no matter what the component renders, because it never looks at the right element. This is what
+  made `GuessHueBoard.spec.ts` reach for `.find('div').classes()` around its frame-lessness
+  assertions, and what commit `966e22f` fixed for `MessageCard.vue` by moving the comment out of
+  the template. The lasting fix is to keep the comment out of the template altogether — as `//`
+  lines in `<script setup>`, the pattern `ui/RoundSurface.vue` and `GuessHueBoard.vue` both use —
+  so the assertion can go back to a plain `.classes()` on the mount itself. Compiled under
+  `NODE_ENV=production`, Vue strips the comment and the component is single-root again, so this
+  divergence only exists in the dev server and in `pnpm test` — exactly where a class-absence
+  assertion is trusted the most.
+
 ### Accessible by construction
 
 - **Read the accessibility tree, not the DOM, when a control's name matters.** Name-from-content
