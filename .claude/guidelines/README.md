@@ -19,7 +19,7 @@ new team members (and AI assistants) stay consistent.
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Tailwind v4 · stack · `apiFetch`/`useAuth` · lint · typecheck) | [frontend.md](frontend.md) |
 | ↳ Frontend UI & layout (mobile-first · sizing traps · accessibility) | [frontend-ui.md](frontend-ui.md) |
 | ↳ Frontend routing, shells & access (Vue Router 5 file-based · guard-owned nav data · `[slug]` shell · role gating) | [frontend-routing.md](frontend-routing.md) |
-| ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking) | [frontend-state.md](frontend-state.md) |
+| ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking · short-clip audio) | [frontend-state.md](frontend-state.md) |
 | ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles) | [frontend-testing.md](frontend-testing.md) |
 | Deployment (ghcr images · arm64 CI · prod+staging compose topology · backend production profile) | [deployment.md](deployment.md) |
 | ↳ Deployment edge (the two Caddys · TLS · SPA/API routing · cache headers · `X-Forwarded-*` chain) | [deployment-edge.md](deployment-edge.md) |

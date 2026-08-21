@@ -30,6 +30,11 @@ desktop layout that was written first).
   — the write also cancels the pending restore, and the extra frame covers the restore
   landing in the reflow that first builds the scroll frame. Same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader). See `MemberRow`.
+- **Replacing a strip's content resets its scroll offset**, in every browser and both axes:
+  the offset belonged to the old content, and a box left parked in the middle hides the very
+  items that just arrived — on a phone it reads as „the search never answered". Reset in a
+  `watch` on the data with `{ flush: 'post' }`, so the box is measured against its new content
+  and not the old one. See `SongSearchBox`.
 
 ### Animation on a phone's main thread
 

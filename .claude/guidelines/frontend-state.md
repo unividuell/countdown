@@ -96,6 +96,38 @@ tab. So:
   synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
   choreography left to protect, and lag for that reader is the wrong way round.
 
+## Sound — a short clip needs the graph, not the `<audio>` element
+
+An `<audio>` element opens an output stream per playback and tears it down when the clip ends.
+On Android that opening and closing costs tens to hundreds of milliseconds, so a clip whose
+**entire** content is 0.1 s lives inside that window: its tail gets flushed away, or nothing is
+heard at all, and `currentTime` already stands at the end before the first frame paints (observed
+on Firefox for Android; Chrome for Android does not show it). **Anything under about a second goes
+through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
+the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
+already running. `usePlayback` (`src/games/songsnippet/`) is the worked example.
+
+- **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
+  graph may be mid-render and drop the first samples of a clip that starts in the present.
+- **Read the position from the graph's clock** — `ctx.currentTime - startedAt`, clamped to
+  `[0, buffer.duration]`. The element's `timeupdate` is ~4 Hz (useless over 0.1 s) and its
+  `currentTime` reports the decoder's progress rather than what has been heard.
+- **Keep the element as a fallback** for browsers without an `AudioContext` and for a clip
+  `decodeAudioData` rejects — resolve the decode to `null` rather than rejecting, and let the
+  element carry the same source all along, so falling back costs no second load.
+- **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
+  resumes (our play button is „always from the start", pause is its own control). Check that
+  before choosing the graph; a resume needs an offset you keep yourself.
+- **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
+  from the outside; a `console.warn` is what makes it a report instead of a mystery.
+- **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
+  Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
+  routing any remote source through the graph.
+- **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
+  constructor. Both the context and the „only one clip sounds" registry are module state, so a
+  stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
+  stubbed into a queue you step by hand (the sampler re-requests itself).
+
 ## Server-authoritative ticking values (countdown pattern)
 
 For live values that must agree with the backend (the countdown), the backend owns the logic and
