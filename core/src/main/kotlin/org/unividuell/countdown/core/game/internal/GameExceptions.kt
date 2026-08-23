@@ -41,3 +41,10 @@ class AssetForbiddenException(message: String = "this asset is not yours to fetc
 
 /** The gate allowed it, but the game has nothing stored under this key → 404. */
 class AssetNotFoundException(message: String = "no such asset") : RuntimeException(message)
+
+/**
+ * No such round in this community's history → 404. Every reason lands here on purpose — not strictly
+ * older than the running round, never announced, outside the run's window — because telling them
+ * apart would tell the caller which rounds exist.
+ */
+class RoundNotFoundException(message: String = "no such round") : RuntimeException(message)

@@ -8,7 +8,11 @@ import org.unividuell.countdown.core.game.InvalidGuessException
 
 @RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.game.internal"])
 class GameExceptionHandler {
-    @ExceptionHandler(RoundAccessDeniedException::class, AssetNotFoundException::class)
+    @ExceptionHandler(
+        RoundAccessDeniedException::class,
+        AssetNotFoundException::class,
+        RoundNotFoundException::class,
+    )
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
