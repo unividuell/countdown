@@ -206,7 +206,11 @@ round the history can still show must keep what it needs to show it. `GameType.r
 `GameCatalog.releaseAssets` and `SongSnippetAudioStore.release` stay in place as the seam a later
 archival hook will call when a whole edition is put to rest — deliberately without a caller today.
 Storage is therefore no longer bounded at one round's ladder per community per edition; it is a
-growth rate, a few hundred KB per round, for as long as the edition runs. The comment above the
-lifecycle in `core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` still
-describes the old announce-time cleanup and is wrong about it — left as written, because editing an
-applied migration breaks its Flyway checksum.
+growth rate, a few hundred KB per round, and nothing reclaims it when the run ends either:
+`EditionService.startNew` archives the old edition without releasing a single byte, so a finished
+run's audio sits there exactly as before, right alongside the next run's. The growth is per-run-forever,
+not per-run, until the archival hook above gets a caller or an operator removes the files by hand. The
+comment above the lifecycle in
+`core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` still describes the old
+announce-time cleanup and is wrong about it — left as written, because editing an applied migration
+breaks its Flyway checksum.
