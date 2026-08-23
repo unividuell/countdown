@@ -24,15 +24,24 @@ const props = withDefaults(
      */
     closed?: boolean
     /** Which face a running round calls for. A closed round has none. */
-    stage?: RoundStage
+    stage?: RoundStage | undefined
     busy?: boolean
     notice?: string | null
-    reveal?: () => Promise<void>
-    submit?: (guess: unknown) => Promise<void>
-    skip?: (fromStage: number) => Promise<void>
-    giveUp?: () => Promise<void>
+    reveal?: (() => Promise<void>) | undefined
+    submit?: ((guess: unknown) => Promise<void>) | undefined
+    skip?: ((fromStage: number) => Promise<void>) | undefined
+    giveUp?: (() => Promise<void>) | undefined
   }>(),
-  { closed: false, busy: false, notice: null },
+  {
+    closed: false,
+    busy: false,
+    notice: null,
+    stage: undefined,
+    reveal: undefined,
+    submit: undefined,
+    skip: undefined,
+    giveUp: undefined,
+  },
 )
 
 const emit = defineEmits<{ guessed: [] }>()
