@@ -1191,14 +1191,19 @@ Expected: FAIL — `RoundMovedOnException` statt `RoundNotFoundException`, und d
             ) ?: throw AssetNotFoundException()
         }
         if (roundNumber < currentNumber) throw RoundNotFoundException()
-        // Smart-cast, no explicit cast: `ResolvedRound` has exactly two cases.
-        if (current is ResolvedRound.NoGame) throw NoGameToPlayException(current.reason)
-        val roundGameId = requireNotNull(current.roundGame.id)
+        // A `when` over both cases, the same idiom `playable()` uses: Kotlin does NOT narrow to a
+        // sibling subtype after an `is NoGame` check, so neither a bare `current.roundGame` nor an
+        // explicit cast is the right shape here.
+        val announced = when (current) {
+            is ResolvedRound.NoGame -> throw NoGameToPlayException(current.reason)
+            is ResolvedRound.Announced -> current
+        }
+        val roundGameId = requireNotNull(announced.roundGame.id)
         val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
             ?: throw NotRevealedException()
         val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage
         if (!allowed) throw AssetForbiddenException()
-        return current.handle.asset(params = current.roundGame.params, roundGameId = roundGameId, key = key)
+        return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
             ?: throw AssetNotFoundException()
     }
 ```
