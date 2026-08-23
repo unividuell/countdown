@@ -148,6 +148,15 @@ describe('App main header', () => {
     expect(w.classes()).toContain('overflow-x-clip')
   })
 
+  // `RoundSurface`'s `round-bleed` gives back exactly this padding to reach the display edge on a
+  // phone. The two are one measurement; if this padding ever moves, the band stops meeting the edge
+  // and nothing else in the suite would notice.
+  it('keeps the page gutter that the round surface breaks out of', () => {
+    const main = mount(App, { global: { stubs } }).get('main')
+
+    expect(main.classes()).toContain('p-4')
+  })
+
   // No countdown, no second row: the header goes back to the height it had before the board existed
   // rather than carrying 52px of reserved black on the login page and the community list.
   it('drops the countdown row entirely where no community is active', () => {

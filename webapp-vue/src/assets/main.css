@@ -73,3 +73,42 @@
 @utility song-cover {
   width: min(43.5%, 9rem);
 }
+
+/* The round slot's full-bleed on a phone: the band spans the viewport by giving back exactly the
+   page gutter — `main p-4` in `App.vue` — and from `sm` the card is back inside the content column,
+   so the bleed switches off. Spelled by name everywhere the slot's geometry has to agree (the
+   surface, the countdown card, the two height-reserving placeholders), because four equal literals
+   are three chances to drift.
+   `calc(var(--spacing) * -4)` is what Tailwind itself emits for `-mx-4`, so this and `main`'s
+   padding are one measurement rather than two that happen to match. An element carrying this must
+   NOT also carry `w-full`: with a definite width the margin equation is over-constrained, CSS drops
+   the right margin, and the box merely shifts sideways instead of widening.
+   The `sm:rounded-xl` corner sits beside this utility rather than inside it: `CountdownCard` cannot
+   take the surface component (its hero width is a percentage of the whole card, not of a slot
+   inside one), so it takes this utility alone and has to repeat the radius by hand — a consumer
+   that cannot use the component still has to look like it. */
+@utility round-bleed {
+  margin-inline: calc(var(--spacing) * -4);
+
+  @media (width >= theme(--breakpoint-sm)) {
+    margin-inline: 0;
+  }
+}
+
+/* How wide the colour wheel is — on the wheel that takes input and on the wheel that shows the
+   result. One value for both, because the reveal lays its markers on the input wheel's own radius
+   and angle ("my marker covers the knob exactly" is built, not recomputed): any difference between
+   the two is a jump the moment the round resolves.
+   27rem is the widest common phone (430px), so on every real phone the cap never bites and the
+   wheel is as wide as the band allows. It exists for what lies above: without it an unfolded
+   foldable would draw a 608px wheel, which is a poster rather than a control, and the confirm
+   button in its centre would sit below half the page. From sm the card is back and 20rem keeps the
+   wheel the size it has always been. */
+@utility hue-wheel {
+  width: 100%;
+  max-width: 27rem;
+
+  @media (width >= theme(--breakpoint-sm)) {
+    max-width: 20rem;
+  }
+}

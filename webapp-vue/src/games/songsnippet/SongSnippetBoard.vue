@@ -139,7 +139,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4">
+  <div class="flex flex-col gap-4">
     <!-- The hits first, then the field, then the bar: the band stands where the reveal puts the
          cover, and the field where it puts the title, so resolving the round moves nothing. Both
          rows belong to the search box, which spaces them exactly like this card does. -->

@@ -64,10 +64,14 @@ const settledMembers = computed(() => {
        still loading, neither the card nor the fallback is the right answer yet, and showing one
        only to swap it for the other once the response lands would flash a countdown or a game
        board that was never really there. -->
+  <!-- Same width as the card that will replace it: `aspect-square` makes the reserved height the
+       reserved width, so a placeholder that does not bleed reserves 32px too little and the page
+       drops when the response lands. No `w-full` — a definite width would shift the box instead of
+       widening it. -->
   <div
     v-if="roundState === 'loading'"
     data-test="round-placeholder"
-    class="mt-6 aspect-square w-full"
+    class="round-bleed mt-6 aspect-square"
     aria-hidden="true"
   />
   <!-- Checked ahead of the card branch, not inside it — the same order the roster above already

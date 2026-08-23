@@ -97,4 +97,21 @@ describe('GuessHueBoard', () => {
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('300')
   })
+
+  // The frame belongs to the host now (`rounds/RoundCard.vue` and the lab's game page). A board
+  // that frames itself puts a second border inside the surface — and two of them for the length of
+  // the reveal crossfade.
+  it('brings no frame of its own', () => {
+    const classes = mountBoard().classes()
+
+    expect(classes).not.toContain('rounded-xl')
+    expect(classes).not.toContain('border')
+    expect(classes).not.toContain('border-neutral-200')
+    expect(classes).not.toContain('bg-white')
+    expect(classes).not.toContain('p-4')
+  })
+
+  it('keeps the group hook the reveal transition writes its leave class onto', () => {
+    expect(mountBoard().classes()).toContain('group')
+  })
 })

@@ -159,13 +159,32 @@ it is the only proof available — no unit test can see them.
   un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
   doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
   `GuessHueScoreboard`.
+- **`w-full` and a negative inline margin are mutually exclusive.** A full-bleed band that breaks
+  out of the page gutter (`-mx-4` against `main`'s `p-4`) only widens if its width is `auto`: with
+  a definite width the margin equation is over-constrained, CSS drops the *right* margin, and the
+  box keeps its old width and merely **shifts** sideways. Measured in Chromium on a 343px parent:
+  `width:100%; margin-inline:-16px` reads `{left:-16, right:327, width:343}`, width `auto` reads
+  `{left:-16, right:359, width:375}`. So every `aspect-square w-full` box that gains a bleed has to
+  lose the `w-full` — and because the square's height is its width, forgetting it silently reserves
+  32px too little and the page drops when the content lands. happy-dom computes no layout, so the
+  only testable proxy is that the class is absent. See `round-bleed`, `MessageCard`,
+  `CountdownCard`.
+- **A bleed and the gutter it gives back are one measurement.** Where a band spans the viewport by
+  cancelling an ancestor's padding, the two numbers must agree or the band stops meeting the display
+  edge — and nothing fails. Derive the bleed from the same variable Tailwind computes the padding
+  from (`margin-inline: calc(var(--spacing) * -4)` is byte-for-byte what `-mx-4` emits), name it once
+  as an `@utility`, and pin the ancestor's padding in a test — that assertion is the only mechanical
+  guard there is. See `@utility round-bleed` and the `<main>` guard in `app-header.spec.ts`.
 
 - **Two screens that must not jump share one measurement, not two matching numbers.** Where a
   round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of
   the band's search hits, then the solution's own), the size belongs in a single `@utility`
   (`song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
   `h-32 w-32` on one side and an equal-looking value on the other, which drifts the moment either
-  is touched. The same for a slot one screen fills with a control and the other with text: give
+  is touched. The colour wheel is the same story with a sharper edge: `max-w-80` stood identically on
+  `HueWheelInput` and `HueWheelReveal`, and the reveal lays its markers on the input wheel's own
+  radius — so `@utility hue-wheel` is the one place, and both templates spell it by name. The same
+  for a slot one screen fills with a control and the other with text: give
   both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
   then assert is exactly that — both ends carry the shared class — which is the checkable half of
   „nothing moves". And where the two screens show the same *control* rather than merely the same
@@ -175,6 +194,21 @@ it is the only proof available — no unit test can see them.
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the
 numbers themselves are a browser measurement.
+
+- **A comment sitting beside the root element makes the component multi-root — in dev and in
+  tests, never in the production build.** Vue's compiler treats a leading (or trailing) template
+  comment as a second root node, and `@vue/test-utils` then resolves a *mount-level* `.classes()`
+  or `.attributes()` call to the wrapper it inserts around a multi-root component, not to the
+  component's own root element — so a `not.toContain('rounded-xl')`-style assertion keeps passing
+  no matter what the component renders, because it never looks at the right element. This is what
+  made `GuessHueBoard.spec.ts` reach for `.find('div').classes()` around its frame-lessness
+  assertions, and what commit `966e22f` fixed for `MessageCard.vue` by moving the comment out of
+  the template. The lasting fix is to keep the comment out of the template altogether — as `//`
+  lines in `<script setup>`, the pattern `ui/RoundSurface.vue` and `GuessHueBoard.vue` both use —
+  so the assertion can go back to a plain `.classes()` on the mount itself. Compiled under
+  `NODE_ENV=production`, Vue strips the comment and the component is single-root again, so this
+  divergence only exists in the dev server and in `pnpm test` — exactly where a class-absence
+  assertion is trusted the most.
 
 ### Accessible by construction
 

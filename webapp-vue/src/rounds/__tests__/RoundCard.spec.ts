@@ -241,4 +241,45 @@ describe('RoundCard', () => {
     expect(w.find('[data-test="round-unrenderable"]').exists()).toBe(true)
     expect(w.find('[data-test="round-reveal"]').exists()).toBe(false)
   })
+
+  it('draws every face on one shared surface', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing' })
+
+    expect(w.findAll('[data-test="round-surface"]')).toHaveLength(1)
+    expect(
+      w.get('[data-test="stub-guess"]').element.closest('[data-test="round-surface"]'),
+    ).not.toBeNull()
+  })
+
+  it('puts the sealed face on that same surface', () => {
+    const w = mountCard({ round: aRound(), stage: 'sealed' })
+
+    expect(w.findAll('[data-test="round-surface"]')).toHaveLength(1)
+    expect(
+      w.get('[data-test="round-reveal"]').element.closest('[data-test="round-surface"]'),
+    ).not.toBeNull()
+  })
+
+  it('puts the unrenderable face on that same surface', () => {
+    const round = aRound({
+      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      me: aPlay(),
+    })
+    const w = mountCard({ round, stage: 'playing' })
+
+    expect(w.findAll('[data-test="round-surface"]')).toHaveLength(1)
+    expect(
+      w.get('[data-test="round-unrenderable"]').element.closest('[data-test="round-surface"]'),
+    ).not.toBeNull()
+  })
+
+  // The notice is about the attempt, not about the round on the board: it belongs above the
+  // surface, where it does not move the board down inside its own frame.
+  it('keeps the notice outside the surface', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing', notice: 'Zu spät.' })
+
+    expect(
+      w.get('[data-test="round-notice"]').element.closest('[data-test="round-surface"]'),
+    ).toBeNull()
+  })
 })

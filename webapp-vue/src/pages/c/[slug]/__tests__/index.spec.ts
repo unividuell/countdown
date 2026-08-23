@@ -222,6 +222,20 @@ describe('community home', () => {
     expect(w.findComponent(RoundFallback).exists()).toBe(false)
   })
 
+  // The placeholder reserves the round's height, and `aspect-square` makes that height its width.
+  // Without the bleed it reserves 343px where the card will be 375, so the page drops 32px the
+  // moment the response lands — the very jump this element exists to prevent.
+  it('reserves the width the round will actually have', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ loading: true }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+    const placeholder = w.get('[data-test="round-placeholder"]')
+
+    expect(placeholder.classes()).toContain('round-bleed')
+    expect(placeholder.classes()).toContain('aspect-square')
+    expect(placeholder.classes()).not.toContain('w-full')
+  })
+
   // Mirrors the roster's own `roster-error` branch just above it: a transient 500 must say so,
   // not fall through to the "no game" fallback — which for a running event reads as "Und jetzt
   // viel Spaß zusammen!", i.e. the opposite of "something is wrong, try again later".

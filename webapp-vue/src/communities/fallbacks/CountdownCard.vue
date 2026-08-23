@@ -33,7 +33,7 @@ const stripLive = ref(false)
 <template>
   <div
     data-test="countdown-card"
-    class="flex aspect-square w-full flex-col items-center justify-between rounded-xl bg-stone-900 py-4"
+    class="round-bleed flex aspect-square flex-col items-center justify-between bg-stone-900 py-4 sm:rounded-xl"
   >
     <!-- w-full, not shrink-to-fit: inside an items-center column this block would take its width
          from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS

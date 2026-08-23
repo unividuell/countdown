@@ -27,7 +27,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="rounded-xl border border-neutral-200 bg-white p-4">
+  <div data-test="hue-reveal">
     <blockquote class="border-l-4 border-neutral-300 py-1 pl-4">
       <p
         data-test="hue-description"

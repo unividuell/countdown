@@ -231,11 +231,21 @@ describe('GuessHueGame, once the round is spent', () => {
     expect(w.findAll('[data-test="hue-marker"]')).toHaveLength(0)
   })
 
-  it("keeps the reveal card in the crossfade's shared grid cell", () => {
+  // Reached by its own handle rather than through `.closest('.rounded-xl')`: the reveal carries no
+  // frame any more, and the class it used to be found by only exists from sm.
+  it("keeps the reveal in the crossfade's shared grid cell", () => {
     const w = mountAdapter({ solution: SOLUTION, entries: [], mineUserId: null, disabled: true })
-    const revealCard = w.get('[data-test="hue-wheel-reveal"]').element.closest('.rounded-xl')!
 
-    expect(revealCard.className).toContain('[grid-area:1/1]')
+    expect(w.get('[data-test="hue-reveal"]').classes()).toContain('[grid-area:1/1]')
+  })
+
+  it('lets the reveal bring no frame of its own', () => {
+    const w = mountAdapter({ solution: SOLUTION, entries: [], mineUserId: null, disabled: true })
+    const classes = w.get('[data-test="hue-reveal"]').classes()
+
+    expect(classes).not.toContain('rounded-xl')
+    expect(classes).not.toContain('border-neutral-200')
+    expect(classes).not.toContain('p-4')
   })
 
   it.each([

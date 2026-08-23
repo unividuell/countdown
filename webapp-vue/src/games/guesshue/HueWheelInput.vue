@@ -289,7 +289,7 @@ const rotatorStyle = computed(() => ({
       :aria-valuetext="`${hueName(props.hue)}, ${announcedHue} Grad`"
       :aria-disabled="props.disabled || undefined"
       :tabindex="props.disabled ? -1 : 0"
-      class="relative mx-auto aspect-square w-full max-w-80 rounded-full select-none"
+      class="hue-wheel relative mx-auto aspect-square rounded-full select-none"
       style="touch-action: auto"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"

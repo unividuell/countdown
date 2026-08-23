@@ -29,6 +29,7 @@ import {
   submitLabGuess,
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
+import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]')
@@ -192,36 +193,37 @@ watch(
          drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
-    <!--
-      Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
-      step for one tick whenever rolling writes the new seed to the URL before the matching round
-      has come back. Keying on the URL seed would remount right then, capturing the previous
-      round's data as if it were the new one (the entrance animation starts from the wrong angle
-      and never gets a second chance to run); `round.seed` only changes once the new round's data
-      is actually here, so the remount and the data land together. The same remount also discards
-      any uncommitted scratch state a game component keeps locally (a value typed but never
-      submitted) once the round it belonged to is gone.
-    -->
-    <component
-      :is="gameComponent"
-      v-if="round"
-      :key="round.seed"
-      :payload="round.payload"
-      :outcome="round.me?.outcome ?? null"
-      :my-guess="round.me?.guess ?? null"
-      :solution="round.solution"
-      :entries="entries"
-      :mine-user-id="round.me?.userId ?? null"
-      :award-rule="round.awardRule"
-      :disabled="busy || round.me !== null"
-      :stage="round.myStage"
-      :asset-url="
-        (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
-      "
-      @guess="guess"
-      @skip="skip"
-      @give-up="run(giveUpLabRound)"
-    />
+    <RoundSurface v-if="round">
+      <!--
+        Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
+        step for one tick whenever rolling writes the new seed to the URL before the matching round
+        has come back. Keying on the URL seed would remount right then, capturing the previous
+        round's data as if it were the new one (the entrance animation starts from the wrong angle
+        and never gets a second chance to run); `round.seed` only changes once the new round's data
+        is actually here, so the remount and the data land together. The same remount also discards
+        any uncommitted scratch state a game component keeps locally (a value typed but never
+        submitted) once the round it belonged to is gone.
+      -->
+      <component
+        :is="gameComponent"
+        :key="round.seed"
+        :payload="round.payload"
+        :outcome="round.me?.outcome ?? null"
+        :my-guess="round.me?.guess ?? null"
+        :solution="round.solution"
+        :entries="entries"
+        :mine-user-id="round.me?.userId ?? null"
+        :award-rule="round.awardRule"
+        :disabled="busy || round.me !== null"
+        :stage="round.myStage"
+        :asset-url="
+          (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
+        "
+        @guess="guess"
+        @skip="skip"
+        @give-up="run(giveUpLabRound)"
+      />
+    </RoundSurface>
 
     <!-- No drawer close on these two: they are triggered from the column, where nothing is in
          the way of the result. -->

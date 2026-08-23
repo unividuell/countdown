@@ -825,4 +825,15 @@ describe('lab page', () => {
     expect(stub.props('entries')).toEqual([mineEntry, theirEntry])
     expect(stub.props('disabled')).toBe(true)
   })
+
+  // The lab exists so that a game under review looks exactly as it will in a real round. If the
+  // page forgot the surface, it would look right in the game and wrong here — which is the one
+  // failure mode this page must not have.
+  it('mounts the game on the same surface a real round uses', async () => {
+    const w = await mountPage()
+
+    expect(
+      w.get('[data-test="stub-guess"]').element.closest('[data-test="round-surface"]'),
+    ).not.toBeNull()
+  })
 })
