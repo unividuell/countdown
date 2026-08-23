@@ -88,11 +88,11 @@ class RoundController(
     )
 
     /**
-     * The round's binary assets, stage-gated. Round number and key ride in the URL so each pair is
-     * its own privately cacheable resource — without the round number, yesterday's cache would
-     * replay the wrong round.
+     * The round's binary assets. The round number rides in the URL so each pair is its own privately
+     * cacheable resource — without it, yesterday's cache would replay the wrong round. Which gate
+     * applies follows from the number: see [PlayService.asset].
      */
-    @GetMapping("/current/assets/{roundNumber}/{key}")
+    @GetMapping("/{roundNumber}/assets/{key}")
     fun asset(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
