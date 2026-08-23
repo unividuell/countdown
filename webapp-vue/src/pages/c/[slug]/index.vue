@@ -31,7 +31,7 @@ const {
   giveUp,
 } = useRound(community.value.slug)
 
-/** The asset lives at `{slug}/rounds/current/assets/{roundNumber}/{key}` — the current round's own. */
+/** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
 const assetUrl = (key: number): string =>
   roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
 
