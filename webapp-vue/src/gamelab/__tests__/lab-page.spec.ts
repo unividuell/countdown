@@ -3,7 +3,10 @@ import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-uti
 import { reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
+import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
+import GameHeader from '@/ui/GameHeader.vue'
+import { _resetSharedClock } from '@/ui/sharedClock'
 import * as drawerControl from '@/nav/drawerControl'
 import type { LabRoundResponse } from '@/gamelab/types'
 
@@ -148,6 +151,9 @@ describe('lab page', () => {
 
   afterEach(() => {
     for (const w of mountedPages.splice(0)) w.unmount()
+    // The band holds a subscription on the shared clock for as long as it is mounted; the pages are
+    // released just above, so this is the point where the interval behind them can be cleared.
+    _resetSharedClock()
   })
 
   it('opens the round at the seed from the URL', async () => {
@@ -835,5 +841,48 @@ describe('lab page', () => {
     expect(
       w.get('[data-test="stub-guess"]').element.closest('[data-test="round-surface"]'),
     ).not.toBeNull()
+  })
+
+  // Same reasoning as the surface above, and the band is the more visible half of it: a reviewer
+  // judges the look of the whole card, so the lab wears the product's header rather than a heading
+  // of its own.
+  it('wears the same header band a real round does', async () => {
+    const w = await mountPage()
+    const band = w.get('[data-test="game-header"]').element
+
+    expect(band.closest('[data-test="round-surface"]')).not.toBeNull()
+    expect(band.closest('[data-test="round-surface-body"]')).toBeNull()
+  })
+
+  it('names the game in the band and nowhere else', async () => {
+    const w = await mountPage()
+
+    expect(w.getComponent(GameHeader).props('title')).toBe('Stub')
+    expect(w.find('h1:not([data-test="game-header-title"])').exists()).toBe(false)
+  })
+
+  it('takes the round number from the seed, so a reload replays the same round', async () => {
+    const w = await mountPage()
+
+    expect(w.getComponent(GameHeader).props('roundNumber')).toBe(labRoundNumber(42))
+  })
+
+  // Stamped once when the round opens, not recomputed per render: an end that moved with the clock
+  // would leave the readout frozen at the same reading forever, which is the one thing the band is
+  // there to disprove.
+  it('stamps the round end when the round opens, so the readout actually counts down', async () => {
+    const now = Date.parse('2026-08-23T12:00:00Z')
+    vi.useFakeTimers({ now })
+    try {
+      const w = await mountPage()
+      expect(w.getComponent(GameHeader).props('endsAt')).toBe(labRoundEnd(42, now))
+
+      vi.advanceTimersByTime(5000)
+      await flushPromises()
+
+      expect(w.getComponent(GameHeader).props('endsAt')).toBe(labRoundEnd(42, now))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -8,21 +8,31 @@ export const SEED_MIN = -2_147_483_648
 export const SEED_MAX = 2_147_483_647
 
 /**
- * The round a game opens on when the URL carries no usable seed: FNV-1a-32 over the UTF-8 bytes of
- * the game id, so every device and tab lands on the same first round without anyone having to pass
- * a number around. Hashing bytes rather than UTF-16 code units follows the same convention as the
- * rest of the codebase — a game id is free to carry an umlaut.
+ * FNV-1a-32 over the UTF-8 bytes of [text], masked to 31 bits so the result is never negative.
  *
- * Masked to 31 bits for exactly the reason `rollSeed` is non-negative, and more so: this is the
- * seed testers land on and quote most often, so it must not start with a minus.
+ * Hashing bytes rather than UTF-16 code units follows the same convention as the rest of the
+ * codebase — the strings fed to it are free to carry an umlaut. Lab-only, and only ever for values
+ * a tester is allowed to see: a round's *content* is derived on the server from a seed it never
+ * ships, and nothing here may become a convenient way around that.
  */
-export function initialSeed(gameId: string): number {
+export function hash32(text: string): number {
   let hash = 0x811c9dc5 | 0
-  for (const byte of new TextEncoder().encode(gameId)) {
+  for (const byte of new TextEncoder().encode(text)) {
     hash ^= byte
     hash = Math.imul(hash, 0x01000193)
   }
   return hash & SEED_MAX
+}
+
+/**
+ * The round a game opens on when the URL carries no usable seed — hashed from the game id, so every
+ * device and tab lands on the same first round without anyone having to pass a number around.
+ *
+ * Non-negative for exactly the reason `rollSeed` is, and more so: this is the seed testers land on
+ * and quote most often, so it must not start with a minus.
+ */
+export function initialSeed(gameId: string): number {
+  return hash32(gameId)
 }
 
 export function parseSeed(raw: unknown): number | null {

@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import RoundCard from '@/rounds/RoundCard.vue'
+import GameHeader from '@/ui/GameHeader.vue'
+import { _resetSharedClock } from '@/ui/sharedClock'
 
 /**
  * A stub, not `guess-hue`: this test exercises the card's own wiring — which prop the game gets,
@@ -94,6 +96,11 @@ function mountCard(props: {
     },
   })
 }
+
+// The header band subscribes to the shared clock for as long as it is mounted, so every card this
+// spec mounts has to be released again — otherwise one interval per test case survives the case.
+enableAutoUnmount(afterEach)
+afterEach(_resetSharedClock)
 
 describe('RoundCard', () => {
   it('shows the game and a reveal button while the round is sealed', async () => {
@@ -281,5 +288,69 @@ describe('RoundCard', () => {
     expect(
       w.get('[data-test="round-notice"]').element.closest('[data-test="round-surface"]'),
     ).toBeNull()
+  })
+
+  it('hands the band the round it is drawing, not a countdown of its own', () => {
+    const round = aRound()
+    const band = mountCard({ round, stage: 'playing' }).getComponent(GameHeader)
+
+    expect(band.props('roundNumber')).toBe(12)
+    expect(band.props('title')).toBe('Farbausmalung')
+    expect(band.props('endsAt')).toBe('2026-08-15T10:00:00Z')
+  })
+
+  // Every face of the card is the same round of the same game for the same time, so the band is
+  // the card's, not any one face's — a band per face is four places for it to disagree.
+  it.each<RoundStage>(['sealed', 'playing', 'done'])('carries the band on the %s face', (stage) => {
+    const round = aRound({
+      me: stage === 'sealed' ? null : aPlay({ guessedAt: stage === 'done' ? 'x' : null }),
+    })
+
+    expect(mountCard({ round, stage }).findComponent(GameHeader).exists()).toBe(true)
+  })
+
+  it('carries the band even where this build cannot render the game', () => {
+    const round = aRound({
+      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      me: aPlay(),
+    })
+
+    expect(mountCard({ round, stage: 'playing' }).findComponent(GameHeader).exists()).toBe(true)
+  })
+
+  it('puts the band in the surface header, so it reaches both card edges', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing' })
+    const band = w.get('[data-test="game-header"]').element
+
+    expect(band.closest('[data-test="round-surface"]')).not.toBeNull()
+    expect(band.closest('[data-test="round-surface-body"]')).toBeNull()
+  })
+
+  // The band names the game now, so the sealed face saying it again is one name too many — and two
+  // places to fix when a display name changes.
+  it('names the game exactly once while sealed', () => {
+    const w = mountCard({ round: aRound(), stage: 'sealed' })
+
+    expect(w.text().match(/Farbausmalung/g)).toHaveLength(1)
+  })
+
+  it('names the game exactly once where there is no renderer for it', () => {
+    const round = aRound({
+      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      me: aPlay(),
+    })
+    const w = mountCard({ round, stage: 'playing' })
+
+    expect(w.text().match(/Rätselraten/g)).toHaveLength(1)
+  })
+
+  // `round` is nullable on the response, and a band cannot invent a number for a round that is not
+  // there — but a game with no renderer still deserves its name.
+  it('survives a game without a round', () => {
+    const round = aRound({ round: null, me: aPlay() })
+    const band = mountCard({ round, stage: 'playing' }).getComponent(GameHeader)
+
+    expect(band.props('roundNumber')).toBeNull()
+    expect(band.props('endsAt')).toBeNull()
   })
 })

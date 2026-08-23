@@ -210,6 +210,14 @@ numbers themselves are a browser measurement.
   divergence only exists in the dev server and in `pnpm test` — exactly where a class-absence
   assertion is trusted the most.
 
+### The flip-dot board on a coloured ground
+
+- **`DOT_OFF` is `#292524` — `stone-800` exactly.** So a board placed on a `bg-stone-800` surface
+  loses its unlit dots and with them the matrix that makes it read as flip-dot at all; nothing
+  fails, it just quietly becomes floating digits. Put a board on a ground either lighter or darker
+  than that (the app header's `stone-900`, the game band's `stone-700`) and assert the class, since
+  happy-dom renders no colour.
+
 ### Accessible by construction
 
 - **Read the accessibility tree, not the DOM, when a control's name matters.** Name-from-content

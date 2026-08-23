@@ -17,6 +17,7 @@ import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
 import { labGames } from '@/gamelab/games'
+import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
 import {
@@ -29,6 +30,7 @@ import {
   submitLabGuess,
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
+import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
@@ -45,6 +47,13 @@ const seed = computed(() => parseSeed(route.query.seed))
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
 
 const round = ref<LabRoundResponse | null>(null)
+/**
+ * When this test round closes. Stamped once per open rather than derived per render: an end that
+ * moved along with the clock would hold the band's readout at one reading forever, and a band that
+ * never counts down is worse than no band at all. Everything else about it follows the seed, so a
+ * reload replays the same round with only the seconds moved on.
+ */
+const roundEndsAt = ref<string | null>(null)
 const unavailable = ref(false)
 const error = ref<string | null>(null)
 const busy = ref(false)
@@ -69,6 +78,7 @@ async function run(
   error.value = null
   try {
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
+    roundEndsAt.value = labRoundEnd(current, Date.now())
     if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
@@ -185,15 +195,21 @@ watch(
       </p>
     </Teleport>
 
-    <!-- The heading is the GAME's, not the lab's — a real game page carries its title the same
-         way, so it stays in the column. Everything lab-shaped went into the drawer above. -->
-    <h1 class="mb-4 text-lg font-semibold">{{ round?.displayName ?? 'Spiel-Labor' }}</h1>
-
     <!-- Stays in the column: an error is the one thing that must not wait behind a closed
          drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
 
     <RoundSurface v-if="round">
+      <!-- The game's name lives in the band now, exactly as it does in a real round — that is the
+           whole point of the lab wearing the product's header rather than a heading of its own.
+           Its round number and its end are the lab's two inventions; both follow the seed. -->
+      <template #header>
+        <GameHeader
+          :round-number="labRoundNumber(round.seed)"
+          :title="round.displayName"
+          :ends-at="roundEndsAt"
+        />
+      </template>
       <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
