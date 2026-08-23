@@ -50,6 +50,23 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     fun historyOf(editionId: UUID, after: Int): List<PastRound>
 
     /**
+     * The next round of this edition **earlier in time** than [after] — the smallest round number
+     * above it, because a larger round number is earlier. [notOlderThan] caps the walk at the run's
+     * game window; older means a larger number, so `gamesFromRound` is the only bound that can
+     * exclude an older round.
+     *
+     * `MIN` over an empty set is `NULL`, and that IS „ganz am Anfang" — no second query and no
+     * `COUNT` needed to tell the two apart.
+     */
+    @Query(
+        """
+        SELECT MIN(round_number) FROM game.round_games
+        WHERE edition_id = :editionId AND round_number > :after AND round_number <= :notOlderThan
+        """,
+    )
+    fun previousRoundNumber(editionId: UUID, after: Int, notOlderThan: Int): Int?
+
+    /**
      * First writer wins, and the loser gets no exception.
      *
      * `ON CONFLICT DO NOTHING` rather than catching `DuplicateKeyException`: a constraint violation

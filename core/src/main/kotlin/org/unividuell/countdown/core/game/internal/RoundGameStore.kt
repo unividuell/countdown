@@ -30,6 +30,19 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         rounds.historyOf(editionId = requireNotNull(edition.id), after = roundNumber)
 
     /**
+     * The next older announced round of [edition], or `null` when [roundNumber] is the oldest one
+     * the run has. `Int.MAX_VALUE` stands in for an unbounded window, which is what a `null`
+     * `gamesFromRound` means.
+     */
+    @Transactional(readOnly = true)
+    fun previousRound(edition: CommunityEdition, roundNumber: Int): Int? =
+        rounds.previousRoundNumber(
+            editionId = requireNotNull(edition.id),
+            after = roundNumber,
+            notOlderThan = edition.gamesFromRound ?: Int.MAX_VALUE,
+        )
+
+    /**
      * The round, locked until the transaction ends. Taken by the guess flow before it judges, so the
      * re-evaluation that follows sees a picture nobody else can move under it.
      */
