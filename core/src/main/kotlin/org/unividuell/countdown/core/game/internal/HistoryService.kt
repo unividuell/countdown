@@ -43,6 +43,9 @@ class HistoryService(
     /**
      * [roundNumber] against an already-resolved running round. The parameter rather than a second
      * `resolve()` call, so the asset path does not resolve the same round twice.
+     *
+     * [current] must come from [AnnouncementService.resolve] — the membership gate lives there and
+     * is not repeated here.
      */
     fun resolve(current: ResolvedRound, roundNumber: Int): ResolvedRound {
         val edition = current.edition ?: throw RoundNotFoundException()
