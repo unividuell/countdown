@@ -17,6 +17,11 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   that `exclude`, and check with
   `npx vue-tsc -b --listFiles | grep -c __tests__` (currently 79 files — a 0 means the specs
   dropped out of the program again).
+- **Two source files whose names differ only in case are ONE file on a Mac.** A component and its
+  helper module must therefore not share a name — `GameHeader.vue` beside `gameHeader.ts` compiles,
+  but their specs collide and `Write` overwrites one with the other in silence, with no git conflict
+  and no failing test until the lost assertions are noticed missing. Name the helper after what it
+  does (`remainingClock.ts`, `board.ts`, `scoreboard.ts`), never after the component it serves.
 - **Every Vite plugin the app relies on must be registered in `vitest.config.ts` as well.** It is a
   separate file from `vite.config.ts`, and a missing plugin fails as an unresolvable import or, worse,
   as a silently missing compile step: without `VueRouter()` (before `vue()`) `vue-router/auto-routes`

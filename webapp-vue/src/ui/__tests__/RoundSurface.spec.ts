@@ -35,7 +35,39 @@ describe('RoundSurface', () => {
     expect(classes).not.toContain('rounded-xl')
   })
 
-  it('states the gutter itself, so a game never has to', () => {
-    expect(mount(RoundSurface).classes()).toContain('p-4')
+  // The gutter moved off the root when the header band arrived: a band that spans the card cannot
+  // sit inside the padding, so the padding belongs to the body block alone.
+  it('states the gutter on the body, so a game never has to and the band never inherits it', () => {
+    const w = mount(RoundSurface, { slots: { default: '<p>Brett</p>' } })
+
+    expect(w.get('[data-test="round-surface-body"]').classes()).toContain('p-4')
+    expect(w.classes()).not.toContain('p-4')
+  })
+
+  it('puts the header outside the body, so the band can reach both card edges', () => {
+    const w = mount(RoundSurface, {
+      slots: {
+        header: '<div data-test="band">Band</div>',
+        default: '<p data-test="content">Brett</p>',
+      },
+    })
+
+    expect(
+      w.get('[data-test="band"]').element.closest('[data-test="round-surface-body"]'),
+    ).toBeNull()
+  })
+
+  it('renders nothing for an absent header, rather than an empty band', () => {
+    expect(mount(RoundSurface).find('[data-test="round-surface-header"]').exists()).toBe(false)
+  })
+
+  // Clipping is what lets an opaque band meet the rounded corners instead of painting over them
+  // (see the overlay/stack trap in frontend-ui.md). Only from sm, because below it there is no
+  // radius to clip and a clipping ancestor would only cost a game its room to animate out of.
+  it('clips only where there is a corner to clip', () => {
+    const classes = mount(RoundSurface).classes()
+
+    expect(classes).toContain('sm:overflow-hidden')
+    expect(classes).not.toContain('overflow-hidden')
   })
 })

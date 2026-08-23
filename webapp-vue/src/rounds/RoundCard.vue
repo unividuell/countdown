@@ -11,6 +11,7 @@ import type { RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
+import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 
 const props = defineProps<{
@@ -63,16 +64,26 @@ async function onGuess(value: unknown): Promise<void> {
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
 
     <RoundSurface>
+      <!-- The band belongs to the card, not to any one face: every face below is the same round of
+           the same game for the same stretch of time, and a band per face would be four places for
+           that to disagree. It also means each face says the game's name exactly zero times. -->
+      <template #header>
+        <GameHeader
+          :round-number="round?.round?.number ?? null"
+          :title="round?.game?.displayName ?? null"
+          :ends-at="round?.round?.end ?? null"
+        />
+      </template>
+
       <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
            for a game this build cannot render is just as unrenderable as a playing one — offering
            "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
            later. -->
       <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
-        Für „{{ round?.game?.displayName }}“ gibt es in dieser Version noch keine Ansicht.
+        In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 
       <div v-else-if="stage === 'sealed'" class="flex flex-col items-center gap-4 text-center">
-        <p class="text-base font-semibold text-neutral-900">{{ round?.game?.displayName }}</p>
         <button
           type="button"
           data-test="round-reveal"

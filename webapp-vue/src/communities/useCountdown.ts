@@ -4,36 +4,19 @@ import { getCountdown } from '@/api/countdown'
 import type { CountdownResponse, Round } from '@/api/types'
 import { boundaryAction, computeView, nextBaseUnitConfig } from '@/communities/countdown'
 import type { BaseUnitConfig } from '@/communities/countdown'
+import {
+  _resetSharedClock,
+  nowMs,
+  skewMs,
+  subscribeToClock,
+  unsubscribeFromClock,
+} from '@/ui/sharedClock'
 
 // A load that never succeeded leaves round === null, and boundaryAction() answers 'none' forever
 // for a null round — so without this the second-timer would never refetch. 10s is slow enough not
 // to hammer a backend that is down, short enough that the fallback card is not a blank square for
 // a noticeable while.
 const FAILED_LOAD_RETRY_MS = 10_000
-
-// One clock for every consumer on the page: the header widget and the fallback card are separate
-// instances, and two intervals started at different moments never resynchronise — their seconds
-// drift up to a full tick apart while showing the same instant. The skew is shared for the same
-// reason: it describes the one server's clock, not the consumer's, so any successful load corrects
-// it for everybody.
-const nowMs = ref(Date.now())
-const skewMs = ref(0)
-let timer: ReturnType<typeof setInterval> | undefined
-let subscribers = 0
-
-function subscribeToClock(): void {
-  subscribers += 1
-  if (subscribers > 1) return
-  nowMs.value = Date.now()
-  timer = setInterval(() => (nowMs.value = Date.now()), 1000)
-}
-
-function unsubscribeFromClock(): void {
-  subscribers = Math.max(0, subscribers - 1)
-  if (subscribers > 0) return
-  if (timer) clearInterval(timer)
-  timer = undefined
-}
 
 // One request for one slug, for the same reason the clock is shared: the header and the fallback card
 // mount in the same tick on a community page and each asked for the same countdown — two XHRs a
@@ -150,18 +133,13 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
 }
 
 /**
- * Test-only: reset the module-level shared clock between test cases.
+ * Test-only: reset this module's in-flight requests and the shared clock behind it.
  *
- * Unmount every consumer before calling this. Resetting zeroes the subscriber count without
- * unmounting anyone, so a consumer still alive across the reset would later release a subscription
- * it no longer holds — and clear an interval a newer consumer started. `enableAutoUnmount(afterEach)`
- * is what guarantees the ordering; every spec that mounts a consumer uses it.
+ * Unmount every consumer before calling this — see `_resetSharedClock` for why the ordering matters.
+ * It stays a single call rather than two at every call site, because forgetting either half leaves a
+ * spec passing for the wrong reason.
  */
 export function _resetCountdownState(): void {
   inFlight.clear()
-  if (timer) clearInterval(timer)
-  timer = undefined
-  subscribers = 0
-  nowMs.value = Date.now()
-  skewMs.value = 0
+  _resetSharedClock()
 }
