@@ -16,6 +16,35 @@ The game window's bounds are named `from`/`until`, never start/end. "The previou
 — the first row is the most recently played one. Phase two is `round_number <= phase_two_start_round`.
 The game window is inclusive on both ends, and `games_from_round = NULL` means unbounded above.
 
+## A closed round is open
+
+A round nobody can play any more has nothing left to protect: `RoundResponses` sends `payload`,
+`solution` and every finished guess to every member once `current.closed`, whether or not that member
+ever opened the round while it ran — missing it cost them the points and there is no second chance to
+earn them, so the gate that used to wait for a guess is not guarding anything by then. What stays
+withheld regardless of `closed` is a row that was revealed but never guessed: that fact names a
+person's behaviour, not the round's outcome, and closing the round does not change whose business
+that is.
+
+The one line that makes opening the round safe is `HistoryService.resolve` refusing anything not
+**strictly older** than the running round. Drop it and the history endpoint becomes a second route to
+the running round's own solution, one that walks past `present()`/`solution()` and the field-set tests
+that pin what those two are allowed to carry.
+
+The way back through a run is a pointer on every round's own answer, not a page to request:
+`previousRoundNumber` is `MIN(round_number)` strictly above the current one within the game window,
+and `NULL` means „ganz am Anfang“. A day nobody opened the app has no `round_games` row, so it is
+simply not a link in the chain — nothing has to count the gap. The pointer lives on `ResolvedRound`
+itself rather than travelling as a parameter into `RoundResponses.of`: the client replaces its whole
+round object with every action response, so a pointer threaded through only one call site is a
+pointer some other call site can forget.
+
+`AnnouncementService.resolve`'s super-admin bypass reaches closed rounds the same way it reaches the
+running one: looking at a round is a read whether or not that round is still playable, so an operator
+who never joined the community can resolve a past round through the history endpoint too and see its
+solution and everyone's guesses. This falls out of a contract that already existed for the running
+round — it is not a new decision — and it is currently untested; naming it here is the point.
+
 ## What must be fixed per round is materialised on the first announcement
 
 Lazily, by the `GET` that announces it, via `INSERT … ON CONFLICT DO NOTHING` followed by a `SELECT`
@@ -165,11 +194,19 @@ the lab replays the exact rule a real round applies instead of a copy of it. Giv
 set with no `guess` — re-evaluation reads that as not qualifying, awards zero points, and opens the
 solution gate the same way a judged-and-lost guess would. Binary round assets follow the same
 stage-gating: they live behind the framework's own URL
-(`/api/communities/{slug}/rounds/current/assets/{roundNumber}/{key}`, where key `99` is the solution,
-reachable only once the guess is spent), while a catalogue-wide lookup (search, track metadata) is
-served from the module's own URL (`/api/song-snippet/...`) — searching the whole catalogue reveals
-nothing about which song the round chose, so it needs no round gate at all. Cleanup itself only fires
-on the *next* materialisation within the same edition, so the final round's own audio outlives the
-edition — released only once a later round, or a manual cleanup, actually gets around to it —
-deliberately bounded rather than open-ended: storage never holds more than one round's ladder per
-community per edition.
+(`/api/communities/{slug}/rounds/{roundNumber}/assets/{key}`, where key `99` is the solution), while a
+catalogue-wide lookup (search, track metadata) is served from the module's own URL
+(`/api/song-snippet/...`) — searching the whole catalogue reveals nothing about which song the round
+chose, so it needs no round gate at all. Which gate applies to the round-scoped URL follows from the
+number, not from a second path: the running round still needs the guess spent before key `99`
+unlocks, an older round is history and is open regardless of stage — the closed-round rule above.
+
+There is no cleanup at announce time any more, because the history plays a past round's audio, and a
+round the history can still show must keep what it needs to show it. `GameType.releaseAssets`,
+`GameCatalog.releaseAssets` and `SongSnippetAudioStore.release` stay in place as the seam a later
+archival hook will call when a whole edition is put to rest — deliberately without a caller today.
+Storage is therefore no longer bounded at one round's ladder per community per edition; it is a
+growth rate, a few hundred KB per round, for as long as the edition runs. The comment above the
+lifecycle in `core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` still
+describes the old announce-time cleanup and is wrong about it — left as written, because editing an
+applied migration breaks its Flyway checksum.

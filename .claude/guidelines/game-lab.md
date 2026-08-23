@@ -19,7 +19,7 @@ The lab can still be rewritten or deleted without touching a game.
 
 One sanctioned exception, test-only: `LabPointsParityTest`
 (`core/src/test/kotlin/org/unividuell/countdown/core/gamelab/LabPointsParityTest.kt`) imports
-`AnnouncementService`, `PlayService`, `CurrentRound`, `GuessHueSolution` and `RoundPlayRepository`
+`AnnouncementService`, `PlayService`, `ResolvedRound`, `GuessHueSolution` and `RoundPlayRepository`
 straight from `game.internal`, because proving that a lab round pays what a real round pays means
 driving the real round's own services — the reasoning is argued in full in that test's own KDoc.
 `ModularityTests.verify()` scans production sources, not tests, so production code keeps obeying the

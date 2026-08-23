@@ -33,6 +33,14 @@ a 409 into a reload rather than an error: a guess or reveal rejected as a confli
 state has already moved past what the UI assumed, so the right response is to fetch that state and
 render it, with one explanatory line, not to report a failure the player can retry their way out of.
 
+**A list that loads more derives its "what comes next" pointer, it doesn't store one.**
+`useRoundHistory` computes the round number to fetch next from its own last loaded item rather than
+keeping a separate cursor ref, so `null` there is simultaneously "there is nothing more" and the
+condition that hides the load-more button — one value answers both questions instead of two that
+could disagree. The load itself goes through `useAction`, which drops a second call while one is
+already in flight (the button's own double-click guard, for free) and clears `busy` in a `finally`
+so a failed page load leaves the button pressable again.
+
 **Ambient time is shared state; the domain around it is not.** `useCountdown` is instantiated twice
 on a community page (the header widget and the fallback card), and two `setInterval`s started at
 different moments never resynchronise. So `nowMs` and `skewMs` (the *server's* clock correction, of
