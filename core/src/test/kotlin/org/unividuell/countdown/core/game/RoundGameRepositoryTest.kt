@@ -187,4 +187,21 @@ class RoundGameRepositoryTest(
         // exactly as the standings do not sum it.
         store.previousRound(edition = edition, roundNumber = 17).shouldBeNull()
     }
+
+    @Test
+    fun `previousRound does not point below the run's game window either`() {
+        val edition = editions.save(anEdition("rg-previous-window-younger").copy(gamesUntilRound = 18))
+        // Announced while `gamesUntilRound` was lower or absent; the admin has since raised it,
+        // leaving this round strictly between the running round and the new lower edge.
+        store.announce(
+            edition = edition, roundNumber = 15, gameType = "guess-hue",
+            params = json("""{"n":15}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+            announcedAt = announcedAt,
+        )
+
+        // Round 15 lies AFTER the window — a smaller number is later — so it must not be reachable
+        // from a round further back either, exactly as the standings do not sum it.
+        store.previousRound(edition = edition, roundNumber = 10).shouldBeNull()
+    }
 }

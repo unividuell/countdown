@@ -47,9 +47,12 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
 
     /**
      * The next round of this edition **earlier in time** than [after] — the smallest round number
-     * above it, because a larger round number is earlier. [notOlderThan] caps the walk at the run's
-     * game window; older means a larger number, so `gamesFromRound` is the only bound that can
-     * exclude an older round.
+     * above it, because a larger round number is earlier. [notOlderThan] and [notNewerThan] cap the
+     * walk at the run's game window on both sides; older means a larger number, so `gamesFromRound`
+     * bounds one side and `gamesUntilRound` the other. Both bounds are needed even though [after]
+     * itself may already sit outside the window — e.g. an admin raising `gamesUntilRound` after a
+     * round strictly between [after] and the new edge was already announced — otherwise the pointer
+     * names a round `HistoryService.resolve`'s own window check then 404s on.
      *
      * `MIN` over an empty set is `NULL`, and that IS „ganz am Anfang" — no second query and no
      * `COUNT` needed to tell the two apart.
@@ -57,10 +60,11 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     @Query(
         """
         SELECT MIN(round_number) FROM game.round_games
-        WHERE edition_id = :editionId AND round_number > :after AND round_number <= :notOlderThan
+        WHERE edition_id = :editionId AND round_number > :after
+            AND round_number <= :notOlderThan AND round_number >= :notNewerThan
         """,
     )
-    fun previousRoundNumber(editionId: UUID, after: Int, notOlderThan: Int): Int?
+    fun previousRoundNumber(editionId: UUID, after: Int, notOlderThan: Int, notNewerThan: Int): Int?
 
     /**
      * First writer wins, and the loser gets no exception.

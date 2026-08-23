@@ -39,6 +39,7 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
             editionId = requireNotNull(edition.id),
             after = roundNumber,
             notOlderThan = edition.gamesFromRound ?: Int.MAX_VALUE,
+            notNewerThan = edition.gamesUntilRound,
         )
 
     /**
