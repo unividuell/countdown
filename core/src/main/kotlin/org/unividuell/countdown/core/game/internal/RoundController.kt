@@ -16,6 +16,7 @@ import org.unividuell.countdown.core.iam.AuthenticatedUser
 class RoundController(
     private val announcements: AnnouncementService,
     private val plays: PlayService,
+    private val histories: HistoryService,
 ) {
 
     @GetMapping("/current")
@@ -26,6 +27,22 @@ class RoundController(
         slug = slug,
         userId = me.id,
         isSuperAdmin = me.isSuperAdmin,
+    )
+
+    /**
+     * A round of this community's history. Only rounds **strictly older** than the running one —
+     * the running round's own answer is `/current`, and the service refuses anything else with 404.
+     */
+    @GetMapping("/{roundNumber}")
+    fun past(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable roundNumber: Int,
+    ): RoundResponse = histories.pastRound(
+        slug = slug,
+        userId = me.id,
+        isSuperAdmin = me.isSuperAdmin,
+        roundNumber = roundNumber,
     )
 
     /** Starts the viewer's clock and hands out the payload. Idempotent. */
