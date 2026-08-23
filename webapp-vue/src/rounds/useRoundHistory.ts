@@ -36,9 +36,19 @@ export function useRoundHistory(
     if (roundNumber === null) return
     // `run` drops a second call while one is in flight, which is exactly the double-click guard the
     // button needs, and it clears `busy` in a `finally` so a failure does not lock it forever.
+    //
+    // [from] can move while this request is open — a reveal/guess click 409ing and `useRound`
+    // reloading a different round. `entryPoint` pins which one this call was for, so a response that
+    // arrives after `from` has since moved is discarded instead of rebuilding the list from a round
+    // that is no longer the current entry point. The watch's own `loadMore()` call for the new `from`
+    // gets dropped by the guard above (busy is still true), so once the stale request settles this
+    // call retries itself for whatever `from` is by then.
+    const entryPoint = from.value
     await run(async () => {
-      items.value = [...items.value, await getRound(slug, roundNumber)]
+      const loaded = await getRound(slug, roundNumber)
+      if (from.value === entryPoint) items.value = [...items.value, loaded]
     })
+    if (from.value !== entryPoint) await loadMore()
   }
 
   /**

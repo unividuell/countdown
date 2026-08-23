@@ -132,4 +132,35 @@ describe('useRoundHistory', () => {
 
     expect(history().items.value.map((i) => i.round?.number)).toEqual([12])
   })
+
+  it('discards a stale result when the round moves while the request is still open', async () => {
+    let releaseFourteen: (r: RoundResponse) => void = () => {}
+    vi.spyOn(api, 'getRound').mockImplementation(async (_slug, number) => {
+      if (number === 14) {
+        return new Promise<RoundResponse>((resolve) => {
+          releaseFourteen = resolve
+        })
+      }
+      return closed(number, number - 1)
+    })
+    const from = ref<number | null>(14)
+    const { Cmp, history } = host(from)
+
+    mount(Cmp)
+    await flushPromises()
+    // Round 14's request is still open (undecided deferred). `useRound` now 409s and reloads a
+    // different round, exactly like a reveal/guess click crossing the day boundary — mirrors
+    // useRoundHistory.ts's own doc comment on why the watch exists.
+    from.value = 13
+    await flushPromises()
+
+    // Only now does the stale round-14 request resolve.
+    releaseFourteen(closed(14, 13))
+    await flushPromises()
+    await flushPromises()
+
+    // The history must be rebuilt from round 13, the round the player actually just finished — not
+    // silently repopulated from the stale round-14 answer that was in flight when `from` moved.
+    expect(history().items.value.map((i) => i.round?.number)).toEqual([13])
+  })
 })
