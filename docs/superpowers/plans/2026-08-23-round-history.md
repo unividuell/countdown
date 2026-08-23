@@ -518,6 +518,7 @@ import org.unividuell.countdown.core.game.internal.RoundNotFoundException
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.time.Clock
@@ -530,8 +531,17 @@ import java.util.UUID
  *
  * [PastGame] is a fake with a real solution, announced directly through [RoundGameStore] so the
  * selection never gets to pick something else for a planted round.
+ *
+ * Every case here calls `pastRound`, which resolves — and therefore MATERIALISES — the running
+ * round. `song-snippet` is an unconditional bean, so its draw could win that materialisation and
+ * download a Deezer preview; [SongSnippetTestCatalogConfiguration] is what keeps this test off the
+ * network.
  */
-@Import(TestcontainersConfiguration::class, RoundHistoryServiceTest.PastGame::class)
+@Import(
+    TestcontainersConfiguration::class,
+    RoundHistoryServiceTest.PastGame::class,
+    SongSnippetTestCatalogConfiguration::class,
+)
 @SpringBootTest
 @Transactional
 class RoundHistoryServiceTest(
@@ -1086,6 +1096,10 @@ In `RoundAssetGateTest.kt` den Fall `an unfilled key inside the allowed range is
     @Test
     fun `a closed round's assets are open, without a play row and above every stage`() {
         val (community, viewer) = aCommunity("Asset Gate Closed")
+        // The running round is announced first on purpose: `play.asset` resolves it, and resolving
+        // an un-announced round MATERIALISES it — which would let the selection draw `song-snippet`
+        // and download a Deezer preview inside an asset test.
+        announceGated(community)
         val past = currentRoundNumberOf(community) + 1
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         store.announce(
@@ -1123,6 +1137,9 @@ Und der Fall, den die Spec ausdrücklich nennt — nach dem Event darf die Histo
         // no game at all (AFTER_WINDOW). The branch has to key off the round NUMBER — off „does the
         // running round carry a game“ it would take every reveal clip of the history down with it
         // on the day the event ends.
+        //
+        // No `announceGated` needed here, unlike the case above: the window check runs BEFORE the
+        // materialisation, so nothing can be drawn for the running round at all.
         editions.save(edition.copy(gamesUntilRound = past))
 
         play.asset(
@@ -1174,9 +1191,8 @@ Expected: FAIL — `RoundMovedOnException` statt `RoundNotFoundException`, und d
             ) ?: throw AssetNotFoundException()
         }
         if (roundNumber < currentNumber) throw RoundNotFoundException()
-        if (current !is ResolvedRound.Announced) throw NoGameToPlayException(
-            (current as ResolvedRound.NoGame).reason,
-        )
+        // Smart-cast, no explicit cast: `ResolvedRound` has exactly two cases.
+        if (current is ResolvedRound.NoGame) throw NoGameToPlayException(current.reason)
         val roundGameId = requireNotNull(current.roundGame.id)
         val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
             ?: throw NotRevealedException()
@@ -1357,7 +1373,10 @@ In `src/pages/c/[slug]/index.vue` den Kommentar über `assetUrl` auf den neuen P
 - [ ] **Step 4: Run the tests, the typecheck and the lint**
 
 Run: `cd webapp-vue && pnpm test src/api/__tests__/rounds.spec.ts && pnpm typecheck && pnpm lint`
-Expected: Tests PASS. `pnpm typecheck` schlägt jetzt in **jeder Test-Fixture** fehl, die ein `RoundResponse` baut (`previousRoundNumber` fehlt). Alle betroffenen Fixtures um `previousRoundNumber: null` ergänzen — betroffen sind mindestens `src/rounds/__tests__/useRound.spec.ts`, `src/rounds/__tests__/RoundCard.spec.ts`, `src/pages/c/[slug]/__tests__/index.spec.ts`.
+Expected: Tests PASS. `pnpm typecheck` schlägt jetzt in **jeder Test-Fixture** fehl, die ein `RoundResponse` baut (`previousRoundNumber` fehlt). Die betroffenen Fixtures um `previousRoundNumber: null` ergänzen. Es sind **genau drei** Dateien:
+`src/rounds/__tests__/useRound.spec.ts`, `src/rounds/__tests__/RoundCard.spec.ts`,
+`src/pages/c/[slug]/__tests__/index.spec.ts`. Die Treffer unter `src/gamelab/` gehören zu
+`LabRoundResponse` — ein eigener Typ, der kein Feld bekommt.
 
 - [ ] **Step 5: Run the whole frontend suite**
 
@@ -1903,7 +1922,9 @@ describe('RoundHistory', () => {
     const cards = w.findAllComponents(RoundCard)
     expect(cards).toHaveLength(2)
     expect(cards[0]?.props('closed')).toBe(true)
-    expect(cards[0]?.props('assetUrl')(99)).toBe('/api/communities/team/rounds/13/assets/99')
+    // `props()` is typed `unknown`, so the builder has to be narrowed before it can be called.
+    const assetUrl = cards[0]?.props('assetUrl') as (key: number) => string
+    expect(assetUrl(99)).toBe('/api/communities/team/rounds/13/assets/99')
   })
 
   it('asks for more until the beginning, then says so instead', async () => {
