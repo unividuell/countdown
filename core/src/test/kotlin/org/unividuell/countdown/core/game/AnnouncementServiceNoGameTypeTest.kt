@@ -67,6 +67,7 @@ class AnnouncementServiceNoGameTypeTest {
         every { communities.activeEditionOf(communityId) } returns edition
         every { store.find(edition = edition, roundNumber = any()) } returns null
         every { store.history(edition = edition, roundNumber = any()) } returns emptyList()
+        every { store.previousRound(edition = edition, roundNumber = any()) } returns null
         every { catalog.ids() } returns emptyList()
 
         val res = service.currentRound(

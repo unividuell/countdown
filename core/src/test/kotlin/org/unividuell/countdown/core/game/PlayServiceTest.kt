@@ -21,11 +21,11 @@ import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.game.internal.AnnouncementService
-import org.unividuell.countdown.core.game.internal.CurrentRound
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.ResolvedRound
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundMovedOnException
@@ -174,7 +174,7 @@ class PlayServiceTest(
         second.me.shouldNotBeNull().revealedAt shouldBe first.me.shouldNotBeNull().revealedAt
         val round = announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
         plays.findByRoundGameId(
-            requireNotNull((round as CurrentRound.Announced).roundGame.id),
+            requireNotNull((round as ResolvedRound.Announced).roundGame.id),
         ).single().revealCount shouldBe 2
     }
 
@@ -382,5 +382,23 @@ class PlayServiceTest(
                 roundNumber = roundNumber, guess = guess(10.0),
             )
         }
+    }
+
+    @Test
+    fun `an action response names the previous round too`() {
+        val (community, viewer) = aCommunity("Pointer On Actions")
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val older = currentRoundNumberOf(community) + 2
+        store.announce(
+            edition = edition, roundNumber = older, gameType = "guess-hue",
+            params = mapper.readTree("""{"n":1}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+
+        // The client replaces its whole round object with an action response, so a pointer only on
+        // the GET would make the history disappear on the first guess.
+        play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+        ).previousRoundNumber shouldBe older
     }
 }

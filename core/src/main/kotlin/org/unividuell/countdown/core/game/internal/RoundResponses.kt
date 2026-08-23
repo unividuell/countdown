@@ -17,17 +17,18 @@ class RoundResponses(
     private val identities: MemberIdentityQuery,
 ) {
 
-    fun of(current: CurrentRound, viewerId: UUID): RoundResponse = when (current) {
-        is CurrentRound.NoGame -> RoundResponse(
+    fun of(current: ResolvedRound, viewerId: UUID): RoundResponse = when (current) {
+        is ResolvedRound.NoGame -> RoundResponse(
             round = current.round?.toDto(),
             game = null,
             noGameReason = current.reason,
+            previousRoundNumber = current.previousRoundNumber,
         )
 
-        is CurrentRound.Announced -> announced(current = current, viewerId = viewerId)
+        is ResolvedRound.Announced -> announced(current = current, viewerId = viewerId)
     }
 
-    private fun announced(current: CurrentRound.Announced, viewerId: UUID): RoundResponse {
+    private fun announced(current: ResolvedRound.Announced, viewerId: UUID): RoundResponse {
         val rows = plays.findByRoundGameId(requireNotNull(current.roundGame.id))
         val mine = rows.firstOrNull { it.userId == viewerId }
         val hasGuessed = mine?.guessedAt != null
@@ -52,6 +53,7 @@ class RoundResponses(
                 requiresReveal = current.handle.requiresReveal(current.roundGame.params),
             ),
             noGameReason = null,
+            previousRoundNumber = current.previousRoundNumber,
             payload = mine?.let { current.handle.present(current.roundGame.params) },
             solution = if (hasGuessed) current.handle.solution(current.roundGame.params) else null,
             me = mine?.let { mineDtoOf(play = it, identity = byId[it.userId]) },

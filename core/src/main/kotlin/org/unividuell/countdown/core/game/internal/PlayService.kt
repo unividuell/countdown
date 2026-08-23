@@ -182,9 +182,9 @@ class PlayService(
      * So [isSuperAdmin] never reaches [AnnouncementService] from here, unlike the announcement
      * endpoint, which still passes its own flag through unchanged.
      */
-    private fun playable(slug: String, userId: UUID, isSuperAdmin: Boolean): CurrentRound.Announced =
+    private fun playable(slug: String, userId: UUID, isSuperAdmin: Boolean): ResolvedRound.Announced =
         when (val current = announcements.resolve(slug = slug, userId = userId, isSuperAdmin = false)) {
-            is CurrentRound.Announced -> current
-            is CurrentRound.NoGame -> throw NoGameToPlayException(current.reason)
+            is ResolvedRound.Announced -> current
+            is ResolvedRound.NoGame -> throw NoGameToPlayException(current.reason)
         }
 }

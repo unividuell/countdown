@@ -22,9 +22,9 @@ import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.game.awardFor
 import org.unividuell.countdown.core.game.internal.AnnouncementService
-import org.unividuell.countdown.core.game.internal.CurrentRound
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.ResolvedRound
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.gamelab.internal.LabService
@@ -208,7 +208,7 @@ class LabPointsParityTest(
 
         val resolved = announcements.resolve(
             slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false,
-        ) as CurrentRound.Announced
+        ) as ResolvedRound.Announced
         val roundGameId = requireNotNull(resolved.roundGame.id)
         // Read through the repository, as PlayServiceTest does — not through the response DTO, which
         // this test does not otherwise touch, to keep the source of the real half's numbers explicit.

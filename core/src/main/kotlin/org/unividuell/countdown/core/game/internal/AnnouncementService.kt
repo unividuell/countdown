@@ -53,44 +53,55 @@ class AnnouncementService(
     )
 
     /**
-     * The gate and the materialisation, shared by all three endpoints: membership, the run, the
+     * The gate and the materialisation, shared by all four endpoints: membership, the run, the
      * window, then the announced round — created here if this is the first caller of the round.
      */
     @Transactional
-    fun resolve(slug: String, userId: UUID, isSuperAdmin: Boolean): CurrentRound {
+    fun resolve(slug: String, userId: UUID, isSuperAdmin: Boolean): ResolvedRound {
         val community = communities.findBySlug(slug) ?: throw RoundAccessDeniedException()
         val communityId = requireNotNull(community.id)
         if (!isSuperAdmin && !memberships.isActiveMember(communityId = communityId, userId = userId)) {
             throw RoundAccessDeniedException()
         }
         val edition = communities.activeEditionOf(communityId)
-            ?: return CurrentRound.NoGame(
-                communityId = communityId, round = null, reason = NoGameReason.NOT_SCHEDULED,
-            )
+            ?: return notScheduled(communityId = communityId, edition = null)
         val startsAt = edition.startsAt
-            ?: return CurrentRound.NoGame(
-                communityId = communityId, round = null, reason = NoGameReason.NOT_SCHEDULED,
-            )
+            ?: return notScheduled(communityId = communityId, edition = edition)
 
         val round = engine.roundAt(
             now = clock.instant(),
             startsAt = startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
+        // Computed for every answer, including the ones that carry no game: the history hangs under
+        // the fallback too, and after the event that is the only reason to open the page.
+        val previous = store.previousRound(edition = edition, roundNumber = round.number)
         windowReasonOf(edition = edition, roundNumber = round.number)?.let { reason ->
-            return CurrentRound.NoGame(communityId = communityId, round = round, reason = reason)
+            return ResolvedRound.NoGame(
+                communityId = communityId, edition = edition, round = round,
+                previousRoundNumber = previous, reason = reason,
+            )
         }
 
         val existing = store.find(edition = edition, roundNumber = round.number)
         return announcedOrNoGame(
             communityId = communityId,
+            edition = edition,
             round = round,
+            previousRoundNumber = previous,
             roundGame = existing ?: materialise(edition = edition, round = round)
-                ?: return CurrentRound.NoGame(
-                    communityId = communityId, round = round, reason = NoGameReason.NO_GAME_TYPE,
+                ?: return ResolvedRound.NoGame(
+                    communityId = communityId, edition = edition, round = round,
+                    previousRoundNumber = previous, reason = NoGameReason.NO_GAME_TYPE,
                 ),
         )
     }
+
+    /** No run, or a run without a target date: no grid, so nothing can be previous to anything. */
+    private fun notScheduled(communityId: UUID, edition: CommunityEdition?) = ResolvedRound.NoGame(
+        communityId = communityId, edition = edition, round = null,
+        previousRoundNumber = null, reason = NoGameReason.NOT_SCHEDULED,
+    )
 
     private fun materialise(edition: CommunityEdition, round: Round): RoundGame? {
         val history = store.history(edition = edition, roundNumber = round.number)
@@ -155,9 +166,11 @@ class AnnouncementService(
      */
     private fun announcedOrNoGame(
         communityId: UUID,
+        edition: CommunityEdition,
         round: Round,
+        previousRoundNumber: Int?,
         roundGame: RoundGame,
-    ): CurrentRound {
+    ): ResolvedRound {
         val handle = catalog.handle(roundGame.gameType)
         if (handle == null) {
             // The round was announced by a deployment that had a game this one does not. Nothing can
@@ -165,13 +178,19 @@ class AnnouncementService(
             logger.warn {
                 "round ${round.number} announced as '${roundGame.gameType}', which this build has no game for"
             }
-            return CurrentRound.NoGame(communityId = communityId, round = round, reason = NoGameReason.NO_GAME_TYPE)
+            return ResolvedRound.NoGame(
+                communityId = communityId, edition = edition, round = round,
+                previousRoundNumber = previousRoundNumber, reason = NoGameReason.NO_GAME_TYPE,
+            )
         }
-        return CurrentRound.Announced(
+        return ResolvedRound.Announced(
             communityId = communityId,
+            edition = edition,
             round = round,
+            previousRoundNumber = previousRoundNumber,
             roundGame = roundGame,
             handle = handle,
+            closed = false,
         )
     }
 }
