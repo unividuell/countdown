@@ -2105,8 +2105,14 @@ const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
 
 ```ts
   it("hands the history the running round's previous-round pointer", () => {
+    // `game: null` — `useRound` is mocked, so `stage` is decoupled from the round data. Keeping the
+    // real `guess-hue` id would mount the actual game component, and a 'done' round needs a real
+    // payload for that: a detail this test has no reason to supply.
     vi.mocked(useRound).mockReturnValue(
-      mockUseRound({ stage: 'done', round: aRoundResponse({ previousRoundNumber: 13 }) }),
+      mockUseRound({
+        stage: 'done',
+        round: aRoundResponse({ previousRoundNumber: 13, game: null }),
+      }),
     )
 
     const w = mountPage()
