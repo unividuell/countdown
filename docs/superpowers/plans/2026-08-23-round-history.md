@@ -1378,10 +1378,11 @@ In `src/pages/c/[slug]/index.vue` den Kommentar über `assetUrl` auf den neuen P
 - [ ] **Step 4: Run the tests, the typecheck and the lint**
 
 Run: `cd webapp-vue && pnpm test src/api/__tests__/rounds.spec.ts && pnpm typecheck && pnpm lint`
-Expected: Tests PASS. `pnpm typecheck` schlägt jetzt in **jeder Test-Fixture** fehl, die ein `RoundResponse` baut (`previousRoundNumber` fehlt). Die betroffenen Fixtures um `previousRoundNumber: null` ergänzen. Es sind **genau drei** Dateien:
-`src/rounds/__tests__/useRound.spec.ts`, `src/rounds/__tests__/RoundCard.spec.ts`,
-`src/pages/c/[slug]/__tests__/index.spec.ts`. Die Treffer unter `src/gamelab/` gehören zu
-`LabRoundResponse` — ein eigener Typ, der kein Feld bekommt.
+Expected: Tests PASS. `pnpm typecheck` schlägt jetzt in **jeder Test-Fixture** fehl, die ein `RoundResponse` baut (`previousRoundNumber` fehlt). Die betroffenen Fixtures um `previousRoundNumber: null` ergänzen. Es sind **genau zwei** Dateien:
+`src/rounds/__tests__/useRound.spec.ts` und `src/rounds/__tests__/RoundCard.spec.ts`.
+`src/pages/c/[slug]/__tests__/index.spec.ts` nennt `RoundResponse` nur als Typannotation und baut
+nie ein Literal — dort entsteht die erste Fabrik erst in Task 12. Die Treffer unter `src/gamelab/`
+gehören zu `LabRoundResponse`, einem eigenen Typ, der kein Feld bekommt.
 
 - [ ] **Step 5: Run the whole frontend suite**
 
