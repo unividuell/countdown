@@ -151,7 +151,21 @@ interface GameType<P : Any> {
     /** One stored asset of a real round. The framework gates WHO may fetch; the game only fetches. */
     fun asset(params: P, roundGameId: UUID, key: Int): RoundAsset? = null
 
-    /** These rounds no longer need their assets — delete what you stored for them. */
+    /**
+     * These rounds are no longer **playable** — release whatever only a playable round needed, and
+     * keep whatever a closed round still shows. For a staged game that means the stage ladder goes
+     * and the reveal asset stays: the history renders a past round's reveal, so deleting that one
+     * would break it, while nobody can ever ask for an earlier stage again.
+     *
+     * Fires at announce time, for every round of the run except the one just announced.
+     */
+    fun releaseStageAssets(roundGameIds: List<UUID>) {}
+
+    /**
+     * These rounds no longer need their assets **at all** — delete everything you stored for them.
+     * Meant for archiving a run, which is the point at which even the history stops needing its
+     * audio. Deliberately without a caller today; see game-rounds.md.
+     */
     fun releaseAssets(roundGameIds: List<UUID>) {}
 }
 

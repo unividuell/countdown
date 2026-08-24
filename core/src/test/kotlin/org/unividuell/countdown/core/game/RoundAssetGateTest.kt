@@ -18,7 +18,7 @@ import org.unividuell.countdown.core.game.internal.AssetForbiddenException
 import org.unividuell.countdown.core.game.internal.AssetNotFoundException
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
-import org.unividuell.countdown.core.game.internal.RoundMovedOnException
+import org.unividuell.countdown.core.game.internal.RoundNotFoundException
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
@@ -156,7 +156,7 @@ class RoundAssetGateTest(
     }
 
     @Test
-    fun `an unfilled key inside the allowed range is a 404, a foreign round a 409`() {
+    fun `an unfilled key inside the allowed range is a 404, and a newer round is unknown`() {
         val (community, viewer) = aCommunity("Asset Gate Not Found")
         val roundNumber = announceGated(community)
         play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
@@ -171,11 +171,63 @@ class RoundAssetGateTest(
                 roundNumber = roundNumber, key = 1,
             )
         }
-        shouldThrow<RoundMovedOnException> {
+        // A SMALLER number is later in time: a round that has not happened is no round at all.
+        shouldThrow<RoundNotFoundException> {
             play.asset(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = roundNumber + 1, key = 0,
+                roundNumber = roundNumber - 1, key = 0,
             )
         }
+    }
+
+    @Test
+    fun `a closed round's assets are open, without a play row and above every stage`() {
+        val (community, viewer) = aCommunity("Asset Gate Closed")
+        // The running round is announced first on purpose: `play.asset` resolves it, and resolving
+        // an un-announced round MATERIALISES it — which would let the selection draw `song-snippet`
+        // and download a Deezer preview inside an asset test.
+        announceGated(community)
+        val past = currentRoundNumberOf(community) + 1
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        store.announce(
+            edition = edition, roundNumber = past, gameType = "gated-fake",
+            params = mapper.readTree("""{"answer":"42"}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+
+        // Never revealed, never guessed: whoever missed the round may still hear it afterwards.
+        play.asset(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = past, key = 0,
+        ).bytes shouldBe byteArrayOf(0)
+        play.asset(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = past, key = SOLUTION_ASSET_KEY,
+        ).mediaType shouldBe "audio/mpeg"
+    }
+
+    @Test
+    fun `a closed round's assets survive the window closing over them`() {
+        val (community, viewer) = aCommunity("Asset Gate After Window")
+        val past = currentRoundNumberOf(community) + 1
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        store.announce(
+            edition = edition, roundNumber = past, gameType = "gated-fake",
+            params = mapper.readTree("""{"answer":"42"}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+        // The run's window now ends one round before the running one, so the running round carries
+        // no game at all (AFTER_WINDOW). The branch has to key off the round NUMBER — off „does the
+        // running round carry a game“ it would take every reveal clip of the history down with it
+        // on the day the event ends.
+        //
+        // No `announceGated` needed here, unlike the case above: the window check runs BEFORE the
+        // materialisation, so nothing can be drawn for the running round at all.
+        editions.save(edition.copy(gamesUntilRound = past))
+
+        play.asset(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = past, key = SOLUTION_ASSET_KEY,
+        ).mediaType shouldBe "audio/mpeg"
     }
 }

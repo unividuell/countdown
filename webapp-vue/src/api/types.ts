@@ -212,6 +212,12 @@ export interface RoundResponse {
   round: Round | null
   game: GameDto | null
   noGameReason: NoGameReason | null
+  /**
+   * The next older announced round of this run, or `null` for „ganz am Anfang“. On every round
+   * answer, the action responses included — the client replaces its whole round object with each of
+   * them.
+   */
+  previousRoundNumber: number | null
   /** Only once the viewer has revealed. The shape belongs to the game. */
   payload: unknown
   /** Only once the viewer has guessed. */

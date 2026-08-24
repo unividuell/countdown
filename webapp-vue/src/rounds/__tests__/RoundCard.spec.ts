@@ -63,6 +63,7 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
   game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
   noGameReason: null,
+  previousRoundNumber: null,
   payload: { description: 'x' },
   solution: null,
   me: null,
@@ -352,5 +353,37 @@ describe('RoundCard', () => {
 
     expect(band.props('roundNumber')).toBeNull()
     expect(band.props('endsAt')).toBeNull()
+  })
+
+  it('shows a closed round as its reveal, without a clock and without an action', () => {
+    const me = aPlay({ guessedAt: '2026-08-14T12:00:00Z', guess: { hue: 7 }, points: 1 })
+    const round = aRound({
+      me,
+      others: [anOther({ guess: { hue: 3 } })],
+      solution: { targetHue: 5 },
+    })
+
+    const w = mount(RoundCard, {
+      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+    })
+
+    const stub = w.findComponent(StubGame)
+    expect(stub.props('solution')).toEqual(round.solution)
+    expect(stub.props('disabled')).toBe(true)
+    // No clock: a closed round's countdown would read 00:00:00 forever.
+    expect(w.findComponent(GameHeader).props('endsAt')).toBe(null)
+    expect(w.find('[data-test="round-reveal"]').exists()).toBe(false)
+  })
+
+  it('shows a closed round the viewer never played', () => {
+    const other = anOther({ guess: { hue: 3 }, points: 1 })
+    const round = aRound({ me: null, others: [other], solution: { targetHue: 5 } })
+
+    const stub = mount(RoundCard, {
+      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+    }).findComponent(StubGame)
+
+    expect(stub.exists()).toBe(true)
+    expect(stub.props('entries')).toEqual([other])
   })
 })

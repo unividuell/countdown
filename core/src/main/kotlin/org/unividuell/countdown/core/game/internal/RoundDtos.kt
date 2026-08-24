@@ -92,6 +92,12 @@ data class RoundResponse(
     val round: RoundDto?,
     val game: GameDto?,
     val noGameReason: NoGameReason?,
+    /**
+     * The next older announced round of this run, or `null` for „ganz am Anfang“. Present on every
+     * round answer, the action responses included: the client replaces its whole round object with
+     * each of them, so a pointer only on the `GET` would lose the history on the first guess.
+     */
+    val previousRoundNumber: Int? = null,
     /** Only once the viewer has revealed — the reveal is what starts their clock. */
     val payload: GamePayload? = null,
     /** Only once the viewer has guessed. */

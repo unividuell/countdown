@@ -139,6 +139,10 @@ class SongSnippetGameType(
         audio.find(roundGameId = roundGameId, key = key)
             ?.let { RoundAsset(mediaType = it.mediaType, bytes = it.bytes) }
 
+    override fun releaseStageAssets(roundGameIds: List<UUID>) {
+        audio.releaseStages(roundGameIds)
+    }
+
     override fun releaseAssets(roundGameIds: List<UUID>) {
         audio.release(roundGameIds)
     }

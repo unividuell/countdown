@@ -16,6 +16,7 @@ import org.unividuell.countdown.core.iam.AuthenticatedUser
 class RoundController(
     private val announcements: AnnouncementService,
     private val plays: PlayService,
+    private val histories: HistoryService,
 ) {
 
     @GetMapping("/current")
@@ -26,6 +27,22 @@ class RoundController(
         slug = slug,
         userId = me.id,
         isSuperAdmin = me.isSuperAdmin,
+    )
+
+    /**
+     * A round of this community's history. Only rounds **strictly older** than the running one —
+     * the running round's own answer is `/current`, and the service refuses anything else with 404.
+     */
+    @GetMapping("/{roundNumber}")
+    fun past(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable roundNumber: Int,
+    ): RoundResponse = histories.pastRound(
+        slug = slug,
+        userId = me.id,
+        isSuperAdmin = me.isSuperAdmin,
+        roundNumber = roundNumber,
     )
 
     /** Starts the viewer's clock and hands out the payload. Idempotent. */
@@ -71,11 +88,11 @@ class RoundController(
     )
 
     /**
-     * The round's binary assets, stage-gated. Round number and key ride in the URL so each pair is
-     * its own privately cacheable resource — without the round number, yesterday's cache would
-     * replay the wrong round.
+     * The round's binary assets. The round number rides in the URL so each pair is its own privately
+     * cacheable resource — without it, yesterday's cache would replay the wrong round. Which gate
+     * applies follows from the number: see [PlayService.asset].
      */
-    @GetMapping("/current/assets/{roundNumber}/{key}")
+    @GetMapping("/{roundNumber}/assets/{key}")
     fun asset(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,

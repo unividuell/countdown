@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { computed, ref } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import * as api from '@/api/communities'
 import * as client from '@/api/client'
 import { communityKey } from '@/communities/context'
@@ -15,10 +15,24 @@ import MemberRow from '@/members/MemberRow.vue'
 import Page from '@/pages/c/[slug]/index.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
+import RoundHistory from '@/rounds/RoundHistory.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
 import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
 import type { RoundStage } from '@/rounds/useRound'
+
+/**
+ * Stubbed at the page level: what the section renders is covered by `RoundHistory.spec.ts`, and the
+ * real component would fetch. This file only checks the page's wiring — which entry point the
+ * history is given.
+ */
+vi.mock('@/rounds/RoundHistory.vue', () => ({
+  default: defineComponent({
+    name: 'RoundHistory',
+    props: { slug: { type: String, required: true }, from: { type: Number, default: null } },
+    template: '<div data-test="round-history" />',
+  }),
+}))
 
 // The page mounts RoundFallback, which uses the module-level countdown clock.
 enableAutoUnmount(afterEach)
@@ -58,6 +72,20 @@ function mockUseRound(
     reload: vi.fn().mockResolvedValue(undefined),
   }
 }
+
+const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
+  round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
+  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+  noGameReason: null,
+  previousRoundNumber: null,
+  payload: null,
+  solution: null,
+  me: null,
+  others: [],
+  awardRule: 'ALL_QUALIFYING',
+  awardPoints: 1,
+  ...over,
+})
 
 beforeEach(() => {
   vi.mocked(useRound).mockReturnValue(mockUseRound())
@@ -340,5 +368,42 @@ describe('community home', () => {
     // placeholder is the visible half of that tear-down: `state` must not dip through 'loading'.
     expect(w.get('[data-test="row"]').element).toBe(rowBefore)
     expect(w.find('[data-test="roster-placeholder"]').exists()).toBe(false)
+  })
+
+  it("hands the history the running round's previous-round pointer", () => {
+    // `game: null` — the mocked `stage` is decoupled from the round data here (`useRound` itself
+    // is mocked), and this test cares only about `from`. Keeping the real `guess-hue` id would
+    // mount the actual game component, which requires a real payload/solution/`me` for a 'done'
+    // round; irrelevant detail this test has no reason to supply.
+    vi.mocked(useRound).mockReturnValue(
+      mockUseRound({
+        stage: 'done',
+        round: aRoundResponse({ previousRoundNumber: 13, game: null }),
+      }),
+    )
+
+    const w = mountPage()
+
+    expect(w.findComponent(RoundHistory).props('from')).toBe(13)
+  })
+
+  it('hangs the history under the fallback too', () => {
+    vi.mocked(useRound).mockReturnValue(
+      mockUseRound({ stage: 'no-game', round: aRoundResponse({ previousRoundNumber: 13 }) }),
+    )
+
+    const w = mountPage()
+
+    // After the event, looking back is the only reason left to open the page.
+    expect(w.findComponent(RoundFallback).exists()).toBe(true)
+    expect(w.findComponent(RoundHistory).props('from')).toBe(13)
+  })
+
+  it('mounts no history while the round is still loading', () => {
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ loading: true }))
+
+    const w = mountPage()
+
+    expect(w.findComponent(RoundHistory).exists()).toBe(false)
   })
 })

@@ -223,4 +223,29 @@ class AnnouncementServiceTest(
         res.round.shouldNotBeNull()
         res.game.shouldBeNull()
     }
+
+    @Test
+    fun `the announcement names the previous round, and null while there is none`() {
+        val (community, viewer) = aCommunityWithOwner("Previous Pointer")
+        val edition = requireNotNull(
+            editionRepository.findActiveByCommunityId(requireNotNull(community.id)),
+        )
+        val currentNumber = currentRoundNumberOf(community)
+
+        announcements.currentRound(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+        ).previousRoundNumber.shouldBeNull()
+
+        // Three rounds earlier in time — a larger number — and with a gap, so the pointer has to
+        // answer with the nearest one rather than the oldest.
+        store.announce(
+            edition = edition, roundNumber = currentNumber + 3, gameType = "guess-hue",
+            params = mapper.readTree("""{"n":1}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+
+        announcements.currentRound(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+        ).previousRoundNumber shouldBe currentNumber + 3
+    }
 }

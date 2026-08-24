@@ -52,6 +52,9 @@ class GameTypeHandle<P : Any>(
         type.asset(params = paramsOf(params), roundGameId = roundGameId, key = key)
 
     /** Forwarded verbatim — no params involved. */
+    fun releaseStageAssets(roundGameIds: List<UUID>) = type.releaseStageAssets(roundGameIds)
+
+    /** Forwarded verbatim — no params involved. */
     fun releaseAssets(roundGameIds: List<UUID>) = type.releaseAssets(roundGameIds)
 
     /** The one place the `params` column and this game's `P` meet. */

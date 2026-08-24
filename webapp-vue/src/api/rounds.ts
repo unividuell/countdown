@@ -7,6 +7,10 @@ const roundUrl = (slug: string, sub = ''): string =>
 
 export const getCurrentRound = (slug: string) => apiFetch<RoundResponse>(roundUrl(slug))
 
+/** One past round, by its number. The server refuses anything that is not strictly older with 404. */
+export const getRound = (slug: string, roundNumber: number) =>
+  apiFetch<RoundResponse>(`/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}`)
+
 export const revealRound = (slug: string) =>
   apiFetch<RoundResponse>(roundUrl(slug, '/reveal'), { method: 'POST' })
 
@@ -35,4 +39,4 @@ export const giveUpRound = (slug: string, roundNumber: number) =>
 
 /** Round number and key ride in the URL so each pair is its own privately cacheable resource. */
 export const roundAssetUrl = (slug: string, roundNumber: number, key: number): string =>
-  roundUrl(slug, `/assets/${roundNumber}/${key}`)
+  `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/assets/${key}`

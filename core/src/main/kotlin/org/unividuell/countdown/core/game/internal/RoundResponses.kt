@@ -17,24 +17,26 @@ class RoundResponses(
     private val identities: MemberIdentityQuery,
 ) {
 
-    fun of(current: CurrentRound, viewerId: UUID): RoundResponse = when (current) {
-        is CurrentRound.NoGame -> RoundResponse(
+    fun of(current: ResolvedRound, viewerId: UUID): RoundResponse = when (current) {
+        is ResolvedRound.NoGame -> RoundResponse(
             round = current.round?.toDto(),
             game = null,
             noGameReason = current.reason,
+            previousRoundNumber = current.previousRoundNumber,
         )
 
-        is CurrentRound.Announced -> announced(current = current, viewerId = viewerId)
+        is ResolvedRound.Announced -> announced(current = current, viewerId = viewerId)
     }
 
-    private fun announced(current: CurrentRound.Announced, viewerId: UUID): RoundResponse {
+    private fun announced(current: ResolvedRound.Announced, viewerId: UUID): RoundResponse {
         val rows = plays.findByRoundGameId(requireNotNull(current.roundGame.id))
         val mine = rows.firstOrNull { it.userId == viewerId }
         val hasGuessed = mine?.guessedAt != null
-        // Withheld, not filtered in the client. Revealed-but-unguessed rows stay out entirely: they
-        // say who is looking, which is nobody's business. A participation count would be a `COUNT`,
-        // not a filtered list of guesses.
-        val visible = if (hasGuessed) {
+        // A closed round holds nothing back: nobody can play it any more, so the gate that protects
+        // the answer has nothing left to protect. What stays withheld either way is a
+        // revealed-but-unguessed row — that says who looked, which is about people, not the round.
+        val open = hasGuessed || current.closed
+        val visible = if (open) {
             rows.filter { it.userId != viewerId && it.guessedAt != null }
         } else {
             emptyList()
@@ -52,8 +54,9 @@ class RoundResponses(
                 requiresReveal = current.handle.requiresReveal(current.roundGame.params),
             ),
             noGameReason = null,
-            payload = mine?.let { current.handle.present(current.roundGame.params) },
-            solution = if (hasGuessed) current.handle.solution(current.roundGame.params) else null,
+            previousRoundNumber = current.previousRoundNumber,
+            payload = if (open || mine != null) current.handle.present(current.roundGame.params) else null,
+            solution = if (open) current.handle.solution(current.roundGame.params) else null,
             me = mine?.let { mineDtoOf(play = it, identity = byId[it.userId]) },
             // Sorted by when they guessed — the order the round actually happened in, and stable
             // where two stamps collide. A row whose user row vanished drops out rather than taking

@@ -152,4 +152,56 @@ class RoundGameRepositoryTest(
         store.find(edition = first, roundNumber = 5).shouldNotBeNull().gameType shouldBe "first-run"
         store.find(edition = second, roundNumber = 5).shouldNotBeNull().gameType shouldBe "second-run"
     }
+
+    @Test
+    fun `previousRound is the next larger announced round number, skipping gaps`() {
+        val edition = anEdition("rg-previous")
+        for (roundNumber in listOf(20, 17, 12)) {
+            store.announce(
+                edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+                params = json("""{"n":$roundNumber}"""),
+                award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+                announcedAt = announcedAt,
+            )
+        }
+
+        store.previousRound(edition = edition, roundNumber = 12) shouldBe 17
+        // 18 and 19 were never announced; the chain steps over them instead of ending there.
+        store.previousRound(edition = edition, roundNumber = 17) shouldBe 20
+        store.previousRound(edition = edition, roundNumber = 20).shouldBeNull()
+    }
+
+    @Test
+    fun `previousRound stops at the run's game window`() {
+        val edition = editions.save(anEdition("rg-previous-window").copy(gamesFromRound = 18))
+        for (roundNumber in listOf(20, 17)) {
+            store.announce(
+                edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+                params = json("""{"n":$roundNumber}"""),
+                award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+                announcedAt = announcedAt,
+            )
+        }
+
+        // Round 20 lies BEFORE the window — a larger number is earlier — so it is not reachable,
+        // exactly as the standings do not sum it.
+        store.previousRound(edition = edition, roundNumber = 17).shouldBeNull()
+    }
+
+    @Test
+    fun `previousRound does not point below the run's game window either`() {
+        val edition = editions.save(anEdition("rg-previous-window-younger").copy(gamesUntilRound = 18))
+        // Announced while `gamesUntilRound` was lower or absent; the admin has since raised it,
+        // leaving this round strictly between the running round and the new lower edge.
+        store.announce(
+            edition = edition, roundNumber = 15, gameType = "guess-hue",
+            params = json("""{"n":15}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+            announcedAt = announcedAt,
+        )
+
+        // Round 15 lies AFTER the window — a smaller number is later — so it must not be reachable
+        // from a round further back either, exactly as the standings do not sum it.
+        store.previousRound(edition = edition, roundNumber = 10).shouldBeNull()
+    }
 }

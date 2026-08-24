@@ -30,6 +30,20 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         rounds.historyOf(editionId = requireNotNull(edition.id), after = roundNumber)
 
     /**
+     * The next older announced round of [edition], or `null` when [roundNumber] is the oldest one
+     * the run has. `Int.MAX_VALUE` stands in for an unbounded window, which is what a `null`
+     * `gamesFromRound` means.
+     */
+    @Transactional(readOnly = true)
+    fun previousRound(edition: CommunityEdition, roundNumber: Int): Int? =
+        rounds.previousRoundNumber(
+            editionId = requireNotNull(edition.id),
+            after = roundNumber,
+            notOlderThan = edition.gamesFromRound ?: Int.MAX_VALUE,
+            notNewerThan = edition.gamesUntilRound,
+        )
+
+    /**
      * The round, locked until the transaction ends. Taken by the guess flow before it judges, so the
      * re-evaluation that follows sees a picture nobody else can move under it.
      */
@@ -38,6 +52,11 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         val id = requireNotNull(roundGame.id)
         return requireNotNull(rounds.findByIdForUpdate(id)) { "round $id vanished while locking it" }
     }
+
+    /** Every round id of [edition] except [roundNumber] — the rounds that stopped being playable. */
+    @Transactional(readOnly = true)
+    fun roundIdsExcept(edition: CommunityEdition, roundNumber: Int): List<UUID> =
+        rounds.idsOfOtherRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
 
     /**
      * Announce [roundNumber] — or, if somebody else got there first, return their announcement.
@@ -74,9 +93,4 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
             editionId = requireNotNull(edition.id),
             gameType = gameType,
         ).map { it.params }
-
-    /** Every round id of [edition] except [roundNumber] — the rounds whose assets may go. */
-    @Transactional(readOnly = true)
-    fun roundIdsExcept(edition: CommunityEdition, roundNumber: Int): List<UUID> =
-        rounds.idsOfOtherRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
 }

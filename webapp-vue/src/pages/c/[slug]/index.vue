@@ -8,6 +8,7 @@ import { useRound } from '@/rounds/useRound'
 import MemberRow from '@/members/MemberRow.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
+import RoundHistory from '@/rounds/RoundHistory.vue'
 
 const { community } = useCommunityContext()
 const { members, state, refreshAfterGuess } = useRoster(community.value.slug)
@@ -31,7 +32,7 @@ const {
   giveUp,
 } = useRound(community.value.slug)
 
-/** The asset lives at `{slug}/rounds/current/assets/{roundNumber}/{key}` — the current round's own. */
+/** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
 const assetUrl = (key: number): string =>
   roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
 
@@ -101,4 +102,13 @@ const settledMembers = computed(() => {
     @guessed="refreshAfterGuess"
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
+
+  <!-- Under the card AND under the fallback: after the event the fallback is what stands here, and
+       looking back is then the only reason left to open the page. Held until the round has landed,
+       so the entry point is the real one rather than a `null` that would immediately be replaced. -->
+  <RoundHistory
+    v-if="roundState === 'ready'"
+    :slug="community.slug"
+    :from="round?.previousRoundNumber ?? null"
+  />
 </template>

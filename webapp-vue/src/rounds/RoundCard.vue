@@ -14,17 +14,35 @@ import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 
-const props = defineProps<{
-  round: RoundResponse | null
-  stage: RoundStage
-  busy: boolean
-  notice: string | null
-  reveal: () => Promise<void>
-  submit: (guess: unknown) => Promise<void>
-  skip: (fromStage: number) => Promise<void>
-  giveUp: () => Promise<void>
-  assetUrl: (key: number) => string
-}>()
+const props = withDefaults(
+  defineProps<{
+    round: RoundResponse | null
+    assetUrl: (key: number) => string
+    /**
+     * The round is over: the reveal face, no clock, no action. One prop with three effects at one
+     * place — a second card would be a second place for „the same reveal UI“ to drift.
+     */
+    closed?: boolean
+    /** Which face a running round calls for. A closed round has none. */
+    stage?: RoundStage | undefined
+    busy?: boolean
+    notice?: string | null
+    reveal?: (() => Promise<void>) | undefined
+    submit?: ((guess: unknown) => Promise<void>) | undefined
+    skip?: ((fromStage: number) => Promise<void>) | undefined
+    giveUp?: (() => Promise<void>) | undefined
+  }>(),
+  {
+    closed: false,
+    busy: false,
+    notice: null,
+    stage: undefined,
+    reveal: undefined,
+    submit: undefined,
+    skip: undefined,
+    giveUp: undefined,
+  },
+)
 
 const emit = defineEmits<{ guessed: [] }>()
 
@@ -42,8 +60,16 @@ const entries = computed<GameEntry[]>(() => {
   return me ? [me, ...others] : others
 })
 
+/** A closed round is done by definition — there is no stage left to derive it from. */
+const face = computed<RoundStage>(() => (props.closed ? 'done' : (props.stage ?? 'no-game')))
+/** The band's clock, silenced for a closed round: its countdown would read 00:00:00 forever. */
+const endsAt = computed<string | null>(() =>
+  props.closed ? null : (props.round?.round?.end ?? null),
+)
+const disabled = computed(() => props.closed || props.busy || face.value === 'done')
+
 async function onReveal(): Promise<void> {
-  await props.reveal()
+  await props.reveal?.()
 }
 
 /**
@@ -52,8 +78,17 @@ async function onReveal(): Promise<void> {
  * the await, not off a resolved promise.
  */
 async function onGuess(value: unknown): Promise<void> {
+  if (props.submit === undefined) return
   await props.submit(value)
   if (props.notice === null) emit('guessed')
+}
+
+function onSkip(fromStage: number): void {
+  void props.skip?.(fromStage)
+}
+
+function onGiveUp(): void {
+  void props.giveUp?.()
 }
 </script>
 
@@ -66,12 +101,14 @@ async function onGuess(value: unknown): Promise<void> {
     <RoundSurface>
       <!-- The band belongs to the card, not to any one face: every face below is the same round of
            the same game for the same stretch of time, and a band per face would be four places for
-           that to disagree. It also means each face says the game's name exactly zero times. -->
+           that to disagree. It also means each face says the game's name exactly zero times.
+           A closed round loses the clock, not the band: which round and which game stays exactly
+           where the running round puts it. -->
       <template #header>
         <GameHeader
           :round-number="round?.round?.number ?? null"
           :title="round?.game?.displayName ?? null"
-          :ends-at="round?.round?.end ?? null"
+          :ends-at="endsAt"
         />
       </template>
 
@@ -83,7 +120,7 @@ async function onGuess(value: unknown): Promise<void> {
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 
-      <div v-else-if="stage === 'sealed'" class="flex flex-col items-center gap-4 text-center">
+      <div v-else-if="face === 'sealed'" class="flex flex-col items-center gap-4 text-center">
         <button
           type="button"
           data-test="round-reveal"
@@ -104,7 +141,7 @@ async function onGuess(value: unknown): Promise<void> {
       -->
       <component
         :is="component"
-        v-else-if="stage === 'playing' || stage === 'done'"
+        v-else-if="face === 'playing' || face === 'done'"
         :key="round?.round?.number"
         :payload="round?.payload"
         :outcome="round?.me?.outcome ?? null"
@@ -113,12 +150,12 @@ async function onGuess(value: unknown): Promise<void> {
         :entries="entries"
         :mine-user-id="round?.me?.userId ?? null"
         :award-rule="round?.awardRule ?? null"
-        :disabled="busy || stage === 'done'"
+        :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
         @guess="onGuess"
-        @skip="props.skip"
-        @give-up="props.giveUp"
+        @skip="onSkip"
+        @give-up="onGiveUp"
       />
     </RoundSurface>
   </div>
