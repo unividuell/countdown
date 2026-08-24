@@ -6,6 +6,9 @@ Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
 
 ## Coding guidelines (read before non-trivial work)
 
+- When writing something intended for human consumption, (comment, commit message, reply to prompt) use as few words as possible. Pick every word meticulously to reduce the volume to a strict minimum. Be down to the point. Less is more.
+- Avoid superlatives and praise. Stop telling me I am absolutely right. Give me the cold hard truth.
+
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
 - **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing the transferable rules here; post-mortems and measurements stay in the commit.
