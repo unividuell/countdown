@@ -201,16 +201,26 @@ chose, so it needs no round gate at all. Which gate applies to the round-scoped 
 number, not from a second path: the running round still needs the guess spent before key `99`
 unlocks, an older round is history and is open regardless of stage — the closed-round rule above.
 
-There is no cleanup at announce time any more, because the history plays a past round's audio, and a
-round the history can still show must keep what it needs to show it. `GameType.releaseAssets`,
-`GameCatalog.releaseAssets` and `SongSnippetAudioStore.release` stay in place as the seam a later
-archival hook will call when a whole edition is put to rest — deliberately without a caller today.
-Storage is therefore no longer bounded at one round's ladder per community per edition; it is a
-growth rate, a few hundred KB per round, and nothing reclaims it when the run ends either:
-`EditionService.startNew` archives the old edition without releasing a single byte, so a finished
-run's audio sits there exactly as before, right alongside the next run's. The growth is per-run-forever,
-not per-run, until the archival hook above gets a caller or an operator removes the files by hand. The
-comment above the lifecycle in
-`core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` still describes the old
-announce-time cleanup and is wrong about it — left as written, because editing an applied migration
-breaks its Flyway checksum.
+Cleanup at announce time releases what stopped being **playable**, not everything a round stored.
+That is one hook per lifetime event, not one hook with a flag: `releaseStageAssets` fires for every
+round but the one just announced, and `releaseAssets` — the archival one — is still deliberately
+without a caller, for the day a whole edition is put to rest. Collapsing them into a single call with
+a `keepReveal` boolean would move a per-lifetime-event answer into a per-call decision.
+
+The split pays because the two halves are not the same size. A round's stage ladder is five WAV
+prefixes of one excerpt, some megabytes of PCM; its reveal clip is the downloaded MP3 unchanged, a
+fraction of that. Nobody can ask for an earlier round's stage again — only the running round is
+playable — while the reveal clip is exactly what the history plays, so releasing the ladder and
+keeping the clip frees nearly all of a past round's bytes and costs the history nothing.
+
+What is left is small but still unbounded: the reveal clip of every round ever played, because
+`EditionService.startNew` archives the old edition without releasing a byte. So the growth is
+per-run-forever, not per-run, until the archival hook above gets a caller or an operator clears them
+by hand — a much slower climb than the ladder made, and the reason the clip is worth storing at all
+is that a Deezer preview URL is ephemeral: re-resolving one years later may find nothing, while the
+bytes in `round_audio` still play.
+
+The comment above the lifecycle in
+`core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` describes an
+announce-time cleanup that deletes everything, which is no longer what happens — left as written,
+because editing an applied migration breaks its Flyway checksum.

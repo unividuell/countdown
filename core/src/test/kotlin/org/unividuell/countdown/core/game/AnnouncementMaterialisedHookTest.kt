@@ -30,15 +30,17 @@ import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Two hooks [AnnouncementService.materialise] must fire, and one — releasing assets — deliberately
- * must not, exercised through a fake [GameType] that records every call it receives — [RecordingGame].
+ * Three hooks [AnnouncementService.materialise] must fire — the draw, [GameType.materialised] and
+ * [GameType.releaseStageAssets] for the rounds that are no longer playable — and one, the archival
+ * [GameType.releaseAssets], deliberately must not. Exercised through a fake [GameType] that records
+ * every call it receives: [RecordingGame].
  *
  * The catalogue here carries three games — `guess-hue` and `song-snippet` (both unconditional beans)
  * and `recording-fake` (this file's `@Import`) — so [org.unividuell.countdown.core.game.internal.GameSelection]
  * may draw any one of them for a freshly materialised round; see [PlayServiceStrictRevealTest] for why
  * that risk is not shared with the default context. Test (a) below therefore does not fight the
  * selection: it asserts conditionally on whichever type actually won. Test (b) needs no such guard
- * because nothing is released regardless of which type wins. Test (c) plants two earlier rounds
+ * either, because the stage release runs across the whole catalogue regardless of which type wins. Test (c) plants two earlier rounds
  * of different types directly via [RoundGameStore.announce] and asserts, again conditionally on the
  * winner, that only the same-type params reached the draw. [SongSnippetTestCatalogConfiguration] keeps
  * a `song-snippet` win from reaching the network or an empty pool.
@@ -66,6 +68,7 @@ class AnnouncementMaterialisedHookTest(
         class Recorder {
             val materialisedFor = CopyOnWriteArrayList<UUID>()
             val releasedRounds = CopyOnWriteArrayList<UUID>()
+            val stagesReleasedRounds = CopyOnWriteArrayList<UUID>()
             val previousParamsSeen = CopyOnWriteArrayList<List<JsonNode>>()
         }
 
@@ -89,6 +92,9 @@ class AnnouncementMaterialisedHookTest(
             }
             override fun releaseAssets(roundGameIds: List<UUID>) {
                 recorder.releasedRounds.addAll(roundGameIds)
+            }
+            override fun releaseStageAssets(roundGameIds: List<UUID>) {
+                recorder.stagesReleasedRounds.addAll(roundGameIds)
             }
         }
 
@@ -136,20 +142,23 @@ class AnnouncementMaterialisedHookTest(
     }
 
     @Test
-    fun `materialising a round leaves every earlier round's assets alone`() {
+    fun `materialising a round releases every earlier round's stage assets, and only those`() {
         val (community, viewer) = aCommunity("Cleanup Round")
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
-        store.announce(
+        val earlier = store.announce(
             edition = edition, roundNumber = roundNumber + 1, gameType = "guess-hue",
             params = mapper.readTree("""{"n":1}"""), award = anAward(), announcedAt = clock.instant(),
         )
 
         announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
 
-        // The history renders a past round's reveal and plays its audio, so announcing the next
-        // round must not delete it. Releasing belongs to archiving the run, and nothing archives
-        // here.
+        // Only the running round is playable, so nobody needs an earlier round's stage ladder again
+        // — and that ladder is the expensive part. `recording-fake` sees the call whichever type won
+        // the current round, because the release runs across the whole catalogue.
+        recorder.stagesReleasedRounds shouldContain requireNotNull(earlier.id)
+        // The archival hook stays untouched: what the history still plays is not this call's business,
+        // and releasing everything belongs to archiving the run.
         recorder.releasedRounds.shouldBeEmpty()
     }
 

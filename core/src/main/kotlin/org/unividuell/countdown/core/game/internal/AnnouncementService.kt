@@ -143,7 +143,22 @@ class AnnouncementService(
             "announced round carries unknown type '${announced.gameType}'"
         }
         materialisedHandle.materialised(params = announced.params, roundGameId = requireNotNull(announced.id))
+        releaseEarlierStages(edition = edition, current = round.number)
         return announced
+    }
+
+    /**
+     * Every round but the one just announced has stopped being playable, so whatever only a playable
+     * round needed may go. **Not** everything it stored: a past round's reveal is still rendered by
+     * the history, and its asset has to survive — which is why this is `releaseStageAssets` and not
+     * `releaseAssets`. Every game is asked; each releases only what it owns, a no-op for most.
+     */
+    private fun releaseEarlierStages(edition: CommunityEdition, current: Int) {
+        val earlier = store.roundIdsExcept(edition = edition, roundNumber = current)
+        if (earlier.isEmpty()) return
+        for (id in catalog.ids()) {
+            catalog.handle(id)?.releaseStageAssets(earlier)
+        }
     }
 
     /**

@@ -14,6 +14,11 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     /** Earlier rounds of one game type — the draw's repetition-avoidance input. Derived query. */
     fun findByEditionIdAndGameType(editionId: UUID, gameType: String): List<RoundGame>
 
+    /** Every round of the edition except the one just announced — the rounds that are no longer
+     *  playable, and whose stage assets may therefore go. */
+    @Query("SELECT id FROM game.round_games WHERE edition_id = :editionId AND round_number <> :roundNumber")
+    fun idsOfOtherRounds(editionId: UUID, roundNumber: Int): List<UUID>
+
     /**
      * The round's row, locked for the rest of the transaction.
      *

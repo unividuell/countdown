@@ -21,4 +21,17 @@ class SongSnippetAudioStore(private val repository: RoundAudioRepository) {
 
     @Transactional
     fun release(roundGameIds: List<UUID>): Int = repository.deleteForRounds(roundGameIds)
+
+    /**
+     * The ladder of these rounds, keeping the 30s reveal clip.
+     *
+     * The split is not a nicety: the stages are WAV — five prefixes of the same excerpt, some
+     * megabytes — while the reveal clip is the downloaded MP3 unchanged, a fraction of that. So this
+     * frees nearly all of a past round's bytes while leaving the one asset the history still plays.
+     */
+    @Transactional
+    fun releaseStages(roundGameIds: List<UUID>): Int = repository.deleteStagesForRounds(
+        roundGameIds = roundGameIds,
+        solutionKey = SongSnippetStages.SOLUTION_KEY,
+    )
 }

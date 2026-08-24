@@ -23,4 +23,17 @@ interface RoundAudioRepository : CrudRepository<RoundAudio, UUID> {
     @Modifying
     @Query("DELETE FROM songsnippet.round_audio WHERE round_game_id IN (:roundGameIds)")
     fun deleteForRounds(roundGameIds: Collection<UUID>): Int
+
+    /**
+     * Everything of these rounds except one key. [solutionKey] is passed rather than written into the
+     * SQL so the number keeps living in exactly one place.
+     */
+    @Modifying
+    @Query(
+        """
+        DELETE FROM songsnippet.round_audio
+        WHERE round_game_id IN (:roundGameIds) AND stage <> :solutionKey
+        """,
+    )
+    fun deleteStagesForRounds(roundGameIds: Collection<UUID>, solutionKey: Int): Int
 }

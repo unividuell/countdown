@@ -41,4 +41,28 @@ class SongSnippetAudioStoreTest(
         store.find(roundGameId = a, key = 0).shouldBeNull()
         store.find(roundGameId = keep, key = 0).shouldNotBeNull()
     }
+
+    @Test
+    fun `releaseStages drops the ladder and keeps the reveal clip`() {
+        val past = UUID.randomUUID()
+        val running = UUID.randomUUID()
+        for (round in listOf(past, running)) {
+            store.store(roundGameId = round, key = 0, mediaType = "audio/wav", bytes = byteArrayOf(0))
+            store.store(roundGameId = round, key = 4, mediaType = "audio/wav", bytes = byteArrayOf(4))
+            store.store(
+                roundGameId = round,
+                key = SongSnippetStages.SOLUTION_KEY,
+                mediaType = "audio/mpeg",
+                bytes = byteArrayOf(99),
+            )
+        }
+
+        // The ladder is the part only a playable round needs, and it is the expensive part: five WAV
+        // prefixes against one untouched MP3. The reveal clip stays because the history plays it.
+        store.releaseStages(roundGameIds = listOf(past)) shouldBe 2
+        store.find(roundGameId = past, key = 0).shouldBeNull()
+        store.find(roundGameId = past, key = 4).shouldBeNull()
+        store.find(roundGameId = past, key = SongSnippetStages.SOLUTION_KEY).shouldNotBeNull()
+        store.find(roundGameId = running, key = 0).shouldNotBeNull()
+    }
 }
