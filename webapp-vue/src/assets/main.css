@@ -112,3 +112,17 @@
     max-width: 20rem;
   }
 }
+
+/* The scrollbar's track stays reserved even on a page short enough not to need one, so opening the
+   nav drawer cannot move the page underneath it. The drawer locks the body (`useScrollLock` sets
+   `overflow: hidden`), which on a classic scrollbar takes the bar away and widens the content box —
+   and `mx-auto` content then slides right by half that width, which reads as the page twitching
+   away from the drawer. Reserving the gutter costs a narrow strip where the bar would be and
+   nothing at all on a phone, where scrollbars overlay and the gutter is zero-width. Belongs on
+   `html`, the element that actually scrolls the document; `overflow-x-clip` in `App.vue` is on a
+   descendant and cannot own this. */
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+}
