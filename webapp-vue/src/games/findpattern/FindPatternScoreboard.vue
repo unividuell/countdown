@@ -8,9 +8,10 @@
  * on at least one of them. The table's box is complete from the moment it mounts and only its ink
  * appears, so nothing here ever moves — see the design doc.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { FADE_MS, TIP_COLUMN, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useRevealArming } from '@/ui/useRevealArming'
 import { hasDurations } from './scoreboard'
 import type { ScoreRow, ToneChip } from './scoreboard'
 
@@ -36,24 +37,8 @@ const still =
   inBackground() ||
   typeof requestAnimationFrame !== 'function'
 
-const shown = ref(still)
+const { shown } = useRevealArming(still)
 const opacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
-
-let frame = 0
-onMounted(() => {
-  if (still) return
-  // The same two frames `HueWheelReveal` needs: Firefox only starts a transition off a style it
-  // has already resolved in an earlier frame, so a painted `opacity-0` frame must exist first.
-  frame = requestAnimationFrame(() => {
-    void document.body.offsetHeight
-    frame = requestAnimationFrame(() => {
-      shown.value = true
-    })
-  })
-})
-onBeforeUnmount(() => {
-  if (frame) cancelAnimationFrame(frame)
-})
 
 function fade(delayMs: number) {
   return { transitionDuration: `${FADE_MS}ms`, transitionDelay: `${delayMs}ms` }

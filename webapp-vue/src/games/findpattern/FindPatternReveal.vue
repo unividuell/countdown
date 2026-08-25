@@ -10,10 +10,11 @@
  * My own outline sits outermost, at inset 0: it is the box drawn while playing, and the board under
  * it has not moved, so the switch from playing to reveal leaves it exactly where it was.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { readableTextColor } from '@/ui/readableTextColor'
+import { useRevealArming } from '@/ui/useRevealArming'
 import FindPatternScoreboard from './FindPatternScoreboard.vue'
 import PatternGrid from './PatternGrid.vue'
 import { isNumberVisible, stackedOutlines } from './marks'
@@ -113,22 +114,7 @@ const deltaLabel = computed(() =>
 )
 
 /** Same beat, driven the same way as `FindPatternScoreboard`'s head and `HueWheelReveal`'s sector. */
-const shown = ref(still)
-let frame = 0
-onMounted(() => {
-  if (still) return
-  // Firefox only starts a transition off a style it has already resolved in an earlier frame —
-  // see `HueWheelReveal` for the full explanation. One forced reflow, then flip on the next frame.
-  frame = requestAnimationFrame(() => {
-    void document.body.offsetHeight
-    frame = requestAnimationFrame(() => {
-      shown.value = true
-    })
-  })
-})
-onBeforeUnmount(() => {
-  if (frame) cancelAnimationFrame(frame)
-})
+const { shown } = useRevealArming(still)
 
 const paletteOpacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
 const paletteStyle = {

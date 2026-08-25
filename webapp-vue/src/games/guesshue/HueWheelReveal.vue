@@ -8,7 +8,7 @@
  * solution is. The full statement is the scoreboard under this wheel, which says every guess,
  * every deviation and every score as text.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { hueName, wrap360 } from './geometry'
 import HueRing from './HueRing.vue'
 import HueToleranceSector from './HueToleranceSector.vue'
@@ -16,6 +16,7 @@ import { BAND_GROW_MS, layoutGuesses, sectorInk, type RevealGuess } from './reve
 import { BAND_INNER_FRACTION, easeOutCubic, trackBoxStyle } from './wheel'
 import { FADE_MS, RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useRevealArming } from '@/ui/useRevealArming'
 
 const props = defineProps<{
   /** 0 … 1, as the payload carries them. */
@@ -43,12 +44,10 @@ const still =
   inBackground() ||
   typeof requestAnimationFrame !== 'function'
 
-/** Everything that is only opacity hangs off this one flag; the CSS delays do the beats. */
-const shown = ref(still)
 /** Driven by hand — see [growBand]. */
 const innerFraction = ref(still ? layout.value.bandInnerFraction : BAND_INNER_FRACTION)
 
-let frame = 0
+let bandFrame = 0
 let bandStarted = -1
 
 /**
@@ -63,51 +62,37 @@ function growBand(now: number): void {
   const progress = Math.min(1, Math.max(0, (now - bandStarted - RESULTS_DELAY_MS) / BAND_GROW_MS))
   innerFraction.value =
     BAND_INNER_FRACTION + (target - BAND_INNER_FRACTION) * easeOutCubic(progress)
-  frame = progress >= 1 ? 0 : requestAnimationFrame(growBand)
+  bandFrame = progress >= 1 ? 0 : requestAnimationFrame(growBand)
 }
 
-onMounted(() => {
-  if (still) return
-  // One frame with the from-state painted first: a transition that is set and started in the
-  // same frame does not run at all — that much holds in every engine. Firefox asks for more:
-  // it only starts a transition off a style the browser has *already resolved in an earlier
-  // frame*, and `onMounted` runs before style has ever been resolved for these elements, so a
-  // single rAF here fires in the very frame that would first resolve it — Vue's class patch
-  // lands in a microtask ahead of that frame's style recalc, so Firefox finds no "from" value
-  // and jumps straight to `opacity-100`. Chrome tolerates this; Firefox does not. Vue's own
-  // <Transition> never hits this because it calls forceReflow() before adding its enter-active
-  // class, and the band loop never hits it because it writes a value every frame regardless —
-  // both of those beats work here for that reason. Mirrored below: force the reflow ourselves in
-  // the first frame, then flip `shown` (and hand off to the band loop) only in a second frame, so
-  // a painted `opacity-0` frame is guaranteed to exist first. Belt and braces on purpose — this
-  // was observed failing in the wild, and one extra frame against a 900 ms delay costs nothing.
-  frame = requestAnimationFrame(() => {
-    // Read for the side effect, not the value — this is exactly Vue's own forceReflow().
-    void document.body.offsetHeight
-    frame = requestAnimationFrame(() => {
-      shown.value = true
-      frame = layout.value.deepestLane === 0 ? 0 : requestAnimationFrame(growBand)
-    })
-  })
+/**
+ * Everything that is only opacity hangs off this one flag; the CSS delays do the beats. Armed the
+ * same way every reveal in this app arms — see `useRevealArming` for the two-frame dance and why
+ * Firefox needs it. Once armed, hand off straight to the band loop, unless the deepest lane is
+ * already at the rim and there is nothing left to grow.
+ */
+const { shown } = useRevealArming(still, () => {
+  bandFrame = layout.value.deepestLane === 0 ? 0 : requestAnimationFrame(growBand)
 })
 
 onBeforeUnmount(() => {
-  if (frame) cancelAnimationFrame(frame)
+  if (bandFrame) cancelAnimationFrame(bandFrame)
 })
 
 /**
  * The lab reloads a round at the same seed rather than remounting the card, so a guess can still
  * arrive after this wheel has already settled — `still`, or a `growBand` loop that has already
- * reached `frame = 0`. `frame === 0` is exactly "no loop is driving the band right now": while one
- * runs, it re-reads the live target every frame on its own and must not be fought over here. Once
- * one isn't, a late target change would otherwise sit unapplied forever, floating a new marker
- * over a hole that never grew to meet it. No fade for this: the beats belong to the moment of the
- * guess that started them, and this one arrives with no moment to build up to.
+ * reached `bandFrame = 0`. Not yet `shown` means the arming dance itself is still in flight, and a
+ * running `growBand` loop re-reads the live target every frame on its own — neither must be
+ * fought over here. Once armed and no loop is driving the band, a late target change would
+ * otherwise sit unapplied forever, floating a new marker over a hole that never grew to meet it.
+ * No fade for this: the beats belong to the moment of the guess that started them, and this one
+ * arrives with no moment to build up to.
  */
 watch(
   () => layout.value.bandInnerFraction,
   (target) => {
-    if (frame === 0) innerFraction.value = target
+    if (bandFrame === 0 && shown.value) innerFraction.value = target
   },
 )
 

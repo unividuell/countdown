@@ -14,7 +14,8 @@
  * The board (this component's first caller) always wants the second: its own selection is drawn as
  * it grows, never staged, so `still` defaults to `true` and the board never has to mention it.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
+import { useRevealArming } from '@/ui/useRevealArming'
 import type { CellOutline } from './marks'
 
 export interface PatternNumber {
@@ -72,26 +73,12 @@ function onCell(index: number): void {
 }
 
 /**
- * Armed once, the same way `HueWheelReveal` arms its markers: a mark at `delayMs` 0 is never
- * gated — that covers both `still` (a reload draws everything at 0) and a live reveal's own tip,
- * which must never fade — and every other mark waits for `shown`, which flips only once the
- * browser has painted the opposite state at least once. Firefox will not start a transition off a
- * style it has not already resolved in an earlier frame; see `HueWheelReveal` for the full case.
+ * Armed once, the same way `HueWheelReveal` arms its markers — see `useRevealArming`: a mark at
+ * `delayMs` 0 is never gated — that covers both `still` (a reload draws everything at 0) and a
+ * live reveal's own tip, which must never fade — and every other mark waits for `shown`, which
+ * flips only once the browser has painted the opposite state at least once.
  */
-const shown = ref(props.still)
-let frame = 0
-onMounted(() => {
-  if (props.still) return
-  frame = requestAnimationFrame(() => {
-    void document.body.offsetHeight
-    frame = requestAnimationFrame(() => {
-      shown.value = true
-    })
-  })
-})
-onBeforeUnmount(() => {
-  if (frame) cancelAnimationFrame(frame)
-})
+const { shown } = useRevealArming(props.still)
 
 function markOpacity(delayMs: number | undefined): string {
   return (delayMs ?? 0) === 0 || shown.value ? 'opacity-100' : 'opacity-0'
