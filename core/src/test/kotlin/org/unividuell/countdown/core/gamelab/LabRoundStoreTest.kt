@@ -15,7 +15,9 @@ import org.unividuell.countdown.core.gamelab.internal.LabRound
 import org.unividuell.countdown.core.gamelab.internal.LabRoundStore
 import org.unividuell.countdown.core.gamelab.internal.RecordResult
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
@@ -45,7 +47,7 @@ class LabRoundStoreTest {
     private fun record(user: UUID, seed: Int = 42, value: Int = 1) =
         store.record(
             communityId = community, gameId = "sample", round = round(seed = seed), userId = user,
-            guess = IntNode(value), judgement = judgement(qualifies = true, deviation = 0.0),
+            guess = IntNode(value), judgement = judgement(qualifies = true, deviation = 0.0), timed = false,
         )
 
     @Test
@@ -210,13 +212,13 @@ class LabRoundStoreTest {
         store.record(
             communityId = community, gameId = "g", round = r, userId = hit,
             guess = mapper.readTree("""{"hue":1}"""),
-            judgement = judgement(qualifies = true, deviation = 4.0),
+            judgement = judgement(qualifies = true, deviation = 4.0), timed = false,
         )
 
         val result = store.record(
             communityId = community, gameId = "g", round = r, userId = miss,
             guess = mapper.readTree("""{"hue":2}"""),
-            judgement = judgement(qualifies = false, deviation = 40.0),
+            judgement = judgement(qualifies = false, deviation = 40.0), timed = false,
         )
 
         val entries = (result as RecordResult.Recorded).snapshot.entries.associateBy { it.userId }
@@ -235,17 +237,103 @@ class LabRoundStoreTest {
         store.record(
             communityId = community, gameId = "g", round = r, userId = early,
             guess = mapper.readTree("""{"hue":1}"""),
-            judgement = judgement(qualifies = true, deviation = 12.0),
+            judgement = judgement(qualifies = true, deviation = 12.0), timed = false,
         )
 
         val result = store.record(
             communityId = community, gameId = "g", round = r, userId = late,
             guess = mapper.readTree("""{"hue":2}"""),
-            judgement = judgement(qualifies = true, deviation = 3.0),
+            judgement = judgement(qualifies = true, deviation = 3.0), timed = false,
         )
 
         val entries = (result as RecordResult.Recorded).snapshot.entries.associateBy { it.userId }
         entries.getValue(early).points shouldBe 0
         entries.getValue(late).points shouldBe 7
+    }
+
+    @Test
+    fun `an entry knows how long the tester took, from the first open`() {
+        val stepping = SteppingClock(Instant.parse("2026-08-08T12:00:00Z"))
+        val store = LabRoundStore(stepping)
+        val round = round(seed = 5)
+        val tester = UUID.randomUUID()
+
+        store.markOpened(communityId = community, gameId = "find-pattern", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(12))
+        val result = store.record(
+            communityId = community, gameId = "find-pattern", round = round, userId = tester,
+            guess = mapper.readTree("""{"startIndex":3}"""),
+            judgement = Judgement(qualifies = true, deviation = 0.0, outcome = null),
+            timed = true,
+        )
+
+        val entry = (result as RecordResult.Recorded).snapshot.entries.single()
+        entry.durationMs shouldBe 12_000L
+        // A timed round ranks on the clock: the distance the rescore sees is the duration.
+        entry.deviation shouldBe 12_000.0
+    }
+
+    @Test
+    fun `an untimed round keeps the game's own distance and no duration`() {
+        val stepping = SteppingClock(Instant.parse("2026-08-08T12:00:00Z"))
+        val store = LabRoundStore(stepping)
+        val round = round(seed = 6)
+        val tester = UUID.randomUUID()
+
+        store.markOpened(communityId = community, gameId = "guess-hue", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(3))
+        val result = store.record(
+            communityId = community, gameId = "guess-hue", round = round, userId = tester,
+            guess = mapper.readTree("""{"hue":10}"""),
+            judgement = Judgement(qualifies = true, deviation = 7.5, outcome = null),
+            timed = false,
+        )
+
+        val entry = (result as RecordResult.Recorded).snapshot.entries.single()
+        entry.durationMs shouldBe null
+        entry.deviation shouldBe 7.5
+    }
+
+    @Test
+    fun `the stamp survives a second open and is dropped by forget`() {
+        val stepping = SteppingClock(Instant.parse("2026-08-08T12:00:00Z"))
+        val store = LabRoundStore(stepping)
+        val round = round(seed = 7)
+        val tester = UUID.randomUUID()
+
+        store.markOpened(communityId = community, gameId = "find-pattern", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(20))
+        // A reload must not restart the clock — the same rule `revealed_at` follows in a real round.
+        store.markOpened(communityId = community, gameId = "find-pattern", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(5))
+        val first = store.record(
+            communityId = community, gameId = "find-pattern", round = round, userId = tester,
+            guess = mapper.readTree("""{"startIndex":3}"""),
+            judgement = Judgement(qualifies = true, deviation = 0.0, outcome = null),
+            timed = true,
+        )
+        (first as RecordResult.Recorded).snapshot.entries.single().durationMs shouldBe 25_000L
+
+        store.forget(communityId = community, gameId = "find-pattern", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(1))
+        store.markOpened(communityId = community, gameId = "find-pattern", round = round, userId = tester)
+        stepping.advance(Duration.ofSeconds(2))
+        val again = store.record(
+            communityId = community, gameId = "find-pattern", round = round, userId = tester,
+            guess = mapper.readTree("""{"startIndex":3}"""),
+            judgement = Judgement(qualifies = true, deviation = 0.0, outcome = null),
+            timed = true,
+        )
+        (again as RecordResult.Recorded).snapshot.entries.single().durationMs shouldBe 2_000L
+    }
+
+    /** Two instants are the minimum for a duration, and `Clock.fixed` only ever gives one. */
+    private class SteppingClock(private var now: Instant) : Clock() {
+        override fun instant(): Instant = now
+        override fun getZone(): ZoneId = ZoneOffset.UTC
+        override fun withZone(zone: ZoneId?): Clock = this
+        fun advance(by: Duration) {
+            now = now.plus(by)
+        }
     }
 }

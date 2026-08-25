@@ -18,12 +18,14 @@ export interface LabEntryDto {
   guess: unknown
   /** `null` where the game accepts guesses without scoring them. */
   outcome: unknown
-  /** Display order only. The lab does not score time. */
+  /** Display order only — never a score. */
   at: string
   /** The server always sends a number — `0` means "guessed and scored nothing". */
   points: number
   /** The stage this entry was recorded at — same idea as `LabRoundResponse.myStage`, per entry. */
   stage: number
+  /** Reveal-to-guess in milliseconds; `null` for a game that does not score on time. */
+  durationMs: number | null
 }
 
 export interface LabRoundResponse<P = unknown> {

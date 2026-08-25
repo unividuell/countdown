@@ -59,10 +59,16 @@ class LabService(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val snapshot = store.open(communityId = communityId, gameId = gameId, round = round)
+        // Landing on the round is the lab's reveal: this is where a timed game's clock starts. After
+        // store.open() on purpose — that call is what decides tookOverRound, and marking first would
+        // make this method's own eviction check land on an already-evicted round, always reporting no
+        // takeover for the second of two calls that touch the same round.
+        store.markOpened(communityId = communityId, gameId = gameId, round = round, userId = userId)
         return respond(
             communityId = communityId,
             handle = handle,
-            snapshot = store.open(communityId = communityId, gameId = gameId, round = round),
+            snapshot = snapshot,
             me = userId,
         )
     }
@@ -105,12 +111,14 @@ class LabService(
                 me = userId,
             )
         }
-        // For a staged game the distance IS the stage — framework state the game cannot know. A
-        // single-stage game keeps the game's own distance.
+        // A staged game's distance is the stage, and the store never sees stages; a timed game's is
+        // the duration, and only the store knows when this tester opened the round. Hence one
+        // adjustment here and one flag passed down — the same split `PlayService` makes.
+        val timed = handle.requiresReveal(playing.params)
         val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
-            userId = userId, guess = guess, judgement = adjusted,
+            userId = userId, guess = guess, judgement = adjusted, timed = timed,
         )
         return when (result) {
             is RecordResult.Recorded -> respond(
@@ -168,6 +176,7 @@ class LabService(
             communityId = communityId, gameId = gameId, round = playing, userId = userId,
             guess = NullNode.instance,
             judgement = Judgement(qualifies = false, deviation = stage.toDouble(), outcome = null),
+            timed = false,
         )
         return when (result) {
             is RecordResult.Recorded -> respond(
@@ -323,6 +332,7 @@ class LabService(
                 points = entry.points,
                 at = entry.at,
                 stage = entry.stage,
+                durationMs = entry.durationMs,
             )
         }
 

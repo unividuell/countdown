@@ -12,6 +12,7 @@ import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.Verdict
 import org.unividuell.countdown.core.game.pointsFor
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -38,10 +39,16 @@ data class LabEntry(
     val deviation: Double,
     val outcome: GameOutcome?,
     val points: Int,
-    /** Display order only — never a score. Timing is deliberately out of scope for the lab. */
+    /** Display order only — never a score. */
     val at: Instant,
-    /** The tester's stage at the moment this entry was recorded — the lab's stand-in for round_plays.stage. */
+    /** The stage this tester's entry was recorded at — the lab's stand-in for round_plays.stage. */
     val stage: Int,
+    /**
+     * How long this tester took, from their first `open` of this round to this guess. `null` for a
+     * round whose game does not score on time. The lab's stand-in for `revealed_at → guessed_at`:
+     * the lab shows no sealed face, so *landing on the round* is what starts the clock here.
+     */
+    val durationMs: Long?,
 )
 
 /** The state of a lab round after an operation, plus whether that operation displaced another round. */
@@ -80,6 +87,8 @@ class LabRoundStore(private val clock: Clock) {
         val counter = AtomicLong()
         /** Per-tester staged progress — the lab's stand-in for round_plays.stage. */
         val stages = ConcurrentHashMap<UUID, Int>()
+        /** First open per tester — the lab's `revealed_at`. A reload must not restart it. */
+        val openedAt = ConcurrentHashMap<UUID, Instant>()
         /** Produced once per lab round, lazily — one ladder per (community, game), self-limiting. */
         @Volatile var assets: Map<Int, RoundAsset>? = null
     }
@@ -125,6 +134,17 @@ class LabRoundStore(private val clock: Clock) {
         }
     }
 
+    /**
+     * Start this tester's clock, once. `putIfAbsent`, so a reload keeps the first stamp — the same
+     * property `revealed_at` has in a real round.
+     */
+    fun markOpened(communityId: UUID, gameId: String, round: LabRound, userId: UUID) {
+        val (stored, _) = openRound(Key(communityId, gameId), round)
+        synchronized(stored) {
+            stored.openedAt.putIfAbsent(userId, clock.instant())
+        }
+    }
+
     /** true when the expected stage still held — the same zero-rows idiom, in memory. */
     fun advanceStage(communityId: UUID, gameId: String, round: LabRound, userId: UUID, expected: Int): Boolean {
         val (stored, _) = openRound(Key(communityId, gameId), round)
@@ -160,6 +180,13 @@ class LabRoundStore(private val clock: Clock) {
         userId: UUID,
         guess: JsonNode,
         judgement: Judgement,
+        /**
+         * Whether this round ranks on the clock. The answer comes from `GameType.requiresReveal` via
+         * [LabService] — the store does not ask a game anything. It is passed in rather than derived
+         * so the duration is computed exactly once here, and the entry's `durationMs` and the
+         * `deviation` the rescore ranks on can never be two different numbers.
+         */
+        timed: Boolean,
     ): RecordResult {
         val (stored, tookOver) = openRound(Key(communityId, gameId), round)
         // The lab's stand-in for the real game's row lock on the round (see game-rounds.md, "whoever
@@ -168,17 +195,20 @@ class LabRoundStore(private val clock: Clock) {
         // could end up holding a CLOSEST_ONLY stake. The same lock also keeps this from racing
         // forget()/resetRound(), which mutate the same two maps.
         synchronized(stored) {
+            val at = clock.instant()
+            val durationMs = stored.openedAt[userId]?.let { Duration.between(it, at).toMillis() }
             val entry = LabEntry(
                 userId = userId,
                 guess = guess,
                 qualifies = judgement.qualifies,
-                deviation = judgement.deviation,
+                deviation = if (timed && durationMs != null) durationMs.toDouble() else judgement.deviation,
                 outcome = judgement.outcome,
                 // Overwritten by the rescore below. A lone entry is scored by the same function as a
                 // full round rather than by a shortcut, so the two can never disagree.
                 points = 0,
-                at = clock.instant(),
+                at = at,
                 stage = stored.stages[userId] ?: 0,
+                durationMs = if (timed) durationMs else null,
             )
             // putIfAbsent, not put: one guess per player and round is the real game's rule, enforced
             // here so the lab exercises it. Repeating a round is what the two reset actions are for.
@@ -199,6 +229,7 @@ class LabRoundStore(private val clock: Clock) {
             // Everybody replays from stage 0 — a reset that kept old stages would let a tester who
             // had advanced skip straight past assets a fresh player has not unlocked yet.
             stored.stages.clear()
+            stored.openedAt.clear()
             return stored.snapshot(tookOver)
         }
     }
@@ -213,6 +244,7 @@ class LabRoundStore(private val clock: Clock) {
             // The forgotten tester is back in front of the gate at stage 0 too — otherwise deleting a
             // guess would still leave them standing on whatever stage they had advanced to.
             stored.stages.remove(userId)
+            stored.openedAt.remove(userId)
             // Whoever leaves changes the standings of whoever stays: under CLOSEST_ONLY the best
             // remaining guess takes the stake. Same reason the real game re-evaluates on every write.
             stored.rescore()

@@ -22,9 +22,12 @@ data class LabEntryDto(
     val guess: JsonNode,
     val outcome: GameOutcome?,
     val points: Int,
+    /** Display order only — never a score. */
     val at: Instant,
     /** The stage this entry was recorded at — same idea as [LabRoundResponse.myStage], per entry. */
     val stage: Int,
+    /** Reveal-to-guess, as in a real round. `null` for a game that does not score on time. */
+    val durationMs: Long?,
 )
 
 /**
