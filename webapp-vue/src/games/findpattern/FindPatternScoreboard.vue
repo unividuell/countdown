@@ -69,11 +69,14 @@ function cell(tick: number, column: number) {
 <template>
   <div data-test="pattern-scoreboard">
     <div class="flex items-end justify-between gap-2">
-      <h2 class="text-2xl">Auswertung</h2>
-      <span v-if="props.live" class="transition-opacity" :class="opacity" :style="head(0, 1)">
-        <!-- Two elements, not one: the fade outside, the pulse inside. A running animation
-             outranks a plain class, so `animate-pulse` beside `opacity-0` would blink into view
-             from the first frame regardless of the delay above — see `frontend-ui.md`. -->
+      <h2 class="text-2xl transition-opacity" :class="opacity" :style="head(0, 0)">Auswertung</h2>
+      <!-- Two elements, not one: the fade outside, the pulse inside. See the points cell below. -->
+      <span
+        v-if="props.live"
+        class="block transition-opacity"
+        :class="opacity"
+        :style="head(0, pointsColumn)"
+      >
         <span
           data-test="pattern-scoreboard-live"
           class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
@@ -85,7 +88,7 @@ function cell(tick: number, column: number) {
         <span
           class="bg-neutral-900 px-1 text-xs text-neutral-50 transition-opacity"
           :class="opacity"
-          :style="head(0, 0)"
+          :style="head(0, TIP_COLUMN)"
           >Lösung</span
         >
         <div class="flex flex-row gap-px">
@@ -95,7 +98,7 @@ function cell(tick: number, column: number) {
             data-test="solution-chip"
             class="size-6 content-center text-center font-mono text-xs transition-opacity"
             :class="opacity"
-            :style="{ backgroundColor: chip.hex, color: chip.ink, ...head(1, 0) }"
+            :style="{ backgroundColor: chip.hex, color: chip.ink, ...head(1, TIP_COLUMN) }"
           >
             {{ chip.value }}
           </span>
@@ -103,7 +106,13 @@ function cell(tick: number, column: number) {
       </div>
     </div>
 
-    <table class="mt-2 w-full border-separate border-spacing-px">
+    <table class="mt-2 w-full table-fixed border-separate border-spacing-px">
+      <colgroup>
+        <col />
+        <col class="w-28" />
+        <col v-if="timed" class="w-14" />
+        <col class="w-9" />
+      </colgroup>
       <thead>
         <tr>
           <th
@@ -120,7 +129,7 @@ function cell(tick: number, column: number) {
       <tbody>
         <tr v-for="row in props.rows" :key="row.userId">
           <td
-            class="px-1 transition-opacity"
+            class="truncate px-1 transition-opacity"
             :class="opacity"
             :style="{ backgroundColor: row.colorHex, color: row.ink, ...cell(row.tick, 0) }"
           >
@@ -163,8 +172,15 @@ function cell(tick: number, column: number) {
               ...cell(row.tick, pointsColumn),
             }"
           >
-            <!-- The fade sits outside, the pulse on the child: one element carrying both would
-                 blink into view from the first frame, whatever the delay says. -->
+            <!--
+              The pulse may never share an element with the fade. Tailwind's `animate-pulse`
+              declares only `50% { opacity: .5 }`, so its implicit 0%/100% endpoints take the
+              element's own current opacity, and a running animation outranks a plain class — so
+              `animate-pulse` beside `opacity-0` would not stay hidden: it drives 0 → .5 → 0 every
+              two seconds and the cell blinks into view from the first frame, ignoring the
+              `transition-delay` above. Nesting fixes it: an `opacity-0` ancestor composites its
+              whole subtree away whatever the child's own opacity animates to.
+            -->
             <span :class="row.provisional ? 'animate-pulse motion-reduce:animate-none' : ''">{{
               row.points ?? '—'
             }}</span>

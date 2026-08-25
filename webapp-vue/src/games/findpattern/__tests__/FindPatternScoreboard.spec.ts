@@ -28,9 +28,15 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
   }
 }
 
-function mountBoard(rows: ScoreRow[]) {
+function mountBoard(props: Partial<InstanceType<typeof FindPatternScoreboard>['$props']> = {}) {
   return mount(FindPatternScoreboard, {
-    props: { rows, solutionChips: CHIPS, live: false, animate: false },
+    props: {
+      rows: [row({ userId: 'a' })],
+      solutionChips: CHIPS,
+      live: false,
+      animate: false,
+      ...props,
+    },
   })
 }
 
@@ -45,55 +51,65 @@ describe('FindPatternScoreboard', () => {
   })
 
   it('shows the solution and one row per player', () => {
-    const wrapper = mountBoard([
-      row({ userId: 'a' }),
-      row({ userId: 'b', points: 0, correct: false }),
-    ])
+    const wrapper = mountBoard({
+      rows: [row({ userId: 'a' }), row({ userId: 'b', points: 0, correct: false })],
+    })
 
     expect(wrapper.findAll('[data-test="solution-chip"]')).toHaveLength(4)
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
   })
 
   it('prints every tone index, so the palette can be read against it', () => {
-    const wrapper = mountBoard([row({ userId: 'a' })])
+    const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 
     expect(wrapper.get('[data-test="tip-a"]').text()).toBe('1230')
   })
 
   it('leaves the clock column out of a round that was not timed', () => {
-    const wrapper = mountBoard([row({ userId: 'a' })])
+    const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 
     expect(wrapper.text()).not.toContain('[mm:ss]')
   })
 
   it('shows the clock column as soon as a row has a duration', () => {
-    const wrapper = mountBoard([row({ userId: 'a', durationLabel: '00:42' })])
+    const wrapper = mountBoard({ rows: [row({ userId: 'a', durationLabel: '00:42' })] })
 
     expect(wrapper.text()).toContain('[mm:ss]')
     expect(wrapper.text()).toContain('00:42')
   })
 
   it('says so when somebody gave up instead of printing four empty chips', () => {
-    const wrapper = mountBoard([
-      row({ userId: 'a', gaveUp: true, chips: [], correct: false, points: 0 }),
-    ])
+    const wrapper = mountBoard({
+      rows: [row({ userId: 'a', gaveUp: true, chips: [], correct: false, points: 0 })],
+    })
 
     expect(wrapper.get('[data-test="tip-a"]').text()).toContain('aufgegeben')
   })
 
-  it('never puts a fade and a pulse on one element', () => {
-    const wrapper = mountBoard([row({ userId: 'a', provisional: true })])
+  it('never puts the pulse on an element the fade is meant to hide', () => {
+    // Tailwind's `pulse` declares only `50% { opacity: .5 }`, so its implicit 0%/100% endpoints
+    // take the element's *underlying* opacity — and an animation outranks a plain class. On an
+    // element that also carries `opacity-0` the animation therefore drives it 0 → .5 → 0 instead
+    // of leaving it hidden, and the cell blinks into view from the first frame, long before its
+    // own `transition-delay` is up. The two must therefore live on two elements — an outer one
+    // the fade hides, an inner one that pulses inside it — independent of whether `shown` happens
+    // to be true or false at the time this runs.
+    const wrapper = mountBoard({
+      live: true,
+      rows: [row({ userId: 'a', provisional: true, points: 2 })],
+    })
 
-    const both = wrapper
-      .findAll('*')
-      .filter((el) => el.classes('animate-pulse') && el.classes('opacity-0'))
-    expect(both).toHaveLength(0)
+    const pulsing = wrapper.findAll('.animate-pulse')
+    expect(pulsing.length).toBeGreaterThan(0)
+    for (const el of pulsing) {
+      expect(el.classes()).not.toContain('transition-opacity')
+      expect(el.classes()).not.toContain('opacity-0')
+      expect(el.classes()).not.toContain('opacity-100')
+    }
   })
 
   it('shows a pulsing live chip while the round can still change', () => {
-    const wrapper = mount(FindPatternScoreboard, {
-      props: { rows: [row({ userId: 'a' })], solutionChips: CHIPS, live: true, animate: false },
-    })
+    const wrapper = mountBoard({ live: true })
 
     const live = wrapper.get('[data-test="pattern-scoreboard-live"]')
     expect(live.text()).toContain('live')
@@ -101,7 +117,7 @@ describe('FindPatternScoreboard', () => {
   })
 
   it('hides the live chip once the round is settled', () => {
-    const wrapper = mountBoard([row({ userId: 'a' })])
+    const wrapper = mountBoard({ live: false })
 
     expect(wrapper.find('[data-test="pattern-scoreboard-live"]').exists()).toBe(false)
   })
@@ -109,7 +125,7 @@ describe('FindPatternScoreboard', () => {
   it('is fully written the moment a reload lands on a spent round', () => {
     // `.transition-opacity` is the static class every cell bound to `:class="opacity"` carries,
     // so this selects exactly the cells the fade touches.
-    const wrapper = mountBoard([row({ userId: 'a' })])
+    const wrapper = mountBoard({ animate: false })
     const cells = wrapper.findAll('.transition-opacity')
 
     expect(cells.length).toBeGreaterThan(0)
@@ -119,13 +135,9 @@ describe('FindPatternScoreboard', () => {
   })
 
   it('types itself in, cell by cell and row by row, once it is a live reveal', async () => {
-    const wrapper = mount(FindPatternScoreboard, {
-      props: {
-        rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
-        solutionChips: CHIPS,
-        live: false,
-        animate: true,
-      },
+    const wrapper = mountBoard({
+      animate: true,
+      rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
     })
 
     // Two frames before anything is shown: the painted opacity-0 frame Firefox needs.
