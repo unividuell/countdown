@@ -38,7 +38,8 @@ Tap-Grenze fällt.
 **Tippabgabe** (aus dem Original übernommen, weil die Regel gut ist):
 
 1. Irgendeinen Block antippen, der Teil der gesuchten Folge sein soll.
-2. Von dort aus weitere **direkte Nachbarn in Leserichtung** (Index ± 1) antippen.
+2. Von dort aus weitere **direkte Nachbarn in der Lesefolge** (Index ± 1) antippen — nach vorn und
+   nach hinten, die Leserichtung ordnet nur die Folge, nicht die Reihenfolge des Antippens.
 3. Sobald vier Blöcke ausgewählt sind, wird der Tipp **sofort** abgegeben.
 4. Neu anfangen geht, indem man einen bereits gewählten Block oder einen Nicht-Nachbarn antippt.
 
@@ -151,8 +152,15 @@ rechnet nur auf der JVM, der Client bekommt Hex-Strings. `pow`/`cbrt` sind hier 
 ## Bilder
 
 `java.awt.image.BufferedImage` + `ImageIO`, headless (Spring Boots Standard). Board bei 24 px pro
-Block = 192 × 336, vier Flächen — als PNG einige hundert Byte, base64 unter 1 KB. Muster: 4 × 1
-Blöcke. Der Rahmen bleibt CSS, nicht Bild.
+Block = 192 × 336, vier Flächen — als PNG einige hundert Byte, base64 unter 1 KB. Der Rahmen bleibt
+CSS, nicht Bild.
+
+**Das Muster-Bild ist genauso breit wie das Board, mit größeren Blöcken** — die Proportion des
+Originals (`scale = 30` gegen `searchPatternScale = 60`): 4 × 48 px = 192 = 8 × 24 px. Damit ist die
+Blockgröße des Musters `boardBlockPx · cols / patternLength`, und beide Bilder füllen im Browser
+dieselbe Breite, ohne dass eines skaliert werden müsste. Die größeren Blöcke sind kein Zierrat: das
+Muster ist das, was man sich einprägen muss, und vier dicht benachbarte Töne trennt das Auge auf
+Fläche besser als auf einer kleinen.
 
 Skaliert wird im Browser über die Breite mit `image-rendering: pixelated`, damit Blockkanten hart
 bleiben; das Overlay-Gitter skaliert mit derselben Breite mit, sodass Bild und Zellen nicht
@@ -237,12 +245,13 @@ gefälschter Guess in der Datenbank.
 ### Ein Gitter, zwei Nutzer
 
 `PatternGrid.vue` trägt das Board-Bild plus ein transparentes CSS-Grid-Overlay und eine Liste von
-Markierungen. Drei Arten, alle über Zellindex adressiert:
+Markierungen. Zwei Arten, beide über Zellindex adressiert:
 
 - **Outline** — ein Rahmen in einer Spielerfarbe, mit Einrückung (`inset`), damit sich mehrere
   stapeln lassen.
-- **Dot** — ein Punkt in der Zellmitte.
-- **Zahl** — der Farbindex der Zelle.
+- **Zahl** — der Farbindex der Zelle, in `readableTextColor(palette[blocks[i]])`. Ohne diese
+  Ink-Entscheidung pro Zelle wäre die Zahl auf dem einen Ende der Palette unlesbar; sie ist derselbe
+  Griff, den das Scoreboard für seine Chips anwendet.
 
 Board und Reveal sind damit dieselbe Darstellung. Das ist der Grund, warum die Tippmarkierung schon
 beim Spielen eine Outline ist und kein weißer Ring wie im Original: was man beim Raten gesehen hat,
@@ -266,6 +275,12 @@ mittleren Breakpoint rechts daneben. Mechanik und Inhalt trennen: `ui/InfoBox.vu
 aus und merkt sich das in `localStorage`; der Text kommt komplett per Slot. An der Klapp- und
 Merk-Logik ist nichts spielspezifisch.
 
+**Der Storage-Key ist die Game-ID**, nicht die Runde: wer ein Spiel verstanden und die Erklärung
+zugeklappt hat, hat sie für diesen Spieltyp dauerhaft zugeklappt. Das Original hielt dieselbe
+Entscheidung serverseitig pro Nutzer und Spieltyp (`gameConfigurations/{gameType}`); `localStorage`
+kostet dafür keine Tabelle und keinen Request, und der Preis — ein neues Gerät klappt wieder auf —
+ist genau die Situation, in der die Erklärung ohnehin willkommen ist.
+
 Das Layout wird im Labor ausprobiert — zwei bis drei Varianten, mobil und Desktop, Entscheidung am
 Bild.
 
@@ -276,13 +291,15 @@ Dasselbe Gitter, jetzt mit:
 - **allen Tipps als Outlines** — der eigene ganz außen (Einrückung 0), fremde je Kollision 2 px nach
   innen. Außen liegt der eigene, damit er dort liegt, wo er beim Spielen lag; das Original hatte die
   Reihenfolge der Datenbank.
-- **den Möglichkeiten als Dots** — vier pro Möglichkeit, je einer zentriert im Kästchen. Überlappen
-  zwei Möglichkeiten, ist es ein Dot für beide (die Indizes sind eine Menge); der Lauf wird dann
-  sichtbar länger als vier, was der Wahrheit entspricht. Der Dot ist nicht bunt (dunkel mit hellem
-  Ring), damit „farbig“ weiterhin „ein Spieler“ heißt.
 - **der Zahl-Inspektion** — Tap auf ein Kästchen schaltet seinen Farbindex ein und aus. Damit lässt
   sich nachträglich prüfen, ob eine andere Stelle die Lösung gewesen wäre. Aus dem Original
-  (`writeAtIndex`), das der Nutzer als fehlend gemeldet hat.
+  (`writeAtIndex`).
+- **den Möglichkeiten** — und das ist **kein eigenes Konzept**: die Kästchen aller `startIndices`
+  starten mit *eingeblendeter* Zahl. Sie sind toggelbar wie jedes andere Kästchen, nur ist ihr
+  Anfangszustand der umgekehrte. Der Zustand einer Zelle ist damit „Startzustand ⊕ angetippt“, eine
+  pure Funktion über einer Index-Menge — und die Auflösung braucht keine zweite Formsprache neben
+  Outline und Zahl. Überlappende Möglichkeiten fallen dabei von selbst zu einem längeren Lauf
+  zusammen, weil eine Zelle nur einen Zustand hat.
 
 Das Muster-Bild fällt im Reveal weg: die vier Lösungs-Chips über der Tabelle zeigen dasselbe, und
 zusätzlich ihren Farbindex.
@@ -290,8 +307,9 @@ zusätzlich ihren Farbindex.
 Daneben (nicht darunter, wie im Original) die **Palette**: vier Kreise mit ihrem Index und darunter
 Δ. Das `°` des Originals fällt weg — es war Erbe des Hue-Modus, ein Grau-Abstand ist kein Winkel.
 
-**Der Farbindex ist die verbindende Zahl** und deshalb an vier Stellen dieselbe: im Board (nach Tap),
-in der Palette, in der Lösungs-Zeile des Scoreboards und in jeder Tipp-Zelle.
+**Der Farbindex ist die verbindende Zahl** und deshalb an vier Stellen dieselbe: im Board (bei den
+Möglichkeiten sofort, sonst nach Tap), in der Palette, in der Lösungs-Zeile des Scoreboards und in
+jeder Tipp-Zelle.
 
 ### Scoreboard
 
@@ -322,7 +340,8 @@ Musterungs Reveal fährt damit dieselben Stufen:
 
 1. **Wechsel** — der eigene Tipp bleibt stehen. Er steht auf demselben Bild an derselben Stelle, also
    ist „stehenbleiben“ hier keine Animation, sondern die Abwesenheit einer.
-2. **~900 ms** — die Möglichkeiten-Dots, der Tabellenkopf mit den Lösungs-Chips und die Palette.
+2. **~900 ms** — die Zahlen der Möglichkeiten, der Tabellenkopf mit den Lösungs-Chips und die
+   Palette.
 3. **ab ~1900 ms** — die fremden Tipps, jeder gekoppelt an seine Tabellenzeile über dieselbe
    `cellDelayMs` und die Tipp-Spalte. Ein Zeitplan, keine zwei.
 
@@ -357,9 +376,10 @@ sind; das ist die bekannte, bewusste Grenze des Labors.
 - `selection.ts`: alle vier Auswahlregeln, Loch-Erkennung, Auto-Abgabe bei vier.
 - `scoreboard.ts`: Sortierung in beiden Phasen, `durationMs`-Formatierung (mm:ss, Minuten laufen
   über 59 hinaus), fehlende Werte.
-- `PatternGrid`: die drei Markierungsarten, Zellindex → Position.
+- `PatternGrid`: beide Markierungsarten, Zellindex → Position, Ink pro Zelle.
 - Board: Tap-Folge → ein `guess`-Emit mit dem richtigen `startIndex`.
-- Reveal: Outlines gestapelt, Dots pro Möglichkeit, Zahl-Toggle, Palette.
+- Reveal: Outlines gestapelt, Zahlen der Möglichkeiten sofort sichtbar, Toggle in beide Richtungen
+  (eine Möglichkeit aus, ein anderes Kästchen ein), Palette.
 - `InfoBox`: Klappen und Persistenz.
 - `revealChoreography`: die hochgezogenen Funktionen, mit den Assertions aus Guess Hues Tests.
 
