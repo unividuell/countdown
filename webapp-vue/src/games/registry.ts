@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 
@@ -13,4 +14,5 @@ import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 export const gameComponents: Record<string, Component> = {
   'guess-hue': GuessHueGame,
   'song-snippet': SongSnippetGame,
+  'find-pattern': FindPatternGame,
 }
