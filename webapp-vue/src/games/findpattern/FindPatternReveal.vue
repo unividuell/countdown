@@ -32,11 +32,16 @@ const props = defineProps<{
 }>()
 
 /**
- * Whether the beats may run at all — the same two questions every reveal in this app asks once,
- * at the moment the choreography would start: a reload (`animate` false), reduced motion and a
- * background tab all mean "just be there", not "be there eventually".
+ * Whether the beats may run at all — the same questions every reveal in this app asks once, at
+ * the moment the choreography would start: a reload (`animate` false), reduced motion, a
+ * background tab, and an environment with no animation frames at all mean "just be there", not
+ * "be there eventually".
  */
-const still = !props.animate || prefersReducedMotion() || inBackground()
+const still =
+  !props.animate ||
+  prefersReducedMotion() ||
+  inBackground() ||
+  typeof requestAnimationFrame !== 'function'
 
 function hasStartIndex(row: ScoreRow): row is ScoreRow & { startIndex: number } {
   return row.startIndex !== null
@@ -73,6 +78,9 @@ const preLit = computed(() => {
 
 const toggled = ref(new Set<number>())
 
+/** Beat 3, together for every possibility — there is no per-cell order to stagger them by. */
+const numberDelayMs = still ? 0 : SOLUTION_DELAY_MS
+
 const numbers = computed<PatternNumber[]>(() => {
   const cells: PatternNumber[] = []
   for (let index = 0; index < props.solution.blocks.length; index++) {
@@ -80,7 +88,7 @@ const numbers = computed<PatternNumber[]>(() => {
     const tone = props.solution.blocks[index]!
     const hex = props.solution.palette[tone]
     if (hex === undefined) continue
-    cells.push({ index, value: tone, ink: readableTextColor(hex) })
+    cells.push({ index, value: tone, ink: readableTextColor(hex), delayMs: numberDelayMs })
   }
   return cells
 })
@@ -103,16 +111,6 @@ const deltaLabel = computed(() =>
     props.solution.delta,
   ),
 )
-
-/**
- * Beat 3: the possibilities' numbers land with the palette and the scoreboard's head. Set on the
- * grid itself rather than on each number — `PatternGrid` mounts every lit number from the first
- * render, so this delay only postpones the moment the browser is even asked to consider the
- * property, which is the one lever available here without reaching into `PatternGrid`.
- */
-const numbersStyle = computed(() => ({
-  transitionDelay: still ? '0ms' : `${SOLUTION_DELAY_MS}ms`,
-}))
 
 /** Same beat, driven the same way as `FindPatternScoreboard`'s head and `HueWheelReveal`'s sector. */
 const shown = ref(still)
@@ -142,7 +140,7 @@ const paletteStyle = {
 <template>
   <div data-test="pattern-reveal" class="flex flex-col gap-6">
     <div class="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_8rem] md:items-start">
-      <div data-test="pattern-solution-frame" class="min-w-0" :style="numbersStyle">
+      <div class="min-w-0">
         <PatternGrid
           :image="props.payload.boardImage"
           :cols="props.payload.cols"
@@ -150,6 +148,7 @@ const paletteStyle = {
           :outlines="outlines"
           :numbers="numbers"
           :interactive="true"
+          :still="still"
           @cell="onCell"
         />
       </div>

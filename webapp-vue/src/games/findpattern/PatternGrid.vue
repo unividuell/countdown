@@ -9,8 +9,12 @@
  *
  * `image-rendering: pixelated` keeps the block edges hard while the width is fluid; the grid uses the
  * same width, so the two cannot drift apart.
+ *
+ * Outlines and numbers can fade in on their own `delayMs`, or simply be there — `still` chooses.
+ * The board (this component's first caller) always wants the second: its own selection is drawn as
+ * it grows, never staged, so `still` defaults to `true` and the board never has to mention it.
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { CellOutline } from './marks'
 
 export interface PatternNumber {
@@ -18,16 +22,23 @@ export interface PatternNumber {
   value: number
   /** Ink that reads against this cell's tone — decided by the caller, which knows the palette. */
   ink: string
+  /** When this number fades in, like [CellOutline.delayMs]. Missing means immediately. */
+  delayMs?: number
 }
 
-const props = defineProps<{
-  image: string
-  cols: number
-  rows: number
-  outlines: CellOutline[]
-  numbers: PatternNumber[]
-  interactive: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    image: string
+    cols: number
+    rows: number
+    outlines: CellOutline[]
+    numbers: PatternNumber[]
+    interactive: boolean
+    /** True draws every mark at once. False stages marks behind their own `delayMs` instead. */
+    still?: boolean
+  }>(),
+  { still: true },
+)
 
 const emit = defineEmits<{ cell: [index: number] }>()
 
@@ -58,6 +69,32 @@ const cellViews = computed<CellView[]>(() => {
 // simply never reachable by a click on one of them — this is the belt to that suspenders.
 function onCell(index: number): void {
   if (props.interactive) emit('cell', index)
+}
+
+/**
+ * Armed once, the same way `HueWheelReveal` arms its markers: a mark at `delayMs` 0 is never
+ * gated — that covers both `still` (a reload draws everything at 0) and a live reveal's own tip,
+ * which must never fade — and every other mark waits for `shown`, which flips only once the
+ * browser has painted the opposite state at least once. Firefox will not start a transition off a
+ * style it has not already resolved in an earlier frame; see `HueWheelReveal` for the full case.
+ */
+const shown = ref(props.still)
+let frame = 0
+onMounted(() => {
+  if (props.still) return
+  frame = requestAnimationFrame(() => {
+    void document.body.offsetHeight
+    frame = requestAnimationFrame(() => {
+      shown.value = true
+    })
+  })
+})
+onBeforeUnmount(() => {
+  if (frame) cancelAnimationFrame(frame)
+})
+
+function markOpacity(delayMs: number | undefined): string {
+  return (delayMs ?? 0) === 0 || shown.value ? 'opacity-100' : 'opacity-0'
 }
 </script>
 
@@ -90,6 +127,7 @@ function onCell(index: number): void {
           :key="depth"
           :data-test="`pattern-outline-${cell.index}`"
           class="pointer-events-none absolute transition-opacity"
+          :class="markOpacity(outline.delayMs)"
           :style="{
             top: `${outline.insetPx}px`,
             right: `${outline.insetPx}px`,
@@ -103,7 +141,8 @@ function onCell(index: number): void {
           v-if="cell.number"
           :data-test="`pattern-number-${cell.index}`"
           class="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[0.6rem] leading-none transition-opacity"
-          :style="{ color: cell.number.ink }"
+          :class="markOpacity(cell.number.delayMs)"
+          :style="{ color: cell.number.ink, transitionDelay: `${cell.number.delayMs ?? 0}ms` }"
         >
           {{ cell.number.value }}
         </span>

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
-import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
 
@@ -123,10 +123,20 @@ describe('FindPatternReveal', () => {
     expect(tones[0]!.element.style.color).not.toBe(tones[3]!.element.style.color)
   })
 
-  it('carries the scoreboard', () => {
-    const wrapper = mountReveal([row({ userId: 'mine' })])
+  it('carries the scoreboard, wired to the same rows, solution and settings', () => {
+    const wrapper = mountReveal(
+      [row({ userId: 'mine' }), row({ userId: 'other', points: 0, correct: false })],
+      { live: true, animate: true },
+    )
 
-    expect(wrapper.find('[data-test="pattern-scoreboard"]').exists()).toBe(true)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    expect(wrapper.find('[data-test="tip-mine"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="solution-chip"]').map((chip) => chip.text())).toEqual(
+      SOLUTION.pattern.map(String),
+    )
+    expect(wrapper.find('[data-test="pattern-scoreboard-live"]').exists()).toBe(true)
+    // `animate` reaches the scoreboard too — it has not had its own chance to fade in yet.
+    expect(wrapper.get('tbody td').classes()).toContain('opacity-0')
   })
 
   it('does not show the search pattern image again', () => {
@@ -174,12 +184,36 @@ describe('FindPatternReveal', () => {
       )
     })
 
-    it('delays the possibilities to beat 3, with the palette', () => {
+    it("keeps every other player's outline hidden until the beats begin, mine never hidden", async () => {
+      const wrapper = mountReveal(
+        [
+          row({ userId: 'other', colorHex: '#00ff00', startIndex: 5, tick: 1 }),
+          row({ userId: 'mine', colorHex: '#ff0000', startIndex: 5, tick: 0 }),
+        ],
+        { animate: true },
+      )
+
+      const [mine, other] = wrapper.findAll('[data-test="pattern-outline-5"]')
+      expect(mine!.classes()).toContain('opacity-100')
+      expect(other!.classes()).toContain('opacity-0')
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.findAll('[data-test="pattern-outline-5"]')[1]!.classes()).toContain(
+        'opacity-100',
+      )
+    })
+
+    it('starts the possibilities hidden, then lights them on beat 3', async () => {
       const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
 
-      expect(wrapper.get('[data-test="pattern-solution-frame"]').attributes('style')).toContain(
-        `transition-delay: ${SOLUTION_DELAY_MS}ms`,
-      )
+      expect(wrapper.get('[data-test="pattern-number-1"]').classes()).toContain('opacity-0')
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('[data-test="pattern-number-1"]').classes()).toContain('opacity-100')
     })
 
     it('starts the palette hidden, then fades it in on beat 3', async () => {
