@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueScoreboard from '@/games/guesshue/GuessHueScoreboard.vue'
-import { RESULTS_DELAY_MS } from '@/games/guesshue/reveal'
+import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import type { ScoreboardRow, ScoreboardSolution } from '@/games/guesshue/scoreboard'
 
 const SOLUTION: ScoreboardSolution = { hue: 123.4, hex: '#5ce65c', ink: '#111111' }

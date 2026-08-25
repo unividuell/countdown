@@ -7,8 +7,8 @@ import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
-import { tickOfRow } from './reveal'
 import { hueOf } from './types'
+import { tickOfRow } from '@/games/revealChoreography'
 
 export interface ScoreboardRow {
   userId: string

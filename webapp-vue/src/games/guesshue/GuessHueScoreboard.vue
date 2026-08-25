@@ -13,8 +13,8 @@
  * ever moves — see the design doc.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { FADE_MS, TIP_COLUMN, cellDelayMs, headCellDelayMs } from './reveal'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
+import { FADE_MS, TIP_COLUMN, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{

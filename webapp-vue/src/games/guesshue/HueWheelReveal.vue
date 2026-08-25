@@ -12,16 +12,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { hueName, wrap360 } from './geometry'
 import HueRing from './HueRing.vue'
 import HueToleranceSector from './HueToleranceSector.vue'
-import {
-  BAND_GROW_MS,
-  FADE_MS,
-  RESULTS_DELAY_MS,
-  SECTOR_DELAY_MS,
-  layoutGuesses,
-  sectorInk,
-  type RevealGuess,
-} from './reveal'
+import { BAND_GROW_MS, layoutGuesses, sectorInk, type RevealGuess } from './reveal'
 import { BAND_INNER_FRACTION, easeOutCubic, trackBoxStyle } from './wheel'
+import { FADE_MS, RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{
@@ -153,7 +146,7 @@ const label = computed(() => {
         aria-hidden="true"
         class="absolute inset-0 transition-opacity"
         :class="shown ? 'opacity-100' : 'opacity-0'"
-        :style="{ transitionDuration: `${FADE_MS}ms`, transitionDelay: `${SECTOR_DELAY_MS}ms` }"
+        :style="{ transitionDuration: `${FADE_MS}ms`, transitionDelay: `${SOLUTION_DELAY_MS}ms` }"
       >
         <HueToleranceSector
           :target-hue="props.targetHue"
