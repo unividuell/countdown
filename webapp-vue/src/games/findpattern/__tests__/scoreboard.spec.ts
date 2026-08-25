@@ -115,6 +115,31 @@ describe('scoreRows', () => {
     expect(rows.map((row) => row.userId)).toEqual(['a', 'b'])
   })
 
+  it('breaks the clock tie by milliseconds, not by comparing the mm:ss label as text', () => {
+    // "100:00" sorts before "60:00" as text ('1' < '6'), but 6_000_000 ms is the slower duration.
+    const rows = scoreRows({
+      entries: [
+        entry({
+          userId: 'hundred-minutes',
+          guess: { startIndex: 1 },
+          points: 0,
+          durationMs: 6_000_000,
+        }),
+        entry({
+          userId: 'sixty-minutes',
+          guess: { startIndex: 5 },
+          points: 0,
+          durationMs: 3_600_000,
+        }),
+      ],
+      solution: SOLUTION,
+      awardRule: 'CLOSEST_ONLY',
+      mineUserId: 'sixty-minutes',
+    })
+
+    expect(rows.map((row) => row.userId)).toEqual(['sixty-minutes', 'hundred-minutes'])
+  })
+
   it('calls a closest-only score provisional while it can still be overtaken', () => {
     const rows = scoreRows({
       entries: [

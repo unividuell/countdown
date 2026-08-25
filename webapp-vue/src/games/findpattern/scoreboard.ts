@@ -5,6 +5,7 @@
  * above it has nothing left to get wrong.
  */
 import type { AwardRule } from '@/api/types'
+import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -51,14 +52,6 @@ export function formatDuration(ms: number | null): string | null {
   return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-/**
- * Word for word the server's own rule (`RoundPlayPoints.kt`): under „closest only“ a score above zero
- * can still be taken away, a zero is final.
- */
-function isProvisional(points: number | null, awardRule: AwardRule | null): boolean {
-  return awardRule === 'CLOSEST_ONLY' && points !== null && points > 0
-}
-
 export function scoreRows(input: {
   entries: readonly GameEntry[]
   solution: FindPatternSolution
@@ -71,34 +64,37 @@ export function scoreRows(input: {
     const tones =
       startIndex === null ? [] : input.solution.blocks.slice(startIndex, startIndex + patternLength)
     return {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
-      chips: toneChips(tones, input.solution.palette),
-      // Read off the board rather than off `outcome`: the row's own chips sit right under the
-      // solution's, so „correct“ has to be the same comparison the reader is making.
-      correct:
-        tones.length === patternLength &&
-        tones.every((tone, at) => tone === input.solution.pattern[at]),
-      gaveUp: startIndex === null,
-      durationLabel: formatDuration(entry.durationMs),
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
-      startIndex,
+      durationMs: entry.durationMs,
+      row: {
+        userId: entry.userId,
+        name: entry.username,
+        colorHex: entry.avatar.bgColorHex,
+        ink: readableTextColor(entry.avatar.bgColorHex),
+        chips: toneChips(tones, input.solution.palette),
+        // Read off the board rather than off `outcome`: the row's own chips sit right under the
+        // solution's, so „correct“ has to be the same comparison the reader is making.
+        correct:
+          tones.length === patternLength &&
+          tones.every((tone, at) => tone === input.solution.pattern[at]),
+        gaveUp: startIndex === null,
+        durationLabel: formatDuration(entry.durationMs),
+        points: entry.points,
+        provisional: isProvisional(entry.points, input.awardRule),
+        startIndex,
+      },
     }
   })
 
   ranked.sort(
     (a, b) =>
-      (b.points ?? -1) - (a.points ?? -1) ||
-      Number(b.correct) - Number(a.correct) ||
-      durationOrder(a.durationLabel, b.durationLabel) ||
-      a.userId.localeCompare(b.userId),
+      (b.row.points ?? -1) - (a.row.points ?? -1) ||
+      Number(b.row.correct) - Number(a.row.correct) ||
+      durationOrder(a.durationMs, b.durationMs) ||
+      a.row.userId.localeCompare(b.row.userId),
   )
 
-  const myRank = ranked.findIndex((row) => row.userId === input.mineUserId)
-  return ranked.map((row, rank) => ({
+  const myRank = ranked.findIndex((item) => item.row.userId === input.mineUserId)
+  return ranked.map(({ row }, rank) => ({
     ...row,
     tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
   }))
@@ -108,10 +104,14 @@ export function hasDurations(rows: readonly ScoreRow[]): boolean {
   return rows.some((row) => row.durationLabel !== null)
 }
 
-/** Faster first; a row without a clock sorts after one with it rather than winning by default. */
-function durationOrder(a: string | null, b: string | null): number {
+/**
+ * Faster first, by the millisecond the server measured — never by comparing the `mm:ss` label as
+ * text, which inverts past two-digit minutes (`"100:00"` sorts before `"60:00"`). A row without a
+ * clock sorts after one with it rather than winning by default.
+ */
+function durationOrder(a: number | null, b: number | null): number {
   if (a === b) return 0
   if (a === null) return 1
   if (b === null) return -1
-  return a.localeCompare(b)
+  return a - b
 }
