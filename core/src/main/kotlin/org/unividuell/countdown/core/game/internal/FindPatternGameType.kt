@@ -113,9 +113,12 @@ class FindPatternGameType : GameType<FindPatternParams> {
 
     override fun judge(params: FindPatternParams, guess: JsonNode): Judgement {
         val startIndex = guess.get("startIndex")
-            ?.takeIf { it.isIntegralNumber }
+            // isIntegralNumber() alone is not enough: it is true for LongNode/BigIntegerNode
+            // regardless of magnitude, and their asInt() throws JsonNodeException once the value
+            // does not fit in 32 bits — canConvertToInt() is the guard that actually reflects that.
+            ?.takeIf { it.isIntegralNumber && it.canConvertToInt() }
             ?.asInt()
-            ?: throw InvalidGuessException("guess must carry an integral 'startIndex'")
+            ?: throw InvalidGuessException("guess must carry an integral 'startIndex' in int range")
         if (startIndex < 0 || startIndex > FindPatternLayout.LAST_START_INDEX) {
             throw InvalidGuessException(
                 "startIndex must lie in [0, ${FindPatternLayout.LAST_START_INDEX}], was $startIndex",

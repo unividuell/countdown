@@ -154,6 +154,11 @@ class FindPatternGameTypeTest {
         shouldThrow<InvalidGuessException> {
             game.judge(params = params, guess = guessOf(FindPatternLayout.LAST_START_INDEX + 1))
         }
+        // An integral node beyond Int range: isIntegralNumber() is true, but asInt() would throw
+        // JsonNodeException rather than InvalidGuessException — the gate must catch it first.
+        shouldThrow<InvalidGuessException> {
+            game.judge(params = params, guess = mapper.readTree("""{"startIndex":99999999999999}"""))
+        }
         shouldThrow<InvalidGuessException> {
             game.judge(params = params, guess = mapper.readTree("""{"startIndex":"3"}"""))
         }
