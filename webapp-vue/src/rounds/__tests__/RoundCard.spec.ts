@@ -387,4 +387,18 @@ describe('RoundCard', () => {
     expect(stub.exists()).toBe(true)
     expect(stub.props('entries')).toEqual([other])
   })
+
+  it('says what the reveal costs before it is clicked', () => {
+    const w = mountCard({ round: aRound(), stage: 'sealed' })
+
+    const notice = w.get('[data-test="round-reveal-cost"]').text()
+    expect(notice).toContain('Zeit')
+    expect(notice).toContain('einen Versuch')
+  })
+
+  it('says nothing about a clock on a round that is being played', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), stage: 'playing' })
+
+    expect(w.find('[data-test="round-reveal-cost"]').exists()).toBe(false)
+  })
 })

@@ -121,6 +121,15 @@ function onGiveUp(): void {
       </p>
 
       <div v-else-if="face === 'sealed'" class="flex flex-col items-center gap-4 text-center">
+        <!--
+          Framework copy, not a game's: `sealed` exists only because a game answered
+          `requiresReveal` with true, and that flag means the same thing for every game that ever
+          sets it — the clock starts here, and there is no second attempt. The game's own component
+          is not even mounted yet, so this is the only place the sentence can stand.
+        -->
+        <p data-test="round-reveal-cost" class="text-sm text-neutral-600">
+          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+        </p>
         <button
           type="button"
           data-test="round-reveal"
