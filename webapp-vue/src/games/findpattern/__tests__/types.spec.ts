@@ -31,6 +31,10 @@ describe('isFindPatternPayload', () => {
     expect(isFindPatternPayload({ ...PAYLOAD, cols: '8' })).toBe(false)
     expect(isFindPatternPayload({ ...PAYLOAD, boardImage: undefined })).toBe(false)
   })
+
+  it('rejects a fractional cols — a cell count can only be whole', () => {
+    expect(isFindPatternPayload({ ...PAYLOAD, cols: 8.5 })).toBe(false)
+  })
 })
 
 describe('asFindPatternSolution', () => {
@@ -43,6 +47,13 @@ describe('asFindPatternSolution', () => {
     expect(asFindPatternSolution({ ...SOLUTION, palette: ['#fff'] })).toBeNull()
     expect(asFindPatternSolution({ ...SOLUTION, delta: 'wide' })).toBeNull()
     expect(asFindPatternSolution({ ...SOLUTION, blocks: [1, 'x', 3] })).toBeNull()
+  })
+
+  /** A fractional tone would index the palette as `undefined` — see the comment beside the bounds check. */
+  it('is null for a fractional block value', () => {
+    const blocks = [...SOLUTION.blocks]
+    blocks[0] = 1.5
+    expect(asFindPatternSolution({ ...SOLUTION, blocks })).toBeNull()
   })
 })
 
