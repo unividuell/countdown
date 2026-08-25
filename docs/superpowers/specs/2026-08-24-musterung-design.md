@@ -108,10 +108,15 @@ Fairness.
 data class FindPatternParams(
     val blocks: List<Int>,        // 112 Werte 0..3 — presentation
     val patternStartIndex: Int,   // 0..108 — solution
+    val palette: List<String>,    // 4 Hex, beim Zug berechnet — presentation
     val delta: Double,            // presentation
     val timed: Boolean,           // aus der Phase
 )
 ```
+
+Eingefroren wird die **fertige Palette**, nicht der Referenzpunkt, aus dem sie entsteht: `present()`
+und `solution()` bleiben damit Feldzugriffe, und eine spätere Änderung der Palettenmathematik kann
+keine laufende Runde umfärben.
 
 **Die Stromtrennung ist hier subtiler als bei den anderen Spielen** und darum ausgeschrieben: Das
 Gitter *wird gezeigt*, also kommt es aus `presentation` — samt `delta`, das man am Bild ablesen kann.
