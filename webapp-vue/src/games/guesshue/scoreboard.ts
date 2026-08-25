@@ -29,7 +29,7 @@ export interface ScoreboardRow {
   provisional: boolean
   /**
    * Which tick of the reveal cascade this row's timing comes from. Its rank, except for the
-   * viewer's own row — see `tickOfRow` in `reveal.ts`.
+   * viewer's own row — see `tickOfRow`.
    */
   tick: number
 }
