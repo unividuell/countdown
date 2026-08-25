@@ -88,6 +88,7 @@ class LabServiceTest(
         // Shape-valid, not necessarily correct — same relationship to song-snippet's real target as
         // this file's fixed hue has to guess-hue's: a legal guess is all "for every game there is" needs.
         "song-snippet" -> mapper.readTree("""{"trackId":1}""")
+        "find-pattern" -> mapper.readTree("""{"startIndex":3}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
