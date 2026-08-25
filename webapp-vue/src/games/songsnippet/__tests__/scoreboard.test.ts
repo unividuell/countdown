@@ -11,6 +11,7 @@ function entry(overrides: Partial<GameEntry> & { userId: string }): GameEntry {
     guess: null,
     outcome: null,
     points: 0,
+    durationMs: null,
     avatar: { bgColorHex: '#406abf' },
     ...overrides,
   }

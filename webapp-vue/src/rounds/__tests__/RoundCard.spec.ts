@@ -48,6 +48,7 @@ const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   guess: null,
   outcome: null,
   points: null,
+  durationMs: null,
   ...over,
 })
 

@@ -13,6 +13,7 @@ function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
     guess: { hue: 210 },
     outcome: { deviationDeg: 0, withinTolerance: true },
     points: 1,
+    durationMs: null,
     avatar: { bgColorHex: '#3366cc' },
     ...over,
   }

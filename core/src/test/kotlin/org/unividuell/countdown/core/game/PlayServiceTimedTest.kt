@@ -213,4 +213,39 @@ class PlayServiceTimedTest(
         row.deviation shouldBe 200.0
         row.points shouldBe 0
     }
+
+    @Test
+    fun `a timed round publishes how long each finished player took`() {
+        val community = aCommunity("Timed Published")
+        announce(community = community, rule = AwardRule.CLOSEST_ONLY)
+        val mine = aMember(community = community, login = "mine")
+        val other = aMember(community = community, login = "other")
+
+        play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
+        clock.advance(Duration.ofSeconds(9))
+        play.guess(
+            slug = community.slug, userId = other, isSuperAdmin = false,
+            roundNumber = currentNumber(community), guess = mapper.readTree("""{"value":7}"""),
+        )
+        play.reveal(slug = community.slug, userId = mine, isSuperAdmin = false)
+        clock.advance(Duration.ofSeconds(4))
+        val response = play.guess(
+            slug = community.slug, userId = mine, isSuperAdmin = false,
+            roundNumber = currentNumber(community), guess = mapper.readTree("""{"value":7}"""),
+        )
+
+        response.me.shouldNotBeNull().durationMs shouldBe 4_000L
+        response.others.single().durationMs shouldBe 9_000L
+    }
+
+    @Test
+    fun `a player who has only revealed carries no duration yet`() {
+        val community = aCommunity("Timed Unfinished")
+        announce(community = community, rule = AwardRule.ALL_QUALIFYING)
+        val viewer = aMember(community = community, login = "viewer")
+
+        val response = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        response.me.shouldNotBeNull().durationMs shouldBe null
+    }
 }

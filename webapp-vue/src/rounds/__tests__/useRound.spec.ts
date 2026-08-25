@@ -30,6 +30,7 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   guess: null,
   outcome: null,
   points: null,
+  durationMs: null,
   ...over,
 })
 

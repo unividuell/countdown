@@ -36,6 +36,8 @@ class RoundResponses(
         // the answer has nothing left to protect. What stays withheld either way is a
         // revealed-but-unguessed row — that says who looked, which is about people, not the round.
         val open = hasGuessed || current.closed
+        // Asked once per response, not per row: it is the round's game that decides, not the player.
+        val timed = current.handle.requiresReveal(current.roundGame.params)
         val visible = if (open) {
             rows.filter { it.userId != viewerId && it.guessedAt != null }
         } else {
@@ -57,41 +59,50 @@ class RoundResponses(
             previousRoundNumber = current.previousRoundNumber,
             payload = if (open || mine != null) current.handle.present(current.roundGame.params) else null,
             solution = if (open) current.handle.solution(current.roundGame.params) else null,
-            me = mine?.let { mineDtoOf(play = it, identity = byId[it.userId]) },
+            me = mine?.let { mineDtoOf(play = it, identity = byId[it.userId], timed = timed) },
             // Sorted by when they guessed — the order the round actually happened in, and stable
             // where two stamps collide. A row whose user row vanished drops out rather than taking
             // the page down.
             others = visible
                 .sortedWith(compareBy({ it.guessedAt }, { it.userId }))
-                .mapNotNull { otherDtoOf(play = it, identity = byId[it.userId]) },
+                .mapNotNull { otherDtoOf(play = it, identity = byId[it.userId], timed = timed) },
             awardRule = current.roundGame.awardRule,
             awardPoints = current.roundGame.awardPoints,
         )
     }
 
-    private fun mineDtoOf(play: RoundPlay, identity: MemberIdentity?): MyPlayDto? = identity?.let {
-        MyPlayDto(
-            userId = play.userId,
-            username = it.username,
-            avatar = it.avatar,
-            stage = play.stage,
-            revealedAt = play.revealedAt,
-            guessedAt = play.guessedAt,
-            guess = play.guess,
-            outcome = play.outcome,
-            points = play.points,
-        )
-    }
+    private fun mineDtoOf(play: RoundPlay, identity: MemberIdentity?, timed: Boolean): MyPlayDto? =
+        identity?.let {
+            MyPlayDto(
+                userId = play.userId,
+                username = it.username,
+                avatar = it.avatar,
+                stage = play.stage,
+                revealedAt = play.revealedAt,
+                guessedAt = play.guessedAt,
+                guess = play.guess,
+                outcome = play.outcome,
+                points = play.points,
+                durationMs = durationMsOf(play = play, timed = timed),
+            )
+        }
 
-    private fun otherDtoOf(play: RoundPlay, identity: MemberIdentity?): OtherPlayDto? = identity?.let {
-        OtherPlayDto(
-            userId = play.userId,
-            username = it.username,
-            avatar = it.avatar,
-            stage = play.stage,
-            guess = play.guess,
-            outcome = play.outcome,
-            points = play.points,
-        )
-    }
+    private fun otherDtoOf(play: RoundPlay, identity: MemberIdentity?, timed: Boolean): OtherPlayDto? =
+        identity?.let {
+            OtherPlayDto(
+                userId = play.userId,
+                username = it.username,
+                avatar = it.avatar,
+                stage = play.stage,
+                guess = play.guess,
+                outcome = play.outcome,
+                points = play.points,
+                durationMs = durationMsOf(play = play, timed = timed),
+            )
+        }
+
+    /** Only for a game that asked for the reveal, and only once the play is finished. */
+    private fun durationMsOf(play: RoundPlay, timed: Boolean): Long? =
+        if (!timed) null
+        else play.guessedAt?.let { durationMsBetween(revealedAt = play.revealedAt, guessedAt = it) }
 }

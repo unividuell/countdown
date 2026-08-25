@@ -19,5 +19,7 @@ export type GameEntry = {
   outcome: unknown
   /** `null` until the round is scored; `0` means „played and came away empty“. */
   points: number | null
+  /** Reveal to guess, in milliseconds. `null` for a game that does not score on time. */
+  durationMs: number | null
   avatar: { bgColorHex: string }
 }

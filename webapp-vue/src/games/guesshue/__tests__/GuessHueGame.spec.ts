@@ -139,6 +139,7 @@ function entry(
     guess: { hue },
     outcome: { deviationDeg: 0 },
     points: 1,
+    durationMs: null,
     at: '2026-08-09T12:00:00Z',
     ...over,
   }
