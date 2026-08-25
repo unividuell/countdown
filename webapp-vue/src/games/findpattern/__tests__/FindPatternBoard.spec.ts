@@ -23,13 +23,14 @@ async function tap(wrapper: ReturnType<typeof mountBoard>, ...indices: number[])
 }
 
 describe('FindPatternBoard', () => {
-  it('shows both server images and the rules', () => {
+  it('shows both server images and the rules text inside the info box', () => {
     const wrapper = mountBoard()
 
     const sources = wrapper.findAll('img').map((img) => img.attributes('src'))
     expect(sources).toContain(PAYLOAD.boardImage)
     expect(sources).toContain(PAYLOAD.patternImage)
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Leserichtung')
   })
 
   it("marks a growing selection in the player's own colour", async () => {

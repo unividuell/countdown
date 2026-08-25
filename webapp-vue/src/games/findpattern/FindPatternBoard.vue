@@ -82,7 +82,7 @@ function onCell(index: number): void {
     </div>
 
     <InfoBox storage-key="find-pattern">
-      <template #abstract> Entdecke im Spielfeld das gesuchte Farb-Muster. </template>
+      <template #abstract> Entdecke im Spielfeld das gesuchte Muster. </template>
       <PatternRules />
     </InfoBox>
   </div>

@@ -9,7 +9,7 @@
   <ul class="ms-4 list-disc space-y-1">
     <li>Lies das Spielfeld wie ein Buch — von links nach rechts, Zeile für Zeile.</li>
     <li>Das gesuchte Muster kann nur in Leserichtung gefunden werden.</li>
-    <li>Das gesuchte Muster kann über eine Zeile hinweg brechen.</li>
+    <li>Das gesuchte Muster kann sich über zwei Zeilen erstrecken.</li>
     <li>Das gesuchte Muster kann mehrfach auftauchen — es ist egal, welches du davon findest.</li>
   </ul>
   <p class="mt-3 font-medium">Tippabgabe:</p>
