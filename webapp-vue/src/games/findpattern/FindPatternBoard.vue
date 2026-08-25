@@ -23,24 +23,47 @@ const props = defineProps<{
   /** The viewer's own avatar colour — the tip is marked in it, here and in the reveal. */
   myColorHex: string
   disabled: boolean
+  /**
+   * The start index of a guess already submitted, or `null`/absent for none. Never folded into
+   * `selected`: it is what a reload has to show, not a seed a tap could extend or restart.
+   */
+  submittedStartIndex?: number | null
 }>()
 
 const emit = defineEmits<{ guess: [value: { startIndex: number }] }>()
 
 const selected = ref<number[]>([])
 
-/** One outline per selected cell, all at inset 0 — the reveal stacks, the board never has to. */
-const outlines = computed(() =>
-  stackedOutlines(
-    selected.value.map((index) => ({
-      userId: 'mine',
-      startIndex: index,
-      colorHex: props.myColorHex,
-      delayMs: 0,
-    })),
-    1,
-  ),
-)
+/**
+ * The growing selection while it exists, one outline per tapped cell, all at inset 0 — the reveal
+ * stacks, the board never has to. Once a guess is submitted `disabled` goes true and `selected` is
+ * never touched again, so the submitted tip's own run of `patternLength` cells takes over instead.
+ */
+const outlines = computed(() => {
+  if (selected.value.length > 0) {
+    return stackedOutlines(
+      selected.value.map((index) => ({
+        userId: 'mine',
+        startIndex: index,
+        colorHex: props.myColorHex,
+        delayMs: 0,
+      })),
+      1,
+    )
+  }
+  if (props.submittedStartIndex === undefined || props.submittedStartIndex === null) return []
+  return stackedOutlines(
+    [
+      {
+        userId: 'mine',
+        startIndex: props.submittedStartIndex,
+        colorHex: props.myColorHex,
+        delayMs: 0,
+      },
+    ],
+    props.payload.patternLength,
+  )
+})
 
 function onCell(index: number): void {
   if (props.disabled) return

@@ -105,6 +105,22 @@ describe('FindPatternGame', () => {
 
     expect(wrapper.find('[data-test="pattern-board"]').exists()).toBe(true)
   })
+
+  it('passes my already-submitted guess down as a start index', () => {
+    const wrapper = mountGame({ myGuess: { startIndex: 5 }, disabled: true })
+
+    expect(wrapper.getComponent(FindPatternBoard).props('submittedStartIndex')).toBe(5)
+  })
+
+  it.each([[{ startIndex: 4.5 }], [null], ['nope'], [{ startIndex: '5' }]])(
+    'turns a junk guess %j into null rather than drawing anything',
+    (myGuess) => {
+      const wrapper = mountGame({ myGuess, disabled: true })
+
+      expect(wrapper.getComponent(FindPatternBoard).props('submittedStartIndex')).toBeNull()
+      expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(0)
+    },
+  )
 })
 
 describe('FindPatternGame, the live-reveal transition', () => {

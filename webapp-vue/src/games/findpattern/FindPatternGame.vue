@@ -12,7 +12,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import FindPatternBoard from './FindPatternBoard.vue'
 import FindPatternReveal from './FindPatternReveal.vue'
 import { scoreRows } from './scoreboard'
-import { asFindPatternSolution, isFindPatternPayload } from './types'
+import { asFindPatternSolution, isFindPatternPayload, startIndexOf } from './types'
 
 const props = defineProps<{
   payload: unknown
@@ -82,6 +82,7 @@ watch(solution, (now, before) => {
     :payload="payload"
     :my-color-hex="myColorHex"
     :disabled="props.disabled"
+    :submitted-start-index="startIndexOf(props.myGuess)"
     @guess="(value) => emit('guess', value)"
   />
 </template>

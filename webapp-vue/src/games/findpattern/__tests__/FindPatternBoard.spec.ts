@@ -10,9 +10,14 @@ const PAYLOAD = {
   patternImage: 'data:image/png;base64,BBB',
 }
 
-function mountBoard(disabled = false) {
+function mountBoard(disabled = false, submittedStartIndex?: number | null) {
   return mount(FindPatternBoard, {
-    props: { payload: PAYLOAD, myColorHex: '#7c3aed', disabled },
+    props: {
+      payload: PAYLOAD,
+      myColorHex: '#7c3aed',
+      disabled,
+      ...(submittedStartIndex !== undefined ? { submittedStartIndex } : {}),
+    },
   })
 }
 
@@ -82,5 +87,44 @@ describe('FindPatternBoard', () => {
     await tap(wrapper, 10, 11, 12, 13, 14)
 
     expect(wrapper.emitted('guess')).toHaveLength(1)
+  })
+
+  it("shows a submitted tip in the player's own colour after a reload", () => {
+    const wrapper = mountBoard(true, 10)
+
+    const outlines = wrapper.findAll('[data-test^="pattern-outline-"]')
+    expect(outlines.map((outline) => outline.attributes('data-test'))).toEqual([
+      'pattern-outline-10',
+      'pattern-outline-11',
+      'pattern-outline-12',
+      'pattern-outline-13',
+    ])
+    for (const outline of outlines) {
+      expect(outline.attributes('style')).toContain('#7c3aed')
+    }
+  })
+
+  it('leaves a submitted tip standing when a tap lands on it', async () => {
+    const wrapper = mountBoard(true, 10)
+
+    await tap(wrapper, 10, 11)
+
+    expect(wrapper.emitted('guess')).toBeUndefined()
+    expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(4)
+  })
+
+  it('does not show a submitted tip when the prop is absent', () => {
+    const wrapper = mountBoard(true)
+
+    expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(0)
+  })
+
+  it('never lets a submitted tip seed a new selection', async () => {
+    const wrapper = mountBoard(false, 10)
+
+    await tap(wrapper, 11)
+
+    expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(1)
+    expect(wrapper.find('[data-test="pattern-outline-11"]').exists()).toBe(true)
   })
 })
