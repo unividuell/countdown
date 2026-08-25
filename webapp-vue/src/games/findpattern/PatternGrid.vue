@@ -59,18 +59,6 @@ const cellViews = computed<CellView[]>(() => {
 function onCell(index: number): void {
   if (props.interactive) emit('cell', index)
 }
-
-/**
- * A real browser canonicalises any colour set on `style` to `rgb()` the moment it is read back —
- * happy-dom does not, so the hex a caller hands in is spelled out here rather than left to a DOM
- * behaviour this suite's environment does not have.
- */
-function toRgb(hex: string): string {
-  const body = hex.replace('#', '')
-  const full = body.length === 3 ? [...body].map((digit) => digit + digit).join('') : body
-  const value = Number.parseInt(full, 16)
-  return `rgb(${(value >> 16) & 0xff}, ${(value >> 8) & 0xff}, ${value & 0xff})`
-}
 </script>
 
 <template>
@@ -91,6 +79,7 @@ function toRgb(hex: string): string {
         v-for="cell in cellViews"
         :key="cell.index"
         :type="props.interactive ? 'button' : undefined"
+        :aria-label="props.interactive ? `Zelle ${cell.index + 1}` : undefined"
         :data-test="`pattern-cell-${cell.index}`"
         class="relative"
         :class="props.interactive ? 'cursor-pointer' : ''"
@@ -102,8 +91,11 @@ function toRgb(hex: string): string {
           :data-test="`pattern-outline-${cell.index}`"
           class="pointer-events-none absolute transition-opacity"
           :style="{
-            inset: `${outline.insetPx}px`,
-            border: `2px solid ${toRgb(outline.colorHex)}`,
+            top: `${outline.insetPx}px`,
+            right: `${outline.insetPx}px`,
+            bottom: `${outline.insetPx}px`,
+            left: `${outline.insetPx}px`,
+            border: `2px solid ${outline.colorHex}`,
             transitionDelay: `${outline.delayMs}ms`,
           }"
         />
