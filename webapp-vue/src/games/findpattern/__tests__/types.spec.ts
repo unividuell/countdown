@@ -68,4 +68,9 @@ describe('startIndexOf', () => {
     expect(startIndexOf({ startIndex: Number.NaN })).toBeNull()
     expect(startIndexOf({ startIndex: '3' })).toBeNull()
   })
+
+  /** A fractional startIndex would slice() or match against grid cells wrong — see asFindPatternSolution's blocks check. */
+  it('is null for a fractional startIndex', () => {
+    expect(startIndexOf({ startIndex: 4.5 })).toBeNull()
+  })
 })

@@ -78,9 +78,14 @@ export function asFindPatternSolution(value: unknown): FindPatternSolution | nul
   }
 }
 
-/** The viewer's own guess, or `null` — a give-up row has none, and neither has a junk one. */
+/**
+ * The viewer's own guess, or `null` — a give-up row has none, and neither has a junk one.
+ *
+ * An index, not a measurement: every consumer does arithmetic on it (`slice`, cell-index equality),
+ * so a fractional value must not narrow any more than a fractional `startIndices` entry would.
+ */
 export function startIndexOf(guess: unknown): number | null {
   if (typeof guess !== 'object' || guess === null) return null
   const value = (guess as { startIndex?: unknown }).startIndex
-  return isFiniteNumber(value) ? value : null
+  return isFiniteInteger(value) ? value : null
 }
