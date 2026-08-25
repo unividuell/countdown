@@ -102,7 +102,7 @@ function onCell(index: number): void {
         <span
           v-if="cell.number"
           :data-test="`pattern-number-${cell.index}`"
-          class="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[0.6rem] leading-none"
+          class="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[0.6rem] leading-none transition-opacity"
           :style="{ color: cell.number.ink }"
         >
           {{ cell.number.value }}
