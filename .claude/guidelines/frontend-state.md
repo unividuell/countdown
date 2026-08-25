@@ -120,9 +120,10 @@ tab. So:
 scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
 functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
 own row shape), never *when*. `revealChoreography.ts` was hoisted out of a guesshue-local `reveal.ts`
-once a second and then a third game (`songsnippet/`, `findpattern/`) needed the same beats; the
-sibling games' imports and test expectations did not move when it did — the rule that makes a hoist
-safe is that it never touches the games that already worked.
+once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s own imports and test
+expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
+games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
+`guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
 
 **A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
 `localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire
