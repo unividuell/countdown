@@ -11,6 +11,17 @@ das Verfahren — siehe *Randbedingungen* und *Erzeugen oder auswählen*. Ausgel
 [das Guess-Hue-Datenset](2026-08-07-guess-hue-dataset-design.md), dessen Beschreibungen sich nicht
 sinnvoll generieren lassen.
 
+**Zweite Korrektur (2026-08-26), am ersten Spiel:** der Satz „Das Gitter *muss* als Daten kommen
+(Interaktion, Animation), das Suchmuster nicht" im Abschnitt *Find Pattern* ist am gebauten Spiel
+widerlegt. Beide Bilder — Gitter **und** Suchmuster — verlassen den Server als PNG. Der Grund, warum
+das Gitter als Daten galt, war die Tippmarkierung: die brauchte im Original die Farbe jedes Blocks, um
+ihn beim Hovern abzudunkeln. Musterung markiert stattdessen mit einer Outline in Spielerfarbe, die
+keine Blockfarbe braucht, und mobil gibt es ohnehin kein Hover — damit fällt die letzte Zuständigkeit
+weg, für die der Client je eine Blockfarbe halten musste, und das Gitter kann dieselbe perzeptuelle
+Hürde tragen wie das Suchmuster. Details in
+[`2026-08-24-musterung-design.md`](2026-08-24-musterung-design.md) und dem validierten Regelwerk in
+`.claude/guidelines/game-integrity.md`.
+
 **Baut auf:** dem `rng`-Modul ([Cross-Runtime-RNG](2026-08-02-cross-runtime-rng-design.md)) und der
 server-autoritativen Countdown-/Runden-Engine
 ([Countdown Engine + Display](2026-06-14-countdown-engine-display-design.md)).

@@ -66,6 +66,19 @@ holds.
 It is **application-scoped, not session-scoped**: a session-bound store would hide every tester's
 guess from every other tester, which is exactly what multi-player testing needs to see.
 
+## The lab adapts to a clock the same way it adapted to everything else
+
+The lab had no notion of time at all until a time-scored game needed one to review. It did not gain a
+parallel timing mechanism: `LabRoundStore` grew one field, an `openedAt: ConcurrentHashMap<UUID,
+Instant>` stamped on first `markOpened` per user, inside the same self-limiting per-round structure
+above — cleared on `resetRound()` and on a per-user `forget()`, the same two places that already
+forget everything else about a round. The duration itself is computed with `Duration.between` at read
+time, not imported from `game.internal` — pulling in the framework's own `durationMsBetween` would
+cross the direction rule above (`gamelab` depends on `game`'s exposed package, never on
+`game.internal`), so the lab computes its own duration from its own stamp instead of reusing the
+framework's. `giveUp` passes `timed = false` explicitly: giving up records no reveal-to-guess
+interval, because giving up is not a time to be beaten.
+
 ## Payload hygiene is a red test, not a comment
 
 Every `GamePayload` gets a test that serialises it and pins the **exact field set**. The project
