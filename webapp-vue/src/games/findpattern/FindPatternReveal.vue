@@ -142,17 +142,21 @@ const paletteStyle = {
       </div>
 
       <!-- Below the board at every width — a desktop player's card must not carry more at a
-           glance than a phone player's. Circles overlap and ring, as in the original; the delta
-           hangs off their right edge via absolute position, so it never pulls the row (and with
-           it the circles) off centre. -->
+           glance than a phone player's. Circles overlap and ring, as in the original. The delta
+           rides in the heading, not the circle row: `-space-x-3` only skips the *last* child's
+           end-margin, so a trailing delta span used to eat one circle's worth of overlap and
+           leave the row off-centre by exactly that much. -->
       <div
         data-test="pattern-palette"
         class="flex flex-col items-center gap-2 transition-opacity"
         :class="paletteOpacity"
         :style="paletteStyle"
       >
-        <span class="text-sm text-neutral-500">Palette</span>
-        <div class="relative inline-flex flex-row -space-x-3">
+        <span class="text-sm text-neutral-500"
+          >Palette (<span data-test="palette-delta">Δ {{ deltaLabel }}</span
+          >)</span
+        >
+        <div class="inline-flex flex-row -space-x-3">
           <span
             v-for="tone in palette"
             :key="tone.value"
@@ -161,12 +165,6 @@ const paletteStyle = {
             :style="{ backgroundColor: tone.hex, color: tone.ink }"
           >
             {{ tone.value }}
-          </span>
-          <span
-            data-test="palette-delta"
-            class="absolute top-1/2 left-full ml-3 -translate-y-1/2 font-mono text-sm whitespace-nowrap"
-          >
-            Δ {{ deltaLabel }}
           </span>
         </div>
       </div>
