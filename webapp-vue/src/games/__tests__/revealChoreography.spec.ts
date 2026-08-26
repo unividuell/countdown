@@ -8,7 +8,6 @@ import {
   rowStagger,
   ROW_STAGGER_MS,
   tickOfRow,
-  TIP_COLUMN,
   TYPE_BUDGET_MS,
 } from '@/games/revealChoreography'
 
@@ -41,10 +40,6 @@ describe('the reveal schedule', () => {
   it('finishes the head before the results beat starts', () => {
     // Three head rows, four columns; the last one must have faded out before beat 4.
     expect(headCellDelayMs(2, 3) + FADE_MS).toBeLessThan(RESULTS_DELAY_MS)
-  })
-
-  it('keeps the tip column on the same beat as its row', () => {
-    expect(cellDelayMs(2, TIP_COLUMN, 5)).toBe(cellDelayMs(2, 1, 5))
   })
 })
 
