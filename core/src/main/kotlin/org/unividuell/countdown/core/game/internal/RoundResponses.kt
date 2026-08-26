@@ -53,7 +53,7 @@ class RoundResponses(
             game = GameDto(
                 id = current.handle.id,
                 displayName = current.handle.displayName,
-                requiresReveal = current.handle.requiresReveal(current.roundGame.params),
+                requiresReveal = timed,
             ),
             noGameReason = null,
             previousRoundNumber = current.previousRoundNumber,
@@ -101,8 +101,12 @@ class RoundResponses(
             )
         }
 
-    /** Only for a game that asked for the reveal, and only once the play is finished. */
+    /**
+     * Only for a game that asked for the reveal, only once the play is finished, and never for a
+     * give-up: `guess` stays NULL there (see [RoundPlayRepository.giveUp]), so this is not a time to
+     * be beaten — publishing it would leak how long an abandoning player sat on the round.
+     */
     private fun durationMsOf(play: RoundPlay, timed: Boolean): Long? =
-        if (!timed) null
+        if (!timed || play.guess == null) null
         else play.guessedAt?.let { durationMsBetween(revealedAt = play.revealedAt, guessedAt = it) }
 }

@@ -153,7 +153,7 @@ class PlayServiceTimedTest(
     fun `the recorded distance is the milliseconds between reveal and guess`() {
         val community = aCommunity("Timed Distance")
         announce(community = community, rule = AwardRule.ALL_QUALIFYING)
-        val viewer = aMember(community, "viewer")
+        val viewer = aMember(community = community, login = "viewer")
 
         play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
         clock.advance(Duration.ofSeconds(42))
@@ -173,8 +173,8 @@ class PlayServiceTimedTest(
     fun `under closest-only the fastest correct guess takes the points`() {
         val community = aCommunity("Timed Race")
         announce(community = community, rule = AwardRule.CLOSEST_ONLY)
-        val quick = aMember(community, "quick")
-        val slow = aMember(community, "slow")
+        val quick = aMember(community = community, login = "quick")
+        val slow = aMember(community = community, login = "slow")
 
         play.reveal(slug = community.slug, userId = quick, isSuperAdmin = false)
         play.reveal(slug = community.slug, userId = slow, isSuperAdmin = false)
@@ -198,7 +198,7 @@ class PlayServiceTimedTest(
     fun `a wrong guess scores nothing however fast it was`() {
         val community = aCommunity("Timed Wrong")
         announce(community = community, rule = AwardRule.CLOSEST_ONLY)
-        val wrong = aMember(community, "wrong")
+        val wrong = aMember(community = community, login = "wrong")
 
         play.reveal(slug = community.slug, userId = wrong, isSuperAdmin = false)
         clock.advance(Duration.ofMillis(200))
@@ -245,6 +245,22 @@ class PlayServiceTimedTest(
         val viewer = aMember(community = community, login = "viewer")
 
         val response = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        response.me.shouldNotBeNull().durationMs shouldBe null
+    }
+
+    @Test
+    fun `giving up publishes no duration, however long it took`() {
+        val community = aCommunity("Timed Give Up")
+        announce(community = community, rule = AwardRule.ALL_QUALIFYING)
+        val viewer = aMember(community = community, login = "viewer")
+
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        clock.advance(Duration.ofSeconds(30))
+        val response = play.giveUp(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = currentNumber(community),
+        )
 
         response.me.shouldNotBeNull().durationMs shouldBe null
     }
