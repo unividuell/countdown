@@ -54,6 +54,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         others = emptyList(),
         tookOverRound = tookOver,
         myStage = 0,
+        revealed = true,
     )
 
     @Test
@@ -192,6 +193,23 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":400.0}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `POST reveal starts the tester's clock`() {
+        every {
+            service.reveal(
+                slug = "team", gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+                userId = uid, isSuperAdmin = false,
+            )
+        } returns aResponse(seed = 42)
+
+        mockMvc.post("/api/lab/team/guess-hue/reveal?seed=42") {
+            with(principalFor()); with(csrf())
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.seed") { value(42) }
+        }
     }
 
     @Test

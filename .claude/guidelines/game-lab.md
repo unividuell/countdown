@@ -79,6 +79,25 @@ cross the direction rule above (`gamelab` depends on `game`'s exposed package, n
 framework's. `giveUp` passes `timed = false` explicitly: giving up records no reveal-to-guess
 interval, because giving up is not a time to be beaten.
 
+## A deliberate reveal is a gate, not just a clock
+
+`LabService.open` never stamps `openedAt`: landing on the lab page is not landing on a deliberate
+choice, the same distinction `useRound.ts`'s `sealed` face draws for a real round. `POST .../reveal`
+is the only call that stamps, and `LabRoundResponse.revealed` is the one field the page checks —
+computed server-side from `GameTypeHandle.requiresReveal(params)` and the store's own `hasOpened`
+peek, never derived client-side. `guess` throws `LabNotRevealedException` (409) for a game that
+requires a reveal but has none on record — the lab's counterpart to `PlayService.guess`'s missing
+play row.
+
+`payload` is withheld the same way `solution` already is, gated on the same `revealed` flag: for a
+reveal-gated game the payload IS the board (Musterung's board image, e.g.), so leaving it in an
+unrevealed response would let the network tab show what the click is supposed to protect, making the
+gate theatre rather than a real one to review by hand.
+
+A reset (`resetRound`/`forget`) clears the stamp and does **not** re-stamp it — no second write path
+keeping two truths in sync. The tester lands back in front of the gate, which is exactly what "reset"
+means once there is a gate to reset to.
+
 ## Payload hygiene is a red test, not a comment
 
 Every `GamePayload` gets a test that serialises it and pins the **exact field set**. The project

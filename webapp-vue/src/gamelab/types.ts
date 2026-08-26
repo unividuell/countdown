@@ -33,7 +33,12 @@ export interface LabRoundResponse<P = unknown> {
   game: string
   displayName: string
   phase: LabPhase
-  payload: P
+  /**
+   * `null` until `revealed` — withheld the same way `solution` already is: for a game that asked
+   * for a deliberate reveal, the payload IS the board, so sending it early would defeat the click
+   * that is supposed to gate it.
+   */
+  payload: P | null
   /**
    * What the game revealed once the viewer had spent their guess; `null` in front of that gate.
    * `unknown` for the same reason `payload` is generic — the shape belongs to the game.
@@ -47,4 +52,10 @@ export interface LabRoundResponse<P = unknown> {
   awardPoints: number
   /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
   myStage: number
+  /**
+   * Whether the viewer may see the board. Always `true` for a game that never asked for a
+   * deliberate reveal — there is nothing to gate. The one field the page acts on; it does not
+   * derive this from anything else.
+   */
+  revealed: boolean
 }

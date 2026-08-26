@@ -107,6 +107,10 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
   myStage: 0,
+  // Every existing test in this file plays a game that never asked for a deliberate reveal — the
+  // stub stands in for one of those, so it stays mounted from the first response, same as before
+  // the reveal gate existed. The gate itself gets its own tests below, with `revealed: false`.
+  revealed: true,
 }
 
 /**
@@ -157,6 +161,9 @@ describe('lab page', () => {
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(api, 'forgetMyLabEntry')
+      .mockReset()
+      .mockResolvedValue({ ...round } as never)
+    vi.spyOn(api, 'revealLabRound')
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(drawerControl, 'requestDrawerClose').mockReset()
@@ -920,5 +927,86 @@ describe('lab page', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  // --- Task 20: the reveal gate, mirroring the real round's `sealed` face -----------------------
+
+  it('shows the sealed gate instead of the game when the round is not yet revealed', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+
+    const w = await mountPage()
+
+    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(true)
+    expect(w.findComponent(StubGame).exists()).toBe(false)
+    expect(w.get('[data-test="lab-reveal-cost"]').text()).toBe(
+      'Deine Zeit läuft ab dem Aufdecken — und du hast nur einen Versuch.',
+    )
+  })
+
+  it('never gates a game that has not asked for a deliberate reveal', async () => {
+    // The default fixture already carries `revealed: true` from the first response — this pins that
+    // an untimed game skips the gate entirely rather than relying on a click to clear it.
+    const w = await mountPage()
+
+    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(false)
+    expect(w.findComponent(StubGame).exists()).toBe(true)
+    expect(api.revealLabRound).not.toHaveBeenCalled()
+  })
+
+  it('reveals the round on click, and mounts the game once the response says so', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+
+    const w = await mountPage()
+    expect(w.findComponent(StubGame).exists()).toBe(false)
+
+    await w.get('[data-test="lab-reveal"]').trigger('click')
+    await flushPromises()
+
+    expect(api.revealLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
+    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(false)
+    expect(w.findComponent(StubGame).exists()).toBe(true)
+  })
+
+  it('puts the tester back in front of the gate after a reset, without a dead end', async () => {
+    // A reset does not re-stamp the clock (see LabRoundStore.resetRound) — it genuinely clears the
+    // stamp, so the response comes back unrevealed. The tester must be able to leave this state by
+    // clicking "Aufdecken" again, not only by reloading the page.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'resetLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+
+    const w = await mountPage()
+    await w.get('[data-test="lab-reveal"]').trigger('click')
+    await flushPromises()
+    expect(w.findComponent(StubGame).exists()).toBe(true)
+
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+
+    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(true)
+    const button = w.get('[data-test="lab-reveal"]')
+    expect(button.attributes('disabled')).toBeUndefined()
+
+    await button.trigger('click')
+    await flushPromises()
+    expect(api.revealLabRound).toHaveBeenCalledTimes(2)
+    expect(w.findComponent(StubGame).exists()).toBe(true)
   })
 })

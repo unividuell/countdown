@@ -27,6 +27,7 @@ import {
   labAssetUrl,
   openLabRound,
   resetLabRound,
+  revealLabRound,
   skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
@@ -91,6 +92,11 @@ async function run(
   } finally {
     busy.value = false
   }
+}
+
+/** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
+async function reveal(): Promise<void> {
+  await run(revealLabRound)
 }
 
 async function guess(value: unknown): Promise<void> {
@@ -244,6 +250,35 @@ watch(
         />
       </template>
       <!--
+        Same face and the same sentence as the real round's `sealed` (`RoundCard.vue`) — the lab
+        mirrors it rather than inventing a second wording. Absent for a game that never asked for a
+        deliberate reveal: `round.revealed` is already `true` for those from the first response, so
+        this branch never renders and the game mounts straight away, exactly as before this gate
+        existed.
+      -->
+      <div
+        v-if="!round.revealed"
+        data-test="lab-sealed"
+        class="flex flex-col items-center gap-4 py-6 text-center"
+      >
+        <p data-test="lab-reveal-cost" class="text-sm text-neutral-600">
+          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+        </p>
+        <p data-test="lab-reveal-reset-note" class="text-xs text-neutral-500">
+          „Runde zurücksetzen“ führt hierher zurück.
+        </p>
+        <button
+          type="button"
+          data-test="lab-reveal"
+          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+          :disabled="busy"
+          @click="reveal"
+        >
+          Aufdecken
+        </button>
+      </div>
+
+      <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
         has come back. Keying on the URL seed would remount right then, capturing the previous
@@ -255,6 +290,7 @@ watch(
       -->
       <component
         :is="gameComponent"
+        v-else
         :key="round.seed"
         :payload="round.payload"
         :outcome="round.me?.outcome ?? null"

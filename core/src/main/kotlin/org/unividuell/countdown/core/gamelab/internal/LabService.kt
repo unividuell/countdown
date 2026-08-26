@@ -60,10 +60,39 @@ class LabService(
         )
         val round = chooseRound(handle = handle, seed = seed, phase = phase)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = round)
-        // Landing on the round is the lab's reveal: this is where a timed game's clock starts. After
-        // store.open() on purpose — that call is what decides tookOverRound, and marking first would
-        // make this method's own eviction check land on an already-evicted round, always reporting no
-        // takeover for the second of two calls that touch the same round.
+        // No stamp here on purpose: landing on the lab page is not a deliberate reveal, the same
+        // distinction `useRound.ts`'s `sealed` face draws for a real round. [reveal] is the one call
+        // that stamps.
+        return respond(
+            communityId = communityId,
+            handle = handle,
+            snapshot = snapshot,
+            me = userId,
+        )
+    }
+
+    /**
+     * The lab's own explicit reveal, mirroring `PlayService.reveal`: starts this tester's clock,
+     * once — `markOpened` is `putIfAbsent`, so a repeat call is a no-op. Meaningless but harmless for
+     * a game that never asked for one; nothing calls it in that case, since the lab page never shows
+     * the button.
+     */
+    fun reveal(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+    ): LabRoundResponse {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val snapshot = store.open(communityId = communityId, gameId = gameId, round = round)
+        // After store.open() on purpose, same reasoning [open] used to carry: that call is what
+        // decides tookOverRound, and marking first would make this method's own eviction check land
+        // on an already-evicted round.
         store.markOpened(communityId = communityId, gameId = gameId, round = round, userId = userId)
         return respond(
             communityId = communityId,
@@ -93,6 +122,15 @@ class LabService(
         // stored one while filing the entry under a freshly chosen one, and not the other way round.
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
+        // Whether this round needs a deliberate reveal, checked before judging: a game that asked for
+        // one must have it on record before any guess counts, the same guard `PlayService.guess` gets
+        // for free from a missing play row. The lab keeps no row, so it asks the store's own stamp.
+        val timed = handle.requiresReveal(playing.params)
+        if (timed &&
+            !store.hasOpened(communityId = communityId, gameId = gameId, round = playing, userId = userId)
+        ) {
+            throw LabNotRevealedException()
+        }
         val judgement = handle.judge(params = playing.params, guess = guess)
         val stages = handle.stages(playing.params)
         // Judged and (on advance) discarded on purpose: in phase one a wrong guess below the last
@@ -112,9 +150,9 @@ class LabService(
             )
         }
         // A staged game's distance is the stage, and the store never sees stages; a timed game's is
-        // the duration, and only the store knows when this tester opened the round. Hence one
-        // adjustment here and one flag passed down — the same split `PlayService` makes.
-        val timed = handle.requiresReveal(playing.params)
+        // the duration since reveal, computed by the store from its own stamp — `timed` is already
+        // resolved above. One adjustment here, one flag passed down — the same split `PlayService`
+        // makes.
         val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
@@ -336,6 +374,11 @@ class LabService(
             )
         }
 
+        // Revealed already if the game never asked for a deliberate one; otherwise the store's own
+        // stamp is the only truth — a peek, so a response never mutates what it is only reporting on.
+        val revealed = !handle.requiresReveal(snapshot.round.params) ||
+            store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+
         return LabRoundResponse(
             seed = snapshot.round.seed,
             phase = snapshot.round.phase,
@@ -343,7 +386,10 @@ class LabService(
             displayName = handle.displayName,
             awardRule = snapshot.round.award.rule,
             awardPoints = snapshot.round.award.points,
-            payload = handle.present(snapshot.round.params),
+            // Withheld until revealed, the same way solution is withheld until guessed: for a game
+            // that gates on a reveal, the payload IS the board, so sending it early would make the
+            // click a formality rather than the thing that actually protects the board.
+            payload = if (revealed) handle.present(snapshot.round.params) else null,
             // The one condition, evaluated server-side: the viewer has an entry of their own.
             // Whoever deletes their guess stands in front of the gate again.
             solution = if (mine == null) null else handle.solution(snapshot.round.params),
@@ -351,6 +397,7 @@ class LabService(
             others = visible.mapNotNull(::dtoOf),
             tookOverRound = snapshot.tookOverRound,
             myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me),
+            revealed = revealed,
         )
     }
 

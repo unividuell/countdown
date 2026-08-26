@@ -145,6 +145,19 @@ class LabRoundStore(private val clock: Clock) {
         }
     }
 
+    /**
+     * Whether this tester has already started their clock on this round — a peek, like [stageOf]: it
+     * must not evict, and it reads `false` for a request whose seed/phase no longer matches the
+     * stored round, the same as [stageOf].
+     */
+    fun hasOpened(communityId: UUID, gameId: String, round: LabRound, userId: UUID): Boolean {
+        val stored = rounds[Key(communityId, gameId)] ?: return false
+        if (!matches(stored.frozen, round)) return false
+        synchronized(stored) {
+            return stored.openedAt.containsKey(userId)
+        }
+    }
+
     /** true when the expected stage still held — the same zero-rows idiom, in memory. */
     fun advanceStage(communityId: UUID, gameId: String, round: LabRound, userId: UUID, expected: Int): Boolean {
         val (stored, _) = openRound(Key(communityId, gameId), round)

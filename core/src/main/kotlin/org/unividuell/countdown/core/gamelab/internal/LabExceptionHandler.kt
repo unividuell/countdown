@@ -21,7 +21,11 @@ class LabExceptionHandler {
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
-    @ExceptionHandler(AlreadyGuessedException::class, LabStageMovedOnException::class)
+    @ExceptionHandler(
+        AlreadyGuessedException::class,
+        LabStageMovedOnException::class,
+        LabNotRevealedException::class,
+    )
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "already guessed")
 

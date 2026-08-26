@@ -12,6 +12,11 @@ class AlreadyGuessedException(message: String = "already guessed in this round")
 /** The staged reveal moved under the click (raced skip, raced wrong guess, or the top) -> 409. */
 class LabStageMovedOnException(message: String = "the stage has moved on") : RuntimeException(message)
 
+/** A guess for a game that requires a deliberate reveal arrived before one was recorded -> 409,
+ * the lab's counterpart to the real round's `NotRevealedException`. */
+class LabNotRevealedException(message: String = "the round has not been revealed yet") :
+    RuntimeException(message)
+
 /** The key lies above the tester's stage, or behind a solution gate that is still closed -> 403. */
 class LabAssetForbiddenException(message: String = "this asset is not yours to fetch yet") :
     RuntimeException(message)
