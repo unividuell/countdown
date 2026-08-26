@@ -97,6 +97,22 @@ describe('FindPatternScoreboard', () => {
     expect(chipColumnIndex).toBe(tipColumnIndex)
   })
 
+  it('sizes the tip column to exactly the chips it holds, not a fixed guess', () => {
+    const wrapper = mountBoard({ solutionChips: CHIPS })
+
+    const tipCol = wrapper.findAll('col')[1]
+
+    expect(tipCol?.attributes('style')).toContain('width: calc(4 * 1.5rem + 3 * 1px)')
+  })
+
+  it('follows the pattern length wherever it goes, not a hardcoded four', () => {
+    const wrapper = mountBoard({ solutionChips: CHIPS.slice(0, 3) })
+
+    const tipCol = wrapper.findAll('col')[1]
+
+    expect(tipCol?.attributes('style')).toContain('width: calc(3 * 1.5rem + 2 * 1px)')
+  })
+
   it('prints every tone index, so the palette can be read against it', () => {
     const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 

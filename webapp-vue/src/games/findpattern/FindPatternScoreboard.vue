@@ -30,6 +30,17 @@ const columns = computed(() =>
 )
 const pointsColumn = computed(() => columns.value.length - 1)
 
+/**
+ * Exactly as wide as the chips it holds — `size-6` (`1.5rem`) each, `gap-px` (`1px`) between —
+ * instead of a fixed `w-28` that left slack for the „Lösung“/„Tipp“ bands to run past the chips.
+ * Derived from `solutionChips`, never a player's row: a give-up row has none, and the solution
+ * always carries the full pattern length, so this follows `PATTERN_LENGTH` wherever it goes.
+ */
+const tipColumnWidth = computed(() => {
+  const count = props.solutionChips.length
+  return `calc(${count} * 1.5rem + ${Math.max(count - 1, 0)} * 1px)`
+})
+
 /** Asked once, when the choreography would start — the same four questions the wheel asks. */
 const still =
   !props.animate ||
@@ -74,7 +85,7 @@ function cell(tick: number, column: number) {
     <table class="mt-2 w-full table-fixed border-separate border-spacing-px">
       <colgroup>
         <col />
-        <col class="w-28" />
+        <col :style="{ width: tipColumnWidth }" />
         <col v-if="timed" class="w-14" />
         <col class="w-9" />
       </colgroup>
