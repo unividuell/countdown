@@ -259,13 +259,10 @@ watch(
       <div
         v-if="!round.revealed"
         data-test="lab-sealed"
-        class="flex flex-col items-center gap-4 py-6 text-center"
+        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
       >
         <p data-test="lab-reveal-cost" class="text-sm text-neutral-600">
           Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <p data-test="lab-reveal-reset-note" class="text-xs text-neutral-500">
-          „Runde zurücksetzen“ führt hierher zurück.
         </p>
         <button
           type="button"

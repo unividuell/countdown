@@ -120,7 +120,10 @@ function onGiveUp(): void {
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 
-      <div v-else-if="face === 'sealed'" class="flex flex-col items-center gap-4 text-center">
+      <div
+        v-else-if="face === 'sealed'"
+        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
+      >
         <!--
           Framework copy, not a game's: `sealed` exists only because a game answered
           `requiresReveal` with true, and that flag means the same thing for every game that ever
