@@ -99,7 +99,10 @@ function markOpacity(delayMs: number | undefined): string {
     />
     <div
       class="absolute inset-0 grid"
-      :style="{ gridTemplateColumns: `repeat(${props.cols}, minmax(0, 1fr))` }"
+      :style="{
+        gridTemplateColumns: `repeat(${props.cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${props.rows}, minmax(0, 1fr))`,
+      }"
     >
       <component
         :is="props.interactive ? 'button' : 'div'"

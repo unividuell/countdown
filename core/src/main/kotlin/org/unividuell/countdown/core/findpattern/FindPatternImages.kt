@@ -59,8 +59,14 @@ object FindPatternImages {
     }
 
     private fun dataUri(image: BufferedImage): String {
+        // ImageIO's cache defaults to on, which would route this write through a
+        // FileCacheImageOutputStream — a temp file per image on a request path that has no reason
+        // to touch disk, and one that throws outright on a read-only /tmp. `setUseCache` is a
+        // per-thread ImageIO setting, not a JVM-wide System property, so this stays this object's
+        // own business.
+        ImageIO.setUseCache(false)
         val bytes = ByteArrayOutputStream()
-        ImageIO.write(image, "png", bytes)
+        check(ImageIO.write(image, "png", bytes)) { "no PNG writer registered for png" }
         return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes.toByteArray())
     }
 }

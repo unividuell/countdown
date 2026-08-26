@@ -119,6 +119,21 @@ describe('FindPatternScoreboard', () => {
     expect(wrapper.get('[data-test="tip-a"]').text()).toBe('1230')
   })
 
+  it('keeps every head row as wide as the column labels, timed or not', () => {
+    // The two solution rows fill themselves with `aria-hidden` cells so the `colgroup` still lines
+    // up — nothing pins that filler count to the label row's own width, so a fourth column added
+    // later could silently misalign the solution. The label row (built with `v-for="columns"`) is
+    // correct by construction, so it is the reference the other two are checked against.
+    for (const rows of [[row({ userId: 'a' })], [row({ userId: 'a', durationLabel: '00:42' })]]) {
+      const wrapper = mountBoard({ rows })
+      const columnCount = wrapper.get('thead tr:last-child').findAll('th').length
+
+      for (const tr of wrapper.findAll('thead tr')) {
+        expect(tr.findAll('th, td')).toHaveLength(columnCount)
+      }
+    }
+  })
+
   it('leaves the clock column out of a round that was not timed', () => {
     const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 

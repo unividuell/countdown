@@ -26,7 +26,7 @@ object FindPatternBoard {
     fun patternStartIndex(solution: SeededRandom): Int = solution.nextInt(LAST_START_INDEX + 1)
 
     fun patternAt(blocks: List<Int>, startIndex: Int): List<Int> =
-        blocks.subList(startIndex, startIndex + PATTERN_LENGTH)
+        blocks.subList(fromIndex = startIndex, toIndex = startIndex + PATTERN_LENGTH)
 
     /**
      * Every start index whose run equals [pattern] — the round's „Möglichkeiten". Index arithmetic
