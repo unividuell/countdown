@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The card after the round: the same board, now with everybody's tip on it, every possibility lit,
- * the palette beside it and the scoreboard below.
+ * the palette and the scoreboard stacked below it — at every width, same as the board itself.
  *
  * „Die Möglichkeiten“ are not a form of their own — they are the tone-index inspection, starting
  * lit. One rule (`isNumberVisible`) covers both, so a reader who taps around never has to learn a
@@ -125,8 +125,10 @@ const paletteStyle = {
 
 <template>
   <div data-test="pattern-reveal" class="flex flex-col gap-6">
-    <div class="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_8rem] md:items-start">
-      <div class="min-w-0">
+    <div class="flex flex-col gap-4">
+      <!-- Capped the same as the board (see `FindPatternBoard`): board and reveal show the same
+           field and must stay the same size, or the picture jumps when the view switches. -->
+      <div class="mx-auto w-full max-w-[22rem]">
         <PatternGrid
           :image="props.payload.boardImage"
           :cols="props.payload.cols"
@@ -139,8 +141,10 @@ const paletteStyle = {
         />
       </div>
 
-      <!-- A narrow vertical block, not a bar: at four swatches wide it stays compact under the
-           board on a phone, and the same shape works unchanged beside it from `md` on. -->
+      <!-- Below the board at every width — a desktop player's card must not carry more at a
+           glance than a phone player's. Circles overlap and ring, as in the original; the delta
+           hangs off their right edge via absolute position, so it never pulls the row (and with
+           it the circles) off centre. -->
       <div
         data-test="pattern-palette"
         class="flex flex-col items-center gap-2 transition-opacity"
@@ -148,18 +152,23 @@ const paletteStyle = {
         :style="paletteStyle"
       >
         <span class="text-sm text-neutral-500">Palette</span>
-        <div class="flex flex-row gap-1">
+        <div class="relative inline-flex flex-row -space-x-3">
           <span
             v-for="tone in palette"
             :key="tone.value"
             data-test="palette-tone"
-            class="flex size-10 items-center justify-center rounded-full font-mono text-xs"
+            class="flex size-10 items-center justify-center rounded-full font-mono text-xs ring-1 ring-neutral-500"
             :style="{ backgroundColor: tone.hex, color: tone.ink }"
           >
             {{ tone.value }}
           </span>
+          <span
+            data-test="palette-delta"
+            class="absolute top-1/2 left-full ml-3 -translate-y-1/2 font-mono text-sm whitespace-nowrap"
+          >
+            Δ {{ deltaLabel }}
+          </span>
         </div>
-        <span data-test="palette-delta" class="font-mono text-sm">Δ {{ deltaLabel }}</span>
       </div>
     </div>
 

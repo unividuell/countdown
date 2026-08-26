@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
+import PatternGrid from '@/games/findpattern/PatternGrid.vue'
 
 const PAYLOAD = {
   cols: 8,
@@ -36,6 +37,13 @@ describe('FindPatternBoard', () => {
     expect(sources).toContain(PAYLOAD.patternImage)
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Leserichtung')
+  })
+
+  it('caps the board width even on a desktop viewport', () => {
+    const wrapper = mountBoard()
+
+    const frame = wrapper.findComponent(PatternGrid).element.parentElement
+    expect(frame?.className).toContain('max-w-[22rem]')
   })
 
   it("marks a growing selection in the player's own colour", async () => {

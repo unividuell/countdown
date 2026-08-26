@@ -13,6 +13,9 @@
  * Outlines and numbers can fade in on their own `delayMs`, or simply be there — `still` chooses.
  * The board (this component's first caller) always wants the second: its own selection is drawn as
  * it grows, never staged, so `still` defaults to `true` and the board never has to mention it.
+ *
+ * The border is the same as the pattern image's — it lives here rather than in the board or the
+ * reveal because both render this component and both must carry it identically.
  */
 import { computed } from 'vue'
 import { useRevealArming } from '@/ui/useRevealArming'
@@ -86,7 +89,7 @@ function markOpacity(delayMs: number | undefined): string {
 </script>
 
 <template>
-  <div class="relative w-full">
+  <div class="relative w-full border-2 border-black">
     <img
       :src="props.image"
       alt=""

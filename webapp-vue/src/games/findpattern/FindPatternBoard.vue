@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /**
- * Playing: the board, the sought run under it, and the rules beside it.
+ * Playing: the board, the sought run under it, and the rules below both.
  *
  * The selection lives here as a plain `ref` of indices and nowhere else — no derived „where the
  * pattern is“ value, not even for a hint, because a materialised answer in component state is
  * exactly what the anti-cheat spec forbids. All this component knows is which cells were tapped.
  *
- * Layout: one column on a phone, two from `md` on, with the rules docked to the right of the board.
- * The board is portrait (8 × 14), so on a wide screen the space beside it is free anyway — and the
- * rules being *next to* the game rather than under it is what keeps them readable while playing.
+ * Layout: one column, at every width — a second column beside the board would make a desktop
+ * player's view more informative than a phone player's, which the community shell it lives in
+ * rules out for every page. The board is capped at 22rem even on a wide screen; uncapped, a
+ * grid this tall (8 × 14) forces the searcher to scroll while comparing blocks.
  */
 import { computed, ref } from 'vue'
 import InfoBox from '@/ui/InfoBox.vue'
@@ -78,11 +79,8 @@ function onCell(index: number): void {
 </script>
 
 <template>
-  <div
-    data-test="pattern-board"
-    class="flex flex-col gap-6 md:grid md:grid-cols-[minmax(0,1fr)_20rem] md:items-start"
-  >
-    <div class="flex flex-col items-center gap-3">
+  <div data-test="pattern-board" class="flex flex-col gap-6">
+    <div class="mx-auto flex w-full max-w-[22rem] flex-col items-center gap-3">
       <PatternGrid
         :image="props.payload.boardImage"
         :cols="props.payload.cols"

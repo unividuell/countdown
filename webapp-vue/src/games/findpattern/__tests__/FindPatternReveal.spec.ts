@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
+import PatternGrid from '@/games/findpattern/PatternGrid.vue'
 import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
@@ -104,6 +105,19 @@ describe('FindPatternReveal', () => {
     expect(outlines[0]!.attributes('style')).toContain('top: 0px')
     expect(outlines[1]!.attributes('style')).toContain('#00ff00')
     expect(outlines[1]!.attributes('style')).toContain('top: 2px')
+  })
+
+  it('caps the reveal grid at the same width the board uses', () => {
+    const wrapper = mountReveal([row({ userId: 'mine' })])
+
+    const frame = wrapper.findComponent(PatternGrid).element.parentElement
+    expect(frame?.className).toContain('max-w-[22rem]')
+  })
+
+  it('never lays the palette out beside the board — always below, at every width', () => {
+    const wrapper = mountReveal([row({ userId: 'mine' })])
+
+    expect(wrapper.html()).not.toContain('md:grid')
   })
 
   it('shows the palette with its indices and the round’s delta', () => {

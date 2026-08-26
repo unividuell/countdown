@@ -69,26 +69,6 @@ function cell(tick: number, column: number) {
           live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
         </span>
       </span>
-      <div class="flex flex-col items-end gap-0.5">
-        <span
-          class="bg-neutral-900 px-1 text-xs text-neutral-50 transition-opacity"
-          :class="opacity"
-          :style="head(0, TIP_COLUMN)"
-          >Lösung</span
-        >
-        <div class="flex flex-row gap-px">
-          <span
-            v-for="chip in props.solutionChips"
-            :key="chip.value"
-            data-test="solution-chip"
-            class="size-6 content-center text-center font-mono text-xs transition-opacity"
-            :class="opacity"
-            :style="{ backgroundColor: chip.hex, color: chip.ink, ...head(1, TIP_COLUMN) }"
-          >
-            {{ chip.value }}
-          </span>
-        </div>
-      </div>
     </div>
 
     <table class="mt-2 w-full table-fixed border-separate border-spacing-px">
@@ -99,6 +79,38 @@ function cell(tick: number, column: number) {
         <col class="w-9" />
       </colgroup>
       <thead>
+        <!-- The solution lives in the head, in the tip column's own cell, so it lines up with the
+             tip column by construction instead of by a right-aligned guess at its width. -->
+        <tr>
+          <th aria-hidden="true"></th>
+          <th
+            class="bg-neutral-900 px-1 text-start text-xs font-normal text-neutral-50 transition-opacity"
+            :class="opacity"
+            :style="head(0, TIP_COLUMN)"
+          >
+            Lösung
+          </th>
+          <th v-if="timed" aria-hidden="true"></th>
+          <th aria-hidden="true"></th>
+        </tr>
+        <tr>
+          <td aria-hidden="true"></td>
+          <td class="transition-opacity" :class="opacity" :style="head(1, TIP_COLUMN)">
+            <div class="flex flex-row gap-px">
+              <span
+                v-for="chip in props.solutionChips"
+                :key="chip.value"
+                data-test="solution-chip"
+                class="size-6 content-center text-center font-mono text-xs"
+                :style="{ backgroundColor: chip.hex, color: chip.ink }"
+              >
+                {{ chip.value }}
+              </span>
+            </div>
+          </td>
+          <td v-if="timed" aria-hidden="true"></td>
+          <td aria-hidden="true"></td>
+        </tr>
         <tr>
           <th
             v-for="(label, column) in columns"

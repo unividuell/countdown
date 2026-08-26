@@ -59,6 +59,44 @@ describe('FindPatternScoreboard', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
   })
 
+  it('lines the solution up with the tip column, not off to the side', () => {
+    const wrapper = mountBoard()
+
+    const headerLabels = wrapper.get('thead tr:last-child').findAll('th')
+    const tipColumnIndex = headerLabels.findIndex((th) => th.text() === 'Tipp')
+
+    const labelCell = wrapper
+      .get('thead')
+      .findAll('th')
+      .find((th) => th.text() === 'Lösung')
+    const labelRow = labelCell?.element.parentElement
+    const labelColumnIndex = labelRow
+      ? Array.from(labelRow.children).indexOf(labelCell!.element)
+      : -1
+
+    const chipCell = wrapper.get('[data-test="solution-chip"]').element.closest('td, th')
+    const chipRow = chipCell?.parentElement
+    const chipColumnIndex =
+      chipRow && chipCell ? Array.from(chipRow.children).indexOf(chipCell) : -1
+
+    expect(labelColumnIndex).toBe(tipColumnIndex)
+    expect(chipColumnIndex).toBe(tipColumnIndex)
+  })
+
+  it('keeps the solution in the tip column even with the clock column present', () => {
+    const wrapper = mountBoard({ rows: [row({ userId: 'a', durationLabel: '00:42' })] })
+
+    const headerLabels = wrapper.get('thead tr:last-child').findAll('th')
+    const tipColumnIndex = headerLabels.findIndex((th) => th.text() === 'Tipp')
+
+    const chipCell = wrapper.get('[data-test="solution-chip"]').element.closest('td, th')
+    const chipRow = chipCell?.parentElement
+    const chipColumnIndex =
+      chipRow && chipCell ? Array.from(chipRow.children).indexOf(chipCell) : -1
+
+    expect(chipColumnIndex).toBe(tipColumnIndex)
+  })
+
   it('prints every tone index, so the palette can be read against it', () => {
     const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 
