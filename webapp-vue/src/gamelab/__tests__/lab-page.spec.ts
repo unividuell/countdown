@@ -81,6 +81,19 @@ vi.mock('@/communities/context', () => ({
   }),
 }))
 
+/**
+ * The lab is only reachable already authenticated (the auth guard sees to that), so the real
+ * `useAuth` singleton always holds a user here too — this stands in for that, one fixed tester.
+ */
+const authUser = {
+  id: 'auth-me',
+  username: 'Auth Me',
+  avatar: { shortName: 'AM', bgColorHex: '#123456' },
+}
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => ({ user: { value: authUser } }),
+}))
+
 const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   seed: 42,
   game: 'stub',
@@ -550,6 +563,29 @@ describe('lab page', () => {
     // too — so the combined list is legitimately empty, and that must not show as an empty box.
     const w = await mountPage()
 
+    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
+  })
+
+  it("gives the game component the viewer's own row before any guess exists, in their own colour", async () => {
+    // The raw wire list stays empty here (nothing was actually stored yet, see the test above) —
+    // this is specifically about what the *game* sees, which is what a real reveal would have
+    // produced: the viewer, revealed and not yet guessed.
+    const w = await mountPage()
+    const stub = w.findComponent(StubGame)
+
+    expect(stub.props('mineUserId')).toBe('auth-me')
+    expect(stub.props('entries')).toEqual([
+      {
+        userId: 'auth-me',
+        username: 'Auth Me',
+        stage: 0,
+        guess: null,
+        outcome: null,
+        points: null,
+        durationMs: null,
+        avatar: { shortName: 'AM', bgColorHex: '#123456' },
+      },
+    ])
     expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
   })
 
