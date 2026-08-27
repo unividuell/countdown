@@ -183,6 +183,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 guess = mapper.readTree("""{"hue":123.5}"""),
                 outcome = mapper.readTree("""{"deviationDeg":0.0,"withinTolerance":true}"""),
                 points = 1,
+                durationMs = null,
             ),
             others = listOf(
                 OtherPlayDto(
@@ -193,6 +194,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                     guess = mapper.readTree("""{"hue":30.0}"""),
                     outcome = mapper.readTree("""{"deviationDeg":30.0,"withinTolerance":false}"""),
                     points = 0,
+                    durationMs = null,
                 ),
             ),
         )
@@ -242,6 +244,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 guess = mapper.readTree("""{"hue":123.5}"""),
                 outcome = null,
                 points = 1,
+                durationMs = null,
             ),
             others = listOf(
                 OtherPlayDto(
@@ -252,6 +255,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                     guess = mapper.readTree("""{"hue":30.0}"""),
                     outcome = null,
                     points = 0,
+                    durationMs = null,
                 ),
             ),
         )

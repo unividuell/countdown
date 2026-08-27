@@ -116,6 +116,21 @@ tab. So:
   synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
   choreography left to protect, and lag for that reader is the wrong way round.
 
+**A game's reveal is one event, so its choreography is shared.** The board's marker and the
+scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
+functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
+own row shape), never *when*. `revealChoreography.ts` was hoisted out of a guesshue-local `reveal.ts`
+once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s own imports and test
+expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
+games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
+`guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
+
+**A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
+`localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire
+and does not need to be re-earned on every visit — but it is also not global: a new device, or a
+cleared store, correctly reopens it, because there is no account-level record of having read it
+either.
+
 ## Sound — a short clip needs the graph, not the `<audio>` element
 
 An `<audio>` element opens an output stream per playback and tears it down when the clip ends.

@@ -4,11 +4,12 @@
  * computes no layout, so this is the half a test can actually assert on.
  */
 import type { AwardRule } from '@/api/types'
+import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
-import { tickOfRow } from './reveal'
 import { hueOf } from './types'
+import { tickOfRow } from '@/games/revealChoreography'
 
 export interface ScoreboardRow {
   userId: string
@@ -25,11 +26,11 @@ export interface ScoreboardRow {
   /** How far off, as the server judged it. Never recomputed here. */
   deviationDeg: number
   points: number | null
-  /** Whether [points] can still be overtaken — see [isProvisional]. */
+  /** Whether [points] can still be overtaken — see `isProvisional` in `@/games/awards`. */
   provisional: boolean
   /**
    * Which tick of the reveal cascade this row's timing comes from. Its rank, except for the
-   * viewer's own row — see `tickOfRow` in `reveal.ts`.
+   * viewer's own row — see `tickOfRow`.
    */
   tick: number
 }
@@ -39,16 +40,6 @@ export interface ScoreboardSolution {
   hue: number
   hex: string
   ink: string
-}
-
-/**
- * Whether a score can still be overtaken. Word for word the server's own rule in
- * `RoundPlayPoints.kt` (`provisional = awardRule == CLOSEST_ONLY && points > 0`), mirrored here
- * because a round's response carries the rule but not the verdict. A zero is final even under
- * „closest only“: deviations freeze on guessing, so a later guess can only take points away.
- */
-export function isProvisional(points: number | null, awardRule: AwardRule | null): boolean {
-  return awardRule === 'CLOSEST_ONLY' && points !== null && points > 0
 }
 
 export function solutionCell(

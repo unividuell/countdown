@@ -17,6 +17,7 @@ import org.unividuell.countdown.core.community.internal.CommunityEditionReposito
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.CountdownEngine
+import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
@@ -32,12 +33,11 @@ import java.time.ZoneId
 import java.util.UUID
 
 /**
- * `song-snippet` is a second unconditional bean alongside `guess-hue` (see [SongSnippetGameType][
- * org.unividuell.countdown.core.game.internal.SongSnippetGameType]), so [GameSelection][
- * org.unividuell.countdown.core.game.internal.GameSelection] may draw either one for a freshly
- * materialised round here — [SongSnippetTestCatalogConfiguration] keeps that draw from reaching the
- * network or an empty pool, and the one assertion below that used to hard-code "guess-hue" now
- * accepts whichever type actually won.
+ * `guess-hue`, `song-snippet` and `find-pattern` are all unconditional beans, so [GameSelection][
+ * org.unividuell.countdown.core.game.internal.GameSelection] may draw any of them for a freshly
+ * materialised round here — [SongSnippetTestCatalogConfiguration] keeps a `song-snippet` win from
+ * reaching the network or an empty pool, and the one assertion below reads the winner's display name
+ * back out of the [org.unividuell.countdown.core.game.GameCatalog] instead of guessing which one won.
  */
 @Import(TestcontainersConfiguration::class, SongSnippetTestCatalogConfiguration::class)
 @SpringBootTest
@@ -53,6 +53,7 @@ class AnnouncementServiceTest(
     @Autowired val clock: Clock,
     @Autowired val mapper: ObjectMapper,
     @Autowired val users: UserRepository,
+    @Autowired val catalog: GameCatalog,
 ) {
     private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
 
@@ -140,10 +141,11 @@ class AnnouncementServiceTest(
         // With a target date in 2099, the current round number is far above zero.
         res.round.shouldNotBeNull().number shouldBeGreaterThan 0
         // Whichever type won: this asserts a game was announced at all, not which one — the
-        // catalogue now carries two unconditional games and GameSelection may draw either.
-        val displayNameById = mapOf("guess-hue" to "Farbausmalung", "song-snippet" to "Anspielung")
+        // catalogue carries several unconditional games and GameSelection may draw any of them.
+        // Read from the catalogue itself, not a retyped map, so a new game never leaves this stale.
         val id = res.game.shouldNotBeNull().id
-        res.game!!.displayName shouldBe requireNotNull(displayNameById[id]) { "unexpected game id '$id'" }
+        val expectedDisplayName = requireNotNull(catalog.handle(id)) { "unexpected game id '$id'" }.displayName
+        res.game!!.displayName shouldBe expectedDisplayName
         res.noGameReason.shouldBeNull()
     }
 

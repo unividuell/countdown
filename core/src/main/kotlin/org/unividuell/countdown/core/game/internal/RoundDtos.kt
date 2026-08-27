@@ -61,6 +61,17 @@ data class OtherPlayDto(
     val guess: JsonNode?,
     val outcome: JsonNode?,
     val points: Int?,
+    /**
+     * How long this player took, from their reveal to their guess — and `null` unless the round's
+     * game asked for a deliberate reveal.
+     *
+     * The timestamps above stay absent: *when* somebody looked is theirs. But for a game that scores
+     * on time the duration is not behaviour, it is the result — under `CLOSEST_ONLY` it is *why* the
+     * winner won, and „what the others played and what it scored is the round, and they get it“. The
+     * condition is `GameType.requiresReveal`, not a new switch: that flag already means „the clock is
+     * part of this game“, so a game where the duration is nobody's business never publishes one.
+     */
+    val durationMs: Long?,
 )
 
 /**
@@ -78,6 +89,8 @@ data class MyPlayDto(
     val guess: JsonNode?,
     val outcome: JsonNode?,
     val points: Int?,
+    /** The viewer's own — see [OtherPlayDto]. */
+    val durationMs: Long?,
 )
 
 /**

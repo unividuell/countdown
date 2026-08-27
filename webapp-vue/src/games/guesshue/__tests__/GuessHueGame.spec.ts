@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
-import { RESULTS_DELAY_MS } from '@/games/guesshue/reveal'
+import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import type { GuessHuePayload } from '@/games/guesshue/types'
 
 const PAYLOAD: GuessHuePayload = {
@@ -139,6 +139,7 @@ function entry(
     guess: { hue },
     outcome: { deviationDeg: 0 },
     points: 1,
+    durationMs: null,
     at: '2026-08-09T12:00:00Z',
     ...over,
   }

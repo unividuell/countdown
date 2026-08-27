@@ -401,4 +401,19 @@ class PlayServiceTest(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
         ).previousRoundNumber shouldBe older
     }
+
+    /** Guess Hue asks for no deliberate reveal, so how long anybody sat on the round stays theirs. */
+    @Test
+    fun `a round without a deliberate reveal publishes no duration`() {
+        val (community, _) = aCommunity("No Duration")
+        val viewer = aMember(community = community, login = "viewer")
+
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val response = play.guess(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = currentRoundNumberOf(community), guess = guess(10.0),
+        )
+
+        response.me.shouldNotBeNull().durationMs shouldBe null
+    }
 }

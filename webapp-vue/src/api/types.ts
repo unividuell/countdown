@@ -186,7 +186,8 @@ export interface GameDto {
 
 /**
  * Another player's row. No timestamps on purpose: when somebody else revealed and when they guessed
- * is theirs, and the server does not send it — see `OtherPlayDto` on the Kotlin side.
+ * is theirs, and the server does not send it — see `OtherPlayDto` on the Kotlin side. The duration
+ * does travel, for a timed game: see `durationMs` below.
  */
 export interface OtherPlayDto {
   userId: string
@@ -199,6 +200,12 @@ export interface OtherPlayDto {
   outcome: unknown
   /** `null` until the round is scored; `0` means „played and came away empty“. */
   points: number | null
+  /**
+   * How long this player took, reveal to guess. `null` unless the round's game asks for a
+   * deliberate reveal — see `OtherPlayDto` on the Kotlin side for why the duration travels while
+   * the timestamps do not.
+   */
+  durationMs: number | null
 }
 
 /** The viewer's own row: the same, plus the two stamps that are theirs to know. */

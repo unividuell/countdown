@@ -87,6 +87,15 @@ browser never receives cannot be read out of the network tab either — one leve
 Sorting `others` by `guessedAt` stays: the order the round happened in is what the list is for, and an
 order is not a clock.
 
+**The duration is the one exception, and it sharpens the rule rather than breaking it.** Timestamps
+stay private because *when* someone acted is their own business, not the round's outcome — but for a
+game whose ranking is built on elapsed time, the duration between the two stamps *is* the round's
+outcome, the way a Guess Hue player's angle is. `durationMs` is published on both `MyPlayDto` and
+`OtherPlayDto` under exactly one condition, `GameType.requiresReveal(params)` — no new per-game
+switch, the same boolean that already decides whether a clock runs at all. Withholding it for a
+time-scored game would show a ranking whose basis nobody can see; publishing it for every other game
+would leak exactly the sitting-on-it fact this section exists to protect.
+
 ## The game judges, the framework awards
 
 A game says "eligible for points" (`qualifies`) and "this far off" (`deviation`); how many points that
@@ -190,7 +199,18 @@ the framework overrides whatever the game returns with the stage number, and the
 advances the round instead of recording it" is not universal — it holds only under `ALL_QUALIFYING`;
 `CLOSEST_ONLY` (phase two) is always terminal on the first guess, whatever the stage, because only one
 guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
-the lab replays the exact rule a real round applies instead of a copy of it. Giving up is `guessed_at`
+the lab replays the exact rule a real round applies instead of a copy of it.
+
+A `requiresReveal` game is the second case of the same shape: `PlayService.guess` overrides
+`deviation` with the reveal-to-guess duration, and the game's own `deviation` never reaches storage
+there either — same reasoning as the stage override, and for the same reason it belongs to the
+framework and not the game: a game judges its own content, but the round's timing is framework state,
+and `GameType.judge` receives no timestamps to begin with. `PlayService.guess`'s `when` checks stage,
+then reveal duration, then the game's own `deviation`, in that order — and all three ride on the one
+`deviation` column rather than a column each, because `deviation` is already the single comparison
+value `pointsFor` and `CLOSEST_ONLY` both read.
+
+Giving up is `guessed_at`
 set with no `guess` — re-evaluation reads that as not qualifying, awards zero points, and opens the
 solution gate the same way a judged-and-lost guess would. Binary round assets follow the same
 stage-gating: they live behind the framework's own URL

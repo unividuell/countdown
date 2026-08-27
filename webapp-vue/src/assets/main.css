@@ -113,6 +113,17 @@
   }
 }
 
+/* The sealed face's height, before the game it precedes even exists. `RoundCard`'s `sealed`
+   branch renders ahead of the game component — the round hasn't mounted it yet — so it cannot ask
+   the game how tall it is, and must not guess from one game's board (its column/row count, its
+   `max-w` cap): that would bake one game's shape into a face every future game shares. So this is
+   a felt approximation, not a computation: tall enough that uncovering the board doesn't lurch the
+   page for *any* game, in viewport terms so it scales with the screen rather than a game's grid.
+   Named so the lab's mirror of this face (`[game].vue`) cannot drift from the real round's. */
+@utility sealed-face {
+  min-height: 60vh;
+}
+
 /* The scrollbar's track stays reserved even on a page short enough not to need one, so opening the
    nav drawer cannot move the page underneath it. The drawer locks the body (`useScrollLock` sets
    `overflow: hidden`), which on a classic scrollbar takes the bar away and widens the content box —

@@ -13,6 +13,7 @@ import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
+import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
@@ -26,10 +27,12 @@ import {
   labAssetUrl,
   openLabRound,
   resetLabRound,
+  revealLabRound,
   skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
+import type { GameEntry } from '@/games/GameEntry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
@@ -37,6 +40,7 @@ import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 const route = useRoute('/c/[slug]/lab/[game]')
 const router = useRouter()
 const { community } = useCommunityContext()
+const { user } = useAuth()
 
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
@@ -90,6 +94,11 @@ async function run(
   }
 }
 
+/** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
+async function reveal(): Promise<void> {
+  await run(revealLabRound)
+}
+
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
   if (current === null) return
@@ -126,14 +135,44 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 })
 
 /**
- * The complete picture of the round: the viewer's own entry first, then everyone else's. The
- * backend withholds `others` until the viewer has guessed, so before that this is empty — `me` is
- * the only thing ever populated ahead of it.
+ * The complete picture of the round, as the server actually stored it — the viewer's own entry
+ * first, then everyone else's. Feeds `LabEntries`, which shows exactly the raw wire values; a
+ * synthesised row would misrepresent what is really in the database.
  */
 const entries = computed<LabEntryDto[]>(() => {
   const current = round.value
   if (!current) return []
   return current.me ? [current.me, ...current.others] : current.others
+})
+
+/**
+ * What the game component gets as `entries`/`mineUserId`. In a real round a stage that reveals
+ * before it scores (Musterung's phase two) creates the viewer's own play row the moment they see
+ * the board, tinted in their colour — `guess`/`outcome`/`points` null until they act. The lab has
+ * no reveal step of its own: `round.me` stays null until a guess lands, so without this the game
+ * finds no row for `mineUserId`, and colours the viewer's own outline with the grey fallback while
+ * they are still playing. This is not a fabricated guess — it is the same „revealed, not yet
+ * guessed“ state a real reveal would have produced, built from the tester's own identity.
+ */
+const gameMineUserId = computed(() => round.value?.me?.userId ?? user.value?.id ?? null)
+const gameEntries = computed<GameEntry[]>(() => {
+  const current = round.value
+  if (!current) return []
+  if (current.me) return [current.me, ...current.others]
+  if (!user.value) return current.others
+  return [
+    {
+      userId: user.value.id,
+      username: user.value.username,
+      stage: current.myStage,
+      guess: null,
+      outcome: null,
+      points: null,
+      durationMs: null,
+      avatar: user.value.avatar,
+    },
+    ...current.others,
+  ]
 })
 
 // The seed is the single source of truth. An absent or unusable one is repaired into the URL
@@ -211,6 +250,32 @@ watch(
         />
       </template>
       <!--
+        Same face and the same sentence as the real round's `sealed` (`RoundCard.vue`) — the lab
+        mirrors it rather than inventing a second wording. Absent for a game that never asked for a
+        deliberate reveal: `round.revealed` is already `true` for those from the first response, so
+        this branch never renders and the game mounts straight away, exactly as before this gate
+        existed.
+      -->
+      <div
+        v-if="!round.revealed"
+        data-test="lab-sealed"
+        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
+      >
+        <p data-test="lab-reveal-cost" class="text-sm text-neutral-600">
+          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+        </p>
+        <button
+          type="button"
+          data-test="lab-reveal"
+          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+          :disabled="busy"
+          @click="reveal"
+        >
+          Aufdecken
+        </button>
+      </div>
+
+      <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
         has come back. Keying on the URL seed would remount right then, capturing the previous
@@ -222,13 +287,14 @@ watch(
       -->
       <component
         :is="gameComponent"
+        v-else
         :key="round.seed"
         :payload="round.payload"
         :outcome="round.me?.outcome ?? null"
         :my-guess="round.me?.guess ?? null"
         :solution="round.solution"
-        :entries="entries"
-        :mine-user-id="round.me?.userId ?? null"
+        :entries="gameEntries"
+        :mine-user-id="gameMineUserId"
         :award-rule="round.awardRule"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"

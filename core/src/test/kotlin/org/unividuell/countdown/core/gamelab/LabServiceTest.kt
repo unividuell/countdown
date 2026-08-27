@@ -28,6 +28,7 @@ import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
+import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
 import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
@@ -88,6 +89,7 @@ class LabServiceTest(
         // Shape-valid, not necessarily correct — same relationship to song-snippet's real target as
         // this file's fixed hue has to guess-hue's: a legal guess is all "for every game there is" needs.
         "song-snippet" -> mapper.readTree("""{"trackId":1}""")
+        "find-pattern" -> mapper.readTree("""{"startIndex":3}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
@@ -504,5 +506,106 @@ class LabServiceTest(
         val entry = response.me.shouldNotBeNull()
         entry.username shouldBe "Zwerg"
         entry.avatar.shortName shouldBe "ZWRG"
+    }
+
+    // --- Task 20: the lab's own reveal gate, mirroring the real round's ---------------------------
+
+    @Test
+    fun `opening a round that requires a deliberate reveal does not start the clock`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val response = service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        response.revealed shouldBe false
+        // Withheld like the solution already is: the payload of a reveal-gated game is the board.
+        response.payload.shouldBeNull()
+    }
+
+    @Test
+    fun `only a game that requires a deliberate reveal is gated, even in phase two`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        ).revealed shouldBe true
+        service.open(
+            slug = community.slug, gameId = "song-snippet", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        ).revealed shouldBe true
+        service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        ).revealed shouldBe false
+    }
+
+    @Test
+    fun `a guess before the reveal is refused for a game that requires one`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        shouldThrow<LabNotRevealedException> {
+            service.guess(
+                slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+                userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("find-pattern"),
+            )
+        }
+    }
+
+    @Test
+    fun `revealing starts the clock and hands over the withheld payload`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        val response = service.reveal(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        response.revealed shouldBe true
+        response.payload.shouldNotBeNull()
+    }
+
+    @Test
+    fun `a guess after the reveal carries a duration, and a reset puts the tester back in front of the gate`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+        service.reveal(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        val guessed = service.guess(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("find-pattern"),
+        )
+        guessed.me.shouldNotBeNull().durationMs.shouldNotBeNull()
+
+        val afterReset = service.resetRound(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+        afterReset.revealed shouldBe false
+        afterReset.me.shouldBeNull()
+
+        // The gate is back, not just the visible face of it: a stale guess needs a fresh reveal too.
+        shouldThrow<LabNotRevealedException> {
+            service.guess(
+                slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+                userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("find-pattern"),
+            )
+        }
     }
 }

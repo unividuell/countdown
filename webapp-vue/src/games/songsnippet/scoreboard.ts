@@ -4,6 +4,7 @@
  * is the half a test can actually assert on.
  */
 import type { AwardRule } from '@/api/types'
+import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 
@@ -74,16 +75,6 @@ export function scoreRows(input: {
     (a, b) =>
       (b.points ?? 0) - (a.points ?? 0) || a.stage - b.stage || a.userId.localeCompare(b.userId),
   )
-}
-
-/**
- * Whether a score can still be overtaken — the server's own rule in `RoundPlayPoints.kt`
- * (`awardRule == CLOSEST_ONLY && points > 0`), mirrored because a round's response carries the rule
- * but not the verdict. A zero is final even under „closest only“: a later guess can only take
- * points away, never give them.
- */
-function isProvisional(points: number | null, awardRule: AwardRule | null): boolean {
-  return awardRule === 'CLOSEST_ONLY' && points !== null && points > 0
 }
 
 /** Narrowed, not cast: a guess is `unknown` by contract, and a stale round may be junk. */

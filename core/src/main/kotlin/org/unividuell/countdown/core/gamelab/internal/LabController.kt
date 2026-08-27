@@ -44,6 +44,19 @@ class LabController(private val service: LabService) {
         userId = me.id, isSuperAdmin = me.isSuperAdmin,
     )
 
+    /** The explicit reveal — starts this tester's clock, once. Mirrors `PlayService.reveal`. */
+    @PostMapping("/reveal")
+    fun reveal(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+    ) = service.reveal(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
+
     @PostMapping("/guess")
     fun guess(
         @AuthenticationPrincipal me: AuthenticatedUser,

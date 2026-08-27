@@ -22,9 +22,12 @@ data class LabEntryDto(
     val guess: JsonNode,
     val outcome: GameOutcome?,
     val points: Int,
+    /** Display order only — never a score. */
     val at: Instant,
     /** The stage this entry was recorded at — same idea as [LabRoundResponse.myStage], per entry. */
     val stage: Int,
+    /** Reveal-to-guess, as in a real round. `null` for a game that does not score on time. */
+    val durationMs: Long?,
 )
 
 /**
@@ -43,7 +46,12 @@ data class LabRoundResponse(
     val displayName: String,
     val awardRule: AwardRule,
     val awardPoints: Int,
-    val payload: GamePayload,
+    /**
+     * `null` until [revealed] — withheld the same way [solution] already is: for a game that asked
+     * for a deliberate reveal, the payload IS the board (Musterung's board image, e.g.), so leaving
+     * it in an unrevealed response would let the network tab show what the click is supposed to gate.
+     */
+    val payload: GamePayload?,
     /** Filled only once the viewer has an entry of their own; `null` in front of that gate. */
     val solution: GameSolution?,
     val me: LabEntryDto?,
@@ -51,6 +59,12 @@ data class LabRoundResponse(
     val tookOverRound: Boolean,
     /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
     val myStage: Int,
+    /**
+     * Whether the viewer may see the board. Always `true` for a game that never asked for a
+     * deliberate reveal — there is nothing to gate. The one field the page acts on; nothing here is
+     * derived client-side.
+     */
+    val revealed: Boolean,
 )
 
 /** The body of a skip request — mirrors `SkipRequest` in the real round's `RoundDtos`. */

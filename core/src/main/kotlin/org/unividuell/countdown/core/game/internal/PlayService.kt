@@ -97,13 +97,21 @@ class PlayService(
             if (advanced == 0) throw StageMovedOnException()
             return responses.of(current = current.copy(roundGame = round), viewerId = userId)
         }
-        // For a staged game the distance IS the stage — framework state the game cannot know. A
-        // single-stage game keeps the game's own distance.
-        val deviation = if (stages > 1) play.stage.toDouble() else judgement.deviation
+        // Framework state the game cannot know, in both branches. For a staged game the distance IS
+        // the stage. For a game that asked for a deliberate reveal it is the time that reveal
+        // started: the clock belongs to the server, and `judge(params, guess)` has no way to reach
+        // it — which is exactly why the game returns a meaningless 0.0 and this line decides.
+        val guessedAt = clock.instant()
+        val deviation = when {
+            stages > 1 -> play.stage.toDouble()
+            current.handle.requiresReveal(round.params) ->
+                durationMsBetween(revealedAt = play.revealedAt, guessedAt = guessedAt).toDouble()
+            else -> judgement.deviation
+        }
         val recorded = plays.recordGuess(
             id = requireNotNull(play.id),
             guess = guess,
-            guessedAt = clock.instant(),
+            guessedAt = guessedAt,
             qualifies = judgement.qualifies,
             deviation = deviation,
             // Stored as the game shaped it — the framework never looks inside.

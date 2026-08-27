@@ -15,6 +15,10 @@ function labUrl(slug: string, game: string, seed: number, phase: LabPhase, sub =
 export const openLabRound = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase))
 
+/** The explicit reveal — starts the tester's clock, once. Mirrors `revealRound` in the real round. */
+export const revealLabRound = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
+  apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/reveal'), { method: 'POST' })
+
 export const submitLabGuess = <P>(
   slug: string,
   game: string,

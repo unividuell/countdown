@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { hslToHex } from '@/games/guesshue/color'
-import { isProvisional, scoreboardRows, solutionCell } from '@/games/guesshue/scoreboard'
+import { scoreboardRows, solutionCell } from '@/games/guesshue/scoreboard'
 
 const SATURATION = 0.6
 const LIGHTNESS = 0.45
@@ -13,6 +13,7 @@ function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
     guess: { hue: 210 },
     outcome: { deviationDeg: 0, withinTolerance: true },
     points: 1,
+    durationMs: null,
     avatar: { bgColorHex: '#3366cc' },
     ...over,
   }
@@ -115,20 +116,6 @@ describe('scoreboardRows', () => {
       ['me', 0],
       ['far', 2],
     ])
-  })
-})
-
-describe('isProvisional', () => {
-  it.each([
-    [2, 'CLOSEST_ONLY' as const, true],
-    // A zero cannot get better under closest-only: deviations freeze on guessing.
-    [0, 'CLOSEST_ONLY' as const, false],
-    [2, 'ALL_QUALIFYING' as const, false],
-    [0, 'ALL_QUALIFYING' as const, false],
-    [null, 'CLOSEST_ONLY' as const, false],
-    [2, null, false],
-  ])('is %s points under %s → %s', (points, awardRule, expected) => {
-    expect(isProvisional(points, awardRule)).toBe(expected)
   })
 })
 
