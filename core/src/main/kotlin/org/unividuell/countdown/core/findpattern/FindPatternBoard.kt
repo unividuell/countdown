@@ -1,8 +1,6 @@
 package org.unividuell.countdown.core.findpattern
 
 import org.unividuell.countdown.core.findpattern.FindPatternLayout.BLOCK_COUNT
-import org.unividuell.countdown.core.findpattern.FindPatternLayout.DELTA_MAX
-import org.unividuell.countdown.core.findpattern.FindPatternLayout.DELTA_MIN
 import org.unividuell.countdown.core.findpattern.FindPatternLayout.LAST_START_INDEX
 import org.unividuell.countdown.core.findpattern.FindPatternLayout.PALETTE_SIZE
 import org.unividuell.countdown.core.findpattern.FindPatternLayout.PATTERN_LENGTH
@@ -20,8 +18,16 @@ object FindPatternBoard {
     fun blocks(presentation: SeededRandom): List<Int> =
         List(BLOCK_COUNT) { presentation.nextInt(PALETTE_SIZE) }
 
-    fun delta(presentation: SeededRandom): Double =
-        DELTA_MIN + presentation.nextDouble() * (DELTA_MAX - DELTA_MIN)
+    /**
+     * Two draws, both from `presentation` because the difficulty is visible in the board: first
+     * which band, then the value inside it. The bands are 0.02, 0.04 and 0.03 wide, so a single
+     * uniform draw over the whole interval would favour medium and starve hard; drawing the band
+     * first is what makes each roughly a third instead.
+     */
+    fun delta(presentation: SeededRandom): Double {
+        val band = presentation.pick(FindPatternDifficulty.entries)
+        return band.lower + presentation.nextDouble() * (band.upper - band.lower)
+    }
 
     fun patternStartIndex(solution: SeededRandom): Int = solution.nextInt(LAST_START_INDEX + 1)
 

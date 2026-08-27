@@ -129,9 +129,22 @@ Stellen“ ein — und genau das *ist* die Aufgabe.
 Der Clamp des Originals (`if (candidate > 108) candidate = 108`, was die letzte Position häufiger
 macht als jede andere) fällt weg: gezogen wird direkt in `0..108`.
 
-**`delta` ist ein Zufallswert in `[0,10 … 0,20]`.** Die drei kalibrierten Erfahrungswerte —
-0,2 leicht · 0,12 mittel · 0,1 schwer — stehen als Kommentar neben dem Zug, damit sie nicht verloren
-gehen, ohne die Auswahl in Stufen zu zerlegen.
+**`delta` ist ein zweistufiger Zug in `[0,02 … 0,11)`.** Das Original hatte keine Formel — `distance`
+war ein Zahlenfeld, das ein Admin pro Runde tippte
+(`huettehuette.unividuell.org/pages/admin/02-find-pattern/pattern-manager.vue:84`). Das erste
+Intervall `[0,10 … 0,20]` war entsprechend geraten, nicht kalibriert, und lag mit Median 0,15 oberhalb
+jeder der 27 gespielten Runden aus der alten Datenbank (Median/Modus 0,12). Nutzer-Entscheidung nach
+Sichtung echter Renders über die ganze Bandbreite plus dieser Historie: drei halboffene Bänder —
+`[0,02 … 0,04)` schwer, `[0,04 … 0,08)` mittel, `[0,08 … 0,11)` leicht, als `FindPatternDifficulty` in
+`findpattern`. Jedes Band schließt seine untere Grenze ein und seine obere aus; so kacheln sie
+`[0,02 … 0,11)` lückenlos, ohne dass ein Grenzwert zwei Bändern angehört. `DELTA_MAX` (0,11) ist damit
+eine **exklusive** obere Grenze — dieser Wert selbst wird nie gezogen. Der Zug ist zweistufig, beide
+Male aus `presentation`: erst das Band gleichverteilt unter den dreien, dann ein stetiger Wert darin
+(`lower + nextDouble() · (upper − lower)`) — dieselbe Rechnung wie zuvor der einstufige Zug, nur pro
+Band statt über das ganze Intervall. Ohne die zwei Stufen würde ein einziger gleichverteilter Zug über
+`[0,02 … 0,11)` schwer nur zu 22 % und mittel zu 44 % treffen, weil die Bänder unterschiedlich breit
+sind (0,02 / 0,04 / 0,03); der Zug pro Band hebt jedes auf rund ein Drittel. Die Bandnamen tragen heute
+noch keine Bedeutung, bekommen aber schon ihren Platz.
 
 `RoundContext.previousParams` bleibt ungenutzt: zwei zufällige 112-Block-Gitter kollidieren nicht.
 
