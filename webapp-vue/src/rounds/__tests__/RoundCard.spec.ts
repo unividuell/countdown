@@ -28,6 +28,7 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
+        tipPath: { type: Function, default: null },
       },
       emits: ['guess', 'skip', 'give-up'],
       template:
@@ -88,6 +89,7 @@ function mountCard(props: {
   skip?: (fromStage: number) => Promise<void>
   giveUp?: () => Promise<void>
   assetUrl?: (key: number) => string
+  tipPath?: (userId: string) => string
 }): VueWrapper {
   return mount(RoundCard, {
     props: {
@@ -153,6 +155,14 @@ describe('RoundCard', () => {
 
     expect(stub.props('stage')).toBe(2)
     expect(stub.props('assetUrl')).toBe(assetUrl)
+  })
+
+  it("hands the game the round's tip-path builder", () => {
+    const tipPath = vi.fn().mockReturnValue('/c/team/rounds/12/tips/u1')
+    const round = aRound({ me: aPlay() })
+    const stub = mountCard({ round, stage: 'playing', tipPath }).findComponent(StubGame)
+
+    expect(stub.props('tipPath')).toBe(tipPath)
   })
 
   it('reaches skip and give-up through to the callbacks the page supplied', async () => {

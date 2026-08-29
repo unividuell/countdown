@@ -56,6 +56,7 @@ declare module 'vue-router/auto-routes' {
       | '/c/[slug]/members'
       | '/c/[slug]/profile'
       | '/c/[slug]/requests'
+      | '/c/[slug]/rounds/[roundNumber]/tips/[userId]'
       | '/c/[slug]/settings'
     >,
     '/c/[slug]/': RouteRecordInfo<
@@ -98,6 +99,13 @@ declare module 'vue-router/auto-routes' {
       '/c/:slug/requests',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/rounds/[roundNumber]/tips/[userId]': RouteRecordInfo<
+      '/c/[slug]/rounds/[roundNumber]/tips/[userId]',
+      '/c/:slug/rounds/:roundNumber/tips/:userId',
+      { slug: ParamValue<true>, roundNumber: ParamValue<true>, userId: ParamValue<true> },
+      { slug: ParamValue<false>, roundNumber: ParamValue<false>, userId: ParamValue<false> },
       | never
     >,
     '/c/[slug]/settings': RouteRecordInfo<
@@ -218,6 +226,7 @@ declare module 'vue-router/auto-routes' {
         | '/c/[slug]/members'
         | '/c/[slug]/profile'
         | '/c/[slug]/requests'
+        | '/c/[slug]/rounds/[roundNumber]/tips/[userId]'
         | '/c/[slug]/settings'
       views:
         | 'default'
@@ -271,6 +280,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/c/[slug]/rounds/[roundNumber]/tips/[userId].vue': {
+      routes:
+        | '/c/[slug]/rounds/[roundNumber]/tips/[userId]'
+      views:
+        | never
+      pathParamNames:
+        | 'userId'
     }
     'src/pages/c/[slug]/settings.vue': {
       routes:

@@ -7,6 +7,7 @@
  */
 import { computed } from 'vue'
 import type { Component } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import type { RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
@@ -18,6 +19,8 @@ const props = withDefaults(
   defineProps<{
     round: RoundResponse | null
     assetUrl: (key: number) => string
+    /** Where a game's own tile links land. Only Weltanschauung's game component reads it. */
+    tipPath?: ((userId: string) => RouteLocationRaw) | undefined
     /**
      * The round is over: the reveal face, no clock, no action. One prop with three effects at one
      * place — a second card would be a second place for „the same reveal UI“ to drift.
@@ -41,6 +44,7 @@ const props = withDefaults(
     submit: undefined,
     skip: undefined,
     giveUp: undefined,
+    tipPath: undefined,
   },
 )
 
@@ -166,6 +170,7 @@ function onGiveUp(): void {
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
         :can-override="round?.canOverride ?? false"
+        :tip-path="props.tipPath"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

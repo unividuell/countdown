@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import { useAuth } from '@/auth/useAuth'
 import { roundAssetUrl } from '@/api/rounds'
 import { useCommunityContext } from '@/communities/context'
@@ -35,6 +36,16 @@ const {
 /** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
 const assetUrl = (key: number): string =>
   roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
+
+/** Where one of this round's tiles opens — this round's own number, the tile's own player. */
+const tipPath = (userId: string): RouteLocationRaw => ({
+  name: '/c/[slug]/rounds/[roundNumber]/tips/[userId]',
+  params: {
+    slug: community.value.slug,
+    roundNumber: String(round.value?.round?.number ?? 0),
+    userId,
+  },
+})
 
 // null means "not known yet" and holds the card at a placeholder, so only 'loading' gets it. A
 // failed roster never retries, so mapping it to null would hide the card forever; [] lets the
@@ -99,6 +110,7 @@ const settledMembers = computed(() => {
     :skip="skip"
     :give-up="giveUp"
     :asset-url="assetUrl"
+    :tip-path="tipPath"
     @guessed="refreshAfterGuess"
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
