@@ -23,3 +23,12 @@ class LabAssetForbiddenException(message: String = "this asset is not yours to f
 
 /** The gate allowed it, but the game has nothing stored under this key -> 404. */
 class LabAssetNotFoundException(message: String = "no such asset") : RuntimeException(message)
+
+/** The game's round does not allow peer review -> 409, the lab's counterpart to `ReviewNotOpenException`. */
+class LabReviewNotOpenException(message: String = "this round is not open for review") :
+    RuntimeException(message)
+
+/** A self-vote, an unplayed voter, or no tip to act on -> 403, the lab's counterpart to
+ * `ReviewNotAllowedException`. */
+class LabReviewNotAllowedException(message: String = "this vote is not yours to cast") :
+    RuntimeException(message)

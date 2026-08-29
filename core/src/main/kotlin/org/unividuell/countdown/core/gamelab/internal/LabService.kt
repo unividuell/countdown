@@ -16,7 +16,10 @@ import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
+import org.unividuell.countdown.core.game.Vote
+import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.awardFor
+import org.unividuell.countdown.core.game.effectiveQualifies
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.node.NullNode
@@ -298,6 +301,67 @@ class LabService(
     }
 
     /**
+     * Casting, changing, or withdrawing a ballot — the lab's twin of `ReviewService.vote`. Refuses a
+     * self-vote and a voter without an entry of their own, same as the real round; a game that does
+     * not allow review at all is refused before either of those.
+     */
+    fun vote(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        voterUserId: UUID,
+        isSuperAdmin: Boolean,
+        targetUserId: UUID,
+        value: Vote?,
+    ): LabRoundResponse {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = voterUserId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        if (!handle.allowsPeerReview(playing.params)) throw LabReviewNotOpenException()
+        if (targetUserId == voterUserId) throw LabReviewNotAllowedException("you cannot vote on your own tip")
+        val snapshot = store.open(communityId = communityId, gameId = gameId, round = playing)
+        if (snapshot.entries.none { it.userId == voterUserId }) {
+            throw LabReviewNotAllowedException("you have not played this round")
+        }
+        val updated = store.vote(
+            communityId = communityId, gameId = gameId, round = playing,
+            targetUserId = targetUserId, voterUserId = voterUserId, value = value,
+        ) ?: throw LabReviewNotAllowedException("there is no tip to vote on")
+        return respond(communityId = communityId, handle = handle, snapshot = updated, me = voterUserId)
+    }
+
+    /**
+     * The game master's verdict on one tip — the lab's twin of `ReviewService.override`, minus the
+     * admin check: in the lab everybody is the game master, so the only gates left are a game that
+     * allows review at all and a tip to override.
+     */
+    fun override(
+        slug: String,
+        gameId: String,
+        seed: Int,
+        phase: Phase,
+        adminId: UUID,
+        isSuperAdmin: Boolean,
+        targetUserId: UUID,
+        value: Boolean?,
+    ): LabRoundResponse {
+        val (communityId, handle) = resolve(
+            slug = slug, gameId = gameId, userId = adminId, isSuperAdmin = isSuperAdmin,
+        )
+        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
+        if (!handle.allowsPeerReview(playing.params)) throw LabReviewNotOpenException()
+        val updated = store.override(
+            communityId = communityId, gameId = gameId, round = playing,
+            targetUserId = targetUserId, value = value,
+        ) ?: throw LabReviewNotAllowedException("there is no tip to override")
+        return respond(communityId = communityId, handle = handle, snapshot = updated, me = adminId)
+    }
+
+    /**
      * The one gate for every action above, [guess] included: unlike `PlayService.playable`, which
      * never lets a super-admin skip membership before a write because a real `CLOSEST_ONLY` round
      * would move every member's points to zero for a guess that never shows up in the standings, a
@@ -354,9 +418,11 @@ class LabService(
         // another tester's guess before one's own is right, so there is no switch to get it wrong
         // with. A payload the browser never receives cannot be read out of the network tab either.
         val visible = if (mine == null) emptyList() else snapshot.entries.filter { it.userId != me }
+        val shown = visible + listOfNotNull(mine)
+        // Voters get names too — they may not be among the players this response otherwise shows.
         val byId = identities.of(
             communityId = communityId,
-            userIds = (visible + listOfNotNull(mine)).map { it.userId },
+            userIds = shown.map { it.userId } + shown.flatMap { it.votes.keys },
         )
         // A tester whose user row vanished mid-session drops out of the list rather than taking the
         // whole page down with them.
@@ -371,6 +437,17 @@ class LabService(
                 at = entry.at,
                 stage = entry.stage,
                 durationMs = entry.durationMs,
+                votes = entry.votes.mapNotNull { (voterId, value) ->
+                    byId[voterId]?.let { LabVoteView(userId = voterId, username = it.username, value = value) }
+                }.sortedBy { it.username },
+                // `!effectiveQualifies(...)`, not `struckOut(...)` alone, so an override shows up here
+                // exactly as it shows up in the scoring — one rule, read twice, never two rules.
+                struck = !effectiveQualifies(
+                    adminOverride = entry.adminOverride,
+                    qualifies = entry.qualifies,
+                    tally = VoteTally.of(entry.votes.values.toList()),
+                ),
+                adminOverride = entry.adminOverride,
             )
         }
 
@@ -398,6 +475,9 @@ class LabService(
             tookOverRound = snapshot.tookOverRound,
             myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me),
             revealed = revealed,
+            // Always true: in the lab everybody is the game master, the one deliberate difference
+            // from the product — the lab models no roles anywhere.
+            canOverride = true,
         )
     }
 

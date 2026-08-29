@@ -25,6 +25,7 @@ class LabExceptionHandler {
         AlreadyGuessedException::class,
         LabStageMovedOnException::class,
         LabNotRevealedException::class,
+        LabReviewNotOpenException::class,
     )
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "already guessed")
@@ -33,7 +34,7 @@ class LabExceptionHandler {
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 
-    @ExceptionHandler(LabAssetForbiddenException::class)
+    @ExceptionHandler(LabAssetForbiddenException::class, LabReviewNotAllowedException::class)
     fun forbidden(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
 }

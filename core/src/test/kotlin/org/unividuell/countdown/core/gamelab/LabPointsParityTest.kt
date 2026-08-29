@@ -1,7 +1,9 @@
 package org.unividuell.countdown.core.gamelab
 
+import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.mockk.every
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -20,16 +22,19 @@ import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.game.awardFor
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.ResolvedRound
+import org.unividuell.countdown.core.game.internal.ReviewService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import org.unividuell.countdown.core.spotobject.CountryLookup
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.security.SecureRandom
@@ -51,15 +56,15 @@ import java.util.UUID
  * which differ on purpose, but by the stake `awardFor` pays at that shared position, 2 points.
  *
  * A **sanctioned, test-only exception** to `gamelab → game`, never `game.internal`: unlike
- * `LabServiceTest`, this file imports `AnnouncementService`, `PlayService` and `GuessHueSolution`
- * straight from `game.internal`. Proving parity means driving the real round's own services and reading
- * its stored `points` — no exposed API produces either, and mocking them the way `LabServiceTest` mocks
- * `CommunityQuery`/`MembershipQuery`/`UserQuery` would defeat the point, since the real award path
- * *is* what this test exists to run. It stays test-only: `ModularityTests.verify()` scans production
- * sources, not tests, so the constraint this appears to break is a production constraint, and
- * production code keeps obeying it without exception. `LabServiceTest`'s way — mock the surrounding
- * modules, never reach into `game.internal` — remains the rule for lab tests generally; this file is
- * the one exception, because parity cannot be shown from one side alone.
+ * `LabServiceTest`, this file imports `AnnouncementService`, `PlayService`, `ReviewService` and
+ * `GuessHueSolution` straight from `game.internal`. Proving parity means driving the real round's own
+ * services and reading its stored `points` — no exposed API produces either, and mocking them the way
+ * `LabServiceTest` mocks `CommunityQuery`/`MembershipQuery`/`UserQuery` would defeat the point, since
+ * the real award path *is* what this test exists to run. It stays test-only: `ModularityTests.verify()`
+ * scans production sources, not tests, so the constraint this appears to break is a production
+ * constraint, and production code keeps obeying it without exception. `LabServiceTest`'s way — mock the
+ * surrounding modules, never reach into `game.internal` — remains the rule for lab tests generally;
+ * this file is the one exception, because parity cannot be shown from one side alone.
  *
  * The real half's guess-hue shapes (`{"hue":...}`, [GuessHueSolution]) are hard-coded on purpose — this
  * is a parity test for `awardFor`/`pointsFor`, not a test of game selection — so [announceGuessHue]
@@ -72,6 +77,7 @@ import java.util.UUID
 class LabPointsParityTest(
     @Autowired val lab: LabService,
     @Autowired val play: PlayService,
+    @Autowired val review: ReviewService,
     @Autowired val announcements: AnnouncementService,
     @Autowired val communities: CommunityService,
     @Autowired val members: CommunityMemberRepository,
@@ -84,6 +90,10 @@ class LabPointsParityTest(
     @Autowired val store: RoundGameStore,
     @Autowired val catalog: GameCatalog,
 ) {
+
+    // Spot Object's judge resolves a country through this on every guess — mocked so the struck-tip
+    // case below does not reach out to Google for real.
+    @MockkBean lateinit var countries: CountryLookup
 
     private fun aUser(login: String): UUID =
         requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
@@ -160,6 +170,31 @@ class LabPointsParityTest(
         )
     }
 
+    /** Pins the community's current round to "spot-object" — the one game peer review can drive. */
+    private fun announceSpotObject(community: Community, phaseTwoStartRound: Int?) {
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundNumber = engine.roundAt(
+            now = clock.instant(),
+            startsAt = requireNotNull(edition.startsAt),
+            zone = ZoneId.of(edition.startsAtTimezone),
+        ).number
+        val phase = Phase.of(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound)
+        store.announce(
+            edition = edition,
+            roundNumber = roundNumber,
+            gameType = "spot-object",
+            params = requireNotNull(catalog.handle("spot-object")).draw(
+                random = GameRandom.independent(SecureRandom()),
+                context = RoundContext(roundNumber = roundNumber, phase = phase),
+            ),
+            award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound),
+            announcedAt = clock.instant(),
+        )
+    }
+
+    private val spotObjectGuess: JsonNode =
+        mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
+
     @Test
     fun `a lab round in phase two awards what a real round in phase two awards`() {
         // The number both halves must land on, pinned independently of either side's own machinery:
@@ -230,5 +265,125 @@ class LabPointsParityTest(
         ).points
         realWinnerPoints shouldBe realExpectedPoints
         realLoserPoints shouldBe 0
+    }
+
+    /**
+     * The case the spec names: re-evaluation is exactly where the lab and the real round could drift,
+     * since both now build their `Verdict` through the same [org.unividuell.countdown.core.game.effectiveQualifies]
+     * rather than a second, lab-local copy of the rule.
+     *
+     * One tip, struck by the other two testers who guessed alongside it — spot-object is the only
+     * catalogue game that allows peer review, so it stands in for "a game with review switched on"
+     * here the way guess-hue stands in for the plain award path above.
+     */
+    @Test
+    fun `a struck tip in phase two pays nothing, in both worlds`() {
+        every { countries.countryOf(any()) } returns null
+
+        // --- the lab half: three testers, phase two, two of them flag the third's tip ------------
+        val labTargetId = aUser("lab-target")
+        val labCommunity = communities.create(creatorUserId = labTargetId, rawName = "Lab Struck Round")
+        val labVoter1Id = aMember(community = labCommunity, login = "lab-voter1")
+        val labVoter2Id = aMember(community = labCommunity, login = "lab-voter2")
+        // The voters reveal first and guess last, so their reveal-to-guess duration is unambiguously
+        // the longer one — CLOSEST_ONLY needs a single, deterministic closest tip before any vote is
+        // cast, and three reveal/guess pairs fired back-to-back would otherwise tie at "0ms" on a
+        // clock no finer than the millisecond.
+        lab.reveal(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labVoter1Id, isSuperAdmin = false,
+        )
+        lab.reveal(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labVoter2Id, isSuperAdmin = false,
+        )
+        lab.reveal(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labTargetId, isSuperAdmin = false,
+        )
+        lab.guess(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labTargetId, isSuperAdmin = false, guess = spotObjectGuess,
+        )
+        Thread.sleep(50)
+        lab.guess(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labVoter1Id, isSuperAdmin = false, guess = spotObjectGuess,
+        )
+        lab.guess(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labVoter2Id, isSuperAdmin = false, guess = spotObjectGuess,
+        )
+        // Before the strike: the shortest reveal-to-guess duration, so it holds the whole stake.
+        lab.open(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labTargetId, isSuperAdmin = false,
+        ).me.shouldNotBeNull().points shouldBe 2
+
+        lab.vote(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            voterUserId = labVoter1Id, isSuperAdmin = false, targetUserId = labTargetId, value = Vote.FLAG,
+        )
+        lab.vote(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            voterUserId = labVoter2Id, isSuperAdmin = false, targetUserId = labTargetId, value = Vote.FLAG,
+        )
+        val labPointsAfter = lab.open(
+            slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
+            userId = labTargetId, isSuperAdmin = false,
+        ).me.shouldNotBeNull().points
+
+        // --- the real half: same shape, on round_games/round_plays -------------------------------
+        val (realCommunity, realTargetId, realThreshold) = aPhaseTwoCommunity("Real Struck Round")
+        val realVoter1Id = aMember(community = realCommunity, login = "real-voter1")
+        val realVoter2Id = aMember(community = realCommunity, login = "real-voter2")
+        announceSpotObject(community = realCommunity, phaseTwoStartRound = realThreshold)
+
+        // Same staggering as the lab half, and for the same reason: a deterministic closest tip
+        // before any vote is cast.
+        play.reveal(slug = realCommunity.slug, userId = realVoter1Id, isSuperAdmin = false)
+        play.reveal(slug = realCommunity.slug, userId = realVoter2Id, isSuperAdmin = false)
+        val realTargetRevealed = play.reveal(
+            slug = realCommunity.slug, userId = realTargetId, isSuperAdmin = false,
+        )
+        val realRoundNumber = realTargetRevealed.round.shouldNotBeNull().number
+        play.guess(
+            slug = realCommunity.slug, userId = realTargetId, isSuperAdmin = false,
+            roundNumber = realRoundNumber, guess = spotObjectGuess,
+        )
+        Thread.sleep(50)
+        for (voterId in listOf(realVoter1Id, realVoter2Id)) {
+            play.guess(
+                slug = realCommunity.slug, userId = voterId, isSuperAdmin = false,
+                roundNumber = realRoundNumber, guess = spotObjectGuess,
+            )
+        }
+
+        fun realTargetPoints(): Int? {
+            val resolved = announcements.resolve(
+                slug = realCommunity.slug, userId = realTargetId, isSuperAdmin = false,
+            ) as ResolvedRound.Announced
+            return plays.findByRoundGameIdAndUserId(
+                roundGameId = requireNotNull(resolved.roundGame.id), userId = realTargetId,
+            )?.points
+        }
+
+        // Before the strike: same stake as the lab half, straight out of `awardFor`.
+        realTargetPoints() shouldBe awardFor(
+            roundNumber = realRoundNumber, phaseTwoStartRound = realThreshold,
+        ).points
+
+        review.vote(
+            slug = realCommunity.slug, voterId = realVoter1Id, isSuperAdmin = false,
+            roundNumber = realRoundNumber, targetUserId = realTargetId, value = Vote.FLAG,
+        )
+        review.vote(
+            slug = realCommunity.slug, voterId = realVoter2Id, isSuperAdmin = false,
+            roundNumber = realRoundNumber, targetUserId = realTargetId, value = Vote.FLAG,
+        )
+
+        // --- compare: struck out, so nothing is closest to anything any more, on both sides ------
+        labPointsAfter shouldBe 0
+        realTargetPoints() shouldBe 0
     }
 }

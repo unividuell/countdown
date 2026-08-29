@@ -10,6 +10,9 @@ import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.Verdict
+import org.unividuell.countdown.core.game.Vote
+import org.unividuell.countdown.core.game.VoteTally
+import org.unividuell.countdown.core.game.effectiveQualifies
 import org.unividuell.countdown.core.game.pointsFor
 import java.time.Clock
 import java.time.Duration
@@ -49,6 +52,10 @@ data class LabEntry(
      * the lab shows no sealed face, so *landing on the round* is what starts the clock here.
      */
     val durationMs: Long?,
+    /** Every vote cast on this tip, by voter. Refreshed on every rescore. */
+    val votes: Map<UUID, Vote> = emptyMap(),
+    /** The game master's verdict, or `null` when nobody has set one. */
+    val adminOverride: Boolean? = null,
 )
 
 /** The state of a lab round after an operation, plus whether that operation displaced another round. */
@@ -89,6 +96,10 @@ class LabRoundStore(private val clock: Clock) {
         val stages = ConcurrentHashMap<UUID, Int>()
         /** First open per tester — the lab's `revealed_at`. A reload must not restart it. */
         val openedAt = ConcurrentHashMap<UUID, Instant>()
+        /** Peer review: target -> voter -> value. Cleared with everything else. */
+        val votes = ConcurrentHashMap<UUID, ConcurrentHashMap<UUID, Vote>>()
+        /** The game master's verdict per target. In the lab everybody is the game master. */
+        val overrides = ConcurrentHashMap<UUID, Boolean>()
         /** Produced once per lab round, lazily — one ladder per (community, game), self-limiting. */
         @Volatile var assets: Map<Int, RoundAsset>? = null
     }
@@ -243,6 +254,8 @@ class LabRoundStore(private val clock: Clock) {
             // had advanced skip straight past assets a fresh player has not unlocked yet.
             stored.stages.clear()
             stored.openedAt.clear()
+            stored.votes.clear()
+            stored.overrides.clear()
             return stored.snapshot(tookOver)
         }
     }
@@ -258,8 +271,61 @@ class LabRoundStore(private val clock: Clock) {
             // guess would still leave them standing on whatever stage they had advanced to.
             stored.stages.remove(userId)
             stored.openedAt.remove(userId)
+            // The votes cast on this tester's own tip go with it, and so do the ballots this tester
+            // cast on everybody else's — they are back in front of the gate at stage 0, with no
+            // ballot either.
+            stored.votes.remove(userId)
+            stored.overrides.remove(userId)
+            stored.votes.values.forEach { it.remove(userId) }
             // Whoever leaves changes the standings of whoever stays: under CLOSEST_ONLY the best
             // remaining guess takes the stake. Same reason the real game re-evaluates on every write.
+            stored.rescore()
+            return stored.snapshot(tookOver)
+        }
+    }
+
+    /**
+     * Casts, changes, or (`value == null`) withdraws [voterUserId]'s ballot on [targetUserId]'s tip.
+     * `null` when the target has no entry — nothing here to vote on. Permission (self-vote, an
+     * unguessed voter, a game that does not allow review) is [LabService]'s job, same split as the
+     * real [org.unividuell.countdown.core.game.internal.ReviewService].
+     */
+    fun vote(
+        communityId: UUID,
+        gameId: String,
+        round: LabRound,
+        targetUserId: UUID,
+        voterUserId: UUID,
+        value: Vote?,
+    ): LabRoundSnapshot? {
+        val (stored, tookOver) = openRound(Key(communityId, gameId), round)
+        // Same lock as record()/forget(): rescore() reads and rewrites every entry, so a vote must
+        // not interleave with a concurrent write on the same round.
+        synchronized(stored) {
+            if (!stored.entries.containsKey(targetUserId)) return null
+            val ballots = stored.votes.computeIfAbsent(targetUserId) { ConcurrentHashMap() }
+            if (value == null) ballots.remove(voterUserId) else ballots[voterUserId] = value
+            stored.rescore()
+            return stored.snapshot(tookOver)
+        }
+    }
+
+    /**
+     * The game master's verdict on [targetUserId]'s tip. `null` hands the decision back to the vote.
+     * `null` return when the target has no entry. No permission check here — in the lab everybody is
+     * the game master, see [LabService.override].
+     */
+    fun override(
+        communityId: UUID,
+        gameId: String,
+        round: LabRound,
+        targetUserId: UUID,
+        value: Boolean?,
+    ): LabRoundSnapshot? {
+        val (stored, tookOver) = openRound(Key(communityId, gameId), round)
+        synchronized(stored) {
+            if (!stored.entries.containsKey(targetUserId)) return null
+            if (value == null) stored.overrides.remove(targetUserId) else stored.overrides[targetUserId] = value
             stored.rescore()
             return stored.snapshot(tookOver)
         }
@@ -274,11 +340,25 @@ class LabRoundStore(private val clock: Clock) {
         val points = pointsFor(
             award = frozen.award,
             verdicts = entries.values.map {
-                Verdict(id = it.userId, qualifies = it.qualifies, deviation = it.deviation)
+                Verdict(
+                    id = it.userId,
+                    qualifies = effectiveQualifies(
+                        adminOverride = overrides[it.userId],
+                        qualifies = it.qualifies,
+                        // `.values` is a Collection, and `orEmpty()` has no Collection overload —
+                        // `toList()` first, or this does not compile.
+                        tally = VoteTally.of(votes[it.userId]?.values?.toList().orEmpty()),
+                    ),
+                    deviation = it.deviation,
+                )
             },
         )
         for ((userId, entry) in entries) {
-            entries[userId] = entry.copy(points = points[userId] ?: 0)
+            entries[userId] = entry.copy(
+                points = points[userId] ?: 0,
+                votes = votes[userId]?.toMap() ?: emptyMap(),
+                adminOverride = overrides[userId],
+            )
         }
     }
 

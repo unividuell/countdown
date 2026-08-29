@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.iam.AuthenticatedUser
+import java.util.UUID
 
 /**
  * The lab's HTTP surface. Seed **and** phase ride on every call: together they are the round key, and
@@ -119,6 +121,36 @@ class LabController(private val service: LabService) {
     ) = service.giveUp(
         slug = slug, gameId = game, seed = seed, phase = phase,
         userId = me.id, isSuperAdmin = me.isSuperAdmin,
+    )
+
+    /** Casting, changing, or withdrawing a ballot on somebody else's tip. */
+    @PutMapping("/plays/{userId}/vote")
+    fun vote(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @PathVariable userId: UUID,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+        @RequestBody body: LabVoteRequest,
+    ) = service.vote(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        voterUserId = me.id, isSuperAdmin = me.isSuperAdmin, targetUserId = userId, value = body.value,
+    )
+
+    /** The game master's verdict on one tip. `null` hands the decision back to the vote. */
+    @PutMapping("/plays/{userId}/override")
+    fun override(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable game: String,
+        @PathVariable userId: UUID,
+        @RequestParam seed: Int,
+        @RequestParam(defaultValue = "ONE") phase: Phase,
+        @RequestBody body: LabOverrideRequest,
+    ) = service.override(
+        slug = slug, gameId = game, seed = seed, phase = phase,
+        adminId = me.id, isSuperAdmin = me.isSuperAdmin, targetUserId = userId, value = body.value,
     )
 
     /** The round's binary assets, stage-gated exactly like the real round's. */
