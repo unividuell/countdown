@@ -176,6 +176,25 @@ actually receives carries our own origin as `Referer` — exactly what an HTTP-r
 key expects. The server key would fail there the same way it would in `GoogleCountryLookup`,
 because that request also carries no `Referer`.
 
+**Local development.** The three values go into the repo root's `.env` — gitignored, already
+read by docker compose, and imported by the backend through `spring.config.import` (see
+`application.yaml`); `.env.example` carries the empty lines to copy. Nothing else picks them up:
+`.run/CoreApplication.run.xml` and `.claude/launch.json` are tracked files, so a key pasted there
+would be committed.
+
+For a local board you need two more keys in Cloud Console, next to the deployed ones — a key
+carries exactly one restriction, and `localhost` is not the production hostname:
+
+- a second **browser** key restricted to HTTP referrers `http://localhost:5173/*` (add the LAN
+  address too if you open the dev server from a phone — `pnpm dev --host` prints it);
+- a second **server** key. Your outbound IP at home is not worth pinning, so leave the
+  application restriction at *None* and rely on the API restrictions (Street View Static,
+  Geocoding) alone. That makes it a key worth deleting once you are done with it.
+
+The **signing secret is not a key and there is only one per Cloud project** — the same value
+serves local dev and production, so there is nothing extra to create. Without it the redirect
+still resolves, but unsigned, and Google refuses it as soon as the project requires signatures.
+
 **Rotating any of these:** generate the replacement in Cloud Console, put it in `.env.<target>`
 on the server, then `./update.sh <target>` to restart `core` with it. Only delete the old
 key/secret in Cloud Console after that restart confirms the new one works — there is no overlap

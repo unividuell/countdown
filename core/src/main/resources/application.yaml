@@ -1,6 +1,16 @@
 spring:
   application:
     name: core
+  config:
+    # Local dev secrets in one place: `.env` at the repo root is already gitignored and already
+    # read by docker compose, so the Google keys live next to the ports instead of in a second
+    # file (or, worse, in the shared `.run`/launch configurations, which ARE tracked).
+    # `[.properties]` tells Boot how to parse an extensionless file; `optional:` makes a machine
+    # without one boot normally, which is every deployed environment — there compose passes the
+    # same names as real environment variables. The relative path is resolved against the process
+    # working directory, `core/`, for the same reason `spring.docker.compose.file` below is.
+    # Tests never see it: `src/test/resources/application.yaml` replaces this file wholesale.
+    import: optional:file:../.env[.properties]
   docker:
     compose:
       # compose.yaml lives at the repo root, one level above this module. Without this the
