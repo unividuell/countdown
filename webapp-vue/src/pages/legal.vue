@@ -3,7 +3,10 @@
  * Google's terms require that an app embedding Google Maps / Street View binds its own
  * users to Google's terms and points at Google's privacy policy. This is that paragraph —
  * the only content this page carries.
+ *
+ * Public, like `/login`: terms one has to sign in to read bind nobody.
  */
+definePage({ meta: { public: true } })
 </script>
 
 <template>
