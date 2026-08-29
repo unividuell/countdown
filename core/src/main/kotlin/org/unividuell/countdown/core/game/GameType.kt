@@ -41,6 +41,16 @@ data class Judgement(
      * returns `0.0` for every hit — then all hits are level, and that is enough.
      */
     val deviation: Double,
+    /**
+     * The guess as it must be **stored**, when the game wants a narrower row than the client sent.
+     * `null` — the default — persists the client's node verbatim, which is right for every game
+     * whose guess is a single scalar and costs no other game a line.
+     *
+     * The framework cannot narrow it: only the game knows its own fields. Weltanschauung rebuilds
+     * the four it validated, because a tip is republished to every other player and a coordinate
+     * pasted in next to it must never reach the column — see `CountryLookup`.
+     */
+    val guess: JsonNode? = null,
     val outcome: GameOutcome?,
 )
 

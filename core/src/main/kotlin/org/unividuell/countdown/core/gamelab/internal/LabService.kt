@@ -159,7 +159,9 @@ class LabService(
         val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
-            userId = userId, guess = guess, judgement = adjusted, timed = timed,
+            // The game's own narrowing wins where it offers one — the same line `PlayService`
+            // writes, so the lab stores a tip in the shape a real round would.
+            userId = userId, guess = adjusted.guess ?: guess, judgement = adjusted, timed = timed,
         )
         return when (result) {
             is RecordResult.Recorded -> respond(

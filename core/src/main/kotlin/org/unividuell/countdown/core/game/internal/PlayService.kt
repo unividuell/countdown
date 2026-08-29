@@ -110,7 +110,10 @@ class PlayService(
         }
         val recorded = plays.recordGuess(
             id = requireNotNull(play.id),
-            guess = guess,
+            // The game's own narrowing wins where it offers one: the column is republished to
+            // every player who has guessed, so what the client sent is not automatically what
+            // belongs in it. Without one, the raw node — the shape every other game relies on.
+            guess = judgement.guess ?: guess,
             guessedAt = guessedAt,
             qualifies = judgement.qualifies,
             deviation = deviation,

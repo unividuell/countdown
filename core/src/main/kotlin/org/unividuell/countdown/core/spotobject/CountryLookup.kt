@@ -7,9 +7,10 @@ package org.unividuell.countdown.core.spotobject
  * **`null` is a normal answer, not an error.** A tip must never fail because a foreign service is
  * having a bad minute: the guess goes through and its tile simply shows no flag.
  *
- * Takes the panorama id rather than a coordinate on purpose. The framework persists a guess
- * verbatim, so a coordinate in the request would be a coordinate in the database; resolving from
- * the id means it is never submitted at all.
+ * Takes the panorama id rather than a coordinate on purpose: resolving from the id means a
+ * coordinate is never submitted at all. That is the first half of the guarantee; the second is
+ * `SpotObjectGameType.judge` rebuilding the stored tip from the fields it validated, so one pasted
+ * in alongside the tip does not reach the column either.
  */
 interface CountryLookup {
     fun countryOf(panoId: String): String?

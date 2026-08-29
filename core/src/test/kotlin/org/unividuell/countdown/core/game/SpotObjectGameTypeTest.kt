@@ -101,6 +101,26 @@ class SpotObjectGameTypeTest {
             SpotObjectOutcome(country = null)
     }
 
+    /**
+     * The guarantee `CountryLookup` is built on: a coordinate never reaches the database. Taking
+     * the panorama id instead of a coordinate is only half of it — the other half is that whatever
+     * else the client puts next to the tip is dropped before the framework stores the row and
+     * republishes it to the whole round.
+     */
+    @Test
+    fun `the stored tip carries exactly the four fields, whatever the client sent`() {
+        every { countries.countryOf(any()) } returns "ES"
+        val smuggled = mapper.readTree(
+            """{"panoId":"abc","heading":12,"pitch":0,"zoom":1,"lat":41.38505,"lng":2.1734}""",
+        )
+
+        val stored = requireNotNull(game.judge(params = draw(phase = Phase.ONE), guess = smuggled).guess)
+
+        stored.propertyNames().toList() shouldContainExactly listOf("panoId", "heading", "pitch", "zoom")
+        stored.get("panoId").stringValue() shouldBe "abc"
+        stored.get("heading").doubleValue() shouldBe 12.0
+    }
+
     @Test
     fun `a malformed tip is rejected before anything is written`() {
         shouldThrow<InvalidGuessException> {
