@@ -1,0 +1,8 @@
+# Not game content. Stands in for a mounted production term list in tests that activate a
+# deployed profile, so that SpotObjectConfiguration's fail-fast is satisfied the way a real
+# deployment would satisfy it — see SpotObjectTestTermsConfiguration.
+terms:
+  - Testbegriff Eins
+  - Testbegriff Zwei
+  - Testbegriff Drei
+  - Testbegriff Vier

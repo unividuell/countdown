@@ -1,0 +1,15 @@
+# The bundled SAMPLE. Deliberately silly — see game-content.md: examples never come from the real
+# set, and the application refuses to start on this file under `production` or `staging`.
+terms:
+  - Rosa Gartenzwerg
+  - Umgedrehtes Fahrrad
+  - Kaputter Regenschirm
+  - Gelber Briefkasten
+  - Einzelner Turnschuh
+  - Bemalter Stromkasten
+  - Verlassener Einkaufswagen
+  - Blaue Parkbank
+  - Wäscheleine über der Straße
+  - Windrad im Vorgarten
+  - Auto ohne Räder
+  - Katze auf einem Dach

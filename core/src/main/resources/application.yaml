@@ -57,6 +57,16 @@ app:
       - 10396822102 # Deutschland, deine Hits - 00er (fans: 5843)
       - 10396828062 # Deutschland, deine Hits - 10er (fans: 3949)
       - 11605921024 # Deutschland, deine Sommer Hits - 20er (fans: 650)
+  spot-object:
+    # Empty means: the sample list from the classpath — a boot failure in production/staging,
+    # where update.sh decrypts the real file with sops and compose mounts it in. Same shape as
+    # guess-hue above.
+    terms-path: ${SPOT_OBJECT_TERMS_PATH:}
+    # The browser key for the Maps JavaScript API. Referrer-restricted, so it is handed to the
+    # client; without it the board cannot load a map at all.
+    maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY:}
+    # The URL-signing secret for the Street View Static API. Server-side only.
+    signing-secret: ${SPOT_OBJECT_SIGNING_SECRET:}
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
