@@ -2809,7 +2809,9 @@ MR; this is the starting point, not the finish):**
 - **No place search.** One may be expected to know where Barcelona is.
 - A way **back to the world map** is mandatory.
 - `gestureHandling: 'greedy'`, so one finger pans on a phone instead of demanding two.
-- Google's attribution is never covered — keep the overlays clear of the bottom-right corner.
+- Google's attribution is never covered — keep the overlays out of the **whole bottom band**. The
+  logo is fixed bottom-left in both the map and the panorama and cannot be moved or hidden, and the
+  „Map data ©… / Terms“ text sits bottom-right.
 
 - [ ] **Step 1: Write the failing tests**
 

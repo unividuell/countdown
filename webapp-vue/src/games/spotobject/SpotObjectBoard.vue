@@ -52,43 +52,44 @@ function submitGuess(): void {
       </p>
     </div>
 
-    <!-- Term, top left. `pointer-events-none` on the row so it never steals a pan gesture from
-         the map underneath the gaps around the pill. -->
-    <div class="pointer-events-none absolute inset-x-0 top-0 flex justify-start p-3">
+    <!-- Everything of ours in the top row: the whole bottom band belongs to Google. Its logo is
+         fixed bottom-left in both the map and the panorama and cannot be moved or hidden, the
+         „Map data ©… / Terms“ text sits bottom-right, and the zoom and Pegman controls sit above
+         them — covering any of it breaks the terms of service. `pointer-events-none` on the row so
+         it never steals a pan gesture from the map through the gaps between the pills. -->
+    <div
+      data-test="spot-actions"
+      class="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3"
+    >
       <p
         data-test="spot-term"
-        class="pointer-events-auto rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-neutral-900 shadow select-none"
+        class="pointer-events-auto min-w-0 truncate rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-neutral-900 shadow select-none"
       >
         „{{ props.payload.term }}“
       </p>
-    </div>
 
-    <!-- Actions, bottom left — never bottom right, where Google's own attribution and Pegman
-         controls sit. `env(safe-area-inset-bottom)` clears a phone's home indicator. -->
-    <div
-      class="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 p-3"
-      style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))"
-    >
-      <button
-        v-if="pano.visible"
-        type="button"
-        data-test="spot-world-map"
-        class="pointer-events-auto h-11 cursor-pointer rounded-full bg-white px-4 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
-        :disabled="props.disabled"
-        @click="toWorldMap"
-      >
-        Zur Weltkarte
-      </button>
+      <div class="flex shrink-0 items-center gap-2">
+        <button
+          v-if="pano.visible"
+          type="button"
+          data-test="spot-world-map"
+          class="pointer-events-auto h-11 cursor-pointer rounded-full bg-white px-4 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled"
+          @click="toWorldMap"
+        >
+          Zur Weltkarte
+        </button>
 
-      <button
-        type="button"
-        data-test="spot-guess-button"
-        class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
-        :disabled="props.disabled || !pano.visible"
-        @click="submitGuess"
-      >
-        Gefunden
-      </button>
+        <button
+          type="button"
+          data-test="spot-guess-button"
+          class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled || !pano.visible"
+          @click="submitGuess"
+        >
+          Gefunden
+        </button>
+      </div>
     </div>
   </div>
 </template>

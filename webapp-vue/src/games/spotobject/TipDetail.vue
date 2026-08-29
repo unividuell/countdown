@@ -38,12 +38,18 @@ function toggleVote(value: Vote): void {
 <template>
   <div>
     <!-- Same stage measurements as the board: the one thing here that has to run edge to edge. -->
-    <div class="relative -m-4 h-[100dvh] sm:h-[min(100dvh-6rem,40rem)]">
+    <div
+      class="relative -m-4 flex h-[100dvh] items-center justify-center bg-neutral-200 sm:h-[min(100dvh-6rem,40rem)]"
+    >
+      <!-- Google's watermark is burnt into the bottom-left of the still, so any crop crops the
+           attribution away. `SpotObjectTipGrid` avoids that by requesting its frame's own ratio;
+           full screen has no fixed ratio, so the image keeps its own and the stage is the ground
+           around it. 640 is what the server serves — it clamps every dimension to it. -->
       <img
         v-if="props.tile.tip"
-        :src="shotUrl(props.tile.tip, 800, 800)"
+        :src="shotUrl(props.tile.tip, 640, 640)"
         alt=""
-        class="absolute inset-0 h-full w-full object-cover"
+        class="max-h-full max-w-full object-contain"
       />
       <p
         v-else

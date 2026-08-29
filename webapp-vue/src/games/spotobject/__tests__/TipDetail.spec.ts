@@ -80,6 +80,23 @@ describe('TipDetail', () => {
     )
   })
 
+  /**
+   * Google's watermark is burnt into the bottom-left of the still itself, so anything that crops
+   * the image crops the attribution away. The grid solves this by matching the requested ratio to
+   * its frame; full screen has no fixed ratio, so the image keeps its own and is fitted, never
+   * covered. 640 is what the server serves — it clamps every dimension to it.
+   */
+  it('shows the whole still, uncropped, at the size the server serves', () => {
+    const src = mountDetail().get('img').attributes('src') ?? ''
+
+    expect(src).toContain('w=640')
+    expect(src).toContain('h=640')
+
+    const classes = mountDetail().get('img').classes()
+    expect(classes).toContain('object-contain')
+    expect(classes).not.toContain('object-cover')
+  })
+
   it('shows a big close control that leads back', () => {
     const w = mountDetail({ closeTo: '/c/team/' })
 

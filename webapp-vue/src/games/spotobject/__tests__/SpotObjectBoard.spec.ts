@@ -95,6 +95,19 @@ describe('SpotObjectBoard', () => {
     expect(double.toWorldMap).toHaveBeenCalledOnce()
   })
 
+  /**
+   * Google's logo is fixed to the bottom-left of both the map and the panorama and cannot be moved
+   * or hidden; the „Map data ©… / Terms“ text sits bottom-right. Covering either breaks the terms
+   * of service, so the whole bottom band is Google's and our controls live in the top row.
+   */
+  it('keeps its controls out of Google’s bottom band', () => {
+    const w = mountBoard()
+
+    const row = w.get('[data-test="spot-actions"]')
+    expect(row.classes()).toContain('top-0')
+    expect(row.classes()).not.toContain('bottom-0')
+  })
+
   it('says so when the map could not be loaded', async () => {
     const double = mockStreetView()
     double.error.value = 'boom'
