@@ -127,6 +127,15 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
     fun updatePoints(id: UUID, points: Int): Int
 
     /**
+     * Write only the override. A targeted `UPDATE` rather than `save()`, for the same reason
+     * [updatePoints] is one: a full-row write from a stale snapshot would clobber a concurrent
+     * `revealOrCount`'s counter increment.
+     */
+    @Modifying
+    @Query("UPDATE game.round_plays SET admin_override = :adminOverride WHERE id = :id")
+    fun updateAdminOverride(id: UUID, adminOverride: Boolean?): Int
+
+    /**
      * Points per player and round for one run — the **input** of a standings sum, not the sum.
      *
      * Grouping and window filtering happen in Kotlin on purpose: whether a round counts is
