@@ -127,3 +127,36 @@ This needs an age key (see [game-content.md](../.claude/guidelines/game-content.
 Without one, everything else keeps working — only this one convenience doesn't. The
 decrypted file lands gitignored in the main checkout under `.local/guess-hue-dataset.yaml`
 and is never committed.
+
+## Weltanschauung: term list and the two Maps secrets
+
+Three environment variables, same "fails fast rather than looking healthy" rule as Guess Hue:
+
+- `SPOT_OBJECT_TERMS_PATH` — path to the decrypted term list. Empty means the bundled sample;
+  under `production`/`staging` that refuses to start (see `SpotObjectConfiguration`). Handed
+  over exactly like the Guess Hue dataset: paste the real terms into
+  `.local/spot-object-terms.yaml` in the **main checkout** (never a worktree), run
+  `./scripts/spot-object-terms.sh encrypt`, then commit the resulting
+  `deploy/spot-object-terms.sops.yaml`. **Never commit a real term in plaintext** — see
+  [game-content.md](../.claude/guidelines/game-content.md). Locally,
+  `./scripts/spot-object-terms.sh dev-path` (wired into `.claude/launch.json`) decrypts on
+  demand and answers empty on a machine without the age key, same as Guess Hue's script.
+- `SPOT_OBJECT_MAPS_API_KEY` — the browser key for the Maps JavaScript API. No default in
+  `production`/`staging`: missing it fails the boot instead of shipping a board that cannot
+  draw a map. In Google Cloud Console, enable **Maps JavaScript API**, **Street View Static
+  API** and **Geocoding API** on the project, then create a key restricted to **HTTP
+  referrers** — `https://countdown.unividuell.org/*` for prod, the staging hostname for
+  staging. It is referrer-restricted *by design*: it is handed to the browser
+  (`GET /api/spot-object/config`), so it must not work from anywhere else.
+- `SPOT_OBJECT_SIGNING_SECRET` — the URL-signing secret for the Street View Static API. No
+  default either: without it, the `/api/spot-object/shot` redirect still produces a URL, but
+  an **unsigned** one, which Google refuses once the project requires signed Static/Street
+  View requests. Server-side only — it never reaches the browser and must **not** be
+  restricted like a key (it isn't one). Get it from Cloud Console → Google Maps Platform →
+  APIs & Services → Credentials → "Get a Signing Secret" (see
+  https://developers.google.com/maps/documentation/streetview/digital-signature/get-key).
+
+**Rotating either secret:** generate the replacement in Cloud Console, put it in
+`.env.<target>` on the server, then `./update.sh <target>` to restart `core` with it. Only
+delete the old key/secret in Cloud Console after that restart confirms the new one works —
+there is no overlap window otherwise.

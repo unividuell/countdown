@@ -73,6 +73,34 @@ prepare_guess_hue_dataset() {
   chmod 644 "$GUESS_HUE_DATASET_FILE"
 }
 
+# Same shape as prepare_guess_hue_dataset above, for the Weltanschauung term list. See its
+# comments for the reasoning behind every step -- only the game and the file names differ.
+prepare_spot_object_terms() {
+  SPOT_OBJECT_TERMS_FILE="./secrets/spot-object-terms.$TARGET.yaml"
+  export SPOT_OBJECT_TERMS_FILE
+  TERMS_SOPS_FILE="spot-object-terms.$TARGET.sops.yaml"
+  if ! curl -fsSL "$BASE/spot-object-terms.sops.yaml" -o "$TERMS_SOPS_FILE"; then
+    echo "Could not download spot-object-terms.sops.yaml from branch '$REF' ($BASE)." >&2
+    echo "The encrypted Weltanschauung term list must exist on that branch before update.sh can run." >&2
+    exit 1
+  fi
+  mkdir -p secrets
+  chmod 700 secrets
+  OLD_UMASK="$(umask)"
+  umask 077
+  if ! SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}" \
+       sops -d "$TERMS_SOPS_FILE" > "$SPOT_OBJECT_TERMS_FILE.tmp"; then
+    echo "sops could not decrypt the Weltanschauung term list." >&2
+    echo "Install sops and put the age key at \${SOPS_AGE_KEY_FILE:-\$HOME/.config/sops/age/keys.txt}." >&2
+    rm -f "$SPOT_OBJECT_TERMS_FILE.tmp"
+    umask "$OLD_UMASK"
+    exit 1
+  fi
+  umask "$OLD_UMASK"
+  mv "$SPOT_OBJECT_TERMS_FILE.tmp" "$SPOT_OBJECT_TERMS_FILE"
+  chmod 644 "$SPOT_OBJECT_TERMS_FILE"
+}
+
 curl -fsSL "$BASE/compose.yaml" -o "$COMPOSE_FILE"
 curl -fsSL "$STABLE/README.md"  -o README.md
 curl -fsSL "$STABLE/update.sh"  -o update.sh.new && chmod +x update.sh.new && mv update.sh.new update.sh
@@ -84,6 +112,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 prepare_guess_hue_dataset
+prepare_spot_object_terms
 
 docker network create edge 2>/dev/null || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull

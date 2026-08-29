@@ -46,6 +46,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
       - GUESS_HUE_DATASET_PATH=/config/guess-hue-dataset.yaml
+      - SPOT_OBJECT_TERMS_PATH=/config/spot-object-terms.yaml
+      - SPOT_OBJECT_MAPS_API_KEY=${SPOT_OBJECT_MAPS_API_KEY}
+      - SPOT_OBJECT_SIGNING_SECRET=${SPOT_OBJECT_SIGNING_SECRET}
     volumes:
       # update.sh decrypts to here before calling `compose up`. Read-only: the app reads the
       # dataset and never writes it. Missing file aborts the start -- intentional, a game running
@@ -57,6 +60,9 @@ services:
       # .env.<target>.example. Anyone calling compose by hand without update.sh must export it
       # themselves; the message below is for exactly that case.
       - ${GUESS_HUE_DATASET_FILE:?GUESS_HUE_DATASET_FILE is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/guess-hue-dataset.yaml:ro
+      # Same shape as the Guess Hue mount above: update.sh decrypts the Weltanschauung term list
+      # to here via SPOT_OBJECT_TERMS_FILE.
+      - ${SPOT_OBJECT_TERMS_FILE:?SPOT_OBJECT_TERMS_FILE is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/spot-object-terms.yaml:ro
     depends_on:
       - postgres
     networks:

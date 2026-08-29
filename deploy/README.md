@@ -30,8 +30,8 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
 
 ## Prerequisite: sops + age (game content)
 
-`update.sh` decrypts the Guess Hue dataset on the server before calling `compose up`.
-The server needs `age` and `sops` installed once:
+`update.sh` decrypts the Guess Hue dataset and the Weltanschauung term list on the server
+before calling `compose up`. The server needs `age` and `sops` installed once:
 
 ```bash
 apt-get install -y age
@@ -43,6 +43,8 @@ curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/downl
 3.13.3 is pinned deliberately: the checked-in `deploy/guess-hue-dataset.sops.yaml` carries
 `version: 3.13.3`, and matching the server's sops to it avoids format surprises between
 encryption and decryption. If sops gets updated locally, update the server promptly too.
+The same applies to `deploy/spot-object-terms.sops.yaml` (the Weltanschauung term list) —
+one sops install and one age key pair serve both games.
 
 Check the architecture **on the server** first (`dpkg --print-architecture`) — don't assume.
 That's the server CPU's architecture, not the container images' (those are arm64, see
@@ -88,10 +90,11 @@ cipher — so this has to happen **before the first deploy**:
 1. Get the public key on the server as above.
 2. Add it locally to `.sops.yaml` as a second recipient (see that file's comment header for
    the multi-recipient format).
-3. Run `sops updatekeys deploy/guess-hue-dataset.sops.yaml`. This only re-wraps the data key —
-   the content is untouched — and needs the author's **private** key to do it (to unwrap the
-   data key once); the server key is only needed as a public key here.
-4. Commit `.sops.yaml` **and** the re-wrapped `deploy/guess-hue-dataset.sops.yaml`.
+3. Run `sops updatekeys deploy/guess-hue-dataset.sops.yaml` (and, once it exists,
+   `deploy/spot-object-terms.sops.yaml`). This only re-wraps the data key — the content is
+   untouched — and needs the author's **private** key to do it (to unwrap the data key once);
+   the server key is only needed as a public key here.
+4. Commit `.sops.yaml` **and** the re-wrapped cipher file(s).
 5. Only deploy after that — a server without an entered key fails in `update.sh` because it
    can't open the cipher.
 
@@ -113,6 +116,10 @@ of binding an empty path.
 `compose.yaml` (`$REF` — `main` for prod, `develop` for staging). The encrypted file must
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
 nothing to do with Guess Hue.
+
+Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml` — see
+core/README.md ("Weltanschauung: term list and the two Maps secrets") for how the real term
+list gets encrypted in the first place.
 
 **Merge window develop → main.** `update.sh` and `README.md` always come from `main`
 (`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
@@ -147,6 +154,11 @@ doesn't exist, so a stack bootstrapped earlier keeps its old env file forever. W
 new variable to the template, add it to your `.env.prod`/`.env.staging` by hand — it will not appear
 there on its own, and a missing one binds empty without any error.
 
+**Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY` and
+`SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging` by hand (see core/README.md for where
+each value comes from) before the next `./update.sh <target>` — the backend refuses to boot
+without them.
+
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
@@ -156,12 +168,14 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 # prod stack
 ./update.sh prod        # first run writes .env.prod from template + stops
-# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS, PGADMIN_EMAIL/PGADMIN_PASSWORD
+# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS,
+#   PGADMIN_EMAIL/PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET
 ./update.sh prod        # pulls :latest images and starts the prod stack
 
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
-# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD; GITHUB_CLIENT_SECRET=unused is fine
+# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY,
+#   SPOT_OBJECT_SIGNING_SECRET; GITHUB_CLIENT_SECRET=unused is fine
 #   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
@@ -169,9 +183,11 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
 docker compose --env-file .env.staging -f compose.staging.yaml down
-# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE in the shell
-# environment (update.sh sets this for you; it's not in .env.staging, see above)
+# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE and
+# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
+export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
@@ -191,9 +207,11 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
-# environment (update.sh sets this for you; it's not in .env.prod, see above)
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
+# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# .env.prod, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.prod.yaml
+export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.prod.yaml
 docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
@@ -210,9 +228,11 @@ docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pg
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE in the shell
-# environment (update.sh sets this for you; it's not in .env.staging, see above)
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
+# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
+export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051
