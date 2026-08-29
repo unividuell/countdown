@@ -160,12 +160,12 @@ class RoundResponses(
                 VoteView(userId = vote.voterUserId, username = it.username, value = vote.value)
             }
         }.sortedBy { it.username }
-        val counts = !effectiveQualifies(
+        val struck = !effectiveQualifies(
             adminOverride = play.adminOverride,
             qualifies = play.qualifies == true,
             tally = tally,
         )
-        return Triple(views, counts, play.adminOverride)
+        return Triple(views, struck, play.adminOverride)
     }
 
     /**
