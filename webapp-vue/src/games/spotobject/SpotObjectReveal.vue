@@ -7,7 +7,7 @@
  * them together would make this the one scoreboard in the collection that no longer looks like
  * the others, and would give the grid a reason to reach into scoring it does not need.
  */
-import type { RouteLocationRaw } from 'vue-router'
+import type { RoundReview } from '@/rounds/review'
 import SpotObjectScoreboard from './SpotObjectScoreboard.vue'
 import SpotObjectTipGrid from './SpotObjectTipGrid.vue'
 import type { ScoreRow, TipTile } from './tips'
@@ -17,13 +17,14 @@ const props = defineProps<{
   rows: ScoreRow[]
   live: boolean
   animate: boolean
-  tipPath: (userId: string) => RouteLocationRaw
+  canVote: boolean
+  review: RoundReview
 }>()
 </script>
 
 <template>
   <div data-test="spot-reveal" class="flex flex-col gap-6">
-    <SpotObjectTipGrid :tiles="props.tiles" :tip-path="props.tipPath" />
+    <SpotObjectTipGrid :tiles="props.tiles" :can-vote="props.canVote" :review="props.review" />
     <SpotObjectScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
   </div>
 </template>

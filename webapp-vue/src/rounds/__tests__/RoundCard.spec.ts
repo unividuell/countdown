@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
+import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
@@ -28,7 +29,7 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
-        tipPath: { type: Function, default: null },
+        review: { type: Object, default: null },
         closed: { type: Boolean, default: false },
       },
       emits: ['guess', 'skip', 'give-up'],
@@ -80,6 +81,14 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   ...over,
 })
 
+function aReview(): RoundReview {
+  return {
+    canOverride: false,
+    vote: vi.fn().mockResolvedValue(undefined),
+    override: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
 function mountCard(props: {
   round: RoundResponse | null
   /** Omitted for a closed round: it has no stage left to derive a face from. */
@@ -92,7 +101,7 @@ function mountCard(props: {
   skip?: (fromStage: number) => Promise<void>
   giveUp?: () => Promise<void>
   assetUrl?: (key: number) => string
-  tipPath?: (userId: string) => string
+  review?: RoundReview
 }): VueWrapper {
   return mount(RoundCard, {
     props: {
@@ -103,7 +112,7 @@ function mountCard(props: {
       skip: vi.fn().mockResolvedValue(undefined),
       giveUp: vi.fn().mockResolvedValue(undefined),
       assetUrl: vi.fn().mockReturnValue('https://example.invalid/asset'),
-      tipPath: vi.fn().mockReturnValue('https://example.invalid/tip'),
+      review: aReview(),
       ...props,
     },
   })
@@ -161,12 +170,17 @@ describe('RoundCard', () => {
     expect(stub.props('assetUrl')).toBe(assetUrl)
   })
 
-  it("hands the game the round's tip-path builder", () => {
-    const tipPath = vi.fn().mockReturnValue('/c/team/rounds/12/tips/u1')
+  // Asserted by calling through rather than by identity: `mount` makes its props reactive, so an
+  // object prop arrives at the child as a proxy of what was passed and `toBe` never holds. A
+  // function prop (`assetUrl` above) is not wrapped, which is why those tests can compare directly.
+  it("hands the game the round's review", async () => {
+    const review = aReview()
     const round = aRound({ me: aPlay() })
-    const stub = mountCard({ round, stage: 'playing', tipPath }).findComponent(StubGame)
+    const stub = mountCard({ round, stage: 'playing', review }).findComponent(StubGame)
 
-    expect(stub.props('tipPath')).toBe(tipPath)
+    await (stub.props('review') as RoundReview).vote('u1', 'FLAG')
+
+    expect(review.vote).toHaveBeenCalledWith('u1', 'FLAG')
   })
 
   // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
@@ -407,7 +421,7 @@ describe('RoundCard', () => {
         round,
         closed: true,
         assetUrl: (key: number) => `/assets/${key}`,
-        tipPath: (userId: string) => `/tips/${userId}`,
+        review: aReview(),
       },
     })
 
@@ -428,7 +442,7 @@ describe('RoundCard', () => {
         round,
         closed: true,
         assetUrl: (key: number) => `/assets/${key}`,
-        tipPath: (userId: string) => `/tips/${userId}`,
+        review: aReview(),
       },
     }).findComponent(StubGame)
 

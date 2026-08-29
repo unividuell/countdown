@@ -7,7 +7,7 @@
  * surface (photo, flag, votes), the scoreboard is the scoring table every game shares (name, time,
  * points) — see `SpotObjectReveal.vue` for why folding them together would be the wrong move.
  */
-import type { AwardRule, VoteView } from '@/api/types'
+import type { AwardRule, Vote, VoteView } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
@@ -25,6 +25,8 @@ export interface TipTile {
   flag: string
   confirms: VoteView[]
   flags: VoteView[]
+  /** The viewer's own ballot on this tip, which is what its two buttons render as pressed. */
+  myVote: Vote | null
   /** Whether this tip currently scores nothing, override included. Copied, never recomputed. */
   struck: boolean
   adminOverride: boolean | null
@@ -36,6 +38,10 @@ export function tipTiles(input: {
   mineUserId: string | null
 }): TipTile[] {
   return input.entries.map((entry) => {
+    const mineIsA = (value: Vote) =>
+      input.mineUserId !== null &&
+      entry.votes.some((vote) => vote.value === value && vote.userId === input.mineUserId)
+
     return {
       userId: entry.userId,
       name: entry.username,
@@ -45,6 +51,7 @@ export function tipTiles(input: {
       flag: flagOf(asSpotObjectOutcome(entry.outcome)?.country ?? null),
       confirms: entry.votes.filter((vote) => vote.value === 'CONFIRM'),
       flags: entry.votes.filter((vote) => vote.value === 'FLAG'),
+      myVote: mineIsA('CONFIRM') ? 'CONFIRM' : mineIsA('FLAG') ? 'FLAG' : null,
       struck: entry.struck,
       adminOverride: entry.adminOverride,
       mine: entry.userId === input.mineUserId,

@@ -8,9 +8,9 @@
  * open to everyone, and a closed round must never put a live map on screen again.
  */
 import { computed, ref, watch } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import type { RoundReview } from '@/rounds/review'
 import SpotObjectBoard from './SpotObjectBoard.vue'
 import SpotObjectReveal from './SpotObjectReveal.vue'
 import { scoreRows, tipTiles } from './tips'
@@ -29,7 +29,7 @@ const props = defineProps<{
   assetUrl?: (key: number) => string
   /** The round is over for everyone — the other half of the server's own rule for `others`. */
   closed?: boolean
-  tipPath: (userId: string) => RouteLocationRaw
+  review: RoundReview
 }>()
 
 const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()
@@ -72,7 +72,8 @@ watch(played, (now, before) => {
     :rows="rows"
     :live="live"
     :animate="hasRevealedLive"
-    :tip-path="props.tipPath"
+    :can-vote="played"
+    :review="props.review"
   />
   <SpotObjectBoard
     v-else

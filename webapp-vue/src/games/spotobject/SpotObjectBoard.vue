@@ -10,8 +10,12 @@
 import { onMounted, useTemplateRef } from 'vue'
 import { useViewportFill } from '@/ui/useViewportFill'
 import type { SpotObjectPayload, SpotObjectTip } from './types'
-import { STAGE_MIN_HEIGHT, STAGE_STRIP } from './stage'
 import { useStreetView } from './useStreetView'
+
+/** Page left free below the map, so a phone still has somewhere to start a scroll. */
+const STRIP = 48
+/** Below this the map is useless anyway, and overflowing beats a letterbox. */
+const MIN_HEIGHT = 320
 
 const props = defineProps<{
   payload: SpotObjectPayload
@@ -24,7 +28,7 @@ const { currentTip, error, mount, pano, toWorldMap } = useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
 const frame = useTemplateRef<HTMLElement>('frame')
-const filled = useViewportFill(frame, { strip: STAGE_STRIP, min: STAGE_MIN_HEIGHT })
+const filled = useViewportFill(frame, { strip: STRIP, min: MIN_HEIGHT })
 
 onMounted(() => {
   if (stage.value) void mount(stage.value)

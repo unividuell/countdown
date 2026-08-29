@@ -7,8 +7,8 @@
  */
 import { computed } from 'vue'
 import type { Component } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
 import type { RoundResponse } from '@/api/types'
+import type { RoundReview } from '@/rounds/review'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
@@ -20,11 +20,11 @@ const props = withDefaults(
     round: RoundResponse | null
     assetUrl: (key: number) => string
     /**
-     * Where a game's own tile links land. Required like `assetUrl` above: only Weltanschauung's
-     * game component reads it, but every caller supplies it regardless — an optional prop here is
-     * exactly what let a caller forget it and ship a tile that throws the moment it is opened.
+     * Casting a ballot on somebody else's play. Required like `assetUrl` above: only games that
+     * open a review render anything for it, but every caller supplies it regardless — an optional
+     * prop here is exactly what let a caller forget it and ship a control that throws on click.
      */
-    tipPath: (userId: string) => RouteLocationRaw
+    review: RoundReview
     /**
      * The round is over: the reveal face, no clock, no action, and handed on to the game itself —
      * a game without a round secret has nothing else to switch on. One prop with four effects at
@@ -101,8 +101,8 @@ function onGiveUp(): void {
 </script>
 
 <template>
-  <!-- Anchored under its round number: the single-tip page's close control comes back here rather
-       than to the top of the community page (see `rounds/[roundNumber]/tips/[userId].vue`). -->
+  <!-- Anchored under its round number, so a link into one round of the history lands on that
+       round rather than on the top of the community page. -->
   <!-- No id at all without a round number, rather than a shared 'round-0': two null cards on one
        page would otherwise collide. -->
   <div
@@ -181,7 +181,7 @@ function onGiveUp(): void {
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
         :closed="props.closed"
-        :tip-path="props.tipPath"
+        :review="props.review"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

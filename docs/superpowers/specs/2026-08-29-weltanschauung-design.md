@@ -12,7 +12,8 @@ die Probe: dieses Spiel hat als erstes **kein Rundengeheimnis**.
 **Berührt:** ein neues Modulith-Modul `spotobject` (keine eigene Tabelle, aber ein HTTP-Client),
 den Adapter `SpotObjectGameType`, eine **Framework-Erweiterung um Peer-Review** (eine Tabelle, eine
 Spalte, ein Schalter, ein Endpunkt) und im Frontend `games/spotobject/*`, `games/GameEntry.ts`,
-`api/types.ts`, `games/registry.ts` sowie zwei neue Routen für die Einzeltipp-Seite (eine je Welt).
+`api/types.ts`, `games/registry.ts` sowie `rounds/review.ts`, den Weg der Stimmabgabe von der Seite
+bis ins Grid (eine Kette je Welt).
 Das Labor wird mitgezogen statt ausgenommen: `LabRoundStore`, `LabDtos`, `LabService`,
 `LabController`, `gamelab/games.ts`.
 
@@ -317,16 +318,21 @@ Die Trennung ist der Punkt: das Grid ist die Bewertungsfläche dieses Spiels, da
 Wertungsanzeige aller Spiele. In eine Komponente gefaltet, wäre das Scoreboard das einzige der
 Spielsammlung, das nicht mehr wie die anderen aussieht.
 
-### Einzeltipp-Seite
+### Stimmabgabe
 
-Eine **eigene Route** unter der Community-Shell, kein Modal —
-`pages/c/[slug]/rounds/[roundNumber]/tips/[userId].vue`, vor dem Anlegen gegen
-[frontend-routing.md](../../../.claude/guidelines/frontend-routing.md) zu prüfen. Der Grund ist die
-Zurück-Taste: mit eigener URL schließt sie den Tipp, und das kann ein Modal nicht. Maße wie das
-Spielfeld, dickes Schließen-Icon.
+**Im Grid selbst**, als Icon-Buttons über der Kachel. Ursprünglich war dafür eine eigene Route
+vorgesehen — wegen der Zurück-Taste. Beim ersten Durchsehen der fertigen Ansicht war der Preis
+sichtbar: Bewerten heißt vergleichen, und jede einzelne Stimme nahm die ganze übrige Runde für
+einen Seitenwechsel vom Schirm. Die Route ist deshalb entfallen.
 
-Bestätigen und Flaggen liegen **nebeneinander, je zur Hälfte, gleiche Größe und Schriftstärke** —
-nur die Farbe unterscheidet sie. Keine der beiden Richtungen wird durch das Layout nahegelegt.
+Bestätigen und Flaggen sind **gleich groß, gleich geformt, gleich platziert** — nur die Farbe
+unterscheidet sie. Keine der beiden Richtungen wird durch das Layout nahegelegt. Die eigene
+abgegebene Stimme zeigt der Knopf selbst (gefüllt statt weiß); ein gestrichener Tipp zeigt sich am
+**durchgestrichenen Namen**, ohne Satz daneben.
+
+Die Knöpfe stehen **senkrecht an den beiden oberen Ecken** und nie am unteren Rand: dort steht
+Googles eingebrannte Wortmarke, und sie zu verdecken verletzt die Nutzungsbedingungen. Aus demselben
+Grund sitzt der Maps-Link (Auge) unten links **über** dem Attributionsband statt in der Ecke.
 
 ### `GameEntry`
 
@@ -394,9 +400,9 @@ sie schon `mineUserId` und `awardRule` bekommt. Beantwortet wird er serverseitig
 Produkt „ist Community-Admin“, im Labor immer `true`. Die Komponente ist in beiden Welten dieselbe,
 und der Vertrag ändert sich nicht — das Labor passt sich an, wie überall.
 
-**Die Einzeltipp-Seite ist im Labor dieselbe Komponente auf einer eigenen Route.** Dafür wird
-`pages/c/[slug]/lab/[game].vue` zu `lab/[game]/index.vue` plus `lab/[game]/tips/[userId].vue`. Nur so
-ist auch das Zurück-Verhalten prüfbar, das der Grund für die eigene Route war.
+**Die Stimmabgabe ist im Labor dieselbe Komponente an derselben Stelle.** Das Labor reicht sein
+eigenes `RoundReview` hinein — dieselbe Form, die das Produkt reicht, nur mit den Lab-Endpunkten
+dahinter und `canOverride` immer `true`.
 
 Reverse Geocoding macht im Labor echtes Netz-I/O. Das ist hinnehmbar; wer offline arbeitet, sieht
 Kacheln ohne Flagge, weil der Aufruf weich scheitert.

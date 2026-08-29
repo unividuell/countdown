@@ -7,7 +7,6 @@ import type { GameEntry } from '@/games/GameEntry'
 // happy-dom has no Google Maps: SpotObjectBoard delegates everything Google to `useStreetView`,
 // so this spec only ever sees the composable's public shape, exactly like `SpotObjectBoard.spec.ts`.
 vi.mock('../useStreetView', () => ({ useStreetView: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 import { useStreetView } from '../useStreetView'
 
@@ -48,7 +47,11 @@ function mountGame(over: Record<string, unknown> = {}) {
       mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
       disabled: false,
-      tipPath: (userId: string) => `/tips/${userId}`,
+      review: {
+        canOverride: false,
+        vote: vi.fn().mockResolvedValue(undefined),
+        override: vi.fn().mockResolvedValue(undefined),
+      },
       ...over,
     },
   })

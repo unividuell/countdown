@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { RoundReview } from '@/rounds/review'
 import SpotObjectTipGrid from '../SpotObjectTipGrid.vue'
 import type { TipTile } from '../tips'
-
-const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 
 function tile(over: Partial<TipTile> & { userId: string }): TipTile {
   return {
@@ -15,6 +13,7 @@ function tile(over: Partial<TipTile> & { userId: string }): TipTile {
     flag: '🇩🇪',
     confirms: [],
     flags: [],
+    myVote: null,
     struck: false,
     adminOverride: null,
     mine: false,
@@ -22,22 +21,32 @@ function tile(over: Partial<TipTile> & { userId: string }): TipTile {
   }
 }
 
-function mountGrid(tiles: TipTile[]) {
-  return mount(SpotObjectTipGrid, {
-    props: { tiles, tipPath: (userId: string) => `/tips/${userId}` },
+function mountGrid(
+  tiles: TipTile[],
+  over: Partial<{ canVote: boolean; review: Partial<RoundReview> }> = {},
+) {
+  const review: RoundReview = {
+    canOverride: false,
+    vote: vi.fn().mockResolvedValue(undefined),
+    override: vi.fn().mockResolvedValue(undefined),
+    ...over.review,
+  }
+  const wrapper = mount(SpotObjectTipGrid, {
+    props: { tiles, canVote: over.canVote ?? true, review },
   })
+  return { wrapper, review }
 }
 
 describe('SpotObjectTipGrid', () => {
   it('renders one tile per tip in two columns', () => {
-    const wrapper = mountGrid([tile({ userId: 'a' }), tile({ userId: 'b' })])
+    const { wrapper } = mountGrid([tile({ userId: 'a' }), tile({ userId: 'b' })])
 
     expect(wrapper.findAll('[data-test="tip-tile"]')).toHaveLength(2)
     expect(wrapper.get('[data-test="tip-grid"]').classes()).toContain('grid-cols-2')
   })
 
   it('names everybody who voted, on both sides', () => {
-    const wrapper = mountGrid([
+    const { wrapper } = mountGrid([
       tile({
         userId: 'a',
         confirms: [{ userId: 'b', username: 'Bianca', value: 'CONFIRM' }],
@@ -49,29 +58,114 @@ describe('SpotObjectTipGrid', () => {
     expect(wrapper.text()).toContain('Caro')
   })
 
-  it('marks a struck tile', () => {
-    const wrapper = mountGrid([tile({ userId: 'a', struck: true })])
+  it('strikes the name through instead of explaining the strike', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', struck: true })])
 
-    expect(wrapper.find('[data-test="tip-struck"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="tip-name"]').classes()).toContain('line-through')
+    expect(wrapper.text()).not.toContain('gestrichen')
   })
 
-  it('says when the game master lifted a tip', () => {
-    const wrapper = mountGrid([tile({ userId: 'a', adminOverride: true })])
+  /** The corner itself is Google's own wordmark, and covering it breaks the terms of service. */
+  it('keeps the Google link clear of the attribution burnt into the still', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a' })])
 
-    expect(wrapper.text()).toContain('vom Spielleiter aufgehoben')
+    const link = wrapper.get('[data-test="tip-google"]')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.classes()).toContain('bottom-6')
+    expect(link.classes()).not.toContain('bottom-2')
   })
 
-  it('links into Google without nesting it inside the tile link', () => {
-    const wrapper = mountGrid([tile({ userId: 'a' })])
+  /**
+   * The whole reason the single-tip page went away: judging means comparing, and every ballot used
+   * to take the rest of the round off screen and back.
+   */
+  it('casts a ballot from the tile itself', async () => {
+    const { wrapper, review } = mountGrid([tile({ userId: 'a' })])
 
-    expect(wrapper.findAll('a a')).toHaveLength(0)
+    await wrapper.get('[data-test="tip-flag"]').trigger('click')
+
+    expect(review.vote).toHaveBeenCalledWith('a', 'FLAG')
   })
 
-  it('opens the single-tip page for the tapped tile', async () => {
-    const wrapper = mountGrid([tile({ userId: 'a' })])
+  it('withdraws the ballot it already holds', async () => {
+    const { wrapper, review } = mountGrid([tile({ userId: 'a', myVote: 'CONFIRM' })])
 
-    await wrapper.get('[data-test="tip-tile"]').trigger('click')
+    await wrapper.get('[data-test="tip-confirm"]').trigger('click')
 
-    expect(push).toHaveBeenCalledWith('/tips/a')
+    expect(review.vote).toHaveBeenCalledWith('a', null)
+  })
+
+  it('shows the held ballot as pressed', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', myVote: 'FLAG' })])
+
+    expect(wrapper.get('[data-test="tip-flag"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="tip-confirm"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  /** Four 44px controls do not fit across a phone's half-width tile; two columns of two do. */
+  it('stacks each control group down its own edge', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a' })], { review: { canOverride: true } })
+
+    expect(wrapper.get('[data-test="tip-vote"]').classes()).toContain('flex-col')
+    expect(wrapper.get('[data-test="tip-override"]').classes()).toContain('flex-col')
+  })
+
+  it('offers no ballot on my own tip', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', mine: true })])
+
+    expect(wrapper.find('[data-test="tip-vote"]').exists()).toBe(false)
+  })
+
+  it('offers no ballot to somebody who did not play the round', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a' })], { canVote: false })
+
+    expect(wrapper.find('[data-test="tip-vote"]').exists()).toBe(false)
+  })
+
+  it('offers the override only where the server allows it', () => {
+    const plain = mountGrid([tile({ userId: 'a' })])
+    expect(plain.wrapper.find('[data-test="tip-override"]').exists()).toBe(false)
+
+    const admin = mountGrid([tile({ userId: 'a' })], { review: { canOverride: true } })
+    expect(admin.wrapper.find('[data-test="tip-override"]').exists()).toBe(true)
+  })
+
+  it('hands a tip back to the vote when the standing verdict is pressed again', async () => {
+    const { wrapper, review } = mountGrid([tile({ userId: 'a', adminOverride: false })], {
+      review: { canOverride: true },
+    })
+
+    await wrapper.get('[data-test="tip-override-strike"]').trigger('click')
+
+    expect(review.override).toHaveBeenCalledWith('a', null)
+  })
+
+  /**
+   * The override is the one movement in an otherwise fully open procedure, so it may not be silent
+   * for the people who cannot press it — and it says so without a sentence.
+   */
+  it('shows a standing override to everyone, as a badge rather than a button', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', adminOverride: true })])
+
+    expect(wrapper.find('[data-test="tip-override-badge"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('vom Spielleiter')
+  })
+
+  /** Every ballot rewrites the round's scoring, so the second click has to see the first's answer. */
+  it('holds every other control while a ballot is in flight', async () => {
+    let release = (): void => {}
+    const { wrapper } = mountGrid([tile({ userId: 'a' }), tile({ userId: 'b' })], {
+      review: { vote: vi.fn(() => new Promise<void>((resolve) => (release = resolve))) },
+    })
+
+    await wrapper.findAll('[data-test="tip-confirm"]')[0]!.trigger('click')
+
+    const others = wrapper.findAll('[data-test="tip-flag"]')
+    expect(others[1]!.attributes('disabled')).toBeDefined()
+
+    release()
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('[data-test="tip-flag"]')[1]!.attributes('disabled')).toBeUndefined()
   })
 })

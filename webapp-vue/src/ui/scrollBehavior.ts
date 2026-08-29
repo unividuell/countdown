@@ -17,9 +17,8 @@ function isElementHash(hash: string): boolean {
 }
 
 /**
- * Polls for an element with [id], up to [timeoutMs]. The round card a tip page returns to
- * (`RoundCard`, anchored on `#round-<n>`) fetches its data in `onMounted`, so on the frame this
- * hook runs it is usually not in the DOM yet.
+ * Polls for an element with [id], up to [timeoutMs]. A round card (anchored on `#round-<n>`)
+ * fetches its data in `onMounted`, so on the frame this hook runs it is usually not in the DOM yet.
  */
 export function waitForElementById(id: string, timeoutMs = HASH_WAIT_TIMEOUT_MS): Promise<boolean> {
   if (document.getElementById(id)) return Promise.resolve(true)
@@ -38,9 +37,10 @@ export function waitForElementById(id: string, timeoutMs = HASH_WAIT_TIMEOUT_MS)
 }
 
 /**
- * A hash is always a round card's own anchor, which is where closing a single tip comes back to
- * (see `pages/c/[slug]/rounds/[roundNumber]/tips/[userId].vue`). `savedPosition` is honoured
- * first — defining this hook at all switches the browser's own back/forward restoration off.
+ * A hash is always a round card's own anchor. Nothing inside the app links to one any more — the
+ * single-tip page that used to was folded back into the grid — so what is left is a pasted or
+ * bookmarked link into one round of the history. `savedPosition` is honoured first: defining this
+ * hook at all switches the browser's own back/forward restoration off.
  *
  * Waiting for the target pays off for the currently running round and the one past round
  * `useRoundHistory` loads on its own; a round further back needs a manual "Weiter zurück" click

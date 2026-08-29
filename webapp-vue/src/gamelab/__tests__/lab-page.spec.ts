@@ -34,7 +34,7 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
-        tipPath: { type: Function, default: null },
+        review: { type: Object, default: null },
         // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
         // default of `false` would let the case below pass with the binding missing entirely.
         closed: { type: Boolean, default: true },
@@ -169,6 +169,9 @@ describe('lab page', () => {
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(api, 'revealLabRound')
+      .mockReset()
+      .mockResolvedValue({ ...round } as never)
+    vi.spyOn(api, 'castLabVote')
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(drawerControl, 'requestDrawerClose').mockReset()
@@ -885,16 +888,18 @@ describe('lab page', () => {
 
   // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
   // task-15 report) — a test is the only thing that would catch this binding going missing.
-  it("hands the game a tip-path builder seeded with this round's seed and phase", async () => {
+  it('hands the game a review that everybody in the lab may override', async () => {
     const w = await mountPage()
-    const stub = w.findComponent(StubGame)
-    const tipPath = stub.props('tipPath') as (userId: string) => unknown
+    const review = w.findComponent(StubGame).props('review') as {
+      canOverride: boolean
+      vote: (userId: string, value: unknown) => Promise<void>
+    }
 
-    expect(tipPath('u9')).toEqual({
-      name: '/c/[slug]/lab/[game]/tips/[userId]',
-      params: { slug: 'team', game: 'stub', userId: 'u9' },
-      query: { seed: '42', phase: 'ONE' },
-    })
+    expect(review.canOverride).toBe(true)
+
+    await review.vote('u9', 'FLAG')
+
+    expect(api.castLabVote).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 'u9', 'FLAG')
   })
 
   // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.

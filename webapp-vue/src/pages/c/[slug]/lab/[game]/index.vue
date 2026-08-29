@@ -12,7 +12,6 @@
 import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
-import type { RouteLocationRaw } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
@@ -23,17 +22,20 @@ import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
 import {
+  castLabVote,
   forgetMyLabEntry,
   giveUpLabRound,
   labAssetUrl,
   openLabRound,
   resetLabRound,
   revealLabRound,
+  setLabOverride,
   skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
 import type { GameEntry } from '@/games/GameEntry'
+import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
@@ -50,14 +52,6 @@ const seed = computed(() => parseSeed(route.query.seed))
 // value is visible at a glance rather than an error state, and every link that predates this
 // selector keeps opening phase one.
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
-
-/** Where one of this round's tiles opens — seed and phase ride along because they are the lab's
- * round key, the same way the real round's tip path carries its round number. */
-const tipPath = (userId: string): RouteLocationRaw => ({
-  name: '/c/[slug]/lab/[game]/tips/[userId]',
-  params: { slug: community.value.slug, game: gameId.value, userId },
-  query: { seed: String(seed.value), phase: phase.value },
-})
 
 const round = ref<LabRoundResponse | null>(null)
 /**
@@ -102,6 +96,18 @@ async function run(
     busy.value = false
   }
 }
+
+/**
+ * The lab's own review. `canOverride` comes back `true` from the server — in the lab everybody is
+ * the game master, which is the point of the harness. Seed and phase ride along because they are
+ * the lab's round key, the same way a round number is the product's.
+ */
+const review = computed<RoundReview>(() => ({
+  canOverride: round.value?.canOverride ?? false,
+  vote: (userId, value) => run((slug, game, s, p) => castLabVote(slug, game, s, p, userId, value)),
+  override: (userId, value) =>
+    run((slug, game, s, p) => setLabOverride(slug, game, s, p, userId, value)),
+}))
 
 /** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
 async function reveal(): Promise<void> {
@@ -316,7 +322,7 @@ watch(
         :asset-url="
           (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
         "
-        :tip-path="tipPath"
+        :review="review"
         :closed="false"
         @guess="guess"
         @skip="skip"
