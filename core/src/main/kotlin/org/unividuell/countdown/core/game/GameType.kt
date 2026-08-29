@@ -114,6 +114,17 @@ interface GameType<P : Any> {
     fun requiresReveal(params: P): Boolean
 
     /**
+     * Whether this game's tips may be confirmed or flagged by the other players afterwards.
+     *
+     * **With** a default, unlike [requiresReveal] — and that is the same rule, not an exception:
+     * the default has to be the safe direction. For [requiresReveal] the convenient `false` is the
+     * unsafe one (it would start somebody's clock unasked); here `false` is simply today's
+     * behaviour. A game that says nothing gets nothing new, and a game whose solution is
+     * machine-checkable has nothing to vote about anyway.
+     */
+    fun allowsPeerReview(params: P): Boolean = false
+
+    /**
      * Judge [guess] against the frozen params. Throws [InvalidGuessException] on a malformed or
      * out-of-range guess — **before** anything is written, so a typo does not consume the one
      * attempt the player has.
