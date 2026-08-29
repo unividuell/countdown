@@ -26,7 +26,7 @@ const targetUserId = computed(() => String(route.params.userId))
 
 const round = ref<RoundResponse | null>(null)
 const state = ref<'loading' | 'ready' | 'failed'>('loading')
-const { busy, run } = useAction(() => 'Die Aktion ist fehlgeschlagen.')
+const { busy, error: actionError, run } = useAction(() => 'Die Aktion ist fehlgeschlagen.')
 
 /**
  * The running round answers under `/current`; anything older has its own number. Asking `/current`
@@ -119,6 +119,7 @@ async function onOverride(value: boolean | null): Promise<void> {
       :my-vote="myVote"
       :busy="busy"
       :close-to="closeTo"
+      :error="actionError"
       @vote="onVote"
       @override="onOverride"
     />

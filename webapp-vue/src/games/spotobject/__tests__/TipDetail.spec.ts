@@ -35,6 +35,7 @@ function mountDetail(over: Partial<InstanceType<typeof TipDetail>['$props']> = {
       myVote: null,
       busy: false,
       closeTo: '/c/team/',
+      error: null,
       ...over,
     },
   })
@@ -86,6 +87,13 @@ describe('TipDetail', () => {
     expect(close.attributes('href')).toBe('/c/team/')
     expect(close.classes()).toContain('h-11')
     expect(close.classes()).toContain('w-11')
+  })
+
+  it("shows the last action's error message, and nothing when there is none", () => {
+    expect(mountDetail({ error: null }).find('[data-test="tip-action-error"]').exists()).toBe(false)
+
+    const w = mountDetail({ error: 'Die Aktion ist fehlgeschlagen.' })
+    expect(w.get('[data-test="tip-action-error"]').text()).toBe('Die Aktion ist fehlgeschlagen.')
   })
 
   it('links into Google’s own viewer', () => {

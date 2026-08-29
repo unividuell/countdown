@@ -23,6 +23,8 @@ const props = defineProps<{
   myVote: Vote | null
   busy: boolean
   closeTo: RouteLocationRaw
+  /** `useAction`'s own message for the last vote/override attempt — `null` while nothing failed. */
+  error: string | null
 }>()
 
 const emit = defineEmits<{ vote: [Vote | null]; override: [boolean | null] }>()
@@ -95,6 +97,12 @@ function toggleVote(value: Vote): void {
           Flaggen
         </button>
       </div>
+
+      <!-- Same spot the profile blocks put a failed save's message: right under the controls that
+           produced it. Shared by both vote and override — this page has one action at a time. -->
+      <p v-if="props.error" data-test="tip-action-error" class="mt-2 text-sm text-red-600">
+        {{ props.error }}
+      </p>
 
       <p v-if="props.tile.struck" data-test="tip-struck" class="text-sm font-medium text-red-700">
         gestrichen

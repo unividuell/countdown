@@ -106,4 +106,25 @@ describe('single tip page', () => {
     // Redrawn from the response, not derived locally: Fry's name now shows among the confirms.
     expect(w.text()).toContain('Fry')
   })
+
+  // Pins the round-2 fix: `useAction`'s error was never rendered, so a rejected vote was a
+  // silent no-op — the player taps, nothing happens, nothing says why. Matters most for a tip
+  // from a round outside the server's review window, which answers with a rejection here too.
+  it('shows the action error after a rejected vote, and clears it after a successful one', async () => {
+    vi.spyOn(roundsApi, 'getCurrentRound').mockResolvedValue(aRound())
+    const castVote = vi.spyOn(roundsApi, 'castVote')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const w = await page()
+
+    castVote.mockRejectedValueOnce(new Error('409'))
+    await w.get('[data-test="tip-confirm"]').trigger('click')
+    await flushPromises()
+    expect(w.get('[data-test="tip-action-error"]').text()).toBe('Die Aktion ist fehlgeschlagen.')
+
+    castVote.mockResolvedValueOnce(aRound())
+    await w.get('[data-test="tip-confirm"]').trigger('click')
+    await flushPromises()
+    expect(w.find('[data-test="tip-action-error"]').exists()).toBe(false)
+  })
 })
