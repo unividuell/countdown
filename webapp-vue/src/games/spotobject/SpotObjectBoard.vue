@@ -8,7 +8,9 @@
  * it hands back the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
 import { onMounted, useTemplateRef } from 'vue'
+import { useViewportFill } from '@/ui/useViewportFill'
 import type { SpotObjectPayload, SpotObjectTip } from './types'
+import { STAGE_MIN_HEIGHT, STAGE_STRIP } from './stage'
 import { useStreetView } from './useStreetView'
 
 const props = defineProps<{
@@ -21,6 +23,8 @@ const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 const { currentTip, error, mount, pano, toWorldMap } = useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
+const frame = useTemplateRef<HTMLElement>('frame')
+const filled = useViewportFill(frame, { strip: STAGE_STRIP, min: STAGE_MIN_HEIGHT })
 
 onMounted(() => {
   if (stage.value) void mount(stage.value)
@@ -39,7 +43,11 @@ function submitGuess(): void {
 </script>
 
 <template>
-  <div class="relative -m-4 h-[100dvh] sm:h-[min(100dvh-6rem,40rem)]">
+  <div
+    ref="frame"
+    class="relative -m-4 h-[var(--stage-height)] sm:h-[min(100dvh-6rem,40rem)]"
+    :style="{ '--stage-height': filled === null ? '100dvh' : `${filled}px` }"
+  >
     <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
          stacking context here those compete with our overlay row in the ROOT context and win —
          the map mode's controls are modest enough that the row only vanishes once somebody drops

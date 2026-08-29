@@ -9,9 +9,12 @@
  * small: an exception a game master occasionally reaches for, not a feature this page is built
  * around (mirrors `SpotObjectTipGrid.vue`'s own note on the same control).
  */
+import { useTemplateRef } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import type { Vote } from '@/api/types'
+import { useViewportFill } from '@/ui/useViewportFill'
+import { STAGE_MIN_HEIGHT, STAGE_STRIP } from './stage'
 import { googleUrl, shotUrl } from './types'
 import type { TipTile } from './tips'
 
@@ -29,6 +32,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{ vote: [Vote | null]; override: [boolean | null] }>()
 
+const frame = useTemplateRef<HTMLElement>('frame')
+const filled = useViewportFill(frame, { strip: STAGE_STRIP, min: STAGE_MIN_HEIGHT })
+
 /** A second click on the held vote withdraws it — voting is idempotent, not additive. */
 function toggleVote(value: Vote): void {
   emit('vote', props.myVote === value ? null : value)
@@ -39,7 +45,9 @@ function toggleVote(value: Vote): void {
   <div>
     <!-- Same stage measurements as the board: the one thing here that has to run edge to edge. -->
     <div
-      class="relative -m-4 flex h-[100dvh] items-center justify-center bg-neutral-200 sm:h-[min(100dvh-6rem,40rem)]"
+      ref="frame"
+      class="relative -m-4 flex h-[var(--stage-height)] items-center justify-center bg-neutral-200 sm:h-[min(100dvh-6rem,40rem)]"
+      :style="{ '--stage-height': filled === null ? '100dvh' : `${filled}px` }"
     >
       <!-- Google's watermark is burnt into the bottom-left of the still, so any crop crops the
            attribution away. `SpotObjectTipGrid` avoids that by requesting its frame's own ratio;
