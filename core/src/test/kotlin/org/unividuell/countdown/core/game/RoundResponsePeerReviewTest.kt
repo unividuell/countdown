@@ -136,6 +136,29 @@ class RoundResponsePeerReviewTest(
         )
     }
 
+    /** The exit without an answer: `qualifies` stays NULL, and there is no tip to review. */
+    private fun gaveUp(roundGameId: UUID, userId: UUID) {
+        plays.revealOrCount(roundGameId = roundGameId, userId = userId, revealedAt = clock.instant())
+        plays.giveUp(roundGameId = roundGameId, userId = userId, guessedAt = clock.instant())
+    }
+
+    @Test
+    fun `a give-up is not struck — the review never touched it`() {
+        val (community, quitter) = aCommunity("Gave Up")
+        val viewer = aMember(community, "viewer")
+        val roundNumber = currentRoundNumberOf(community)
+        announceReview(community, roundNumber)
+        val roundGameId = roundGameIdOf(community, roundNumber)
+        gaveUp(roundGameId, quitter)
+        guessed(roundGameId, viewer)
+
+        val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        val row = requireNotNull(res.others.find { it.userId == quitter })
+        row.votes.shouldBeEmpty()
+        row.struck shouldBe false
+    }
+
     @Test
     fun `a tip carries every vote by name, in both directions`() {
         val (community, target) = aCommunity("Named Votes")

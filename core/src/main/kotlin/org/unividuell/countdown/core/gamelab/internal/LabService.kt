@@ -19,7 +19,7 @@ import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.awardFor
-import org.unividuell.countdown.core.game.effectiveQualifies
+import org.unividuell.countdown.core.game.struckByReview
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.node.NullNode
@@ -440,9 +440,9 @@ class LabService(
                 votes = entry.votes.mapNotNull { (voterId, value) ->
                     byId[voterId]?.let { LabVoteView(userId = voterId, username = it.username, value = value) }
                 }.sortedBy { it.username },
-                // `!effectiveQualifies(...)`, not `struckOut(...)` alone, so an override shows up here
-                // exactly as it shows up in the scoring — one rule, read twice, never two rules.
-                struck = !effectiveQualifies(
+                // The narrow rule, shared with the product: „the review took this tip's points",
+                // not „this tip scored nothing" — a give-up never went through a review at all.
+                struck = struckByReview(
                     adminOverride = entry.adminOverride,
                     qualifies = entry.qualifies,
                     tally = VoteTally.of(entry.votes.values.toList()),

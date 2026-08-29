@@ -40,3 +40,16 @@ fun struckOut(tally: VoteTally): Boolean = tally.flags >= 2 && tally.flags > tal
  */
 fun effectiveQualifies(adminOverride: Boolean?, qualifies: Boolean, tally: VoteTally): Boolean =
     adminOverride ?: (qualifies && !struckOut(tally))
+
+/**
+ * Whether the **review** is what this play lost its points to — the label both worlds publish as
+ * `struck`, and deliberately narrower than `!effectiveQualifies(...)`.
+ *
+ * A give-up, and a wrong guess in a game that never opened a review at all, score nothing on their
+ * own; calling those „struck" would tell the round that the other players struck a tip nobody ever
+ * voted on. Two ways in, and only two: the game qualified the play and the ballots turned it, or
+ * the game master struck it outright.
+ */
+fun struckByReview(adminOverride: Boolean?, qualifies: Boolean, tally: VoteTally): Boolean =
+    adminOverride == false ||
+        (qualifies && !effectiveQualifies(adminOverride = adminOverride, qualifies = true, tally = tally))

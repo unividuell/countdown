@@ -90,6 +90,18 @@ class LabPeerReviewTest(
     private val spotObjectGuess = mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
 
     @Test
+    fun `a lab give-up is not struck — the review never touched it`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val res = service.giveUp(
+            slug = community.slug, gameId = "spot-object", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        requireNotNull(res.me).struck shouldBe false
+    }
+
+    @Test
     fun `voting on your own lab tip is refused`() {
         val (community, mine) = aCommunityWithTwoMembers()
         service.guess(

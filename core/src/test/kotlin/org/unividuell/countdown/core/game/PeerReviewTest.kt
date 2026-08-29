@@ -41,6 +41,24 @@ class PeerReviewTest {
     }
 
     @Test
+    fun `a tip nobody voted on is not struck, however it scored`() {
+        // The two rows the framework produces without any review at all: a give-up (`qualifies`
+        // NULL, read as false) and a wrong guess in a game that has no peer review.
+        struckByReview(adminOverride = null, qualifies = false, tally = VoteTally.NONE) shouldBe false
+        struckByReview(adminOverride = null, qualifies = false, tally = tally(confirms = 0, flags = 5)) shouldBe false
+    }
+
+    @Test
+    fun `struck means the review turned it, or the game master did`() {
+        struckByReview(adminOverride = null, qualifies = true, tally = tally(confirms = 0, flags = 2)) shouldBe true
+        struckByReview(adminOverride = null, qualifies = true, tally = tally(confirms = 2, flags = 2)) shouldBe false
+        struckByReview(adminOverride = false, qualifies = true, tally = VoteTally.NONE) shouldBe true
+        // The game master may strike a tip the game never qualified — that is still the review.
+        struckByReview(adminOverride = false, qualifies = false, tally = VoteTally.NONE) shouldBe true
+        struckByReview(adminOverride = true, qualifies = true, tally = tally(confirms = 0, flags = 5)) shouldBe false
+    }
+
+    @Test
     fun `the admin override wins in both directions`() {
         effectiveQualifies(adminOverride = true, qualifies = true, tally = tally(confirms = 0, flags = 5)) shouldBe true
         effectiveQualifies(adminOverride = true, qualifies = false, tally = VoteTally.NONE) shouldBe true

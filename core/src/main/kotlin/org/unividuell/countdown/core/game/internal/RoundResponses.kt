@@ -5,7 +5,7 @@ import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.VoteTally
-import org.unividuell.countdown.core.game.effectiveQualifies
+import org.unividuell.countdown.core.game.struckByReview
 import java.util.UUID
 
 /**
@@ -145,9 +145,9 @@ class RoundResponses(
         }
 
     /**
-     * The review side of one play: who voted what, and whether the tip currently counts. `struck`
-     * is `!effectiveQualifies(...)` rather than `struckOut(...)` alone, so an override shows up
-     * here exactly as it shows up in the scoring — one rule, read twice, never two rules.
+     * The review side of one play: who voted what, and whether the review took the tip's points.
+     * `struckByReview(...)` rather than `!effectiveQualifies(...)`: the latter is also true for a
+     * give-up and for any game that never opens a review, and this field claims the review did it.
      */
     private fun reviewOf(
         play: RoundPlay,
@@ -160,7 +160,7 @@ class RoundResponses(
                 VoteView(userId = vote.voterUserId, username = it.username, value = vote.value)
             }
         }.sortedBy { it.username }
-        val struck = !effectiveQualifies(
+        val struck = struckByReview(
             adminOverride = play.adminOverride,
             qualifies = play.qualifies == true,
             tally = tally,
