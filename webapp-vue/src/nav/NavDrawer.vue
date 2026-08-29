@@ -421,6 +421,9 @@ onKeyStroke('Tab', (e) => {
         <button type="button" data-test="logout" :class="LINK" @click="handleLogout">
           Abmelden
         </button>
+        <RouterLink to="/legal" data-test="legal" :class="`${LINK} text-neutral-500`">
+          Rechtliches
+        </RouterLink>
         <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-red-600">
           Abmelden fehlgeschlagen
         </p>

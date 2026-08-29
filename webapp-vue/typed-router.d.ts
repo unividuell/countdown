@@ -144,6 +144,13 @@ declare module 'vue-router/auto-routes' {
       { token: ParamValue<false> },
       | never
     >,
+    '/legal': RouteRecordInfo<
+      '/legal',
+      '/legal',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/login': RouteRecordInfo<
       '/login',
       '/login',
@@ -337,6 +344,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'token'
+    }
+    'src/pages/legal.vue': {
+      routes:
+        | '/legal'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'src/pages/login.vue': {
       routes:
