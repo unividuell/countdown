@@ -1,0 +1,59 @@
+package org.unividuell.countdown.core.spotobject
+
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
+import org.junit.jupiter.api.Test
+
+class StreetViewShotTest {
+
+    /** Street View's zoom is a scale; the Static API wants the field of view it corresponds to. */
+    @Test
+    fun `zoom maps to a field of view and is clamped at both ends`() {
+        StreetViewShot.fovOf(1.0) shouldBe 90.0
+        StreetViewShot.fovOf(2.0) shouldBe 45.0
+        StreetViewShot.fovOf(0.0) shouldBe 100.0 // 180 clamped down
+        StreetViewShot.fovOf(9.0) shouldBe 10.0 // 0.35 clamped up
+    }
+
+    @Test
+    fun `the signed url carries the key, the panorama and a signature`() {
+        val url = StreetViewShot.url(
+            panoId = "abc", heading = 12.0, pitch = 0.0, fov = 90.0,
+            width = 400, height = 300, apiKey = "KEY", signingSecret = "c2VjcmV0",
+        )
+
+        url shouldContain "pano=abc"
+        url shouldContain "key=KEY"
+        url shouldContain "signature="
+        url shouldNotContain "c2VjcmV0"
+    }
+
+    /**
+     * The signature is over path + query, HMAC-SHA1 with the URL-safe-base64-decoded secret, and
+     * URL-safe-base64 encoded. Pinned against a known pair so a refactor cannot quietly change it.
+     *
+     * Expectation computed once, independently of the implementation:
+     *   key = urlsafe_b64decode("c2VjcmV0")   # decodes to the ASCII bytes "secret" — a fake secret
+     *   msg = "/maps/api/streetview?size=400x300&pano=abc&heading=12&pitch=0&fov=90&key=KEY"
+     *   sig = urlsafe_b64encode(hmac_sha1(key, msg))  # -> "jMS3Ds_Qq5iTce2NDN366ekVg90="
+     */
+    @Test
+    fun `the signature matches Google's documented algorithm`() {
+        val url = StreetViewShot.url(
+            panoId = "abc", heading = 12.0, pitch = 0.0, fov = 90.0,
+            width = 400, height = 300, apiKey = "KEY", signingSecret = "c2VjcmV0",
+        )
+
+        url shouldBe "https://maps.googleapis.com/maps/api/streetview?size=400x300&pano=abc&heading=12" +
+            "&pitch=0&fov=90&key=KEY&signature=jMS3Ds_Qq5iTce2NDN366ekVg90="
+    }
+
+    @Test
+    fun `out-of-range angles are clamped rather than rejected`() {
+        StreetViewShot.url(
+            panoId = "abc", heading = 999.0, pitch = -999.0, fov = 1_000.0,
+            width = 400, height = 300, apiKey = "K", signingSecret = "c2VjcmV0",
+        ) shouldContain "pitch=-90"
+    }
+}
