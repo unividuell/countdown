@@ -141,6 +141,9 @@ function entry(
     points: 1,
     durationMs: null,
     at: '2026-08-09T12:00:00Z',
+    votes: [],
+    struck: false,
+    adminOverride: null,
     ...over,
   }
 }

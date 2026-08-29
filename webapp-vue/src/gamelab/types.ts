@@ -1,4 +1,4 @@
-import type { AvatarView } from '@/api/types'
+import type { AvatarView, Vote } from '@/api/types'
 
 /**
  * Lab types live here rather than in `src/api/types.ts` so the whole non-prod harness is one
@@ -10,6 +10,13 @@ export type LabPhase = 'ONE' | 'TWO'
 
 /** Mirrors the server's `AwardRule`. */
 export type LabAwardRule = 'ALL_QUALIFYING' | 'CLOSEST_ONLY'
+
+/** One vote cast on a lab tip, by name — mirrors `VoteView` in the real round's wire types. */
+export interface LabVoteView {
+  userId: string
+  username: string
+  value: Vote
+}
 
 export interface LabEntryDto {
   userId: string
@@ -26,6 +33,15 @@ export interface LabEntryDto {
   stage: number
   /** Reveal-to-guess in milliseconds; `null` for a game that does not score on time. */
   durationMs: number | null
+  /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+  votes: LabVoteView[]
+  /**
+   * Whether this tip currently scores nothing because of the review — the server's own answer,
+   * override included. The client never re-derives it.
+   */
+  struck: boolean
+  /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
+  adminOverride: boolean | null
 }
 
 export interface LabRoundResponse<P = unknown> {
@@ -58,4 +74,9 @@ export interface LabRoundResponse<P = unknown> {
    * derive this from anything else.
    */
   revealed: boolean
+  /**
+   * Whether the viewer may set the override. Always `true` — in the lab everybody is the game
+   * master, the one deliberate difference from the product: the lab models no roles anywhere.
+   */
+  canOverride: boolean
 }

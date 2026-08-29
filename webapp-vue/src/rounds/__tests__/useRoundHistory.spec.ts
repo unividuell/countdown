@@ -21,6 +21,7 @@ const closed = (number: number, previous: number | null): RoundResponse => ({
   others: [],
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  canOverride: false,
 })
 
 /** The composable watches `from` immediately, so it needs a host component to run its effects. */

@@ -38,6 +38,8 @@ const props = defineProps<{
    * score can still be overtaken — and the scoreboard says so. `null` where there is no round.
    */
   awardRule: AwardRule | null
+  /** Declared, never used here: the contract is the same shape for every game the card renders. */
+  canOverride?: boolean
 }>()
 
 const emit = defineEmits<{ guess: [value: unknown] }>()

@@ -1,3 +1,5 @@
+import type { VoteView } from '@/api/types'
+
 /**
  * What a game component needs to know about one player's entry — and nothing more.
  *
@@ -22,4 +24,10 @@ export type GameEntry = {
   /** Reveal to guess, in milliseconds. `null` for a game that does not score on time. */
   durationMs: number | null
   avatar: { bgColorHex: string }
+  /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+  votes: VoteView[]
+  /** Whether this tip currently scores nothing because of the review, override included. */
+  struck: boolean
+  /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
+  adminOverride: boolean | null
 }

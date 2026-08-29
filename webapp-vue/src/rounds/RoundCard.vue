@@ -165,6 +165,7 @@ function onGiveUp(): void {
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
+        :can-override="round?.canOverride ?? false"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

@@ -30,6 +30,7 @@ const closed = (number: number): RoundResponse => ({
   others: [],
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  canOverride: false,
 })
 
 function mockHistory(

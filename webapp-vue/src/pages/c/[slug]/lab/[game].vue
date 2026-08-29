@@ -170,6 +170,9 @@ const gameEntries = computed<GameEntry[]>(() => {
       points: null,
       durationMs: null,
       avatar: user.value.avatar,
+      votes: [],
+      struck: false,
+      adminOverride: null,
     },
     ...current.others,
   ]

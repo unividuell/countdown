@@ -1,5 +1,5 @@
 import { apiFetch } from '@/api/client'
-import type { RoundResponse } from '@/api/types'
+import type { RoundResponse, Vote } from '@/api/types'
 
 /** The slug is user-chosen, so it is encoded; the round is always „current“ — the server decides which. */
 const roundUrl = (slug: string, sub = ''): string =>
@@ -40,3 +40,26 @@ export const giveUpRound = (slug: string, roundNumber: number) =>
 /** Round number and key ride in the URL so each pair is its own privately cacheable resource. */
 export const roundAssetUrl = (slug: string, roundNumber: number, key: number): string =>
   `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/assets/${key}`
+
+/**
+ * One ballot per voter and tip, so `PUT`: a second click replaces it, and `null` withdraws it.
+ * The round number rides in the path because the window is „the running round or the one before“,
+ * and both must be addressable.
+ */
+export const castVote = (slug: string, roundNumber: number, userId: string, value: Vote | null) =>
+  apiFetch<RoundResponse>(
+    `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/plays/${encodeURIComponent(userId)}/vote`,
+    { method: 'PUT', body: JSON.stringify({ value }) },
+  )
+
+/** The game master's verdict on one tip. `null` hands the decision back to the vote. */
+export const setAdminOverride = (
+  slug: string,
+  roundNumber: number,
+  userId: string,
+  value: boolean | null,
+) =>
+  apiFetch<RoundResponse>(
+    `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/plays/${encodeURIComponent(userId)}/override`,
+    { method: 'PUT', body: JSON.stringify({ value }) },
+  )

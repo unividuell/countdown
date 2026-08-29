@@ -111,6 +111,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   // stub stands in for one of those, so it stays mounted from the first response, same as before
   // the reveal gate existed. The gate itself gets its own tests below, with `revealed: false`.
   revealed: true,
+  canOverride: true,
 }
 
 /**
@@ -591,6 +592,9 @@ describe('lab page', () => {
         points: null,
         durationMs: null,
         avatar: { shortName: 'AM', bgColorHex: '#123456' },
+        votes: [],
+        struck: false,
+        adminOverride: null,
       },
     ])
     expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)

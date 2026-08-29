@@ -29,6 +29,9 @@ const MINE: GameEntry = {
   points: 1,
   durationMs: 42_000,
   avatar: { bgColorHex: '#7c3aed' },
+  votes: [],
+  struck: false,
+  adminOverride: null,
 }
 
 const OTHER: GameEntry = {
@@ -40,6 +43,9 @@ const OTHER: GameEntry = {
   points: 0,
   durationMs: 50_000,
   avatar: { bgColorHex: '#16a34a' },
+  votes: [],
+  struck: false,
+  adminOverride: null,
 }
 
 function mountGame(over: Record<string, unknown> = {}) {

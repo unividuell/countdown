@@ -1,4 +1,5 @@
 import { apiFetch } from '@/api/client'
+import type { Vote } from '@/api/types'
 import type { LabPhase, LabRoundResponse } from './types'
 
 /**
@@ -63,3 +64,31 @@ export const labAssetUrl = (
   phase: LabPhase,
   key: number,
 ): string => labUrl(slug, game, seed, phase, `/assets/${key}`)
+
+/** Casting, changing, or withdrawing a ballot on somebody else's tip. Mirrors `castVote`. */
+export const castLabVote = <P>(
+  slug: string,
+  game: string,
+  seed: number,
+  phase: LabPhase,
+  userId: string,
+  value: Vote | null,
+) =>
+  apiFetch<LabRoundResponse<P>>(
+    labUrl(slug, game, seed, phase, `/plays/${encodeURIComponent(userId)}/vote`),
+    { method: 'PUT', body: JSON.stringify({ value }) },
+  )
+
+/** The game master's verdict on one tip. `null` hands the decision back to the vote. Mirrors `setAdminOverride`. */
+export const setLabOverride = <P>(
+  slug: string,
+  game: string,
+  seed: number,
+  phase: LabPhase,
+  userId: string,
+  value: boolean | null,
+) =>
+  apiFetch<LabRoundResponse<P>>(
+    labUrl(slug, game, seed, phase, `/plays/${encodeURIComponent(userId)}/override`),
+    { method: 'PUT', body: JSON.stringify({ value }) },
+  )

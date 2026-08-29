@@ -49,6 +49,9 @@ const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   outcome: null,
   points: null,
   durationMs: null,
+  votes: [],
+  struck: false,
+  adminOverride: null,
   ...over,
 })
 
@@ -71,6 +74,7 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   others: [],
   awardRule: null,
   awardPoints: null,
+  canOverride: false,
   ...over,
 })
 

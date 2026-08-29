@@ -177,6 +177,19 @@ export interface SuperAdminUserDetail {
 export type NoGameReason = 'NOT_SCHEDULED' | 'BEFORE_WINDOW' | 'AFTER_WINDOW' | 'NO_GAME_TYPE'
 export type AwardRule = 'ALL_QUALIFYING' | 'CLOSEST_ONLY'
 
+/** One ballot with two sides — mirrors the server's `Vote`. */
+export type Vote = 'CONFIRM' | 'FLAG'
+
+/**
+ * One cast ballot, with the name attached. Nothing about the review is secret, counts or casters:
+ * anonymity is what makes voting careless, and being asked why you flagged somebody is the point.
+ */
+export interface VoteView {
+  userId: string
+  username: string
+  value: Vote
+}
+
 export interface GameDto {
   id: string
   displayName: string
@@ -206,6 +219,15 @@ export interface OtherPlayDto {
    * the timestamps do not.
    */
   durationMs: number | null
+  /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+  votes: VoteView[]
+  /**
+   * The server's answer to „does this tip currently score nothing“, override included. Never
+   * re-derived here: the rule lives on the server, and a second copy is a copy that can drift.
+   */
+  struck: boolean
+  /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
+  adminOverride: boolean | null
 }
 
 /** The viewer's own row: the same, plus the two stamps that are theirs to know. */
@@ -235,4 +257,6 @@ export interface RoundResponse {
   /** `null` exactly when there is no game. Under `CLOSEST_ONLY` a score is provisional. */
   awardRule: AwardRule | null
   awardPoints: number | null
+  /** Whether *this viewer* may set an override. Viewer-scoped, like `me` — never a round property. */
+  canOverride: boolean
 }
