@@ -66,9 +66,7 @@ describe('tipTiles', () => {
       mineUserId: null,
     })
 
-    expect(tiles[0]?.country).toBe('FR')
     expect(tiles[0]?.flag).toBe('🇫🇷')
-    expect(tiles[1]?.country).toBeNull()
     expect(tiles[1]?.flag).toBe('')
   })
 

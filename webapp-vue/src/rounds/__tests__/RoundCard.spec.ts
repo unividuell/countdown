@@ -181,6 +181,14 @@ describe('RoundCard', () => {
     )
   })
 
+  // The anchor the single-tip page's close control comes back to. Without it that control lands at
+  // the top of the community page and the reader has lost their place in the history.
+  it('anchors itself under its own round number', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing' })
+
+    expect(w.get('[data-test="round-card"]').attributes('id')).toBe('round-12')
+  })
+
   it('reaches skip and give-up through to the callbacks the page supplied', async () => {
     const skip = vi.fn().mockResolvedValue(undefined)
     const giveUp = vi.fn().mockResolvedValue(undefined)

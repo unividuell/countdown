@@ -12,7 +12,6 @@ function tile(over: Partial<TipTile> & { userId: string }): TipTile {
     colorHex: '#7c3aed',
     ink: '#ffffff',
     tip: { panoId: 'pano-1', heading: 10, pitch: -5, zoom: 1 },
-    country: 'DE',
     flag: '🇩🇪',
     confirms: [],
     flags: [],

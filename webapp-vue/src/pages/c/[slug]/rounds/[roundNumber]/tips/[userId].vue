@@ -81,7 +81,13 @@ const myVote = computed<Vote | null>(() => {
   return null
 })
 
-const closeTo = computed(() => communityPath(community.value.slug))
+/**
+ * Back to the round the tip belongs to, the way the lab's twin carries its seed and phase back.
+ * A past round lives inside `RoundHistory` on the community page, so the round's own card anchor
+ * is what „back to the round“ means here — landing on the page's top would drop whoever opened the
+ * tip out of the history they were reading.
+ */
+const closeTo = computed(() => `${communityPath(community.value.slug)}#round-${roundNumber.value}`)
 
 /** The server sends the whole round back, so nothing here is derived locally. */
 async function onVote(value: Vote | null): Promise<void> {

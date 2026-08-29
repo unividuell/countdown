@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
  * The board: the world map, and — once a panorama is open — the ground the player walks. The map
- * fills the whole surface; our own information floats over it as two overlay rows so it never
+ * fills the whole surface; our own information floats over it as one overlay row so it never
  * competes for space with the thing that has to be searchable.
  *
  * Knows nothing about the round or the lab — it is handed the term and whether it is locked, and
- * it hands back the tip the open panorama stands on. Everything Google lives in `useStreetView`.
+ * it hands back the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
 import { onMounted, useTemplateRef } from 'vue'
 import type { SpotObjectPayload, SpotObjectTip } from './types'

@@ -114,6 +114,17 @@ function toggleVote(value: Vote): void {
         gestrichen
       </p>
 
+      <!-- Openly stated but plain and small, the same treatment the grid's tile gives it: the
+           override is the only movement in an otherwise fully open procedure, so it may not be
+           silent — and it is an exception, so it may not look like a feature either. -->
+      <p
+        v-if="props.tile.adminOverride !== null"
+        data-test="tip-admin-override"
+        class="text-[11px] text-neutral-500"
+      >
+        {{ props.tile.adminOverride ? 'vom Spielleiter aufgehoben' : 'vom Spielleiter gestrichen' }}
+      </p>
+
       <p v-if="props.tile.confirms.length > 0" class="text-sm text-neutral-600">
         ✓ {{ props.tile.confirms.map((vote) => vote.username).join(', ') }}
       </p>

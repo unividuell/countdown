@@ -72,6 +72,16 @@ describe('single tip page', () => {
     expect(w.find('[data-test="tip-close"]').exists()).toBe(true)
   })
 
+  // The lab's twin comes back to the round the tip belongs to; this one used to come back to the
+  // top of the community page, dropping whoever opened the tip out of the round history.
+  it('closes back to the round it was opened from', async () => {
+    vi.spyOn(roundsApi, 'getCurrentRound').mockResolvedValue(aRound())
+
+    const w = await page()
+
+    expect(w.get('[data-test="tip-close"]').attributes('href')).toBe('/c/team/#round-12')
+  })
+
   it('loads a past round otherwise', async () => {
     vi.spyOn(roundsApi, 'getCurrentRound').mockResolvedValue(
       aRound({ round: { number: 13, label: 'T-13', start: 'x', end: 'y' } }),

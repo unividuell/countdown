@@ -14,7 +14,6 @@ function tile(over: Partial<TipTile> = {}): TipTile {
     colorHex: '#7c3aed',
     ink: '#ffffff',
     tip: { panoId: 'pano-1', heading: 10, pitch: -5, zoom: 1 },
-    country: 'DE',
     flag: '🇩🇪',
     confirms: [],
     flags: [],
@@ -95,6 +94,19 @@ describe('TipDetail', () => {
     const classes = mountDetail().get('img').classes()
     expect(classes).toContain('object-contain')
     expect(classes).not.toContain('object-cover')
+  })
+
+  // The grid says so on the tile; saying nothing here would make the full view the one place a
+  // struck tip looks like the vote's own doing. Same treatment as the grid's — a plain small line.
+  it('says when the verdict came from the game master, as quietly as the grid does', () => {
+    expect(mountDetail({ tile: tile({ adminOverride: null }) }).text()).not.toContain('Spielleiter')
+
+    const kept = mountDetail({ tile: tile({ adminOverride: true }) })
+    expect(kept.get('[data-test="tip-admin-override"]').text()).toBe('vom Spielleiter aufgehoben')
+    expect(kept.get('[data-test="tip-admin-override"]').classes()).toContain('text-[11px]')
+
+    const struck = mountDetail({ tile: tile({ adminOverride: false, struck: true }) })
+    expect(struck.get('[data-test="tip-admin-override"]').text()).toBe('vom Spielleiter gestrichen')
   })
 
   it('shows a big close control that leads back', () => {

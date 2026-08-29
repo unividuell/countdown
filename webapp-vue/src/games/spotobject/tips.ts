@@ -21,7 +21,7 @@ export interface TipTile {
   colorHex: string
   ink: string
   tip: SpotObjectTip | null
-  country: string | null
+  /** The country as its flag emoji — the code itself is nowhere shown, so nothing carries it on. */
   flag: string
   confirms: VoteView[]
   flags: VoteView[]
@@ -36,15 +36,13 @@ export function tipTiles(input: {
   mineUserId: string | null
 }): TipTile[] {
   return input.entries.map((entry) => {
-    const country = asSpotObjectOutcome(entry.outcome)?.country ?? null
     return {
       userId: entry.userId,
       name: entry.username,
       colorHex: entry.avatar.bgColorHex,
       ink: readableTextColor(entry.avatar.bgColorHex),
       tip: asSpotObjectTip(entry.guess),
-      country,
-      flag: flagOf(country),
+      flag: flagOf(asSpotObjectOutcome(entry.outcome)?.country ?? null),
       confirms: entry.votes.filter((vote) => vote.value === 'CONFIRM'),
       flags: entry.votes.filter((vote) => vote.value === 'FLAG'),
       struck: entry.struck,

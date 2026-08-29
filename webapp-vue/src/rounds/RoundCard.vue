@@ -101,7 +101,9 @@ function onGiveUp(): void {
 </script>
 
 <template>
-  <div data-test="round-card">
+  <!-- Anchored under its round number: the single-tip page's close control comes back here rather
+       than to the top of the community page (see `rounds/[roundNumber]/tips/[userId].vue`). -->
+  <div :id="`round-${round?.round?.number ?? 0}`" data-test="round-card">
     <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
          about the round on the board, and inside the frame it would push the board down. -->
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
