@@ -34,9 +34,10 @@ open class SpotObjectProperties(
                 Base64.getUrlDecoder().decode(signingSecret)
             } catch (_: IllegalArgumentException) {
                 throw SpotObjectException(
-                    "app.spot-object.signing-secret is not URL-safe base64. Google hands the secret " +
-                        "out in that alphabet; a value carrying '+' or '/' has to be converted first. " +
-                        "Refusing to start: signing would otherwise fail once per image request.",
+                    "app.spot-object.signing-secret is not URL-safe base64. Check that it was pasted " +
+                        "from Google's own alphabet (a value carrying '+' or '/' has to be converted) " +
+                        "and that the env template's placeholder was replaced. Refusing to start: " +
+                        "signing would otherwise fail once per image request.",
                 )
             }
         }

@@ -80,8 +80,12 @@ prepare_spot_object_terms() {
   export SPOT_OBJECT_TERMS_FILE
   TERMS_SOPS_FILE="spot-object-terms.$TARGET.sops.yaml"
   if ! curl -fsSL "$BASE/spot-object-terms.sops.yaml" -o "$TERMS_SOPS_FILE"; then
-    echo "Could not download spot-object-terms.sops.yaml from branch '$REF' ($BASE)." >&2
-    echo "The encrypted Weltanschauung term list must exist on that branch before update.sh can run." >&2
+    echo "Missing prerequisite: deploy/spot-object-terms.sops.yaml is not on branch '$REF' ($BASE)." >&2
+    echo "Nothing was deployed and the running stack is untouched." >&2
+    echo "The curated Weltanschauung term list has to be encrypted and committed to that branch first:" >&2
+    echo "  paste it into .local/spot-object-terms.yaml in the main checkout," >&2
+    echo "  run ./scripts/spot-object-terms.sh encrypt, and commit deploy/spot-object-terms.sops.yaml." >&2
+    echo "See deploy/README.md, 'Prerequisite: the Weltanschauung term list'." >&2
     exit 1
   fi
   mkdir -p secrets
@@ -101,7 +105,6 @@ prepare_spot_object_terms() {
   chmod 644 "$SPOT_OBJECT_TERMS_FILE"
 }
 
-curl -fsSL "$BASE/compose.yaml" -o "$COMPOSE_FILE"
 curl -fsSL "$STABLE/README.md"  -o README.md
 curl -fsSL "$STABLE/update.sh"  -o update.sh.new && chmod +x update.sh.new && mv update.sh.new update.sh
 
@@ -113,6 +116,11 @@ fi
 
 prepare_guess_hue_dataset
 prepare_spot_object_terms
+
+# Downloaded last, after every prerequisite held: a missing cipher file must not leave the deployed
+# compose file replaced by one the stack cannot be brought up with by hand afterwards. README.md and
+# update.sh above are the exception on purpose — they are how a broken run gets fixed.
+curl -fsSL "$BASE/compose.yaml" -o "$COMPOSE_FILE"
 
 docker network create edge 2>/dev/null || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
