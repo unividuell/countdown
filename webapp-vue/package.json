@@ -22,6 +22,7 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.120",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/google.maps": "^3.66.0",
     "@types/luxon": "^3.7.2",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
