@@ -139,6 +139,13 @@ An evaluation across a whole round needs a row lock on the round (`SELECT … FO
 moment the points move loses an update. Locking one row serialises the guesses of *one* round; rounds
 do not block each other.
 
+**Nothing foreign inside that lock.** `judge` may do network I/O — Weltanschauung asks Google for the
+panorama's country — so it runs *before* the lock is taken, the way the lab already judges outside its
+`synchronized`. Held across a foreign call, the lock serialises every guess, give-up, vote and
+override of the round behind the slowest response, and pins a pooled JDBC connection while it waits.
+The round's params are safe to read unlocked (written once, at announce time), and so is the play row:
+every write to it is a conditional statement that simply fails on a stale read.
+
 ## Unique index instead of a service check
 
 "One guess per player and round" is `UNIQUE (round_game_id, user_id)` plus an
