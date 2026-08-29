@@ -39,6 +39,13 @@ data class RoundDto(val number: Int, val label: String, val start: Instant, val 
 data class GameDto(val id: String, val displayName: String, val requiresReveal: Boolean)
 
 /**
+ * One cast ballot, with the name attached. Nothing about the vote is secret — not the counts and
+ * not who cast them. Anonymity is what makes voting careless; among friends, being asked „warum
+ * hast du mich geflaggt?“ is the point.
+ */
+data class VoteView(val userId: UUID, val username: String, val value: Vote)
+
+/**
  * One other player's involvement, as far as the viewer may see it.
  *
  * `qualifies` and `deviation` are **not** here on purpose: they are the framework's comparison
@@ -73,6 +80,16 @@ data class OtherPlayDto(
      * part of this game“, so a game where the duration is nobody's business never publishes one.
      */
     val durationMs: Long?,
+    /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+    val votes: List<VoteView> = emptyList(),
+    /**
+     * Whether this tip currently scores nothing because of the review — the server's own answer,
+     * override included. The client never re-derives it: the rule lives in one place, and the
+     * client has no business owning a second copy of it.
+     */
+    val struck: Boolean = false,
+    /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
+    val adminOverride: Boolean? = null,
 )
 
 /**
@@ -92,6 +109,16 @@ data class MyPlayDto(
     val points: Int?,
     /** The viewer's own — see [OtherPlayDto]. */
     val durationMs: Long?,
+    /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+    val votes: List<VoteView> = emptyList(),
+    /**
+     * Whether this tip currently scores nothing because of the review — the server's own answer,
+     * override included. The client never re-derives it: the rule lives in one place, and the
+     * client has no business owning a second copy of it.
+     */
+    val struck: Boolean = false,
+    /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
+    val adminOverride: Boolean? = null,
 )
 
 /**
@@ -129,6 +156,12 @@ data class RoundResponse(
      */
     val awardRule: AwardRule? = null,
     val awardPoints: Int? = null,
+    /**
+     * Whether **this viewer** may set an override here. Viewer-scoped like `me`, not a property of
+     * the round: in the product it means „is this community's admin“, in the lab it is always
+     * true. The component is the same in both worlds and asks nobody — it is told.
+     */
+    val canOverride: Boolean = false,
 )
 
 /**

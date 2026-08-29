@@ -17,6 +17,7 @@ import org.unividuell.countdown.core.game.internal.GameSelection
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
+import org.unividuell.countdown.core.game.internal.RoundPlayVoteRepository
 import org.unividuell.countdown.core.game.internal.RoundResponses
 import java.time.Clock
 import java.time.Instant
@@ -42,9 +43,11 @@ class AnnouncementServiceNoGameTypeTest {
     private val selection = GameSelection { _, _, _ -> null }
     private val clock = Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC)
     // Never exercised: the NO_GAME_TYPE branch under test returns before RoundResponses touches
-    // either dependency.
+    // any dependency.
     private val responses = RoundResponses(
         plays = mockk<RoundPlayRepository>(), identities = mockk<MemberIdentityQuery>(),
+        votes = mockk<RoundPlayVoteRepository> { every { votesOfRound(any()) } returns emptyList() },
+        memberships = mockk<MembershipQuery> { every { isAdmin(any(), any()) } returns false },
     )
 
     private val service = AnnouncementService(
