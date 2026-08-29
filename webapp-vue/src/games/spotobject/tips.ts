@@ -29,16 +29,13 @@ export interface TipTile {
   struck: boolean
   adminOverride: boolean | null
   mine: boolean
-  tick: number
 }
 
 export function tipTiles(input: {
   entries: readonly GameEntry[]
   mineUserId: string | null
 }): TipTile[] {
-  const myIndex = input.entries.findIndex((entry) => entry.userId === input.mineUserId)
-
-  return input.entries.map((entry, index) => {
+  return input.entries.map((entry) => {
     const country = asSpotObjectOutcome(entry.outcome)?.country ?? null
     return {
       userId: entry.userId,
@@ -53,7 +50,6 @@ export function tipTiles(input: {
       struck: entry.struck,
       adminOverride: entry.adminOverride,
       mine: entry.userId === input.mineUserId,
-      tick: tickOfRow(index, myIndex === -1 ? null : myIndex, input.entries.length),
     }
   })
 }

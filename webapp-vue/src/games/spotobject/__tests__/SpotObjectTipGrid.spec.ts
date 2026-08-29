@@ -19,7 +19,6 @@ function tile(over: Partial<TipTile> & { userId: string }): TipTile {
     struck: false,
     adminOverride: null,
     mine: false,
-    tick: 0,
     ...over,
   }
 }
