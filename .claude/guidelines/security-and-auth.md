@@ -163,3 +163,10 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
 
 Never commit credentials. Inject via env: `${GITHUB_CLIENT_ID}`,
 `${GITHUB_CLIENT_SECRET}`, `${SUPER_ADMIN_GITHUB_LOGINS:}`.
+
+- **A third-party API key restricted by HTTP referrer cannot make server-to-server
+  calls** — the request carries no `Referer`, so the provider rejects it outright, no crash,
+  just a silent 403 the caller has to notice. A browser key and a server key are two
+  different credentials, restricted differently, even when they call the same API: one
+  HTTP-referrer-restricted for the client, one IP-restricted for the backend, never the
+  same value twice. See `SpotObjectProperties`/`GoogleCountryLookup` (the two Maps keys).

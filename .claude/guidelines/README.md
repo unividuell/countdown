@@ -14,13 +14,13 @@ new team members (and AI assistants) stay consistent.
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
-| Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract) | [security-and-auth.md](security-and-auth.md) |
-| Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation) | [logging.md](logging.md) |
+| Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |
+| Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation · never log what storage must not have) | [logging.md](logging.md) |
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Tailwind v4 · stack · `apiFetch`/`useAuth` · lint · typecheck) | [frontend.md](frontend.md) |
 | ↳ Frontend UI & layout (mobile-first · sizing traps · accessibility) | [frontend-ui.md](frontend-ui.md) |
 | ↳ Frontend routing, shells & access (Vue Router 5 file-based · guard-owned nav data · `[slug]` shell · role gating) | [frontend-routing.md](frontend-routing.md) |
 | ↳ Frontend state & live values (composables/VueUse, no Pinia · shared clock · server-authoritative ticking · short-clip audio) | [frontend-state.md](frontend-state.md) |
-| ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles) | [frontend-testing.md](frontend-testing.md) |
+| ↳ Frontend testing (Vitest + `vi` · @vue/test-utils · happy-dom limits · doubles · `<component :is>` props aren't type-checked) | [frontend-testing.md](frontend-testing.md) |
 | Deployment (ghcr images · arm64 CI · prod+staging compose topology · backend production profile) | [deployment.md](deployment.md) |
 | ↳ Deployment edge (the two Caddys · TLS · SPA/API routing · cache headers · `X-Forwarded-*` chain) | [deployment-edge.md](deployment-edge.md) |
 | ↳ Deployment server ops (`update.sh` · secret-handling scripts · pg_dump backup · pgAdmin SSH) | [deployment-server.md](deployment-server.md) |

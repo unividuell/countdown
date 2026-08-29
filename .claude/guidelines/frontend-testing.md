@@ -55,6 +55,11 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   drift into an error on the fixture itself; a typed binding (`const me: MeResponse = { … }`) does
   the same when the fixture is shared. Unanchored literals are the one place a wire-type change
   still has to be found by grep.
+- **A prop passed through `<component :is>` is not type-checked.** Vue's `Component` type
+  declares its props as `any`, so `vue-tsc` cannot see a missing or misnamed required prop
+  crossing that boundary — lint, typecheck and a plain mount all stay green. A test asserting
+  the prop actually reached the mounted child is the only guard; see `RoundCard.spec.ts` and
+  `lab-page.spec.ts` for the pattern.
 - **`expect(w.get(sel).exists()).toBe(true)` asserts nothing.** `get()` already throws when the
   node is missing — VTU types its result as `Omit<DOMWrapper, 'exists'>` for exactly that reason,
   so the call is dead weight and a type error now that specs are checked. Use `find(sel).exists()`
