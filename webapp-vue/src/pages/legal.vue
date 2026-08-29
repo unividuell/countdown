@@ -40,8 +40,8 @@
       </p>
       <p>
         Zu einem im Spiel „Weltanschauung“ abgegebenen Tipp speichert countdown die Panorama-ID der
-        Street-View-Aufnahme und das daraus ermittelte Land. Die eingegebene Koordinate (Breiten-
-        und Längengrad) wird nicht gespeichert.
+        Street-View-Aufnahme und das daraus ermittelte Land; die Position hinter der Panorama-ID
+        wird serverseitig nur zur Bestimmung des Landes aufgelöst und nicht gespeichert.
       </p>
     </div>
   </section>

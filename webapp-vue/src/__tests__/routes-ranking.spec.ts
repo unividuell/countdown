@@ -13,6 +13,7 @@ describe('generated route table', () => {
     ['/super-admin', '/super-admin/'],
     ['/c/team/', '/c/[slug]/'],
     ['/join/some-token', '/join/[token]'],
+    ['/legal', '/legal'],
   ])('%s resolves to its own route, not the catch-all', (path, expectedName) => {
     expect(router.resolve(path).name).toBe(expectedName)
   })
