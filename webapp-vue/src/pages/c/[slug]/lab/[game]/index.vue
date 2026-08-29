@@ -296,6 +296,9 @@ watch(
         is actually here, so the remount and the data land together. The same remount also discards
         any uncommitted scratch state a game component keeps locally (a value typed but never
         submitted) once the round it belonged to is gone.
+
+        `closed` is bound rather than left out: a lab round is never over — it is rolled again, not
+        closed — and the answer „false“ is the lab's, not an omission for the game to guess at.
       -->
       <component
         :is="gameComponent"
@@ -314,6 +317,7 @@ watch(
           (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
         "
         :tip-path="tipPath"
+        :closed="false"
         @guess="guess"
         @skip="skip"
         @give-up="run(giveUpLabRound)"

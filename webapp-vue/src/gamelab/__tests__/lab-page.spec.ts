@@ -35,6 +35,9 @@ const { StubGame } = await vi.hoisted(async () => {
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
         tipPath: { type: Function, default: null },
+        // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
+        // default of `false` would let the case below pass with the binding missing entirely.
+        closed: { type: Boolean, default: true },
       },
       emits: ['guess'],
       template:
@@ -892,6 +895,14 @@ describe('lab page', () => {
       params: { slug: 'team', game: 'stub', userId: 'u9' },
       query: { seed: '42', phase: 'ONE' },
     })
+  })
+
+  // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.
+  // A lab round is never over — it is rolled again, not closed — so the honest answer is `false`.
+  it('tells the game the round is not closed, the way a real card does', async () => {
+    const w = await mountPage()
+
+    expect(w.findComponent(StubGame).props('closed')).toBe(false)
   })
 
   // The lab exists so that a game under review looks exactly as it will in a real round. If the

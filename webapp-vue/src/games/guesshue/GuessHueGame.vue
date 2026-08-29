@@ -39,7 +39,7 @@ const props = defineProps<{
    */
   awardRule: AwardRule | null
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  canOverride?: boolean
+  closed?: boolean
 }>()
 
 const emit = defineEmits<{ guess: [value: unknown] }>()

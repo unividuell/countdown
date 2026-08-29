@@ -163,6 +163,18 @@ describe('RoundHistory', () => {
     await w.get('[data-test="tip-tile"]').trigger('click')
   })
 
+  // A closed round's tips belong to everyone, and a card that fell back to the board would mount a
+  // live, billed Maps JS load per unplayed round in this very list.
+  it('shows the tips, not a map, for a closed round the viewer never played', () => {
+    const round = { ...closedSpotObject(13), me: null }
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [round] }))
+
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    expect(w.find('[data-test="tip-grid"]').exists()).toBe(true)
+    expect(w.find('[data-test="spot-map"]').exists()).toBe(false)
+  })
+
   it('reports a failed load without dropping what it already has', () => {
     vi.mocked(useRoundHistory).mockReturnValue(
       mockHistory({

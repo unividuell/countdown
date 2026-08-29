@@ -3,8 +3,9 @@
  * Weltanschauung: which card the round is on, and the one place `unknown` becomes typed.
  *
  * Unlike Musterung this game has no solution to watch for — there is no round secret at all. The
- * switch is the viewer's own finished entry, which is exactly the condition the server gates
- * `others` on: once I have a guess, everyone's tips are visible and the reveal is what shows them.
+ * switch is the server's own rule for `others`, in both of its halves: `hasGuessed || closed`.
+ * While the round runs, my own finished entry opens everyone's tips; once it is closed they are
+ * open to everyone, and a closed round must never put a live map on screen again.
  */
 import { computed, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
@@ -26,8 +27,8 @@ const props = defineProps<{
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
-  /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  canOverride?: boolean
+  /** The round is over for everyone — the other half of the server's own rule for `others`. */
+  closed?: boolean
   tipPath: (userId: string) => RouteLocationRaw
 }>()
 
@@ -39,6 +40,7 @@ const mine = computed(
   () => props.entries.find((entry) => entry.userId === props.mineUserId) ?? null,
 )
 const played = computed(() => mine.value !== null && mine.value.guess !== null)
+const revealed = computed(() => played.value || props.closed === true)
 
 const tiles = computed(() => tipTiles({ entries: props.entries, mineUserId: props.mineUserId }))
 const rows = computed(() =>
@@ -51,7 +53,8 @@ const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
  * Whether the reveal is something that just happened here rather than something that was already
  * true on mount — the same flag every other game's reveal keeps. A `watch` without `immediate`
  * never fires for the initial value, which is what makes an instance mounting already-played
- * start `false` instead of replaying the choreography.
+ * start `false` instead of replaying the choreography. Watched on `played`, not on `revealed`:
+ * a round closing under someone who never played reveals nothing of theirs.
  */
 const hasRevealedLive = ref(false)
 watch(played, (now, before) => {
@@ -64,7 +67,7 @@ watch(played, (now, before) => {
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <SpotObjectReveal
-    v-else-if="played"
+    v-else-if="revealed"
     :tiles="tiles"
     :rows="rows"
     :live="live"

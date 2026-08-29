@@ -26,8 +26,9 @@ const props = withDefaults(
      */
     tipPath: (userId: string) => RouteLocationRaw
     /**
-     * The round is over: the reveal face, no clock, no action. One prop with three effects at one
-     * place — a second card would be a second place for „the same reveal UI“ to drift.
+     * The round is over: the reveal face, no clock, no action, and handed on to the game itself —
+     * a game without a round secret has nothing else to switch on. One prop with four effects at
+     * one place — a second card would be a second place for „the same reveal UI“ to drift.
      */
     closed?: boolean
     /** Which face a running round calls for. A closed round has none. */
@@ -172,7 +173,7 @@ function onGiveUp(): void {
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
-        :can-override="round?.canOverride ?? false"
+        :closed="props.closed"
         :tip-path="props.tipPath"
         @guess="onGuess"
         @skip="onSkip"

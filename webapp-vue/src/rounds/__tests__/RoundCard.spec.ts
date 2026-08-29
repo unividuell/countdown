@@ -29,7 +29,7 @@ const { StubGame } = await vi.hoisted(async () => {
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
         tipPath: { type: Function, default: null },
-        canOverride: { type: Boolean, default: false },
+        closed: { type: Boolean, default: false },
       },
       emits: ['guess', 'skip', 'give-up'],
       template:
@@ -82,7 +82,9 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
 
 function mountCard(props: {
   round: RoundResponse | null
-  stage: RoundStage
+  /** Omitted for a closed round: it has no stage left to derive a face from. */
+  stage?: RoundStage
+  closed?: boolean
   busy?: boolean
   notice?: string | null
   reveal?: () => Promise<void>
@@ -169,11 +171,14 @@ describe('RoundCard', () => {
 
   // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
   // task-15 report) — a test is the only thing that would catch this binding going missing.
-  it('hands the game whether the viewer may override, from the round', () => {
-    const round = aRound({ me: aPlay(), canOverride: true })
-    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
+  // Weltanschauung reads it: a closed round shows its tips to every viewer, played or not.
+  it('tells the game the round is closed', () => {
+    const round = aRound({ me: aPlay() })
 
-    expect(stub.props('canOverride')).toBe(true)
+    expect(mountCard({ round, closed: true }).findComponent(StubGame).props('closed')).toBe(true)
+    expect(mountCard({ round, stage: 'playing' }).findComponent(StubGame).props('closed')).toBe(
+      false,
+    )
   })
 
   it('reaches skip and give-up through to the callbacks the page supplied', async () => {

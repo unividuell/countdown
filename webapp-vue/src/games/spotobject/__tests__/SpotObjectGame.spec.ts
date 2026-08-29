@@ -71,6 +71,19 @@ describe('SpotObjectGame', () => {
     expect(wrapper.find('[data-test="spot-map"]').exists()).toBe(false)
   })
 
+  /**
+   * The server opens a closed round's payload and everyone's tips to every viewer, played or not.
+   * Without this the board would be the face a non-player gets on a finished round: the tips they
+   * are entitled to are unreachable, and `RoundHistory` mounts one billed Maps JS load per card.
+   */
+  it('shows the reveal on a closed round to someone who did not play it', () => {
+    mockStreetView()
+    const wrapper = mountGame({ entries: [MINE], mineUserId: null, closed: true })
+
+    expect(wrapper.find('[data-test="tip-grid"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="spot-map"]').exists()).toBe(false)
+  })
+
   it('emits the tip the board produced', async () => {
     mockStreetView()
     const wrapper = mountGame()
