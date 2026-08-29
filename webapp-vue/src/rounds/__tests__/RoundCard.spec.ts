@@ -29,6 +29,7 @@ const { StubGame } = await vi.hoisted(async () => {
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
         tipPath: { type: Function, default: null },
+        canOverride: { type: Boolean, default: false },
       },
       emits: ['guess', 'skip', 'give-up'],
       template:
@@ -164,6 +165,15 @@ describe('RoundCard', () => {
     const stub = mountCard({ round, stage: 'playing', tipPath }).findComponent(StubGame)
 
     expect(stub.props('tipPath')).toBe(tipPath)
+  })
+
+  // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
+  // task-15 report) — a test is the only thing that would catch this binding going missing.
+  it('hands the game whether the viewer may override, from the round', () => {
+    const round = aRound({ me: aPlay(), canOverride: true })
+    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
+
+    expect(stub.props('canOverride')).toBe(true)
   })
 
   it('reaches skip and give-up through to the callbacks the page supplied', async () => {

@@ -34,6 +34,7 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        tipPath: { type: Function, default: null },
       },
       emits: ['guess'],
       template:
@@ -877,6 +878,20 @@ describe('lab page', () => {
     expect(stub.props('mineUserId')).toBe('u1')
     expect(stub.props('entries')).toEqual([mineEntry, theirEntry])
     expect(stub.props('disabled')).toBe(true)
+  })
+
+  // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
+  // task-15 report) — a test is the only thing that would catch this binding going missing.
+  it("hands the game a tip-path builder seeded with this round's seed and phase", async () => {
+    const w = await mountPage()
+    const stub = w.findComponent(StubGame)
+    const tipPath = stub.props('tipPath') as (userId: string) => unknown
+
+    expect(tipPath('u9')).toEqual({
+      name: '/c/[slug]/lab/[game]/tips/[userId]',
+      params: { slug: 'team', game: 'stub', userId: 'u9' },
+      query: { seed: '42', phase: 'ONE' },
+    })
   })
 
   // The lab exists so that a game under review looks exactly as it will in a real round. If the
