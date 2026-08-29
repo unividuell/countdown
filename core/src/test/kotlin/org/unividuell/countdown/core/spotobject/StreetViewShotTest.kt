@@ -56,4 +56,32 @@ class StreetViewShotTest {
             width = 400, height = 300, apiKey = "K", signingSecret = "c2VjcmV0",
         ) shouldContain "pitch=-90"
     }
+
+    /**
+     * Both dimensions share the same [16, 640] clamp — this is what keeps the endpoint a thin
+     * proxy for a fixed-size still rather than an arbitrary-size image fetcher.
+     */
+    @Test
+    fun `image dimensions below the minimum are clamped up`() {
+        StreetViewShot.url(
+            panoId = "abc", heading = 0.0, pitch = 0.0, fov = 90.0,
+            width = 1, height = 1, apiKey = "K", signingSecret = "c2VjcmV0",
+        ) shouldContain "size=16x16"
+    }
+
+    @Test
+    fun `image dimensions above the maximum are clamped down`() {
+        StreetViewShot.url(
+            panoId = "abc", heading = 0.0, pitch = 0.0, fov = 90.0,
+            width = 99_999, height = 99_999, apiKey = "K", signingSecret = "c2VjcmV0",
+        ) shouldContain "size=640x640"
+    }
+
+    @Test
+    fun `image dimensions at the exact bounds pass through unchanged`() {
+        StreetViewShot.url(
+            panoId = "abc", heading = 0.0, pitch = 0.0, fov = 90.0,
+            width = 16, height = 640, apiKey = "K", signingSecret = "c2VjcmV0",
+        ) shouldContain "size=16x640"
+    }
 }
