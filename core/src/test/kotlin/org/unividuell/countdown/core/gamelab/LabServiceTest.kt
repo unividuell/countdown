@@ -34,6 +34,7 @@ import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
+import org.unividuell.countdown.core.spotobject.CountryLookup
 import java.util.UUID
 
 /**
@@ -59,6 +60,10 @@ class LabServiceTest(
     @MockkBean lateinit var memberships: MembershipQuery
     @MockkBean lateinit var identities: MemberIdentityQuery
 
+    // Spot Object's judge resolves a country through this on every guess — mocked so the loop test
+    // below does not reach out to Google for real.
+    @MockkBean lateinit var countries: CountryLookup
+
     private val communityId = UUID.randomUUID()
     private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
     private val bob = User(id = UUID.randomUUID(), githubId = 2L, githubLogin = "bob")
@@ -80,6 +85,7 @@ class LabServiceTest(
             listOf(alice, bob).filter { it.id in ids }
                 .associate { requireNotNull(it.id) to MemberIdentity(username = it.username, avatar = Avatar.of(it)) }
         }
+        every { countries.countryOf(any()) } returns null
         return community to TwoMembers(me = aliceId, other = bobId)
     }
 
@@ -90,6 +96,7 @@ class LabServiceTest(
         // this file's fixed hue has to guess-hue's: a legal guess is all "for every game there is" needs.
         "song-snippet" -> mapper.readTree("""{"trackId":1}""")
         "find-pattern" -> mapper.readTree("""{"startIndex":3}""")
+        "spot-object" -> mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
