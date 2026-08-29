@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 
-const { error, mount, pano, toWorldMap } = useStreetView()
+const { currentTip, error, mount, pano, toWorldMap } = useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
 
@@ -26,9 +26,10 @@ onMounted(() => {
   if (stage.value) void mount(stage.value)
 })
 
+// Asked at the click, not read off state: the direction the player turned to is the tip.
 function submitGuess(): void {
-  if (!pano.panoId) return
-  emit('guess', { panoId: pano.panoId, heading: pano.heading, pitch: pano.pitch, zoom: pano.zoom })
+  const tip: SpotObjectTip | null = currentTip()
+  if (tip) emit('guess', tip)
 }
 
 // The root's `-m-4` cancels RoundSurface's own body padding on every side: the map is the one

@@ -14,13 +14,15 @@
 import { reactive, ref } from 'vue'
 import type { Ref } from 'vue'
 import { apiFetch } from '@/api/client'
+import type { SpotObjectTip } from './types'
 
+/**
+ * What the board renders: whether a panorama is open at all, and which one. The *view* inside it
+ * is deliberately not here — see `currentTip`.
+ */
 export interface StreetViewState {
   visible: boolean
   panoId: string | null
-  heading: number
-  pitch: number
-  zoom: number
 }
 
 const CALLBACK_NAME = '__spotObjectMapsReady'
@@ -29,7 +31,7 @@ const CALLBACK_NAME = '__spotObjectMapsReady'
 let mapsPromise: Promise<void> | null = null
 
 function loadMapsApi(apiKey: string): Promise<void> {
-  mapsPromise ??= new Promise((resolve, reject) => {
+  mapsPromise ??= new Promise<void>((resolve, reject) => {
     const global = window as typeof window & Record<string, () => void>
     global[CALLBACK_NAME] = () => resolve()
     const script = document.createElement('script')
@@ -37,28 +39,28 @@ function loadMapsApi(apiKey: string): Promise<void> {
     script.async = true
     script.onerror = () => reject(new Error('failed to load the Google Maps script'))
     document.head.append(script)
+  }).catch((err: unknown) => {
+    // Only a *successful* load may be cached: a rejected promise kept here would answer every
+    // later mount instantly without appending a script tag, and the error face's
+    // „Versuch es später noch einmal“ would have no path that can succeed.
+    mapsPromise = null
+    throw err
   })
   return mapsPromise
 }
 
 export interface UseStreetView {
-  ready: Ref<boolean>
   error: Ref<string | null>
   mount: (element: HTMLElement) => Promise<void>
   pano: StreetViewState
+  /** The tip for the view on screen right now, or `null` while no panorama is open. */
+  currentTip: () => SpotObjectTip | null
   toWorldMap: () => void
 }
 
 export function useStreetView(): UseStreetView {
-  const ready = ref(false)
   const error = ref<string | null>(null)
-  const pano = reactive<StreetViewState>({
-    visible: false,
-    panoId: null,
-    heading: 0,
-    pitch: 0,
-    zoom: 1,
-  })
+  const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   let panorama: google.maps.StreetViewPanorama | null = null
 
   async function mount(element: HTMLElement): Promise<void> {
@@ -96,18 +98,24 @@ export function useStreetView(): UseStreetView {
         pano.visible = panorama?.getVisible() ?? false
       })
       panorama.addListener('pano_changed', () => {
-        if (!panorama) return
-        pano.panoId = panorama.getPano() || null
-        const pov = panorama.getPov()
-        pano.heading = pov.heading
-        pano.pitch = pov.pitch
-        pano.zoom = panorama.getZoom()
+        pano.panoId = panorama?.getPano() || null
       })
-
-      ready.value = true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
+  }
+
+  /**
+   * Asked once, at the click on „Gefunden“ — never mirrored into reactive state. Panning fires
+   * `pov_changed` and zooming fires `zoom_changed`, so any mirror is exactly as current as the set
+   * of events it subscribes to; a getter cannot be stale. The player turns to face what they found
+   * *after* arriving, and that turn is the whole point of the tip.
+   */
+  function currentTip(): SpotObjectTip | null {
+    const panoId = panorama?.getPano()
+    if (!panorama || !panoId) return null
+    const pov = panorama.getPov()
+    return { panoId, heading: pov.heading, pitch: pov.pitch, zoom: panorama.getZoom() }
   }
 
   /** Whoever lands on a single photo (a `sources: OUTDOOR` gap the Pegman control ignores) uses this to get out. */
@@ -115,5 +123,5 @@ export function useStreetView(): UseStreetView {
     panorama?.setVisible(false)
   }
 
-  return { ready, error, mount, pano, toWorldMap }
+  return { error, mount, pano, currentTip, toWorldMap }
 }

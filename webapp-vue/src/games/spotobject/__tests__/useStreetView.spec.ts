@@ -88,7 +88,7 @@ function installFakeGoogleMaps(): void {
  * the `callback` query param straight off the assigned `src` and calls it — the same contract a
  * real `<script src=…&callback=…>` load fulfils, minus Google's server.
  */
-function stubScriptTag(): { src: string } {
+function stubScriptTag(): { src: string; onerror: (() => void) | null } {
   const script = { src: '', async: false, onerror: null as (() => void) | null }
   const originalCreateElement = document.createElement.bind(document)
   vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) =>
@@ -108,7 +108,7 @@ function triggerScriptLoad(script: { src: string }): void {
 }
 
 describe('useStreetView', () => {
-  let script: { src: string }
+  let script: { src: string; onerror: (() => void) | null }
 
   beforeEach(async () => {
     vi.mocked(apiFetch).mockResolvedValue({ mapsApiKey: 'test-key' })
@@ -124,7 +124,7 @@ describe('useStreetView', () => {
   })
 
   it('takes the map’s own default panorama and never constructs one', async () => {
-    const { mount, ready, error } = useStreetView()
+    const { mount, error } = useStreetView()
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -135,7 +135,6 @@ describe('useStreetView', () => {
     expect(map?.getStreetView).toHaveBeenCalledOnce()
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
     expect(error.value).toBeNull()
-    expect(ready.value).toBe(true)
   })
 
   it('fetches the key from the config endpoint rather than a bundled constant', async () => {
@@ -151,7 +150,7 @@ describe('useStreetView', () => {
     await pending
   })
 
-  it('reads the tip’s fields off the panorama once one is open', async () => {
+  it('tracks which panorama is open, and whether one is', async () => {
     const { mount, pano } = useStreetView()
 
     const pending = mount(document.createElement('div'))
@@ -163,11 +162,65 @@ describe('useStreetView', () => {
     panorama.visible = true
     panorama.fire('visible_changed')
     panorama.panoIdValue = 'pano-77'
-    panorama.pov = { heading: 12, pitch: -4 }
-    panorama.zoomValue = 3
     panorama.fire('pano_changed')
 
-    expect(pano).toEqual({ visible: true, panoId: 'pano-77', heading: 12, pitch: -4, zoom: 3 })
+    expect(pano).toEqual({ visible: true, panoId: 'pano-77' })
+  })
+
+  /**
+   * The whole game: arrive somewhere, then turn until the object is in frame. Turning fires
+   * `pov_changed`, never `pano_changed`, so a tip assembled from what the last `pano_changed`
+   * carried would record the direction the player arrived from — a frame that does not show what
+   * they found. This case therefore pans and zooms *without* firing `pano_changed`.
+   */
+  it('reads the view at submit time, so turning after arrival is what gets submitted', async () => {
+    const { mount, currentTip } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const panorama = FakeMap.instances[0]!.panorama
+    panorama.panoIdValue = 'pano-77'
+    panorama.fire('pano_changed')
+
+    panorama.pov = { heading: 212, pitch: -4 }
+    panorama.zoomValue = 3
+
+    expect(currentTip()).toEqual({ panoId: 'pano-77', heading: 212, pitch: -4, zoom: 3 })
+  })
+
+  it('has no tip to submit while no panorama is open', async () => {
+    const { mount, currentTip } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    FakeMap.instances[0]!.panorama.panoIdValue = ''
+
+    expect(currentTip()).toBeNull()
+  })
+
+  /** „Versuch es später noch einmal“ has to have a path that can succeed. */
+  it('lets a later mount append a new script tag after a failed load', async () => {
+    const { mount: first } = useStreetView()
+    const pending = first(document.createElement('div'))
+    await flushPromises()
+    script.onerror?.()
+    await pending
+
+    const appends = vi.mocked(document.head.append).mock.calls.length
+    const { mount: second, error } = useStreetView()
+    const retry = second(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await retry
+
+    expect(vi.mocked(document.head.append).mock.calls.length).toBe(appends + 1)
+    expect(error.value).toBeNull()
   })
 
   it('returns to the world map by hiding the same panorama, not replacing it', async () => {

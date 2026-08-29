@@ -13,24 +13,17 @@ vi.mock('../useStreetView', () => ({ useStreetView: vi.fn() }))
 enableAutoUnmount(afterEach)
 
 function mockStreetView(overrides: Partial<StreetViewState> = {}): {
-  ready: Ref<boolean>
   error: Ref<string | null>
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
+  currentTip: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
 } {
   const double = {
-    ready: ref(true),
     error: ref<string | null>(null),
     mount: vi.fn(),
-    pano: reactive<StreetViewState>({
-      visible: false,
-      panoId: null,
-      heading: 0,
-      pitch: 0,
-      zoom: 1,
-      ...overrides,
-    }),
+    pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
+    currentTip: vi.fn().mockReturnValue(null),
     toWorldMap: vi.fn(),
   }
   vi.mocked(useStreetView).mockReturnValue(double)
@@ -65,20 +58,25 @@ describe('SpotObjectBoard', () => {
     expect(w.get('[data-test="spot-guess-button"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('emits the tip the panorama is showing', async () => {
-    mockStreetView({
-      visible: true,
-      panoId: 'pano-42',
-      heading: 12,
-      pitch: -3,
-      zoom: 2,
-    })
+  it('emits the view read at the click, not one it kept', async () => {
+    const double = mockStreetView({ visible: true, panoId: 'pano-42' })
+    double.currentTip.mockReturnValue({ panoId: 'pano-42', heading: 212, pitch: -3, zoom: 2 })
     const w = mountBoard()
     await w.vm.$nextTick()
 
     await w.get('[data-test="spot-guess-button"]').trigger('click')
 
-    expect(w.emitted('guess')).toEqual([[{ panoId: 'pano-42', heading: 12, pitch: -3, zoom: 2 }]])
+    expect(double.currentTip).toHaveBeenCalledOnce()
+    expect(w.emitted('guess')).toEqual([[{ panoId: 'pano-42', heading: 212, pitch: -3, zoom: 2 }]])
+  })
+
+  it('emits nothing when there is no open panorama to read', async () => {
+    mockStreetView({ visible: true, panoId: 'pano-42' })
+    const w = mountBoard()
+
+    await w.get('[data-test="spot-guess-button"]').trigger('click')
+
+    expect(w.emitted('guess')).toBeUndefined()
   })
 
   it('offers a way back to the world map while a panorama is open', async () => {
