@@ -35,7 +35,11 @@ function loadMapsApi(apiKey: string): Promise<void> {
     const global = window as typeof window & Record<string, () => void>
     global[CALLBACK_NAME] = () => resolve()
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${CALLBACK_NAME}`
+    // `loading=async` is the half Google warns about when it is missing; `script.async` alone
+    // does not satisfy it. The callback contract is unchanged — that is what this pattern is for.
+    script.src =
+      `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}` +
+      `&loading=async&callback=${CALLBACK_NAME}`
     script.async = true
     script.onerror = () => reject(new Error('failed to load the Google Maps script'))
     document.head.append(script)
@@ -72,10 +76,11 @@ export function useStreetView(): UseStreetView {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         gestureHandling: 'greedy',
+        // No `streetViewControlOptions` beside it: `sources: [OUTDOOR]` is the one option worth
+        // setting there and the API rejects it outright — "OUTDOOR source not supported on
+        // StreetViewControlOptions", thrown while the control is built, which leaves the map
+        // standing but Pegman-less. No Pegman, no way into Street View at all.
         streetViewControl: true,
-        // The Pegman control's own search, not the coverage layer's: `OUTDOOR` is documented as
-        // unsupported here — measured and accepted, set for correctness, never relied upon.
-        streetViewControlOptions: { sources: [google.maps.StreetViewSource.OUTDOOR] },
         mapTypeControl: false,
         fullscreenControl: false,
       })
@@ -118,7 +123,7 @@ export function useStreetView(): UseStreetView {
     return { panoId, heading: pov.heading, pitch: pov.pitch, zoom: panorama.getZoom() }
   }
 
-  /** Whoever lands on a single photo (a `sources: OUTDOOR` gap the Pegman control ignores) uses this to get out. */
+  /** Whoever lands on a single photo — the Pegman drops onto indoor and user shots too — uses this to get out. */
   function toWorldMap(): void {
     panorama?.setVisible(false)
   }

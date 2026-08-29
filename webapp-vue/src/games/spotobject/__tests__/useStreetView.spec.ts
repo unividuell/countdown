@@ -76,7 +76,6 @@ function installFakeGoogleMaps(): void {
     maps: {
       Map: FakeMap,
       StreetViewCoverageLayer: FakeCoverageLayer,
-      StreetViewSource: { OUTDOOR: 'outdoor' },
       StreetViewPanorama: streetViewPanoramaCtor,
     },
   } as unknown as typeof google)
@@ -135,6 +134,20 @@ describe('useStreetView', () => {
     expect(map?.getStreetView).toHaveBeenCalledOnce()
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
     expect(error.value).toBeNull()
+  })
+
+  it('leaves the Pegman control unconfigured, so the API cannot reject it', async () => {
+    const { mount } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    // `sources: [OUTDOOR]` is the tempting one and the API throws on it while building the
+    // control — leaving a map with no Pegman, hence no way into Street View at all.
+    expect(FakeMap.instances[0]!.options.streetViewControl).toBe(true)
+    expect(FakeMap.instances[0]!.options).not.toHaveProperty('streetViewControlOptions')
   })
 
   it('fetches the key from the config endpoint rather than a bundled constant', async () => {

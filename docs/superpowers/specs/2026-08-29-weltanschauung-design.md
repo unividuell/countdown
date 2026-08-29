@@ -430,5 +430,6 @@ Kacheln ohne Flagge, weil der Aufruf weich scheitert.
 - **Der verbleibende Geräteunterschied.** Ein breiteres Fenster zeigt bei gleicher Zoomstufe mehr
   Horizont. Die Breitenbeschränkung deckelt das auf dasselbe Maß, das jedes Spiel hier hat, und
   weiter geht es nicht — akzeptiert, nicht offen.
-- **Pegman-Ziele filtern.** `sources: [OUTDOOR]` wird vom Street-View-Control nicht beachtet;
-  gemessen, akzeptiert. Wer auf einem Einzelfoto landet, geht zurück zur Weltkarte.
+- **Pegman-Ziele filtern.** `sources: [OUTDOOR]` weist das Street-View-Control zurück — es wirft
+  beim Bau des Controls und hinterlässt eine Karte ganz ohne Pegman; im Betrieb gemessen. Die
+  Option bleibt ungesetzt. Wer auf einem Einzelfoto landet, geht zurück zur Weltkarte.
