@@ -75,7 +75,13 @@ class ReviewService(
         return responses.of(current = open.copy(roundGame = round), viewerId = voterId)
     }
 
-    /** Moderation during the game is explicitly allowed — what is not is recurring admin *prep*. */
+    /**
+     * Moderation during the game is explicitly allowed — what is not is recurring admin *prep*.
+     *
+     * [isSuperAdmin] is accepted and ignored for the reason spelled out in [vote], and here the
+     * point is sharper: the one role this endpoint asks about is *this community's* admin, which a
+     * super-admin is not by virtue of being one.
+     */
     @Transactional
     fun override(
         slug: String,

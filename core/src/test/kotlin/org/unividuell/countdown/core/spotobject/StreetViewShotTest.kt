@@ -7,15 +7,6 @@ import org.junit.jupiter.api.Test
 
 class StreetViewShotTest {
 
-    /** Street View's zoom is a scale; the Static API wants the field of view it corresponds to. */
-    @Test
-    fun `zoom maps to a field of view and is clamped at both ends`() {
-        StreetViewShot.fovOf(1.0) shouldBe 90.0
-        StreetViewShot.fovOf(2.0) shouldBe 45.0
-        StreetViewShot.fovOf(0.0) shouldBe 100.0 // 180 clamped down
-        StreetViewShot.fovOf(9.0) shouldBe 10.0 // 0.35 clamped up
-    }
-
     @Test
     fun `the signed url carries the key, the panorama and a signature`() {
         val url = StreetViewShot.url(

@@ -17,9 +17,6 @@ import javax.crypto.spec.SecretKeySpec
  */
 object StreetViewShot {
 
-    /** Street View's zoom is a scale; the Static API wants the field of view it corresponds to. */
-    fun fovOf(zoom: Double): Double = (180.0 / Math.pow(2.0, zoom)).coerceIn(MIN_FOV, MAX_FOV)
-
     /**
      * Signed server-side, because the signing secret must never reach a browser. The signature is
      * HMAC-SHA1 over path + query with the URL-safe-base64-decoded secret, URL-safe-base64

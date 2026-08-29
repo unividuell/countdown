@@ -30,6 +30,10 @@ class SpotObjectController(private val properties: SpotObjectProperties) {
      * A tip's frozen frame. Cached privately and long: the same six parameters always denote the
      * same photograph, and every tile on the review grid asks for one.
      *
+     * Takes `fov`, not the tip's `zoom`: the client converts, and the server only clamps. That
+     * keeps `180 / 2^zoom` in one runtime — a second copy here would be a parity pair over `pow`,
+     * which `cross-runtime-parity.md` rules out.
+     *
      * Deliberately the **browser** key, not the server one: the browser itself follows this
      * redirect (an `<img>` on our page), so the request Google sees carries our own origin as
      * `Referer` — exactly what the browser key's referrer restriction expects. The server key,
