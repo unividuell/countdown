@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.songsnippet.internal
 
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder
 import org.springframework.boot.http.client.HttpClientSettings
@@ -27,14 +28,18 @@ class SongSnippetConfiguration {
 
     /** One client for the Deezer API; timeouts are the announce path's protection. */
     @Bean
-    fun deezerRestClient(builder: RestClient.Builder, requestFactory: ClientHttpRequestFactory): RestClient =
-        builder.baseUrl("https://api.deezer.com").requestFactory(requestFactory).build()
+    fun deezerRestClient(
+        builder: RestClient.Builder,
+        @Qualifier("songSnippetRequestFactory") requestFactory: ClientHttpRequestFactory,
+    ): RestClient = builder.baseUrl("https://api.deezer.com").requestFactory(requestFactory).build()
 
     /**
      * No base URL — the preview download follows Deezer's absolute, signed CDN URLs — but the same
      * connect/read timeouts as the API client: this is the call most exposed to a stalled connection.
      */
     @Bean
-    fun previewRestClient(builder: RestClient.Builder, requestFactory: ClientHttpRequestFactory): RestClient =
-        builder.requestFactory(requestFactory).build()
+    fun previewRestClient(
+        builder: RestClient.Builder,
+        @Qualifier("songSnippetRequestFactory") requestFactory: ClientHttpRequestFactory,
+    ): RestClient = builder.requestFactory(requestFactory).build()
 }

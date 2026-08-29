@@ -1,11 +1,17 @@
 package org.unividuell.countdown.core.spotobject.internal
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder
+import org.springframework.boot.http.client.HttpClientSettings
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
+import org.springframework.http.client.ClientHttpRequestFactory
+import org.springframework.web.client.RestClient
 import org.unividuell.countdown.core.spotobject.SpotObjectTerms
+import java.time.Duration
 
 @Configuration
 @EnableConfigurationProperties(SpotObjectProperties::class)
@@ -15,6 +21,24 @@ class SpotObjectConfiguration {
 
     @Bean
     fun spotObjectTermsLoader(properties: SpotObjectProperties) = SpotObjectTermsLoader(properties)
+
+    /**
+     * Short timeouts on purpose: this client is called from inside a judgement, and a stalled
+     * connection there would hold up somebody's submission. Three seconds, then no flag.
+     */
+    @Bean
+    fun googleMapsRequestFactory(): ClientHttpRequestFactory {
+        val settings = HttpClientSettings.defaults()
+            .withConnectTimeout(Duration.ofSeconds(3))
+            .withReadTimeout(Duration.ofSeconds(3))
+        return ClientHttpRequestFactoryBuilder.detect().build(settings)
+    }
+
+    @Bean
+    fun googleMapsRestClient(
+        builder: RestClient.Builder,
+        @Qualifier("googleMapsRequestFactory") requestFactory: ClientHttpRequestFactory,
+    ): RestClient = builder.baseUrl("https://maps.googleapis.com").requestFactory(requestFactory).build()
 
     /**
      * Loads at startup, not on the first move: a term-list error should stop the deployment, not a
