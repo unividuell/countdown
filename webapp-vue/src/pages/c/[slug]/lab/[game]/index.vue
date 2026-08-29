@@ -12,6 +12,7 @@
 import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
@@ -37,7 +38,7 @@ import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
-const route = useRoute('/c/[slug]/lab/[game]')
+const route = useRoute('/c/[slug]/lab/[game]/')
 const router = useRouter()
 const { community } = useCommunityContext()
 const { user } = useAuth()
@@ -49,6 +50,14 @@ const seed = computed(() => parseSeed(route.query.seed))
 // value is visible at a glance rather than an error state, and every link that predates this
 // selector keeps opening phase one.
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
+
+/** Where one of this round's tiles opens — seed and phase ride along because they are the lab's
+ * round key, the same way the real round's tip path carries its round number. */
+const tipPath = (userId: string): RouteLocationRaw => ({
+  name: '/c/[slug]/lab/[game]/tips/[userId]',
+  params: { slug: community.value.slug, game: gameId.value, userId },
+  query: { seed: String(seed.value), phase: phase.value },
+})
 
 const round = ref<LabRoundResponse | null>(null)
 /**
@@ -304,6 +313,7 @@ watch(
         :asset-url="
           (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
         "
+        :tip-path="tipPath"
         @guess="guess"
         @skip="skip"
         @give-up="run(giveUpLabRound)"

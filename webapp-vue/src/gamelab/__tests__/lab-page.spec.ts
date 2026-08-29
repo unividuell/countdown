@@ -123,7 +123,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
 const mountedPages: VueWrapper[] = []
 
 async function mountPage() {
-  const Page = (await import('@/pages/c/[slug]/lab/[game].vue')).default
+  const Page = (await import('@/pages/c/[slug]/lab/[game]/index.vue')).default
   const wrapper = mount(Page)
   mountedPages.push(wrapper)
   await flushPromises()

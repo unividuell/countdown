@@ -52,7 +52,8 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | '/c/[slug]/'
       | '/c/[slug]/lab/'
-      | '/c/[slug]/lab/[game]'
+      | '/c/[slug]/lab/[game]/'
+      | '/c/[slug]/lab/[game]/tips/[userId]'
       | '/c/[slug]/members'
       | '/c/[slug]/profile'
       | '/c/[slug]/requests'
@@ -73,11 +74,18 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | never
     >,
-    '/c/[slug]/lab/[game]': RouteRecordInfo<
-      '/c/[slug]/lab/[game]',
+    '/c/[slug]/lab/[game]/': RouteRecordInfo<
+      '/c/[slug]/lab/[game]/',
       '/c/:slug/lab/:game',
       { slug: ParamValue<true>, game: ParamValue<true> },
       { slug: ParamValue<false>, game: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/lab/[game]/tips/[userId]': RouteRecordInfo<
+      '/c/[slug]/lab/[game]/tips/[userId]',
+      '/c/:slug/lab/:game/tips/:userId',
+      { slug: ParamValue<true>, game: ParamValue<true>, userId: ParamValue<true> },
+      { slug: ParamValue<false>, game: ParamValue<false>, userId: ParamValue<false> },
       | never
     >,
     '/c/[slug]/members': RouteRecordInfo<
@@ -222,7 +230,8 @@ declare module 'vue-router/auto-routes' {
         | '/c/[slug]'
         | '/c/[slug]/'
         | '/c/[slug]/lab/'
-        | '/c/[slug]/lab/[game]'
+        | '/c/[slug]/lab/[game]/'
+        | '/c/[slug]/lab/[game]/tips/[userId]'
         | '/c/[slug]/members'
         | '/c/[slug]/profile'
         | '/c/[slug]/requests'
@@ -249,13 +258,21 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'src/pages/c/[slug]/lab/[game].vue': {
+    'src/pages/c/[slug]/lab/[game]/index.vue': {
       routes:
-        | '/c/[slug]/lab/[game]'
+        | '/c/[slug]/lab/[game]/'
       views:
         | never
       pathParamNames:
-        | 'game'
+        | never
+    }
+    'src/pages/c/[slug]/lab/[game]/tips/[userId].vue': {
+      routes:
+        | '/c/[slug]/lab/[game]/tips/[userId]'
+      views:
+        | never
+      pathParamNames:
+        | 'userId'
     }
     'src/pages/c/[slug]/members.vue': {
       routes:
