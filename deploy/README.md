@@ -118,8 +118,8 @@ exist on that branch, or **every** `./update.sh <target>` fails, even for change
 nothing to do with Guess Hue.
 
 Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml` — see
-core/README.md ("Weltanschauung: term list and the two Maps secrets") for how the real term
-list gets encrypted in the first place.
+core/README.md ("Weltanschauung: term list, the two Maps keys, and the signing secret") for
+how the real term list gets encrypted in the first place.
 
 **Merge window develop → main.** `update.sh` and `README.md` always come from `main`
 (`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
@@ -154,10 +154,11 @@ doesn't exist, so a stack bootstrapped earlier keeps its old env file forever. W
 new variable to the template, add it to your `.env.prod`/`.env.staging` by hand — it will not appear
 there on its own, and a missing one binds empty without any error.
 
-**Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY` and
-`SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging` by hand (see core/README.md for where
-each value comes from) before the next `./update.sh <target>` — the backend refuses to boot
-without them.
+**Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY`,
+`SPOT_OBJECT_SERVER_MAPS_API_KEY` and `SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging`
+by hand (see core/README.md for where each value comes from and which one is browser-restricted
+versus server-only) before the next `./update.sh <target>` — the backend refuses to boot without
+them.
 
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
@@ -169,13 +170,14 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 # prod stack
 ./update.sh prod        # first run writes .env.prod from template + stops
 # edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS,
-#   PGADMIN_EMAIL/PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET
+#   PGADMIN_EMAIL/PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY,
+#   SPOT_OBJECT_SIGNING_SECRET
 ./update.sh prod        # pulls :latest images and starts the prod stack
 
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
 # edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY,
-#   SPOT_OBJECT_SIGNING_SECRET; GITHUB_CLIENT_SECRET=unused is fine
+#   SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET; GITHUB_CLIENT_SECRET=unused is fine
 #   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```

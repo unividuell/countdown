@@ -65,6 +65,9 @@ app:
     # The browser key for the Maps JavaScript API. Referrer-restricted, so it is handed to the
     # client; without it the board cannot load a map at all.
     maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY:}
+    # A separate, IP-restricted key for the backend's own server-to-server calls (GoogleCountryLookup).
+    # A referrer-restricted key would reject these outright — they carry no Referer header.
+    server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY:}
     # The URL-signing secret for the Street View Static API. Server-side only.
     signing-secret: ${SPOT_OBJECT_SIGNING_SECRET:}
   test-auth:

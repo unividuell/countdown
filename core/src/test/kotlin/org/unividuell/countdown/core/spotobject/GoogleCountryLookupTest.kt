@@ -21,15 +21,21 @@ class GoogleCountryLookupTest {
         val builder = RestClient.builder().baseUrl("https://maps.googleapis.com")
         val server = MockRestServiceServer.bindTo(builder).build()
         setup(server)
-        return GoogleCountryLookup(client = builder.build(), properties = SpotObjectProperties(mapsApiKey = "test-key"))
+        // Two distinct keys on purpose: a request carrying "browser-key" instead of "server-key"
+        // means the lookup regressed to the referrer-restricted key, which Google rejects outright
+        // on a server-to-server call (no `Referer` header) — see SpotObjectProperties.
+        return GoogleCountryLookup(
+            client = builder.build(),
+            properties = SpotObjectProperties(mapsApiKey = "browser-key", serverMapsApiKey = "server-key"),
+        )
     }
 
     @Test
     fun `it resolves a panorama to an ISO country code`() {
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withSuccess(fixture("streetview-metadata.json"), MediaType.APPLICATION_JSON))
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=server-key"))
                 .andRespond(withSuccess(fixture("geocode-barcelona.json"), MediaType.APPLICATION_JSON))
         }
         lookup.countryOf("abc") shouldBe "ES"
@@ -38,7 +44,7 @@ class GoogleCountryLookupTest {
     @Test
     fun `a failing metadata call yields no country and no exception`() {
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withServerError())
         }
         lookup.countryOf("abc").shouldBeNull()
@@ -47,9 +53,9 @@ class GoogleCountryLookupTest {
     @Test
     fun `a failing geocode call yields no country and no exception`() {
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withSuccess(fixture("streetview-metadata.json"), MediaType.APPLICATION_JSON))
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=server-key"))
                 .andRespond(withServerError())
         }
         lookup.countryOf("abc").shouldBeNull()
@@ -58,9 +64,9 @@ class GoogleCountryLookupTest {
     @Test
     fun `a response without a country component yields null`() {
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withSuccess(fixture("streetview-metadata.json"), MediaType.APPLICATION_JSON))
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=server-key"))
                 .andRespond(withSuccess("""{"results":[],"status":"ZERO_RESULTS"}""", MediaType.APPLICATION_JSON))
         }
         lookup.countryOf("abc").shouldBeNull()
@@ -70,7 +76,7 @@ class GoogleCountryLookupTest {
     fun `a 200 metadata response with a non-OK status yields no country`() {
         // What an unknown panorama or an exhausted quota looks like on the wire: HTTP 200, no error.
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withSuccess("""{"status":"ZERO_RESULTS"}""", MediaType.APPLICATION_JSON))
         }
         lookup.countryOf("abc").shouldBeNull()
@@ -79,9 +85,9 @@ class GoogleCountryLookupTest {
     @Test
     fun `a malformed geocode body yields no country`() {
         val lookup = lookupAgainst { server ->
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=server-key"))
                 .andRespond(withSuccess(fixture("streetview-metadata.json"), MediaType.APPLICATION_JSON))
-            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=test-key"))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=server-key"))
                 .andRespond(withSuccess("not json at all", MediaType.APPLICATION_JSON))
         }
         lookup.countryOf("abc").shouldBeNull()

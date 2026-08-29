@@ -128,9 +128,9 @@ Without one, everything else keeps working — only this one convenience doesn't
 decrypted file lands gitignored in the main checkout under `.local/guess-hue-dataset.yaml`
 and is never committed.
 
-## Weltanschauung: term list and the two Maps secrets
+## Weltanschauung: term list, the two Maps keys, and the signing secret
 
-Three environment variables, same "fails fast rather than looking healthy" rule as Guess Hue:
+Four environment variables, same "fails fast rather than looking healthy" rule as Guess Hue:
 
 - `SPOT_OBJECT_TERMS_PATH` — path to the decrypted term list. Empty means the bundled sample;
   under `production`/`staging` that refuses to start (see `SpotObjectConfiguration`). Handed
@@ -141,13 +141,26 @@ Three environment variables, same "fails fast rather than looking healthy" rule 
   [game-content.md](../.claude/guidelines/game-content.md). Locally,
   `./scripts/spot-object-terms.sh dev-path` (wired into `.claude/launch.json`) decrypts on
   demand and answers empty on a machine without the age key, same as Guess Hue's script.
-- `SPOT_OBJECT_MAPS_API_KEY` — the browser key for the Maps JavaScript API. No default in
-  `production`/`staging`: missing it fails the boot instead of shipping a board that cannot
-  draw a map. In Google Cloud Console, enable **Maps JavaScript API**, **Street View Static
-  API** and **Geocoding API** on the project, then create a key restricted to **HTTP
+- `SPOT_OBJECT_MAPS_API_KEY` — the **browser** key: handed to the client via
+  `GET /api/spot-object/config` for the Maps JavaScript API, and also embedded (still
+  server-side) in the signed `/api/spot-object/shot` redirect the browser follows to fetch a
+  tip's still image — see "Which key goes where" below for why that one is the browser key and
+  not the server one. No default in `production`/`staging`: missing it fails the boot instead
+  of shipping a board that cannot draw a map. In Google Cloud Console, enable **Maps JavaScript
+  API** and **Street View Static API** on the project, then create a key restricted to **HTTP
   referrers** — `https://countdown.unividuell.org/*` for prod, the staging hostname for
-  staging. It is referrer-restricted *by design*: it is handed to the browser
-  (`GET /api/spot-object/config`), so it must not work from anywhere else.
+  staging. It is referrer-restricted *by design*: anything handed to a browser must be, so it
+  cannot be replayed from anywhere else.
+- `SPOT_OBJECT_SERVER_MAPS_API_KEY` — the **server** key: used only by `GoogleCountryLookup`'s
+  own metadata and reverse-geocoding calls, never sent to a client. No default either. A
+  **separate credential from the browser key on purpose** — those calls are server-to-server
+  and carry no `Referer` header at all, so an HTTP-referrer-restricted key rejects them
+  outright, and every tip's country flag would silently stop appearing. In Google Cloud
+  Console, enable **Street View Static API** (the metadata endpoint lives under it, and it's
+  free/unmetered) and **Geocoding API**, then create a *second* key restricted by **IP address**
+  to the server's outbound IP. If that IP isn't stable, at minimum restrict the key's **API
+  restrictions** to just those two APIs, so a leaked key can't be replayed against anything
+  billed elsewhere on the project.
 - `SPOT_OBJECT_SIGNING_SECRET` — the URL-signing secret for the Street View Static API. No
   default either: without it, the `/api/spot-object/shot` redirect still produces a URL, but
   an **unsigned** one, which Google refuses once the project requires signed Static/Street
@@ -156,7 +169,14 @@ Three environment variables, same "fails fast rather than looking healthy" rule 
   APIs & Services → Credentials → "Get a Signing Secret" (see
   https://developers.google.com/maps/documentation/streetview/digital-signature/get-key).
 
-**Rotating either secret:** generate the replacement in Cloud Console, put it in
-`.env.<target>` on the server, then `./update.sh <target>` to restart `core` with it. Only
-delete the old key/secret in Cloud Console after that restart confirms the new one works —
-there is no overlap window otherwise.
+**Which key goes where.** `/api/spot-object/shot` signs its redirect with the **browser** key,
+not the server one, even though the call site sits in backend code: the browser itself is what
+follows that redirect (an `<img>` on our page loading Google's URL), so the request Google
+actually receives carries our own origin as `Referer` — exactly what an HTTP-referrer-restricted
+key expects. The server key would fail there the same way it would in `GoogleCountryLookup`,
+because that request also carries no `Referer`.
+
+**Rotating any of these:** generate the replacement in Cloud Console, put it in `.env.<target>`
+on the server, then `./update.sh <target>` to restart `core` with it. Only delete the old
+key/secret in Cloud Console after that restart confirms the new one works — there is no overlap
+window otherwise.

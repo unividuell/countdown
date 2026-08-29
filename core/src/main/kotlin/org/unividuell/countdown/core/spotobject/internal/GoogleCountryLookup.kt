@@ -48,7 +48,7 @@ class GoogleCountryLookup(
             .uri {
                 it.path("/maps/api/streetview/metadata")
                     .queryParam("pano", panoId)
-                    .queryParam("key", properties.mapsApiKey)
+                    .queryParam("key", properties.serverMapsApiKey)
                     .build()
             }
             .retrieve()
@@ -68,7 +68,7 @@ class GoogleCountryLookup(
                 it.path("/maps/api/geocode/json")
                     .queryParam("latlng", "$lat,$lng")
                     .queryParam("result_type", "country")
-                    .queryParam("key", properties.mapsApiKey)
+                    .queryParam("key", properties.serverMapsApiKey)
                     .build()
             }
             .retrieve()

@@ -48,6 +48,7 @@ services:
       - GUESS_HUE_DATASET_PATH=/config/guess-hue-dataset.yaml
       - SPOT_OBJECT_TERMS_PATH=/config/spot-object-terms.yaml
       - SPOT_OBJECT_MAPS_API_KEY=${SPOT_OBJECT_MAPS_API_KEY}
+      - SPOT_OBJECT_SERVER_MAPS_API_KEY=${SPOT_OBJECT_SERVER_MAPS_API_KEY}
       - SPOT_OBJECT_SIGNING_SECRET=${SPOT_OBJECT_SIGNING_SECRET}
     volumes:
       # update.sh decrypts to here before calling `compose up`. Read-only: the app reads the

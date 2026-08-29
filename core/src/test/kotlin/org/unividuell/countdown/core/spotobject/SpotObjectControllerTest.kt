@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.unividuell.countdown.core.TestcontainersConfiguration
@@ -14,13 +15,21 @@ import org.unividuell.countdown.core.principalFor
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
+// Two distinct, non-blank values so the assertion below can tell which one the endpoint answers
+// with — a plain "exists()" would still pass if someone later collapsed the two keys into one.
+@TestPropertySource(
+    properties = [
+        "app.spot-object.maps-api-key=browser-key-marker",
+        "app.spot-object.server-maps-api-key=server-key-marker",
+    ],
+)
 class SpotObjectControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
-    fun `the config endpoint hands out the browser key`() {
+    fun `the config endpoint hands out the browser key, never the server one`() {
         mockMvc.get("/api/spot-object/config") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.mapsApiKey") { exists() }
+            jsonPath("$.mapsApiKey") { value("browser-key-marker") }
         }
     }
 
