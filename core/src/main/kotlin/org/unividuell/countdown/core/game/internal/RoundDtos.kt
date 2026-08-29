@@ -4,6 +4,7 @@ import org.unividuell.countdown.core.countdown.Round
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameSolution
+import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.iam.Avatar
 import tools.jackson.databind.JsonNode
 import java.time.Instant
@@ -142,5 +143,11 @@ data class SkipRequest(val roundNumber: Int, val fromStage: Int)
 
 /** Spend the round without an answer. */
 data class GiveUpRequest(val roundNumber: Int)
+
+/** `null` withdraws the ballot — one verb for casting, changing and taking back. */
+data class VoteRequest(val value: Vote?)
+
+/** `null` hands the decision back to the vote. */
+data class OverrideRequest(val value: Boolean?)
 
 fun Round.toDto() = RoundDto(number = number, label = label, start = start, end = end)

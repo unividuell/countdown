@@ -48,3 +48,17 @@ class AssetNotFoundException(message: String = "no such asset") : RuntimeExcepti
  * apart would tell the caller which rounds exist.
  */
 class RoundNotFoundException(message: String = "no such round") : RuntimeException(message)
+
+/**
+ * The round is real but its review is not open: its game does not allow peer review, or the
+ * round is older than the one before the running one → 409.
+ */
+class ReviewNotOpenException(message: String = "this round is not open for review") :
+    RuntimeException(message)
+
+/**
+ * The caller may not cast this vote: they did not play the round, it is their own tip, or they
+ * are not this community's admin → 403. Not a 404: the round itself is visible to them.
+ */
+class ReviewNotAllowedException(message: String = "this vote is not yours to cast") :
+    RuntimeException(message)

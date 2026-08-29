@@ -20,7 +20,7 @@ class GameExceptionHandler {
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 
-    @ExceptionHandler(AssetForbiddenException::class)
+    @ExceptionHandler(AssetForbiddenException::class, ReviewNotAllowedException::class)
     fun forbidden(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
 
@@ -31,6 +31,7 @@ class GameExceptionHandler {
         AlreadyRevealedException::class,
         RoundMovedOnException::class,
         StageMovedOnException::class,
+        ReviewNotOpenException::class,
     )
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")
