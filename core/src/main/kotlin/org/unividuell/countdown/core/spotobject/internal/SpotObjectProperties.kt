@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.spotobject.internal
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.util.Base64
 
 @ConfigurationProperties(prefix = "app.spot-object")
 open class SpotObjectProperties(
@@ -22,4 +23,22 @@ open class SpotObjectProperties(
     val serverMapsApiKey: String = "",
     /** URL-signing secret for the Street View Static API. Server-side only, never sent anywhere. */
     val signingSecret: String = "",
-)
+) {
+    init {
+        // Decoded once, while the properties bind, rather than on every signature: a malformed
+        // secret would otherwise throw inside `StreetViewShot.sign` — one 500 per review tile — on
+        // a deployment that looks healthy, while every other misconfiguration here refuses the
+        // boot. The value itself stays out of the message; only its shape is the complaint.
+        if (signingSecret.isNotBlank()) {
+            try {
+                Base64.getUrlDecoder().decode(signingSecret)
+            } catch (_: IllegalArgumentException) {
+                throw SpotObjectException(
+                    "app.spot-object.signing-secret is not URL-safe base64. Google hands the secret " +
+                        "out in that alphabet; a value carrying '+' or '/' has to be converted first. " +
+                        "Refusing to start: signing would otherwise fail once per image request.",
+                )
+            }
+        }
+    }
+}
