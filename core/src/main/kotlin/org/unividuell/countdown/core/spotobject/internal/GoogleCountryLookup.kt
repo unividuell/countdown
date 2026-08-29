@@ -40,7 +40,7 @@ class GoogleCountryLookup(
 
     override fun countryOf(panoId: String): String? {
         val location = locationOf(panoId) ?: return null
-        return countryAt(lat = location.lat, lng = location.lng)
+        return countryAt(lat = location.lat, lng = location.lng, panoId = panoId)
     }
 
     private fun locationOf(panoId: String): StreetViewLocationJson? = runCatching {
@@ -62,7 +62,7 @@ class GoogleCountryLookup(
         null
     }
 
-    private fun countryAt(lat: Double, lng: Double): String? = runCatching {
+    private fun countryAt(lat: Double, lng: Double, panoId: String): String? = runCatching {
         client.get()
             .uri {
                 it.path("/maps/api/geocode/json")
@@ -79,7 +79,8 @@ class GoogleCountryLookup(
             ?.short_name
             ?.takeIf { it.isNotBlank() }
     }.getOrElse {
-        logger.warn(it) { "reverse geocoding failed for $lat,$lng" }
+        // Never log the coordinate: it must not outlive this call in any form, logs included.
+        logger.warn(it) { "reverse geocoding failed for pano $panoId" }
         null
     }
 

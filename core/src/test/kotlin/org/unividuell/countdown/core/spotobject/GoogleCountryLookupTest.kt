@@ -65,4 +65,25 @@ class GoogleCountryLookupTest {
         }
         lookup.countryOf("abc").shouldBeNull()
     }
+
+    @Test
+    fun `a 200 metadata response with a non-OK status yields no country`() {
+        // What an unknown panorama or an exhausted quota looks like on the wire: HTTP 200, no error.
+        val lookup = lookupAgainst { server ->
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+                .andRespond(withSuccess("""{"status":"ZERO_RESULTS"}""", MediaType.APPLICATION_JSON))
+        }
+        lookup.countryOf("abc").shouldBeNull()
+    }
+
+    @Test
+    fun `a malformed geocode body yields no country`() {
+        val lookup = lookupAgainst { server ->
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/streetview/metadata?pano=abc&key=test-key"))
+                .andRespond(withSuccess(fixture("streetview-metadata.json"), MediaType.APPLICATION_JSON))
+            server.expect(requestTo("https://maps.googleapis.com/maps/api/geocode/json?latlng=41.38505,2.1734&result_type=country&key=test-key"))
+                .andRespond(withSuccess("not json at all", MediaType.APPLICATION_JSON))
+        }
+        lookup.countryOf("abc").shouldBeNull()
+    }
 }
