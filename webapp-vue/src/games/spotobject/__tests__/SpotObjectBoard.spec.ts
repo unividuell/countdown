@@ -108,6 +108,17 @@ describe('SpotObjectBoard', () => {
     expect(row.classes()).not.toContain('bottom-0')
   })
 
+  /**
+   * The panorama's chrome carries z-indexes in the millions. Without a stacking context around
+   * the map element they compete in the root context and win, and the whole overlay row — term,
+   * „Zur Weltkarte“, „Gefunden“ — disappears the moment somebody drops the Pegman.
+   */
+  it('isolates the map element so the panorama cannot paint over the controls', () => {
+    const w = mountBoard()
+
+    expect(w.get('[data-test="spot-map"]').classes()).toContain('isolate')
+  })
+
   it('says so when the map could not be loaded', async () => {
     const double = mockStreetView()
     double.error.value = 'boom'

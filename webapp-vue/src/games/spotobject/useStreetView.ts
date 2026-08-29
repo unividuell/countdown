@@ -97,6 +97,11 @@ export function useStreetView(): UseStreetView {
         panControl: false,
         enableCloseButton: false,
         fullscreenControl: false,
+        // The phone-shaped control, offered on anything that reports an orientation sensor —
+        // a laptop with a lid sensor included. Tilting a device to look around is not this
+        // game's gesture, and the control sits in the corner explaining itself to nobody.
+        motionTracking: false,
+        motionTrackingControl: false,
       })
 
       panorama.addListener('visible_changed', () => {

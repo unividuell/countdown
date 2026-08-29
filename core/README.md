@@ -191,6 +191,14 @@ carries exactly one restriction, and `localhost` is not the production hostname:
   application restriction at *None* and rely on the API restrictions (Street View Static,
   Geocoding) alone. That makes it a key worth deleting once you are done with it.
 
+**Open the dev server at the LAN address, not `localhost`.** Google's panorama tiles come from
+`lh3.googleusercontent.com`, which carries no key and no quota of ours — and it answers **429 to
+any request whose `Referer` is `localhost`**, on every port. Street View then shows the
+navigation arrows over a black screen. Measured against two panoramas: `http://localhost:5173/`
+and `http://localhost:8080/` are throttled, while `http://127.0.0.1:5173/`, the LAN address, a
+real domain and a request with no `Referer` at all are all served normally. `pnpm dev --host`
+prints the LAN address; keep it in the browser key's referrer list and use that one.
+
 The **signing secret is not a key and there is only one per Cloud project** — the same value
 serves local dev and production, so there is nothing extra to create. Without it the redirect
 still resolves, but unsigned, and Google refuses it as soon as the project requires signatures.

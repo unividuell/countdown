@@ -150,6 +150,20 @@ describe('useStreetView', () => {
     expect(FakeMap.instances[0]!.options).not.toHaveProperty('streetViewControlOptions')
   })
 
+  it('turns the motion-tracking control off', async () => {
+    const { mount } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    // Offered on anything reporting an orientation sensor, a laptop included, where it is a
+    // phone icon in the corner that explains itself to nobody.
+    const options = FakeMap.instances[0]!.panorama.setOptions.mock.calls[0]![0]
+    expect(options).toMatchObject({ motionTracking: false, motionTrackingControl: false })
+  })
+
   it('fetches the key from the config endpoint rather than a bundled constant', async () => {
     const { mount } = useStreetView()
 

@@ -40,7 +40,11 @@ function submitGuess(): void {
 
 <template>
   <div class="relative -m-4 h-[100dvh] sm:h-[min(100dvh-6rem,40rem)]">
-    <div ref="stage" data-test="spot-map" class="absolute inset-0 bg-neutral-200" />
+    <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
+         stacking context here those compete with our overlay row in the ROOT context and win —
+         the map mode's controls are modest enough that the row only vanishes once somebody drops
+         the Pegman. Isolating traps them where they belong. -->
+    <div ref="stage" data-test="spot-map" class="absolute inset-0 isolate bg-neutral-200" />
 
     <div
       v-if="error"
