@@ -7,22 +7,14 @@ import { registerAuthGuard } from '@/auth/guard'
 import { registerLandingRedirect } from '@/communities/landingGuard'
 import { registerCommunityDataGuard } from '@/communities/routeData'
 import { registerNavigationProgress } from '@/ui/navigationProgress'
+import { scrollBehavior } from '@/ui/scrollBehavior'
 import { setUnauthorizedHandler } from '@/api/client'
 import './assets/main.css'
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  // A hash is always a round card's own anchor (`RoundCard`), which is where closing a single tip
-  // comes back to. The element is checked first because the history it sits in loads
-  // asynchronously: if it is not there yet, the top of the page is what we had anyway.
-  // `savedPosition` has to be honoured explicitly — defining this hook at all switches the
-  // browser's own back/forward restoration off.
-  scrollBehavior: (to, _from, savedPosition) => {
-    if (savedPosition) return savedPosition
-    if (to.hash && document.querySelector(to.hash)) return { el: to.hash }
-    return { top: 0 }
-  },
+  scrollBehavior,
 })
 registerAuthGuard(router)
 // beforeResolve hooks run in registration order: the landing redirect must claim '/'
