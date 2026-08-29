@@ -7,6 +7,7 @@
  * than standing next to it.
  */
 import { toRef } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import { roundAssetUrl } from '@/api/rounds'
 import ActionButton from '@/ui/ActionButton.vue'
 import LabelledDivider from '@/ui/LabelledDivider.vue'
@@ -30,6 +31,18 @@ const { items, busy, error, canLoadMore, loadMore } = useRoundHistory(
  */
 const assetUrlFor = (roundNumber: number) => (key: number) =>
   roundAssetUrl(props.slug, roundNumber, key)
+
+/**
+ * Same route `pages/c/[slug]/index.vue` points at, one per past round: the page's own loader
+ * already falls back from `/current` to this exact round number, so a past round's tile opens the
+ * same page a running round's does.
+ */
+const tipPathFor =
+  (roundNumber: number) =>
+  (userId: string): RouteLocationRaw => ({
+    name: '/c/[slug]/rounds/[roundNumber]/tips/[userId]',
+    params: { slug: props.slug, roundNumber: String(roundNumber), userId },
+  })
 </script>
 
 <template>
@@ -44,6 +57,7 @@ const assetUrlFor = (roundNumber: number) => (key: number) =>
       :round="item"
       closed
       :asset-url="assetUrlFor(item.round?.number ?? 0)"
+      :tip-path="tipPathFor(item.round?.number ?? 0)"
     />
 
     <p v-if="error" data-test="history-error" class="mt-6 text-sm text-neutral-500">{{ error }}</p>

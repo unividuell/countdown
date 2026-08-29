@@ -100,6 +100,7 @@ function mountCard(props: {
       skip: vi.fn().mockResolvedValue(undefined),
       giveUp: vi.fn().mockResolvedValue(undefined),
       assetUrl: vi.fn().mockReturnValue('https://example.invalid/asset'),
+      tipPath: vi.fn().mockReturnValue('https://example.invalid/tip'),
       ...props,
     },
   })
@@ -379,7 +380,12 @@ describe('RoundCard', () => {
     })
 
     const w = mount(RoundCard, {
-      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+      props: {
+        round,
+        closed: true,
+        assetUrl: (key: number) => `/assets/${key}`,
+        tipPath: (userId: string) => `/tips/${userId}`,
+      },
     })
 
     const stub = w.findComponent(StubGame)
@@ -395,7 +401,12 @@ describe('RoundCard', () => {
     const round = aRound({ me: null, others: [other], solution: { targetHue: 5 } })
 
     const stub = mount(RoundCard, {
-      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+      props: {
+        round,
+        closed: true,
+        assetUrl: (key: number) => `/assets/${key}`,
+        tipPath: (userId: string) => `/tips/${userId}`,
+      },
     }).findComponent(StubGame)
 
     expect(stub.exists()).toBe(true)

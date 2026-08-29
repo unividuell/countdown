@@ -19,8 +19,12 @@ const props = withDefaults(
   defineProps<{
     round: RoundResponse | null
     assetUrl: (key: number) => string
-    /** Where a game's own tile links land. Only Weltanschauung's game component reads it. */
-    tipPath?: ((userId: string) => RouteLocationRaw) | undefined
+    /**
+     * Where a game's own tile links land. Required like `assetUrl` above: only Weltanschauung's
+     * game component reads it, but every caller supplies it regardless — an optional prop here is
+     * exactly what let a caller forget it and ship a tile that throws the moment it is opened.
+     */
+    tipPath: (userId: string) => RouteLocationRaw
     /**
      * The round is over: the reveal face, no clock, no action. One prop with three effects at one
      * place — a second card would be a second place for „the same reveal UI“ to drift.
@@ -44,7 +48,6 @@ const props = withDefaults(
     submit: undefined,
     skip: undefined,
     giveUp: undefined,
-    tipPath: undefined,
   },
 )
 
