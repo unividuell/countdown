@@ -14,6 +14,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.AlreadyGuessedException
@@ -28,6 +29,9 @@ import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.OtherPlayDto
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.ReviewNotAllowedException
+import org.unividuell.countdown.core.game.internal.ReviewNotOpenException
+import org.unividuell.countdown.core.game.internal.ReviewService
 import org.unividuell.countdown.core.game.internal.RoundAccessDeniedException
 import org.unividuell.countdown.core.game.internal.RoundDto
 import org.unividuell.countdown.core.game.internal.RoundMovedOnException
@@ -48,6 +52,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var announcements: AnnouncementService
     @MockkBean lateinit var plays: PlayService
     @MockkBean lateinit var histories: HistoryService
+    @MockkBean lateinit var reviews: ReviewService
 
     private val uid = TEST_USER_ID
     private val mapper = JsonMapper.builder().build()
@@ -402,5 +407,38 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             jsonPath("$.noGameReason") { value("NOT_SCHEDULED") }
         }
+    }
+
+    @Test
+    fun `PUT vote on your own tip is forbidden`() {
+        every {
+            reviews.vote(
+                slug = "team", voterId = uid, isSuperAdmin = false,
+                roundNumber = 12, targetUserId = uid, value = Vote.FLAG,
+            )
+        } throws ReviewNotAllowedException()
+
+        mockMvc.put("/api/communities/team/rounds/12/plays/$uid/vote") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"value":"FLAG"}"""
+        }.andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `PUT vote on a round that does not allow peer review is a conflict`() {
+        val target = UUID.randomUUID()
+        every {
+            reviews.vote(
+                slug = "team", voterId = uid, isSuperAdmin = false,
+                roundNumber = 12, targetUserId = target, value = Vote.FLAG,
+            )
+        } throws ReviewNotOpenException()
+
+        mockMvc.put("/api/communities/team/rounds/12/plays/$target/vote") {
+            with(principalFor()); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"value":"FLAG"}"""
+        }.andExpect { status { isConflict() } }
     }
 }
