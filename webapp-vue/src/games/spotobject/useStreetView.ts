@@ -53,12 +53,28 @@ function loadMapsApi(apiKey: string): Promise<void> {
   return mapsPromise
 }
 
+/**
+ * Arrow keys walk and turn inside Street View, and pan the map — Google handles them on its own
+ * element without cancelling them, so the same press also scrolls the page out from under the
+ * board. Cancelled here, on the way out: Google's handler has already run by then, so only the
+ * browser's own scroll is taken away, and only for a press that started inside the map.
+ */
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
+
+function swallowScrollKeys(element: HTMLElement): void {
+  element.addEventListener('keydown', (event) => {
+    if (SCROLL_KEYS.has(event.key)) event.preventDefault()
+  })
+}
+
 export interface UseStreetView {
   error: Ref<string | null>
   mount: (element: HTMLElement) => Promise<void>
   pano: StreetViewState
   /** True while the last attempt found nothing and the map has not been moved since. */
   noCoverage: Ref<boolean>
+  /** True while Google's own Pegman is being carried, so our ring can get out of its way. */
+  pegmanDragging: Ref<boolean>
   /** The tip for the view on screen right now, or `null` while no panorama is open. */
   currentTip: () => SpotObjectTip | null
   toStreetView: () => void
@@ -69,6 +85,7 @@ export function useStreetView(): UseStreetView {
   const error = ref<string | null>(null)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
+  const pegmanDragging = ref(false)
   let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
 
@@ -81,17 +98,22 @@ export function useStreetView(): UseStreetView {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         gestureHandling: 'greedy',
-        // Google's Pegman is drag-only, and a drag on a phone hides its own target under the
-        // finger — you cannot see the spot you are dropping onto. `toStreetView` puts the same
-        // walk one press away, aimed by the crosshair instead, so the control itself is off.
-        streetViewControl: false,
+        // Kept beside the crosshair's own press rather than replaced by it: `setPosition` searches
+        // a fixed 50 m, so below the zoom where the blue lines are drawn the press finds nothing
+        // and the Pegman is the only way in. Half way down the right edge rather than the API's
+        // bottom-right default: on a phone held in the right hand that corner is under the thumb's
+        // own knuckle. `position` is the only option this control accepts — `sources: [OUTDOOR]`
+        // is rejected outright ("OUTDOOR source not supported on StreetViewControlOptions") and
+        // takes the whole control down with it, leaving a map with no way into Street View at all.
+        streetViewControl: true,
+        streetViewControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
         mapTypeControl: false,
         fullscreenControl: false,
       })
 
       // Coverage stays on permanently: saying „ich suche jetzt in Barcelona“ needs to see where
-      // there is anything to walk into — and since the Pegman went away it is also what the
-      // crosshair is aimed at. Takes no options of its own.
+      // there is anything to walk into — and it is what the crosshair's press is aimed at, which
+      // reaches only 50 m. Takes no options of its own.
       new google.maps.StreetViewCoverageLayer().setMap(map)
 
       // The map's own default panorama — never `new google.maps.StreetViewPanorama(...)`.
@@ -128,6 +150,9 @@ export function useStreetView(): UseStreetView {
       map.addListener('center_changed', () => {
         noCoverage.value = false
       })
+
+      watchPegman(element)
+      swallowScrollKeys(element)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
@@ -164,10 +189,39 @@ export function useStreetView(): UseStreetView {
     panorama.setVisible(true)
   }
 
+  /**
+   * Whether Google's Pegman is in the air, by watching for a press on its control.
+   *
+   * Reaches for Google's own class name, which is the coupling the Pegman's old size hack was
+   * removed for — but it fails the right way: if that class ever changes, nothing matches, the
+   * ring simply stays put, and the map is exactly as usable as it was before. Nothing about
+   * dropping the Pegman depends on this.
+   */
+  function watchPegman(element: HTMLElement): void {
+    const end = (): void => {
+      pegmanDragging.value = false
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+
+    // Captured: the control swallows the press on its way down, so a bubbling listener never sees
+    // it. The drag ends wherever the finger lifts, which is why that half hangs off the window.
+    element.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest('.gm-svpc')) return
+        pegmanDragging.value = true
+        window.addEventListener('pointerup', end)
+        window.addEventListener('pointercancel', end)
+      },
+      { capture: true },
+    )
+  }
+
   /** Whoever lands on a single photo — indoor and user shots are found too — uses this to get out. */
   function toWorldMap(): void {
     panorama?.setVisible(false)
   }
 
-  return { error, mount, pano, noCoverage, currentTip, toStreetView, toWorldMap }
+  return { error, mount, pano, noCoverage, pegmanDragging, currentTip, toStreetView, toWorldMap }
 }

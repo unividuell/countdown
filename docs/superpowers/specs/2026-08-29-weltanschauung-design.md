@@ -303,12 +303,22 @@ Overlay darüber — Begriff oben links, Aktionen unten. Kein Vollbildmodus.
 - Ein Weg **zurück zur Weltkarte** ist Pflicht.
 - **Ein Fadenkreuz in der exakten Mitte**, in beiden Hälften des Spielfelds dasselbe kleine weiße
   Plus. Auf der Karte ist es das Ziel, im Panorama die Bildmitte, in die der Gegenstand gehört.
-- **Einstieg per Druck statt per Zug.** Googles Pegman lässt sich nur ziehen, und ein Zug auf dem
-  Telefon verdeckt sein eigenes Ziel mit dem Finger. Stattdessen `streetViewControl: false` und ein
-  eigener Knopf am rechten Rand: `panorama.setPosition(map.getCenter())` — derselbe Aufruf, den ein
-  landender Pegman macht, also unverändert kostenlos. Kein `StreetViewService`: der wäre eine neue
-  Kostenfläche für dieselbe Antwort. `setPosition` sucht ohne Radiusangabe 50 m weit; darum bleibt
-  die Abdeckungsebene an, sie ist das Zielkreuz-Futter.
+- **Zwei Wege hinein, nicht einer.** Googles Pegman bleibt (rechte Kante, mittig), denn er ist der
+  einzige, der über jede Entfernung trägt. Daneben ein Druck auf das Fadenkreuz selbst — ein Ring
+  im Durchmesser eines Knopfes um die Marke herum —, der
+  `panorama.setPosition(map.getCenter())` aufruft: derselbe Aufruf, den ein landender Pegman macht,
+  also unverändert kostenlos. Kein `StreetViewService`: der wäre eine neue Kostenfläche für
+  dieselbe Antwort. Der Preis dafür ist hart: `setPosition` nimmt keinen Radius und sucht fix 50 m,
+  der Druck greift also erst ab der Zoomstufe, auf der die blauen Linien gezeichnet werden. Darum
+  bleibt die Abdeckungsebene an — sie ist das Zielkreuz-Futter — und darum ersetzt der Druck den
+  Pegman nicht, er kürzt nur ab.
+- **Der Ring weicht dem Pegman.** Er sitzt genau dort, wo ein fallengelassener Pegman am ehesten
+  landet. Ein `pointerdown` auf `.gm-svpc` blendet ihn für die Dauer des Zugs aus (die Marke
+  bleibt). Wieder eine Kopplung an Googles Klassennamen, aber eine, die richtig herum scheitert:
+  kein Treffer heißt, der Ring bleibt einfach stehen.
+- **Pfeiltasten scrollen nicht die Seite mit.** Google läuft und dreht auf ihnen, bricht sie aber
+  nicht ab, sodass derselbe Druck die Seite unter dem Spielfeld wegscrollte. `preventDefault` auf
+  dem Weg nach draußen: Googles Handler ist da schon gelaufen, weg ist nur das Scrollen.
 - **Ein Fehlgriff ist unsere Antwort, nicht Googles.** Findet sich nichts, meldet `status_changed`
   etwas anderes als `OK`; das Panorama wird wieder ausgeblendet und unter dem Fadenkreuz steht, dass
   hier nichts ist. Bis die Karte bewegt wird, bleibt die Meldung stehen und ein zweiter Druck ist
@@ -453,6 +463,6 @@ Kacheln ohne Flagge, weil der Aufruf weich scheitert.
   Horizont. Die Breitenbeschränkung deckelt das auf dasselbe Maß, das jedes Spiel hier hat, und
   weiter geht es nicht — akzeptiert, nicht offen.
 - **Einstiegsziele filtern.** `sources: [OUTDOOR]` weist das Street-View-Control zurück — es wirft
-  beim Bau des Controls und hinterlässt eine Karte ganz ohne Pegman; im Betrieb gemessen. Seit der
-  Einstieg über `setPosition` läuft, ist das Control weg, aber die Filterung auch: der Aufruf nimmt
-  keine Quellenangabe. Wer auf einem Einzelfoto landet, geht zurück zur Weltkarte.
+  beim Bau des Controls und hinterlässt eine Karte ganz ohne Pegman; im Betrieb gemessen. Der Druck
+  aufs Fadenkreuz kann es auch nicht: `setPosition` nimmt keine Quellenangabe. Wer auf einem
+  Einzelfoto landet, geht zurück zur Weltkarte.

@@ -17,6 +17,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
   noCoverage: Ref<boolean>
+  pegmanDragging: Ref<boolean>
   currentTip: ReturnType<typeof vi.fn>
   toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
@@ -26,6 +27,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),
+    pegmanDragging: ref(false),
     currentTip: vi.fn().mockReturnValue(null),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
@@ -147,8 +149,8 @@ describe('SpotObjectBoard', () => {
     expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
   })
 
-  /** A drag on a phone hides its own target under the finger; a press on an aimed point does not. */
-  it('enters Street View by a press, and only while there is a map to aim at', async () => {
+  /** The shortcut past the Pegman's drag, which on a phone hides its own target under the finger. */
+  it('enters Street View by pressing the crosshair, and only while there is a map to aim at', async () => {
     const double = mockStreetView({ visible: false })
     const w = mountBoard()
 
@@ -159,6 +161,21 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
+  })
+
+  /**
+   * The ring sits where a dropped Pegman most often lands. The Pegman is the way in past the 50 m
+   * the press reaches, so a shortcut that blocks it is worse than no shortcut.
+   */
+  it('gets its ring out of the way of a Pegman in the air, but keeps the mark', async () => {
+    const double = mockStreetView({ visible: false })
+    const w = mountBoard()
+
+    double.pegmanDragging.value = true
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
+    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
   })
 
   it('says when the aimed point has no panorama to walk into', async () => {

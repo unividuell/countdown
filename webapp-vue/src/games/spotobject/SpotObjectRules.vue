@@ -9,9 +9,16 @@
 
 <template>
   <ul class="ms-4 list-disc space-y-1">
-    <li>Setz das Männchen irgendwo auf der Weltkarte ab und sieh dich um.</li>
+    <li>
+      Zieh das Männchen vom rechten Rand irgendwo auf die Weltkarte — oder ziel mit dem Fadenkreuz
+      auf eine blaue Linie und drück drauf. Beides bringt dich an dieselbe Stelle.
+    </li>
     <li>Hast du den gesuchten Gegenstand vor dir, drück auf „Gefunden“.</li>
     <li>Abgegeben wird genau der Blick, den du gerade siehst — dreh dich also erst richtig hin.</li>
+    <li>
+      Stell den Gegenstand dabei ins Fadenkreuz. Die anderen sehen später genau diesen Punkt und
+      müssen dann nicht raten, was du gemeint hast.
+    </li>
     <li>Dein eigenes Land zählt nicht. Such woanders.</li>
   </ul>
 </template>

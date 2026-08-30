@@ -91,6 +91,7 @@ function installFakeGoogleMaps(): void {
   vi.stubGlobal('google', {
     maps: {
       Map: FakeMap,
+      ControlPosition: { RIGHT_CENTER: 7 },
       StreetViewCoverageLayer: FakeCoverageLayer,
       StreetViewPanorama: streetViewPanoramaCtor,
     },
@@ -152,8 +153,12 @@ describe('useStreetView', () => {
     expect(error.value).toBeNull()
   })
 
-  /** Google's own Pegman is drag-only, and a drag on a phone hides the spot being aimed at. */
-  it('replaces the Pegman with a press on the crosshair’s point', async () => {
+  /**
+   * Both ways in, side by side. The press is the phone-friendly one — a drag hides the spot being
+   * aimed at under the finger — but it reaches only the 50 m `setPosition` is fixed at, so the
+   * Pegman has to stay for everything past that.
+   */
+  it('keeps the Pegman and adds a press on the crosshair’s point', async () => {
     const { mount, toStreetView } = useStreetView()
 
     const pending = mount(document.createElement('div'))
@@ -162,7 +167,8 @@ describe('useStreetView', () => {
     await pending
 
     const map = FakeMap.instances[0]!
-    expect(map.options.streetViewControl).toBe(false)
+    expect(map.options.streetViewControl).toBe(true)
+    expect(map.options.streetViewControlOptions).toEqual({ position: 7 })
 
     toStreetView()
 
@@ -315,6 +321,57 @@ describe('useStreetView', () => {
 
     expect(vi.mocked(document.head.append).mock.calls.length).toBe(appends + 1)
     expect(error.value).toBeNull()
+  })
+
+  /**
+   * The ring around the crosshair sits where a dropped Pegman most often lands, so it has to be
+   * gone for the length of that drag. Watched through Google's own class name, which is a coupling
+   * that fails harmlessly: no match means the ring simply stays, exactly as it was before.
+   */
+  it('knows while the Pegman is in the air', async () => {
+    const element = document.createElement('div')
+    const control = document.createElement('div')
+    control.className = 'gm-svpc'
+    element.append(control)
+
+    const { mount, pegmanDragging } = useStreetView()
+    const pending = mount(element)
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    element.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(pegmanDragging.value).toBe(false)
+
+    control.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(pegmanDragging.value).toBe(true)
+
+    // Wherever the finger lifts — the drop is nearly always outside the control it started on.
+    window.dispatchEvent(new Event('pointerup'))
+    expect(pegmanDragging.value).toBe(false)
+  })
+
+  /**
+   * Google walks and turns on the arrow keys but never cancels them, so the same press scrolled
+   * the page out from under the board.
+   */
+  it('keeps the arrow keys from scrolling the page as well', async () => {
+    const element = document.createElement('div')
+    const { mount } = useStreetView()
+    const pending = mount(element)
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const press = (key: string): boolean => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
+    expect(press('ArrowDown')).toBe(true)
+    // Only what scrolls: typing is nobody else's business here, and „Gefunden“ is a button.
+    expect(press('Enter')).toBe(false)
   })
 
   it('returns to the world map by hiding the same panorama, not replacing it', async () => {
