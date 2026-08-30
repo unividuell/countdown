@@ -96,7 +96,7 @@ watch(played, (now, before) => {
            explanation is for whoever wants it, and the board is for everyone. -->
       <div class="p-4">
         <InfoBox storage-key="spot-object">
-          <template #abstract>Finde den gesuchten Gegenstand irgendwo auf der Welt.</template>
+          <template #abstract>Finde den gesuchten Gegenstand.</template>
           <SpotObjectRules />
         </InfoBox>
       </div>
