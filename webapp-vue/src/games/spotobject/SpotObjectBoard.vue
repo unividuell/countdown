@@ -53,9 +53,10 @@ onUnmounted(() => cancelPending())
  * scrolled the *page* instead. So the ring takes no pointer events at all, everything reaches
  * Google untouched, and only a press that is unmistakably ours is claimed back here.
  *
- * Unmistakably ours means: it did not travel, it landed inside the ring, and no second press
- * followed. That wait is what makes the double click work again — Google zooms on it either way,
- * and we simply drop the action we had scheduled.
+ * Unmistakably ours means: it did not travel, it landed inside the ring, and it is not part of a
+ * run of presses. That last one cuts both ways — the first press of a double click has its action
+ * cancelled by the second, and the second must schedule nothing of its own, or the double click
+ * ends up doing what a single one does, only later.
  *
  * Captured, not bubbled: Google stops these events on their way up to run its own gestures, and
  * the stage is the outermost element, so its capture listener is the one nothing can sit in front
@@ -63,6 +64,12 @@ onUnmounted(() => cancelPending())
  */
 let pressedAt: { x: number; y: number } | null = null
 let pending: ReturnType<typeof setTimeout> | null = null
+/**
+ * When the last press ended, so the next one can tell it is a repeat. Measured on the events' own
+ * clock, and started at negative infinity so the very first press of a session is never one.
+ */
+let releasedAt = Number.NEGATIVE_INFINITY
+let repeat = false
 
 function cancelPending(): void {
   if (pending === null) return
@@ -80,6 +87,7 @@ function watchCentreTap(element: HTMLElement): void {
     'pointerdown',
     (event) => {
       cancelPending()
+      repeat = event.timeStamp - releasedAt < DOUBLE_TAP_MS
       pressedAt = { x: event.clientX, y: event.clientY }
     },
     { capture: true },
@@ -90,6 +98,8 @@ function watchCentreTap(element: HTMLElement): void {
     (event) => {
       const from = pressedAt
       pressedAt = null
+      releasedAt = event.timeStamp
+      if (repeat) return
       if (from === null || props.disabled || pano.visible || pegmanDragging.value) return
       if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > TAP_SLOP) return
       if (!withinRing(element, event.clientX, event.clientY)) return

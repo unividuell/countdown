@@ -200,7 +200,12 @@ describe('SpotObjectBoard', () => {
       expect(double.toStreetView).toHaveBeenCalledOnce()
     })
 
-    it('hands a double click to the map by dropping its own action', () => {
+    /**
+     * Both halves have to give way, not just the first: cancelling the first press's action and
+     * then letting the second schedule its own turns a double click into a single one with a
+     * delay — which is what it did, and it zoomed *and* travelled.
+     */
+    it('hands a double click to the map and keeps nothing back', () => {
       const double = mockStreetView({ visible: false })
       const w = mountBoard()
 
@@ -208,9 +213,7 @@ describe('SpotObjectBoard', () => {
       press(w, [0, 0])
       vi.advanceTimersByTime(1000)
 
-      // Twice scheduled, twice: the first cancelled by the second press, the second still standing
-      // — one entry, not two, and the zoom Google ran in between is untouched.
-      expect(double.toStreetView).toHaveBeenCalledOnce()
+      expect(double.toStreetView).not.toHaveBeenCalled()
     })
 
     it('leaves a pan that began at the centre alone', () => {

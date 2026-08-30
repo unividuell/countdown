@@ -317,8 +317,9 @@ Overlay darüber — Begriff oben links, Aktionen unten. Kein Vollbildmodus.
   und das Mausrad scrollte stattdessen die *Seite*. Also `pointer-events: none`; alles erreicht
   Google unberührt, und der Druck wird am Kartenelement selbst gelesen (`capture`, weil Google die
   Ereignisse auf dem Weg nach oben abfängt). Als unserer zählt er nur, wenn er nicht gewandert ist,
-  im Ring gelandet ist und kein zweiter Druck folgte — die Wartezeit ist das, was den Doppelklick
-  zurückgibt. `<button>` bleibt er trotzdem: fokussierbar, per Tastatur auslösbar, und dafür gibt
+  im Ring gelandet ist und nicht zu einer Folge von Drücken gehört. Das Letzte gilt in beide
+  Richtungen: der erste Druck eines Doppelklicks wird vom zweiten abgeräumt, und der zweite darf
+  auch nichts Eigenes einplanen — sonst wird aus dem Doppelklick ein verspäteter Einfachklick. `<button>` bleibt er trotzdem: fokussierbar, per Tastatur auslösbar, und dafür gibt
   es keinen Gestenersatz.
 - **Der Ring weicht dem Pegman.** Er sitzt genau dort, wo ein fallengelassener Pegman am ehesten
   landet. Ein `pointerdown` auf `.gm-svpc` blendet ihn für die Dauer des Zugs aus (die Marke
