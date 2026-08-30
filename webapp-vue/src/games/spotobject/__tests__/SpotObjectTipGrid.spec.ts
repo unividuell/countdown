@@ -79,14 +79,23 @@ describe('SpotObjectTipGrid', () => {
     expect(link.classes()).toContain('bottom-[6%]')
   })
 
-  /** A neighbour with more voters makes the row taller; the colour has to follow it down. */
-  it('fills the foot to the bottom of the row, however tall the row got', () => {
+  /**
+   * A neighbour with more voters makes the row taller, and the neutral ground — not the player's
+   * colour — is what has to follow it down. The colour carries the name and nothing else, so its
+   * height does not depend on how many people voted.
+   */
+  it('fills the foot to the bottom of the row with the neutral block, not the colour', () => {
     const { wrapper } = mountGrid([tile({ userId: 'a' })])
 
     expect(wrapper.get('[data-test="tip-tile"]').classes()).toEqual(
       expect.arrayContaining(['flex', 'h-full', 'flex-col']),
     )
     expect(wrapper.get('[data-test="tip-foot"]').classes()).toContain('flex-1')
+    expect(wrapper.get('[data-test="tip-votes"]').classes()).toContain('flex-1')
+    expect(wrapper.get('[data-test="tip-owner"]').classes()).not.toContain('flex-1')
+    // Only the name block is painted in the player's colour.
+    expect(wrapper.get('[data-test="tip-owner"]').attributes('style')).toContain('#7c3aed')
+    expect(wrapper.get('[data-test="tip-votes"]').attributes('style')).toBeUndefined()
   })
 
   /** On a saturated player colour a bare emoji sits in the background rather than on it. */

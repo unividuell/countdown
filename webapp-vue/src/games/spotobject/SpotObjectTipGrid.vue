@@ -204,41 +204,41 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         </div>
       </div>
 
-      <!-- The player's own colour under the whole foot, not just behind the name: at this tile
-           size the colour is what tells two tiles apart at a glance, and a stripe of it under a
-           white block reads as a divider rather than as whose tip this is.
+      <!-- Two blocks, each edge to edge: whose tip this is, and what the round said about it.
+           The player's colour carries only the name — running it under the votes too made one
+           coloured slab whose height depended on how many people had voted, which is not what the
+           colour is for. Below it the neutral ground takes the rest of the tile, so a neighbour
+           with more voters no longer leaves a pale gap under the shorter one.
 
-           `flex-1` inside a tile that stretches to its grid row: without it the colour stops where
-           this tile's own text ends, and a neighbour with more voters leaves a pale gap under the
-           shorter one.
-
-           Two columns, one grid: marker and text, so the flag and every thumb below it share one
-           edge and the names share the other. Laid out as one grid rather than a row per line —
-           per-line flexboxes each pick their own marker width and nothing lines up. -->
-      <div
-        data-test="tip-foot"
-        class="grid flex-1 grid-cols-[auto_1fr] content-start items-center gap-x-2 gap-y-0.5 p-2 text-sm"
-        :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
-      >
-        <!-- The flag in a chip of its own: on a saturated player colour a bare emoji sits in the
-             background instead of on it. Barely rounded, tight padding — it is a marker beside the
-             name, not a second name. Outside the strike-through, which is about the tip, not the
-             country. -->
-        <span
-          v-if="tile.flag"
-          data-test="tip-country"
-          class="justify-self-center rounded-sm bg-neutral-100 px-1 leading-5"
-          >{{ tile.flag }}</span
+           Two columns inside each block, one grid each: marker and text, so the flag and every
+           thumb below it share one edge and the names share the other. Per-line flexboxes each
+           pick their own marker width and nothing lines up. -->
+      <div data-test="tip-foot" class="flex flex-1 flex-col text-sm">
+        <div
+          data-test="tip-owner"
+          class="grid grid-cols-[auto_1fr] items-center gap-x-2 px-2 py-1.5"
+          :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
         >
-        <span v-else />
-        <!-- A struck tip says so by striking the name through. No sentence beside it: the line is
-             already the sentence, and it stays readable at a glance across a grid of them. -->
-        <span
-          data-test="tip-name"
-          class="truncate font-medium"
-          :class="{ 'line-through': tile.struck }"
-          >{{ tile.name }}</span
-        >
+          <!-- The flag in a chip of its own: on a saturated player colour a bare emoji sits in the
+               background instead of on it. Barely rounded, tight padding — it is a marker beside
+               the name, not a second name. Outside the strike-through, which is about the tip, not
+               the country. -->
+          <span
+            v-if="tile.flag"
+            data-test="tip-country"
+            class="justify-self-center rounded-sm bg-neutral-100 px-1 leading-5"
+            >{{ tile.flag }}</span
+          >
+          <span v-else />
+          <!-- A struck tip says so by striking the name through. No sentence beside it: the line is
+               already the sentence, and it stays readable at a glance across a grid of them. -->
+          <span
+            data-test="tip-name"
+            class="truncate font-medium"
+            :class="{ 'line-through': tile.struck }"
+            >{{ tile.name }}</span
+          >
+        </div>
 
         <!-- The voters by name, which is the whole brake on casual flagging: a ballot here is
              never anonymous. One row each rather than a comma list — a tile is half a phone wide,
@@ -246,24 +246,29 @@ function toggleOverride(tile: TipTile, value: boolean): void {
              The same two icons the buttons above carry, so a name here reads as the ballot it was.
              An override does not remove the names it beat either; it strikes them through, so what
              the round decided stays readable beside the verdict that overruled it. -->
-        <template v-for="vote in tile.confirms" :key="`c-${vote.userId}`">
-          <IconThumbsUp aria-hidden="true" class="size-3.5 justify-self-center" />
-          <span
-            data-test="tip-confirms"
-            class="truncate text-xs"
-            :class="{ 'line-through': tile.adminOverride === false }"
-            >{{ vote.username }}</span
-          >
-        </template>
-        <template v-for="vote in tile.flags" :key="`f-${vote.userId}`">
-          <IconThumbsDown aria-hidden="true" class="size-3.5 justify-self-center" />
-          <span
-            data-test="tip-flags"
-            class="truncate text-xs"
-            :class="{ 'line-through': tile.adminOverride === true }"
-            >{{ vote.username }}</span
-          >
-        </template>
+        <div
+          data-test="tip-votes"
+          class="grid flex-1 grid-cols-[auto_1fr] content-start items-center gap-x-2 gap-y-0.5 bg-neutral-100 px-2 pt-2.5 pb-2 text-neutral-700"
+        >
+          <template v-for="vote in tile.confirms" :key="`c-${vote.userId}`">
+            <IconThumbsUp aria-hidden="true" class="size-3.5 justify-self-center" />
+            <span
+              data-test="tip-confirms"
+              class="truncate text-xs"
+              :class="{ 'line-through': tile.adminOverride === false }"
+              >{{ vote.username }}</span
+            >
+          </template>
+          <template v-for="vote in tile.flags" :key="`f-${vote.userId}`">
+            <IconThumbsDown aria-hidden="true" class="size-3.5 justify-self-center" />
+            <span
+              data-test="tip-flags"
+              class="truncate text-xs"
+              :class="{ 'line-through': tile.adminOverride === true }"
+              >{{ vote.username }}</span
+            >
+          </template>
+        </div>
       </div>
     </div>
   </div>
