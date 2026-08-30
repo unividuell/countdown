@@ -8,6 +8,8 @@
  * the others, and would give the grid a reason to reach into scoring it does not need.
  */
 import type { RoundReview } from '@/rounds/review'
+import InfoBox from '@/ui/InfoBox.vue'
+import SpotObjectReviewRules from './SpotObjectReviewRules.vue'
 import SpotObjectScoreboard from './SpotObjectScoreboard.vue'
 import SpotObjectTipGrid from './SpotObjectTipGrid.vue'
 import type { ScoreRow, TipTile } from './tips'
@@ -25,6 +27,12 @@ const props = defineProps<{
 <template>
   <div data-test="spot-reveal" class="flex flex-col gap-6">
     <SpotObjectTipGrid :tiles="props.tiles" :can-vote="props.canVote" :review="props.review" />
+    <!-- Between the two: it explains the grid above it, and the scoreboard stays the last word. -->
+    <InfoBox storage-key="spot-object-review">
+      <template #abstract>Bewertet die Tipps der anderen.</template>
+      <SpotObjectReviewRules />
+    </InfoBox>
+
     <SpotObjectScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
   </div>
 </template>

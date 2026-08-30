@@ -102,6 +102,19 @@ describe('SpotObjectGame', () => {
     expect(reviewing.get('[data-test="spot-term"]').text()).toContain('Roter Briefkasten')
   })
 
+  /** Two boxes, one per face: how to play while playing, how to judge while judging. */
+  it('explains the game on the board and the review on the reveal', () => {
+    mockStreetView()
+
+    const playing = mountGame()
+    expect(playing.get('[data-test="info-box"]').text()).toContain('irgendwo auf der Welt')
+    expect(playing.text()).not.toContain('Daumen')
+
+    const reviewing = mountGame({ entries: [MINE], mineUserId: 'mine' })
+    expect(reviewing.text()).toContain('Daumen')
+    expect(reviewing.text()).not.toContain('Spielleiter')
+  })
+
   it('emits the tip the board produced', async () => {
     mockStreetView()
     const wrapper = mountGame()

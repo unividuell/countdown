@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /**
- * The object to find, as a band across the whole card.
+ * The object to find, as a chip.
  *
- * Mounted by `SpotObjectGame` above whichever face is showing, not by the board: the term is what
- * the round *is*, so it has to read the same while somebody searches and while everybody judges —
- * same words, same place, no re-reading between the two.
+ * Mounted by `SpotObjectGame` in both faces, not by the board: the term is what the round *is*, so
+ * it has to read the same while somebody searches and while everybody judges — same words, same
+ * shape, no re-reading between the two.
  *
- * Light, never dark: it sits directly under the card's own black header band, and a dark term on a
- * dark band disappeared into it. Larger than body text for the same reason — this is the one
- * sentence everything else on the card refers back to.
+ * A chip and not a band: a band the width of the card cut the card in two, once between the header
+ * and the map and once between the header and the reveal. Floating, the map runs past it on both
+ * sides and the reveal's white surface stays one surface up to the header.
  */
 defineProps<{ term: string }>()
 </script>
@@ -16,7 +16,7 @@ defineProps<{ term: string }>()
 <template>
   <p
     data-test="spot-term"
-    class="border-b border-neutral-200 bg-neutral-100 px-4 py-3 text-center text-base font-semibold text-neutral-900 select-none"
+    class="mx-auto w-fit max-w-full truncate rounded-full bg-neutral-100 px-4 py-1.5 text-base font-semibold text-neutral-900 shadow select-none"
   >
     „{{ term }}“
   </p>

@@ -11,7 +11,9 @@ import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
+import InfoBox from '@/ui/InfoBox.vue'
 import SpotObjectBoard from './SpotObjectBoard.vue'
+import SpotObjectRules from './SpotObjectRules.vue'
 import SpotObjectReveal from './SpotObjectReveal.vue'
 import SpotObjectTerm from './SpotObjectTerm.vue'
 import { scoreRows, tipTiles } from './tips'
@@ -74,21 +76,30 @@ watch(played, (now, before) => {
     <!-- The same band either way, in the only two places it can be: over the map while somebody
          searches, so the search keeps the whole card, and in the card's own flow at the reveal,
          where there is no map left to lie over. -->
-    <template v-if="revealed">
+    <div v-if="revealed" class="flex flex-col gap-4 p-4">
       <SpotObjectTerm :term="payload.term" />
+      <SpotObjectReveal
+        :tiles="tiles"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+        :can-vote="played"
+        :review="props.review"
+      />
+    </div>
+    <template v-else>
+      <SpotObjectBoard :disabled="props.disabled" @guess="(value) => emit('guess', value)">
+        <SpotObjectTerm :term="payload.term" class="mt-3" />
+      </SpotObjectBoard>
+
+      <!-- Below the map, the way `FindPatternBoard` puts its own rules below the field: the
+           explanation is for whoever wants it, and the board is for everyone. -->
       <div class="p-4">
-        <SpotObjectReveal
-          :tiles="tiles"
-          :rows="rows"
-          :live="live"
-          :animate="hasRevealedLive"
-          :can-vote="played"
-          :review="props.review"
-        />
+        <InfoBox storage-key="spot-object">
+          <template #abstract>Finde den gesuchten Gegenstand irgendwo auf der Welt.</template>
+          <SpotObjectRules />
+        </InfoBox>
       </div>
     </template>
-    <SpotObjectBoard v-else :disabled="props.disabled" @guess="(value) => emit('guess', value)">
-      <SpotObjectTerm :term="payload.term" />
-    </SpotObjectBoard>
   </div>
 </template>
