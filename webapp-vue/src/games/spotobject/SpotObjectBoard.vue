@@ -8,7 +8,7 @@
  * Knows nothing about the round or the lab — it is told whether it is locked, and it hands back
  * the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
-import { onMounted, useTemplateRef } from 'vue'
+import { onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { useViewportFill } from '@/ui/useViewportFill'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
@@ -19,6 +19,12 @@ import { useStreetView } from './useStreetView'
 const STRIP = 48
 /** Below this the map is useless anyway, and overflowing beats a letterbox. */
 const MIN_HEIGHT = 320
+/** The ring's own radius: farther out than this, a press is a press on the map. */
+const RING_RADIUS = 24
+/** Movement a press may still carry before it counts as the start of a pan. */
+const TAP_SLOP = 8
+/** How long a press waits to find out whether it was the first half of a double click. */
+const DOUBLE_TAP_MS = 280
 
 const props = defineProps<{ disabled: boolean }>()
 
@@ -32,8 +38,70 @@ const frame = useTemplateRef<HTMLElement>('frame')
 const filled = useViewportFill(frame, { strip: STRIP, min: MIN_HEIGHT })
 
 onMounted(() => {
-  if (stage.value) void mount(stage.value)
+  if (!stage.value) return
+  void mount(stage.value)
+  watchCentreTap(stage.value)
 })
+
+onUnmounted(() => cancelPending())
+
+/**
+ * The press on the ring, read off the map itself rather than taken by a button on top of it.
+ *
+ * A button there is an opaque hit target, and the centre of a map is where the map's own gestures
+ * live: a double click zooms, the wheel zooms, a drag pans. All three broke — the wheel one
+ * scrolled the *page* instead. So the ring takes no pointer events at all, everything reaches
+ * Google untouched, and only a press that is unmistakably ours is claimed back here.
+ *
+ * Unmistakably ours means: it did not travel, it landed inside the ring, and no second press
+ * followed. That wait is what makes the double click work again — Google zooms on it either way,
+ * and we simply drop the action we had scheduled.
+ *
+ * Captured, not bubbled: Google stops these events on their way up to run its own gestures, and
+ * the stage is the outermost element, so its capture listener is the one nothing can sit in front
+ * of.
+ */
+let pressedAt: { x: number; y: number } | null = null
+let pending: ReturnType<typeof setTimeout> | null = null
+
+function cancelPending(): void {
+  if (pending === null) return
+  clearTimeout(pending)
+  pending = null
+}
+
+function withinRing(element: HTMLElement, x: number, y: number): boolean {
+  const box = element.getBoundingClientRect()
+  return Math.hypot(x - (box.left + box.width / 2), y - (box.top + box.height / 2)) <= RING_RADIUS
+}
+
+function watchCentreTap(element: HTMLElement): void {
+  element.addEventListener(
+    'pointerdown',
+    (event) => {
+      cancelPending()
+      pressedAt = { x: event.clientX, y: event.clientY }
+    },
+    { capture: true },
+  )
+
+  element.addEventListener(
+    'pointerup',
+    (event) => {
+      const from = pressedAt
+      pressedAt = null
+      if (from === null || props.disabled || pano.visible || pegmanDragging.value) return
+      if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > TAP_SLOP) return
+      if (!withinRing(element, event.clientX, event.clientY)) return
+
+      pending = setTimeout(() => {
+        pending = null
+        toStreetView()
+      }, DOUBLE_TAP_MS)
+    },
+    { capture: true },
+  )
+}
 
 // Asked at the click, not read off state: the direction the player turned to is the tip.
 function submitGuess(): void {
@@ -60,19 +128,24 @@ function submitGuess(): void {
     <SpotObjectCrosshair />
 
     <!--
-      The crosshair itself, pressed. A ring around it and nothing more: the mark underneath is
-      already the aim, the ring only says it can be touched. The second way in, not the only one —
-      it reaches the 50 m `setPosition` is fixed at, and the Pegman covers everything past that.
+      The crosshair itself, pressed. A ring around the mark and nothing more: the mark is already
+      the aim, the ring only says it can be touched. The second way in, not the only one — it
+      reaches the 50 m `setPosition` is fixed at, and the Pegman covers everything past that.
+
+      `pointer-events-none`, with the press read off the map by `watchCentreTap`: as a hit target
+      this ring shadowed the map's own gestures at the one spot they matter most. It stays a real
+      button all the same — focusable, and `@click` still fires from the keyboard, which is the one
+      path no pointer gesture stands in for.
 
       Gone while the Pegman is in the air: it sits exactly where a dropped Pegman is most likely to
-      land, and 48px of button in the way of that gesture is worse than no shortcut at all.
+      land, and a ring around that spot reads as a target of its own.
     -->
     <button
       v-if="!pano.visible && !pegmanDragging"
       type="button"
       data-test="spot-enter"
       aria-label="Hier in Street View einsteigen"
-      class="absolute top-1/2 left-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-white/80 shadow-[0_0_3px_rgba(0,0,0,0.5)] disabled:cursor-default disabled:opacity-40"
+      class="pointer-events-none absolute top-1/2 left-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 shadow-[0_0_3px_rgba(0,0,0,0.5)] disabled:opacity-40"
       :disabled="props.disabled"
       @click="toStreetView"
     />

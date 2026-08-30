@@ -149,8 +149,19 @@ describe('SpotObjectBoard', () => {
     expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
   })
 
-  /** The shortcut past the Pegman's drag, which on a phone hides its own target under the finger. */
-  it('enters Street View by pressing the crosshair, and only while there is a map to aim at', async () => {
+  /**
+   * As a hit target the ring shadowed the map's own gestures at the one spot they matter most: a
+   * double click there no longer zoomed, and a wheel over it scrolled the page instead of the map.
+   * It takes no pointer events at all now — the press is read off the map below.
+   */
+  it('lets the map keep every gesture at its own centre', async () => {
+    const w = mountBoard()
+
+    expect(w.get('[data-test="spot-enter"]').classes()).toContain('pointer-events-none')
+  })
+
+  /** The one path no pointer gesture stands in for — the ring is still a real button. */
+  it('enters Street View from the keyboard, and only while there is a map to aim at', async () => {
     const double = mockStreetView({ visible: false })
     const w = mountBoard()
 
@@ -161,6 +172,76 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
+  })
+
+  describe('the press on the crosshair', () => {
+    /**
+     * happy-dom measures every element as 0×0 at the origin, so the stage's centre is (0,0) and a
+     * press is „inside the ring“ by how far its own coordinates are from there.
+     */
+    function press(w: ReturnType<typeof mountBoard>, from: [number, number], to = from): void {
+      const stage = w.get('[data-test="spot-map"]').element
+      stage.dispatchEvent(new MouseEvent('pointerdown', { clientX: from[0], clientY: from[1] }))
+      stage.dispatchEvent(new MouseEvent('pointerup', { clientX: to[0], clientY: to[1] }))
+    }
+
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    it('waits out the double click before acting on a single one', () => {
+      const double = mockStreetView({ visible: false })
+      const w = mountBoard()
+
+      press(w, [0, 0])
+      // Google zooms on a double click at this very spot, so nothing may have happened yet.
+      expect(double.toStreetView).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(300)
+      expect(double.toStreetView).toHaveBeenCalledOnce()
+    })
+
+    it('hands a double click to the map by dropping its own action', () => {
+      const double = mockStreetView({ visible: false })
+      const w = mountBoard()
+
+      press(w, [0, 0])
+      press(w, [0, 0])
+      vi.advanceTimersByTime(1000)
+
+      // Twice scheduled, twice: the first cancelled by the second press, the second still standing
+      // — one entry, not two, and the zoom Google ran in between is untouched.
+      expect(double.toStreetView).toHaveBeenCalledOnce()
+    })
+
+    it('leaves a pan that began at the centre alone', () => {
+      const double = mockStreetView({ visible: false })
+      const w = mountBoard()
+
+      press(w, [0, 0], [0, 40])
+      vi.advanceTimersByTime(1000)
+
+      expect(double.toStreetView).not.toHaveBeenCalled()
+    })
+
+    it('claims only presses inside the ring', () => {
+      const double = mockStreetView({ visible: false })
+      const w = mountBoard()
+
+      press(w, [120, 90])
+      vi.advanceTimersByTime(1000)
+
+      expect(double.toStreetView).not.toHaveBeenCalled()
+    })
+
+    it('takes no press while the round is locked', () => {
+      const double = mockStreetView({ visible: false })
+      const w = mountBoard(true)
+
+      press(w, [0, 0])
+      vi.advanceTimersByTime(1000)
+
+      expect(double.toStreetView).not.toHaveBeenCalled()
+    })
   })
 
   /**
