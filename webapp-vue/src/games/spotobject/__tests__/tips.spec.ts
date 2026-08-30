@@ -39,6 +39,26 @@ describe('tipTiles', () => {
     expect(tiles[0]?.flags).toEqual([vote('c', 'Caro', 'FLAG')])
   })
 
+  /**
+   * `entries` arrives mine-first, so every player used to see the same round in a different
+   * arrangement and nobody could point at „the third one“ and be understood. No order is more
+   * right than another here — the scoreboard below already ranks — so the only requirement is
+   * that everybody gets the same one.
+   */
+  it('puts the tips in one order, the same for every viewer', () => {
+    const entries = [
+      entry({ userId: 'c', username: 'Caro' }),
+      entry({ userId: 'a', username: 'Anna' }),
+      entry({ userId: 'b', username: 'Bianca' }),
+    ]
+
+    const seenByAnna = tipTiles({ entries, mineUserId: 'a' }).map((tile) => tile.name)
+    const seenByCaro = tipTiles({ entries, mineUserId: 'c' }).map((tile) => tile.name)
+
+    expect(seenByAnna).toEqual(['Anna', 'Bianca', 'Caro'])
+    expect(seenByCaro).toEqual(seenByAnna)
+  })
+
   it('marks the viewer’s own tile', () => {
     const tiles = tipTiles({
       entries: [entry({ userId: 'a' }), entry({ userId: 'b' })],

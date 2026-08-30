@@ -97,9 +97,23 @@ describe('SpotObjectBoard', () => {
   it('keeps its controls out of Google’s bottom band', () => {
     const w = mountBoard()
 
-    const row = w.get('[data-test="spot-actions"]')
-    expect(row.classes()).toContain('top-0')
-    expect(row.classes()).not.toContain('bottom-0')
+    // The row sits inside the stack that is anchored to the top edge, below whatever the slot put
+    // there — so what has to hold is that the stack starts at the top and nothing reaches the
+    // bottom.
+    const stack = w.get('[data-test="spot-actions"]').element.parentElement!
+    expect(stack.className).toContain('top-0')
+    expect(w.html()).not.toContain('bottom-0')
+  })
+
+  /** The term rides over the map while searching; the reveal puts the same band in the card. */
+  it('stacks the slot above its own controls', () => {
+    const w = mount(SpotObjectBoard, {
+      props: { disabled: false },
+      slots: { default: '<p data-test="slotted">„Rosa Gartenzwerg“</p>' },
+    })
+
+    const stack = w.get('[data-test="spot-actions"]').element.parentElement!
+    expect(stack.firstElementChild!.getAttribute('data-test')).toBe('slotted')
   })
 
   /**

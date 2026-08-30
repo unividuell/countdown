@@ -210,12 +210,19 @@ function toggleOverride(tile: TipTile, value: boolean): void {
       >
         <!-- A struck tip says so by striking the name through. No sentence beside it: the line is
              already the sentence, and it stays readable at a glance across a grid of them. -->
-        <p
-          data-test="tip-name"
-          class="truncate font-medium"
-          :class="{ 'line-through': tile.struck }"
-        >
-          <span v-if="tile.flag">{{ tile.flag }}</span> {{ tile.name }}
+        <p class="flex items-center gap-1.5 font-medium">
+          <!-- The flag in a pill of its own: on a saturated player colour a bare emoji sits in the
+               background instead of on it. Tight padding — it is a marker beside the name, not a
+               second name. Outside the strike-through, which is about the tip, not the country. -->
+          <span
+            v-if="tile.flag"
+            data-test="tip-country"
+            class="shrink-0 rounded-full bg-neutral-100 px-1.5 leading-5"
+            >{{ tile.flag }}</span
+          >
+          <span data-test="tip-name" class="truncate" :class="{ 'line-through': tile.struck }">{{
+            tile.name
+          }}</span>
         </p>
 
         <!-- The voters by name, which is the whole brake on casual flagging: a ballot here is

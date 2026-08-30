@@ -33,11 +33,23 @@ export interface TipTile {
   mine: boolean
 }
 
+/**
+ * By name, and by user id where two share one.
+ *
+ * There is no *good* order for tips — none of them is more right than another, and the scoreboard
+ * below already ranks. What there has to be is one order: `entries` arrives mine-first, so every
+ * player saw the same round in a different arrangement, and nobody could point at „the third one“
+ * and be understood. Alphabetical is arbitrary, stated, and the same for everybody.
+ */
+function byName(a: TipTile, b: TipTile): number {
+  return a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId)
+}
+
 export function tipTiles(input: {
   entries: readonly GameEntry[]
   mineUserId: string | null
 }): TipTile[] {
-  return input.entries.map((entry) => {
+  const tiles: TipTile[] = input.entries.map((entry) => {
     const mineIsA = (value: Vote) =>
       input.mineUserId !== null &&
       entry.votes.some((vote) => vote.value === value && vote.userId === input.mineUserId)
@@ -57,6 +69,8 @@ export function tipTiles(input: {
       mine: entry.userId === input.mineUserId,
     }
   })
+
+  return tiles.sort(byName)
 }
 
 export interface ScoreRow {

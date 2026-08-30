@@ -62,40 +62,49 @@ function submitGuess(): void {
       </p>
     </div>
 
-    <!-- Both controls in the top row: the whole bottom band belongs to Google. Its logo is fixed
-         bottom-left in both the map and the panorama and cannot be moved or hidden, the
-         „Map data ©… / Terms“ text sits bottom-right — covering any of it breaks the terms of
-         service. `pointer-events-none` on the row so it never steals a pan gesture from the map
-         through the gap between the two. -->
-    <div
-      data-test="spot-actions"
-      class="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3"
-    >
-      <!-- Left, and an arrow: this is the back action of the pair, and back belongs where every
+    <!--
+      Everything of ours stacks down from the top edge, never up from the bottom: the whole bottom
+      band belongs to Google. Its logo is fixed bottom-left in both the map and the panorama and
+      cannot be moved or hidden, the „Map data ©… / Terms“ text sits bottom-right — covering any of
+      it breaks the terms of service.
+
+      The slot is the round's term. It rides here rather than above the board so that searching
+      spends the whole card on the map, while the reveal — where there is no map to spend it on —
+      puts the same band in the card's own flow. One component, one look, two places.
+
+      `pointer-events-none` throughout, re-armed per control: a gap between two pills must pan the
+      map, not swallow the gesture, and the term band must not swallow it either.
+    -->
+    <div class="pointer-events-none absolute inset-x-0 top-0 flex flex-col">
+      <slot />
+
+      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+        <!-- Left, and an arrow: this is the back action of the pair, and back belongs where every
            other back control on a phone is. The word stays beside the arrow — „Weltkarte“ is the
            destination, and an arrow alone would not say which back. -->
-      <button
-        v-if="pano.visible"
-        type="button"
-        data-test="spot-world-map"
-        class="pointer-events-auto flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-white pr-4 pl-3 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
-        :disabled="props.disabled"
-        @click="toWorldMap"
-      >
-        <IconArrowLeft aria-hidden="true" class="h-4 w-4" />
-        Weltkarte
-      </button>
-      <span v-else />
+        <button
+          v-if="pano.visible"
+          type="button"
+          data-test="spot-world-map"
+          class="pointer-events-auto flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-white pr-4 pl-3 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled"
+          @click="toWorldMap"
+        >
+          <IconArrowLeft aria-hidden="true" class="h-4 w-4" />
+          Weltkarte
+        </button>
+        <span v-else />
 
-      <button
-        type="button"
-        data-test="spot-guess-button"
-        class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
-        :disabled="props.disabled || !pano.visible"
-        @click="submitGuess"
-      >
-        Gefunden
-      </button>
+        <button
+          type="button"
+          data-test="spot-guess-button"
+          class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled || !pano.visible"
+          @click="submitGuess"
+        >
+          Gefunden
+        </button>
+      </div>
     </div>
   </div>
 </template>

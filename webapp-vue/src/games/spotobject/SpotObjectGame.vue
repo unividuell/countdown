@@ -71,18 +71,24 @@ watch(played, (now, before) => {
        below it run edge to edge. The reveal pays the padding back: a grid and a scoreboard want
        the card's gutter, only the two full-bleed things do not. -->
   <div v-else class="-m-4">
-    <SpotObjectTerm :term="payload.term" />
-
-    <div v-if="revealed" class="p-4">
-      <SpotObjectReveal
-        :tiles="tiles"
-        :rows="rows"
-        :live="live"
-        :animate="hasRevealedLive"
-        :can-vote="played"
-        :review="props.review"
-      />
-    </div>
-    <SpotObjectBoard v-else :disabled="props.disabled" @guess="(value) => emit('guess', value)" />
+    <!-- The same band either way, in the only two places it can be: over the map while somebody
+         searches, so the search keeps the whole card, and in the card's own flow at the reveal,
+         where there is no map left to lie over. -->
+    <template v-if="revealed">
+      <SpotObjectTerm :term="payload.term" />
+      <div class="p-4">
+        <SpotObjectReveal
+          :tiles="tiles"
+          :rows="rows"
+          :live="live"
+          :animate="hasRevealedLive"
+          :can-vote="played"
+          :review="props.review"
+        />
+      </div>
+    </template>
+    <SpotObjectBoard v-else :disabled="props.disabled" @guess="(value) => emit('guess', value)">
+      <SpotObjectTerm :term="payload.term" />
+    </SpotObjectBoard>
   </div>
 </template>

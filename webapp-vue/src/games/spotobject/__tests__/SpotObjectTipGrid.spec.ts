@@ -88,6 +88,16 @@ describe('SpotObjectTipGrid', () => {
     expect(wrapper.get('[data-test="tip-foot"]').classes()).toContain('flex-1')
   })
 
+  /** On a saturated player colour a bare emoji sits in the background rather than on it. */
+  it('sets the country off from the player colour, outside the strike-through', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', struck: true })])
+
+    const country = wrapper.get('[data-test="tip-country"]')
+    expect(country.text()).toBe('🇩🇪')
+    expect(country.classes()).not.toContain('line-through')
+    expect(wrapper.get('[data-test="tip-name"]').classes()).toContain('line-through')
+  })
+
   /** Half a phone wide: a comma list truncated at the second name and lost the rest of the vote. */
   it('gives every voter a line of their own', () => {
     const { wrapper } = mountGrid([
