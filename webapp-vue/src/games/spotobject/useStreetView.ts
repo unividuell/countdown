@@ -57,14 +57,19 @@ export interface UseStreetView {
   error: Ref<string | null>
   mount: (element: HTMLElement) => Promise<void>
   pano: StreetViewState
+  /** True while the last attempt found nothing and the map has not been moved since. */
+  noCoverage: Ref<boolean>
   /** The tip for the view on screen right now, or `null` while no panorama is open. */
   currentTip: () => SpotObjectTip | null
+  toStreetView: () => void
   toWorldMap: () => void
 }
 
 export function useStreetView(): UseStreetView {
   const error = ref<string | null>(null)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
+  const noCoverage = ref(false)
+  let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
 
   async function mount(element: HTMLElement): Promise<void> {
@@ -72,24 +77,21 @@ export function useStreetView(): UseStreetView {
       const config = await apiFetch<{ mapsApiKey: string }>('/api/spot-object/config')
       await loadMapsApi(config.mapsApiKey)
 
-      const map = new google.maps.Map(element, {
+      map = new google.maps.Map(element, {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         gestureHandling: 'greedy',
-        streetViewControl: true,
-        // Half way down the right edge rather than the API's own bottom-right default: on a phone
-        // held in the right hand, the bottom-right corner is under the thumb's own knuckle and the
-        // Pegman there goes unnoticed. `position` is the only option this control accepts —
-        // `sources: [OUTDOOR]` is rejected outright ("OUTDOOR source not supported on
-        // StreetViewControlOptions") and takes the whole control down with it, leaving a map with
-        // no way into Street View at all.
-        streetViewControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
+        // Google's Pegman is drag-only, and a drag on a phone hides its own target under the
+        // finger — you cannot see the spot you are dropping onto. `toStreetView` puts the same
+        // walk one press away, aimed by the crosshair instead, so the control itself is off.
+        streetViewControl: false,
         mapTypeControl: false,
         fullscreenControl: false,
       })
 
       // Coverage stays on permanently: saying „ich suche jetzt in Barcelona“ needs to see where
-      // there is anything to walk into. Takes no options of its own.
+      // there is anything to walk into — and since the Pegman went away it is also what the
+      // crosshair is aimed at. Takes no options of its own.
       new google.maps.StreetViewCoverageLayer().setMap(map)
 
       // The map's own default panorama — never `new google.maps.StreetViewPanorama(...)`.
@@ -113,6 +115,19 @@ export function useStreetView(): UseStreetView {
       panorama.addListener('pano_changed', () => {
         pano.panoId = panorama?.getPano() || null
       })
+
+      // A miss is answered by us rather than by Google's grey „no imagery“ panel: the panorama
+      // goes back out of sight and the crosshair says there is nothing to walk into here.
+      panorama.addListener('status_changed', () => {
+        if (!panorama || panorama.getStatus() === 'OK') return
+        panorama.setVisible(false)
+        noCoverage.value = true
+      })
+
+      // „Hier“ is the whole of that notice, so moving the map is what withdraws it.
+      map.addListener('center_changed', () => {
+        noCoverage.value = false
+      })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
@@ -131,10 +146,28 @@ export function useStreetView(): UseStreetView {
     return { panoId, heading: pov.heading, pitch: pov.pitch, zoom: panorama.getZoom() }
   }
 
-  /** Whoever lands on a single photo — the Pegman drops onto indoor and user shots too — uses this to get out. */
+  /**
+   * Into Street View at the map's centre — the point under the crosshair.
+   *
+   * Nothing new is asked of Google: `setPosition` on the map's own panorama is the call a landing
+   * Pegman makes, so this costs exactly what dragging cost. `setPosition` takes no radius and
+   * searches the standard 50 m, which is why the coverage layer stays on: aim at a blue line at a
+   * zoom where you can see it, and the press lands.
+   */
+  function toStreetView(): void {
+    const center = map?.getCenter()
+    // A second press without moving would ask the same question again, and a status that does not
+    // change fires no event to hide the panorama with — Google's own „no imagery“ panel would be
+    // the answer instead of ours.
+    if (!panorama || !center || noCoverage.value) return
+    panorama.setPosition(center)
+    panorama.setVisible(true)
+  }
+
+  /** Whoever lands on a single photo — indoor and user shots are found too — uses this to get out. */
   function toWorldMap(): void {
     panorama?.setVisible(false)
   }
 
-  return { error, mount, pano, currentTip, toWorldMap }
+  return { error, mount, pano, noCoverage, currentTip, toStreetView, toWorldMap }
 }

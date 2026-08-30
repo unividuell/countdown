@@ -16,14 +16,18 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   error: Ref<string | null>
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
+  noCoverage: Ref<boolean>
   currentTip: ReturnType<typeof vi.fn>
+  toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
 } {
   const double = {
     error: ref<string | null>(null),
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
+    noCoverage: ref(false),
     currentTip: vi.fn().mockReturnValue(null),
+    toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
   }
   vi.mocked(useStreetView).mockReturnValue(double)
@@ -125,6 +129,48 @@ describe('SpotObjectBoard', () => {
     const w = mountBoard()
 
     expect(w.get('[data-test="spot-map"]').classes()).toContain('isolate')
+  })
+
+  /**
+   * The crosshair is the aim for both halves of the board: on the map it is where the Pegman will
+   * land, in the panorama it is where the object has to be before „Gefunden“.
+   */
+  it('marks the centre of the stage in both halves', async () => {
+    const double = mockStreetView({ visible: false })
+    const w = mountBoard()
+
+    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+
+    double.pano.visible = true
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+  })
+
+  /** A drag on a phone hides its own target under the finger; a press on an aimed point does not. */
+  it('enters Street View by a press, and only while there is a map to aim at', async () => {
+    const double = mockStreetView({ visible: false })
+    const w = mountBoard()
+
+    await w.get('[data-test="spot-enter"]').trigger('click')
+    expect(double.toStreetView).toHaveBeenCalledOnce()
+
+    double.pano.visible = true
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
+  })
+
+  it('says when the aimed point has no panorama to walk into', async () => {
+    const double = mockStreetView()
+    const w = mountBoard()
+
+    expect(w.find('[data-test="spot-no-coverage"]').exists()).toBe(false)
+
+    double.noCoverage.value = true
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-no-coverage"]').exists()).toBe(true)
   })
 
   it('says so when the map could not be loaded', async () => {

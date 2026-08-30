@@ -98,6 +98,19 @@ describe('SpotObjectTipGrid', () => {
     expect(wrapper.get('[data-test="tip-votes"]').attributes('style')).toBeUndefined()
   })
 
+  /**
+   * The still is rendered around the heading and pitch that were submitted, so the object the
+   * player meant is the centre pixel — the same mark they aimed with lands back on it here. There
+   * is nothing to aim at on a tile for somebody who gave up.
+   */
+  it('marks what the player centred, and nothing where nobody did', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a' }), tile({ userId: 'b', tip: null })])
+
+    const tiles = wrapper.findAll('[data-test="tip-tile"]')
+    expect(tiles[0]!.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+    expect(tiles[1]!.find('[data-test="spot-crosshair"]').exists()).toBe(false)
+  })
+
   /** On a saturated player colour a bare emoji sits in the background rather than on it. */
   it('sets the country off from the player colour, outside the strike-through', () => {
     const { wrapper } = mountGrid([tile({ userId: 'a', struck: true })])

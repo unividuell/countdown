@@ -11,6 +11,8 @@
 import { onMounted, useTemplateRef } from 'vue'
 import { useViewportFill } from '@/ui/useViewportFill'
 import IconArrowLeft from '~icons/lucide/arrow-left'
+import IconPegman from '~icons/lucide/person-standing'
+import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
 
@@ -23,7 +25,7 @@ const props = defineProps<{ disabled: boolean }>()
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 
-const { currentTip, error, mount, pano, toWorldMap } = useStreetView()
+const { currentTip, error, mount, noCoverage, pano, toStreetView, toWorldMap } = useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
 const frame = useTemplateRef<HTMLElement>('frame')
@@ -48,9 +50,42 @@ function submitGuess(): void {
   >
     <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
          stacking context here those compete with our overlay row in the ROOT context and win —
-         the map mode's controls are modest enough that the row only vanishes once somebody drops
-         the Pegman. Isolating traps them where they belong. -->
+         the map mode's controls are modest enough that the row only vanishes once a panorama
+         opens. Isolating traps them where they belong. -->
     <div ref="stage" data-test="spot-map" class="stage absolute inset-0 isolate bg-neutral-200" />
+
+    <!-- The one mark, doing both jobs: on the map it is where the Pegman lands, in the panorama it
+         is where the object belongs before „Gefunden“. The reveal lays the same mark over the
+         stills, so what a player aimed at is what every reviewer looks at. -->
+    <SpotObjectCrosshair />
+
+    <!--
+      The Pegman as a press rather than a drag. A drag on a phone puts the finger on top of the
+      spot being aimed at, so the target is invisible for the whole gesture; here the crosshair
+      holds the aim and the thumb only confirms it. Right edge, vertically centred: reachable
+      without crossing the map, and out of the way of both top corners.
+    -->
+    <button
+      v-if="!pano.visible"
+      type="button"
+      data-test="spot-enter"
+      aria-label="Hier in Street View einsteigen"
+      class="absolute top-1/2 right-3 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+      :disabled="props.disabled"
+      @click="toStreetView"
+    >
+      <IconPegman aria-hidden="true" class="h-6 w-6" />
+    </button>
+
+    <!-- Right under the crosshair, because it is about that exact point. The blue lines are the
+         answer, so the notice points at them rather than apologising. -->
+    <p
+      v-if="noCoverage"
+      data-test="spot-no-coverage"
+      class="pointer-events-none absolute top-1/2 left-1/2 mt-8 w-max max-w-[80%] -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1.5 text-center text-xs text-white"
+    >
+      Keine Aufnahme hier — ziel auf eine blaue Linie.
+    </p>
 
     <div
       v-if="error"
@@ -108,16 +143,3 @@ function submitGuess(): void {
     </div>
   </div>
 </template>
-
-<!--
-  The Pegman's size is not in the Maps API — `streetViewControlOptions` takes a position and
-  nothing else — so this reaches for Google's own element by class. Deliberately a scale and
-  nothing more: if that class ever changes, the control comes back at its stock size, which is
-  the state this started from rather than a broken map.
--->
-<style scoped>
-.stage :deep(.gm-svpc) {
-  transform: scale(1.35);
-  transform-origin: center right;
-}
-</style>

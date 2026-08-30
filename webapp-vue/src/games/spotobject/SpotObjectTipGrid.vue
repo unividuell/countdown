@@ -15,6 +15,7 @@ import IconShieldBan from '~icons/lucide/shield-ban'
 import IconShieldCheck from '~icons/lucide/shield-check'
 import IconThumbsDown from '~icons/lucide/thumbs-down'
 import IconThumbsUp from '~icons/lucide/thumbs-up'
+import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import { googleUrl, shotUrl } from './types'
 import type { TipTile } from './tips'
 
@@ -87,6 +88,12 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         <p v-else class="flex h-full items-center justify-center text-xs text-neutral-500">
           aufgegeben
         </p>
+
+        <!-- The same mark the player aimed with, back on the frame they submitted: the still is
+             rendered around their heading and pitch, so the object they meant is the centre pixel
+             and nobody has to guess which of the things in shot the tip is about. Smaller than on
+             the board — half a phone wide, a full-size plus stops being a hint. -->
+        <SpotObjectCrosshair v-if="tile.tip" class="scale-75" />
 
         <!--
           Low on the left, but NOT in the corner: the corner is where Google burns its own wordmark

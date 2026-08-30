@@ -29,9 +29,12 @@ class FakePanorama {
   panoIdValue = 'initial-pano'
   pov = { heading: 0, pitch: 0 }
   zoomValue = 1
+  status = 'OK'
   private readonly handlers = new Map<string, Array<() => void>>()
 
   setOptions = vi.fn()
+  setPosition = vi.fn()
+  getStatus = vi.fn(() => this.status)
   setVisible = vi.fn((value: boolean) => {
     this.visible = value
   })
@@ -54,13 +57,26 @@ class FakePanorama {
 class FakeMap {
   static instances: FakeMap[] = []
   readonly panorama = new FakePanorama()
+  center: unknown = { lat: 48, lng: 11 }
+  private readonly handlers = new Map<string, Array<() => void>>()
+
   getStreetView = vi.fn(() => this.panorama)
+  getCenter = vi.fn(() => this.center)
+  addListener = vi.fn((event: string, callback: () => void) => {
+    const list = this.handlers.get(event) ?? []
+    list.push(callback)
+    this.handlers.set(event, list)
+  })
 
   constructor(
     readonly element: unknown,
     readonly options: Record<string, unknown>,
   ) {
     FakeMap.instances.push(this)
+  }
+
+  fire(event: string): void {
+    this.handlers.get(event)?.forEach((callback) => callback())
   }
 }
 
@@ -75,7 +91,6 @@ function installFakeGoogleMaps(): void {
   vi.stubGlobal('google', {
     maps: {
       Map: FakeMap,
-      ControlPosition: { RIGHT_CENTER: 7 },
       StreetViewCoverageLayer: FakeCoverageLayer,
       StreetViewPanorama: streetViewPanoramaCtor,
     },
@@ -137,20 +152,69 @@ describe('useStreetView', () => {
     expect(error.value).toBeNull()
   })
 
-  it('moves the Pegman off the corner and configures nothing else about it', async () => {
-    const { mount } = useStreetView()
+  /** Google's own Pegman is drag-only, and a drag on a phone hides the spot being aimed at. */
+  it('replaces the Pegman with a press on the crosshair’s point', async () => {
+    const { mount, toStreetView } = useStreetView()
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
     triggerScriptLoad(script)
     await pending
 
-    // `position` is the only key this control accepts. `sources: [OUTDOOR]` is the tempting one
-    // and the API throws on it while building the control — leaving a map with no Pegman, hence
-    // no way into Street View at all.
-    const options = FakeMap.instances[0]!.options
-    expect(options.streetViewControl).toBe(true)
-    expect(options.streetViewControlOptions).toEqual({ position: 7 })
+    const map = FakeMap.instances[0]!
+    expect(map.options.streetViewControl).toBe(false)
+
+    toStreetView()
+
+    // The map's own panorama, moved — not a constructed one, and not a service lookup: this is
+    // the call a landing Pegman made, so it costs what dragging cost.
+    expect(map.panorama.setPosition).toHaveBeenCalledWith(map.center)
+    expect(map.panorama.setVisible).toHaveBeenCalledWith(true)
+    expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
+  })
+
+  /** Otherwise the answer to a press over open water is Google's own grey „no imagery“ panel. */
+  it('takes back a panorama that found nothing, and says so', async () => {
+    const { mount, noCoverage } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const panorama = FakeMap.instances[0]!.panorama
+    panorama.status = 'ZERO_RESULTS'
+    panorama.fire('status_changed')
+
+    expect(panorama.setVisible).toHaveBeenCalledWith(false)
+    expect(noCoverage.value).toBe(true)
+  })
+
+  /**
+   * The notice is about one point, so it lives exactly as long as that point is under the
+   * crosshair — and until then a second press is refused, because asking the same question twice
+   * changes no status and so fires nothing to hide the panorama with.
+   */
+  it('holds the notice until the map moves, and refuses to ask twice', async () => {
+    const { mount, noCoverage, toStreetView } = useStreetView()
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const map = FakeMap.instances[0]!
+    map.panorama.status = 'ZERO_RESULTS'
+    map.panorama.fire('status_changed')
+
+    toStreetView()
+    expect(map.panorama.setPosition).not.toHaveBeenCalled()
+
+    map.fire('center_changed')
+    expect(noCoverage.value).toBe(false)
+
+    toStreetView()
+    expect(map.panorama.setPosition).toHaveBeenCalledWith(map.center)
   })
 
   it('turns the motion-tracking control off', async () => {

@@ -301,6 +301,19 @@ Overlay darüber — Begriff oben links, Aktionen unten. Kein Vollbildmodus.
   wo es überhaupt Abdeckung gibt (Google zeichnet die blauen Linien erst ab etwa Zoom 14).
 - Keine Ortssuche. Man darf wissen dürfen, wo Barcelona liegt.
 - Ein Weg **zurück zur Weltkarte** ist Pflicht.
+- **Ein Fadenkreuz in der exakten Mitte**, in beiden Hälften des Spielfelds dasselbe kleine weiße
+  Plus. Auf der Karte ist es das Ziel, im Panorama die Bildmitte, in die der Gegenstand gehört.
+- **Einstieg per Druck statt per Zug.** Googles Pegman lässt sich nur ziehen, und ein Zug auf dem
+  Telefon verdeckt sein eigenes Ziel mit dem Finger. Stattdessen `streetViewControl: false` und ein
+  eigener Knopf am rechten Rand: `panorama.setPosition(map.getCenter())` — derselbe Aufruf, den ein
+  landender Pegman macht, also unverändert kostenlos. Kein `StreetViewService`: der wäre eine neue
+  Kostenfläche für dieselbe Antwort. `setPosition` sucht ohne Radiusangabe 50 m weit; darum bleibt
+  die Abdeckungsebene an, sie ist das Zielkreuz-Futter.
+- **Ein Fehlgriff ist unsere Antwort, nicht Googles.** Findet sich nichts, meldet `status_changed`
+  etwas anderes als `OK`; das Panorama wird wieder ausgeblendet und unter dem Fadenkreuz steht, dass
+  hier nichts ist. Bis die Karte bewegt wird, bleibt die Meldung stehen und ein zweiter Druck ist
+  wirkungslos — dieselbe Frage ändert keinen Status und löst also nichts aus, was das graue
+  „no imagery“-Panel wieder wegräumen würde.
 
 ### Reveal-Face: drei Komponenten, nicht zwei
 
@@ -309,7 +322,10 @@ Overlay darüber — Begriff oben links, Aktionen unten. Kein Vollbildmodus.
 1. **`SpotObjectTipGrid.vue`** — neu, und ausdrücklich **nicht Teil des Scoreboards**. Ein
    **zweispaltiges Grid**, auch auf dem schmalsten Telefon zwei, weil der schnelle Überblick über
    alle Tipps sein Zweck ist. Pro Kachel: das Standbild, die Landesflagge, der Name, die Stimmen mit
-   Namen, ein Link nach Google. Ein gestrichener Tipp ist als solcher erkennbar.
+   Namen, ein Link nach Google. Ein gestrichener Tipp ist als solcher erkennbar. Über dem Standbild
+   liegt dasselbe Fadenkreuz wie beim Suchen: das Bild wird um die abgegebene Blickrichtung herum
+   gerendert, der gemeinte Gegenstand *ist* also das mittlere Pixel — niemand muss raten, welches
+   der Dinge im Bild der Tipp war.
 2. **`SpotObjectScoreboard.vue`** — isoliert und in derselben Form wie bei jedem anderen Spiel,
    neben `FindPatternScoreboard.vue`. Es zeigt, was ein Scoreboard hier zeigt; die Tipps zu rendern
    ist nicht seine Aufgabe.
@@ -436,6 +452,7 @@ Kacheln ohne Flagge, weil der Aufruf weich scheitert.
 - **Der verbleibende Geräteunterschied.** Ein breiteres Fenster zeigt bei gleicher Zoomstufe mehr
   Horizont. Die Breitenbeschränkung deckelt das auf dasselbe Maß, das jedes Spiel hier hat, und
   weiter geht es nicht — akzeptiert, nicht offen.
-- **Pegman-Ziele filtern.** `sources: [OUTDOOR]` weist das Street-View-Control zurück — es wirft
-  beim Bau des Controls und hinterlässt eine Karte ganz ohne Pegman; im Betrieb gemessen. Die
-  Option bleibt ungesetzt. Wer auf einem Einzelfoto landet, geht zurück zur Weltkarte.
+- **Einstiegsziele filtern.** `sources: [OUTDOOR]` weist das Street-View-Control zurück — es wirft
+  beim Bau des Controls und hinterlässt eine Karte ganz ohne Pegman; im Betrieb gemessen. Seit der
+  Einstieg über `setPosition` läuft, ist das Control weg, aber die Filterung auch: der Aufruf nimmt
+  keine Quellenangabe. Wer auf einem Einzelfoto landet, geht zurück zur Weltkarte.
