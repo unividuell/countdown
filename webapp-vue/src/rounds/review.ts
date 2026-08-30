@@ -12,6 +12,15 @@ import type { Vote } from '@/api/types'
  * Both resolve with the round replaced; neither rejects.
  */
 export interface RoundReview {
+  /**
+   * Whether this round still takes ballots at all. The server's window is „the running round or
+   * the one immediately before it“ and it refuses anything older — without this the grid offered
+   * controls for a round nobody could vote on any more, and every press came back a 404.
+   *
+   * Known by whoever loaded the round: the running round is open, and in the history only the
+   * entry point — `previousRoundNumber` — is.
+   */
+  open: boolean
   /** Whether this viewer may set the game master's override. The server decides, never the client. */
   canOverride: boolean
   /** `null` withdraws the ballot — one verb for casting, changing and taking back. */

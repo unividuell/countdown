@@ -48,6 +48,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       awardRule: 'ALL_QUALIFYING',
       disabled: false,
       review: {
+        open: true,
         canOverride: false,
         vote: vi.fn().mockResolvedValue(undefined),
         override: vi.fn().mockResolvedValue(undefined),

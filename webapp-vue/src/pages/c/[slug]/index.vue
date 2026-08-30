@@ -43,6 +43,8 @@ const assetUrl = (key: number): string =>
  * derived locally — the server's own re-evaluation is what the grid then renders.
  */
 const review = computed<RoundReview>(() => ({
+  // The running round: always inside the server's review window.
+  open: true,
   canOverride: round.value?.canOverride ?? false,
   vote: (userId, value) =>
     ballot(() => castVote(community.value.slug, roundNumber(), userId, value)),

@@ -83,6 +83,7 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
 
 function aReview(): RoundReview {
   return {
+    open: true,
     canOverride: false,
     vote: vi.fn().mockResolvedValue(undefined),
     override: vi.fn().mockResolvedValue(undefined),

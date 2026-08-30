@@ -103,6 +103,7 @@ async function run(
  * the lab's round key, the same way a round number is the product's.
  */
 const review = computed<RoundReview>(() => ({
+  open: true,
   canOverride: round.value?.canOverride ?? false,
   vote: (userId, value) => run((slug, game, s, p) => castLabVote(slug, game, s, p, userId, value)),
   override: (userId, value) =>

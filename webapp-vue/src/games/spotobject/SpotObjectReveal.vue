@@ -30,7 +30,7 @@ const props = defineProps<{
     <!-- Between the two: it explains the grid above it, and the scoreboard stays the last word.
          Only where there is something to explain — without a ballot of your own the grid carries no
          buttons, and rules for a control that is not there are just more to read past. -->
-    <InfoBox v-if="props.canVote" storage-key="spot-object-review">
+    <InfoBox v-if="props.canVote && props.review.open" storage-key="spot-object-review">
       <template #abstract>Bewertet die Tipps der anderen.</template>
       <SpotObjectReviewRules />
     </InfoBox>

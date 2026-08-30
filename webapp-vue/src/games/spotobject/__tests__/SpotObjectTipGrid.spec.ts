@@ -26,6 +26,7 @@ function mountGrid(
   over: Partial<{ canVote: boolean; review: Partial<RoundReview> }> = {},
 ) {
   const review: RoundReview = {
+    open: true,
     canOverride: false,
     vote: vi.fn().mockResolvedValue(undefined),
     override: vi.fn().mockResolvedValue(undefined),
@@ -176,6 +177,21 @@ describe('SpotObjectTipGrid', () => {
     const { wrapper } = mountGrid([tile({ userId: 'a', mine: true })])
 
     expect(wrapper.find('[data-test="tip-vote"]').exists()).toBe(false)
+  })
+
+  /**
+   * The server's review window is the running round and the one before it; it refuses anything
+   * older. Controls on a round nobody can vote on any more produced a 404 per press.
+   */
+  it('offers nothing to press on a round that is past its review window', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a', adminOverride: true })], {
+      review: { open: false, canOverride: true },
+    })
+
+    expect(wrapper.find('[data-test="tip-vote"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tip-override"]').exists()).toBe(false)
+    // What happened is still shown — only what can no longer happen is gone.
+    expect(wrapper.find('[data-test="tip-override-badge"]').exists()).toBe(true)
   })
 
   it('offers no ballot to somebody who did not play the round', () => {

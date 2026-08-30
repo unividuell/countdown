@@ -52,6 +52,10 @@ function reviewFor(roundNumber: number): RoundReview {
     }
   }
   return {
+    // `from` is the round immediately before the running one — the last one the server's review
+    // window still covers. Everything further back is read-only, and offering a control there
+    // would only produce a 404 per press.
+    open: roundNumber === props.from,
     canOverride: items.value.find((i) => i.round?.number === roundNumber)?.canOverride ?? false,
     vote: (userId, value) => ballot(() => castVote(props.slug, roundNumber, userId, value)),
     override: (userId, value) =>

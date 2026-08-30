@@ -7,7 +7,7 @@
  * and a detour through one tip's URL and back put the rest of the round off screen for the length
  * of every single vote.
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Vote } from '@/api/types'
 import type { RoundReview } from '@/rounds/review'
 import IconEye from '~icons/lucide/eye'
@@ -24,6 +24,14 @@ const props = defineProps<{
   canVote: boolean
   review: RoundReview
 }>()
+
+/**
+ * A closed round shows its review and takes no more of it — the server's window is the running
+ * round and the one before it. Both authorities are gated on it here, once, rather than at the two
+ * places that render a control.
+ */
+const canVote = computed(() => props.canVote && props.review.open)
+const canOverride = computed(() => props.review.canOverride && props.review.open)
 
 /**
  * One ballot at a time, across the whole grid rather than per tile: every one of these rewrites
@@ -111,7 +119,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           grid is ever shown at.
         -->
         <div
-          v-if="props.canVote && !tile.mine && tile.tip"
+          v-if="canVote && !tile.mine && tile.tip"
           data-test="tip-vote"
           class="absolute top-2 right-2 flex flex-col gap-2"
         >
@@ -144,7 +152,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         </div>
 
         <div
-          v-if="props.review.canOverride && tile.tip"
+          v-if="canOverride && tile.tip"
           data-test="tip-override"
           class="absolute top-2 left-2 flex flex-col gap-2"
         >
@@ -209,7 +217,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
            per-line flexboxes each pick their own marker width and nothing lines up. -->
       <div
         data-test="tip-foot"
-        class="grid flex-1 grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5 p-2 text-sm"
+        class="grid flex-1 grid-cols-[auto_1fr] content-start items-center gap-x-2 gap-y-0.5 p-2 text-sm"
         :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
       >
         <!-- The flag in a chip of its own: on a saturated player colour a bare emoji sits in the
