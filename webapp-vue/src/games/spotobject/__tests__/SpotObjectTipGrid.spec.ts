@@ -65,14 +65,45 @@ describe('SpotObjectTipGrid', () => {
     expect(wrapper.text()).not.toContain('gestrichen')
   })
 
-  /** The corner itself is Google's own wordmark, and covering it breaks the terms of service. */
+  /**
+   * The corner itself is Google's own wordmark, and covering it breaks the terms of service. It
+   * measures the bottom 3% of a still, so the offset is a percentage: a pixel value would have to
+   * be re-guessed for every tile size this grid is shown at.
+   */
   it('keeps the Google link clear of the attribution burnt into the still', () => {
     const { wrapper } = mountGrid([tile({ userId: 'a' })])
 
     const link = wrapper.get('[data-test="tip-google"]')
     expect(link.attributes('target')).toBe('_blank')
-    expect(link.classes()).toContain('bottom-6')
-    expect(link.classes()).not.toContain('bottom-2')
+    expect(link.classes()).toContain('bottom-[6%]')
+  })
+
+  /** A neighbour with more voters makes the row taller; the colour has to follow it down. */
+  it('fills the foot to the bottom of the row, however tall the row got', () => {
+    const { wrapper } = mountGrid([tile({ userId: 'a' })])
+
+    expect(wrapper.get('[data-test="tip-tile"]').classes()).toEqual(
+      expect.arrayContaining(['flex', 'h-full', 'flex-col']),
+    )
+    expect(wrapper.get('[data-test="tip-foot"]').classes()).toContain('flex-1')
+  })
+
+  /** Half a phone wide: a comma list truncated at the second name and lost the rest of the vote. */
+  it('gives every voter a line of their own', () => {
+    const { wrapper } = mountGrid([
+      tile({
+        userId: 'a',
+        confirms: [
+          { userId: 'b', username: 'Bianca', value: 'CONFIRM' },
+          { userId: 'd', username: 'Dora', value: 'CONFIRM' },
+        ],
+      }),
+    ])
+
+    const lines = wrapper.findAll('[data-test="tip-confirms"]')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.text()).toContain('Bianca')
+    expect(lines[1]!.text()).toContain('Dora')
   })
 
   /**

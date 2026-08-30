@@ -59,7 +59,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
       v-for="tile in props.tiles"
       :key="tile.userId"
       data-test="tip-tile"
-      class="overflow-hidden rounded-lg bg-neutral-100 text-left"
+      class="flex h-full flex-col overflow-hidden rounded-lg bg-neutral-100 text-left"
     >
       <!--
         Portrait, and the still is *requested* in the ratio it is shown in: Google's watermark is
@@ -82,9 +82,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
 
         <!--
           Low on the left, but NOT in the corner: the corner is where Google burns its own wordmark
-          into every still, and covering it breaks the terms of service. `bottom-6` clears that band
-          on any tile this grid can be shown at, which is as close to the corner as the corner
-          allows.
+          into every still, and covering it breaks the terms of service. Measured on a 480×640
+          still, that band is the bottom 19px — 3% of the height — so `6%` clears it with the same
+          margin again at every tile size, which a pixel value would have to be re-guessed for.
         -->
         <a
           v-if="tile.tip"
@@ -93,7 +93,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           target="_blank"
           rel="noopener"
           :aria-label="`${tile.name}: in Google Maps ansehen`"
-          class="absolute bottom-6 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
+          class="absolute bottom-[6%] left-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
         >
           <IconEye aria-hidden="true" class="h-4 w-4" />
         </a>
@@ -120,9 +120,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-confirm"
             :aria-pressed="tile.myVote === 'CONFIRM'"
             :aria-label="`${tile.name}: bestätigen`"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.myVote === 'CONFIRM' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700'
+              tile.myVote === 'CONFIRM' ? 'bg-emerald-600 text-white' : 'bg-black/30 text-white'
             "
             :disabled="busy"
             @click="toggleVote(tile, 'CONFIRM')"
@@ -134,8 +134,8 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-flag"
             :aria-pressed="tile.myVote === 'FLAG'"
             :aria-label="`${tile.name}: flaggen`"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
-            :class="tile.myVote === 'FLAG' ? 'bg-red-600 text-white' : 'bg-white text-red-700'"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
+            :class="tile.myVote === 'FLAG' ? 'bg-red-600 text-white' : 'bg-black/30 text-white'"
             :disabled="busy"
             @click="toggleVote(tile, 'FLAG')"
           >
@@ -153,11 +153,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-override-count"
             :aria-pressed="tile.adminOverride === true"
             :aria-label="`${tile.name}: zählen lassen`"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.adminOverride === true
-                ? 'bg-neutral-900 text-white'
-                : 'bg-white text-neutral-700'
+              tile.adminOverride === true ? 'bg-neutral-900 text-white' : 'bg-black/30 text-white'
             "
             :disabled="busy"
             @click="toggleOverride(tile, true)"
@@ -169,11 +167,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-override-strike"
             :aria-pressed="tile.adminOverride === false"
             :aria-label="`${tile.name}: streichen`"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.adminOverride === false
-                ? 'bg-neutral-900 text-white'
-                : 'bg-white text-neutral-700'
+              tile.adminOverride === false ? 'bg-neutral-900 text-white' : 'bg-black/30 text-white'
             "
             :disabled="busy"
             @click="toggleOverride(tile, false)"
@@ -190,7 +186,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         <div
           v-else-if="tile.adminOverride !== null"
           data-test="tip-override-badge"
-          class="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
+          class="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
           :aria-label="
             tile.adminOverride ? 'vom Spielleiter aufgehoben' : 'vom Spielleiter gestrichen'
           "
@@ -202,10 +198,14 @@ function toggleOverride(tile: TipTile, value: boolean): void {
 
       <!-- The player's own colour under the whole foot, not just behind the name: at this tile
            size the colour is what tells two tiles apart at a glance, and a stripe of it under a
-           white block reads as a divider rather than as whose tip this is. -->
+           white block reads as a divider rather than as whose tip this is.
+
+           `flex-1` inside a tile that stretches to its grid row: without it the colour stops where
+           this tile's own text ends, and a neighbour with more voters leaves a pale gap under the
+           shorter one. -->
       <div
         data-test="tip-foot"
-        class="p-2 text-sm"
+        class="flex-1 p-2 text-sm"
         :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
       >
         <!-- A struck tip says so by striking the name through. No sentence beside it: the line is
@@ -219,25 +219,30 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         </p>
 
         <!-- The voters by name, which is the whole brake on casual flagging: a ballot here is
-             never anonymous. An override does not remove the names it beat — it strikes them
-             through, so the review that happened stays visible next to the verdict that overruled
-             it. -->
-        <p
-          v-if="tile.confirms.length > 0"
-          data-test="tip-confirms"
-          class="truncate text-xs"
-          :class="{ 'line-through': tile.adminOverride === false }"
-        >
-          ✓ {{ tile.confirms.map((vote) => vote.username).join(', ') }}
-        </p>
-        <p
-          v-if="tile.flags.length > 0"
-          data-test="tip-flags"
-          class="truncate text-xs"
-          :class="{ 'line-through': tile.adminOverride === true }"
-        >
-          ⚑ {{ tile.flags.map((vote) => vote.username).join(', ') }}
-        </p>
+             never anonymous. One line each rather than a comma list — a tile is half a phone wide,
+             so the list truncated at the second name and the rest of the review simply vanished.
+             An override does not remove the names it beat either; it strikes them through, so what
+             the round decided stays readable beside the verdict that overruled it. -->
+        <ul class="mt-0.5 text-xs">
+          <li
+            v-for="vote in tile.confirms"
+            :key="`c-${vote.userId}`"
+            data-test="tip-confirms"
+            class="truncate"
+            :class="{ 'line-through': tile.adminOverride === false }"
+          >
+            ✓ {{ vote.username }}
+          </li>
+          <li
+            v-for="vote in tile.flags"
+            :key="`f-${vote.userId}`"
+            data-test="tip-flags"
+            class="truncate"
+            :class="{ 'line-through': tile.adminOverride === true }"
+          >
+            ⚑ {{ vote.username }}
+          </li>
+        </ul>
       </div>
     </div>
   </div>
