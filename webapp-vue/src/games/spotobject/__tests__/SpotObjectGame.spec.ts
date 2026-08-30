@@ -115,6 +115,16 @@ describe('SpotObjectGame', () => {
     expect(reviewing.text()).not.toContain('Spielleiter')
   })
 
+  /** Rules for a control that is not there are just more to read past. */
+  it('drops the review box for a viewer who has no ballot to cast', () => {
+    mockStreetView()
+
+    const wrapper = mountGame({ entries: [MINE], mineUserId: null, closed: true })
+
+    expect(wrapper.find('[data-test="tip-grid"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Daumen')
+  })
+
   it('emits the tip the board produced', async () => {
     mockStreetView()
     const wrapper = mountGame()

@@ -34,15 +34,24 @@ export interface TipTile {
 }
 
 /**
- * By name, and by user id where two share one.
+ * By panorama id, and by user id where there is no panorama to sort by.
  *
  * There is no *good* order for tips — none of them is more right than another, and the scoreboard
  * below already ranks. What there has to be is one order: `entries` arrives mine-first, so every
  * player saw the same round in a different arrangement, and nobody could point at „the third one“
- * and be understood. Alphabetical is arbitrary, stated, and the same for everybody.
+ * and be understood.
+ *
+ * The panorama rather than the name, because the name would put the same person first in every
+ * round of the run. A tip's panorama is whatever the world handed them that day: stable for the
+ * length of a round, and shuffled again by the next one.
+ *
+ * A player who gave up has no panorama and sorts last — there is nothing to look at there.
  */
-function byName(a: TipTile, b: TipTile): number {
-  return a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId)
+function byPano(a: TipTile, b: TipTile): number {
+  if ((a.tip === null) !== (b.tip === null)) return a.tip === null ? 1 : -1
+  return (
+    (a.tip?.panoId ?? '').localeCompare(b.tip?.panoId ?? '') || a.userId.localeCompare(b.userId)
+  )
 }
 
 export function tipTiles(input: {
@@ -70,7 +79,7 @@ export function tipTiles(input: {
     }
   })
 
-  return tiles.sort(byName)
+  return tiles.sort(byPano)
 }
 
 export interface ScoreRow {

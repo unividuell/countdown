@@ -27,8 +27,10 @@ const props = defineProps<{
 <template>
   <div data-test="spot-reveal" class="flex flex-col gap-6">
     <SpotObjectTipGrid :tiles="props.tiles" :can-vote="props.canVote" :review="props.review" />
-    <!-- Between the two: it explains the grid above it, and the scoreboard stays the last word. -->
-    <InfoBox storage-key="spot-object-review">
+    <!-- Between the two: it explains the grid above it, and the scoreboard stays the last word.
+         Only where there is something to explain — without a ballot of your own the grid carries no
+         buttons, and rules for a control that is not there are just more to read past. -->
+    <InfoBox v-if="props.canVote" storage-key="spot-object-review">
       <template #abstract>Bewertet die Tipps der anderen.</template>
       <SpotObjectReviewRules />
     </InfoBox>

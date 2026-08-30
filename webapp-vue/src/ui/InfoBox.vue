@@ -26,7 +26,9 @@ const collapsed = useLocalStorage(`infobox:${props.storageKey}`, false)
     class="rounded-lg border border-sky-200 bg-sky-50/60 px-4 py-3 text-sm text-neutral-700"
   >
     <div class="flex items-start gap-3">
-      <IconInfo class="mt-0.5 size-5 shrink-0 text-sky-600" aria-hidden="true" />
+      <!-- No nudge: the icon's box and the heading's first line box are both 20px, so aligning
+           them at the top is what puts them on one line. A margin here only lifts the heading. -->
+      <IconInfo class="size-5 shrink-0 text-sky-600" aria-hidden="true" />
       <div class="min-w-0 flex-1 font-medium"><slot name="abstract" /></div>
       <button
         type="button"

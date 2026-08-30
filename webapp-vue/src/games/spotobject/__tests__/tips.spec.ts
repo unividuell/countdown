@@ -42,21 +42,51 @@ describe('tipTiles', () => {
   /**
    * `entries` arrives mine-first, so every player used to see the same round in a different
    * arrangement and nobody could point at „the third one“ and be understood. No order is more
-   * right than another here — the scoreboard below already ranks — so the only requirement is
-   * that everybody gets the same one.
+   * right than another here — the scoreboard below already ranks — so the only requirement is one
+   * order for everybody, and one that does not seat the same person first all run long.
    */
-  it('puts the tips in one order, the same for every viewer', () => {
+  it('orders the tips by panorama, the same for every viewer', () => {
     const entries = [
-      entry({ userId: 'c', username: 'Caro' }),
-      entry({ userId: 'a', username: 'Anna' }),
-      entry({ userId: 'b', username: 'Bianca' }),
+      entry({
+        userId: 'c',
+        username: 'Anna',
+        guess: { panoId: 'p-9', heading: 0, pitch: 0, zoom: 1 },
+      }),
+      entry({
+        userId: 'a',
+        username: 'Bianca',
+        guess: { panoId: 'p-1', heading: 0, pitch: 0, zoom: 1 },
+      }),
+      entry({
+        userId: 'b',
+        username: 'Caro',
+        guess: { panoId: 'p-5', heading: 0, pitch: 0, zoom: 1 },
+      }),
     ]
 
-    const seenByAnna = tipTiles({ entries, mineUserId: 'a' }).map((tile) => tile.name)
-    const seenByCaro = tipTiles({ entries, mineUserId: 'c' }).map((tile) => tile.name)
+    const seenByAnna = tipTiles({ entries, mineUserId: 'c' }).map((tile) => tile.name)
+    const seenByCaro = tipTiles({ entries, mineUserId: 'b' }).map((tile) => tile.name)
 
-    expect(seenByAnna).toEqual(['Anna', 'Bianca', 'Caro'])
+    // Not alphabetical, and not mine-first: the panorama decides.
+    expect(seenByAnna).toEqual(['Bianca', 'Caro', 'Anna'])
     expect(seenByCaro).toEqual(seenByAnna)
+  })
+
+  /** Nothing to look at, so nothing to look at first. */
+  it('sorts a player who gave up behind every tip', () => {
+    const tiles = tipTiles({
+      entries: [
+        entry({ userId: 'a', username: 'Anna', guess: null }),
+        entry({
+          userId: 'b',
+          username: 'Bianca',
+          guess: { panoId: 'p-9', heading: 0, pitch: 0, zoom: 1 },
+        }),
+      ],
+      mineUserId: null,
+    })
+
+    expect(tiles.map((tile) => tile.name)).toEqual(['Bianca', 'Anna'])
   })
 
   it('marks the viewer’s own tile', () => {
