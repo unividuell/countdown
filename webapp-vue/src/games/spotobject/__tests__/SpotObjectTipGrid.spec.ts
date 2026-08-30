@@ -102,7 +102,28 @@ describe('SpotObjectTipGrid', () => {
     expect(wrapper.get('[data-test="tip-confirm"]').attributes('aria-pressed')).toBe('false')
   })
 
-  /** Four 44px controls do not fit across a phone's half-width tile; two columns of two do. */
+  /**
+   * The override overrules the vote; it does not erase it. Striking the names it beat keeps the
+   * review that happened visible beside the verdict — and says which way the verdict went.
+   */
+  it('strikes through the names an override overruled', () => {
+    const votes = {
+      confirms: [{ userId: 'b', username: 'Bianca', value: 'CONFIRM' as const }],
+      flags: [{ userId: 'c', username: 'Caro', value: 'FLAG' as const }],
+    }
+
+    const struck = mountGrid([tile({ userId: 'a', ...votes, adminOverride: false })])
+    expect(struck.wrapper.get('[data-test="tip-confirms"]').classes()).toContain('line-through')
+    expect(struck.wrapper.get('[data-test="tip-flags"]').classes()).not.toContain('line-through')
+
+    const counted = mountGrid([tile({ userId: 'a', ...votes, adminOverride: true })])
+    expect(counted.wrapper.get('[data-test="tip-flags"]').classes()).toContain('line-through')
+    expect(counted.wrapper.get('[data-test="tip-confirms"]').classes()).not.toContain(
+      'line-through',
+    )
+  })
+
+  /** Four controls do not fit across a phone's half-width tile; two columns of two do. */
   it('stacks each control group down its own edge', () => {
     const { wrapper } = mountGrid([tile({ userId: 'a' })], { review: { canOverride: true } })
 

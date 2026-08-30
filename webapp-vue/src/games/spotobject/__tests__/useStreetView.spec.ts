@@ -75,6 +75,7 @@ function installFakeGoogleMaps(): void {
   vi.stubGlobal('google', {
     maps: {
       Map: FakeMap,
+      ControlPosition: { RIGHT_CENTER: 7 },
       StreetViewCoverageLayer: FakeCoverageLayer,
       StreetViewPanorama: streetViewPanoramaCtor,
     },
@@ -136,7 +137,7 @@ describe('useStreetView', () => {
     expect(error.value).toBeNull()
   })
 
-  it('leaves the Pegman control unconfigured, so the API cannot reject it', async () => {
+  it('moves the Pegman off the corner and configures nothing else about it', async () => {
     const { mount } = useStreetView()
 
     const pending = mount(document.createElement('div'))
@@ -144,10 +145,12 @@ describe('useStreetView', () => {
     triggerScriptLoad(script)
     await pending
 
-    // `sources: [OUTDOOR]` is the tempting one and the API throws on it while building the
-    // control — leaving a map with no Pegman, hence no way into Street View at all.
-    expect(FakeMap.instances[0]!.options.streetViewControl).toBe(true)
-    expect(FakeMap.instances[0]!.options).not.toHaveProperty('streetViewControlOptions')
+    // `position` is the only key this control accepts. `sources: [OUTDOOR]` is the tempting one
+    // and the API throws on it while building the control — leaving a map with no Pegman, hence
+    // no way into Street View at all.
+    const options = FakeMap.instances[0]!.options
+    expect(options.streetViewControl).toBe(true)
+    expect(options.streetViewControlOptions).toEqual({ position: 7 })
   })
 
   it('turns the motion-tracking control off', async () => {

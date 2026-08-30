@@ -87,6 +87,21 @@ describe('SpotObjectGame', () => {
     expect(wrapper.find('[data-test="spot-map"]').exists()).toBe(false)
   })
 
+  /**
+   * Searching and judging are the same round, so the term has to read the same in both faces and
+   * in the same place — otherwise a reviewer re-reads it against a different frame than the
+   * player searched under.
+   */
+  it('carries the term above the board and above the reveal alike', () => {
+    mockStreetView()
+
+    const playing = mountGame()
+    expect(playing.get('[data-test="spot-term"]').text()).toContain('Roter Briefkasten')
+
+    const reviewing = mountGame({ entries: [MINE], mineUserId: 'mine' })
+    expect(reviewing.get('[data-test="spot-term"]').text()).toContain('Roter Briefkasten')
+  })
+
   it('emits the tip the board produced', async () => {
     mockStreetView()
     const wrapper = mountGame()

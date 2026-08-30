@@ -30,19 +30,13 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   return double
 }
 
-function mountBoard(payload = { term: 'Rosa Gartenzwerg' }, disabled = false) {
-  return mount(SpotObjectBoard, { props: { payload, disabled } })
+function mountBoard(disabled = false) {
+  return mount(SpotObjectBoard, { props: { disabled } })
 }
 
 describe('SpotObjectBoard', () => {
   beforeEach(() => {
     mockStreetView()
-  })
-
-  it('shows the searched term', () => {
-    const w = mountBoard({ term: 'Roter Briefkasten' })
-
-    expect(w.get('[data-test="spot-term"]').text()).toContain('Roter Briefkasten')
   })
 
   it('disables „Gefunden“ until a panorama is open', async () => {

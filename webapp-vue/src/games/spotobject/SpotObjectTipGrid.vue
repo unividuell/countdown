@@ -10,11 +10,11 @@
 import { ref } from 'vue'
 import type { Vote } from '@/api/types'
 import type { RoundReview } from '@/rounds/review'
-import IconCheck from '~icons/lucide/check'
 import IconEye from '~icons/lucide/eye'
-import IconFlag from '~icons/lucide/flag'
 import IconShieldBan from '~icons/lucide/shield-ban'
 import IconShieldCheck from '~icons/lucide/shield-check'
+import IconThumbsDown from '~icons/lucide/thumbs-down'
+import IconThumbsUp from '~icons/lucide/thumbs-up'
 import { googleUrl, shotUrl } from './types'
 import type { TipTile } from './tips'
 
@@ -54,7 +54,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
 </script>
 
 <template>
-  <div data-test="tip-grid" class="grid grid-cols-2 gap-3">
+  <div data-test="tip-grid" class="grid grid-cols-2 gap-1.5">
     <div
       v-for="tile in props.tiles"
       :key="tile.userId"
@@ -93,9 +93,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           target="_blank"
           rel="noopener"
           :aria-label="`${tile.name}: in Google Maps ansehen`"
-          class="absolute bottom-6 left-2 flex h-11 w-11 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
+          class="absolute bottom-6 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
         >
-          <IconEye aria-hidden="true" class="h-5 w-5" />
+          <IconEye aria-hidden="true" class="h-4 w-4" />
         </a>
 
         <!--
@@ -106,9 +106,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           would invite pressing the wrong one.
 
           Stacked, not side by side: two columns of a phone leave a tile about 165px wide, and four
-          44px controls in one row do not fit — they overlapped, and the confirm button vanished
-          under the override. Down the two edges each side needs one button's width at any tile
-          size this grid is ever shown at.
+          controls in one row do not fit — they overlapped, and the confirm button vanished under
+          the override. Down the two edges each side needs one button's width at any tile size this
+          grid is ever shown at.
         -->
         <div
           v-if="props.canVote && !tile.mine && tile.tip"
@@ -120,26 +120,26 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-confirm"
             :aria-pressed="tile.myVote === 'CONFIRM'"
             :aria-label="`${tile.name}: bestätigen`"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
             :class="
               tile.myVote === 'CONFIRM' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700'
             "
             :disabled="busy"
             @click="toggleVote(tile, 'CONFIRM')"
           >
-            <IconCheck aria-hidden="true" class="h-5 w-5" />
+            <IconThumbsUp aria-hidden="true" class="h-4 w-4" />
           </button>
           <button
             type="button"
             data-test="tip-flag"
             :aria-pressed="tile.myVote === 'FLAG'"
             :aria-label="`${tile.name}: flaggen`"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
             :class="tile.myVote === 'FLAG' ? 'bg-red-600 text-white' : 'bg-white text-red-700'"
             :disabled="busy"
             @click="toggleVote(tile, 'FLAG')"
           >
-            <IconFlag aria-hidden="true" class="h-5 w-5" />
+            <IconThumbsDown aria-hidden="true" class="h-4 w-4" />
           </button>
         </div>
 
@@ -153,7 +153,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             data-test="tip-override-count"
             :aria-pressed="tile.adminOverride === true"
             :aria-label="`${tile.name}: zählen lassen`"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
             :class="
               tile.adminOverride === true
                 ? 'bg-neutral-900 text-white'
@@ -162,14 +162,14 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :disabled="busy"
             @click="toggleOverride(tile, true)"
           >
-            <IconShieldCheck aria-hidden="true" class="h-5 w-5" />
+            <IconShieldCheck aria-hidden="true" class="h-4 w-4" />
           </button>
           <button
             type="button"
             data-test="tip-override-strike"
             :aria-pressed="tile.adminOverride === false"
             :aria-label="`${tile.name}: streichen`"
-            class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
+            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow disabled:cursor-default disabled:opacity-40"
             :class="
               tile.adminOverride === false
                 ? 'bg-neutral-900 text-white'
@@ -178,7 +178,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :disabled="busy"
             @click="toggleOverride(tile, false)"
           >
-            <IconShieldBan aria-hidden="true" class="h-5 w-5" />
+            <IconShieldBan aria-hidden="true" class="h-4 w-4" />
           </button>
         </div>
 
@@ -190,34 +190,52 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         <div
           v-else-if="tile.adminOverride !== null"
           data-test="tip-override-badge"
-          class="absolute top-2 left-2 flex h-11 w-11 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
+          class="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-700 shadow"
           :aria-label="
             tile.adminOverride ? 'vom Spielleiter aufgehoben' : 'vom Spielleiter gestrichen'
           "
         >
-          <IconShieldCheck v-if="tile.adminOverride" aria-hidden="true" class="h-5 w-5" />
-          <IconShieldBan v-else aria-hidden="true" class="h-5 w-5" />
+          <IconShieldCheck v-if="tile.adminOverride" aria-hidden="true" class="h-4 w-4" />
+          <IconShieldBan v-else aria-hidden="true" class="h-4 w-4" />
         </div>
       </div>
 
-      <div class="p-2 text-sm">
+      <!-- The player's own colour under the whole foot, not just behind the name: at this tile
+           size the colour is what tells two tiles apart at a glance, and a stripe of it under a
+           white block reads as a divider rather than as whose tip this is. -->
+      <div
+        data-test="tip-foot"
+        class="p-2 text-sm"
+        :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
+      >
         <!-- A struck tip says so by striking the name through. No sentence beside it: the line is
              already the sentence, and it stays readable at a glance across a grid of them. -->
         <p
           data-test="tip-name"
-          class="truncate px-1 font-medium"
+          class="truncate font-medium"
           :class="{ 'line-through': tile.struck }"
-          :style="{ backgroundColor: tile.colorHex, color: tile.ink }"
         >
           <span v-if="tile.flag">{{ tile.flag }}</span> {{ tile.name }}
         </p>
 
         <!-- The voters by name, which is the whole brake on casual flagging: a ballot here is
-             never anonymous. -->
-        <p v-if="tile.confirms.length > 0" class="truncate text-xs text-neutral-600">
+             never anonymous. An override does not remove the names it beat — it strikes them
+             through, so the review that happened stays visible next to the verdict that overruled
+             it. -->
+        <p
+          v-if="tile.confirms.length > 0"
+          data-test="tip-confirms"
+          class="truncate text-xs"
+          :class="{ 'line-through': tile.adminOverride === false }"
+        >
           ✓ {{ tile.confirms.map((vote) => vote.username).join(', ') }}
         </p>
-        <p v-if="tile.flags.length > 0" class="truncate text-xs text-neutral-600">
+        <p
+          v-if="tile.flags.length > 0"
+          data-test="tip-flags"
+          class="truncate text-xs"
+          :class="{ 'line-through': tile.adminOverride === true }"
+        >
           ⚑ {{ tile.flags.map((vote) => vote.username).join(', ') }}
         </p>
       </div>

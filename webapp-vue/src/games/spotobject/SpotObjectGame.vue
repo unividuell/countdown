@@ -13,6 +13,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
 import SpotObjectBoard from './SpotObjectBoard.vue'
 import SpotObjectReveal from './SpotObjectReveal.vue'
+import SpotObjectTerm from './SpotObjectTerm.vue'
 import { scoreRows, tipTiles } from './tips'
 import { isSpotObjectPayload } from './types'
 
@@ -66,19 +67,22 @@ watch(played, (now, before) => {
   <p v-if="payload === null" class="text-sm text-neutral-600">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <SpotObjectReveal
-    v-else-if="revealed"
-    :tiles="tiles"
-    :rows="rows"
-    :live="live"
-    :animate="hasRevealedLive"
-    :can-vote="played"
-    :review="props.review"
-  />
-  <SpotObjectBoard
-    v-else
-    :payload="payload"
-    :disabled="props.disabled"
-    @guess="(value) => emit('guess', value)"
-  />
+  <!-- `-m-4` cancels RoundSurface's own body padding on every side, so the term band and the map
+       below it run edge to edge. The reveal pays the padding back: a grid and a scoreboard want
+       the card's gutter, only the two full-bleed things do not. -->
+  <div v-else class="-m-4">
+    <SpotObjectTerm :term="payload.term" />
+
+    <div v-if="revealed" class="p-4">
+      <SpotObjectReveal
+        :tiles="tiles"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+        :can-vote="played"
+        :review="props.review"
+      />
+    </div>
+    <SpotObjectBoard v-else :disabled="props.disabled" @guess="(value) => emit('guess', value)" />
+  </div>
 </template>

@@ -76,11 +76,14 @@ export function useStreetView(): UseStreetView {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         gestureHandling: 'greedy',
-        // No `streetViewControlOptions` beside it: `sources: [OUTDOOR]` is the one option worth
-        // setting there and the API rejects it outright — "OUTDOOR source not supported on
-        // StreetViewControlOptions", thrown while the control is built, which leaves the map
-        // standing but Pegman-less. No Pegman, no way into Street View at all.
         streetViewControl: true,
+        // Half way down the right edge rather than the API's own bottom-right default: on a phone
+        // held in the right hand, the bottom-right corner is under the thumb's own knuckle and the
+        // Pegman there goes unnoticed. `position` is the only option this control accepts —
+        // `sources: [OUTDOOR]` is rejected outright ("OUTDOOR source not supported on
+        // StreetViewControlOptions") and takes the whole control down with it, leaving a map with
+        // no way into Street View at all.
+        streetViewControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
         mapTypeControl: false,
         fullscreenControl: false,
       })
