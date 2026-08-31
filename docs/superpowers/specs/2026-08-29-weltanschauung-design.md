@@ -312,6 +312,14 @@ Overlay darüber — Begriff oben links, Aktionen unten. Kein Vollbildmodus.
   der Druck greift also erst ab der Zoomstufe, auf der die blauen Linien gezeichnet werden. Darum
   bleibt die Abdeckungsebene an — sie ist das Zielkreuz-Futter — und darum ersetzt der Druck den
   Pegman nicht, er kürzt nur ab.
+- **Ein Kompassband am oberen Rand des Panoramas**, kein Zifferblatt: durchlaufende deutsche
+  Himmelsrichtungen (N, NO, O, …), Bandmitte = Blickmitte = Fadenkreuz. Street View hat keinen
+  Kompass zu leihen — das einzige richtungsbezogene Control der API ist `panControl`, ein rundes
+  Dreh-Widget, das über Norden nichts sagt. `getPov().heading` plus `pov_changed` liefern die Zahl.
+  120° Horizont über die Breite: drei Punkte gleichzeitig. Ausdrücklich **nicht** das echte
+  Blickfeld, das sich mit jeder Zoomstufe ändert — ein Band mit atmendem Maßstab liest sich
+  schlechter als eines, das außerhalb der Mitte bloß ungefähr ist, und die Mitte stimmt so oder so.
+  Nur im Panorama: auf der Weltkarte ist Norden schon oben.
 - **Der Ring nimmt keine Zeigerereignisse.** Als Trefferfläche verdeckte er genau dort die eigenen
   Gesten der Karte, wo sie am meisten zählen: Doppelklick zoomt, Mausrad zoomt, Ziehen schiebt —
   und das Mausrad scrollte stattdessen die *Seite*. Also `pointer-events: none`; alles erreicht

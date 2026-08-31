@@ -10,6 +10,7 @@
  */
 import { onMounted, onUnmounted, useTemplateRef } from 'vue'
 import IconArrowLeft from '~icons/lucide/arrow-left'
+import SpotObjectCompass from './SpotObjectCompass.vue'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
@@ -25,8 +26,17 @@ const props = defineProps<{ disabled: boolean }>()
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 
-const { currentTip, error, mount, noCoverage, pano, pegmanDragging, toStreetView, toWorldMap } =
-  useStreetView()
+const {
+  currentTip,
+  error,
+  heading,
+  mount,
+  noCoverage,
+  pano,
+  pegmanDragging,
+  toStreetView,
+  toWorldMap,
+} = useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
 
@@ -205,6 +215,10 @@ function submitGuess(): void {
       map, not swallow the gesture, and the term band must not swallow it either.
     -->
     <div class="pointer-events-none absolute inset-x-0 top-0 flex flex-col">
+      <!-- Only in the panorama: on the world map, north is already up and the band would name a
+           direction nobody is facing. -->
+      <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
+
       <slot />
 
       <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">

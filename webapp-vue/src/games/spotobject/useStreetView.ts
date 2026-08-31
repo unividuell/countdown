@@ -75,6 +75,11 @@ export interface UseStreetView {
   noCoverage: Ref<boolean>
   /** True while Google's own Pegman is being carried, so our ring can get out of its way. */
   pegmanDragging: Ref<boolean>
+  /**
+   * The direction the open panorama faces, for the compass to read. Display only — a tip still
+   * takes its heading from `currentTip` at the moment of the click.
+   */
+  heading: Ref<number | null>
   /** The tip for the view on screen right now, or `null` while no panorama is open. */
   currentTip: () => SpotObjectTip | null
   toStreetView: () => void
@@ -86,6 +91,7 @@ export function useStreetView(): UseStreetView {
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
   const pegmanDragging = ref(false)
+  const heading = ref<number | null>(null)
   let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
 
@@ -136,6 +142,12 @@ export function useStreetView(): UseStreetView {
       })
       panorama.addListener('pano_changed', () => {
         pano.panoId = panorama?.getPano() || null
+        heading.value = panorama?.getPov().heading ?? null
+      })
+
+      // Turning fires this and nothing else, which is why the compass cannot ride on `pano_changed`.
+      panorama.addListener('pov_changed', () => {
+        heading.value = panorama?.getPov().heading ?? null
       })
 
       // A miss is answered by us rather than by Google's grey „no imagery“ panel: the panorama
@@ -159,10 +171,13 @@ export function useStreetView(): UseStreetView {
   }
 
   /**
-   * Asked once, at the click on „Gefunden“ — never mirrored into reactive state. Panning fires
+   * Asked once, at the click on „Gefunden“ — never assembled from mirrored state. Panning fires
    * `pov_changed` and zooming fires `zoom_changed`, so any mirror is exactly as current as the set
    * of events it subscribes to; a getter cannot be stale. The player turns to face what they found
    * *after* arriving, and that turn is the whole point of the tip.
+   *
+   * `heading` is such a mirror and is deliberately not read here: it exists for the compass, where
+   * being a frame behind costs nothing, and a tip is not the place to find out it was wrong.
    */
   function currentTip(): SpotObjectTip | null {
     const panoId = panorama?.getPano()
@@ -223,5 +238,15 @@ export function useStreetView(): UseStreetView {
     panorama?.setVisible(false)
   }
 
-  return { error, mount, pano, noCoverage, pegmanDragging, currentTip, toStreetView, toWorldMap }
+  return {
+    error,
+    mount,
+    pano,
+    noCoverage,
+    pegmanDragging,
+    heading,
+    currentTip,
+    toStreetView,
+    toWorldMap,
+  }
 }

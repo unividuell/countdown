@@ -19,6 +19,7 @@ function mockStreetView() {
     pano: reactive({ visible: true, panoId: 'pano-42' }),
     noCoverage: ref(false),
     pegmanDragging: ref(false),
+    heading: ref<number | null>(null),
     currentTip: () => ({ panoId: 'pano-42', heading: 12, pitch: -3, zoom: 2 }),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),

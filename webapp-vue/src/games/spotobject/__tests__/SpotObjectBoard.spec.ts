@@ -18,6 +18,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   pano: StreetViewState
   noCoverage: Ref<boolean>
   pegmanDragging: Ref<boolean>
+  heading: Ref<number | null>
   currentTip: ReturnType<typeof vi.fn>
   toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
@@ -28,6 +29,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),
     pegmanDragging: ref(false),
+    heading: ref<number | null>(null),
     currentTip: vi.fn().mockReturnValue(null),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
@@ -260,6 +262,26 @@ describe('SpotObjectBoard', () => {
 
     expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
     expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+  })
+
+  /** North is already up on the world map; in the panorama it is the one thing you cannot see. */
+  it('names the direction only where there is a direction to name', async () => {
+    const double = mockStreetView({ visible: false })
+    const w = mountBoard()
+
+    expect(w.find('[data-test="spot-compass"]').exists()).toBe(false)
+
+    double.pano.visible = true
+    double.heading.value = 90
+    await w.vm.$nextTick()
+
+    const band = w.get('[data-test="spot-compass"]')
+    expect(band.text()).toContain('O')
+    // Above the term, which is above the actions: the band is the top edge of the stage.
+    expect(band.element.parentElement).toBe(
+      w.get('[data-test="spot-actions"]').element.parentElement,
+    )
+    expect(band.element.previousElementSibling).toBeNull()
   })
 
   it('says when the aimed point has no panorama to walk into', async () => {
