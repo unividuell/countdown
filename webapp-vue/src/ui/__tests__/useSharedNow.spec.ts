@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
-import { _resetSharedClock, skewMs, useSharedNow } from '@/ui/sharedClock'
+import { _resetSharedClock, nowMs, skewMs, useSharedNow } from '@/ui/sharedClock'
 
 // Every consumer of the clock renders the number it reads, so a desync between two of them is
 // visible as two different strings rather than as an internal value nobody can see.
@@ -13,6 +13,18 @@ const Reader = defineComponent({
 })
 
 enableAutoUnmount(afterEach)
+
+/**
+ * Whether the clock's interval is still running, asked of the clock rather than of
+ * `vi.getTimerCount()`. That count is every pending timer in the environment, and Vue schedules one
+ * of its own — a dev-only three-second devtools probe — on the first `mount()` of a file. Which
+ * case that is depends on the order the file runs in, so the number did too.
+ */
+function isTicking(): boolean {
+  const before = nowMs.value
+  vi.advanceTimersByTime(1000)
+  return nowMs.value !== before
+}
 
 describe('useSharedNow', () => {
   beforeEach(() => {
@@ -61,9 +73,9 @@ describe('useSharedNow', () => {
     const second = mount(Reader)
 
     first.unmount()
-    expect(vi.getTimerCount()).toBe(1)
+    expect(isTicking()).toBe(true)
 
     second.unmount()
-    expect(vi.getTimerCount()).toBe(0)
+    expect(isTicking()).toBe(false)
   })
 })
