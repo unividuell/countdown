@@ -16,7 +16,7 @@
     <li>Hast du den gesuchten Gegenstand vor dir, drück auf „Gefunden“.</li>
     <li>
       Abgegeben wird genau der Blick, den du gerade siehst — dreh dich also erst richtig hin. Stell
-      den Gegenstand dabei am Besten ins Fadenkreuz.
+      den Gegenstand dabei am besten ins Fadenkreuz.
     </li>
     <li>Dein eigenes Land zählt nicht. Such woanders.</li>
   </ul>

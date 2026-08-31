@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import SpotObjectGame from '../SpotObjectGame.vue'
+import SpotObjectReviewRules from '../SpotObjectReviewRules.vue'
+import SpotObjectRules from '../SpotObjectRules.vue'
 import type { GameEntry } from '@/games/GameEntry'
 
 // happy-dom has no Google Maps: SpotObjectBoard delegates everything Google to `useStreetView`,
@@ -106,16 +108,21 @@ describe('SpotObjectGame', () => {
     expect(reviewing.get('[data-test="spot-term"]').text()).toContain('Roter Briefkasten')
   })
 
-  /** Two boxes, one per face: how to play while playing, how to judge while judging. */
+  /**
+   * Two boxes, one per face: how to play while playing, how to judge while judging. Asserted on
+   * which box is mounted, not on a phrase inside it — the wording of a rule is meant to be
+   * polished, and a test that quotes it turns every polish into a red build.
+   */
   it('explains the game on the board and the review on the reveal', () => {
     mockStreetView()
 
     const playing = mountGame()
-    expect(playing.get('[data-test="info-box"]').text()).toContain('irgendwo auf der Welt')
-    expect(playing.text()).not.toContain('Daumen')
+    expect(playing.findComponent(SpotObjectRules).exists()).toBe(true)
+    expect(playing.findComponent(SpotObjectReviewRules).exists()).toBe(false)
 
     const reviewing = mountGame({ entries: [MINE], mineUserId: 'mine' })
-    expect(reviewing.text()).toContain('Daumen')
+    expect(reviewing.findComponent(SpotObjectReviewRules).exists()).toBe(true)
+    // The game master's override stays out of the rules on purpose.
     expect(reviewing.text()).not.toContain('Spielleiter')
   })
 

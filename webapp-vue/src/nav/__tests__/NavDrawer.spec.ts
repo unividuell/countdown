@@ -72,17 +72,30 @@ function setHeaderBottom(value: number): void {
  * teleport: true renders the drawer in place; teleported to <body> it would sit outside
  * wrapper.element, where wrapper.find() cannot reach it.
  */
+/**
+ * Collected so they can be taken back out again: `attachTo` hands the wrapper's own DOM back on
+ * unmount, but the host around it is ours and nothing else removes it. Left in place they pile up
+ * in `document.body` for the length of the file, and the assertions here that search the whole
+ * document — a drawer left behind anywhere — start depending on what ran before them.
+ */
+const hosts: HTMLElement[] = []
+
 function render(user: MeResponse = viewer, initialHeaderBottom = 0) {
   headerBottom = ref(initialHeaderBottom)
   const host = document.createElement('header')
   host.getBoundingClientRect = () => ({ bottom: headerBottom.value }) as DOMRect
   document.body.appendChild(host)
+  hosts.push(host)
   return mount(NavDrawer, {
     props: { user },
     attachTo: host,
     global: { stubs: { teleport: true } },
   })
 }
+
+afterEach(() => {
+  hosts.splice(0).forEach((host) => host.remove())
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
