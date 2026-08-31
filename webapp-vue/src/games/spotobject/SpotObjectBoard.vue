@@ -9,16 +9,11 @@
  * the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
 import { onMounted, onUnmounted, useTemplateRef } from 'vue'
-import { useViewportFill } from '@/ui/useViewportFill'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
 
-/** Page left free below the map, so a phone still has somewhere to start a scroll. */
-const STRIP = 48
-/** Below this the map is useless anyway, and overflowing beats a letterbox. */
-const MIN_HEIGHT = 320
 /** The ring's own radius: farther out than this, a press is a press on the map. */
 const RING_RADIUS = 24
 /** Movement a press may still carry before it counts as the start of a pan. */
@@ -34,8 +29,6 @@ const { currentTip, error, mount, noCoverage, pano, pegmanDragging, toStreetView
   useStreetView()
 
 const stage = useTemplateRef<HTMLElement>('stage')
-const frame = useTemplateRef<HTMLElement>('frame')
-const filled = useViewportFill(frame, { strip: STRIP, min: MIN_HEIGHT })
 
 onMounted(() => {
   if (!stage.value) return
@@ -121,11 +114,29 @@ function submitGuess(): void {
 </script>
 
 <template>
-  <div
-    ref="frame"
-    class="relative h-[var(--stage-height)] sm:h-[min(100dvh-6rem,40rem)]"
-    :style="{ '--stage-height': filled === null ? '100dvh' : `${filled}px` }"
-  >
+  <!--
+    A phone gets the viewport less a 6rem band, and that band is the whole rule: the stage is
+    shorter than the screen, so no scroll position can hide it, and there is always somewhere to
+    start a page scroll — inside the map every drag pans instead. At the top of the page it is the
+    card header above; scrolled past that, whatever follows the card below.
+
+    Measuring the board's own top and fitting the rest of it into one screenful — what this did
+    before — meant the app header, the card header and the gaps between them all came out of the
+    map: about 230px of a 700px phone, so the map got three fifths of a screen while the band below
+    it went unused. The chrome above scrolls away; the map does not have to pay for it.
+
+    6rem, not the 3rem this started at, and the reason is the hand rather than the arithmetic: 3rem
+    of it lands on the bottom screen edge, where the browser's own toolbar and edge gestures are, so
+    it is reached for and does nothing. Measured on a phone: a 48px band read as no band at all.
+
+    `svh` is the viewport with the browser's toolbars out — checked on the browser suspected of
+    getting it wrong, Firefox for Android, which reports 779 against an `lvh` of 844, exactly its
+    65px URL bar. `dvh` would be the same number until the bar hides, and would then resize the map
+    on every change of scroll direction.
+
+    `min-h`: below that the map is useless anyway, and overflowing beats a letterbox.
+  -->
+  <div class="relative h-[calc(100svh-6rem)] min-h-80 sm:h-[min(100dvh-6rem,40rem)] sm:min-h-0">
     <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
          stacking context here those compete with our overlay row in the ROOT context and win —
          the map mode's controls are modest enough that the row only vanishes once a panorama
