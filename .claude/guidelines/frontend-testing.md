@@ -143,6 +143,12 @@ actually play.
   wall-clock time elapsed since the previous forced paint. So
   `interaction → screenshot → wait → screenshot` samples an animation at the instants you chose to
   look, even though nothing renders in between.
+- **`getAnimations()` still answers the timeless questions.** A frozen animation is useless for
+  "how long does it run" — measured in the pane: 56 animations, all `running`, still `running`
+  200 ms after a 170 ms duration, because the renderer never advanced them. But it never *leaves*
+  the list either, so a before/after count around one action says whether that action cancelled
+  anything. That is how the flip-dot relight was checked: 56 live animations before `releaseWaves()`
+  and 56 after, so it cancels none of them. Ask the pane what *is*, never how long.
 - **The upshot: animation *feel* is always a human's call**, never something this pane — or a unit
   test — can verify. It's a second, independent reason (besides reduced motion and a hidden tab)
   why a component's resting state must be correct with the animation simply absent, per
