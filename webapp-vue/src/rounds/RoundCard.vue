@@ -8,6 +8,7 @@
 import { computed } from 'vue'
 import type { Component } from 'vue'
 import type { RoundResponse } from '@/api/types'
+import type { RoundReview } from '@/rounds/review'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
@@ -19,8 +20,15 @@ const props = withDefaults(
     round: RoundResponse | null
     assetUrl: (key: number) => string
     /**
-     * The round is over: the reveal face, no clock, no action. One prop with three effects at one
-     * place — a second card would be a second place for „the same reveal UI“ to drift.
+     * Casting a ballot on somebody else's play. Required like `assetUrl` above: only games that
+     * open a review render anything for it, but every caller supplies it regardless — an optional
+     * prop here is exactly what let a caller forget it and ship a control that throws on click.
+     */
+    review: RoundReview
+    /**
+     * The round is over: the reveal face, no clock, no action, and handed on to the game itself —
+     * a game without a round secret has nothing else to switch on. One prop with four effects at
+     * one place — a second card would be a second place for „the same reveal UI“ to drift.
      */
     closed?: boolean
     /** Which face a running round calls for. A closed round has none. */
@@ -93,7 +101,14 @@ function onGiveUp(): void {
 </script>
 
 <template>
-  <div data-test="round-card">
+  <!-- Anchored under its round number, so a link into one round of the history lands on that
+       round rather than on the top of the community page. -->
+  <!-- No id at all without a round number, rather than a shared 'round-0': two null cards on one
+       page would otherwise collide. -->
+  <div
+    :id="round?.round?.number ? `round-${round.round.number}` : undefined"
+    data-test="round-card"
+  >
     <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
          about the round on the board, and inside the frame it would push the board down. -->
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
@@ -165,6 +180,8 @@ function onGiveUp(): void {
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
+        :closed="props.closed"
+        :review="props.review"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

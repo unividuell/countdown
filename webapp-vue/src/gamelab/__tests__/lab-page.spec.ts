@@ -34,6 +34,10 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        review: { type: Object, default: null },
+        // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
+        // default of `false` would let the case below pass with the binding missing entirely.
+        closed: { type: Boolean, default: true },
       },
       emits: ['guess'],
       template:
@@ -111,6 +115,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   // stub stands in for one of those, so it stays mounted from the first response, same as before
   // the reveal gate existed. The gate itself gets its own tests below, with `revealed: false`.
   revealed: true,
+  canOverride: true,
 }
 
 /**
@@ -122,7 +127,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
 const mountedPages: VueWrapper[] = []
 
 async function mountPage() {
-  const Page = (await import('@/pages/c/[slug]/lab/[game].vue')).default
+  const Page = (await import('@/pages/c/[slug]/lab/[game]/index.vue')).default
   const wrapper = mount(Page)
   mountedPages.push(wrapper)
   await flushPromises()
@@ -164,6 +169,9 @@ describe('lab page', () => {
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(api, 'revealLabRound')
+      .mockReset()
+      .mockResolvedValue({ ...round } as never)
+    vi.spyOn(api, 'castLabVote')
       .mockReset()
       .mockResolvedValue({ ...round } as never)
     vi.spyOn(drawerControl, 'requestDrawerClose').mockReset()
@@ -591,6 +599,9 @@ describe('lab page', () => {
         points: null,
         durationMs: null,
         avatar: { shortName: 'AM', bgColorHex: '#123456' },
+        votes: [],
+        struck: false,
+        adminOverride: null,
       },
     ])
     expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
@@ -873,6 +884,30 @@ describe('lab page', () => {
     expect(stub.props('mineUserId')).toBe('u1')
     expect(stub.props('entries')).toEqual([mineEntry, theirEntry])
     expect(stub.props('disabled')).toBe(true)
+  })
+
+  // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
+  // task-15 report) — a test is the only thing that would catch this binding going missing.
+  it('hands the game a review that everybody in the lab may override', async () => {
+    const w = await mountPage()
+    const review = w.findComponent(StubGame).props('review') as {
+      canOverride: boolean
+      vote: (userId: string, value: unknown) => Promise<void>
+    }
+
+    expect(review.canOverride).toBe(true)
+
+    await review.vote('u9', 'FLAG')
+
+    expect(api.castLabVote).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 'u9', 'FLAG')
+  })
+
+  // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.
+  // A lab round is never over — it is rolled again, not closed — so the honest answer is `false`.
+  it('tells the game the round is not closed, the way a real card does', async () => {
+    const w = await mountPage()
+
+    expect(w.findComponent(StubGame).props('closed')).toBe(false)
   })
 
   // The lab exists so that a game under review looks exactly as it will in a real round. If the

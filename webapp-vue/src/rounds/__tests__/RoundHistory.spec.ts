@@ -14,6 +14,10 @@ import { useRoundHistory } from '@/rounds/useRoundHistory'
  */
 vi.mock('@/rounds/useRoundHistory', () => ({ useRoundHistory: vi.fn() }))
 
+// Only Weltanschauung's tip grid calls `useRouter` — needed for the spot-object round below, whose
+// tile is real (not stubbed), unlike every other game this file mounts.
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
 const closed = (number: number): RoundResponse => ({
   round: {
     number,
@@ -30,6 +34,59 @@ const closed = (number: number): RoundResponse => ({
   others: [],
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  canOverride: false,
+})
+
+/**
+ * A closed Weltanschauung round: the one game whose reveal tile is itself a link, built from a
+ * `tipPath` this component has to supply — the round-card contract every other game in this file
+ * ignores without noticing.
+ */
+const closedSpotObject = (number: number): RoundResponse => ({
+  round: {
+    number,
+    label: `T-${number}`,
+    start: '2026-08-10T10:00:00Z',
+    end: '2026-08-11T10:00:00Z',
+  },
+  game: { id: 'spot-object', displayName: 'Weltanschauung', requiresReveal: false },
+  noGameReason: null,
+  previousRoundNumber: null,
+  payload: { term: 'Roter Briefkasten' },
+  solution: null,
+  me: {
+    userId: 'me',
+    username: 'Fry',
+    avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },
+    stage: 0,
+    guess: { panoId: 'pano-1', heading: 0, pitch: 0, zoom: 1 },
+    outcome: { country: 'DE' },
+    points: 1,
+    durationMs: null,
+    votes: [],
+    struck: false,
+    adminOverride: null,
+    revealedAt: '2026-08-10T11:00:00Z',
+    guessedAt: '2026-08-10T11:05:00Z',
+  },
+  others: [
+    {
+      userId: 'other',
+      username: 'Leela',
+      avatar: { shortName: 'LEE', bgColorHex: '#40bf7a' },
+      stage: 0,
+      guess: { panoId: 'pano-2', heading: 0, pitch: 0, zoom: 1 },
+      outcome: { country: 'US' },
+      points: null,
+      durationMs: null,
+      votes: [],
+      struck: false,
+      adminOverride: null,
+    },
+  ],
+  awardRule: 'ALL_QUALIFYING',
+  awardPoints: 1,
+  canOverride: false,
 })
 
 function mockHistory(
@@ -92,6 +149,30 @@ describe('RoundHistory', () => {
     expect(done.findAllComponents(LabelledDivider).at(-1)?.text()).toBe(
       'Du bist ganz am Anfang angekommen',
     )
+  })
+
+  // Pins the wiring bug found in review: this call site forwarded `asset-url` but not `tip-path`,
+  // so a closed Weltanschauung round's tile threw `TypeError: props.tipPath is not a function` the
+  // moment it was opened — nothing gated the grid on the prop being present, and no other test
+  // walked a spot-object round through this component.
+  it('wires a tip-path into a closed spot-object round, so opening its tile does not crash', async () => {
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [closedSpotObject(13)] }))
+
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    await w.get('[data-test="tip-tile"]').trigger('click')
+  })
+
+  // A closed round's tips belong to everyone, and a card that fell back to the board would mount a
+  // live, billed Maps JS load per unplayed round in this very list.
+  it('shows the tips, not a map, for a closed round the viewer never played', () => {
+    const round = { ...closedSpotObject(13), me: null }
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [round] }))
+
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    expect(w.find('[data-test="tip-grid"]').exists()).toBe(true)
+    expect(w.find('[data-test="spot-map"]').exists()).toBe(false)
   })
 
   it('reports a failed load without dropping what it already has', () => {

@@ -21,6 +21,9 @@ function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
     points: 0,
     durationMs: null,
     avatar: { bgColorHex: '#7c3aed' },
+    votes: [],
+    struck: false,
+    adminOverride: null,
     ...over,
   }
 }

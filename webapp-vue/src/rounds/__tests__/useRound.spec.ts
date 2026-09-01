@@ -17,6 +17,7 @@ const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   others: [],
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  canOverride: false,
   ...over,
 })
 
@@ -31,6 +32,9 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   outcome: null,
   points: null,
   durationMs: null,
+  votes: [],
+  struck: false,
+  adminOverride: null,
   ...over,
 })
 

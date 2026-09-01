@@ -72,15 +72,30 @@ class PlayService(
         // Checked before the lock and before judging: a guess meant for another round must not touch
         // this one at all.
         if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
-        // Locked first: the re-evaluation below reads and rewrites every guess of this round.
-        val round = store.lock(current.roundGame)
         val play = plays.findByRoundGameIdAndUserId(
-            roundGameId = requireNotNull(round.id),
+            roundGameId = requireNotNull(current.roundGame.id),
             userId = userId,
         ) ?: throw NotRevealedException()
 
         // judge() before any write: an invalid guess must not consume the one attempt.
-        val judgement = current.handle.judge(params = round.params, guess = guess)
+        //
+        // And before the lock, the way `LabService.guess` already judges outside its `synchronized`:
+        // a `judge` may do network I/O — Weltanschauung asks Google for the panorama's country — and
+        // the round's row lock is what every guess, give-up, vote and override of the round queues
+        // behind. Held across a foreign call, one stalled service serialises the whole round and
+        // pins a pooled JDBC connection for the length of its timeouts.
+        //
+        // Reading the play row unlocked is safe for the same reason it always was: the round's lock
+        // never protected it. Every write below is a conditional statement that fails on a stale
+        // read (`expectedStage`, `guessed_at IS NULL`), and `skip` already writes that row without
+        // taking the round at all.
+        //
+        // Params are safe to read from the unlocked row: they are written once, at announce time,
+        // and no statement ever updates them.
+        val judgement = current.handle.judge(params = current.roundGame.params, guess = guess)
+
+        // Locked from here on: the re-evaluation below reads and rewrites every guess of this round.
+        val round = store.lock(current.roundGame)
         val stages = current.handle.stages(round.params)
         val action = guessActionFor(
             rule = round.awardRule,
@@ -110,7 +125,10 @@ class PlayService(
         }
         val recorded = plays.recordGuess(
             id = requireNotNull(play.id),
-            guess = guess,
+            // The game's own narrowing wins where it offers one: the column is republished to
+            // every player who has guessed, so what the client sent is not automatically what
+            // belongs in it. Without one, the raw node — the shape every other game relies on.
+            guess = judgement.guess ?: guess,
             guessedAt = guessedAt,
             qualifies = judgement.qualifies,
             deviation = deviation,

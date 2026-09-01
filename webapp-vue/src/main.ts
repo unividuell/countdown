@@ -7,10 +7,15 @@ import { registerAuthGuard } from '@/auth/guard'
 import { registerLandingRedirect } from '@/communities/landingGuard'
 import { registerCommunityDataGuard } from '@/communities/routeData'
 import { registerNavigationProgress } from '@/ui/navigationProgress'
+import { scrollBehavior } from '@/ui/scrollBehavior'
 import { setUnauthorizedHandler } from '@/api/client'
 import './assets/main.css'
 
-const router = createRouter({ history: createWebHistory(), routes })
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior,
+})
 registerAuthGuard(router)
 // beforeResolve hooks run in registration order: the landing redirect must claim '/'
 // before anything downstream reacts to a route that is about to be replaced.

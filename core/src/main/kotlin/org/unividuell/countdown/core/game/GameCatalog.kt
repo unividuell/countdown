@@ -37,6 +37,9 @@ class GameTypeHandle<P : Any>(
     /** Whether this round needs a deliberate reveal, from a stored `params` blob. */
     fun requiresReveal(params: JsonNode): Boolean = type.requiresReveal(paramsOf(params))
 
+    /** Whether this round's tips are open to peer review, from a stored `params` blob. */
+    fun allowsPeerReview(params: JsonNode): Boolean = type.allowsPeerReview(paramsOf(params))
+
     /** How many stages a round of this game has, from a stored `params` blob. */
     fun stages(params: JsonNode): Int = type.stages(paramsOf(params))
 

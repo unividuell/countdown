@@ -41,6 +41,16 @@ data class Judgement(
      * returns `0.0` for every hit — then all hits are level, and that is enough.
      */
     val deviation: Double,
+    /**
+     * The guess as it must be **stored**, when the game wants a narrower row than the client sent.
+     * `null` — the default — persists the client's node verbatim, which is right for every game
+     * whose guess is a single scalar and costs no other game a line.
+     *
+     * The framework cannot narrow it: only the game knows its own fields. Weltanschauung rebuilds
+     * the four it validated, because a tip is republished to every other player and a coordinate
+     * pasted in next to it must never reach the column — see `CountryLookup`.
+     */
+    val guess: JsonNode? = null,
     val outcome: GameOutcome?,
 )
 
@@ -112,6 +122,17 @@ interface GameType<P : Any> {
      * `toleranceDeg` shows how), and a game may just as well decide from its own content.
      */
     fun requiresReveal(params: P): Boolean
+
+    /**
+     * Whether this game's tips may be confirmed or flagged by the other players afterwards.
+     *
+     * **With** a default, unlike [requiresReveal] — and that is the same rule, not an exception:
+     * the default has to be the safe direction. For [requiresReveal] the convenient `false` is the
+     * unsafe one (it would start somebody's clock unasked); here `false` is simply today's
+     * behaviour. A game that says nothing gets nothing new, and a game whose solution is
+     * machine-checkable has nothing to vote about anyway.
+     */
+    fun allowsPeerReview(params: P): Boolean = false
 
     /**
      * Judge [guess] against the frozen params. Throws [InvalidGuessException] on a malformed or

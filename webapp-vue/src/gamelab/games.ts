@@ -24,6 +24,7 @@ export const labGameList: readonly LabGameEntry[] = [
   { id: 'guess-hue', title: 'Farbausmalung' },
   { id: 'song-snippet', title: 'Anspielung' },
   { id: 'find-pattern', title: 'Musterung' },
+  { id: 'spot-object', title: 'Weltanschauung' },
 ]
 
 /** Lookup by URL segment, for the game page. */

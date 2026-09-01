@@ -20,6 +20,8 @@ const props = defineProps<{
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
+  /** Declared, never used here: the contract is the same shape for every game the card renders. */
+  closed?: boolean
 }>()
 
 const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()

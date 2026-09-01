@@ -2,6 +2,7 @@ import type { Component } from 'vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
+import SpotObjectGame from './spotobject/SpotObjectGame.vue'
 
 /**
  * Every game the client can render, by the id the server announces (`GameDto.id` for a real round,
@@ -15,4 +16,5 @@ export const gameComponents: Record<string, Component> = {
   'guess-hue': GuessHueGame,
   'song-snippet': SongSnippetGame,
   'find-pattern': FindPatternGame,
+  'spot-object': SpotObjectGame,
 }

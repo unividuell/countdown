@@ -6,7 +6,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd core && GUESS_HUE_DATASET_PATH=\"$(../scripts/guess-hue-dataset.sh dev-path)\" GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run"
+        "cd core && GUESS_HUE_DATASET_PATH=\"$(../scripts/guess-hue-dataset.sh dev-path)\" SPOT_OBJECT_TERMS_PATH=\"$(../scripts/spot-object-terms.sh dev-path)\" GITHUB_CLIENT_SECRET=unused-the-test-login-picker-does-no-token-exchange SUPER_ADMIN_GITHUB_LOGINS=bender ./mvnw spring-boot:run"
       ],
       "port": 8080
     },

@@ -5,10 +5,14 @@ import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.iam.Avatar
 import tools.jackson.databind.JsonNode
 import java.time.Instant
 import java.util.UUID
+
+/** One vote cast on a lab tip, by name — mirrors `VoteView` in the real round's `RoundDtos`. */
+data class LabVoteView(val userId: UUID, val username: String, val value: Vote)
 
 /**
  * [points] is what the framework awarded, not what the game judged: `qualifies` and `deviation` stay
@@ -28,6 +32,15 @@ data class LabEntryDto(
     val stage: Int,
     /** Reveal-to-guess, as in a real round. `null` for a game that does not score on time. */
     val durationMs: Long?,
+    /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+    val votes: List<LabVoteView> = emptyList(),
+    /**
+     * Whether this tip currently scores nothing because of the review — the server's own answer,
+     * override included. The client never re-derives it: the rule lives in one place.
+     */
+    val struck: Boolean = false,
+    /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
+    val adminOverride: Boolean? = null,
 )
 
 /**
@@ -65,7 +78,18 @@ data class LabRoundResponse(
      * derived client-side.
      */
     val revealed: Boolean,
+    /**
+     * Whether the viewer may set the override. Always `true` — in the lab everybody is the game
+     * master, the one deliberate difference from the product: the lab models no roles anywhere.
+     */
+    val canOverride: Boolean = true,
 )
 
 /** The body of a skip request — mirrors `SkipRequest` in the real round's `RoundDtos`. */
 data class LabSkipRequest(val fromStage: Int)
+
+/** `null` withdraws the ballot — mirrors `VoteRequest` in the real round's `RoundDtos`. */
+data class LabVoteRequest(val value: Vote?)
+
+/** `null` hands the decision back to the vote — mirrors `OverrideRequest`. */
+data class LabOverrideRequest(val value: Boolean?)

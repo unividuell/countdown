@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
+import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
@@ -28,6 +29,8 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
+        review: { type: Object, default: null },
+        closed: { type: Boolean, default: false },
       },
       emits: ['guess', 'skip', 'give-up'],
       template:
@@ -49,6 +52,9 @@ const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   outcome: null,
   points: null,
   durationMs: null,
+  votes: [],
+  struck: false,
+  adminOverride: null,
   ...over,
 })
 
@@ -71,12 +77,24 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   others: [],
   awardRule: null,
   awardPoints: null,
+  canOverride: false,
   ...over,
 })
 
+function aReview(): RoundReview {
+  return {
+    open: true,
+    canOverride: false,
+    vote: vi.fn().mockResolvedValue(undefined),
+    override: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
 function mountCard(props: {
   round: RoundResponse | null
-  stage: RoundStage
+  /** Omitted for a closed round: it has no stage left to derive a face from. */
+  stage?: RoundStage
+  closed?: boolean
   busy?: boolean
   notice?: string | null
   reveal?: () => Promise<void>
@@ -84,6 +102,7 @@ function mountCard(props: {
   skip?: (fromStage: number) => Promise<void>
   giveUp?: () => Promise<void>
   assetUrl?: (key: number) => string
+  review?: RoundReview
 }): VueWrapper {
   return mount(RoundCard, {
     props: {
@@ -94,6 +113,7 @@ function mountCard(props: {
       skip: vi.fn().mockResolvedValue(undefined),
       giveUp: vi.fn().mockResolvedValue(undefined),
       assetUrl: vi.fn().mockReturnValue('https://example.invalid/asset'),
+      review: aReview(),
       ...props,
     },
   })
@@ -149,6 +169,39 @@ describe('RoundCard', () => {
 
     expect(stub.props('stage')).toBe(2)
     expect(stub.props('assetUrl')).toBe(assetUrl)
+  })
+
+  // Asserted by calling through rather than by identity: `mount` makes its props reactive, so an
+  // object prop arrives at the child as a proxy of what was passed and `toBe` never holds. A
+  // function prop (`assetUrl` above) is not wrapped, which is why those tests can compare directly.
+  it("hands the game the round's review", async () => {
+    const review = aReview()
+    const round = aRound({ me: aPlay() })
+    const stub = mountCard({ round, stage: 'playing', review }).findComponent(StubGame)
+
+    await (stub.props('review') as RoundReview).vote('u1', 'FLAG')
+
+    expect(review.vote).toHaveBeenCalledWith('u1', 'FLAG')
+  })
+
+  // `<component :is>` on a `Component`-typed value is not prop-checked by vue-tsc (see the
+  // task-15 report) — a test is the only thing that would catch this binding going missing.
+  // Weltanschauung reads it: a closed round shows its tips to every viewer, played or not.
+  it('tells the game the round is closed', () => {
+    const round = aRound({ me: aPlay() })
+
+    expect(mountCard({ round, closed: true }).findComponent(StubGame).props('closed')).toBe(true)
+    expect(mountCard({ round, stage: 'playing' }).findComponent(StubGame).props('closed')).toBe(
+      false,
+    )
+  })
+
+  // The anchor the single-tip page's close control comes back to. Without it that control lands at
+  // the top of the community page and the reader has lost their place in the history.
+  it('anchors itself under its own round number', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing' })
+
+    expect(w.get('[data-test="round-card"]').attributes('id')).toBe('round-12')
   })
 
   it('reaches skip and give-up through to the callbacks the page supplied', async () => {
@@ -365,7 +418,12 @@ describe('RoundCard', () => {
     })
 
     const w = mount(RoundCard, {
-      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+      props: {
+        round,
+        closed: true,
+        assetUrl: (key: number) => `/assets/${key}`,
+        review: aReview(),
+      },
     })
 
     const stub = w.findComponent(StubGame)
@@ -381,7 +439,12 @@ describe('RoundCard', () => {
     const round = aRound({ me: null, others: [other], solution: { targetHue: 5 } })
 
     const stub = mount(RoundCard, {
-      props: { round, closed: true, assetUrl: (key: number) => `/assets/${key}` },
+      props: {
+        round,
+        closed: true,
+        assetUrl: (key: number) => `/assets/${key}`,
+        review: aReview(),
+      },
     }).findComponent(StubGame)
 
     expect(stub.exists()).toBe(true)

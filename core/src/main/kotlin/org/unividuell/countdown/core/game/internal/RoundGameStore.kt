@@ -44,8 +44,10 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         )
 
     /**
-     * The round, locked until the transaction ends. Taken by the guess flow before it judges, so the
-     * re-evaluation that follows sees a picture nobody else can move under it.
+     * The round, locked until the transaction ends. Taken by the guess flow after it judges — a
+     * judge call may do network I/O, and holding the lock across that would serialise the whole
+     * round on one stalled service — so the re-evaluation that follows is what it protects: it
+     * sees a picture nobody else can move under it.
      */
     @Transactional
     fun lock(roundGame: RoundGame): RoundGame {

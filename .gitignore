@@ -40,3 +40,5 @@ deploy/secrets/
 # infix, so it doesn't match deploy/guess-hue-dataset.sops.yaml itself (that committed file,
 # without an infix, stays tracked).
 deploy/guess-hue-dataset.*.sops.yaml
+# Same as above, for the Weltanschauung term list.
+deploy/spot-object-terms.*.sops.yaml

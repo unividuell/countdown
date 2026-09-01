@@ -22,22 +22,25 @@ import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
 import {
+  castLabVote,
   forgetMyLabEntry,
   giveUpLabRound,
   labAssetUrl,
   openLabRound,
   resetLabRound,
   revealLabRound,
+  setLabOverride,
   skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
 import type { GameEntry } from '@/games/GameEntry'
+import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
-const route = useRoute('/c/[slug]/lab/[game]')
+const route = useRoute('/c/[slug]/lab/[game]/')
 const router = useRouter()
 const { community } = useCommunityContext()
 const { user } = useAuth()
@@ -93,6 +96,19 @@ async function run(
     busy.value = false
   }
 }
+
+/**
+ * The lab's own review. `canOverride` comes back `true` from the server — in the lab everybody is
+ * the game master, which is the point of the harness. Seed and phase ride along because they are
+ * the lab's round key, the same way a round number is the product's.
+ */
+const review = computed<RoundReview>(() => ({
+  open: true,
+  canOverride: round.value?.canOverride ?? false,
+  vote: (userId, value) => run((slug, game, s, p) => castLabVote(slug, game, s, p, userId, value)),
+  override: (userId, value) =>
+    run((slug, game, s, p) => setLabOverride(slug, game, s, p, userId, value)),
+}))
 
 /** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
 async function reveal(): Promise<void> {
@@ -170,6 +186,9 @@ const gameEntries = computed<GameEntry[]>(() => {
       points: null,
       durationMs: null,
       avatar: user.value.avatar,
+      votes: [],
+      struck: false,
+      adminOverride: null,
     },
     ...current.others,
   ]
@@ -284,6 +303,9 @@ watch(
         is actually here, so the remount and the data land together. The same remount also discards
         any uncommitted scratch state a game component keeps locally (a value typed but never
         submitted) once the round it belonged to is gone.
+
+        `closed` is bound rather than left out: a lab round is never over — it is rolled again, not
+        closed — and the answer „false“ is the lab's, not an omission for the game to guess at.
       -->
       <component
         :is="gameComponent"
@@ -301,6 +323,8 @@ watch(
         :asset-url="
           (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
         "
+        :review="review"
+        :closed="false"
         @guess="guess"
         @skip="skip"
         @give-up="run(giveUpLabRound)"

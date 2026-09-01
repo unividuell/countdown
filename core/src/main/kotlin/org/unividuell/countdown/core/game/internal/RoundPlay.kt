@@ -36,6 +36,12 @@ data class RoundPlay(
     val deviation: Double? = null,
     val outcome: JsonNode? = null,
     val points: Int? = null,
+    /**
+     * The game master's verdict on this tip, overriding the peer vote in either direction. `null`
+     * — the normal state — lets the vote decide. A stored input like `qualifies`, not a written
+     * score: the re-evaluation reads it and stays pure.
+     */
+    val adminOverride: Boolean? = null,
 )
 
 /** One scored guess, reduced to what a standings sum needs: whose, which round, how much. */

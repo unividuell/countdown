@@ -57,6 +57,10 @@ describe('HoldButton', () => {
   })
 
   afterEach(() => {
+    // Spies here are per-case, and one of them decides what the whole file sees: a `matchMedia`
+    // stubbed to report reduced motion made every later case skip the spring. `vi.clearAllMocks()`
+    // would not have helped — it clears call history, not the implementation.
+    vi.restoreAllMocks()
     vi.useRealTimers()
     setHidden(false)
     // @ts-expect-error — removing the stub again

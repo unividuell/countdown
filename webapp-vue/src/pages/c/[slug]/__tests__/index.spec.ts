@@ -84,6 +84,7 @@ const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   others: [],
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  canOverride: false,
   ...over,
 })
 

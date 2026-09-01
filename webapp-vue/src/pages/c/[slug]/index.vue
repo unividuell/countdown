@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuth } from '@/auth/useAuth'
-import { roundAssetUrl } from '@/api/rounds'
+import { castVote, roundAssetUrl, setAdminOverride } from '@/api/rounds'
+import type { RoundResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
+import type { RoundReview } from '@/rounds/review'
 import { useRound } from '@/rounds/useRound'
 import MemberRow from '@/members/MemberRow.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
@@ -35,6 +37,37 @@ const {
 /** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
 const assetUrl = (key: number): string =>
   roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
+
+/**
+ * The ballot on somebody else's play. Both calls answer with the whole round, so nothing here is
+ * derived locally — the server's own re-evaluation is what the grid then renders.
+ */
+const review = computed<RoundReview>(() => ({
+  // The running round: always inside the server's review window.
+  open: true,
+  canOverride: round.value?.canOverride ?? false,
+  vote: (userId, value) =>
+    ballot(() => castVote(community.value.slug, roundNumber(), userId, value)),
+  override: (userId, value) =>
+    ballot(() => setAdminOverride(community.value.slug, roundNumber(), userId, value)),
+}))
+
+const roundNumber = () => round.value?.round?.number ?? 0
+
+/**
+ * Never rejects, by contract with `RoundReview`: a refused ballot — the round moved on, somebody
+ * else is not an admin after all — says so in the same notice a refused guess uses, rather than
+ * escaping into the grid, which has no place to put a sentence.
+ */
+async function ballot(action: () => Promise<RoundResponse>): Promise<void> {
+  notice.value = null
+  try {
+    round.value = await action()
+  } catch (err) {
+    console.error('[review] ballot failed', err)
+    notice.value = 'Die Wertung konnte nicht gespeichert werden.'
+  }
+}
 
 // null means "not known yet" and holds the card at a placeholder, so only 'loading' gets it. A
 // failed roster never retries, so mapping it to null would hide the card forever; [] lets the
@@ -99,6 +132,7 @@ const settledMembers = computed(() => {
     :skip="skip"
     :give-up="giveUp"
     :asset-url="assetUrl"
+    :review="review"
     @guessed="refreshAfterGuess"
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />

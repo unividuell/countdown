@@ -6,10 +6,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.iam.AuthenticatedUser
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/communities/{slug}/rounds")
@@ -17,6 +19,7 @@ class RoundController(
     private val announcements: AnnouncementService,
     private val plays: PlayService,
     private val histories: HistoryService,
+    private val reviews: ReviewService,
 ) {
 
     @GetMapping("/current")
@@ -108,4 +111,33 @@ class RoundController(
             .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable")
             .body(asset.bytes)
     }
+
+    /**
+     * Confirm, flag, or take the vote back — one verb, because a voter holds exactly one ballot
+     * per tip and a second click replaces it.
+     */
+    @PutMapping("/{roundNumber}/plays/{userId}/vote")
+    fun vote(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable roundNumber: Int,
+        @PathVariable userId: UUID,
+        @RequestBody body: VoteRequest,
+    ): RoundResponse = reviews.vote(
+        slug = slug, voterId = me.id, isSuperAdmin = me.isSuperAdmin,
+        roundNumber = roundNumber, targetUserId = userId, value = body.value,
+    )
+
+    /** The game master's verdict on one tip. `null` hands the decision back to the vote. */
+    @PutMapping("/{roundNumber}/plays/{userId}/override")
+    fun override(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @PathVariable roundNumber: Int,
+        @PathVariable userId: UUID,
+        @RequestBody body: OverrideRequest,
+    ): RoundResponse = reviews.override(
+        slug = slug, adminId = me.id, isSuperAdmin = me.isSuperAdmin,
+        roundNumber = roundNumber, targetUserId = userId, value = body.value,
+    )
 }

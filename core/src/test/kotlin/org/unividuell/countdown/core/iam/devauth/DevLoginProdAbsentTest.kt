@@ -10,9 +10,14 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.guesshue.GuessHueTestDatasetConfiguration
+import org.unividuell.countdown.core.spotobject.SpotObjectTestTermsConfiguration
 
 /** Under the production profile: test-auth.enabled=false → picker absent, redirect controller active. */
-@Import(TestcontainersConfiguration::class, GuessHueTestDatasetConfiguration::class)
+@Import(
+    TestcontainersConfiguration::class,
+    GuessHueTestDatasetConfiguration::class,
+    SpotObjectTestTermsConfiguration::class,
+)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("production")

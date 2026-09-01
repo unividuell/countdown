@@ -32,3 +32,9 @@ app:
     # Belt and braces: the beans are @Profile("!production") too. Two gates because the cost is a
     # line of yaml and the failure mode is unlimited practice against real puzzle content.
     enabled: false
+  spot-object:
+    # No default, unlike the base application.yaml: a missing key/secret fails the boot instead
+    # of shipping a board that cannot draw a map or sign a still-image URL.
+    maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY}
+    server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY}
+    signing-secret: ${SPOT_OBJECT_SIGNING_SECRET}

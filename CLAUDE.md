@@ -34,13 +34,13 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
-- **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract. *(backend)*
-- **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently. *(backend)*
+- **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract, browser vs. server API keys. *(backend)*
+- **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently, never log what storage must not have. *(backend)*
 - **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); lint + `vue-tsc -b`. *(webapp-vue)*
   - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, sizing traps, accessibility.
   - **[Routing & shells](.claude/guidelines/frontend-routing.md)** — Vue Router 5 file-based, guard-owned nav data, `[slug]` shell, role gating.
   - **[State](.claude/guidelines/frontend-state.md)** — composables/VueUse (no Pinia), shared clock, server-authoritative ticking, short-clip audio.
-  - **[Testing](.claude/guidelines/frontend-testing.md)** — Vitest + `vi` (not mockk), happy-dom limits, doubles.
+  - **[Testing](.claude/guidelines/frontend-testing.md)** — Vitest + `vi` (not mockk), happy-dom limits, doubles, `<component :is>` props aren't type-checked.
 - **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, prod+staging compose topology, backend production profile.
   - **[Edge](.claude/guidelines/deployment-edge.md)** — the two Caddys, TLS, SPA/API routing, cache headers, the `X-Forwarded-*` chain.
   - **[Server ops](.claude/guidelines/deployment-server.md)** — `update.sh`, secret-handling scripts, pg_dump backup, SSH-tunnel pgAdmin.
