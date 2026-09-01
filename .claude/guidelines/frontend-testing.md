@@ -106,15 +106,22 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   broken". Only the real primary-mouse id tends to work. When driving a live page from the console,
   read the value **in a later call**: Vue flushes the DOM on the next tick, so an attribute read in
   the same turn as the dispatch still shows the old value and will send you chasing a phantom.
-- **No Web Animations API**: `Element.prototype.animate` is `undefined` (while `window.matchMedia`
-  *does* exist and answers `matches: false` for every query). Any component calling `el.animate(...)`
-  must check `typeof el.animate !== 'function'` or the path throws — and note *which* path:
-  `FlipDotBoard` animates only inside its watcher, so it's the *update* that throws and a
-  mount-only test stays green and hides it. The capability check has to leave the resting appearance
-  correct on its own (bind the final colour/position declaratively; let the animation cover only the
-  transition). A test that wants to *observe* the animation installs it itself —
-  `Object.defineProperty(Element.prototype, 'animate', { value: vi.fn(), configurable: true, writable: true })`,
-  deleted again in `afterEach`. `src/ui/flipdot/FlipDotBoard.vue` + its spec are the worked example.
+- **The Web Animations API arrived in happy-dom 20.12, and it runs rather than throws.** Up to
+  20.11 `Element.prototype.animate` was `undefined`; a component's capability check
+  (`typeof el.animate !== 'function'`) therefore steered every spec down the no-animation path for
+  free. From 20.12 the check passes, the animation path runs, and nothing observes it — so a spec
+  that reads the *resting* appearance now reads a component mid-transition instead. Say which path
+  you want rather than inheriting one from the environment:
+  - observing the animation: install a spy —
+    `Object.defineProperty(Element.prototype, 'animate', { value: vi.fn(), configurable: true, writable: true })`;
+  - reading the rest state: `Reflect.deleteProperty(Element.prototype, 'animate')` in `beforeEach`.
+
+  This is also why the capability check has to leave the resting appearance correct on its own (bind
+  the final colour/position declaratively; let the animation cover only the transition). Note *which*
+  path animates: `FlipDotBoard` animates only inside its watcher, so a mount-only test never reaches
+  it. `src/ui/flipdot/FlipDotBoard.vue` and the two specs around it — `FlipDotBoard.spec.ts`
+  (installs the spy) and `CountdownCard.spec.ts` (deletes it) — are the worked example.
+  `window.matchMedia` *does* exist throughout and answers `matches: false` for every query.
 - **Reduced motion** needs a stub, since `matchMedia` always answers `false`:
   `vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)`.
 - **VueUse's `onClickOutside` does not fire.** `src/nav/NavDrawer.vue`'s outside-click-to-close

@@ -75,8 +75,8 @@ declare module 'vue-router/auto-routes' {
     '/c/[slug]/lab/[game]/': RouteRecordInfo<
       '/c/[slug]/lab/[game]/',
       '/c/:slug/lab/:game',
-      { slug: ParamValue<true>, game: ParamValue<true> },
-      { slug: ParamValue<false>, game: ParamValue<false> },
+      { game: ParamValue<true>, slug: ParamValue<true> },
+      { game: ParamValue<false>, slug: ParamValue<false> },
       | never
     >,
     '/c/[slug]/members': RouteRecordInfo<

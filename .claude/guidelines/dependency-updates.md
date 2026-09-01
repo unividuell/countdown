@@ -108,6 +108,9 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
   from `package.json` fails there and nowhere else.
 - After a **Prettier minor** bump, run `pnpm exec prettier --check src`. Minors can change
   formatting defaults and silently turn the next `pnpm format` into a repo-wide diff.
+- A **happy-dom minor** can add a DOM API, and a capability check that used to be false in tests is
+  then true — the spec silently changes which code path it exercises. 20.12 shipped the Web
+  Animations API this way; see [frontend-testing.md](frontend-testing.md#happy-dom-limits).
 
 ## Docker
 

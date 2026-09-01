@@ -84,8 +84,9 @@ function releaseWaves(): void {
 function flip(prev: Bitmap, next: Bitmap): void {
   if (prev.cols !== next.cols || prefersReducedMotion() || inBackground()) return
   const circles = svg.value?.querySelectorAll('circle')
-  // happy-dom has no Web Animations API; the resting colour is already correct without it. Checked
-  // up front rather than per dot, so a board without one is never left holding a pre-flip colour.
+  // Without the Web Animations API the resting colour is already correct, so there is nothing to
+  // reveal. Checked up front rather than per dot, so such a board is never left holding a pre-flip
+  // colour on the dots a wave that cannot run would have owed a flip to.
   if (!circles || typeof circles[0]?.animate !== 'function') return
 
   // A dot a running wave still owes a flip to is left to that wave — it resolves to whatever the
