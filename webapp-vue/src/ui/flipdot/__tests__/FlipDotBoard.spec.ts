@@ -19,8 +19,9 @@ import { bitmap } from '@/ui/flipdot/font'
 // no longer creates them all at once, so a call's `delay` alone no longer says when it runs.
 const createdAt: number[] = []
 
-// happy-dom 20 ships no Web Animations API (measured: Element.prototype.animate is undefined),
-// so a test that wants to observe the flip has to install it.
+// happy-dom's own Web Animations API (shipped in 20.12) runs but records nothing, so a test that
+// wants to observe the flip replaces it with a spy — and `afterEach` deletes the property, which
+// leaves the environment on the no-WAAPI path the component also keeps for a browser without one.
 function stubAnimate(): ReturnType<typeof vi.fn> {
   const animate = vi.fn(() => {
     createdAt.push(performance.now())

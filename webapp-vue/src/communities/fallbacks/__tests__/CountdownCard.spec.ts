@@ -34,6 +34,11 @@ async function advance(ms: number): Promise<void> {
 }
 
 beforeEach(() => {
+  // The dot counts below read the boards at rest. happy-dom has shipped the Web Animations API
+  // since 20.12, so the flip now runs here and holds every dot it has not reached at its pre-flip
+  // colour — a board mid-reveal, not the readout. Taking `animate` away puts the boards back on
+  // the path the component keeps for a browser without it: resolve straight to the resting colour.
+  Reflect.deleteProperty(Element.prototype, 'animate')
   vi.useFakeTimers()
 })
 
