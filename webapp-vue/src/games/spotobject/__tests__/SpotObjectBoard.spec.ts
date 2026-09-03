@@ -17,29 +17,31 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
   noCoverage: Ref<boolean>
-  pegmanDragging: Ref<boolean>
   heading: Ref<number | null>
   currentTip: ReturnType<typeof vi.fn>
-  toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
+  toPanorama: ReturnType<typeof vi.fn>
+  openMiniMap: ReturnType<typeof vi.fn>
+  jumpMissed: Ref<boolean>
 } {
   const double = {
     error: ref<string | null>(null),
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),
-    pegmanDragging: ref(false),
     heading: ref<number | null>(null),
     currentTip: vi.fn().mockReturnValue(null),
-    toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    toPanorama: vi.fn(),
+    openMiniMap: vi.fn().mockResolvedValue(undefined),
+    jumpMissed: ref(false),
   }
   vi.mocked(useStreetView).mockReturnValue(double)
   return double
 }
 
 function mountBoard(disabled = false) {
-  return mount(SpotObjectBoard, { props: { disabled } })
+  return mount(SpotObjectBoard, { props: { disabled, trailColor: '#8e44ad' } })
 }
 
 describe('SpotObjectBoard', () => {
@@ -81,18 +83,13 @@ describe('SpotObjectBoard', () => {
     expect(w.emitted('guess')).toBeUndefined()
   })
 
-  it('offers a way back to the world map while a panorama is open', async () => {
-    const double = mockStreetView({ visible: false })
+  /** The map has three sizes and the largest one *is* the world map — there is no other way out. */
+  it('reaches the world map by growing the mini-map to full screen', async () => {
+    const double = mockStreetView({ visible: true })
     const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    expect(w.find('[data-test="spot-world-map"]').exists()).toBe(false)
-
-    double.pano.visible = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-world-map"]').exists()).toBe(true)
-
-    await w.get('[data-test="spot-world-map"]').trigger('click')
+    await w.get('[data-test="spot-mini-full"]').trigger('click')
 
     expect(double.toWorldMap).toHaveBeenCalledOnce()
   })
@@ -113,15 +110,21 @@ describe('SpotObjectBoard', () => {
     expect(w.html()).not.toContain('bottom-0')
   })
 
-  /** The term rides over the map while searching; the reveal puts the same band in the card. */
-  it('stacks the slot above its own controls', () => {
+  /**
+   * The term rides over the map while searching; the reveal puts the same band in the card. It
+   * shares its row with the two controls now — no layout in happy-dom, so what a spec can hold is
+   * that the row is a wrapping one and that all three are in it.
+   */
+  it('gives the term the row between its two controls', () => {
     const w = mount(SpotObjectBoard, {
-      props: { disabled: false },
+      props: { disabled: false, trailColor: '#8e44ad' },
       slots: { default: '<p data-test="slotted">„Rosa Gartenzwerg“</p>' },
     })
 
-    const stack = w.get('[data-test="spot-actions"]').element.parentElement!
-    expect(stack.firstElementChild!.getAttribute('data-test')).toBe('slotted')
+    const row = w.get('[data-test="spot-actions"]')
+    expect(row.classes()).toContain('flex-wrap')
+    expect(row.element.contains(w.get('[data-test="slotted"]').element)).toBe(true)
+    expect(row.element.contains(w.get('[data-test="spot-guess-button"]').element)).toBe(true)
   })
 
   /**
@@ -136,131 +139,18 @@ describe('SpotObjectBoard', () => {
   })
 
   /**
-   * The crosshair is the aim for both halves of the board: on the map it is where the Pegman will
-   * land, in the panorama it is where the object has to be before „Gefunden“.
+   * The crosshair is one thing now, not two: the centre the object has to be in before „Gefunden“.
+   * On the map it used to be the aim as well, and a press lands where the finger is.
    */
-  it('marks the centre of the stage in both halves', async () => {
+  it('marks the centre of the panorama, and nothing on the map', async () => {
     const double = mockStreetView({ visible: false })
     const w = mountBoard()
 
-    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(false)
 
     double.pano.visible = true
     await w.vm.$nextTick()
 
-    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
-  })
-
-  /**
-   * As a hit target the ring shadowed the map's own gestures at the one spot they matter most: a
-   * double click there no longer zoomed, and a wheel over it scrolled the page instead of the map.
-   * It takes no pointer events at all now — the press is read off the map below.
-   */
-  it('lets the map keep every gesture at its own centre', async () => {
-    const w = mountBoard()
-
-    expect(w.get('[data-test="spot-enter"]').classes()).toContain('pointer-events-none')
-  })
-
-  /** The one path no pointer gesture stands in for — the ring is still a real button. */
-  it('enters Street View from the keyboard, and only while there is a map to aim at', async () => {
-    const double = mockStreetView({ visible: false })
-    const w = mountBoard()
-
-    await w.get('[data-test="spot-enter"]').trigger('click')
-    expect(double.toStreetView).toHaveBeenCalledOnce()
-
-    double.pano.visible = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
-  })
-
-  describe('the press on the crosshair', () => {
-    /**
-     * happy-dom measures every element as 0×0 at the origin, so the stage's centre is (0,0) and a
-     * press is „inside the ring“ by how far its own coordinates are from there.
-     */
-    function press(w: ReturnType<typeof mountBoard>, from: [number, number], to = from): void {
-      const stage = w.get('[data-test="spot-map"]').element
-      stage.dispatchEvent(new MouseEvent('pointerdown', { clientX: from[0], clientY: from[1] }))
-      stage.dispatchEvent(new MouseEvent('pointerup', { clientX: to[0], clientY: to[1] }))
-    }
-
-    beforeEach(() => vi.useFakeTimers())
-    afterEach(() => vi.useRealTimers())
-
-    it('waits out the double click before acting on a single one', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0])
-      // Google zooms on a double click at this very spot, so nothing may have happened yet.
-      expect(double.toStreetView).not.toHaveBeenCalled()
-
-      vi.advanceTimersByTime(300)
-      expect(double.toStreetView).toHaveBeenCalledOnce()
-    })
-
-    /**
-     * Both halves have to give way, not just the first: cancelling the first press's action and
-     * then letting the second schedule its own turns a double click into a single one with a
-     * delay — which is what it did, and it zoomed *and* travelled.
-     */
-    it('hands a double click to the map and keeps nothing back', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0])
-      press(w, [0, 0])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('leaves a pan that began at the centre alone', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0], [0, 40])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('claims only presses inside the ring', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [120, 90])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('takes no press while the round is locked', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard(true)
-
-      press(w, [0, 0])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-  })
-
-  /**
-   * The ring sits where a dropped Pegman most often lands. The Pegman is the way in past the 50 m
-   * the press reaches, so a shortcut that blocks it is worse than no shortcut.
-   */
-  it('gets its ring out of the way of a Pegman in the air, but keeps the mark', async () => {
-    const double = mockStreetView({ visible: false })
-    const w = mountBoard()
-
-    double.pegmanDragging.value = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
     expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
   })
 
@@ -303,5 +193,101 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
+  })
+  /**
+   * The row's right-hand end belongs to „Gefunden“, and on the line it wraps onto it is alone
+   * there. `justify-end` and not an auto margin: an auto margin would take the free space before
+   * the term's `grow` ever saw it, and the term would stop being centred between the controls.
+   */
+  it('keeps „Gefunden“ at the row’s right-hand end', () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+
+    expect(w.get('[data-test="spot-actions"]').classes()).toContain('justify-end')
+    expect(w.get('[data-test="spot-guess-button"]').classes()).not.toContain('ms-auto')
+  })
+
+  /** Submitting stays possible at every size: the map is a view onto the round, not a modal. */
+  it('keeps „Gefunden“ while the mini-map is open', async () => {
+    mockStreetView({ visible: true, panoId: 'pano-1' })
+    const w = mountBoard()
+
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    expect(w.get('[data-test="spot-guess-button"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('opens the panel from the slot „Weltkarte“ used to hold', async () => {
+    const double = mockStreetView({ visible: true })
+    const w = mountBoard()
+
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    expect(double.openMiniMap).toHaveBeenCalledWith(w.get('[data-test="spot-mini-stage"]').element)
+    // One control per step: the way down is the panel's own, so this button steps aside.
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
+  })
+
+  /**
+   * No layout in happy-dom, so the structural proxy. The icon shares the term's row; the map at
+   * its middle size cannot — the row is where the term is, and a 200px square in it would push
+   * everything else off screen — so it opens one row below, out of the control it grows from.
+   */
+  it('keeps the icon in the term’s row and opens the panel under it', async () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+    const row = w.get('[data-test="spot-actions"]').element
+    // Read before the press: the icon steps aside once the panel is open.
+    expect(row.contains(w.get('[data-test="spot-mini-open"]').element)).toBe(true)
+
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    const panel = w.get('[data-test="spot-mini-panel"]').element
+    expect(row.contains(panel)).toBe(false)
+    expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('closes the mini-map on its own button', async () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    await w.get('[data-test="spot-mini-close"]').trigger('click')
+
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(true)
+  })
+
+  /**
+   * Shrinking is not re-entering: the panorama was only hidden, so it comes back where it was left
+   * rather than wherever a fresh search around the map's centre lands.
+   */
+  it('shrinks back into the panorama it left, and lands on the panel again', async () => {
+    const double = mockStreetView({ visible: true })
+    const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+    await w.get('[data-test="spot-mini-full"]').trigger('click')
+
+    double.pano.visible = false
+    double.pano.panoId = 'pano-1'
+    await w.vm.$nextTick()
+    await w.get('[data-test="spot-street-view"]').trigger('click')
+
+    expect(double.toPanorama).toHaveBeenCalledOnce()
+
+    double.pano.visible = true
+    await w.vm.$nextTick()
+
+    // `v-show`, so presence proves nothing — the panel is in the DOM at every size.
+    expect(w.get<HTMLElement>('[data-test="spot-mini-panel"]').element.style.display).not.toBe(
+      'none',
+    )
+  })
+
+  it('has no size to step between before the first panorama', () => {
+    mockStreetView({ visible: false, panoId: null })
+    const w = mountBoard()
+
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
+    expect(w.find('[data-test="spot-street-view"]').exists()).toBe(false)
   })
 })

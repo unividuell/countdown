@@ -14,7 +14,10 @@
 import { reactive, ref } from 'vue'
 import type { Ref } from 'vue'
 import { apiFetch } from '@/api/client'
+import { onMapPress } from './mapPress'
+import { panoAt } from './panoAt'
 import type { SpotObjectTip } from './types'
+import { useWalkMap } from './useWalkMap'
 
 /**
  * What the board renders: whether a panorama is open at all, and which one. The *view* inside it
@@ -73,8 +76,6 @@ export interface UseStreetView {
   pano: StreetViewState
   /** True while the last attempt found nothing and the map has not been moved since. */
   noCoverage: Ref<boolean>
-  /** True while Google's own Pegman is being carried, so our ring can get out of its way. */
-  pegmanDragging: Ref<boolean>
   /**
    * The direction the open panorama faces, for the compass to read. Display only — a tip still
    * takes its heading from `currentTip` at the moment of the click.
@@ -82,18 +83,30 @@ export interface UseStreetView {
   heading: Ref<number | null>
   /** The tip for the view on screen right now, or `null` while no panorama is open. */
   currentTip: () => SpotObjectTip | null
-  toStreetView: () => void
   toWorldMap: () => void
+  /** Back into the panorama that is still loaded, exactly where it was left. */
+  toPanorama: () => void
+  /** Builds the mini-map into `element` on the first open — see `useWalkMap`. */
+  openMiniMap: (element: HTMLElement) => Promise<void>
+  /** True while the last tap on the mini-map found nothing. */
+  jumpMissed: Ref<boolean>
 }
 
-export function useStreetView(): UseStreetView {
+export interface StreetViewDeps {
+  /** The player's own colour, which only the round knows. */
+  trailColor: Ref<string>
+  /** The board is locked — a press must not walk into anything. */
+  locked: Ref<boolean>
+}
+
+export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreetView {
   const error = ref<string | null>(null)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
-  const pegmanDragging = ref(false)
   const heading = ref<number | null>(null)
   let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
+  const walk = useWalkMap(trailColor)
 
   async function mount(element: HTMLElement): Promise<void> {
     try {
@@ -104,9 +117,9 @@ export function useStreetView(): UseStreetView {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         gestureHandling: 'greedy',
-        // Kept beside the crosshair's own press rather than replaced by it: `setPosition` searches
-        // a fixed 50 m, so below the zoom where the blue lines are drawn the press finds nothing
-        // and the Pegman is the only way in. Half way down the right edge rather than the API's
+        // Kept beside the press on the map rather than replaced by it: `setPosition` searches a
+        // fixed 50 m, so below the zoom where the blue lines are drawn a press finds nothing and
+        // the Pegman is the only way in. Half way down the right edge rather than the API's
         // bottom-right default: on a phone held in the right hand that corner is under the thumb's
         // own knuckle. `position` is the only option this control accepts — `sources: [OUTDOOR]`
         // is rejected outright ("OUTDOOR source not supported on StreetViewControlOptions") and
@@ -118,8 +131,8 @@ export function useStreetView(): UseStreetView {
       })
 
       // Coverage stays on permanently: saying „ich suche jetzt in Barcelona“ needs to see where
-      // there is anything to walk into — and it is what the crosshair's press is aimed at, which
-      // reaches only 50 m. Takes no options of its own.
+      // there is anything to walk into — and it is what a press is aimed at, which reaches only
+      // 50 m. Takes no options of its own.
       new google.maps.StreetViewCoverageLayer().setMap(map)
 
       // The map's own default panorama — never `new google.maps.StreetViewPanorama(...)`.
@@ -143,6 +156,11 @@ export function useStreetView(): UseStreetView {
       panorama.addListener('pano_changed', () => {
         pano.panoId = panorama?.getPano() || null
         heading.value = panorama?.getPov().heading ?? null
+
+        // The world map walks along underneath, so „← Weltkarte“ comes out where the player
+        // stopped rather than where they went in.
+        const position = panorama?.getPosition()
+        if (position) map?.setCenter(position)
       })
 
       // Turning fires this and nothing else, which is why the compass cannot ride on `pano_changed`.
@@ -150,20 +168,18 @@ export function useStreetView(): UseStreetView {
         heading.value = panorama?.getPov().heading ?? null
       })
 
-      // A miss is answered by us rather than by Google's grey „no imagery“ panel: the panorama
-      // goes back out of sight and the crosshair says there is nothing to walk into here.
-      panorama.addListener('status_changed', () => {
-        if (!panorama || panorama.getStatus() === 'OK') return
-        panorama.setVisible(false)
-        noCoverage.value = true
-      })
-
       // „Hier“ is the whole of that notice, so moving the map is what withdraws it.
       map.addListener('center_changed', () => {
         noCoverage.value = false
       })
 
-      watchPegman(element)
+      walk.attach({ map, panorama })
+
+      // Both maps take the same press, and this is the board's own. It replaces a ring floating
+      // over the map's centre: aiming with a finger beats aiming by panning, and Google's own
+      // click event needs none of the pointer arithmetic that ring did.
+      onMapPress(map, (at) => void enterAt(at))
+
       swallowScrollKeys(element)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'failed to load the map'
@@ -187,50 +203,28 @@ export function useStreetView(): UseStreetView {
   }
 
   /**
-   * Into Street View at the map's centre — the point under the crosshair.
+   * Into Street View where the map was pressed.
    *
-   * Nothing new is asked of Google: `setPosition` on the map's own panorama is the call a landing
-   * Pegman makes, so this costs exactly what dragging cost. `setPosition` takes no radius and
-   * searches the standard 50 m, which is why the coverage layer stays on: aim at a blue line at a
-   * zoom where you can see it, and the press lands.
+   * The panorama is never asked to find anything itself: `setPosition` searches a fixed 50 m,
+   * which is a seven-pixel target at the zoom where the blue lines appear, so on a phone the
+   * press almost never landed. `panoAt` asks for a finger's reach instead and hands back an id,
+   * and `setPano` on a known id is exact — there is no miss left to take back, which is why the
+   * whole answer to one lives here now rather than in a status that only speaks when it changes.
    */
-  function toStreetView(): void {
-    const center = map?.getCenter()
-    // A second press without moving would ask the same question again, and a status that does not
-    // change fires no event to hide the panorama with — Google's own „no imagery“ panel would be
-    // the answer instead of ours.
-    if (!panorama || !center || noCoverage.value) return
-    panorama.setPosition(center)
-    panorama.setVisible(true)
-  }
+  async function enterAt(at: google.maps.LatLng): Promise<void> {
+    if (!map || !panorama || locked.value) return
 
-  /**
-   * Whether Google's Pegman is in the air, by watching for a press on its control.
-   *
-   * Reaches for Google's own class name, which is the coupling the Pegman's old size hack was
-   * removed for — but it fails the right way: if that class ever changes, nothing matches, the
-   * ring simply stays put, and the map is exactly as usable as it was before. Nothing about
-   * dropping the Pegman depends on this.
-   */
-  function watchPegman(element: HTMLElement): void {
-    const end = (): void => {
-      pegmanDragging.value = false
-      window.removeEventListener('pointerup', end)
-      window.removeEventListener('pointercancel', end)
+    noCoverage.value = false
+    const pano = await panoAt(map, at)
+    if (!panorama) return
+
+    if (!pano) {
+      noCoverage.value = true
+      return
     }
 
-    // Captured: the control swallows the press on its way down, so a bubbling listener never sees
-    // it. The drag ends wherever the finger lifts, which is why that half hangs off the window.
-    element.addEventListener(
-      'pointerdown',
-      (event) => {
-        if (!(event.target instanceof Element) || !event.target.closest('.gm-svpc')) return
-        pegmanDragging.value = true
-        window.addEventListener('pointerup', end)
-        window.addEventListener('pointercancel', end)
-      },
-      { capture: true },
-    )
+    panorama.setPano(pano)
+    panorama.setVisible(true)
   }
 
   /** Whoever lands on a single photo — indoor and user shots are found too — uses this to get out. */
@@ -238,15 +232,25 @@ export function useStreetView(): UseStreetView {
     panorama?.setVisible(false)
   }
 
+  /**
+   * The way back up from the full-screen map. Nothing is looked up: the panorama was only hidden,
+   * so showing it again is free and lands on the very panorama the player left, rather than on
+   * whatever a fresh 50 m search around the map's centre would find.
+   */
+  function toPanorama(): void {
+    panorama?.setVisible(true)
+  }
+
   return {
     error,
     mount,
     pano,
     noCoverage,
-    pegmanDragging,
     heading,
     currentTip,
-    toStreetView,
     toWorldMap,
+    toPanorama,
+    openMiniMap: walk.openMiniMap,
+    jumpMissed: walk.jumpMissed,
   }
 }

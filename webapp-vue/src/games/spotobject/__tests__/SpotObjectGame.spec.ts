@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
+import SpotObjectBoard from '../SpotObjectBoard.vue'
 import SpotObjectGame from '../SpotObjectGame.vue'
 import SpotObjectReviewRules from '../SpotObjectReviewRules.vue'
 import SpotObjectRules from '../SpotObjectRules.vue'
@@ -18,11 +19,12 @@ function mockStreetView() {
     mount: vi.fn(),
     pano: reactive({ visible: true, panoId: 'pano-42' }),
     noCoverage: ref(false),
-    pegmanDragging: ref(false),
     heading: ref<number | null>(null),
     currentTip: () => ({ panoId: 'pano-42', heading: 12, pitch: -3, zoom: 2 }),
-    toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    toPanorama: vi.fn(),
+    openMiniMap: vi.fn().mockResolvedValue(undefined),
+    jumpMissed: ref(false),
   })
 }
 
@@ -155,5 +157,22 @@ describe('SpotObjectGame', () => {
     expect(wrapper.find('[data-test="spot-map"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="tip-grid"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('lässt sich hier nicht anzeigen')
+  })
+
+  /** The trail is the player's own walk, so it is drawn in the colour that is theirs everywhere. */
+  it('hands the board the player’s own colour for the trail', () => {
+    mockStreetView()
+
+    const w = mountGame({ entries: [{ ...MINE, guess: null }], mineUserId: 'mine' })
+
+    expect(w.getComponent(SpotObjectBoard).props('trailColor')).toBe('#7c3aed')
+  })
+
+  it('falls back to neutral until an entry of one’s own exists', () => {
+    mockStreetView()
+
+    const w = mountGame()
+
+    expect(w.getComponent(SpotObjectBoard).props('trailColor')).toBe('#404040')
   })
 })

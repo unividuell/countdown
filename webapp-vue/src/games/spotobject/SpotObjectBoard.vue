@@ -6,23 +6,20 @@
  * above both faces, so it reads the same while searching and while judging.
  *
  * Knows nothing about the round or the lab — it is told whether it is locked, and it hands back
- * the view the open panorama is showing. Everything Google lives in `useStreetView`.
+ * the view the open panorama is showing. Everything Google lives in `useStreetView`, the press
+ * that walks into a panorama included: it is the map's own click event now, on both maps, rather
+ * than a control of ours floating over the map's centre.
  */
-import { onMounted, onUnmounted, useTemplateRef } from 'vue'
-import IconArrowLeft from '~icons/lucide/arrow-left'
+import { computed, onMounted, ref, toRef, useTemplateRef } from 'vue'
+import IconMap from '~icons/lucide/map'
+import IconMinimize from '~icons/lucide/minimize-2'
 import SpotObjectCompass from './SpotObjectCompass.vue'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
+import SpotObjectMiniMap from './SpotObjectMiniMap.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
 
-/** The ring's own radius: farther out than this, a press is a press on the map. */
-const RING_RADIUS = 24
-/** Movement a press may still carry before it counts as the start of a pan. */
-const TAP_SLOP = 8
-/** How long a press waits to find out whether it was the first half of a double click. */
-const DOUBLE_TAP_MS = 280
-
-const props = defineProps<{ disabled: boolean }>()
+const props = defineProps<{ disabled: boolean; trailColor: string }>()
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 
@@ -30,91 +27,32 @@ const {
   currentTip,
   error,
   heading,
+  jumpMissed,
   mount,
   noCoverage,
+  openMiniMap,
   pano,
-  pegmanDragging,
-  toStreetView,
+  toPanorama,
   toWorldMap,
-} = useStreetView()
+} = useStreetView({ trailColor: toRef(props, 'trailColor'), locked: toRef(props, 'disabled') })
+
+/**
+ * The map has three sizes and this is the middle one, kept as the *panel's* own flag rather than
+ * as a state machine: whether a panorama is open is Google's answer, not ours, so the full-screen
+ * size is simply `!pano.visible`. Leaving it standing while the map is full-screen is what makes
+ * the way back land on the middle size again.
+ */
+const miniMapOpen = ref(false)
+
+const miniMapVisible = computed(() => miniMapOpen.value && pano.visible)
 
 const stage = useTemplateRef<HTMLElement>('stage')
+/** The room the mini-map may be dragged around in. */
+const board = useTemplateRef<HTMLElement>('board')
 
 onMounted(() => {
-  if (!stage.value) return
-  void mount(stage.value)
-  watchCentreTap(stage.value)
+  if (stage.value) void mount(stage.value)
 })
-
-onUnmounted(() => cancelPending())
-
-/**
- * The press on the ring, read off the map itself rather than taken by a button on top of it.
- *
- * A button there is an opaque hit target, and the centre of a map is where the map's own gestures
- * live: a double click zooms, the wheel zooms, a drag pans. All three broke — the wheel one
- * scrolled the *page* instead. So the ring takes no pointer events at all, everything reaches
- * Google untouched, and only a press that is unmistakably ours is claimed back here.
- *
- * Unmistakably ours means: it did not travel, it landed inside the ring, and it is not part of a
- * run of presses. That last one cuts both ways — the first press of a double click has its action
- * cancelled by the second, and the second must schedule nothing of its own, or the double click
- * ends up doing what a single one does, only later.
- *
- * Captured, not bubbled: Google stops these events on their way up to run its own gestures, and
- * the stage is the outermost element, so its capture listener is the one nothing can sit in front
- * of.
- */
-let pressedAt: { x: number; y: number } | null = null
-let pending: ReturnType<typeof setTimeout> | null = null
-/**
- * When the last press ended, so the next one can tell it is a repeat. Measured on the events' own
- * clock, and started at negative infinity so the very first press of a session is never one.
- */
-let releasedAt = Number.NEGATIVE_INFINITY
-let repeat = false
-
-function cancelPending(): void {
-  if (pending === null) return
-  clearTimeout(pending)
-  pending = null
-}
-
-function withinRing(element: HTMLElement, x: number, y: number): boolean {
-  const box = element.getBoundingClientRect()
-  return Math.hypot(x - (box.left + box.width / 2), y - (box.top + box.height / 2)) <= RING_RADIUS
-}
-
-function watchCentreTap(element: HTMLElement): void {
-  element.addEventListener(
-    'pointerdown',
-    (event) => {
-      cancelPending()
-      repeat = event.timeStamp - releasedAt < DOUBLE_TAP_MS
-      pressedAt = { x: event.clientX, y: event.clientY }
-    },
-    { capture: true },
-  )
-
-  element.addEventListener(
-    'pointerup',
-    (event) => {
-      const from = pressedAt
-      pressedAt = null
-      releasedAt = event.timeStamp
-      if (repeat) return
-      if (from === null || props.disabled || pano.visible || pegmanDragging.value) return
-      if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > TAP_SLOP) return
-      if (!withinRing(element, event.clientX, event.clientY)) return
-
-      pending = setTimeout(() => {
-        pending = null
-        toStreetView()
-      }, DOUBLE_TAP_MS)
-    },
-    { capture: true },
-  )
-}
 
 // Asked at the click, not read off state: the direction the player turned to is the tip.
 function submitGuess(): void {
@@ -146,43 +84,24 @@ function submitGuess(): void {
 
     `min-h`: below that the map is useless anyway, and overflowing beats a letterbox.
   -->
-  <div class="relative h-[calc(100svh-6rem)] min-h-80 sm:h-[min(100dvh-6rem,40rem)] sm:min-h-0">
+  <div
+    ref="board"
+    class="relative h-[calc(100svh-6rem)] min-h-80 sm:h-[min(100dvh-6rem,40rem)] sm:min-h-0"
+  >
     <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
          stacking context here those compete with our overlay row in the ROOT context and win —
          the map mode's controls are modest enough that the row only vanishes once a panorama
          opens. Isolating traps them where they belong. -->
     <div ref="stage" data-test="spot-map" class="stage absolute inset-0 isolate bg-neutral-200" />
 
-    <!-- The one mark, doing both jobs: on the map it is what the press below aims, in the panorama
-         it is where the object belongs before „Gefunden“. The reveal lays the same mark over the
-         stills, so what a player aimed at is what every reviewer looks at. -->
-    <SpotObjectCrosshair />
+    <!-- Only in the panorama, where it is the one thing it was always for: the centre the object
+         belongs in before „Gefunden“, and the mark the reveal lays over the stills so that what a
+         player aimed at is what every reviewer looks at. On the map it used to be a target as
+         well, and that job is gone — a press lands where the finger is, not where the map is
+         centred. -->
+    <SpotObjectCrosshair v-if="pano.visible" />
 
-    <!--
-      The crosshair itself, pressed. A ring around the mark and nothing more: the mark is already
-      the aim, the ring only says it can be touched. The second way in, not the only one — it
-      reaches the 50 m `setPosition` is fixed at, and the Pegman covers everything past that.
-
-      `pointer-events-none`, with the press read off the map by `watchCentreTap`: as a hit target
-      this ring shadowed the map's own gestures at the one spot they matter most. It stays a real
-      button all the same — focusable, and `@click` still fires from the keyboard, which is the one
-      path no pointer gesture stands in for.
-
-      Gone while the Pegman is in the air: it sits exactly where a dropped Pegman is most likely to
-      land, and a ring around that spot reads as a target of its own.
-    -->
-    <button
-      v-if="!pano.visible && !pegmanDragging"
-      type="button"
-      data-test="spot-enter"
-      aria-label="Hier in Street View einsteigen"
-      class="pointer-events-none absolute top-1/2 left-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 shadow-[0_0_3px_rgba(0,0,0,0.5)] disabled:opacity-40"
-      :disabled="props.disabled"
-      @click="toStreetView"
-    />
-
-    <!-- Right under the crosshair, because it is about that exact point. The blue lines are the
-         answer, so the notice points at them rather than apologising. -->
+    <!-- The blue lines are the answer, so the notice points at them rather than apologising. -->
     <p
       v-if="noCoverage"
       data-test="spot-no-coverage"
@@ -219,34 +138,87 @@ function submitGuess(): void {
            direction nobody is facing. -->
       <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
 
-      <slot />
+      <!--
+        One row: the map's size control, the term, and „Gefunden“ — and it wraps.
 
-      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
-        <!-- Left, and an arrow: this is the back action of the pair, and back belongs where every
-           other back control on a phone is. The word stays beside the arrow — „Weltkarte“ is the
-           destination, and an arrow alone would not say which back. -->
-        <button
-          v-if="pano.visible"
-          type="button"
-          data-test="spot-world-map"
-          class="pointer-events-auto flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-white pr-4 pl-3 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
-          :disabled="props.disabled"
-          @click="toWorldMap"
-        >
-          <IconArrowLeft aria-hidden="true" class="h-4 w-4" />
-          Weltkarte
-        </button>
-        <span v-else />
+        A term is two to four words, so on a phone it fits beside the button or it does not,
+        depending on the round. `flex-wrap` lets the row answer that itself: while everything fits,
+        the term grows into the space between the two controls and the button rides up here; once
+        the term needs the width, the button drops to a line of its own. No measuring, and no
+        threshold that is right on one phone and wrong on the next.
+
+        The term is centred between the controls rather than on the board. Board-centred would mean
+        keeping a button's width free on *both* sides, and that leaves about 110px for the term —
+        less than any of them. This is the trade that makes the row possible at all.
+
+        `justify-end` and not an auto margin on the button: an auto margin takes the free space
+        before `grow` ever sees it, so the term would stop growing and sit against the icon. With
+        the term growing there is no free space to justify anyway — the rule only speaks on the
+        wrapped line, where the button is alone and belongs at the right.
+      -->
+      <div
+        data-test="spot-actions"
+        class="flex flex-wrap items-center justify-end gap-x-2 gap-y-3 p-3"
+      >
+        <!--
+          Fixed width, and there whether or not it holds anything: the control changes with the
+          map's size and is absent before the first panorama, and a term that shifts when a button
+          comes and goes is a term that has to be read again.
+        -->
+        <div class="w-11 shrink-0">
+          <button
+            v-if="pano.visible && !miniMapOpen"
+            type="button"
+            data-test="spot-mini-open"
+            aria-label="Übersichtskarte öffnen"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            :disabled="props.disabled"
+            @click="miniMapOpen = true"
+          >
+            <IconMap aria-hidden="true" class="h-5 w-5" />
+          </button>
+          <button
+            v-else-if="!pano.visible && pano.panoId"
+            type="button"
+            data-test="spot-street-view"
+            aria-label="Zurück zur Straßenansicht"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            :disabled="props.disabled"
+            @click="toPanorama"
+          >
+            <IconMinimize aria-hidden="true" class="h-5 w-5" />
+          </button>
+        </div>
+
+        <!-- `shrink-0` is what makes the row wrap at all: an item that may shrink never fails to
+             fit, it just gets narrower, and the button would stay up here squeezing the term. -->
+        <div class="max-w-full shrink-0 grow text-center"><slot /></div>
 
         <button
           type="button"
           data-test="spot-guess-button"
-          class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          class="pointer-events-auto h-11 shrink-0 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
           :disabled="props.disabled || !pano.visible"
           @click="submitGuess"
         >
           Gefunden
         </button>
+      </div>
+
+      <!--
+        One row below the icon it grows out of, and at the same gutter, so it opens under its own
+        control. Only ever hidden, never unmounted: Google measures a `display:none` element as
+        nothing, so a rebuilt container would come back as a grey square.
+      -->
+      <div class="px-3 pb-3">
+        <SpotObjectMiniMap
+          :open="miniMapVisible"
+          :missed="jumpMissed"
+          :bounds="board"
+          @shown="(element) => void openMiniMap(element)"
+          @collapse="miniMapOpen = false"
+          @expand="toWorldMap"
+        />
       </div>
     </div>
   </div>

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import { ref } from 'vue'
+import type { Ref } from 'vue'
 
 vi.mock('@/api/client', () => ({ apiFetch: vi.fn() }))
 import { apiFetch } from '@/api/client'
@@ -27,6 +29,7 @@ async function loadModule(): Promise<void> {
 class FakePanorama {
   visible = false
   panoIdValue = 'initial-pano'
+  positionValue: unknown = { lat: 48, lng: 11 }
   pov = { heading: 0, pitch: 0 }
   zoomValue = 1
   status = 'OK'
@@ -34,6 +37,8 @@ class FakePanorama {
 
   setOptions = vi.fn()
   setPosition = vi.fn()
+  setPano = vi.fn()
+  getPosition = vi.fn(() => this.positionValue)
   getStatus = vi.fn(() => this.status)
   setVisible = vi.fn((value: boolean) => {
     this.visible = value
@@ -58,11 +63,13 @@ class FakeMap {
   static instances: FakeMap[] = []
   readonly panorama = new FakePanorama()
   center: unknown = { lat: 48, lng: 11 }
-  private readonly handlers = new Map<string, Array<() => void>>()
+  private readonly handlers = new Map<string, Array<(event?: unknown) => void>>()
 
   getStreetView = vi.fn(() => this.panorama)
-  getCenter = vi.fn(() => this.center)
-  addListener = vi.fn((event: string, callback: () => void) => {
+  getCenter = vi.fn(() => ({ lat: () => 48 }))
+  getZoom = vi.fn(() => 17)
+  setCenter = vi.fn()
+  addListener = vi.fn((event: string, callback: (event?: unknown) => void) => {
     const list = this.handlers.get(event) ?? []
     list.push(callback)
     this.handlers.set(event, list)
@@ -75,8 +82,8 @@ class FakeMap {
     FakeMap.instances.push(this)
   }
 
-  fire(event: string): void {
-    this.handlers.get(event)?.forEach((callback) => callback())
+  fire(event: string, payload?: unknown): void {
+    this.handlers.get(event)?.forEach((callback) => callback(payload))
   }
 }
 
@@ -84,7 +91,36 @@ class FakeCoverageLayer {
   setMap = vi.fn()
 }
 
+/** The trail and the mark. Only their existence matters here — `useWalkMap.spec.ts` owns both. */
+class FakePolyline {
+  setMap = vi.fn()
+  setPath = vi.fn()
+  setOptions = vi.fn()
+}
+
+class FakeMarker {
+  setPosition = vi.fn()
+  setIcon = vi.fn()
+}
+
+/** The lookup a press makes. `panoAt.spec.ts` owns its radius; here it only has to answer. */
+const getPanorama = vi.fn()
+
 const streetViewPanoramaCtor = vi.fn()
+
+/** Everything the composable is given from the round: a colour, and whether the board is locked. */
+function deps(locked = false): { trailColor: Ref<string>; locked: Ref<boolean> } {
+  return { trailColor: ref('#8e44ad'), locked: ref(locked) }
+}
+
+/**
+ * A press on the map: Google's click, the wait that tells it apart from a double click, and the
+ * lookup that answers it. The async form of the clock drains the microtasks the lookup needs.
+ */
+async function pressMap(map: FakeMap, at: unknown = { lat: 41.4, lng: 2.2 }): Promise<void> {
+  map.fire('click', { latLng: at })
+  await vi.advanceTimersByTimeAsync(300)
+}
 
 function installFakeGoogleMaps(): void {
   FakeMap.instances = []
@@ -94,6 +130,12 @@ function installFakeGoogleMaps(): void {
       ControlPosition: { RIGHT_CENTER: 7 },
       StreetViewCoverageLayer: FakeCoverageLayer,
       StreetViewPanorama: streetViewPanoramaCtor,
+      Polyline: FakePolyline,
+      Marker: FakeMarker,
+      StreetViewService: class {
+        getPanorama = getPanorama
+      },
+      SymbolPath: { CIRCLE: 0 },
     },
   } as unknown as typeof google)
 }
@@ -127,7 +169,11 @@ describe('useStreetView', () => {
   let script: { src: string; onerror: (() => void) | null }
 
   beforeEach(async () => {
+    // A press waits out the double click on a timer, and so does the status it asks for.
+    vi.useFakeTimers()
     vi.mocked(apiFetch).mockResolvedValue({ mapsApiKey: 'test-key' })
+    getPanorama.mockReset()
+    getPanorama.mockResolvedValue({ data: { location: { pano: 'found-pano' } } })
     installFakeGoogleMaps()
     streetViewPanoramaCtor.mockClear()
     script = stubScriptTag()
@@ -135,12 +181,13 @@ describe('useStreetView', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
   it('takes the map’s own default panorama and never constructs one', async () => {
-    const { mount, error } = useStreetView()
+    const { mount, error } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -158,8 +205,8 @@ describe('useStreetView', () => {
    * aimed at under the finger — but it reaches only the 50 m `setPosition` is fixed at, so the
    * Pegman has to stay for everything past that.
    */
-  it('keeps the Pegman and adds a press on the crosshair’s point', async () => {
-    const { mount, toStreetView } = useStreetView()
+  it('keeps the Pegman and walks in where the map was pressed', async () => {
+    const { mount } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -170,39 +217,22 @@ describe('useStreetView', () => {
     expect(map.options.streetViewControl).toBe(true)
     expect(map.options.streetViewControlOptions).toEqual({ position: 7 })
 
-    toStreetView()
+    await pressMap(map)
 
-    // The map's own panorama, moved — not a constructed one, and not a service lookup: this is
-    // the call a landing Pegman made, so it costs what dragging cost.
-    expect(map.panorama.setPosition).toHaveBeenCalledWith(map.center)
+    // The pressed point, not the map's centre: the finger aims, so the map does not have to be
+    // panned to aim with it. And the map's own panorama, moved to a known id — never a
+    // constructed one.
+    expect(getPanorama).toHaveBeenCalledWith({
+      location: { lat: 41.4, lng: 2.2 },
+      radius: expect.any(Number),
+    })
+    expect(map.panorama.setPano).toHaveBeenCalledWith('found-pano')
     expect(map.panorama.setVisible).toHaveBeenCalledWith(true)
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
   })
 
-  /** Otherwise the answer to a press over open water is Google's own grey „no imagery“ panel. */
-  it('takes back a panorama that found nothing, and says so', async () => {
-    const { mount, noCoverage } = useStreetView()
-
-    const pending = mount(document.createElement('div'))
-    await flushPromises()
-    triggerScriptLoad(script)
-    await pending
-
-    const panorama = FakeMap.instances[0]!.panorama
-    panorama.status = 'ZERO_RESULTS'
-    panorama.fire('status_changed')
-
-    expect(panorama.setVisible).toHaveBeenCalledWith(false)
-    expect(noCoverage.value).toBe(true)
-  })
-
-  /**
-   * The notice is about one point, so it lives exactly as long as that point is under the
-   * crosshair — and until then a second press is refused, because asking the same question twice
-   * changes no status and so fires nothing to hide the panorama with.
-   */
-  it('holds the notice until the map moves, and refuses to ask twice', async () => {
-    const { mount, noCoverage, toStreetView } = useStreetView()
+  it('takes no press while the round is locked', async () => {
+    const { mount } = useStreetView(deps(true))
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -210,21 +240,59 @@ describe('useStreetView', () => {
     await pending
 
     const map = FakeMap.instances[0]!
-    map.panorama.status = 'ZERO_RESULTS'
-    map.panorama.fire('status_changed')
+    await pressMap(map)
 
-    toStreetView()
-    expect(map.panorama.setPosition).not.toHaveBeenCalled()
+    expect(getPanorama).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Asked before the panorama is moved, so a press that finds nothing leaves everything as it was
+   * — there is no grey „no imagery“ panel to take back, and nothing to hide.
+   */
+  it('says when a press found nothing, without moving anything', async () => {
+    const { mount, noCoverage } = useStreetView(deps())
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const map = FakeMap.instances[0]!
+    getPanorama.mockRejectedValue(new Error('ZERO_RESULTS'))
+    await pressMap(map)
+
+    expect(noCoverage.value).toBe(true)
+    expect(map.panorama.setPano).not.toHaveBeenCalled()
+    expect(map.panorama.setVisible).not.toHaveBeenCalled()
+  })
+
+  it('withdraws the notice when the map moves, and when it is pressed again', async () => {
+    const { mount, noCoverage } = useStreetView(deps())
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const map = FakeMap.instances[0]!
+    getPanorama.mockRejectedValue(new Error('ZERO_RESULTS'))
+    await pressMap(map)
+    expect(noCoverage.value).toBe(true)
 
     map.fire('center_changed')
     expect(noCoverage.value).toBe(false)
 
-    toStreetView()
-    expect(map.panorama.setPosition).toHaveBeenCalledWith(map.center)
+    await pressMap(map)
+    expect(noCoverage.value).toBe(true)
+
+    getPanorama.mockResolvedValue({ data: { location: { pano: 'found-pano' } } })
+    await pressMap(map)
+
+    expect(noCoverage.value).toBe(false)
   })
 
   it('turns the motion-tracking control off', async () => {
-    const { mount } = useStreetView()
+    const { mount } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -238,7 +306,7 @@ describe('useStreetView', () => {
   })
 
   it('fetches the key from the config endpoint rather than a bundled constant', async () => {
-    const { mount } = useStreetView()
+    const { mount } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -251,7 +319,7 @@ describe('useStreetView', () => {
   })
 
   it('tracks which panorama is open, and whether one is', async () => {
-    const { mount, pano } = useStreetView()
+    const { mount, pano } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -274,7 +342,7 @@ describe('useStreetView', () => {
    * they found. This case therefore pans and zooms *without* firing `pano_changed`.
    */
   it('reads the view at submit time, so turning after arrival is what gets submitted', async () => {
-    const { mount, currentTip } = useStreetView()
+    const { mount, currentTip } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -292,7 +360,7 @@ describe('useStreetView', () => {
   })
 
   it('has no tip to submit while no panorama is open', async () => {
-    const { mount, currentTip } = useStreetView()
+    const { mount, currentTip } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -306,14 +374,14 @@ describe('useStreetView', () => {
 
   /** „Versuch es später noch einmal“ has to have a path that can succeed. */
   it('lets a later mount append a new script tag after a failed load', async () => {
-    const { mount: first } = useStreetView()
+    const { mount: first } = useStreetView(deps())
     const pending = first(document.createElement('div'))
     await flushPromises()
     script.onerror?.()
     await pending
 
     const appends = vi.mocked(document.head.append).mock.calls.length
-    const { mount: second, error } = useStreetView()
+    const { mount: second, error } = useStreetView(deps())
     const retry = second(document.createElement('div'))
     await flushPromises()
     triggerScriptLoad(script)
@@ -328,36 +396,13 @@ describe('useStreetView', () => {
    * gone for the length of that drag. Watched through Google's own class name, which is a coupling
    * that fails harmlessly: no match means the ring simply stays, exactly as it was before.
    */
-  it('knows while the Pegman is in the air', async () => {
-    const element = document.createElement('div')
-    const control = document.createElement('div')
-    control.className = 'gm-svpc'
-    element.append(control)
-
-    const { mount, pegmanDragging } = useStreetView()
-    const pending = mount(element)
-    await flushPromises()
-    triggerScriptLoad(script)
-    await pending
-
-    element.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    expect(pegmanDragging.value).toBe(false)
-
-    control.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    expect(pegmanDragging.value).toBe(true)
-
-    // Wherever the finger lifts — the drop is nearly always outside the control it started on.
-    window.dispatchEvent(new Event('pointerup'))
-    expect(pegmanDragging.value).toBe(false)
-  })
-
   /**
    * Google walks and turns on the arrow keys but never cancels them, so the same press scrolled
    * the page out from under the board.
    */
   it('keeps the arrow keys from scrolling the page as well', async () => {
     const element = document.createElement('div')
-    const { mount } = useStreetView()
+    const { mount } = useStreetView(deps())
     const pending = mount(element)
     await flushPromises()
     triggerScriptLoad(script)
@@ -375,7 +420,7 @@ describe('useStreetView', () => {
   })
 
   it('returns to the world map by hiding the same panorama, not replacing it', async () => {
-    const { mount, toWorldMap } = useStreetView()
+    const { mount, toWorldMap } = useStreetView(deps())
 
     const pending = mount(document.createElement('div'))
     await flushPromises()
@@ -385,5 +430,45 @@ describe('useStreetView', () => {
     toWorldMap()
 
     expect(FakeMap.instances[0]!.panorama.setVisible).toHaveBeenCalledWith(false)
+  })
+
+  /**
+   * Shrinking back out of the full-screen map is not a second entry: the panorama was hidden, not
+   * dropped, so showing it again asks Google nothing and lands on the panorama the player left.
+   */
+  it('comes back to the same panorama without looking anything up', async () => {
+    const { mount, toWorldMap, toPanorama } = useStreetView(deps())
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const panorama = FakeMap.instances[0]!.panorama
+    toWorldMap()
+    panorama.setPosition.mockClear()
+    toPanorama()
+
+    expect(panorama.setVisible).toHaveBeenLastCalledWith(true)
+    expect(panorama.setPosition).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The whole point of walking is that you end up somewhere else. Before this, „← Weltkarte“ put
+   * the player back at the point they had gone in at, however far they had walked.
+   */
+  it('walks the world map along, so leaving lands where the walking stopped', async () => {
+    const { mount } = useStreetView(deps())
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const map = FakeMap.instances[0]!
+    map.panorama.positionValue = { lat: 41.4, lng: 2.2 }
+    map.panorama.fire('pano_changed')
+
+    expect(map.setCenter).toHaveBeenCalledWith({ lat: 41.4, lng: 2.2 })
   })
 })
