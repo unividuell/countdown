@@ -117,8 +117,7 @@ of binding an empty path.
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
 nothing to do with Guess Hue.
 
-Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml` — but that cipher
-file does not exist yet, so read the prerequisite below before the next deploy.
+Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml`.
 
 **Merge window develop → main.** `update.sh` and `README.md` always come from `main`
 (`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
@@ -134,35 +133,29 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/develop/deploy
 chmod +x update-once.sh && ./update-once.sh staging && rm -f update-once.sh
 ```
 
-The copy works because the self-update writes `update.sh`, not the file being run. This was
-done once, for the Guess Hue release, and staging came up correctly on it.
+The copy works because the self-update writes `update.sh`, not the file being run. Done twice so
+far — the Guess Hue and the Weltanschauung release — and staging came up correctly on both.
+
+Once the release has landed on `main`, the **first** regular run still executes the old script
+on disk: it fetches the new one, but the running shell keeps its inode across the `mv`, so it
+fails exactly as before. Fetch the script yourself rather than spending a run on it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/update.sh -o update.sh
+chmod +x update.sh && ./update.sh prod
+```
 
 ## Prerequisite: the Weltanschauung term list
 
-**`deploy/spot-object-terms.sops.yaml` does not exist in the repository.** `update.sh` fetches
-it on every run and aborts when it is missing, so until it is committed **every**
-`./update.sh <target>` fails — including deploys of changes that have nothing to do with
-Weltanschauung. Only the owner can produce it: it is the curated term list, and the term list
-is the game.
-
-Nothing in this repository can substitute for it. A placeholder would be worse than the abort:
-the backend refuses to start on the sample list under `production`/`staging` precisely so a
-game running on placeholder content cannot look healthy.
-
-Two things have to happen, **in this order**, before this release is deployed:
-
-1. **Encrypt and commit the real list.** Paste the terms into `.local/spot-object-terms.yaml`
-   in the **main checkout** (never a worktree), run `./scripts/spot-object-terms.sh encrypt`,
-   and commit `deploy/spot-object-terms.sops.yaml` to the branch each target deploys from —
-   `main` for prod, `develop` for staging. Never commit a term in plaintext; see core/README.md
-   ("Weltanschauung: term list, the two Maps keys, and the signing secret") and
-   [game-content.md](../.claude/guidelines/game-content.md). If the server's age key is not yet
-   a recipient, do that first (see "sops + age" above) — otherwise the server cannot decrypt it.
-2. **Let `main` carry the new `update.sh` before staging is deployed from `develop`.** This is
-   the merge window above in its concrete form: staging's `compose.yaml` comes from `develop`
-   and demands `SPOT_OBJECT_TERMS_FILE`, while `update.sh` always comes from `main` and only
-   exports it once this release has landed there. Until then, deploy staging with the one-off
-   copy of the branch's script shown above.
+`update.sh` fetches `deploy/spot-object-terms.sops.yaml` from the branch it deploys and aborts
+when it is missing — then **every** `./update.sh <target>` fails, including deploys that have
+nothing to do with Weltanschauung. It is committed on `main` and `develop` (released
+2026-09-03); a branch without it needs the list encrypted and committed first. Only the owner
+can produce it — it is the curated term list, and the term list is the game — and no
+placeholder substitutes: the backend refuses to start on the sample list under
+`production`/`staging`, precisely so a game on placeholder content cannot look healthy.
+Never commit a term in plaintext; see core/README.md ("Weltanschauung: term list, the two Maps
+keys, and the signing secret") and [game-content.md](../.claude/guidelines/game-content.md).
 
 Also add the three `SPOT_OBJECT_*` variables to `.env.prod`/`.env.staging` by hand — see
 "Migrating an existing stack for Weltanschauung" below.
