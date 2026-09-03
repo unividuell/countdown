@@ -206,7 +206,7 @@ describe('SpotObjectBoard', () => {
     await w.get('[data-test="spot-mini-open"]').trigger('click')
 
     expect(double.openMiniMap).toHaveBeenCalledWith(w.get('[data-test="spot-mini-stage"]').element)
-    // One control per step: the way down is the panel's own ✕, so this button steps aside.
+    // One control per step: the way down is the panel's own, so this button steps aside.
     expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
   })
 

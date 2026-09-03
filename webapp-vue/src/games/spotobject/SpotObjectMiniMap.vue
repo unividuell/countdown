@@ -14,8 +14,8 @@
  */
 import { computed, onUnmounted, ref, watch, useTemplateRef } from 'vue'
 import IconMaximize from '~icons/lucide/maximize-2'
+import IconMinimize from '~icons/lucide/minimize-2'
 import IconMove from '~icons/lucide/move'
-import IconX from '~icons/lucide/x'
 
 const props = defineProps<{
   open: boolean
@@ -184,7 +184,8 @@ function between(value: number, min: number, max: number): number {
       </p>
 
       <!-- Both sizes out of here have their own control, because a press on the map itself moves
-           the player. -->
+           the player. Two arrows apart and two arrows together: the pair names the step, and the
+           same inward pair sits in the actions row when the map is at its largest. -->
       <div class="absolute top-2 right-2 flex gap-1">
         <button
           type="button"
@@ -199,11 +200,11 @@ function between(value: number, min: number, max: number): number {
         <button
           type="button"
           data-test="spot-mini-close"
-          aria-label="Übersichtskarte schließen"
+          aria-label="Übersichtskarte verkleinern"
           class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
           @click="emit('collapse')"
         >
-          <IconX aria-hidden="true" class="h-4 w-4" />
+          <IconMinimize aria-hidden="true" class="h-4 w-4" />
         </button>
       </div>
     </div>

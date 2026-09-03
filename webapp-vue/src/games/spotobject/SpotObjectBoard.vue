@@ -150,8 +150,8 @@ function submitGuess(): void {
           as nothing, so a rebuilt container would come back as a grey square. That is also why it
           cannot take part in the `v-if` chain below it.
 
-          Only one control per step: the panel carries its own way down (✕) and its own way up (⤢),
-          so the icon is out of the way while the panel is open.
+          Only one control per step: the panel carries its own way down and its own way up, so the
+          icon is out of the way while the panel is open.
         -->
         <!-- `shrink-0`: „Gefunden“ must never squeeze the map on a narrow phone. -->
         <div class="shrink-0">
