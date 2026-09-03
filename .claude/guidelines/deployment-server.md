@@ -36,8 +36,9 @@ server; the Caddyfile is image-baked.
   reaches prod.
 - **`update.sh` and `README.md` stay pinned to `main`** for both targets — they are one shared copy,
   and a staging run must not leave prod driving an unreleased script. So a change to `update.sh`
-  itself is only testable after it reaches `main`, and it takes effect on the *next* invocation (the
-  running shell keeps its old inode across the `mv`) — budget two runs when changing the script.
+  itself is only testable after it reaches `main`, and the run that fetches it still executes the
+  *old* code (the shell keeps its inode across the `mv`) — so after such a merge, `curl` the new
+  script into place yourself instead of spending a run on the old one.
 - **A change that needs `update.sh` and `compose.yaml` to move together cannot be staging-deployed
   until it reaches `main`** — the script comes from `main` while compose comes from the deployed
   branch, so staging would pair the old script with the new compose file and fail on every run.
