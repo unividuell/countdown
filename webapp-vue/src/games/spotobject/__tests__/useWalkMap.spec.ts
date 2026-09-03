@@ -11,6 +11,9 @@ import { useWalkMap } from '../useWalkMap'
 class FakeMap {
   static instances: FakeMap[] = []
   setCenter = vi.fn()
+  // `panoAt` measures a finger against the map's own scale, so the fake has to have one.
+  getZoom = vi.fn(() => 17)
+  getCenter = vi.fn(() => ({ lat: () => 41.4 }))
   private readonly handlers = new Map<string, Array<(event?: unknown) => void>>()
 
   addListener = vi.fn((event: string, callback: (event?: unknown) => void) => {
@@ -94,6 +97,7 @@ class FakeCoverageLayer {
 }
 
 const streetViewPanoramaCtor = vi.fn()
+const getPanorama = vi.fn()
 
 function installFakeGoogleMaps(): void {
   FakeMap.instances = []
@@ -101,12 +105,17 @@ function installFakeGoogleMaps(): void {
   FakeCoverageLayer.instances = []
   FakeMarker.instances = []
   streetViewPanoramaCtor.mockClear()
+  getPanorama.mockReset()
+  getPanorama.mockResolvedValue({ data: { location: { pano: 'found-pano' } } })
   vi.stubGlobal('google', {
     maps: {
       Map: FakeMap,
       Polyline: FakePolyline,
       StreetViewCoverageLayer: FakeCoverageLayer,
       Marker: FakeMarker,
+      StreetViewService: class {
+        getPanorama = getPanorama
+      },
       StreetViewPanorama: streetViewPanoramaCtor,
       SymbolPath: { CIRCLE: 0 },
     },
@@ -137,10 +146,14 @@ function worldTrail(): FakePolyline {
   return trail
 }
 
-/** A press on the mini-map, including the wait that tells it apart from a double click. */
-function pressMiniMap(at: unknown = { lat: 3, lng: 3 }): void {
+/**
+ * A press on the mini-map: the click, the wait that tells it apart from a double click, and the
+ * lookup that answers it. `advanceTimersByTimeAsync` drains the microtasks in between, which the
+ * synchronous form does not — the lookup is a promise.
+ */
+async function pressMiniMap(at: unknown = { lat: 3, lng: 3 }): Promise<void> {
   FakeMap.instances[1]?.fire('click', { latLng: at })
-  vi.advanceTimersByTime(300)
+  await vi.advanceTimersByTimeAsync(300)
 }
 
 describe('useWalkMap', () => {
@@ -216,67 +229,51 @@ describe('useWalkMap', () => {
     expect(FakeMap.instances[1]?.setCenter).toHaveBeenLastCalledWith({ lat: 1, lng: 1 })
   })
 
-  it('moves the panorama on a tap, without constructing one', async () => {
+  it('goes to the panorama a press found, by id and without constructing one', async () => {
     const { walk, panorama } = attached()
 
     await walk.openMiniMap(document.createElement('div'))
-    pressMiniMap()
+    await pressMiniMap({ lat: 3, lng: 3 })
 
-    expect(panorama.setPosition).toHaveBeenCalledWith({ lat: 3, lng: 3 })
+    // A finger's reach, asked for in metres — not the fixed 50 m the panorama searches on its own.
+    expect(getPanorama).toHaveBeenCalledWith({ location: { lat: 3, lng: 3 }, radius: 50 })
+    expect(panorama.setPano).toHaveBeenCalledWith('found-pano')
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
   })
 
-  it('puts a missed tap back where it came from instead of losing the walk', async () => {
+  /**
+   * The miss used to have to be taken back: the panorama had already been moved, and Google took
+   * it off screen, which dropped the player onto the full-screen map and lost the walk. Asking
+   * first means there is nothing to undo.
+   */
+  it('leaves the walk alone when a press finds nothing, and says so', async () => {
     const { walk, panorama } = attached()
     panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
 
     await walk.openMiniMap(document.createElement('div'))
-    pressMiniMap()
+    getPanorama.mockRejectedValue(new Error('ZERO_RESULTS'))
+    await pressMiniMap()
 
-    expect(walk.absorbMiss()).toBe(true)
-    expect(panorama.setPano).toHaveBeenCalledWith('pano-1')
-    // Both halves: Google hides the panorama on a position that finds nothing, and putting the
-    // imagery back does not put it back on screen.
-    expect(panorama.setVisible).toHaveBeenCalledWith(true)
+    expect(panorama.setPano).not.toHaveBeenCalled()
+    expect(panorama.setVisible).not.toHaveBeenCalled()
     expect(walk.jumpMissed.value).toBe(true)
   })
 
-  it('leaves the miss to the board when there is no walk to go back to', async () => {
+  it('withdraws the notice as soon as a press lands', async () => {
     const { walk, panorama } = attached()
     await walk.openMiniMap(document.createElement('div'))
-    pressMiniMap()
-
-    expect(walk.absorbMiss()).toBe(false)
-    expect(panorama.setVisible).not.toHaveBeenCalled()
-  })
-
-  it('leaves a miss that was not a tap to the board’s own answer', () => {
-    const { walk } = attached()
-
-    expect(walk.absorbMiss()).toBe(false)
-    expect(walk.jumpMissed.value).toBe(false)
-  })
-
-  it('withdraws the notice as soon as a tap lands', async () => {
-    const { walk, panorama } = attached()
-    panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
-    await walk.openMiniMap(document.createElement('div'))
-    pressMiniMap()
-    walk.absorbMiss()
+    getPanorama.mockRejectedValue(new Error('ZERO_RESULTS'))
+    await pressMiniMap()
 
     panorama.arriveAt('pano-2', { lat: 2, lng: 2 })
 
     expect(walk.jumpMissed.value).toBe(false)
   })
 
-  it('does not count the restored panorama as a step of its own', async () => {
-    const { walk, panorama } = attached()
-    panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
-    await walk.openMiniMap(document.createElement('div'))
-    pressMiniMap()
-    walk.absorbMiss()
+  it('does not count a panorama already walked as a step of its own', () => {
+    const { panorama } = attached()
 
-    // Google answers `setPano` with a `pano_changed` of its own, for the panorama already walked.
+    panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
     panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
 
     expect(worldTrail().setPath.mock.lastCall?.[0]).toHaveLength(1)
@@ -288,20 +285,8 @@ describe('useWalkMap', () => {
     await walk.openMiniMap(document.createElement('div'))
 
     expect(FakeMap.instances).toHaveLength(0)
-    expect(walk.absorbMiss()).toBe(false)
   })
 
-  it('forgets a tap nobody answered, so the next miss is not stolen from the board', async () => {
-    const { walk, panorama } = attached()
-    await walk.openMiniMap(document.createElement('div'))
-    // A tap onto the panorama already open: same status, same pano, so Google says nothing at all.
-    pressMiniMap()
-
-    walk.clearJump()
-
-    expect(walk.absorbMiss()).toBe(false)
-    expect(panorama.setPano).not.toHaveBeenCalled()
-  })
   /**
    * The mark used to be drawn over the middle of the panel, which made it a lie the moment the
    * player panned the map: the tiles moved, the mark did not, and it pointed at whatever had

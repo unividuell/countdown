@@ -13,6 +13,7 @@
 import { nextTick, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import { onMapPress } from './mapPress'
+import { panoAt } from './panoAt'
 
 /**
  * Distance between two dots of the trail. Google measures `repeat` in *screen* pixels rather than
@@ -58,10 +59,6 @@ export interface UseWalkMap {
   openMiniMap: (element: HTMLElement) => Promise<void>
   /** True while the last tap on the mini-map found nothing to walk into. */
   jumpMissed: Ref<boolean>
-  /** Whether a failed lookup belonged to a tap on the mini-map — and if so, undoes it. */
-  absorbMiss: () => boolean
-  /** Forgets a tap still waiting for an answer, so the next miss is answered by whoever caused it. */
-  clearJump: () => void
 }
 
 /**
@@ -101,11 +98,8 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
   /** The walk itself. One entry per panorama arrived at, oldest first. */
   const path: google.maps.LatLng[] = []
 
-  /** The last panorama that actually loaded — what a missed tap is put back to. */
+  /** The last panorama arrived at, so a repeat of it is not counted as a step of its own. */
   let lastPanoId: string | null = null
-
-  /** Set while a tap on the mini-map waits for Google's answer. */
-  let jumping = false
 
   watch(trailColor, (color) => {
     worldTrail?.setOptions(dotted(color))
@@ -141,10 +135,8 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
   function step(): void {
     const panoId = panorama?.getPano()
     const position = panorama?.getPosition()
-    // The restored panorama after a missed tap is somewhere the player has already been.
     if (!panoId || !position || panoId === lastPanoId) return
 
-    jumping = false
     jumpMissed.value = false
     lastPanoId = panoId
 
@@ -194,54 +186,28 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
       clickable: false,
     })
 
-    onMapPress(built, jumpTo)
+    onMapPress(built, (at) => void jumpTo(at))
 
     return built
   }
 
   /**
-   * A tap on the mini-map, which is the same `setPosition` a landing Pegman makes — free, and the
-   * only way to move a panorama we are not allowed to construct.
+   * A press on the mini-map. Asks for the nearest panorama within a finger's reach and goes to it
+   * by id — the panorama's own 50 m search was the thing a finger could not hit.
    */
-  function jumpTo(position: google.maps.LatLng): void {
-    if (!panorama) return
+  async function jumpTo(at: google.maps.LatLng): Promise<void> {
+    if (!panorama || !miniMap) return
+
     jumpMissed.value = false
-    jumping = true
-    panorama.setPosition(position)
+    const pano = await panoAt(miniMap, at)
+
+    if (!pano) {
+      jumpMissed.value = true
+      return
+    }
+
+    panorama.setPano(pano)
   }
 
-  /**
-   * The board's own answer to a failed lookup is to hide the panorama, which is right for a press
-   * on the world map and wrong here: a mistap inside Street View would drop the player back onto
-   * the world map and throw the walk away. So the tap takes its own miss back.
-   */
-  /**
-   * A tap that lands on the panorama already open changes no status and fires no event, so its
-   * `jumping` would sit there and swallow the *next* miss — the crosshair's own, back on the world
-   * map, where the answer has to be „keine Aufnahme hier“ rather than a silent return to Street
-   * View. Every press on the ring therefore starts from a clean slate.
-   */
-  function clearJump(): void {
-    jumping = false
-  }
-
-  function absorbMiss(): boolean {
-    if (!jumping) return false
-    jumping = false
-
-    // Nothing walked yet is nothing to go back to, and then the board's own answer is the right
-    // one. Cannot happen from the mini-map, which only exists inside a panorama.
-    if (!lastPanoId) return false
-
-    jumpMissed.value = true
-    // `setPano`, not `setPosition`: the panorama is known good by id, and no lookup is needed.
-    panorama?.setPano(lastPanoId)
-    // Google takes the panorama off screen itself when a position finds nothing, and `setPano`
-    // puts the imagery back without putting that back — so the player landed on the full-screen
-    // map, which is the one thing taking the miss back exists to prevent.
-    panorama?.setVisible(true)
-    return true
-  }
-
-  return { attach, openMiniMap, jumpMissed, absorbMiss, clearJump }
+  return { attach, openMiniMap, jumpMissed }
 }

@@ -15,6 +15,7 @@ import { reactive, ref } from 'vue'
 import type { Ref } from 'vue'
 import { apiFetch } from '@/api/client'
 import { onMapPress } from './mapPress'
+import { panoAt } from './panoAt'
 import type { SpotObjectTip } from './types'
 import { useWalkMap } from './useWalkMap'
 
@@ -63,9 +64,6 @@ function loadMapsApi(apiKey: string): Promise<void> {
  */
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 
-/** How long Google gets to answer a press before its status is read rather than waited for. */
-const LOOKUP_GRACE_MS = 1000
-
 function swallowScrollKeys(element: HTMLElement): void {
   element.addEventListener('keydown', (event) => {
     if (SCROLL_KEYS.has(event.key)) event.preventDefault()
@@ -108,8 +106,6 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
   const heading = ref<number | null>(null)
   let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
-  /** A press waiting for Google to say whether there was anything there. */
-  let asking: ReturnType<typeof setTimeout> | null = null
   const walk = useWalkMap(trailColor)
 
   async function mount(element: HTMLElement): Promise<void> {
@@ -172,17 +168,6 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
         heading.value = panorama?.getPov().heading ?? null
       })
 
-      // A miss is answered by us rather than by Google's grey „no imagery“ panel: the panorama
-      // goes back out of sight and the crosshair says there is nothing to walk into here.
-      panorama.addListener('status_changed', () => {
-        if (!panorama || panorama.getStatus() === 'OK') return
-        // A mistap inside the mini-map is the walk map's own to undo: hiding the panorama here
-        // would drop the player onto the world map and throw their walk away.
-        if (walk.absorbMiss()) return
-        panorama.setVisible(false)
-        noCoverage.value = true
-      })
-
       // „Hier“ is the whole of that notice, so moving the map is what withdraws it.
       map.addListener('center_changed', () => {
         noCoverage.value = false
@@ -193,7 +178,7 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
       // Both maps take the same press, and this is the board's own. It replaces a ring floating
       // over the map's centre: aiming with a finger beats aiming by panning, and Google's own
       // click event needs none of the pointer arithmetic that ring did.
-      onMapPress(map, enterAt)
+      onMapPress(map, (at) => void enterAt(at))
 
       swallowScrollKeys(element)
     } catch (err) {
@@ -220,33 +205,26 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
   /**
    * Into Street View where the map was pressed.
    *
-   * Nothing new is asked of Google: `setPosition` on the map's own panorama is the call a landing
-   * Pegman makes, so this costs exactly what dragging cost. `setPosition` takes no radius and
-   * searches the standard 50 m, which is why the coverage layer stays on: press a blue line at a
-   * zoom where you can see it, and it lands.
+   * The panorama is never asked to find anything itself: `setPosition` searches a fixed 50 m,
+   * which is a seven-pixel target at the zoom where the blue lines appear, so on a phone the
+   * press almost never landed. `panoAt` asks for a finger's reach instead and hands back an id,
+   * and `setPano` on a known id is exact — there is no miss left to take back, which is why the
+   * whole answer to one lives here now rather than in a status that only speaks when it changes.
    */
-  function enterAt(at: google.maps.LatLng): void {
-    if (!panorama || locked.value) return
+  async function enterAt(at: google.maps.LatLng): Promise<void> {
+    if (!map || !panorama || locked.value) return
 
-    // Whatever the mini-map was still waiting for is not this press's answer.
-    walk.clearJump()
     noCoverage.value = false
-    panorama.setPosition(at)
-    panorama.setVisible(true)
+    const pano = await panoAt(map, at)
+    if (!panorama) return
 
-    // Google's status announces itself only when it *changes*, so a second press onto a place
-    // with no imagery is answered by silence — and by Google's own grey „no imagery“ panel, the
-    // very thing `status_changed` is listened to here to prevent. Asking once, a moment later,
-    // is what catches that press; the event still answers the first one at once. Before the
-    // press could be aimed, the map's centre was the only target and refusing to ask twice was
-    // enough; a finger can press a second dead spot straight away.
-    clearTimeout(asking ?? undefined)
-    asking = setTimeout(() => {
-      asking = null
-      if (!panorama || panorama.getStatus() === 'OK') return
-      panorama.setVisible(false)
+    if (!pano) {
       noCoverage.value = true
-    }, LOOKUP_GRACE_MS)
+      return
+    }
+
+    panorama.setPano(pano)
+    panorama.setVisible(true)
   }
 
   /** Whoever lands on a single photo — indoor and user shots are found too — uses this to get out. */
