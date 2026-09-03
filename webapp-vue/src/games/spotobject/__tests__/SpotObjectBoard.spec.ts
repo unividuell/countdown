@@ -211,17 +211,23 @@ describe('SpotObjectBoard', () => {
   })
 
   /**
-   * No layout in happy-dom, so the structural proxy: the panel and the icon that opens it share
-   * one parent, which is what makes the panel start at the icon's own corner.
+   * No layout in happy-dom, so the structural proxy. The icon rides in the term's row, over it
+   * rather than in it, because the term keeps the middle of the board. The panel cannot join it
+   * there — centred, the term would lie across the panel and across its own two corner buttons —
+   * so it opens one row below, at the same gutter, out of the control it grows from.
    */
-  it('opens the panel where the icon stands, not a row below it', async () => {
+  it('keeps the icon in the term’s row and opens the panel under it', async () => {
     mockStreetView({ visible: true })
     const w = mountBoard()
-    const slot = w.get('[data-test="spot-mini-open"]').element.parentElement
+    const actions = w.get('[data-test="spot-actions"]').element
+    const icon = w.get('[data-test="spot-mini-open"]').element
 
     await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    expect(w.get('[data-test="spot-mini-panel"]').element.parentElement).toBe(slot)
+    expect(actions.contains(icon)).toBe(false)
+    const panel = w.get('[data-test="spot-mini-panel"]').element
+    expect(actions.contains(panel)).toBe(true)
+    expect(icon.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('closes the mini-map on its own button', async () => {

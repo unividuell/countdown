@@ -100,7 +100,7 @@ watch(played, (now, before) => {
         :trail-color="trailColor"
         @guess="(value) => emit('guess', value)"
       >
-        <SpotObjectTerm :term="payload.term" class="mt-3" />
+        <SpotObjectTerm :term="payload.term" />
       </SpotObjectBoard>
 
       <!-- Below the map, the way `FindPatternBoard` puts its own rules below the field: the

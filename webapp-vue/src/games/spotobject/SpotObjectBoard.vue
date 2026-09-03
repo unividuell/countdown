@@ -138,32 +138,21 @@ function submitGuess(): void {
            direction nobody is facing. -->
       <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
 
-      <slot />
+      <!--
+        The term keeps the middle of the board, so the map's size control is laid *over* this row
+        rather than placed in it: in the flow it would centre the term in what is left beside it,
+        and a term that shifts when a button appears is a term that has to be re-read.
 
-      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+        `pt-3` here rather than a margin on whatever fills the slot: the gap belongs to the board's
+        overlay, not to the thing that happens to be in it.
+      -->
+      <div class="relative pt-3">
         <!--
-          The left slot is the map, at whatever size it currently has: the icon that opens the
-          panel, the panel itself, or — once the map has taken the whole board — the way back into
-          the panorama. All three start at this one corner, which is where „Weltkarte“ used to be.
-
-          The panel is only ever hidden, never unmounted: Google measures a `display:none` element
-          as nothing, so a rebuilt container would come back as a grey square. That is also why it
-          cannot take part in the `v-if` chain below it.
-
-          Only one control per step: the panel carries its own way down and its own way up, so the
-          icon is out of the way while the panel is open.
+          The map at its two smallest sizes: the icon that opens the panel, and — once the map has
+          taken the whole board — the way back into the panorama. Never both, and neither before
+          the first panorama: there is no size to step between yet.
         -->
-        <!-- `shrink-0`: „Gefunden“ must never squeeze the map on a narrow phone. -->
-        <div class="shrink-0">
-          <SpotObjectMiniMap
-            :open="miniMapVisible"
-            :missed="jumpMissed"
-            :bounds="board"
-            @shown="(element) => void openMiniMap(element)"
-            @collapse="miniMapOpen = false"
-            @expand="toWorldMap"
-          />
-
+        <div class="absolute top-3 left-3">
           <button
             v-if="pano.visible && !miniMapOpen"
             type="button"
@@ -187,6 +176,29 @@ function submitGuess(): void {
             <IconMinimize aria-hidden="true" class="h-5 w-5" />
           </button>
         </div>
+
+        <slot />
+      </div>
+
+      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+        <!--
+          One row below the icon it grows out of, and at the same gutter, so it opens under its own
+          control without covering the term above — the term is centred, so a panel in that row
+          would lie across it, and across its own two corner buttons with it.
+
+          Only ever hidden, never unmounted: Google measures a `display:none` element as nothing,
+          so a rebuilt container would come back as a grey square. Hidden it takes no space either,
+          which leaves „Gefunden“ exactly where it was.
+        -->
+        <SpotObjectMiniMap
+          class="shrink-0"
+          :open="miniMapVisible"
+          :missed="jumpMissed"
+          :bounds="board"
+          @shown="(element) => void openMiniMap(element)"
+          @collapse="miniMapOpen = false"
+          @expand="toWorldMap"
+        />
 
         <button
           type="button"
