@@ -180,7 +180,9 @@ because that request also carries no `Referer`.
 read by docker compose, and imported by the backend through `spring.config.import` (see
 `application.yaml`); `.env.example` carries the empty lines to copy. Nothing else picks them up:
 `.run/CoreApplication.run.xml` and `.claude/launch.json` are tracked files, so a key pasted there
-would be committed.
+would be committed. A git worktree starts without the file — git carries no gitignored file over —
+so the backend's launch configuration links the main checkout's one in first, through
+`scripts/link-dev-env.sh`.
 
 For a local board you need two more keys in Cloud Console, next to the deployed ones — a key
 carries exactly one restriction, and `localhost` is not the production hostname:
