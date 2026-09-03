@@ -22,6 +22,8 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   currentTip: ReturnType<typeof vi.fn>
   toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
+  openMiniMap: ReturnType<typeof vi.fn>
+  jumpMissed: Ref<boolean>
 } {
   const double = {
     error: ref<string | null>(null),
@@ -33,13 +35,15 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
     currentTip: vi.fn().mockReturnValue(null),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    openMiniMap: vi.fn().mockResolvedValue(undefined),
+    jumpMissed: ref(false),
   }
   vi.mocked(useStreetView).mockReturnValue(double)
   return double
 }
 
 function mountBoard(disabled = false) {
-  return mount(SpotObjectBoard, { props: { disabled } })
+  return mount(SpotObjectBoard, { props: { disabled, trailColor: '#8e44ad' } })
 }
 
 describe('SpotObjectBoard', () => {
@@ -116,12 +120,13 @@ describe('SpotObjectBoard', () => {
   /** The term rides over the map while searching; the reveal puts the same band in the card. */
   it('stacks the slot above its own controls', () => {
     const w = mount(SpotObjectBoard, {
-      props: { disabled: false },
+      props: { disabled: false, trailColor: '#8e44ad' },
       slots: { default: '<p data-test="slotted">„Rosa Gartenzwerg“</p>' },
     })
 
-    const stack = w.get('[data-test="spot-actions"]').element.parentElement!
-    expect(stack.firstElementChild!.getAttribute('data-test')).toBe('slotted')
+    const slot = w.get('[data-test="slotted"]').element
+    const actions = w.get('[data-test="spot-actions"]').element
+    expect(slot.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   /**
@@ -303,5 +308,40 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
+  })
+  /**
+   * The mini-map covers the row the two actions sit in, and both of them are the wrong move while
+   * it is open: „Weltkarte“ would throw the walk away and „Gefunden“ would submit a view nobody is
+   * looking at. So they are gone rather than half-covered.
+   */
+  it('gives the row to the mini-map while it is open', async () => {
+    const double = mockStreetView({ visible: true })
+    const w = mountBoard()
+
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    expect(w.find('[data-test="spot-actions"]').exists()).toBe(false)
+    expect(double.openMiniMap).toHaveBeenCalledWith(w.get('[data-test="spot-mini-stage"]').element)
+  })
+
+  it('hands the actions back on the world map, whatever the mini-map was left as', async () => {
+    const double = mockStreetView({ visible: true })
+    const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    double.pano.visible = false
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-actions"]').exists()).toBe(true)
+  })
+
+  it('closes the mini-map on its own button', async () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    await w.get('[data-test="spot-mini-close"]').trigger('click')
+
+    expect(w.find('[data-test="spot-actions"]').exists()).toBe(true)
   })
 })

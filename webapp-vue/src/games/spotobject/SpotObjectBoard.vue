@@ -8,10 +8,11 @@
  * Knows nothing about the round or the lab — it is told whether it is locked, and it hands back
  * the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
-import { onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRef, useTemplateRef } from 'vue'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import SpotObjectCompass from './SpotObjectCompass.vue'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
+import SpotObjectMiniMap from './SpotObjectMiniMap.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
 
@@ -22,7 +23,7 @@ const TAP_SLOP = 8
 /** How long a press waits to find out whether it was the first half of a double click. */
 const DOUBLE_TAP_MS = 280
 
-const props = defineProps<{ disabled: boolean }>()
+const props = defineProps<{ disabled: boolean; trailColor: string }>()
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
 
@@ -30,13 +31,23 @@ const {
   currentTip,
   error,
   heading,
+  jumpMissed,
   mount,
   noCoverage,
+  openMiniMap,
   pano,
   pegmanDragging,
   toStreetView,
   toWorldMap,
-} = useStreetView()
+} = useStreetView(toRef(props, 'trailColor'))
+
+const miniMapOpen = ref(false)
+
+/**
+ * Open *and* on the ground. The two are not the same thing: a mini-map left open takes the actions
+ * row with it, and back on the world map that row is the only way on.
+ */
+const miniMapVisible = computed(() => miniMapOpen.value && pano.visible)
 
 const stage = useTemplateRef<HTMLElement>('stage')
 
@@ -219,9 +230,28 @@ function submitGuess(): void {
            direction nobody is facing. -->
       <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
 
+      <!-- No height of its own: the mini-map hangs off this row instead of taking part in it, so
+           it sits directly under the compass without the term below having to move over for it. -->
+      <div class="relative h-0">
+        <SpotObjectMiniMap
+          v-show="pano.visible"
+          :open="miniMapVisible"
+          :heading="heading ?? 0"
+          :missed="jumpMissed"
+          :color="props.trailColor"
+          @expand="miniMapOpen = true"
+          @shown="(element) => void openMiniMap(element)"
+          @collapse="miniMapOpen = false"
+        />
+      </div>
+
       <slot />
 
-      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+      <div
+        v-if="!miniMapVisible"
+        data-test="spot-actions"
+        class="flex items-start justify-between gap-2 p-3"
+      >
         <!-- Left, and an arrow: this is the back action of the pair, and back belongs where every
            other back control on a phone is. The word stays beside the arrow — „Weltkarte“ is the
            destination, and an arrow alone would not say which back. -->

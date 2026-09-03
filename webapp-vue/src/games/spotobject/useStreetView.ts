@@ -15,6 +15,7 @@ import { reactive, ref } from 'vue'
 import type { Ref } from 'vue'
 import { apiFetch } from '@/api/client'
 import type { SpotObjectTip } from './types'
+import { useWalkMap } from './useWalkMap'
 
 /**
  * What the board renders: whether a panorama is open at all, and which one. The *view* inside it
@@ -84,9 +85,14 @@ export interface UseStreetView {
   currentTip: () => SpotObjectTip | null
   toStreetView: () => void
   toWorldMap: () => void
+  /** Builds the mini-map into `element` on the first open — see `useWalkMap`. */
+  openMiniMap: (element: HTMLElement) => Promise<void>
+  /** True while the last tap on the mini-map found nothing. */
+  jumpMissed: Ref<boolean>
 }
 
-export function useStreetView(): UseStreetView {
+/** `trailColor` is the player's own colour, which only the round knows. */
+export function useStreetView(trailColor: Ref<string>): UseStreetView {
   const error = ref<string | null>(null)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
@@ -94,6 +100,7 @@ export function useStreetView(): UseStreetView {
   const heading = ref<number | null>(null)
   let map: google.maps.Map | null = null
   let panorama: google.maps.StreetViewPanorama | null = null
+  const walk = useWalkMap(trailColor)
 
   async function mount(element: HTMLElement): Promise<void> {
     try {
@@ -143,6 +150,11 @@ export function useStreetView(): UseStreetView {
       panorama.addListener('pano_changed', () => {
         pano.panoId = panorama?.getPano() || null
         heading.value = panorama?.getPov().heading ?? null
+
+        // The world map walks along underneath, so „← Weltkarte“ comes out where the player
+        // stopped rather than where they went in.
+        const position = panorama?.getPosition()
+        if (position) map?.setCenter(position)
       })
 
       // Turning fires this and nothing else, which is why the compass cannot ride on `pano_changed`.
@@ -154,6 +166,9 @@ export function useStreetView(): UseStreetView {
       // goes back out of sight and the crosshair says there is nothing to walk into here.
       panorama.addListener('status_changed', () => {
         if (!panorama || panorama.getStatus() === 'OK') return
+        // A mistap inside the mini-map is the walk map's own to undo: hiding the panorama here
+        // would drop the player onto the world map and throw their walk away.
+        if (walk.absorbMiss()) return
         panorama.setVisible(false)
         noCoverage.value = true
       })
@@ -162,6 +177,8 @@ export function useStreetView(): UseStreetView {
       map.addListener('center_changed', () => {
         noCoverage.value = false
       })
+
+      walk.attach({ map, panorama })
 
       watchPegman(element)
       swallowScrollKeys(element)
@@ -200,6 +217,8 @@ export function useStreetView(): UseStreetView {
     // change fires no event to hide the panorama with — Google's own „no imagery“ panel would be
     // the answer instead of ours.
     if (!panorama || !center || noCoverage.value) return
+    // Whatever the mini-map was still waiting for is not this press's answer.
+    walk.clearJump()
     panorama.setPosition(center)
     panorama.setVisible(true)
   }
@@ -248,5 +267,7 @@ export function useStreetView(): UseStreetView {
     currentTip,
     toStreetView,
     toWorldMap,
+    openMiniMap: walk.openMiniMap,
+    jumpMissed: walk.jumpMissed,
   }
 }

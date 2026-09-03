@@ -53,6 +53,13 @@ const rows = computed(() =>
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 /**
+ * The colour the walk is drawn in — the player's own, so the trail on the map is recognisably
+ * theirs. Neutral until an entry of one's own exists, which is the whole of the first few seconds
+ * of a round.
+ */
+const trailColor = computed(() => mine.value?.avatar.bgColorHex ?? '#404040')
+
+/**
  * Whether the reveal is something that just happened here rather than something that was already
  * true on mount — the same flag every other game's reveal keeps. A `watch` without `immediate`
  * never fires for the initial value, which is what makes an instance mounting already-played
@@ -88,7 +95,11 @@ watch(played, (now, before) => {
       />
     </div>
     <template v-else>
-      <SpotObjectBoard :disabled="props.disabled" @guess="(value) => emit('guess', value)">
+      <SpotObjectBoard
+        :disabled="props.disabled"
+        :trail-color="trailColor"
+        @guess="(value) => emit('guess', value)"
+      >
         <SpotObjectTerm :term="payload.term" class="mt-3" />
       </SpotObjectBoard>
 
