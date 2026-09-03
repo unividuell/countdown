@@ -54,6 +54,8 @@ const miniMapOpen = ref(false)
 const miniMapVisible = computed(() => miniMapOpen.value && pano.visible)
 
 const stage = useTemplateRef<HTMLElement>('stage')
+/** The room the mini-map may be dragged around in. */
+const board = useTemplateRef<HTMLElement>('board')
 
 onMounted(() => {
   if (!stage.value) return
@@ -161,7 +163,10 @@ function submitGuess(): void {
 
     `min-h`: below that the map is useless anyway, and overflowing beats a letterbox.
   -->
-  <div class="relative h-[calc(100svh-6rem)] min-h-80 sm:h-[min(100dvh-6rem,40rem)] sm:min-h-0">
+  <div
+    ref="board"
+    class="relative h-[calc(100svh-6rem)] min-h-80 sm:h-[min(100dvh-6rem,40rem)] sm:min-h-0"
+  >
     <!-- `isolate`: the panorama's own chrome carries z-indexes in the millions, and without a
          stacking context here those compete with our overlay row in the ROOT context and win —
          the map mode's controls are modest enough that the row only vanishes once a panorama
@@ -249,12 +254,14 @@ function submitGuess(): void {
           Only one control per step: the panel carries its own way down (✕) and its own way up (⤢),
           so the icon is out of the way while the panel is open.
         -->
-        <div>
+        <!-- `shrink-0`: „Gefunden“ must never squeeze the map on a narrow phone. -->
+        <div class="shrink-0">
           <SpotObjectMiniMap
             :open="miniMapVisible"
             :heading="heading ?? 0"
             :missed="jumpMissed"
             :color="props.trailColor"
+            :bounds="board"
             @shown="(element) => void openMiniMap(element)"
             @collapse="miniMapOpen = false"
             @expand="toWorldMap"
