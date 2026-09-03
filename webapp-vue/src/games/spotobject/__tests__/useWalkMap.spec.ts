@@ -34,11 +34,13 @@ class FakeMap {
 class FakePanorama {
   panoIdValue: string | null = null
   positionValue: unknown = null
-  private readonly handlers = new Map<string, Array<() => void>>()
+  readonly handlers = new Map<string, Array<() => void>>()
 
   setPosition = vi.fn()
   setPano = vi.fn()
   setVisible = vi.fn()
+  pov = { heading: 0, pitch: 0 }
+  getPov = vi.fn(() => this.pov)
   getPano = vi.fn(() => this.panoIdValue)
   getPosition = vi.fn(() => this.positionValue)
   addListener = vi.fn((event: string, callback: () => void) => {
@@ -46,6 +48,12 @@ class FakePanorama {
     list.push(callback)
     this.handlers.set(event, list)
   })
+
+  /** Turning on the spot, which is all Google announces for it. */
+  turnTo(heading: number): void {
+    this.pov = { ...this.pov, heading }
+    this.handlers.get('pov_changed')?.forEach((callback) => callback())
+  }
 
   /** Google announcing that a panorama actually loaded — the only thing that counts as a step. */
   arriveAt(panoId: string, position: unknown): void {
@@ -66,6 +74,16 @@ class FakePolyline {
   }
 }
 
+class FakeMarker {
+  static instances: FakeMarker[] = []
+  setPosition = vi.fn()
+  setIcon = vi.fn()
+
+  constructor(readonly options: Record<string, unknown>) {
+    FakeMarker.instances.push(this)
+  }
+}
+
 class FakeCoverageLayer {
   static instances: FakeCoverageLayer[] = []
   setMap = vi.fn()
@@ -81,12 +99,14 @@ function installFakeGoogleMaps(): void {
   FakeMap.instances = []
   FakePolyline.instances = []
   FakeCoverageLayer.instances = []
+  FakeMarker.instances = []
   streetViewPanoramaCtor.mockClear()
   vi.stubGlobal('google', {
     maps: {
       Map: FakeMap,
       Polyline: FakePolyline,
       StreetViewCoverageLayer: FakeCoverageLayer,
+      Marker: FakeMarker,
       StreetViewPanorama: streetViewPanoramaCtor,
       SymbolPath: { CIRCLE: 0 },
     },
@@ -272,5 +292,34 @@ describe('useWalkMap', () => {
 
     expect(walk.absorbMiss()).toBe(false)
     expect(panorama.setPano).not.toHaveBeenCalled()
+  })
+  /**
+   * The mark used to be drawn over the middle of the panel, which made it a lie the moment the
+   * player panned the map: the tiles moved, the mark did not, and it pointed at whatever had
+   * slid under it.
+   */
+  it('puts the player on the map, so panning cannot move them', async () => {
+    const { walk, panorama } = attached('#8e44ad')
+    panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
+
+    await walk.openMiniMap(document.createElement('div'))
+    panorama.arriveAt('pano-2', { lat: 2, lng: 2 })
+
+    const marker = FakeMarker.instances[0]
+    expect(marker?.options.map).toBe(FakeMap.instances[1])
+    expect(marker?.setPosition).toHaveBeenLastCalledWith({ lat: 2, lng: 2 })
+    // A press on the player has to reach the map underneath, or the one spot you aim at most is
+    // the one you cannot walk to.
+    expect(marker?.options.clickable).toBe(false)
+  })
+
+  it('turns the player with the view, not with the walk', async () => {
+    const { walk, panorama } = attached()
+    await walk.openMiniMap(document.createElement('div'))
+
+    panorama.turnTo(215)
+
+    const icon = FakeMarker.instances[0]?.setIcon.mock.lastCall?.[0] as { rotation: number }
+    expect(icon.rotation).toBe(215)
   })
 })

@@ -7,7 +7,7 @@ enableAutoUnmount(afterEach)
 
 function mountMiniMap(props: Partial<InstanceType<typeof SpotObjectMiniMap>['$props']> = {}) {
   return mount(SpotObjectMiniMap, {
-    props: { open: false, heading: 0, missed: false, color: '#8e44ad', bounds: null, ...props },
+    props: { open: false, missed: false, bounds: null, ...props },
   })
 }
 
@@ -95,20 +95,6 @@ describe('SpotObjectMiniMap', () => {
 
     expect(w.emitted('collapse')).toHaveLength(1)
     expect(w.emitted('expand')).toHaveLength(1)
-  })
-
-  it('turns the view cone with the player', async () => {
-    const w = mountMiniMap({ open: true, heading: 90 })
-
-    expect(w.get<HTMLElement>('[data-test="spot-mini-cone"]').element.style.transform).toContain(
-      'rotate(90deg)',
-    )
-
-    await w.setProps({ heading: 215 })
-
-    expect(w.get<HTMLElement>('[data-test="spot-mini-cone"]').element.style.transform).toContain(
-      'rotate(215deg)',
-    )
   })
 
   it('says so when a tap found nothing', async () => {

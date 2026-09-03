@@ -258,9 +258,7 @@ function submitGuess(): void {
         <div class="shrink-0">
           <SpotObjectMiniMap
             :open="miniMapVisible"
-            :heading="heading ?? 0"
             :missed="jumpMissed"
-            :color="props.trailColor"
             :bounds="board"
             @shown="(element) => void openMiniMap(element)"
             @collapse="miniMapOpen = false"

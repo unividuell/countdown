@@ -19,12 +19,8 @@ import IconX from '~icons/lucide/x'
 
 const props = defineProps<{
   open: boolean
-  /** Where the panorama faces, so the cone points the same way. */
-  heading: number
   /** The last press found nothing to walk into. */
   missed: boolean
-  /** The player's own colour — the trail's, and the cone's. */
-  color: string
   /** The board, as the room the panel may be dragged around in. */
   bounds: HTMLElement | null
 }>()
@@ -177,24 +173,6 @@ function between(value: number, min: number, max: number): number {
     -->
     <div class="relative aspect-square overflow-hidden rounded-lg bg-neutral-200 shadow-lg">
       <div ref="stage" data-test="spot-mini-stage" class="absolute inset-0" />
-
-      <!-- The player, at the map's own centre: the map is kept centred on them, so this never
-           moves — it only turns. -->
-      <svg
-        data-test="spot-mini-cone"
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        class="pointer-events-none absolute top-1/2 left-1/2 h-7 w-7"
-        :style="{ transform: `translate(-50%, -50%) rotate(${props.heading}deg)` }"
-      >
-        <path
-          d="M12 2 L19 20 L12 16 L5 20 Z"
-          :fill="props.color"
-          stroke="#ffffff"
-          stroke-width="1.5"
-          stroke-linejoin="round"
-        />
-      </svg>
 
       <!-- Top row only, all of it: the bottom belongs to Google. -->
       <p

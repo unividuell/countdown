@@ -23,6 +23,28 @@ const DOT_SPACING = '12px'
 /** Close enough to read street names, far enough to see the next junction. */
 const MINI_ZOOM = 17
 
+/**
+ * The player, as a symbol on the map rather than a mark drawn over it. A mark over it is what this
+ * was, and it lied: the map pans under a finger while the mark stays in the middle, so it stopped
+ * pointing at where the player actually is. Anchored at the path's own origin, so turning happens
+ * about the player and not about a corner.
+ *
+ * `google.maps.Marker` is deprecated in favour of `AdvancedMarkerElement`, which needs a cloud-side
+ * Map ID. One arrow is not worth a second thing to configure per environment.
+ */
+function cone(color: string, heading: number): google.maps.Symbol {
+  return {
+    path: 'M 0 -11 L 7 7 L 0 3 L -7 7 Z',
+    fillColor: color,
+    fillOpacity: 1,
+    // A pale player colour vanishes on pale tiles; the outline carries it either way.
+    strokeColor: '#ffffff',
+    strokeWeight: 1.5,
+    strokeOpacity: 1,
+    rotation: heading,
+  }
+}
+
 export interface WalkMapDeps {
   map: google.maps.Map
   panorama: google.maps.StreetViewPanorama
@@ -73,6 +95,7 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
   let worldTrail: google.maps.Polyline | null = null
   let miniMap: google.maps.Map | null = null
   let miniTrail: google.maps.Polyline | null = null
+  let here: google.maps.Marker | null = null
 
   /** The walk itself. One entry per panorama arrived at, oldest first. */
   const path: google.maps.LatLng[] = []
@@ -86,7 +109,13 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
   watch(trailColor, (color) => {
     worldTrail?.setOptions(dotted(color))
     miniTrail?.setOptions(dotted(color))
+    here?.setIcon(cone(color, facing()))
   })
+
+  /** Where the panorama looks right now, straight from Google — never a mirror of it. */
+  function facing(): number {
+    return panorama?.getPov().heading ?? 0
+  }
 
   function attach(deps: WalkMapDeps): void {
     map = deps.map
@@ -96,6 +125,11 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
     worldTrail.setMap(map)
 
     panorama.addListener('pano_changed', step)
+
+    // Turning fires this and nothing else, which is why the cone cannot ride on `pano_changed`.
+    panorama.addListener('pov_changed', () => {
+      here?.setIcon(cone(trailColor.value, facing()))
+    })
   }
 
   /**
@@ -116,6 +150,7 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
     path.push(position)
     worldTrail?.setPath(path)
     miniTrail?.setPath(path)
+    here?.setPosition(position)
     miniMap?.setCenter(position)
   }
 
@@ -150,6 +185,15 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
     miniTrail = new google.maps.Polyline(dotted(trailColor.value))
     miniTrail.setPath(path)
     miniTrail.setMap(built)
+
+    here = new google.maps.Marker({
+      map: built,
+      position: panorama?.getPosition() ?? null,
+      icon: cone(trailColor.value, facing()),
+      // A press on the player must still reach the map underneath, or the one spot you are most
+      // likely to aim at is the one that cannot be walked to.
+      clickable: false,
+    })
 
     built.addListener('click', (event: google.maps.MapMouseEvent) => {
       if (event.latLng) jumpTo(event.latLng)

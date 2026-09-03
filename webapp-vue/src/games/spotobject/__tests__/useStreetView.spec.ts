@@ -89,11 +89,16 @@ class FakeCoverageLayer {
   setMap = vi.fn()
 }
 
-/** The trail's line. Only its existence matters here — `useWalkMap.spec.ts` owns its behaviour. */
+/** The trail and the mark. Only their existence matters here — `useWalkMap.spec.ts` owns both. */
 class FakePolyline {
   setMap = vi.fn()
   setPath = vi.fn()
   setOptions = vi.fn()
+}
+
+class FakeMarker {
+  setPosition = vi.fn()
+  setIcon = vi.fn()
 }
 
 const streetViewPanoramaCtor = vi.fn()
@@ -107,6 +112,7 @@ function installFakeGoogleMaps(): void {
       StreetViewCoverageLayer: FakeCoverageLayer,
       StreetViewPanorama: streetViewPanoramaCtor,
       Polyline: FakePolyline,
+      Marker: FakeMarker,
       SymbolPath: { CIRCLE: 0 },
     },
   } as unknown as typeof google)
