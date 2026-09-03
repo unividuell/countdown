@@ -189,6 +189,19 @@ describe('SpotObjectBoard', () => {
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
   })
+  /**
+   * The row's right-hand end belongs to „Gefunden“ whether or not the map is open beside it. A
+   * shut map is `display:none` and so not a flex item at all, which is how `justify-between` came
+   * to put the button at the *left*: with one item left, between is the start.
+   */
+  it('keeps „Gefunden“ at its own end of the row, with or without the map', () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+
+    expect(w.get('[data-test="spot-guess-button"]').classes()).toContain('ms-auto')
+    expect(w.get('[data-test="spot-actions"]').classes()).not.toContain('justify-between')
+  })
+
   /** Submitting stays possible at every size: the map is a view onto the round, not a modal. */
   it('keeps „Gefunden“ while the mini-map is open', async () => {
     mockStreetView({ visible: true, panoId: 'pano-1' })

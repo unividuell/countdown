@@ -180,15 +180,14 @@ function submitGuess(): void {
         <slot />
       </div>
 
-      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+      <div data-test="spot-actions" class="flex items-start gap-2 p-3">
         <!--
           One row below the icon it grows out of, and at the same gutter, so it opens under its own
           control without covering the term above — the term is centred, so a panel in that row
           would lie across it, and across its own two corner buttons with it.
 
           Only ever hidden, never unmounted: Google measures a `display:none` element as nothing,
-          so a rebuilt container would come back as a grey square. Hidden it takes no space either,
-          which leaves „Gefunden“ exactly where it was.
+          so a rebuilt container would come back as a grey square.
         -->
         <SpotObjectMiniMap
           class="shrink-0"
@@ -200,10 +199,13 @@ function submitGuess(): void {
           @expand="toWorldMap"
         />
 
+        <!-- `ms-auto` and not `justify-between` on the row: a hidden map is `display:none` and
+             therefore not a flex item at all, and `justify-between` with one item left puts that
+             item at the *start* — „Gefunden“ walked to the left every time the map was shut. -->
         <button
           type="button"
           data-test="spot-guess-button"
-          class="pointer-events-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          class="pointer-events-auto ms-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
           :disabled="props.disabled || !pano.visible"
           @click="submitGuess"
         >
