@@ -38,6 +38,7 @@ class FakePanorama {
 
   setPosition = vi.fn()
   setPano = vi.fn()
+  setVisible = vi.fn()
   getPano = vi.fn(() => this.panoIdValue)
   getPosition = vi.fn(() => this.positionValue)
   addListener = vi.fn((event: string, callback: () => void) => {
@@ -205,7 +206,19 @@ describe('useWalkMap', () => {
 
     expect(walk.absorbMiss()).toBe(true)
     expect(panorama.setPano).toHaveBeenCalledWith('pano-1')
+    // Both halves: Google hides the panorama on a position that finds nothing, and putting the
+    // imagery back does not put it back on screen.
+    expect(panorama.setVisible).toHaveBeenCalledWith(true)
     expect(walk.jumpMissed.value).toBe(true)
+  })
+
+  it('leaves the miss to the board when there is no walk to go back to', async () => {
+    const { walk, panorama } = attached()
+    await walk.openMiniMap(document.createElement('div'))
+    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+
+    expect(walk.absorbMiss()).toBe(false)
+    expect(panorama.setVisible).not.toHaveBeenCalled()
   })
 
   it('leaves a miss that was not a tap to the board’s own answer', () => {

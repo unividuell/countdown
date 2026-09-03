@@ -238,37 +238,51 @@ function submitGuess(): void {
 
       <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
         <!--
-          The left slot is the map's size control, and it changes with the size: it opens the
-          panel while a panorama is on screen, and brings the panorama back once the map has taken
-          the whole board. Nothing at all before the first panorama — there is no size to step
-          between yet, and this is where „Weltkarte“ used to be, which had the same rule.
+          The left slot is the map, at whatever size it currently has: the icon that opens the
+          panel, the panel itself, or — once the map has taken the whole board — the way back into
+          the panorama. All three start at this one corner, which is where „Weltkarte“ used to be.
+
+          The panel is only ever hidden, never unmounted: Google measures a `display:none` element
+          as nothing, so a rebuilt container would come back as a grey square. That is also why it
+          cannot take part in the `v-if` chain below it.
 
           Only one control per step: the panel carries its own way down (✕) and its own way up (⤢),
-          so this button is out of the way while the panel is open.
+          so the icon is out of the way while the panel is open.
         -->
-        <button
-          v-if="pano.visible && !miniMapOpen"
-          type="button"
-          data-test="spot-mini-open"
-          aria-label="Übersichtskarte öffnen"
-          class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
-          :disabled="props.disabled"
-          @click="miniMapOpen = true"
-        >
-          <IconMap aria-hidden="true" class="h-5 w-5" />
-        </button>
-        <button
-          v-else-if="!pano.visible && pano.panoId"
-          type="button"
-          data-test="spot-street-view"
-          aria-label="Zurück zur Straßenansicht"
-          class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
-          :disabled="props.disabled"
-          @click="toPanorama"
-        >
-          <IconMinimize aria-hidden="true" class="h-5 w-5" />
-        </button>
-        <span v-else />
+        <div>
+          <SpotObjectMiniMap
+            :open="miniMapVisible"
+            :heading="heading ?? 0"
+            :missed="jumpMissed"
+            :color="props.trailColor"
+            @shown="(element) => void openMiniMap(element)"
+            @collapse="miniMapOpen = false"
+            @expand="toWorldMap"
+          />
+
+          <button
+            v-if="pano.visible && !miniMapOpen"
+            type="button"
+            data-test="spot-mini-open"
+            aria-label="Übersichtskarte öffnen"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            :disabled="props.disabled"
+            @click="miniMapOpen = true"
+          >
+            <IconMap aria-hidden="true" class="h-5 w-5" />
+          </button>
+          <button
+            v-else-if="!pano.visible && pano.panoId"
+            type="button"
+            data-test="spot-street-view"
+            aria-label="Zurück zur Straßenansicht"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            :disabled="props.disabled"
+            @click="toPanorama"
+          >
+            <IconMinimize aria-hidden="true" class="h-5 w-5" />
+          </button>
+        </div>
 
         <button
           type="button"
@@ -280,19 +294,6 @@ function submitGuess(): void {
           Gefunden
         </button>
       </div>
-
-      <!-- Below the row it is opened from, and left-aligned under that button: the panel is the
-           middle size of the same map, so it grows out of its own control rather than appearing
-           somewhere else on the board. -->
-      <SpotObjectMiniMap
-        :open="miniMapVisible"
-        :heading="heading ?? 0"
-        :missed="jumpMissed"
-        :color="props.trailColor"
-        @shown="(element) => void openMiniMap(element)"
-        @collapse="miniMapOpen = false"
-        @expand="toWorldMap"
-      />
     </div>
   </div>
 </template>

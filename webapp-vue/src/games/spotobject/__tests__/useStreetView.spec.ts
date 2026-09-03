@@ -450,6 +450,9 @@ describe('useStreetView', () => {
     await pending
 
     const map = FakeMap.instances[0]!
+    // Arrive somewhere first: the mini-map only exists inside a panorama, and taking a miss back
+    // means going back to the panorama that was walked.
+    map.panorama.fire('pano_changed')
     map.panorama.setVisible.mockClear()
     await openMiniMap(document.createElement('div'))
     FakeMap.instances[1]!.fire('click', { latLng: { lat: 3, lng: 3 } })
@@ -457,7 +460,7 @@ describe('useStreetView', () => {
     map.panorama.status = 'ZERO_RESULTS'
     map.panorama.fire('status_changed')
 
-    expect(map.panorama.setVisible).not.toHaveBeenCalled()
+    expect(map.panorama.setVisible).not.toHaveBeenCalledWith(false)
     expect(noCoverage.value).toBe(false)
     expect(jumpMissed.value).toBe(true)
   })

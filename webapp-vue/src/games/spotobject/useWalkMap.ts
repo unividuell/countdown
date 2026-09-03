@@ -186,11 +186,19 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
 
   function absorbMiss(): boolean {
     if (!jumping) return false
-
     jumping = false
+
+    // Nothing walked yet is nothing to go back to, and then the board's own answer is the right
+    // one. Cannot happen from the mini-map, which only exists inside a panorama.
+    if (!lastPanoId) return false
+
     jumpMissed.value = true
     // `setPano`, not `setPosition`: the panorama is known good by id, and no lookup is needed.
-    if (lastPanoId) panorama?.setPano(lastPanoId)
+    panorama?.setPano(lastPanoId)
+    // Google takes the panorama off screen itself when a position finds nothing, and `setPano`
+    // puts the imagery back without putting that back — so the player landed on the full-screen
+    // map, which is the one thing taking the miss back exists to prevent.
+    panorama?.setVisible(true)
     return true
   }
 

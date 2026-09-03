@@ -327,6 +327,20 @@ describe('SpotObjectBoard', () => {
     expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
   })
 
+  /**
+   * No layout in happy-dom, so the structural proxy: the panel and the icon that opens it share
+   * one parent, which is what makes the panel start at the icon's own corner.
+   */
+  it('opens the panel where the icon stands, not a row below it', async () => {
+    mockStreetView({ visible: true })
+    const w = mountBoard()
+    const slot = w.get('[data-test="spot-mini-open"]').element.parentElement
+
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+
+    expect(w.get('[data-test="spot-mini-panel"]').element.parentElement).toBe(slot)
+  })
+
   it('closes the mini-map on its own button', async () => {
     mockStreetView({ visible: true })
     const w = mountBoard()

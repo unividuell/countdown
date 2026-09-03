@@ -65,7 +65,7 @@ watch(
   <div
     v-show="props.open"
     data-test="spot-mini-panel"
-    class="pointer-events-auto relative mx-3 mb-3 aspect-square w-[min(55%,13rem)] overflow-hidden rounded-lg bg-neutral-200 shadow-lg"
+    class="pointer-events-auto relative aspect-square w-[min(55%,13rem)] overflow-hidden rounded-lg bg-neutral-200 shadow-lg"
   >
     <div ref="stage" data-test="spot-mini-stage" class="absolute inset-0" />
 
