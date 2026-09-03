@@ -137,12 +137,20 @@ function worldTrail(): FakePolyline {
   return trail
 }
 
+/** A press on the mini-map, including the wait that tells it apart from a double click. */
+function pressMiniMap(at: unknown = { lat: 3, lng: 3 }): void {
+  FakeMap.instances[1]?.fire('click', { latLng: at })
+  vi.advanceTimersByTime(300)
+}
+
 describe('useWalkMap', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     installFakeGoogleMaps()
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
@@ -189,13 +197,14 @@ describe('useWalkMap', () => {
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
   })
 
-  it('gives the mini-map the blue lines a tap has to aim at, and no double-click zoom', async () => {
+  it('gives the mini-map the blue lines a press has to aim at, and Google’s own zoom', async () => {
     const { walk } = attached()
 
     await walk.openMiniMap(document.createElement('div'))
 
-    expect(FakeMap.instances[1]?.options.disableDoubleClickZoom).toBe(true)
     expect(FakeCoverageLayer.instances[0]?.setMap).toHaveBeenCalledWith(FakeMap.instances[1])
+    // Turning the double click off would have been the cheap way to stop it pressing twice.
+    expect(FakeMap.instances[1]?.options.disableDoubleClickZoom).toBeUndefined()
   })
 
   it('keeps the mini-map centred on the player, step by step', async () => {
@@ -211,7 +220,7 @@ describe('useWalkMap', () => {
     const { walk, panorama } = attached()
 
     await walk.openMiniMap(document.createElement('div'))
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
 
     expect(panorama.setPosition).toHaveBeenCalledWith({ lat: 3, lng: 3 })
     expect(streetViewPanoramaCtor).not.toHaveBeenCalled()
@@ -222,7 +231,7 @@ describe('useWalkMap', () => {
     panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
 
     await walk.openMiniMap(document.createElement('div'))
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
 
     expect(walk.absorbMiss()).toBe(true)
     expect(panorama.setPano).toHaveBeenCalledWith('pano-1')
@@ -235,7 +244,7 @@ describe('useWalkMap', () => {
   it('leaves the miss to the board when there is no walk to go back to', async () => {
     const { walk, panorama } = attached()
     await walk.openMiniMap(document.createElement('div'))
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
 
     expect(walk.absorbMiss()).toBe(false)
     expect(panorama.setVisible).not.toHaveBeenCalled()
@@ -252,7 +261,7 @@ describe('useWalkMap', () => {
     const { walk, panorama } = attached()
     panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
     await walk.openMiniMap(document.createElement('div'))
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
     walk.absorbMiss()
 
     panorama.arriveAt('pano-2', { lat: 2, lng: 2 })
@@ -264,7 +273,7 @@ describe('useWalkMap', () => {
     const { walk, panorama } = attached()
     panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
     await walk.openMiniMap(document.createElement('div'))
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
     walk.absorbMiss()
 
     // Google answers `setPano` with a `pano_changed` of its own, for the panorama already walked.
@@ -286,7 +295,7 @@ describe('useWalkMap', () => {
     const { walk, panorama } = attached()
     await walk.openMiniMap(document.createElement('div'))
     // A tap onto the panorama already open: same status, same pano, so Google says nothing at all.
-    FakeMap.instances[1]?.fire('click', { latLng: { lat: 3, lng: 3 } })
+    pressMiniMap()
 
     walk.clearJump()
 

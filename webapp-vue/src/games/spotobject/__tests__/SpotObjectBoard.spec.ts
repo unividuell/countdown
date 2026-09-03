@@ -17,10 +17,8 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
   noCoverage: Ref<boolean>
-  pegmanDragging: Ref<boolean>
   heading: Ref<number | null>
   currentTip: ReturnType<typeof vi.fn>
-  toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
   toPanorama: ReturnType<typeof vi.fn>
   openMiniMap: ReturnType<typeof vi.fn>
@@ -31,10 +29,8 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),
-    pegmanDragging: ref(false),
     heading: ref<number | null>(null),
     currentTip: vi.fn().mockReturnValue(null),
-    toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
     toPanorama: vi.fn(),
     openMiniMap: vi.fn().mockResolvedValue(undefined),
@@ -138,131 +134,18 @@ describe('SpotObjectBoard', () => {
   })
 
   /**
-   * The crosshair is the aim for both halves of the board: on the map it is where the Pegman will
-   * land, in the panorama it is where the object has to be before „Gefunden“.
+   * The crosshair is one thing now, not two: the centre the object has to be in before „Gefunden“.
+   * On the map it used to be the aim as well, and a press lands where the finger is.
    */
-  it('marks the centre of the stage in both halves', async () => {
+  it('marks the centre of the panorama, and nothing on the map', async () => {
     const double = mockStreetView({ visible: false })
     const w = mountBoard()
 
-    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
+    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(false)
 
     double.pano.visible = true
     await w.vm.$nextTick()
 
-    expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
-  })
-
-  /**
-   * As a hit target the ring shadowed the map's own gestures at the one spot they matter most: a
-   * double click there no longer zoomed, and a wheel over it scrolled the page instead of the map.
-   * It takes no pointer events at all now — the press is read off the map below.
-   */
-  it('lets the map keep every gesture at its own centre', async () => {
-    const w = mountBoard()
-
-    expect(w.get('[data-test="spot-enter"]').classes()).toContain('pointer-events-none')
-  })
-
-  /** The one path no pointer gesture stands in for — the ring is still a real button. */
-  it('enters Street View from the keyboard, and only while there is a map to aim at', async () => {
-    const double = mockStreetView({ visible: false })
-    const w = mountBoard()
-
-    await w.get('[data-test="spot-enter"]').trigger('click')
-    expect(double.toStreetView).toHaveBeenCalledOnce()
-
-    double.pano.visible = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
-  })
-
-  describe('the press on the crosshair', () => {
-    /**
-     * happy-dom measures every element as 0×0 at the origin, so the stage's centre is (0,0) and a
-     * press is „inside the ring“ by how far its own coordinates are from there.
-     */
-    function press(w: ReturnType<typeof mountBoard>, from: [number, number], to = from): void {
-      const stage = w.get('[data-test="spot-map"]').element
-      stage.dispatchEvent(new MouseEvent('pointerdown', { clientX: from[0], clientY: from[1] }))
-      stage.dispatchEvent(new MouseEvent('pointerup', { clientX: to[0], clientY: to[1] }))
-    }
-
-    beforeEach(() => vi.useFakeTimers())
-    afterEach(() => vi.useRealTimers())
-
-    it('waits out the double click before acting on a single one', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0])
-      // Google zooms on a double click at this very spot, so nothing may have happened yet.
-      expect(double.toStreetView).not.toHaveBeenCalled()
-
-      vi.advanceTimersByTime(300)
-      expect(double.toStreetView).toHaveBeenCalledOnce()
-    })
-
-    /**
-     * Both halves have to give way, not just the first: cancelling the first press's action and
-     * then letting the second schedule its own turns a double click into a single one with a
-     * delay — which is what it did, and it zoomed *and* travelled.
-     */
-    it('hands a double click to the map and keeps nothing back', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0])
-      press(w, [0, 0])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('leaves a pan that began at the centre alone', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [0, 0], [0, 40])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('claims only presses inside the ring', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard()
-
-      press(w, [120, 90])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-
-    it('takes no press while the round is locked', () => {
-      const double = mockStreetView({ visible: false })
-      const w = mountBoard(true)
-
-      press(w, [0, 0])
-      vi.advanceTimersByTime(1000)
-
-      expect(double.toStreetView).not.toHaveBeenCalled()
-    })
-  })
-
-  /**
-   * The ring sits where a dropped Pegman most often lands. The Pegman is the way in past the 50 m
-   * the press reaches, so a shortcut that blocks it is worse than no shortcut.
-   */
-  it('gets its ring out of the way of a Pegman in the air, but keeps the mark', async () => {
-    const double = mockStreetView({ visible: false })
-    const w = mountBoard()
-
-    double.pegmanDragging.value = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-enter"]').exists()).toBe(false)
     expect(w.find('[data-test="spot-crosshair"]').exists()).toBe(true)
   })
 

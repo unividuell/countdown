@@ -12,6 +12,7 @@
 /// <reference types="google.maps" />
 import { nextTick, ref, watch } from 'vue'
 import type { Ref } from 'vue'
+import { onMapPress } from './mapPress'
 
 /**
  * Distance between two dots of the trail. Google measures `repeat` in *screen* pixels rather than
@@ -171,8 +172,6 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
     const built = new google.maps.Map(element, {
       zoom: MINI_ZOOM,
       disableDefaultUI: true,
-      // A double tap fires two clicks as well as zooming, so without this it jumps twice.
-      disableDoubleClickZoom: true,
       gestureHandling: 'greedy',
       clickableIcons: false,
       keyboardShortcuts: false,
@@ -195,9 +194,7 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
       clickable: false,
     })
 
-    built.addListener('click', (event: google.maps.MapMouseEvent) => {
-      if (event.latLng) jumpTo(event.latLng)
-    })
+    onMapPress(built, jumpTo)
 
     return built
   }
