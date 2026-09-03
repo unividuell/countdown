@@ -5,6 +5,7 @@ import type { CommunityResponse } from '@/api/types'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
+import { nowMs } from '@/ui/sharedClock'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import { BOOT_RESOLVE_AT_MS } from '@/ui/flipdot/board'
 
@@ -15,8 +16,11 @@ const community: CommunityResponse = {
   startsAt: '2026-06-25T09:00:00Z',
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: null,
   viewerIsAdmin: false,
   pendingCount: 0,
+  editionFrozen: false,
+  viewerIdentity: null,
 }
 
 // serverNow follows the fake client clock, so every load computes a skew of 0. Without that, an
@@ -119,21 +123,21 @@ describe('countdown shared clock', () => {
     const header = mountHeader()
     const card = mountCard()
     await flushPromises()
-    // getTimerCount() sees every pending timer, and the card's two flip-dot boards each hold the
-    // timeouts of their switch-on sequence. Drain them so the count below is about the clock.
+    // The boards hold the timeouts of their switch-on sequence, and a card mid-boot reads nothing
+    // useful. Drain them so the seconds below are the clock's.
     await vi.advanceTimersByTimeAsync(BOOT_RESOLVE_AT_MS)
 
+    // One consumer left, clock untouched — said by the card still counting, not by a timer count.
     header.unmount()
-    expect(vi.getTimerCount()).toBe(1) // one consumer left, clock untouched
-
     await vi.advanceTimersByTimeAsync(1000)
     expect(cardSeconds(card)).toBe('59')
 
     const callsBefore = spy.mock.calls.length
+    const frozenAt = nowMs.value
     card.unmount()
-    expect(vi.getTimerCount()).toBe(0)
 
     await vi.advanceTimersByTimeAsync(5000)
+    expect(nowMs.value).toBe(frozenAt) // the interval is gone, not merely unwatched
     expect(spy.mock.calls.length).toBe(callsBefore)
   })
 
@@ -142,14 +146,24 @@ describe('countdown shared clock', () => {
     mountHeader() // still mounted at reset time, as a leaky test case would leave it
     await flushPromises()
     // The header's own board holds boot timers of its own until it relights; drain them so the
-    // count below is about the clock, not the board's switch-on sequence. Restore the system
-    // clock afterwards so the drain's 400ms is invisible to the seconds arithmetic below.
+    // advances below belong to the clock and not to the board's switch-on sequence.
     await vi.advanceTimersByTimeAsync(BOOT_RESOLVE_AT_MS)
-    vi.setSystemTime(new Date('2026-06-14T21:00:00Z'))
-    expect(vi.getTimerCount()).toBe(1)
+
+    // Running while a consumer is up, stopped by the reset even though that consumer never left.
+    // Read off `nowMs` rather than `vi.getTimerCount()`: that count is every pending timer in the
+    // environment, and Vue schedules one of its own — a dev-only three-second devtools probe — on
+    // the first `mount()` of a file, so the number depended on which case ran first.
+    const ticking = nowMs.value
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(nowMs.value).not.toBe(ticking)
 
     _resetCountdownState()
-    expect(vi.getTimerCount()).toBe(0)
+    const frozenAt = nowMs.value
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(nowMs.value).toBe(frozenAt)
+
+    // Back to the pinned instant, so none of the draining above reaches the seconds below.
+    vi.setSystemTime(new Date('2026-06-14T21:00:00Z'))
 
     const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
     const card = mountCard()

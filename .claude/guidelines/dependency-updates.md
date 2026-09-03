@@ -57,6 +57,14 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
   BOM is the single source of truth. **Only** the versions written literally in our `pom.xml`
   are ours: the parent, `kotlin.version`, `spring-modulith.version`, `kotlin-logging.version`,
   and the four test deps (`kotest`, `mockk`, `springmockk`).
+- **The plugin reports the next *minor*, not the newest *stable* — so it hides the patch you want.**
+  On the 2026-09 pass it offered the parent as `4.1.0 -> 4.2.0-M1` and Modulith as `2.1.0 -> 2.2.0-M1`
+  while `4.1.1` and `2.1.1` were both out and are what we took. Read the metadata yourself and pick
+  the highest tag with no `-M`/`-RC`/`-Beta` suffix:
+  ```bash
+  curl -s https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-parent/maven-metadata.xml \
+    | grep -oE '<version>[^<]+</version>' | tail -12
+  ```
 - `search.maven.org`'s solr index **lags badly** (it reported Boot 3.5.3 as latest while 4.1.0
   was long out). Trust `versions-maven-plugin` or
   `repo.maven.apache.org/maven2/<path>/maven-metadata.xml`, never the search API.
@@ -100,6 +108,9 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
   from `package.json` fails there and nowhere else.
 - After a **Prettier minor** bump, run `pnpm exec prettier --check src`. Minors can change
   formatting defaults and silently turn the next `pnpm format` into a repo-wide diff.
+- A **happy-dom minor** can add a DOM API, and a capability check that used to be false in tests is
+  then true — the spec silently changes which code path it exercises. 20.12 shipped the Web
+  Animations API this way; see [frontend-testing.md](frontend-testing.md#happy-dom-limits).
 
 ## Docker
 

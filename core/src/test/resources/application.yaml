@@ -1,4 +1,10 @@
 spring:
+  datasource:
+    hikari:
+      # Every @SpringBootTest context holds its own pool against the one shared Postgres for the
+      # whole run (see TestcontainersConfiguration), so the default of ten per context multiplies
+      # by the number of contexts. A test uses one connection at a time; five is slack.
+      maximum-pool-size: 5
   modulith:
     runtime:
       flyway-enabled: true
@@ -16,4 +22,8 @@ spring:
 
 app:
   test-auth:
+    enabled: true
+  game-lab:
+    # This file REPLACES the main application.yaml on the test classpath — without this key the
+    # lab beans are absent from every test context and the conditions never match.
     enabled: true

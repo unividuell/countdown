@@ -13,8 +13,11 @@ server:
 app:
   test-auth:
     enabled: true
-  stub-points:
-    # The only environment that turns invented game points on. Staging runs the seeded test users
-    # anyway, so the numbers claim nothing about real players — and with all-zero points the ranking
-    # row cannot be judged at all, which is what staging is for.
+  game-lab:
     enabled: true
+  spot-object:
+    # No default, unlike the base application.yaml: a missing key/secret fails the boot instead
+    # of shipping a board that cannot draw a map or sign a still-image URL.
+    maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY}
+    server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY}
+    signing-secret: ${SPOT_OBJECT_SIGNING_SECRET}

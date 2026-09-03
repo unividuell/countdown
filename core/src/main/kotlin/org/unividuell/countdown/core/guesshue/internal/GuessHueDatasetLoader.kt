@@ -14,6 +14,9 @@ data class LoadedGuessHueDataset(
  * Reads either the mounted file or the sample from the classpath. Nothing here knows about SOPS:
  * the deployment decrypts, the application just reads plain YAML from a path. That keeps key
  * management entirely outside the application code, and CI never needs a key.
+ *
+ * Nothing here validates either, since 2026-08-16: what can be checked mechanically is checked
+ * while parsing, and what cannot — whether the texts are any good — is looked at, not asserted.
  */
 class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
 
@@ -30,8 +33,6 @@ class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
             )
         }
         val entries = file.inputStream().use { GuessHueDatasetYamlReader.read(it, path) }
-        GuessHueDatasetValidator.validateStructure(entries, path)
-        GuessHueDatasetValidator.validateCompleteness(entries, path)
         return LoadedGuessHueDataset(entries, origin = path, isSample = false)
     }
 
@@ -39,8 +40,6 @@ class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
         val stream = javaClass.getResourceAsStream(SAMPLE_RESOURCE)
             ?: throw GuessHueDatasetException("the bundled $SAMPLE_RESOURCE is missing from the classpath")
         val entries = stream.use { GuessHueDatasetYamlReader.read(it, SAMPLE_RESOURCE) }
-        // Deliberately without validateCompleteness: the sample has six entries and should have them.
-        GuessHueDatasetValidator.validateStructure(entries, SAMPLE_RESOURCE)
         return LoadedGuessHueDataset(entries, origin = SAMPLE_RESOURCE, isSample = true)
     }
 

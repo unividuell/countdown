@@ -16,6 +16,7 @@ const viewer: MeResponse = {
   githubName: null,
   email: null,
   bgColorHex: null,
+  displayName: null,
   avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
   isSuperAdmin: false,
   mayCreateCommunities: false,
@@ -61,6 +62,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain('Hütte Hütte')
@@ -76,6 +78,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('Hütte Hütte')
@@ -91,6 +94,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toContain("'26")
@@ -144,6 +148,15 @@ describe('App main header', () => {
     expect(w.classes()).toContain('overflow-x-clip')
   })
 
+  // `RoundSurface`'s `round-bleed` gives back exactly this padding to reach the display edge on a
+  // phone. The two are one measurement; if this padding ever moves, the band stops meeting the edge
+  // and nothing else in the suite would notice.
+  it('keeps the page gutter that the round surface breaks out of', () => {
+    const main = mount(App, { global: { stubs } }).get('main')
+
+    expect(main.classes()).toContain('p-4')
+  })
+
   // No countdown, no second row: the header goes back to the height it had before the board existed
   // rather than carrying 52px of reserved black on the login page and the community list.
   it('drops the countdown row entirely where no community is active', () => {
@@ -164,10 +177,11 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     const row = w.get('[data-test="countdown-row"]')
-    expect(row.get('[data-test="countdown-widget"]').exists()).toBe(true)
+    expect(row.find('[data-test="countdown-widget"]').exists()).toBe(true)
 
     // Narrow: its own row, spanning both columns.
     expect(row.classes()).toContain('row-start-2')
@@ -195,6 +209,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
@@ -224,6 +239,7 @@ describe('App main header', () => {
       startsAtTimezone: 'Europe/Berlin',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const cells = mount(App, { global: { stubs } })
       .get('header')

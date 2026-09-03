@@ -1,6 +1,12 @@
 @import 'tailwindcss';
 
 @theme {
+  /* „Vorläufig“: a score that can still be overtaken. Rose plus a pulse says that in the member
+     row and in the scoreboard, and one meaning must not have two colours. Aliased onto rose-600;
+     if Tailwind ever tree-shakes the referenced variable away, inline the literal
+     `oklch(58.6% 0.253 17.585)` here and keep the name in this comment. */
+  --color-live: var(--color-rose-600);
+
   /* Indeterminate navigation bar: a segment shuttles right and back. The easing is the
      point — slow at the turns, fast through the middle — so the motion reads as deliberate
      rather than mechanical. The 1.4s cycle is tuned for the spans this actually covers
@@ -19,5 +25,115 @@
     100% {
       transform: translateX(0);
     }
+  }
+
+  /* A search hit's title has about 85px on a phone, and most titles are longer. Rather than cut
+     them, the line travels: still at both ends so it can be read, then a slow pass leftwards by
+     exactly its own overflow — `--song-ticker-shift`, which the component measures per line and
+     sets, because CSS cannot know how far a given string overshoots its box. 9s for a full cycle
+     of which two thirds is standing still; a full band of hits runs two of these per cover, so
+     anything faster turns the row into a flicker. */
+  --animate-song-ticker: song-ticker 9s ease-in-out infinite;
+
+  @keyframes song-ticker {
+    0%,
+    30% {
+      transform: translateX(0);
+    }
+    70%,
+    100% {
+      transform: translateX(var(--song-ticker-shift, 0));
+    }
+  }
+
+  /* The ring around the play button while a stage's clip is being cut and fetched — 600-900ms of
+     song pipeline that the greyed-out button alone does not explain. Built like `HoldButton`'s ring,
+     because that is what a ring around a round button already means here: a rim of the button's own
+     colour, a gap between the two, one arc travelling. Anticlockwise, which is the one thing that
+     tells the two apart at a glance: the hold button fills clockwise towards something, this one
+     only waits. 1.1s per turn — slow enough to read as waiting rather than urgency. */
+  --animate-song-loading: song-loading 1.1s linear infinite;
+
+  @keyframes song-loading {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+}
+
+/* How wide one cover is — in the band of search hits on the board, and as the single cover on the
+   reveal. One value for both, because the player picks the cover in the band and then finds the
+   solution's cover in that same place: any difference between the two would show up as a jump when
+   the round resolves. 43.5% is 1/2.3, so the band shows two covers and a slice of the third, which
+   is what says „there is more to the side". Capped, because on a card wide enough for it a cover at
+   43.5% stops being a cover and becomes a poster. */
+@utility song-cover {
+  width: min(43.5%, 9rem);
+}
+
+/* The round slot's full-bleed on a phone: the band spans the viewport by giving back exactly the
+   page gutter — `main p-4` in `App.vue` — and from `sm` the card is back inside the content column,
+   so the bleed switches off. Spelled by name everywhere the slot's geometry has to agree (the
+   surface, the countdown card, the two height-reserving placeholders), because four equal literals
+   are three chances to drift.
+   `calc(var(--spacing) * -4)` is what Tailwind itself emits for `-mx-4`, so this and `main`'s
+   padding are one measurement rather than two that happen to match. An element carrying this must
+   NOT also carry `w-full`: with a definite width the margin equation is over-constrained, CSS drops
+   the right margin, and the box merely shifts sideways instead of widening.
+   The `sm:rounded-xl` corner sits beside this utility rather than inside it: `CountdownCard` cannot
+   take the surface component (its hero width is a percentage of the whole card, not of a slot
+   inside one), so it takes this utility alone and has to repeat the radius by hand — a consumer
+   that cannot use the component still has to look like it. */
+@utility round-bleed {
+  margin-inline: calc(var(--spacing) * -4);
+
+  @media (width >= theme(--breakpoint-sm)) {
+    margin-inline: 0;
+  }
+}
+
+/* How wide the colour wheel is — on the wheel that takes input and on the wheel that shows the
+   result. One value for both, because the reveal lays its markers on the input wheel's own radius
+   and angle ("my marker covers the knob exactly" is built, not recomputed): any difference between
+   the two is a jump the moment the round resolves.
+   27rem is the widest common phone (430px), so on every real phone the cap never bites and the
+   wheel is as wide as the band allows. It exists for what lies above: without it an unfolded
+   foldable would draw a 608px wheel, which is a poster rather than a control, and the confirm
+   button in its centre would sit below half the page. From sm the card is back and 20rem keeps the
+   wheel the size it has always been. */
+@utility hue-wheel {
+  width: 100%;
+  max-width: 27rem;
+
+  @media (width >= theme(--breakpoint-sm)) {
+    max-width: 20rem;
+  }
+}
+
+/* The sealed face's height, before the game it precedes even exists. `RoundCard`'s `sealed`
+   branch renders ahead of the game component — the round hasn't mounted it yet — so it cannot ask
+   the game how tall it is, and must not guess from one game's board (its column/row count, its
+   `max-w` cap): that would bake one game's shape into a face every future game shares. So this is
+   a felt approximation, not a computation: tall enough that uncovering the board doesn't lurch the
+   page for *any* game, in viewport terms so it scales with the screen rather than a game's grid.
+   Named so the lab's mirror of this face (`[game].vue`) cannot drift from the real round's. */
+@utility sealed-face {
+  min-height: 60vh;
+}
+
+/* The scrollbar's track stays reserved even on a page short enough not to need one, so opening the
+   nav drawer cannot move the page underneath it. The drawer locks the body (`useScrollLock` sets
+   `overflow: hidden`), which on a classic scrollbar takes the bar away and widens the content box —
+   and `mx-auto` content then slides right by half that width, which reads as the page twitching
+   away from the drawer. Reserving the gutter costs a narrow strip where the bar would be and
+   nothing at all on a phone, where scrollbars overlay and the gutter is zero-width. Belongs on
+   `html`, the element that actually scrolls the document; `overflow-x-clip` in `App.vue` is on a
+   descendant and cannot own this. */
+@layer base {
+  html {
+    scrollbar-gutter: stable;
   }
 }

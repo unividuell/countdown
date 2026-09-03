@@ -25,16 +25,23 @@ public, because the free GitHub Actions runners require it.
 - **Keep the decryption out of the application.** The backend reads plain YAML from a path; the
   deployment decrypts into it. No crypto library and no key handling in Kotlin, and CI never
   needs the key because the tests run against the sample.
-- **Keep the validation rules in one implementation, reached against the real plaintext through
-  an opt-in system property — never a second checker script in another language.** Two
-  implementations drift apart silently: both keep passing while checking different, ageing copies
-  of the same rules.
-- **The committed sample dataset must satisfy every rule the real one has to.** A sample exempted
-  from a rule proves nothing: the tests that run against it in CI never see the real dataset, so
-  they'd be green regardless of whether the real one actually holds the rule.
-- **An opt-in property may skip a check only when it is absent.** One that is set but points at
-  nothing — a missing file, an empty value — must fail loudly. A silent skip is indistinguishable
-  from a passing run.
+- **A checker can only check what is mechanically wrong.** Field types, ranges, a parseable
+  date, a non-blank string: those belong in the loader and run on every start. Sentence counts,
+  word lists, quotas per category do not. Guess Hue had all three, and what they actually
+  enforced was a formula — whoever writes the content writes to the checker, so a rule about
+  taste becomes a template, and the template is what made the set unplayable.
+- **Review curated content by looking at it.** A throwaway page that puts each entry beside the
+  thing the player will actually see, generated outside the repository because its output *is*
+  the content. That page is the review step; no green test replaces it. Have it flag the cases
+  worth a second look rather than reject them — in Guess Hue, six of the first seven entries the
+  reviewer struck were exactly the ones the page had marked as painting an unreadable wheel.
+- **Clamping a bad value in code is worse than dropping the entry.** A clamp keeps the entry and
+  makes its own text a lie: a pale grey-green rendered as vivid green describes nothing. The
+  limit belongs at review time, where a human can strike the entry instead.
+- **The presentation must not contradict the text.** If a description names a property — dark,
+  pale, muted — that property has to come from the entry, not be re-rolled per round. Guess Hue
+  drew saturation and lightness randomly for one revision, and every entry whose text mentioned
+  brightness was regularly refuted by its own screen.
 
-Concrete shape and the validation rules that make a curated set checkable:
+Concrete shape, and what is checked versus what is looked at:
 [the Guess Hue dataset spec](../../docs/superpowers/specs/2026-08-07-guess-hue-dataset-design.md).

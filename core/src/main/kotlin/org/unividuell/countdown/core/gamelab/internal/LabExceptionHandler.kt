@@ -1,0 +1,40 @@
+package org.unividuell.countdown.core.gamelab.internal
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Profile
+import org.springframework.http.HttpStatus
+import org.springframework.http.ProblemDetail
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.unividuell.countdown.core.game.InvalidGuessException
+
+@RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.gamelab.internal"])
+@Profile("!production")
+@ConditionalOnProperty("app.game-lab.enabled")
+class LabExceptionHandler {
+
+    @ExceptionHandler(
+        LabAccessDeniedException::class,
+        UnknownLabGameException::class,
+        LabAssetNotFoundException::class,
+    )
+    fun notFound(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
+
+    @ExceptionHandler(
+        AlreadyGuessedException::class,
+        LabStageMovedOnException::class,
+        LabNotRevealedException::class,
+        LabReviewNotOpenException::class,
+    )
+    fun conflict(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "already guessed")
+
+    @ExceptionHandler(InvalidGuessException::class)
+    fun badRequest(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
+
+    @ExceptionHandler(LabAssetForbiddenException::class, LabReviewNotAllowedException::class)
+    fun forbidden(e: RuntimeException) =
+        ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
+}

@@ -30,6 +30,7 @@ export const updateCommunity = (
     startsAt: string
     startsAtTimezone: string
     phaseTwoStartRound: number
+    gamesFromRound: number
   }>,
 ) =>
   apiFetch<CommunityResponse>(`/api/communities/${slug}`, {

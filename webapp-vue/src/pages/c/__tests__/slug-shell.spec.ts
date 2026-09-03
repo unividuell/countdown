@@ -34,8 +34,11 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
     startsAt: null,
     startsAtTimezone: 'Europe/Berlin',
     phaseTwoStartRound: null,
+    gamesFromRound: null,
     viewerIsAdmin: true,
     pendingCount: 3,
+    editionFrozen: false,
+    viewerIdentity: null,
     ...over,
   }
 }

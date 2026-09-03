@@ -1,13 +1,26 @@
 spring:
   application:
     name: core
+  config:
+    # Local dev secrets in one place: `.env` at the repo root is already gitignored and already
+    # read by docker compose, so the Google keys live next to the ports instead of in a second
+    # file (or, worse, in the shared `.run`/launch configurations, which ARE tracked).
+    # `[.properties]` tells Boot how to parse an extensionless file; `optional:` makes a machine
+    # without one boot normally, which is every deployed environment — there compose passes the
+    # same names as real environment variables. The relative path is resolved against the process
+    # working directory, `core/`, for the same reason `spring.docker.compose.file` below is.
+    # Tests never see it: `src/test/resources/application.yaml` replaces this file wholesale.
+    import: optional:file:../.env[.properties]
   docker:
     compose:
       # compose.yaml lives at the repo root, one level above this module. Without this the
-      # lifecycle manager looks in the process working directory (`core/`, for both
-      # `./mvnw spring-boot:run` and an IDE run config) and fails the boot with
-      # "No Docker Compose file found". The path is relative to that same working
-      # directory. Inert outside local dev: spring-boot-maven-plugin's
+      # lifecycle manager looks in the process working directory and fails the boot with
+      # "No Docker Compose file found". The path is relative to that same working directory,
+      # which is `core/` for `./mvnw spring-boot:run` — the Maven project's own directory — but
+      # the *project root* for an IDE run configuration, where `../` points above the repo and
+      # the boot dies with "'files' content [../compose.yaml] must exist" instead. An IDE
+      # configuration therefore has to set its working directory to `core/`; the shared one in
+      # `.run/CoreApplication.run.xml` does. Inert outside local dev: spring-boot-maven-plugin's
       # `excludeDockerCompose` defaults to true, so the packaged image has no
       # docker-compose support at all, and the support skips itself in tests.
       file: ../compose.yaml
@@ -34,16 +47,45 @@ spring:
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
   guess-hue:
-    # Empty means: the sample dataset from the classpath. Right for local dev, a boot failure
-    # in production/staging — those set GUESS_HUE_DATASET_PATH to the file that update.sh
-    # decrypts with sops and compose mounts into the container.
+    # Empty means: the sample dataset from the classpath — a boot failure in production/staging,
+    # where update.sh decrypts the real file with sops and compose mounts it into the container.
+    # Locally it stays empty only on a machine without the age key: `.claude/launch.json` fills it
+    # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
+  song-snippet:
+    # Finding ids: the number in a playlist's web URL IS the id —
+    # https://www.deezer.com/playlist/10457025082. To go looking, the API needs no key, and the
+    # editor's own catalogue is the best entry point, because everything in it is editorial:
+    #   curl -s 'https://api.deezer.com/playlist/10457025082'        # -> creator.id 374224155
+    #   curl -s 'https://api.deezer.com/user/374224155/playlists?limit=200'   # 169 lists
+    # Free-text search works too, where `user.name` separates an editorial list ("Deezer <country>
+    # Editor") from somebody's private mixtape:
+    #   curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    playlist-ids:
+      - 10457025082 # Deutschland, deine Hits - 80er (fans: 7840)
+      - 10453961322 # Deutschland, deine Hits - 90er (fans: 7581)
+      - 10396822102 # Deutschland, deine Hits - 00er (fans: 5843)
+      - 10396828062 # Deutschland, deine Hits - 10er (fans: 3949)
+      - 11605921024 # Deutschland, deine Sommer Hits - 20er (fans: 650)
+  spot-object:
+    # Empty means: the sample list from the classpath — a boot failure in production/staging,
+    # where update.sh decrypts the real file with sops and compose mounts it in. Same shape as
+    # guess-hue above.
+    terms-path: ${SPOT_OBJECT_TERMS_PATH:}
+    # The browser key for the Maps JavaScript API. Referrer-restricted, so it is handed to the
+    # client; without it the board cannot load a map at all.
+    maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY:}
+    # A separate, IP-restricted key for the backend's own server-to-server calls (GoogleCountryLookup).
+    # A referrer-restricted key would reject these outright — they carry no Referer header.
+    server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY:}
+    # The URL-signing secret for the Street View Static API. Server-side only.
+    signing-secret: ${SPOT_OBJECT_SIGNING_SECRET:}
   test-auth:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
     enabled: true
-  # app.stub-points.enabled is deliberately absent here. MemberPointsConfiguration defaults it to
-  # false, so invented game points are off unless an environment asks for them — staging does, and
-  # a local run can via --app.stub-points.enabled=true (see core/README.md). Setting it true here
-  # would make it true in production too, which is the only reason production ever had to override
-  # it back to false.
+  game-lab:
+    # The non-prod harness for playing a mini-game against a seed from the URL. Gated twice, like
+    # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
+    # closed the day real testers play a real round there — no code change, no deploy rebuild.
+    enabled: true

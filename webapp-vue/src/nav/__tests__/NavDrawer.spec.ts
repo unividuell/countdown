@@ -7,6 +7,7 @@ import { _resetCommunitiesState } from '@/communities/useCommunities'
 import { useAuth } from '@/auth/useAuth'
 import * as api from '@/api/communities'
 import { communityPath } from '@/communities/routes'
+import { requestDrawerClose } from '@/nav/drawerControl'
 import type { CommunitySummary, MeResponse } from '@/api/types'
 
 enableAutoUnmount(afterEach)
@@ -43,6 +44,7 @@ const viewer: MeResponse = {
   githubName: null,
   email: null,
   bgColorHex: null,
+  displayName: null,
   avatar: { shortName: 'OCTO', bgColorHex: '#8e44ad' },
   isSuperAdmin: false,
   mayCreateCommunities: false,
@@ -70,17 +72,30 @@ function setHeaderBottom(value: number): void {
  * teleport: true renders the drawer in place; teleported to <body> it would sit outside
  * wrapper.element, where wrapper.find() cannot reach it.
  */
+/**
+ * Collected so they can be taken back out again: `attachTo` hands the wrapper's own DOM back on
+ * unmount, but the host around it is ours and nothing else removes it. Left in place they pile up
+ * in `document.body` for the length of the file, and the assertions here that search the whole
+ * document — a drawer left behind anywhere — start depending on what ran before them.
+ */
+const hosts: HTMLElement[] = []
+
 function render(user: MeResponse = viewer, initialHeaderBottom = 0) {
   headerBottom = ref(initialHeaderBottom)
   const host = document.createElement('header')
   host.getBoundingClientRect = () => ({ bottom: headerBottom.value }) as DOMRect
   document.body.appendChild(host)
+  hosts.push(host)
   return mount(NavDrawer, {
     props: { user },
     attachTo: host,
     global: { stubs: { teleport: true } },
   })
 }
+
+afterEach(() => {
+  hosts.splice(0).forEach((host) => host.remove())
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -117,6 +132,86 @@ describe('NavDrawer mechanics', () => {
     expect(drawer.attributes('aria-hidden')).toBeUndefined()
   })
 
+  it('closes an open drawer when a page requests it', async () => {
+    // Catches a missing or disconnected drawer-close command channel: a page action must be
+    // able to close the real, currently-open global drawer without knowing its internals.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+
+    requestDrawerClose()
+    await nextTick()
+
+    expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('shows a scroll cue only until the logo container comes into view', async () => {
+    // Catches a missing or stale overflow affordance: the visual cue must disappear as soon as
+    // the logo container enters the viewport, where content ends.
+    const w = render()
+    const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 200 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 150 })
+
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+
+    scroll.scrollTop = 55
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
+  })
+
+  it('re-reads the overflow when rows arrive after the drawer is already open', async () => {
+    // Catches a cue decided once against a list still in flight: the community list and a page's
+    // teleported tools both land after open, and a drawer that overflows only then would show no
+    // hint at all — on exactly the drawer the hint exists for.
+    //
+    // The dimensions are stubbed AFTER opening on purpose: the drawer sits in a <Teleport>, and
+    // the stub re-renders its slot when `open` flips, so nodes grabbed before the click are
+    // detached copies and every stub on them is silently read past.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    await flushPromises()
+
+    const scroll = w.get('[data-test=nav-scroll]').element
+    const mark = w.get('[data-test=nav-mark]').element
+    Object.defineProperties(scroll, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 100 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    })
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 40 })
+    scroll.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(false)
+
+    // A row lands — and nothing scrolls, resizes or re-opens to prompt a second look.
+    Object.defineProperty(mark, 'offsetTop', { configurable: true, value: 260 })
+    scroll.appendChild(document.createElement('div'))
+    await flushPromises()
+    await nextTick()
+
+    expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
+  })
+
+  it('leaves no close listener behind that a later request could trip over', async () => {
+    // The channel is module-level, so a subscription that outlives its component would be called
+    // for the rest of the session. That the set is emptied is `drawerControl`'s own test; this
+    // one covers the other half — unmounting mid-open must not leave a request throwing.
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    w.unmount()
+
+    expect(() => requestDrawerClose()).not.toThrow()
+    expect(document.querySelector('[data-test=nav-drawer]')).toBeNull()
+  })
+
   it('names the toggle for its current action', async () => {
     const w = render()
     const toggle = w.get('[data-test=nav-toggle]')
@@ -135,6 +230,7 @@ describe('NavDrawer mechanics', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: true,
       pendingCount: 2,
+      viewerIdentity: null,
     }
     const w = render()
     await nextTick()
@@ -152,6 +248,7 @@ describe('NavDrawer mechanics', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 7,
+      viewerIdentity: null,
     }
     const w = render()
     await nextTick()
@@ -347,6 +444,7 @@ function asAdminOf(slug: string, name: string, pendingCount = 0) {
     startsAtTimezone: 'UTC',
     viewerIsAdmin: true,
     pendingCount,
+    viewerIdentity: null,
   }
 }
 
@@ -368,6 +466,7 @@ describe('NavDrawer content', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     const w = await opened()
 
@@ -424,7 +523,7 @@ describe('NavDrawer content', () => {
     asAdminOf('team', 'Team Süd', 0)
     const w = await opened()
     expect(w.find('[data-test=pending-count]').exists()).toBe(false)
-    expect(w.get('[data-test=admin-heading]').exists()).toBe(true)
+    expect(w.find('[data-test=admin-heading]').exists()).toBe(true)
   })
 
   it('separates the admin block from the community block above it, when there is one', async () => {
@@ -452,6 +551,7 @@ describe('NavDrawer content', () => {
       startsAtTimezone: 'UTC',
       viewerIsAdmin: false,
       pendingCount: 0,
+      viewerIdentity: null,
     }
     expect((await opened()).find('[data-test=admin-heading]').exists()).toBe(false)
   })
@@ -539,6 +639,32 @@ describe('NavDrawer content', () => {
     spy.mockRestore()
   })
 
+  it('offers the profile, pointing at the community one while inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: null,
+    }
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe(
+      communityPath('team', 'profile'),
+    )
+  })
+
+  it('points at the global profile outside a community', async () => {
+    activeCommunity.value = null
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe('/profile')
+  })
+
   it('cycles Tab focus between the toggle and the drawer content, wrapping both ways', async () => {
     // Written after the drawer has real content (the logout button in the foot) so the cycle
     // has more than a hypothetical element to move focus to and from.
@@ -567,5 +693,32 @@ describe('NavDrawer content', () => {
     document.dispatchEvent(backward)
     expect(backward.defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(last)
+  })
+
+  it('draws the community identity in the header while inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team',
+      startsAt: null,
+      startsAtTimezone: 'Europe/Berlin',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: {
+        username: 'Zwerg',
+        avatar: { shortName: 'ZWRG', bgColorHex: '#8e44ad' },
+      },
+    }
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="nav-toggle"]').text()).toBe('ZWRG')
+  })
+
+  it('falls back to the global avatar where there is no community identity', async () => {
+    activeCommunity.value = null
+    const w = render()
+    await flushPromises()
+
+    expect(w.get('[data-test="nav-toggle"]').text()).toBe('OCTO')
   })
 })

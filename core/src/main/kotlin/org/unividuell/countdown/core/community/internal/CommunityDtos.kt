@@ -1,17 +1,28 @@
 package org.unividuell.countdown.core.community.internal
 
 import org.unividuell.countdown.core.community.Community
+import org.unividuell.countdown.core.community.CommunityEdition
+import org.unividuell.countdown.core.community.MemberIdentity
 import java.time.Instant
 import java.util.UUID
 
 data class CommunityResponse(
     val id: UUID, val name: String, val slug: String,
     val startsAt: Instant?, val startsAtTimezone: String, val phaseTwoStartRound: Int?,
+    val editionLabel: String, val gamesFromRound: Int?, val gamesUntilRound: Int,
+    val editionFrozen: Boolean,
     val viewerIsAdmin: Boolean, val pendingCount: Int,
+    /** How the viewer appears here; null when they have no membership row in this community. */
+    val viewerIdentity: MemberIdentity?,
 )
 data class CommunitySummary(val id: UUID, val name: String, val slug: String)
 data class CreateCommunityRequest(val name: String)
-data class UpdateCommunityRequest(val name: String?, val startsAt: Instant?, val startsAtTimezone: String?, val phaseTwoStartRound: Int?)
+data class UpdateCommunityRequest(
+    val name: String?, val editionLabel: String?,
+    val startsAt: Instant?, val startsAtTimezone: String?, val phaseTwoStartRound: Int?,
+    val gamesFromRound: Int?, val gamesUntilRound: Int?,
+)
+data class StartEditionRequest(val label: String)
 data class InviteResponse(val url: String, val expiresAt: Instant)
 data class SelectionRequest(val communityId: UUID)
 data class MemberResponse(
@@ -19,8 +30,10 @@ data class MemberResponse(
 )
 data class AcceptResponse(val status: String, val name: String, val slug: String)
 
+data class LivePointsResponse(val points: Int, val provisional: Boolean)
+
 @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-data class RosterPointsResponse(val stable: Int, val live: Int?)
+data class RosterPointsResponse(val stable: Int, val live: LivePointsResponse?)
 
 data class RosterMemberResponse(
     val userId: UUID,
@@ -30,9 +43,33 @@ data class RosterMemberResponse(
     val points: RosterPointsResponse,
 )
 
-fun Community.toResponse(viewerIsAdmin: Boolean, pendingCount: Int) =
-    CommunityResponse(id!!, name, slug, startsAt, startsAtTimezone, phaseTwoStartRound, viewerIsAdmin, pendingCount)
-fun Community.toSummary() = CommunitySummary(id!!, name, slug)
+fun Community.toResponse(
+    edition: CommunityEdition,
+    editionFrozen: Boolean,
+    viewerIsAdmin: Boolean,
+    pendingCount: Int,
+    viewerIdentity: MemberIdentity?,
+) = CommunityResponse(
+    id = requireNotNull(id), name = name, slug = slug,
+    startsAt = edition.startsAt,
+    startsAtTimezone = edition.startsAtTimezone,
+    phaseTwoStartRound = edition.phaseTwoStartRound,
+    editionLabel = edition.label,
+    gamesFromRound = edition.gamesFromRound,
+    gamesUntilRound = edition.gamesUntilRound,
+    editionFrozen = editionFrozen,
+    viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount, viewerIdentity = viewerIdentity,
+)
+fun Community.toSummary() = CommunitySummary(id = requireNotNull(id), name = name, slug = slug)
+
+data class MemberProfileResponse(
+    /** The raw override; null on either field means the global profile applies to it. */
+    val displayName: String?,
+    val bgColorHex: String?,
+    /** What that resolves to — what the roster draws for this member today. */
+    val identity: MemberIdentity,
+)
+data class UpdateMemberProfileRequest(val displayName: String?, val bgColorHex: String?)
 
 data class SuperAdminMemberResponse(
     val userId: UUID, val username: String, val githubLogin: String,

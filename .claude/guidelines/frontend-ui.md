@@ -30,6 +30,11 @@ desktop layout that was written first).
   — the write also cancels the pending restore, and the extra frame covers the restore
   landing in the reflow that first builds the scroll frame. Same wherever a strip's scroll
   position is derived from data (a ranking must open on the leader). See `MemberRow`.
+- **Replacing a strip's content resets its scroll offset**, in every browser and both axes:
+  the offset belonged to the old content, and a box left parked in the middle hides the very
+  items that just arrived — on a phone it reads as „the search never answered". Reset in a
+  `watch` on the data with `{ flush: 'post' }`, so the box is measured against its new content
+  and not the old one. See `SongSearchBox`.
 
 ### Animation on a phone's main thread
 
@@ -45,6 +50,70 @@ desktop layout that was written first).
   transform on many of them costs a full style and paint pass every frame, while animating a paint
   property like `fill` alone costs almost nothing. `will-change` does not change this; a canvas
   renderer is the only route to the GPU, so keep the concurrent element count down instead.
+- **The resting appearance must be correct without the animation; the animation may only cover the
+  transition.** `HoldButton` was written to be "absent, then spring in", but nothing bound its
+  resting state to `ready` — only the pop-in keyframes touched transform and opacity. So wherever
+  the animation was skipped (reduced motion, a hidden tab, happy-dom's missing `Element.animate`),
+  the button sat fully visible from the first frame, merely non-interactive. Bind the final state
+  declaratively, then animate.
+- **An element animated in from nothing needs `inert` until it arrives**, not merely invisible —
+  otherwise it is tabbable, and a hold-to-confirm gesture on it can complete unseen. Bind it as
+  `:inert="!ready || undefined"`; a plain `false` stays in the DOM and stays in effect.
+- **A looping animation and a fade must never share an element, when both drive `opacity`.** A
+  running animation outranks a plain class, and Tailwind's `pulse` declares only
+  `50% { opacity: .5 }` — its implicit 0%/100% endpoints take the element's *underlying* opacity.
+  So `animate-pulse` beside `opacity-0` does not stay hidden: it drives 0 → .5 → 0 every two
+  seconds, and the element blinks into view from the first frame, ignoring the
+  `transition-delay` that was supposed to hold it back. Measured in Chromium: computed opacity
+  reads `0.5` at t=1000ms with `opacity-0` still on the element. Put them on two elements — the
+  fade outside, the loop inside. Nesting is what makes it safe: an `opacity-0` ancestor
+  composites its whole subtree away whatever the child animates to. `GuessHueScoreboard`'s live
+  chip and its provisional points cell are the worked examples. Note the shape of the trap:
+  either class alone is correct, only the pair is wrong — so it survives every review that reads
+  them one at a time, and no happy-dom test can see it. What a test *can* pin is the structural
+  rule: no element carries both.
+
+### A control that is not a rectangle
+
+Three traps, all invisible to tests (happy-dom computes no layout, no masks, no clipping) and all
+looking alike from the source. `HueWheel` hit every one of them.
+
+- **`touch-action` is the intersection over the hit element and every ancestor**, so a descendant can
+  only ever *remove* panning, never restore it. A `touch-action: auto` shim inside a `none` root does
+  nothing at all. Put `none` on the element that actually claims the gesture and leave the ancestors
+  alone.
+- **`mask` does not affect hit-testing; `clip-path` does.** A disc masked into a ring still swallows
+  every touch in its hole. Where the *shape* decides who gets the event, the shape has to be a clip.
+- **Sibling shapes in one `<clipPath>` are unioned, not combined by fill rule.** `clip-rule="evenodd"`
+  resolves subpaths *within a single path* — two concentric `<circle>`s therefore clip to the outer
+  disc and punch no hole. An annulus is **one `<path>` with two subpaths**. Derive its inner radius
+  from the same constant the hit test and the mask use, or the three drift apart silently.
+
+Verify these by measurement, not by reading: `document.elementFromPoint(x, y)` plus
+`getComputedStyle(el).touchAction` up the ancestor chain answers all three in one console call, and
+it is the only proof available — no unit test can see them.
+
+### Controls inside controls
+
+- **A gesture that commits something must not be reachable by a single key.** Hold-to-confirm on the
+  pointer and `Enter` on the keyboard are not the same safeguard: a synthetic click from voice
+  control or assistive tech fires the second and never the first. Give the keyboard the *same*
+  gesture — `keydown` starts the hold, `keyup` abandons it, `event.repeat` is ignored, and the
+  default is prevented so the button's own click never fires. It fails closed. The residual limit
+  (someone who cannot hold a key for the full duration) is real and belongs in the spec, not in a
+  cheaper fallback. `ui/HoldButton.vue` is the worked example.
+- **A container that reads raw pointer events must exempt whatever it nests.** `pointerdown` bubbles,
+  so a press on the button in `HueWheel`'s centre slot reached the wheel, which captured the pointer
+  and began a drag — and the wheel then followed every later move, so the angle finally submitted was
+  not the one the player aimed at. A radius-based dead zone does **not** cover this: it suppresses the
+  first jump and nothing after it. Put `@pointerdown.stop` on the slot wrapper — the container owns
+  its slot and decides presses there are not its business, and the nested control stays ignorant of
+  ever being nested. Watch too for a dead-zone radius that exactly equals the nested control's radius:
+  equal constants are a knife-edge, and changing either one later opens a gap in silence.
+- **Wrap `setPointerCapture` in a `try`/`catch`.** It throws `NotFoundError` for a pointer the
+  browser is not tracking, and an exception inside a listener is swallowed by `dispatchEvent` — so a
+  bare call that fails aborts the rest of the handler and leaves the control dead with no error
+  anywhere. Dragging without capture degrades only at the edges; not dragging at all is broken.
 
 ### Sizing that doesn't do what it looks like
 
@@ -59,6 +128,22 @@ desktop layout that was written first).
   as its tallest item, and alignment (`items-center`) is resolved *after* track sizing, so it
   never feeds back. Stating the height on one cell only lets the row grow wherever a taller cell
   renders — the header's height would otherwise depend on who is looking.
+- **Reserving height on the container does not stabilise what is inside it.** A `min-h` on the
+  wrapper plus `items-center` only guarantees the *box*: when a conditional element leaves the flow,
+  the content shrinks and the centring slides it. Reserve at the element that comes and goes — keep
+  it rendered and `invisible`, with its height written down (`h-4` for `text-xs`) so an empty one
+  still holds the line. `MemberRow`'s live-points chip; the section's `min-h` is then the row's only
+  height rather than a second opinion about it.
+- **An overlay does not reach into a rounded corner the way the content behind it does.** A caption
+  laid over the foot of an image (`absolute inset-x-0 bottom-0 bg-white`) inside a
+  `rounded-xl overflow-hidden` tile gets clipped out of the two bottom corner arcs, while the image
+  behind it still paints there — so every dark image shows a dark crescent in both corners. Neither
+  a matching `rounded-b-*` on the overlay, a radius on the image, nor a `mask` fixes it; giving the
+  tile a different background proves the culprit (colour the tile red and the crescents stay dark).
+  **Stack instead of overlay:** the tile itself carries the caption's white, the image sits in a
+  `flex-1 min-h-0` block above it, and the corners then belong to a single painted layer with
+  nothing behind them. It looks identical — an opaque overlay hid the same pixels — and the tile
+  stays square, so a shared size still matches. See `SongSearchBox`.
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes `overflow-y` to
   `auto` as well, which clips transformed children — so an element that both scrolls and hosts
   an animation that escapes its box must not clip while the animation runs.
@@ -68,10 +153,70 @@ desktop layout that was written first).
   moment someone touches one of them. Side effect, without which there would be no test for it —
   a spec can set `window.innerWidth` and assert the angle, whereas a width read from layout is
   always `0` under happy-dom.
+- **A `<th>` can `truncate` too, once the table itself is `table-fixed`.** The reflex is to assume
+  long text in a table cell can't ellipsis — but `overflow: hidden` + `text-overflow: ellipsis`
+  need a *resolved* width to clip against, and that's exactly what `table-layout: fixed` hands the
+  un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
+  doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
+  `GuessHueScoreboard`.
+- **`w-full` and a negative inline margin are mutually exclusive.** A full-bleed band that breaks
+  out of the page gutter (`-mx-4` against `main`'s `p-4`) only widens if its width is `auto`: with
+  a definite width the margin equation is over-constrained, CSS drops the *right* margin, and the
+  box keeps its old width and merely **shifts** sideways. Measured in Chromium on a 343px parent:
+  `width:100%; margin-inline:-16px` reads `{left:-16, right:327, width:343}`, width `auto` reads
+  `{left:-16, right:359, width:375}`. So every `aspect-square w-full` box that gains a bleed has to
+  lose the `w-full` — and because the square's height is its width, forgetting it silently reserves
+  32px too little and the page drops when the content lands. happy-dom computes no layout, so the
+  only testable proxy is that the class is absent. See `round-bleed`, `MessageCard`,
+  `CountdownCard`.
+- **A bleed and the gutter it gives back are one measurement.** Where a band spans the viewport by
+  cancelling an ancestor's padding, the two numbers must agree or the band stops meeting the display
+  edge — and nothing fails. Derive the bleed from the same variable Tailwind computes the padding
+  from (`margin-inline: calc(var(--spacing) * -4)` is byte-for-byte what `-mx-4` emits), name it once
+  as an `@utility`, and pin the ancestor's padding in a test — that assertion is the only mechanical
+  guard there is. See `@utility round-bleed` and the `<main>` guard in `app-header.spec.ts`.
+
+- **Two screens that must not jump share one measurement, not two matching numbers.** Where a
+  round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of
+  the band's search hits, then the solution's own), the size belongs in a single `@utility`
+  (`song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
+  `h-32 w-32` on one side and an equal-looking value on the other, which drifts the moment either
+  is touched. The colour wheel is the same story with a sharper edge: `max-w-80` stood identically on
+  `HueWheelInput` and `HueWheelReveal`, and the reveal lays its markers on the input wheel's own
+  radius — so `@utility hue-wheel` is the one place, and both templates spell it by name. The same
+  for a slot one screen fills with a control and the other with text: give
+  both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
+  then assert is exactly that — both ends carry the shared class — which is the checkable half of
+  „nothing moves". And where the two screens show the same *control* rather than merely the same
+  size, make it one component (`PlayButton`) instead of two copies of its markup: then the agreement
+  is structural and there is nothing left to drift.
 
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the
 numbers themselves are a browser measurement.
+
+- **A comment sitting beside the root element makes the component multi-root — in dev and in
+  tests, never in the production build.** Vue's compiler treats a leading (or trailing) template
+  comment as a second root node, and `@vue/test-utils` then resolves a *mount-level* `.classes()`
+  or `.attributes()` call to the wrapper it inserts around a multi-root component, not to the
+  component's own root element — so a `not.toContain('rounded-xl')`-style assertion keeps passing
+  no matter what the component renders, because it never looks at the right element. This is what
+  made `GuessHueBoard.spec.ts` reach for `.find('div').classes()` around its frame-lessness
+  assertions, and what commit `966e22f` fixed for `MessageCard.vue` by moving the comment out of
+  the template. The lasting fix is to keep the comment out of the template altogether — as `//`
+  lines in `<script setup>`, the pattern `ui/RoundSurface.vue` and `GuessHueBoard.vue` both use —
+  so the assertion can go back to a plain `.classes()` on the mount itself. Compiled under
+  `NODE_ENV=production`, Vue strips the comment and the component is single-root again, so this
+  divergence only exists in the dev server and in `pnpm test` — exactly where a class-absence
+  assertion is trusted the most.
+
+### The flip-dot board on a coloured ground
+
+- **`DOT_OFF` is `#292524` — `stone-800` exactly.** So a board placed on a `bg-stone-800` surface
+  loses its unlit dots and with them the matrix that makes it read as flip-dot at all; nothing
+  fails, it just quietly becomes floating digits. Put a board on a ground either lighter or darker
+  than that (the app header's `stone-900`, the game band's `stone-700`) and assert the class, since
+  happy-dom renders no colour.
 
 ### Accessible by construction
 

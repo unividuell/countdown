@@ -10,6 +10,37 @@ Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 
 App-global state (e.g. the session) is a module-level singleton: module-scope `ref`s, typically exposed `readonly()` from a composable, mutated only through the composable's functions. Rationale: minimal moving libs; add Pinia later only if state genuinely outgrows this. For unit tests, expose a small `_reset*State()` hook — colocated in the composable's own module, e.g. `_resetAuthState()` in `useAuth.ts`, `_resetCommunitiesState()` in `useCommunities.ts` — to reset the singleton between cases (module state is per-file, not per-test, in Vitest; a previous test's successful load otherwise leaks into the next). Reset by assigning the module-scope ref from inside that hook, not by reaching into the object the composable returns: the latter only compiles as long as the returned ref happens not to be wrapped `readonly()`.
 
+**Disposal must be final, and an async path must be mortal.** A composable that owns something
+outside Vue (an audio node, a socket, an object URL) is torn down in `onUnmounted` — but an `await`
+that was already in flight when the component went away *still resumes*, and a generation counter
+guarding it does not help: an unmount bumps nothing. The callback then calls back into a composable
+whose component is gone, and what it starts belongs to nobody — Song Snippet's snippet went on
+sounding into the reveal, whose transport addresses its own player and so could not stop it, and the
+object URL it created after the unmount handler had run was never revoked. Two rules, and both are
+needed: the composable keeps a `disposed` flag that makes its entry points no-ops for good (so *any*
+caller's late callback is harmless), and each async path in a component checks an `alive` flag —
+cleared in `onUnmounted` — right after every `await`, before it creates or hands over anything. See
+`usePlayback`, `SongSnippetBoard`, `SongPlayerReveal`.
+
+**Derive state from the answer, don't mirror it into flags.** `useRound`'s `stage` is a `computed` over
+the last `RoundResponse` — no game → `no-game`, `me == null && game.requiresReveal` → sealed, `me ==
+null` otherwise → `no-game` too (a viewer with no row and no game-mandated reveal has nothing to seal —
+offering a reveal button there would 404 every time, which is exactly the super-admin-without-membership
+case the bypass exists for), `me.guessedAt == null` → playing, else done — not a local "have I guessed
+yet" ref set by the submit handler. A local flag can disagree with the server (a second tab, a stale
+reload); the response cannot. The same composable turns
+a 409 into a reload rather than an error: a guess or reveal rejected as a conflict means the server's
+state has already moved past what the UI assumed, so the right response is to fetch that state and
+render it, with one explanatory line, not to report a failure the player can retry their way out of.
+
+**A list that loads more derives its "what comes next" pointer, it doesn't store one.**
+`useRoundHistory` computes the round number to fetch next from its own last loaded item rather than
+keeping a separate cursor ref, so `null` there is simultaneously "there is nothing more" and the
+condition that hides the load-more button — one value answers both questions instead of two that
+could disagree. The load itself goes through `useAction`, which drops a second call while one is
+already in flight (the button's own double-click guard, for free) and clears `busy` in a `finally`
+so a failed page load leaves the button pressable again.
+
 **Ambient time is shared state; the domain around it is not.** `useCountdown` is instantiated twice
 on a community page (the header widget and the fallback card), and two `setInterval`s started at
 different moments never resynchronise. So `nowMs` and `skewMs` (the *server's* clock correction, of
@@ -29,6 +60,108 @@ instance and reacts via `watch(nowMs, tick)`. What follows from that:
   switch-on sequence hides it by construction.
 - Specs that mount such a component need `enableAutoUnmount(afterEach)` — see
   *Testing → Doubles & lifecycle*.
+
+**A ticking value drives work in a background tab too — animation must opt out of it.** The clock
+does not stop when the reader switches tabs, so everything reacting to it keeps running unseen.
+That is fine for arithmetic and a DOM patch; it is not fine for `Element.animate()`. Gecko pauses
+the refresh driver for a background tab, so an animation created there never advances, never
+finishes and is never released — the per-second flip accumulated 2824 live animations in two
+minutes of Firefox background time and climbed linearly (Chromium, same page: 58, flat), which over
+a working day is hundreds of thousands of animation objects, gigabytes resident, and a crashing
+tab. So:
+
+- **Gate every animation on `document.hidden`**, alongside the `prefers-reduced-motion` check that
+  is already there — the two are the same kind of bail-out, "nobody is going to see this".
+  Skipping costs nothing: the resting state is what the render already shows.
+- **Release hand-managed hold state on `visibilitychange`.** A staged reveal that parks DOM
+  attributes and resolves them from `requestAnimationFrame` loses its driver the moment the tab
+  goes to the background; without an explicit release the reader comes back to a frozen,
+  half-flipped surface.
+- **Verify in the failing engine *and* the failing state.** Chromium reclaims these animations and
+  measures flat — and so does Firefox *in the foreground*. A foreground test would have cleared
+  this bug three times over. `document.getAnimations().length`, sampled by the page itself and read
+  after the tab returns, is the cheap instrument; `about:memory` (`ghost-windows`, `explicit`
+  vs. `resident-peak`) separates a retention leak from an allocation avalanche before any code is
+  touched.
+- **A component may ask its motion questions once at setup, but must not freeze its own state on
+  a setup-time constant.** A component mounted on a value that survives reload (the lab keys a
+  game component on the round's seed, and reloading reuses the same seed) stays mounted while its
+  props change underneath it — `HueWheelReveal`'s once-computed band width and
+  `GuessHueGame`'s once-computed reveal gate both went stale this way, one freezing a moving
+  target, the other wedging shut so it could never re-arm. Recompute from props instead, or
+  `watch` **without** `immediate`: the default `pre` flush runs the callback and updates the flag
+  before the child re-renders, so the child already reads the right value on mount — changing
+  `flush` would silently undo that.
+- **A refetch behind an entry animation needs its own path that never leaves `'ready'`.** When the
+  consumer renders the animated component behind `state === 'ready'`, a `reload()` that resets
+  `state` to `'loading'` unmounts it — and a component that measures on mount replays its whole
+  entrance for what was only new numbers. Splitting `useRoster` into `reload` (entering: `state`
+  may swing) and `refresh` (already on screen: replace the data, touch nothing else) is the shape;
+  the mounted list patches values and order in place, keyed by id. A failed *refresh* then keeps
+  the last known data instead of swapping the list for an error line — the action that triggered it
+  did succeed, and the next visit repairs the numbers.
+- **Animating the reorder a refetch brings: one owner per transform, and a way out of the line.**
+  An entrance that measured its geometry on mount cannot be re-aimed, so data changing mid-flight
+  *ends* it rather than starting a second movement on the same elements — and the rearrangement asks
+  `prefers-reduced-motion` and `document.hidden` again at its own moment, not once at setup. Under
+  contact physics, note that a row laid out in a single line cannot reorder at all: two bodies on a
+  line cannot pass, so whoever overtakes has to leave the line and be back in it on arrival — kept
+  in it, they jam and the movement ends on its bail-out timeout instead of arriving.
+- **A surface beside a game must not pre-empt that game's reveal — hold the fetch, not the widget.**
+  The roster's answer carries the round's points the instant the guess is accepted, so refreshing on
+  the `guessed` emit prints the result above a scoreboard still building up to it. `useRoster`'s
+  third entrance, `refreshAfterGuess`, waits `SPOILER_HOLD_MS` and then does exactly what `refresh`
+  does — holding only the *chip* would leak the new order instead. That constant is the roster's own
+  budget, never a copy of a game's timetable: a new game fits inside it or raises it, and nothing
+  synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
+  choreography left to protect, and lag for that reader is the wrong way round.
+
+**A game's reveal is one event, so its choreography is shared.** The board's marker and the
+scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
+functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
+own row shape), never *when*. `revealChoreography.ts` was hoisted out of a guesshue-local `reveal.ts`
+once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s own imports and test
+expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
+games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
+`guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
+
+**A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
+`localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire
+and does not need to be re-earned on every visit — but it is also not global: a new device, or a
+cleared store, correctly reopens it, because there is no account-level record of having read it
+either.
+
+## Sound — a short clip needs the graph, not the `<audio>` element
+
+An `<audio>` element opens an output stream per playback and tears it down when the clip ends.
+On Android that opening and closing costs tens to hundreds of milliseconds, so a clip whose
+**entire** content is 0.1 s lives inside that window: its tail gets flushed away, or nothing is
+heard at all, and `currentTime` already stands at the end before the first frame paints (observed
+on Firefox for Android; Chrome for Android does not show it). **Anything under about a second goes
+through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
+the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
+already running. `usePlayback` (`src/games/songsnippet/`) is the worked example.
+
+- **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
+  graph may be mid-render and drop the first samples of a clip that starts in the present.
+- **Read the position from the graph's clock** — `ctx.currentTime - startedAt`, clamped to
+  `[0, buffer.duration]`. The element's `timeupdate` is ~4 Hz (useless over 0.1 s) and its
+  `currentTime` reports the decoder's progress rather than what has been heard.
+- **Keep the element as a fallback** for browsers without an `AudioContext` and for a clip
+  `decodeAudioData` rejects — resolve the decode to `null` rather than rejecting, and let the
+  element carry the same source all along, so falling back costs no second load.
+- **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
+  resumes (our play button is „always from the start", pause is its own control). Check that
+  before choosing the graph; a resume needs an offset you keep yourself.
+- **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
+  from the outside; a `console.warn` is what makes it a report instead of a mystery.
+- **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
+  Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
+  routing any remote source through the graph.
+- **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
+  constructor. Both the context and the „only one clip sounds" registry are module state, so a
+  stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
+  stubbed into a queue you step by hand (the sampler re-requests itself).
 
 ## Server-authoritative ticking values (countdown pattern)
 

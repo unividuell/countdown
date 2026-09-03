@@ -34,6 +34,11 @@ async function advance(ms: number): Promise<void> {
 }
 
 beforeEach(() => {
+  // The dot counts below read the boards at rest. happy-dom has shipped the Web Animations API
+  // since 20.12, so the flip now runs here and holds every dot it has not reached at its pre-flip
+  // colour — a board mid-reveal, not the readout. Taking `animate` away puts the boards back on
+  // the path the component keeps for a browser without it: resolve straight to the resting colour.
+  Reflect.deleteProperty(Element.prototype, 'animate')
   vi.useFakeTimers()
 })
 
@@ -47,6 +52,36 @@ describe('CountdownCard', () => {
     expect(mountCard('58').find('[data-test="countdown-card"]').classes()).toContain(
       'aspect-square',
     )
+  })
+
+  // Same slot as the round and the message fallback, so the same edge length — but taking the
+  // measurement rather than `RoundSurface`, because its two flip-dot boards are percentages of the
+  // whole surface and a padded interior cannot express 94% of the band.
+  it('spans the display on a phone by the shared bleed', () => {
+    const classes = mountCard('42').classes()
+
+    expect(classes).toContain('round-bleed')
+    expect(classes).toContain('aspect-square')
+  })
+
+  // See MessageCard for the measurement: `width: 100%` plus a negative inline margin is
+  // over-constrained, so the box would shift instead of widen.
+  it('leaves its width to the bleed', () => {
+    expect(mountCard('42').classes()).not.toContain('w-full')
+  })
+
+  it('keeps its corners only from sm, where it is a card again', () => {
+    const classes = mountCard('42').classes()
+
+    expect(classes).toContain('sm:rounded-xl')
+    expect(classes).not.toContain('rounded-xl')
+  })
+
+  it('keeps the vertical padding its boards are placed by, and no horizontal padding', () => {
+    const classes = mountCard('42').classes()
+
+    expect(classes).toContain('py-4')
+    expect(classes.join(' ')).not.toMatch(/(^|\s)(p|px)-\d/)
   })
 
   it('renders the day count as the hero board', () => {

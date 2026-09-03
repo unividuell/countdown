@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
+		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.unividuell.countdown</groupId>
@@ -30,8 +30,8 @@
 		<java.version>25</java.version>
 		<kotlin.version>2.4.10</kotlin.version>
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
-		<kotlin-logging.version>7.0.14</kotlin-logging.version>
-		<spring-modulith.version>2.1.0</spring-modulith.version>
+		<kotlin-logging.version>8.0.4</kotlin-logging.version>
+		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<!-- Image tag for spring-boot:build-image. Override in CI: -Dcountdown.image.tag=staging
 		     (the -Dspring-boot.build-image.imageName user property does NOT override a pom-set
 		     <image><name>, so parametrize the name here instead). -->
@@ -67,6 +67,10 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
@@ -95,6 +99,12 @@
 			<groupId>tools.jackson.module</groupId>
 			<artifactId>jackson-module-kotlin</artifactId>
 		</dependency>
+		<dependency>
+			<!-- Pure-java MP3 decoder for the snippet pipeline - no ffmpeg in the image. -->
+			<groupId>javazoom</groupId>
+			<artifactId>jlayer</artifactId>
+			<version>1.0.1</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -109,9 +119,13 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
+			<!--
+			  Compile scope, not the Spring Boot starter default of runtime: JdbcConversionsConfiguration
+			  imports org.postgresql.util.PGobject directly to hand jsonb its type, so main code needs it
+			  on the compile classpath.
+			-->
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
@@ -186,7 +200,7 @@
 		<dependency>
 			<groupId>io.kotest</groupId>
 			<artifactId>kotest-assertions-core-jvm</artifactId>
-			<version>6.2.3</version>
+			<version>6.2.4</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

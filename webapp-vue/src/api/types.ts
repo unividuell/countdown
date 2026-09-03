@@ -12,6 +12,8 @@ export interface MeResponse {
   email: string | null
   /** The colour the user picked; null means they picked none. Not what to paint with. */
   bgColorHex: string | null
+  /** The raw chosen name; null means none was chosen. `username` is what to show. */
+  displayName: string | null
   avatar: AvatarView
   isSuperAdmin: boolean
   /** Effective permission: the stored clearance, or super-admin. */
@@ -24,6 +26,19 @@ export interface UpdateProfileRequest {
   bgColorHex: string | null
 }
 
+/** A person and how they are drawn — the server's answer, never recomputed here. */
+export interface IdentityView {
+  username: string
+  avatar: AvatarView
+}
+
+export interface MemberProfileResponse {
+  /** The raw override; null on either field means the global profile applies to it. */
+  displayName: string | null
+  bgColorHex: string | null
+  identity: IdentityView
+}
+
 export interface CommunityResponse {
   id: string
   name: string
@@ -31,8 +46,12 @@ export interface CommunityResponse {
   startsAt: string | null
   startsAtTimezone: string
   phaseTwoStartRound: number | null
+  gamesFromRound: number | null
   viewerIsAdmin: boolean
   pendingCount: number
+  editionFrozen: boolean
+  /** How the viewer appears here; null when they have no membership row in this community. */
+  viewerIdentity: IdentityView | null
 }
 export interface CommunitySummary {
   id: string
@@ -46,10 +65,19 @@ export interface MemberResponse {
   isAdmin: boolean
 }
 
+/**
+ * The running round's points. `provisional` is the server's answer to „can this still change“ — it
+ * follows from the round's frozen award rule, so the client neither derives nor second-guesses it.
+ */
+export interface LivePoints {
+  /** `0` means „played the round and came away empty“, which is a result and gets shown. */
+  points: number
+  provisional: boolean
+}
 export interface RosterPoints {
   stable: number
   /** Absent when the viewer may not see live points, or when the member has not played the round. */
-  live?: number
+  live?: LivePoints
 }
 export interface RosterMemberResponse {
   userId: string
@@ -68,7 +96,15 @@ export interface AcceptResponse {
   slug: string
 }
 
+/**
+ * Shared by `CountdownResponse` and `RoundResponse`, whose server-side DTOs
+ * (`countdown.internal.RoundDto` and `game.internal.RoundDto`) are deliberately two separate
+ * Kotlin types — each module's wire format may drift from the other's without a shared type
+ * forcing them together. The client has one consumer, and the shapes are identical today; if
+ * that ever stops being true, TypeScript will say so at the call site that first disagrees.
+ */
 export interface Round {
+  /** Signed T-offset. A larger number is *earlier* in time. */
   number: number
   label: string
   start: string
@@ -136,4 +172,91 @@ export interface SuperAdminUserDetail {
   communityCreationAllowed: boolean
   createdAt: string | null
   updatedAt: string | null
+}
+
+export type NoGameReason = 'NOT_SCHEDULED' | 'BEFORE_WINDOW' | 'AFTER_WINDOW' | 'NO_GAME_TYPE'
+export type AwardRule = 'ALL_QUALIFYING' | 'CLOSEST_ONLY'
+
+/** One ballot with two sides — mirrors the server's `Vote`. */
+export type Vote = 'CONFIRM' | 'FLAG'
+
+/**
+ * One cast ballot, with the name attached. Nothing about the review is secret, counts or casters:
+ * anonymity is what makes voting careless, and being asked why you flagged somebody is the point.
+ */
+export interface VoteView {
+  userId: string
+  username: string
+  value: Vote
+}
+
+export interface GameDto {
+  id: string
+  displayName: string
+  /** True when this round wants a deliberate reveal — then it may be revealed exactly once. */
+  requiresReveal: boolean
+}
+
+/**
+ * Another player's row. No timestamps on purpose: when somebody else revealed and when they guessed
+ * is theirs, and the server does not send it — see `OtherPlayDto` on the Kotlin side. The duration
+ * does travel, for a timed game: see `durationMs` below.
+ */
+export interface OtherPlayDto {
+  userId: string
+  username: string
+  avatar: AvatarView
+  /** Final stage of a finished play — an "other" row is only ever listed once its player is done. */
+  stage: number
+  guess: unknown
+  /** The game's own shape. `null` for a game that judges without saying anything. */
+  outcome: unknown
+  /** `null` until the round is scored; `0` means „played and came away empty“. */
+  points: number | null
+  /**
+   * How long this player took, reveal to guess. `null` unless the round's game asks for a
+   * deliberate reveal — see `OtherPlayDto` on the Kotlin side for why the duration travels while
+   * the timestamps do not.
+   */
+  durationMs: number | null
+  /** Every vote cast on this tip, by name. Empty for a game without peer review. */
+  votes: VoteView[]
+  /**
+   * The server's answer to „does this tip currently score nothing“, override included. Never
+   * re-derived here: the rule lives on the server, and a second copy is a copy that can drift.
+   */
+  struck: boolean
+  /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
+  adminOverride: boolean | null
+}
+
+/** The viewer's own row: the same, plus the two stamps that are theirs to know. */
+export interface MyPlayDto extends OtherPlayDto {
+  revealedAt: string
+  guessedAt: string | null
+}
+
+export interface RoundResponse {
+  /** `null` when there is no grid at all — no run, or no target date. */
+  round: Round | null
+  game: GameDto | null
+  noGameReason: NoGameReason | null
+  /**
+   * The next older announced round of this run, or `null` for „ganz am Anfang“. On every round
+   * answer, the action responses included — the client replaces its whole round object with each of
+   * them.
+   */
+  previousRoundNumber: number | null
+  /** Only once the viewer has revealed. The shape belongs to the game. */
+  payload: unknown
+  /** Only once the viewer has guessed. */
+  solution: unknown
+  me: MyPlayDto | null
+  /** Empty until the viewer has guessed — withheld by the server, not filtered here. */
+  others: OtherPlayDto[]
+  /** `null` exactly when there is no game. Under `CLOSEST_ONLY` a score is provisional. */
+  awardRule: AwardRule | null
+  awardPoints: number | null
+  /** Whether *this viewer* may set an override. Viewer-scoped, like `me` — never a round property. */
+  canOverride: boolean
 }

@@ -24,13 +24,51 @@ class GuessHueDatasetLoaderTest {
     @Test
     fun `reads the configured file and reports it as not the sample`(@TempDir dir: Path) {
         val file = dir.resolve("dataset.yaml").toFile()
-        file.writeText(sixtyBalancedEntriesAsYaml())
+        file.writeText(
+            """
+            entries:
+              - hue: 10
+                saturation: 0.6
+                lightness: 0.4
+                generatedAt: 2026-08-16
+                description: Beispieleintrag, kein Spielinhalt.
+              - hue: 200
+                saturation: 0.3
+                lightness: 0.7
+                generatedAt: 2024-03-03
+                description: Beispieleintrag, kein Spielinhalt.
+            """.trimIndent(),
+        )
 
         val loaded = GuessHueDatasetLoader(GuessHueDatasetProperties(datasetPath = file.absolutePath)).load()
 
         loaded.isSample shouldBe false
-        loaded.entries.size shouldBe 60
+        loaded.entries.size shouldBe 2
         loaded.origin shouldBe file.absolutePath
+    }
+
+    @Test
+    fun `a configured file with a broken entry fails with the file's own path`(@TempDir dir: Path) {
+        // The loader has no rules of its own any more, but the reader's do have to surface through
+        // it naming the mounted file — that path is all the operator gets on a server.
+        val file = dir.resolve("broken.yaml").toFile()
+        file.writeText(
+            """
+            entries:
+              - hue: 400
+                saturation: 0.6
+                lightness: 0.4
+                generatedAt: 2026-08-16
+                description: Beispieleintrag, kein Spielinhalt.
+            """.trimIndent(),
+        )
+
+        val thrown = shouldThrow<GuessHueDatasetException> {
+            GuessHueDatasetLoader(GuessHueDatasetProperties(datasetPath = file.absolutePath)).load()
+        }
+
+        thrown.message!! shouldContain file.absolutePath
+        thrown.message!! shouldContain "0..359"
     }
 
     @Test
@@ -43,51 +81,5 @@ class GuessHueDatasetLoaderTest {
 
         thrown.message!! shouldContain missing
         thrown.message!! shouldContain "app.guess-hue.dataset-path"
-    }
-
-    @Test
-    fun `applies the completeness rule to a configured file`(@TempDir dir: Path) {
-        val file = dir.resolve("short.yaml").toFile()
-        file.writeText(
-            """
-            entries:
-              - hue: 0
-                difficulty: hard
-                description: Beispieleintrag, kein Spielinhalt.
-            """.trimIndent(),
-        )
-
-        val thrown = shouldThrow<GuessHueDatasetException> {
-            GuessHueDatasetLoader(GuessHueDatasetProperties(datasetPath = file.absolutePath)).load()
-        }
-
-        thrown.message!! shouldContain "expected 60 entries"
-    }
-
-    /**
-     * Five per sector, 20 per difficulty — invented text that satisfies the rules. The
-     * distribution per sector is uneven because five doesn't divide by three: three patterns
-     * rotate across the twelve sectors, four sectors per pattern, adding up to exactly 20/20/20.
-     */
-    private fun sixtyBalancedEntriesAsYaml(): String = buildString {
-        appendLine("entries:")
-        (0 until 12).forEach { sector ->
-            val base = sector * 30
-            val difficulties = when (sector % 3) {
-                0 -> listOf("easy", "easy", "medium", "medium", "hard")
-                1 -> listOf("easy", "easy", "medium", "hard", "hard")
-                else -> listOf("easy", "medium", "medium", "hard", "hard")
-            }
-            difficulties.forEachIndexed { index, difficulty ->
-                val description = when (difficulty) {
-                    "easy" -> "Beispieleintrag, kein Spielinhalt. Er steht praktisch daneben, keinen Fingerbreit weiter."
-                    "medium" -> "Beispieleintrag, kein Spielinhalt. Er liegt auf der einen Seite, nicht auf der anderen."
-                    else -> "Beispieleintrag, kein Spielinhalt."
-                }
-                appendLine("  - hue: ${base + 2 + index * 6}")
-                appendLine("    difficulty: $difficulty")
-                appendLine("    description: \"$description\"")
-            }
-        }
     }
 }

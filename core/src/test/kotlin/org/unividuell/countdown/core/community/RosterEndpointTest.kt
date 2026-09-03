@@ -88,7 +88,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         // bob leads on stable points, alice overtakes him once the live round counts.
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 8, live = 5),
+            alice to MemberPoints(stable = 8, live = LivePoints(points = 5, provisional = true)),
             bob to MemberPoints(stable = 10, live = null),
         )
 
@@ -96,7 +96,27 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             jsonPath("$[0].shortName") { value("AMY") }
             jsonPath("$[0].points.stable") { value(8) }
-            jsonPath("$[0].points.live") { value(5) }
+            jsonPath("$[0].points.live.points") { value(5) }
+            // Whether the number can still move is the server's answer, not the client's guess.
+            jsonPath("$[0].points.live.provisional") { value(true) }
+        }
+    }
+
+    @Test
+    fun `live points nobody can touch anymore are shipped as settled`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(User(id = alice, githubId = 1L, githubLogin = "amy"))
+        every { points.standings(community.id!!, uid, any()) } returns
+            mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false)))
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            // Played and came away empty is a fact worth sending — `0`, not an absent field.
+            jsonPath("$[0].points.live.points") { value(0) }
+            jsonPath("$[0].points.live.provisional") { value(false) }
         }
     }
 
@@ -174,6 +194,43 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$[0].bgColorHex") { value(org.hamcrest.Matchers.matchesRegex("#[0-9a-f]{6}")) }
+        }
+    }
+
+    @Test
+    fun `a member's per-community name and colour win in the roster`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z")
+                .copy(displayName = "Zwerg", bgColorHex = "#8e44ad"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+        )
+        every { points.standings(community.id!!, uid, any()) } returns emptyMap()
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].fullName") { value("Zwerg") }
+            jsonPath("$[0].shortName") { value("ZWRG") }
+            jsonPath("$[0].bgColorHex") { value("#8e44ad") }
+        }
+    }
+
+    @Test
+    fun `without an override the roster shows the global identity`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+        )
+        every { points.standings(community.id!!, uid, any()) } returns emptyMap()
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].fullName") { value("Amy Wong") }
         }
     }
 }

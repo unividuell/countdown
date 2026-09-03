@@ -29,6 +29,7 @@ export function publishCommunity(c: CommunityResponse): void {
     startsAtTimezone: c.startsAtTimezone,
     viewerIsAdmin: c.viewerIsAdmin,
     pendingCount: c.pendingCount,
+    viewerIdentity: c.viewerIdentity,
   }
 }
 

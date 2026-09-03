@@ -46,3 +46,11 @@ that went missing, so the line points at the cause rather than announcing that s
 
 Cover such a branch with a test as well. A log statement on a path no test reaches proves nothing —
 and the test is what shows the branch is reachable and does not blow up.
+
+## What not to log
+
+Never log a value the design keeps out of storage on purpose — a log line often outlives the
+database row it was kept out of. If a doc-comment claims a value never reaches persistence, that
+guarantee covers the logs too: `GoogleCountryLookup` resolves a Street View coordinate to a
+country precisely so the coordinate never reaches the database (see `CountryLookup`'s doc-comment)
+— a log line printing it on the error path would have quietly broken that promise.

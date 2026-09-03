@@ -1,30 +1,41 @@
 # Not game content. This set exists so tests and a local start work without the encrypted
 # production dataset. The app refuses to boot with it under production or staging — see
 # GuessHueDatasetConfiguration.
+#
+# Six entries covering both registers and both cohorts, plus one deliberately washed-out colour:
+# there is no saturation/lightness corridor any more, and the sample should exercise that.
 entries:
   - hue: 0
-    difficulty: easy
-    description: >-
-      Beispieleintrag Alpha, kein Spielinhalt. Er steht praktisch auf dem
-      reinen Rot, keinen Fingerbreit daneben.
+    saturation: 0.72
+    lightness: 0.45
+    generatedAt: 2026-08-16
+    description: Beispieleintrag Alpha, kein Spielinhalt.
   - hue: 60
-    difficulty: medium
-    description: >-
-      Beispieleintrag Beta, kein Spielinhalt. Er liegt auf der grünen Seite von
-      reinem Gelb, nicht auf der orangen.
+    saturation: 0.55
+    lightness: 0.60
+    generatedAt: 2026-08-16
+    description: Beispieleintrag Beta, kein Spielinhalt.
   - hue: 120
-    difficulty: hard
-    description: Beispieleintrag Gamma, kein Spielinhalt.
+    saturation: 0.30
+    lightness: 0.38
+    generatedAt: 2024-03-03
+    description: >-
+      Beispieleintrag Gamma, kein Spielinhalt. Er steht stellvertretend für das
+      längere historische Register und sagt über Farben nichts aus.
   - hue: 180
-    difficulty: easy
+    saturation: 0.90
+    lightness: 0.72
+    generatedAt: 2024-03-03
     description: >-
-      Beispieleintrag Delta, kein Spielinhalt. Er sitzt so dicht am reinen
-      Türkis, dass daneben nichts mehr passt.
+      Beispieleintrag Delta, kein Spielinhalt. Auch er steht stellvertretend für
+      das historische Register und sagt über Farben nichts aus.
   - hue: 240
-    difficulty: medium
-    description: >-
-      Beispieleintrag Epsilon, kein Spielinhalt. Er liegt auf der violetten
-      Seite von reinem Blau, nicht auf der türkisen.
+    saturation: 0.12
+    lightness: 0.30
+    generatedAt: 2026-08-16
+    description: Beispieleintrag Epsilon, kein Spielinhalt.
   - hue: 300
-    difficulty: hard
+    saturation: 0.66
+    lightness: 0.50
+    generatedAt: 2026-08-16
     description: Beispieleintrag Zeta, kein Spielinhalt.

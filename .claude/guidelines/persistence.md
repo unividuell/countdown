@@ -68,6 +68,60 @@ app-side before the write. Keep the DB `DEFAULT now()` as a fallback for
 out-of-band inserts. Don't also set timestamps manually in services — auditing is
 the single source of truth.
 
+## Moving or dropping a column: expand, switch, contract
+
+Spring Data JDBC puts **every** non-transient entity field into its `SELECT` and `INSERT` — there is
+no JPA-style `insertable=false`. So a field without its column breaks every read of that table, and a
+column drop plus its field removal have to land in the **same commit**. That makes the tempting
+one-migration version ("create the new home, move everything, drop the old columns") a single
+untestable jump.
+
+Do it in three steps instead, which is also three green commits:
+
+1. **Expand** — one migration creates the new column/table and backfills it from the old. Nothing
+   reads it yet; behaviour is unchanged.
+2. **Switch** — readers *and* writers move over **together, in one commit**. They cannot be split: the
+   moment the writer writes the new home, every reader still on the old column serves stale data.
+3. **Contract** — a second migration drops the old columns, and the entity loses the fields in that
+   same commit. This step must be small; if it produces a compile-error cascade, step 2 was
+   incomplete and the cascade is the evidence.
+
+Both migrations ship in the same PR and run in the same boot, so operationally it is identical to one
+script — the split buys testability, not deploy safety.
+
+Two things the test suite cannot tell you, because Flyway runs before any row exists in a
+Testcontainers database:
+
+- **A backfill copies zero rows in tests.** Verify it against real rows — a disposable
+  `postgres:18` container, the migrations applied in order, a couple of seeded rows, then an
+  `IS DISTINCT FROM` check between old and new. Never against the developer's own dev database,
+  and never with `docker compose down -v`.
+- **`./mvnw clean test` before trusting migration behaviour.** A stale
+  `application-modules.json` under `target` makes a new module's migrations silently not run — see
+  [modules-and-migrations.md](modules-and-migrations.md).
+
+## `jsonb` columns: one config class, and only these two rules
+
+A `jsonb` column maps to a **`JsonNode`** field. Two rules, both easy to get wrong:
+
+1. **Register the converters via `userConverters()`** in a subclass of `AbstractJdbcConfiguration` —
+   the hook the Spring Data JDBC reference names. Do **not** override `jdbcCustomConversions()`: that
+   method assembles the store's conversions *and* the ones the `Dialect` registers, and overriding it
+   silently drops the dialect's.
+2. **Put that class in the root package** (`org.unividuell.countdown.core`). It replaces Spring Boot's
+   `SpringBootJdbcConfiguration`, which carries `@ConditionalOnMissingBean(AbstractJdbcConfiguration)`,
+   and with it Boot's entity scanning. `AbstractJdbcConfiguration` scans `getMappingBasePackages()`
+   instead — by default the package of your config class, so the root package covers everything. Boot's
+   other addition, the `spring.data.jdbc.dialect` property, goes unread; we do not set it (the dialect
+   comes from the connection).
+
+The field must be `JsonNode`, never `String`: a `String ↔ PGobject` converter would apply to every text
+column in every entity.
+
+Reading is covered by the converter. Binding a `JsonNode` as a parameter of a custom `@Query` is not
+guaranteed — if such a statement fails on the parameter, cast in the SQL (`CAST(:params AS jsonb)`) and
+pass the serialised string for that one query only.
+
 ## Serializable entities
 
 Entities that end up in the HTTP session (directly or via a principal) must be
@@ -95,6 +149,15 @@ database `app`.
   source) can connect reliably — Spring reads whatever port is mapped, so both
   share it. Same trick for `PGADMIN_PORT`. This keeps the zero-config free-port
   default while allowing a fixed port per project (one number, chosen once).
+- **The IntelliJ data source is committed**, at `.idea/dataSources.xml` — the one file in `.idea/`
+  that is not ignored (`.gitignore` uses `.idea/*` for it, since git cannot re-include a file whose
+  parent directory is excluded). That is the only place a database connection can be shared: there
+  is no `.run/` equivalent for it, unlike run configurations. It holds no password — IntelliJ keeps
+  those in the OS credential store — and its siblings stay ignored on purpose:
+  `dataSources.local.xml` is per-user state, `dataSources/` a multi-megabyte introspection cache.
+  A committed connection is only worth anything with `POSTGRES_PORT` set, so every checkout needs
+  its own `.env` (`cp .env.example .env`); without one the container takes a random port and the
+  shared URL is wrong for everybody, including whoever wrote it.
 - **pgAdmin** runs as a second compose service; it pre-registers the `postgres`
   server (host `postgres`, the compose-internal service name) and persists its
   state in the `pgadmin-data` named volume — enter the DB password once and it

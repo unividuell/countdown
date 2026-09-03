@@ -36,7 +36,10 @@ class GuessHueDatasetConfiguration {
         if (loaded.isSample) {
             logger.warn { "Guess Hue is running on the bundled sample dataset (${loaded.origin}) — local development only" }
         } else {
-            logger.info { "Guess Hue loaded ${loaded.entries.size} entries from ${loaded.origin}" }
+            logger.info {
+                "Guess Hue loaded ${loaded.entries.size} entries from ${loaded.origin} — " +
+                    GuessHueCohorts.summarise(loaded.entries)
+            }
         }
 
         return GuessHueDataset(loaded.entries)

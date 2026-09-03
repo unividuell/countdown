@@ -88,6 +88,20 @@ code (use A's exposed API) and A's migrations run first automatically. No manual
 locations/ordering config. Example: `community` → `iam` (uses `iam.UserQuery`), so a
 `community` migration may declare an FK to `iam.users`.
 
+## The plugin pattern: data points one way, code the other
+
+A plugin module's code arrow points **host → plugin** (the adapter lives in the host, e.g.
+`SongSnippetGameType` in `game.internal` calls into `songsnippet`), but the plugin's data hangs off
+the host's (a `round_audio` row belongs to a `round_games` row). Migration ordering follows the code
+graph above, so on a fresh database the plugin's schema migrates **before** the host's — a
+cross-schema FK against the code arrow cannot be created; the referenced table doesn't exist yet.
+Don't bend the migration strategy to fix this: drop the FK, and leave the waiver as a comment in the
+migration that would have carried it (`songsnippet.round_audio`,
+`db/migration/songsnippet/V1__create_round_audio.sql`, is the example — lifecycle is owned by
+application code instead). One more consequence of the same shape: a class the host module must
+inject (`SnippetCutter`) lives in the plugin's **exposed root package**, never `.internal` — the host
+can't depend on what it can't see, and `ModularityTests.verify()` catches the violation immediately.
+
 ## Dependencies note
 
 Pin Spring Modulith to a **GA** version (`2.1.0`), not an RC — RC artifacts live

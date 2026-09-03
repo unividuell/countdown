@@ -20,8 +20,11 @@ const community = {
   startsAt: '2026-06-25T09:00:00Z', // 11:00 in Europe/Berlin (summer)
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
+  gamesFromRound: 24,
   viewerIsAdmin: true,
   pendingCount: 0,
+  editionFrozen: false,
+  viewerIdentity: null,
 }
 
 describe('settings — timezone + zone-relative startsAt', () => {
@@ -85,5 +88,87 @@ describe('settings — timezone + zone-relative startsAt', () => {
     const w = mount(Settings)
     await flushPromises()
     expect(w.text()).toContain('/c/team/')
+  })
+
+  it('renders gamesFromRound and sends it back', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    const field = w.find('[data-test="games-from-round"]')
+    expect((field.element as HTMLInputElement).value).toBe('24')
+
+    await field.setValue(40)
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.objectContaining({ gamesFromRound: 40 }),
+    )
+  })
+
+  it('omits gamesFromRound when the field is cleared', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('[data-test="games-from-round"]').setValue('')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ gamesFromRound: expect.anything() }),
+    )
+  })
+
+  it('says the grid is still open while the first game round is ahead', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeUndefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Änderbar')
+  })
+
+  it('reflects a freeze the save itself just caused, without a remount', async () => {
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
+    expect(w.find('select').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+  })
+})
+
+describe('settings — a run that has begun', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+    vi.spyOn(api, 'getInvite').mockResolvedValue(null)
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+  })
+
+  it('locks start and timezone and says why', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
+    expect(w.find('select').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+  })
+
+  it('leaves start and timezone out of the request', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ startsAt: expect.anything() }),
+    )
+    expect(api.updateCommunity).toHaveBeenCalledWith(
+      'team',
+      expect.not.objectContaining({ startsAtTimezone: expect.anything() }),
+    )
   })
 })

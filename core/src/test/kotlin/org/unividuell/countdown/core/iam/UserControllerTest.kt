@@ -10,12 +10,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.iam.internal.AvatarPreviewResponse
 import org.unividuell.countdown.core.iam.internal.StaleSessionException
 import org.unividuell.countdown.core.iam.internal.UserProfileService
 import org.unividuell.countdown.core.principalFor
@@ -88,7 +90,13 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         }
     }
 
+    // `with(csrf())` permanently swaps the shared, context-cached CsrfFilter's token repository
+    // for a test double, for every later request in this class — so once any test uses it, a
+    // plain GET here would stop getting a fresh XSRF-TOKEN cookie, no matter which test ran first.
+    // Forcing a pristine context right before this assertion removes that dependency entirely,
+    // rather than relying on this test happening to run before the first `with(csrf())` call.
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
         every { profileService.current(uid) } returns user()
 
@@ -181,6 +189,80 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
             content = """{"displayName":null,"bgColorHex":"12345"}"""
         }.andExpect {
             status { isBadRequest() }
+            // The profile form shows this sentence instead of a generic failure, so the shape it
+            // travels in — problem+json with a `detail` — is part of the contract.
+            content { contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON) }
+            jsonPath("$.detail") {
+                value("bgColorHex must be a valid hex colour in the form #rrggbb, got: 12345")
+            }
         }
+    }
+
+    @Test
+    fun `GET me carries the raw chosen name next to the effective one`() {
+        every { profileService.current(uid) } returns user(displayName = "Mr. Custom")
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(displayName = "Mr. Custom")))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.displayName") { value("Mr. Custom") }
+            jsonPath("$.username") { value("Mr. Custom") }
+        }
+    }
+
+    @Test
+    fun `GET me reports no chosen name when there is none`() {
+        every { profileService.current(uid) } returns user(displayName = null)
+
+        mockMvc.get("/api/me") {
+            with(principalFor(user(displayName = null)))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.displayName") { value(null) }
+            jsonPath("$.username") { value("The Octocat") }
+        }
+    }
+
+    @Test
+    fun `POST avatar-preview answers what saving would produce`() {
+        every {
+            profileService.preview(userId = uid, displayName = "Zwerg", bgColorHex = "#8e44ad")
+        } returns AvatarPreviewResponse(
+            username = "Zwerg", avatar = Avatar(shortName = "ZWRG", bgColorHex = "#8e44ad"),
+        )
+
+        mockMvc.post("/api/me/avatar-preview") {
+            with(principalFor(user())); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.username") { value("Zwerg") }
+            jsonPath("$.avatar.shortName") { value("ZWRG") }
+        }
+    }
+
+    @Test
+    fun `a preview without auth returns 401`() {
+        mockMvc.post("/api/me/avatar-preview") {
+            with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"Zwerg","bgColorHex":null}"""
+        }.andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `a preview with an over-length name is a 400`() {
+        val tooLong = "x".repeat(33)
+        every {
+            profileService.preview(userId = uid, displayName = tooLong, bgColorHex = null)
+        } throws IllegalArgumentException("displayName must be at most 32 characters, got 33")
+
+        mockMvc.post("/api/me/avatar-preview") {
+            with(principalFor(user())); with(csrf())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"displayName":"$tooLong","bgColorHex":null}"""
+        }.andExpect { status { isBadRequest() } }
     }
 }

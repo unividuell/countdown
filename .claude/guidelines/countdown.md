@@ -7,7 +7,8 @@ decisions here, don't re-derive them. (Origin reference: `huettehuette.unividuel
 `server/composables/useCurrentGameRound.ts` + its tests; the port deliberately changes a few
 conventions — see below.)
 
-Not yet implemented — this is the agreed model to build the `countdown` module against.
+Implemented in the `countdown` module (`CountdownEngine` is the grid); this file stays the binding
+model it is built against.
 
 ## Anchor: `startsAt` + community `startsAtTimezone`
 
@@ -124,6 +125,27 @@ flash a "T−0 — Start!" around that instant; purely a labelling aid.
   (for a ticking display), keep it in **parity** with the backend function — same rule, parity
   test — exactly like the slug-derivation parity (see `multi-tenancy.md`). Alternatively render
   from a backend value; the origin did both (client store + server composable).
+
+## A grid that is in play is fixed
+
+`startsAt` and `startsAtTimezone` define the round grid, and a round number is not stored anywhere —
+it is recomputed from them. Moving either after rounds have been announced therefore points the grid
+at numbers `game.round_games` already holds: the same round a second time, or numbers skipped. Both
+are unfair and unexplainable to a player.
+
+A run is therefore **frozen** from the start of round `gamesFromRound` on — the earliest instant
+anyone could announce a round (`gamesFromRound = null` means unbounded, so a run freezes with its
+date). From then on the two fields are 409, and the way forward is a new edition.
+
+The state is **derived, never stored**: `frozenSince(edition)` against the clock. That keeps it
+honest without a column, but it makes the freeze point a function of editable fields — so the check
+compares the persisted edition with the one the update would produce and rejects **any** update
+after which the run would no longer be frozen. A rule on the effect, not on a field, needs no
+revisit when the next field enters the computation.
+
+What does **not** freeze: `phaseTwoStartRound` and the game window. Rule and stake are frozen per
+round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds still
+to come — a game-master decision with visible effect, not a silent rewrite of history.
 
 ## Related / future
 

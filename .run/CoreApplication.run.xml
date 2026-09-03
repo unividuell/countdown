@@ -1,0 +1,36 @@
+<component name="ProjectRunConfigurationManager">
+  <!--
+    Shared so nobody has to rediscover the working directory. `spring.docker.compose.file` is
+    `../compose.yaml` (see core/src/main/resources/application.yaml), resolved against the process
+    working directory — which `./mvnw spring-boot:run` makes `core/`, because that is the Maven
+    project's own directory. An IDE run configuration defaults to the project root instead, where
+    `../compose.yaml` points above the repo and the boot dies with
+
+      java.lang.IllegalArgumentException: 'files' content [../compose.yaml] must exist
+
+    Hence WORKING_DIRECTORY below. $PROJECT_DIR$ is the folder holding this .run directory, so this
+    works in the main clone and in every git worktree alike.
+
+    Nothing else has to be set: GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS and
+    GUESS_HUE_DATASET_PATH all have defaults, and the app boots on the sample dataset with the
+    test login picker. Add SUPER_ADMIN_GITHUB_LOGINS=<your github login> to this configuration's
+    environment when you want super-admin, and see core/README.md for the real-dataset flow.
+
+    IntelliJ rewrites this file when the configuration is edited in the UI and may drop this
+    comment; the reason then still stands next to the property in application.yaml.
+  -->
+  <configuration
+    default="false"
+    name="CoreApplication"
+    type="SpringBootApplicationConfigurationType"
+    factoryName="Spring Boot"
+  >
+    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+    <module name="core" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="org.unividuell.countdown.core.CoreApplication" />
+    <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$/core" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
