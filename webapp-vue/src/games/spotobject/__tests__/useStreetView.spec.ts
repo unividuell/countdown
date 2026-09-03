@@ -402,6 +402,27 @@ describe('useStreetView', () => {
   })
 
   /**
+   * Shrinking back out of the full-screen map is not a second entry: the panorama was hidden, not
+   * dropped, so showing it again asks Google nothing and lands on the panorama the player left.
+   */
+  it('comes back to the same panorama without looking anything up', async () => {
+    const { mount, toWorldMap, toPanorama } = useStreetView(ref('#8e44ad'))
+
+    const pending = mount(document.createElement('div'))
+    await flushPromises()
+    triggerScriptLoad(script)
+    await pending
+
+    const panorama = FakeMap.instances[0]!.panorama
+    toWorldMap()
+    panorama.setPosition.mockClear()
+    toPanorama()
+
+    expect(panorama.setVisible).toHaveBeenLastCalledWith(true)
+    expect(panorama.setPosition).not.toHaveBeenCalled()
+  })
+
+  /**
    * The whole point of walking is that you end up somewhere else. Before this, „← Weltkarte“ put
    * the player back at the point they had gone in at, however far they had walked.
    */

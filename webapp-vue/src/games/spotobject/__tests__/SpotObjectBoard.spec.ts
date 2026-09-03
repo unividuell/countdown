@@ -22,6 +22,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   currentTip: ReturnType<typeof vi.fn>
   toStreetView: ReturnType<typeof vi.fn>
   toWorldMap: ReturnType<typeof vi.fn>
+  toPanorama: ReturnType<typeof vi.fn>
   openMiniMap: ReturnType<typeof vi.fn>
   jumpMissed: Ref<boolean>
 } {
@@ -35,6 +36,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
     currentTip: vi.fn().mockReturnValue(null),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    toPanorama: vi.fn(),
     openMiniMap: vi.fn().mockResolvedValue(undefined),
     jumpMissed: ref(false),
   }
@@ -85,18 +87,13 @@ describe('SpotObjectBoard', () => {
     expect(w.emitted('guess')).toBeUndefined()
   })
 
-  it('offers a way back to the world map while a panorama is open', async () => {
-    const double = mockStreetView({ visible: false })
+  /** The map has three sizes and the largest one *is* the world map — there is no other way out. */
+  it('reaches the world map by growing the mini-map to full screen', async () => {
+    const double = mockStreetView({ visible: true })
     const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    expect(w.find('[data-test="spot-world-map"]').exists()).toBe(false)
-
-    double.pano.visible = true
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-world-map"]').exists()).toBe(true)
-
-    await w.get('[data-test="spot-world-map"]').trigger('click')
+    await w.get('[data-test="spot-mini-full"]').trigger('click')
 
     expect(double.toWorldMap).toHaveBeenCalledOnce()
   })
@@ -309,30 +306,25 @@ describe('SpotObjectBoard', () => {
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
   })
-  /**
-   * The mini-map covers the row the two actions sit in, and both of them are the wrong move while
-   * it is open: „Weltkarte“ would throw the walk away and „Gefunden“ would submit a view nobody is
-   * looking at. So they are gone rather than half-covered.
-   */
-  it('gives the row to the mini-map while it is open', async () => {
-    const double = mockStreetView({ visible: true })
+  /** Submitting stays possible at every size: the map is a view onto the round, not a modal. */
+  it('keeps „Gefunden“ while the mini-map is open', async () => {
+    mockStreetView({ visible: true, panoId: 'pano-1' })
     const w = mountBoard()
 
     await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    expect(w.find('[data-test="spot-actions"]').exists()).toBe(false)
-    expect(double.openMiniMap).toHaveBeenCalledWith(w.get('[data-test="spot-mini-stage"]').element)
+    expect(w.get('[data-test="spot-guess-button"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('hands the actions back on the world map, whatever the mini-map was left as', async () => {
+  it('opens the panel from the slot „Weltkarte“ used to hold', async () => {
     const double = mockStreetView({ visible: true })
     const w = mountBoard()
+
     await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    double.pano.visible = false
-    await w.vm.$nextTick()
-
-    expect(w.find('[data-test="spot-actions"]').exists()).toBe(true)
+    expect(double.openMiniMap).toHaveBeenCalledWith(w.get('[data-test="spot-mini-stage"]').element)
+    // One control per step: the way down is the panel's own ✕, so this button steps aside.
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
   })
 
   it('closes the mini-map on its own button', async () => {
@@ -342,6 +334,40 @@ describe('SpotObjectBoard', () => {
 
     await w.get('[data-test="spot-mini-close"]').trigger('click')
 
-    expect(w.find('[data-test="spot-actions"]').exists()).toBe(true)
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(true)
+  })
+
+  /**
+   * Shrinking is not re-entering: the panorama was only hidden, so it comes back where it was left
+   * rather than wherever a fresh search around the map's centre lands.
+   */
+  it('shrinks back into the panorama it left, and lands on the panel again', async () => {
+    const double = mockStreetView({ visible: true })
+    const w = mountBoard()
+    await w.get('[data-test="spot-mini-open"]').trigger('click')
+    await w.get('[data-test="spot-mini-full"]').trigger('click')
+
+    double.pano.visible = false
+    double.pano.panoId = 'pano-1'
+    await w.vm.$nextTick()
+    await w.get('[data-test="spot-street-view"]').trigger('click')
+
+    expect(double.toPanorama).toHaveBeenCalledOnce()
+
+    double.pano.visible = true
+    await w.vm.$nextTick()
+
+    // `v-show`, so presence proves nothing — the panel is in the DOM at every size.
+    expect(w.get<HTMLElement>('[data-test="spot-mini-panel"]').element.style.display).not.toBe(
+      'none',
+    )
+  })
+
+  it('has no size to step between before the first panorama', () => {
+    mockStreetView({ visible: false, panoId: null })
+    const w = mountBoard()
+
+    expect(w.find('[data-test="spot-mini-open"]').exists()).toBe(false)
+    expect(w.find('[data-test="spot-street-view"]').exists()).toBe(false)
   })
 })

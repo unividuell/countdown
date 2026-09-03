@@ -16,20 +16,9 @@ function shown(element: HTMLElement): boolean {
 }
 
 describe('SpotObjectMiniMap', () => {
-  it('is a button until it is opened', () => {
+  it('stays out of sight until the board opens it', () => {
     const w = mountMiniMap()
 
-    expect(shown(w.get<HTMLElement>('[data-test="spot-mini-open"]').element)).toBe(true)
-    expect(shown(w.get<HTMLElement>('[data-test="spot-mini-panel"]').element)).toBe(false)
-  })
-
-  it('asks to be opened rather than opening itself', async () => {
-    const w = mountMiniMap()
-
-    await w.get('[data-test="spot-mini-open"]').trigger('click')
-
-    expect(w.emitted('expand')).toHaveLength(1)
-    // Still shut: whether the panel opens is the board's call, because the actions go with it.
     expect(shown(w.get<HTMLElement>('[data-test="spot-mini-panel"]').element)).toBe(false)
   })
 
@@ -49,13 +38,18 @@ describe('SpotObjectMiniMap', () => {
     expect(w.emitted('shown')?.[1]?.[0]).toBe(stage)
   })
 
-  /** A press on the map jumps, so closing needs a control of its own. */
-  it('closes by its own button, never by a press on the map', async () => {
+  /**
+   * A press on the map itself moves the player, so both ways out of this size need a control of
+   * their own — one down to the icon, one up to the full-screen map.
+   */
+  it('carries both ways out of its own size', async () => {
     const w = mountMiniMap({ open: true })
 
     await w.get('[data-test="spot-mini-close"]').trigger('click')
+    await w.get('[data-test="spot-mini-full"]').trigger('click')
 
     expect(w.emitted('collapse')).toHaveLength(1)
+    expect(w.emitted('expand')).toHaveLength(1)
   })
 
   it('turns the view cone with the player', async () => {

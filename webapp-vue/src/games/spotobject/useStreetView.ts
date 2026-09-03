@@ -85,6 +85,8 @@ export interface UseStreetView {
   currentTip: () => SpotObjectTip | null
   toStreetView: () => void
   toWorldMap: () => void
+  /** Back into the panorama that is still loaded, exactly where it was left. */
+  toPanorama: () => void
   /** Builds the mini-map into `element` on the first open — see `useWalkMap`. */
   openMiniMap: (element: HTMLElement) => Promise<void>
   /** True while the last tap on the mini-map found nothing. */
@@ -257,6 +259,15 @@ export function useStreetView(trailColor: Ref<string>): UseStreetView {
     panorama?.setVisible(false)
   }
 
+  /**
+   * The way back up from the full-screen map. Nothing is looked up: the panorama was only hidden,
+   * so showing it again is free and lands on the very panorama the player left, rather than on
+   * whatever a fresh 50 m search around the map's centre would find.
+   */
+  function toPanorama(): void {
+    panorama?.setVisible(true)
+  }
+
   return {
     error,
     mount,
@@ -267,6 +278,7 @@ export function useStreetView(trailColor: Ref<string>): UseStreetView {
     currentTip,
     toStreetView,
     toWorldMap,
+    toPanorama,
     openMiniMap: walk.openMiniMap,
     jumpMissed: walk.jumpMissed,
   }

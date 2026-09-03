@@ -24,6 +24,7 @@ function mockStreetView() {
     currentTip: () => ({ panoId: 'pano-42', heading: 12, pitch: -3, zoom: 2 }),
     toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    toPanorama: vi.fn(),
     openMiniMap: vi.fn().mockResolvedValue(undefined),
     jumpMissed: ref(false),
   })

@@ -9,7 +9,8 @@
  * the view the open panorama is showing. Everything Google lives in `useStreetView`.
  */
 import { computed, onMounted, onUnmounted, ref, toRef, useTemplateRef } from 'vue'
-import IconArrowLeft from '~icons/lucide/arrow-left'
+import IconMap from '~icons/lucide/map'
+import IconMinimize from '~icons/lucide/minimize-2'
 import SpotObjectCompass from './SpotObjectCompass.vue'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import SpotObjectMiniMap from './SpotObjectMiniMap.vue'
@@ -37,16 +38,19 @@ const {
   openMiniMap,
   pano,
   pegmanDragging,
+  toPanorama,
   toStreetView,
   toWorldMap,
 } = useStreetView(toRef(props, 'trailColor'))
 
+/**
+ * The map has three sizes and this is the middle one, kept as the *panel's* own flag rather than
+ * as a state machine: whether a panorama is open is Google's answer, not ours, so the full-screen
+ * size is simply `!pano.visible`. Leaving it standing while the map is full-screen is what makes
+ * the way back land on the middle size again.
+ */
 const miniMapOpen = ref(false)
 
-/**
- * Open *and* on the ground. The two are not the same thing: a mini-map left open takes the actions
- * row with it, and back on the world map that row is the only way on.
- */
 const miniMapVisible = computed(() => miniMapOpen.value && pano.visible)
 
 const stage = useTemplateRef<HTMLElement>('stage')
@@ -230,41 +234,39 @@ function submitGuess(): void {
            direction nobody is facing. -->
       <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
 
-      <!-- No height of its own: the mini-map hangs off this row instead of taking part in it, so
-           it sits directly under the compass without the term below having to move over for it. -->
-      <div class="relative h-0">
-        <SpotObjectMiniMap
-          v-show="pano.visible"
-          :open="miniMapVisible"
-          :heading="heading ?? 0"
-          :missed="jumpMissed"
-          :color="props.trailColor"
-          @expand="miniMapOpen = true"
-          @shown="(element) => void openMiniMap(element)"
-          @collapse="miniMapOpen = false"
-        />
-      </div>
-
       <slot />
 
-      <div
-        v-if="!miniMapVisible"
-        data-test="spot-actions"
-        class="flex items-start justify-between gap-2 p-3"
-      >
-        <!-- Left, and an arrow: this is the back action of the pair, and back belongs where every
-           other back control on a phone is. The word stays beside the arrow — „Weltkarte“ is the
-           destination, and an arrow alone would not say which back. -->
+      <div data-test="spot-actions" class="flex items-start justify-between gap-2 p-3">
+        <!--
+          The left slot is the map's size control, and it changes with the size: it opens the
+          panel while a panorama is on screen, and brings the panorama back once the map has taken
+          the whole board. Nothing at all before the first panorama — there is no size to step
+          between yet, and this is where „Weltkarte“ used to be, which had the same rule.
+
+          Only one control per step: the panel carries its own way down (✕) and its own way up (⤢),
+          so this button is out of the way while the panel is open.
+        -->
         <button
-          v-if="pano.visible"
+          v-if="pano.visible && !miniMapOpen"
           type="button"
-          data-test="spot-world-map"
-          class="pointer-events-auto flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-white pr-4 pl-3 text-sm font-medium text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+          data-test="spot-mini-open"
+          aria-label="Übersichtskarte öffnen"
+          class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
           :disabled="props.disabled"
-          @click="toWorldMap"
+          @click="miniMapOpen = true"
         >
-          <IconArrowLeft aria-hidden="true" class="h-4 w-4" />
-          Weltkarte
+          <IconMap aria-hidden="true" class="h-5 w-5" />
+        </button>
+        <button
+          v-else-if="!pano.visible && pano.panoId"
+          type="button"
+          data-test="spot-street-view"
+          aria-label="Zurück zur Straßenansicht"
+          class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled"
+          @click="toPanorama"
+        >
+          <IconMinimize aria-hidden="true" class="h-5 w-5" />
         </button>
         <span v-else />
 
@@ -278,6 +280,19 @@ function submitGuess(): void {
           Gefunden
         </button>
       </div>
+
+      <!-- Below the row it is opened from, and left-aligned under that button: the panel is the
+           middle size of the same map, so it grows out of its own control rather than appearing
+           somewhere else on the board. -->
+      <SpotObjectMiniMap
+        :open="miniMapVisible"
+        :heading="heading ?? 0"
+        :missed="jumpMissed"
+        :color="props.trailColor"
+        @shown="(element) => void openMiniMap(element)"
+        @collapse="miniMapOpen = false"
+        @expand="toWorldMap"
+      />
     </div>
   </div>
 </template>
