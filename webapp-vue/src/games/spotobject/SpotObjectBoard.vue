@@ -139,20 +139,33 @@ function submitGuess(): void {
       <SpotObjectCompass v-if="pano.visible" :heading="heading ?? 0" />
 
       <!--
-        The term keeps the middle of the board, so the map's size control is laid *over* this row
-        rather than placed in it: in the flow it would centre the term in what is left beside it,
-        and a term that shifts when a button appears is a term that has to be re-read.
+        One row: the map's size control, the term, and „Gefunden“ — and it wraps.
 
-        `pt-3` here rather than a margin on whatever fills the slot: the gap belongs to the board's
-        overlay, not to the thing that happens to be in it.
+        A term is two to four words, so on a phone it fits beside the button or it does not,
+        depending on the round. `flex-wrap` lets the row answer that itself: while everything fits,
+        the term grows into the space between the two controls and the button rides up here; once
+        the term needs the width, the button drops to a line of its own. No measuring, and no
+        threshold that is right on one phone and wrong on the next.
+
+        The term is centred between the controls rather than on the board. Board-centred would mean
+        keeping a button's width free on *both* sides, and that leaves about 110px for the term —
+        less than any of them. This is the trade that makes the row possible at all.
+
+        `justify-end` and not an auto margin on the button: an auto margin takes the free space
+        before `grow` ever sees it, so the term would stop growing and sit against the icon. With
+        the term growing there is no free space to justify anyway — the rule only speaks on the
+        wrapped line, where the button is alone and belongs at the right.
       -->
-      <div class="relative pt-3">
+      <div
+        data-test="spot-actions"
+        class="flex flex-wrap items-center justify-end gap-x-2 gap-y-3 p-3"
+      >
         <!--
-          The map at its two smallest sizes: the icon that opens the panel, and — once the map has
-          taken the whole board — the way back into the panorama. Never both, and neither before
-          the first panorama: there is no size to step between yet.
+          Fixed width, and there whether or not it holds anything: the control changes with the
+          map's size and is absent before the first panorama, and a term that shifts when a button
+          comes and goes is a term that has to be read again.
         -->
-        <div class="absolute top-3 left-3">
+        <div class="w-11 shrink-0">
           <button
             v-if="pano.visible && !miniMapOpen"
             type="button"
@@ -177,20 +190,28 @@ function submitGuess(): void {
           </button>
         </div>
 
-        <slot />
+        <!-- `shrink-0` is what makes the row wrap at all: an item that may shrink never fails to
+             fit, it just gets narrower, and the button would stay up here squeezing the term. -->
+        <div class="max-w-full shrink-0 grow text-center"><slot /></div>
+
+        <button
+          type="button"
+          data-test="spot-guess-button"
+          class="pointer-events-auto h-11 shrink-0 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          :disabled="props.disabled || !pano.visible"
+          @click="submitGuess"
+        >
+          Gefunden
+        </button>
       </div>
 
-      <div data-test="spot-actions" class="flex items-start gap-2 p-3">
-        <!--
-          One row below the icon it grows out of, and at the same gutter, so it opens under its own
-          control without covering the term above — the term is centred, so a panel in that row
-          would lie across it, and across its own two corner buttons with it.
-
-          Only ever hidden, never unmounted: Google measures a `display:none` element as nothing,
-          so a rebuilt container would come back as a grey square.
-        -->
+      <!--
+        One row below the icon it grows out of, and at the same gutter, so it opens under its own
+        control. Only ever hidden, never unmounted: Google measures a `display:none` element as
+        nothing, so a rebuilt container would come back as a grey square.
+      -->
+      <div class="px-3 pb-3">
         <SpotObjectMiniMap
-          class="shrink-0"
           :open="miniMapVisible"
           :missed="jumpMissed"
           :bounds="board"
@@ -198,19 +219,6 @@ function submitGuess(): void {
           @collapse="miniMapOpen = false"
           @expand="toWorldMap"
         />
-
-        <!-- `ms-auto` and not `justify-between` on the row: a hidden map is `display:none` and
-             therefore not a flex item at all, and `justify-between` with one item left puts that
-             item at the *start* — „Gefunden“ walked to the left every time the map was shut. -->
-        <button
-          type="button"
-          data-test="spot-guess-button"
-          class="pointer-events-auto ms-auto h-11 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
-          :disabled="props.disabled || !pano.visible"
-          @click="submitGuess"
-        >
-          Gefunden
-        </button>
       </div>
     </div>
   </div>

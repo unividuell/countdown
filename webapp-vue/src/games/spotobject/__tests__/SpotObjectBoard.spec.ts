@@ -110,16 +110,21 @@ describe('SpotObjectBoard', () => {
     expect(w.html()).not.toContain('bottom-0')
   })
 
-  /** The term rides over the map while searching; the reveal puts the same band in the card. */
-  it('stacks the slot above its own controls', () => {
+  /**
+   * The term rides over the map while searching; the reveal puts the same band in the card. It
+   * shares its row with the two controls now — no layout in happy-dom, so what a spec can hold is
+   * that the row is a wrapping one and that all three are in it.
+   */
+  it('gives the term the row between its two controls', () => {
     const w = mount(SpotObjectBoard, {
       props: { disabled: false, trailColor: '#8e44ad' },
       slots: { default: '<p data-test="slotted">„Rosa Gartenzwerg“</p>' },
     })
 
-    const slot = w.get('[data-test="slotted"]').element
-    const actions = w.get('[data-test="spot-actions"]').element
-    expect(slot.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const row = w.get('[data-test="spot-actions"]')
+    expect(row.classes()).toContain('flex-wrap')
+    expect(row.element.contains(w.get('[data-test="slotted"]').element)).toBe(true)
+    expect(row.element.contains(w.get('[data-test="spot-guess-button"]').element)).toBe(true)
   })
 
   /**
@@ -190,16 +195,16 @@ describe('SpotObjectBoard', () => {
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
   })
   /**
-   * The row's right-hand end belongs to „Gefunden“ whether or not the map is open beside it. A
-   * shut map is `display:none` and so not a flex item at all, which is how `justify-between` came
-   * to put the button at the *left*: with one item left, between is the start.
+   * The row's right-hand end belongs to „Gefunden“, and on the line it wraps onto it is alone
+   * there. `justify-end` and not an auto margin: an auto margin would take the free space before
+   * the term's `grow` ever saw it, and the term would stop being centred between the controls.
    */
-  it('keeps „Gefunden“ at its own end of the row, with or without the map', () => {
+  it('keeps „Gefunden“ at the row’s right-hand end', () => {
     mockStreetView({ visible: true })
     const w = mountBoard()
 
-    expect(w.get('[data-test="spot-guess-button"]').classes()).toContain('ms-auto')
-    expect(w.get('[data-test="spot-actions"]').classes()).not.toContain('justify-between')
+    expect(w.get('[data-test="spot-actions"]').classes()).toContain('justify-end')
+    expect(w.get('[data-test="spot-guess-button"]').classes()).not.toContain('ms-auto')
   })
 
   /** Submitting stays possible at every size: the map is a view onto the round, not a modal. */
@@ -224,23 +229,22 @@ describe('SpotObjectBoard', () => {
   })
 
   /**
-   * No layout in happy-dom, so the structural proxy. The icon rides in the term's row, over it
-   * rather than in it, because the term keeps the middle of the board. The panel cannot join it
-   * there — centred, the term would lie across the panel and across its own two corner buttons —
-   * so it opens one row below, at the same gutter, out of the control it grows from.
+   * No layout in happy-dom, so the structural proxy. The icon shares the term's row; the map at
+   * its middle size cannot — the row is where the term is, and a 200px square in it would push
+   * everything else off screen — so it opens one row below, out of the control it grows from.
    */
   it('keeps the icon in the term’s row and opens the panel under it', async () => {
     mockStreetView({ visible: true })
     const w = mountBoard()
-    const actions = w.get('[data-test="spot-actions"]').element
-    const icon = w.get('[data-test="spot-mini-open"]').element
+    const row = w.get('[data-test="spot-actions"]').element
+    // Read before the press: the icon steps aside once the panel is open.
+    expect(row.contains(w.get('[data-test="spot-mini-open"]').element)).toBe(true)
 
     await w.get('[data-test="spot-mini-open"]').trigger('click')
 
-    expect(actions.contains(icon)).toBe(false)
     const panel = w.get('[data-test="spot-mini-panel"]').element
-    expect(actions.contains(panel)).toBe(true)
-    expect(icon.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(row.contains(panel)).toBe(false)
+    expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('closes the mini-map on its own button', async () => {
