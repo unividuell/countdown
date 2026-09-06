@@ -134,6 +134,14 @@ it is the only proof available — no unit test can see them.
   it rendered and `invisible`, with its height written down (`h-4` for `text-xs`) so an empty one
   still holds the line. `MemberRow`'s live-points chip; the section's `min-h` is then the row's only
   height rather than a second opinion about it.
+- **A placeholder that only reserves space must not be countable as content.** Padding a list out
+  to a fixed number of empty tiles holds the row's height, but the count is read as a promise: with
+  three hits and six blanks behind them the band says „six more are still loading" when the search
+  has already answered. Reserve with **exactly one** placeholder, shown only while the list is
+  empty, and let it carry the state — spinner while a request is out, „Keine Treffer" for an empty
+  answer, mute before the first one and after a failure (a failed request is not an empty result).
+  The height then hangs on „at least one child", not on a constant nobody can keep honest. See
+  `SongSearchBox`.
 - **An overlay does not reach into a rounded corner the way the content behind it does.** A caption
   laid over the foot of an image (`absolute inset-x-0 bottom-0 bg-white`) inside a
   `rounded-xl overflow-hidden` tile gets clipped out of the two bottom corner arcs, while the image
