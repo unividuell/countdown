@@ -22,21 +22,16 @@ import type { SongSuggestion } from './api'
 
 const SEARCH_DEBOUNCE_MS = 300
 const MIN_QUERY_LENGTH = 3
-/**
- * Covers the band keeps in place when it has fewer hits than that. Nothing ties this to how many
- * hits the endpoint actually answers with — it is simply enough that the band runs off the right
- * edge on any viewport, so an empty band reads as one with more to the side rather than one that
- * stops abruptly after three.
- */
-const SLOTS = 9
 
 defineProps<{ disabled: boolean }>()
 const emit = defineEmits<{ select: [SongSuggestion] }>()
 
 const query = ref('')
 const suggestions = ref<SongSuggestion[]>([])
-/** True from the moment a request goes out until its answer lands — the empty slots then spin. */
+/** True from the moment a request goes out until its answer lands — the placeholder then spins. */
 const searching = ref(false)
+/** True once an answer came back with nothing in it: the one empty band that has something to say. */
+const foundNothing = ref(false)
 const field = ref<HTMLInputElement | null>(null)
 const band = ref<HTMLElement | null>(null)
 
@@ -48,6 +43,7 @@ watchDebounced(
   query,
   async (q) => {
     abort?.abort()
+    foundNothing.value = false
     if (q.trim().length < MIN_QUERY_LENGTH) {
       suggestions.value = []
       return
@@ -56,9 +52,14 @@ watchDebounced(
     abort = new AbortController()
     searching.value = true
     try {
-      const hits = await searchSongs(q.trim(), abort.signal)
-      if (mine === generation) suggestions.value = hits
+      const found = await searchSongs(q.trim(), abort.signal)
+      if (mine === generation) {
+        suggestions.value = found
+        foundNothing.value = found.length === 0
+      }
     } catch {
+      // A failed request is not an empty result: the band stays mute rather than claiming the song
+      // does not exist.
       if (mine === generation) suggestions.value = []
     } finally {
       // Only the newest request may put the spinners away; an aborted one leaves them to its
@@ -94,6 +95,7 @@ function reset(): void {
   query.value = ''
   suggestions.value = []
   searching.value = false
+  foundNothing.value = false
 }
 
 /**
@@ -114,8 +116,6 @@ function choose(hit: SongSuggestion): void {
 
 /** Every hit, however many came back — the endpoint's limit decides that, not the layout. */
 const hits = computed(() => suggestions.value)
-/** The empty slots after them: only ever enough to hold the band's own width open. */
-const blanks = computed(() => Math.max(SLOTS - hits.value.length, 0))
 </script>
 
 <template>
@@ -147,18 +147,22 @@ const blanks = computed(() => Math.max(SLOTS - hits.value.length, 0))
           <TickerLine :text="hit.artist" class="text-xs leading-snug text-neutral-500" />
         </span>
       </button>
+      <!-- Exactly one, and only while there is nothing to show: it holds the band's height so the
+           field and the bar below never move, and it is the whole state of the search — spinning
+           while a request is out, naming an empty answer, mute before the first one. Slots that
+           merely padded the band out to a fixed length read as hits still loading, which is a lie
+           whenever the search already answered. -->
       <span
-        v-for="blank in blanks"
-        :key="`blank-${blank}`"
-        class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-neutral-50"
-        data-test="song-hit-blank"
+        v-if="hits.length === 0"
+        class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-neutral-50 text-xs text-neutral-400"
+        data-test="song-band-placeholder"
       >
-        <!-- One per waiting slot, so the band itself says a search is out. -->
         <span
           v-if="searching"
           class="size-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500 motion-reduce:animate-none"
           data-test="song-hit-spinner"
         />
+        <template v-else-if="foundNothing">Keine Treffer</template>
       </span>
     </div>
 
