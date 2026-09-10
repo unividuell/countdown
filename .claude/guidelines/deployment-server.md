@@ -22,6 +22,17 @@ Sibling: [deployment.md](deployment.md) (images, CI, the compose topology, backe
   pgBackRest upgrade. **Compose gotcha:** in a `command:` block escape shell `$(...)` as `$$(...)`,
   else Compose interpolates it away.
 
+- **A JVM container without `mem_limit` sizes its heap from the HOST.** The Buildpacks memory
+  calculator reads the cgroup limit, and with none it reads the machine: on this shared box both
+  stacks were handed `-Xmx20688742K`, each believing it owned ~20 GB of 23 GB — while running with
+  `-XX:+ExitOnOutOfMemoryError`. Nothing fails until something finally allocates. Set `mem_limit` on
+  every JVM service and verify the result rather than computing it:
+  `docker run --rm -m 2g <image>` prints the calculator's line. Budget ~610 MB of the limit for
+  metaspace, code cache, direct memory and 250 thread stacks before anything becomes heap — set it
+  below that and the container fails to start instead of running small. Give the variable a
+  **default** in compose (`${CORE_MEM_LIMIT:-2g}`): a new *required* compose variable cannot be
+  staging-deployed until `update.sh` reaches `main` (see below).
+
 ### `update.sh <prod|staging>`
 
 The server runs a `curl`-able `update.sh` (default target `prod`) that re-fetches the infra files,

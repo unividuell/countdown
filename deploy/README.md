@@ -268,6 +268,29 @@ ssh -L 5051:127.0.0.1:5051 <user>@<server>
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug stop pgadmin
 ```
 
+## Container memory
+
+The `core` service carries `mem_limit: ${CORE_MEM_LIMIT:-2g}`. This is not a safety net that only
+matters under load: the Buildpacks memory calculator derives the JVM's heap from the container's
+limit, and **without one it uses the host's RAM**. On this shared box that meant both stacks got
+`-Xmx20688742K` -- each JVM believed it could grow into ~20 GB of a 23 GB machine, next to
+`comunio-news`, `mobility-manager` and the edge Caddy, and both run with `-XX:+ExitOnOutOfMemoryError`.
+
+Measured with the published image:
+
+```
+docker run --rm -m 2g ghcr.io/unividuell/countdown-core:latest   # -> -Xmx1477094K (~1.41 GB)
+```
+
+Against a working set of ~715 MB RSS per stack, 2g is roughly double what the app uses. Staging
+runs the same default on purpose: a limit that is too tight must fail there first. Raise or lower
+it per environment with `CORE_MEM_LIMIT` in `.env.<target>`; the variable is optional, so an
+existing env file keeps working untouched.
+
+If you lower it, check the calculator's output again with the command above -- it subtracts
+metaspace, code cache, direct memory and 250 thread stacks (~610 MB total) before what is left
+becomes the heap, and a limit below that makes the container fail to start rather than run small.
+
 ## Backups & restore
 
 The `db-backup` service writes daily logical dumps (7-day retention):

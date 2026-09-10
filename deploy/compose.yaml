@@ -40,6 +40,14 @@ services:
   core:
     image: ghcr.io/unividuell/countdown-core:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    # Without a limit the Buildpacks memory calculator sizes the heap from the HOST's RAM. On this
+    # shared box that gave BOTH stacks -Xmx20688742K (~20 GB of a 23 GB machine, measured
+    # 2026-09-10) -- prod and staging each believed they owned it, and both run with
+    # -XX:+ExitOnOutOfMemoryError. The limit is what the calculator divides up: 2g leaves ~1.4 GB
+    # heap against a ~715 MB working set. Staging shares the default on purpose, so a limit that is
+    # too tight fails there before it reaches prod. Defaulted, not required: a new mandatory
+    # variable could not be staging-deployed until update.sh reached main (see deployment-server.md).
+    mem_limit: ${CORE_MEM_LIMIT:-2g}
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}

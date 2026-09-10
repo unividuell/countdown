@@ -184,10 +184,9 @@ Geprüft wird von billig nach teuer, damit ein schlechter Upload früh stirbt:
 Zwei Fallen stecken in Schritt 6:
 
 - **Unterabtastung beim Dekodieren** (`ImageReadParam.setSourceSubsampling`). Ein 40-MP-Bild wäre
-  als `BufferedImage` ~160 MB Heap. Das ist auf dem Zielserver **kein** Speicherproblem — `core`
-  läuft ohne `mem_limit`, der Buildpack-Rechner hat daraus `-Xmx20688742K` gemacht (gemessen am
-  2026-09-10). Klein zu dekodieren ist trotzdem richtig, nur aus einem anderen Grund: es ist
-  schneller und erspart dem Sammler einen 160-MB-Brocken pro Upload.
+  als `BufferedImage` ~160 MB Heap — bei den 1,41 GB, die der Buildpack-Rechner unter dem neuen
+  `mem_limit: 2g` vergibt (gemessen), sind das 11 % des Heaps für einen einzigen Upload. Kein OOM,
+  aber ohne Not. Klein dekodieren lässt davon ein paar MB übrig.
 - **EXIF-Orientierung.** Die JDK-Bildbibliothek wendet sie nicht an, Handyfotos tragen sie fast
   immer — ohne Behandlung liegt jedes Hochformat in der Liste auf der Seite. Dafür
   `com.drewnoakes:metadata-extractor` (klein, abhängigkeitsfrei) zum Lesen des Tags, Drehung beim
@@ -326,12 +325,13 @@ Beim Bauen nachzuziehen: `spring.servlet.multipart.max-file-size` / `max-request
 Was am 2026-09-10 auf `oci.unividuell.org` nachgesehen und **erledigt** ist: weder der eigene noch
 der geteilte Rand-Caddy setzt ein `request_body max_size`, der Upload läuft also ungehindert durch.
 
-Ein Fund am Rande, der **nicht** zu diesem Entwurf gehört und hier nur festgehalten wird: `core`
-läuft ohne `mem_limit`, weshalb der Buildpack-Rechner jeder der beiden JVMs (prod und staging)
-~20 GB Heap zubilligt — auf einer Maschine mit 23 GB, neben `comunio-news`, `mobility-manager` und
-dem Rand-Caddy, und beide mit `-XX:+ExitOnOutOfMemoryError`. Heute unkritisch (3,2 GB tatsächlich
-belegt), aber Bilddekodierung ist die erste Last in dieser App, die schubweise hunderte MB anfasst.
-Ein `mem_limit` auf den `core`-Diensten wäre eine eigene Änderung an der Produktionsinfrastruktur.
+Bei der Vermessung fiel auf, dass `core` ohne `mem_limit` lief — weshalb der Buildpack-Rechner
+jeder der beiden JVMs (prod und staging) ~20 GB Heap zubilligte, auf einer Maschine mit 23 GB, neben
+`comunio-news`, `mobility-manager` und dem Rand-Caddy, und beide mit `-XX:+ExitOnOutOfMemoryError`.
+Unkritisch, solange nichts allokiert; Bilddekodierung wäre die erste Last in dieser App, die
+schubweise hunderte MB anfasst. **Das ist auf diesem Branch bereits behoben** (`mem_limit:
+${CORE_MEM_LIMIT:-2g}`, gemessene Folge: `-Xmx1477094K` gegen ~715 MB Arbeitsmenge) und damit eine
+Voraussetzung dieses Entwurfs, keine offene Aufgabe.
 
 ## Tests
 
