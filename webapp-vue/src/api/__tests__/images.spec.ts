@@ -29,7 +29,6 @@ class FakeXhr {
   send(body: unknown) {
     this.sent = body
   }
-  abort() {}
 }
 
 describe('uploadImage', () => {
@@ -79,13 +78,13 @@ describe('uploadImage', () => {
     xhr.onload?.()
 
     await expect(promise).rejects.toBeInstanceOf(UploadError)
-    await promise.catch((e: UploadError) => expect(e.code).toBe('POOL_FULL'))
+    await expect(promise).rejects.toMatchObject({ code: 'POOL_FULL' })
   })
 
   it('reports a network failure as an UploadError without a code', async () => {
     const promise = uploadImage('/api/communities/alpha/images', file, () => {})
     FakeXhr.last.onerror?.()
-    await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
+    await expect(promise).rejects.toMatchObject({ code: 'NETWORK' })
   })
 
   it('falls back to NETWORK when a refusal body cannot be parsed as JSON', async () => {
@@ -94,7 +93,7 @@ describe('uploadImage', () => {
     xhr.status = 502
     xhr.responseText = '<html>gateway down</html>'
     xhr.onload?.()
-    await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
+    await expect(promise).rejects.toMatchObject({ code: 'NETWORK' })
   })
 
   /** The three things this sidecar reproduces by hand are credentials, CSRF -- and this. */
@@ -125,6 +124,6 @@ describe('uploadImage', () => {
   it('gives up on a stalled upload instead of blocking the queue', async () => {
     const promise = uploadImage('/api/communities/alpha/images', file, () => {})
     FakeXhr.last.ontimeout?.()
-    await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
+    await expect(promise).rejects.toMatchObject({ code: 'NETWORK' })
   })
 })

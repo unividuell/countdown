@@ -36,6 +36,9 @@ services:
           pg_dump -h postgres -U admin -d app --exclude-table-data=imagepool.images \
             | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
           find /backups -name 'app-*.sql.gz' -mtime +7 -delete
+          # A .part left by a crash mid-dump is never renamed and never counted by the retention
+          # below, so it would sit on the disk at full size forever. A day old means orphaned.
+          find /backups -name 'images-*.sql.gz.part' -mtime +1 -delete
 
           # Images are ~800 MB per stack and change a few times a year, so the trigger is a
           # fingerprint rather than a schedule -- an unchanged pool costs one query over ~490 rows.

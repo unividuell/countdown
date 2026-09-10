@@ -38,11 +38,6 @@ export const deleteImage = (base: string, id: string) =>
   apiFetch<void>(`${base}/${id}`, { method: 'DELETE' })
 
 /**
- * Binary sidecar to `apiFetch`, which is JSON-only by contract AND bounded by a 10s timeout that a
- * 5 MB upload over mobile data blows through. XMLHttpRequest rather than fetch because fetch has no
- * upload progress, and 5 MB without a bar looks like a crash on a phone.
- */
-/**
  * The whole upload is bounded, because the queue is sequential: a connection that stalls without
  * ever failing would otherwise block every remaining file with nothing on screen to explain it.
  * Four minutes is past any upload that can still succeed -- the server caps a file at 15 MB, which
@@ -50,6 +45,11 @@ export const deleteImage = (base: string, id: string) =>
  */
 const UPLOAD_TIMEOUT_MS = 240_000
 
+/**
+ * Binary sidecar to `apiFetch`, which is JSON-only by contract AND bounded by a 10s timeout that a
+ * 5 MB upload over mobile data blows through. XMLHttpRequest rather than fetch because fetch has no
+ * upload progress, and 5 MB without a bar looks like a crash on a phone.
+ */
 export function uploadImage(
   base: string,
   file: File,
