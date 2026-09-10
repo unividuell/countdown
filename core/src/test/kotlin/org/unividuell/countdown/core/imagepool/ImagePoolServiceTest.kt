@@ -1,10 +1,19 @@
 package org.unividuell.countdown.core.imagepool
 
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.mockk.verify
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.SimpleTransactionStatus
+import org.springframework.transaction.support.TransactionTemplate
 import org.unividuell.countdown.core.imagepool.internal.*
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -22,7 +31,15 @@ class ImagePoolServiceTest {
         // Long, not Int -- Kotlin does not widen a literal for you.
         maxBytes = 15 * 1024 * 1024, maxPixels = 40_000_000L, thumbEdge = 400,
     )
-    private val service = ImagePoolService(images = images, limits = limits)
+    private val transactionManager = RecordingTransactionManager()
+    private val service = ImagePoolService(
+        images = images,
+        limits = limits,
+        transactions = TransactionTemplate(transactionManager),
+    )
+
+    @AfterEach
+    fun unmockIntake() = unmockkObject(ImageIntake)
 
     private val communityId = UUID.fromString("018f0000-0000-7000-8000-0000000000c1")
     private val uploader = UUID.fromString("018f0000-0000-7000-8000-0000000000a1")
@@ -68,12 +85,47 @@ class ImagePoolServiceTest {
         }
     }
 
+    /**
+     * The guarantee that protects the connection pool: the decode is the slow part of an upload,
+     * and a transaction here means one of Hikari's ten connections plus the community's advisory
+     * lock. Nothing else in this file would notice the whole method going back under one
+     * transaction, so this asks where each step ran.
+     */
+    @Test
+    fun `the decode runs outside the transaction, the lock and the insert inside`() {
+        every { images.countInPool(communityId) } returns 0
+        every { images.existsInPool(communityId = communityId, sha256 = any()) } returns false
+        every { images.findSummary(any()) } returns summary()
+        val inTransaction = mutableMapOf<String, Boolean>()
+        every { images.lockPool(any()) } answers { inTransaction["lock"] = transactionManager.active; 1L }
+        every { images.save(any<Image>()) } answers {
+            inTransaction["save"] = transactionManager.active
+            Image(
+                id = UUID.randomUUID(), communityId = communityId, uploadedBy = uploader,
+                mediaType = "image/jpeg", width = 64, height = 32, byteSize = 3,
+                sha256 = ByteArray(32), bytes = ByteArray(3), thumbBytes = byteArrayOf(1),
+            )
+        }
+        mockkObject(ImageIntake)
+        every { ImageIntake.thumbnail(bytes = any(), mediaType = any(), maxEdge = any()) } answers {
+            inTransaction["decode"] = transactionManager.active
+            byteArrayOf(1)
+        }
+
+        service.upload(pool = pool, uploaderId = uploader, bytes = jpeg())
+
+        inTransaction shouldBe mapOf("decode" to false, "lock" to true, "save" to true)
+        transactionManager.events shouldContainExactly listOf("begin", "commit")
+    }
+
     @Test
     fun `refuses a full pool`() {
         every { images.countInPool(communityId) } returns 2
         assertFailsWith<PoolFullException> {
             service.upload(pool = pool, uploaderId = uploader, bytes = jpeg())
         }
+        // The refusal happens inside the guarded region, so it must undo it rather than commit.
+        transactionManager.events shouldContainExactly listOf("begin", "rollback")
     }
 
     @Test
@@ -152,4 +204,31 @@ class ImagePoolServiceTest {
         mediaType = "image/jpeg", width = 64, height = 32, byteSize = 10,
         createdAt = Instant.parse("2026-09-01T00:00:00Z"),
     )
+}
+
+/**
+ * A real [TransactionTemplate] over a manager that does nothing but say when it is inside a
+ * transaction. The service's own path stays unstubbed -- what is faked is the database, not the
+ * boundary being tested.
+ */
+private class RecordingTransactionManager : PlatformTransactionManager {
+    val events = mutableListOf<String>()
+    var active = false
+        private set
+
+    override fun getTransaction(definition: TransactionDefinition?): TransactionStatus {
+        events += "begin"
+        active = true
+        return SimpleTransactionStatus()
+    }
+
+    override fun commit(status: TransactionStatus) {
+        events += "commit"
+        active = false
+    }
+
+    override fun rollback(status: TransactionStatus) {
+        events += "rollback"
+        active = false
+    }
 }

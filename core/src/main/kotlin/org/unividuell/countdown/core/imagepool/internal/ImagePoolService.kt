@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.imagepool.internal
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.security.MessageDigest
 import java.util.UUID
 
@@ -9,12 +10,20 @@ import java.util.UUID
 class ImagePoolService(
     private val images: ImageRepository,
     private val limits: ImagePoolProperties,
+    private val transactions: TransactionTemplate,
 ) {
     /**
-     * The whole intake in one transaction, because the quota check and the insert must not be
-     * separable: the advisory lock taken first is released when this transaction ends.
+     * Inspecting and rescaling the file happens BEFORE the transaction opens. Both are CPU-bound
+     * and slow, and a transaction here means one of Hikari's ten connections plus the pool's
+     * advisory lock: held across the decode, ten concurrent uploads would starve the whole
+     * application of connections, and two uploads into one community would queue behind each
+     * other's rescaling. The price is a thumbnail computed for a file the quota then refuses.
+     *
+     * `TransactionTemplate` rather than a second @Transactional method: called from inside this
+     * class, that one would go around the proxy and run with no transaction at all -- the advisory
+     * lock would be released the moment it was taken, the quota would stop being safe, and every
+     * test here would stay green.
      */
-    @Transactional
     fun upload(pool: PoolContext, uploaderId: UUID, bytes: ByteArray): ImageSummary {
         if (bytes.size > limits.maxBytes) throw ImageTooLargeException(limits.maxBytes)
 
@@ -28,31 +37,33 @@ class ImagePoolService(
             .getOrElse { throw BrokenImageException() }
         if (dimensions.pixels > limits.maxPixels) throw TooManyPixelsException(limits.maxPixels)
 
-        images.lockPool(lockKey(pool.communityId))
-        val limit = if (pool.communityId == null) limits.globalLimit else limits.perCommunityLimit
-        if (images.countInPool(pool.communityId) >= limit) throw PoolFullException(limit)
-
         val sha256 = MessageDigest.getInstance("SHA-256").digest(bytes)
-        if (images.existsInPool(communityId = pool.communityId, sha256 = sha256)) throw DuplicateImageException()
-
         val thumb = runCatching {
             ImageIntake.thumbnail(bytes = bytes, mediaType = mediaType, maxEdge = limits.thumbEdge)
         }.getOrElse { throw BrokenImageException() }
 
-        val saved = images.save(
-            Image(
-                communityId = pool.communityId,
-                uploadedBy = uploaderId,
-                mediaType = mediaType,
-                width = dimensions.width,
-                height = dimensions.height,
-                byteSize = bytes.size,
-                sha256 = sha256,
-                bytes = bytes,
-                thumbBytes = thumb,
-            ),
-        )
-        return images.findSummary(saved.id!!) ?: throw ImageNotFoundException()
+        // Database only from here on: the lock, the two reads it guards, and the insert.
+        return transactions.execute {
+            images.lockPool(lockKey(pool.communityId))
+            val limit = limitOf(pool)
+            if (images.countInPool(pool.communityId) >= limit) throw PoolFullException(limit)
+            if (images.existsInPool(communityId = pool.communityId, sha256 = sha256)) throw DuplicateImageException()
+
+            val saved = images.save(
+                Image(
+                    communityId = pool.communityId,
+                    uploadedBy = uploaderId,
+                    mediaType = mediaType,
+                    width = dimensions.width,
+                    height = dimensions.height,
+                    byteSize = bytes.size,
+                    sha256 = sha256,
+                    bytes = bytes,
+                    thumbBytes = thumb,
+                ),
+            )
+            images.findSummary(saved.id!!) ?: throw ImageNotFoundException()
+        }!!
     }
 
     fun list(pool: PoolContext, viewerId: UUID): List<ImageSummary> = when {
