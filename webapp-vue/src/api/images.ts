@@ -42,16 +42,24 @@ export const deleteImage = (base: string, id: string) =>
  * 5 MB upload over mobile data blows through. XMLHttpRequest rather than fetch because fetch has no
  * upload progress, and 5 MB without a bar looks like a crash on a phone.
  */
+/**
+ * The whole upload is bounded, because the queue is sequential: a connection that stalls without
+ * ever failing would otherwise block every remaining file with nothing on screen to explain it.
+ * Four minutes is past any upload that can still succeed -- the server caps a file at 15 MB, which
+ * is about four minutes at 500 kbit/s -- and far short of forever.
+ */
+const UPLOAD_TIMEOUT_MS = 240_000
+
 export function uploadImage(
   base: string,
   file: File,
   onProgress: (fraction: number) => void,
-  signal?: AbortSignal,
 ): Promise<ImageResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', base)
     xhr.withCredentials = true
+    xhr.timeout = UPLOAD_TIMEOUT_MS
     for (const [name, value] of Object.entries(csrfHeader())) xhr.setRequestHeader(name, value)
 
     xhr.upload.onprogress = (e) => {
@@ -60,7 +68,14 @@ export function uploadImage(
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText) as ImageResponse)
+        // A 2xx whose body will not parse must still settle this promise. Throwing here would
+        // throw inside an event handler, off the executor's stack, where nothing catches it --
+        // and the caller would await forever.
+        try {
+          resolve(JSON.parse(xhr.responseText) as ImageResponse)
+        } catch {
+          reject(new UploadError('NETWORK', xhr.status))
+        }
         return
       }
       if (xhr.status === 401) notifyUnauthorized()
@@ -76,7 +91,7 @@ export function uploadImage(
     }
 
     xhr.onerror = () => reject(new UploadError('NETWORK', 0))
-    signal?.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.ontimeout = () => reject(new UploadError('NETWORK', 0))
 
     const form = new FormData()
     form.append('file', file)

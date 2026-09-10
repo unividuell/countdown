@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setUnauthorizedHandler } from '@/api/client'
 import { UploadError, uploadImage } from '@/api/images'
 
 /** happy-dom has no usable XMLHttpRequest, so the test drives one it owns. */
@@ -7,6 +8,8 @@ class FakeXhr {
   upload = { onprogress: null as ((e: ProgressEvent) => void) | null }
   onload: (() => void) | null = null
   onerror: (() => void) | null = null
+  ontimeout: (() => void) | null = null
+  timeout = 0
   status = 0
   responseText = ''
   withCredentials = false
@@ -91,6 +94,37 @@ describe('uploadImage', () => {
     xhr.status = 502
     xhr.responseText = '<html>gateway down</html>'
     xhr.onload?.()
+    await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
+  })
+
+  /** The three things this sidecar reproduces by hand are credentials, CSRF -- and this. */
+  it('lets the app know when the session is gone', async () => {
+    const seen = vi.fn()
+    setUnauthorizedHandler(seen)
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const xhr = FakeXhr.last
+    xhr.status = 401
+    xhr.responseText = JSON.stringify({ status: 401, code: 'NO_ACCESS' })
+    xhr.onload?.()
+
+    await promise.catch(() => {})
+    expect(seen).toHaveBeenCalledOnce()
+  })
+
+  /** A 2xx that will not parse must still settle -- a throw inside onload settles nothing. */
+  it('rejects rather than hangs when a success body is not JSON', async () => {
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const xhr = FakeXhr.last
+    xhr.status = 201
+    xhr.responseText = '<html>gateway</html>'
+    xhr.onload?.()
+
+    await expect(promise).rejects.toBeInstanceOf(UploadError)
+  })
+
+  it('gives up on a stalled upload instead of blocking the queue', async () => {
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    FakeXhr.last.ontimeout?.()
     await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
   })
 })
