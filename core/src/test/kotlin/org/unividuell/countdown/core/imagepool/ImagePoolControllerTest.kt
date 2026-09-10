@@ -159,4 +159,27 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.delete("/api/communities/alpha/images/$imageId") { with(principalFor()); with(csrf()) }
             .andExpect { status { isNoContent() } }
     }
+
+    @Test
+    fun `a listed image appears with question mark when its uploader row is gone`() {
+        every {
+            gate.forCommunity(slug = "alpha", userId = TEST_USER_ID, isSuperAdmin = false)
+        } returns memberPool
+        every { service.list(pool = memberPool, viewerId = TEST_USER_ID) } returns listOf(summary)
+        every { service.count(memberPool) } returns 1L
+        every { service.limitOf(memberPool) } returns 150
+        // Return an empty list: the uploader exists in the image summary but not in the user query result.
+        every { users.findAllById(listOf(TEST_USER_ID)) } returns emptyList()
+
+        mockMvc.get("/api/communities/alpha/images") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.used") { value(1) }
+                jsonPath("$.limit") { value(150) }
+                jsonPath("$.images[0].id") { value(imageId.toString()) }
+                // The uploader's row is gone, but the image still appears with a placeholder name.
+                jsonPath("$.images[0].uploadedBy") { value("?") }
+                jsonPath("$.images") { isArray() }
+            }
+    }
 }
