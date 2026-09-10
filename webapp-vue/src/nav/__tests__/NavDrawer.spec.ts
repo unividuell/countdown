@@ -513,6 +513,7 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=admin-heading]').text()).toBe('Team Süd')
     expect(w.get('[data-test=pending-count]').text()).toBe('3')
     expect(w.findAll('[data-test=nav-scroll] a').map((a) => a.attributes('href'))).toEqual([
+      communityPath('team', 'images'),
       communityPath('team', 'requests'),
       communityPath('team', 'members'),
       communityPath('team', 'settings'),

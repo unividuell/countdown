@@ -342,6 +342,18 @@ onKeyStroke('Tab', (e) => {
             </RouterLink>
           </template>
 
+          <!-- Every member sees this, unlike the admin-only rows below: gated on being inside a
+               community at all, not on showCommunityBlock (which hides when there's nothing to
+               switch to or create) and not on admin. -->
+          <RouterLink
+            v-if="activeCommunity"
+            :to="communityPath(activeCommunity.slug, 'images')"
+            data-test="community-images"
+            :class="LINK"
+          >
+            Bilder
+          </RouterLink>
+
           <template v-if="admin">
             <!-- Separates the admin block from the community block above — only when there is
                  one, otherwise it would sit flush against the header seam as a stray rule. -->
