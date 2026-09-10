@@ -293,20 +293,35 @@ becomes the heap, and a limit below that makes the container fail to start rathe
 
 ## Backups & restore
 
-The `db-backup` service writes daily logical dumps (7-day retention):
-- prod: `./backups/app-<timestamp>.sql.gz`
-- staging: `./backups-staging/app-<timestamp>.sql.gz` (set by `BACKUP_DIR` in `.env.staging`)
+The `db-backup` service writes two kinds of dump:
+- `app-<timestamp>.sql.gz` — daily, full schema, `imagepool.images` rows excluded (7-day retention).
+- `images-<timestamp>.sql.gz` — the pool's rows only, written when the pool's fingerprint moves
+  (`IMAGE_BACKUP_KEEP` kept states, default 8).
+
+Locations:
+- prod: `./backups/`
+- staging: `./backups-staging/` (set by `BACKUP_DIR` in `.env.staging`)
 
 Copy the backup directory off-site regularly (rsync/scp).
 
-**Restore** into the running database:
+The image dump is written only when the pool actually changed, so `IMAGE_BACKUP_KEEP` counts
+**changes, not days**: a mass deletion followed by seven uploads consumes every kept state. At
+full pools eight states are ~20 GB; the host had 181 GB free when this was measured.
+
+**Restore**, in this order — the image rows reference `community.communities` and `iam.users`,
+so the daily dump has to land first:
 ```bash
 # prod:
 gunzip -c backups/app-<timestamp>.sql.gz \
+  | docker compose --env-file .env.prod -f compose.prod.yaml exec -T postgres psql -U admin -d app
+gunzip -c backups/images-<timestamp>.sql.gz \
   | docker compose --env-file .env.prod -f compose.prod.yaml exec -T postgres psql -U admin -d app
 
 # staging:
 gunzip -c backups-staging/app-<timestamp>.sql.gz \
   | docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app
+gunzip -c backups-staging/images-<timestamp>.sql.gz \
+  | docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app
 ```
-Restore into an empty/fresh `app` database.
+Restore into an empty/fresh `app` database. No `images-<timestamp>.sql.gz` yet (empty pool, or none
+since the last change) — the first command alone already yields a running app.

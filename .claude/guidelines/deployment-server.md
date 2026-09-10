@@ -21,6 +21,13 @@ Sibling: [deployment.md](deployment.md) (images, CI, the compose topology, backe
   `gzip` write a silent corrupt/empty archive (the pipe hides `pg_dump`'s failure). PITR is a later
   pgBackRest upgrade. **Compose gotcha:** in a `command:` block escape shell `$(...)` as `$$(...)`,
   else Compose interpolates it away.
+- **Split a dump on table data, not on schemas, when one table dwarfs the rest.**
+  `--exclude-table-data=<table>` keeps the DDL and drops the rows, so a restore from the daily dump
+  alone still boots the app -- with that table empty rather than missing. The heavy table gets its
+  own `--data-only --table=<table>` dump, triggered by a fingerprint
+  (`count(*) || md5(string_agg(id))`) instead of a schedule, so an unchanged table costs one query
+  a day instead of its own size. Retention then counts **changes, not days**: say so where the
+  number is configured, or someone will read "keep 8" as "eight days of safety".
 
 - **A JVM container without `mem_limit` sizes its heap from the HOST.** The Buildpacks memory
   calculator reads the cgroup limit, and with none it reads the machine: on this shared box both

@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD}
+      - IMAGE_BACKUP_KEEP=${IMAGE_BACKUP_KEEP:-8}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
     entrypoint: ["/bin/bash", "-c"]
@@ -28,8 +29,30 @@ services:
         set -eo pipefail
         while true; do
           until pg_isready -h postgres -U admin -d app; do sleep 2; done
-          pg_dump -h postgres -U admin -d app | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
+
+          # The daily dump keeps the images' table DEFINITION but not its rows: a restore from
+          # this file alone yields a running app with an empty pool, rather than one that trips
+          # over a missing schema on every image request.
+          pg_dump -h postgres -U admin -d app --exclude-table-data=imagepool.images \
+            | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
           find /backups -name 'app-*.sql.gz' -mtime +7 -delete
+
+          # Images are ~800 MB per stack and change a few times a year, so the trigger is a
+          # fingerprint rather than a schedule -- an unchanged pool costs one query over ~490 rows.
+          # to_regclass is empty before the app has migrated, which is the state right after this
+          # compose file is deployed.
+          if [ -n "$$(psql -h postgres -U admin -d app -tAc "SELECT to_regclass('imagepool.images')")" ]; then
+            fingerprint=$$(psql -h postgres -U admin -d app -tAc \
+              "SELECT count(*) || '-' || coalesce(md5(string_agg(id::text, ',' ORDER BY id)), '0') FROM imagepool.images")
+            if [ "$$fingerprint" != "$$(cat /backups/images.fingerprint 2>/dev/null)" ]; then
+              pg_dump -h postgres -U admin -d app --data-only --table=imagepool.images \
+                | gzip > "/backups/images-$$(date +%Y%m%d-%H%M%S).sql.gz"
+              printf '%s' "$$fingerprint" > /backups/images.fingerprint
+              # Retention counts CHANGES, not days: keep the newest IMAGE_BACKUP_KEEP states.
+              ls -1t /backups/images-*.sql.gz | tail -n +$$((IMAGE_BACKUP_KEEP + 1)) | xargs -r rm -f
+            fi
+          fi
+
           sleep 86400
         done
     depends_on:
