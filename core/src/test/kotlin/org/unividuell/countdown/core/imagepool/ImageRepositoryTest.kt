@@ -1,15 +1,18 @@
 package org.unividuell.countdown.core.imagepool
 
+import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DuplicateKeyException
+import org.springframework.data.jdbc.repository.query.Query
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
@@ -117,6 +120,38 @@ class ImageRepositoryTest(
         assertFailsWith<DuplicateKeyException> {
             images.save(image(communityId = null, uploader = alice, seed = 8))
         }
+    }
+
+    /**
+     * The summary queries are a projection on purpose: `bytes` averages several MB a row, so a
+     * `SELECT *` over a full 150-image pool is ~750 MB against a 1.4 GB heap, on a container that
+     * runs -XX:+ExitOnOutOfMemoryError. Every other assertion in this file -- ids, order, counts,
+     * deletion -- stays green through exactly that change, so the guarantee is asserted on the SQL.
+     */
+    @Test
+    fun `no summary query reads the byte columns`() {
+        val projections = setOf("listForCommunity", "listForUploader", "listGlobal", "findSummary")
+        val queried = ImageRepository::class.java.declaredMethods
+            .filter { it.name in projections }
+            .map { it.name to it.getAnnotation(Query::class.java).shouldNotBeNull().value }
+
+        // Without this, a renamed method would drop out of the filter and take its guarantee along.
+        queried.map { it.first }.toSet() shouldBe projections
+
+        queried.forEach { (name, sql) ->
+            val selected = sql.substringAfter("SELECT").substringBefore("FROM")
+            withClue("$name selects$selected") {
+                // Catches both `bytes` and `thumb_bytes`; `byte_size` is a small int and welcome.
+                selected shouldNotContain "bytes"
+                selected shouldNotContain "*"
+            }
+        }
+    }
+
+    /** The one query no other test reaches: a typo would surface on the first production upload. */
+    @Test
+    fun `the pool lock is SQL Postgres accepts`() {
+        images.lockPool(System.nanoTime()) shouldBe 1L
     }
 
     @Test
