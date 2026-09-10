@@ -2,6 +2,8 @@ package org.unividuell.countdown.core.imagepool.internal
 
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.ExifIFD0Directory
+import java.awt.Color
+import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
@@ -74,12 +76,17 @@ object ImageIntake {
     fun thumbnail(bytes: ByteArray, mediaType: String, maxEdge: Int): ByteArray {
         val decoded = withReader(bytes = bytes, mediaType = mediaType) { reader ->
             val longEdge = max(a = reader.getWidth(0), b = reader.getHeight(0))
-            val step = max(a = 1, b = longEdge / (maxEdge * 2))
+            val step = subsamplingStep(longEdge = longEdge, maxEdge = maxEdge)
             val param = reader.defaultReadParam.apply { setSourceSubsampling(step, step, 0, 0) }
             reader.read(0, param)
         }
 
-        val oriented = applyOrientation(image = decoded, orientation = orientationOf(bytes))
+        // Flattened onto white FIRST: every buffer below is TYPE_INT_RGB, which starts out black,
+        // so rotating or scaling a transparent PNG before the white ground is laid down turns its
+        // alpha into black. JPEG has no alpha either way; a photo pool's PNGs are the exception.
+        val opaque = flattenedOntoWhite(decoded)
+
+        val oriented = applyOrientation(image = opaque, orientation = orientationOf(bytes))
         val scale = minOf(a = 1.0, b = maxEdge.toDouble() / max(a = oriented.width, b = oriented.height))
         val target = if (scale == 1.0) oriented else scaled(
             source = oriented,
@@ -88,17 +95,17 @@ object ImageIntake {
         )
 
         val out = ByteArrayOutputStream()
-        // Flattened onto white: JPEG has no alpha, and a photo pool's PNGs are the exception.
-        val opaque = BufferedImage(target.width, target.height, BufferedImage.TYPE_INT_RGB)
-        opaque.createGraphics().apply {
-            color = java.awt.Color.WHITE
-            fillRect(0, 0, target.width, target.height)
-            drawImage(target, 0, 0, null)
-            dispose()
-        }
-        ImageIO.write(opaque, "jpeg", out)
+        ImageIO.write(target, "jpeg", out)
         return out.toByteArray()
     }
+
+    /**
+     * How many source pixels [thumbnail] skips per decoded pixel, so a 40 MP file never becomes a
+     * 160 MB BufferedImage for a 400 px result. Twice the target edge leaves the second, smooth
+     * step something to work with; below that there is nothing to save, and the floor of 1 keeps
+     * integer division from asking the reader for every zeroth pixel.
+     */
+    internal fun subsamplingStep(longEdge: Int, maxEdge: Int): Int = max(a = 1, b = longEdge / (maxEdge * 2))
 
     private fun <T> withReader(bytes: ByteArray, mediaType: String, block: (ImageReader) -> T): T {
         val readers = ImageIO.getImageReadersByMIMEType(mediaType)
@@ -139,22 +146,34 @@ object ImageIntake {
                 else -> return image
             }
         }
-        val out = BufferedImage(if (swaps) h else w, if (swaps) w else h, BufferedImage.TYPE_INT_RGB)
-        out.createGraphics().apply {
-            setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        return withGraphics(width = if (swaps) h else w, height = if (swaps) w else h) {
             drawImage(image, transform, null)
-            dispose()
         }
-        return out
     }
 
-    private fun scaled(source: BufferedImage, width: Int, height: Int): BufferedImage {
-        val out = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-        out.createGraphics().apply {
-            setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+    private fun scaled(source: BufferedImage, width: Int, height: Int): BufferedImage =
+        withGraphics(width = width, height = height) {
             drawImage(source, 0, 0, width, height, null)
-            dispose()
+        }
+
+    private fun flattenedOntoWhite(source: BufferedImage): BufferedImage =
+        withGraphics(width = source.width, height = source.height) {
+            color = Color.WHITE
+            fillRect(0, 0, source.width, source.height)
+            drawImage(source, 0, 0, null)
+        }
+
+    /** The one place a buffer is allocated: same type, same hints, and the context always disposed. */
+    private fun withGraphics(width: Int, height: Int, draw: Graphics2D.() -> Unit): BufferedImage {
+        val out = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        val graphics = out.createGraphics()
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+
+        try {
+            graphics.draw()
+        } finally {
+            graphics.dispose()
         }
         return out
     }

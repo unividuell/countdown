@@ -114,6 +114,43 @@ class ImageIntakeTest {
         ImageIntake.detect(thumb) shouldBe DetectedFormat.Supported("image/jpeg")
     }
 
+    /**
+     * Asserted on the arithmetic, not on the result: the thumbnail's DIMENSIONS are identical
+     * whether the step is computed or hard-coded to 1, so nothing else in this file would notice
+     * a 40 MP source being unpacked whole -- ~160 MB of a 1.4 GB heap for one upload.
+     */
+    @Test
+    fun `the decode subsamples instead of unpacking a 40 MP source whole`() {
+        // 8000 px against a 400 px target: every 10th pixel, 1/100 of the heap.
+        ImageIntake.subsamplingStep(longEdge = 8000, maxEdge = 400) shouldBe 10
+        // Below twice the target there is nothing left to skip...
+        ImageIntake.subsamplingStep(longEdge = 1599, maxEdge = 400) shouldBe 1
+        // ...and the floor keeps integer division from asking for every zeroth pixel.
+        ImageIntake.subsamplingStep(longEdge = 400, maxEdge = 400) shouldBe 1
+    }
+
+    @Test
+    fun `transparency becomes white, not black -- even when the image is scaled`() {
+        val source = BufferedImage(1000, 500, BufferedImage.TYPE_INT_ARGB)
+        val g = source.createGraphics()
+        g.color = Color.RED
+        g.fillRect(0, 0, 500, 500) // left half opaque, right half left transparent
+        g.dispose()
+        val png = ByteArrayOutputStream().also { ImageIO.write(source, "png", it) }.toByteArray()
+
+        val thumb = ImageIntake.thumbnail(bytes = png, mediaType = "image/png", maxEdge = 400)
+        val img = ImageIO.read(ByteArrayInputStream(thumb))
+
+        // JPEG is lossy, so "white" is a floor rather than 255 on the nose.
+        val transparent = Color(img.getRGB(300, 100))
+        (transparent.red > 230) shouldBe true
+        (transparent.green > 230) shouldBe true
+        (transparent.blue > 230) shouldBe true
+        // The opaque half must still be there -- a plain white canvas would pass the above.
+        val drawn = Color(img.getRGB(100, 100))
+        (drawn.red > drawn.blue) shouldBe true
+    }
+
     @Test
     fun `an image smaller than the target is not blown up`() {
         val thumb = ImageIntake.thumbnail(
