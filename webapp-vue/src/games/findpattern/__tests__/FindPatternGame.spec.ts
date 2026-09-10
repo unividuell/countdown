@@ -98,6 +98,28 @@ describe('FindPatternGame', () => {
     expect(wrapper.find('[data-test="pattern-board"]').exists()).toBe(false)
   })
 
+  /**
+   * Both cards share one grid cell so the board image stays put while everything under it is
+   * exchanged — lose it on either side and the two stack vertically, which moves the board.
+   */
+  it('keeps both cards in the crossfade’s shared grid cell', () => {
+    const playing = mountGame()
+    const revealed = mountGame({ solution: SOLUTION, entries: [MINE], mineUserId: 'mine' })
+
+    expect(playing.get('[data-test="pattern-board"]').classes()).toContain('[grid-area:1/1]')
+    expect(revealed.get('[data-test="pattern-reveal"]').classes()).toContain('[grid-area:1/1]')
+  })
+
+  /**
+   * No `mode`, so the cards overlap: with `out-in` the board would be gone before the reveal
+   * arrived, and the picture the whole swap rests on staying put would blink away.
+   */
+  it('crossfades the two cards rather than sequencing them', () => {
+    const stub = mountGame().get('transition-stub')
+
+    expect(stub.attributes('mode')).toBeUndefined()
+  })
+
   it('keeps playing on a junk payload rather than rendering NaN', () => {
     const wrapper = mountGame({ payload: { cols: 'eight' } })
 

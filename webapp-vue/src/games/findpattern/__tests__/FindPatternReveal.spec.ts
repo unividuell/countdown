@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
-import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import {
+  RECEDED_OPACITY,
+  RECEDE_DELAY_MS,
+  RECEDE_MS,
+  RESTORE_AT_MS,
+  RESTORE_MS,
+  TILE_STEP_MS,
+} from '@/games/findpattern/preview'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
 
@@ -172,9 +180,22 @@ describe('FindPatternReveal', () => {
     expect(wrapper.get('[data-test="pattern-palette"]').classes()).toContain('opacity-100')
   })
 
+  it('leaves the board whole and uncovered when it is not a live reveal', () => {
+    const wrapper = mountReveal([row({ userId: 'mine' })])
+
+    const grid = wrapper.findComponent(PatternGrid)
+    expect(grid.props('imageOpacity')).toBe(1)
+    expect(grid.props('tiles')).toEqual([])
+    expect(wrapper.get('[data-test="pattern-number-1"]').attributes('style')).toContain(
+      'transition-delay: 0ms',
+    )
+  })
+
   describe('as a live reveal', () => {
     beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+      vi.useFakeTimers({
+        toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+      })
       setHidden(false)
     })
 
@@ -228,6 +249,79 @@ describe('FindPatternReveal', () => {
       await wrapper.vm.$nextTick()
 
       expect(wrapper.get('[data-test="pattern-number-1"]').classes()).toContain('opacity-100')
+    })
+
+    it('lets the board step back while the possibilities uncover', async () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
+
+      const grid = wrapper.findComponent(PatternGrid)
+      // Still whole in the frame it mounts in — the clearing is a transition, and a transition needs a
+      // painted „from“.
+      expect(grid.props('imageOpacity')).toBe(1)
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      expect(grid.props('imageOpacity')).toBe(RECEDED_OPACITY)
+      expect(grid.props('imageFadeMs')).toBe(RECEDE_MS)
+      expect(grid.props('imageFadeDelayMs')).toBe(RECEDE_DELAY_MS)
+    })
+
+    it('covers every cell of every possibility, in lockstep', async () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      // startIndices 1 and 5: eight cells, and each possibility's own step lands together.
+      const tiles = wrapper.findComponent(PatternGrid).props('tiles') ?? []
+      expect(tiles.map((tile) => tile.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+      const byIndex = new Map(tiles.map((tile) => [tile.index, tile.delayMs]))
+      expect(byIndex.get(1)).toBe(SOLUTION_DELAY_MS)
+      expect(byIndex.get(5)).toBe(SOLUTION_DELAY_MS)
+      expect(byIndex.get(4)).toBe(SOLUTION_DELAY_MS + 3 * TILE_STEP_MS)
+    })
+
+    it('lets each tone index arrive with its own block', async () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('[data-test="pattern-number-1"]').attributes('style')).toContain(
+        `transition-delay: ${SOLUTION_DELAY_MS}ms`,
+      )
+      expect(wrapper.get('[data-test="pattern-number-4"]').attributes('style')).toContain(
+        `transition-delay: ${SOLUTION_DELAY_MS + 3 * TILE_STEP_MS}ms`,
+      )
+    })
+
+    it('shows a cell inspected after the cascade at once, with no delay of its own', async () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
+
+      vi.advanceTimersByTime(50)
+      await wrapper.get('[data-test="pattern-cell-40"]').trigger('click')
+
+      expect(wrapper.get('[data-test="pattern-number-40"]').attributes('style')).toContain(
+        'transition-delay: 0ms',
+      )
+    })
+
+    it('has the board whole again before the results land on it', async () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
+
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findComponent(PatternGrid).props('imageOpacity')).toBe(RECEDED_OPACITY)
+
+      vi.advanceTimersByTime(RESTORE_AT_MS)
+      await wrapper.vm.$nextTick()
+
+      const grid = wrapper.findComponent(PatternGrid)
+      expect(grid.props('imageOpacity')).toBe(1)
+      expect(grid.props('imageFadeMs')).toBe(RESTORE_MS)
+      // Coming back, the board leads and the tiles leave under it — no delay of their own.
+      expect(grid.props('imageFadeDelayMs')).toBe(0)
     })
 
     it('starts the palette hidden, then fades it in on beat 3', async () => {
