@@ -45,11 +45,22 @@ services:
             fingerprint=$$(psql -h postgres -U admin -d app -tAc \
               "SELECT count(*) || '-' || coalesce(md5(string_agg(id::text, ',' ORDER BY id)), '0') FROM imagepool.images")
             if [ "$$fingerprint" != "$$(cat /backups/images.fingerprint 2>/dev/null)" ]; then
+              # Write beside the name, then rename. A rename within one filesystem is atomic, so a
+              # crash mid-dump leaves a .part file that no restore looks at, instead of a truncated
+              # images-*.sql.gz that "newest wins" would happily read. The daily dump above can
+              # afford not to do this -- its window is time-based, so a bad file ages out within a
+              # week either way. This one's window counts CHANGES, so a bad file would hold its
+              # slot until the pool moves that many more times, which may be months.
+              stamp=$$(date +%Y%m%d-%H%M%S)
               pg_dump -h postgres -U admin -d app --data-only --table=imagepool.images \
-                | gzip > "/backups/images-$$(date +%Y%m%d-%H%M%S).sql.gz"
+                | gzip > "/backups/images-$$stamp.sql.gz.part"
+              mv "/backups/images-$$stamp.sql.gz.part" "/backups/images-$$stamp.sql.gz"
               printf '%s' "$$fingerprint" > /backups/images.fingerprint
               # Retention counts CHANGES, not days: keep the newest IMAGE_BACKUP_KEEP states.
-              ls -1t /backups/images-*.sql.gz | tail -n +$$((IMAGE_BACKUP_KEEP + 1)) | xargs -r rm -f
+              # The guard is against 0, which an operator may reasonably read as "keep everything"
+              # while `tail -n +1` would in fact feed every dump, this run's included, to rm.
+              [ "$$IMAGE_BACKUP_KEEP" -ge 1 ] \
+                && ls -1t /backups/images-*.sql.gz | tail -n +$$((IMAGE_BACKUP_KEEP + 1)) | xargs -r rm -f
             fi
           fi
 
