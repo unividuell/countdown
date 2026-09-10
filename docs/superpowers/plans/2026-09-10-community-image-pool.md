@@ -2525,10 +2525,21 @@ git commit -m "Add the image pool pages and their drawer entry"
 - Modify: `deploy/README.md` (Abschnitt „Backups & restore“)
 - Modify: `deploy/.env.prod.example`, `deploy/.env.staging.example`
 - Modify: `.claude/guidelines/deployment-server.md`
+- Modify: `.claude/guidelines/dependency-updates.md`
 
 **Interfaces:**
 - Consumes: `imagepool.images` aus Task 1.
 - Produces: nichts für den Code.
+
+- [ ] **Step 0: Name the two new versions we now track**
+
+`.claude/guidelines/dependency-updates.md` lists the versions written literally in our `pom.xml`,
+because those are the ones the update plugin will not manage for us. Task 2 added two more —
+`metadata-extractor` and the twelvemonkeys WebP reader — and the sentence enumerating them is now
+wrong. Read the file, find the enumeration (it names the parent, `kotlin.version`,
+`spring-modulith.version`, `kotlin-logging.version` and the four test deps), and extend it with
+the two properties `core/pom.xml` actually declares. Use the property names as written there, not
+from memory.
 
 - [ ] **Step 1: Split the dump**
 
