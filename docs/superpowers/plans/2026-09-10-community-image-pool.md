@@ -910,6 +910,20 @@ class ImagePoolServiceTest {
         }
     }
 
+    /**
+     * A JPEG's magic bytes with nothing decodable behind them. This is the only place BROKEN_IMAGE
+     * is reachable: detect() is happy, and the decoder is the one that refuses.
+     */
+    @Test
+    fun `a file that only looks like an image is named broken, not unknown`() {
+        every { images.countInPool(communityId) } returns 0
+        val truncated = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()) + ByteArray(64)
+
+        assertFailsWith<BrokenImageException> {
+            service.upload(pool = pool, uploaderId = uploader, bytes = truncated)
+        }
+    }
+
     @Test
     fun `an admin sees the whole pool, a member only their own`() {
         service.list(pool = pool.copy(viewerIsAdmin = true), viewerId = uploader)
@@ -1221,7 +1235,7 @@ class ImagePoolService(
 - [ ] **Step 7: Run the test — green**
 
 Run: `cd core && ./mvnw test -Dtest=ImagePoolServiceTest`
-Expected: PASS (8 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 8: Commit**
 
