@@ -1643,9 +1643,8 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `a plain member cannot reach the global pool`() {
-        every { gate.global(false) } throws ImagePoolAccessDeniedException()
         mockMvc.get("/api/super-admin/images") { with(principalFor(superAdmin = false)) }
-            .andExpect { status { isNotFound() } }
+            .andExpect { status { isForbidden() } }
     }
 
     @Test
@@ -1665,29 +1664,33 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     /**
-     * Every handler in this controller must ask the gate first. Testing only the listing would
-     * leave an endpoint that forgot to -- upload, above all -- unguarded with nothing to notice.
-     * Mutating requests carry csrf(): this codebase enforces it, and without it the 403 would
-     * come from the wrong place and prove nothing.
+     * 403 here, not the 404 the community namespace answers with. `/api/super-admin/**` is a
+     * fixed, non-secret prefix that SecurityConfig refuses at the filter chain, before any
+     * handler runs -- so nothing is revealed by naming the refusal, and the three older
+     * super-admin controllers assert the same. The 404 rule guards `/api/communities/{slug}/...`,
+     * where the status would otherwise say whether that community exists.
+     *
+     * Every endpoint is listed because testing only the listing would leave one that forgot its
+     * gate -- upload above all -- unguarded with nothing to notice. Mutating requests carry
+     * csrf(): without it the 403 would come from the wrong place and prove nothing.
      */
     @Test
     fun `no endpoint of the global pool answers a plain member`() {
-        every { gate.global(false) } throws ImagePoolAccessDeniedException()
         val id = UUID.fromString("11111111-1111-1111-1111-111111111111")
 
         mockMvc.get("/api/super-admin/images/$id/thumb") { with(principalFor()) }
-            .andExpect { status { isNotFound() } }
+            .andExpect { status { isForbidden() } }
 
         mockMvc.get("/api/super-admin/images/$id") { with(principalFor()) }
-            .andExpect { status { isNotFound() } }
+            .andExpect { status { isForbidden() } }
 
         mockMvc.multipart("/api/super-admin/images") {
             file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1)))
             with(principalFor()); with(csrf())
-        }.andExpect { status { isNotFound() } }
+        }.andExpect { status { isForbidden() } }
 
         mockMvc.delete("/api/super-admin/images/$id") { with(principalFor()); with(csrf()) }
-            .andExpect { status { isNotFound() } }
+            .andExpect { status { isForbidden() } }
     }
 }
 ```
