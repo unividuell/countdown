@@ -784,8 +784,10 @@ git commit -m "Turn an uploaded file into a measured image and a thumbnail"
 **Files:**
 - Create: `…/imagepool/internal/ImagePoolProperties.kt`, `ImagePoolExceptions.kt`,
   `ImagePoolExceptionHandler.kt`, `ImagePoolGate.kt`, `ImagePoolService.kt`
+- Delete: `…/imagepool/internal/MigrationOrderEdge.kt`
 - Modify: `core/src/main/resources/application.yaml`
 - Test: `core/src/test/kotlin/org/unividuell/countdown/core/imagepool/ImagePoolServiceTest.kt`
+- Test: `core/src/test/kotlin/org/unividuell/countdown/core/imagepool/ImagePoolGateTest.kt`
 
 **Interfaces:**
 - Consumes: `ImageRepository`, `ImageSummary` (Task 1); `ImageIntake`, `DetectedFormat` (Task 2);
@@ -1237,7 +1239,31 @@ class ImagePoolService(
 Run: `cd core && ./mvnw test -Dtest=ImagePoolServiceTest`
 Expected: PASS (9 tests).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Test the gate itself**
+
+`ImagePoolServiceTest` builds its `PoolContext` by hand, so it never runs the gate — and the gate
+is the access control. It gets its own test, with `CommunityQuery` and `MembershipQuery` as mocks:
+an unknown slug and a non-member both refused with `ImagePoolAccessDeniedException`, so neither
+answer betrays whether the community exists; a super-admin admitted without a membership; `isAdmin`
+arriving as `viewerIsAdmin`; and `global()` refusing anyone who is not a super-admin.
+
+- [ ] **Step 9: Remove the placeholder edge**
+
+`ImagePoolGate` above imports `CommunityQuery`, so `imagepool` now depends on `community` for a
+real reason. The placeholder that carried that edge since Task 1 has done its job:
+
+```bash
+rm core/src/main/kotlin/org/unividuell/countdown/core/imagepool/internal/MigrationOrderEdge.kt
+```
+
+Then run the whole suite: `cd core && ./mvnw test`. It must stay green — in particular
+`ImageRepositoryTest`, whose foreign keys only exist because that edge puts `imagepool`'s
+migration behind `community`'s and `iam`'s. A failure with `schema "community" does not exist`
+means the edge is gone and nothing replaced it; check that `ImagePoolGate` really is in
+`src/main` and really imports `CommunityQuery`. Carry the rationale into `ImagePoolGate`'s own
+KDoc — the placeholder was the only place it was written down.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add core/src/main/kotlin/org/unividuell/countdown/core/imagepool core/src/main/resources/application.yaml core/src/test/kotlin/org/unividuell/countdown/core/imagepool
