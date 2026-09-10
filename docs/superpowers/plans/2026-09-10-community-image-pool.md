@@ -1698,11 +1698,17 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
 
         val admin = principalFor(superAdmin = true)
         mockMvc.get("/api/super-admin/images") { with(admin) }
+        mockMvc.multipart("/api/super-admin/images") {
+            file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1)))
+            with(admin); with(csrf())
+        }
         mockMvc.get("/api/super-admin/images/$id/thumb") { with(admin) }
         mockMvc.get("/api/super-admin/images/$id") { with(admin) }
         mockMvc.delete("/api/super-admin/images/$id") { with(admin); with(csrf()) }
 
-        verify(exactly = 4) { gate.global(true) }
+        // upload above all: it is the handler the guard was written for, so a test named
+        // „every endpoint" that skipped it would overpromise.
+        verify(exactly = 5) { gate.global(true) }
     }
 
     @Test
