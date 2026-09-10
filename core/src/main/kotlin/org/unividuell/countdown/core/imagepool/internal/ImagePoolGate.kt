@@ -12,6 +12,11 @@ data class PoolContext(val communityId: UUID?, val viewerIsAdmin: Boolean)
  * The tenant gate, owned by this module. CommunityAccess would be shorter but lives in
  * community.internal and is closed to us -- so the resolution goes through the public
  * CommunityQuery/MembershipQuery, exactly as game's AnnouncementService.resolve does.
+ *
+ * This import also orders imagepool's Flyway migration: Spring Modulith runs a module's
+ * migrations after those of the modules its code depends on, so depending on CommunityQuery
+ * is what puts imagepool after community (and iam) on a fresh database. Remove it and
+ * imagepool's FKs into community.communities/iam.users fail with a missing "community" schema.
  */
 @Service
 class ImagePoolGate(
