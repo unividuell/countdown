@@ -1670,10 +1670,41 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
      * super-admin controllers assert the same. The 404 rule guards `/api/communities/{slug}/...`,
      * where the status would otherwise say whether that community exists.
      *
-     * Every endpoint is listed because testing only the listing would leave one that forgot its
-     * gate -- upload above all -- unguarded with nothing to notice. Mutating requests carry
-     * csrf(): without it the 403 would come from the wrong place and prove nothing.
+     * Every endpoint is listed so the refusal is proven for all of them, not just the listing.
+     * Note what this does NOT prove: the refusal comes from the filter chain, so these four
+     * requests never reach a handler and say nothing about whether it consults the gate. That
+     * is `every endpoint consults the gate`'s job. Mutating requests carry csrf(): without it
+     * the 403 would come from the wrong place and prove nothing.
      */
+    /**
+     * `gate.global` is decided by one boolean that is always true here, and `PoolContext` is a
+     * data class -- so a handler that dropped the gate and inlined `PoolContext(null, true)`
+     * would satisfy every other assertion in this file by value equality. Only counting the
+     * calls pins it. It matters because the gate is what makes this controller correct on its
+     * own, rather than by grace of a rule in a security config it never mentions.
+     */
+    @Test
+    fun `every endpoint consults the gate`() {
+        val id = UUID.fromString("22222222-2222-2222-2222-222222222222")
+        every { gate.global(true) } returns globalPool
+        every { service.list(pool = globalPool, viewerId = TEST_USER_ID) } returns emptyList()
+        every { service.count(globalPool) } returns 0L
+        every { service.limitOf(globalPool) } returns 40
+        every { users.findAllById(emptyList()) } returns emptyList()
+        every { service.thumb(pool = globalPool, id = id, viewerId = TEST_USER_ID) } returns byteArrayOf(1)
+        every { service.original(pool = globalPool, id = id, viewerId = TEST_USER_ID) } returns
+            ImageBytes(mediaType = "image/jpeg", bytes = byteArrayOf(1))
+        every { service.delete(pool = globalPool, id = id, viewerId = TEST_USER_ID) } returns Unit
+
+        val admin = principalFor(superAdmin = true)
+        mockMvc.get("/api/super-admin/images") { with(admin) }
+        mockMvc.get("/api/super-admin/images/$id/thumb") { with(admin) }
+        mockMvc.get("/api/super-admin/images/$id") { with(admin) }
+        mockMvc.delete("/api/super-admin/images/$id") { with(admin); with(csrf()) }
+
+        verify(exactly = 4) { gate.global(true) }
+    }
+
     @Test
     fun `no endpoint of the global pool answers a plain member`() {
         val id = UUID.fromString("11111111-1111-1111-1111-111111111111")
@@ -1805,7 +1836,7 @@ class SuperAdminImageController(
 - [ ] **Step 4: Run the test — green**
 
 Run: `cd core && ./mvnw test -Dtest=SuperAdminImageControllerTest`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Run the whole backend suite**
 
