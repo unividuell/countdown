@@ -86,4 +86,30 @@ describe('ImagePool', () => {
 
     expect(remove).not.toHaveBeenCalled()
   })
+
+  it('deletes on a confirmed click and reloads the listing', async () => {
+    vi.spyOn(api, 'listImages')
+      .mockResolvedValueOnce(listResponse)
+      .mockResolvedValueOnce({ ...listResponse, images: [], used: 11 })
+    const remove = vi.spyOn(api, 'deleteImage').mockResolvedValue(undefined as never)
+    window.confirm ??= () => false
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const w = mount(ImagePool, { props: { base: '/api/communities/alpha/images' } })
+    await flushPromises()
+    await w.get('[data-test="delete"]').trigger('click')
+    await flushPromises()
+
+    expect(remove).toHaveBeenCalledWith('/api/communities/alpha/images', 'i1')
+    expect(w.get('[data-test="quota"]').text()).toContain('11 von 150')
+  })
+
+  it('shows a message when the initial listing fails to load', async () => {
+    vi.spyOn(api, 'listImages').mockRejectedValue(new Error('boom'))
+
+    const w = mount(ImagePool, { props: { base: '/api/communities/alpha/images' } })
+    await flushPromises()
+
+    expect(w.text()).toContain('Bilder konnten nicht geladen werden.')
+  })
 })

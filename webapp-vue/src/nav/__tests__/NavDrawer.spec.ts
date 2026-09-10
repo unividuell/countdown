@@ -557,6 +557,23 @@ describe('NavDrawer content', () => {
     expect((await opened()).find('[data-test=admin-heading]').exists()).toBe(false)
   })
 
+  it('shows the images entry to a plain member, gated on being in a community at all', async () => {
+    // Every existing fixture up to here is an admin, where activeCommunity and admin are both
+    // set — neither can tell whether this entry is gated on the right one.
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team Süd',
+      startsAt: null,
+      startsAtTimezone: 'UTC',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: null,
+    }
+    expect((await opened()).get('[data-test=community-images]').attributes('href')).toBe(
+      communityPath('team', 'images'),
+    )
+  })
+
   it('keeps the super-admin entry out of sight for everyone else', async () => {
     expect((await opened()).find('[data-test=super-admin]').exists()).toBe(false)
     expect(

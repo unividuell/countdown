@@ -90,7 +90,13 @@ async function remove(id: string): Promise<void> {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  // An empty grid and "0 von 0" already look like an empty pool, so a failed initial load must
+  // say so explicitly rather than pass for one.
+  load().catch(() => {
+    error.value = 'Bilder konnten nicht geladen werden.'
+  })
+})
 defineExpose({ enqueue })
 </script>
 
@@ -155,7 +161,7 @@ defineExpose({ enqueue })
           <img
             :src="thumbUrl(props.base, image.id)"
             loading="lazy"
-            alt=""
+            :alt="image.uploadedBy"
             class="aspect-[4/3] w-full rounded object-cover"
           />
         </a>
