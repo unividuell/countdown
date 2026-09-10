@@ -43,6 +43,18 @@ spring:
   session:
     jdbc:
       initialize-schema: never
+  servlet:
+    # Boot's default is 1MB, which would reject every real upload.
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+
+imagepool:
+  per-community-limit: 150
+  global-limit: 40
+  max-bytes: 15MB
+  max-pixels: 40000000
+  thumb-edge: 400
 
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
