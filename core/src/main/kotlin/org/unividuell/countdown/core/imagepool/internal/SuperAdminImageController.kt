@@ -16,19 +16,17 @@ import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
 import java.util.UUID
 
-/** Immutable per id, and never shared: a year of caching, in this browser only. */
-internal const val IMAGE_CACHE_CONTROL = "private, max-age=31536000, immutable"
-
+/** The global pool has no slug and no members: the gate admits super-admins and nobody else. */
 @RestController
-@RequestMapping("/api/communities/{slug}/images")
-class ImagePoolController(
+@RequestMapping("/api/super-admin/images")
+class SuperAdminImageController(
     private val gate: ImagePoolGate,
     private val service: ImagePoolService,
     private val users: UserQuery,
 ) {
     @GetMapping
-    fun list(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): ImageListResponse {
-        val pool = gate.forCommunity(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+    fun list(@AuthenticationPrincipal me: AuthenticatedUser): ImageListResponse {
+        val pool = gate.global(me.isSuperAdmin)
         val summaries = service.list(pool = pool, viewerId = me.id)
         val names = namesFor(summaries)
         return ImageListResponse(
@@ -38,25 +36,19 @@ class ImagePoolController(
         )
     }
 
-    /** One file per request: the queue lives in the browser, so each file fails on its own. */
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun upload(
         @AuthenticationPrincipal me: AuthenticatedUser,
-        @PathVariable slug: String,
         @RequestPart("file") file: MultipartFile,
     ): ImageResponse {
-        val pool = gate.forCommunity(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+        val pool = gate.global(me.isSuperAdmin)
         val saved = service.upload(pool = pool, uploaderId = me.id, bytes = file.bytes)
         return response(summary = saved, names = namesFor(listOf(saved)))
     }
 
     @GetMapping("/{id}/thumb")
-    fun thumb(
-        @AuthenticationPrincipal me: AuthenticatedUser,
-        @PathVariable slug: String,
-        @PathVariable id: UUID,
-    ): ResponseEntity<ByteArray> {
-        val pool = gate.forCommunity(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+    fun thumb(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable id: UUID): ResponseEntity<ByteArray> {
+        val pool = gate.global(me.isSuperAdmin)
         return bytes(
             body = service.thumb(pool = pool, id = id, viewerId = me.id),
             mediaType = MediaType.IMAGE_JPEG_VALUE,
@@ -64,23 +56,15 @@ class ImagePoolController(
     }
 
     @GetMapping("/{id}")
-    fun original(
-        @AuthenticationPrincipal me: AuthenticatedUser,
-        @PathVariable slug: String,
-        @PathVariable id: UUID,
-    ): ResponseEntity<ByteArray> {
-        val pool = gate.forCommunity(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+    fun original(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable id: UUID): ResponseEntity<ByteArray> {
+        val pool = gate.global(me.isSuperAdmin)
         val original = service.original(pool = pool, id = id, viewerId = me.id)
         return bytes(body = original.bytes, mediaType = original.mediaType)
     }
 
     @DeleteMapping("/{id}")
-    fun delete(
-        @AuthenticationPrincipal me: AuthenticatedUser,
-        @PathVariable slug: String,
-        @PathVariable id: UUID,
-    ): ResponseEntity<Void> {
-        val pool = gate.forCommunity(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+    fun delete(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable id: UUID): ResponseEntity<Void> {
+        val pool = gate.global(me.isSuperAdmin)
         service.delete(pool = pool, id = id, viewerId = me.id)
         return ResponseEntity.noContent().build()
     }
