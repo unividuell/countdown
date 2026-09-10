@@ -67,8 +67,8 @@ class ImageRepositoryTest(
     @Test
     fun `lists a community's images newest first, and never another pool's`() {
         val alice = user("alice")
-        val alpha = community("Alpha", alice)
-        val beta = community("Beta", alice)
+        val alpha = community(name = "Alpha", owner = alice)
+        val beta = community(name = "Beta", owner = alice)
 
         val first = images.save(image(communityId = alpha, uploader = alice, seed = 1)).id!!
         val second = images.save(image(communityId = alpha, uploader = alice, seed = 2)).id!!
@@ -87,7 +87,7 @@ class ImageRepositoryTest(
     fun `a member sees only their own uploads`() {
         val alice = user("alice2")
         val bob = user("bob2")
-        val alpha = community("Gamma", alice)
+        val alpha = community(name = "Gamma", owner = alice)
         val mine = images.save(image(communityId = alpha, uploader = alice, seed = 5)).id!!
         images.save(image(communityId = alpha, uploader = bob, seed = 6))
 
@@ -97,8 +97,8 @@ class ImageRepositoryTest(
     @Test
     fun `the same file twice is refused within a pool, but allowed across pools`() {
         val alice = user("alice3")
-        val alpha = community("Delta", alice)
-        val beta = community("Epsilon", alice)
+        val alpha = community(name = "Delta", owner = alice)
+        val beta = community(name = "Epsilon", owner = alice)
 
         images.save(image(communityId = alpha, uploader = alice, seed = 7))
         // same bytes, different pool: allowed
@@ -122,7 +122,7 @@ class ImageRepositoryTest(
     @Test
     fun `counts, byte reads and deletion`() {
         val alice = user("alice4")
-        val alpha = community("Zeta", alice)
+        val alpha = community(name = "Zeta", owner = alice)
         val id = images.save(image(communityId = alpha, uploader = alice, seed = 9)).id!!
 
         images.countInPool(alpha) shouldBe 1L
@@ -141,7 +141,7 @@ class ImageRepositoryTest(
     @Test
     fun `deleting the community takes its images with it`() {
         val alice = user("alice5")
-        val alpha = community("Eta", alice)
+        val alpha = community(name = "Eta", owner = alice)
         images.save(image(communityId = alpha, uploader = alice, seed = 10))
 
         communityRepo.deleteById(alpha)
