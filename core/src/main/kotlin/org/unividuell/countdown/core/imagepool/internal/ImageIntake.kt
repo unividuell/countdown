@@ -25,6 +25,9 @@ data class Dimensions(val width: Int, val height: Int) {
 /**
  * Everything that happens to an uploaded file before it becomes a row. No Spring, no database --
  * so it can be tested with images the test writes itself.
+ *
+ * A decode failure (magic bytes match, body doesn't) propagates raw from [probe]/[thumbnail];
+ * naming the failure is the caller's job.
  */
 object ImageIntake {
 
