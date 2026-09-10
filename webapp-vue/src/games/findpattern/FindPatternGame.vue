@@ -70,21 +70,43 @@ watch(solution, (now, before) => {
   <p v-if="payload === null" class="text-sm text-neutral-600">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <FindPatternReveal
-    v-else-if="solution"
-    :payload="payload"
-    :solution="solution"
-    :rows="rows"
-    :mine-user-id="props.mineUserId"
-    :live="live"
-    :animate="hasRevealedLive"
-  />
-  <FindPatternBoard
-    v-else
-    :payload="payload"
-    :my-color-hex="myColorHex"
-    :disabled="props.disabled"
-    :submitted-start-index="startIndexOf(props.myGuess)"
-    @guess="(value) => emit('guess', value)"
-  />
+  <!--
+    One grid cell for both cards, exactly as `GuessHueGame` does it and for the same reason: the
+    surroundings stay as tall as whichever card is taller during the crossfade, then fall to the
+    reveal's height once the outgoing one is gone.
+  -->
+  <div v-else class="grid">
+    <!--
+      Beat 2. No `mode`, so both cards overlap — the board image sits at the same place and the
+      same size in each, so it reads as one field standing still while everything under it is
+      exchanged. The reveal's own clearing rides these same two numbers; see `preview.ts`.
+      No `appear`, so a reload does not replay any of it.
+    -->
+    <Transition
+      enter-active-class="transition-opacity duration-500 delay-200 motion-reduce:transition-none"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+      leave-to-class="opacity-0"
+    >
+      <FindPatternReveal
+        v-if="solution"
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :solution="solution"
+        :rows="rows"
+        :mine-user-id="props.mineUserId"
+        :live="live"
+        :animate="hasRevealedLive"
+      />
+      <FindPatternBoard
+        v-else
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :my-color-hex="myColorHex"
+        :disabled="props.disabled"
+        :submitted-start-index="startIndexOf(props.myGuess)"
+        @guess="(value) => emit('guess', value)"
+      />
+    </Transition>
+  </div>
 </template>

@@ -18,6 +18,7 @@
  * reveal because both render this component and both must carry it identically.
  */
 import { computed } from 'vue'
+import { FADE_MS } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import type { CellOutline } from './marks'
 
@@ -30,6 +31,14 @@ export interface PatternNumber {
   delayMs?: number
 }
 
+/** A cell painted in its own tone — what stands in for the board while the board has stepped back. */
+export interface PatternTile {
+  index: number
+  hex: string
+  delayMs: number
+  fadeMs: number
+}
+
 const props = withDefaults(
   defineProps<{
     image: string
@@ -40,8 +49,17 @@ const props = withDefaults(
     interactive: boolean
     /** True draws every mark at once. False stages marks behind their own `delayMs` instead. */
     still?: boolean
+    /**
+     * Tiles are only ever shown while [imageOpacity] is below 1: they are the picture the receded
+     * board is not showing, so the two are one state, not two.
+     */
+    tiles?: PatternTile[]
+    /** How present the board is. Below 1 it has stepped back and the tiles carry the picture. */
+    imageOpacity?: number
+    imageFadeMs?: number
+    imageFadeDelayMs?: number
   }>(),
-  { still: true },
+  { still: true, tiles: () => [], imageOpacity: 1, imageFadeMs: 0, imageFadeDelayMs: 0 },
 )
 
 const emit = defineEmits<{ cell: [index: number] }>()
@@ -50,6 +68,7 @@ interface CellView {
   index: number
   outlines: CellOutline[]
   number: PatternNumber | undefined
+  tile: PatternTile | undefined
 }
 
 /**
@@ -62,10 +81,12 @@ const cellViews = computed<CellView[]>(() => {
     outlinesByCell.set(outline.index, [...(outlinesByCell.get(outline.index) ?? []), outline])
   }
   const numbersByCell = new Map(props.numbers.map((entry) => [entry.index, entry] as const))
+  const tilesByCell = new Map(props.tiles.map((entry) => [entry.index, entry] as const))
   return Array.from({ length: props.cols * props.rows }, (_, index) => ({
     index,
     outlines: outlinesByCell.get(index) ?? [],
     number: numbersByCell.get(index),
+    tile: tilesByCell.get(index),
   }))
 })
 
@@ -86,6 +107,29 @@ const { shown } = useRevealArming(props.still)
 function markOpacity(delayMs: number | undefined): string {
   return (delayMs ?? 0) === 0 || shown.value ? 'opacity-100' : 'opacity-0'
 }
+
+/**
+ * A mark's own fade. Spelled out rather than left to Tailwind's 150ms default: a mark and its row
+ * in the scoreboard are one event, and one event may not have two durations.
+ */
+function markStyle(delayMs: number | undefined) {
+  return { transitionDuration: `${FADE_MS}ms`, transitionDelay: `${delayMs ?? 0}ms` }
+}
+
+/** The receded board's stand-in: on while it is away, gone the moment it is back. */
+const tilesShown = computed(() => shown.value && props.imageOpacity < 1)
+
+/**
+ * Going away, a tile has no delay of its own — its whole row of them leaves together, under a
+ * board fading back in over it. Only the uncovering is choreographed.
+ */
+function tileStyle(tile: PatternTile) {
+  return {
+    backgroundColor: tile.hex,
+    transitionDuration: `${tile.fadeMs}ms`,
+    transitionDelay: tilesShown.value ? `${tile.delayMs}ms` : '0ms',
+  }
+}
 </script>
 
 <template>
@@ -93,8 +137,13 @@ function markOpacity(delayMs: number | undefined): string {
     <img
       :src="props.image"
       alt=""
-      class="block w-full select-none"
-      style="image-rendering: pixelated"
+      class="block w-full transition-opacity select-none motion-reduce:transition-none"
+      :style="{
+        imageRendering: 'pixelated',
+        opacity: props.imageOpacity,
+        transitionDuration: `${props.imageFadeMs}ms`,
+        transitionDelay: `${props.imageFadeDelayMs}ms`,
+      }"
       draggable="false"
     />
     <div
@@ -115,6 +164,14 @@ function markOpacity(delayMs: number | undefined): string {
         :class="props.interactive ? 'cursor-pointer' : ''"
         @click="onCell(cell.index)"
       >
+        <!-- Under the outlines, over the image: the tile is the board's stand-in, not a mark. -->
+        <span
+          v-if="cell.tile"
+          :data-test="`pattern-tile-${cell.index}`"
+          class="pointer-events-none absolute inset-0 transition-opacity"
+          :class="tilesShown ? 'opacity-100' : 'opacity-0'"
+          :style="tileStyle(cell.tile)"
+        />
         <span
           v-for="(outline, depth) in cell.outlines"
           :key="depth"
@@ -127,7 +184,7 @@ function markOpacity(delayMs: number | undefined): string {
             bottom: `${outline.insetPx}px`,
             left: `${outline.insetPx}px`,
             border: `2px solid ${outline.colorHex}`,
-            transitionDelay: `${outline.delayMs}ms`,
+            ...markStyle(outline.delayMs),
           }"
         />
         <span
@@ -135,7 +192,7 @@ function markOpacity(delayMs: number | undefined): string {
           :data-test="`pattern-number-${cell.index}`"
           class="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[0.6rem] leading-none transition-opacity"
           :class="markOpacity(cell.number.delayMs)"
-          :style="{ color: cell.number.ink, transitionDelay: `${cell.number.delayMs ?? 0}ms` }"
+          :style="{ color: cell.number.ink, ...markStyle(cell.number.delayMs) }"
         >
           {{ cell.number.value }}
         </span>

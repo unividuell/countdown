@@ -10,7 +10,7 @@
  * My own outline sits outermost, at inset 0: it is the box drawn while playing, and the board under
  * it has not moved, so the switch from playing to reveal leaves it exactly where it was.
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -18,6 +18,15 @@ import { useRevealArming } from '@/ui/useRevealArming'
 import FindPatternScoreboard from './FindPatternScoreboard.vue'
 import PatternGrid from './PatternGrid.vue'
 import { isNumberVisible, stackedOutlines } from './marks'
+import {
+  RECEDED_OPACITY,
+  RECEDE_DELAY_MS,
+  RECEDE_MS,
+  RESTORE_AT_MS,
+  RESTORE_MS,
+  TILE_FADE_MS,
+  previewTiles,
+} from './preview'
 import { toneChips } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from './types'
@@ -79,8 +88,24 @@ const preLit = computed(() => {
 
 const toggled = ref(new Set<number>())
 
-/** Beat 3, together for every possibility — there is no per-cell order to stagger them by. */
-const numberDelayMs = still ? 0 : SOLUTION_DELAY_MS
+/**
+ * Beat 3: the possibilities uncover block by block over a board that has stepped back. A tile and
+ * the tone index on it are one event, so both read their moment off the same list.
+ */
+const tiles = computed(() =>
+  still
+    ? []
+    : previewTiles({
+        startIndices: props.solution.startIndices,
+        patternLength: props.solution.pattern.length,
+        blocks: props.solution.blocks,
+        palette: props.solution.palette,
+      }).map((tile) => ({ ...tile, fadeMs: TILE_FADE_MS })),
+)
+
+const tileDelayByCell = computed(
+  () => new Map(tiles.value.map((tile) => [tile.index, tile.delayMs])),
+)
 
 const numbers = computed<PatternNumber[]>(() => {
   const cells: PatternNumber[] = []
@@ -89,7 +114,9 @@ const numbers = computed<PatternNumber[]>(() => {
     const tone = props.solution.blocks[index]!
     const hex = props.solution.palette[tone]
     if (hex === undefined) continue
-    cells.push({ index, value: tone, ink: readableTextColor(hex), delayMs: numberDelayMs })
+    // A cell the reader turned on themselves has no block to ride in with — it is simply there.
+    const delayMs = tileDelayByCell.value.get(index) ?? 0
+    cells.push({ index, value: tone, ink: readableTextColor(hex), delayMs })
   }
   return cells
 })
@@ -113,8 +140,34 @@ const deltaLabel = computed(() =>
   ),
 )
 
-/** Same beat, driven the same way as `FindPatternScoreboard`'s head and `HueWheelReveal`'s sector. */
-const { shown } = useRevealArming(still)
+/**
+ * True from [RESTORE_AT_MS] on — the board is whole again, in time for beat 4 to land the other
+ * players' outlines on a picture rather than on a hole. A timer rather than a CSS delay, because
+ * the board's opacity has to travel in two directions and a transition-delay only holds one.
+ */
+const restored = ref(false)
+let restoreTimer = 0
+
+/**
+ * Same beat, driven the same way as `FindPatternScoreboard`'s head and `HueWheelReveal`'s sector.
+ * The clearing hangs off `shown` too: a transition needs a painted „from“, so the board is there for
+ * frame it mounts in and steps back only once the reveal is armed.
+ */
+const { shown } = useRevealArming(still, () => {
+  restoreTimer = window.setTimeout(() => (restored.value = true), RESTORE_AT_MS)
+})
+
+onBeforeUnmount(() => {
+  if (restoreTimer) clearTimeout(restoreTimer)
+})
+
+// `still` short-circuits the whole phase: `shown` is already true there and the timer never runs,
+// so without it a skipped reveal would clear the board and never bring it back.
+const receded = computed(() => !still && shown.value && !restored.value)
+const imageOpacity = computed(() => (receded.value ? RECEDED_OPACITY : 1))
+const imageFadeMs = computed(() => (receded.value ? RECEDE_MS : RESTORE_MS))
+/** Going, the board waits for the card swap to be under way; coming back it leads. */
+const imageFadeDelayMs = computed(() => (receded.value ? RECEDE_DELAY_MS : 0))
 
 const paletteOpacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
 const paletteStyle = {
@@ -137,6 +190,10 @@ const paletteStyle = {
           :numbers="numbers"
           :interactive="true"
           :still="still"
+          :tiles="tiles"
+          :image-opacity="imageOpacity"
+          :image-fade-ms="imageFadeMs"
+          :image-fade-delay-ms="imageFadeDelayMs"
           @cell="onCell"
         />
       </div>

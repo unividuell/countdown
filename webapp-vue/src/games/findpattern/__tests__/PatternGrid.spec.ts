@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
+import { FADE_MS } from '@/games/revealChoreography'
 
 const IMAGE = 'data:image/png;base64,AAA'
 
@@ -66,6 +67,52 @@ describe('PatternGrid', () => {
 
     expect(wrapper.get('[data-test="pattern-number-3"]').text()).toBe('2')
     expect(wrapper.find('[data-test="pattern-number-1"]').exists()).toBe(false)
+  })
+
+  /** A mark on the board and its row in the table are one event — so they fade in one time. */
+  it('fades a mark in over the same time the scoreboard uses', () => {
+    const wrapper = mountGrid({
+      outlines: [{ index: 2, colorHex: '#f00', insetPx: 0, delayMs: 500 }],
+      numbers: [{ index: 3, value: 2, ink: '#111111', delayMs: 900 }],
+    })
+
+    expect(wrapper.get('[data-test="pattern-outline-2"]').attributes('style')).toContain(
+      `transition-duration: ${FADE_MS}ms`,
+    )
+    expect(wrapper.get('[data-test="pattern-number-3"]').attributes('style')).toContain(
+      `transition-duration: ${FADE_MS}ms`,
+    )
+  })
+
+  it('covers a cell with a tile of its own tone', () => {
+    const wrapper = mountGrid({
+      tiles: [{ index: 3, hex: '#999999', delayMs: 900, fadeMs: 180 }],
+      imageOpacity: 0.15,
+    })
+
+    const tile = wrapper.get('[data-test="pattern-tile-3"]')
+    expect(tile.attributes('style')).toContain('#999999')
+    expect(tile.attributes('style')).toContain('transition-delay: 900ms')
+    expect(wrapper.find('[data-test="pattern-tile-1"]').exists()).toBe(false)
+  })
+
+  /** The tiles stand in for the board while it has stepped back — whole board, no tiles. */
+  it('hides the tiles again once the board is whole', () => {
+    const wrapper = mountGrid({
+      tiles: [{ index: 3, hex: '#999999', delayMs: 900, fadeMs: 180 }],
+      imageOpacity: 1,
+    })
+
+    expect(wrapper.get('[data-test="pattern-tile-3"]').classes()).toContain('opacity-0')
+  })
+
+  it('lets the board step back, over the time the caller gives it', () => {
+    const wrapper = mountGrid({ imageOpacity: 0.15, imageFadeMs: 500, imageFadeDelayMs: 200 })
+
+    const style = wrapper.get('img').attributes('style')
+    expect(style).toContain('opacity: 0.15')
+    expect(style).toContain('transition-duration: 500ms')
+    expect(style).toContain('transition-delay: 200ms')
   })
 
   it('offers no button when it is not interactive', () => {
