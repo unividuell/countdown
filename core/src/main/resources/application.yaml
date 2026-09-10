@@ -52,7 +52,9 @@ spring:
 imagepool:
   per-community-limit: 150
   global-limit: 40
-  max-bytes: 15MB
+  # Plain bytes, not "15MB": the target is an Int, and Boot's DataSize converters only fire for a
+  # DataSize target -- a suffixed string reaches Integer.parseInt and fails the boot.
+  max-bytes: 15728640 # 15 MB, must stay <= spring.servlet.multipart.max-file-size above
   max-pixels: 40000000
   thumb-edge: 400
 
