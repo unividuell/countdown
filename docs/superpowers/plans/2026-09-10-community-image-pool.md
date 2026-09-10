@@ -1868,7 +1868,7 @@ git commit -m "Serve the global image pool to super-admins"
 **Interfaces:**
 - Consumes: nichts aus dem Backend zur Übersetzungszeit; die Formen der Antworten aus Task 4.
 - Produces: `ImageResponse`, `ImageListResponse`, `UploadError { code }`,
-  `listImages(base)`, `deleteImage(base, id)`, `uploadImage(base, file, onProgress, signal?)`,
+  `listImages(base)`, `deleteImage(base, id)`, `uploadImage(base, file, onProgress)`,
   `communityImagesBase(slug)`, `globalImagesBase()`, `thumbUrl(base, id)`, `originalUrl(base, id)`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1951,8 +1951,42 @@ describe('uploadImage', () => {
     FakeXhr.last.onerror?.()
     await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
   })
+
+  /** The three things this sidecar reproduces by hand are credentials, CSRF -- and this. */
+  it('lets the app know when the session is gone', async () => {
+    const seen = vi.fn()
+    setUnauthorizedHandler(seen)
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const xhr = FakeXhr.last
+    xhr.status = 401
+    xhr.responseText = JSON.stringify({ status: 401, code: 'NO_ACCESS' })
+    xhr.onload?.()
+
+    await promise.catch(() => {})
+    expect(seen).toHaveBeenCalledOnce()
+  })
+
+  /** A 2xx that will not parse must still settle -- a throw inside onload settles nothing. */
+  it('rejects rather than hangs when a success body is not JSON', async () => {
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const xhr = FakeXhr.last
+    xhr.status = 201
+    xhr.responseText = '<html>gateway</html>'
+    xhr.onload?.()
+
+    await expect(promise).rejects.toBeInstanceOf(UploadError)
+  })
+
+  it('gives up on a stalled upload instead of blocking the queue', async () => {
+    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    FakeXhr.last.ontimeout?.()
+    await promise.catch((e: UploadError) => expect(e.code).toBe('NETWORK'))
+  })
 })
 ```
+
+The double needs the two fields these add — `ontimeout` beside `onerror`, and a `timeout` property
+the code assigns to — plus `setUnauthorizedHandler` in the import from `@/api/client`.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -2030,16 +2064,24 @@ export const deleteImage = (base: string, id: string) =>
  * 5 MB upload over mobile data blows through. XMLHttpRequest rather than fetch because fetch has no
  * upload progress, and 5 MB without a bar looks like a crash on a phone.
  */
+/**
+ * The whole upload is bounded, because the queue is sequential: a connection that stalls without
+ * ever failing would otherwise block every remaining file with nothing on screen to explain it.
+ * Four minutes is past any upload that can still succeed -- the server caps a file at 15 MB, which
+ * is about four minutes at 500 kbit/s -- and far short of forever.
+ */
+const UPLOAD_TIMEOUT_MS = 240_000
+
 export function uploadImage(
   base: string,
   file: File,
   onProgress: (fraction: number) => void,
-  signal?: AbortSignal,
 ): Promise<ImageResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', base)
     xhr.withCredentials = true
+    xhr.timeout = UPLOAD_TIMEOUT_MS
     for (const [name, value] of Object.entries(csrfHeader())) xhr.setRequestHeader(name, value)
 
     xhr.upload.onprogress = (e) => {
@@ -2048,7 +2090,14 @@ export function uploadImage(
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText) as ImageResponse)
+        // A 2xx whose body will not parse must still settle this promise. Throwing here would
+        // throw inside an event handler, off the executor's stack, where nothing catches it --
+        // and the caller would await forever.
+        try {
+          resolve(JSON.parse(xhr.responseText) as ImageResponse)
+        } catch {
+          reject(new UploadError('NETWORK', xhr.status))
+        }
         return
       }
       if (xhr.status === 401) notifyUnauthorized()
@@ -2062,7 +2111,7 @@ export function uploadImage(
     }
 
     xhr.onerror = () => reject(new UploadError('NETWORK', 0))
-    signal?.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.ontimeout = () => reject(new UploadError('NETWORK', 0))
 
     const form = new FormData()
     form.append('file', file)
@@ -2074,7 +2123,7 @@ export function uploadImage(
 - [ ] **Step 5: Run the test — green**
 
 Run: `cd webapp-vue && pnpm vitest run src/api/__tests__/images.spec.ts`
-Expected: PASS (3 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 6: Commit**
 
