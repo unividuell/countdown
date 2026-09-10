@@ -1663,6 +1663,32 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
                 jsonPath("$.limit") { value(40) }
             }
     }
+
+    /**
+     * Every handler in this controller must ask the gate first. Testing only the listing would
+     * leave an endpoint that forgot to -- upload, above all -- unguarded with nothing to notice.
+     * Mutating requests carry csrf(): this codebase enforces it, and without it the 403 would
+     * come from the wrong place and prove nothing.
+     */
+    @Test
+    fun `no endpoint of the global pool answers a plain member`() {
+        every { gate.global(false) } throws ImagePoolAccessDeniedException()
+        val id = UUID.fromString("11111111-1111-1111-1111-111111111111")
+
+        mockMvc.get("/api/super-admin/images/$id/thumb") { with(principalFor()) }
+            .andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/super-admin/images/$id") { with(principalFor()) }
+            .andExpect { status { isNotFound() } }
+
+        mockMvc.multipart("/api/super-admin/images") {
+            file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1)))
+            with(principalFor()); with(csrf())
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.delete("/api/super-admin/images/$id") { with(principalFor()); with(csrf()) }
+            .andExpect { status { isNotFound() } }
+    }
 }
 ```
 
@@ -1776,7 +1802,7 @@ class SuperAdminImageController(
 - [ ] **Step 4: Run the test — green**
 
 Run: `cd core && ./mvnw test -Dtest=SuperAdminImageControllerTest`
-Expected: PASS (2 tests).
+Expected: PASS (3 tests).
 
 - [ ] **Step 5: Run the whole backend suite**
 
