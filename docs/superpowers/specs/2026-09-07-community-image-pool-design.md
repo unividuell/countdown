@@ -2,8 +2,9 @@
 
 **Status:** beschlossenes Design (2026-09-07).
 
-**Baut auf:** dem [Community-Modul](2026-08-03-community-members-design.md) (Mandant,
-`CommunityAccess`) und `iam` (wer hochgeladen hat).
+**Baut auf:** dem [Community-Modul](2026-08-03-community-members-design.md) — aber nur auf dessen
+öffentlicher `CommunityQuery`/`MembershipQuery`, nicht auf `CommunityAccess` — und auf `iam` (wer
+hochgeladen hat).
 
 **Steht neben:** [Anti-Cheat](2026-08-02-anti-cheat-design.md) — der Grund, warum die Sichtbarkeit
 des Pools eine Spielentscheidung ist und nicht nur eine Frage der Bequemlichkeit.
@@ -61,9 +62,8 @@ Katalog.
 | Globaler Pool: schreiben/löschen | nein | nein | ja |
 
 **Das Ziel eines Uploads bestimmt der Namensraum, nicht die Person.** `POST
-/api/communities/{slug}/images` landet im Pool dieser Gemeinschaft — auch für den Super-Admin, der
-über `CommunityAccess.requireActiveMember` ohnehin durchgereicht wird und dort schlicht als
-Mitglied hochlädt. `POST /api/super-admin/images` landet im globalen Pool, und dorthin kommt
+/api/communities/{slug}/images` landet im Pool dieser Gemeinschaft — auch für den Super-Admin, den
+das Tor ohnehin durchreicht und der dort schlicht als Mitglied hochlädt. `POST /api/super-admin/images` landet im globalen Pool, und dorthin kommt
 niemand sonst. Es gibt kein „Ziel“-Auswahlfeld im Formular: die Seite, auf der man steht, *ist* das
 Ziel. Das folgt der Regel aus `multi-tenancy.md`, dass Community-Dinge unter `/c/` leben.
 
@@ -224,6 +224,13 @@ erzwänge eine zweite Abfrage. Sortiert wird neueste zuerst.
 
 Wer was sieht, ist eine Bedingung in derselben Abfrage: Admin `community_id = ?`, Mitglied
 `community_id = ? AND uploaded_by = ?`.
+
+**Das Tor gehört dem Modul, nicht dem Nachbarn.** `CommunityAccess` wäre der kürzere Weg, liegt aber
+in `community.internal` und ist für ein fremdes Modul verschlossen. `imagepool` löst den Mandanten
+also selbst auf — `CommunityQuery.findBySlug`, dann `MembershipQuery.isActiveMember` bzw. `isAdmin`,
+Super-Admin davor durchgereicht — und wirft eigene Ausnahmen: `ImagePoolAccessDeniedException`
+(→404) und `NotPoolAdminException` (→403). Genau die Form, die `game` in
+`AnnouncementService.resolve` mit `RoundAccessDeniedException` schon hat.
 
 **Zwischenspeicher:** Bilder sind unter ihrer ID unveränderlich, also `Cache-Control: private,
 max-age=31536000, immutable` plus `ETag`. `private` ist kein Detail — es ist die Zusage, dass kein
