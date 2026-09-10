@@ -32,6 +32,8 @@
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
 		<kotlin-logging.version>8.0.4</kotlin-logging.version>
 		<spring-modulith.version>2.1.1</spring-modulith.version>
+		<metadata-extractor.version>2.19.0</metadata-extractor.version>
+		<twelvemonkeys.version>3.12.0</twelvemonkeys.version>
 		<!-- Image tag for spring-boot:build-image. Override in CI: -Dcountdown.image.tag=staging
 		     (the -Dspring-boot.build-image.imageName user property does NOT override a pom-set
 		     <image><name>, so parametrize the name here instead). -->
@@ -104,6 +106,21 @@
 			<groupId>javazoom</groupId>
 			<artifactId>jlayer</artifactId>
 			<version>1.0.1</version>
+		</dependency>
+		<dependency>
+			<!-- The JDK applies no EXIF orientation, and phone photos almost always carry one -
+			     without this every portrait shot lies on its side in the listing. Reading the tag
+			     is all we use it for. -->
+			<groupId>com.drewnoakes</groupId>
+			<artifactId>metadata-extractor</artifactId>
+			<version>${metadata-extractor.version}</version>
+		</dependency>
+		<dependency>
+			<!-- ImageIO has no WebP reader in any JDK (measured on 25: BMP/GIF/JPEG/PNG/TIFF/WBMP
+			     only), and WebP is what modern phones increasingly hand over. -->
+			<groupId>com.twelvemonkeys.imageio</groupId>
+			<artifactId>imageio-webp</artifactId>
+			<version>${twelvemonkeys.version}</version>
 		</dependency>
 
 		<dependency>
