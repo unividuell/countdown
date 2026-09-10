@@ -19,8 +19,14 @@ import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import org.unividuell.countdown.core.imagepool.internal.Image
+import org.unividuell.countdown.core.imagepool.internal.ImagePoolService
 import org.unividuell.countdown.core.imagepool.internal.ImageRepository
+import org.unividuell.countdown.core.imagepool.internal.PoolContext
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.util.UUID
+import javax.imageio.ImageIO
 import kotlin.test.assertFailsWith
 
 /**
@@ -41,6 +47,7 @@ class ImageRepositoryTest(
     @Autowired val communityRepo: CommunityRepository,
     @Autowired val communities: CommunityService,
     @Autowired val users: UserRepository,
+    @Autowired val service: ImagePoolService,
 ) {
     private val createdCommunities = mutableListOf<UUID>()
 
@@ -152,6 +159,33 @@ class ImageRepositoryTest(
     @Test
     fun `the pool lock is SQL Postgres accepts`() {
         images.lockPool(System.nanoTime()) shouldBe 1L
+    }
+
+    /**
+     * The only place the upload path itself meets a database: ImagePoolServiceTest mocks the
+     * repository and ImagePoolControllerTest mocks the service, so nothing else ever runs the
+     * real service's lock, quota read and insert inside its TransactionTemplate.
+     */
+    @Test
+    fun `the real upload path takes the lock and commits the row`() {
+        val alice = user("alice7")
+        val theta = community(name = "Theta", owner = alice)
+
+        val stored = service.upload(
+            pool = PoolContext(communityId = theta, viewerIsAdmin = false),
+            uploaderId = alice,
+            bytes = jpeg(),
+        )
+
+        images.countInPool(theta) shouldBe 1L
+        images.findSummary(stored.id).shouldNotBeNull().uploadedBy shouldBe alice
+        images.findThumb(stored.id).shouldNotBeNull().isNotEmpty() shouldBe true
+    }
+
+    private fun jpeg(): ByteArray {
+        val img = BufferedImage(64, 32, BufferedImage.TYPE_INT_RGB)
+        img.createGraphics().apply { color = Color.GREEN; fillRect(0, 0, 64, 32); dispose() }
+        return ByteArrayOutputStream().also { ImageIO.write(img, "jpeg", it) }.toByteArray()
     }
 
     @Test
