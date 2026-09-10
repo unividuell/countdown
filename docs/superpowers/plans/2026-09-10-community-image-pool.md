@@ -2139,7 +2139,8 @@ git commit -m "Add a binary upload sidecar with progress"
 **Files:**
 - Create: `webapp-vue/src/images/ImagePool.vue`
 - Create: `webapp-vue/src/pages/c/[slug]/images.vue`, `webapp-vue/src/pages/super-admin/images.vue`
-- Modify: `webapp-vue/src/communities/routes.ts`, `webapp-vue/src/nav/NavDrawer.vue`
+- Modify: `webapp-vue/src/communities/routes.ts`, `webapp-vue/src/nav/NavDrawer.vue`,
+  `webapp-vue/src/pages/super-admin/index.vue`
 - Test: `webapp-vue/src/images/__tests__/ImagePool.spec.ts`
 - Modify: `webapp-vue/src/nav/__tests__/NavDrawer.spec.ts`
 
@@ -2456,6 +2457,48 @@ bereits (Zeile ~84 bzw. als Konstante); die genaue Einfügestelle bestätigen st
 In `webapp-vue/src/nav/__tests__/NavDrawer.spec.ts` die bestehende Erwartung über die Reihenfolge der
 Links um den neuen Eintrag ergänzen — der Test listet `communityPath('team', …)`-Aufrufe auf und
 schlägt sonst fehl.
+
+- [ ] **Step 5b: Make the global pool reachable, and a failed load visible**
+
+Three things the page needs that the component's own file cannot supply.
+
+`webapp-vue/src/pages/super-admin/index.vue` gets a third entry in its list, in the same shape as
+the two beside it — the global pool exists to be filled through this UI, so a page only the URL bar
+can reach defeats the decision that put it here:
+
+```html
+      <li>
+        <RouterLink
+          to="/super-admin/images"
+          data-test="nav-entry"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+        >
+          Bilder
+          <IconChevron class="ml-auto size-4 text-neutral-400" />
+        </RouterLink>
+      </li>
+```
+
+`ImagePool.vue` already owns an `error` ref and the markup that shows it, but only `remove()` ever
+sets it. `onMounted(load)` must too: a listing that fails to load currently renders „0 von 0" and an
+empty grid, which reads as an empty pool rather than a failure — on the flaky mobile connections
+this feature's own upload timeout is written for, that misinforms rather than merely omitting.
+Follow `super-admin/communities.vue`, not `members.vue`: catch, and say „Bilder konnten nicht
+geladen werden." Cover it with a test that rejects `listImages` and asserts the sentence appears.
+
+The thumbnails' `alt=""` makes each grid link unlabelled — a screen reader announces a link with no
+name, and these images are the content, not decoration. Give the alt the only fact the row has:
+who uploaded it.
+
+- [ ] **Step 5c: Pin what the tests assume**
+
+Two rules nothing currently holds:
+
+- In `NavDrawer.spec.ts`, that a **plain member** sees „Bilder". The existing tests use an admin
+  fixture, so they cannot tell whether the link is gated on `activeCommunity` (right) or on `admin`
+  (wrong) — the whole reason this entry sits outside the admin block.
+- In `ImagePool.spec.ts`, that a **confirmed** delete calls `deleteImage` and reloads the listing.
+  Only the declining path is covered today, and delete is the destructive one.
 
 - [ ] **Step 6: Run everything green**
 
