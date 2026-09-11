@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -143,5 +144,34 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
         }.andReturn().response.contentAsString
 
         html shouldContain """name="redirect" value="/c/team/lab/sample?seed=42""""
+    }
+
+    @Test
+    fun `the sign-in POST is locked too, not just the page that shows it`() {
+        // TestUserSeeder is committed, so the seed logins are public. An unguarded POST is the
+        // picker without the picker.
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            param("login", "leela")
+        }.andExpect {
+            status { is3xxRedirection() }
+            // Back to the keyhole, not into a dead end.
+            redirectedUrl("/login/github")
+            match(unauthenticated())
+        }
+    }
+
+    @Test
+    fun `with the cookie the sign-in POST works as before`() {
+        // Positive control: without it the rejection above would also pass on a POST that is
+        // broken for everyone.
+        mockMvc.post("/login/github/as") {
+            with(csrf())
+            cookie(unlockedCookie())
+            param("login", "leela")
+        }.andExpect {
+            status { is3xxRedirection() }
+            redirectedUrl("/")
+        }
     }
 }

@@ -76,6 +76,12 @@ class DevLoginController(
         request: HttpServletRequest,
         response: HttpServletResponse,
     ): RedirectView {
+        // The picker's own door is guarded (see picker); this is the other one. Sending the
+        // caller to the keyhole rather than refusing flatly keeps the dev flow obvious.
+        if (!gate.isOpen(request)) {
+            return RedirectView("/login/github").apply { setExpandUriTemplateVariables(false) }
+        }
+
         // permitAll: only seed logins are resolvable here, or anyone could assume any registered
         // identity by name (and, since TestUserSeeder, potentially a super-admin one).
         val user = users.findByGithubLogin(login)?.takeIf { login in seeder.seedLogins }
