@@ -45,6 +45,9 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
+      # Unlocks the fake sign-in picker on staging; prod shares this file but never reads the
+      # value (the picker does not exist there), so the default keeps Compose from warning.
+      - FAKE_SIGN_IN_KEY=${FAKE_SIGN_IN_KEY:-}
       - GUESS_HUE_DATASET_PATH=/config/guess-hue-dataset.yaml
       - SPOT_OBJECT_TERMS_PATH=/config/spot-object-terms.yaml
       - SPOT_OBJECT_MAPS_API_KEY=${SPOT_OBJECT_MAPS_API_KEY}

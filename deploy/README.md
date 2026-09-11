@@ -176,6 +176,11 @@ doesn't exist, so a stack bootstrapped earlier keeps its old env file forever. W
 new variable to the template, add it to your `.env.prod`/`.env.staging` by hand — it will not appear
 there on its own, and a missing one binds empty without any error.
 
+**Migrating an existing stack for the fake sign-in key:** add `FAKE_SIGN_IN_KEY` to
+`.env.staging` by hand **before** the next `./update.sh staging` — the backend refuses to boot
+without it under the staging profile. Use 24+ random characters: the picker has no rate limit.
+`.env.prod` needs nothing; the picker does not exist in production.
+
 **Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY`,
 `SPOT_OBJECT_SERVER_MAPS_API_KEY` and `SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging`
 by hand (see core/README.md for where each value comes from and which one is browser-restricted
@@ -198,8 +203,9 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
-# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY,
-#   SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET; GITHUB_CLIENT_SECRET=unused is fine
+# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, FAKE_SIGN_IN_KEY,
+#   SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET;
+#   GITHUB_CLIENT_SECRET=unused is fine
 #   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```

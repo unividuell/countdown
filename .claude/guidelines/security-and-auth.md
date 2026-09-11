@@ -158,6 +158,20 @@ One SPA button → `/login/github`; the **server** decides by profile + a config
   it down to fit, which looks like a CSS/sizing bug but isn't one; check for the tag before touching
   CSS. [frontend-ui.md](frontend-ui.md) is written for `webapp-vue`, but the expectation applies to
   any HTML the backend renders directly, the picker included.
+- **Staging's picker is locked with a key** (`app.test-auth.key`, env `FAKE_SIGN_IN_KEY` — the one
+  place where env name and property path deliberately differ). `FakeSignInGate` guards **both**
+  doors, `/login/github` and `POST /login/github/as`: `TestUserSeeder` is committed, so an
+  unguarded POST is the picker without a picker. A browser presents a year-long cookie holding the
+  key's SHA-256 (`Path=/login`, `HttpOnly`, `SameSite=Lax`, `Secure` from the request) — the hash,
+  not the key, because the DevTools cookie panel shows values in the clear. Empty key = no lock,
+  which is the localhost default; under `staging` an empty key **fails the boot**, because Compose
+  passes a missing variable through as an empty string rather than as an error. Design:
+  [the gate spec](../../docs/superpowers/specs/2026-09-11-fake-sign-in-gate-design.md).
+- **The lock sits on the picker, not on the API** — so it holds only as long as the picker is the
+  only way into a session on staging. `/oauth2/authorization/github` stays `permitAll` and is
+  merely *inert* there today (placeholder client secret, callback pointing at the prod origin).
+  **Giving staging its own GitHub OAuth App would open a second entrance past the lock** and this
+  design would have to move with it.
 
 ## Secrets
 
