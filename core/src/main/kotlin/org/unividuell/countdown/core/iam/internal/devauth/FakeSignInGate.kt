@@ -45,13 +45,13 @@ class FakeSignInGate(
     fun isOpen(request: HttpServletRequest): Boolean {
         val expected = expected ?: return true
         val presented = request.cookies?.firstOrNull { it.name == COOKIE_NAME }?.value ?: return false
-        return constantTimeEquals(presented, expected)
+        return constantTimeEquals(presented = presented, expected = expected)
     }
 
     /** Whether a typed-in candidate is the configured key. Compared as hashes, so equal length. */
     fun accepts(candidate: String): Boolean {
         val expected = expected ?: return true
-        return constantTimeEquals(sha256Hex(candidate.trim()), expected)
+        return constantTimeEquals(presented = sha256Hex(candidate.trim()), expected = expected)
     }
 
     /**
@@ -76,8 +76,8 @@ class FakeSignInGate(
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
     }
 
-    private fun constantTimeEquals(a: String, b: String) =
-        MessageDigest.isEqual(a.toByteArray(Charsets.UTF_8), b.toByteArray(Charsets.UTF_8))
+    private fun constantTimeEquals(presented: String, expected: String) =
+        MessageDigest.isEqual(presented.toByteArray(Charsets.UTF_8), expected.toByteArray(Charsets.UTF_8))
 
     private fun sha256Hex(value: String): String =
         MessageDigest.getInstance("SHA-256")
