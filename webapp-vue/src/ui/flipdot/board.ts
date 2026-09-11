@@ -1,9 +1,32 @@
-import { bitmap, glyphCols } from './font'
+import { bitmap, glyphCols, type Pad } from './font'
 
 export const PITCH = 4
 export const RADIUS = 1.5
 export const DOT_ON = '#fafaf9'
 export const DOT_OFF = '#292524'
+
+/**
+ * amber-500 — the reading of a play that is being timed. Only the reading changes colour; the
+ * field stays as it is, so the board reads as the same instrument in a different mode rather than
+ * as a warning lamp in the corner of the band.
+ */
+export const DOT_ALARM_ON = '#f59e0b'
+
+export type Tone = 'default' | 'alarm'
+
+export const TONES: Record<Tone, { on: string; off: string }> = {
+  default: { on: DOT_ON, off: DOT_OFF },
+  alarm: { on: DOT_ALARM_ON, off: DOT_OFF },
+}
+
+/**
+ * The game band's field: two blank rows above and below so the dots meet the header's edges, one
+ * column left and five right. The five are the card's own 16px gutter — not the 12px corner radius
+ * they also clear — so the digits keep standing where they stand while the field runs into the
+ * corner.
+ */
+export const HEADER_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 1 }
+
 export const FLIP_MS = 170
 export const STAGGER_MS = 9
 // Chosen: long enough to register as "off" before the board slams on, short enough to read as the
@@ -34,6 +57,11 @@ export const CREATE_LEAD_MS = 48
  *
  * It lives here and not in font.ts because it needs PITCH and RADIUS: where a label sits is a
  * question about the rendered geometry, not about the glyph pattern.
+ *
+ * Measured over the UNPADDED text, so `groupCentres` and `pad` do not compose: a padded board's
+ * labels would sit shifted against its digits. Today nothing brings the two together — the one
+ * padded board carries no legend, and the one board with a legend takes no pad. Whoever changes
+ * that has to pass the padding in here.
  */
 export function groupCentres(text: string): number[] {
   const width = bitmap(text).cols * PITCH - (PITCH - 2 * RADIUS)

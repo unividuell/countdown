@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// Positioned from `groupCentres`, which measures the unpadded text — so this legend cannot sit
+// under a board that was given a `pad` without the padding reaching that function first.
 import { computed } from 'vue'
 import { groupCentres } from './board'
 

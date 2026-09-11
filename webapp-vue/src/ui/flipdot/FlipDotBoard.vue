@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
-import { bitmap, type Bitmap } from './font'
+import { bitmap, padded, type Bitmap, type Pad } from './font'
 import {
   BOOT_DARK_MS,
   BOOT_HOLD_MS,
   BOOT_RESOLVE_AT_MS,
   CREATE_LEAD_MS,
-  DOT_OFF,
-  DOT_ON,
   FLIP_MS,
   PITCH,
   RADIUS,
   STAGGER_MS,
+  TONES,
+  type Tone,
 } from './board'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
-const props = defineProps<{ text: string; label: string }>()
+// Props: tone and pad both default to what the board did before they existed.
+const props = withDefaults(defineProps<{ text: string; label: string; tone?: Tone; pad?: Pad }>(), {
+  tone: 'default',
+})
 const emit = defineEmits<{ phase: ['white' | 'live'] }>()
 
 function uniform(b: Bitmap, on: boolean): Bitmap {
@@ -24,7 +27,11 @@ function uniform(b: Bitmap, on: boolean): Bitmap {
 }
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
-const bm = computed(() => bitmap(props.text))
+const colours = computed(() => TONES[props.tone])
+const bm = computed(() => {
+  const glyphs = bitmap(props.text)
+  return props.pad === undefined ? glyphs : padded(glyphs, props.pad)
+})
 const phase = ref<'dark' | 'white' | 'live'>(prefersReducedMotion() ? 'live' : 'dark')
 const shown = computed(() =>
   phase.value === 'live' ? bm.value : uniform(bm.value, phase.value === 'white'),
@@ -76,7 +83,10 @@ function releaseWaves(): void {
   cancelAnimationFrame(waveRaf)
   waveRaf = 0
   for (const [index, dot] of heldDots()) {
-    dot.circle.setAttribute('fill', (shown.value.on[index] ?? false) ? DOT_ON : DOT_OFF)
+    dot.circle.setAttribute(
+      'fill',
+      (shown.value.on[index] ?? false) ? colours.value.on : colours.value.off,
+    )
   }
   waves = []
 }
@@ -113,7 +123,7 @@ function flip(prev: Bitmap, next: Bitmap): void {
   for (const i of changed) {
     const circle = circles[i]
     if (!circle) continue
-    const from = (prev.on[i] ?? false) ? DOT_ON : DOT_OFF
+    const from = (prev.on[i] ?? false) ? colours.value.on : colours.value.off
     const col = i % next.cols
     const start = (lead - col) * STAGGER_MS
     const column = byColumn.get(col) ?? { start, dots: [] }
@@ -143,7 +153,7 @@ function createDueColumns(): void {
         // Read now, not when the wave was built: a column that has waited out a value change flips
         // to what the board reads today. A dot the change has brought back to the colour it is
         // already being held at has nothing left to flip.
-        const to = (shown.value.on[dot.index] ?? false) ? DOT_ON : DOT_OFF
+        const to = (shown.value.on[dot.index] ?? false) ? colours.value.on : colours.value.off
         if (to === dot.from) continue
         dot.circle.animate(
           [
@@ -224,6 +234,10 @@ watch(
   { flush: 'post' },
 )
 
+// A wave holds its dots at a colour it wrote by hand. A tone change repaints everything else and
+// would leave exactly those standing in the old colour.
+watch(() => props.tone, releaseWaves)
+
 // The dots a wave has not reached yet are held at their pre-flip colour by hand, and the wave that
 // would resolve them runs on `requestAnimationFrame` — which going to the background has just
 // stopped. Releasing them hands the hold back to the render, so the board is legible the moment the
@@ -269,7 +283,7 @@ onBeforeUnmount(() => {
       :cx="dot.cx"
       :cy="dot.cy"
       :r="RADIUS"
-      :fill="dot.on ? DOT_ON : DOT_OFF"
+      :fill="dot.on ? colours.on : colours.off"
       class="origin-center [transform-box:fill-box]"
     />
   </svg>

@@ -7,6 +7,7 @@ import {
   BOOT_HOLD_MS,
   BOOT_RESOLVE_AT_MS,
   CREATE_LEAD_MS,
+  DOT_ALARM_ON,
   DOT_OFF,
   DOT_ON,
   PITCH,
@@ -632,5 +633,38 @@ describe('FlipDotBoard', () => {
       await bootDone()
       expect(animate).not.toHaveBeenCalled()
     })
+  })
+
+  it('paints the reading in the tone it is given and leaves the field alone', async () => {
+    const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', tone: 'alarm' } })
+    await bootDone()
+
+    expect(fills(w).filter((f) => f === DOT_ALARM_ON).length).toBe(10)
+    expect(fills(w).filter((f) => f === DOT_OFF).length).toBe(5 * 7 - 10)
+  })
+
+  it('defaults to the plain tone, so every board that asks for none is unchanged', async () => {
+    const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+    await bootDone()
+
+    expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+  })
+
+  it('grows the field by the cells it is padded with, so the dots can reach a band edge', async () => {
+    const w = mount(FlipDotBoard, {
+      props: { text: '12', label: 'zwölf', pad: { top: 2, right: 5, bottom: 2, left: 1 } },
+    })
+    await bootDone()
+
+    // '12' is 11 columns of glyph; the pad adds 6 columns and 4 rows.
+    expect(w.findAll('circle')).toHaveLength(17 * 11)
+    expect(w.get('svg').element.getAttribute('viewBox')).toBe(
+      `0 0 ${17 * PITCH - (PITCH - 2 * RADIUS)} ${11 * PITCH - (PITCH - 2 * RADIUS)}`,
+    )
+    expect(
+      fills(w)
+        .slice(0, 17)
+        .every((f) => f === DOT_OFF),
+    ).toBe(true)
   })
 })
