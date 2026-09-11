@@ -1,7 +1,7 @@
 package org.unividuell.countdown.core.iam.devauth
 
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import jakarta.servlet.http.Cookie
@@ -77,9 +77,12 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
             param("key", "guessing")
         }.andExpect {
             status { isOk() }
+            content { contentType("text/html;charset=UTF-8") }
         }.andReturn().response
 
-        response.getHeader("Set-Cookie").shouldBeNull()
+        // Precise: no cookie of the gate's own name, not "no Set-Cookie header at all" — the
+        // latter would also fail once some unrelated filter starts setting its own cookie.
+        response.getHeaders("Set-Cookie").none { it.startsWith(FakeSignInGate.COOKIE_NAME) } shouldBe true
         response.contentAsString shouldContain "Falscher Schlüssel"
         // No hint about what the right one looks like.
         response.contentAsString shouldNotContain "open-sesame"
@@ -165,13 +168,40 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
     fun `with the cookie the sign-in POST works as before`() {
         // Positive control: without it the rejection above would also pass on a POST that is
         // broken for everyone.
-        mockMvc.post("/login/github/as") {
+        //
+        // Not match(authenticated()): Spring Session's SessionRepositoryFilter wraps the
+        // request before the controller runs, and MvcResult exposes only the original,
+        // unwrapped one — so that matcher's session lookup always comes back empty here, on
+        // app code that works. A second, independent request carrying the issued session
+        // cookie proves the login actually stuck.
+        val response = mockMvc.post("/login/github/as") {
             with(csrf())
             cookie(unlockedCookie())
             param("login", "leela")
         }.andExpect {
             status { is3xxRedirection() }
             redirectedUrl("/")
+        }.andReturn().response
+
+        val header = response.getHeader("Set-Cookie").shouldNotBeNull()
+        val sessionId = header.substringBefore(";").substringAfter("SESSION=") // Spring Session's default cookie name
+        mockMvc.get("/api/me") {
+            cookie(Cookie("SESSION", sessionId))
+        }.andExpect {
+            status { isOk() }
         }
+    }
+
+    @Test
+    fun `logout does not spend the unlock`() {
+        // The spec's requirement is "once per browser profile": unlock once, then switch between
+        // test users freely. That rests on SecurityConfig's logout not listing this cookie in
+        // `deleteCookies` — nothing else pins it, so one future entry there would regress it silently.
+        val response = mockMvc.post("/logout") {
+            with(csrf())
+            cookie(unlockedCookie())
+        }.andReturn().response
+
+        response.getHeaders("Set-Cookie").none { it.startsWith(FakeSignInGate.COOKIE_NAME) } shouldBe true
     }
 }

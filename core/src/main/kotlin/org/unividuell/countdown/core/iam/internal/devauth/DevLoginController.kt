@@ -111,6 +111,9 @@ class DevLoginController(
         response: HttpServletResponse,
     ): ResponseEntity<String> {
         if (!gate.accepts(key)) {
+            // No rate limit guards this endpoint, so noticing an attempt is the remaining defence.
+            // Never log the submitted key, not even truncated.
+            logger.warn { "rejected a wrong fake sign-in unlock key" }
             val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
             return ResponseEntity.ok(lockedPage(csrf = csrf, redirect = redirect, wrongKey = true))
         }
