@@ -14,6 +14,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import type { PlayClock, StartBeat } from '@/ui/useStartCeremony'
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +32,12 @@ const props = withDefaults(
      * one place — a second card would be a second place for „the same reveal UI“ to drift.
      */
     closed?: boolean
+    /**
+     * The start signal, while the page that owns the reveal is playing it. Only the beat comes
+     * from outside — the running clock is derived below, because the card already holds the round
+     * that answers it and a caller deriving it would be one more place for the rule to live.
+     */
+    beat?: StartBeat | null
     /** Which face a running round calls for. A closed round has none. */
     stage?: RoundStage | undefined
     busy?: boolean
@@ -42,6 +49,7 @@ const props = withDefaults(
   }>(),
   {
     closed: false,
+    beat: null,
     busy: false,
     notice: null,
     stage: undefined,
@@ -75,6 +83,20 @@ const endsAt = computed<string | null>(() =>
   props.closed ? null : (props.round?.round?.end ?? null),
 )
 const disabled = computed(() => props.closed || props.busy || face.value === 'done')
+/**
+ * What the band's board shows. The signal wins while it is playing; after it, a timed play that
+ * has not been answered yet. `closed` has to be asked separately from `guessedAt`: the history is
+ * full of rows nobody ever guessed on, and without it their clock would run forever.
+ */
+const play = computed<PlayClock | null>(() => {
+  if (props.beat != null) return { phase: 'start', beat: props.beat }
+
+  const me = props.round?.me
+  if (props.closed || me == null || me.guessedAt !== null) return null
+  return props.round?.game?.requiresReveal === true
+    ? { phase: 'running', since: me.revealedAt }
+    : null
+})
 
 async function onReveal(): Promise<void> {
   await props.reveal?.()
@@ -124,6 +146,7 @@ function onGiveUp(): void {
           :round-number="round?.round?.number ?? null"
           :title="round?.game?.displayName ?? null"
           :ends-at="endsAt"
+          :play="play"
         />
       </template>
 
