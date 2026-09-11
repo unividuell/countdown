@@ -868,7 +868,13 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
     // relighting the board three times in three seconds.
     return play.beat === 'GO!'
       ? { text: 'GO!', label: 'Los', tone: 'alarm' }
-      : { text: `  ${play.beat}`, label: `Start in ${play.beat} Sekunden`, tone: 'alarm' }
+      : {
+          text: `  ${play.beat}`,
+          // Picked from the number, like every other reading the band speaks: the `1` beat is
+          // the one every ceremony passes through, and „1 Sekunden“ is not German.
+          label: `Start in ${play.beat} ${play.beat === '1' ? 'Sekunde' : 'Sekunden'}`,
+          tone: 'alarm',
+        }
   }
 
   const [text, label] =
