@@ -61,7 +61,7 @@ tap „Aufdecken“   +1s        +2s                    +2s+Latenz
       ▼            ▼          ▼                          ▼
    [   2 ]  ───▶ [   1 ] ──▶ [ GO! ]                 [ 00:00 ] ──▶ läuft
       └ Relight     └ Flip     └ Flip                    └ Relight
-        (400ms)                  + POST /reveal            (400ms)
+        (300ms)                  + POST /reveal            (300ms)
 
    └──────────────── bernstein ──────────────────────────────────────▶ … bis zum Tipp,
                                                                         dann weiß + HH:MM:SS
@@ -201,6 +201,12 @@ einzigen `useRound`-Aufruf und reicht `reveal` herunter; sie reicht künftig `ce
 herunter und `:busy="busy || ceremony.beat !== null"` — womit der Aufdecken-Knopf während der
 Zeremonie von selbst tot ist, ohne zweites Flag.
 
+**Der Sperrgriff gilt nur dem Knopf.** Das `busy`, mit dem die Seite den Aufdecken-Knopf während
+der Zeremonie totlegt, erreicht auch das `disabled` des gemounteten Spiels. Ungefiltert hieße das:
+die Antwort landet, das Brett erscheint — und nimmt bis zum Ende des GO-Halts keine Eingabe an,
+während die gewertete Zeit längst läuft. Die Sperre hängt deshalb zusätzlich am Gesicht
+(`stage === 'sealed'`), denn nur dort gibt es den Knopf überhaupt.
+
 `GO!` hält mindestens 500 ms, auch wenn die Antwort früher da ist. Ohne diese Untergrenze blitzt
 das Startsignal bei einer schnellen Verbindung 50 ms lang auf und verschwindet im Relight — der
 eine Beat, der gelesen werden muss, wäre der einzige, den niemand liest.
@@ -220,6 +226,11 @@ und reicht es unverändert an `GameHeader` weiter.
 
 Dieselbe Verdrahtung, nur kommt der Start vom Client: `playStartedAt` wird gesetzt, wenn der
 Lab-Reveal durchgeht, und beim Neuöffnen einer Runde (Seed- oder Phasenwechsel) wieder geleert.
+
+Ein Reload mitten im Spiel verliert die Laboruhr: der Stempel lebt nur im Speicher der Seite, und
+`openLabRound` antwortet `revealed: true`, weil der Server sein eigenes `openedAt` behält — also
+setzt niemand den Stempel neu und das Band fällt auf den Rundencountdown zurück. Das ist der Preis
+von „kein Serverstempel fürs Labor" und hier ausdrücklich in Kauf genommen.
 
 Der Stempel ist zugleich die Bedingung. Im Labor bleibt `round.me` null, bis ein Tipp landet, und
 `revealed` steht nach dem Aufdecken für beide Spielarten auf `true` — „gestempelt und noch kein
