@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { reactive } from 'vue'
+import { nextTick, reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
+import { BEAT_MS, GO_HOLD_MS } from '@/ui/useStartCeremony'
 import * as drawerControl from '@/nav/drawerControl'
 import type { LabRoundResponse } from '@/gamelab/types'
 
@@ -144,6 +145,19 @@ function tool(testId: string): DOMWrapper<Element> {
   const el = document.querySelector(`[data-test="${testId}"]`)
   if (!el) throw new Error(`no teleported control [data-test="${testId}"] in the drawer container`)
   return new DOMWrapper(el)
+}
+
+/**
+ * Click „Aufdecken“ and sit out the 2 · 1 · GO! the page plays in front of the request. Fake
+ * timers only for the beats, real ones again before `flushPromises` — that helper waits on a real
+ * timer of its own and never resolves on a frozen clock.
+ */
+async function revealThroughSignal(w: VueWrapper): Promise<void> {
+  vi.useFakeTimers()
+  await w.get('[data-test="lab-reveal"]').trigger('click')
+  await vi.advanceTimersByTimeAsync(2 * BEAT_MS + GO_HOLD_MS)
+  vi.useRealTimers()
+  await flushPromises()
 }
 
 describe('lab page', () => {
@@ -1003,8 +1017,7 @@ describe('lab page', () => {
     const w = await mountPage()
     expect(w.findComponent(StubGame).exists()).toBe(false)
 
-    await w.get('[data-test="lab-reveal"]').trigger('click')
-    await flushPromises()
+    await revealThroughSignal(w)
 
     expect(api.revealLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(w.find('[data-test="lab-sealed"]').exists()).toBe(false)
@@ -1028,8 +1041,7 @@ describe('lab page', () => {
     } as never)
 
     const w = await mountPage()
-    await w.get('[data-test="lab-reveal"]').trigger('click')
-    await flushPromises()
+    await revealThroughSignal(w)
     expect(w.findComponent(StubGame).exists()).toBe(true)
 
     await tool('lab-reset').trigger('click')
@@ -1039,9 +1051,55 @@ describe('lab page', () => {
     const button = w.get('[data-test="lab-reveal"]')
     expect(button.attributes('disabled')).toBeUndefined()
 
-    await button.trigger('click')
-    await flushPromises()
+    await revealThroughSignal(w)
     expect(api.revealLabRound).toHaveBeenCalledTimes(2)
     expect(w.findComponent(StubGame).exists()).toBe(true)
+  })
+
+  it('counts the tester in and then runs their own clock', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+
+    const w = await mountPage()
+    vi.useFakeTimers()
+
+    await w.get('[data-test="lab-reveal"]').trigger('click')
+    expect(w.getComponent(GameHeader).props('play')).toEqual({ phase: 'start', beat: '2' })
+
+    await vi.advanceTimersByTimeAsync(2 * BEAT_MS + GO_HOLD_MS)
+    await nextTick()
+    vi.useRealTimers()
+
+    expect(w.getComponent(GameHeader).props('play')).toMatchObject({ phase: 'running' })
+  })
+
+  // Reset, „Meinen Guess löschen“ and a new seed all come back `revealed: false` for a gated game
+  // — the server clears its own `openedAt` on every one of them — so one check retires the stamp
+  // on all of them.
+  it('retires the tester clock when the round is opened again', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'resetLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+
+    const w = await mountPage()
+    await revealThroughSignal(w)
+    expect(w.getComponent(GameHeader).props('play')).toMatchObject({ phase: 'running' })
+
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+
+    expect(w.getComponent(GameHeader).props('play')).toBeNull()
   })
 })
