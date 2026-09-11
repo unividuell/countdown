@@ -119,6 +119,12 @@ describe('GameHeader', () => {
     expect(clockOf(w).tone).toBe('alarm')
   })
 
+  it('speaks the last beat in the singular', () => {
+    const w = mountHeader({ play: { phase: 'start', beat: '1' } })
+
+    expect(clockOf(w).label).toBe('Start in 1 Sekunde')
+  })
+
   it('says GO! at the same width as the digits before it', () => {
     const w = mountHeader({ play: { phase: 'start', beat: 'GO!' } })
 
