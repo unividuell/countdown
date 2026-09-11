@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, ref } from 'vue'
+import { computed, defineComponent, nextTick, ref } from 'vue'
 import * as api from '@/api/communities'
 import * as client from '@/api/client'
 import { communityKey } from '@/communities/context'
@@ -20,6 +20,7 @@ import { _resetCountdownState } from '@/communities/useCountdown'
 import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
 import type { RoundStage } from '@/rounds/useRound'
+import { BEAT_MS, GO_HOLD_MS } from '@/ui/useStartCeremony'
 
 /**
  * Stubbed at the page level: what the section renders is covered by `RoundHistory.spec.ts`, and the
@@ -406,5 +407,54 @@ describe('community home', () => {
     const w = mountPage()
 
     expect(w.findComponent(RoundHistory).exists()).toBe(false)
+  })
+
+  /** A round waiting behind „Aufdecken“ — the only state on this page that can open a timed round. */
+  function sealedPage() {
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const hook = mockUseRound({
+      stage: 'sealed',
+      round: aRoundResponse({
+        game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
+      }),
+    })
+    vi.mocked(useRound).mockReturnValue(hook)
+    return hook
+  }
+
+  // The server stamps the play's start when it handles the reveal, so the request must not leave
+  // before the player has been told to go.
+  it('counts the player in before it reveals', async () => {
+    const hook = sealedPage()
+    const w = mountPage()
+    await flushPromises()
+    vi.useFakeTimers()
+
+    await w.get('[data-test="round-reveal"]').trigger('click')
+    expect(w.getComponent(RoundCard).props('beat')).toBe('2')
+    expect(hook.reveal).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(2 * BEAT_MS)
+    await nextTick()
+    expect(w.getComponent(RoundCard).props('beat')).toBe('GO!')
+    expect(hook.reveal).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(GO_HOLD_MS)
+    await nextTick()
+    expect(w.getComponent(RoundCard).props('beat')).toBeNull()
+  })
+
+  it('holds the reveal button shut while the signal runs', async () => {
+    sealedPage()
+    const w = mountPage()
+    await flushPromises()
+    vi.useFakeTimers()
+
+    await w.get('[data-test="round-reveal"]').trigger('click')
+    expect(w.getComponent(RoundCard).props('busy')).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(2 * BEAT_MS + GO_HOLD_MS)
+    await nextTick()
+    expect(w.getComponent(RoundCard).props('busy')).toBe(false)
   })
 })
