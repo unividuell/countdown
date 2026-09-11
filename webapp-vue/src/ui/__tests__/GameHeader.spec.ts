@@ -3,6 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import { HEADER_PAD } from '@/ui/flipdot/board'
 import { _resetSharedClock } from '@/ui/sharedClock'
 
 // Fixed so the reading is a fixed string. The board's own boot animation is irrelevant here — the
@@ -106,5 +107,62 @@ describe('GameHeader', () => {
       expect.arrayContaining(['truncate', 'min-w-0']),
     )
     expect(w.getComponent(FlipDotBoard).classes()).toContain('shrink-0')
+  })
+
+  // Every beat is padded to the width of `GO!`, so the ceremony flips from beat to beat instead
+  // of relighting three times.
+  it('shows the start signal on the beat the page is playing', () => {
+    const w = mountHeader({ play: { phase: 'start', beat: '2' } })
+
+    expect(clockOf(w).text).toBe('  2')
+    expect(clockOf(w).label).toBe('Start in 2 Sekunden')
+    expect(clockOf(w).tone).toBe('alarm')
+  })
+
+  it('says GO! at the same width as the digits before it', () => {
+    const w = mountHeader({ play: { phase: 'start', beat: 'GO!' } })
+
+    expect(clockOf(w).text).toBe('GO!')
+    expect(clockOf(w).label).toBe('Los')
+  })
+
+  it('shows the play own clock once it is running, in the timed tone', () => {
+    const w = mountHeader({ play: { phase: 'running', since: '2026-06-15T06:44:22Z' } })
+
+    expect(clockOf(w).text).toBe('01:05')
+    expect(clockOf(w).label).toBe('Deine Zeit: 1 Minute, 5 Sekunden')
+    expect(clockOf(w).tone).toBe('alarm')
+  })
+
+  it('counts the play up with the shared clock', async () => {
+    const w = mountHeader({ play: { phase: 'running', since: '2026-06-15T06:44:22Z' } })
+
+    vi.advanceTimersByTime(2000)
+    await nextTick()
+
+    expect(clockOf(w).text).toBe('01:07')
+  })
+
+  it('is the round countdown in the plain tone when no play is running', () => {
+    expect(clockOf(mountHeader()).text).toBe('02:14:33')
+    expect(clockOf(mountHeader()).tone).toBe('default')
+  })
+
+  // The dark dots sit close enough to the band's own colour that a field stopping short of the
+  // edges reads as a badly cut sticker. It runs into the corner instead, and the blank columns on
+  // its right are what keep the last digit clear of the card's radius.
+  it('pads the board so it fills the band and runs into its corner', () => {
+    const w = mountHeader()
+
+    expect(clockOf(w).pad).toEqual(HEADER_PAD)
+    expect(w.getComponent(FlipDotBoard).classes()).toContain('h-full')
+    expect(w.get('[data-test="game-header"]').classes()).toContain('pl-4')
+    expect(w.get('[data-test="game-header"]').classes()).not.toContain('pr-4')
+  })
+
+  it('keeps a gutter on the right where there is no board to fill it', () => {
+    const w = mountHeader({ endsAt: null })
+
+    expect(w.get('[data-test="game-header"]').classes()).toContain('pr-4')
   })
 })

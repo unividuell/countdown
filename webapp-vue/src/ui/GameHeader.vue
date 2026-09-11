@@ -10,24 +10,64 @@
 // anything this component knew about `RoundResponse` would be a thing the lab had to fake.
 import { computed } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import { HEADER_PAD, type Tone } from '@/ui/flipdot/board'
+import { elapsedClock, elapsedReading } from '@/ui/elapsedClock'
 import { remainingClock, remainingReading } from '@/ui/remainingClock'
+import type { PlayClock } from '@/ui/useStartCeremony'
 import { useSharedNow } from '@/ui/sharedClock'
 
-const props = defineProps<{
-  /** Signed, and shown signed: round 3 and round -3 are different rounds. */
-  roundNumber: number | null
-  title: string | null
-  /** ISO instant the round closes at. `null` where there is no such thing — then no board. */
-  endsAt: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** Signed, and shown signed: round 3 and round -3 are different rounds. */
+    roundNumber: number | null
+    title: string | null
+    /** ISO instant the round closes at. `null` where there is no such thing — then no board. */
+    endsAt: string | null
+    /**
+     * The timed play's own face, while there is one. `null` — the round countdown — is what every
+     * caller without a play of its own passes, which is all of them but two.
+     */
+    play?: PlayClock | null
+  }>(),
+  { play: null },
+)
 
 const now = useSharedNow()
-const clock = computed(() => remainingClock(props.endsAt, now.value))
-const reading = computed(() => remainingReading(props.endsAt, now.value))
+
+/**
+ * What the board reads, says and wears — derived in one place, so the three faces cannot disagree
+ * about which of them is showing.
+ */
+const face = computed<{ text: string; label: string; tone: Tone } | null>(() => {
+  const play = props.play
+
+  if (play?.phase === 'start') {
+    // Padded to the width of `GO!`: same geometry, so the beats flip into one another instead of
+    // relighting the board three times in three seconds.
+    return play.beat === 'GO!'
+      ? { text: 'GO!', label: 'Los', tone: 'alarm' }
+      : { text: `  ${play.beat}`, label: `Start in ${play.beat} Sekunden`, tone: 'alarm' }
+  }
+
+  const [text, label] =
+    play?.phase === 'running'
+      ? [elapsedClock(play.since, now.value), elapsedReading(play.since, now.value)]
+      : [remainingClock(props.endsAt, now.value), remainingReading(props.endsAt, now.value)]
+
+  if (text === null || label === null) return null
+  return { text, label, tone: play?.phase === 'running' ? 'alarm' : 'default' }
+})
 </script>
 
 <template>
-  <div data-test="game-header" class="flex h-9 items-center gap-2 bg-stone-700 px-4 text-stone-50">
+  <!-- No gutter on the right while a board is up: the dot field is what meets the card's edge, and
+       the blank columns inside it are the gutter. Without a board there is nothing to meet it, so
+       the band pays for its own. -->
+  <div
+    data-test="game-header"
+    class="flex h-9 items-center gap-2 bg-stone-700 pl-4 text-stone-50"
+    :class="{ 'pr-4': face === null }"
+  >
     <span
       v-if="roundNumber !== null"
       data-test="game-header-round"
@@ -45,11 +85,13 @@ const reading = computed(() => remainingReading(props.endsAt, now.value))
          app header's board — the viewBox ratio supplies the width. Self-describing here (nothing
          wraps it), so its own aria-label is the announcement. -->
     <FlipDotBoard
-      v-if="clock !== null && reading !== null"
+      v-if="face !== null"
       data-test="game-header-clock"
-      class="h-[18px] w-auto shrink-0"
-      :text="clock"
-      :label="reading"
+      class="h-full w-auto shrink-0"
+      :text="face.text"
+      :label="face.label"
+      :tone="face.tone"
+      :pad="HEADER_PAD"
     />
   </div>
 </template>
