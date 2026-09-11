@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
-import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -153,15 +152,17 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
     fun `the sign-in POST is locked too, not just the page that shows it`() {
         // TestUserSeeder is committed, so the seed logins are public. An unguarded POST is the
         // picker without the picker.
-        mockMvc.post("/login/github/as") {
+        val response = mockMvc.post("/login/github/as") {
             with(csrf())
             param("login", "leela")
         }.andExpect {
             status { is3xxRedirection() }
             // Back to the keyhole, not into a dead end.
             redirectedUrl("/login/github")
-            match(unauthenticated())
-        }
+        }.andReturn().response
+
+        // No SESSION cookie at all: a rejected POST must not leave anything behind to prove.
+        response.getHeaders("Set-Cookie").none { it.startsWith("SESSION") } shouldBe true
     }
 
     @Test
@@ -183,7 +184,8 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
             redirectedUrl("/")
         }.andReturn().response
 
-        val header = response.getHeader("Set-Cookie").shouldNotBeNull()
+        // By name, not first(): a second Set-Cookie header here must fail loudly, not misparse.
+        val header = response.getHeaders("Set-Cookie").first { it.startsWith("SESSION") }
         val sessionId = header.substringBefore(";").substringAfter("SESSION=") // Spring Session's default cookie name
         mockMvc.get("/api/me") {
             cookie(Cookie("SESSION", sessionId))
@@ -197,9 +199,12 @@ class DevLoginLockedTest(@Autowired val mockMvc: MockMvc) {
         // The spec's requirement is "once per browser profile": unlock once, then switch between
         // test users freely. That rests on SecurityConfig's logout not listing this cookie in
         // `deleteCookies` — nothing else pins it, so one future entry there would regress it silently.
+        // 204 pins that logout actually ran, not just that no CSRF/routing failure short-circuited it.
         val response = mockMvc.post("/logout") {
             with(csrf())
             cookie(unlockedCookie())
+        }.andExpect {
+            status { isNoContent() }
         }.andReturn().response
 
         response.getHeaders("Set-Cookie").none { it.startsWith(FakeSignInGate.COOKIE_NAME) } shouldBe true
