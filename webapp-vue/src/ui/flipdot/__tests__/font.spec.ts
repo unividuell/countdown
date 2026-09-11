@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bitmap, GLYPH_COLS, GLYPH_ROWS, padded, type Bitmap } from '@/ui/flipdot/font'
+import { bitmap, GLYPH_COLS, GLYPH_ROWS, glyphCols, padded, type Bitmap } from '@/ui/flipdot/font'
 
 const PAD = { top: 2, right: 5, bottom: 2, left: 1 }
 const lit = (b: Bitmap, row: number, col: number) => b.on[row * b.cols + col] ?? false
@@ -40,5 +40,20 @@ describe('padded', () => {
     const bare = bitmap('12:34')
 
     expect(padded(bare, { top: 0, right: 0, bottom: 0, left: 0 })).toEqual(bare)
+  })
+})
+
+describe('the start signal', () => {
+  // The ceremony flips beat to beat instead of relighting between them, and that only holds while
+  // every beat is the same width. `:` is deliberately narrowed to 3 columns; `!` must not be.
+  it('keeps the full cell for !, so every beat is exactly as wide as GO!', () => {
+    expect(glyphCols('!')).toBe(GLYPH_COLS)
+    expect(bitmap('GO!').cols).toBe(bitmap('  2').cols)
+  })
+
+  it('draws G, O and ! rather than falling back to a blank cell', () => {
+    for (const ch of ['G', 'O', '!']) {
+      expect(bitmap(ch).on.some(Boolean)).toBe(true)
+    }
   })
 })
