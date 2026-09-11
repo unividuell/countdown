@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import IconX from '~icons/lucide/x'
 import {
   deleteImage,
   listImages,
@@ -22,6 +23,12 @@ interface QueueRow {
 const images = ref<ImageResponse[]>([])
 const used = ref(0)
 const limit = ref(0)
+
+/**
+ * Only an admin's listing is the whole pool; a member's holds their own uploads alone. The quota
+ * and the uploader's name are both about a pool you can see all of, so they stay hidden otherwise.
+ */
+const viewerIsAdmin = ref(false)
 const queue = ref<QueueRow[]>([])
 const error = ref<string | null>(null)
 
@@ -42,6 +49,7 @@ async function load(): Promise<void> {
   images.value = response.images
   used.value = response.used
   limit.value = response.limit
+  viewerIsAdmin.value = response.viewerIsAdmin
 }
 
 /**
@@ -104,7 +112,9 @@ defineExpose({ enqueue })
   <section class="mx-auto max-w-2xl px-4 py-6">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-semibold">Bilder</h1>
-      <span data-test="quota" class="text-sm text-neutral-500">{{ used }} von {{ limit }}</span>
+      <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-neutral-500"
+        >{{ used }} von {{ limit }}</span
+      >
     </div>
 
     <!--
@@ -150,7 +160,7 @@ defineExpose({ enqueue })
     <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
 
     <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      <li v-for="image in images" :key="image.id" class="space-y-1">
+      <li v-for="image in images" :key="image.id" class="relative space-y-1">
         <!-- A new tab, not an overlay: the browser's own image view brings pinch-zoom and saving. -->
         <a
           :href="originalUrl(props.base, image.id)"
@@ -165,16 +175,28 @@ defineExpose({ enqueue })
             class="aspect-[4/3] w-full rounded object-cover"
           />
         </a>
-        <div class="flex items-center justify-between gap-2 text-xs text-neutral-500">
-          <span class="min-w-0 truncate">{{ image.uploadedBy }}</span>
-          <button
-            data-test="delete"
-            class="min-h-11 shrink-0 rounded border px-2"
-            @click="remove(image.id)"
+        <!--
+          Centred on the tile's top-right corner, so it reads as attached to this image and not to
+          the row below it. The hit area stays the 44px floor and is mostly transparent: it
+          reaches into the grid's gap, and a tap meant for the neighbouring tile's corner can land
+          here instead -- which the confirmation then catches.
+        -->
+        <button
+          data-test="delete"
+          aria-label="Bild löschen"
+          class="absolute top-0 right-0 z-10 grid size-11 -translate-y-1/2 translate-x-1/2 place-items-center"
+          @click="remove(image.id)"
+        >
+          <span
+            class="grid size-7 place-items-center rounded-full border border-neutral-300 bg-white text-neutral-700 shadow-sm"
           >
-            Löschen
-          </button>
-        </div>
+            <IconX class="size-4" aria-hidden="true" />
+          </span>
+        </button>
+
+        <p v-if="viewerIsAdmin" class="truncate text-xs text-neutral-500">
+          {{ image.uploadedBy }}
+        </p>
       </li>
     </ul>
   </section>

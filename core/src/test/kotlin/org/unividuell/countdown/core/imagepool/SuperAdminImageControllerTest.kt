@@ -52,6 +52,7 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
                 status { isOk() }
                 jsonPath("$.used") { value(3) }
                 jsonPath("$.limit") { value(40) }
+                jsonPath("$.viewerIsAdmin") { value(true) }
             }
     }
 

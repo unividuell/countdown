@@ -33,6 +33,7 @@ class SuperAdminImageController(
             images = summaries.map { response(summary = it, names = names) },
             used = service.count(pool),
             limit = service.limitOf(pool),
+            viewerIsAdmin = pool.viewerIsAdmin,
         )
     }
 

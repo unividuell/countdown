@@ -68,6 +68,9 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
                 status { isOk() }
                 jsonPath("$.used") { value(12) }
                 jsonPath("$.limit") { value(150) }
+                // memberPool is not an admin's: the page uses this to drop the quota and the
+                // uploader's name, both of which say nothing when you only see your own rows.
+                jsonPath("$.viewerIsAdmin") { value(false) }
                 jsonPath("$.images[0].id") { value(imageId.toString()) }
                 jsonPath("$.images[0].uploadedBy") { value("alice") }
                 jsonPath("$.images[0].byteSize") { value(4500000) }

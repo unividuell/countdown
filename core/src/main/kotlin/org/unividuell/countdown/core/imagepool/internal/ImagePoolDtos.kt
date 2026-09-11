@@ -16,5 +16,17 @@ data class ImageResponse(
     val uploadedBy: String,
 )
 
-/** [used] and [limit] travel with the list so the page can say "12 von 150" before a pick. */
-data class ImageListResponse(val images: List<ImageResponse>, val used: Long, val limit: Int)
+/**
+ * [used] and [limit] travel with the list so the page can say "12 von 150" before a pick.
+ *
+ * [viewerIsAdmin] is what the page needs to know whether the list it just got is the whole pool or
+ * only the viewer's own uploads. Both the quota and the uploader's name are meaningless in the
+ * second case -- a member counting their own rows against a pool-wide limit learns nothing, and
+ * every name would be their own.
+ */
+data class ImageListResponse(
+    val images: List<ImageResponse>,
+    val used: Long,
+    val limit: Int,
+    val viewerIsAdmin: Boolean,
+)

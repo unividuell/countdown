@@ -20,6 +20,8 @@ const listResponse = {
   ],
   used: 12,
   limit: 150,
+  // An admin's listing: the whole pool, so the quota and the uploader's name both mean something.
+  viewerIsAdmin: true,
 }
 
 const file = (name: string) => new File([new Uint8Array([1])], name, { type: 'image/jpeg' })
@@ -34,6 +36,19 @@ describe('ImagePool', () => {
     const link = w.get('[data-test="original-link"]')
     expect(link.attributes('href')).toBe('/api/communities/alpha/images/i1')
     expect(link.attributes('target')).toBe('_blank')
+  })
+
+  it('hides the quota and the uploader from someone who only sees their own', async () => {
+    vi.spyOn(api, 'listImages').mockResolvedValue({ ...listResponse, viewerIsAdmin: false })
+    const w = mount(ImagePool, { props: { base: '/api/communities/alpha/images' } })
+    await flushPromises()
+
+    expect(w.find('[data-test="quota"]').exists()).toBe(false)
+    // The image is still there -- only the name under it goes.
+    expect(w.get('[data-test="original-link"]').attributes('href')).toBe(
+      '/api/communities/alpha/images/i1',
+    )
+    expect(w.text()).not.toContain('alice')
   })
 
   it('uploads the picked files one after another, not in parallel', async () => {

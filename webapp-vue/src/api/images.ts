@@ -13,6 +13,8 @@ export interface ImageListResponse {
   images: ImageResponse[]
   used: number
   limit: number
+  /** Whether this listing is the whole pool. False means it holds only the viewer's own uploads. */
+  viewerIsAdmin: boolean
 }
 
 /** The refusal's `code` from the server's problem+json, or NETWORK when nothing answered. */
