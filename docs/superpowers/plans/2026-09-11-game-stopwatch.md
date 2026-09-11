@@ -43,7 +43,7 @@ Zwei Namen, zwei Formen — bewusst asymmetrisch: `GameHeader` nimmt `play` (es 
 
 **Files:**
 - Modify: `src/ui/flipdot/font.ts`
-- Test: `src/ui/flipdot/__tests__/font.spec.ts` *(neu)*
+- Test: `src/ui/flipdot/__tests__/font.spec.ts` *(vorhanden — `describe('flipdot font', …)` mit 11 Tests; **anhängen**, nicht ersetzen)*
 
 **Interfaces:**
 - Consumes: `bitmap()`, `Bitmap`, `GLYPH_COLS`, `GLYPH_ROWS` — alle schon in `font.ts`.
@@ -51,7 +51,9 @@ Zwei Namen, zwei Formen — bewusst asymmetrisch: `GameHeader` nimmt `play` (es 
 
 - [ ] **Step 1: Write the failing test**
 
-Neue Datei `src/ui/flipdot/__tests__/font.spec.ts`:
+An das bestehende `src/ui/flipdot/__tests__/font.spec.ts` **anhängen** — die Datei hält bereits
+`describe('flipdot font', …)` mit 11 Tests über Ziffern, Doppelpunkt und unbekannte Zeichen. Der
+Import am Kopf wird um `padded` und `type Bitmap` erweitert, der bestehende Block bleibt stehen:
 
 ```ts
 import { describe, expect, it } from 'vitest'
