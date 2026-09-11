@@ -13,6 +13,10 @@ server:
 app:
   test-auth:
     enabled: true
+    # No default, unlike the base application.yaml: staging runs the real datasets on a public
+    # URL. FakeSignInGate additionally refuses to start when this binds empty — Compose passes a
+    # missing variable through as an empty string, which a bare `${...}` would not catch.
+    key: ${FAKE_SIGN_IN_KEY}
   game-lab:
     enabled: true
   spot-object:

@@ -98,6 +98,11 @@ app:
     # Emulator-style test login (seeded users + picker). Default on for localhost.
     # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
     enabled: true
+    # The key that unlocks the picker, once per browser profile. Empty means no lock — the
+    # localhost default, because multi-user testing here means several browser profiles at once
+    # and a lock would only cost typing. The variable is named after what the thing is called in
+    # conversation; it is the one place in this file where env name and property path differ.
+    key: ${FAKE_SIGN_IN_KEY:}
   game-lab:
     # The non-prod harness for playing a mini-game against a seed from the URL. Gated twice, like
     # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
