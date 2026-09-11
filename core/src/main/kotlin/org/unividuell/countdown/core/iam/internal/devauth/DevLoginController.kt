@@ -158,6 +158,8 @@ class DevLoginController(
                    border:1px solid var(--border);border-radius:8px;background:transparent;color:inherit;
                    font:inherit;text-align:left;cursor:pointer}
             button:hover{background:var(--hover)}
+            /* The picker's rows read left-aligned because a chip leads them; a lone action button does not. */
+            button.action{justify-content:center}
             input[type=password]{width:100%;min-height:44px;padding:.5rem .75rem;margin:0 0 .5rem;
                    border:1px solid var(--border);border-radius:8px;background:transparent;color:inherit;font:inherit}
             .error{color:#dc2626;font-size:.9375rem}
@@ -183,7 +185,7 @@ class DevLoginController(
                 <input type="hidden" name="redirect" value="${HtmlUtils.htmlEscape(redirect ?: "")}"/>
                 <input type="password" name="key" autocomplete="current-password" autofocus required
                        aria-label="Zugangsschlüssel" placeholder="Zugangsschlüssel"/>
-                <button type="submit"><span>Freischalten</span></button>
+                <button type="submit" class="action"><span>Freischalten</span></button>
               </form>""",
         )
     }
