@@ -10,7 +10,7 @@
 // anything this component knew about `RoundResponse` would be a thing the lab had to fake.
 import { computed } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
-import { HEADER_PAD, type Tone } from '@/ui/flipdot/board'
+import { BAND_PAD, type Tone } from '@/ui/flipdot/board'
 import { elapsedClock, elapsedReading } from '@/ui/elapsedClock'
 import { remainingClock, remainingReading } from '@/ui/remainingClock'
 import type { PlayClock } from '@/ui/useStartCeremony'
@@ -95,7 +95,7 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
       :text="face.text"
       :label="face.label"
       :tone="face.tone"
-      :pad="HEADER_PAD"
+      :pad="BAND_PAD"
     />
   </div>
 </template>

@@ -16,7 +16,9 @@ import {
 } from './board'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
-// Props: tone and pad both default to what the board did before they existed.
+// Props: tone defaults to what the board did before it existed. pad has no default on
+// purpose — its absence already means "no padding" (see eslint.config.mjs's override for
+// this file).
 const props = withDefaults(defineProps<{ text: string; label: string; tone?: Tone; pad?: Pad }>(), {
   tone: 'default',
 })

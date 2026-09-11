@@ -137,7 +137,7 @@ const settledMembers = computed(() => {
     class="mt-6"
     :round="round"
     :stage="stage"
-    :busy="busy || startBeat !== null"
+    :busy="busy || (startBeat !== null && stage === 'sealed')"
     :notice="notice"
     :reveal="revealWithSignal"
     :beat="startBeat"

@@ -192,6 +192,9 @@ describe('lab page', () => {
   })
 
   afterEach(() => {
+    // Unconditional, so a case that fails between `useFakeTimers` and its last assertion cannot
+    // leave the rest of the file on a frozen clock. A no-op when the timers are already real.
+    vi.useRealTimers()
     for (const w of mountedPages.splice(0)) w.unmount()
     // The band holds a subscription on the shared clock for as long as it is mounted; the pages are
     // released just above, so this is the point where the interval behind them can be cleared.

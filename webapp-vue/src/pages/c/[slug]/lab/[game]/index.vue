@@ -38,6 +38,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { nowMs, skewMs } from '@/ui/sharedClock'
 import { useStartCeremony, type PlayClock } from '@/ui/useStartCeremony'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
@@ -133,7 +134,11 @@ const review = computed<RoundReview>(() => ({
 /** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
 async function reveal(): Promise<void> {
   await run(revealLabRound)
-  if (round.value?.revealed === true) playStartedAt.value = new Date().toISOString()
+  // `GameHeader` reads the stamp against the skew-corrected clock, not `Date.now()` — a raw
+  // stamp would open the stopwatch at a non-zero reading (or clamped at 00:00) on a skewed clock.
+  if (round.value?.revealed === true) {
+    playStartedAt.value = new Date(nowMs.value + skewMs.value).toISOString()
+  }
 }
 
 const revealWithSignal = (): Promise<void> => runCeremony(reveal)

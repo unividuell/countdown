@@ -3,7 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
-import { HEADER_PAD } from '@/ui/flipdot/board'
+import { BAND_PAD } from '@/ui/flipdot/board'
 import { _resetSharedClock } from '@/ui/sharedClock'
 
 // Fixed so the reading is a fixed string. The board's own boot animation is irrelevant here — the
@@ -160,7 +160,7 @@ describe('GameHeader', () => {
   it('pads the board so it fills the band and runs into its corner', () => {
     const w = mountHeader()
 
-    expect(clockOf(w).pad).toEqual(HEADER_PAD)
+    expect(clockOf(w).pad).toEqual(BAND_PAD)
     expect(w.getComponent(FlipDotBoard).classes()).toContain('h-full')
     expect(w.get('[data-test="game-header"]').classes()).toContain('pl-4')
     expect(w.get('[data-test="game-header"]').classes()).not.toContain('pr-4')

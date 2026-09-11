@@ -20,12 +20,12 @@ export const TONES: Record<Tone, { on: string; off: string }> = {
 }
 
 /**
- * The game band's field: two blank rows above and below so the dots meet the header's edges, one
+ * The game band's field: two blank rows above and below so the dots meet the band's edges, one
  * column left and five right. The five are the card's own 16px gutter — not the 12px corner radius
  * they also clear — so the digits keep standing where they stand while the field runs into the
  * corner.
  */
-export const HEADER_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 1 }
+export const BAND_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 1 }
 
 export const FLIP_MS = 170
 export const STAGGER_MS = 9

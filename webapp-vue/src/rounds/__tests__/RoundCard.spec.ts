@@ -503,8 +503,10 @@ describe('RoundCard', () => {
   })
 
   it('shows the start signal the page is playing, ahead of everything else', () => {
-    const w = mountCard({ round: aRound({ me: null }), beat: '1' })
+    // Reachable state: during the GO hold, `beat` and a revealed, unguessed `me` are both set —
+    // an `me` of `null` would pass this test even with the branches swapped.
+    const w = mountCard({ round: aRound({ me: aPlay() }), beat: 'GO!' })
 
-    expect(playOf(w)).toEqual({ phase: 'start', beat: '1' })
+    expect(playOf(w)).toEqual({ phase: 'start', beat: 'GO!' })
   })
 })

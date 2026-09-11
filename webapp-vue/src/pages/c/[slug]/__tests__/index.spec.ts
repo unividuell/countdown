@@ -457,4 +457,43 @@ describe('community home', () => {
     await nextTick()
     expect(w.getComponent(RoundCard).props('busy')).toBe(false)
   })
+
+  // The server stamps `revealedAt` on the GO beat; the moment `stage` moves to `playing`, the
+  // round's clock is already running, and only the reveal button on the sealed face still has any
+  // business being locked.
+  it('opens the game to input the moment the round does, even while GO! still holds', async () => {
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const stage = ref<RoundStage>('sealed')
+    const hook = mockUseRound({
+      round: aRoundResponse({
+        game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
+        payload: {
+          description: 'Testfarbe',
+          initHue: 210,
+          saturation: 0.6,
+          lightness: 0.45,
+          toleranceDeg: 10,
+        },
+      }),
+    })
+    hook.stage = computed(() => stage.value)
+    // Mirrors only the timing of the real hook (stage flips the instant `reveal` lands a round
+    // with `me` set) — the round data itself is irrelevant to what this test checks.
+    vi.mocked(hook.reveal).mockImplementation(async () => {
+      stage.value = 'playing'
+    })
+    vi.mocked(useRound).mockReturnValue(hook)
+
+    const w = mountPage()
+    await flushPromises()
+    vi.useFakeTimers()
+
+    await w.get('[data-test="round-reveal"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(2 * BEAT_MS)
+    await nextTick()
+
+    expect(w.getComponent(RoundCard).props('stage')).toBe('playing')
+    expect(w.getComponent(RoundCard).props('beat')).toBe('GO!')
+    expect(w.getComponent(RoundCard).props('busy')).toBe(false)
+  })
 })
