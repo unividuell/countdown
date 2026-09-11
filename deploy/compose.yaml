@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD}
+      - IMAGE_BACKUP_KEEP=${IMAGE_BACKUP_KEEP:-8}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
     entrypoint: ["/bin/bash", "-c"]
@@ -28,8 +29,44 @@ services:
         set -eo pipefail
         while true; do
           until pg_isready -h postgres -U admin -d app; do sleep 2; done
-          pg_dump -h postgres -U admin -d app | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
+
+          # The daily dump keeps the images' table DEFINITION but not its rows: a restore from
+          # this file alone yields a running app with an empty pool, rather than one that trips
+          # over a missing schema on every image request.
+          pg_dump -h postgres -U admin -d app --exclude-table-data=imagepool.images \
+            | gzip > "/backups/app-$$(date +%Y%m%d-%H%M%S).sql.gz"
           find /backups -name 'app-*.sql.gz' -mtime +7 -delete
+          # A .part left by a crash mid-dump is never renamed and never counted by the retention
+          # below, so it would sit on the disk at full size forever. A day old means orphaned.
+          find /backups -name 'images-*.sql.gz.part' -mtime +1 -delete
+
+          # Images are ~800 MB per stack and change a few times a year, so the trigger is a
+          # fingerprint rather than a schedule -- an unchanged pool costs one query over ~490 rows.
+          # to_regclass is empty before the app has migrated, which is the state right after this
+          # compose file is deployed.
+          if [ -n "$$(psql -h postgres -U admin -d app -tAc "SELECT to_regclass('imagepool.images')")" ]; then
+            fingerprint=$$(psql -h postgres -U admin -d app -tAc \
+              "SELECT count(*) || '-' || coalesce(md5(string_agg(id::text, ',' ORDER BY id)), '0') FROM imagepool.images")
+            if [ "$$fingerprint" != "$$(cat /backups/images.fingerprint 2>/dev/null)" ]; then
+              # Write beside the name, then rename. A rename within one filesystem is atomic, so a
+              # crash mid-dump leaves a .part file that no restore looks at, instead of a truncated
+              # images-*.sql.gz that "newest wins" would happily read. The daily dump above can
+              # afford not to do this -- its window is time-based, so a bad file ages out within a
+              # week either way. This one's window counts CHANGES, so a bad file would hold its
+              # slot until the pool moves that many more times, which may be months.
+              stamp=$$(date +%Y%m%d-%H%M%S)
+              pg_dump -h postgres -U admin -d app --data-only --table=imagepool.images \
+                | gzip > "/backups/images-$$stamp.sql.gz.part"
+              mv "/backups/images-$$stamp.sql.gz.part" "/backups/images-$$stamp.sql.gz"
+              printf '%s' "$$fingerprint" > /backups/images.fingerprint
+              # Retention counts CHANGES, not days: keep the newest IMAGE_BACKUP_KEEP states.
+              # The guard is against 0, which an operator may reasonably read as "keep everything"
+              # while `tail -n +1` would in fact feed every dump, this run's included, to rm.
+              [ "$$IMAGE_BACKUP_KEEP" -ge 1 ] \
+                && ls -1t /backups/images-*.sql.gz | tail -n +$$((IMAGE_BACKUP_KEEP + 1)) | xargs -r rm -f
+            fi
+          fi
+
           sleep 86400
         done
     depends_on:
@@ -40,6 +77,14 @@ services:
   core:
     image: ghcr.io/unividuell/countdown-core:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    # Without a limit the Buildpacks memory calculator sizes the heap from the HOST's RAM. On this
+    # shared box that gave BOTH stacks -Xmx20688742K (~20 GB of a 23 GB machine, measured
+    # 2026-09-10) -- prod and staging each believed they owned it, and both run with
+    # -XX:+ExitOnOutOfMemoryError. The limit is what the calculator divides up: 2g leaves ~1.4 GB
+    # heap against a ~715 MB working set. Staging shares the default on purpose, so a limit that is
+    # too tight fails there before it reaches prod. Defaulted, not required: a new mandatory
+    # variable could not be staging-deployed until update.sh reached main (see deployment-server.md).
+    mem_limit: ${CORE_MEM_LIMIT:-2g}
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}

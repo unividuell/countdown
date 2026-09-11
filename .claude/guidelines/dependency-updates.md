@@ -56,7 +56,8 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
   entire Spring Boot BOM (Jackson, Hikari, Netty, …). Those are the parent's business — the
   BOM is the single source of truth. **Only** the versions written literally in our `pom.xml`
   are ours: the parent, `kotlin.version`, `spring-modulith.version`, `kotlin-logging.version`,
-  and the four test deps (`kotest`, `mockk`, `springmockk`).
+  `metadata-extractor.version`, `twelvemonkeys.version`, and the four test deps (`kotest`,
+  `mockk`, `springmockk`).
 - **The plugin reports the next *minor*, not the newest *stable* — so it hides the patch you want.**
   On the 2026-09 pass it offered the parent as `4.1.0 -> 4.2.0-M1` and Modulith as `2.1.0 -> 2.2.0-M1`
   while `4.1.1` and `2.1.1` were both out and are what we took. Read the metadata yourself and pick

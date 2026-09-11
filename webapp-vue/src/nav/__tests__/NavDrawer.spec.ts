@@ -513,6 +513,7 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=admin-heading]').text()).toBe('Team Süd')
     expect(w.get('[data-test=pending-count]').text()).toBe('3')
     expect(w.findAll('[data-test=nav-scroll] a').map((a) => a.attributes('href'))).toEqual([
+      communityPath('team', 'images'),
       communityPath('team', 'requests'),
       communityPath('team', 'members'),
       communityPath('team', 'settings'),
@@ -533,14 +534,18 @@ describe('NavDrawer content', () => {
     expect(w.findAll('[data-test=admin-divider]')).toHaveLength(1)
   })
 
-  it('drops the divider above the admin block when it is the first thing in the drawer', async () => {
-    // Admin of their only community, and not allowed to create another: the community block
-    // (switcher + create-entry) is absent, so the divider would otherwise sit flush against
-    // the header seam as a stray rule rather than separating two blocks.
+  it('keeps the divider, because the community row is always above the admin block', async () => {
+    // This used to assert the opposite: admin of their only community and not allowed to create
+    // another meant no community block at all, so the divider would have been a stray rule
+    // against the header seam. The active community now always has a row -- it carries the link
+    // to the image pool -- and `admin` is derived from that same active community, so the admin
+    // block can no longer be the first thing in the drawer and the divider always separates two
+    // real blocks.
     vi.mocked(api.listCommunities).mockResolvedValue([community('1', 'Team Süd', 'team')])
     asAdminOf('team', 'Team Süd', 0)
     const w = await opened()
-    expect(w.findAll('[data-test=admin-divider]')).toHaveLength(0)
+    expect(w.findAll('[data-test=current-community]')).toHaveLength(1)
+    expect(w.findAll('[data-test=admin-divider]')).toHaveLength(1)
   })
 
   it('shows no admin block to a plain member', async () => {
@@ -554,6 +559,23 @@ describe('NavDrawer content', () => {
       viewerIdentity: null,
     }
     expect((await opened()).find('[data-test=admin-heading]').exists()).toBe(false)
+  })
+
+  it('shows the images entry to a plain member, gated on being in a community at all', async () => {
+    // Every existing fixture up to here is an admin, where activeCommunity and admin are both
+    // set — neither can tell whether this entry is gated on the right one.
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team Süd',
+      startsAt: null,
+      startsAtTimezone: 'UTC',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: null,
+    }
+    expect((await opened()).get('[data-test=community-images]').attributes('href')).toBe(
+      communityPath('team', 'images'),
+    )
   })
 
   it('keeps the super-admin entry out of sight for everyone else', async () => {

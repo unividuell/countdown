@@ -18,6 +18,7 @@ import {
 } from '@vueuse/core'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import IconCheck from '~icons/lucide/check'
+import IconImage from '~icons/lucide/image'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
@@ -68,12 +69,31 @@ const toggleLabel = computed(() => {
   return showDot.value ? `${base}, offene Anfragen` : base
 })
 
-const entries = computed(() => communityEntries(active.value, activeCommunity.value?.slug ?? null))
+/**
+ * The active community always gets a row, even before `listCommunities` resolves or if it comes
+ * back without it: that row carries the only link to the image pool, and the pool must not depend
+ * on a second request succeeding.
+ */
+const entries = computed(() => {
+  const list = communityEntries(active.value, activeCommunity.value?.slug ?? null)
+  const current = activeCommunity.value
+  if (!current || list.some((e) => e.current)) return list
+  return [
+    ...list,
+    { id: `active:${current.slug}`, name: current.name, slug: current.slug, current: true },
+  ]
+})
 // The list only earns its rows when there is somewhere to switch to; the create entry shares
 // the block, so the block itself outlives the list.
 const showSwitcher = computed(() => entries.value.length > 1)
 const mayCreate = computed(() => props.user.mayCreateCommunities)
-const showCommunityBlock = computed(() => showSwitcher.value || mayCreate.value)
+/**
+ * Also true for a lone community with nothing to switch to: its row is the only way to the image
+ * pool, so hiding the block would take the pool with it.
+ */
+const showCommunityBlock = computed(
+  () => showSwitcher.value || mayCreate.value || !!activeCommunity.value,
+)
 const admin = computed(() => (activeCommunity.value?.viewerIsAdmin ? activeCommunity.value : null))
 // What the header shows is what the others see right now: inside a community that is the
 // community-bound identity, everywhere else the global one.
@@ -309,7 +329,7 @@ onKeyStroke('Tab', (e) => {
           @scroll="updateScrollHint"
         >
           <template v-if="showCommunityBlock">
-            <template v-for="e in showSwitcher ? entries : []" :key="e.id">
+            <template v-for="e in entries" :key="e.id">
               <div
                 v-if="e.current"
                 data-test="current-community"
@@ -317,10 +337,21 @@ onKeyStroke('Tab', (e) => {
                 :class="`${ROW} text-neutral-400`"
               >
                 {{ e.name }}
-                <IconCheck class="ml-auto size-4" aria-hidden="true" />
+                <!-- The one live thing in a row that is otherwise a label, which is why it keeps
+                     full contrast while the name and the tick stay grey. Its box is the 44px
+                     floor; only the glyph inside it is small. -->
+                <RouterLink
+                  :to="communityPath(e.slug, 'images')"
+                  data-test="community-images"
+                  aria-label="Bilder"
+                  class="ml-auto flex h-11 shrink-0 items-center px-2 text-neutral-900"
+                >
+                  <IconImage class="size-4" aria-hidden="true" />
+                </RouterLink>
+                <IconCheck class="ml-1 size-4" aria-hidden="true" />
               </div>
               <button
-                v-else
+                v-else-if="showSwitcher"
                 type="button"
                 data-test="switch-community"
                 :class="LINK"

@@ -43,6 +43,24 @@ async function readJsonBody(res: Response): Promise<unknown> {
   return res.json().catch(() => undefined)
 }
 
+/**
+ * The CSRF token as a header, for the binary sidecars that cannot use `apiFetch` -- copying the
+ * cookie name into a second file is how the two drift apart.
+ */
+export function csrfHeader(): Record<string, string> {
+  const token = readCookie('XSRF-TOKEN')
+  return token ? { 'X-XSRF-TOKEN': token } : {}
+}
+
+/** Same 401 reaction as `apiFetch`, for those sidecars. */
+export function notifyUnauthorized(): void {
+  try {
+    onUnauthorized()
+  } catch {
+    // never let a throwing handler mask the caller's own error
+  }
+}
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase()
   const headers = new Headers(options.headers)

@@ -12,6 +12,7 @@ new team members (and AI assistants) stay consistent.
 | **Git workflow** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging | [git-workflow.md](git-workflow.md) |
 | Kotlin call sites — named arguments from two arguments on, and where that does not apply | [kotlin.md](kotlin.md) |
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
+| **Configuration** — backend (`application*.yaml` is untested, so boot it · suffixed sizes bind only onto `DataSize`) | [configuration.md](configuration.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
 | Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |

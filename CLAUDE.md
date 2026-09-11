@@ -32,6 +32,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
 - **[Kotlin call sites](.claude/guidelines/kotlin.md)** — named arguments from two arguments on; the exceptions (single arg, varargs, Java-declared functions, trailing lambdas, infix).
 - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
+- **[Configuration](.claude/guidelines/configuration.md)** — no `application*.yaml` key is under test, so boot the app after touching one; a suffixed size binds only onto `DataSize`. *(backend)*
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
 - **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract, browser vs. server API keys. *(backend)*
