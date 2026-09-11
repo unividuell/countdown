@@ -66,6 +66,19 @@ describe('useStartCeremony', () => {
     expect(api.beat.value).toBeNull()
   })
 
+  // An instant go() times identically whether the hold races it or follows it, so only a go()
+  // slower than GO_HOLD_MS can tell `Promise.all([go(), wait(GO_HOLD_MS)])` apart from two
+  // sequential awaits.
+  it('ends with a slow reveal, not GO_HOLD_MS after it', async () => {
+    const { api } = mountCeremony()
+
+    const running = api.run(() => new Promise<void>((resolve) => setTimeout(resolve, BEAT_MS)))
+    await vi.advanceTimersByTimeAsync(2 * BEAT_MS + BEAT_MS)
+
+    expect(api.beat.value).toBeNull()
+    await running
+  })
+
   it('falls back to the countdown when the reveal throws', async () => {
     const { api } = mountCeremony()
 
