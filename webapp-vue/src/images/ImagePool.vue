@@ -124,7 +124,7 @@ defineExpose({ enqueue })
       is why image/jpeg comes first.
     -->
     <label
-      class="mb-4 flex min-h-11 items-center justify-center rounded border border-dashed px-4 py-6 text-center text-sm"
+      class="mb-4 flex min-h-11 cursor-pointer items-center justify-center rounded border border-dashed px-4 py-6 text-center text-sm"
     >
       <input
         type="file"
@@ -176,15 +176,15 @@ defineExpose({ enqueue })
           />
         </a>
         <!--
-          Centred on the tile's top-right corner, so it reads as attached to this image and not to
-          the row below it. The hit area stays the 44px floor and is mostly transparent: it
-          reaches into the grid's gap, and a tap meant for the neighbouring tile's corner can land
-          here instead -- which the confirmation then catches.
+          Sits on the tile's top-right corner, overhanging just enough to read as attached to this
+          image rather than to the row below it. A quarter of the box, not half: at half the
+          28px disc crossed the grid's 12px gap and touched the neighbouring tile, and the 44px
+          hit area reached into it. A quarter keeps both inside the gap.
         -->
         <button
           data-test="delete"
           aria-label="Bild löschen"
-          class="absolute top-0 right-0 z-10 grid size-11 -translate-y-1/2 translate-x-1/2 place-items-center"
+          class="absolute top-0 right-0 z-10 grid size-11 -translate-y-1/4 translate-x-1/4 cursor-pointer place-items-center"
           @click="remove(image.id)"
         >
           <span
