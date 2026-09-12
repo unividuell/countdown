@@ -309,19 +309,21 @@ watch(
         this branch never renders and the game mounts straight away, exactly as before this gate
         existed.
       -->
-      <div v-if="!round.revealed" data-test="lab-sealed" class="sealed-face flex flex-col gap-4">
-        <p data-test="lab-reveal-cost" class="text-center text-sm text-neutral-600">
-          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <button
-          type="button"
-          data-test="lab-reveal"
-          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy || startStep !== null"
-          @click="revealWithSignal"
-        >
-          Aufdecken
-        </button>
+      <div v-if="!round.revealed" data-test="lab-sealed" class="flex flex-col gap-4">
+        <div class="sealed-face flex flex-col justify-center gap-6 py-6">
+          <p data-test="lab-reveal-cost" class="text-center text-sm text-neutral-600">
+            Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+          </p>
+          <button
+            type="button"
+            data-test="lab-reveal"
+            class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-10 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+            :disabled="busy || startStep !== null"
+            @click="revealWithSignal"
+          >
+            Aufdecken
+          </button>
+        </div>
         <component
           :is="briefing"
           v-if="briefing !== null"

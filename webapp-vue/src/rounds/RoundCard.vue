@@ -166,28 +166,34 @@ function onGiveUp(): void {
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 
-      <div v-else-if="face === 'sealed'" class="sealed-face flex flex-col gap-4">
-        <!--
-          Framework copy, not a game's: `sealed` exists only because a game answered
-          `requiresReveal` with true, and that flag means the same thing for every game that ever
-          sets it — the clock starts here, and there is no second attempt. The game's own component
-          is not even mounted yet, so this is the only place the sentence can stand.
-        -->
-        <p data-test="round-reveal-cost" class="text-center text-sm text-neutral-600">
-          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <button
-          type="button"
-          data-test="round-reveal"
-          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy"
-          @click="onReveal"
-        >
-          Aufdecken
-        </button>
-        <!-- Under the button, not above it: the sentence and the button are what this face is for,
-             and the boxes are what the player reads while deciding to press. This is the only
-             moment they can be read for free — from the click on, the clock is running. -->
+      <!-- Two parts: the warning and the button in a block that claims `sealed-face`'s height on
+           its own, then the game's boxes directly under it. Nothing here stretches — see the
+           utility's own comment for why the floor sits on the upper block rather than on the
+           face: it is what keeps a fold from moving the button, or the chevron the reader just
+           clicked. -->
+      <div v-else-if="face === 'sealed'" class="flex flex-col gap-4">
+        <div class="sealed-face flex flex-col justify-center gap-6 py-6">
+          <!--
+            Framework copy, not a game's: `sealed` exists only because a game answered
+            `requiresReveal` with true, and that flag means the same thing for every game that ever
+            sets it — the clock starts here, and there is no second attempt. The game's own
+            component is not even mounted yet, so this is the only place the sentence can stand.
+          -->
+          <p data-test="round-reveal-cost" class="text-center text-sm text-neutral-600">
+            Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+          </p>
+          <button
+            type="button"
+            data-test="round-reveal"
+            class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-10 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+            :disabled="busy"
+            @click="onReveal"
+          >
+            Aufdecken
+          </button>
+        </div>
+        <!-- Last, and at the foot: this is the only moment the rules can be read for free — from
+             the click on, the clock is running. -->
         <component
           :is="briefing"
           v-if="briefing !== null"
