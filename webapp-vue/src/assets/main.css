@@ -7,6 +7,13 @@
      `oklch(58.6% 0.253 17.585)` here and keep the name in this comment. */
   --color-live: var(--color-rose-600);
 
+  /* "Phase two": rounds where the stake grows and only the best guess gets it. The band's play
+     clock has worn this amber since it was built — timed games exist only in phase two, so the
+     colour already carried the meaning, just no name. One meaning, one colour, as with
+     --color-live above. Twin in the dot matrix: `DOT_ALARM_ON` in `src/ui/flipdot/board.ts` —
+     whoever changes one changes the other. */
+  --color-phase-two: var(--color-amber-500);
+
   /* Indeterminate navigation bar: a segment shuttles right and back. The easing is the
      point — slow at the turns, fast through the middle — so the motion reads as deliberate
      rather than mechanical. The 1.4s cycle is tuned for the spans this actually covers

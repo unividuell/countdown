@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import InfoBox from '@/ui/InfoBox.vue'
 
-function mountBox(storageKey = 'find-pattern') {
+function mountBox(storageKey = 'find-pattern', props: { tone?: 'info' | 'phase-two' } = {}) {
   return mount(InfoBox, {
-    props: { storageKey },
+    props: { storageKey, ...props },
     slots: { abstract: '<span>Kurzfassung</span>', default: '<p>Die ganze Erklärung</p>' },
   })
 }
@@ -51,5 +51,36 @@ describe('InfoBox', () => {
 
     expect(classes).toEqual(expect.arrayContaining(['-mt-3', '-mb-3', '-mx-2', 'size-11']))
     expect(classes).not.toContain('-m-2')
+  })
+
+  it('wears the calm tone unless it is told otherwise', () => {
+    const classes = mountBox().get('[data-test="info-box"]').classes()
+
+    expect(classes).toEqual(expect.arrayContaining(['border-sky-200', 'bg-sky-50/60']))
+  })
+
+  // Amber means "phase two" — the same colour the band wears for a running play clock.
+  it('wears the phase-two tone when it is asked for', () => {
+    const classes = mountBox('find-pattern', { tone: 'phase-two' })
+      .get('[data-test="info-box"]')
+      .classes()
+
+    expect(classes).toEqual(expect.arrayContaining(['border-phase-two/30', 'bg-phase-two/10']))
+    expect(classes).not.toContain('bg-sky-50/60')
+  })
+
+  it('shows the info icon by default and the caller own icon instead', () => {
+    expect(mountBox().find('[data-test="info-box-icon"] svg').exists()).toBe(true)
+
+    const own = mount(InfoBox, {
+      props: { storageKey: 'x' },
+      slots: {
+        abstract: '<span>K</span>',
+        icon: '<span data-test="own-icon">★</span>',
+        default: '<p>E</p>',
+      },
+    })
+
+    expect(own.find('[data-test="own-icon"]').exists()).toBe(true)
   })
 })

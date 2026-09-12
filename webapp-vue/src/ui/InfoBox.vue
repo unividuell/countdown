@@ -15,7 +15,17 @@ import IconInfo from '~icons/lucide/info'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronUp from '~icons/lucide/chevron-up'
 
-const props = defineProps<{ storageKey: string }>()
+type BoxTone = 'info' | 'phase-two'
+
+const props = withDefaults(defineProps<{ storageKey: string; tone?: BoxTone }>(), {
+  tone: 'info',
+})
+
+/** Border and ground per tone. The icon carries the tone's colour itself — see the template. */
+const TONES: Record<BoxTone, string> = {
+  info: 'border-sky-200 bg-sky-50/60',
+  'phase-two': 'border-phase-two/30 bg-phase-two/10',
+}
 
 const collapsed = useLocalStorage(`infobox:${props.storageKey}`, false)
 </script>
@@ -23,12 +33,21 @@ const collapsed = useLocalStorage(`infobox:${props.storageKey}`, false)
 <template>
   <section
     data-test="info-box"
-    class="rounded-lg border border-sky-200 bg-sky-50/60 px-4 py-3 text-sm text-neutral-700"
+    class="rounded-lg border px-4 py-3 text-sm text-neutral-700"
+    :class="TONES[tone]"
   >
     <div class="flex items-start gap-3">
       <!-- No nudge: the icon's box and the heading's first line box are both 20px, so aligning
            them at the top is what puts them on one line. A margin here only lifts the heading. -->
-      <IconInfo class="size-5 shrink-0 text-sky-600" aria-hidden="true" />
+      <!-- Coloured on this span, not inherited: `text-neutral-700` already sits on the section for
+           the body text, and a second `text-*` there would be a coin flip on which one wins. -->
+      <span
+        data-test="info-box-icon"
+        class="shrink-0"
+        :class="tone === 'phase-two' ? 'text-phase-two' : 'text-sky-600'"
+      >
+        <slot name="icon"><IconInfo class="size-5" aria-hidden="true" /></slot>
+      </span>
       <div class="min-w-0 flex-1 font-medium"><slot name="abstract" /></div>
       <!-- The button is 44px tall with centred content in an `items-start` row. Without
            correction, the 20px chevron sits at −8 + 22 = 14px, four pixels below the icon and

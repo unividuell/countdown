@@ -9,6 +9,10 @@ export const DOT_OFF = '#292524'
  * amber-500 — the reading of a play that is being timed. Only the reading changes colour; the
  * field stays as it is, so the board reads as the same instrument in a different mode rather than
  * as a warning lamp in the corner of the band.
+ *
+ * Twin in CSS: `--color-phase-two` in `src/assets/main.css`. A hex here and a token there, because
+ * the dots get their colour via `setAttribute` and in WAAPI keyframes — no class helps there.
+ * Whoever changes the colour changes it in both places.
  */
 export const DOT_ALARM_ON = '#f59e0b'
 
