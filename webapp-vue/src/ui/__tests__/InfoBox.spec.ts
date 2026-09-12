@@ -54,19 +54,22 @@ describe('InfoBox', () => {
   })
 
   it('wears the calm tone unless it is told otherwise', () => {
-    const classes = mountBox().get('[data-test="info-box"]').classes()
+    const w = mountBox()
 
-    expect(classes).toEqual(expect.arrayContaining(['border-sky-200', 'bg-sky-50/60']))
+    expect(w.get('[data-test="info-box"]').classes()).toEqual(
+      expect.arrayContaining(['border-sky-200', 'bg-sky-50/60']),
+    )
+    expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-sky-600')
   })
 
   // Amber means "phase two" — the same colour the band wears for a running play clock.
   it('wears the phase-two tone when it is asked for', () => {
-    const classes = mountBox('find-pattern', { tone: 'phase-two' })
-      .get('[data-test="info-box"]')
-      .classes()
+    const w = mountBox('find-pattern', { tone: 'phase-two' })
+    const classes = w.get('[data-test="info-box"]').classes()
 
     expect(classes).toEqual(expect.arrayContaining(['border-phase-two/30', 'bg-phase-two/10']))
     expect(classes).not.toContain('bg-sky-50/60')
+    expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-phase-two')
   })
 
   it('shows the info icon by default and the caller own icon instead', () => {

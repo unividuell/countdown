@@ -26,7 +26,7 @@ describe('AwardBox', () => {
   })
 
   it('names the phase one rule and its single point', () => {
-    expect(mountBox('ALL_QUALIFYING', 1).text()).toContain('Jeder richtige Tipp: 1 Punkt')
+    expect(mountBox('ALL_QUALIFYING', 1).text()).toContain('Jeder gültige Tipp: 1 Punkt')
   })
 
   it('names the phase two rule and the round own stake', () => {
@@ -57,5 +57,20 @@ describe('AwardBox', () => {
     expect(mountBox('CLOSEST_ONLY', 7).getComponent(InfoBox).props('storageKey')).toBe(
       'award:guess-hue:p2',
     )
+  })
+
+  // The lab keys its page on the seed, not the phase, so the same AwardBox instance lives through
+  // a phase change — no remount to re-evaluate the storage key from scratch. `storageKey` above
+  // only pins the prop value; it cannot see a key that fails to follow a prop change in place.
+  it('unfolds again on a phase change without remounting', async () => {
+    const w = mountBox('ALL_QUALIFYING', 1)
+    await w.get('[data-test="info-box-toggle"]').trigger('click')
+    expect(w.find('[data-test="info-box-body"]').exists()).toBe(false)
+
+    await w.setProps({ awardRule: 'CLOSEST_ONLY', awardPoints: 7 })
+    expect(w.find('[data-test="info-box-body"]').exists()).toBe(true)
+
+    await w.setProps({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
+    expect(w.find('[data-test="info-box-body"]').exists()).toBe(false)
   })
 })

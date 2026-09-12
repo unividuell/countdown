@@ -32,7 +32,7 @@ const points = computed(
  * the point count is the one thing about it that changes round to round.
  */
 const headline = computed(() =>
-  phaseTwo.value ? `Winner takes it all: ${points.value}` : `Jeder richtige Tipp: ${points.value}`,
+  phaseTwo.value ? `Winner takes it all: ${points.value}` : `Jeder gültige Tipp: ${points.value}`,
 )
 
 /** Per game and per phase: phase two's first round should re-open the box. */
@@ -45,12 +45,12 @@ const storageKey = computed(() => `award:${props.gameId}:${phaseTwo.value ? 'p2'
     <template #abstract>{{ headline }}</template>
 
     <template v-if="phaseTwo">
-      <p>Nur der beste Tipp bekommt die Punkte. Alle anderen gehen leer aus.</p>
+      <p>Nur der beste Tipp bekommt die Punkte — bei Gleichstand alle, die ihn teilen.</p>
       <p><slot name="closest" /></p>
       <p>Solange die Runde läuft, kann dich noch jemand überholen.</p>
     </template>
     <template v-else>
-      <p>Wer richtig liegt, bekommt den Punkt — egal, wie viele richtig liegen.</p>
+      <p>Der Punkt ist für alle da: wer ihn holt, nimmt ihn keinem anderen weg.</p>
       <p><slot name="qualifies" /></p>
     </template>
   </InfoBox>

@@ -65,7 +65,7 @@ describe('GuessHueBoard', () => {
     const w = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
 
     expect(w.text()).toContain('Du stellst nur den Farbton ein')
-    expect(w.text()).toContain('Jeder richtige Tipp: 1 Punkt')
+    expect(w.text()).toContain('Jeder gültige Tipp: 1 Punkt')
     expect(w.find('[data-test="hue-hint"]').exists()).toBe(false)
   })
 
