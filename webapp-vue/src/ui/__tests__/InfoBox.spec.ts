@@ -42,4 +42,14 @@ describe('InfoBox', () => {
     const other = mountBox('guess-hue')
     expect(other.text()).toContain('Die ganze Erklärung')
   })
+
+  // happy-dom computes no layout, so the offset cannot be measured. Instead, pin the decision
+  // that created this: the 44px button with centred content in an `items-start` row must lift
+  // 12px so its 20px chevron lands on the icon and heading's centre line, not 8px as `-m-2` gave.
+  it('lifts the toggle so its chevron sits on the heading line', () => {
+    const classes = mountBox().get('[data-test="info-box-toggle"]').classes()
+
+    expect(classes).toEqual(expect.arrayContaining(['-mt-3', '-mb-3', '-mx-2', 'size-11']))
+    expect(classes).not.toContain('-m-2')
+  })
 })
