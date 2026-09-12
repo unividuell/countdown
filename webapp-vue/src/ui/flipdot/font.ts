@@ -62,3 +62,32 @@ export function bitmap(text: string): Bitmap {
 
   return { cols, rows: GLYPH_ROWS, on }
 }
+
+/** Blank cells around a bitmap, in dot cells. */
+export interface Pad {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/**
+ * The same glyphs on a larger field.
+ *
+ * Added to the bitmap and not as CSS padding, because the viewBox, the dot indices and the flip
+ * wave all count in cells — a field that grew only in CSS would leave the board animating the
+ * wrong dots.
+ */
+export function padded(bm: Bitmap, pad: Pad): Bitmap {
+  const cols = bm.cols + pad.left + pad.right
+  const rows = bm.rows + pad.top + pad.bottom
+  const on = new Array<boolean>(cols * rows).fill(false)
+
+  for (let r = 0; r < bm.rows; r++) {
+    for (let c = 0; c < bm.cols; c++) {
+      on[(r + pad.top) * cols + c + pad.left] = bm.on[r * bm.cols + c] ?? false
+    }
+  }
+
+  return { cols, rows, on }
+}

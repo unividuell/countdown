@@ -38,6 +38,8 @@ import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { nowMs, skewMs } from '@/ui/sharedClock'
+import { useStartCeremony, type PlayClock } from '@/ui/useStartCeremony'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -65,6 +67,22 @@ const unavailable = ref(false)
 const error = ref<string | null>(null)
 const busy = ref(false)
 
+/**
+ * When this tester's clock started. The lab has no server stamp on the wire and needs none —
+ * nothing is scored here, the clock is there to be looked at. It doubles as the flag: the lab's
+ * `me` stays null until a guess lands, so „stamped and still no me“ is exactly the play.
+ */
+const playStartedAt = ref<string | null>(null)
+
+const { step: startStep, run: runCeremony } = useStartCeremony()
+
+const labPlay = computed<PlayClock | null>(() => {
+  if (startStep.value === 'waiting') return { phase: 'waiting' }
+  if (startStep.value !== null) return { phase: 'start', beat: startStep.value }
+  const since = playStartedAt.value
+  return since !== null && round.value?.me == null ? { phase: 'running', since } : null
+})
+
 function writeSeed(next: number): void {
   router.replace({ query: { ...route.query, seed: String(next) } })
 }
@@ -86,6 +104,10 @@ async function run(
   try {
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
     roundEndsAt.value = labRoundEnd(current, Date.now())
+    // Every path that reopens a round — reset, „forget mine“, a new seed — comes back
+    // `revealed: false` for a gated game, because the server clears its own `openedAt` on all of
+    // them. So this one line retires the stamp on all of them too.
+    if (!round.value.revealed) playStartedAt.value = null
     if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
@@ -113,7 +135,14 @@ const review = computed<RoundReview>(() => ({
 /** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
 async function reveal(): Promise<void> {
   await run(revealLabRound)
+  // `GameHeader` reads the stamp against the skew-corrected clock, not `Date.now()` — a raw
+  // stamp would open the stopwatch at a non-zero reading (or clamped at 00:00) on a skewed clock.
+  if (round.value?.revealed === true) {
+    playStartedAt.value = new Date(nowMs.value + skewMs.value).toISOString()
+  }
 }
+
+const revealWithSignal = (): Promise<void> => runCeremony(reveal)
 
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
@@ -266,6 +295,7 @@ watch(
           :round-number="labRoundNumber(round.seed)"
           :title="round.displayName"
           :ends-at="roundEndsAt"
+          :play="labPlay"
         />
       </template>
       <!--
@@ -287,8 +317,8 @@ watch(
           type="button"
           data-test="lab-reveal"
           class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy"
-          @click="reveal"
+          :disabled="busy || startStep !== null"
+          @click="revealWithSignal"
         >
           Aufdecken
         </button>

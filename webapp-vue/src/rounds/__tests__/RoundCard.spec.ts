@@ -6,6 +6,7 @@ import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
+import type { StartStep } from '@/ui/useStartCeremony'
 
 /**
  * A stub, not `guess-hue`: this test exercises the card's own wiring — which prop the game gets,
@@ -95,6 +96,7 @@ function mountCard(props: {
   /** Omitted for a closed round: it has no stage left to derive a face from. */
   stage?: RoundStage
   closed?: boolean
+  step?: StartStep | null
   busy?: boolean
   notice?: string | null
   reveal?: () => Promise<void>
@@ -463,5 +465,57 @@ describe('RoundCard', () => {
     const w = mountCard({ round: aRound({ me: aPlay() }), stage: 'playing' })
 
     expect(w.find('[data-test="round-reveal-cost"]').exists()).toBe(false)
+  })
+
+  const playOf = (w: VueWrapper) => w.getComponent(GameHeader).props('play')
+
+  it('runs the band clock up from the reveal while a timed play is open', () => {
+    const w = mountCard({ round: aRound({ me: aPlay({ revealedAt: '2026-08-14T11:00:00Z' }) }) })
+
+    expect(playOf(w)).toEqual({ phase: 'running', since: '2026-08-14T11:00:00Z' })
+  })
+
+  it('hands the band back to the round countdown once the tip is in', () => {
+    const w = mountCard({
+      round: aRound({ me: aPlay({ guessedAt: '2026-08-14T11:02:00Z' }) }),
+    })
+
+    expect(playOf(w)).toBeNull()
+  })
+
+  // Phase one has no clock in the result, so there is none to show.
+  it('leaves the band alone for a game that is not played against the clock', () => {
+    const w = mountCard({
+      round: aRound({
+        game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+        me: aPlay(),
+      }),
+    })
+
+    expect(playOf(w)).toBeNull()
+  })
+
+  // The history is full of rows nobody ever guessed on. A clock there would run forever.
+  it('never starts a clock on a closed round', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), closed: true })
+
+    expect(playOf(w)).toBeNull()
+  })
+
+  // Reachable state: once the count-in is spent, the step and a revealed, unguessed `me` are
+  // both set — checking the play first would jump the board to the clock before the count-in has
+  // handed over.
+  it('shows the start signal the page is playing, ahead of everything else', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), step: '1' })
+
+    expect(playOf(w)).toEqual({ phase: 'start', beat: '1' })
+  })
+
+  // Same precedence, one step later: the reveal is in flight and the band says so, even though
+  // the round underneath it already carries a play.
+  it('holds the waiting face while the reveal is on its way', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), step: 'waiting' })
+
+    expect(playOf(w)).toEqual({ phase: 'waiting' })
   })
 })
