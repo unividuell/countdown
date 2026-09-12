@@ -43,9 +43,11 @@ describe('AwardBox', () => {
     expect(mountBox('CLOSEST_ONLY', 7).text()).not.toContain('Nah genug am Farbton')
   })
 
-  it('wears the phase two tone only in phase two', () => {
+  // Never `info`: the sky tone belongs to the rules box this one sits under, and two boxes in one
+  // colour would stop being two things. The winner box wears the phase it is announcing.
+  it('wears the tone of the phase it announces', () => {
     expect(mountBox('CLOSEST_ONLY', 7).getComponent(InfoBox).props('tone')).toBe('phase-two')
-    expect(mountBox('ALL_QUALIFYING', 1).getComponent(InfoBox).props('tone')).toBe('info')
+    expect(mountBox('ALL_QUALIFYING', 1).getComponent(InfoBox).props('tone')).toBe('phase-one')
   })
 
   // The fold is remembered per game AND per phase: whoever collapsed the box in phase one gets it

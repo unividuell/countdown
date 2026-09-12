@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import InfoBox from '@/ui/InfoBox.vue'
 
-function mountBox(storageKey = 'find-pattern', props: { tone?: 'info' | 'phase-two' } = {}) {
+function mountBox(
+  storageKey = 'find-pattern',
+  props: { tone?: 'info' | 'phase-one' | 'phase-two' } = {},
+) {
   return mount(InfoBox, {
     props: { storageKey, ...props },
     slots: { abstract: '<span>Kurzfassung</span>', default: '<p>Die ganze Erklärung</p>' },
@@ -60,6 +63,16 @@ describe('InfoBox', () => {
       expect.arrayContaining(['border-sky-200', 'bg-sky-50/60']),
     )
     expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-sky-600')
+  })
+
+  // Teal means "phase one" — the same colour the band wears on the round number of such a round.
+  it('wears the phase-one tone when it is asked for', () => {
+    const w = mountBox('find-pattern', { tone: 'phase-one' })
+    const classes = w.get('[data-test="info-box"]').classes()
+
+    expect(classes).toEqual(expect.arrayContaining(['border-phase-one/30', 'bg-phase-one/10']))
+    expect(classes).not.toContain('bg-sky-50/60')
+    expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-phase-one')
   })
 
   // Amber means "phase two" — the same colour the band wears for a running play clock.

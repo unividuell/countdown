@@ -14,6 +14,13 @@
      whoever changes one changes the other. */
   --color-phase-two: var(--color-amber-500);
 
+  /* "Phase one": rounds where the point is not exclusive — everyone who qualifies collects it.
+     Named for the same reason as --color-phase-two above, and chosen against what it has to stand
+     beside: green enough to read as a different family from the rules box's sky when the two boxes
+     stack, dark enough not to compete with the amber. Nothing in the dot matrix wears it — phase
+     one has no play clock — so unlike --color-phase-two this one has no twin to keep in step. */
+  --color-phase-one: var(--color-teal-500);
+
   /* Indeterminate navigation bar: a segment shuttles right and back. The easing is the
      point — slow at the turns, fast through the middle — so the motion reads as deliberate
      rather than mechanical. The 1.4s cycle is tuned for the spans this actually covers

@@ -40,7 +40,7 @@ const storageKey = computed(() => `award:${props.gameId}:${phaseTwo.value ? 'p2'
 </script>
 
 <template>
-  <InfoBox :storage-key="storageKey" :tone="phaseTwo ? 'phase-two' : 'info'">
+  <InfoBox :storage-key="storageKey" :tone="phaseTwo ? 'phase-two' : 'phase-one'">
     <template #icon><IconChartPie class="size-5" aria-hidden="true" /></template>
     <template #abstract>{{ headline }}</template>
 
@@ -51,7 +51,7 @@ const storageKey = computed(() => `award:${props.gameId}:${phaseTwo.value ? 'p2'
     </template>
     <template v-else>
       <p><slot name="qualifies" /></p>
-      <p>Jeder kann sich den Punkt holen — einmal erhalten ist er sicher.</p>
+      <p>Jeder kann sich den Punkt holen — er wird nicht unter euch aufgeteilt.</p>
     </template>
   </InfoBox>
 </template>

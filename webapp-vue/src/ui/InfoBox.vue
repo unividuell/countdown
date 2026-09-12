@@ -15,7 +15,7 @@ import IconInfo from '~icons/lucide/info'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronUp from '~icons/lucide/chevron-up'
 
-type BoxTone = 'info' | 'phase-two'
+type BoxTone = 'info' | 'phase-one' | 'phase-two'
 
 const props = withDefaults(defineProps<{ storageKey: string; tone?: BoxTone }>(), {
   tone: 'info',
@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<{ storageKey: string; tone?: BoxTone }>()
 /** Border, ground and icon colour per tone, in one place so the two sites cannot disagree. */
 const TONES: Record<BoxTone, { box: string; icon: string }> = {
   info: { box: 'border-sky-200 bg-sky-50/60', icon: 'text-sky-600' },
+  'phase-one': { box: 'border-phase-one/30 bg-phase-one/10', icon: 'text-phase-one' },
   'phase-two': { box: 'border-phase-two/30 bg-phase-two/10', icon: 'text-phase-two' },
 }
 
