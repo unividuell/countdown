@@ -2,8 +2,11 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import { fetchAssetBlob } from '@/api/assets'
+import AwardBox from '@/ui/AwardBox.vue'
+import InfoBox from '@/ui/InfoBox.vue'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import SongSnippetRules from './SongSnippetRules.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
 import { usePlayback } from './usePlayback'
@@ -188,6 +191,24 @@ onUnmounted(() => {
           <PlayerIcon name="skip" />
         </button>
       </span>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <InfoBox storage-key="song-snippet">
+        <template #abstract>Erkenne den Song am kürzesten Schnipsel.</template>
+        <SongSnippetRules />
+      </InfoBox>
+      <AwardBox
+        v-if="props.awardRule !== null && props.awardPoints !== null"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+        game-id="song-snippet"
+      >
+        <template #qualifies>Du musst den richtigen Song erkennen.</template>
+        <template #closest>
+          Der richtige Song — und von allen, die ihn haben, der mit dem kürzesten Schnipsel.
+        </template>
+      </AwardBox>
     </div>
 
     <!-- Last and to the side: giving up is the one thing here nobody should reach for by accident,
