@@ -13,6 +13,7 @@
  */
 import { computed, ref } from 'vue'
 import type { AwardRule } from '@/api/types'
+import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 import PatternGrid from './PatternGrid.vue'
 import PatternRules from './PatternRules.vue'
@@ -105,9 +106,22 @@ function onCell(index: number): void {
       />
     </div>
 
-    <InfoBox storage-key="find-pattern">
-      <template #abstract> Entdecke im Spielfeld das gesuchte Muster. </template>
-      <PatternRules />
-    </InfoBox>
+    <div class="flex flex-col gap-3">
+      <InfoBox storage-key="find-pattern">
+        <template #abstract> Entdecke im Spielfeld das gesuchte Muster. </template>
+        <PatternRules />
+      </InfoBox>
+      <AwardBox
+        v-if="props.awardRule !== null && props.awardPoints !== null"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+        game-id="find-pattern"
+      >
+        <template #qualifies>Du musst das gesuchte Muster finden.</template>
+        <template #closest>
+          Das richtige Muster — und von allen, die es haben, die kürzeste Zeit.
+        </template>
+      </AwardBox>
+    </div>
   </div>
 </template>

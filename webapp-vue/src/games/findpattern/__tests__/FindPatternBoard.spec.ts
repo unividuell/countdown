@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { AwardRule } from '@/api/types'
 import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
 
@@ -11,7 +12,11 @@ const PAYLOAD = {
   patternImage: 'data:image/png;base64,BBB',
 }
 
-function mountBoard(disabled = false, submittedStartIndex?: number | null) {
+function mountBoard(
+  disabled = false,
+  submittedStartIndex?: number | null,
+  award: { awardRule?: AwardRule | null; awardPoints?: number | null } = {},
+) {
   return mount(FindPatternBoard, {
     props: {
       payload: PAYLOAD,
@@ -20,6 +25,7 @@ function mountBoard(disabled = false, submittedStartIndex?: number | null) {
       awardRule: null,
       awardPoints: null,
       ...(submittedStartIndex !== undefined ? { submittedStartIndex } : {}),
+      ...award,
     },
   })
 }
@@ -136,5 +142,15 @@ describe('FindPatternBoard', () => {
 
     expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(1)
     expect(wrapper.find('[data-test="pattern-outline-11"]').exists()).toBe(true)
+  })
+
+  // Phase two gates on qualification (`Scoring.kt`: `qualifies && deviation == best`), and
+  // find-pattern has one: the wrong pattern does not win even if it is fast.
+  it('names both halves of the phase two rule', () => {
+    const w = mountBoard(false, undefined, { awardRule: 'CLOSEST_ONLY', awardPoints: 9 })
+
+    expect(w.text()).toContain('Winner takes it all: 9 Punkte')
+    expect(w.text()).toContain('richtige Muster')
+    expect(w.text()).toContain('kürzeste Zeit')
   })
 })

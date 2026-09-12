@@ -176,4 +176,15 @@ describe('SpotObjectGame', () => {
 
     expect(w.getComponent(SpotObjectBoard).props('trailColor')).toBe('#404040')
   })
+
+  // `judge()` gives everyone here `qualifies = true` — the hurdle is not correctness but the
+  // other players striking the tip afterwards. The box has to say so.
+  it('names the strike, not a correctness gate', () => {
+    mockStreetView()
+    const w = mountGame({ awardRule: 'CLOSEST_ONLY', awardPoints: 4 })
+
+    expect(w.text()).toContain('Winner takes it all: 4 Punkte')
+    expect(w.text()).toContain('kürzeste Zeit')
+    expect(w.text()).toContain('stehen lassen')
+  })
 })

@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
+import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 import SpotObjectBoard from './SpotObjectBoard.vue'
 import SpotObjectRules from './SpotObjectRules.vue'
@@ -107,11 +108,24 @@ watch(played, (now, before) => {
 
       <!-- Below the map, the way `FindPatternBoard` puts its own rules below the field: the
            explanation is for whoever wants it, and the board is for everyone. -->
-      <div class="p-4">
+      <div class="flex flex-col gap-3 p-4">
         <InfoBox storage-key="spot-object">
           <template #abstract>Finde den gesuchten Gegenstand.</template>
           <SpotObjectRules />
         </InfoBox>
+        <AwardBox
+          v-if="props.awardRule !== null && props.awardPoints !== null"
+          :award-rule="props.awardRule"
+          :award-points="props.awardPoints"
+          game-id="spot-object"
+        >
+          <template #qualifies>
+            Gib einen Tipp ab — die Mitspieler können ihn dir wieder streichen.
+          </template>
+          <template #closest>
+            Die kürzeste Zeit — solange die Mitspieler deinen Tipp stehen lassen.
+          </template>
+        </AwardBox>
       </div>
     </template>
   </div>
