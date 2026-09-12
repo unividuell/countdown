@@ -21,11 +21,6 @@ const GLYPHS: Record<string, string> = {
   '7': '11111,00001,00010,00100,01000,01000,01000',
   '8': '01110,10001,10001,01110,10001,10001,01110',
   '9': '01110,10001,10001,01111,00001,00010,01100',
-  // The start signal. `O` is the same pattern as `0` — at 5×7 there is nothing to tell them apart
-  // that would not make the letter worse, and „GO!“ leaves no room to read it as a number.
-  G: '01110,10001,10000,10011,10001,10001,01110',
-  O: '01110,10001,10001,10001,10001,10001,01110',
-  '!': '00100,00100,00100,00100,00100,00000,00100',
 }
 
 /** Columns a glyph occupies. Digits keep the full cell; the separator is a centred slice of it. */

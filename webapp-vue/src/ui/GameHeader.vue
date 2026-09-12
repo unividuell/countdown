@@ -35,22 +35,34 @@ const props = withDefaults(
 const now = useSharedNow()
 
 /**
- * What the board reads, says and wears — derived in one place, so the three faces cannot disagree
- * about which of them is showing.
+ * What the waiting field is a field OF. Never read — a solid field covers every dot of it — so
+ * this string is here for its width alone: the stopwatch's own, so the answer arriving flips the
+ * digits out of the field instead of resizing the board once more while the play is under way.
  */
-const face = computed<{ text: string; label: string; tone: Tone } | null>(() => {
+const WAITING_WIDTH = '00:00'
+
+/**
+ * What the board reads, says and wears — derived in one place, so the faces cannot disagree about
+ * which of them is showing.
+ */
+const face = computed<{ text: string; label: string; tone: Tone; solid: boolean } | null>(() => {
   const play = props.play
 
   if (play?.phase === 'start') {
-    // Padded to the width of `GO!`: same geometry, so the beats flip into one another instead of
+    // A bare digit: all three beats are one glyph wide, so they flip into one another instead of
     // relighting the board three times in three seconds.
-    return play.beat === 'GO!'
-      ? { text: 'GO!', label: 'Los', tone: 'alarm' }
-      : {
-          text: `  ${play.beat}`,
-          label: `Start in ${play.beat} ${play.beat === '1' ? 'Sekunde' : 'Sekunden'}`,
-          tone: 'alarm',
-        }
+    return {
+      text: play.beat,
+      label: `Start in ${play.beat} ${play.beat === '1' ? 'Sekunde' : 'Sekunden'}`,
+      tone: 'alarm',
+      solid: false,
+    }
+  }
+
+  // The reveal is in flight, and the lit field is what says so. It costs no state of its own: the
+  // board flips into a bitmap of the same width and back out of it when the answer lands.
+  if (play?.phase === 'waiting') {
+    return { text: WAITING_WIDTH, label: 'Wird aufgedeckt', tone: 'alarm', solid: true }
   }
 
   const [text, label] =
@@ -59,7 +71,7 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
       : [remainingClock(props.endsAt, now.value), remainingReading(props.endsAt, now.value)]
 
   if (text === null || label === null) return null
-  return { text, label, tone: play?.phase === 'running' ? 'alarm' : 'default' }
+  return { text, label, tone: play?.phase === 'running' ? 'alarm' : 'default', solid: false }
 })
 </script>
 
@@ -95,6 +107,7 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
       :text="face.text"
       :label="face.label"
       :tone="face.tone"
+      :solid="face.solid"
       :pad="BAND_PAD"
     />
   </div>

@@ -20,12 +20,14 @@ export const TONES: Record<Tone, { on: string; off: string }> = {
 }
 
 /**
- * The game band's field: two blank rows above and below so the dots meet the band's edges, one
- * column left and five right. The five are the card's own 16px gutter — not the 12px corner radius
- * they also clear — so the digits keep standing where they stand while the field runs into the
- * corner.
+ * The game band's field: two blank rows above and below so the dots meet the band's edges, and
+ * five blank columns on each side. The five on the right are the card's own 16px gutter — not the
+ * 12px corner radius they also clear — so the digits keep standing where they stand while the
+ * field runs into the corner. The five on the left are not needed for anything except symmetry,
+ * and symmetry is the whole point: the readout sits centred in its field rather than pressed
+ * against one end of it.
  */
-export const BAND_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 1 }
+export const BAND_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 5 }
 
 export const FLIP_MS = 170
 export const STAGGER_MS = 9

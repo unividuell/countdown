@@ -37,7 +37,7 @@ const {
 
 // Destructured on purpose: only a top-level binding is unwrapped in the template, so
 // `ceremony.beat` would reach `RoundCard` as the ref object rather than as the beat.
-const { beat: startBeat, run: runCeremony } = useStartCeremony()
+const { step: startStep, run: runCeremony } = useStartCeremony()
 
 /**
  * The reveal the card gets: the 2 · 1 · GO! first, and the request on the GO beat itself. Owned
@@ -137,10 +137,10 @@ const settledMembers = computed(() => {
     class="mt-6"
     :round="round"
     :stage="stage"
-    :busy="busy || (startBeat !== null && stage === 'sealed')"
+    :busy="busy || (startStep !== null && stage === 'sealed')"
     :notice="notice"
     :reveal="revealWithSignal"
-    :beat="startBeat"
+    :step="startStep"
     :submit="submit"
     :skip="skip"
     :give-up="giveUp"

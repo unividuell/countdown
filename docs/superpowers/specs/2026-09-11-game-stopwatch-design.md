@@ -56,29 +56,41 @@ Phase eins und ungetimte Spiele merken von alldem nichts — sie zeigen weiter d
 ## Die drei Gesichter des Bandes
 
 ```
-tap „Aufdecken“   +1s        +2s                    +2s+Latenz
-      │            │          │                          │
-      ▼            ▼          ▼                          ▼
-   [   2 ]  ───▶ [   1 ] ──▶ [ GO! ]                 [ 00:00 ] ──▶ läuft
-      └ Relight     └ Flip     └ Flip                    └ Relight
-        (300ms)                  + POST /reveal            (300ms)
+tap „Aufdecken“  +1s      +2s      +3s                    Antwort
+      │           │        │        │                        │
+      ▼           ▼        ▼        ▼                        ▼
+   [  3  ] ───▶ [  2  ] ─▶ [  1  ] ─▶ ███████████ ────────▶ [ 00:00 ] ──▶ läuft
+      └ Relight   └ Flip    └ Flip     └ POST /reveal         └ Flip
+        (300ms)                        └ Relight (300ms),
+                                         danach volles Feld
 
    └──────────────── bernstein ──────────────────────────────────────▶ … bis zum Tipp,
                                                                         dann weiß + HH:MM:SS
 ```
 
-Drei Entscheidungen darin sind nicht beliebig:
+Vier Entscheidungen darin sind nicht beliebig:
 
-**Der POST fliegt auf dem GO-Beat, nicht danach.** Der Server stempelt `revealedAt`, wenn er den
-Request bearbeitet — das ist der Start der gewerteten Zeit. Liegt die Zeremonie davor, ist die
-angezeigte Null auch die gewertete Null. Läge sie dahinter, stünde die Stoppuhr beim ersten Blick
-schon auf ~00:02, oder sie zeigte etwas anderes als das, was gewertet wird. Das Spiel erscheint
-~150 ms nach GO!, wenn die Antwort da ist.
+**Der POST fliegt erst, wenn die dritte Sekunde verbraucht ist.** Der Server stempelt
+`revealedAt`, wenn er den Request bearbeitet — das ist der Start der gewerteten Zeit. Liegt das
+Einzählen davor, ist die angezeigte Null auch die gewertete Null. Läge es dahinter, stünde die
+Stoppuhr beim ersten Blick schon auf ~00:03, oder sie zeigte etwas anderes als das, was gewertet
+wird.
 
-**Die Beats sind gleich breit.** `„  2“`, `„  1“`, `„GO!“` sind alle 17 Spalten, weil das
-Leerzeichen ein volles Glyph ist und `!` ebenfalls die volle Zelle behält — anders als `:`, das
-absichtlich auf 3 Spalten geschnitten ist. Damit flippen 2→1 und 1→GO! dotweise. Nur die beiden
-Moduswechsel — Countdown hinein, Stoppuhr hinaus — ändern die Geometrie und lösen damit das
+**Das volle Feld ist der Ladeindikator.** Solange der Request unterwegs ist, leuchtet jeder Dot
+des Bretts, Polsterung eingeschlossen; die Antwort flippt die Ziffern wieder heraus. Das kostet
+keinen eigenen Zustand und keine Animation: die Volle-Feld-Bitmap ist genauso breit wie die
+Anzeige darunter, also flippt das Brett dorthin und zurück wie in jede andere Anzeige. **Und sie
+hat genau die Breite der Stoppuhr** — deshalb ist der Rückweg ein Flip und kein zweites Relight,
+und die Uhr wird aus dem Feld herausgeflippt statt daneben aufgebaut.
+
+Der Schritt dauert exakt so lange wie der Request und wird nicht gepolstert: ein Feld, das die
+Antwort überdauert, würde „lädt" sagen über ein Spiel, das längst spielbar ist. Eine Untergrenze
+braucht es trotzdem nicht — der Breitenwechsel vom einzelnen Beat auf die Uhrbreite relightet das
+Brett, und ein Relight sind 300 ms leuchtende Dots. Ein blitzschneller Request flackert deshalb
+nicht, und das Relight ist unsichtbar, weil seine Weißphase und das volle Feld dasselbe Bild sind.
+
+**Die Beats sind gleich breit** — bare Ziffern, je ein Glyph. Damit flippen 3→2→1 dotweise. Nur
+die Moduswechsel — Countdown hinein, Uhrbreite hinaus — ändern die Geometrie und lösen damit das
 Relight aus, das `FlipDotBoard` für Geometriewechsel ohnehin schon fährt (weiß, halten,
 einrollen). Der gewünschte „Flip mit Animation“ kostet keine Zeile Animationscode.
 
@@ -112,17 +124,16 @@ einem Band, in dem Platz die knappe Größe ist.
 ## Geometrie des Bandes
 
 ```
-                 ┌─ 1 Leerspalte links
-                 │                              5 Leerspalten rechts ─┐
-        ┌────────┼──────────────────────────────────────────────────┼─┐  ─┐
-        │ · · · ·│· · · · · · · · · · · · · · · · · · · · · · · · · │·│   │ 2 Zeilen
- 36px = │ · · · ·│· · · · · · · · · · · · · · · · · · · · · · · · · │·│  ─┤
- 43 Ein-│        │  ██  ██ · ██  ██ · ██  ██                        │ │   │ 7 Zeilen
- heiten │        │  ██  ██ · ██  ██ · ██  ██     ← 22,6px (heute 18)│ │  ─┤
-        │ · · · ·│· · · · · · · · · · · · · · · · · · · · · · · · · │·│   │ 2 Zeilen
-        │ · · · ·│· · · · · · · · · · · · · · · · · · · · · · · · · │·│   │
-        └────────┴──────────────────────────────────────────────────┴─┘  ─┘
-                                                                      └ Card-Radius 12px
+              ┌─ 5 Leerspalten links           5 Leerspalten rechts ─┐
+        ┌─────┼───────────────────────────────────────────────────┼──┐  ─┐
+        │ · · │· · · · · · · · · · · · · · · · · · · · · · · · · ·│· │   │ 2 Zeilen
+ 36px = │ · · │· · · · · · · · · · · · · · · · · · · · · · · · · ·│· │  ─┤
+ 43 Ein-│     │   ██  ██ · ██  ██ · ██  ██                        │  │   │ 7 Zeilen
+ heiten │     │   ██  ██ · ██  ██ · ██  ██    ← 22,6px (heute 18) │  │  ─┤
+        │ · · │· · · · · · · · · · · · · · · · · · · · · · · · · ·│· │   │ 2 Zeilen
+        │ · · │· · · · · · · · · · · · · · · · · · · · · · · · · ·│· │   │
+        └─────┴───────────────────────────────────────────────────┴──┘  ─┘
+                                                                     └ Card-Radius 12px
 ```
 
 Aus `PITCH = 4`, `RADIUS = 1.5` (also 1 Einheit Lücke) und `GLYPH_ROWS = 7`:
@@ -133,18 +144,22 @@ Aus `PITCH = 4`, `RADIUS = 1.5` (also 1 Einheit Lücke) und `GLYPH_ROWS = 7`:
 | Boardhöhe | 18px | 36px (`h-full` im `h-9`-Band) |
 | Ziffernhöhe | 18px | 22,6px |
 | Randzeile | — | 6,7px oben und unten |
-| Breite `HH:MM:SS` | 114px | 163px |
-| Breite `MM:SS` | — | 110px |
-| Breite Zeremonie | — | 76px |
+| Randspalte | — | 16,7px links und rechts |
+| Breite `HH:MM:SS` | 114px | 177px |
+| Breite `MM:SS` und volles Feld | — | 123px |
+| Breite eines Beats | — | 49px |
 
 - **Rechts bündig:** Header wird `pl-4 pr-0`, das Punktfeld läuft in die Ecke. Der Radius frisst
   maximal 12px Breite, an der obersten *leuchtenden* Zeile (6,7px von oben) nur noch 1,2px. Die
-  fünf Leerspalten sind mit 16,7px also nicht wegen des Radius so breit, sondern weil das der
-  heutige `px-4`-Gutter ist: die Ziffern bleiben waagerecht stehen, wo sie heute stehen.
+  fünf Leerspalten rechts sind mit 16,7px also nicht wegen des Radius so breit, sondern weil das
+  der heutige `px-4`-Gutter ist: die Ziffern bleiben waagerecht stehen, wo sie heute stehen.
+- **Links dieselben fünf**, wofür es keinen Grund gibt außer Symmetrie — und die ist der Grund:
+  die Anzeige sitzt mittig in ihrem Feld statt an ein Ende gedrückt. Sichtbar wird das erst, seit
+  das Feld eine eigene Fläche ist, die man als Fläche wahrnimmt.
 - **Unter `sm`** hat `RoundSurface` weder Radius noch `overflow-hidden`; dort läuft das Feld bis an
   den Viewport-Rand und die Leerspalten sind schlicht der Rand.
-- **Gemessene Folge:** das Board wächst um 49px. Auf einem 360px-Viewport bleiben dem Spielnamen
-  daneben ~145px statt ~194px. Er kürzt sich weiter mit Ellipse; die Uhr verliert nie Ziffern
+- **Gemessene Folge:** das Board wächst um 63px. Auf einem 360px-Viewport bleiben dem Spielnamen
+  daneben ~131px statt ~194px. Er kürzt sich weiter mit Ellipse; die Uhr verliert nie Ziffern
   (`shrink-0`), weil ein gekürzter Messwert eine falsche Zeit ist.
 - Der App-Header (`CountdownDisplay`) bekommt **kein** Padding: er sitzt frei in einer 44px-Zeile
   und hat keine Kante, an die er stoßen könnte — zwei Leerzeilen würden dort nur die Legende von
@@ -152,13 +167,18 @@ Aus `PITCH = 4`, `RADIUS = 1.5` (also 1 Einheit Lücke) und `GLYPH_ROWS = 7`:
 
 ## Vertrag von `FlipDotBoard`
 
-Zwei neue optionale Props, beide mit dem heutigen Verhalten als Default, damit kein bestehender
+Drei neue optionale Props, alle mit dem heutigen Verhalten als Default, damit kein bestehender
 Aufrufer sich ändert:
 
 | Prop | Default | Wirkung |
 |---|---|---|
 | `tone` | `'default'` | Farbpaar statt der Konstanten. `'alarm'` = amber-500 (`#f59e0b`) auf unverändertem Feld. |
 | `pad` | keine | Leerzeilen/-spalten rings um die Glyphen, in Dot-Zellen. |
+| `solid` | `false` | Jeder Dot an, Polsterung eingeschlossen — das Brett beschäftigt statt lesend. |
+
+`solid` ist **keine Rendermodus-Verzweigung, sondern eine andere Bitmap**: dieselbe Breite, alle
+Dots an. Damit flippt das Brett dorthin und zurück wie in jede andere Anzeige, und der
+Ladeindikator kostet keine Zeile Animationscode.
 
 Das Padding wird **zur Bitmap addiert** (`padded()` in `font.ts`), nicht als CSS — sonst stimmen
 viewBox, Dot-Indizes und die Wellenlogik nicht mehr überein. Die drei Stellen, die heute
@@ -175,41 +195,40 @@ können.
   nowMs)` → `MM:SS`, `elapsedReading(…)` → „Deine Zeit: 1 Minute, 5 Sekunden“. Bei 0 geklemmt: die
   Skew-Korrektur kann die lokale Uhr in der ersten Sekunde hinter den Serverstempel setzen, und
   `-00:01` wäre der erste Eindruck.
-- **`ui/useStartCeremony.ts`** — `beat` (`'2' | '1' | 'GO!' | null`), `run(go)` und die Typen
-  `StartBeat`/`PlayClock`. `run` läuft die Beats im Sekundentakt, ruft `go()` auf dem GO-Beat,
-  wartet es ab und räumt im `finally` auf. Ein zweiter `run` während eines laufenden wird
-  verworfen. Mit `disposed`-Flag und Aufräumen beim Unmount, wie es die State-Guideline für alles
-  verlangt, was außerhalb von Vue tickt.
+- **`ui/useStartCeremony.ts`** — `step` (`'3' | '2' | '1' | 'waiting' | null`), `run(go)` und die
+  Typen `StartBeat`/`StartStep`/`PlayClock`. `run` läuft die drei Beats im Sekundentakt, ruft
+  danach `go()` und hält `waiting`, bis es abgeräumt ist; das `finally` räumt auf. Ein zweiter
+  `run` während eines laufenden wird verworfen. Mit `disposed`-Flag und Aufräumen beim Unmount,
+  wie es die State-Guideline für alles verlangt, was außerhalb von Vue tickt — und mit einem
+  zweiten `disposed`-Blick nach der Beat-Schleife, damit eine verlassene Zeremonie nicht doch noch
+  den einen Versuch des Spielers ausgibt.
 
 `PlayClock` ist die Prop, die das Band liest:
 
 ```ts
 export type PlayClock =
-  | { phase: 'start'; beat: StartBeat }   // 2 · 1 · GO!
+  | { phase: 'start'; beat: StartBeat }   // 3 · 2 · 1
+  | { phase: 'waiting' }                  // der Reveal ist unterwegs, das Feld leuchtet
   | { phase: 'running'; since: string }   // ISO-Instant, ab dem die Spieluhr läuft
 ```
 
 `null` heißt Rundencountdown. Damit bleibt jeder heutige Aufrufer von `GameHeader` unverändert.
 
-Die drei Glyphen `G`, `O`, `!` kommen zur Font dazu — die erste Schrift dort, die nicht Ziffer
-oder Doppelpunkt ist.
+Das Feld für `waiting` braucht einen Text, den nie jemand liest — er steht nur für seine *Breite*
+da, und zwar die der Stoppuhr. Die Font bekommt keine Buchstaben: die Beats sind Ziffern.
 
 ## Wer besitzt was
 
 Die Zeremonie gehört zur **Seite**, nicht zur Karte. `pages/c/[slug]/index.vue` hält schon den
 einzigen `useRound`-Aufruf und reicht `reveal` herunter; sie reicht künftig `ceremony.run(reveal)`
-herunter und `:busy="busy || ceremony.beat !== null"` — womit der Aufdecken-Knopf während der
+herunter und ein `busy`, das den Zeremonieschritt einschließt — womit der Aufdecken-Knopf während der
 Zeremonie von selbst tot ist, ohne zweites Flag.
 
 **Der Sperrgriff gilt nur dem Knopf.** Das `busy`, mit dem die Seite den Aufdecken-Knopf während
 der Zeremonie totlegt, erreicht auch das `disabled` des gemounteten Spiels. Ungefiltert hieße das:
-die Antwort landet, das Brett erscheint — und nimmt bis zum Ende des GO-Halts keine Eingabe an,
+die Antwort landet, das Brett erscheint — und nimmt bis zum Ende der Zeremonie keine Eingabe an,
 während die gewertete Zeit längst läuft. Die Sperre hängt deshalb zusätzlich am Gesicht
 (`stage === 'sealed'`), denn nur dort gibt es den Knopf überhaupt.
-
-`GO!` hält mindestens 500 ms, auch wenn die Antwort früher da ist. Ohne diese Untergrenze blitzt
-das Startsignal bei einer schnellen Verbindung 50 ms lang auf und verschwindet im Relight — der
-eine Beat, der gelesen werden muss, wäre der einzige, den niemand liest.
 
 ```
 Seite  ──useRound──▶ reveal                    RoundCard  ──play──▶  GameHeader
@@ -251,9 +270,9 @@ wird also nicht vorgelesen, sondern nur beim Anspringen.
 |---|---|
 | `elapsedClock` / `elapsedReading` | rein, ohne Mount — Format, Klemmung bei 0, Minuten > 99 |
 | `padded()` | rein — Spalten/Zeilen wachsen, Dots verschieben sich, Glyphen bleiben heil |
-| `useStartCeremony` | `vi.useFakeTimers()` — Beatfolge, `go()` genau auf GO!, Aufräumen nach geworfenem `go()`, zweiter `run` verworfen |
-| `FlipDotBoard` | `pad` wächst die viewBox; `tone` färbt die Dots |
-| `GameHeader` | drei Gesichter aus einer Prop; `play: null` verhält sich wie heute |
+| `useStartCeremony` | `vi.useFakeTimers()` — Beatfolge, `go()` erst nach der dritten Sekunde, `waiting` genau so lang wie ein langsamer `go()`, Aufräumen nach geworfenem `go()`, zweiter `run` verworfen, kein Reveal nach Unmount |
+| `FlipDotBoard` | `pad` wächst die viewBox; `tone` färbt die Dots; `solid` leuchtet jeden Dot und kommt per Flip, nicht per Relight |
+| `GameHeader` | vier Gesichter aus einer Prop; das Wartefeld hat die Breite der laufenden Uhr; `play: null` verhält sich wie heute |
 | `RoundCard` | `play` nur bei `requiresReveal && !guessedAt && !closed` |
 | Community-Seite | Reveal läuft durch die Zeremonie; `busy` während der Beats |
 | Laborseite | Stempel wird gesetzt und beim Neuöffnen geleert |

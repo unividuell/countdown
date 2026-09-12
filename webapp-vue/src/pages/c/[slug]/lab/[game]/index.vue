@@ -74,10 +74,11 @@ const busy = ref(false)
  */
 const playStartedAt = ref<string | null>(null)
 
-const { beat: startBeat, run: runCeremony } = useStartCeremony()
+const { step: startStep, run: runCeremony } = useStartCeremony()
 
 const labPlay = computed<PlayClock | null>(() => {
-  if (startBeat.value !== null) return { phase: 'start', beat: startBeat.value }
+  if (startStep.value === 'waiting') return { phase: 'waiting' }
+  if (startStep.value !== null) return { phase: 'start', beat: startStep.value }
   const since = playStartedAt.value
   return since !== null && round.value?.me == null ? { phase: 'running', since } : null
 })
@@ -316,7 +317,7 @@ watch(
           type="button"
           data-test="lab-reveal"
           class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy || startBeat !== null"
+          :disabled="busy || startStep !== null"
           @click="revealWithSignal"
         >
           Aufdecken

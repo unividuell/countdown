@@ -102,6 +102,9 @@ async function bootDone(): Promise<void> {
   await advance(BOOT_RESOLVE_AT_MS - BOOT_DARK_MS)
 }
 
+/** The band's own padding, the one shape a solid field is ever asked for in the app. */
+const PAD = { top: 2, right: 5, bottom: 2, left: 5 }
+
 function fills(w: VueWrapper): (string | undefined)[] {
   return w.findAll('circle').map((c) => c.attributes('fill'))
 }
@@ -666,5 +669,33 @@ describe('FlipDotBoard', () => {
         .slice(0, 17)
         .every((f) => f === DOT_OFF),
     ).toBe(true)
+  })
+
+  // The loading field of a reveal in flight. Padding included: what it says is „this board is
+  // busy", and a lit readout inside a dark border would say something else.
+  it('lights every dot of its field when asked for a solid one', async () => {
+    const w = mount(FlipDotBoard, {
+      props: { text: '12', label: 'lädt', tone: 'alarm', solid: true, pad: PAD },
+    })
+    await bootDone()
+
+    expect(fills(w).every((f) => f === DOT_ALARM_ON)).toBe(true)
+  })
+
+  // The whole reason the solid field costs no animation code: it is a bitmap of the same width,
+  // so the board's own value watcher flips into and out of it like any other reading.
+  it('flips into the solid field rather than relighting into it', async () => {
+    const animate = stubAnimate()
+    const w = mount(FlipDotBoard, { props: { text: '12', label: 'zwölf', pad: PAD } })
+    await bootDone()
+    animate.mockClear()
+
+    await w.setProps({ solid: true })
+    await nextTick()
+
+    // The wave ran, and the board never switched itself on again: only the boot's two phases
+    // were ever emitted. A relight here would show as a third and fourth.
+    expect(animate).toHaveBeenCalled()
+    expect(w.emitted('phase')).toEqual([['white'], ['live']])
   })
 })

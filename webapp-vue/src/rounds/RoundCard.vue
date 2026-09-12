@@ -14,7 +14,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
-import type { PlayClock, StartBeat } from '@/ui/useStartCeremony'
+import type { PlayClock, StartStep } from '@/ui/useStartCeremony'
 
 const props = withDefaults(
   defineProps<{
@@ -33,11 +33,11 @@ const props = withDefaults(
      */
     closed?: boolean
     /**
-     * The start signal, while the page that owns the reveal is playing it. Only the beat comes
+     * The start signal, while the page that owns the reveal is playing it. Only the step comes
      * from outside — the running clock is derived below, because the card already holds the round
      * that answers it and a caller deriving it would be one more place for the rule to live.
      */
-    beat?: StartBeat | null
+    step?: StartStep | null
     /** Which face a running round calls for. A closed round has none. */
     stage?: RoundStage | undefined
     busy?: boolean
@@ -49,7 +49,7 @@ const props = withDefaults(
   }>(),
   {
     closed: false,
-    beat: null,
+    step: null,
     busy: false,
     notice: null,
     stage: undefined,
@@ -89,7 +89,8 @@ const disabled = computed(() => props.closed || props.busy || face.value === 'do
  * full of rows nobody ever guessed on, and without it their clock would run forever.
  */
 const play = computed<PlayClock | null>(() => {
-  if (props.beat != null) return { phase: 'start', beat: props.beat }
+  if (props.step === 'waiting') return { phase: 'waiting' }
+  if (props.step != null) return { phase: 'start', beat: props.step }
 
   const me = props.round?.me
   if (props.closed || me == null || me.guessedAt !== null) return null

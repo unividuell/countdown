@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import { BAND_PAD } from '@/ui/flipdot/board'
+import { bitmap } from '@/ui/flipdot/font'
 import { _resetSharedClock } from '@/ui/sharedClock'
 
 // Fixed so the reading is a fixed string. The board's own boot animation is irrelevant here — the
@@ -109,14 +110,15 @@ describe('GameHeader', () => {
     expect(w.getComponent(FlipDotBoard).classes()).toContain('shrink-0')
   })
 
-  // Every beat is padded to the width of `GO!`, so the ceremony flips from beat to beat instead
-  // of relighting three times.
+  // A bare digit: all three beats are one glyph wide, so the board flips from beat to beat
+  // instead of relighting itself three times in three seconds.
   it('shows the start signal on the beat the page is playing', () => {
-    const w = mountHeader({ play: { phase: 'start', beat: '2' } })
+    const w = mountHeader({ play: { phase: 'start', beat: '3' } })
 
-    expect(clockOf(w).text).toBe('  2')
-    expect(clockOf(w).label).toBe('Start in 2 Sekunden')
+    expect(clockOf(w).text).toBe('3')
+    expect(clockOf(w).label).toBe('Start in 3 Sekunden')
     expect(clockOf(w).tone).toBe('alarm')
+    expect(clockOf(w).solid).toBe(false)
   })
 
   it('speaks the last beat in the singular', () => {
@@ -125,11 +127,22 @@ describe('GameHeader', () => {
     expect(clockOf(w).label).toBe('Start in 1 Sekunde')
   })
 
-  it('says GO! at the same width as the digits before it', () => {
-    const w = mountHeader({ play: { phase: 'start', beat: 'GO!' } })
+  // The reveal is in flight: the board says so by lighting its whole field, and it is already the
+  // width of the clock underneath, so the answer flips the digits out instead of resizing again.
+  it('holds a solid field while the reveal is on its way', () => {
+    const w = mountHeader({ play: { phase: 'waiting' } })
 
-    expect(clockOf(w).text).toBe('GO!')
-    expect(clockOf(w).label).toBe('Los')
+    expect(clockOf(w).solid).toBe(true)
+    expect(clockOf(w).text).toBe('00:00')
+    expect(clockOf(w).tone).toBe('alarm')
+    expect(clockOf(w).label).toBe('Wird aufgedeckt')
+  })
+
+  it('gives the waiting field the width the running clock will have', () => {
+    const waiting = mountHeader({ play: { phase: 'waiting' } })
+    const running = mountHeader({ play: { phase: 'running', since: '2026-06-15T06:44:22Z' } })
+
+    expect(bitmap(clockOf(waiting).text).cols).toBe(bitmap(clockOf(running).text).cols)
   })
 
   it('shows the play own clock once it is running, in the timed tone', () => {

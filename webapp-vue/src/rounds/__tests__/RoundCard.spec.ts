@@ -6,7 +6,7 @@ import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
-import type { StartBeat } from '@/ui/useStartCeremony'
+import type { StartStep } from '@/ui/useStartCeremony'
 
 /**
  * A stub, not `guess-hue`: this test exercises the card's own wiring — which prop the game gets,
@@ -96,7 +96,7 @@ function mountCard(props: {
   /** Omitted for a closed round: it has no stage left to derive a face from. */
   stage?: RoundStage
   closed?: boolean
-  beat?: StartBeat | null
+  step?: StartStep | null
   busy?: boolean
   notice?: string | null
   reveal?: () => Promise<void>
@@ -502,11 +502,20 @@ describe('RoundCard', () => {
     expect(playOf(w)).toBeNull()
   })
 
+  // Reachable state: once the count-in is spent, the step and a revealed, unguessed `me` are
+  // both set — checking the play first would jump the board to the clock before the count-in has
+  // handed over.
   it('shows the start signal the page is playing, ahead of everything else', () => {
-    // Reachable state: during the GO hold, `beat` and a revealed, unguessed `me` are both set —
-    // an `me` of `null` would pass this test even with the branches swapped.
-    const w = mountCard({ round: aRound({ me: aPlay() }), beat: 'GO!' })
+    const w = mountCard({ round: aRound({ me: aPlay() }), step: '1' })
 
-    expect(playOf(w)).toEqual({ phase: 'start', beat: 'GO!' })
+    expect(playOf(w)).toEqual({ phase: 'start', beat: '1' })
+  })
+
+  // Same precedence, one step later: the reveal is in flight and the band says so, even though
+  // the round underneath it already carries a play.
+  it('holds the waiting face while the reveal is on its way', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), step: 'waiting' })
+
+    expect(playOf(w)).toEqual({ phase: 'waiting' })
   })
 })
