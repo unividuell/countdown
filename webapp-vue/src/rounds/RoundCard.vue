@@ -11,7 +11,7 @@ import type { RoundResponse } from '@/api/types'
 import type { RoundReview } from '@/rounds/review'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
-import { gameComponents } from '@/games/registry'
+import { gameBriefings, gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import type { PlayClock, StartStep } from '@/ui/useStartCeremony'
@@ -67,6 +67,12 @@ const emit = defineEmits<{ guessed: [] }>()
 const component = computed<Component | null>(() => {
   const id = props.round?.game?.id
   return id === undefined ? null : (gameComponents[id] ?? null)
+})
+
+/** The same game's boxes, for the one face that has no game mounted. */
+const briefing = computed<Component | null>(() => {
+  const id = props.round?.game?.id
+  return id === undefined ? null : (gameBriefings[id] ?? null)
 })
 
 /** Mine first, then everyone else's — the order the reading wheel expects. */
@@ -160,17 +166,14 @@ function onGiveUp(): void {
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 
-      <div
-        v-else-if="face === 'sealed'"
-        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
-      >
+      <div v-else-if="face === 'sealed'" class="sealed-face flex flex-col gap-4">
         <!--
           Framework copy, not a game's: `sealed` exists only because a game answered
           `requiresReveal` with true, and that flag means the same thing for every game that ever
           sets it — the clock starts here, and there is no second attempt. The game's own component
           is not even mounted yet, so this is the only place the sentence can stand.
         -->
-        <p data-test="round-reveal-cost" class="text-sm text-neutral-600">
+        <p data-test="round-reveal-cost" class="text-center text-sm text-neutral-600">
           Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
         </p>
         <button
@@ -182,6 +185,15 @@ function onGiveUp(): void {
         >
           Aufdecken
         </button>
+        <!-- Under the button, not above it: the sentence and the button are what this face is for,
+             and the boxes are what the player reads while deciding to press. This is the only
+             moment they can be read for free — from the click on, the clock is running. -->
+        <component
+          :is="briefing"
+          v-if="briefing !== null"
+          :award-rule="round?.awardRule ?? null"
+          :award-points="round?.awardPoints ?? null"
+        />
       </div>
 
       <!--

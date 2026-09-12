@@ -14,7 +14,7 @@ import type { StartStep } from '@/ui/useStartCeremony'
  * because `vi.mock` below is hoisted above every import, so a plain module-scope constant would not
  * be initialised yet when the mock factory runs (same trap as `src/gamelab/__tests__/lab-page.spec.ts`).
  */
-const { StubGame } = await vi.hoisted(async () => {
+const { StubGame, StubBriefing } = await vi.hoisted(async () => {
   const { defineComponent } = await import('vue')
   return {
     StubGame: defineComponent({
@@ -40,10 +40,21 @@ const { StubGame } = await vi.hoisted(async () => {
         '<button data-test="stub-skip" @click="$emit(\'skip\', 1)">skip</button>' +
         '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>',
     }),
+    StubBriefing: defineComponent({
+      name: 'StubBriefing',
+      props: {
+        awardRule: { type: null, default: null },
+        awardPoints: { type: Number, default: null },
+      },
+      template: '<div data-test="stub-briefing" />',
+    }),
   }
 })
 
-vi.mock('@/games/registry', () => ({ gameComponents: { 'guess-hue': StubGame } }))
+vi.mock('@/games/registry', () => ({
+  gameComponents: { 'guess-hue': StubGame },
+  gameBriefings: { 'guess-hue': StubBriefing },
+}))
 
 const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   userId: 'o1',
@@ -472,6 +483,19 @@ describe('RoundCard', () => {
 
     expect(stub.exists()).toBe(true)
     expect(stub.props('entries')).toEqual([other])
+  })
+
+  // The sealed face is the last moment the rules are free to read: from the click on, the clock
+  // is running. So the game's boxes belong here, not only behind the gate.
+  it("carries the game's boxes on the sealed face, while reading them still costs nothing", () => {
+    const w = mountCard({
+      round: aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 9 }),
+      stage: 'sealed',
+    })
+
+    const briefing = w.getComponent(StubBriefing)
+    expect(briefing.props('awardRule')).toBe('CLOSEST_ONLY')
+    expect(briefing.props('awardPoints')).toBe(9)
   })
 
   it('says what the reveal costs before it is clicked', () => {

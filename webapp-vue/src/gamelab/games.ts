@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { gameComponents } from '@/games/registry'
+import { gameBriefings, gameComponents } from '@/games/registry'
 
 export interface LabGameEntry {
   /** Matches `GameType.id` on the server, surfaced as `LabRoundResponse.game` — the `:game` URL segment. */
@@ -29,3 +29,6 @@ export const labGameList: readonly LabGameEntry[] = [
 
 /** Lookup by URL segment, for the game page. */
 export const labGames: Record<string, Component> = gameComponents
+
+/** The same, for the boxes the reveal screen shows before the game is up. */
+export const labBriefings: Record<string, Component> = gameBriefings

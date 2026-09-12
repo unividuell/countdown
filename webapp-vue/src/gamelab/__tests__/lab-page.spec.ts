@@ -21,7 +21,7 @@ import type { LabRoundResponse } from '@/gamelab/types'
  * so a plain `const StubGame = defineComponent(...)` would not be initialised yet when the mock
  * factory runs. Following the same pattern as `src/nav/__tests__/NavDrawer.spec.ts`.
  */
-const { StubGame } = await vi.hoisted(async () => {
+const { StubGame, StubBriefing } = await vi.hoisted(async () => {
   const { defineComponent } = await import('vue')
   return {
     StubGame: defineComponent({
@@ -45,12 +45,21 @@ const { StubGame } = await vi.hoisted(async () => {
       template:
         '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>',
     }),
+    StubBriefing: defineComponent({
+      name: 'StubBriefing',
+      props: {
+        awardRule: { type: null, default: null },
+        awardPoints: { type: Number, default: null },
+      },
+      template: '<div data-test="stub-briefing" />',
+    }),
   }
 })
 
 vi.mock('@/gamelab/games', () => ({
   labGameList: [{ id: 'stub', title: 'Stub' }],
   labGames: { stub: StubGame },
+  labBriefings: { stub: StubBriefing },
 }))
 
 const replace = vi.fn()
@@ -989,6 +998,25 @@ describe('lab page', () => {
   })
 
   // --- Task 20: the reveal gate, mirroring the real round's `sealed` face -----------------------
+
+  // The same argument the real card makes: the gate is the last moment the rules are free to
+  // read, so the boxes stand there too — and the lab mirrors the product rather than inventing a
+  // second answer.
+  it('carries the boxes on the gate, before the tester clock has anything to count', async () => {
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+      awardRule: 'CLOSEST_ONLY',
+      awardPoints: 9,
+    } as never)
+
+    const w = await mountPage()
+
+    const briefing = w.getComponent(StubBriefing)
+    expect(briefing.props('awardRule')).toBe('CLOSEST_ONLY')
+    expect(briefing.props('awardPoints')).toBe(9)
+  })
 
   it('shows the sealed gate instead of the game when the round is not yet revealed', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({

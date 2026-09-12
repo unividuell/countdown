@@ -9,10 +9,8 @@
  */
 import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
-import AwardBox from '@/ui/AwardBox.vue'
+import GuessHueBriefing from './GuessHueBriefing.vue'
 import HoldButton from '@/ui/HoldButton.vue'
-import InfoBox from '@/ui/InfoBox.vue'
-import HueRules from './HueRules.vue'
 import HueWheelInput from './HueWheelInput.vue'
 
 const props = defineProps<{
@@ -89,22 +87,10 @@ const color = computed(
       </HueWheelInput>
     </div>
 
-    <div class="mt-8 flex flex-col gap-3">
-      <InfoBox storage-key="guess-hue">
-        <template #abstract>Triff den beschriebenen Farbton.</template>
-        <HueRules />
-      </InfoBox>
-      <AwardBox
-        v-if="props.awardRule !== null && props.awardPoints !== null"
-        :award-rule="props.awardRule"
-        :award-points="props.awardPoints"
-        game-id="guess-hue"
-      >
-        <template #qualifies
-          >Dein Farbton muss nah genug am gesuchten liegen (innerhalb der Toleranz).</template
-        >
-        <template #closest>Bester Tipp: am nächsten am gesuchten Farbton.</template>
-      </AwardBox>
-    </div>
+    <GuessHueBriefing
+      class="mt-8"
+      :award-rule="props.awardRule"
+      :award-points="props.awardPoints"
+    />
   </div>
 </template>
