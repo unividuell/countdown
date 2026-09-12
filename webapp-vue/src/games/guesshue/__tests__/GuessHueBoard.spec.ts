@@ -73,7 +73,7 @@ describe('GuessHueBoard', () => {
     const w = mountBoard({ awardRule: 'CLOSEST_ONLY', awardPoints: 7 })
 
     expect(w.text()).toContain('Winner takes it all: 7 Punkte')
-    expect(w.text()).toContain('Am nächsten am gesuchten Farbton')
+    expect(w.text()).toContain('Bester Tipp: am nächsten am gesuchten Farbton')
   })
 
   it('locks the wheel and the button once the round is spent', () => {

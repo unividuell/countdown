@@ -100,11 +100,10 @@ const color = computed(
         :award-points="props.awardPoints"
         game-id="guess-hue"
       >
-        <template #qualifies>Dein Farbton muss nah genug am gesuchten liegen.</template>
-        <template #closest>
-          Am nächsten am gesuchten Farbton — eine Grenze gibt es hier nicht mehr, jeder ist
-          Kandidat.
-        </template>
+        <template #qualifies
+          >Dein Farbton muss nah genug am gesuchten liegen (innerhalb der Toleranz).</template
+        >
+        <template #closest>Bester Tipp: am nächsten am gesuchten Farbton.</template>
       </AwardBox>
     </div>
   </div>

@@ -204,9 +204,13 @@ onUnmounted(() => {
         :award-points="props.awardPoints"
         game-id="song-snippet"
       >
-        <template #qualifies>Du musst den richtigen Song erkennen.</template>
+        <template #qualifies
+          >Du musst den richtigen Song erkennen. Ein falscher Tipp verbraucht nur die aktuelle Stufe
+          — nicht das ganze Spiel.</template
+        >
         <template #closest>
-          Der richtige Song — und von allen, die ihn haben, der mit dem kürzesten Schnipsel.
+          Der richtige Song — und von allen, die ihn haben, der mit dem kürzesten Schnipsel. Man hat
+          nur eine Tippabgabe!
         </template>
       </AwardBox>
     </div>

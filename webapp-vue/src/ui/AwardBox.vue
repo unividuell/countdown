@@ -45,13 +45,13 @@ const storageKey = computed(() => `award:${props.gameId}:${phaseTwo.value ? 'p2'
     <template #abstract>{{ headline }}</template>
 
     <template v-if="phaseTwo">
-      <p>Nur der beste Tipp bekommt die Punkte — bei Gleichstand alle, die ihn teilen.</p>
       <p><slot name="closest" /></p>
+      <p>Der beste Tipp bekommt alle Punkte — bei Gleichstand alle, die ihn teilen.</p>
       <p>Solange die Runde läuft, kann dich noch jemand überholen.</p>
     </template>
     <template v-else>
-      <p>Der Punkt ist für alle da: wer ihn holt, nimmt ihn keinem anderen weg.</p>
       <p><slot name="qualifies" /></p>
+      <p>Jeder kann sich den Punkt holen — einmal erhalten ist er sicher.</p>
     </template>
   </InfoBox>
 </template>
