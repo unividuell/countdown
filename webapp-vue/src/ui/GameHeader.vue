@@ -94,11 +94,11 @@ const face = computed<{ text: string; label: string; tone: Tone; solid: boolean 
       v-if="roundNumber !== null"
       data-test="game-header-round"
       class="shrink-0 text-sm tabular-nums"
-      :class="phaseTwo ? 'text-phase-two' : 'text-stone-400'"
+      :class="phaseTwo ? 'text-phase-two' : 'text-phase-one'"
     >
       <!-- Visible: the bare number. Spoken: what it is a number of — the band is the only place
-           the round is named. The colon is decoration and stays out of the reading. -->
-      <span class="sr-only">Runde </span>{{ roundNumber }}<span aria-hidden="true">:</span>
+           the round is named. -->
+      <span class="sr-only">Runde </span>{{ roundNumber }}
     </span>
     <h1 data-test="game-header-title" class="min-w-0 flex-1 truncate text-sm font-semibold">
       {{ title }}
