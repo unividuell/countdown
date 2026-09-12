@@ -9,7 +9,10 @@
  */
 import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
+import AwardBox from '@/ui/AwardBox.vue'
 import HoldButton from '@/ui/HoldButton.vue'
+import InfoBox from '@/ui/InfoBox.vue'
+import HueRules from './HueRules.vue'
 import HueWheelInput from './HueWheelInput.vue'
 
 const props = defineProps<{
@@ -17,14 +20,6 @@ const props = defineProps<{
   initHue: number
   saturation: number
   lightness: number
-  /**
-   * Half-window in degrees, or `null` in phase two — there is no gate there, only the closest
-   * guess scores. Safe to show before guessing: it is set from the phase alone (see the backend's
-   * `GuessHuePayload` KDoc), so it tells the player how forgiving the round is, never where the
-   * target hue lies. Picks the hint sentence below; it plays no other part — the wheel itself
-   * stays tolerance-agnostic.
-   */
-  toleranceDeg: number | null
   disabled: boolean
   awardRule: AwardRule | null
   awardPoints: number | null
@@ -46,12 +41,6 @@ const ready = ref(false)
 
 const color = computed(
   () => `hsl(${hue.value} ${props.saturation * 100}% ${props.lightness * 100}%)`,
-)
-
-const hint = computed(() =>
-  props.toleranceDeg === null
-    ? 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Hier zählt nur, wer am nächsten dran liegt.'
-    : 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Eine kleine Abweichung ist erlaubt.',
 )
 
 // `group` exists for one descendant: the centre button reacts to the leave class the reveal
@@ -100,6 +89,23 @@ const hint = computed(() =>
       </HueWheelInput>
     </div>
 
-    <p data-test="hue-hint" class="mt-8 text-xs text-neutral-500">{{ hint }}</p>
+    <div class="mt-8 flex flex-col gap-3">
+      <InfoBox storage-key="guess-hue">
+        <template #abstract>Triff den beschriebenen Farbton.</template>
+        <HueRules />
+      </InfoBox>
+      <AwardBox
+        v-if="props.awardRule !== null && props.awardPoints !== null"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+        game-id="guess-hue"
+      >
+        <template #qualifies>Dein Farbton muss nah genug am gesuchten liegen.</template>
+        <template #closest>
+          Am nächsten am gesuchten Farbton — eine Grenze gibt es hier nicht mehr, jeder ist
+          Kandidat.
+        </template>
+      </AwardBox>
+    </div>
   </div>
 </template>

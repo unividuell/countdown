@@ -9,7 +9,6 @@ function mountBoard(props: Partial<InstanceType<typeof GuessHueBoard>['$props']>
       initHue: 210,
       saturation: 0.6,
       lightness: 0.45,
-      toleranceDeg: 10,
       disabled: false,
       awardRule: null,
       awardPoints: null,
@@ -60,29 +59,21 @@ describe('GuessHueBoard', () => {
     expect(w.emitted('guess')).toEqual([[210.4]])
   })
 
-  it('carries the rule where it does not compete with the wheel', () => {
-    const hint = mountBoard().get('[data-test="hue-hint"]')
+  // The old `hue-hint` mixed two things: how to play (instructions) and what scores (award
+  // box). Both halves live on, each in its own place.
+  it('explains the input in the rules box and the scoring in the award box', () => {
+    const w = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
 
-    expect(hint.text()).toContain('Farbton')
-    // Set back deliberately: present when looked for, quiet otherwise.
-    expect(hint.classes()).toContain('text-xs')
-    expect(hint.classes()).toContain('text-neutral-500')
+    expect(w.text()).toContain('Du stellst nur den Farbton ein')
+    expect(w.text()).toContain('Jeder richtige Tipp: 1 Punkt')
+    expect(w.find('[data-test="hue-hint"]').exists()).toBe(false)
   })
 
-  it('phase one: names the tolerance, because a small miss still counts', () => {
-    const hint = mountBoard({ toleranceDeg: 10 }).get('[data-test="hue-hint"]')
+  it('phase two: the award box says winner-takes-all and spells out what "closest" means here', () => {
+    const w = mountBoard({ awardRule: 'CLOSEST_ONLY', awardPoints: 7 })
 
-    expect(hint.text()).toBe(
-      'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Eine kleine Abweichung ist erlaubt.',
-    )
-  })
-
-  it('phase two: says only the closest guess scores, because there is no gate at all', () => {
-    const hint = mountBoard({ toleranceDeg: null }).get('[data-test="hue-hint"]')
-
-    expect(hint.text()).toBe(
-      'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Hier zählt nur, wer am nächsten dran liegt.',
-    )
+    expect(w.text()).toContain('Winner takes it all: 7 Punkte')
+    expect(w.text()).toContain('Am nächsten am gesuchten Farbton')
   })
 
   it('locks the wheel and the button once the round is spent', () => {

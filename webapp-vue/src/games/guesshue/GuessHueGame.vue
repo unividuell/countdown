@@ -178,7 +178,6 @@ const animate = computed(() => hasRevealedLive.value)
         :init-hue="myHue ?? props.payload.initHue"
         :saturation="props.payload.saturation"
         :lightness="props.payload.lightness"
-        :tolerance-deg="props.payload.toleranceDeg"
         :disabled="props.disabled"
         :award-rule="props.awardRule"
         :award-points="props.awardPoints"
