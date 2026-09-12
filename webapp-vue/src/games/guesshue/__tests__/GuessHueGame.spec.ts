@@ -24,6 +24,7 @@ function mountAdapter(props: Record<string, unknown> = {}) {
       entries: [],
       mineUserId: null,
       awardRule: null,
+      awardPoints: null,
       ...props,
     },
   })

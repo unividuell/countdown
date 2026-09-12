@@ -13,6 +13,7 @@ const props = defineProps<{
   durations: number[]
   stage: number
   awardRule: AwardRule | null
+  awardPoints: number | null
   disabled: boolean
   /**
    * `null` where the round carries no audio at all — a caller that has none to give. Then there is

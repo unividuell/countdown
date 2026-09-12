@@ -5,7 +5,7 @@ import SongSnippetGame from '@/games/songsnippet/SongSnippetGame.vue'
 vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
   default: {
     name: 'SongSnippetBoard',
-    props: ['durations', 'stage', 'awardRule', 'disabled', 'assetUrl', 'notice'],
+    props: ['durations', 'stage', 'awardRule', 'awardPoints', 'disabled', 'assetUrl', 'notice'],
     emits: ['guess', 'skip', 'giveUp'],
     template: '<div data-test="board-stub" />',
   },
@@ -30,6 +30,7 @@ function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
       entries: [],
       mineUserId: null,
       awardRule: null,
+      awardPoints: null,
       disabled: false,
       stage,
       assetUrl: (key: number) => `/assets/${key}`,

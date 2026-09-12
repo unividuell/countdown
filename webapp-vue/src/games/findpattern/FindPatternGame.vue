@@ -22,6 +22,8 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
@@ -105,6 +107,8 @@ watch(solution, (now, before) => {
         :my-color-hex="myColorHex"
         :disabled="props.disabled"
         :submitted-start-index="startIndexOf(props.myGuess)"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
         @guess="(value) => emit('guess', value)"
       />
     </Transition>

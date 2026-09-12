@@ -201,6 +201,7 @@ function onGiveUp(): void {
         :entries="entries"
         :mine-user-id="round?.me?.userId ?? null"
         :award-rule="round?.awardRule ?? null"
+        :award-points="round?.awardPoints ?? null"
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"

@@ -348,6 +348,7 @@ watch(
         :entries="gameEntries"
         :mine-user-id="gameMineUserId"
         :award-rule="round.awardRule"
+        :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
         :asset-url="

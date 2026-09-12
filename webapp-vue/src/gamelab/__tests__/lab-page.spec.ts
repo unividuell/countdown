@@ -35,6 +35,7 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        awardPoints: { type: Number, default: null },
         review: { type: Object, default: null },
         // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
         // default of `false` would let the case below pass with the binding missing entirely.
@@ -239,6 +240,12 @@ describe('lab page', () => {
     const w = await mountPage()
 
     expect(w.findComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
+  })
+
+  it('hands the lab game what the round is worth', async () => {
+    const w = await mountPage()
+
+    expect(w.getComponent(StubGame).props('awardPoints')).toBe(round.awardPoints)
   })
 
   it('submits a guess from the game', async () => {

@@ -17,6 +17,8 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
@@ -89,6 +91,7 @@ function onSkip(fromStage: number): void {
     :durations="durations"
     :stage="stage ?? 0"
     :award-rule="awardRule"
+    :award-points="awardPoints"
     :disabled="disabled"
     :asset-url="assetUrl ?? null"
     :notice="notice"

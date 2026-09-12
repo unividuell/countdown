@@ -17,6 +17,8 @@ function mountBoard(disabled = false, submittedStartIndex?: number | null) {
       payload: PAYLOAD,
       myColorHex: '#7c3aed',
       disabled,
+      awardRule: null,
+      awardPoints: null,
       ...(submittedStartIndex !== undefined ? { submittedStartIndex } : {}),
     },
   })

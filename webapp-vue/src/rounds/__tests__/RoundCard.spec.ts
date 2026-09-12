@@ -28,6 +28,7 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        awardPoints: { type: Number, default: null },
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
         review: { type: Object, default: null },
@@ -162,6 +163,18 @@ describe('RoundCard', () => {
     const stub = mountCard({ round, stage: 'done' }).findComponent(StubGame)
 
     expect(stub.props('awardRule')).toBe('CLOSEST_ONLY')
+  })
+
+  // The winner box lives in the game and needs both: the rule says who wins, the points say what
+  // it is worth. Without both, the box could only name half the rule.
+  it('hands the game what the round is worth, not only how it is scored', () => {
+    const w = mountCard({
+      round: aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 7 }),
+      stage: 'playing',
+    })
+
+    expect(w.getComponent(StubGame).props('awardPoints')).toBe(7)
+    expect(w.getComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
   it("hands the game its own stage and the round's asset-url builder", () => {

@@ -59,6 +59,7 @@ const HIT: SongSuggestion = {
 function mountBoard(props: {
   stage?: number
   awardRule?: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null
+  awardPoints?: number | null
   disabled?: boolean
   notice?: string | null
   assetUrl?: ((key: number) => string) | null
@@ -68,6 +69,7 @@ function mountBoard(props: {
       durations: DURATIONS,
       stage: props.stage ?? 0,
       awardRule: props.awardRule ?? null,
+      awardPoints: props.awardPoints ?? null,
       disabled: props.disabled ?? false,
       assetUrl: props.assetUrl === undefined ? (key: number) => `/assets/${key}` : props.assetUrl,
       notice: props.notice ?? null,

@@ -11,6 +11,8 @@ function mountBoard(props: Partial<InstanceType<typeof GuessHueBoard>['$props']>
       lightness: 0.45,
       toleranceDeg: 10,
       disabled: false,
+      awardRule: null,
+      awardPoints: null,
       ...props,
     },
   })

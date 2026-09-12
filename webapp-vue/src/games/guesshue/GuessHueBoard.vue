@@ -8,6 +8,7 @@
  * without dragging any wheel or hold logic along.
  */
 import { computed, ref, watch } from 'vue'
+import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HueWheelInput from './HueWheelInput.vue'
 
@@ -25,6 +26,8 @@ const props = defineProps<{
    */
   toleranceDeg: number | null
   disabled: boolean
+  awardRule: AwardRule | null
+  awardPoints: number | null
 }>()
 
 const emit = defineEmits<{ guess: [hue: number] }>()

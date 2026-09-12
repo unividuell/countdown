@@ -12,6 +12,7 @@
  * grid this tall (8 × 14) forces the searcher to scroll while comparing blocks.
  */
 import { computed, ref } from 'vue'
+import type { AwardRule } from '@/api/types'
 import InfoBox from '@/ui/InfoBox.vue'
 import PatternGrid from './PatternGrid.vue'
 import PatternRules from './PatternRules.vue'
@@ -29,6 +30,8 @@ const props = defineProps<{
    * `selected`: it is what a reload has to show, not a seed a tap could extend or restart.
    */
   submittedStartIndex?: number | null
+  awardRule: AwardRule | null
+  awardPoints: number | null
 }>()
 
 const emit = defineEmits<{ guess: [value: { startIndex: number }] }>()

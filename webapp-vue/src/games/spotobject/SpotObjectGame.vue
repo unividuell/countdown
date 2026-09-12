@@ -27,6 +27,8 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
