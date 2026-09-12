@@ -88,6 +88,24 @@ describe('GameHeader', () => {
     ).toBe(false)
   })
 
+  // The phase mark sits on the number at the left; the clock mark sits in the field at the
+  // right. The dots stay untouched on purpose: the running stopwatch is already amber, and a
+  // timed play only exists in phase two — if both were amber, colour would no longer tell the
+  // two apart.
+  it('marks a phase two round on its number and nowhere else', () => {
+    const w = mountHeader({ phaseTwo: true })
+
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-phase-two')
+    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain('text-stone-400')
+    expect(clockOf(w).tone).toBe('default')
+  })
+
+  it('leaves the number alone in phase one', () => {
+    expect(mountHeader().get('[data-test="game-header-round"]').classes()).toContain(
+      'text-stone-400',
+    )
+  })
+
   // Softer than the app header's stone-900 on purpose, and NOT stone-800: DOT_OFF is #292524,
   // which is stone-800 exactly — on that background the unlit dots would vanish into the band and
   // the matrix with them.

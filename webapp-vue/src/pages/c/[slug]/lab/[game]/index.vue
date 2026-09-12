@@ -296,6 +296,7 @@ watch(
           :title="round.displayName"
           :ends-at="roundEndsAt"
           :play="labPlay"
+          :phase-two="round.awardRule === 'CLOSEST_ONLY'"
         />
       </template>
       <!--

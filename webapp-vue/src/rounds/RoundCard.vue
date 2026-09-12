@@ -148,6 +148,7 @@ function onGiveUp(): void {
           :title="round?.game?.displayName ?? null"
           :ends-at="endsAt"
           :play="play"
+          :phase-two="round?.awardRule === 'CLOSEST_ONLY'"
         />
       </template>
 

@@ -369,6 +369,14 @@ describe('RoundCard', () => {
     expect(band.props('endsAt')).toBe('2026-08-15T10:00:00Z')
   })
 
+  it('tells the band which phase the round is in', () => {
+    const two = mountCard({ round: aRound({ awardRule: 'CLOSEST_ONLY' }) })
+    const one = mountCard({ round: aRound({ awardRule: 'ALL_QUALIFYING' }) })
+
+    expect(two.getComponent(GameHeader).props('phaseTwo')).toBe(true)
+    expect(one.getComponent(GameHeader).props('phaseTwo')).toBe(false)
+  })
+
   // Every face of the card is the same round of the same game for the same time, so the band is
   // the card's, not any one face's — a band per face is four places for it to disagree.
   it.each<RoundStage>(['sealed', 'playing', 'done'])('carries the band on the %s face', (stage) => {
