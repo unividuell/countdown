@@ -35,7 +35,7 @@ lange bevor ein Router-Guard liefe.
 - **Kein `og:image`, kein Bildrenderer.** WhatsApp zeigt ohne Bild eine kompakte Karte mit Titel
   und Text; der Name steht drin. Ein Bild lässt sich später ergänzen, ohne den Mechanismus zu
   ändern.
-- **Keine Vorschau für andere Pfade** als `/c/*` und `/join/*`.
+- **Keine Vorschau für andere Pfade** als `/`, `/c/*` und `/join/*`.
 - **Kein verteiltes Rate-Limit.** Eine Instanz, In-Memory, kein Redis.
 - **Keine Umbenennung von `inviteToken`.** Nutzersichtbar heißt es „Code", im Bestand (Spalte
   `invite_token`, `Community.inviteToken`, Routenparameter `token`) bleibt alles stehen: eine
@@ -79,7 +79,7 @@ Auth. Ungültiger oder abgelaufener Code zeigt weiter die bestehenden Meldungen 
 ## Die Vorschau: ein Abzweig am Edge
 
 ```
-                       ┌─ UA-Regex trifft  UND  Pfad /c/* oder /join/*  ─┐
+                       ┌─ UA-Regex trifft UND Pfad /, /c/* oder /join/* ─┐
                        │                                                 │
    Messenger ─────────►│  countdown-web (Caddy)                          │
                        │   ├─ @backend  /api/* /oauth2/* …  → core       │
@@ -107,8 +107,13 @@ keine Routen) noch zu `countdown`. Es hat keine Tabellen, also kein Schema und k
 liest ausschließlich über `CommunityQuery.findBySlug` und `CountdownQuery.currentRound`. Der
 Namens-Lookup der Join-Seite ist dagegen gewöhnliches JSON und bleibt im `MemberController`.
 
+Die Wurzel landet dabei als `/api/preview/` im Backend, das Mapping muss den abschließenden
+Schrägstrich also mit abdecken.
+
 Geliefert wird ein vollständiges, winziges Dokument: `<html lang="de">` mit `<title>`,
 `og:title`, `og:description`, `og:url`, `og:type`, `og:locale` und `twitter:card`, sonst nichts.
+`og:url` trägt die angefragte URL — außer im generischen Fall unten, wo es die Wurzel ist, damit
+die Antwort dort wirklich in jedem Byte gleich ist.
 
 ## Was die Vorschau sagt
 
@@ -117,16 +122,20 @@ Geliefert wird ein vollständiges, winziges Dokument: `<html lang="de">` mit `<t
 | `/c/<slug>`, Termin in der Zukunft | `Hütte Hütte` | `T-58: Spiel mit!` |
 | `/c/<slug>`, kein Termin oder bereits gestartet | `Hütte Hütte` | `Spiel mit!` |
 | `/join/<code>`, gültig | `Hütte Hütte` | `Du bist eingeladen — T-58: Spiel mit!` |
-| Unbekannter Slug, unbekannter oder abgelaufener Code | `Countdown` | `Spiel mit!` |
+| `/`, und jeder nicht auflösbare Fall (siehe unten) | `Countdown` | `Gemeinsam auf ein Event hinfiebern — jeden Tag eine Runde, ein Mini-Spiel, ein Punktestand.` |
 
 Die Regel greift für `/c/<slug>` **und alles darunter** (`/c/x/members`, `/c/x/requests` …) — eine
-Regel statt einer Pfadliste, damit auch ein tiefer geteilter Link eine Vorschau hat.
+Regel statt einer Pfadliste, damit auch ein tiefer geteilter Link eine Vorschau hat. `/` matcht
+dagegen **exakt** die Wurzel, sonst zöge der Block die ganze App an sich.
+
+Die Wurzel hat keinen Mandanten, also spricht sie von der App selbst — wozu es sie gibt, nicht was
+sie technisch ist. Denselben Text bekommt jeder nicht auflösbare Fall: unbekannter Slug,
+unbekannter und abgelaufener Code. Dass die Antwort dort **identisch** zur Startseite ist, ist der
+Punkt — so ist strukturell unmöglich, aus der Vorschau abzulesen, ob es eine Community oder eine
+Einladung überhaupt gibt.
 
 Das Rundenlabel kommt unverändert aus `Round.label`, also mit ASCII-Bindestrich wie in der App
 (`T-58`), nicht mit dem Gedankenstrich des Vorgängers. Vorschau und App sollen dasselbe schreiben.
-
-Der namenlose Fallback ist Absicht: Der Vorschau-Endpunkt darf kein Orakel dafür sein, welche Codes
-gültig sind.
 
 **Eine Ehrlichkeit zur Zahl:** WhatsApp und Facebook halten Vorschauen über Tage bis Wochen. Ein
 vor drei Wochen erstmals geteilter Link kann beim nächsten Teilen noch die alte Rundenzahl zeigen.
@@ -154,8 +163,8 @@ die Bremse nicht selbst zum Orakel wird.
 ## Nachweis
 
 - **MockMvc (`socialpreview`):** bekannter Slug → `og:title` trägt den Namen, Beschreibung trägt
-  `T-58`; kein Termin und bereits gestartet → ohne Rundenteil; unbekannter Slug, unbekannter und
-  abgelaufener Code → jeweils der namenlose Fallback.
+  `T-58`; kein Termin und bereits gestartet → ohne Rundenteil; `/`, unbekannter Slug, unbekannter
+  und abgelaufener Code → alle vier byte-gleich die generische Antwort.
 - **Payload-Hygiene** (wie im Game-Lab): die Antwort enthält Name und Rundenlabel — und
   nachweislich kein Token, keine Mitglieder, keine Spielinhalte.
 - **`community`:** Codes sind sechs Zeichen aus dem Crockford-Alphabet; ein kleingeschriebener und
