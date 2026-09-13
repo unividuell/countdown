@@ -42,10 +42,21 @@ const rows = computed(() =>
     entries: props.entries,
     durations: durations.value,
     awardRule: props.awardRule,
+    mineUserId: props.mineUserId,
   }),
 )
 /** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
 const live = computed(() => rows.value.some((row) => row.provisional))
+
+/**
+ * Whether the reveal may play its beats — the same rule every other game follows: only a round
+ * that was uncovered while this instance watched. A `watch` without `immediate` never fires for
+ * the initial value, which is what makes an instance mounting already-revealed start `false`.
+ */
+const hasRevealedLive = ref(false)
+watch(revealed, (now, before) => {
+  if (!before && now) hasRevealedLive.value = true
+})
 
 /** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
  *  skip, flagged below before the re-emit so the watch can tell the two apart. */
@@ -84,6 +95,7 @@ function onSkip(fromStage: number): void {
     :durations="durations"
     :rows="rows"
     :live="live"
+    :animate="hasRevealedLive"
     :asset-url="assetUrl"
   />
   <SongSnippetBoard

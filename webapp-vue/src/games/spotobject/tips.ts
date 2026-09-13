@@ -11,6 +11,7 @@ import type { AwardRule, Vote, VoteView } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
+import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { asSpotObjectOutcome, asSpotObjectTip, flagOf } from './types'
 import type { SpotObjectTip } from './types'
@@ -82,16 +83,9 @@ export function tipTiles(input: {
   return tiles.sort(byPano)
 }
 
-export interface ScoreRow {
-  userId: string
-  name: string
-  colorHex: string
-  ink: string
+export interface ScoreRow extends ScoreboardRow {
   /** `mm:ss`, or `null` for a round that does not measure time — see `SpotObjectParams.timed`. */
   durationLabel: string | null
-  points: number | null
-  provisional: boolean
-  tick: number
 }
 
 /** `mm:ss` with minutes running past 59 — the clock measures a round, not a wall clock. */

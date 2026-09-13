@@ -156,7 +156,7 @@ describe('FindPatternReveal', () => {
     expect(wrapper.findAll('[data-test="solution-chip"]').map((chip) => chip.text())).toEqual(
       SOLUTION.pattern.map(String),
     )
-    expect(wrapper.find('[data-test="pattern-scoreboard-live"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="scoreboard-live"]').exists()).toBe(true)
     // `animate` reaches the scoreboard too — it has not had its own chance to fade in yet.
     expect(wrapper.get('tbody td').classes()).toContain('opacity-0')
   })

@@ -8,6 +8,7 @@ import type { AwardRule } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
+import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { startIndexOf } from './types'
 import type { FindPatternSolution } from './types'
@@ -18,23 +19,15 @@ export interface ToneChip {
   ink: string
 }
 
-export interface ScoreRow {
-  userId: string
-  name: string
-  /** The player's own colour — the row's ground, and the colour of their outline on the board. */
-  colorHex: string
-  ink: string
+export interface ScoreRow extends ScoreboardRow {
   /** The four tones they picked, or empty for a row that gave up. */
   chips: ToneChip[]
   correct: boolean
   gaveUp: boolean
   /** `mm:ss`, or `null` for a round that did not score on time. */
   durationLabel: string | null
-  points: number | null
-  provisional: boolean
   /** Where their run starts, for the outline on the reveal board. `null` for a give-up. */
   startIndex: number | null
-  tick: number
 }
 
 export function toneChips(tones: readonly number[], palette: readonly string[]): ToneChip[] {
