@@ -58,11 +58,17 @@ class FakePanorama {
     this.handlers.get('pov_changed')?.forEach((callback) => callback())
   }
 
-  /** Google announcing that a panorama actually loaded — the only thing that counts as a step. */
-  arriveAt(panoId: string, position: unknown): void {
+  /** The first half of Google's announcement: the id, before it knows where that panorama is. */
+  announce(panoId: string): void {
     this.panoIdValue = panoId
-    this.positionValue = position
     this.handlers.get('pano_changed')?.forEach((callback) => callback())
+  }
+
+  /** The second half, and the only one that is an arrival: the place the id turned out to be. */
+  arriveAt(panoId: string, position: unknown): void {
+    this.announce(panoId)
+    this.positionValue = position
+    this.handlers.get('position_changed')?.forEach((callback) => callback())
   }
 }
 
@@ -268,6 +274,22 @@ describe('useWalkMap', () => {
     panorama.arriveAt('pano-2', { lat: 2, lng: 2 })
 
     expect(walk.jumpMissed.value).toBe(false)
+  })
+
+  /**
+   * Between Google's two announcements the panorama stands at the new id and the old place, and
+   * that pair is not a step. Taken as one it parked the mini-map where the player had just been:
+   * a stride out after a stride, a town out after a press on the mini-map.
+   */
+  it('does not take the new id at the old place for a step', async () => {
+    const { walk, panorama } = attached()
+    panorama.arriveAt('pano-1', { lat: 1, lng: 1 })
+    await walk.openMiniMap(document.createElement('div'))
+
+    panorama.announce('pano-9')
+
+    expect(FakeMap.instances[1]?.setCenter).toHaveBeenLastCalledWith({ lat: 1, lng: 1 })
+    expect(worldTrail().setPath.mock.lastCall?.[0]).toHaveLength(1)
   })
 
   it('does not count a panorama already walked as a step of its own', () => {

@@ -156,9 +156,12 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
       panorama.addListener('pano_changed', () => {
         pano.panoId = panorama?.getPano() || null
         heading.value = panorama?.getPov().heading ?? null
+      })
 
-        // The world map walks along underneath, so „← Weltkarte“ comes out where the player
-        // stopped rather than where they went in.
+      // The world map walks along underneath, so „← Weltkarte“ comes out where the player stopped
+      // rather than where they went in. Not on `pano_changed`: that announces the new id while the
+      // panorama is still standing at the old coordinates — see `useWalkMap`.
+      panorama.addListener('position_changed', () => {
         const position = panorama?.getPosition()
         if (position) map?.setCenter(position)
       })

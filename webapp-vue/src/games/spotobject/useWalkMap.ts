@@ -119,18 +119,22 @@ export function useWalkMap(trailColor: Ref<string>): UseWalkMap {
     worldTrail = new google.maps.Polyline(dotted(trailColor.value))
     worldTrail.setMap(map)
 
-    panorama.addListener('pano_changed', step)
+    panorama.addListener('position_changed', step)
 
-    // Turning fires this and nothing else, which is why the cone cannot ride on `pano_changed`.
+    // Turning fires this and nothing else, so the cone cannot ride on the walk's own event.
     panorama.addListener('pov_changed', () => {
       here?.setIcon(cone(trailColor.value, facing()))
     })
   }
 
   /**
-   * One step of the walk. Hung on `pano_changed` and not on `position_changed` on purpose:
-   * `setPosition` moves the position property straight away and only *then* asks Google whether
-   * there is anything there, so a trail built on positions would draw the missed taps too.
+   * One step of the walk. Google announces an arrival in two halves — the pano id at once, the
+   * coordinates it turns out to be once the metadata is in — so `pano_changed` fires while the
+   * panorama is still standing where it left. Hung on the second half, where the id is already
+   * the new one: a stride out after a stride, and a town out after a press on the mini-map.
+   *
+   * The miss that used to argue the other way is gone with `setPosition`: that moved the panorama
+   * and only then asked whether there was anything there, while `jumpTo` asks first.
    */
   function step(): void {
     const panoId = panorama?.getPano()

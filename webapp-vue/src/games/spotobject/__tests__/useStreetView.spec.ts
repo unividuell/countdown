@@ -456,6 +456,9 @@ describe('useStreetView', () => {
   /**
    * The whole point of walking is that you end up somewhere else. Before this, „← Weltkarte“ put
    * the player back at the point they had gone in at, however far they had walked.
+   *
+   * On `position_changed`, because `pano_changed` carries the new id while the panorama is still
+   * standing at the old coordinates — see `useWalkMap`.
    */
   it('walks the world map along, so leaving lands where the walking stopped', async () => {
     const { mount } = useStreetView(deps())
@@ -467,7 +470,7 @@ describe('useStreetView', () => {
 
     const map = FakeMap.instances[0]!
     map.panorama.positionValue = { lat: 41.4, lng: 2.2 }
-    map.panorama.fire('pano_changed')
+    map.panorama.fire('position_changed')
 
     expect(map.setCenter).toHaveBeenCalledWith({ lat: 41.4, lng: 2.2 })
   })
