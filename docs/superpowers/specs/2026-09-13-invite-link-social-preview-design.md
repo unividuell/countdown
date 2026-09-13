@@ -157,8 +157,12 @@ Blöcke `header_up X-Client-IP {client_ip}` — Caddy berechnet diesen Wert selb
 Berücksichtigung von `trusted_proxies`, und `header_up` überschreibt einen mitgeschickten Wert. Der
 Filter liest diesen Header und fällt nur ohne ihn auf `remoteAddr` zurück (lokale Entwicklung).
 
-Ein unbekannter Code antwortet identisch wie ein bekannter — gleiche Form, gleiche Latenz —, damit
-die Bremse nicht selbst zum Orakel wird.
+Die beiden offenen Endpunkte sind dabei bewusst **nicht** gleich verschwiegen. Der
+Vorschau-Endpunkt antwortet auf einen unbekannten Slug oder Code byte-gleich wie auf die
+Startseite. Der Namens-Lookup muss dagegen unterscheiden — die Einladungsseite sagt dem Empfänger,
+ob sein Link ungültig (`404`) oder abgelaufen (`410`) ist — und gibt bei einem Treffer den Namen
+preis. Genau dieser Endpunkt ist der Grund für sechs Zeichen und die Bremse: die beiden sind seine
+Sicherheit, nicht Beiwerk.
 
 ## Nachweis
 
