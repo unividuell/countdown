@@ -21,7 +21,28 @@
 	# mutually exclusive with the SPA catch-all and evaluated first; otherwise the catch-all
 	# handle matches everything (incl. /api/*) and the file_server swallows API requests.
 	handle @backend {
-		reverse_proxy core:8080
+		reverse_proxy core:8080 {
+			# Caddy APPENDS to X-Forwarded-For, so its first entry may be the client's own
+			# invention. {client_ip} is Caddy's own answer, honouring trusted_proxies, and
+			# header_up replaces anything the client sent under this name.
+			header_up X-Client-IP {client_ip}
+		}
+	}
+
+	# Link previews. A crawler runs no JavaScript, so the SPA shell is a blank page to it — these
+	# two conditions (crawler user agent AND a shareable path) send ONLY crawlers to core's
+	# preview endpoint and leave every browser on the untouched SPA path below. If core is down,
+	# the app still loads. `path /` is exact on purpose: `/*` would swallow the whole app.
+	@preview {
+		path / /c/* /join/*
+		header_regexp User-Agent "(?i)(facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|SkypeUriPreview|Applebot|redditbot|Googlebot|bingbot|Signal)"
+	}
+
+	handle @preview {
+		rewrite * /api/preview{path}
+		reverse_proxy core:8080 {
+			header_up X-Client-IP {client_ip}
+		}
 	}
 
 	# Vite's content-hashed build output: a changed file always gets a new URL, so it can be
