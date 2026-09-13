@@ -204,8 +204,8 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `accepting an invite still requires a session`() {
         // No stub for membership.accept; the request must not reach the controller.
-        // Without a principal and without CSRF, Spring Security rejects at the filter layer.
-        mockMvc.post("/api/communities/join/A7K2MP")
-            .andExpect { status { isForbidden() } }
+        // Pass CSRF so authorization rules apply; without a principal, they reject with 401.
+        mockMvc.post("/api/communities/join/A7K2MP") { with(csrf()) }
+            .andExpect { status { isUnauthorized() } }
     }
 }
