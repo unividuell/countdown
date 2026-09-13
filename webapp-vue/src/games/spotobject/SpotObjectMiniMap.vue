@@ -174,39 +174,39 @@ function between(value: number, min: number, max: number): number {
     <div class="relative aspect-square overflow-hidden rounded-lg bg-neutral-200 shadow-lg">
       <div ref="stage" data-test="spot-mini-stage" class="absolute inset-0" />
 
-      <!-- Top row only, all of it: the bottom belongs to Google. -->
+      <!-- Both sizes out of here have their own control, because a press on the map itself moves
+           the player. Two arrow pairs differing only in direction are one icon at this size, so the
+           way down is a ✕ — and they sit in opposite corners, where there is nothing to tell apart
+           in the first place. -->
+      <button
+        type="button"
+        data-test="spot-mini-full"
+        aria-label="Karte bildschirmfüllend"
+        class="absolute top-2 left-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
+        @click="emit('expand')"
+      >
+        <IconMaximize aria-hidden="true" class="h-4 w-4" />
+      </button>
+
+      <button
+        type="button"
+        data-test="spot-mini-close"
+        aria-label="Übersichtskarte schließen"
+        class="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
+        @click="emit('collapse')"
+      >
+        <IconX aria-hidden="true" class="h-4 w-4" />
+      </button>
+
+      <!-- Under the top row rather than in it: both corners up there are taken, and the bottom
+           belongs to Google. -->
       <p
         v-if="props.missed"
         data-test="spot-mini-missed"
-        class="pointer-events-none absolute top-2 left-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] text-white"
+        class="pointer-events-none absolute top-12 left-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] text-white"
       >
         Keine Aufnahme hier.
       </p>
-
-      <!-- Both sizes out of here have their own control, because a press on the map itself moves
-           the player. Two arrow pairs side by side, differing only in direction, are one icon at
-           this size: the way down is a ✕, however much a step down it is. -->
-      <div class="absolute top-2 right-2 flex gap-1">
-        <button
-          type="button"
-          data-test="spot-mini-full"
-          aria-label="Karte bildschirmfüllend"
-          class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
-          @click="emit('expand')"
-        >
-          <IconMaximize aria-hidden="true" class="h-4 w-4" />
-        </button>
-
-        <button
-          type="button"
-          data-test="spot-mini-close"
-          aria-label="Übersichtskarte schließen"
-          class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
-          @click="emit('collapse')"
-        >
-          <IconX aria-hidden="true" class="h-4 w-4" />
-        </button>
-      </div>
     </div>
 
     <!--
@@ -214,13 +214,17 @@ function between(value: number, min: number, max: number): number {
       the map for presses, and a drag that starts on the map has to stay Google's — that is how you
       pan the mini-map itself. Sitting on the corner it belongs to the panel as a whole.
 
+      Bottom-left is also Google's logo corner, and at this offset the wordmark stays clear —
+      checked in the panorama. It could not hang out further anyway: `EDGE` is the gutter a dragged
+      panel keeps, so a longer overhang would take the handle over the board's own edge.
+
       `touch-none` so a finger on it drags the panel instead of scrolling the page.
     -->
     <button
       type="button"
       data-test="spot-mini-grab"
       aria-label="Übersichtskarte verschieben"
-      class="absolute -top-2 -left-2 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded-full bg-white text-neutral-900 shadow active:cursor-grabbing"
+      class="absolute -bottom-3 -left-3 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded-full bg-white text-neutral-900 shadow active:cursor-grabbing"
       @pointerdown="startDrag"
     >
       <IconMove aria-hidden="true" class="h-3.5 w-3.5" />
