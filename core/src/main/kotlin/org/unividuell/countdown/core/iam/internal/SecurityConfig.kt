@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.iam.internal
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.invoke
@@ -36,6 +37,8 @@ class SecurityConfig {
                 authorize("/login/**", permitAll)
                 authorize("/actuator/health", permitAll)
                 authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
+                // GET only: reading who invites you needs no session, accepting the invite does.
+                authorize(HttpMethod.GET, "/api/communities/join/*", permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {
