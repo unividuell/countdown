@@ -28,7 +28,7 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.get("/api/preview/").andExpect {
             status { isOk() }
             content { contentTypeCompatibleWith(MediaType.TEXT_HTML) }
-            header { string("Cache-Control", "max-age=600, public") }
+            header { string(name = "Cache-Control", value = "max-age=600, public") }
             content { string(containsString("<title>Countdown</title>")) }
             content { string(containsString("Spiel jeden Tag ein Mini-Game")) }
         }
@@ -77,11 +77,20 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
             PreviewPage(title = "Hütte Hütte", description = "Du bist eingeladen — T-58: Spiel mit!", path = "/")
 
         mockMvc.get("/api/preview/join/A7K2MP").andExpect {
+            status { isOk() }
             // payload hygiene: a crawler is an outsider — it gets a name and a round, nothing else
             content { string(not(containsString("A7K2MP"))) }
             content { string(not(containsString("huettehuette"))) }
             content { string(not(containsString("<script"))) }
             content { string(not(containsString("member"))) }
+        }
+    }
+
+    @Test
+    fun `an unmapped path falls back to the generic page`() {
+        mockMvc.get("/api/preview/nonsense").andExpect {
+            status { isOk() }
+            content { string(containsString("<title>Countdown</title>")) }
         }
     }
 }
