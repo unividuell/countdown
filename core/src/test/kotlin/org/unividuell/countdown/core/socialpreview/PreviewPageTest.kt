@@ -37,4 +37,13 @@ class PreviewPageTest {
         page.description shouldBe "Spiel jeden Tag ein Mini-Game - gemeinsam auf euer Event hinfiebern"
         page.path shouldBe "/"
     }
+
+    @Test
+    fun `escapes hostile path to prevent og-url attribute breakout`() {
+        val html = PreviewPage(title = "Event", description = "Join!", path = """/join/"<script>""")
+            .html(baseUrl = "https://example.org")
+
+        html shouldNotContain """content="https://example.org/join/"<script>"""
+        html shouldContain """content="https://example.org/join/&quot;&lt;script&gt;"""
+    }
 }

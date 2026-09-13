@@ -1,5 +1,7 @@
 package org.unividuell.countdown.core.socialpreview.internal
 
+import org.springframework.web.util.HtmlUtils
+
 /**
  * One link preview, as a document with nothing but a head.
  *
@@ -10,8 +12,11 @@ package org.unividuell.countdown.core.socialpreview.internal
 data class PreviewPage(val title: String, val description: String, val path: String) {
 
     fun html(baseUrl: String): String {
-        val safeTitle = escapeHtml(title)
-        val safeDescription = escapeHtml(description)
+        // HtmlUtils.htmlEscape defaults to ISO-8859-1, which would render German umlauts as
+        // named entities. Pass UTF-8 explicitly to preserve them as-is.
+        val safeTitle = HtmlUtils.htmlEscape(title, "UTF-8")
+        val safeDescription = HtmlUtils.htmlEscape(description, "UTF-8")
+        val safeUrl = HtmlUtils.htmlEscape(baseUrl + path, "UTF-8")
         return """
             <!doctype html>
             <html lang="de">
@@ -21,7 +26,7 @@ data class PreviewPage(val title: String, val description: String, val path: Str
             <meta name="description" content="$safeDescription">
             <meta property="og:title" content="$safeTitle">
             <meta property="og:description" content="$safeDescription">
-            <meta property="og:url" content="$baseUrl$path">
+            <meta property="og:url" content="$safeUrl">
             <meta property="og:type" content="website">
             <meta property="og:locale" content="de_DE">
             <meta name="twitter:card" content="summary">
@@ -29,14 +34,6 @@ data class PreviewPage(val title: String, val description: String, val path: Str
             <body></body>
             </html>
         """.trimIndent()
-    }
-
-    private fun escapeHtml(input: String): String {
-        return input
-            .replace("&", "&amp;")
-            .replace("\"", "&quot;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
     }
 
     companion object {
