@@ -1,6 +1,5 @@
 package org.unividuell.countdown.core.community.internal
 
-import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.Community
@@ -29,21 +28,13 @@ open class MembershipService(
     private val random = SecureRandom()
     private val inviteTtl = java.time.Duration.ofDays(7)
 
-    /** The column is UNIQUE; a clash retries with a fresh candidate instead of failing the caller. */
     @Transactional
     open fun generateInvite(communityId: UUID): InviteInfo {
         val community = communities.findById(communityId).orElseThrow()
+        val token = freshCode()
         val expiresAt = Instant.now().plus(inviteTtl)
-        repeat(CODE_ATTEMPTS) {
-            val token = InviteCodes.generate(random)
-            try {
-                communities.save(community.copy(inviteToken = token, inviteTokenExpiresAt = expiresAt, updatedAt = Instant.now()))
-                return InviteInfo(token = token, expiresAt = expiresAt)
-            } catch (e: DuplicateKeyException) {
-                // another draw already claimed this code: retry with a fresh one
-            }
-        }
-        throw IllegalStateException("no free invite code after $CODE_ATTEMPTS attempts")
+        communities.save(community.copy(inviteToken = token, inviteTokenExpiresAt = expiresAt, updatedAt = Instant.now()))
+        return InviteInfo(token = token, expiresAt = expiresAt)
     }
 
     @Transactional
@@ -91,6 +82,24 @@ open class MembershipService(
 
     /** Null, or in the past, is dead; exactly `now` is still live — inherited from the original check. */
     private fun isLive(expiresAt: Instant?): Boolean = expiresAt != null && !expiresAt.isBefore(Instant.now())
+
+    /**
+     * The column is UNIQUE. The pre-check rules out the case that actually happens — the drawn
+     * code is already someone's invite — by finding a candidate nobody holds before saving it.
+     *
+     * It does not rule out a genuine race between two concurrent [generateInvite] calls that draw
+     * the same free candidate at the same instant: the loser's `save` still hits the UNIQUE
+     * constraint, and that still reaches the caller as a raw exception. Postgres allows no
+     * same-transaction retry after a constraint violation — see the KDoc on
+     * [org.unividuell.countdown.core.game.internal.RoundGameRepository.insertIfAbsent] for why.
+     */
+    private fun freshCode(): String {
+        repeat(CODE_ATTEMPTS) {
+            val candidate = InviteCodes.generate(random)
+            if (communities.findByInviteToken(candidate) == null) return candidate
+        }
+        throw IllegalStateException("no free invite code after $CODE_ATTEMPTS attempts")
+    }
 
     @Transactional
     open fun approve(communityId: UUID, userId: UUID) {
