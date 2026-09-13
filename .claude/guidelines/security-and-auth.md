@@ -55,7 +55,7 @@ concern; revisit when other modules gain protected resources).
 `GET /api/communities/join/*` (invite name lookup) and `GET /api/preview/**` (link previews) are
 `permitAll` — no session needed. Both sit behind `PublicRateLimitFilter` (`iam`, in-memory,
 per-client-IP, 20/minute, `429` above it). **GET only**: the matching `POST` (accepting an invite)
-already requires a session and draws from its own budget, so it never shares the anonymous limit.
+already requires a session, so it is simply not counted here — there is no second budget.
 
 - **The `X-Forwarded-For` trap.** Caddy *appends* to that header rather than replacing it, and
   Spring's `ForwardedHeaderFilter` (`forward-headers-strategy=framework`) reads its **first**

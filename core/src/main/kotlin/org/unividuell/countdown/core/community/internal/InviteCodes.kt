@@ -7,7 +7,8 @@ import java.security.SecureRandom
  *
  * The alphabet leaves out I, L, O and U — there is nothing a reader can mistake for 1 or 0, and
  * no code accidentally spells a word. [normalize] undoes the two mistakes a typist still makes:
- * lower case, and writing the omitted letters back in.
+ * lower case, and writing back I, L or O where 1 or 0 was meant. U has no substitute — Crockford
+ * excludes it to avoid accidental words, not confusability — so a U stays invalid.
  */
 object InviteCodes {
 

@@ -39,6 +39,8 @@
 	}
 
 	handle @preview {
+		# Same URL answers with two different documents depending on User-Agent; say so.
+		header Vary User-Agent
 		rewrite * /api/preview{path}
 		reverse_proxy core:8080 {
 			header_up X-Client-IP {client_ip}

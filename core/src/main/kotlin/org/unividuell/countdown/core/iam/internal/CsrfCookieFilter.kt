@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.web.csrf.CsrfToken
+import org.springframework.util.AntPathMatcher
 import org.springframework.web.filter.OncePerRequestFilter
 
 /**
@@ -17,6 +18,14 @@ import org.springframework.web.filter.OncePerRequestFilter
  * the cookie to be set.
  */
 class CsrfCookieFilter : OncePerRequestFilter() {
+
+    private val matcher = AntPathMatcher()
+
+    // The preview endpoint is `permitAll` and answers crawlers with a publicly cacheable
+    // response; a Set-Cookie on it defeats that cache (the classic shared-cache anti-pattern).
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean =
+        matcher.match("/api/preview/**", request.requestURI)
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,

@@ -35,6 +35,14 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `the response carries no CSRF cookie, so a shared cache may store it`() {
+        mockMvc.get("/api/preview/").andExpect {
+            status { isOk() }
+            cookie { doesNotExist("XSRF-TOKEN") }
+        }
+    }
+
+    @Test
     fun `a community path carries the name and the round`() {
         every { preview.forCommunity("huettehuette") } returns
             PreviewPage(title = "Hütte Hütte", description = "T-58: Spiel mit!", path = "/c/huettehuette")

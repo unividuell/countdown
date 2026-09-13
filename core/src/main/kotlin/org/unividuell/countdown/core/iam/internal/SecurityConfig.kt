@@ -39,7 +39,10 @@ class SecurityConfig {
                 authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
                 // GET only: reading who invites you needs no session, accepting the invite does.
                 authorize(method = HttpMethod.GET, pattern = "/api/communities/join/*", access = permitAll)
-                // Crawler-only in production (the edge decides), but open: a crawler has no session.
+                // Open by design, not crawler-restricted here: the edge only forwards crawlers to
+                // this path from the SPA routes, but the API path itself is reachable by anyone.
+                // PublicRateLimitFilter brakes it, and every unresolvable code/slug answers with
+                // the same generic page, so an open endpoint reveals nothing.
                 authorize(method = HttpMethod.GET, pattern = "/api/preview/**", access = permitAll)
                 authorize(anyRequest, authenticated)
             }
