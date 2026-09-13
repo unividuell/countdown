@@ -39,6 +39,8 @@ class SecurityConfig {
                 authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
                 // GET only: reading who invites you needs no session, accepting the invite does.
                 authorize(method = HttpMethod.GET, pattern = "/api/communities/join/*", access = permitAll)
+                // Crawler-only in production (the edge decides), but open: a crawler has no session.
+                authorize(method = HttpMethod.GET, pattern = "/api/preview/**", access = permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {
