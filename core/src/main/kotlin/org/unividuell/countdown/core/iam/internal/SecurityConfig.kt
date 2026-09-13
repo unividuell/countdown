@@ -23,7 +23,7 @@ import org.springframework.security.web.savedrequest.NullRequestCache
  * The frontend triggers login by navigating to `/oauth2/authorization/github`.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(SuperAdminProperties::class)
+@EnableConfigurationProperties(SuperAdminProperties::class, PublicRateLimitProperties::class)
 class SecurityConfig {
 
     @Bean
