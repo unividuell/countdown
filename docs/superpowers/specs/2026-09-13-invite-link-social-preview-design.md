@@ -122,7 +122,7 @@ die Antwort dort wirklich in jedem Byte gleich ist.
 | `/c/<slug>`, Termin in der Zukunft | `Hütte Hütte` | `T-58: Spiel mit!` |
 | `/c/<slug>`, kein Termin oder bereits gestartet | `Hütte Hütte` | `Spiel mit!` |
 | `/join/<code>`, gültig | `Hütte Hütte` | `Du bist eingeladen — T-58: Spiel mit!` |
-| `/`, und jeder nicht auflösbare Fall (siehe unten) | `Countdown` | `Gemeinsam auf ein Event hinfiebern — jeden Tag eine Runde, ein Mini-Spiel, ein Punktestand.` |
+| `/`, und jeder nicht auflösbare Fall (siehe unten) | `Countdown` | `Spiel jeden Tag ein Mini-Game - gemeinsam auf euer Event hinfiebern` |
 
 Die Regel greift für `/c/<slug>` **und alles darunter** (`/c/x/members`, `/c/x/requests` …) — eine
 Regel statt einer Pfadliste, damit auch ein tiefer geteilter Link eine Vorschau hat. `/` matcht
