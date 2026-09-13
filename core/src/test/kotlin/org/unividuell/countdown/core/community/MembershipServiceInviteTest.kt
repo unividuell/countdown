@@ -72,7 +72,7 @@ class MembershipServiceInviteTest(
         val code = service.generateInvite(cid).token
         // what a typist produces from a code read aloud: lower case, and O/I for 0/1
         val mistyped = code.lowercase().replace(oldChar = '0', newChar = 'O').replace(oldChar = '1', newChar = 'l')
-        service.accept(mistyped, user("joiner").id!!).shouldBeInstanceOf<AcceptResult.JoinedPending>()
+        service.accept(token = mistyped, userId = user("joiner").id!!).shouldBeInstanceOf<AcceptResult.JoinedPending>()
     }
 
     @Test
@@ -83,7 +83,7 @@ class MembershipServiceInviteTest(
             communities.findBySlug("team")!!
                 .copy(inviteToken = legacy, inviteTokenExpiresAt = Instant.now().plus(1, ChronoUnit.DAYS)),
         )
-        service.accept(legacy, user("joiner").id!!).shouldBeInstanceOf<AcceptResult.JoinedPending>()
+        service.accept(token = legacy, userId = user("joiner").id!!).shouldBeInstanceOf<AcceptResult.JoinedPending>()
         c.id!! shouldBe communities.findByInviteToken(legacy)!!.id
     }
 

@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.community.internal
 
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.Community
@@ -28,13 +29,21 @@ open class MembershipService(
     private val random = SecureRandom()
     private val inviteTtl = java.time.Duration.ofDays(7)
 
+    /** The column is UNIQUE; a clash retries with a fresh candidate instead of failing the caller. */
     @Transactional
     open fun generateInvite(communityId: UUID): InviteInfo {
         val community = communities.findById(communityId).orElseThrow()
-        val token = freshCode()
         val expiresAt = Instant.now().plus(inviteTtl)
-        communities.save(community.copy(inviteToken = token, inviteTokenExpiresAt = expiresAt, updatedAt = Instant.now()))
-        return InviteInfo(token = token, expiresAt = expiresAt)
+        repeat(CODE_ATTEMPTS) {
+            val token = InviteCodes.generate(random)
+            try {
+                communities.save(community.copy(inviteToken = token, inviteTokenExpiresAt = expiresAt, updatedAt = Instant.now()))
+                return InviteInfo(token = token, expiresAt = expiresAt)
+            } catch (e: DuplicateKeyException) {
+                // another draw already claimed this code: retry with a fresh one
+            }
+        }
+        throw IllegalStateException("no free invite code after $CODE_ATTEMPTS attempts")
     }
 
     @Transactional
@@ -62,14 +71,14 @@ open class MembershipService(
     @Transactional(readOnly = true)
     open fun peek(code: String): Community {
         val community = findByCode(code) ?: throw InviteNotFoundException()
-        if (community.inviteTokenExpiresAt?.isBefore(Instant.now()) != false) throw InviteExpiredException()
+        if (!isLive(community.inviteTokenExpiresAt)) throw InviteExpiredException()
         return community
     }
 
     @Transactional(readOnly = true)
     override fun communityOfValidInvite(code: String): Community? {
         val community = findByCode(code) ?: return null
-        return community.takeIf { it.inviteTokenExpiresAt?.isAfter(Instant.now()) == true }
+        return community.takeIf { isLive(it.inviteTokenExpiresAt) }
     }
 
     /**
@@ -80,14 +89,8 @@ open class MembershipService(
         if (code.length == InviteCodes.LENGTH) communities.findByInviteToken(InviteCodes.normalize(code))
         else communities.findByInviteToken(code)
 
-    /** The column is UNIQUE, so a clash must not reach the caller — with 32^6 it is rare. */
-    private fun freshCode(): String {
-        repeat(CODE_ATTEMPTS) {
-            val candidate = InviteCodes.generate(random)
-            if (communities.findByInviteToken(candidate) == null) return candidate
-        }
-        throw IllegalStateException("no free invite code after $CODE_ATTEMPTS attempts")
-    }
+    /** Null, or in the past, is dead; exactly `now` is still live — inherited from the original check. */
+    private fun isLive(expiresAt: Instant?): Boolean = expiresAt != null && !expiresAt.isBefore(Instant.now())
 
     @Transactional
     open fun approve(communityId: UUID, userId: UUID) {
