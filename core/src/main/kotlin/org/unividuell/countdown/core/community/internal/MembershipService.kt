@@ -4,11 +4,11 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
+import org.unividuell.countdown.core.community.InviteQuery
 import org.unividuell.countdown.core.community.MemberStatus
 import java.security.SecureRandom
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.Base64
 import java.util.UUID
 
 data class InviteInfo(val token: String, val expiresAt: Instant)
@@ -24,18 +24,17 @@ sealed interface AcceptResult {
 open class MembershipService(
     private val communities: CommunityRepository,
     private val members: CommunityMemberRepository,
-) {
+) : InviteQuery {
     private val random = SecureRandom()
-    private val encoder = Base64.getUrlEncoder().withoutPadding()
     private val inviteTtl = java.time.Duration.ofDays(7)
 
     @Transactional
     open fun generateInvite(communityId: UUID): InviteInfo {
         val community = communities.findById(communityId).orElseThrow()
-        val token = encoder.encodeToString(ByteArray(32).also { random.nextBytes(it) })
+        val token = freshCode()
         val expiresAt = Instant.now().plus(inviteTtl)
         communities.save(community.copy(inviteToken = token, inviteTokenExpiresAt = expiresAt, updatedAt = Instant.now()))
-        return InviteInfo(token, expiresAt)
+        return InviteInfo(token = token, expiresAt = expiresAt)
     }
 
     @Transactional
@@ -46,8 +45,7 @@ open class MembershipService(
 
     @Transactional
     open fun accept(token: String, userId: UUID): AcceptResult {
-        val community = communities.findByInviteToken(token) ?: throw InviteNotFoundException()
-        if (community.inviteTokenExpiresAt?.isBefore(Instant.now()) != false) throw InviteExpiredException()
+        val community = peek(token)
         val communityId = community.id!!
         val existing = members.findByCommunityIdAndUserId(communityId, userId)
         return when (existing?.status) {
@@ -58,6 +56,37 @@ open class MembershipService(
                 AcceptResult.JoinedPending(community)
             }
         }
+    }
+
+    /** The lookup that says *why* it failed — the join page shows 404 and 410 differently. */
+    @Transactional(readOnly = true)
+    open fun peek(code: String): Community {
+        val community = findByCode(code) ?: throw InviteNotFoundException()
+        if (community.inviteTokenExpiresAt?.isBefore(Instant.now()) != false) throw InviteExpiredException()
+        return community
+    }
+
+    @Transactional(readOnly = true)
+    override fun communityOfValidInvite(code: String): Community? {
+        val community = findByCode(code) ?: return null
+        return community.takeIf { it.inviteTokenExpiresAt?.isAfter(Instant.now()) == true }
+    }
+
+    /**
+     * Only codes of the current length get the reading repair; tokens handed out before this
+     * change are 43 Base64 characters and must keep matching exactly as they were stored.
+     */
+    private fun findByCode(code: String): Community? =
+        if (code.length == InviteCodes.LENGTH) communities.findByInviteToken(InviteCodes.normalize(code))
+        else communities.findByInviteToken(code)
+
+    /** The column is UNIQUE, so a clash must not reach the caller — with 32^6 it is rare. */
+    private fun freshCode(): String {
+        repeat(CODE_ATTEMPTS) {
+            val candidate = InviteCodes.generate(random)
+            if (communities.findByInviteToken(candidate) == null) return candidate
+        }
+        throw IllegalStateException("no free invite code after $CODE_ATTEMPTS attempts")
     }
 
     @Transactional
@@ -98,5 +127,9 @@ open class MembershipService(
         if (target.status == MemberStatus.ACTIVE && target.isAdmin && members.countActiveAdmins(communityId) <= 1) {
             throw LastAdminException()
         }
+    }
+
+    companion object {
+        private const val CODE_ATTEMPTS = 10
     }
 }
