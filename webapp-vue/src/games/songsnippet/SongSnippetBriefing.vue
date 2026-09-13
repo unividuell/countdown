@@ -34,7 +34,7 @@ const props = defineProps<{
         nicht das ganze Spiel.</template
       >
       <template #closest>
-        Der richtige Song — und von allen, die ihn haben, der mit dem kürzesten Schnipsel. Man hat
+        Der richtige Song — und von allen, die ihn haben, der mit dem kürzesten Schnipsel. Du hast
         nur eine Tippabgabe!
       </template>
     </AwardBox>
