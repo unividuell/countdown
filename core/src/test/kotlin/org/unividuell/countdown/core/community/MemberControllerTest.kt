@@ -200,4 +200,12 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         every { membership.peek("ZZZZZZ") } throws InviteNotFoundException()
         mockMvc.get("/api/communities/join/ZZZZZZ").andExpect { status { isNotFound() } }
     }
+
+    @Test
+    fun `accepting an invite still requires a session`() {
+        // No stub for membership.accept; the request must not reach the controller.
+        // Without a principal and without CSRF, Spring Security rejects at the filter layer.
+        mockMvc.post("/api/communities/join/A7K2MP")
+            .andExpect { status { isForbidden() } }
+    }
 }

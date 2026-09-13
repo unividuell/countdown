@@ -38,7 +38,7 @@ class SecurityConfig {
                 authorize("/actuator/health", permitAll)
                 authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
                 // GET only: reading who invites you needs no session, accepting the invite does.
-                authorize(HttpMethod.GET, "/api/communities/join/*", permitAll)
+                authorize(method = HttpMethod.GET, pattern = "/api/communities/join/*", access = permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {
