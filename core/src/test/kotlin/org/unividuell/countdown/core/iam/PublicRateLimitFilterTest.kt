@@ -5,9 +5,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.principalFor
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest(properties = ["countdown.public-rate-limit.permits-per-minute=2"])
@@ -44,6 +47,17 @@ class PublicRateLimitFilterTest(@Autowired val mockMvc: MockMvc) {
         repeat(5) {
             mockMvc.get("/api/me") { header("X-Client-IP", "203.0.113.5") }
                 .andExpect { status { isUnauthorized() } }
+        }
+    }
+
+    @Test
+    fun `an authenticated POST to a guarded path is not counted`() {
+        repeat(5) {
+            mockMvc.post("/api/communities/join/ZZZZZZ") {
+                header("X-Client-IP", "203.0.113.6")
+                with(principalFor())
+                with(csrf())
+            }.andExpect { status { isNotFound() } }
         }
     }
 }

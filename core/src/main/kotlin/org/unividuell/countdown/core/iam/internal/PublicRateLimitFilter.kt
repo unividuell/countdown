@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.util.AntPathMatcher
@@ -41,8 +42,10 @@ class PublicRateLimitFilter(
     private val matcher = AntPathMatcher()
     private val windows = ConcurrentHashMap<String, Window>()
 
+    // GET only: SecurityConfig opens GET without a session on both paths; the matching POST
+    // (accepting an invite) needs one already and must draw from its own, session-gated budget.
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        GUARDED.none { matcher.match(it, request.requestURI) }
+        request.method != HttpMethod.GET.name() || GUARDED.none { matcher.match(it, request.requestURI) }
 
     override fun doFilterInternal(
         request: HttpServletRequest,
