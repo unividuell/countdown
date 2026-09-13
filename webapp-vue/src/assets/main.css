@@ -7,6 +7,20 @@
      `oklch(58.6% 0.253 17.585)` here and keep the name in this comment. */
   --color-live: var(--color-rose-600);
 
+  /* "Phase two": rounds where the stake grows and only the best guess gets it. The band's play
+     clock has worn this amber since it was built — timed games exist only in phase two, so the
+     colour already carried the meaning, just no name. One meaning, one colour, as with
+     --color-live above. Twin in the dot matrix: `DOT_ALARM_ON` in `src/ui/flipdot/board.ts` —
+     whoever changes one changes the other. */
+  --color-phase-two: var(--color-amber-500);
+
+  /* "Phase one": rounds where the point is not exclusive — everyone who qualifies collects it.
+     Named for the same reason as --color-phase-two above, and chosen against what it has to stand
+     beside: green enough to read as a different family from the rules box's sky when the two boxes
+     stack, dark enough not to compete with the amber. Nothing in the dot matrix wears it — phase
+     one has no play clock — so unlike --color-phase-two this one has no twin to keep in step. */
+  --color-phase-one: var(--color-teal-500);
+
   /* Indeterminate navigation bar: a segment shuttles right and back. The easing is the
      point — slow at the turns, fast through the middle — so the motion reads as deliberate
      rather than mechanical. The 1.4s cycle is tuned for the spans this actually covers
@@ -113,15 +127,23 @@
   }
 }
 
-/* The sealed face's height, before the game it precedes even exists. `RoundCard`'s `sealed`
-   branch renders ahead of the game component — the round hasn't mounted it yet — so it cannot ask
-   the game how tall it is, and must not guess from one game's board (its column/row count, its
-   `max-w` cap): that would bake one game's shape into a face every future game shares. So this is
-   a felt approximation, not a computation: tall enough that uncovering the board doesn't lurch the
-   page for *any* game, in viewport terms so it scales with the screen rather than a game's grid.
+/* The height of the reveal gate's upper half — the warning and the button — before the game it
+   precedes even exists. `RoundCard`'s `sealed` branch renders ahead of the game component, so it
+   cannot ask the game how tall it is, and must not guess from one game's board (its column/row
+   count, its `max-w` cap): that would bake one game's shape into a face every future game shares.
+   So this is a felt approximation, not a computation, in viewport terms so it scales with the
+   screen rather than with a game's grid.
+
+   It sits on that block and not on the whole face on purpose. The face is [upper block, boxes],
+   and the boxes fold and unfold under the reader's finger. Whichever element absorbs the slack
+   decides which way a fold moves the rest: give it to the face and the boxes are flush to the
+   bottom, but unfolding one pushes everything above it — the button, and the box's own chevron,
+   out from under the cursor that just clicked it. Give it to this block instead and it is a
+   floor, not a spring: the boxes still end the face (nothing below them to leave a gap), and a
+   fold grows downwards only, so nothing above it ever moves.
    Named so the lab's mirror of this face (`[game].vue`) cannot drift from the real round's. */
 @utility sealed-face {
-  min-height: 60vh;
+  min-height: 40vh;
 }
 
 /* The scrollbar's track stays reserved even on a page short enough not to need one, so opening the

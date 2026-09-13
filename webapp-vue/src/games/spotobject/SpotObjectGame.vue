@@ -11,9 +11,8 @@ import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
-import InfoBox from '@/ui/InfoBox.vue'
+import SpotObjectBriefing from './SpotObjectBriefing.vue'
 import SpotObjectBoard from './SpotObjectBoard.vue'
-import SpotObjectRules from './SpotObjectRules.vue'
 import SpotObjectReveal from './SpotObjectReveal.vue'
 import SpotObjectTerm from './SpotObjectTerm.vue'
 import { scoreRows, tipTiles } from './tips'
@@ -27,6 +26,8 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
@@ -105,12 +106,11 @@ watch(played, (now, before) => {
 
       <!-- Below the map, the way `FindPatternBoard` puts its own rules below the field: the
            explanation is for whoever wants it, and the board is for everyone. -->
-      <div class="p-4">
-        <InfoBox storage-key="spot-object">
-          <template #abstract>Finde den gesuchten Gegenstand.</template>
-          <SpotObjectRules />
-        </InfoBox>
-      </div>
+      <SpotObjectBriefing
+        class="p-4"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+      />
     </template>
   </div>
 </template>

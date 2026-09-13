@@ -12,9 +12,9 @@
  * grid this tall (8 × 14) forces the searcher to scroll while comparing blocks.
  */
 import { computed, ref } from 'vue'
-import InfoBox from '@/ui/InfoBox.vue'
+import type { AwardRule } from '@/api/types'
+import FindPatternBriefing from './FindPatternBriefing.vue'
 import PatternGrid from './PatternGrid.vue'
-import PatternRules from './PatternRules.vue'
 import { stackedOutlines } from './marks'
 import { isComplete, nextSelection, startIndexOfSelection } from './selection'
 import type { FindPatternPayload } from './types'
@@ -29,6 +29,8 @@ const props = defineProps<{
    * `selected`: it is what a reload has to show, not a seed a tap could extend or restart.
    */
   submittedStartIndex?: number | null
+  awardRule: AwardRule | null
+  awardPoints: number | null
 }>()
 
 const emit = defineEmits<{ guess: [value: { startIndex: number }] }>()
@@ -102,9 +104,6 @@ function onCell(index: number): void {
       />
     </div>
 
-    <InfoBox storage-key="find-pattern">
-      <template #abstract> Entdecke im Spielfeld das gesuchte Muster. </template>
-      <PatternRules />
-    </InfoBox>
+    <FindPatternBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
   </div>
 </template>

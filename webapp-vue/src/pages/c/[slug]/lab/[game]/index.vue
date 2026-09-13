@@ -17,7 +17,7 @@ import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
-import { labGames } from '@/gamelab/games'
+import { labBriefings, labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
@@ -49,6 +49,9 @@ const { user } = useAuth()
 
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
+
+/** The same game's boxes, for the reveal screen — where no game is mounted yet. */
+const briefing = computed(() => labBriefings[gameId.value] ?? null)
 const seed = computed(() => parseSeed(route.query.seed))
 // Anything other than exactly `TWO` reads as `ONE` — the lab is a dev tool, so a junk `?phase=`
 // value is visible at a glance rather than an error state, and every link that predates this
@@ -296,6 +299,7 @@ watch(
           :title="round.displayName"
           :ends-at="roundEndsAt"
           :play="labPlay"
+          :phase-two="round.awardRule === 'CLOSEST_ONLY'"
         />
       </template>
       <!--
@@ -305,23 +309,27 @@ watch(
         this branch never renders and the game mounts straight away, exactly as before this gate
         existed.
       -->
-      <div
-        v-if="!round.revealed"
-        data-test="lab-sealed"
-        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
-      >
-        <p data-test="lab-reveal-cost" class="text-sm text-neutral-600">
-          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <button
-          type="button"
-          data-test="lab-reveal"
-          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy || startStep !== null"
-          @click="revealWithSignal"
-        >
-          Aufdecken
-        </button>
+      <div v-if="!round.revealed" data-test="lab-sealed" class="flex flex-col gap-4">
+        <div class="sealed-face flex flex-col justify-center gap-6 py-6">
+          <p data-test="lab-reveal-cost" class="text-center text-sm text-neutral-600">
+            Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+          </p>
+          <button
+            type="button"
+            data-test="lab-reveal"
+            class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-10 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
+            :disabled="busy || startStep !== null"
+            @click="revealWithSignal"
+          >
+            Aufdecken
+          </button>
+        </div>
+        <component
+          :is="briefing"
+          v-if="briefing !== null"
+          :award-rule="round.awardRule"
+          :award-points="round.awardPoints"
+        />
       </div>
 
       <!--
@@ -348,6 +356,7 @@ watch(
         :entries="gameEntries"
         :mine-user-id="gameMineUserId"
         :award-rule="round.awardRule"
+        :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
         :asset-url="

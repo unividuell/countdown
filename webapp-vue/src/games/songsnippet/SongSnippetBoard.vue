@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import { fetchAssetBlob } from '@/api/assets'
+import SongSnippetBriefing from './SongSnippetBriefing.vue'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
@@ -13,6 +14,7 @@ const props = defineProps<{
   durations: number[]
   stage: number
   awardRule: AwardRule | null
+  awardPoints: number | null
   disabled: boolean
   /**
    * `null` where the round carries no audio at all — a caller that has none to give. Then there is
@@ -188,6 +190,8 @@ onUnmounted(() => {
         </button>
       </span>
     </div>
+
+    <SongSnippetBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
 
     <!-- Last and to the side: giving up is the one thing here nobody should reach for by accident,
          so it sits below everything the round is actually played with. -->

@@ -14,7 +14,7 @@ import type { StartStep } from '@/ui/useStartCeremony'
  * because `vi.mock` below is hoisted above every import, so a plain module-scope constant would not
  * be initialised yet when the mock factory runs (same trap as `src/gamelab/__tests__/lab-page.spec.ts`).
  */
-const { StubGame } = await vi.hoisted(async () => {
+const { StubGame, StubBriefing } = await vi.hoisted(async () => {
   const { defineComponent } = await import('vue')
   return {
     StubGame: defineComponent({
@@ -28,6 +28,7 @@ const { StubGame } = await vi.hoisted(async () => {
         mineUserId: { type: String, default: null },
         disabled: { type: Boolean, default: false },
         awardRule: { type: String, default: null },
+        awardPoints: { type: Number, default: null },
         stage: { type: Number, default: 0 },
         assetUrl: { type: Function, default: null },
         review: { type: Object, default: null },
@@ -39,10 +40,21 @@ const { StubGame } = await vi.hoisted(async () => {
         '<button data-test="stub-skip" @click="$emit(\'skip\', 1)">skip</button>' +
         '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>',
     }),
+    StubBriefing: defineComponent({
+      name: 'StubBriefing',
+      props: {
+        awardRule: { type: null, default: null },
+        awardPoints: { type: Number, default: null },
+      },
+      template: '<div data-test="stub-briefing" />',
+    }),
   }
 })
 
-vi.mock('@/games/registry', () => ({ gameComponents: { 'guess-hue': StubGame } }))
+vi.mock('@/games/registry', () => ({
+  gameComponents: { 'guess-hue': StubGame },
+  gameBriefings: { 'guess-hue': StubBriefing },
+}))
 
 const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   userId: 'o1',
@@ -162,6 +174,18 @@ describe('RoundCard', () => {
     const stub = mountCard({ round, stage: 'done' }).findComponent(StubGame)
 
     expect(stub.props('awardRule')).toBe('CLOSEST_ONLY')
+  })
+
+  // The winner box lives in the game and needs both: the rule says who wins, the points say what
+  // it is worth. Without both, the box could only name half the rule.
+  it('hands the game what the round is worth, not only how it is scored', () => {
+    const w = mountCard({
+      round: aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 7 }),
+      stage: 'playing',
+    })
+
+    expect(w.getComponent(StubGame).props('awardPoints')).toBe(7)
+    expect(w.getComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
   it("hands the game its own stage and the round's asset-url builder", () => {
@@ -356,6 +380,14 @@ describe('RoundCard', () => {
     expect(band.props('endsAt')).toBe('2026-08-15T10:00:00Z')
   })
 
+  it('tells the band which phase the round is in', () => {
+    const two = mountCard({ round: aRound({ awardRule: 'CLOSEST_ONLY' }) })
+    const one = mountCard({ round: aRound({ awardRule: 'ALL_QUALIFYING' }) })
+
+    expect(two.getComponent(GameHeader).props('phaseTwo')).toBe(true)
+    expect(one.getComponent(GameHeader).props('phaseTwo')).toBe(false)
+  })
+
   // Every face of the card is the same round of the same game for the same time, so the band is
   // the card's, not any one face's — a band per face is four places for it to disagree.
   it.each<RoundStage>(['sealed', 'playing', 'done'])('carries the band on the %s face', (stage) => {
@@ -451,6 +483,19 @@ describe('RoundCard', () => {
 
     expect(stub.exists()).toBe(true)
     expect(stub.props('entries')).toEqual([other])
+  })
+
+  // The sealed face is the last moment the rules are free to read: from the click on, the clock
+  // is running. So the game's boxes belong here, not only behind the gate.
+  it("carries the game's boxes on the sealed face, while reading them still costs nothing", () => {
+    const w = mountCard({
+      round: aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 9 }),
+      stage: 'sealed',
+    })
+
+    const briefing = w.getComponent(StubBriefing)
+    expect(briefing.props('awardRule')).toBe('CLOSEST_ONLY')
+    expect(briefing.props('awardPoints')).toBe(9)
   })
 
   it('says what the reveal costs before it is clicked', () => {

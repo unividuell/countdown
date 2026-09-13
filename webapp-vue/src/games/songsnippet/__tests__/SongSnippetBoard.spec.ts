@@ -59,6 +59,7 @@ const HIT: SongSuggestion = {
 function mountBoard(props: {
   stage?: number
   awardRule?: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null
+  awardPoints?: number | null
   disabled?: boolean
   notice?: string | null
   assetUrl?: ((key: number) => string) | null
@@ -68,6 +69,7 @@ function mountBoard(props: {
       durations: DURATIONS,
       stage: props.stage ?? 0,
       awardRule: props.awardRule ?? null,
+      awardPoints: props.awardPoints ?? null,
       disabled: props.disabled ?? false,
       assetUrl: props.assetUrl === undefined ? (key: number) => `/assets/${key}` : props.assetUrl,
       notice: props.notice ?? null,
@@ -275,9 +277,10 @@ describe('SongSnippetBoard', () => {
         row.getAttribute('data-test') ??
         row.querySelector('[data-test]')?.getAttribute('data-test'),
     )
-    // Hits and field first (both the search box's), then the bar, then the transport — the reveal
-    // fills the same rows with the cover and the title, so nothing moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'pause', 'give-up'])
+    // Hits and field first (both the search box's), then the bar, then the transport, then the
+    // explanation box — the reveal fills the same rows with the cover and the title, so nothing
+    // moves when the round resolves.
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'pause', 'info-box', 'give-up'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
@@ -305,5 +308,19 @@ describe('SongSnippetBoard', () => {
     expect(classes).toContain('flex')
     expect(classes).toContain('flex-col')
     expect(classes).toContain('gap-4')
+  })
+
+  it('carries both boxes, with the stage rule in phase two', () => {
+    const w = mountBoard({ awardRule: 'CLOSEST_ONLY', awardPoints: 5 })
+
+    expect(w.text()).toContain('Winner takes it all: 5 Punkte')
+    expect(w.text()).toContain('kürzesten Schnipsel')
+    expect(w.text()).toContain('Erkenne den Song')
+  })
+
+  // Song-snippet is scored by stage, not by time: `stages > 1` beats time in the backend's
+  // PlayService, and the scoreboard sorts by the stage reached. The box must not name a time rule.
+  it('never promises a time rule, because this game is scored by stage', () => {
+    expect(mountBoard({ awardRule: 'CLOSEST_ONLY', awardPoints: 5 }).text()).not.toContain('Zeit')
   })
 })

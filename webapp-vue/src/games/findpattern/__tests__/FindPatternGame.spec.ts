@@ -58,6 +58,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       entries: [],
       mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
+      awardPoints: 1,
       disabled: false,
       ...over,
     },

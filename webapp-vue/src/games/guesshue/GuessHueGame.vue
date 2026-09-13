@@ -38,6 +38,8 @@ const props = defineProps<{
    * score can still be overtaken — and the scoreboard says so. `null` where there is no round.
    */
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
 }>()
@@ -176,8 +178,9 @@ const animate = computed(() => hasRevealedLive.value)
         :init-hue="myHue ?? props.payload.initHue"
         :saturation="props.payload.saturation"
         :lightness="props.payload.lightness"
-        :tolerance-deg="props.payload.toleranceDeg"
         :disabled="props.disabled"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
         @guess="(hue: number) => emit('guess', { hue })"
       />
     </Transition>
