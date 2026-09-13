@@ -50,6 +50,25 @@ concern; revisit when other modules gain protected resources).
   `anyRequest authenticated` (the catch-all).
 - Keep actuator exposure narrow (`/actuator/health`, not `/actuator/**`).
 
+## Rate-limited endpoints reachable without a session
+
+`GET /api/communities/join/*` (invite name lookup) and `GET /api/preview/**` (link previews) are
+`permitAll` — no session needed. Both sit behind `PublicRateLimitFilter` (`iam`, in-memory,
+per-client-IP, 20/minute, `429` above it). **GET only**: the matching `POST` (accepting an invite)
+already requires a session and draws from its own budget, so it never shares the anonymous limit.
+
+- **The `X-Forwarded-For` trap.** Caddy *appends* to that header rather than replacing it, and
+  Spring's `ForwardedHeaderFilter` (`forward-headers-strategy=framework`) reads its **first**
+  entry — a value the client can set itself. That makes raw XFF unusable for anything that treats
+  a client address as an *identity* (rate limits, bans): an attacker resets the counter by sending
+  a fresh `X-Forwarded-For: 1.2.3.4` on every request. `countdown-web` sets `X-Client-IP` from
+  Caddy's own `{client_ip}` (`header_up` overwrites anything the client sent under that name) —
+  that header, not XFF, is the one a filter may trust as identity.
+- **The invite code's six characters are part of the security calculation, not a UI nicety.**
+  Six-character Crockford Base32 is 32⁶ ≈ 1.07 billion combinations; the rate limit is what turns
+  that into years of brute force instead of days. The name lookup answers a hit with the community
+  name, so an unbraked version of either endpoint makes the code space walkable.
+
 ## Roles
 
 - The app-level admin is **super-admin**: `is_super_admin` → authority
