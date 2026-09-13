@@ -95,6 +95,9 @@ export interface AcceptResponse {
   name: string
   slug: string
 }
+export interface InvitePeekResponse {
+  name: string
+}
 
 /**
  * Shared by `CountdownResponse` and `RoundResponse`, whose server-side DTOs
