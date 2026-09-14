@@ -60,14 +60,18 @@ function row(overrides: Partial<ScoreRow> & { userId: string }): ScoreRow {
     stage: 4,
     points: 0,
     provisional: false,
+    tick: 0,
     ...overrides,
   }
 }
 
 function mountBoard(rows: ScoreRow[], live = false) {
-  return mount(SongSnippetScoreboard, { props: { rows, live } })
+  return mount(SongSnippetScoreboard, { props: { rows, live, animate: false } })
 }
 
+// The table itself — band, gutters, cascade, live chip, the pulse's nesting — is
+// `RevealScoreboard`'s and tested there. What is Song Snippet's own: the columns it asks for and
+// the one thing this table does beyond showing — every guess can be played from it.
 describe('SongSnippetScoreboard', () => {
   beforeEach(() => {
     resolveTrack.mockReset()
@@ -75,15 +79,14 @@ describe('SongSnippetScoreboard', () => {
   })
 
   it('renders nothing at all when the round has no entries', () => {
-    expect(mountBoard([]).find('[data-test="song-scoreboard"]').exists()).toBe(false)
+    expect(mountBoard([]).find('[data-test="scoreboard"]').exists()).toBe(false)
   })
 
-  it('heads the table like Guess Hue: a title and the four column labels', () => {
+  it('asks for a guess column and a time column, the unit in the head', () => {
     const w = mountBoard([row({ userId: 'a' })])
 
-    expect(w.get('h2').text()).toBe('Auswertung')
     // The unit stands here, once, instead of after every number below.
-    expect(w.findAll('thead th').map((th) => th.text())).toEqual([
+    expect(w.findAll('thead tr:last-child th').map((th) => th.text())).toEqual([
       'Name',
       'Tipp',
       'Zeit [s]',
@@ -116,7 +119,7 @@ describe('SongSnippetScoreboard', () => {
   it('writes an em dash where a round left the score unset', () => {
     const w = mountBoard([row({ userId: 'a', points: null })])
 
-    expect(w.get('[data-test="song-scoreboard-points"]').text()).toBe('—')
+    expect(w.get('[data-test="scoreboard-points"]').text()).toBe('—')
   })
 
   it('offers playback for every guess that carries a track id, right or wrong', () => {
@@ -223,15 +226,5 @@ describe('SongSnippetScoreboard', () => {
     await button().trigger('click')
     expect(playbacks[0]!.pause).toHaveBeenCalled()
     expect(resolveTrack).toHaveBeenCalledTimes(1)
-  })
-
-  it('marks a provisional score and carries the live chip when told to', () => {
-    const provisional = mountBoard([row({ userId: 'a', points: 5, provisional: true })], true)
-    expect(provisional.get('[data-test="song-scoreboard-live"]').text()).toContain('live')
-    expect(provisional.get('[data-test="song-scoreboard-points"]').classes()).toContain('italic')
-
-    const settled = mountBoard([row({ userId: 'a', points: 5 })], false)
-    expect(settled.find('[data-test="song-scoreboard-live"]').exists()).toBe(false)
-    expect(settled.get('[data-test="song-scoreboard-points"]').classes()).not.toContain('italic')
   })
 })

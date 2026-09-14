@@ -130,6 +130,14 @@ possibilities and brings the board back inside beat 3, its return derived from b
 is whole when the outlines land on it. An offset would hand one game its own timetable, which is the
 drift the shared module exists to prevent.
 
+**The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
+heading and live chip *inside* the `thead`, „Name“ first and „Pkt“ last, the band, the gutters, the
+cascade. A game declares only the columns between those two (`games/scoreboardColumns.ts`) and fills
+them through `cell-<key>` slots; a column may bring its own surface, or `ground: () => null` for
+content that is not a table cell (Musterung's chips are a pattern). Build the frame per game and it
+drifts — four copies had already split into two families with different gutters and two places for
+the heading.
+
 **A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
 `localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire
 and does not need to be re-earned on every visit — but it is also not global: a new device, or a

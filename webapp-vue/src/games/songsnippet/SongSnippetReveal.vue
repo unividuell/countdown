@@ -15,6 +15,8 @@ const props = defineProps<{
   durations: number[]
   rows: ScoreRow[]
   live: boolean
+  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
+  animate: boolean
   // `| undefined` (not a bare `?`): see the note in `SongPlayerReveal`.
   assetUrl?: ((key: number) => string) | undefined
 }>()
@@ -27,6 +29,6 @@ const props = defineProps<{
       :durations="props.durations"
       :asset-url="props.assetUrl"
     />
-    <SongSnippetScoreboard :rows="props.rows" :live="props.live" />
+    <SongSnippetScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
   </div>
 </template>

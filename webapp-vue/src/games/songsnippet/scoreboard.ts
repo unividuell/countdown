@@ -6,15 +6,11 @@
 import type { AwardRule } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
+import { tickOfRow } from '@/games/revealChoreography'
+import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 
-export interface ScoreRow {
-  userId: string
-  name: string
-  /** The player's own colour — the row's ground, the same one their avatar has above the card. */
-  colorHex: string
-  /** Ink that reads against [colorHex]. */
-  ink: string
+export interface ScoreRow extends ScoreboardRow {
   /** „Titel · Artist“, or the give-up dash. */
   guessLabel: string
   /** The guessed track, when it can be played back from the catalogue. `null` after a give-up. */
@@ -28,9 +24,6 @@ export interface ScoreRow {
   timeLabel: string
   /** The stage behind [timeLabel] — the tie-breaker: less audio ranks higher. */
   stage: number
-  points: number | null
-  /** Whether [points] can still be overtaken. */
-  provisional: boolean
 }
 
 /** U+2014, standing in for a guess nobody made. A hyphen would read as a minus. */
@@ -54,6 +47,8 @@ export function scoreRows(input: {
   entries: readonly GameEntry[]
   durations: readonly number[]
   awardRule: AwardRule | null
+  /** Passed through to `tickOfRow`, which decides when my own row may land. */
+  mineUserId: string | null
 }): ScoreRow[] {
   const rows = input.entries.map((entry) => {
     const guess = guessOf(entry.guess)
@@ -71,10 +66,16 @@ export function scoreRows(input: {
       provisional: isProvisional(entry.points, input.awardRule),
     }
   })
-  return rows.sort(
+  rows.sort(
     (a, b) =>
       (b.points ?? 0) - (a.points ?? 0) || a.stage - b.stage || a.userId.localeCompare(b.userId),
   )
+
+  const myRank = rows.findIndex((row) => row.userId === input.mineUserId)
+  return rows.map((row, rank) => ({
+    ...row,
+    tick: tickOfRow(rank, myRank === -1 ? null : myRank, rows.length),
+  }))
 }
 
 /** Narrowed, not cast: a guess is `unknown` by contract, and a stale round may be junk. */
