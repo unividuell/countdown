@@ -13,10 +13,11 @@ export function registerAuthGuard(router: Router): void {
   router.beforeEach((to) => {
     const isPublic = to.meta.public === true
     if (!isPublic && status.value !== 'authenticated') {
-      // Remember the intended destination (e.g. /join/<token>) so the post-login
+      // Remember the intended destination (e.g. /c/<slug>) so the post-login
       // resolver can return there — login is a full-page round-trip, so this is
-      // stashed in sessionStorage (see postLoginRedirect). Without it, accepting an
-      // invite while logged out lands on the normal home instead of the join page.
+      // stashed in sessionStorage (see postLoginRedirect). Without it, visiting a
+      // protected route while logged out lands on the normal home after login
+      // instead of back where the user started.
       stashPostLoginRedirect(to.fullPath)
       return { path: '/login' }
     }

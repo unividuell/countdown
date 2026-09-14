@@ -176,4 +176,36 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isNoContent() }
         }
     }
+
+    @Test
+    fun `an anonymous visitor reads the invited community name and nothing else`() {
+        every { membership.peek("A7K2MP") } returns community("team")
+        mockMvc.get("/api/communities/join/A7K2MP")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.name") { value("Team") }
+                jsonPath("$.slug") { doesNotExist() }
+                jsonPath("$.id") { doesNotExist() }
+            }
+    }
+
+    @Test
+    fun `peek of an expired code returns 410 without a session`() {
+        every { membership.peek("A7K2MP") } throws InviteExpiredException()
+        mockMvc.get("/api/communities/join/A7K2MP").andExpect { status { isGone() } }
+    }
+
+    @Test
+    fun `peek of an unknown code returns 404 without a session`() {
+        every { membership.peek("ZZZZZZ") } throws InviteNotFoundException()
+        mockMvc.get("/api/communities/join/ZZZZZZ").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `accepting an invite still requires a session`() {
+        // No stub for membership.accept; the request must not reach the controller.
+        // Pass CSRF so authorization rules apply; without a principal, they reject with 401.
+        mockMvc.post("/api/communities/join/A7K2MP") { with(csrf()) }
+            .andExpect { status { isUnauthorized() } }
+    }
 }

@@ -39,6 +39,20 @@ Serve the SPA with HTML5 history-mode fallback and reverse-proxy `/api`, `/oauth
   the backend directly through the Vite proxy, which needs the same split (see
   [frontend.md](frontend.md)).
 
+## Crawler fork for link previews
+
+A preview crawler (WhatsApp, Slack, `facebookexternalhit`, …) runs no JavaScript, so the SPA shell
+(`<div id="app"></div>`) is a blank page to it — that is why the preview has to be server-rendered
+at all. `@preview` is therefore a matcher of **two** AND-ed conditions, a crawler `User-Agent`
+regex and one of the shareable paths, not a path rule on its own — a path rule alone would divert
+browsers into the preview endpoint too.
+
+- **`path /` is exact**, same gotcha as `/login` above: `/*` here would route the whole app
+  through `/api/preview` instead of just its root.
+- The browser path is deliberately untouched: if `core` is down, the SPA still loads from
+  `file_server`. The price is a `User-Agent` allowlist that goes stale — an unlisted messenger
+  then gets no preview and falls through to the ordinary SPA catch-all; nothing else breaks.
+
 ## Cache headers are the Caddyfile's job
 
 `file_server` sets **no `Cache-Control` at all** — it sends `ETag`/`Last-Modified` but no freshness,

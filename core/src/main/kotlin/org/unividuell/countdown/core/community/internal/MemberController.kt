@@ -44,6 +44,14 @@ class MemberController(
         return ResponseEntity.noContent().build()
     }
 
+    /**
+     * The invitation as an anonymous visitor sees it, so the join page can name the community
+     * before sending anyone through GitHub. Open by design; the brake lives in SecurityConfig.
+     */
+    @GetMapping("/join/{code}")
+    fun peekInvite(@PathVariable code: String): InvitePeekResponse =
+        InvitePeekResponse(name = membership.peek(code).name)
+
     @PostMapping("/join/{token}")
     fun join(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable token: String): AcceptResponse {
         val r = membership.accept(token, me.id)

@@ -27,3 +27,12 @@ app:
     # This file REPLACES the main application.yaml on the test classpath — without this key the
     # lab beans are absent from every test context and the conditions never match.
     enabled: true
+
+countdown:
+  public-rate-limit:
+    # Effectively unlimited: the counter is a shared singleton keyed by client address, and every
+    # test in the default context shares one address (none of them set X-Client-IP) — the
+    # production default would fail unrelated tests once enough of them hit the guarded paths.
+    # PublicRateLimitFilterTest overrides this per-context via @SpringBootTest(properties = [...]),
+    # which wins over this file.
+    permits-per-minute: 1000000

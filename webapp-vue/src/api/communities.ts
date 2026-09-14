@@ -3,6 +3,7 @@ import type {
   AcceptResponse,
   CommunityResponse,
   CommunitySummary,
+  InvitePeekResponse,
   InviteResponse,
   MemberResponse,
   RosterMemberResponse,
@@ -41,6 +42,8 @@ export const generateInvite = (slug: string) =>
   apiFetch<InviteResponse>(`/api/communities/${slug}/invite`, { method: 'POST' })
 export const joinByToken = (token: string) =>
   apiFetch<AcceptResponse>(`/api/communities/join/${token}`, { method: 'POST' })
+export const getInviteName = (token: string) =>
+  apiFetch<InvitePeekResponse>(`/api/communities/join/${token}`)
 export const listMembers = (slug: string) =>
   apiFetch<MemberResponse[]>(`/api/communities/${slug}/members`)
 export const getRoster = (slug: string) =>

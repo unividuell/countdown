@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.iam.internal
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.invoke
@@ -22,7 +23,7 @@ import org.springframework.security.web.savedrequest.NullRequestCache
  * The frontend triggers login by navigating to `/oauth2/authorization/github`.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(SuperAdminProperties::class)
+@EnableConfigurationProperties(SuperAdminProperties::class, PublicRateLimitProperties::class)
 class SecurityConfig {
 
     @Bean
@@ -36,6 +37,13 @@ class SecurityConfig {
                 authorize("/login/**", permitAll)
                 authorize("/actuator/health", permitAll)
                 authorize("/api/super-admin/**", hasRole("SUPER_ADMIN"))
+                // GET only: reading who invites you needs no session, accepting the invite does.
+                authorize(method = HttpMethod.GET, pattern = "/api/communities/join/*", access = permitAll)
+                // Open by design, not crawler-restricted here: the edge only forwards crawlers to
+                // this path from the SPA routes, but the API path itself is reachable by anyone.
+                // PublicRateLimitFilter brakes it, and every unresolvable code/slug answers with
+                // the same generic page, so an open endpoint reveals nothing.
+                authorize(method = HttpMethod.GET, pattern = "/api/preview/**", access = permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2Login {
