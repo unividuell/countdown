@@ -38,7 +38,7 @@ const props = withDefaults(
     /** Sealed: the empty board under the cover, and the hold that reveals it. */
     sealed?: boolean
   }>(),
-  { scene: null, sealed: false },
+  { scene: null, sealed: false, submittedStartIndex: null },
 )
 
 const emit = defineEmits<{ guess: [value: { startIndex: number }]; reveal: [] }>()

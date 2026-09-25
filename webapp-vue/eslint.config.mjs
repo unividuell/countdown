@@ -29,12 +29,6 @@ export default [
     rules: { 'vue/require-default-prop': 'off' },
   },
   {
-    // `submittedStartIndex` keeps its pre-`withDefaults` shape: absent and `null` already read
-    // the same way in `outlines`/`onCell`, so a default would only paper over this rule.
-    files: ['src/games/findpattern/FindPatternBoard.vue'],
-    rules: { 'vue/require-default-prop': 'off' },
-  },
-  {
     // A spec that mounts a component against stubs needs one stub per collaborator, and they
     // belong in the spec that mounts them — a file per double would put the contract under test
     // one import away from the test asserting it.
