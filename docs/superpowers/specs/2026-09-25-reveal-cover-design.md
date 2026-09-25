@@ -104,8 +104,10 @@ und `SpotObjectBriefing` darunter. Die Hülle umschließt jeweils den ersten Blo
 Auf dem Handy stehen die Boxen damit unter der Spielfläche, meist unterhalb der Falz — wie während
 des Spiels auch. Man scrollt zu ihnen; ein Fingerstrich über die Hülle startet nichts, dafür ist
 der Knopf ein Halten. Die Reihenfolge bleibt vor und nach dem Aufdecken dieselbe, also springt beim
-Fallen nichts. Damit gehört ihm auch der Zustand der Hülle:
-es weiß selbst, ob seine Bühne steht, und „nochmal versuchen“ ist sein eigener Nachlade-Aufruf.
+Fallen nichts.
+
+Weil das Spiel die Hülle setzt, gehört ihm auch ihr Zustand: es weiß selbst, ob seine Bühne steht,
+und „nochmal versuchen“ ist sein eigener Nachlade-Aufruf.
 Durch die Karte läuft dafür kein Ereignisprotokoll — sie reicht `sealed` herunter und nimmt
 `reveal` entgegen, wie sie heute `guess` entgegennimmt.
 
