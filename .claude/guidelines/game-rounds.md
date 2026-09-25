@@ -59,6 +59,12 @@ Persisting is allowed. The anti-cheat constraint forbids *recurring admin work*,
 A round's `params` blob is its only secret, and it leaves the server through exactly two functions:
 `present()` before the guess, `solution()` after it. Both are pinned per game by a field-set test.
 
+The **scene** is a third publication, and deliberately *not* a third exit for the secret.
+`GameType.scene(params)` is what may reach the client before the reveal — the layout a sealed game
+sets up under its cover — and it carries nothing the reveal protects: that is its contract, pinned
+by a field-set test per game like `present()` and `solution()`. `null` is the default and the safe
+direction. It is named scene, not stage, because stage is the rung of a staged game.
+
 A value that is published must never be drawn from the stream that produced the solution. Not "must
 not equal the solution" — `SeededRandom` is invertible (`nextDouble` publishes 53 bits of two
 consecutive words, the xoshiro128** transition is a bijection), so a published double lets the state be

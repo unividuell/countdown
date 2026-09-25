@@ -2,6 +2,10 @@
 
 **Status:** beschlossenes Design (2026-09-11).
 
+**Nachtrag (2026-09-25):** Das Einzählen im Band und das volle Feld als Ladeanzeige sind
+zurückgebaut. Das 3 · 2 · 1 ist jetzt das Halten auf der Hülle — siehe
+[Die Hülle](2026-09-25-reveal-cover-design.md). Die Stoppuhr ab `revealedAt` bleibt.
+
 **Baut auf:** dem [Runden-Frontend](2026-08-14-round-frontend-design.md) (`GameHeader`,
 `RoundSurface`, `RoundCard`, `useRound`) und dem Flip-Dot-Board aus dem Community-Header.
 
