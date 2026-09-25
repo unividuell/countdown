@@ -17,7 +17,7 @@ import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
-import { labBriefings, labGames } from '@/gamelab/games'
+import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
@@ -39,7 +39,7 @@ import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import { nowMs, skewMs } from '@/ui/sharedClock'
-import { useStartCeremony, type PlayClock } from '@/ui/useStartCeremony'
+import type { PlayClock } from '@/ui/useStartCeremony'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -49,9 +49,6 @@ const { user } = useAuth()
 
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
-
-/** The same game's boxes, for the reveal screen — where no game is mounted yet. */
-const briefing = computed(() => labBriefings[gameId.value] ?? null)
 const seed = computed(() => parseSeed(route.query.seed))
 // Anything other than exactly `TWO` reads as `ONE` — the lab is a dev tool, so a junk `?phase=`
 // value is visible at a glance rather than an error state, and every link that predates this
@@ -77,11 +74,7 @@ const busy = ref(false)
  */
 const playStartedAt = ref<string | null>(null)
 
-const { step: startStep, run: runCeremony } = useStartCeremony()
-
 const labPlay = computed<PlayClock | null>(() => {
-  if (startStep.value === 'waiting') return { phase: 'waiting' }
-  if (startStep.value !== null) return { phase: 'start', beat: startStep.value }
   const since = playStartedAt.value
   return since !== null && round.value?.me == null ? { phase: 'running', since } : null
 })
@@ -144,8 +137,6 @@ async function reveal(): Promise<void> {
     playStartedAt.value = new Date(nowMs.value + skewMs.value).toISOString()
   }
 }
-
-const revealWithSignal = (): Promise<void> => runCeremony(reveal)
 
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
@@ -303,36 +294,6 @@ watch(
         />
       </template>
       <!--
-        Same face and the same sentence as the real round's `sealed` (`RoundCard.vue`) — the lab
-        mirrors it rather than inventing a second wording. Absent for a game that never asked for a
-        deliberate reveal: `round.revealed` is already `true` for those from the first response, so
-        this branch never renders and the game mounts straight away, exactly as before this gate
-        existed.
-      -->
-      <div v-if="!round.revealed" data-test="lab-sealed" class="flex flex-col gap-4">
-        <div class="sealed-face flex flex-col justify-center gap-6 py-6">
-          <p data-test="lab-reveal-cost" class="text-center text-sm text-neutral-600">
-            Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-          </p>
-          <button
-            type="button"
-            data-test="lab-reveal"
-            class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-10 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-            :disabled="busy || startStep !== null"
-            @click="revealWithSignal"
-          >
-            Aufdecken
-          </button>
-        </div>
-        <component
-          :is="briefing"
-          v-if="briefing !== null"
-          :award-rule="round.awardRule"
-          :award-points="round.awardPoints"
-        />
-      </div>
-
-      <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
         has come back. Keying on the URL seed would remount right then, capturing the previous
@@ -347,8 +308,9 @@ watch(
       -->
       <component
         :is="gameComponent"
-        v-else
         :key="round.seed"
+        :sealed="!round.revealed"
+        :scene="round.scene"
         :payload="round.payload"
         :outcome="round.me?.outcome ?? null"
         :my-guess="round.me?.guess ?? null"
@@ -364,6 +326,7 @@ watch(
         "
         :review="review"
         :closed="false"
+        @reveal="reveal"
         @guess="guess"
         @skip="skip"
         @give-up="run(giveUpLabRound)"

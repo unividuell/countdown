@@ -7,7 +7,6 @@ import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import { useRound } from '@/rounds/useRound'
-import { useStartCeremony } from '@/ui/useStartCeremony'
 import MemberRow from '@/members/MemberRow.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
@@ -34,17 +33,6 @@ const {
   skip,
   giveUp,
 } = useRound(community.value.slug)
-
-// Destructured on purpose: only a top-level binding is unwrapped in the template, so
-// `ceremony.beat` would reach `RoundCard` as the ref object rather than as the beat.
-const { step: startStep, run: runCeremony } = useStartCeremony()
-
-/**
- * The reveal the card gets: the 2 · 1 · GO! first, and the request on the GO beat itself. Owned
- * here rather than in the card for the same reason `useRound` is — the card holds no state, and
- * the sealed face is the only thing on this page that can open a timed round.
- */
-const revealWithSignal = (): Promise<void> => runCeremony(reveal)
 
 /** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
 const assetUrl = (key: number): string =>
@@ -137,10 +125,9 @@ const settledMembers = computed(() => {
     class="mt-6"
     :round="round"
     :stage="stage"
-    :busy="busy || (startStep !== null && stage === 'sealed')"
+    :busy="busy"
     :notice="notice"
-    :reveal="revealWithSignal"
-    :step="startStep"
+    :reveal="reveal"
     :submit="submit"
     :skip="skip"
     :give-up="giveUp"

@@ -42,6 +42,10 @@ const props = defineProps<{
   awardPoints: number | null
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
+  /** Declared, never used here: this game never seals, and the contract has one shape. */
+  sealed?: boolean
+  /** Declared, never used here — see `sealed`. */
+  scene?: unknown
 }>()
 
 const emit = defineEmits<{ guess: [value: unknown] }>()

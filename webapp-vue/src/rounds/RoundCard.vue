@@ -11,10 +11,10 @@ import type { RoundResponse } from '@/api/types'
 import type { RoundReview } from '@/rounds/review'
 import type { RoundStage } from '@/rounds/useRound'
 import type { GameEntry } from '@/games/GameEntry'
-import { gameBriefings, gameComponents } from '@/games/registry'
+import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
-import type { PlayClock, StartStep } from '@/ui/useStartCeremony'
+import type { PlayClock } from '@/ui/useStartCeremony'
 
 const props = withDefaults(
   defineProps<{
@@ -32,12 +32,6 @@ const props = withDefaults(
      * one place — a second card would be a second place for „the same reveal UI“ to drift.
      */
     closed?: boolean
-    /**
-     * The start signal, while the page that owns the reveal is playing it. Only the step comes
-     * from outside — the running clock is derived below, because the card already holds the round
-     * that answers it and a caller deriving it would be one more place for the rule to live.
-     */
-    step?: StartStep | null
     /** Which face a running round calls for. A closed round has none. */
     stage?: RoundStage | undefined
     busy?: boolean
@@ -49,7 +43,6 @@ const props = withDefaults(
   }>(),
   {
     closed: false,
-    step: null,
     busy: false,
     notice: null,
     stage: undefined,
@@ -69,12 +62,6 @@ const component = computed<Component | null>(() => {
   return id === undefined ? null : (gameComponents[id] ?? null)
 })
 
-/** The same game's boxes, for the one face that has no game mounted. */
-const briefing = computed<Component | null>(() => {
-  const id = props.round?.game?.id
-  return id === undefined ? null : (gameBriefings[id] ?? null)
-})
-
 /** Mine first, then everyone else's — the order the reading wheel expects. */
 const entries = computed<GameEntry[]>(() => {
   const me = props.round?.me ?? null
@@ -90,14 +77,11 @@ const endsAt = computed<string | null>(() =>
 )
 const disabled = computed(() => props.closed || props.busy || face.value === 'done')
 /**
- * What the band's board shows. The signal wins while it is playing; after it, a timed play that
- * has not been answered yet. `closed` has to be asked separately from `guessedAt`: the history is
- * full of rows nobody ever guessed on, and without it their clock would run forever.
+ * What the band's board shows: a timed play that has not been answered yet. `closed` is asked
+ * separately from `guessedAt` — the history is full of rows nobody ever guessed on, and without it
+ * their clock would run forever.
  */
 const play = computed<PlayClock | null>(() => {
-  if (props.step === 'waiting') return { phase: 'waiting' }
-  if (props.step != null) return { phase: 'start', beat: props.step }
-
   const me = props.round?.me
   if (props.closed || me == null || me.guessedAt !== null) return null
   return props.round?.game?.requiresReveal === true
@@ -158,49 +142,11 @@ function onGiveUp(): void {
         />
       </template>
 
-      <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
-           for a game this build cannot render is just as unrenderable as a playing one — offering
-           "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
-           later. -->
+      <!-- A sealed round for a game this build cannot render is just as unrenderable as a playing
+           one. -->
       <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
-
-      <!-- Two parts: the warning and the button in a block that claims `sealed-face`'s height on
-           its own, then the game's boxes directly under it. Nothing here stretches — see the
-           utility's own comment for why the floor sits on the upper block rather than on the
-           face: it is what keeps a fold from moving the button, or the chevron the reader just
-           clicked. -->
-      <div v-else-if="face === 'sealed'" class="flex flex-col gap-4">
-        <div class="sealed-face flex flex-col justify-center gap-6 py-6">
-          <!--
-            Framework copy, not a game's: `sealed` exists only because a game answered
-            `requiresReveal` with true, and that flag means the same thing for every game that ever
-            sets it — the clock starts here, and there is no second attempt. The game's own
-            component is not even mounted yet, so this is the only place the sentence can stand.
-          -->
-          <p data-test="round-reveal-cost" class="text-center text-sm text-neutral-600">
-            Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-          </p>
-          <button
-            type="button"
-            data-test="round-reveal"
-            class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-10 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-            :disabled="busy"
-            @click="onReveal"
-          >
-            Aufdecken
-          </button>
-        </div>
-        <!-- Last, and at the foot: this is the only moment the rules can be read for free — from
-             the click on, the clock is running. -->
-        <component
-          :is="briefing"
-          v-if="briefing !== null"
-          :award-rule="round?.awardRule ?? null"
-          :award-points="round?.awardPoints ?? null"
-        />
-      </div>
 
       <!--
         Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
@@ -211,8 +157,10 @@ function onGiveUp(): void {
       -->
       <component
         :is="component"
-        v-else-if="face === 'playing' || face === 'done'"
+        v-else-if="face === 'sealed' || face === 'playing' || face === 'done'"
         :key="round?.round?.number"
+        :sealed="face === 'sealed'"
+        :scene="round?.scene ?? null"
         :payload="round?.payload"
         :outcome="round?.me?.outcome ?? null"
         :my-guess="round?.me?.guess ?? null"
@@ -226,6 +174,7 @@ function onGiveUp(): void {
         :asset-url="assetUrl"
         :closed="props.closed"
         :review="props.review"
+        @reveal="onReveal"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

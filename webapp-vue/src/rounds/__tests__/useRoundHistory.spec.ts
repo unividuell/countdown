@@ -15,6 +15,7 @@ const closed = (number: number, previous: number | null): RoundResponse => ({
   game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
   noGameReason: null,
   previousRoundNumber: previous,
+  scene: null,
   payload: { description: 'x' },
   solution: { targetHue: 5, toleranceDeg: 10 },
   me: null,
