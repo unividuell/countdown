@@ -57,6 +57,13 @@ const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'O
 
 const round = ref<LabRoundResponse | null>(null)
 /**
+ * Bumped whenever a response reseals an already-revealed round — a reset, most often. The game
+ * component is keyed on this alongside `round.seed` (see below), because sealing again must
+ * remount it: a half-made selection or an open panorama must not carry into the next attempt, the
+ * way the old reveal screen unmounting the game used to guarantee for free.
+ */
+const resealCount = ref(0)
+/**
  * When this test round closes. Stamped once per open rather than derived per render: an end that
  * moved along with the clock would hold the band's readout at one reading forever, and a band that
  * never counts down is worse than no band at all. Everything else about it follows the seed, so a
@@ -98,7 +105,9 @@ async function run(
   busy.value = true
   error.value = null
   try {
+    const wasRevealed = round.value?.revealed === true
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
+    if (wasRevealed && !round.value.revealed) resealCount.value++
     roundEndsAt.value = labRoundEnd(current, Date.now())
     // Every path that reopens a round — reset, „forget mine“, a new seed — comes back
     // `revealed: false` for a gated game, because the server clears its own `openedAt` on all of
@@ -306,12 +315,17 @@ watch(
         any uncommitted scratch state a game component keeps locally (a value typed but never
         submitted) once the round it belonged to is gone.
 
+        `resealCount` rides along for the same reason: a reset keeps the seed but reseals the round,
+        and without it the instance would survive the reseal — carrying a half-made selection or an
+        open Weltanschauung panorama into the next attempt. Not keyed on `revealed` itself, which
+        would also remount at the reveal and reload the map right when the clock starts.
+
         `closed` is bound rather than left out: a lab round is never over — it is rolled again, not
         closed — and the answer „false“ is the lab's, not an omission for the game to guess at.
       -->
       <component
         :is="gameComponent"
-        :key="round.seed"
+        :key="`${round.seed}-${resealCount}`"
         :sealed="!round.revealed"
         :scene="round.scene"
         :payload="round.payload"

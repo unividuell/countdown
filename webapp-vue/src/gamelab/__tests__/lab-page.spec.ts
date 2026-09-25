@@ -426,7 +426,7 @@ describe('lab page', () => {
     // game that keeps any per-round local state would carry it across a round it should not see.
     const w = await mountPage()
 
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
   })
 
   it('says the lab is unavailable when the backend does not have it', async () => {
@@ -676,7 +676,7 @@ describe('lab page', () => {
 
     const w = await mountPage()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
 
     // The URL seed changes ahead of the response — the exact race from the bug report. Asserting the
     // vnode key (not just props) is what makes this discriminate the bug: keying on the URL's seed
@@ -685,11 +685,11 @@ describe('lab page', () => {
     setQuery({ seed: '99' })
     await w.vm.$nextTick()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
 
     resolveSecond(second)
     await flushPromises()
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(99)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('99-0')
 
     expect(w.findComponent(StubGame).props('payload')).toEqual(second.payload)
   })
@@ -1054,6 +1054,31 @@ describe('lab page', () => {
     await revealFromGame(w)
     expect(api.revealLabRound).toHaveBeenCalledTimes(2)
     expect(w.getComponent(StubGame).props('sealed')).toBe(false)
+  })
+
+  it('remounts the game when a reset reseals an already-revealed round', async () => {
+    // A remount is what used to unseal a half-made selection or an open panorama for free, back
+    // when the reveal screen unmounted the game entirely — see the `resealCount` key in the page.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'resetLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+
+    const w = await mountPage()
+    await revealFromGame(w)
+    const beforeReset = w.getComponent(StubGame).vm
+
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+
+    expect(w.getComponent(StubGame).vm).not.toBe(beforeReset)
   })
 
   it('runs the tester clock from the reveal on', async () => {
