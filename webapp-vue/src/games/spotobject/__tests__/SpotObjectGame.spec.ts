@@ -50,7 +50,7 @@ const MINE: GameEntry = {
   adminOverride: null,
 }
 
-function mountGame(over: Record<string, unknown> = {}) {
+function mountGame(over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) {
   return mount(SpotObjectGame, {
     props: {
       payload: PAYLOAD,
@@ -70,6 +70,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       },
       ...over,
     },
+    global,
   })
 }
 
@@ -195,8 +196,8 @@ describe('SpotObjectGame', () => {
   })
 
   describe('sealed', () => {
-    const sealed = (over: Record<string, unknown> = {}) =>
-      mountGame({ payload: null, sealed: true, ...over })
+    const sealed = (over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) =>
+      mountGame({ payload: null, sealed: true, ...over }, global)
 
     it('mounts the map under the cover instead of refusing the round', () => {
       mockStreetView()
@@ -255,9 +256,11 @@ describe('SpotObjectGame', () => {
       expect(w.emitted('reveal')).toHaveLength(1)
     })
 
-    it('shows no term under the cover, and drops the cover in the render the term arrives in', async () => {
+    it('shows no term under the cover, and drops the cover in the render the term arrives in, not behind a transition', async () => {
       mockStreetView()
-      const w = sealed()
+      // Unstubbed so a `<Transition>` wrapped around the cover would actually run instead of
+      // vanishing instantly under VTU's default stub — a regression the stub would hide.
+      const w = sealed({}, { stubs: { transition: false } })
       expect(w.text()).not.toContain(PAYLOAD.term)
 
       await w.setProps({ sealed: false, payload: PAYLOAD })

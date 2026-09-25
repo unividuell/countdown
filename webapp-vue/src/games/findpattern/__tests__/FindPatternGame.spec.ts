@@ -50,7 +50,7 @@ const OTHER: GameEntry = {
   adminOverride: null,
 }
 
-function mountGame(over: Record<string, unknown> = {}) {
+function mountGame(over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) {
   return mount(FindPatternGame, {
     props: {
       payload: PAYLOAD,
@@ -64,6 +64,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       disabled: false,
       ...over,
     },
+    global,
   })
 }
 
@@ -189,8 +190,8 @@ describe('FindPatternGame, the live-reveal transition', () => {
 const SCENE = { cols: 8, rows: 14, patternLength: 4 }
 
 describe('sealed', () => {
-  const sealed = (over: Record<string, unknown> = {}) =>
-    mountGame({ payload: null, sealed: true, scene: SCENE, ...over })
+  const sealed = (over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) =>
+    mountGame({ payload: null, sealed: true, scene: SCENE, ...over }, global)
 
   it('sets up the empty board under the cover instead of refusing the round', () => {
     const w = sealed()
@@ -227,8 +228,10 @@ describe('sealed', () => {
     expect(sealed({ disabled: true }).getComponent(RevealCover).props('busy')).toBe(true)
   })
 
-  it('drops the cover in the same render the payload arrives in', async () => {
-    const w = sealed()
+  it('drops the cover in the same render the payload arrives in, not behind a transition', async () => {
+    // Unstubbed so a `<Transition>` wrapped around the cover would actually run instead of
+    // vanishing instantly under VTU's default stub — a regression the stub would hide.
+    const w = sealed({}, { stubs: { transition: false } })
 
     await w.setProps({ sealed: false, payload: PAYLOAD })
 
