@@ -115,7 +115,17 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
   let panorama: google.maps.StreetViewPanorama | null = null
   const walk = useWalkMap(trailColor)
 
-  async function mount(element: HTMLElement): Promise<void> {
+  /** A mount already in flight — `retry()` while one is running joins it, rather than racing it. */
+  let mounting: Promise<void> | null = null
+
+  function mount(element: HTMLElement): Promise<void> {
+    mounting ??= attemptMount(element).finally(() => {
+      mounting = null
+    })
+    return mounting
+  }
+
+  async function attemptMount(element: HTMLElement): Promise<void> {
     try {
       error.value = null
       const config = await apiFetch<{ mapsApiKey: string }>('/api/spot-object/config')
@@ -194,6 +204,19 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
       swallowScrollKeys(element)
       ready.value = true
     } catch (err) {
+      // A prior attempt may already have built a map (`new google.maps.Map` succeeded, then a
+      // listener registration or `walk.attach` threw) — release it before recording the error, or
+      // a later mount() builds a second Map with the first one's listeners still live on top of
+      // it. `google` can still be undefined here if this attempt failed before the script loaded.
+      if (map) {
+        if (typeof google !== 'undefined' && google.maps) {
+          if (panorama) google.maps.event.clearInstanceListeners(panorama)
+          google.maps.event.clearInstanceListeners(map)
+        }
+        element.replaceChildren()
+        map = null
+        panorama = null
+      }
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
   }
