@@ -116,8 +116,14 @@ interface GameType<P : Any> {
     /**
      * What may be with the client before the reveal. `null` — the default — is a game whose scene
      * is its code alone, and the default is the safe direction: a game that says nothing hands out
-     * nothing early. Published like the payload, so drawn from [GameRandom.presentation] if drawn
-     * at all.
+     * nothing early.
+     *
+     * Drawn from **neither** [GameRandom] stream. Both are invertible — a published value lets the
+     * stream be stepped backwards to whatever it drew earlier — so a scene value taken from
+     * [GameRandom.presentation] would let a client rebuild the still-sealed payload before the
+     * reveal, and one from [GameRandom.solution] would rebuild the solution. A scene therefore
+     * carries only constants or values that were never drawn at all. A game whose scene genuinely
+     * needs a drawn value needs a third, independently seeded stream; nothing builds one today.
      */
     fun scene(params: P): GameScene? = null
 

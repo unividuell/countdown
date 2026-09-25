@@ -65,6 +65,13 @@ sets up under its cover — and it carries nothing the reveal protects: that is 
 by a field-set test per game like `present()` and `solution()`. `null` is the default and the safe
 direction. It is named scene, not stage, because stage is the rung of a staged game.
 
+A scene draws from **neither** stream below — not `presentation`, not `solution`. Either one is
+invertible to a published value, so a scene value taken from `presentation` would let a client
+rebuild the still-sealed payload before the reveal, and one from `solution` would rebuild the
+solution. A scene therefore carries only constants or values that were never drawn at all; a game
+whose scene genuinely needs a drawn value needs a third, independently seeded stream, which nothing
+builds today.
+
 A value that is published must never be drawn from the stream that produced the solution. Not "must
 not equal the solution" — `SeededRandom` is invertible (`nextDouble` publishes 53 bits of two
 consecutive words, the xoshiro128** transition is a bijection), so a published double lets the state be

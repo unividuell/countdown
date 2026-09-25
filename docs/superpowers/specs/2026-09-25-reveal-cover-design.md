@@ -64,9 +64,12 @@ nichts heraus. `GameTypeHandle` reicht durch wie die übrigen Methoden.
 auf eine angekündigte Runde, vor und nach dem Aufdecken. `payload` bleibt, wie er ist, hinter dem
 Reveal; `solution` hinter dem Tipp.
 
-Die Bühne ist veröffentlicht und kommt deshalb aus dem Präsentationsstrom — dieselbe Regel, die für
-den Payload gilt. Und wie der Payload bekommt sie je Spiel einen **Feld-Set-Test**: genau diese
-Felder, in beide Richtungen.
+Die Bühne kommt aus keinem der beiden Ströme: `SeededRandom` ist umkehrbar, ein veröffentlichter Wert
+ließe sich zurückrechnen — aus dem Präsentationsstrom auf den noch versiegelten Payload, aus dem
+Lösungsstrom auf die Lösung. Eine Bühne trägt deshalb nur Konstanten oder nie gezogene Werte; ein
+Spiel, dessen Bühne einen gezogenen Wert braucht, bräuchte einen dritten, unabhängig geseedeten
+Strom — den gibt es heute nicht. Und wie der Payload bekommt sie je Spiel einen **Feld-Set-Test**:
+genau diese Felder, in beide Richtungen.
 
 | Spiel | `scene` | Bühne unter der Hülle |
 |---|---|---|
