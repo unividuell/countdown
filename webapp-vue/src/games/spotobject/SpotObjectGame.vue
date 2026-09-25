@@ -110,6 +110,7 @@ watch(played, (now, before) => {
           <SpotObjectBoard
             ref="board"
             :disabled="props.disabled || props.sealed === true"
+            :sealed="props.sealed === true"
             :trail-color="trailColor"
             @guess="(value) => emit('guess', value)"
             @scene-state="(state) => (sceneState = state)"

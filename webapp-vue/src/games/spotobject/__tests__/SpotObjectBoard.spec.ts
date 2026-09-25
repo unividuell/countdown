@@ -196,6 +196,17 @@ describe('SpotObjectBoard', () => {
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
   })
+
+  it('stays quiet about a failed load while sealed — the cover already says so', async () => {
+    const double = mockStreetView()
+    double.error.value = 'boom'
+    const w = mount(SpotObjectBoard, {
+      props: { disabled: false, trailColor: '#8e44ad', sealed: true },
+    })
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-error"]').exists()).toBe(false)
+  })
   /**
    * The row's right-hand end belongs to „Gefunden“, and on the line it wraps onto it is alone
    * there. `justify-end` and not an auto margin: an auto margin would take the free space before

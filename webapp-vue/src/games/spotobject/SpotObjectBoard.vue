@@ -20,7 +20,15 @@ import SpotObjectMiniMap from './SpotObjectMiniMap.vue'
 import type { SpotObjectTip } from './types'
 import { useStreetView } from './useStreetView'
 
-const props = defineProps<{ disabled: boolean; trailColor: string }>()
+const props = withDefaults(
+  defineProps<{
+    disabled: boolean
+    trailColor: string
+    /** Sealed: the cover already shows its own failure and retry, so the board's own stays quiet. */
+    sealed?: boolean
+  }>(),
+  { sealed: false },
+)
 
 const emit = defineEmits<{ guess: [tip: SpotObjectTip]; 'scene-state': [state: SceneState] }>()
 
@@ -126,7 +134,7 @@ function submitGuess(): void {
     </p>
 
     <div
-      v-if="error"
+      v-if="error && !props.sealed"
       data-test="spot-error"
       class="absolute inset-0 flex items-center justify-center bg-white/95 p-6 text-center"
     >
