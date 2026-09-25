@@ -46,16 +46,21 @@ nachher:  [ Spiel + Bühne unter der Hülle ] ──halten 3·2·1──▶ POST
 
 ```kotlin
 /** Was vor dem Aufdecken beim Client liegen darf — nie das Rätsel. Marker wie [GamePayload]. */
-interface GameStage
+interface GameScene
 
 /** `null` — die Vorgabe — ist ein Spiel, dessen Bühne allein sein Code ist. */
-fun stage(params: P): GameStage? = null
+fun scene(params: P): GameScene? = null
 ```
+
+**Im Code heißt die Bühne `scene`, nicht `stage`.** `stage` ist in diesem Projekt schon vergeben:
+die Stufe eines gestuften Spiels (`round_plays.stage`, `GameType.stages`, `releaseStageAssets`, der
+Prop `stage` jeder Spielkomponente). Eine zweite Bedeutung desselben Worts im selben Vertrag wäre
+die Verwechslung, auf die man erst im Review stößt.
 
 **Vorgabe `null` ist die sichere Richtung:** ein Spiel, das nichts sagt, gibt vor dem Aufdecken
 nichts heraus. `GameTypeHandle` reicht durch wie die übrigen Methoden.
 
-`RoundResponse` und `LabRoundResponse` bekommen `stage: GameStage?`, gefüllt in **jeder** Antwort
+`RoundResponse` und `LabRoundResponse` bekommen `scene: GameScene?`, gefüllt in **jeder** Antwort
 auf eine angekündigte Runde, vor und nach dem Aufdecken. `payload` bleibt, wie er ist, hinter dem
 Reveal; `solution` hinter dem Tipp.
 
@@ -63,9 +68,9 @@ Die Bühne ist veröffentlicht und kommt deshalb aus dem Präsentationsstrom —
 den Payload gilt. Und wie der Payload bekommt sie je Spiel einen **Feld-Set-Test**: genau diese
 Felder, in beide Richtungen.
 
-| Spiel | `stage` | Bühne unter der Hülle |
+| Spiel | `scene` | Bühne unter der Hülle |
 |---|---|---|
-| Musterung | `FindPatternStage(cols, rows, patternLength)` | das leere Raster in richtiger Größe |
+| Musterung | `FindPatternScene(cols, rows, patternLength)` | das leere Raster in richtiger Größe |
 | Weltanschauung | `null` | die geladene Karte |
 | Farbausmalung | `null` | — versiegelt nie |
 | Anspielung | `null` | — versiegelt nie |
@@ -75,7 +80,7 @@ Weltanschauungs Payload ist allein `term` — das Rätsel selbst —; seine Büh
 sondern **Zeit**: die gemountete Komponente lädt unter der Hülle Konfiguration
 (`/api/spot-object/config`, rundenunabhängig) und Maps-Skript.
 
-Eine Bühne ist also zweierlei: **Daten** (`stage`, oft `null`) und **die Zeit, in der das Spiel
+Eine Bühne ist also zweierlei: **Daten** (`scene`, oft `null`) und **die Zeit, in der das Spiel
 schon gemountet ist**.
 
 ## Vertrag der Spielkomponente
@@ -85,7 +90,7 @@ Jedes Spiel, das die Karte und das Labor rendern, bekommt drei Zusätze:
 | | |
 |---|---|
 | Prop `sealed: boolean` | genau das Gesicht `sealed` aus `useRound`: angekündigt, noch nicht aufgedeckt, und das Spiel verlangt ein bewusstes Aufdecken |
-| Prop `stage: unknown` | die Bühne, wie der Server sie liefert |
+| Prop `scene: unknown` | die Bühne, wie der Server sie liefert |
 | Emit `reveal: []` | der Halt ist voll — jetzt aufdecken |
 
 `payload` darf `null` sein, solange `sealed` gilt. Farbausmalung und Anspielung deklarieren die
@@ -226,30 +231,30 @@ Mit dem Einzählen im Knopf entfällt das Einzählen im Band.
 
 | Ort | Änderung |
 |---|---|
-| `GameType` | `GameStage`, `stage(params)` |
-| `GameTypeHandle` | `stage(params: JsonNode)` |
-| `RoundResponses`, `RoundDtos` | `stage` in `RoundResponse` |
-| `LabService`, `LabDtos` | `stage` in `LabRoundResponse` |
-| `FindPatternGameType` | `FindPatternStage` |
+| `GameType` | `GameScene`, `scene(params)` |
+| `GameTypeHandle` | `scene(params: JsonNode)` |
+| `RoundResponses`, `RoundDtos` | `scene` in `RoundResponse` |
+| `LabService`, `LabDtos` | `scene` in `LabRoundResponse` |
+| `FindPatternGameType` | `FindPatternScene` |
 
 **Client — Rahmen**
 
 | Ort | Änderung |
 |---|---|
-| `rounds/RoundCard.vue` | der eigene `sealed`-Block, `briefing` und der Prop `step` fallen weg; im Gesicht `sealed` mountet das Spiel mit `sealed`, `stage`, `@reveal`. Die Prüfung „keine Ansicht in dieser Version“ bleibt davor |
+| `rounds/RoundCard.vue` | der eigene `sealed`-Block, `briefing` und der Prop `step` fallen weg; im Gesicht `sealed` mountet das Spiel mit `sealed`, `scene`, `@reveal`. Die Prüfung „keine Ansicht in dieser Version“ bleibt davor |
 | `pages/c/[slug]/index.vue` | `useStartCeremony` und `revealWithSignal` fallen weg; `reveal` geht direkt an die Karte |
 | `pages/c/[slug]/lab/[game]/index.vue` | `lab-sealed`, `labBriefings` und die eigene Zeremonie fallen weg; `sealed = !round.revealed` |
 | `gamelab/games.ts` | `labBriefings` fällt weg |
 | `games/registry.ts` | `gameBriefings` fällt weg |
 | `ui/GameHeader.vue`, `ui/flipdot/FlipDotBoard.vue` | siehe oben |
-| `api/types.ts` | `stage: unknown` in beiden Rundenantworten |
+| `api/types.ts` | `scene: unknown` in beiden Rundenantworten |
 | neu | `ui/RevealCover.vue`; `HoldButton` mit `beats` |
 
 **Client — Spiele**
 
 | Spiel | versiegelt |
 |---|---|
-| Musterung | das Board zeichnet das leere Raster aus `stage`, die Hülle liegt darüber, `ready` sofort nach dem Mount. Der heutige Zweig „`payload === null` → lässt sich nicht anzeigen“ unterscheidet künftig *versiegelt* von *kaputt* |
+| Musterung | das Board zeichnet das leere Raster aus `scene`, die Hülle liegt darüber, `ready` sofort nach dem Mount. Der heutige Zweig „`payload === null` → lässt sich nicht anzeigen“ unterscheidet künftig *versiegelt* von *kaputt* |
 | Weltanschauung | das Board lädt Konfiguration und Maps-Skript unter der Hülle; `ready` = Skript geladen und Karte idle, `failed` bei einem Fehler, `retry` lädt neu. Der Begriff kommt erst mit dem Payload |
 | Farbausmalung, Anspielung | deklarieren die neuen Props, sind nie `sealed` |
 
@@ -261,8 +266,8 @@ Bildschirm ohne Spiel bereithielt.
 
 **Backend** (kotest, MockMvc-Kotlin-DSL):
 
-- Feld-Set-Test für `FindPatternStage`; `stage == null` für die übrigen drei.
-- `RoundResponses` vor dem Aufdecken: `stage` gesetzt, `payload` `null`; danach beide.
+- Feld-Set-Test für `FindPatternScene`; `scene == null` für die übrigen drei.
+- `RoundResponses` vor dem Aufdecken: `scene` gesetzt, `payload` `null`; danach beide.
 - Dasselbe für die Laborantwort.
 
 **Frontend** (Vitest):
