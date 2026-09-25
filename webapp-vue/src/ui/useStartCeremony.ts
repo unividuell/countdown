@@ -1,4 +1,5 @@
 import { onUnmounted, readonly, ref, type Ref } from 'vue'
+import { BEAT_MS } from '@/ui/useHoldProgress'
 
 /** One beat of the count-in. Single digits, so the board flips between them instead of resizing. */
 export type StartBeat = '3' | '2' | '1'
@@ -19,7 +20,7 @@ export type PlayClock =
 
 const BEATS: StartBeat[] = ['3', '2', '1']
 
-export const BEAT_MS = 1000
+export { BEAT_MS }
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 

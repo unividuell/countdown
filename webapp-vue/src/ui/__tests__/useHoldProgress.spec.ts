@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import { useHoldProgress } from '@/ui/useHoldProgress'
+import { type HoldOptions, useHoldProgress } from '@/ui/useHoldProgress'
 
 /**
  * The composable registers a `visibilitychange` listener through VueUse, which needs an effect
  * scope — so it is exercised inside a throwaway component rather than called bare.
  */
-function mountHold(durationMs = 1000) {
+function mountHold(durationMs = 1000, options?: HoldOptions) {
   const onComplete = vi.fn()
   let api!: ReturnType<typeof useHoldProgress>
   const wrapper = mount(
     defineComponent({
       setup() {
-        api = useHoldProgress(durationMs, onComplete)
+        api = useHoldProgress(durationMs, onComplete, options)
         return () => h('div')
       },
     }),
@@ -117,5 +117,21 @@ describe('useHoldProgress', () => {
     wrapper.unmount()
 
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('starts over from empty on a new press when asked to, even mid-rewind', () => {
+    const { api, onComplete } = mountHold(1000, { restartOnPress: true })
+
+    api.start()
+    vi.advanceTimersByTime(600)
+    api.cancel()
+    vi.advanceTimersByTime(50)
+    api.start()
+
+    expect(api.progress.value).toBe(0)
+    vi.advanceTimersByTime(900)
+    expect(onComplete).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(200)
+    expect(onComplete).toHaveBeenCalledOnce()
   })
 })
