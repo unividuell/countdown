@@ -30,7 +30,7 @@ const props = defineProps<{
   scene?: unknown
 }>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()
+const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
 
 const durations = computed(() =>
   isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],

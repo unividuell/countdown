@@ -48,7 +48,7 @@ const props = defineProps<{
   scene?: unknown
 }>()
 
-const emit = defineEmits<{ guess: [value: unknown] }>()
+const emit = defineEmits<{ guess: [value: unknown]; reveal: [] }>()
 
 const myHue = computed(() => hueOf(props.myGuess))
 
