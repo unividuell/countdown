@@ -13,6 +13,13 @@ export interface FindPatternPayload {
   patternImage: string
 }
 
+/** The layout the empty board is set up in under the cover — the server's `FindPatternScene`. */
+export interface FindPatternScene {
+  cols: number
+  rows: number
+  patternLength: number
+}
+
 export interface FindPatternSolution {
   /** One palette index per cell, in reading order. */
   blocks: number[]
@@ -54,6 +61,19 @@ export function isFindPatternPayload(value: unknown): value is FindPatternPayloa
     typeof candidate.boardImage === 'string' &&
     typeof candidate.patternImage === 'string'
   )
+}
+
+export function asFindPatternScene(value: unknown): FindPatternScene | null {
+  if (typeof value !== 'object' || value === null) return null
+  const candidate = value as Partial<FindPatternScene>
+  if (
+    !isFiniteInteger(candidate.cols) ||
+    !isFiniteInteger(candidate.rows) ||
+    !isFiniteInteger(candidate.patternLength)
+  ) {
+    return null
+  }
+  return { cols: candidate.cols, rows: candidate.rows, patternLength: candidate.patternLength }
 }
 
 export function asFindPatternSolution(value: unknown): FindPatternSolution | null {
