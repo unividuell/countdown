@@ -93,7 +93,18 @@ Props und benutzen sie nie — derselbe Grund, aus dem Musterung `skip` deklarie
 senden: der Vertrag hat für jedes Spiel dieselbe Form.
 
 **Die Hülle gehört dem Spiel, nicht der Karte.** Das Spiel legt `RevealCover` über seine eigene
-Spielfläche; seine Regelboxen darunter bleiben lesbar. Damit gehört ihm auch der Zustand der Hülle:
+Spielfläche — **und nur über sie.** Die beiden Boxen darunter, Regeln und Punkte, liegen außerhalb
+der Hülle und außerhalb von `inert`: lesbar, aufklappbar, bedienbar, solange man will. Das ist der
+Moment, in dem man sie in Ruhe lesen soll, bevor irgendetwas läuft.
+
+Die Spiele sind dafür schon geschnitten: `FindPatternBoard` setzt Raster und Musterbild in einen
+eigenen Block und `FindPatternBriefing` darunter, `SpotObjectGame` die Karte (`SpotObjectBoard`)
+und `SpotObjectBriefing` darunter. Die Hülle umschließt jeweils den ersten Block.
+
+Auf dem Handy stehen die Boxen damit unter der Spielfläche, meist unterhalb der Falz — wie während
+des Spiels auch. Man scrollt zu ihnen; ein Fingerstrich über die Hülle startet nichts, dafür ist
+der Knopf ein Halten. Die Reihenfolge bleibt vor und nach dem Aufdecken dieselbe, also springt beim
+Fallen nichts. Damit gehört ihm auch der Zustand der Hülle:
 es weiß selbst, ob seine Bühne steht, und „nochmal versuchen“ ist sein eigener Nachlade-Aufruf.
 Durch die Karte läuft dafür kein Ereignisprotokoll — sie reicht `sealed` herunter und nimmt
 `reveal` entgegen, wie sie heute `guess` entgegennimmt.
@@ -255,6 +266,8 @@ Bildschirm ohne Spiel bereithielt.
   eigener Aufdeck-Block mehr.
 - Musterung und Weltanschauung: Hülle über der Spielfläche, `ready`/`failed`, und **die Hülle ist
   im selben Render weg, in dem der Payload ankommt** — ohne Übergangsklasse.
+- Musterung und Weltanschauung: die Regel- und Punkteboxen liegen versiegelt **außerhalb** der Hülle
+  und sind nicht `inert`.
 - Community- und Laborseite ohne Zeremonie; `GameHeader` nur noch mit `running`.
 
 **Nicht im Browser-Pane prüfbar:** das Halten läuft über `requestAnimationFrame`, und
