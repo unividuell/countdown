@@ -2,9 +2,8 @@
 /**
  * What the player needs before the panorama loads: how it is played, and what the round pays.
  *
- * Its own component rather than markup inside the game, because it is mounted twice — once by the
- * game and once by the reveal screen, where the game itself is not up yet. That second mount is
- * the point here: the clock starts at the reveal, so reading the rules afterwards costs time.
+ * Its own component rather than markup inside the game, so the game can mount it below the play
+ * area, where it stays readable while the round is sealed.
  */
 import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'

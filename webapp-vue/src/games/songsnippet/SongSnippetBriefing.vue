@@ -2,9 +2,8 @@
 /**
  * What the player needs before the first snippet: how it is played, and what the round pays.
  *
- * Its own component rather than markup inside the board, because it is mounted twice — once by the
- * board and once by the reveal screen, where the game itself is not up yet. One file means one
- * wording; two would be two places for the same rule to drift.
+ * Its own component rather than markup inside the board, so the board can mount it below the play
+ * area, where it stays readable while the round is sealed.
  */
 import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
