@@ -69,6 +69,7 @@ class RoundResponses(
             ),
             noGameReason = null,
             previousRoundNumber = current.previousRoundNumber,
+            scene = current.handle.scene(current.roundGame.params),
             payload = if (open || mine != null) current.handle.present(current.roundGame.params) else null,
             solution = if (open) current.handle.solution(current.roundGame.params) else null,
             me = mine?.let {

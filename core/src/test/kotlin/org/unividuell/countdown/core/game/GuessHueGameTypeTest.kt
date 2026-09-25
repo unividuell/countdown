@@ -166,6 +166,11 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
     }
 
     @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw(phase = Phase.TWO)).shouldBeNull()
+    }
+
+    @Test
     fun `no phase of this game needs a deliberate reveal`() {
         // It does not score on time, so a refresh buys a trickster nothing and a click in front of
         // the wheel would be a hurdle without a purpose. The switch exists for games that do.

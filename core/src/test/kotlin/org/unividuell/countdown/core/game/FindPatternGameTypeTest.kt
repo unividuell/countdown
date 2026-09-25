@@ -12,6 +12,7 @@ import org.unividuell.countdown.core.findpattern.FindPatternBoard
 import org.unividuell.countdown.core.findpattern.FindPatternLayout
 import org.unividuell.countdown.core.game.internal.FindPatternGameType
 import org.unividuell.countdown.core.game.internal.FindPatternOutcome
+import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
 
@@ -94,6 +95,28 @@ class FindPatternGameTypeTest {
         payload.boardImage shouldStartWith "data:image/png;base64,"
         payload.patternImage shouldStartWith "data:image/png;base64,"
         payload.boardImage shouldNotBe payload.patternImage
+    }
+
+    @Test
+    fun `the scene carries exactly the layout`() {
+        val json = mapper.writeValueAsString(game.scene(draw(phase = Phase.TWO)))
+        val fields = mapper.readTree(json).propertyNames().toSet()
+
+        fields shouldBe setOf("cols", "rows", "patternLength")
+    }
+
+    /** Published before the reveal, so nothing drawn may reach it — from either stream. */
+    @Test
+    fun `the scene is the same for every round`() {
+        val a = game.scene(draw(phase = Phase.TWO, seed = 1, presentationSeed = 7))
+        val b = game.scene(draw(phase = Phase.TWO, seed = 2, presentationSeed = 99))
+
+        a shouldBe b
+        a shouldBe FindPatternScene(
+            cols = FindPatternLayout.COLS,
+            rows = FindPatternLayout.ROWS,
+            patternLength = FindPatternLayout.PATTERN_LENGTH,
+        )
     }
 
     @Test

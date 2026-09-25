@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -111,6 +112,11 @@ class SongSnippetGameTypeTest {
     fun `a guess with neither id nor pair is rejected before anything is written`() {
         shouldThrow<InvalidGuessException> { judge(params = draw(), guess = """{}""") }
         shouldThrow<InvalidGuessException> { judge(params = draw(), guess = """{"artist":"Eagles"}""") }
+    }
+
+    @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw()).shouldBeNull()
     }
 
     @Test

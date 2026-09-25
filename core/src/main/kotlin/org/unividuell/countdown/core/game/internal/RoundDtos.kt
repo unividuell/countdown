@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game.internal
 import org.unividuell.countdown.core.countdown.Round
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
+import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.iam.Avatar
@@ -139,6 +140,8 @@ data class RoundResponse(
      * each of them, so a pointer only on the `GET` would lose the history on the first guess.
      */
     val previousRoundNumber: Int? = null,
+    /** Before the reveal and after it alike — it carries nothing the reveal protects. */
+    val scene: GameScene? = null,
     /** Only once the viewer has revealed — the reveal is what starts their clock. */
     val payload: GamePayload? = null,
     /** Only once the viewer has guessed. */

@@ -465,6 +465,7 @@ class LabService(
             displayName = handle.displayName,
             awardRule = snapshot.round.award.rule,
             awardPoints = snapshot.round.award.points,
+            scene = handle.scene(snapshot.round.params),
             // Withheld until revealed, the same way solution is withheld until guessed: for a game
             // that gates on a reveal, the payload IS the board, so sending it early would make the
             // click a formality rather than the thing that actually protects the board.
