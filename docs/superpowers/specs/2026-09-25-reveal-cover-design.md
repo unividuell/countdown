@@ -175,8 +175,8 @@ Eintreffen zwei PNGs von wenigen hundert Bytes — das ist die Grenze.
 ```
 Ruhe: [ START ]  halten ──▶ [ 3 ] ──▶ [ 2 ] ──▶ [ 1 ] ──▶ voll ──▶ POST /reveal ──▶ Hülle weg
                  Ring:  0 ─────── ⅓ ─────── ⅔ ─────── 1
-                 loslassen: Ring läuft doppelt so schnell zurück, die Ziffer zählt mit hoch,
-                            am Ende steht wieder START
+                 loslassen: die Ziffer wird ausgeblendet — kein Hochzählen —, der Ring läuft
+                            zurück, und ist er leer, steht wieder START
 ```
 
 Der Knopf der Hülle ist der vorhandene `HoldButton`. Die Geste ist Schutz *und* Einzählen: ein
@@ -186,8 +186,15 @@ der Server nichts.
 `HoldButton` bekommt einen optionalen Prop `beats`:
 
 - gesetzt: `holdMs = beats × BEAT_MS` — für die Hülle `3 × 1000 ms`;
-- die Beschriftung folgt aus `progress` (`3 − ⌊progress × 3⌋`, auf 1…3 begrenzt), beim Zurückspulen
-  also rückwärts; in Ruhe steht `label` — hier „START“. Eine Quelle, kein zweiter Timer.
+- solange gehalten wird, folgt die Ziffer aus `progress` (`3 − ⌊progress × 3⌋`, auf 1…3
+  begrenzt) — eine Quelle, kein zweiter Timer;
+- **Loslassen bricht ab, statt zurückzuzählen:** die Ziffer wird ausgeblendet, der Ring läuft wie
+  heute zurück, und erst mit leerem Ring steht wieder `label` — hier „START“. Ein Hochzählen
+  3 ← 2 ← 1 läse sich wie ein Countdown, der weiterläuft; ausgeblendet ist klar, dass nichts mehr
+  zählt;
+- **ein neues Halten beginnt immer bei 3,** auch während der Ring noch zurückläuft: im Modus
+  `beats` setzt ein Druck `progress` auf 0. Heute setzt `start()` beim aktuellen Stand fort — ein
+  abgebrochener Countdown, der bei „2“ weitermacht, wäre kein Abbruch gewesen;
 - nicht gesetzt: alles wie heute.
 
 Der einzige bestehende `HoldButton` ist die Abgabe der Farbausmalung in der Mitte des Farbkreises
@@ -258,7 +265,8 @@ Bildschirm ohne Spiel bereithielt.
 
 **Frontend** (Vitest):
 
-- `HoldButton` mit `beats`: Beschriftung aus `progress`, auch beim Zurückspulen;
+- `HoldButton` mit `beats`: Ziffer aus `progress` beim Halten; beim Loslassen keine Ziffer, bis der
+  Ring leer ist, dann `label`; ein Druck während des Zurücklaufens beginnt bei 3;
   `holdMs = beats × BEAT_MS`. Die bestehenden Tests der Farbausmalung bleiben unverändert grün —
   das ist der Beweis, dass sie nichts merkt.
 - `RevealCover`: die vier Zustände; `retry` löst nie `reveal` aus; `inert` auf der Spielfläche.
