@@ -39,7 +39,7 @@ import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import { nowMs, skewMs } from '@/ui/sharedClock'
-import type { PlayClock } from '@/ui/useStartCeremony'
+import type { PlayClock } from '@/ui/playClock'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -128,7 +128,10 @@ const review = computed<RoundReview>(() => ({
     run((slug, game, s, p) => setLabOverride(slug, game, s, p, userId, value)),
 }))
 
-/** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
+/**
+ * Asked for by the game when its cover's hold completes — starts the tester's clock, mirroring
+ * the real round's reveal.
+ */
 async function reveal(): Promise<void> {
   await run(revealLabRound)
   // `GameHeader` reads the stamp against the skew-corrected clock, not `Date.now()` — a raw

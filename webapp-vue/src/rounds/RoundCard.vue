@@ -14,7 +14,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
-import type { PlayClock } from '@/ui/useStartCeremony'
+import type { PlayClock } from '@/ui/playClock'
 
 const props = withDefaults(
   defineProps<{

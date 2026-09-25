@@ -323,9 +323,8 @@ describe('RoundCard', () => {
     expect(w.findComponent(StubGame).exists()).toBe(false)
   })
 
-  // A missing renderer is exactly as unrenderable while sealed as while playing — offering
-  // "Aufdecken" first and admitting the gap only once revealed would be the same lie, one step
-  // later.
+  // A missing renderer is exactly as unrenderable while sealed as while playing — showing the
+  // cover first and admitting the gap only once revealed would be the same lie, one step later.
   it('says so instead of offering a reveal when the sealed game has no renderer', () => {
     const round = aRound({
       game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: true },

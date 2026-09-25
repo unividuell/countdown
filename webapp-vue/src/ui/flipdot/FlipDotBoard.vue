@@ -16,7 +16,7 @@ import {
 } from './board'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
-// Props: tone and solid default to what the board did before they existed. pad has no default
+// Props: tone defaults to what the board did before it existed. pad has no default
 // on purpose — its absence already means "no padding" (see eslint.config.mjs's override for
 // this file).
 const props = withDefaults(
@@ -25,10 +25,8 @@ const props = withDefaults(
     label: string
     tone?: Tone
     pad?: Pad
-    /** Every dot lit, padding included — the board busy rather than reading. */
-    solid?: boolean
   }>(),
-  { tone: 'default', solid: false },
+  { tone: 'default' },
 )
 const emit = defineEmits<{ phase: ['white' | 'live'] }>()
 
@@ -40,11 +38,7 @@ const svg = useTemplateRef<SVGSVGElement>('svg')
 const colours = computed(() => TONES[props.tone])
 const bm = computed(() => {
   const glyphs = bitmap(props.text)
-  const field = props.pad === undefined ? glyphs : padded(glyphs, props.pad)
-  // A bitmap, not a render mode: the solid field is the same width as the reading underneath it,
-  // so the value watcher below flips into and out of it like any other change — which is the
-  // whole reason it costs no animation code of its own.
-  return props.solid ? uniform(field, true) : field
+  return props.pad === undefined ? glyphs : padded(glyphs, props.pad)
 })
 const phase = ref<'dark' | 'white' | 'live'>(prefersReducedMotion() ? 'live' : 'dark')
 const shown = computed(() =>

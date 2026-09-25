@@ -414,11 +414,12 @@ describe('community home', () => {
     // `game: null` for the same reason as the history test above: no real game gets mounted.
     const hook = mockUseRound({ stage: 'sealed', round: aRoundResponse({ game: null }) })
     vi.mocked(useRound).mockReturnValue(hook)
+    hook.busy.value = true
 
     const w = mountPage()
     await flushPromises()
 
     expect(w.getComponent(RoundCard).props('reveal')).toBe(hook.reveal)
-    expect(w.getComponent(RoundCard).props('busy')).toBe(hook.busy.value)
+    expect(w.getComponent(RoundCard).props('busy')).toBe(true)
   })
 })
