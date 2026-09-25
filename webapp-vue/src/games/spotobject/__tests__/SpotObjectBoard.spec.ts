@@ -14,6 +14,7 @@ enableAutoUnmount(afterEach)
 
 function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   error: Ref<string | null>
+  ready: Ref<boolean>
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
   noCoverage: Ref<boolean>
@@ -26,6 +27,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
 } {
   const double = {
     error: ref<string | null>(null),
+    ready: ref(true),
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),

@@ -72,6 +72,12 @@ function swallowScrollKeys(element: HTMLElement): void {
 
 export interface UseStreetView {
   error: Ref<string | null>
+  /**
+   * The scene stands: config and script loaded, the map built. Not „the map is idle“ — Google
+   * streams tiles on every pan anyway, mid-play included, and refuses them outright on `localhost`,
+   * where an idle map would never arrive.
+   */
+  ready: Ref<boolean>
   mount: (element: HTMLElement) => Promise<void>
   pano: StreetViewState
   /** True while the last attempt found nothing and the map has not been moved since. */
@@ -101,6 +107,7 @@ export interface StreetViewDeps {
 
 export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreetView {
   const error = ref<string | null>(null)
+  const ready = ref(false)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
   const heading = ref<number | null>(null)
@@ -110,6 +117,7 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
 
   async function mount(element: HTMLElement): Promise<void> {
     try {
+      error.value = null
       const config = await apiFetch<{ mapsApiKey: string }>('/api/spot-object/config')
       await loadMapsApi(config.mapsApiKey)
 
@@ -184,6 +192,7 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
       onMapPress(map, (at) => void enterAt(at))
 
       swallowScrollKeys(element)
+      ready.value = true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
@@ -246,6 +255,7 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
 
   return {
     error,
+    ready,
     mount,
     pano,
     noCoverage,

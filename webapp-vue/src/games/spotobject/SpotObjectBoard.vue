@@ -10,9 +10,10 @@
  * that walks into a panorama included: it is the map's own click event now, on both maps, rather
  * than a control of ours floating over the map's centre.
  */
-import { computed, onMounted, ref, toRef, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, toRef, useTemplateRef, watch } from 'vue'
 import IconMap from '~icons/lucide/map'
 import IconMinimize from '~icons/lucide/minimize-2'
+import type { SceneState } from '@/ui/sceneState'
 import SpotObjectCompass from './SpotObjectCompass.vue'
 import SpotObjectCrosshair from './SpotObjectCrosshair.vue'
 import SpotObjectMiniMap from './SpotObjectMiniMap.vue'
@@ -21,7 +22,7 @@ import { useStreetView } from './useStreetView'
 
 const props = defineProps<{ disabled: boolean; trailColor: string }>()
 
-const emit = defineEmits<{ guess: [tip: SpotObjectTip] }>()
+const emit = defineEmits<{ guess: [tip: SpotObjectTip]; 'scene-state': [state: SceneState] }>()
 
 const {
   currentTip,
@@ -32,9 +33,16 @@ const {
   noCoverage,
   openMiniMap,
   pano,
+  ready,
   toPanorama,
   toWorldMap,
 } = useStreetView({ trailColor: toRef(props, 'trailColor'), locked: toRef(props, 'disabled') })
+
+const sceneState = computed<SceneState>(() => {
+  if (error.value !== null) return 'failed'
+  return ready.value ? 'ready' : 'preparing'
+})
+watch(sceneState, (state) => emit('scene-state', state), { immediate: true })
 
 /**
  * The map has three sizes and this is the middle one, kept as the *panel's* own flag rather than
@@ -53,6 +61,13 @@ const board = useTemplateRef<HTMLElement>('board')
 onMounted(() => {
   if (stage.value) void mount(stage.value)
 })
+
+/** The cover's „Nochmal versuchen“: the same mount again, on the same element. */
+function retry(): void {
+  if (stage.value) void mount(stage.value)
+}
+
+defineExpose({ retry })
 
 // Asked at the click, not read off state: the direction the player turned to is the tip.
 function submitGuess(): void {
