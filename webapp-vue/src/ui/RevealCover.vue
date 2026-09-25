@@ -8,7 +8,7 @@
  * The sentence is framework copy, not a game's: sealing means the same thing for every game that
  * does it — the clock starts at the reveal, and there is no second attempt.
  */
-import { ref, watch } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import type { SceneState } from '@/ui/sceneState'
 
@@ -20,22 +20,34 @@ const props = defineProps<{
 
 const emit = defineEmits<{ start: []; retry: [] }>()
 
+const cover = useTemplateRef<HTMLDivElement>('cover')
+
 /**
  * A completed hold leaves the ring full. When the reveal behind it fails, a full ring would claim
  * something runs that does not, so the button is remounted fresh; a remount with `ready` already
  * true does not replay the entrance, which only fires on a change of `ready`.
+ *
+ * The remount tears down the focused button along with it, so a keyboard user loses focus to
+ * whatever the browser falls back to. Caught here rather than left to the browser: if focus was
+ * inside the cover before the swap, put it back on the fresh button once the DOM has the new one.
  */
 const attempt = ref(0)
 watch(
   () => props.busy,
-  (now, before) => {
-    if (before && !now) attempt.value++
+  async (now, before) => {
+    if (!before || now) return
+    const hadFocus = !!cover.value?.contains(document.activeElement)
+    attempt.value++
+    if (!hadFocus) return
+    await nextTick()
+    cover.value?.querySelector<HTMLButtonElement>('[data-test="hold-button"]')?.focus()
   },
 )
 </script>
 
 <template>
   <div
+    ref="cover"
     data-test="reveal-cover"
     class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-white/40 p-6 text-center backdrop-blur-md"
   >

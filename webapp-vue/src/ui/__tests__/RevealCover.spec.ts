@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 
@@ -64,5 +64,41 @@ describe('RevealCover', () => {
     await w.setProps({ busy: false })
 
     expect(w.getComponent(HoldButton).vm).not.toBe(first)
+  })
+
+  it('moves focus onto the fresh button when a reveal fails while the cover holds it', async () => {
+    // Attached to the document: focus only moves onto a connected element.
+    const w = mount(RevealCover, {
+      props: { state: 'ready', busy: false },
+      attachTo: document.body,
+    })
+    const before = w.get<HTMLButtonElement>('[data-test="hold-button"]').element
+    before.focus()
+    expect(document.activeElement).toBe(before)
+
+    await w.setProps({ busy: true })
+    await w.setProps({ busy: false })
+    await flushPromises()
+
+    const after = w.get<HTMLButtonElement>('[data-test="hold-button"]').element
+    expect(after).not.toBe(before)
+    expect(document.activeElement).toBe(after)
+  })
+
+  it('leaves focus alone when it was outside the cover', async () => {
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    const w = mount(RevealCover, {
+      props: { state: 'ready', busy: false },
+      attachTo: document.body,
+    })
+    outside.focus()
+
+    await w.setProps({ busy: true })
+    await w.setProps({ busy: false })
+    await flushPromises()
+
+    expect(document.activeElement).toBe(outside)
+    outside.remove()
   })
 })
