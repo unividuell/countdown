@@ -218,8 +218,8 @@ Ring, genau wie er vorher erst nach der dritten Beat-Sekunde flog.
 
 Mit dem Einzählen im Knopf entfällt das Einzählen im Band.
 
-- `ui/useStartCeremony.ts` wird gelöscht. Der Typ `PlayClock` zieht zu `GameHeader` und behält nur
-  `running`.
+- `ui/useStartCeremony.ts` wird gelöscht. Der Typ `PlayClock` zieht nach `ui/playClock.ts` — aus
+  einem `<script setup>` lässt er sich nicht exportieren — und behält nur `running`.
 - `GameHeader` verliert die Phasen `start` und `waiting`. Das Band zeigt bis zur Antwort den
   Rundencountdown und schaltet dann auf die Stoppuhr — ein Breitenwechsel, also ein Relight.
 - `FlipDotBoard.solid` verliert seinen einzigen Nutzer und fällt weg. Das volle Feld als
@@ -255,7 +255,7 @@ Mit dem Einzählen im Knopf entfällt das Einzählen im Band.
 | Spiel | versiegelt |
 |---|---|
 | Musterung | das Board zeichnet das leere Raster aus `scene`, die Hülle liegt darüber, `ready` sofort nach dem Mount. Der heutige Zweig „`payload === null` → lässt sich nicht anzeigen“ unterscheidet künftig *versiegelt* von *kaputt* |
-| Weltanschauung | das Board lädt Konfiguration und Maps-Skript unter der Hülle; `ready` = Skript geladen und Karte idle, `failed` bei einem Fehler, `retry` lädt neu. Der Begriff kommt erst mit dem Payload |
+| Weltanschauung | das Board lädt Konfiguration und Maps-Skript unter der Hülle; `ready` = Konfiguration und Skript geladen, Karte gebaut — nicht „Karte idle“: Kacheln streamt Google ohnehin weiter, auch mitten im Spiel, und auf `localhost` verweigert Google sie ganz, dort käme `idle` nie; `failed` bei einem Fehler, `retry` lädt neu. Der Begriff kommt erst mit dem Payload |
 | Farbausmalung, Anspielung | deklarieren die neuen Props, sind nie `sealed` |
 
 Die Briefing-Komponenten der Spiele bleiben: die Boards binden sie heute schon selbst ein
