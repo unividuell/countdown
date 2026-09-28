@@ -128,8 +128,11 @@ function onCell(index: number): void {
           v-else
           data-test="pattern-image-placeholder"
           class="block w-full border-2 border-black bg-neutral-100"
-          :style="{ aspectRatio: `${layout.patternLength} / 1` }"
-        />
+        >
+          <!-- The ratio sits inside the border, as on the `img`: on the outer box it would count
+               the border too, and the reveal would push the rules down. -->
+          <div :style="{ aspectRatio: `${layout.patternLength} / 1` }" />
+        </div>
       </div>
       <RevealCover
         v-if="props.sealed"
