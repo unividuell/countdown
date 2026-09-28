@@ -94,9 +94,11 @@ function onCell(index: number): void {
 
 <template>
   <div data-test="pattern-board" class="flex flex-col gap-6">
-    <!-- The outer box repeats the play area's own width so the cover overlays it exactly, not
-         the wider row this board sits in. -->
-    <div v-if="layout" class="relative mx-auto w-full max-w-[22rem]">
+    <!-- The outer box cancels RoundSurface's top and side padding and pays it back, so the cover
+         spans the card edge to edge like the map does in `SpotObjectGame`. The bottom padding,
+         cancelled by `-mb-4`, lets the blur fade out before the glass ends; the board stays
+         where it was. -->
+    <div v-if="layout" class="relative -mx-4 -mt-4 -mb-4 p-4">
       <div
         data-test="pattern-play"
         class="mx-auto flex w-full max-w-[22rem] flex-col items-center gap-3"
