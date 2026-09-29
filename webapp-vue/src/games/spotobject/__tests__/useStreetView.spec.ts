@@ -108,6 +108,9 @@ const getPanorama = vi.fn()
 
 const streetViewPanoramaCtor = vi.fn()
 
+/** What a mount that breaks mid-build has to call on its way out — see the „releases…“ case below. */
+const clearInstanceListeners = vi.fn()
+
 /** Everything the composable is given from the round: a colour, and whether the board is locked. */
 function deps(locked = false): { trailColor: Ref<string>; locked: Ref<boolean> } {
   return { trailColor: ref('#8e44ad'), locked: ref(locked) }
@@ -136,6 +139,7 @@ function installFakeGoogleMaps(): void {
         getPanorama = getPanorama
       },
       SymbolPath: { CIRCLE: 0 },
+      event: { clearInstanceListeners },
     },
   } as unknown as typeof google)
 }
@@ -176,6 +180,7 @@ describe('useStreetView', () => {
     getPanorama.mockResolvedValue({ data: { location: { pano: 'found-pano' } } })
     installFakeGoogleMaps()
     streetViewPanoramaCtor.mockClear()
+    clearInstanceListeners.mockClear()
     script = stubScriptTag()
     await loadModule()
   })
@@ -389,6 +394,69 @@ describe('useStreetView', () => {
 
     expect(vi.mocked(document.head.append).mock.calls.length).toBe(appends + 1)
     expect(error.value).toBeNull()
+  })
+
+  /** A retry pressed twice (or `onMounted` racing a fast retry) must not build two Maps. */
+  it('joins a mount already in flight instead of racing a second one', async () => {
+    const { mount } = useStreetView(deps())
+    const element = document.createElement('div')
+
+    const first = mount(element)
+    const second = mount(element)
+    await flushPromises()
+    triggerScriptLoad(script)
+    await first
+    await second
+
+    expect(second).toBe(first)
+    expect(FakeMap.instances.length).toBe(1)
+  })
+
+  /**
+   * The scenario the guard exists for: a map (and its panorama, both with listeners already
+   * registered) got built, then something past that point — here `walk.attach`'s own first
+   * `new google.maps.Polyline` — throws. Without release, a retry would build a second Map on
+   * the same element while the first one's listeners kept firing underneath it.
+   */
+  it('releases a map that broke mid-build before recording the error, and builds one clean map on retry', async () => {
+    const { mount, error } = useStreetView(deps())
+    const element = document.createElement('div')
+    const replaceChildren = vi.spyOn(element, 'replaceChildren')
+
+    class ThrowingPolyline {
+      constructor() {
+        throw new Error('polyline boom')
+      }
+    }
+    const workingPolyline = (google.maps as unknown as Record<string, unknown>).Polyline
+    ;(google.maps as unknown as Record<string, unknown>).Polyline = ThrowingPolyline
+
+    const failed = mount(element)
+    await flushPromises()
+    triggerScriptLoad(script)
+    await failed
+
+    const map = FakeMap.instances[0]!
+    expect(error.value).toBe('polyline boom')
+    // Both the panorama and the map this attempt built, released before the error was recorded.
+    expect(clearInstanceListeners).toHaveBeenCalledTimes(2)
+    expect(clearInstanceListeners).toHaveBeenCalledWith(map.panorama)
+    expect(clearInstanceListeners).toHaveBeenCalledWith(map)
+    expect(replaceChildren).toHaveBeenCalledOnce()
+
+    // The retry starts from a clean slate: a working constructor again, exactly one further
+    // map, and nothing left over from the one that already went away to release a second time.
+    ;(google.maps as unknown as Record<string, unknown>).Polyline = workingPolyline
+    clearInstanceListeners.mockClear()
+
+    const retried = mount(element)
+    await flushPromises()
+    triggerScriptLoad(script)
+    await retried
+
+    expect(error.value).toBeNull()
+    expect(FakeMap.instances.length).toBe(2)
+    expect(clearInstanceListeners).not.toHaveBeenCalled()
   })
 
   /**

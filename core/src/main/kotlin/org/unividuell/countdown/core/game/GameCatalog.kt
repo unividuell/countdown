@@ -27,6 +27,9 @@ class GameTypeHandle<P : Any>(
     /** What the player sees, from a stored `params` blob. */
     fun present(params: JsonNode): GamePayload = type.present(paramsOf(params))
 
+    /** What may be shown before the reveal, from a stored `params` blob. */
+    fun scene(params: JsonNode): GameScene? = type.scene(paramsOf(params))
+
     /** The game's verdict on a guess. Throws on an invalid guess; nothing is written before this. */
     fun judge(params: JsonNode, guess: JsonNode): Judgement =
         type.judge(params = paramsOf(params), guess = guess)

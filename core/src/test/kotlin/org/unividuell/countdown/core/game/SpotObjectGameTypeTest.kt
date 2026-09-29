@@ -77,6 +77,11 @@ class SpotObjectGameTypeTest {
     }
 
     @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw(phase = Phase.TWO)).shouldBeNull()
+    }
+
+    @Test
     fun `peer review is on in both phases`() {
         game.allowsPeerReview(draw(phase = Phase.ONE)) shouldBe true
         game.allowsPeerReview(draw(phase = Phase.TWO)) shouldBe true

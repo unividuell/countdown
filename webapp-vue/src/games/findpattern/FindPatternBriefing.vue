@@ -2,10 +2,8 @@
 /**
  * What the player needs before the field appears: how it is played, and what the round pays.
  *
- * Its own component rather than markup inside the board, because it is mounted twice — once by the
- * board and once by the reveal screen, where the game itself is not up yet. That second mount is
- * the point for this game: in phase two the clock starts at the reveal, so reading the rules
- * afterwards costs time.
+ * Its own component rather than markup inside the board, so the board can mount it below the play
+ * area, where it stays readable while the round is sealed.
  */
 import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'

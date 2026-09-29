@@ -14,6 +14,7 @@ enableAutoUnmount(afterEach)
 
 function mockStreetView(overrides: Partial<StreetViewState> = {}): {
   error: Ref<string | null>
+  ready: Ref<boolean>
   mount: ReturnType<typeof vi.fn>
   pano: StreetViewState
   noCoverage: Ref<boolean>
@@ -26,6 +27,7 @@ function mockStreetView(overrides: Partial<StreetViewState> = {}): {
 } {
   const double = {
     error: ref<string | null>(null),
+    ready: ref(true),
     mount: vi.fn(),
     pano: reactive<StreetViewState>({ visible: false, panoId: null, ...overrides }),
     noCoverage: ref(false),
@@ -193,6 +195,17 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
+  })
+
+  it('stays quiet about a failed load while sealed — the cover already says so', async () => {
+    const double = mockStreetView()
+    double.error.value = 'boom'
+    const w = mount(SpotObjectBoard, {
+      props: { disabled: false, trailColor: '#8e44ad', sealed: true },
+    })
+    await w.vm.$nextTick()
+
+    expect(w.find('[data-test="spot-error"]').exists()).toBe(false)
   })
   /**
    * The row's right-hand end belongs to „Gefunden“, and on the line it wraps onto it is alone

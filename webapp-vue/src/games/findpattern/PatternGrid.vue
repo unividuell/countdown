@@ -41,7 +41,8 @@ export interface PatternTile {
 
 const props = withDefaults(
   defineProps<{
-    image: string
+    /** `null` under the cover: an empty field of the board's own proportions. */
+    image: string | null
     cols: number
     rows: number
     outlines: CellOutline[]
@@ -135,6 +136,7 @@ function tileStyle(tile: PatternTile) {
 <template>
   <div class="relative w-full border-2 border-black">
     <img
+      v-if="props.image !== null"
       :src="props.image"
       alt=""
       class="block w-full transition-opacity select-none motion-reduce:transition-none"
@@ -145,6 +147,12 @@ function tileStyle(tile: PatternTile) {
         transitionDelay: `${props.imageFadeDelayMs}ms`,
       }"
       draggable="false"
+    />
+    <div
+      v-else
+      data-test="pattern-grid-placeholder"
+      class="block w-full bg-neutral-100"
+      :style="{ aspectRatio: `${props.cols} / ${props.rows}` }"
     />
     <div
       class="absolute inset-0 grid"

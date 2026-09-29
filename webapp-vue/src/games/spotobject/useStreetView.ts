@@ -72,6 +72,12 @@ function swallowScrollKeys(element: HTMLElement): void {
 
 export interface UseStreetView {
   error: Ref<string | null>
+  /**
+   * The scene stands: config and script loaded, the map built. Not „the map is idle“ — Google
+   * streams tiles on every pan anyway, mid-play included, and refuses them outright on `localhost`,
+   * where an idle map would never arrive.
+   */
+  ready: Ref<boolean>
   mount: (element: HTMLElement) => Promise<void>
   pano: StreetViewState
   /** True while the last attempt found nothing and the map has not been moved since. */
@@ -101,6 +107,7 @@ export interface StreetViewDeps {
 
 export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreetView {
   const error = ref<string | null>(null)
+  const ready = ref(false)
   const pano = reactive<StreetViewState>({ visible: false, panoId: null })
   const noCoverage = ref(false)
   const heading = ref<number | null>(null)
@@ -108,8 +115,19 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
   let panorama: google.maps.StreetViewPanorama | null = null
   const walk = useWalkMap(trailColor)
 
-  async function mount(element: HTMLElement): Promise<void> {
+  /** A mount already in flight — `retry()` while one is running joins it, rather than racing it. */
+  let mounting: Promise<void> | null = null
+
+  function mount(element: HTMLElement): Promise<void> {
+    mounting ??= attemptMount(element).finally(() => {
+      mounting = null
+    })
+    return mounting
+  }
+
+  async function attemptMount(element: HTMLElement): Promise<void> {
     try {
+      error.value = null
       const config = await apiFetch<{ mapsApiKey: string }>('/api/spot-object/config')
       await loadMapsApi(config.mapsApiKey)
 
@@ -184,7 +202,21 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
       onMapPress(map, (at) => void enterAt(at))
 
       swallowScrollKeys(element)
+      ready.value = true
     } catch (err) {
+      // A prior attempt may already have built a map (`new google.maps.Map` succeeded, then a
+      // listener registration or `walk.attach` threw) — release it before recording the error, or
+      // a later mount() builds a second Map with the first one's listeners still live on top of
+      // it. `google` can still be undefined here if this attempt failed before the script loaded.
+      if (map) {
+        if (typeof google !== 'undefined' && google.maps) {
+          if (panorama) google.maps.event.clearInstanceListeners(panorama)
+          google.maps.event.clearInstanceListeners(map)
+        }
+        element.replaceChildren()
+        map = null
+        panorama = null
+      }
       error.value = err instanceof Error ? err.message : 'failed to load the map'
     }
   }
@@ -246,6 +278,7 @@ export function useStreetView({ trailColor, locked }: StreetViewDeps): UseStreet
 
   return {
     error,
+    ready,
     mount,
     pano,
     noCoverage,

@@ -28,6 +28,7 @@ const closed = (number: number): RoundResponse => ({
   game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: { description: 'x' },
   solution: { targetHue: 5, toleranceDeg: 10 },
   me: null,
@@ -52,6 +53,7 @@ const closedSpotObject = (number: number): RoundResponse => ({
   game: { id: 'spot-object', displayName: 'Weltanschauung', requiresReveal: false },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: { term: 'Roter Briefkasten' },
   solution: null,
   me: {

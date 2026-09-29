@@ -12,6 +12,14 @@ const REWIND_FACTOR = 2
  */
 export const DEFAULT_HOLD_MS = 1200
 
+/** One beat of a count-in held on a `HoldButton` with `beats`. */
+export const BEAT_MS = 1000
+
+export interface HoldOptions {
+  /** A press starts from empty instead of picking up a ring that is still running back. */
+  restartOnPress?: boolean
+}
+
 export interface HoldProgress {
   /** 0 … 1. Drives the ring; 1 means the hold completed. */
   progress: Readonly<Ref<number>>
@@ -28,7 +36,11 @@ export interface HoldProgress {
  * completion callback have to be steered from here anyway — and because progress is information,
  * so it stays visible under `prefers-reduced-motion` where a decorative transition would not.
  */
-export function useHoldProgress(durationMs: number, onComplete: () => void): HoldProgress {
+export function useHoldProgress(
+  durationMs: number,
+  onComplete: () => void,
+  options: HoldOptions = {},
+): HoldProgress {
   const progress = ref(0)
   const holding = ref(false)
   let frame = 0
@@ -75,7 +87,8 @@ export function useHoldProgress(durationMs: number, onComplete: () => void): Hol
 
   function start(): void {
     // A completed hold left the ring full; pressing again is a new attempt, not a continuation.
-    if (progress.value >= 1) progress.value = 0
+    // A count-in restarts from empty even mid-rewind — `restartOnPress` opts into that.
+    if (progress.value >= 1 || options.restartOnPress) progress.value = 0
     holding.value = true
     run()
   }

@@ -250,6 +250,12 @@ export interface RoundResponse {
    * them.
    */
   previousRoundNumber: number | null
+  /**
+   * What may be with the client before the reveal: the scene the game is set up on under the
+   * cover. On every answer to an announced round, before the reveal and after it. `null` for a
+   * game whose scene is its code alone. The shape belongs to the game.
+   */
+  scene: unknown
   /** Only once the viewer has revealed. The shape belongs to the game. */
   payload: unknown
   /** Only once the viewer has guessed. */

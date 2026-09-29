@@ -11,6 +11,7 @@ const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: null,
   solution: null,
   me: null,

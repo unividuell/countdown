@@ -27,6 +27,13 @@ interface GameOutcome
 interface GameSolution
 
 /**
+ * What may reach the client **before** the reveal — the scene the game is set up on under the
+ * cover, never the puzzle. A third way out next to [GamePayload] and [GameSolution], pinned per
+ * game by a field-set test like both of them. Scene, not stage: stage is the rung of a staged game.
+ */
+interface GameScene
+
+/**
  * What a game may say about a guess — and only that.
  *
  * **The game judges, the framework awards.** How many points a guess is worth, and whether it takes
@@ -105,6 +112,20 @@ interface GameType<P : Any> {
      * when it does not resemble it.
      */
     fun present(params: P): GamePayload
+
+    /**
+     * What may be with the client before the reveal. `null` — the default — is a game whose scene
+     * is its code alone, and the default is the safe direction: a game that says nothing hands out
+     * nothing early.
+     *
+     * Drawn from **neither** [GameRandom] stream. Both are invertible — a published value lets the
+     * stream be stepped backwards to whatever it drew earlier — so a scene value taken from
+     * [GameRandom.presentation] would let a client rebuild the still-sealed payload before the
+     * reveal, and one from [GameRandom.solution] would rebuild the solution. A scene therefore
+     * carries only constants or values that were never drawn at all. A game whose scene genuinely
+     * needs a drawn value needs a third, independently seeded stream; nothing builds one today.
+     */
+    fun scene(params: P): GameScene? = null
 
     /**
      * Whether this round needs a **deliberate** reveal before the player may play it.

@@ -241,3 +241,16 @@ numbers themselves are a browser measurement.
   omits an attribute only for `null`/`undefined`/`false`, and `false` only for genuine boolean
   attributes, so `inert="false"` would otherwise end up in the DOM and still be in effect.
 
+## The reveal cover
+
+- **A sealed round mounts its game.** The game lays `RevealCover` over its own play area and
+  nothing else, and sets `inert` on that area — glass stops a finger, not a keyboard. Its rules and
+  stake stay outside both: the sealed round is when they are read at leisure.
+- **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
+  failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
+- **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
+  under the cover. The cover leaves in the same render, with no transition: the scored clock is
+  already running, and a fade would be ours on top of the line's.
+- **The hold is the count-in.** `HoldButton` with `beats`: the digit follows the hold, a release
+  hides it rather than counting it back up, and a new press always starts at the top.
+

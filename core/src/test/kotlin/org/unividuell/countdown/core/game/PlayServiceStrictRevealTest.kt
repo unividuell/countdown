@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -16,6 +17,7 @@ import org.unividuell.countdown.core.community.internal.CommunityEditionReposito
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AlreadyRevealedException
+import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.iam.User
@@ -51,11 +53,13 @@ class PlayServiceStrictRevealTest(
     @Autowired val clock: Clock,
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
+    @Autowired val announcements: AnnouncementService,
 ) {
     @TestConfiguration
     class StrictRevealGame {
         data class StrictParams(val label: String)
         data class StrictPayload(val label: String) : GamePayload
+        data class StrictScene(val size: Int) : GameScene
 
         /** A game that insists on a deliberate reveal, so the "exactly once" rule has an exerciser. */
         @Bean
@@ -68,6 +72,7 @@ class PlayServiceStrictRevealTest(
             override fun judge(params: StrictParams, guess: JsonNode) =
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: StrictParams) = true
+            override fun scene(params: StrictParams) = StrictScene(size = 3)
         }
     }
 
@@ -111,5 +116,24 @@ class PlayServiceStrictRevealTest(
         shouldThrow<AlreadyRevealedException> {
             play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
         }
+    }
+
+    @Test
+    fun `the scene is out before the reveal, the payload only after it`() {
+        val (community, viewer) = aCommunity("Strict Scene")
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        store.announce(
+            edition = edition, roundNumber = currentRoundNumberOf(community),
+            gameType = "strict-reveal", params = mapper.readTree("""{"label":"x"}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+
+        val before = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        before.scene shouldBe StrictRevealGame.StrictScene(size = 3)
+        before.payload.shouldBeNull()
+
+        val after = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        after.scene shouldBe StrictRevealGame.StrictScene(size = 3)
+        after.payload.shouldNotBeNull()
     }
 }

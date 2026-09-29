@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import HoldButton from '@/ui/HoldButton.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
@@ -385,5 +385,98 @@ describe('HoldButton', () => {
     vi.advanceTimersByTime(1200)
 
     expect(w.emitted('confirm')).toHaveLength(1)
+  })
+
+  describe('with beats', () => {
+    const face = (w: VueWrapper) => w.get('[data-test="hold-face"]')
+
+    it('shows its label at rest', () => {
+      const w = mountButton({ beats: 3, label: 'START' })
+
+      expect(face(w).text()).toBe('START')
+      expect(face(w).classes()).toContain('opacity-100')
+    })
+
+    it('counts 3 · 2 · 1 while held and confirms after three beats', async () => {
+      const w = mountButton({ beats: 3, label: 'START' })
+
+      await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('3')
+
+      vi.advanceTimersByTime(1100)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('2')
+
+      vi.advanceTimersByTime(1000)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('1')
+      expect(w.emitted('confirm')).toBeUndefined()
+
+      vi.advanceTimersByTime(1000)
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
+    it('hides the digit on release instead of counting it back up', async () => {
+      const w = mountButton({ beats: 3, label: 'START' })
+      const button = w.get('[data-test="hold-button"]')
+
+      await button.trigger('pointerdown', { isPrimary: true })
+      vi.advanceTimersByTime(2100)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('1')
+
+      await button.trigger('pointerup')
+      vi.advanceTimersByTime(300)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('1')
+      expect(face(w).classes()).toContain('opacity-0')
+
+      vi.advanceTimersByTime(3000)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('START')
+      expect(face(w).classes()).toContain('opacity-100')
+    })
+
+    it('starts every new hold at 3, even while the ring is still running back', async () => {
+      const w = mountButton({ beats: 3, label: 'START' })
+      const button = w.get('[data-test="hold-button"]')
+
+      await button.trigger('pointerdown', { isPrimary: true })
+      vi.advanceTimersByTime(1500)
+      await button.trigger('pointerup')
+      vi.advanceTimersByTime(100)
+      await button.trigger('pointerdown', { isPrimary: true })
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('3')
+
+      vi.advanceTimersByTime(2800)
+      expect(w.emitted('confirm')).toBeUndefined()
+      vi.advanceTimersByTime(400)
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
+    it('holds for its beats, not for holdMs', async () => {
+      const w = mountButton({ beats: 3, holdMs: 500 })
+
+      await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+      vi.advanceTimersByTime(1000)
+      expect(w.emitted('confirm')).toBeUndefined()
+    })
+
+    it('announces the digit only while held', async () => {
+      const w = mountButton({ beats: 3, label: 'START' })
+      const live = w.get('[data-test="hold-beat"]')
+
+      expect(live.attributes('aria-live')).toBe('polite')
+      expect(live.text()).toBe('')
+      await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+      await w.vm.$nextTick()
+      expect(live.text()).toBe('3')
+    })
+  })
+
+  it('shows no face without beats — the confirm button stays a plain disc', () => {
+    expect(mountButton().find('[data-test="hold-face"]').exists()).toBe(false)
   })
 })

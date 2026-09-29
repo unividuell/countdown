@@ -24,9 +24,13 @@ const props = defineProps<{
   assetUrl?: (key: number) => string
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
+  /** Declared, never used here: this game never seals, and the contract has one shape. */
+  sealed?: boolean
+  /** Declared, never used here — see `sealed`. */
+  scene?: unknown
 }>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()
+const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
 
 const durations = computed(() =>
   isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],

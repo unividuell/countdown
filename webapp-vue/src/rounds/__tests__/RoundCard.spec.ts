@@ -6,7 +6,6 @@ import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
-import type { StartStep } from '@/ui/useStartCeremony'
 
 /**
  * A stub, not `guess-hue`: this test exercises the card's own wiring — which prop the game gets,
@@ -14,7 +13,7 @@ import type { StartStep } from '@/ui/useStartCeremony'
  * because `vi.mock` below is hoisted above every import, so a plain module-scope constant would not
  * be initialised yet when the mock factory runs (same trap as `src/gamelab/__tests__/lab-page.spec.ts`).
  */
-const { StubGame, StubBriefing } = await vi.hoisted(async () => {
+const { StubGame } = await vi.hoisted(async () => {
   const { defineComponent } = await import('vue')
   return {
     StubGame: defineComponent({
@@ -33,27 +32,21 @@ const { StubGame, StubBriefing } = await vi.hoisted(async () => {
         assetUrl: { type: Function, default: null },
         review: { type: Object, default: null },
         closed: { type: Boolean, default: false },
+        sealed: { type: Boolean, default: false },
+        scene: { type: null, default: null },
       },
-      emits: ['guess', 'skip', 'give-up'],
+      emits: ['guess', 'skip', 'give-up', 'reveal'],
       template:
         '<button data-test="stub-guess" @click="$emit(\'guess\', 123)">guess</button>' +
         '<button data-test="stub-skip" @click="$emit(\'skip\', 1)">skip</button>' +
-        '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>',
-    }),
-    StubBriefing: defineComponent({
-      name: 'StubBriefing',
-      props: {
-        awardRule: { type: null, default: null },
-        awardPoints: { type: Number, default: null },
-      },
-      template: '<div data-test="stub-briefing" />',
+        '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>' +
+        '<button data-test="stub-reveal" @click="$emit(\'reveal\')">reveal</button>',
     }),
   }
 })
 
 vi.mock('@/games/registry', () => ({
   gameComponents: { 'guess-hue': StubGame },
-  gameBriefings: { 'guess-hue': StubBriefing },
 }))
 
 const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
@@ -84,6 +77,7 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: { description: 'x' },
   solution: null,
   me: null,
@@ -108,7 +102,6 @@ function mountCard(props: {
   /** Omitted for a closed round: it has no stage left to derive a face from. */
   stage?: RoundStage
   closed?: boolean
-  step?: StartStep | null
   busy?: boolean
   notice?: string | null
   reveal?: () => Promise<void>
@@ -139,15 +132,27 @@ enableAutoUnmount(afterEach)
 afterEach(_resetSharedClock)
 
 describe('RoundCard', () => {
-  it('shows the game and a reveal button while the round is sealed', async () => {
+  it('mounts the game sealed, and reaches its reveal through to the page', async () => {
     const reveal = vi.fn().mockResolvedValue(undefined)
-    const w = mountCard({ round: aRound(), stage: 'sealed', reveal })
+    const w = mountCard({
+      round: aRound({ payload: null, scene: { cols: 8 } }),
+      stage: 'sealed',
+      reveal,
+    })
 
-    expect(w.find('[data-test="round-reveal"]').exists()).toBe(true)
-    expect(w.findComponent(StubGame).exists()).toBe(false)
+    const stub = w.getComponent(StubGame)
+    expect(stub.props('sealed')).toBe(true)
+    expect(stub.props('payload')).toBeNull()
+    expect(stub.props('scene')).toEqual({ cols: 8 })
 
-    await w.get('[data-test="round-reveal"]').trigger('click')
+    await w.get('[data-test="stub-reveal"]').trigger('click')
     expect(reveal).toHaveBeenCalledOnce()
+  })
+
+  it('hands the sealed game the card busy as disabled', () => {
+    const w = mountCard({ round: aRound({ payload: null }), stage: 'sealed', busy: true })
+
+    expect(w.getComponent(StubGame).props('disabled')).toBe(true)
   })
 
   it('hands the game its payload once the round is open', async () => {
@@ -160,6 +165,7 @@ describe('RoundCard', () => {
     expect(stub.props('payload')).toEqual(round.payload)
     expect(stub.props('myGuess')).toEqual({ hue: 7 })
     expect(stub.props('disabled')).toBe(false)
+    expect(stub.props('sealed')).toBe(false)
 
     await stub.get('[data-test="stub-guess"]').trigger('click')
     expect(submit).toHaveBeenCalledWith(123)
@@ -317,9 +323,8 @@ describe('RoundCard', () => {
     expect(w.findComponent(StubGame).exists()).toBe(false)
   })
 
-  // A missing renderer is exactly as unrenderable while sealed as while playing — offering
-  // "Aufdecken" first and admitting the gap only once revealed would be the same lie, one step
-  // later.
+  // A missing renderer is exactly as unrenderable while sealed as while playing — showing the
+  // cover first and admitting the gap only once revealed would be the same lie, one step later.
   it('says so instead of offering a reveal when the sealed game has no renderer', () => {
     const round = aRound({
       game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: true },
@@ -327,7 +332,7 @@ describe('RoundCard', () => {
     const w = mountCard({ round, stage: 'sealed' })
 
     expect(w.find('[data-test="round-unrenderable"]').exists()).toBe(true)
-    expect(w.find('[data-test="round-reveal"]').exists()).toBe(false)
+    expect(w.findComponent(StubGame).exists()).toBe(false)
   })
 
   it('draws every face on one shared surface', () => {
@@ -344,7 +349,7 @@ describe('RoundCard', () => {
 
     expect(w.findAll('[data-test="round-surface"]')).toHaveLength(1)
     expect(
-      w.get('[data-test="round-reveal"]').element.closest('[data-test="round-surface"]'),
+      w.get('[data-test="stub-reveal"]').element.closest('[data-test="round-surface"]'),
     ).not.toBeNull()
   })
 
@@ -465,7 +470,7 @@ describe('RoundCard', () => {
     expect(stub.props('disabled')).toBe(true)
     // No clock: a closed round's countdown would read 00:00:00 forever.
     expect(w.findComponent(GameHeader).props('endsAt')).toBe(null)
-    expect(w.find('[data-test="round-reveal"]').exists()).toBe(false)
+    expect(stub.props('sealed')).toBe(false)
   })
 
   it('shows a closed round the viewer never played', () => {
@@ -483,33 +488,6 @@ describe('RoundCard', () => {
 
     expect(stub.exists()).toBe(true)
     expect(stub.props('entries')).toEqual([other])
-  })
-
-  // The sealed face is the last moment the rules are free to read: from the click on, the clock
-  // is running. So the game's boxes belong here, not only behind the gate.
-  it("carries the game's boxes on the sealed face, while reading them still costs nothing", () => {
-    const w = mountCard({
-      round: aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 9 }),
-      stage: 'sealed',
-    })
-
-    const briefing = w.getComponent(StubBriefing)
-    expect(briefing.props('awardRule')).toBe('CLOSEST_ONLY')
-    expect(briefing.props('awardPoints')).toBe(9)
-  })
-
-  it('says what the reveal costs before it is clicked', () => {
-    const w = mountCard({ round: aRound(), stage: 'sealed' })
-
-    const notice = w.get('[data-test="round-reveal-cost"]').text()
-    expect(notice).toContain('Zeit')
-    expect(notice).toContain('einen Versuch')
-  })
-
-  it('says nothing about a clock on a round that is being played', () => {
-    const w = mountCard({ round: aRound({ me: aPlay() }), stage: 'playing' })
-
-    expect(w.find('[data-test="round-reveal-cost"]').exists()).toBe(false)
   })
 
   const playOf = (w: VueWrapper) => w.getComponent(GameHeader).props('play')
@@ -545,22 +523,5 @@ describe('RoundCard', () => {
     const w = mountCard({ round: aRound({ me: aPlay() }), closed: true })
 
     expect(playOf(w)).toBeNull()
-  })
-
-  // Reachable state: once the count-in is spent, the step and a revealed, unguessed `me` are
-  // both set — checking the play first would jump the board to the clock before the count-in has
-  // handed over.
-  it('shows the start signal the page is playing, ahead of everything else', () => {
-    const w = mountCard({ round: aRound({ me: aPlay() }), step: '1' })
-
-    expect(playOf(w)).toEqual({ phase: 'start', beat: '1' })
-  })
-
-  // Same precedence, one step later: the reveal is in flight and the band says so, even though
-  // the round underneath it already carries a play.
-  it('holds the waiting face while the reveal is on its way', () => {
-    const w = mountCard({ round: aRound({ me: aPlay() }), step: 'waiting' })
-
-    expect(playOf(w)).toEqual({ phase: 'waiting' })
   })
 })

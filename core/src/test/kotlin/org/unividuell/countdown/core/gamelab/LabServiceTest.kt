@@ -20,12 +20,14 @@ import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
+import org.unividuell.countdown.core.findpattern.FindPatternLayout
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
@@ -529,6 +531,23 @@ class LabServiceTest(
         response.revealed shouldBe false
         // Withheld like the solution already is: the payload of a reveal-gated game is the board.
         response.payload.shouldBeNull()
+    }
+
+    @Test
+    fun `a sealed lab round hands out its scene before the reveal`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val response = service.open(
+            slug = community.slug, gameId = "find-pattern", seed = 42, phase = Phase.TWO,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        response.payload.shouldBeNull()
+        response.scene shouldBe FindPatternScene(
+            cols = FindPatternLayout.COLS,
+            rows = FindPatternLayout.ROWS,
+            patternLength = FindPatternLayout.PATTERN_LENGTH,
+        )
     }
 
     @Test

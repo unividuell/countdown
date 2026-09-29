@@ -1,13 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { nextTick, reactive } from 'vue'
+import { reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
-import { BEAT_MS } from '@/ui/useStartCeremony'
 import * as drawerControl from '@/nav/drawerControl'
 import type { LabRoundResponse } from '@/gamelab/types'
 
@@ -21,13 +20,13 @@ import type { LabRoundResponse } from '@/gamelab/types'
  * so a plain `const StubGame = defineComponent(...)` would not be initialised yet when the mock
  * factory runs. Following the same pattern as `src/nav/__tests__/NavDrawer.spec.ts`.
  */
-const { StubGame, StubBriefing } = await vi.hoisted(async () => {
+const { StubGame } = await vi.hoisted(async () => {
   const { defineComponent } = await import('vue')
   return {
     StubGame: defineComponent({
       name: 'StubGame',
       props: {
-        payload: { type: Object, required: true },
+        payload: { type: null, default: null },
         outcome: { type: null, default: null },
         myGuess: { type: null, default: null },
         solution: { type: null, default: null },
@@ -40,18 +39,13 @@ const { StubGame, StubBriefing } = await vi.hoisted(async () => {
         // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
         // default of `false` would let the case below pass with the binding missing entirely.
         closed: { type: Boolean, default: true },
+        sealed: { type: Boolean, default: false },
+        scene: { type: null, default: null },
       },
-      emits: ['guess'],
+      emits: ['guess', 'reveal'],
       template:
-        '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>',
-    }),
-    StubBriefing: defineComponent({
-      name: 'StubBriefing',
-      props: {
-        awardRule: { type: null, default: null },
-        awardPoints: { type: Number, default: null },
-      },
-      template: '<div data-test="stub-briefing" />',
+        '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>' +
+        '<button data-test="stub-reveal" @click="$emit(\'reveal\')">reveal</button>',
     }),
   }
 })
@@ -59,7 +53,6 @@ const { StubGame, StubBriefing } = await vi.hoisted(async () => {
 vi.mock('@/gamelab/games', () => ({
   labGameList: [{ id: 'stub', title: 'Stub' }],
   labGames: { stub: StubGame },
-  labBriefings: { stub: StubBriefing },
 }))
 
 const replace = vi.fn()
@@ -114,6 +107,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   game: 'stub',
   displayName: 'Stub',
   phase: 'ONE',
+  scene: null,
   payload: { lowerBound: 100, upperBound: 199 },
   solution: null,
   me: null,
@@ -157,16 +151,9 @@ function tool(testId: string): DOMWrapper<Element> {
   return new DOMWrapper(el)
 }
 
-/**
- * Click „Aufdecken“ and sit out the 3 · 2 · 1 the page plays in front of the request. Fake timers
- * only for the beats, real ones again before `flushPromises` — that helper waits on a real timer
- * of its own and never resolves on a frozen clock.
- */
-async function revealThroughSignal(w: VueWrapper): Promise<void> {
-  vi.useFakeTimers()
-  await w.get('[data-test="lab-reveal"]').trigger('click')
-  await vi.advanceTimersByTimeAsync(3 * BEAT_MS)
-  vi.useRealTimers()
+/** The game asks for the reveal the way a real one does once its cover's hold completes. */
+async function revealFromGame(w: VueWrapper): Promise<void> {
+  await w.get('[data-test="stub-reveal"]').trigger('click')
   await flushPromises()
 }
 
@@ -439,7 +426,7 @@ describe('lab page', () => {
     // game that keeps any per-round local state would carry it across a round it should not see.
     const w = await mountPage()
 
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
   })
 
   it('says the lab is unavailable when the backend does not have it', async () => {
@@ -689,7 +676,7 @@ describe('lab page', () => {
 
     const w = await mountPage()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
 
     // The URL seed changes ahead of the response — the exact race from the bug report. Asserting the
     // vnode key (not just props) is what makes this discriminate the bug: keying on the URL's seed
@@ -698,11 +685,11 @@ describe('lab page', () => {
     setQuery({ seed: '99' })
     await w.vm.$nextTick()
     expect(w.findComponent(StubGame).props('payload')).toEqual(first.payload)
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(42)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('42-0')
 
     resolveSecond(second)
     await flushPromises()
-    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe(99)
+    expect(w.findComponent(StubGame).vm.$.vnode.key).toBe('99-0')
 
     expect(w.findComponent(StubGame).props('payload')).toEqual(second.payload)
   })
@@ -999,52 +986,30 @@ describe('lab page', () => {
 
   // --- Task 20: the reveal gate, mirroring the real round's `sealed` face -----------------------
 
-  // The same argument the real card makes: the gate is the last moment the rules are free to
-  // read, so the boxes stand there too — and the lab mirrors the product rather than inventing a
-  // second answer.
-  it('carries the boxes on the gate, before the tester clock has anything to count', async () => {
+  it('mounts the game sealed while the round is not yet revealed', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       revealed: false,
       payload: null,
-      awardRule: 'CLOSEST_ONLY',
-      awardPoints: 9,
+      scene: { cols: 8 },
     } as never)
 
     const w = await mountPage()
+    const stub = w.getComponent(StubGame)
 
-    const briefing = w.getComponent(StubBriefing)
-    expect(briefing.props('awardRule')).toBe('CLOSEST_ONLY')
-    expect(briefing.props('awardPoints')).toBe(9)
+    expect(stub.props('sealed')).toBe(true)
+    expect(stub.props('payload')).toBeNull()
+    expect(stub.props('scene')).toEqual({ cols: 8 })
   })
 
-  it('shows the sealed gate instead of the game when the round is not yet revealed', async () => {
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      revealed: false,
-      payload: null,
-    } as never)
-
+  it('never seals a game that has not asked for a deliberate reveal', async () => {
     const w = await mountPage()
 
-    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(true)
-    expect(w.findComponent(StubGame).exists()).toBe(false)
-    expect(w.get('[data-test="lab-reveal-cost"]').text()).toBe(
-      'Deine Zeit läuft ab dem Aufdecken — und du hast nur einen Versuch.',
-    )
-  })
-
-  it('never gates a game that has not asked for a deliberate reveal', async () => {
-    // The default fixture already carries `revealed: true` from the first response — this pins that
-    // an untimed game skips the gate entirely rather than relying on a click to clear it.
-    const w = await mountPage()
-
-    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(false)
-    expect(w.findComponent(StubGame).exists()).toBe(true)
+    expect(w.getComponent(StubGame).props('sealed')).toBe(false)
     expect(api.revealLabRound).not.toHaveBeenCalled()
   })
 
-  it('reveals the round on click, and mounts the game once the response says so', async () => {
+  it('reveals the round when the game asks, and unseals it', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       revealed: false,
@@ -1053,19 +1018,16 @@ describe('lab page', () => {
     vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
 
     const w = await mountPage()
-    expect(w.findComponent(StubGame).exists()).toBe(false)
-
-    await revealThroughSignal(w)
+    await revealFromGame(w)
 
     expect(api.revealLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
-    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(false)
-    expect(w.findComponent(StubGame).exists()).toBe(true)
+    expect(w.getComponent(StubGame).props('sealed')).toBe(false)
   })
 
   it('puts the tester back in front of the gate after a reset, without a dead end', async () => {
     // A reset does not re-stamp the clock (see LabRoundStore.resetRound) — it genuinely clears the
-    // stamp, so the response comes back unrevealed. The tester must be able to leave this state by
-    // clicking "Aufdecken" again, not only by reloading the page.
+    // stamp, so the response comes back unrevealed. The tester must be able to reveal again, not
+    // only by reloading the page.
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       revealed: false,
@@ -1079,22 +1041,47 @@ describe('lab page', () => {
     } as never)
 
     const w = await mountPage()
-    await revealThroughSignal(w)
-    expect(w.findComponent(StubGame).exists()).toBe(true)
+    await revealFromGame(w)
+    expect(w.getComponent(StubGame).props('sealed')).toBe(false)
 
     await tool('lab-reset').trigger('click')
     await flushPromises()
 
-    expect(w.find('[data-test="lab-sealed"]').exists()).toBe(true)
-    const button = w.get('[data-test="lab-reveal"]')
-    expect(button.attributes('disabled')).toBeUndefined()
+    const stub = w.getComponent(StubGame)
+    expect(stub.props('sealed')).toBe(true)
+    expect(stub.props('disabled')).toBe(false)
 
-    await revealThroughSignal(w)
+    await revealFromGame(w)
     expect(api.revealLabRound).toHaveBeenCalledTimes(2)
-    expect(w.findComponent(StubGame).exists()).toBe(true)
+    expect(w.getComponent(StubGame).props('sealed')).toBe(false)
   })
 
-  it('counts the tester in and then runs their own clock', async () => {
+  it('remounts the game when a reset reseals an already-revealed round', async () => {
+    // A remount is what used to unseal a half-made selection or an open panorama for free, back
+    // when the reveal screen unmounted the game entirely — see the `resealCount` key in the page.
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'resetLabRound').mockResolvedValue({
+      ...round,
+      revealed: false,
+      payload: null,
+    } as never)
+
+    const w = await mountPage()
+    await revealFromGame(w)
+    const beforeReset = w.getComponent(StubGame).vm
+
+    await tool('lab-reset').trigger('click')
+    await flushPromises()
+
+    expect(w.getComponent(StubGame).vm).not.toBe(beforeReset)
+  })
+
+  it('runs the tester clock from the reveal on', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       revealed: false,
@@ -1103,18 +1090,9 @@ describe('lab page', () => {
     vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
 
     const w = await mountPage()
-    vi.useFakeTimers()
+    expect(w.getComponent(GameHeader).props('play')).toBeNull()
 
-    await w.get('[data-test="lab-reveal"]').trigger('click')
-    expect(w.getComponent(GameHeader).props('play')).toEqual({ phase: 'start', beat: '3' })
-
-    await vi.advanceTimersByTimeAsync(2 * BEAT_MS)
-    await nextTick()
-    expect(w.getComponent(GameHeader).props('play')).toEqual({ phase: 'start', beat: '1' })
-
-    await vi.advanceTimersByTimeAsync(BEAT_MS)
-    await nextTick()
-    vi.useRealTimers()
+    await revealFromGame(w)
 
     expect(w.getComponent(GameHeader).props('play')).toMatchObject({ phase: 'running' })
   })
@@ -1136,7 +1114,7 @@ describe('lab page', () => {
     } as never)
 
     const w = await mountPage()
-    await revealThroughSignal(w)
+    await revealFromGame(w)
     expect(w.getComponent(GameHeader).props('play')).toMatchObject({ phase: 'running' })
 
     await tool('lab-reset').trigger('click')

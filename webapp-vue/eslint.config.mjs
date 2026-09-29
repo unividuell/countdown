@@ -23,6 +23,12 @@ export default [
     rules: { 'vue/require-default-prop': 'off' },
   },
   {
+    // `beats` absent means "not a count-in", not "0 beats" — same reasoning as FlipDotBoard's
+    // `pad` above.
+    files: ['src/ui/HoldButton.vue'],
+    rules: { 'vue/require-default-prop': 'off' },
+  },
+  {
     // A spec that mounts a component against stubs needs one stub per collaborator, and they
     // belong in the spec that mounts them — a file per double would put the contract under test
     // one import away from the test asserting it.
