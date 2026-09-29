@@ -1,19 +1,22 @@
 # Entstauber — das Reaktionsspiel aus `huettehuette`, im Runden-Framework
 
-**Status:** beschlossenes Design (2026-09-14).
+**Status:** beschlossenes Design (2026-09-14), auf die Hülle umgestellt (2026-09-29).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md) (`GameType`,
 `GameRandom`, `awardFor`/`pointsFor`), dem [Bild-Pool](2026-09-07-community-image-pool-design.md) —
-dessen erster Abnehmer dies ist —, dem [Runden-Frontend](2026-08-14-round-frontend-design.md) und
-der [Spieluhr im Band](2026-09-11-game-stopwatch-design.md).
+dessen erster Abnehmer dies ist —, dem [Runden-Frontend](2026-08-14-round-frontend-design.md), der
+[Spieluhr im Band](2026-09-11-game-stopwatch-design.md) und der
+[Hülle](2026-09-25-reveal-cover-design.md) (`scene`, `RevealCover`, Halten ist Einzählen).
 
 **Steht neben:** [Musterung](2026-08-24-musterung-design.md), dem Spiel, das die
 Integritätsregeln validiert hat. Entstauber ist der erste Fall, der eine davon nicht einhalten kann,
 und benennt das.
 
 **Berührt:** ein neues Modulith-Modul `deduster` (ein Schema, eine Tabelle), den Adapter in
-`game.internal`, eine erste exportierte API aus `imagepool`, drei kleine Erweiterungen am
-gemeinsamen `GameType`-Vertrag, und im Frontend ein neues Spielverzeichnis samt Registry-Eintrag.
+`game.internal`, eine erste exportierte API aus `imagepool`, fünf kleine Erweiterungen am
+gemeinsamen Vertrag (`RoundContext.communityId`, `isAvailable`, `scoresOnDuration`, ein dritter
+Strom in `GameRandom`, `SCENE_ASSET_KEY`), und im Frontend ein neues Spielverzeichnis samt
+Registry-Eintrag, dazu je ein Prop an `HoldButton` (`beatMs`) und `RevealCover` (`timed`, `note`).
 
 ## Zweck
 
@@ -68,7 +71,7 @@ Original) — gewertet wird der erste Treffer.
 | Kachelreihenfolge aus `seedrandom(round)` im Browser | serverseitig gezogen, im Payload veröffentlicht | im Original konnte jeder Client sie nachrechnen; hier ist sie wenigstens ein Serverwert |
 | Spur mit vier Feldern pro Kachel, serverseitig nachgerechnet | `reactionsMs` + `endedBy` + `wrongTileIndex` | der Server kennt die Reihenfolge selbst; alles Übrige war Redundanz |
 | Unplausible Spur → HTTP 400 | Markierung, nie Abweisung | ein Lauf ist nicht wiederholbar; ein Fehlalarm dürfte ihn nicht kosten |
-| START-Knopf in der Karte | das Aufdecken der Runde **ist** der Start | nur so ist „ein Aufdecken = ein Lauf“ überhaupt beobachtbar |
+| START-Knopf in der Karte | das Halten auf der Hülle ist Aufdecken, Einzählen und Start in einem | nur so ist „ein Aufdecken = ein Lauf“ überhaupt beobachtbar |
 | 8×6 auf 4:3, vom Admin gesetzt | 48 Kacheln, Raster folgt der Orientierung des Bildes | der Pool wird von Handykameras gefüttert, Hochformat ist der Normalfall |
 | Takt vom Admin gesetzt | gezogen aus der Verteilung der 35 Originalrunden | es gibt keinen Admin mehr, und geraten wäre schlechter als abgeschrieben |
 | „scroll lock“-Häkchen | automatisch während des Laufs | niemand soll etwas einstellen müssen |
@@ -153,6 +156,42 @@ dadurch, dass ein Super-Admin ihn hochlädt, und es gibt keinen Seed im Repo.
 
 `AnnouncementService.materialise` filtert `catalog.ids()` damit, **bevor** `selection.pick` zieht.
 
+### `GameRandom` bekommt einen dritten Strom
+
+Entstaubers Bühne braucht gezogene Werte — Bild und Takt —, und `game-rounds.md` verbietet einer
+Bühne beide vorhandenen Ströme: aus `presentation` ließe sich der noch versiegelte Payload
+zurückrechnen, hier also die Kachelreihenfolge. Die Regel nennt den Ausweg selbst, einen dritten,
+unabhängig geseedeten Strom:
+
+```kotlin
+class GameRandom(val solution: SeededRandom, val presentation: SeededRandom, val scene: SeededRandom)
+```
+
+| Strom | darf veröffentlicht werden | Entstauber zieht |
+|---|---|---|
+| `scene` | vor dem Aufdecken | Bild, Takt |
+| `presentation` | ab dem Aufdecken | Kachelreihenfolge |
+| `solution` | nie | nichts |
+
+`independent` zieht einen dritten Seed aus derselben `SecureRandom`; `fromSeed` leitet ihn wie
+`presentation` über ein eigenes Salz ab, ein Seed in der Labor-URL reproduziert also weiter die
+ganze Runde. Die übrigen Spiele ziehen nie aus `scene` und merken nichts.
+
+### Ein Asset vor dem Aufdecken
+
+```kotlin
+/** Das Asset der Bühne: erreichbar, sobald die Runde angekündigt ist — ohne Play-Zeile. */
+const val SCENE_ASSET_KEY = 98
+```
+
+Das Gegenstück zu `SOLUTION_ASSET_KEY`. `PlayService.asset` prüft den Schlüssel **vor** der
+Play-Zeile, die es heute für jedes Asset verlangt (`NotRevealedException`); `LabService.asset`
+nimmt ihn in dieselbe `allowed`-Zeile. Jeder andere Schlüssel bleibt hinter `key in 0..stage`.
+
+Stufe 0 vor dem Aufdecken freizugeben wäre der falsche Schnitt: bei Anspielung ist sie der erste
+Schnipsel, also das Rätsel. Ein Spiel ohne Bühnen-Asset liefert für `98` `null`, der Client bekommt
+404.
+
 ## Die Runde
 
 ```kotlin
@@ -167,11 +206,15 @@ data class DedusterParams(
 )
 ```
 
-**Gezogen wird ausschließlich aus `random.presentation`**, in dieser Reihenfolge: Bild, Takt,
-Kachelreihenfolge. `random.solution` bleibt unberührt — und das ist eine Aussage, kein Versehen:
+**Gezogen wird nach Veröffentlichung:** Bild, dann Takt aus `random.scene` — beide liegen vor dem
+Aufdecken beim Client —, die Kachelreihenfolge aus `random.presentation`, denn sie kommt erst mit
+dem Payload. `random.solution` bleibt unberührt — und das ist eine Aussage, kein Versehen:
 Entstauber hat kein Geheimnis. Bild, Raster, Takt und Reihenfolge sieht der Spieler ohnehin; es gibt
 keinen Wert, aus dem sich etwas erschließen ließe, was nicht auf dem Bildschirm steht. Ein Kommentar
 an der Ziehung sagt das, damit niemand die fehlende Solution-Ziehung später „repariert“.
+
+Versiegelt ist nur die Reihenfolge, und nur bis zum Aufdecken: wer sie vorher kennte, könnte sie
+auswendig lernen, bevor irgendetwas zählt.
 
 Die Bildwahl schließt aus, was diese Edition schon hatte: `context.previousParams` liefert die
 früheren Entstauber-Params, deren `imageId` fallen aus der Kandidatenliste. Bleibt nichts übrig,
@@ -195,7 +238,7 @@ vergleichbar sind: 48 gegen 49 ist ein Rundungsfehler, 48 gegen 30 wäre eine an
 
 ### Takt
 
-Gezogen mit `SeededRandom.weightedPick` aus einer Gewichtstabelle:
+Gezogen mit `random.scene.weightedPick` aus einer Gewichtstabelle:
 
 ```
  900:1   1000:4   1100:4   1200:8   1300:9   1400:3   1500:1   1800:2   1900:1   2000:1
@@ -216,6 +259,16 @@ Keine Phasenabhängigkeit: `CLOSEST_ONLY` schärft Phase zwei bereits, ein zweit
 `random.presentation.shuffled((0 until cols * rows).toList())` — ein Aufruf, und `SeededRandom`
 bringt ihn mit.
 
+### Bühne
+
+```kotlin
+data class DedusterScene(val cols: Int, val rows: Int, val intervalMs: Int) : GameScene
+```
+
+Das Raster unter der Hülle braucht `cols`/`rows`, das Einzählen im Takt braucht `intervalMs`; das
+Foto kommt als Asset unter `SCENE_ASSET_KEY`. Feld-Set-Test in beide Richtungen, wie bei
+`FindPatternScene`.
+
 ### Payload
 
 ```kotlin
@@ -229,6 +282,9 @@ data class DedusterPayload(
 
 **Ohne `imageId`.** Die Bytes kommen über den Runden-Asset-Endpunkt; die Pool-Id im Payload wäre
 eine zweite, ungetorte Adresse auf dasselbe Bild. Feld-Set-Test wie bei Musterung.
+
+`cols`, `rows` und `intervalMs` stehen in Bühne **und** Payload — wie bei Musterung. Der Payload
+bleibt damit für sich lesbar, auch dort, wo keine Bühne mitkommt.
 
 `solution()` gibt `null` zurück. Der Lohn — „der verstaubte Schatz“ — ist, dass die Komponente nach
 dem Ende die Staubschicht fallen lässt; das braucht keinen zweiten Serverausgang. Entstauber ist
@@ -252,8 +308,7 @@ CREATE TABLE deduster.round_images (
 );
 ```
 
-`asset(params, roundGameId, 0)` liest sie; der Schlüssel `0` ist vor dem Tipp erreichbar
-(`PlayService.asset`: `key in 0..play.stage`, und `stage` ist bei einem einstufigen Spiel `0`).
+`asset(params, roundGameId, SCENE_ASSET_KEY)` liest sie; jeder andere Schlüssel gibt `null`.
 Idempotent, weil beim Ankündigungsrennen beide ersten Aufrufer den Haken ziehen: `INSERT … ON
 CONFLICT DO NOTHING`.
 
@@ -386,34 +441,51 @@ selbst lebt zwischen Aufdecken und Tipp vollständig im Browser. Ein eigener STA
 machte ein legitimes Neuladen *vor* dem Start ununterscheidbar von einem Abbruch *im* Lauf — dann
 kann niemand mehr etwas bemerken.
 
+Die [Hülle](2026-09-25-reveal-cover-design.md) liefert dafür alles: das Spiel ist gemountet, die
+Bühne steht unter Milchglas, und das Halten ist das Einzählen.
+
 ```
-tap „Aufdecken“          Antwort              Bild dekodiert
-      │                     │                       │
-      ▼                     ▼                       ▼
- Band: volles Feld    Karte: Staubraster      [3]─[2]─[1]─▶ Kachel 0
-      └ POST /reveal        └ Bild lädt im       └ Beats im Takt der Runde
-        (kein 3-2-1)          Hintergrund        └ „1“ hält, falls das Bild fehlt
+unter der Hülle                  halten, im Takt der Runde          Ring voll
+ Staubraster aus scene      ──▶  [3] ── [2] ── [1] ──────────────▶  POST /reveal
+ Foto (SCENE_ASSET_KEY)          je Beat intervalMs                   │
+ dekodiert → ready                                                    ▼  ein Takt nach „voll“
+                                                          Hülle weg ── Kachel 0
 ```
 
-- **Das Raster braucht das Foto nicht.** `cols`/`rows` stehen im Payload, die Staubschicht ist eine
-  Textur — das Brett steht vollständig, bevor ein Byte Foto da ist. Gebraucht wird das Bild erst,
-  wenn die erste Kachel fällt, also frühestens vier Beats später. Das Halten auf „1“ ist der
-  Notnagel, nicht der Normalfall.
-- **Eingezählt wird auf der Karte, nicht im Band.** Das Band zählt in die gewertete Null ein; hier
-  gibt es keine. Auf der Karte muss dafür niemand den Blick wandern lassen: die „1“ verschwindet
-  dort, wo gleich die erste Kachel leuchtet.
-- **Die Beats laufen im Takt der Runde**, nicht im Sekundentakt. Wer 3-2-1 gesehen hat, hat den Puls
-  dreimal gespürt — dasselbe, was im Original der leere erste `setInterval`-Durchlauf tat. Bei
-  2000 ms sind das 6 s Einzählen, bei 900 ms 2,7 s.
-- **Die Zeremonie im Band (`useStartCeremony`) bleibt den Uhr-Spielen.** Sie muss dort *vor* dem
-  POST liegen, weil der POST die gewertete Null stempelt; für ein Spiel ohne Zeitwertung fällt der
-  Zwang weg. Die Verzweigung ist `scoresOnDuration`, kein neuer Schalter.
+- **`ready` heißt: Foto dekodiert.** Das Raster steht aus `scene` sofort, das Foto lädt unter der
+  Hülle. Erst wenn `decode()` durch ist, erscheint der Knopf — niemand startet gegen ein halb
+  geladenes Bild. Scheitert das Laden, `failed`, und `retry` lädt neu; ein Versuch kostet das nicht.
+- **Eingezählt wird im Takt der Runde.** `HoldButton` bekommt neben `beats` einen Prop `beatMs`
+  (Vorgabe `BEAT_MS`), `RevealCover` reicht ihn durch; Entstauber hält `3 × intervalMs`. Wer 3-2-1
+  gehalten hat, hat den Puls dreimal gespürt — dasselbe, was im Original der leere erste
+  `setInterval`-Durchlauf tat. Bei 2000 ms sind das 6 s Halten, bei 900 ms 2,7 s.
+- **Kachel 0 fällt einen Takt nach dem vollen Ring**, nicht einen Takt nach dem Fallen der Hülle:
+  `delay = max(0, ringFullAt + intervalMs − now)`, gemessen mit `performance.now()`. Der Takt
+  schluckt die Laufzeit des POST, der Puls läuft ohne Bruch weiter. Kommt die Antwort später als ein
+  Takt, fällt Kachel 0 beim Eintreffen.
+- **Das Briefing sagt es an:** eine eigene Zeile „Beim Halten wird im Takt des Spiels eingezählt.“
+  Die Hülle trägt keinen Spieltext.
+- **Der Warnsatz ist ein anderer.** „Deine Zeit läuft ab dem Aufdecken“ stimmt hier nicht.
+  `RevealCover` bekommt `timed` (Vorgabe `true`), Entstauber setzt `false` und die Hülle sagt: „Der
+  Lauf startet mit dem Aufdecken — und du hast nur **einen** Versuch.“ Beide Sätze bleiben Konstanten
+  der Hülle. Die Vorgabe ist die sichere Richtung: ein ungezeitetes Spiel, das vor Zeit warnt,
+  schadet nicht, umgekehrt schon. Das Spiel setzt den Prop selbst — die Hülle gehört ihm, und es
+  weiß, ob es auf Zeit spielt.
 
 ### Neu geladen
 
 Der Server sieht nur „aufgedeckt, noch nicht getippt“ und kann Absturz, Anruf und Absicht nicht
-unterscheiden. Die Karte zählt deshalb neu ein und lässt spielen — **der Lauf trägt dann
-`restarted` im `outcome`** und ein Zeichen in der Auswertung.
+unterscheiden. Nach dem Neuladen ist `sealed` falsch, die Hülle der Karte liegt also nicht mehr.
+
+**Das Spiel legt dann seine eigene `RevealCover` auf**, ohne POST: dasselbe Halten, dasselbe
+Einzählen im Takt, `ready` erst mit dekodiertem Foto. `start` beginnt den Lauf direkt, Kachel 0
+einen Takt nach dem vollen Ring. Die Hülle zeigt unter dem Knopf einen Satz über ihren neuen Prop
+`note`: „Neu geladen — dein Lauf wird markiert.“ Der Lauf trägt `restarted` im `outcome` und ein
+Zeichen in der Auswertung.
+
+Erkannt wird das ohne Serverwissen und ohne Session-Storage: das Spiel wurde mit Payload und ohne
+Tipp gemountet und hat in diesem Mount nie `sealed` gesehen. Im Labor gilt dasselbe, dort ist
+`sealed = !round.revealed`.
 
 Dasselbe Instrument wie `implausible`, dieselbe Begründung: ein Absturz darf keine Runde kosten, die
 niemand wiederholen kann. Der Vermerk ist client-gemeldet und damit fälschbar — wer ihn fälscht,
@@ -425,9 +497,9 @@ fälscht aber auch die Reaktionszeiten, und dann ist die Markierung nicht das sc
 
 | Datei | Aufgabe |
 |---|---|
-| `DedusterBriefing.vue` | die fünf Regelzeilen, wörtlich aus dem Original |
+| `DedusterBriefing.vue` | die fünf Regelzeilen, wörtlich aus dem Original, dazu die Zeile zum Einzählen |
 | `DedusterGame.vue` | die Weiche: Brett ↔ Auswertung |
-| `DedusterBoard.vue` | Raster, Staub, Einzählen, Takt, Ripple, Abgabe |
+| `DedusterBoard.vue` | Raster, Staub, Hülle (auch die eigene nach dem Neuladen), Takt, Ripple, Abgabe |
 | `DedusterReveal.vue` | das freigelegte Bild, Kurve und Tabelle |
 | `DedusterChart.vue` | die Auswertungskurve als inline-SVG |
 | `DedusterScoreboard.vue`, `scoreboard.ts` | Zeilen und Sortierung |
@@ -520,6 +592,10 @@ Was gratis ist und trotzdem geschieht: die Reihenfolge erreicht das DOM nie. Das
 beiläufigen Blick im Elements-Panel; der Network-Tab bleibt offen, und das steht hier, statt
 vergessen zu werden.
 
+Vor dem Aufdecken ist die Reihenfolge dagegen dicht: sie steht nur im Payload, und die Bühne kommt
+aus einem eigenen Strom, aus dem sie sich nicht zurückrechnen lässt. Auswendig lernen kann sie
+niemand, bevor sein Lauf zählt.
+
 **„Zeitwertung ist serverseitig — keine Client-Stempel.“** Die ⌀-Reaktionszeit kommt aus der
 Browser-Uhr. Bei festem Takt gibt es keine serverseitige Ersatzmessung: `revealedAt → guessedAt` ist
 Leerlauf plus 48 Takte und für alle Durchhalter praktisch dieselbe Zahl. Und ein Abgleich gegen sie
@@ -539,8 +615,14 @@ hier ausgesprochen statt versprochen.
   Permutation; das Raster folgt der Orientierung an beiden Schwellen; die Taktverteilung; die
   Bildwahl bevorzugt den Community-Bestand und fällt auf den globalen zurück; `previousParams`
   schließt aus und verhungert nicht; `isAvailable` bei leeren Beständen.
-- Ein Stromtest wie bei Musterung: verschiedene Solution-Seeds ändern nichts an den Params — hier
-  trivial erfüllbar, weil `random.solution` unberührt bleibt, und genau deshalb festgenagelt.
+- Feld-Set von `scene()` in beide Richtungen: genau `cols`, `rows`, `intervalMs`.
+- Stromtests wie bei Musterung: verschiedene Solution-Seeds ändern nichts an den Params — hier
+  trivial erfüllbar, weil `random.solution` unberührt bleibt, und genau deshalb festgenagelt;
+  verschiedene Presentation-Seeds ändern nichts an Bild und Takt, verschiedene Scene-Seeds nichts an
+  der Reihenfolge.
+- `GameRandom.fromSeed`: die drei Ströme liefern verschiedene Folgen.
+- `PlayService.asset` und `LabService.asset`: `SCENE_ASSET_KEY` ist vor dem Aufdecken erreichbar,
+  jeder andere Schlüssel nicht; ein Spiel ohne Bühnen-Asset gibt 404.
 - `judge`: wirft bei Unverwertbarem; ein unbrauchbarer `wrongTileIndex` kostet den Lauf nicht;
   markiert statt zu werfen; `qualifies`/`deviation`/`outcome` exakt; der Tipp wird neu gebaut und
   trägt keine Fremdfelder.
@@ -560,13 +642,21 @@ hier ausgesprochen statt versprochen.
 - `scoreboard.ts`: Sortierung und das „—“.
 - `DedusterChart`: die Skalenrechnung (Level → x, ms → y), und dass der Scrub die Fehlkacheln genau
   des getroffenen Levels meldet.
-- `DedusterBoard`: die Reihenfolge steht nicht im DOM.
+- `DedusterBoard`: die Reihenfolge steht nicht im DOM; `ready` erst nach dem Dekodieren des Fotos;
+  Kachel 0 einen Takt nach dem vollen Ring, bei später Antwort beim Eintreffen; mit Payload, ohne
+  Tipp und nie `sealed` gemountet → eigene Hülle mit `note`, `start` sendet keinen Reveal, der Tipp
+  trägt `restarted`.
+- `HoldButton` mit `beatMs`: `holdMs = beats × beatMs`, ohne `beatMs` wie bisher.
+- `RevealCover`: `timed = false` zeigt den zweiten Satz, `note` erscheint unter dem Knopf; ohne
+  beide Props wie bisher.
 
 ## Folgen für andere Dokumente
 
 - `game-integrity.md` bekommt den Absatz oben: das erste Spiel, das zwei seiner Regeln nicht
   einhalten kann, und warum das entschieden und nicht vergessen ist.
 - `game-rounds.md`: `requiresReveal` und `scoresOnDuration` sind zwei Fragen; die Dauer wird
-  veröffentlicht, wenn sie die Wertung ist.
+  veröffentlicht, wenn sie die Wertung ist. Der dritte Strom existiert jetzt („which nothing builds
+  today“ fällt), und `SCENE_ASSET_KEY` ist das einzige Asset vor dem Aufdecken.
+- Die Hüllen-Spec: ihr Nachtrag zu Entstauber ist mit dieser Fassung erledigt.
 - `modules-and-migrations.md`: `deduster` in die Modulliste.
 - Die Bild-Pool-Spec: die Platzhalter-Zusage gilt nur noch bis zur Ankündigung.
