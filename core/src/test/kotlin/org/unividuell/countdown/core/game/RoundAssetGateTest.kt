@@ -67,6 +67,7 @@ class RoundAssetGateTest(
                 outcome = null,
             )
             override fun requiresReveal(params: GatedParams) = false
+            override fun scoresOnDuration(params: GatedParams) = false
             override fun stages(params: GatedParams) = 5
             override fun asset(params: GatedParams, roundGameId: UUID, key: Int): RoundAsset? =
                 when (key) {

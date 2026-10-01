@@ -83,7 +83,9 @@ const playStartedAt = ref<string | null>(null)
 
 const labPlay = computed<PlayClock | null>(() => {
   const since = playStartedAt.value
-  return since !== null && round.value?.me == null ? { phase: 'running', since } : null
+  return since !== null && round.value?.me == null && round.value?.scoresOnDuration === true
+    ? { phase: 'running', since }
+    : null
 })
 
 function writeSeed(next: number): void {

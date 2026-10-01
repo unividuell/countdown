@@ -80,6 +80,7 @@ class RoundHistoryServiceTest(
             override fun draw(random: GameRandom, context: RoundContext) = PastParams(answer = "42")
             override fun present(params: PastParams) = PastPayload(hint = "zwei Ziffern")
             override fun requiresReveal(params: PastParams) = false
+            override fun scoresOnDuration(params: PastParams) = false
             override fun judge(params: PastParams, guess: JsonNode) = Judgement(
                 qualifies = guess.get("answer")?.asString() == params.answer,
                 deviation = 0.0,

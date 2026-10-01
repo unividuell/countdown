@@ -141,6 +141,8 @@ class GuessHueGameType(private val dataset: GuessHueDataset) : GameType<GuessHue
      */
     override fun requiresReveal(params: GuessHueParams) = false
 
+    override fun scoresOnDuration(params: GuessHueParams) = false
+
     override fun solution(params: GuessHueParams) = GuessHueSolution(
         targetHue = params.hue,
         toleranceDeg = params.toleranceDeg,

@@ -128,8 +128,7 @@ class LabService(
         // Whether this round needs a deliberate reveal, checked before judging: a game that asked for
         // one must have it on record before any guess counts, the same guard `PlayService.guess` gets
         // for free from a missing play row. The lab keeps no row, so it asks the store's own stamp.
-        val timed = handle.requiresReveal(playing.params)
-        if (timed &&
+        if (handle.requiresReveal(playing.params) &&
             !store.hasOpened(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         ) {
             throw LabNotRevealedException()
@@ -152,16 +151,16 @@ class LabService(
                 me = userId,
             )
         }
-        // A staged game's distance is the stage, and the store never sees stages; a timed game's is
-        // the duration since reveal, computed by the store from its own stamp — `timed` is already
-        // resolved above. One adjustment here, one flag passed down — the same split `PlayService`
-        // makes.
+        // A staged game's distance is the stage, and the store never sees stages; a game that scores
+        // on duration has the duration since reveal, computed by the store from its own stamp. One
+        // adjustment here, one flag passed down — the same split `PlayService` makes.
         val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
             // The game's own narrowing wins where it offers one — the same line `PlayService`
             // writes, so the lab stores a tip in the shape a real round would.
-            userId = userId, guess = adjusted.guess ?: guess, judgement = adjusted, timed = timed,
+            userId = userId, guess = adjusted.guess ?: guess, judgement = adjusted,
+            timed = handle.scoresOnDuration(playing.params),
         )
         return when (result) {
             is RecordResult.Recorded -> respond(
@@ -464,6 +463,7 @@ class LabService(
             displayName = handle.displayName,
             awardRule = snapshot.round.award.rule,
             awardPoints = snapshot.round.award.points,
+            scoresOnDuration = handle.scoresOnDuration(snapshot.round.params),
             scene = handle.scene(snapshot.round.params),
             // Withheld until revealed, the same way solution is withheld until guessed: for a game
             // that gates on a reveal, the payload IS the board, so sending it early would make the

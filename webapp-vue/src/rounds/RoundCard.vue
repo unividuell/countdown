@@ -84,7 +84,7 @@ const disabled = computed(() => props.closed || props.busy || face.value === 'do
 const play = computed<PlayClock | null>(() => {
   const me = props.round?.me
   if (props.closed || me == null || me.guessedAt !== null) return null
-  return props.round?.game?.requiresReveal === true
+  return props.round?.game?.scoresOnDuration === true
     ? { phase: 'running', since: me.revealedAt }
     : null
 })

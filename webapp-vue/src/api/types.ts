@@ -198,6 +198,8 @@ export interface GameDto {
   displayName: string
   /** True when this round wants a deliberate reveal — then it may be revealed exactly once. */
   requiresReveal: boolean
+  /** Whether reveal-to-guess is the score — what starts the band's stopwatch. */
+  scoresOnDuration: boolean
 }
 
 /**

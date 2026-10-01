@@ -115,6 +115,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   tookOverRound: false,
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
+  scoresOnDuration: false,
   myStage: 0,
   // Every existing test in this file plays a game that never asked for a deliberate reveal — the
   // stub stands in for one of those, so it stays mounted from the first response, same as before
@@ -1084,10 +1085,15 @@ describe('lab page', () => {
   it('runs the tester clock from the reveal on', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
+      scoresOnDuration: true,
       revealed: false,
       payload: null,
     } as never)
-    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({
+      ...round,
+      scoresOnDuration: true,
+      revealed: true,
+    } as never)
 
     const w = await mountPage()
     expect(w.getComponent(GameHeader).props('play')).toBeNull()
@@ -1103,12 +1109,18 @@ describe('lab page', () => {
   it('retires the tester clock when the round is opened again', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
+      scoresOnDuration: true,
       revealed: false,
       payload: null,
     } as never)
-    vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+    vi.spyOn(api, 'revealLabRound').mockResolvedValue({
+      ...round,
+      scoresOnDuration: true,
+      revealed: true,
+    } as never)
     vi.spyOn(api, 'resetLabRound').mockResolvedValue({
       ...round,
+      scoresOnDuration: true,
       revealed: false,
       payload: null,
     } as never)

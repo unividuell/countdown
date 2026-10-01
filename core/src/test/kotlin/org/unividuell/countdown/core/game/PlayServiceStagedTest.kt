@@ -72,6 +72,7 @@ class PlayServiceStagedTest(
                 outcome = null,
             )
             override fun requiresReveal(params: StagedParams) = false
+            override fun scoresOnDuration(params: StagedParams) = false
             override fun stages(params: StagedParams) = 5
         }
     }

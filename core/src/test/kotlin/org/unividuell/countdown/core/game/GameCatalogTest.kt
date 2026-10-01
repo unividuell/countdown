@@ -29,6 +29,7 @@ class GameCatalogTest {
             FakeParams(label = "$id-${context.roundNumber}", secret = random.solution.nextInt(1000))
         override fun present(params: FakeParams) = FakePayload(label = params.label)
         override fun requiresReveal(params: FakeParams) = params.secret % 2 == 0
+        override fun scoresOnDuration(params: FakeParams) = params.secret % 3 == 0
         override fun judge(params: FakeParams, guess: JsonNode) = Judgement(
             qualifies = guess.get("ok")?.asBoolean() == true,
             deviation = 0.0,
@@ -124,6 +125,16 @@ class GameCatalogTest {
         // the handle, from blobs the handle itself never drew.
         handle.requiresReveal(mapper.valueToTree(FakeParams(label = "even", secret = 4))) shouldBe true
         handle.requiresReveal(mapper.valueToTree(FakeParams(label = "odd", secret = 5))) shouldBe false
+    }
+
+    @Test
+    fun `the handle answers the duration question from a stored params blob`() {
+        val handle = catalog(FakeGame("alpha")).handle("alpha").shouldNotBeNull()
+
+        // Mod 3 on purpose, not mod 2: the two questions must not share an answer, or a handle
+        // wired to `requiresReveal` would pass.
+        handle.scoresOnDuration(mapper.valueToTree(FakeParams(label = "three", secret = 3))) shouldBe true
+        handle.scoresOnDuration(mapper.valueToTree(FakeParams(label = "four", secret = 4))) shouldBe false
     }
 
     @Test

@@ -34,10 +34,16 @@ enum class NoGameReason {
 data class RoundDto(val number: Int, val label: String, val start: Instant, val end: Instant)
 
 /**
- * [requiresReveal] rides on the game rather than on the round, because it is the game's answer — and
- * it is therefore absent exactly when there is no game to answer for.
+ * [requiresReveal] and [scoresOnDuration] ride on the game rather than on the round, because they
+ * are the game's answers — and are therefore absent exactly when there is no game to answer for.
+ * The first seals the round until a deliberate reveal; the second starts the band's stopwatch.
  */
-data class GameDto(val id: String, val displayName: String, val requiresReveal: Boolean)
+data class GameDto(
+    val id: String,
+    val displayName: String,
+    val requiresReveal: Boolean,
+    val scoresOnDuration: Boolean,
+)
 
 /**
  * One cast ballot, with the name attached. Nothing about the vote is secret — not the counts and
@@ -77,8 +83,7 @@ data class OtherPlayDto(
      * The timestamps above stay absent: *when* somebody looked is theirs. But for a game that scores
      * on time the duration is not behaviour, it is the result — under `CLOSEST_ONLY` it is *why* the
      * winner won, and „what the others played and what it scored is the round, and they get it“. The
-     * condition is `GameType.requiresReveal`, not a new switch: that flag already means „the clock is
-     * part of this game“, so a game where the duration is nobody's business never publishes one.
+     * condition is `GameType.scoresOnDuration`: published exactly when the duration is the score.
      */
     val durationMs: Long?,
     /** Every vote cast on this tip, by name. Empty for a game without peer review. */

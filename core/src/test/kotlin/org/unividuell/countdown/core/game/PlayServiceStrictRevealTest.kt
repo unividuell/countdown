@@ -72,6 +72,7 @@ class PlayServiceStrictRevealTest(
             override fun judge(params: StrictParams, guess: JsonNode) =
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: StrictParams) = true
+            override fun scoresOnDuration(params: StrictParams) = true
             override fun scene(params: StrictParams) = StrictScene(size = 3)
         }
     }

@@ -43,6 +43,9 @@ class GameTypeHandle<P : Any>(
     /** Whether this round needs a deliberate reveal, from a stored `params` blob. */
     fun requiresReveal(params: JsonNode): Boolean = type.requiresReveal(paramsOf(params))
 
+    /** Whether reveal-to-guess is this round's score, from a stored `params` blob. */
+    fun scoresOnDuration(params: JsonNode): Boolean = type.scoresOnDuration(paramsOf(params))
+
     /** Whether this round's tips are open to peer review, from a stored `params` blob. */
     fun allowsPeerReview(params: JsonNode): Boolean = type.allowsPeerReview(paramsOf(params))
 

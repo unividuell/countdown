@@ -82,6 +82,7 @@ class ReviewServiceTest(
                 outcome = null,
             )
             override fun requiresReveal(params: ReviewParams) = false
+            override fun scoresOnDuration(params: ReviewParams) = false
             override fun allowsPeerReview(params: ReviewParams) = true
         }
     }

@@ -155,6 +155,17 @@ interface GameType<P : Any> {
     fun requiresReveal(params: P): Boolean
 
     /**
+     * Whether the span from the reveal to the guess IS this game's score.
+     *
+     * Separate from [requiresReveal] because the two questions part ways: Entstauber needs the one
+     * deliberate reveal, but scores on reaction times its own judge computes. When `true`, the
+     * framework replaces [Judgement.deviation] with that span and publishes it as `durationMs`.
+     *
+     * No default, for the same reason as [requiresReveal]: the convenient answer is not the safe one.
+     */
+    fun scoresOnDuration(params: P): Boolean
+
+    /**
      * Whether this game's tips may be confirmed or flagged by the other players afterwards.
      *
      * **With** a default, unlike [requiresReveal] — and that is the same rule, not an exception:

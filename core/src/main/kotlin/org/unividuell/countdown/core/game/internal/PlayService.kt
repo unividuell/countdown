@@ -113,13 +113,13 @@ class PlayService(
             return responses.of(current = current.copy(roundGame = round), viewerId = userId)
         }
         // Framework state the game cannot know, in both branches. For a staged game the distance IS
-        // the stage. For a game that asked for a deliberate reveal it is the time that reveal
+        // the stage. For a game that scores on duration it is the time since that reveal
         // started: the clock belongs to the server, and `judge(params, guess)` has no way to reach
         // it — which is exactly why the game returns a meaningless 0.0 and this line decides.
         val guessedAt = clock.instant()
         val deviation = when {
             stages > 1 -> play.stage.toDouble()
-            current.handle.requiresReveal(round.params) ->
+            current.handle.scoresOnDuration(round.params) ->
                 durationMsBetween(revealedAt = play.revealedAt, guessedAt = guessedAt).toDouble()
             else -> judgement.deviation
         }
