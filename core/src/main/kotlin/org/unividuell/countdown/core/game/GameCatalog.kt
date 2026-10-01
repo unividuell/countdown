@@ -20,6 +20,9 @@ class GameTypeHandle<P : Any>(
     val id: String get() = type.id
     val displayName: String get() = type.displayName
 
+    /** Whether this game can draw for the round described by [context]. */
+    fun isAvailable(context: RoundContext): Boolean = type.isAvailable(context)
+
     /** Draw a round and turn it into the tree the `params` column stores. */
     fun draw(random: GameRandom, context: RoundContext): JsonNode =
         mapper.valueToTree(type.draw(random = random, context = context))
@@ -89,6 +92,10 @@ class GameCatalog(games: List<GameType<*>>, mapper: ObjectMapper) {
      * bean order — which Spring does not promise — must not decide which game a round gets.
      */
     fun ids(): List<String> = handles.keys.sorted()
+
+    /** [ids] without the games that cannot draw for this round — still sorted, for the same reason. */
+    fun availableIds(context: RoundContext): List<String> =
+        ids().filter { id -> handles.getValue(id).isAvailable(context) }
 
     fun handle(id: String): GameTypeHandle<*>? = handles[id]
 

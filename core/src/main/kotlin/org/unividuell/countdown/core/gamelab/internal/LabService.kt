@@ -61,7 +61,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = round)
         // No stamp here on purpose: landing on the lab page is not a deliberate reveal, the same
         // distinction `useRound.ts`'s `sealed` face draws for a real round. [reveal] is the one call
@@ -91,7 +91,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = round)
         // After store.open() on purpose, same reasoning [open] used to carry: that call is what
         // decides tookOverRound, and marking first would make this method's own eviction check land
@@ -117,7 +117,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         // The round this request will actually play — the stored one if the key matches, `round`
         // itself if it switches seed/phase (roundFor() never creates or evicts). Judging happens
         // against this rather than against a mutation, and `record` is then told to store the same
@@ -184,7 +184,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         val stages = handle.stages(playing.params)
         // No skip off the top: the exits up there are the terminal guess, or giving up.
@@ -212,7 +212,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val result = store.record(
@@ -246,7 +246,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = playing)
@@ -271,7 +271,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         return respond(
             communityId = communityId,
             handle = handle,
@@ -291,7 +291,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         return respond(
             communityId = communityId,
             handle = handle,
@@ -320,7 +320,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = voterUserId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         if (!handle.allowsPeerReview(playing.params)) throw LabReviewNotOpenException()
         if (targetUserId == voterUserId) throw LabReviewNotAllowedException("you cannot vote on your own tip")
@@ -353,7 +353,7 @@ class LabService(
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = adminId, isSuperAdmin = isSuperAdmin,
         )
-        val round = chooseRound(handle = handle, seed = seed, phase = phase)
+        val round = chooseRound(communityId = communityId, handle = handle, seed = seed, phase = phase)
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         if (!handle.allowsPeerReview(playing.params)) throw LabReviewNotOpenException()
         val updated = store.override(
@@ -393,18 +393,17 @@ class LabService(
      * first round of phase two and therefore its lowest stake; the number is arbitrary, the fact that
      * it comes out of the real function is not.
      */
-    private fun chooseRound(handle: GameTypeHandle<*>, seed: Int, phase: Phase): LabRound {
+    private fun chooseRound(communityId: UUID, handle: GameTypeHandle<*>, seed: Int, phase: Phase): LabRound {
         val award: Award = awardFor(
             roundNumber = LAB_ROUND_NUMBER,
             phaseTwoStartRound = if (phase == Phase.TWO) LAB_ROUND_NUMBER else null,
         )
+        val context = RoundContext(communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase)
+        if (!handle.isAvailable(context)) throw UnknownLabGameException("'${handle.id}' cannot draw here")
         return LabRound(
             seed = seed,
             phase = phase,
-            params = handle.draw(
-                random = GameRandom.fromSeed(seed),
-                context = RoundContext(roundNumber = LAB_ROUND_NUMBER, phase = phase),
-            ),
+            params = handle.draw(random = GameRandom.fromSeed(seed), context = context),
             award = award,
         )
     }

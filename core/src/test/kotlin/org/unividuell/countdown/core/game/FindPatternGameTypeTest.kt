@@ -15,12 +15,14 @@ import org.unividuell.countdown.core.game.internal.FindPatternOutcome
 import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 /**
  * The adapter, tested without a Spring context: it has no collaborators to inject — everything it
  * needs is `findpattern`'s pure functions.
  */
 class FindPatternGameTypeTest {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val game = FindPatternGameType()
     private val mapper = JsonMapper.builder().build()
@@ -32,7 +34,7 @@ class FindPatternGameTypeTest {
                 presentation = SeededRandom.fromSeed(presentationSeed),
                 scene = SeededRandom.fromSeed(0x5CE),
             ),
-            context = RoundContext(roundNumber = 12, phase = phase),
+            context = RoundContext(communityId = community, roundNumber = 12, phase = phase),
         )
 
     private fun guessOf(startIndex: Int) = mapper.readTree("""{"startIndex":$startIndex}""")

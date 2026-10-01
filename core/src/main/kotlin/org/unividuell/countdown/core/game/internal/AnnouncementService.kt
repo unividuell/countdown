@@ -89,7 +89,7 @@ class AnnouncementService(
             edition = edition,
             round = round,
             previousRoundNumber = previous,
-            roundGame = existing ?: materialise(edition = edition, round = round)
+            roundGame = existing ?: materialise(communityId = communityId, edition = edition, round = round)
                 ?: return ResolvedRound.NoGame(
                     communityId = communityId, edition = edition, round = round,
                     previousRoundNumber = previous, reason = NoGameReason.NO_GAME_TYPE,
@@ -103,11 +103,16 @@ class AnnouncementService(
         previousRoundNumber = null, reason = NoGameReason.NOT_SCHEDULED,
     )
 
-    private fun materialise(edition: CommunityEdition, round: Round): RoundGame? {
+    private fun materialise(communityId: UUID, edition: CommunityEdition, round: Round): RoundGame? {
         val history = store.history(edition = edition, roundNumber = round.number)
         val random = GameRandom.independent(secureRandom)
+        val context = RoundContext(
+            communityId = communityId,
+            roundNumber = round.number,
+            phase = Phase.of(edition = edition, roundNumber = round.number),
+        )
         val typeId = selection.pick(
-            candidates = catalog.ids(),
+            candidates = catalog.availableIds(context),
             history = history,
             // The chosen type is announced, so it is a published value and comes from the published
             // stream — the same rule that governs the payload.
@@ -126,9 +131,7 @@ class AnnouncementService(
             gameType = typeId,
             params = handle.draw(
                 random = random,
-                context = RoundContext(
-                    roundNumber = round.number,
-                    phase = Phase.of(edition = edition, roundNumber = round.number),
+                context = context.copy(
                     previousParams = store.previousParams(edition = edition, gameType = typeId),
                 ),
             ),

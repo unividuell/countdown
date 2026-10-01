@@ -61,9 +61,13 @@ data class Judgement(
     val outcome: GameOutcome?,
 )
 
-/** What a game may know about the round it is drawing for. [previousParams] are the frozen params
- *  of this edition's earlier rounds OF THE SAME GAME TYPE — for draws that avoid repetition. */
+/**
+ * What a game may know about the round it is drawing for. [communityId] is whose round it is — the
+ * image pool is per community. [previousParams] are the frozen params of this edition's earlier
+ * rounds OF THE SAME GAME TYPE — for draws that avoid repetition.
+ */
 data class RoundContext(
+    val communityId: UUID,
     val roundNumber: Int,
     val phase: Phase,
     val previousParams: List<JsonNode> = emptyList(),
@@ -106,6 +110,14 @@ interface GameType<P : Any> {
      * see there for why that is not a stylistic preference.
      */
     fun draw(random: GameRandom, context: RoundContext): P
+
+    /**
+     * Whether this game can draw for this round at all. `true` by default — and here the default is
+     * the safe direction, because a game that says nothing does not switch itself off.
+     *
+     * The selection draws from the filtered list; a game without content never comes up.
+     */
+    fun isAvailable(context: RoundContext): Boolean = true
 
     /**
      * What the player sees. Must never carry the solution, and must be drawn from

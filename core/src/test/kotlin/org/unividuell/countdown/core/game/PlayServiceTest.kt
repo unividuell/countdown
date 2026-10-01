@@ -101,7 +101,7 @@ class PlayServiceTest(
             gameType = "guess-hue",
             params = requireNotNull(catalog.handle("guess-hue")).draw(
                 random = GameRandom.independent(SecureRandom()),
-                context = RoundContext(roundNumber = roundNumber, phase = phase),
+                context = RoundContext(communityId = edition.communityId, roundNumber = roundNumber, phase = phase),
             ),
             award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = edition.phaseTwoStartRound),
             announcedAt = clock.instant(),

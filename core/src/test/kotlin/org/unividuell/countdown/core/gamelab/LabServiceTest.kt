@@ -109,7 +109,7 @@ class LabServiceTest(
     private fun drawnParams(seed: Int, phase: Phase = Phase.ONE) =
         catalog.handle("guess-hue")!!.draw(
             random = GameRandom.fromSeed(seed),
-            context = RoundContext(roundNumber = 12, phase = phase),
+            context = RoundContext(communityId = communityId, roundNumber = 12, phase = phase),
         )
 
     private fun expectedPayload(seed: Int, phase: Phase = Phase.ONE) =

@@ -15,8 +15,10 @@ import org.unividuell.countdown.core.songsnippet.SnippetCutter
 import org.unividuell.countdown.core.songsnippet.SongCatalog
 import org.unividuell.countdown.core.songsnippet.SongSnippetAudioStore
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 class SongSnippetGameTypeTest {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val mapper = JsonMapper.builder().build()
 
@@ -48,6 +50,7 @@ class SongSnippetGameTypeTest {
             scene = SeededRandom.fromSeed(0x5CE),
         ),
         context = RoundContext(
+            communityId = community,
             roundNumber = 12,
             phase = Phase.ONE,
             previousParams = previous.map { mapper.valueToTree(it) },
@@ -131,7 +134,7 @@ class SongSnippetGameTypeTest {
         val payloads = (1..10).map { seed ->
             game.present(game.draw(
                 random = GameRandom(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(7), scene = SeededRandom.fromSeed(0x5CE)),
-                context = RoundContext(roundNumber = 12, phase = Phase.ONE),
+                context = RoundContext(communityId = community, roundNumber = 12, phase = Phase.ONE),
             ))
         }
         payloads.distinct().size shouldBe 1
