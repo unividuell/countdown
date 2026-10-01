@@ -44,4 +44,15 @@ describe('DedusterScoreboard', () => {
 
     expect(w.emitted('select')).toEqual([['u1']])
   })
+
+  it('keeps its focus ring inside the cell that clips it', () => {
+    const w = mount(DedusterScoreboard, {
+      props: { rows: [ROW], live: false, animate: false, selectedUserId: null },
+    })
+
+    const classes = w.get('[data-test="select-u1"]').classes()
+
+    expect(classes).toContain('focus-visible:outline-2')
+    expect(classes).toContain('focus-visible:-outline-offset-2')
+  })
 })

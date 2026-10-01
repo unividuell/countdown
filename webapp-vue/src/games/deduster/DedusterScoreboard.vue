@@ -37,7 +37,7 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
       <button
         type="button"
         :data-test="`select-${row.userId}`"
-        class="w-full cursor-pointer truncate text-start"
+        class="w-full cursor-pointer truncate text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
         :class="props.selectedUserId === row.userId ? 'font-semibold underline' : ''"
         :aria-pressed="props.selectedUserId === row.userId"
         @click="emit('select', row.userId)"
