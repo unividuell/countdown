@@ -74,19 +74,9 @@ object ImageIntake {
      * of it needed. The second, smooth step then does the quality work on a small image.
      */
     fun thumbnail(bytes: ByteArray, mediaType: String, maxEdge: Int): ByteArray {
-        val decoded = withReader(bytes = bytes, mediaType = mediaType) { reader ->
-            val longEdge = max(a = reader.getWidth(0), b = reader.getHeight(0))
-            val step = subsamplingStep(longEdge = longEdge, maxEdge = maxEdge)
-            val param = reader.defaultReadParam.apply { setSourceSubsampling(step, step, 0, 0) }
-            reader.read(0, param)
+        val oriented = decodedAsShown(bytes = bytes, mediaType = mediaType) { width, height ->
+            subsamplingStep(longEdge = max(a = width, b = height), maxEdge = maxEdge)
         }
-
-        // Flattened onto white FIRST: every buffer below is TYPE_INT_RGB, which starts out black,
-        // so rotating or scaling a transparent PNG before the white ground is laid down turns its
-        // alpha into black. JPEG has no alpha either way; a photo pool's PNGs are the exception.
-        val opaque = flattenedOntoWhite(decoded)
-
-        val oriented = applyOrientation(image = opaque, orientation = orientationOf(bytes))
         val scale = minOf(a = 1.0, b = maxEdge.toDouble() / max(a = oriented.width, b = oriented.height))
         val target = if (scale == 1.0) oriented else scaled(
             source = oriented,
@@ -97,6 +87,41 @@ object ImageIntake {
         val out = ByteArrayOutputStream()
         ImageIO.write(target, "jpeg", out)
         return out.toByteArray()
+    }
+
+    /**
+     * Header and EXIF tag only, never a decode: the size the image is *shown* at. Orientations 5–8
+     * turn the picture by 90°, so width and height trade places.
+     */
+    fun displayDimensions(bytes: ByteArray, mediaType: String): Dimensions {
+        val stored = probe(bytes = bytes, mediaType = mediaType)
+        return if (orientationOf(bytes) in 5..8) Dimensions(width = stored.height, height = stored.width) else stored
+    }
+
+    /**
+     * The image as shown — EXIF orientation applied, transparency flattened onto white — decoded
+     * subsampled as far as possible while the short edge stays at or above [minShortEdge]. For a
+     * consumer that crops and scales itself; the short edge is the one a centre crop never loses.
+     */
+    fun displayed(bytes: ByteArray, mediaType: String, minShortEdge: Int): BufferedImage =
+        decodedAsShown(bytes = bytes, mediaType = mediaType) { width, height ->
+            max(a = 1, b = minOf(a = width, b = height) / minShortEdge)
+        }
+
+    /** Decode subsampled by [step] (from the source's width and height), flatten, rotate as shown. */
+    private fun decodedAsShown(
+        bytes: ByteArray,
+        mediaType: String,
+        step: (width: Int, height: Int) -> Int,
+    ): BufferedImage {
+        val decoded = withReader(bytes = bytes, mediaType = mediaType) { reader ->
+            val by = step(reader.getWidth(0), reader.getHeight(0))
+            val param = reader.defaultReadParam.apply { setSourceSubsampling(by, by, 0, 0) }
+            reader.read(0, param)
+        }
+        // Flattened onto white FIRST: every buffer below is TYPE_INT_RGB, which starts out black,
+        // so rotating a transparent PNG before the white ground is laid down turns its alpha black.
+        return applyOrientation(image = flattenedOntoWhite(decoded), orientation = orientationOf(bytes))
     }
 
     /**

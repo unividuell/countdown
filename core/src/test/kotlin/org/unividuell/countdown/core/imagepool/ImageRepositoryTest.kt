@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.data.jdbc.repository.query.Query
+import org.springframework.jdbc.core.JdbcTemplate
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
@@ -48,6 +49,7 @@ class ImageRepositoryTest(
     @Autowired val communities: CommunityService,
     @Autowired val users: UserRepository,
     @Autowired val service: ImagePoolService,
+    @Autowired val jdbc: JdbcTemplate,
 ) {
     private val createdCommunities = mutableListOf<UUID>()
 
@@ -55,6 +57,13 @@ class ImageRepositoryTest(
     fun cleanUpCommunities() {
         createdCommunities.forEach { communityRepo.deleteById(it) }
         createdCommunities.clear()
+    }
+
+    @AfterEach
+    fun cleanUpGlobalPool() {
+        // The global pool is shared by the whole suite; a leftover row here is an "available image"
+        // for every later announcement — and these test rows do not decode.
+        jdbc.update("DELETE FROM imagepool.images WHERE community_id IS NULL")
     }
 
     private fun user(login: String): UUID =
