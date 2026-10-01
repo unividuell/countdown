@@ -75,7 +75,8 @@ snippet's WAV ladder, not a 225-byte PNG).
 
 ## The ceiling, named — Entstauber
 
-The first game that keeps two of the rules above, by necessity, not by omission.
+The first game that cannot keep two of the rules above — "From parseable to perceptual" and "Time
+scoring is server-authoritative" — by necessity, not by omission.
 
 - **The tile order leaves the server as a list.** A round trip per tile is out at 900–2000 ms a beat.
   Before the reveal it stays sealed (the stage is drawn from its own `scene` stream, the order from
