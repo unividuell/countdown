@@ -295,4 +295,15 @@ describe('RevealScoreboard', () => {
     expect(wrapper.get('caption').text()).toBe('Alle Tipps der Runde, nach Punkten sortiert')
     expect(wrapper.get('caption').classes()).toContain('sr-only')
   })
+
+  it('lets a game fill the name cell, and shows the name by default', () => {
+    const custom = mountBoard(
+      { rows: [row({ userId: 'a', name: 'Anna' })] },
+      { name: '<button data-test="named">{{ params.row.name }}</button>' },
+    )
+    expect(custom.get('[data-test="named"]').text()).toBe('Anna')
+
+    const plain = mountBoard({ rows: [row({ userId: 'a', name: 'Anna' })] })
+    expect(plain.get('tbody th').text()).toBe('Anna')
+  })
 })

@@ -13,6 +13,9 @@
  * What differs is only what stands between those two columns, and that arrives through
  * `cell-<key>` slots — see `scoreboardColumns.ts`. The table's box is complete from the moment it
  * mounts and only its ink appears, so nothing here ever moves — see the design doc.
+ *
+ * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
+ * the player's line in its curve.
  */
 import { computed } from 'vue'
 import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
@@ -245,7 +248,7 @@ function pointsLabel(points: number | null): string {
             :class="opacity"
             :style="[rowGround(row), body(row.tick, 0)]"
           >
-            {{ row.name }}
+            <slot name="name" :row="row">{{ row.name }}</slot>
           </th>
           <td
             v-for="(column, at) in props.columns"
