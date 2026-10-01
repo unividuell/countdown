@@ -1,0 +1,63 @@
+import { describe, expect, it } from 'vitest'
+import { asDedusterGuess, asDedusterOutcome, asDedusterPayload, asDedusterScene } from '../types'
+
+describe('deduster types', () => {
+  it('narrows a scene', () => {
+    expect(asDedusterScene({ cols: 6, rows: 8, intervalMs: 1300 })).toEqual({
+      cols: 6,
+      rows: 8,
+      intervalMs: 1300,
+    })
+    expect(asDedusterScene({ cols: 6, rows: 8 })).toBeNull()
+    expect(asDedusterScene({ cols: 6.5, rows: 8, intervalMs: 1300 })).toBeNull()
+  })
+
+  it('takes a payload only when its order is a permutation of the grid', () => {
+    const base = { cols: 2, rows: 2, intervalMs: 900 }
+    expect(asDedusterPayload({ ...base, order: [2, 0, 3, 1] })).toEqual({
+      ...base,
+      order: [2, 0, 3, 1],
+    })
+    expect(asDedusterPayload({ ...base, order: [0, 0, 1, 2] })).toBeNull()
+    expect(asDedusterPayload({ ...base, order: [0, 1, 2] })).toBeNull()
+    expect(asDedusterPayload({ ...base, order: [0, 1, 2, 4] })).toBeNull()
+  })
+
+  it('narrows a stored guess', () => {
+    expect(
+      asDedusterGuess({
+        reactionsMs: [300],
+        endedBy: 'WRONG_TILE',
+        wrongTileIndex: 4,
+        restarted: false,
+      }),
+    ).toEqual({
+      reactionsMs: [300],
+      endedBy: 'WRONG_TILE',
+      wrongTileIndex: 4,
+      restarted: false,
+    })
+    expect(
+      asDedusterGuess({
+        reactionsMs: [300],
+        endedBy: 'BORED',
+        wrongTileIndex: null,
+        restarted: false,
+      }),
+    ).toBeNull()
+    expect(asDedusterGuess(null)).toBeNull()
+  })
+
+  it('narrows an outcome, average included or absent', () => {
+    const outcome = {
+      tilesCleared: 0,
+      endedBy: 'TOO_LATE',
+      wrongTileIndex: null,
+      averageReactionMs: null,
+      implausible: false,
+      restarted: true,
+    }
+    expect(asDedusterOutcome(outcome)).toEqual(outcome)
+    expect(asDedusterOutcome({ ...outcome, averageReactionMs: 'fast' })).toBeNull()
+  })
+})
