@@ -205,7 +205,7 @@ class LabRoundStore(private val clock: Clock) {
         guess: JsonNode,
         judgement: Judgement,
         /**
-         * Whether this round ranks on the clock. The answer comes from `GameType.requiresReveal` via
+         * Whether this round ranks on the clock. The answer comes from `GameType.scoresOnDuration` via
          * [LabService] — the store does not ask a game anything. It is passed in rather than derived
          * so the duration is computed exactly once here, and the entry's `durationMs` and the
          * `deviation` the rescore ranks on can never be two different numbers.

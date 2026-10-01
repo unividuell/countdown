@@ -79,7 +79,7 @@ The first game that cannot keep two of the rules above — "From parseable to pe
 scoring is server-authoritative" — by necessity, not by omission.
 
 - **The tile order leaves the server as a list.** A round trip per tile is out at 900–2000 ms a beat.
-  Before the reveal it stays sealed (the stage is drawn from its own `scene` stream, the order from
+  Before the reveal it stays sealed (the scene is drawn from its own `scene` stream, the order from
   `presentation`); after it, it never reaches the DOM — the network tab stays open.
 - **The ⌀ reaction time is a client stamp.** Without round trips there is no server-side substitute
   measurement.

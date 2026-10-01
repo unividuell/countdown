@@ -78,7 +78,7 @@ data class OtherPlayDto(
     val points: Int?,
     /**
      * How long this player took, from their reveal to their guess — and `null` unless the round's
-     * game asked for a deliberate reveal.
+     * game scores on duration.
      *
      * The timestamps above stay absent: *when* somebody looked is theirs. But for a game that scores
      * on time the duration is not behaviour, it is the result — under `CLOSEST_ONLY` it is *why* the
