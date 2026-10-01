@@ -101,8 +101,9 @@ interface GameType<P : Any> {
     val paramsType: Class<P>
 
     /**
-     * Draw the round, once, at announce time. Everything the player will be shown must come from
-     * [GameRandom.presentation] — see there for why that is not a stylistic preference.
+     * Draw the round, once, at announce time. Everything the player is shown before the reveal comes
+     * from [GameRandom.scene], everything shown with or after it from [GameRandom.presentation] —
+     * see there for why that is not a stylistic preference.
      */
     fun draw(random: GameRandom, context: RoundContext): P
 
@@ -118,12 +119,9 @@ interface GameType<P : Any> {
      * is its code alone, and the default is the safe direction: a game that says nothing hands out
      * nothing early.
      *
-     * Drawn from **neither** [GameRandom] stream. Both are invertible — a published value lets the
-     * stream be stepped backwards to whatever it drew earlier — so a scene value taken from
-     * [GameRandom.presentation] would let a client rebuild the still-sealed payload before the
-     * reveal, and one from [GameRandom.solution] would rebuild the solution. A scene therefore
-     * carries only constants or values that were never drawn at all. A game whose scene genuinely
-     * needs a drawn value needs a third, independently seeded stream; nothing builds one today.
+     * Drawn from [GameRandom.scene] or not drawn at all — never from the other two streams. Both are
+     * invertible: a scene value taken from [GameRandom.presentation] would let a client rebuild the
+     * still-sealed payload before the reveal, and one from [GameRandom.solution] the solution.
      */
     fun scene(params: P): GameScene? = null
 

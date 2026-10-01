@@ -1,18 +1,33 @@
 package org.unividuell.countdown.core.game
 
-import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
+import java.security.SecureRandom
 
 class GameRandomTest {
 
     @Test
-    fun `fromSeed's two streams do not draw the same first value`() {
-        // PRESENTATION_SALT is the only thing keeping the lab's presentation stream off the solution
-        // stream. If it were 0, or the derivation were "simplified" back to one seed, this would draw
-        // the same first double from both streams — the failure a field-set test cannot see, because
-        // it narrows the answer rather than adding a field.
+    fun `fromSeed's three streams draw three different first values`() {
+        // The salts are the only thing keeping the lab's derived streams apart. Were one 0, or the
+        // derivation "simplified" back to one seed, two streams would draw the same first double —
+        // the failure a field-set test cannot see, because it narrows a value rather than adding one.
         val random = GameRandom.fromSeed(4711)
 
-        random.solution.nextDouble() shouldNotBe random.presentation.nextDouble()
+        setOf(
+            random.solution.nextDouble(),
+            random.presentation.nextDouble(),
+            random.scene.nextDouble(),
+        ) shouldHaveSize 3
+    }
+
+    @Test
+    fun `independent seeds all three streams`() {
+        val random = GameRandom.independent(SecureRandom())
+
+        setOf(
+            random.solution.nextDouble(),
+            random.presentation.nextDouble(),
+            random.scene.nextDouble(),
+        ) shouldHaveSize 3
     }
 }

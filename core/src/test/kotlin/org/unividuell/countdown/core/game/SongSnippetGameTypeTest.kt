@@ -45,6 +45,7 @@ class SongSnippetGameTypeTest {
         random = GameRandom(
             solution = SeededRandom.fromSeed(4711),
             presentation = SeededRandom.fromSeed(0x1234),
+            scene = SeededRandom.fromSeed(0x5CE),
         ),
         context = RoundContext(
             roundNumber = 12,
@@ -129,7 +130,7 @@ class SongSnippetGameTypeTest {
     fun `nothing the player sees moves when only the secret stream changes`() {
         val payloads = (1..10).map { seed ->
             game.present(game.draw(
-                random = GameRandom(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(7)),
+                random = GameRandom(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(7), scene = SeededRandom.fromSeed(0x5CE)),
                 context = RoundContext(roundNumber = 12, phase = Phase.ONE),
             ))
         }

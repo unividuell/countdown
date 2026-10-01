@@ -31,6 +31,7 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(seed),
                 presentation = SeededRandom.fromSeed(presentationSeed),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
             context = RoundContext(roundNumber = 12, phase = phase),
         )

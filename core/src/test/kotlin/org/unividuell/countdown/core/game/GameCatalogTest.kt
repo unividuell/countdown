@@ -64,6 +64,7 @@ class GameCatalogTest {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(7),
                 presentation = SeededRandom.fromSeed(8),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
             context = RoundContext(roundNumber = 12, phase = Phase.ONE),
         )
@@ -88,6 +89,7 @@ class GameCatalogTest {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(7),
                 presentation = SeededRandom.fromSeed(8),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
             context = RoundContext(roundNumber = 12, phase = Phase.ONE),
         )
