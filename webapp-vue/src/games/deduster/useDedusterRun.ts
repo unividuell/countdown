@@ -81,10 +81,14 @@ export function useDedusterRun(input: {
     input.onEnd({ reactionsMs: [...reactions], endedBy, wrongTileIndex })
   }
 
+  /**
+   * Tile 0 falls at [at] on the clock's timeline, or at once when that is already past: a late
+   * start stretches the first beat instead of ending the run before it began.
+   */
   function start(at: number): void {
     if (running.value || ended.value) return
     running.value = true
-    tileZeroAt = at
+    tileZeroAt = Math.max(at, clock.now())
     scheduleTick(0)
   }
 

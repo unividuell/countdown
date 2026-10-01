@@ -112,12 +112,20 @@ describe('useDedusterRun', () => {
     expect(ends).toEqual([{ reactionsMs: [200], endedBy: 'TOO_LATE', wrongTileIndex: null }])
   })
 
-  it('lets a late start fall at once', () => {
-    const { run, advanceTo } = runWith()
+  it('lets a late start fall at once and only stretches the first beat', () => {
+    const { run, advanceTo, ends } = runWith()
     advanceTo(5000)
     run.start(1000)
 
     advanceTo(5000)
     expect(run.revealed.value).toBe(1)
+    expect(ends).toEqual([])
+    expect(run.ended.value).toBe(false)
+
+    expect(run.tap(5)).toBe('hit')
+    advanceTo(6000)
+    expect(run.revealed.value).toBe(2)
+    expect(ends).toEqual([])
+    expect(run.tap(2)).toBe('hit')
   })
 })
