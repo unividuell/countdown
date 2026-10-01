@@ -58,6 +58,19 @@ async function tapCell(w: ReturnType<typeof mountBoard>, index: number): Promise
   })
 }
 
+/** Holds, reveals, and ends the run on a wrong first tap: one guess emitted. */
+async function endRun(w: ReturnType<typeof mountBoard>): Promise<void> {
+  await flushPromises()
+  w.getComponent(RevealCover).vm.$emit('start')
+  await w.setProps({ sealed: false, payload: PAYLOAD })
+  stubField(w)
+  vi.advanceTimersByTime(1250)
+  await w.vm.$nextTick()
+  await tapCell(w, 0)
+}
+
+const resend = (w: ReturnType<typeof mountBoard>) => w.find('[data-test="deduster-resend"]')
+
 describe('DedusterBoard', () => {
   beforeEach(() => {
     vi.useFakeTimers({
@@ -192,6 +205,46 @@ describe('DedusterBoard', () => {
     for (const cell of cells(w)) {
       expect(Object.keys(cell.attributes()).sort()).toEqual(['class', 'data-test'])
     }
+  })
+
+  it('offers to send the same guess again when the submit failed', async () => {
+    const w = mountBoard()
+    await endRun(w)
+    const [first] = w.emitted('guess')![0] as [unknown]
+
+    await w.setProps({ disabled: true })
+    await w.setProps({ disabled: false })
+    await resend(w).trigger('click')
+
+    expect(w.emitted('guess')).toHaveLength(2)
+    expect(w.emitted('guess')![1]).toEqual([first])
+  })
+
+  it('hides the resend while the submit is in flight and once the guess is in', async () => {
+    const w = mountBoard()
+    await endRun(w)
+    await w.setProps({ disabled: true })
+    expect(resend(w).exists()).toBe(false)
+
+    await w.setProps({ disabled: false })
+    await resend(w).trigger('click')
+    await w.setProps({ disabled: true })
+    expect(resend(w).exists()).toBe(false)
+
+    await w.setProps({ disabled: false, submitted: true })
+    expect(resend(w).exists()).toBe(false)
+  })
+
+  it('offers no resend before the run ended', async () => {
+    const w = mountBoard()
+    await flushPromises()
+    w.getComponent(RevealCover).vm.$emit('start')
+    await w.setProps({ sealed: false, payload: PAYLOAD })
+    await w.setProps({ disabled: true })
+    await w.setProps({ disabled: false })
+
+    expect(w.emitted('guess')).toBeUndefined()
+    expect(resend(w).exists()).toBe(false)
   })
 
   it('takes no taps once a guess is in', async () => {

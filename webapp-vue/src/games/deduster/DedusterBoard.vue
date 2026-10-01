@@ -88,12 +88,25 @@ function begin(): void {
       useDedusterRun({
         order: payload.order,
         intervalMs: payload.intervalMs,
-        onEnd: (result: RunResult) => emit('guess', { ...result, restarted }),
+        onEnd: (result: RunResult) => send({ ...result, restarted }),
       }),
     ) ?? null
   // One beat of whole, dusted grid after the full ring; a payload later than that falls at once.
   run.value?.start(fullAt + payload.intervalMs)
 }
+
+/**
+ * The run plays once, so its guess is kept: a submit that comes back failed (`disabled` true → false,
+ * no `submitted`) offers to send exactly that guess again instead of leaving nothing to press.
+ */
+const lastGuess = shallowRef<DedusterGuessWire | null>(null)
+const sendFailed = ref(false)
+function send(guess: DedusterGuessWire): void {
+  lastGuess.value = guess
+  sendFailed.value = false
+  emit('guess', guess)
+}
+const resendShown = computed(() => sendFailed.value && !props.disabled && !props.submitted)
 
 function onStart(): void {
   ringFullAt.value = browserClock.now()
@@ -111,6 +124,7 @@ watch(
   () => props.disabled,
   (now, before) => {
     if (before && !now && props.sealed && run.value === null) ringFullAt.value = null
+    if (before && !now && lastGuess.value !== null && !props.submitted) sendFailed.value = true
   },
 )
 
@@ -219,6 +233,16 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
         @retry="preparePhoto"
       />
     </div>
+
+    <button
+      v-if="resendShown"
+      type="button"
+      data-test="deduster-resend"
+      class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-6 text-sm font-medium text-white"
+      @click="lastGuess && send(lastGuess)"
+    >
+      Nochmal senden
+    </button>
 
     <DedusterBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
   </div>
