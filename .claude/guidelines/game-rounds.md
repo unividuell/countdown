@@ -65,20 +65,20 @@ sets up under its cover — and it carries nothing the reveal protects: that is 
 by a field-set test per game like `present()` and `solution()`. `null` is the default and the safe
 direction. It is named scene, not stage, because stage is the rung of a staged game.
 
-A scene draws from **neither** stream below — not `presentation`, not `solution`. Either one is
-invertible to a published value, so a scene value taken from `presentation` would let a client
+A scene draws from **neither** of the other two streams — not `presentation`, not `solution`. Either
+one is invertible to a published value, so a scene value taken from `presentation` would let a client
 rebuild the still-sealed payload before the reveal, and one from `solution` would rebuild the
-solution. A scene therefore carries only constants or values that were never drawn at all; a game
-whose scene genuinely needs a drawn value needs a third, independently seeded stream, which nothing
-builds today.
+solution. A drawn scene value comes from `GameRandom.scene`, the third stream: published before the
+reveal, so it must not share a stream with anything the reveal or the guess protects.
 
 A value that is published must never be drawn from the stream that produced the solution. Not "must
 not equal the solution" — `SeededRandom` is invertible (`nextDouble` publishes 53 bits of two
 consecutive words, the xoshiro128** transition is a bijection), so a published double lets the state be
-stepped **backwards** to whatever the same stream drew earlier. Hence `GameRandom`, with two
-independently seeded streams, and the split runs along **publication**: anything the player is shown or
-that gets announced comes from `presentation`, and `solution` draws only what stays here. Two seeds
-from one `SecureRandom` are fine — a CSPRNG's output is not invertible to its state.
+stepped **backwards** to whatever the same stream drew earlier. Hence `GameRandom`, with three
+independently seeded streams, and the split runs along **publication**: `scene` draws what reaches the
+client before the reveal, `presentation` what is shown from the reveal on, and `solution` only what
+stays here. The seeds from one `SecureRandom` are fine — a CSPRNG's output is not invertible to its
+state.
 
 A seed derived from round coordinates is not a secret. The seed is drawn, used, and thrown away.
 
@@ -87,6 +87,11 @@ sends every other player's `guess` and `Judgement.outcome` unconditionally (see 
 below) — so a game that withholds its solution must also make sure its `outcome` carries nothing the
 solution can be reconstructed from, a distance included, or the second exit gives back what the first
 one held.
+
+## Assets before the reveal
+
+`SCENE_ASSET_KEY` (98) is the only asset served without a play row — what the cover lies over. Every
+other key stays behind the reveal; opening stage 0 instead would hand out Anspielung's first clip.
 
 ## The viewer's row and the others' rows are different types
 
@@ -104,10 +109,12 @@ order is not a clock.
 stay private because *when* someone acted is their own business, not the round's outcome — but for a
 game whose ranking is built on elapsed time, the duration between the two stamps *is* the round's
 outcome, the way a Guess Hue player's angle is. `durationMs` is published on both `MyPlayDto` and
-`OtherPlayDto` under exactly one condition, `GameType.requiresReveal(params)` — no new per-game
-switch, the same boolean that already decides whether a clock runs at all. Withholding it for a
+`OtherPlayDto` under exactly one condition, `GameType.scoresOnDuration(params)`. Withholding it for a
 time-scored game would show a ranking whose basis nobody can see; publishing it for every other game
 would leak exactly the sitting-on-it fact this section exists to protect.
+
+`requiresReveal` and `scoresOnDuration` are two questions: a deliberate, single reveal, and whether
+reveal-to-guess is the score. Entstauber answers `true`/`false`.
 
 ## The game judges, the framework awards
 
@@ -210,6 +217,9 @@ game twice in a row" would need one row. That makes the next rule a change to a 
 of to a query, a service and their tests. Legitimate as long as the full input is cheap — here a few
 dozen two-column rows, once per round.
 
+A game whose content may be absent says so in `isAvailable(context)`; the selection draws among the
+available ones only, and the lab answers 404 for the others.
+
 ## Stages generalise the framework, not the game
 
 `round_plays.stage` belongs to the framework, not to any one game: a single-stage game (Guess Hue)
@@ -221,7 +231,7 @@ advances the round instead of recording it" is not universal — it holds only u
 guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
 the lab replays the exact rule a real round applies instead of a copy of it.
 
-A `requiresReveal` game is the second case of the same shape: `PlayService.guess` overrides
+A `scoresOnDuration` game is the second case of the same shape: `PlayService.guess` overrides
 `deviation` with the reveal-to-guess duration, and the game's own `deviation` never reaches storage
 there either — same reasoning as the stage override, and for the same reason it belongs to the
 framework and not the game: a game judges its own content, but the round's timing is framework state,

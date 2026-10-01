@@ -40,7 +40,8 @@ Daraus folgt konkret **nicht** gebaut: Ableitungstabelle und Spec-Enum, 4:3-Zusc
 Beschreibungs- und Credit-Felder, Kategorien/Tags, Fokuspunkt-Auswahl, eine mittlere Anzeigegröße,
 und **keine nach außen exportierte Modul-API**. `org.unividuell.countdown.core.imagepool` bleibt
 leer; alles liegt in `.internal`. Das erste Bildspiel bringt die Schnittstelle mit, weil es dann
-weiß, was es braucht.
+weiß, was es braucht. Die erste exportierte Schnittstelle ist `ImagePoolQuery` mit `candidateIds`,
+`displaySize`, `displayed`.
 
 Vorbild ist das alte, manuelle Verfahren aus `huettehuette`
 (`scripts/puzzle-scramble/prepare-puzzle-pieces.sh`): das Bild ging unverändert hinein, `magick`
@@ -79,6 +80,8 @@ die Community-Endpunkte schon geben.
 ausgesprochen ist: benutzt eine vergangene oder laufende Runde das Bild, zeigt sie danach einen
 Platzhalter. Der Pool kann das nicht verhindern — der Codepfeil wird `game → imagepool` zeigen, der
 Pool weiß nichts von Runden, und die Runde hält nur eine weiche Referenz.
+Das gilt nur zwischen Ziehung und Ankündigung; ab der Ankündigung hält Entstauber eine eigene
+Kopie (`deduster.round_images`).
 
 ## Datenmodell
 
@@ -351,7 +354,7 @@ Dekodieren, Orientierung. Testbilder erzeugt der Test selbst, wie `FindPatternIm
 mit einer Ausnahme: ein kleines JPEG **mit** EXIF-Orientierung kommt als Datei ins Repo, weil EXIF
 im Test zusammenzubauen mehr Code wäre als das, was es prüft. Kein Spielinhalt, kein Geheimnis.
 
-`ModularityTests` bleibt grün: `imagepool` zeigt nur auf `community` und `iam`, exportiert nichts.
+`ModularityTests` bleibt grün: `imagepool` zeigt nur auf `community` und `iam`.
 
 Frontend, Vitest: die Warteschlange läuft der Reihe nach, ein Fehlschlag reißt die folgenden Dateien
 nicht mit, die Meldung steht an der richtigen Zeile. `XMLHttpRequest` gibt es in happy-dom nicht

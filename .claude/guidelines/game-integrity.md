@@ -72,3 +72,17 @@ to what `stage` means for a single-stage game — or a second condition in the g
 images that both change every round are cheaper as JSON fields than as a framework change; the asset
 endpoint earns its cost only for bytes too large or too expensive to regenerate per request (a song
 snippet's WAV ladder, not a 225-byte PNG).
+
+## The ceiling, named — Entstauber
+
+The first game that keeps two of the rules above, by necessity, not by omission.
+
+- **The tile order leaves the server as a list.** A round trip per tile is out at 900–2000 ms a beat.
+  Before the reveal it stays sealed (the stage is drawn from its own `scene` stream, the order from
+  `presentation`); after it, it never reaches the DOM — the network tab stays open.
+- **The ⌀ reaction time is a client stamp.** Without round trips there is no server-side substitute
+  measurement.
+
+What stands in for both: a plausibility floor (`< 120 ms` or `> intervalMs` marks the run), the mark
+shown in the evaluation, the raw reaction times stored. **Mark, never reject** — for every run that
+cannot be repeated: a false alarm must never cost the player their only attempt.

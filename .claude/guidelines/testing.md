@@ -102,6 +102,11 @@ users (a full `list()`, a `count()`, a roster) must switch the seeder off:
 
 `SuperAdminRosterServiceTest` and `SuperAdminUserServiceTest` are the precedents.
 
+A context's Testcontainers database is shared by every test class that runs in it. A test that commits rows (no
+`@Transactional`) into a set every community can see — the global image pool — deletes them after
+each test: a leftover row there is available content for every later announcement, and a junk row
+breaks the game that draws it, depending on test order.
+
 A start-up guard keyed on the deployed profile (e.g. "fail if this profile loaded the fallback
 data") fires inside **every** `@SpringBootTest` that activates that profile too — the test context
 is a real Spring context. Don't weaken the guard and don't add a bypass property; let the test

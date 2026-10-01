@@ -87,8 +87,9 @@ game ──▶ deduster ──▶ imagepool ──▶ community, iam
 ```
 
 `deduster` trägt: `DedusterGrid` (Orientierung → Spalten/Zeilen/Zielverhältnis), `DedusterTicks`
-(die Taktverteilung), `DedusterImages` (Zuschnitt und Skalierung), `RoundImageStore` (die Tabelle).
-Der Adapter trägt Params, Payload, Urteil — nichts davon kennt `deduster`.
+(die Taktverteilung), `DedusterImages` (Zuschnitt und Skalierung), `DedusterPool` (Vorrang
+Gemeinschaft vor global, `gridOf`), `RoundImageStore` (die Tabelle). Der Adapter trägt Params,
+Payload, Urteil — nichts davon kennt `deduster`, und er sieht `imagepool` nicht.
 
 ### `imagepool` exportiert zum ersten Mal etwas
 
@@ -101,14 +102,11 @@ package org.unividuell.countdown.core.imagepool
 /** Die Maße, wie das Bild *angezeigt* wird — EXIF-Orientierung bereits angewandt. */
 data class ImageSize(val width: Int, val height: Int)
 
-/** Die Bytes eines Originals, mit ihrem Typ. Der exportierte Zwilling des internen `ImageBytes`. */
-class PoolImageBytes(val mediaType: String, val bytes: ByteArray)
-
 interface ImagePoolQuery {
     /** `null` adressiert den globalen Bestand — dieselbe Form wie `IS NOT DISTINCT FROM` im Repository. */
     fun candidateIds(communityId: UUID?): List<UUID>
     fun displaySize(id: UUID): ImageSize?
-    fun original(id: UUID): PoolImageBytes?
+    fun displayed(id: UUID, minShortEdge: Int): BufferedImage?
 }
 ```
 
@@ -119,6 +117,10 @@ Thumbnails zeigt, in denen die Orientierung angewandt ist. Für dieses Spiel ent
 über das Raster, also müssen sie die angezeigten sein. `displaySize` liest dafür genau ein Bild —
 einmal pro Runde, beim Ankündigen —, dessen Kopf und dessen EXIF-Tag. Der Bestand als Ganzes wird
 nie dekodiert.
+
+**Warum `displayed` ein Bild liefert und keine Bytes:** die EXIF-Drehung lebt in `ImageIntake`, und
+Modulith verbietet dem Spiel den Zugriff darauf. Der Pool gibt das Bild deshalb schon gedreht heraus,
+nur so klein dekodiert, wie `minShortEdge` es erlaubt.
 
 Die **Vorrangregel lebt im Spiel, nicht im Pool**: `candidateIds(community) ifEmpty
 { candidateIds(null) }`. Der Pool lernt kein Spielwissen; das hat er sich in seiner eigenen Spec
@@ -360,9 +362,10 @@ WARN-Zeile geschrieben; die Auswertung zeichnet dann keine Fehlmarkierung. Er is
 Urteil, und darf nichts entscheiden.
 
 **Markiert statt abgewiesen:** eine Reaktion unter `MIN_HUMAN_MS` (120) oder über dem Takt setzt
-`implausible` und eine WARN-Zeile mit Runde, Spieler und Grund. Der Lauf wird trotzdem gespeichert
-und gewertet. Das ist die bewusste Umkehr gegenüber dem Original, das mit 400 abwies: ein Lauf ist
-nicht wiederholbar, ein Fehlalarm dürfte ihn also nie kosten.
+`implausible` und eine WARN-Zeile mit Runde (über die Bild-Id) und Grund. Den Spieler nennt sie
+nicht, `judge` kennt ihn nicht; die Zeile in `round_plays` trägt die Markierung und den Spieler. Der
+Lauf wird trotzdem gespeichert und gewertet. Das ist die bewusste Umkehr gegenüber dem Original,
+das mit 400 abwies: ein Lauf ist nicht wiederholbar, ein Fehlalarm dürfte ihn also nie kosten.
 
 | | |
 |---|---|
