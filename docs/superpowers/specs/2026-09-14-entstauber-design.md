@@ -426,8 +426,9 @@ fun scoresOnDuration(params: P): Boolean
 | `GameDto` | trägt beide Felder |
 | `webapp-vue` | `api/types`; der Auslöser der Stoppuhr im Band hängt an `scoresOnDuration` |
 
-Antworten: Farbausmalung `false`/`false`, Anspielung `false`/`false`, Musterung und Weltanschauung
-`timed`/`timed`, **Entstauber `true`/`false`**.
+Antworten auf `requiresReveal(params)` / `scoresOnDuration(params)`: Farbausmalung `false`/`false`,
+Anspielung `false`/`false`, Musterung und Weltanschauung `params.timed`/`params.timed`,
+**Entstauber `true`/`false`**.
 
 Dass `durationMs` mitwandert, ist kein Beifang: `game-rounds.md` veröffentlicht die Dauer genau
 dann, wenn sie die Wertung ist. Für Entstauber ist sie Leerlauf plus Spielzeit und sagte damit
@@ -445,11 +446,12 @@ Die [Hülle](2026-09-25-reveal-cover-design.md) liefert dafür alles: das Spiel 
 Bühne steht unter Milchglas, und das Halten ist das Einzählen.
 
 ```
-unter der Hülle                  halten, im Takt der Runde          Ring voll
- Staubraster aus scene      ──▶  [3] ── [2] ── [1] ──────────────▶  POST /reveal
- Foto (SCENE_ASSET_KEY)          je Beat intervalMs                   │
- dekodiert → ready                                                    ▼  ein Takt nach „voll“
-                                                          Hülle weg ── Kachel 0
+unter der Hülle               halten, im Takt der Runde       Ring voll = 0
+ Staubraster aus scene   ──▶  [3] ── [2] ── [1] ──────────▶  Hülle weg, POST /reveal
+ Foto (SCENE_ASSET_KEY)       je Beat intervalMs              │
+ dekodiert → ready                                            │  ein Takt: ganzes Raster, alles Staub
+                                                              ▼  (der POST läuft darin)
+                                                             Kachel 0
 ```
 
 - **`ready` heißt: Foto dekodiert.** Das Raster steht aus `scene` sofort, das Foto lädt unter der
@@ -459,10 +461,17 @@ unter der Hülle                  halten, im Takt der Runde          Ring voll
   (Vorgabe `BEAT_MS`), `RevealCover` reicht ihn durch; Entstauber hält `3 × intervalMs`. Wer 3-2-1
   gehalten hat, hat den Puls dreimal gespürt — dasselbe, was im Original der leere erste
   `setInterval`-Durchlauf tat. Bei 2000 ms sind das 6 s Halten, bei 900 ms 2,7 s.
-- **Kachel 0 fällt einen Takt nach dem vollen Ring**, nicht einen Takt nach dem Fallen der Hülle:
-  `delay = max(0, ringFullAt + intervalMs − now)`, gemessen mit `performance.now()`. Der Takt
-  schluckt die Laufzeit des POST, der Puls läuft ohne Bruch weiter. Kommt die Antwort später als ein
-  Takt, fällt Kachel 0 beim Eintreffen.
+- **Die Hülle fällt mit dem vollen Ring, nicht mit dem Payload.** Dann steht einen Takt lang das
+  ganze Raster offen, jede Kachel noch unter Staub — der vierte Beat des Einzählens, sichtbar. Das
+  Spiel setzt die Hülle mit `v-if="sealed && !ringFull"`, es gehört ihm.
+- **Kachel 0 fällt bei `max(ringFullAt + intervalMs, Payload da)`**, gemessen mit
+  `performance.now()`. Der POST läuft in diesem Takt, der Puls läuft ohne Bruch weiter. Kommt die
+  Antwort später als ein Takt, wird nur dieser Takt länger. Bis Kachel 0 fällt, nimmt das Brett
+  keine Tipps an.
+- **Damit weicht Entstauber bewusst vom Hüllen-Vertrag ab**, nach dem die Hülle im selben Render
+  fällt, in dem der Payload ankommt. Der Vertrag schützt die gewertete Uhr — Entstauber hat keine —,
+  und unter dem Glas liegt nur Staub, der danach ohnehin zu sehen ist. Scheitert der Reveal, liegt
+  die Hülle wieder, auf `ready` und für ein neues Halten.
 - **Das Briefing sagt es an:** eine eigene Zeile „Beim Halten wird im Takt des Spiels eingezählt.“
   Die Hülle trägt keinen Spieltext.
 - **Der Warnsatz ist ein anderer.** „Deine Zeit läuft ab dem Aufdecken“ stimmt hier nicht.
@@ -643,8 +652,10 @@ hier ausgesprochen statt versprochen.
 - `DedusterChart`: die Skalenrechnung (Level → x, ms → y), und dass der Scrub die Fehlkacheln genau
   des getroffenen Levels meldet.
 - `DedusterBoard`: die Reihenfolge steht nicht im DOM; `ready` erst nach dem Dekodieren des Fotos;
-  Kachel 0 einen Takt nach dem vollen Ring, bei später Antwort beim Eintreffen; mit Payload, ohne
-  Tipp und nie `sealed` gemountet → eigene Hülle mit `note`, `start` sendet keinen Reveal, der Tipp
+  die Hülle fällt mit dem vollen Ring, Kachel 0 einen Takt danach, bei später Antwort beim
+  Eintreffen; Tipps vor Kachel 0 zählen nicht; ein gescheiterter Reveal legt die Hülle wieder;
+  mit Payload, ohne Tipp und nie `sealed` gemountet → eigene Hülle mit `note`, `start` sendet
+  keinen Reveal, der Tipp
   trägt `restarted`.
 - `HoldButton` mit `beatMs`: `holdMs = beats × beatMs`, ohne `beatMs` wie bisher.
 - `RevealCover`: `timed = false` zeigt den zweiten Satz, `note` erscheint unter dem Knopf; ohne
