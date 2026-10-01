@@ -27,6 +27,7 @@ import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
@@ -35,8 +36,11 @@ import org.unividuell.countdown.core.gamelab.internal.LabService
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
+import org.unividuell.countdown.core.imagepool.ImagePoolQuery
+import org.unividuell.countdown.core.imagepool.ImageSize
 import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
 import org.unividuell.countdown.core.spotobject.CountryLookup
+import java.awt.image.BufferedImage
 import java.util.UUID
 
 /**
@@ -66,7 +70,11 @@ class LabServiceTest(
     // below does not reach out to Google for real.
     @MockkBean lateinit var countries: CountryLookup
 
+    // Entstauber draws from the image pool; one fake image keeps it drawable and off the database.
+    @MockkBean lateinit var pool: ImagePoolQuery
+
     private val communityId = UUID.randomUUID()
+    private val LAB_IMAGE = UUID.fromString("0190f1b2-0000-7000-8000-00000000da7a")
     private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
     private val bob = User(id = UUID.randomUUID(), githubId = 2L, githubLogin = "bob")
     private val aliceId = requireNotNull(alice.id)
@@ -88,6 +96,10 @@ class LabServiceTest(
                 .associate { requireNotNull(it.id) to MemberIdentity(username = it.username, avatar = Avatar.of(it)) }
         }
         every { countries.countryOf(any()) } returns null
+        every { pool.candidateIds(any()) } returns listOf(LAB_IMAGE)
+        every { pool.displaySize(LAB_IMAGE) } returns ImageSize(width = 400, height = 300)
+        every { pool.displayed(id = LAB_IMAGE, minShortEdge = any()) } returns
+            BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB)
         return community to TwoMembers(me = aliceId, other = bobId)
     }
 
@@ -99,6 +111,7 @@ class LabServiceTest(
         "song-snippet" -> mapper.readTree("""{"trackId":1}""")
         "find-pattern" -> mapper.readTree("""{"startIndex":3}""")
         "spot-object" -> mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
+        "deduster" -> mapper.readTree("""{"reactionsMs":[],"endedBy":"TOO_LATE"}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
@@ -441,6 +454,11 @@ class LabServiceTest(
         // catalogue contains. Iterating the catalogue is what keeps it true when a game is added.
         val (community, mine) = aCommunityWithTwoMembers()
         for (gameId in catalog.ids()) {
+            // A sealed game needs its one reveal on record before a guess counts; for the others it is a no-op.
+            service.reveal(
+                slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
+                userId = mine.other, isSuperAdmin = false,
+            )
             service.guess(
                 slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
                 userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor(gameId),
@@ -454,6 +472,33 @@ class LabServiceTest(
             before.others.shouldBeEmpty()
             before.solution.shouldBeNull()
         }
+    }
+
+    @Test
+    fun `a game that cannot draw for this community is not there`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        every { pool.candidateIds(any()) } returns emptyList()
+
+        shouldThrow<UnknownLabGameException> {
+            service.open(
+                slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false,
+            )
+        }
+    }
+
+    @Test
+    fun `the scene asset is there before the reveal`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        ).revealed shouldBe false
+
+        service.asset(
+            slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, key = SCENE_ASSET_KEY,
+        ).mediaType shouldBe "image/jpeg"
     }
 
     @Test
