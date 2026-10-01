@@ -3,6 +3,9 @@
  * `unknown`, and a stale round may be junk.
  */
 
+/** The server's `SCENE_ASSET_KEY`: the photo, fetchable before the reveal. */
+export const SCENE_ASSET_KEY = 98
+
 export interface DedusterScene {
   cols: number
   rows: number
