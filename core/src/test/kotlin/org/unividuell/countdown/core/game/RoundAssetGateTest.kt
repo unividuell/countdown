@@ -16,6 +16,7 @@ import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AssetForbiddenException
 import org.unividuell.countdown.core.game.internal.AssetNotFoundException
+import org.unividuell.countdown.core.game.internal.NotRevealedException
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundNotFoundException
@@ -32,7 +33,7 @@ import java.util.UUID
  * The stage- and solution-gate on `PlayService.asset` (and, through it, the controller endpoint):
  * unlocked stages stay fetchable, a key above the caller's stage is forbidden before the game is ever
  * asked, and the solution key opens only once the guess is spent. [GatedGame] serves exactly
- * `key == 0` and [SOLUTION_ASSET_KEY] — every other in-range key is a stored miss, so the 404 branch
+ * `key == 0`, [SOLUTION_ASSET_KEY] and [SCENE_ASSET_KEY] — every other in-range key is a stored miss, so the 404 branch
  * is exercised without pretending every stage carries an asset.
  */
 @Import(TestcontainersConfiguration::class, RoundAssetGateTest.GatedGame::class)
@@ -53,7 +54,7 @@ class RoundAssetGateTest(
         data class GatedParams(val answer: String)
         data class GatedPayload(val stages: Int) : GamePayload
 
-        /** Five stages; serves only `key == 0` and [SOLUTION_ASSET_KEY] — every other key is a stored miss. */
+        /** Five stages; serves only `key == 0`, [SOLUTION_ASSET_KEY] and [SCENE_ASSET_KEY] — every other key is a stored miss. */
         @Bean
         fun gatedGame(): GameType<GatedParams> = object : GameType<GatedParams> {
             override val id = "gated-fake"
@@ -73,6 +74,7 @@ class RoundAssetGateTest(
                 when (key) {
                     0 -> RoundAsset(mediaType = "audio/wav", bytes = byteArrayOf(0))
                     SOLUTION_ASSET_KEY -> RoundAsset(mediaType = "audio/mpeg", bytes = byteArrayOf(99))
+                    SCENE_ASSET_KEY -> RoundAsset(mediaType = "image/jpeg", bytes = byteArrayOf(98))
                     else -> null
                 }
         }
@@ -154,6 +156,30 @@ class RoundAssetGateTest(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
             roundNumber = roundNumber, key = SOLUTION_ASSET_KEY,
         ).mediaType shouldBe "audio/mpeg"
+    }
+
+    @Test
+    fun `the scene asset opens before the reveal, without a play row`() {
+        val (community, viewer) = aCommunity("Asset Gate Scene")
+        val roundNumber = announceGated(community)
+
+        play.asset(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = roundNumber, key = SCENE_ASSET_KEY,
+        ).bytes shouldBe byteArrayOf(98)
+    }
+
+    @Test
+    fun `every other key still needs the reveal`() {
+        val (community, viewer) = aCommunity("Asset Gate Scene Only")
+        val roundNumber = announceGated(community)
+
+        shouldThrow<NotRevealedException> {
+            play.asset(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = roundNumber, key = 0,
+            )
+        }
     }
 
     @Test

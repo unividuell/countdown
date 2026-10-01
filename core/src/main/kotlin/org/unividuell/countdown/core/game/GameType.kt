@@ -77,6 +77,12 @@ data class RoundContext(
 const val SOLUTION_ASSET_KEY = 99
 
 /**
+ * The asset key of a round's scene: open as soon as the round is announced, no play row needed.
+ * Opening stage 0 instead would be the wrong cut — for Anspielung that is the first clip, the puzzle.
+ */
+const val SCENE_ASSET_KEY = 98
+
+/**
  * One binary artefact of a round — bytes plus how to serve them. A plain class, not a data class:
  * ByteArray equality is identity, and nothing ever compares assets.
  */

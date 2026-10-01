@@ -15,6 +15,7 @@ import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.game.VoteTally
@@ -250,7 +251,11 @@ class LabService(
         val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = playing)
         val hasGuessed = snapshot.entries.any { it.userId == userId }
-        val allowed = if (key == SOLUTION_ASSET_KEY) hasGuessed else key in 0..stage
+        val allowed = when (key) {
+            SCENE_ASSET_KEY -> true
+            SOLUTION_ASSET_KEY -> hasGuessed
+            else -> key in 0..stage
+        }
         if (!allowed) throw LabAssetForbiddenException()
         val assets = store.assetsOf(
             communityId = communityId, gameId = gameId, round = playing,

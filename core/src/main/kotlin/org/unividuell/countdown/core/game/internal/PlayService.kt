@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.game.GuessAction
 import org.unividuell.countdown.core.game.RoundAsset
+import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
@@ -190,6 +191,8 @@ class PlayService(
      * without a membership row now gets a 409 on the RUNNING round's asset (no play row) rather
      * than a 404 (no membership) — the more honest of the two.
      *
+     * The scene key is the one exception to the play row: it is what the cover lies over.
+     *
      * Not `readOnly`: like [AnnouncementService.currentRound], the first fetch of an un-materialised
      * round inserts.
      */
@@ -214,6 +217,10 @@ class PlayService(
             is ResolvedRound.Announced -> current
         }
         val roundGameId = requireNotNull(announced.roundGame.id)
+        if (key == SCENE_ASSET_KEY) {
+            return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
+                ?: throw AssetNotFoundException()
+        }
         val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
             ?: throw NotRevealedException()
         val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage
