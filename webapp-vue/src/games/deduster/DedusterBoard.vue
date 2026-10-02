@@ -247,7 +247,7 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
               v-for="cell in layout.cols * layout.rows"
               :key="cell"
               data-test="deduster-line"
-              class="border border-stone-500/30"
+              class="border border-black"
             />
           </div>
         </div>

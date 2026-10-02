@@ -112,6 +112,7 @@ describe('DedusterBoard', () => {
     expect(cleared(w)).toHaveLength(1)
     expect(lines()).toHaveLength(4)
     expect(lines().every((l) => !l.classes().includes('opacity-0'))).toBe(true)
+    expect(lines().every((l) => l.classes().includes('border-black'))).toBe(true)
     expect(w.get('[data-test="deduster-lines"]').classes()).toEqual(
       expect.arrayContaining(['pointer-events-none', 'z-10']),
     )
