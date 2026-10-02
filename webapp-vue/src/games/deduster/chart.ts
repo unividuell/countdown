@@ -11,8 +11,8 @@ export const VIEW = { width: 320, height: 206, left: 36, right: 8, top: 8, botto
 /** Grid lines and their labels fall on every multiple of this, e.g. 300, 600, 900 … */
 const GRID_STEP_MS = 300
 
-/** Level ticks every eighth tile — a 6 × 8 or 8 × 6 grid's row or column. */
-const TICK_STEP = 8
+/** Level ticks every fifth tile: 0, 5, 10 … — round numbers that show the count starts at 0. */
+const TICK_STEP = 5
 
 /** Closer than this to the floor's or the beat's label, a grid label would collide: it goes, the line stays. */
 const LABEL_GAP = 10
@@ -41,17 +41,14 @@ export function frameFor(input: {
   }
 }
 
-/**
- * Level 0 is the first tile. The axis runs to the tile count, so it ends on a tick — 48 on a 48-tile
- * grid — and the last tile's point sits one step before the end.
- */
+/** Level 0 is the first tile; the axis ends at the last, level [tiles] − 1. */
 export function xOf(frame: Frame, level: number): number {
   const span = VIEW.width - VIEW.left - VIEW.right
-  return VIEW.left + (frame.tiles <= 0 ? 0 : (level / frame.tiles) * span)
+  return VIEW.left + (frame.tiles <= 1 ? 0 : (level / (frame.tiles - 1)) * span)
 }
 
 export function levelTicks(tiles: number): number[] {
-  return Array.from({ length: Math.floor(tiles / TICK_STEP) + 1 }, (_, i) => i * TICK_STEP)
+  return Array.from({ length: Math.floor((tiles - 1) / TICK_STEP) + 1 }, (_, i) => i * TICK_STEP)
 }
 
 /** Every multiple of [GRID_STEP_MS] strictly between the floor and the beat, where the curve lives. */
@@ -83,10 +80,9 @@ export function polyline(frame: Frame, reactionsMs: readonly number[]): string {
   return reactionsMs.map((ms, level) => `${xOf(frame, level)},${yOf(frame, ms)}`).join(' ')
 }
 
-/** The nearest tile's level; past the last tile, the last — level [tiles] has no tile. */
 export function levelAt(frame: Frame, x: number): number {
   const span = VIEW.width - VIEW.left - VIEW.right
-  const level = Math.round(((x - VIEW.left) / span) * frame.tiles)
+  const level = Math.round(((x - VIEW.left) / span) * (frame.tiles - 1))
   return Math.min(frame.tiles - 1, Math.max(0, level))
 }
 

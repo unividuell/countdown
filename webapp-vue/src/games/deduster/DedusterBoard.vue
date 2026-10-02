@@ -229,7 +229,7 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
               v-for="cell in layout.cols * layout.rows"
               :key="cell"
               data-test="deduster-cell"
-              class="bg-gray-200 bg-(image:--dust) bg-repeat dark:bg-gray-800"
+              class="bg-gray-200 bg-(image:--dust) bg-repeat"
               :class="{ 'opacity-0': revealed.has(cell - 1) }"
               :style="{
                 backgroundPosition: dustOffset(cell - 1, layout.cols, layout.rows),

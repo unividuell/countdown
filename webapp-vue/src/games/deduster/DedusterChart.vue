@@ -42,6 +42,7 @@ const ticks = computed(() => levelTicks(props.tiles))
 const grid = computed(() => gridMs(frame.value))
 const labels = computed(() => yLabels(frame.value))
 const plotBottom = VIEW.height - VIEW.bottom
+const thousands = new Intl.NumberFormat('de-DE')
 
 const readout = computed(() => {
   const level = props.level
@@ -98,7 +99,7 @@ function onMove(event: PointerEvent): void {
         :x2="VIEW.width - VIEW.right"
         :y1="yOf(frame, ms)"
         :y2="yOf(frame, ms)"
-        class="stroke-neutral-200 dark:stroke-neutral-800"
+        class="stroke-neutral-200"
         stroke-width="0.5"
       />
       <rect
@@ -120,12 +121,13 @@ function onMove(event: PointerEvent): void {
       <text
         v-for="ms in labels"
         :key="ms"
+        data-test="chart-y-label"
         :x="VIEW.left - 4"
         :y="yOf(frame, ms) + 3"
         text-anchor="end"
         class="fill-current text-[8px]"
       >
-        {{ ms }}
+        {{ thousands.format(ms) }}
       </text>
       <text
         data-test="chart-y-title"
@@ -205,14 +207,14 @@ function onMove(event: PointerEvent): void {
           :x2="readout.x"
           :y1="VIEW.top"
           :y2="VIEW.height - VIEW.bottom"
-          class="stroke-neutral-900 dark:stroke-neutral-100"
+          class="stroke-neutral-900"
           stroke-width="0.75"
         />
         <text
           data-test="chart-readout"
           :x="Math.min(readout.x + 4, VIEW.width - VIEW.right - 70)"
           :y="VIEW.top + 10"
-          class="fill-neutral-900 text-[9px] dark:fill-neutral-100"
+          class="fill-neutral-900 text-[9px]"
         >
           {{ readout.text }}
         </text>

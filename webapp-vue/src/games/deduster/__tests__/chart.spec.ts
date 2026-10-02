@@ -42,15 +42,14 @@ function row(
 describe('deduster chart', () => {
   const frame = frameFor({ tiles: 48, intervalMs: 1300, rows: [row('aa', [250, 400], 'TOO_LATE')] })
 
-  it('spans level 0 to the tile count across the plot, the last tile one step short of the end', () => {
+  it('spans level 0 to the last tile across the plot', () => {
     expect(xOf(frame, 0)).toBe(VIEW.left)
-    expect(xOf(frame, 48)).toBe(VIEW.width - VIEW.right)
-    expect(xOf(frame, 47)).toBeLessThan(VIEW.width - VIEW.right)
+    expect(xOf(frame, 47)).toBe(VIEW.width - VIEW.right)
   })
 
-  it('labels every eighth level, the tile count at the end included', () => {
-    expect(levelTicks(48)).toEqual([0, 8, 16, 24, 32, 40, 48])
-    expect(levelTicks(49)).toEqual([0, 8, 16, 24, 32, 40, 48])
+  it('labels every fifth level, never one past the last tile', () => {
+    expect(levelTicks(48)).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45])
+    expect(levelTicks(49)).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45])
   })
 
   it('lays a grid line on every 300 ms between the floor and the beat', () => {

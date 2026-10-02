@@ -78,19 +78,34 @@ describe('DedusterChart', () => {
     expect(w.get('[data-test="chart-x-title"]').attributes('text-anchor')).toBe('middle')
   })
 
-  it('draws the x axis with its ticks up to the tile count', () => {
+  it('draws the x axis with a tick on every fifth level', () => {
     const w = mountChart()
 
     expect(w.find('[data-test="chart-x-axis"]').exists()).toBe(true)
     expect(w.findAll('[data-test="chart-x-tick"]').map((t) => t.text())).toEqual([
       '0',
-      '8',
-      '16',
-      '24',
-      '32',
+      '5',
+      '10',
+      '15',
+      '20',
+      '25',
+      '30',
+      '35',
       '40',
-      '48',
+      '45',
     ])
+  })
+
+  it('writes the y axis in German numbers, as the table does', () => {
+    const w = mountChart({ intervalMs: 1300 })
+
+    expect(w.findAll('[data-test="chart-y-label"]').map((t) => t.text())).toContain('1.300')
+  })
+
+  it('draws the grid lines light, in one colour, whatever the system theme', () => {
+    for (const line of mountChart().findAll('[data-test="chart-grid"]')) {
+      expect(line.attributes('class')).toBe('stroke-neutral-200')
+    }
   })
 
   it('runs a faint line through the plot on every 300 ms', () => {
