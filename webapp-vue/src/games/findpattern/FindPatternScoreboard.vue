@@ -39,7 +39,7 @@ const tipColumnWidth = computed(() => {
 })
 
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
-  { key: 'tip', label: 'Tipp', width: tipColumnWidth.value, ground: () => null },
+  { key: 'tip', label: 'Tipp', fact: 'Lösung', width: tipColumnWidth.value, ground: () => null },
   ...(timed.value
     ? [{ key: 'clock', label: '[mm:ss]', width: '3.5rem', align: 'end' as const }]
     : []),
@@ -50,12 +50,11 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   <RevealScoreboard
     :rows="props.rows"
     :columns="columns"
-    solution-column="tip"
     caption="Alle Tipps der Runde, nach Punkten sortiert"
     :live="props.live"
     :animate="props.animate"
   >
-    <template #solution>
+    <template #fact-tip>
       <div class="flex flex-row gap-px">
         <span
           v-for="chip in props.solutionChips"

@@ -34,8 +34,9 @@ export interface ScoreboardColumn<Row extends ScoreboardRow> {
   /** `tabular-nums`, so a column of numbers keeps one axis. */
   numeric?: boolean
   /**
-   * Label of a fact about the round, shown in the head block over this column — Entstauber's
-   * „Max [ms]“ over „⌀ [ms]“. Its value comes from the `fact-<key>` slot.
+   * Label of a fact about the round, shown in the head block over this column — „Lösung“ over the
+   * tips, Entstauber's „Max [ms]“ over „⌀ [ms]“. Its value comes from the `fact-<key>` slot, into a
+   * bare cell: the value brings its own surface and alignment.
    */
   fact?: string
   /**

@@ -15,8 +15,7 @@
  * mounts and only its ink appears, so nothing here ever moves — see the design doc.
  *
  * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
- * the player's line in its curve — and set facts about the round in the head block over a column
- * (`ScoreboardColumn.fact`, values through `fact-<key>`), the same way the solution stands there.
+ * the player's line in its curve.
  */
 import { computed } from 'vue'
 import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
@@ -34,27 +33,14 @@ const props = defineProps<{
   live: boolean
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
-  /**
-   * Key of the column the solution block stands over. Omitted: no solution rows at all.
-   * `| undefined` (not a bare `?`) so a caller may bind it unconditionally — see the
-   * `exactOptionalPropertyTypes` note in `frontend.md`.
-   */
-  solutionColumn?: string | undefined
   /** Width of the name column. Omitted, it takes what the fixed columns leave over. */
   nameWidth?: string | undefined
 }>()
 
 /** Grid column, so „Name“ at 0 is counted: every delay below is an index into the same row. */
-const solutionColumnIndex = computed(() =>
-  props.solutionColumn === undefined
-    ? -1
-    : props.columns.findIndex((column) => column.key === props.solutionColumn) + 1,
-)
 const pointsColumnIndex = computed(() => props.columns.length + 1)
-/** Two head rows when anything stands over a column — the solution or a fact. */
-const hasHeadBlock = computed(
-  () => solutionColumnIndex.value > 0 || props.columns.some((column) => column.fact !== undefined),
-)
+/** Two head rows when any column carries a fact — a solution, a round's tempo. */
+const hasHeadBlock = computed(() => props.columns.some((column) => column.fact !== undefined))
 const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 
 /** Asked once, when the choreography would start — the same four questions every reveal asks. */
@@ -128,10 +114,10 @@ function pointsLabel(points: number | null): string {
         <col style="width: 2.25rem" />
       </colgroup>
       <thead>
-        <!-- Head block with a solution or round facts: the heading spans both rows in column one,
-             so it reads level with them and against the table's edge rather than floating above
-             it, and each stands in its own column — lined up with the tips below by construction,
-             not by a right-aligned guess at the column's width. -->
+        <!-- Head block with facts — the solution, a round's tempo: the heading spans both rows in
+             column one, so it reads level with them and against the table's edge rather than
+             floating above it, and each fact stands in its own column — lined up with the tips
+             below by construction, not by a right-aligned guess at the column's width. -->
         <template v-if="hasHeadBlock">
           <tr>
             <td
@@ -144,16 +130,7 @@ function pointsLabel(points: number | null): string {
             </td>
             <template v-for="(column, at) in props.columns" :key="column.key">
               <th
-                v-if="at + 1 === solutionColumnIndex"
-                :id="`${column.key}-solution`"
-                class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
-                :class="opacity"
-                :style="head(0, solutionColumnIndex)"
-              >
-                Lösung
-              </th>
-              <th
-                v-else-if="column.fact !== undefined"
+                v-if="column.fact !== undefined"
                 :id="`${column.key}-fact`"
                 class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
                 :class="opacity"
@@ -181,28 +158,15 @@ function pointsLabel(points: number | null): string {
             </td>
           </tr>
           <!-- `headers`, not `scope` — `scope="col"` would put „Lösung“ over the guesses below,
-               whose column header is the game's own label. The cell itself is bare: a solution is
-               the one value in the table that is nobody's row, so its surface comes with it. -->
+               whose column header is the game's own label. The cell itself is bare: a fact is no
+               player's row, so its surface — or none — comes with it. -->
           <tr>
             <template v-for="(column, at) in props.columns" :key="column.key">
               <td
-                v-if="at + 1 === solutionColumnIndex"
-                :headers="`${column.key}-solution`"
+                v-if="column.fact !== undefined"
+                :headers="`${column.key}-fact`"
                 class="transition-opacity"
                 :class="opacity"
-                :style="head(1, solutionColumnIndex)"
-              >
-                <slot name="solution" />
-              </td>
-              <td
-                v-else-if="column.fact !== undefined"
-                :headers="`${column.key}-fact`"
-                class="px-0.5 transition-opacity"
-                :class="[
-                  opacity,
-                  column.align === 'end' ? 'text-end' : 'text-start',
-                  column.numeric === true ? 'tabular-nums' : '',
-                ]"
                 :style="head(1, at + 1)"
               >
                 <slot :name="`fact-${column.key}`" />

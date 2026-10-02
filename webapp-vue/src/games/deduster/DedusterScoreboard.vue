@@ -60,10 +60,14 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
     </template>
 
     <template #fact-avg>
-      <span data-test="fact-max">{{ thousands.format(props.intervalMs) }}</span>
+      <span data-test="fact-max" class="block px-0.5 text-end tabular-nums">{{
+        thousands.format(props.intervalMs)
+      }}</span>
     </template>
     <template #fact-level>
-      <span data-test="fact-levels">{{ props.tiles }}</span>
+      <span data-test="fact-levels" class="block px-0.5 text-end tabular-nums">{{
+        props.tiles
+      }}</span>
     </template>
 
     <template #cell-avg="{ row }">{{ row.averageLabel }}</template>
