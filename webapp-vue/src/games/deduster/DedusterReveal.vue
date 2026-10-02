@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * After the run: the photo under the dust, whole — the reward — then the table and the curve.
+ * After the run: the photo under the dust, whole — the reward — then the curve and the table.
  * Scrubbing the curve outlines the scrubbed level's right tile on the photo, and in red every tile
  * somebody wrongly tapped at that level, with a dot per player: that is how one sees one lay a tile
  * too far right.
@@ -83,6 +83,14 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
       </div>
     </div>
 
+    <DedusterChart
+      :rows="props.rows"
+      :tiles="tiles"
+      :interval-ms="props.payload.intervalMs"
+      :selected-user-id="selectedUserId"
+      :level="level"
+      @scrub="(next) => (level = next)"
+    />
     <DedusterScoreboard
       :rows="props.rows"
       :live="props.live"
@@ -91,14 +99,6 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
       :interval-ms="props.payload.intervalMs"
       :tiles="tiles"
       @select="(userId) => (selectedUserId = userId)"
-    />
-    <DedusterChart
-      :rows="props.rows"
-      :tiles="tiles"
-      :interval-ms="props.payload.intervalMs"
-      :selected-user-id="selectedUserId"
-      :level="level"
-      @scrub="(next) => (level = next)"
     />
   </div>
 </template>

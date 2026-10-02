@@ -61,6 +61,14 @@ describe('DedusterReveal', () => {
     expect(w.findComponent(DedusterChart).exists()).toBe(true)
   })
 
+  it('puts the curve between the photo and the table', () => {
+    const html = mountReveal().html()
+
+    expect(html.indexOf('data-test="deduster-chart"')).toBeLessThan(
+      html.indexOf('data-test="scoreboard"'),
+    )
+  })
+
   it('outlines the right tile and the wrong ones of the scrubbed level, with a dot per player', async () => {
     const w = mountReveal()
 

@@ -69,6 +69,41 @@ describe('DedusterChart', () => {
     expect(w.emitted('scrub')).toEqual([[0]])
   })
 
+  it('heads the curve and names both axes', () => {
+    const w = mountChart()
+
+    expect(w.get('h2').text()).toBe('Reaktionszeit (kleiner ist besser)')
+    expect(w.get('[data-test="chart-y-title"]').text()).toBe('[ms]')
+    expect(w.get('[data-test="chart-x-title"]').text()).toBe('Level')
+    expect(w.get('[data-test="chart-x-title"]').attributes('text-anchor')).toBe('middle')
+  })
+
+  it('draws the x axis with its ticks up to the tile count', () => {
+    const w = mountChart()
+
+    expect(w.find('[data-test="chart-x-axis"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="chart-x-tick"]').map((t) => t.text())).toEqual([
+      '0',
+      '8',
+      '16',
+      '24',
+      '32',
+      '40',
+      '48',
+    ])
+  })
+
+  it('runs a faint line through the plot on every 300 ms', () => {
+    // Fastest reaction 300 → floor 200; 300 … 1200 lie between it and the beat.
+    expect(mountChart().findAll('[data-test="chart-grid"]')).toHaveLength(4)
+  })
+
+  it('reads the scrubbed level as the axis counts it, from 0', () => {
+    expect(
+      mountChart({ level: 1, selectedUserId: 'a' }).get('[data-test="chart-readout"]').text(),
+    ).toBe('Level 1 · 320 ms')
+  })
+
   it('draws the guide line at the scrubbed level', () => {
     expect(mountChart({ level: 3 }).find('[data-test="chart-guide"]').exists()).toBe(true)
     expect(mountChart().find('[data-test="chart-guide"]').exists()).toBe(false)
