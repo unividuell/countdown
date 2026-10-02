@@ -12,6 +12,10 @@ Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 first, then widen with breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a
 desktop layout that was written first).
 
+- **There is no dark mode — never write a `dark:` variant.** The app paints light whatever
+  the system says; a `dark:` class only fires on a dark-themed system, on a light card, and
+  flips its colour there (a light grey line turns near-black, a dark guide turns invisible).
+  Code ported from `huettehuette` carries them: strip them on the way in.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
