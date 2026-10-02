@@ -70,7 +70,12 @@ describe('useDedusterRun', () => {
     run.tap(7)
 
     expect(ends).toEqual([
-      { reactionsMs: [300, 384, 184, 484], endedBy: 'COMPLETE', wrongTileIndex: null },
+      {
+        reactionsMs: [300, 384, 184, 484],
+        endedBy: 'COMPLETE',
+        wrongTileIndex: null,
+        wrongReactionMs: null,
+      },
     ])
     expect(run.ended.value).toBe(true)
   })
@@ -83,7 +88,9 @@ describe('useDedusterRun', () => {
     run.tap(5)
     advanceTo(3000)
 
-    expect(ends).toEqual([{ reactionsMs: [200], endedBy: 'TOO_LATE', wrongTileIndex: null }])
+    expect(ends).toEqual([
+      { reactionsMs: [200], endedBy: 'TOO_LATE', wrongTileIndex: null, wrongReactionMs: null },
+    ])
   })
 
   it('ends on a wrong tile, an earlier tile included', () => {
@@ -95,7 +102,10 @@ describe('useDedusterRun', () => {
     advanceTo(2100)
     expect(run.tap(5)).toBe('miss')
 
-    expect(ends).toEqual([{ reactionsMs: [200], endedBy: 'WRONG_TILE', wrongTileIndex: 5 }])
+    // The wrong tap's own time, since tile 1 fell at 2000: the curve's last point.
+    expect(ends).toEqual([
+      { reactionsMs: [200], endedBy: 'WRONG_TILE', wrongTileIndex: 5, wrongReactionMs: 100 },
+    ])
     expect(run.tap(2)).toBe('ignored')
   })
 
@@ -109,7 +119,9 @@ describe('useDedusterRun', () => {
     run.abandon()
     advanceTo(9000)
 
-    expect(ends).toEqual([{ reactionsMs: [200], endedBy: 'TOO_LATE', wrongTileIndex: null }])
+    expect(ends).toEqual([
+      { reactionsMs: [200], endedBy: 'TOO_LATE', wrongTileIndex: null, wrongReactionMs: null },
+    ])
   })
 
   it('lets a late start fall at once and only stretches the first beat', () => {

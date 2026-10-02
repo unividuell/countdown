@@ -1,13 +1,25 @@
 <script setup lang="ts">
 /**
  * The curve the original's discussion happened over, as plain SVG: one line per player in their
- * colour, the beat as a ceiling with the game-over band above it, a dashed average per player.
+ * colour, dashed on to how the run ended, the beat as a ceiling with the game-over band above it,
+ * a dashed average per player.
  *
  * A scrub instead of a tooltip — a finger dragged across reads the nearest level; a phone has no
  * hover. The legend is the table below: selecting a row brings its line forward.
  */
 import { computed, ref } from 'vue'
-import { VIEW, frameFor, gridMs, levelAt, levelTicks, polyline, xOf, yLabels, yOf } from './chart'
+import {
+  VIEW,
+  frameFor,
+  gridMs,
+  levelAt,
+  levelTicks,
+  polyline,
+  tailOf,
+  xOf,
+  yLabels,
+  yOf,
+} from './chart'
 import type { DedusterRow } from './scoreboard'
 
 const props = defineProps<{
@@ -31,6 +43,7 @@ const lines = computed(() =>
     return {
       row,
       points: polyline(frame.value, row.reactionsMs),
+      tail: tailOf(frame.value, row),
       averageY:
         row.reactionsMs.length === 0 ? null : yOf(frame.value, sum / row.reactionsMs.length),
       opacity: props.selectedUserId === null || props.selectedUserId === row.userId ? '1' : '0.25',
@@ -78,7 +91,7 @@ function onMove(event: PointerEvent): void {
 
 <template>
   <div class="flex flex-col gap-2">
-    <h2 class="text-lg">Reaktionszeit (kleiner ist besser)</h2>
+    <h2 class="text-2xl">Reaktionszeit (kleiner ist besser)</h2>
     <svg
       ref="svg"
       data-test="deduster-chart"
@@ -197,6 +210,28 @@ function onMove(event: PointerEvent): void {
           :stroke-opacity="line.opacity"
           stroke-width="1.5"
           stroke-linejoin="round"
+        />
+        <!-- How the run ended, dashed: it is no hit, but scrubbing on to it shows the photo's verdict. -->
+        <line
+          v-if="line.tail?.from"
+          data-test="chart-tail"
+          :x1="line.tail.from.x"
+          :y1="line.tail.from.y"
+          :x2="line.tail.to.x"
+          :y2="line.tail.to.y"
+          :stroke="line.row.colorHex"
+          :stroke-opacity="line.opacity"
+          stroke-width="1.5"
+          stroke-dasharray="4 3"
+        />
+        <circle
+          v-else-if="line.tail"
+          data-test="chart-tail"
+          :cx="line.tail.to.x"
+          :cy="line.tail.to.y"
+          r="1.5"
+          :fill="line.row.colorHex"
+          :fill-opacity="line.opacity"
         />
       </template>
 

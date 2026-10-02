@@ -345,6 +345,8 @@ data class DedusterGuess(
     val endedBy: DedusterEnd,
     /** Nur bei `WRONG_TILE`: welche Kachel stattdessen getippt wurde. Rein für die Auswertung. */
     val wrongTileIndex: Int? = null,
+    /** Nur bei `WRONG_TILE`: Zeit des Fehlgriffs seit der letzten gefallenen Kachel. Für die Kurve. */
+    val wrongReactionMs: Int? = null,
     /** Der Lauf begann nach einem Neuladen. Siehe „Neu geladen“. */
     val restarted: Boolean = false,
 )
@@ -359,7 +361,8 @@ als Kacheln, negative Werte, oder `COMPLETE` ohne volle Länge. Das ist ein Clie
 **Ein unbrauchbarer `wrongTileIndex` kostet den Lauf nicht.** Fehlt er, liegt er außerhalb des
 Rasters oder zeigt ausgerechnet auf die richtige Kachel, wird er auf `null` gesetzt und eine
 WARN-Zeile geschrieben; die Auswertung zeichnet dann keine Fehlmarkierung. Er ist Schmuck, kein
-Urteil, und darf nichts entscheiden.
+Urteil, und darf nichts entscheiden. Dasselbe gilt für `wrongReactionMs`: alles außer einer ganzen
+Zahl in `0..intervalMs` wird stumm `null`, und nichts davon geht in ⌀ oder Punkte ein.
 
 **Markiert statt abgewiesen:** eine Reaktion unter `MIN_HUMAN_MS` (120) oder über dem Takt setzt
 `implausible` und eine WARN-Zeile mit Runde (über die Bild-Id) und Grund. Den Spieler nennt sie
@@ -558,17 +561,23 @@ einzige Kachel traf.
  ms │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ← Game Over (über dem Takt)
 1300├────────────────────────────────────────────────
     │      ╭──╮                        ╭╮
-    │  ╭───╯  ╰──╮      ╭───╮      ╭───╯╰──╳  ← Linie endet = hier war Schluss
-    │──╯         ╰──────╯   ╰──────╯
- ┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  ← ⌀ dieses Spielers, beschriftet
- 200└──┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬──
-       0   4   8  12  16  20  24  28  32  36  40   Level
+    │  ╭───╯  ╰──╮      ╭───╮      ╭───╯╰┄┄╳  ← gestrichelt: der Fehlgriff zu seiner Zeit
+    │──╯         ╰──────╯   ╰──────╯             („zu spät“: gestrichelt hoch ins Band)
+ ┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  ← ⌀ dieses Spielers
+ 200└──┬────┬────┬────┬────┬────┬────┬────┬────┬──
+       0    5   10   15   20   25   30   35   40   45
+                           Level
 ```
 
 Alles daran ist reines SVG: eine `<polyline>` je Spieler in seiner Avatarfarbe, ein `<rect>` als
 Game-Over-Band oberhalb des Takts, eine gestrichelte `<line>` je ⌀, ein paar `<text>` an den Achsen.
-Bei fünfzehn Spielern sind das fünfzehn DOM-Knoten, nicht 720 Punkte. Hell und dunkel kommen über
-die CSS-Variablen von selbst.
+Bei fünfzehn Spielern sind das fünfzehn DOM-Knoten, nicht 720 Punkte. Einen Dark Mode hat die App
+nicht, also auch keine `dark:`-Varianten.
+
+Überschrift „Reaktionszeit (kleiner ist besser)“, im Stil von „Auswertung“; `[ms]` oben an der
+y-Achse, „Level“ mittig unter der x-Achse. Level zählen ab 0, Ticks alle fünf (0 … 45), die Achse
+endet an der letzten Kachel. Feine hellgraue Linien auf jedem Vielfachen von 300 ms zwischen Boden
+und Takt, Zahlen deutsch formatiert. Reihenfolge der Auswertung: Bild, Kurve, Tabelle.
 
 Was anders ist als bei `echarts`:
 

@@ -28,6 +28,7 @@ function row(
     out: null,
     endedBy,
     wrongTileIndex,
+    wrongReactionMs: null,
     implausible: false,
     restarted: false,
   }

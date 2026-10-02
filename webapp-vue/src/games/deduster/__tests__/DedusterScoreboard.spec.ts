@@ -18,6 +18,7 @@ const ROW: DedusterRow = {
   out: 'zu spät',
   endedBy: 'TOO_LATE',
   wrongTileIndex: null,
+  wrongReactionMs: null,
   implausible: true,
   restarted: true,
 }

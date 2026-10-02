@@ -26,6 +26,8 @@ export interface DedusterGuessWire {
   reactionsMs: number[]
   endedBy: DedusterEnd
   wrongTileIndex: number | null
+  /** The wrong tap's time since the last tile fell — the curve's last point. */
+  wrongReactionMs: number | null
   restarted: boolean
 }
 
@@ -78,10 +80,14 @@ export function asDedusterGuess(value: unknown): DedusterGuessWire | null {
   if (v === null || !Array.isArray(v.reactionsMs) || !v.reactionsMs.every(isInteger)) return null
   if (!isEnd(v.endedBy) || !isIntegerOrNull(v.wrongTileIndex) || typeof v.restarted !== 'boolean')
     return null
+  // Absent on a guess stored before the field existed: no time, the run still reads.
+  const wrongReactionMs = v.wrongReactionMs ?? null
+  if (!isIntegerOrNull(wrongReactionMs)) return null
   return {
     reactionsMs: v.reactionsMs,
     endedBy: v.endedBy,
     wrongTileIndex: v.wrongTileIndex,
+    wrongReactionMs,
     restarted: v.restarted,
   }
 }

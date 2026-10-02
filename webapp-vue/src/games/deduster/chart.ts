@@ -80,6 +80,35 @@ export function polyline(frame: Frame, reactionsMs: readonly number[]): string {
   return reactionsMs.map((ms, level) => `${xOf(frame, level)},${yOf(frame, ms)}`).join(' ')
 }
 
+export interface Point {
+  x: number
+  y: number
+}
+
+/**
+ * How a run ended, as one more step past its last reaction, at the level it ended on: a wrong tap
+ * at its own time, a missed beat up to the top of the game-over band. `from` is `null` at level 0,
+ * where there is no line to continue. A finished run, or a wrong tap without a time, has none.
+ */
+export function tailOf(
+  frame: Frame,
+  row: Pick<DedusterRow, 'reactionsMs' | 'endedBy' | 'wrongReactionMs'>,
+): { from: Point | null; to: Point } | null {
+  const level = row.reactionsMs.length
+  const ms =
+    row.endedBy === 'TOO_LATE'
+      ? frame.maxMs
+      : row.endedBy === 'WRONG_TILE'
+        ? row.wrongReactionMs
+        : null
+  if (ms === null) return null
+  const last = row.reactionsMs[level - 1]
+  return {
+    from: last === undefined ? null : { x: xOf(frame, level - 1), y: yOf(frame, last) },
+    to: { x: xOf(frame, level), y: yOf(frame, ms) },
+  }
+}
+
 export function levelAt(frame: Frame, x: number): number {
   const span = VIEW.width - VIEW.left - VIEW.right
   const level = Math.round(((x - VIEW.left) / span) * (frame.tiles - 1))

@@ -29,14 +29,25 @@ describe('deduster types', () => {
         reactionsMs: [300],
         endedBy: 'WRONG_TILE',
         wrongTileIndex: 4,
+        wrongReactionMs: 350,
         restarted: false,
       }),
     ).toEqual({
       reactionsMs: [300],
       endedBy: 'WRONG_TILE',
       wrongTileIndex: 4,
+      wrongReactionMs: 350,
       restarted: false,
     })
+    // A guess stored before the field existed still reads, without the wrong tap's time.
+    expect(
+      asDedusterGuess({
+        reactionsMs: [300],
+        endedBy: 'TOO_LATE',
+        wrongTileIndex: null,
+        restarted: false,
+      })?.wrongReactionMs,
+    ).toBeNull()
     expect(
       asDedusterGuess({
         reactionsMs: [300],

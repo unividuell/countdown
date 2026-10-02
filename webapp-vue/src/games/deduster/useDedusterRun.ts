@@ -32,6 +32,8 @@ export interface RunResult {
   reactionsMs: number[]
   endedBy: DedusterEnd
   wrongTileIndex: number | null
+  /** For [DedusterEnd] `WRONG_TILE`: the wrong tap's time since the last tile fell. */
+  wrongReactionMs: number | null
 }
 
 export type TapResult = 'hit' | 'miss' | 'ignored'
@@ -73,12 +75,16 @@ export function useDedusterRun(input: {
     scheduleTick(level + 1)
   }
 
-  function finish(endedBy: DedusterEnd, wrongTileIndex: number | null): void {
+  function finish(
+    endedBy: DedusterEnd,
+    wrongTileIndex: number | null,
+    wrongReactionMs: number | null = null,
+  ): void {
     if (ended.value) return
     ended.value = true
     running.value = false
     cancelTick?.()
-    input.onEnd({ reactionsMs: [...reactions], endedBy, wrongTileIndex })
+    input.onEnd({ reactionsMs: [...reactions], endedBy, wrongTileIndex, wrongReactionMs })
   }
 
   /**
@@ -92,15 +98,19 @@ export function useDedusterRun(input: {
     scheduleTick(0)
   }
 
+  function elapsed(): number {
+    return Math.max(0, Math.round(clock.now() - fellAt))
+  }
+
   function tap(index: number): TapResult {
     if (!running.value || revealed.value === 0) return 'ignored'
     if (index !== input.order[revealed.value - 1]) {
-      finish('WRONG_TILE', index)
+      finish('WRONG_TILE', index, elapsed())
       return 'miss'
     }
     if (!hit) {
       hit = true
-      reactions.push(Math.max(0, Math.round(clock.now() - fellAt)))
+      reactions.push(elapsed())
       if (revealed.value === input.order.length) finish('COMPLETE', null)
     }
     return 'hit'

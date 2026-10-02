@@ -19,6 +19,7 @@ function row(userId: string, reactionsMs: number[]): DedusterRow {
     out: null,
     endedBy: 'TOO_LATE',
     wrongTileIndex: null,
+    wrongReactionMs: null,
     implausible: false,
     restarted: false,
   }
@@ -39,6 +40,19 @@ describe('DedusterChart', () => {
     expect(w.findAll('polyline')).toHaveLength(2)
     expect(w.findAll('[data-test="chart-average"]')).toHaveLength(2)
     expect(w.find('[data-test="chart-game-over"]').exists()).toBe(true)
+  })
+
+  it('dashes how a run ended: the wrong tap, the missed beat', () => {
+    const w = mountChart({
+      rows: [
+        { ...row('a', [300, 320]), endedBy: 'WRONG_TILE', wrongTileIndex: 4, wrongReactionMs: 280 },
+        row('b', [400]),
+      ],
+    })
+    const tails = w.findAll('[data-test="chart-tail"]')
+
+    expect(tails).toHaveLength(2)
+    for (const tail of tails) expect(tail.attributes('stroke-dasharray')).toBeDefined()
   })
 
   it('brings the selected player forward and fades the others', () => {

@@ -277,6 +277,42 @@ class DedusterGameTypeTest {
             .outcome as DedusterOutcome).wrongTileIndex shouldBe wrong
     }
 
+    /** The curve draws the wrong tap where it happened: a real time, if one inside the beat. */
+    @Test
+    fun `a wrong tap's reaction is kept for the curve`() {
+        val params = fixed(intervalMs = 1300)
+        val stored = game.judge(
+            params = params,
+            guess = run(
+                reactions = listOf(400, 410),
+                endedBy = "WRONG_TILE",
+                wrongTileIndex = params.order[30],
+                extra = ""","wrongReactionMs":350""",
+            ),
+        ).guess.shouldNotBeNull()
+
+        stored.get("wrongReactionMs").asInt() shouldBe 350
+    }
+
+    @Test
+    fun `an unusable wrong tap's reaction is dropped, never the run`() {
+        val params = fixed(intervalMs = 1300)
+        listOf(
+            "WRONG_TILE" to "-1",
+            "WRONG_TILE" to "1.5",
+            "WRONG_TILE" to "\"fast\"",
+            "WRONG_TILE" to "1301",
+            "TOO_LATE" to "350",
+        ).forEach { (endedBy, value) ->
+            val stored = game.judge(
+                params = params,
+                guess = run(reactions = listOf(400, 410), endedBy = endedBy, extra = ""","wrongReactionMs":$value"""),
+            ).guess.shouldNotBeNull()
+
+            stored.get("wrongReactionMs").isNull shouldBe true
+        }
+    }
+
     /** A run cannot be repeated, so a false alarm must never cost it: marked, stored, scored. */
     @Test
     fun `a reaction faster than a human or slower than the beat marks the run`() {
@@ -304,6 +340,6 @@ class DedusterGameTypeTest {
             guess = run(reactions = listOf(400), endedBy = "TOO_LATE", extra = ""","order":[1,2,3]"""),
         ).guess.shouldNotBeNull()
 
-        stored.propertyNames().toSet() shouldBe setOf("reactionsMs", "endedBy", "wrongTileIndex", "restarted")
+        stored.propertyNames().toSet() shouldBe setOf("reactionsMs", "endedBy", "wrongTileIndex", "wrongReactionMs", "restarted")
     }
 }

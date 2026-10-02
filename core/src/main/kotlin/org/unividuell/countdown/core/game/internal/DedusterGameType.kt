@@ -52,6 +52,8 @@ data class DedusterGuess(
     val endedBy: DedusterEnd,
     /** Only for [DedusterEnd.WRONG_TILE], and only when usable: for the evaluation, never the verdict. */
     val wrongTileIndex: Int?,
+    /** The wrong tap's time since the last tile fell, for the curve's last point; same rule as above. */
+    val wrongReactionMs: Int?,
     /** The run began after a reload. */
     val restarted: Boolean,
 )
@@ -137,6 +139,7 @@ class DedusterGameType(
             else -> if (node.isBoolean) node.asBoolean() else throw InvalidGuessException("restarted must be a boolean")
         }
         val wrongTileIndex = wrongTileOf(params = params, endedBy = endedBy, level = reactions.size, node = guess.get("wrongTileIndex"))
+        val wrongReactionMs = wrongReactionOf(params = params, endedBy = endedBy, node = guess.get("wrongReactionMs"))
 
         val implausible = reactions.any { it < MIN_HUMAN_MS || it > params.intervalMs }
         if (implausible) {
@@ -155,7 +158,7 @@ class DedusterGameType(
             guess = mapper.valueToTree(
                 DedusterGuess(
                     reactionsMs = reactions, endedBy = endedBy,
-                    wrongTileIndex = wrongTileIndex, restarted = restarted,
+                    wrongTileIndex = wrongTileIndex, wrongReactionMs = wrongReactionMs, restarted = restarted,
                 ),
             ),
             outcome = DedusterOutcome(
@@ -226,5 +229,11 @@ class DedusterGameType(
             return null
         }
         return index
+    }
+
+    /** Decoration like [wrongTileOf]: anything but a time inside the beat is dropped without a word. */
+    private fun wrongReactionOf(params: DedusterParams, endedBy: DedusterEnd, node: JsonNode?): Int? {
+        if (endedBy != DedusterEnd.WRONG_TILE) return null
+        return node?.takeIf { it.isIntegralNumber && it.canConvertToInt() }?.asInt()?.takeIf { it in 0..params.intervalMs }
     }
 }

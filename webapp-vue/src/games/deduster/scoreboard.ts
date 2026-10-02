@@ -29,6 +29,8 @@ export interface DedusterRow extends ScoreboardRow {
   endedBy: DedusterEnd | null
   /** As the server kept it: only a usable one survives `judge`. */
   wrongTileIndex: number | null
+  /** The wrong tap's time, for the curve; `null` when the run did not end on one or had none. */
+  wrongReactionMs: number | null
   implausible: boolean
   restarted: boolean
 }
@@ -59,6 +61,7 @@ export function scoreRows(input: {
       out: outcome === null ? null : OUT[outcome.endedBy],
       endedBy: outcome?.endedBy ?? null,
       wrongTileIndex: outcome?.wrongTileIndex ?? null,
+      wrongReactionMs: guess?.wrongReactionMs ?? null,
       implausible: outcome?.implausible ?? false,
       restarted: outcome?.restarted ?? false,
     }

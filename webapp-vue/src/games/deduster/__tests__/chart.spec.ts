@@ -7,6 +7,7 @@ import {
   levelAt,
   levelTicks,
   polyline,
+  tailOf,
   wrongTilesAt,
   xOf,
   yLabels,
@@ -34,6 +35,7 @@ function row(
     out: null,
     endedBy,
     wrongTileIndex,
+    wrongReactionMs: null,
     implausible: false,
     restarted: false,
   }
@@ -72,6 +74,32 @@ describe('deduster chart', () => {
     expect(frame.maxMs).toBeGreaterThan(1300)
     expect(yOf(frame, frame.maxMs)).toBe(VIEW.top)
     expect(yOf(frame, frame.minMs)).toBe(VIEW.height - VIEW.bottom)
+  })
+
+  it('runs a wrong tap on to where it happened, a timeout up into the band', () => {
+    const wrong = { ...row('aa', [250, 400], 'WRONG_TILE', 7), wrongReactionMs: 300 }
+    expect(tailOf(frame, wrong)).toEqual({
+      from: { x: xOf(frame, 1), y: yOf(frame, 400) },
+      to: { x: xOf(frame, 2), y: yOf(frame, 300) },
+    })
+
+    expect(tailOf(frame, row('aa', [250, 400], 'TOO_LATE'))).toEqual({
+      from: { x: xOf(frame, 1), y: yOf(frame, 400) },
+      to: { x: xOf(frame, 2), y: yOf(frame, frame.maxMs) },
+    })
+  })
+
+  it('has no tail for a finished run, nor for a wrong tap without a time', () => {
+    expect(tailOf(frame, row('aa', Array(48).fill(400), 'COMPLETE'))).toBeNull()
+    expect(tailOf(frame, row('aa', [250], 'WRONG_TILE', 7))).toBeNull()
+  })
+
+  it('starts a tail at level 0 without a line to come from', () => {
+    const first = { ...row('aa', [], 'WRONG_TILE', 7), wrongReactionMs: 300 }
+    expect(tailOf(frame, first)).toEqual({
+      from: null,
+      to: { x: xOf(frame, 0), y: yOf(frame, 300) },
+    })
   })
 
   it('draws one point per reaction', () => {
