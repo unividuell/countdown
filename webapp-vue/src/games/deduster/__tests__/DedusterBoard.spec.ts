@@ -97,6 +97,38 @@ describe('DedusterBoard', () => {
     expect(cover.props('note')).toBeNull()
   })
 
+  it('draws the grid lines above every tile, a fallen one included, and a crosshair while running', async () => {
+    const w = mountBoard()
+    await flushPromises()
+    const field = w.get('[data-test="deduster-field"]')
+    const lines = () => w.findAll('[data-test="deduster-line"]')
+    expect(field.classes()).not.toContain('cursor-crosshair')
+
+    w.getComponent(RevealCover).vm.$emit('start')
+    await w.setProps({ sealed: false, payload: PAYLOAD })
+    vi.advanceTimersByTime(1000)
+    await w.vm.$nextTick()
+
+    expect(cleared(w)).toHaveLength(1)
+    expect(lines()).toHaveLength(4)
+    expect(lines().every((l) => !l.classes().includes('opacity-0'))).toBe(true)
+    expect(w.get('[data-test="deduster-lines"]').classes()).toEqual(
+      expect.arrayContaining(['pointer-events-none', 'z-10']),
+    )
+    expect(field.classes()).toContain('cursor-crosshair')
+  })
+
+  it('dusts every tile with the original texture', async () => {
+    const w = mountBoard()
+    await flushPromises()
+
+    // Through a variable on the grid: every tile then carries the same class and nothing else.
+    expect(cells(w)[0]!.element.parentElement!.getAttribute('style')).toContain('--dust: url(')
+    for (const cell of cells(w)) {
+      expect(cell.classes()).toEqual(expect.arrayContaining(['bg-(image:--dust)', 'grayscale']))
+    }
+  })
+
   it('offers the hold only once the photo is decoded', async () => {
     const w = mountBoard()
     expect(w.getComponent(RevealCover).props('state')).toBe('preparing')

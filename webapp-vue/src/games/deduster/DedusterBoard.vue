@@ -18,6 +18,7 @@ import type { SceneState } from '@/ui/sceneState'
 import { prefersReducedMotion } from '@/ui/motion'
 import DedusterBriefing from './DedusterBriefing.vue'
 import { loadPhoto } from './photo'
+import dustUrl from './dust.jpg'
 import type { DedusterGuessWire, DedusterPayload, DedusterScene } from './types'
 import { browserClock, useDedusterRun, type RunResult } from './useDedusterRun'
 
@@ -196,7 +197,7 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
           ref="field"
           data-test="deduster-field"
           class="relative w-full overflow-hidden select-none"
-          :class="{ 'touch-none': running }"
+          :class="{ 'touch-none cursor-crosshair': running }"
           :style="{ aspectRatio: `${layout.cols} / ${layout.rows}` }"
           @pointerdown="onPointerDown"
         >
@@ -210,14 +211,30 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
           <!-- No transition on a falling tile: any fade costs reaction time, and differently on every device. -->
           <div
             class="absolute inset-0 grid"
-            :style="{ gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))` }"
+            :style="{
+              gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
+              '--dust': `url(${dustUrl})`,
+            }"
           >
             <div
               v-for="cell in layout.cols * layout.rows"
               :key="cell"
               data-test="deduster-cell"
-              class="border border-stone-500/30 bg-stone-400"
+              class="bg-gray-200 bg-(image:--dust) bg-repeat grayscale dark:bg-gray-800"
               :class="{ 'opacity-0': revealed.has(cell - 1) }"
+            />
+          </div>
+          <!-- The lines lie over dust, photo and ripple alike: a fallen tile keeps its frame to aim at. -->
+          <div
+            data-test="deduster-lines"
+            class="pointer-events-none absolute inset-0 z-10 grid"
+            :style="{ gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))` }"
+          >
+            <div
+              v-for="cell in layout.cols * layout.rows"
+              :key="cell"
+              data-test="deduster-line"
+              class="border border-stone-500/30"
             />
           </div>
         </div>
