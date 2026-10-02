@@ -82,16 +82,31 @@ describe('DedusterChart', () => {
     expect(lines[1]!.attributes('stroke-opacity')).toBe('1')
   })
 
-  it('reports the level under the finger', async () => {
+  /** Pressing changes nothing on screen; only the click decides between needle and selection. */
+  it('leaves the needle alone on a press', async () => {
     const w = mountChart()
     atViewBoxSize(w)
 
-    await w.get('svg').trigger('pointerdown', { clientX: VIEW.left, clientY: 100, isPrimary: true })
+    await w
+      .get('svg')
+      .trigger('pointerdown', { clientX: xOf(FRAME, 20), clientY: 100, isPrimary: true })
 
-    expect(w.emitted('scrub')).toEqual([[0]])
+    expect(w.emitted('scrub')).toBeUndefined()
   })
 
-  it('selects a run when a tap lands on its line alone', async () => {
+  it('moves the needle on a click away from every line', async () => {
+    const w = mountChart()
+    atViewBoxSize(w)
+    const away = { clientX: xOf(FRAME, 20), clientY: yOf(FRAME, 900), isPrimary: true }
+
+    await w.get('svg').trigger('pointerdown', away)
+    await w.get('svg').trigger('click', away)
+
+    expect(w.emitted('scrub')).toEqual([[20]])
+    expect(w.emitted('select')).toBeUndefined()
+  })
+
+  it('toggles a run on a click on its line alone, and leaves the needle where it was', async () => {
     const w = mountChart()
     atViewBoxSize(w)
     const on = { clientX: xOf(FRAME, 1), clientY: yOf(FRAME, 320), isPrimary: true }
@@ -100,20 +115,33 @@ describe('DedusterChart', () => {
     await w.get('svg').trigger('click', on)
 
     expect(w.emitted('select')).toEqual([['a']])
+    expect(w.emitted('scrub')).toBeUndefined()
   })
 
-  it('selects nothing for a tap between two lines, or a drag', async () => {
+  it('moves the needle, selecting nobody, on a click between two lines', async () => {
     const w = mountChart()
     atViewBoxSize(w)
     const between = { clientX: xOf(FRAME, 0), clientY: yOf(FRAME, 350), isPrimary: true }
 
     await w.get('svg').trigger('pointerdown', between)
     await w.get('svg').trigger('click', between)
-    await w.get('svg').trigger('pointerdown', { ...between, clientX: xOf(FRAME, 1) - 20 })
-    await w
-      .get('svg')
-      .trigger('click', { ...between, clientX: xOf(FRAME, 1), clientY: yOf(FRAME, 320) })
 
+    expect(w.emitted('scrub')).toEqual([[0]])
+    expect(w.emitted('select')).toBeUndefined()
+  })
+
+  it('scrubs along a drag, and its closing click selects nobody', async () => {
+    const w = mountChart()
+    atViewBoxSize(w)
+    const start = { clientX: xOf(FRAME, 1) - 20, clientY: yOf(FRAME, 320), isPrimary: true }
+    const end = { ...start, clientX: xOf(FRAME, 1) }
+
+    await w.get('svg').trigger('pointerdown', start)
+    await w.get('svg').trigger('pointermove', { ...end, buttons: 1 })
+    await w.get('svg').trigger('pointerup', end)
+    await w.get('svg').trigger('click', end)
+
+    expect(w.emitted('scrub')).toEqual([[1]])
     expect(w.emitted('select')).toBeUndefined()
   })
 

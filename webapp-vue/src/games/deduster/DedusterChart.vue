@@ -5,9 +5,12 @@
  * a dashed average per player.
  *
  * A scrub instead of a tooltip — a finger dragged across reads the nearest level; a phone has no
- * hover — and a tap outside the chart lets go of it. Nobody is selected at first and every line
- * shows in full; a name in the table below, or a tap on one line alone, brings that line forward and
- * reads its time at the scrub.
+ * hover. A tap on one line alone toggles that line; any other tap puts the scrub's needle there,
+ * and a tap outside the chart lets go of it. Nobody is selected at first and every line shows in
+ * full; a name in the table below toggles a line too, and a selected line's time reads at the needle.
+ *
+ * Nothing changes on screen while the pointer is merely down. The needle used to jump on the press,
+ * and a tap on a line then toggled it reliably only where the needle already stood.
  */
 import { computed, ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
@@ -83,8 +86,10 @@ const readout = computed(() => {
 })
 
 const svg = ref<SVGSVGElement | null>(null)
-const dragging = ref(false)
+/** Where the pointer went down, while it is down. */
 let pressedAt: { x: number; y: number } | null = null
+/** The press turned into a drag: it scrubs, and the click that ends it does nothing more. */
+let dragged = false
 
 /** The pointer in the viewBox's units, and how many of them a screen pixel is. */
 function inView(event: MouseEvent): { x: number; y: number; perPx: number } | null {
@@ -104,28 +109,37 @@ function scrubAt(event: PointerEvent): void {
 }
 
 function onDown(event: PointerEvent): void {
-  dragging.value = true
   pressedAt = { x: event.clientX, y: event.clientY }
+  dragged = false
+}
+
+function onMove(event: PointerEvent): void {
+  if (pressedAt === null) return
+  if (!dragged && Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) <= DRAG_PX)
+    return
+  dragged = true
   scrubAt(event)
 }
 
+function onRelease(): void {
+  pressedAt = null
+}
+
 function onClick(event: MouseEvent): void {
-  const moved =
-    pressedAt === null ||
-    Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > DRAG_PX
+  if (dragged) {
+    dragged = false
+    return
+  }
   const p = inView(event)
-  if (moved || p === null) return
+  if (p === null) return
   const userId = runAt(frame.value, props.rows, p, TAP_RADIUS_PX * p.perPx)
   if (userId !== null) emit('select', userId)
+  else emit('scrub', levelAt(frame.value, p.x))
 }
 
 onClickOutside(svg, () => {
   if (props.level !== null) emit('scrub', null)
 })
-
-function onMove(event: PointerEvent): void {
-  if (dragging.value) scrubAt(event)
-}
 </script>
 
 <template>
@@ -141,8 +155,9 @@ function onMove(event: PointerEvent): void {
       @pointerdown="onDown"
       @click="onClick"
       @pointermove="onMove"
-      @pointerup="dragging = false"
-      @pointerleave="dragging = false"
+      @pointerup="onRelease"
+      @pointerleave="onRelease"
+      @pointercancel="onRelease"
     >
       <line
         v-for="ms in grid"
