@@ -136,6 +136,38 @@ describe('RevealScoreboard', () => {
     ).toBe('2')
   })
 
+  it('lines a round fact up with its own column, over two head rows', () => {
+    const LEVEL: ScoreboardColumn<Row> = {
+      key: 'level',
+      label: 'Level',
+      fact: 'Levels',
+      align: 'end',
+    }
+    const wrapper = mountBoard(
+      { columns: [TIP, LEVEL] },
+      { 'fact-level': '<span data-test="fact">48</span>', 'cell-level': '<span>1</span>' },
+    )
+    const grid = headGrid(wrapper)
+
+    const levelColumn = wrapper
+      .findAll('thead tr:last-child th')
+      .findIndex((th) => th.text() === 'Level')
+    const label = wrapper
+      .get('thead')
+      .findAll('th')
+      .find((th) => th.text() === 'Levels')!
+    const value = wrapper.get('[data-test="fact"]').element.closest('td')!
+
+    expect(columnOf(grid, label.element)).toBe(levelColumn)
+    expect(columnOf(grid, value)).toBe(levelColumn)
+    expect(value.getAttribute('headers')).toBe(label.attributes('id'))
+    expect(value.classList).toContain('text-end')
+    expect(wrapper.get('thead h2').element.closest('td')!.getAttribute('rowspan')).toBe('2')
+    for (const gridRow of grid) {
+      expect(gridRow.filter((cell) => cell !== undefined)).toHaveLength(4)
+    }
+  })
+
   it('leaves the solution rows out entirely for a game without one', () => {
     const wrapper = mountBoard()
 

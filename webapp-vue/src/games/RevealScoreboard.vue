@@ -15,7 +15,8 @@
  * mounts and only its ink appears, so nothing here ever moves — see the design doc.
  *
  * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
- * the player's line in its curve.
+ * the player's line in its curve — and set facts about the round in the head block over a column
+ * (`ScoreboardColumn.fact`, values through `fact-<key>`), the same way the solution stands there.
  */
 import { computed } from 'vue'
 import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
@@ -50,7 +51,11 @@ const solutionColumnIndex = computed(() =>
     : props.columns.findIndex((column) => column.key === props.solutionColumn) + 1,
 )
 const pointsColumnIndex = computed(() => props.columns.length + 1)
-const bandRow = computed(() => (solutionColumnIndex.value > 0 ? 2 : 1))
+/** Two head rows when anything stands over a column — the solution or a fact. */
+const hasHeadBlock = computed(
+  () => solutionColumnIndex.value > 0 || props.columns.some((column) => column.fact !== undefined),
+)
+const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 
 /** Asked once, when the choreography would start — the same four questions every reveal asks. */
 const still =
@@ -123,11 +128,11 @@ function pointsLabel(points: number | null): string {
         <col style="width: 2.25rem" />
       </colgroup>
       <thead>
-        <!-- Head block with a solution: the heading spans both rows in column one, so it reads
-             level with the solution and against the table's edge rather than floating above it,
-             and the solution stands in its own column — lined up with the tips below by
-             construction, not by a right-aligned guess at the column's width. -->
-        <template v-if="solutionColumnIndex > 0">
+        <!-- Head block with a solution or round facts: the heading spans both rows in column one,
+             so it reads level with them and against the table's edge rather than floating above
+             it, and each stands in its own column — lined up with the tips below by construction,
+             not by a right-aligned guess at the column's width. -->
+        <template v-if="hasHeadBlock">
           <tr>
             <td
               rowspan="2"
@@ -146,6 +151,15 @@ function pointsLabel(points: number | null): string {
                 :style="head(0, solutionColumnIndex)"
               >
                 Lösung
+              </th>
+              <th
+                v-else-if="column.fact !== undefined"
+                :id="`${column.key}-fact`"
+                class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
+                :class="opacity"
+                :style="head(0, at + 1)"
+              >
+                {{ column.fact }}
               </th>
               <td v-else aria-hidden="true"></td>
             </template>
@@ -180,11 +194,24 @@ function pointsLabel(points: number | null): string {
               >
                 <slot name="solution" />
               </td>
+              <td
+                v-else-if="column.fact !== undefined"
+                :headers="`${column.key}-fact`"
+                class="px-0.5 transition-opacity"
+                :class="[
+                  opacity,
+                  column.align === 'end' ? 'text-end' : 'text-start',
+                  column.numeric === true ? 'tabular-nums' : '',
+                ]"
+                :style="head(1, at + 1)"
+              >
+                <slot :name="`fact-${column.key}`" />
+              </td>
               <td v-else aria-hidden="true"></td>
             </template>
           </tr>
         </template>
-        <!-- Without a solution the head is one row: the heading runs to the live chip's column. -->
+        <!-- With neither the head is one row: the heading runs to the live chip's column. -->
         <tr v-else>
           <td
             :colspan="props.columns.length + 1"
