@@ -11,6 +11,7 @@
  */
 import { computed, ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
+import IconWarning from '~icons/lucide/triangle-alert'
 import {
   VIEW,
   frameFor,
@@ -42,6 +43,8 @@ const emit = defineEmits<{ scrub: [level: number | null]; select: [userId: strin
 const TAP_RADIUS_PX = 12
 /** A pointer that moved further than this between press and click was scrubbing, not tapping. */
 const DRAG_PX = 4
+/** The warning sign's edge, in viewBox units — an icon, since phones draw U+26A0 as a yellow emoji. */
+const WARNING_SIZE = 7
 
 const frame = computed(() =>
   frameFor({ tiles: props.tiles, intervalMs: props.intervalMs, rows: props.rows }),
@@ -282,19 +285,17 @@ function onMove(event: PointerEvent): void {
           :fill="line.row.colorHex"
           :fill-opacity="line.opacity"
         />
-        <text
+        <IconWarning
           v-for="(warning, at) in line.warnings"
           :key="at"
           data-test="chart-warning"
-          :x="warning.x"
-          :y="warning.y - 3"
-          text-anchor="middle"
-          :fill="line.row.colorHex"
-          :fill-opacity="line.opacity"
-          class="text-[7px]"
-        >
-          ⚠
-        </text>
+          :x="warning.x - WARNING_SIZE / 2"
+          :y="warning.below ? warning.y + 2 : warning.y - 2 - WARNING_SIZE"
+          :width="WARNING_SIZE"
+          :height="WARNING_SIZE"
+          :style="{ color: line.row.colorHex }"
+          :opacity="line.opacity"
+        />
       </template>
 
       <template v-if="readout">

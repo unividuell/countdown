@@ -3,10 +3,13 @@
  * „Auswertung“ for Entstauber. The table is `RevealScoreboard`; this file decides the three columns,
  * the round's two facts above them (tempo and size, as in the original), and the name cell — a
  * button, because the rows are the curve's legend: tapping one brings that player's line forward.
- * A run's marks (⚠ implausible, ↻ after a reload) stand behind the name. Units stand in brackets
+ * A run's marks (a warning sign: implausible, a turning arrow: after a reload) stand behind the
+ * name. Icons, not U+26A0 or U+21BB: phones draw the warning sign as a yellow emoji. Units stand in brackets
  * on the header, never on a value.
  */
 import { computed } from 'vue'
+import IconRestarted from '~icons/lucide/rotate-cw'
+import IconWarning from '~icons/lucide/triangle-alert'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import type { DedusterRow } from './scoreboard'
@@ -65,16 +68,20 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
         <span
           v-if="row.implausible"
           :data-test="`mark-implausible-${row.userId}`"
-          class="shrink-0"
+          class="shrink-0 self-center"
           title="unplausible Reaktionszeit"
-          >⚠<span class="sr-only"> unplausible Reaktionszeit</span></span
+          ><IconWarning class="size-[1em]" aria-hidden="true" /><span class="sr-only">
+            unplausible Reaktionszeit</span
+          ></span
         >
         <span
           v-if="row.restarted"
           :data-test="`mark-restarted-${row.userId}`"
-          class="shrink-0"
+          class="shrink-0 self-center"
           title="nach dem Neuladen gespielt"
-          >↻<span class="sr-only"> nach dem Neuladen gespielt</span></span
+          ><IconRestarted class="size-[1em]" aria-hidden="true" /><span class="sr-only">
+            nach dem Neuladen gespielt</span
+          ></span
         >
       </button>
     </template>

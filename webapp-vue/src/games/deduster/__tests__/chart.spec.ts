@@ -161,9 +161,10 @@ describe('deduster chart', () => {
   it('warns at the reactions that made a run implausible, and only on a marked run', () => {
     const marked = { ...row('aa', [110, 400, 1400], 'TOO_LATE'), implausible: true }
 
+    // Low on the plot the sign hangs below its point, high up above it: away from the crowd.
     expect(warningsOf(frame, marked)).toEqual([
-      { x: xOf(frame, 0), y: yOf(frame, 110) },
-      { x: xOf(frame, 2), y: yOf(frame, 1400) },
+      { x: xOf(frame, 0), y: yOf(frame, 110), below: true },
+      { x: xOf(frame, 2), y: yOf(frame, 1400), below: false },
     ])
     expect(warningsOf(frame, row('aa', [110], 'TOO_LATE'))).toEqual([])
   })

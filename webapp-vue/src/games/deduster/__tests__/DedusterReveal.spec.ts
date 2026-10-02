@@ -121,6 +121,7 @@ describe('DedusterReveal', () => {
     const bars = w.get('[data-test="reveal-correct"]').findAll('[data-test="reveal-bar"]')
     expect(bars.map((b) => b.attributes('data-kind'))).toEqual(['missed', 'hit'])
     expect(bars[1]!.find('[data-test="reveal-warning"]').exists()).toBe(true)
+    expect(w.html()).not.toContain('⚠')
     expect(bars[0]!.find('[data-test="reveal-warning"]').exists()).toBe(false)
   })
 

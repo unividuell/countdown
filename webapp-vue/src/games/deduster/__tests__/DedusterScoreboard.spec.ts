@@ -44,6 +44,10 @@ describe('DedusterScoreboard', () => {
     expect(name.find('[data-test="mark-implausible-u1"]').exists()).toBe(true)
     expect(name.find('[data-test="mark-restarted-u1"]').exists()).toBe(true)
     expect(name.get('[data-test="mark-implausible-u1"]').classes()).toContain('shrink-0')
+    expect(name.get('[data-test="mark-implausible-u1"]').find('svg').exists()).toBe(true)
+    expect(name.get('[data-test="mark-restarted-u1"]').find('svg').exists()).toBe(true)
+    expect(w.html()).not.toContain('⚠')
+    expect(w.html()).not.toContain('↻')
   })
 
   it('heads the table with the round’s tempo and size, units in brackets on the header', () => {

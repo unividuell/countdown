@@ -52,15 +52,22 @@ export function implausibleMs(ms: number, intervalMs: number): boolean {
   return ms < MIN_HUMAN_MS || ms > intervalMs
 }
 
-/** The points to mark on a marked run's line: the reactions that marked it. */
+/**
+ * The points to mark on a marked run's line: the reactions that marked it. [below]: in the plot's
+ * lower half the sign hangs under its point, in the upper half over it — away from where the lines
+ * crowd, which is the middle.
+ */
 export function warningsOf(
   frame: Frame,
   row: Pick<DedusterRow, 'reactionsMs' | 'implausible'>,
-): Point[] {
+): (Point & { below: boolean })[] {
   if (!row.implausible) return []
-  return row.reactionsMs.flatMap((ms, level) =>
-    implausibleMs(ms, frame.intervalMs) ? [{ x: xOf(frame, level), y: yOf(frame, ms) }] : [],
-  )
+  const middle = (VIEW.top + VIEW.height - VIEW.bottom) / 2
+  return row.reactionsMs.flatMap((ms, level) => {
+    if (!implausibleMs(ms, frame.intervalMs)) return []
+    const y = yOf(frame, ms)
+    return [{ x: xOf(frame, level), y, below: y > middle }]
+  })
 }
 
 /**

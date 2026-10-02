@@ -6,6 +6,7 @@
  * outlined tile holds a mini bar chart — a slot per player in table order, a bar per time there.
  */
 import { computed, ref } from 'vue'
+import IconWarning from '~icons/lucide/triangle-alert'
 import DedusterChart from './DedusterChart.vue'
 import DedusterScoreboard from './DedusterScoreboard.vue'
 import { ceilingMs, correctBars, wrongBars, wrongTilesAt, type TileBar } from './chart'
@@ -113,12 +114,11 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
                 backgroundColor: bar.colorHex,
               }"
             >
-              <span
+              <IconWarning
                 v-if="bar.warn"
                 data-test="reveal-warning"
-                class="absolute bottom-full left-1/2 -translate-x-1/2 text-[8px] leading-none"
-                >⚠</span
-              >
+                class="absolute bottom-full left-1/2 size-2 -translate-x-1/2 text-neutral-900"
+              />
             </div>
           </div>
         </div>

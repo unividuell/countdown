@@ -201,6 +201,8 @@ describe('DedusterChart', () => {
     })
 
     expect(w.findAll('[data-test="chart-warning"]')).toHaveLength(1)
+    // An icon, not U+26A0: phones draw that one as a yellow emoji.
+    expect(w.html()).not.toContain('⚠')
   })
 
   it('draws the guide line at the scrubbed level', () => {
