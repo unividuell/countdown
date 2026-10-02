@@ -16,6 +16,11 @@ desktop layout that was written first).
   the system says; a `dark:` class only fires on a dark-themed system, on a light card, and
   flips its colour there (a light grey line turns near-black, a dark guide turns invisible).
   Code ported from `huettehuette` carries them: strip them on the way in.
+- **A component that layers its own content with `z-index` isolates itself.** Give its root
+  `isolate`, so those layers stack inside it and never against the page: the round card's
+  `z-10` cover sat above the members' fly-in (z ≥ 1, in the page's stacking context) until the
+  card was isolated. Raising the page's elements instead escalates — it lifts them over the
+  drawer's backdrop too.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar

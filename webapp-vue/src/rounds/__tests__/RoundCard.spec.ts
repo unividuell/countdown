@@ -137,6 +137,13 @@ enableAutoUnmount(afterEach)
 afterEach(_resetSharedClock)
 
 describe('RoundCard', () => {
+  /** The cover and Entstauber's lines layer inside the card; isolated, they never rise over the page's fly-in. */
+  it('keeps its own layers to itself', () => {
+    const w = mountCard({ round: aRound({ payload: null }), stage: 'sealed' })
+
+    expect(w.get('[data-test="round-card"]').classes()).toContain('isolate')
+  })
+
   it('mounts the game sealed, and reaches its reveal through to the page', async () => {
     const reveal = vi.fn().mockResolvedValue(undefined)
     const w = mountCard({
