@@ -3,7 +3,8 @@
  * „Auswertung“ for Entstauber. The table is `RevealScoreboard`; this file decides the three columns,
  * the round's two facts above them (tempo and size, as in the original), and the name cell — a
  * button, because the rows are the curve's legend: tapping one brings that player's line forward.
- * Units stand in brackets on the header, never on a value.
+ * A run's marks (⚠ implausible, ↻ after a reload) stand behind the name. Units stand in brackets
+ * on the header, never on a value.
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -34,7 +35,8 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
     align: 'end',
     numeric: true,
   },
-  { key: 'out', label: 'raus', width: '5.5rem' },
+  // 5.75rem: „mit Applaus“ needs 86 px at body size; 5.5rem leaves 84 and wraps it.
+  { key: 'out', label: 'raus', width: '5.75rem' },
 ])
 </script>
 
@@ -46,16 +48,34 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
     :live="props.live"
     :animate="props.animate"
   >
+    <!-- The marks follow the name and never shrink: a long name truncates, the mark stays. -->
     <template #name="{ row }">
       <button
         type="button"
         :data-test="`select-${row.userId}`"
-        class="w-full cursor-pointer truncate text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
-        :class="props.selectedUserId === row.userId ? 'font-semibold underline' : ''"
+        class="flex w-full cursor-pointer items-baseline gap-1 text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
         :aria-pressed="props.selectedUserId === row.userId"
         @click="emit('select', row.userId)"
       >
-        {{ row.name }}
+        <span
+          class="min-w-0 truncate"
+          :class="props.selectedUserId === row.userId ? 'font-semibold underline' : ''"
+          >{{ row.name }}</span
+        >
+        <span
+          v-if="row.implausible"
+          :data-test="`mark-implausible-${row.userId}`"
+          class="shrink-0"
+          title="unplausible Reaktionszeit"
+          >⚠<span class="sr-only"> unplausible Reaktionszeit</span></span
+        >
+        <span
+          v-if="row.restarted"
+          :data-test="`mark-restarted-${row.userId}`"
+          class="shrink-0"
+          title="nach dem Neuladen gespielt"
+          >↻<span class="sr-only"> nach dem Neuladen gespielt</span></span
+        >
       </button>
     </template>
 
@@ -72,22 +92,6 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
 
     <template #cell-avg="{ row }">{{ row.averageLabel }}</template>
     <template #cell-level="{ row }">{{ row.levelLabel }}</template>
-    <template #cell-out="{ row }">
-      <span>{{ row.out ?? '—' }}</span>
-      <span
-        v-if="row.implausible"
-        :data-test="`mark-implausible-${row.userId}`"
-        class="ms-1"
-        title="unplausible Reaktionszeit"
-        >⚠<span class="sr-only"> unplausible Reaktionszeit</span></span
-      >
-      <span
-        v-if="row.restarted"
-        :data-test="`mark-restarted-${row.userId}`"
-        class="ms-1"
-        title="nach dem Neuladen gespielt"
-        >↻<span class="sr-only"> nach dem Neuladen gespielt</span></span
-      >
-    </template>
+    <template #cell-out="{ row }">{{ row.out ?? '—' }}</template>
   </RevealScoreboard>
 </template>

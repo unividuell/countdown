@@ -37,9 +37,12 @@ describe('DedusterScoreboard', () => {
 
     expect(w.get('[data-test="cell-avg-u1"]').text()).toBe('—')
     expect(w.get('[data-test="cell-level-u1"]').text()).toBe('0')
-    expect(w.get('[data-test="cell-out-u1"]').text()).toContain('zu spät')
-    expect(w.find('[data-test="mark-implausible-u1"]').exists()).toBe(true)
-    expect(w.find('[data-test="mark-restarted-u1"]').exists()).toBe(true)
+    expect(w.get('[data-test="cell-out-u1"]').text()).toBe('zu spät')
+    // The marks stand behind the name, inside its button, never cut off by a long name.
+    const name = w.get('[data-test="select-u1"]')
+    expect(name.find('[data-test="mark-implausible-u1"]').exists()).toBe(true)
+    expect(name.find('[data-test="mark-restarted-u1"]').exists()).toBe(true)
+    expect(name.get('[data-test="mark-implausible-u1"]').classes()).toContain('shrink-0')
   })
 
   it('heads the table with the round’s tempo and size, units in brackets on the header', () => {
