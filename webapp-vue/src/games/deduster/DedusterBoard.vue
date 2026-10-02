@@ -146,6 +146,13 @@ useEventListener(document, 'visibilitychange', () => {
   if (document.hidden) run.value?.abandon()
 })
 
+/** Where tile [index] cuts into the field-wide texture: its column and row, never the order. */
+function dustOffset(index: number, cols: number, rows: number): string {
+  const col = index % cols
+  const row = Math.floor(index / cols)
+  return `calc(${-col} * 100cqw / ${cols}) calc(${-row} * 100cqh / ${rows})`
+}
+
 const field = ref<HTMLDivElement | null>(null)
 
 function onPointerDown(event: PointerEvent): void {
@@ -208,9 +215,11 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
             class="absolute inset-0 size-full"
             draggable="false"
           />
-          <!-- No transition on a falling tile: any fade costs reaction time, and differently on every device. -->
+          <!-- No transition on a falling tile: any fade costs reaction time, and differently on every device.
+               One continuous dust layer: each tile shifts the seamless texture by its own place in the
+               grid, measured against the grid's size (`cq*`), so no tile starts the texture over. -->
           <div
-            class="absolute inset-0 grid"
+            class="absolute inset-0 grid [container-type:size]"
             :style="{
               gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
               '--dust': `url(${dustUrl})`,
@@ -220,8 +229,12 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
               v-for="cell in layout.cols * layout.rows"
               :key="cell"
               data-test="deduster-cell"
-              class="bg-gray-200 bg-(image:--dust) bg-repeat grayscale dark:bg-gray-800"
+              class="bg-gray-200 bg-(image:--dust) bg-repeat dark:bg-gray-800"
               :class="{ 'opacity-0': revealed.has(cell - 1) }"
+              :style="{
+                backgroundPosition: dustOffset(cell - 1, layout.cols, layout.rows),
+                backgroundSize: '256px 256px',
+              }"
             />
           </div>
           <!-- The lines lie over dust, photo and ripple alike: a fallen tile keeps its frame to aim at. -->

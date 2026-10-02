@@ -118,15 +118,14 @@ describe('DedusterBoard', () => {
     expect(field.classes()).toContain('cursor-crosshair')
   })
 
-  it('dusts every tile with the original texture', async () => {
+  it('dusts the field in one layer: each tile shows its own place in the texture', async () => {
     const w = mountBoard()
     await flushPromises()
 
-    // Through a variable on the grid: every tile then carries the same class and nothing else.
     expect(cells(w)[0]!.element.parentElement!.getAttribute('style')).toContain('--dust: url(')
-    for (const cell of cells(w)) {
-      expect(cell.classes()).toEqual(expect.arrayContaining(['bg-(image:--dust)', 'grayscale']))
-    }
+    const at = (index: number) => (cells(w)[index]!.element as HTMLElement).style.backgroundPosition
+    expect(at(0)).toBe('calc(0 * 100cqw / 2) calc(0 * 100cqh / 2)')
+    expect(at(3)).toBe('calc(-1 * 100cqw / 2) calc(-1 * 100cqh / 2)')
   })
 
   it('offers the hold only once the photo is decoded', async () => {
@@ -227,15 +226,18 @@ describe('DedusterBoard', () => {
   it('never puts the order into the DOM', async () => {
     const w = mountBoard()
     await flushPromises()
+    const styles = cells(w).map((c) => c.attributes('style'))
     w.getComponent(RevealCover).vm.$emit('start')
     await w.setProps({ sealed: false, payload: PAYLOAD })
     vi.advanceTimersByTime(1000)
     await w.vm.$nextTick()
 
-    // One tile is off; nothing marks the three still to come, and no attribute names a tile.
+    // One tile is off; nothing marks the three still to come. A tile's style is its place in the
+    // texture, fixed by the layout: unchanged by the run, so it carries nothing of the order.
     expect(cleared(w)).toHaveLength(1)
-    for (const cell of cells(w)) {
-      expect(Object.keys(cell.attributes()).sort()).toEqual(['class', 'data-test'])
+    for (const [i, cell] of cells(w).entries()) {
+      expect(Object.keys(cell.attributes()).sort()).toEqual(['class', 'data-test', 'style'])
+      expect(cell.attributes('style')).toBe(styles[i])
     }
   })
 
