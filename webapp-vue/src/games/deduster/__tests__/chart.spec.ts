@@ -7,6 +7,7 @@ import {
   levelAt,
   levelTicks,
   polyline,
+  runAt,
   tailOf,
   wrongTilesAt,
   xOf,
@@ -100,6 +101,27 @@ describe('deduster chart', () => {
       from: null,
       to: { x: xOf(frame, 0), y: yOf(frame, 300) },
     })
+  })
+
+  it('picks the one run whose line passes the tap, and none when two do', () => {
+    const rows = [row('aa', [300, 320, 310], 'COMPLETE'), row('bb', [400, 420, 410], 'COMPLETE')]
+    const at = (level: number, ms: number) => ({ x: xOf(frame, level), y: yOf(frame, ms) })
+
+    expect(runAt(frame, rows, at(1, 322), 6)).toBe('aa')
+    expect(runAt(frame, rows, at(1, 418), 6)).toBe('bb')
+    // Between both lines and within reach of each: no guess.
+    expect(runAt(frame, rows, at(1, 370), 20)).toBeNull()
+    expect(runAt(frame, rows, at(30, 900), 6)).toBeNull()
+  })
+
+  it('counts a run’s dashed ending as part of its line', () => {
+    const rows = [row('aa', [300], 'TOO_LATE')]
+    const midway = {
+      x: (xOf(frame, 0) + xOf(frame, 1)) / 2,
+      y: (yOf(frame, 300) + yOf(frame, frame.maxMs)) / 2,
+    }
+
+    expect(runAt(frame, rows, midway, 3)).toBe('aa')
   })
 
   it('draws one point per reaction', () => {

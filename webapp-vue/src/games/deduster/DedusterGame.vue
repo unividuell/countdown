@@ -71,7 +71,6 @@ watch(done, (now, before) => {
     :payload="payload"
     :photo-url="photoUrl"
     :rows="rows"
-    :mine-user-id="props.mineUserId"
     :live="live"
     :animate="hasRevealedLive"
   />

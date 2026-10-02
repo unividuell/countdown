@@ -5,9 +5,12 @@
  * a dashed average per player.
  *
  * A scrub instead of a tooltip — a finger dragged across reads the nearest level; a phone has no
- * hover. The legend is the table below: selecting a row brings its line forward.
+ * hover — and a tap outside the chart lets go of it. Nobody is selected at first and every line
+ * shows in full; a name in the table below, or a tap on one line alone, brings that line forward and
+ * reads its time at the scrub.
  */
 import { computed, ref } from 'vue'
+import { onClickOutside } from '@vueuse/core'
 import {
   VIEW,
   frameFor,
@@ -15,6 +18,7 @@ import {
   levelAt,
   levelTicks,
   polyline,
+  runAt,
   tailOf,
   xOf,
   yLabels,
@@ -31,7 +35,12 @@ const props = defineProps<{
   level: number | null
 }>()
 
-const emit = defineEmits<{ scrub: [level: number] }>()
+const emit = defineEmits<{ scrub: [level: number | null]; select: [userId: string] }>()
+
+/** How near a tap must land to a line to pick it, in screen pixels: a fingertip, not a cursor. */
+const TAP_RADIUS_PX = 12
+/** A pointer that moved further than this between press and click was scrubbing, not tapping. */
+const DRAG_PX = 4
 
 const frame = computed(() =>
   frameFor({ tiles: props.tiles, intervalMs: props.intervalMs, rows: props.rows }),
@@ -44,8 +53,7 @@ const lines = computed(() =>
       row,
       points: polyline(frame.value, row.reactionsMs),
       tail: tailOf(frame.value, row),
-      averageY:
-        row.reactionsMs.length === 0 ? null : yOf(frame.value, sum / row.reactionsMs.length),
+      average: row.reactionsMs.length === 0 ? null : sum / row.reactionsMs.length,
       opacity: props.selectedUserId === null || props.selectedUserId === row.userId ? '1' : '0.25',
     }
   }),
@@ -60,8 +68,7 @@ const thousands = new Intl.NumberFormat('de-DE')
 const readout = computed(() => {
   const level = props.level
   if (level === null) return null
-  const focus = props.rows.find((r) => r.userId === props.selectedUserId) ?? props.rows[0]
-  const ms = focus?.reactionsMs[level]
+  const ms = props.rows.find((r) => r.userId === props.selectedUserId)?.reactionsMs[level]
   return {
     x: xOf(frame.value, level),
     text: ms === undefined ? `Level ${level}` : `Level ${level} · ${ms} ms`,
@@ -70,19 +77,44 @@ const readout = computed(() => {
 
 const svg = ref<SVGSVGElement | null>(null)
 const dragging = ref(false)
+let pressedAt: { x: number; y: number } | null = null
+
+/** The pointer in the viewBox's units, and how many of them a screen pixel is. */
+function inView(event: MouseEvent): { x: number; y: number; perPx: number } | null {
+  const el = svg.value
+  if (el === null) return null
+  const box = el.getBoundingClientRect()
+  return {
+    x: ((event.clientX - box.left) / box.width) * VIEW.width,
+    y: ((event.clientY - box.top) / box.height) * VIEW.height,
+    perPx: VIEW.width / box.width,
+  }
+}
 
 function scrubAt(event: PointerEvent): void {
-  const el = svg.value
-  if (el === null) return
-  const box = el.getBoundingClientRect()
-  const x = ((event.clientX - box.left) / box.width) * VIEW.width
-  emit('scrub', levelAt(frame.value, x))
+  const p = inView(event)
+  if (p !== null) emit('scrub', levelAt(frame.value, p.x))
 }
 
 function onDown(event: PointerEvent): void {
   dragging.value = true
+  pressedAt = { x: event.clientX, y: event.clientY }
   scrubAt(event)
 }
+
+function onClick(event: MouseEvent): void {
+  const moved =
+    pressedAt === null ||
+    Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > DRAG_PX
+  const p = inView(event)
+  if (moved || p === null) return
+  const userId = runAt(frame.value, props.rows, p, TAP_RADIUS_PX * p.perPx)
+  if (userId !== null) emit('select', userId)
+}
+
+onClickOutside(svg, () => {
+  if (props.level !== null) emit('scrub', null)
+})
 
 function onMove(event: PointerEvent): void {
   if (dragging.value) scrubAt(event)
@@ -100,6 +132,7 @@ function onMove(event: PointerEvent): void {
       role="img"
       aria-label="Reaktionszeit je Level, ein Verlauf je Spieler"
       @pointerdown="onDown"
+      @click="onClick"
       @pointermove="onMove"
       @pointerup="dragging = false"
       @pointerleave="dragging = false"
@@ -191,18 +224,30 @@ function onMove(event: PointerEvent): void {
       </text>
 
       <template v-for="line in lines" :key="line.row.userId">
-        <line
-          v-if="line.averageY !== null"
-          data-test="chart-average"
-          :x1="VIEW.left"
-          :x2="VIEW.width - VIEW.right"
-          :y1="line.averageY"
-          :y2="line.averageY"
-          :stroke="line.row.colorHex"
-          :stroke-opacity="line.opacity"
-          stroke-width="0.75"
-          stroke-dasharray="3 3"
-        />
+        <template v-if="line.average !== null">
+          <line
+            data-test="chart-average"
+            :x1="VIEW.left"
+            :x2="VIEW.width - VIEW.right"
+            :y1="yOf(frame, line.average)"
+            :y2="yOf(frame, line.average)"
+            :stroke="line.row.colorHex"
+            :stroke-opacity="line.opacity"
+            stroke-width="0.75"
+            stroke-dasharray="3 3"
+          />
+          <text
+            v-if="line.row.userId === props.selectedUserId"
+            data-test="chart-average-label"
+            :x="VIEW.width - VIEW.right"
+            :y="yOf(frame, line.average) - 2"
+            text-anchor="end"
+            :fill="line.row.colorHex"
+            class="text-[8px]"
+          >
+            ⌀ {{ thousands.format(Math.round(line.average)) }}
+          </text>
+        </template>
         <polyline
           :points="line.points"
           fill="none"

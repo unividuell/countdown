@@ -6,7 +6,7 @@ import type { DedusterRow } from './scoreboard'
 
 /** The SVG's own coordinate system; it scales with the card through `viewBox`. The bottom holds the
  * level ticks and the axis title under them. */
-export const VIEW = { width: 320, height: 206, left: 36, right: 8, top: 8, bottom: 28 } as const
+export const VIEW = { width: 320, height: 206, left: 26, right: 8, top: 8, bottom: 28 } as const
 
 /** Grid lines and their labels fall on every multiple of this, e.g. 300, 600, 900 … */
 const GRID_STEP_MS = 300
@@ -107,6 +107,39 @@ export function tailOf(
     from: last === undefined ? null : { x: xOf(frame, level - 1), y: yOf(frame, last) },
     to: { x: xOf(frame, level), y: yOf(frame, ms) },
   }
+}
+
+/**
+ * The run whose line — dashed ending included — passes within [radius] of [p]; `null` when none or
+ * several do, so a tap in a crowd selects nobody rather than a guess.
+ */
+export function runAt(
+  frame: Frame,
+  rows: readonly Pick<DedusterRow, 'userId' | 'reactionsMs' | 'endedBy' | 'wrongReactionMs'>[],
+  p: Point,
+  radius: number,
+): string | null {
+  const near = rows.filter((row) => {
+    const points: Point[] = row.reactionsMs.map((ms, level) => ({
+      x: xOf(frame, level),
+      y: yOf(frame, ms),
+    }))
+    const tail = tailOf(frame, row)
+    if (tail !== null) points.push(tail.to)
+    if (points.length === 1) return distance(p, points[0]!, points[0]!) <= radius
+    return points.slice(1).some((to, i) => distance(p, points[i]!, to) <= radius)
+  })
+  return near.length === 1 ? near[0]!.userId : null
+}
+
+/** From [p] to the segment [a]–[b]. */
+function distance(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const length = dx * dx + dy * dy
+  const t =
+    length === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }
 
 export function levelAt(frame: Frame, x: number): number {

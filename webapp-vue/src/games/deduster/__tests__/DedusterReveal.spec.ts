@@ -46,7 +46,6 @@ function mountReveal() {
       payload: PAYLOAD,
       photoUrl: '/asset/98',
       rows: ROWS,
-      mineUserId: 'c',
       live: false,
       animate: false,
     },
@@ -84,12 +83,31 @@ describe('DedusterReveal', () => {
     expect(wrong[0]!.findAll('[data-test="reveal-dot"]')).toHaveLength(2)
   })
 
-  it('starts with the viewer selected and lets a row take over', async () => {
+  it('starts with no run selected; a name or a line selects, the same again lets go', async () => {
     const w = mountReveal()
-    expect(w.getComponent(DedusterChart).props('selectedUserId')).toBe('c')
+    const selected = () => w.getComponent(DedusterChart).props('selectedUserId')
+    expect(selected()).toBeNull()
 
     w.getComponent(DedusterScoreboard).vm.$emit('select', 'a')
     await w.vm.$nextTick()
-    expect(w.getComponent(DedusterChart).props('selectedUserId')).toBe('a')
+    expect(selected()).toBe('a')
+
+    w.getComponent(DedusterChart).vm.$emit('select', 'b')
+    await w.vm.$nextTick()
+    expect(selected()).toBe('b')
+
+    w.getComponent(DedusterScoreboard).vm.$emit('select', 'b')
+    await w.vm.$nextTick()
+    expect(selected()).toBeNull()
+  })
+
+  it('lets go of the scrub when the chart says so', async () => {
+    const w = mountReveal()
+    w.getComponent(DedusterChart).vm.$emit('scrub', 1)
+    await w.vm.$nextTick()
+    w.getComponent(DedusterChart).vm.$emit('scrub', null)
+    await w.vm.$nextTick()
+
+    expect(w.findAll('[data-test="reveal-correct"]')).toHaveLength(0)
   })
 })

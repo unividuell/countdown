@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DedusterChart from '../DedusterChart.vue'
+import { VIEW, frameFor, xOf, yOf } from '../chart'
 import type { DedusterRow } from '../scoreboard'
 
 function row(userId: string, reactionsMs: number[]): DedusterRow {
@@ -30,8 +31,26 @@ const ROWS = [row('a', [300, 320, 310]), row('b', [400])]
 function mountChart(props: Partial<InstanceType<typeof DedusterChart>['$props']> = {}) {
   return mount(DedusterChart, {
     props: { rows: ROWS, tiles: 48, intervalMs: 1300, selectedUserId: null, level: null, ...props },
+    attachTo: document.body,
   })
 }
+
+/** happy-dom has no layout: the svg drawn at its viewBox size, so a client pixel is one unit. */
+function atViewBoxSize(w: ReturnType<typeof mountChart>): void {
+  vi.spyOn(w.get('svg').element, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    top: 0,
+    width: VIEW.width,
+    height: VIEW.height,
+    right: VIEW.width,
+    bottom: VIEW.height,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect)
+}
+
+const FRAME = frameFor({ tiles: 48, intervalMs: 1300, rows: ROWS })
 
 describe('DedusterChart', () => {
   it('draws one line and one dashed average per player, and the band above the beat', () => {
@@ -65,22 +84,54 @@ describe('DedusterChart', () => {
 
   it('reports the level under the finger', async () => {
     const w = mountChart()
-    const svg = w.get('svg').element
-    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 320,
-      height: 200,
-      right: 320,
-      bottom: 200,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    } as DOMRect)
+    atViewBoxSize(w)
 
-    await w.get('svg').trigger('pointerdown', { clientX: 36, clientY: 100, isPrimary: true })
+    await w.get('svg').trigger('pointerdown', { clientX: VIEW.left, clientY: 100, isPrimary: true })
 
     expect(w.emitted('scrub')).toEqual([[0]])
+  })
+
+  it('selects a run when a tap lands on its line alone', async () => {
+    const w = mountChart()
+    atViewBoxSize(w)
+    const on = { clientX: xOf(FRAME, 1), clientY: yOf(FRAME, 320), isPrimary: true }
+
+    await w.get('svg').trigger('pointerdown', on)
+    await w.get('svg').trigger('click', on)
+
+    expect(w.emitted('select')).toEqual([['a']])
+  })
+
+  it('selects nothing for a tap between two lines, or a drag', async () => {
+    const w = mountChart()
+    atViewBoxSize(w)
+    const between = { clientX: xOf(FRAME, 0), clientY: yOf(FRAME, 350), isPrimary: true }
+
+    await w.get('svg').trigger('pointerdown', between)
+    await w.get('svg').trigger('click', between)
+    await w.get('svg').trigger('pointerdown', { ...between, clientX: xOf(FRAME, 1) - 20 })
+    await w
+      .get('svg')
+      .trigger('click', { ...between, clientX: xOf(FRAME, 1), clientY: yOf(FRAME, 320) })
+
+    expect(w.emitted('select')).toBeUndefined()
+  })
+
+  it('ends the scrub on a tap anywhere outside the chart', async () => {
+    const w = mountChart({ level: 3 })
+
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(w.emitted('scrub')).toEqual([[null]])
+    w.unmount()
+  })
+
+  it('writes the selected run’s average at the right end of its line', () => {
+    expect(mountChart().find('[data-test="chart-average-label"]').exists()).toBe(false)
+    expect(
+      mountChart({ selectedUserId: 'a' }).get('[data-test="chart-average-label"]').text(),
+    ).toBe('⌀ 310')
   })
 
   it('heads the curve and names both axes', () => {
@@ -127,7 +178,8 @@ describe('DedusterChart', () => {
     expect(mountChart().findAll('[data-test="chart-grid"]')).toHaveLength(4)
   })
 
-  it('reads the scrubbed level as the axis counts it, from 0', () => {
+  it('reads the scrubbed level from 0, with the time only for a selected run', () => {
+    expect(mountChart({ level: 1 }).get('[data-test="chart-readout"]').text()).toBe('Level 1')
     expect(
       mountChart({ level: 1, selectedUserId: 'a' }).get('[data-test="chart-readout"]').text(),
     ).toBe('Level 1 · 320 ms')

@@ -16,13 +16,17 @@ const props = defineProps<{
   payload: DedusterPayload
   photoUrl: string
   rows: DedusterRow[]
-  mineUserId: string | null
   live: boolean
   animate: boolean
 }>()
 
 const tiles = computed(() => props.payload.cols * props.payload.rows)
-const selectedUserId = ref<string | null>(props.mineUserId)
+const selectedUserId = ref<string | null>(null)
+
+/** A name or a line selects its run; the same one again lets go, back to every line in full. */
+function select(userId: string): void {
+  selectedUserId.value = selectedUserId.value === userId ? null : userId
+}
 const level = ref<number | null>(null)
 
 const correctTile = computed(() =>
@@ -90,6 +94,7 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
       :selected-user-id="selectedUserId"
       :level="level"
       @scrub="(next) => (level = next)"
+      @select="select"
     />
     <DedusterScoreboard
       :rows="props.rows"
@@ -98,7 +103,7 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
       :selected-user-id="selectedUserId"
       :interval-ms="props.payload.intervalMs"
       :tiles="tiles"
-      @select="(userId) => (selectedUserId = userId)"
+      @select="select"
     />
   </div>
 </template>
