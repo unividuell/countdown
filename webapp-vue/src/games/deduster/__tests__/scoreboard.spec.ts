@@ -69,7 +69,7 @@ describe('deduster scoreRows', () => {
     })
 
     expect(row!.averageLabel).toBe('351')
-    expect(row!.levelLabel).toBe('50 %')
+    expect(row!.levelLabel).toBe('50')
     expect(row!.out).toBe('verklickt')
   })
 

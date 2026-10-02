@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
- * „Auswertung“ for Entstauber. The table is `RevealScoreboard`; this file decides the three columns
- * and the name cell — a button, because the rows are the curve's legend: tapping one brings that
- * player's line forward.
+ * „Auswertung“ for Entstauber. The table is `RevealScoreboard`; this file decides the three columns,
+ * the round's two facts above them (tempo and size, as in the original), and the name cell — a
+ * button, because the rows are the curve's legend: tapping one brings that player's line forward.
+ * Units stand in brackets on the header, never on a value.
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -14,13 +15,25 @@ const props = defineProps<{
   live: boolean
   animate: boolean
   selectedUserId: string | null
+  intervalMs: number
+  tiles: number
 }>()
+
+const thousands = new Intl.NumberFormat('de-DE')
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
+// 3.75rem: „Max [ms]“ and „Level [%]“ need 53 px at the band's text-xs; 3.5rem leaves 52.
 const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
-  { key: 'avg', label: '⌀ ms', width: '3.5rem', align: 'end', numeric: true },
-  { key: 'level', label: 'Level', width: '3.5rem', align: 'end', numeric: true },
+  { key: 'avg', label: '⌀ [ms]', fact: 'Max [ms]', width: '3.75rem', align: 'end', numeric: true },
+  {
+    key: 'level',
+    label: 'Level [%]',
+    fact: 'Levels',
+    width: '3.75rem',
+    align: 'end',
+    numeric: true,
+  },
   { key: 'out', label: 'raus', width: '5.5rem' },
 ])
 </script>
@@ -44,6 +57,13 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
       >
         {{ row.name }}
       </button>
+    </template>
+
+    <template #fact-avg>
+      <span data-test="fact-max">{{ thousands.format(props.intervalMs) }}</span>
+    </template>
+    <template #fact-level>
+      <span data-test="fact-levels">{{ props.tiles }}</span>
     </template>
 
     <template #cell-avg="{ row }">{{ row.averageLabel }}</template>

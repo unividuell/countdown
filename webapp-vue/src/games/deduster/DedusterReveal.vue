@@ -88,6 +88,8 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
       :live="props.live"
       :animate="props.animate"
       :selected-user-id="selectedUserId"
+      :interval-ms="props.payload.intervalMs"
+      :tiles="tiles"
       @select="(userId) => (selectedUserId = userId)"
     />
     <DedusterChart

@@ -55,7 +55,7 @@ export function scoreRows(input: {
       reactionsMs,
       tilesCleared: reactionsMs.length,
       averageLabel: average === null ? '—' : String(Math.round(average)),
-      levelLabel: `${Math.round((reactionsMs.length / input.tiles) * 100)} %`,
+      levelLabel: String(Math.round((reactionsMs.length / input.tiles) * 100)),
       out: outcome === null ? null : OUT[outcome.endedBy],
       endedBy: outcome?.endedBy ?? null,
       wrongTileIndex: outcome?.wrongTileIndex ?? null,

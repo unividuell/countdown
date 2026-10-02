@@ -14,7 +14,7 @@ const ROW: DedusterRow = {
   reactionsMs: [],
   tilesCleared: 0,
   averageLabel: '—',
-  levelLabel: '0 %',
+  levelLabel: '0',
   out: 'zu spät',
   endedBy: 'TOO_LATE',
   wrongTileIndex: null,
@@ -25,19 +25,51 @@ const ROW: DedusterRow = {
 describe('DedusterScoreboard', () => {
   it('shows the original’s columns and both marks', () => {
     const w = mount(DedusterScoreboard, {
-      props: { rows: [ROW], live: false, animate: false, selectedUserId: null },
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
     })
 
     expect(w.get('[data-test="cell-avg-u1"]').text()).toBe('—')
-    expect(w.get('[data-test="cell-level-u1"]').text()).toBe('0 %')
+    expect(w.get('[data-test="cell-level-u1"]').text()).toBe('0')
     expect(w.get('[data-test="cell-out-u1"]').text()).toContain('zu spät')
     expect(w.find('[data-test="mark-implausible-u1"]').exists()).toBe(true)
     expect(w.find('[data-test="mark-restarted-u1"]').exists()).toBe(true)
   })
 
+  it('heads the table with the round’s tempo and size, units in brackets on the header', () => {
+    const w = mount(DedusterScoreboard, {
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
+    })
+    const heads = w.findAll('thead th').map((th) => th.text())
+
+    expect(heads).toEqual(['Max [ms]', 'Levels', 'Name', '⌀ [ms]', 'Level [%]', 'raus', 'Pkt'])
+    expect(w.get('[data-test="fact-max"]').text()).toBe('1.500')
+    expect(w.get('[data-test="fact-levels"]').text()).toBe('48')
+  })
+
   it('selects a player by their name, for the curve', async () => {
     const w = mount(DedusterScoreboard, {
-      props: { rows: [ROW], live: false, animate: false, selectedUserId: null },
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
     })
 
     await w.get('[data-test="select-u1"]').trigger('click')
@@ -47,7 +79,14 @@ describe('DedusterScoreboard', () => {
 
   it('keeps its focus ring inside the cell that clips it', () => {
     const w = mount(DedusterScoreboard, {
-      props: { rows: [ROW], live: false, animate: false, selectedUserId: null },
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
     })
 
     const classes = w.get('[data-test="select-u1"]').classes()
