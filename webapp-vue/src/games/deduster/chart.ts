@@ -3,6 +3,7 @@
  * Pure, so the component has only drawing left to get wrong.
  */
 import type { DedusterRow } from './scoreboard'
+import { MIN_HUMAN_MS } from './types'
 
 /** The SVG's own coordinate system; it scales with the card through `viewBox`. The bottom holds the
  * level ticks and the axis title under them. */
@@ -37,8 +38,94 @@ export function frameFor(input: {
     tiles: input.tiles,
     intervalMs: input.intervalMs,
     minMs: Math.max(0, Math.floor(fastest / 100) * 100 - 100),
-    maxMs: Math.round(input.intervalMs * (1 + BAND_SHARE)),
+    maxMs: ceilingMs(input.intervalMs),
   }
+}
+
+/** The top of the game-over band: the curve's ceiling, and a tile chart's too. */
+export function ceilingMs(intervalMs: number): number {
+  return Math.round(intervalMs * (1 + BAND_SHARE))
+}
+
+/** One of the reactions that got a run marked implausible. */
+export function implausibleMs(ms: number, intervalMs: number): boolean {
+  return ms < MIN_HUMAN_MS || ms > intervalMs
+}
+
+/** The points to mark on a marked run's line: the reactions that marked it. */
+export function warningsOf(
+  frame: Frame,
+  row: Pick<DedusterRow, 'reactionsMs' | 'implausible'>,
+): Point[] {
+  if (!row.implausible) return []
+  return row.reactionsMs.flatMap((ms, level) =>
+    implausibleMs(ms, frame.intervalMs) ? [{ x: xOf(frame, level), y: yOf(frame, ms) }] : [],
+  )
+}
+
+/**
+ * One player's bar in a tile's mini chart: a hit's time, a wrong tap's, or — a missed beat, as the
+ * curve draws it — the ceiling. `null` keeps the player's slot empty.
+ */
+export type TileBar = {
+  userId: string
+  colorHex: string
+  kind: 'hit' | 'wrong' | 'missed'
+  ms: number
+  warn: boolean
+} | null
+
+type BarRow = Pick<
+  DedusterRow,
+  | 'userId'
+  | 'colorHex'
+  | 'reactionsMs'
+  | 'endedBy'
+  | 'wrongTileIndex'
+  | 'wrongReactionMs'
+  | 'implausible'
+>
+
+/** The right tile of [level]: every player's hit there, or the beat they missed there. */
+export function correctBars(input: {
+  level: number
+  rows: readonly BarRow[]
+  intervalMs: number
+}): TileBar[] {
+  return input.rows.map((row) => {
+    const ms = row.reactionsMs[input.level]
+    if (ms !== undefined) {
+      const warn = row.implausible && implausibleMs(ms, input.intervalMs)
+      return { userId: row.userId, colorHex: row.colorHex, kind: 'hit', ms, warn }
+    }
+    if (row.endedBy === 'TOO_LATE' && row.reactionsMs.length === input.level) {
+      const ms = ceilingMs(input.intervalMs)
+      return { userId: row.userId, colorHex: row.colorHex, kind: 'missed', ms, warn: false }
+    }
+    return null
+  })
+}
+
+/** A tile wrongly tapped at [level]: the wrong taps that landed on it, with their time. */
+export function wrongBars(input: {
+  level: number
+  tile: number
+  rows: readonly BarRow[]
+}): TileBar[] {
+  return input.rows.map((row) =>
+    row.endedBy === 'WRONG_TILE' &&
+    row.reactionsMs.length === input.level &&
+    row.wrongTileIndex === input.tile &&
+    row.wrongReactionMs !== null
+      ? {
+          userId: row.userId,
+          colorHex: row.colorHex,
+          kind: 'wrong',
+          ms: row.wrongReactionMs,
+          warn: false,
+        }
+      : null,
+  )
 }
 
 /** Level 0 is the first tile; the axis ends at the last, level [tiles] − 1. */

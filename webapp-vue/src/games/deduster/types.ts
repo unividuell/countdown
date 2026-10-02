@@ -6,6 +6,12 @@
 /** The server's `SCENE_ASSET_KEY`: the photo, fetchable before the reveal. */
 export const SCENE_ASSET_KEY = 98
 
+/**
+ * The server's `MIN_HUMAN_MS`: a reaction below it, or above the beat, marks the run. The server
+ * marks; this only finds which reactions did it, to draw the mark there.
+ */
+export const MIN_HUMAN_MS = 120
+
 export interface DedusterScene {
   cols: number
   rows: number

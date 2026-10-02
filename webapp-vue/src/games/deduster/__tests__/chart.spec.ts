@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DedusterRow } from '../scoreboard'
 import {
   VIEW,
+  correctBars,
   frameFor,
   gridMs,
   levelAt,
@@ -9,6 +10,8 @@ import {
   polyline,
   runAt,
   tailOf,
+  warningsOf,
+  wrongBars,
   wrongTilesAt,
   xOf,
   yLabels,
@@ -122,6 +125,47 @@ describe('deduster chart', () => {
     }
 
     expect(runAt(frame, rows, midway, 3)).toBe('aa')
+  })
+
+  it('gives the right tile one slot per player, in table order, empty without a value', () => {
+    const rows = [
+      row('aa', [300, 320], 'COMPLETE'),
+      row('bb', [300], 'WRONG_TILE', 7),
+      row('cc', [300], 'TOO_LATE'),
+      { ...row('dd', [300, 110], 'TOO_LATE'), implausible: true },
+    ]
+
+    expect(correctBars({ level: 1, rows, intervalMs: 1300 })).toEqual([
+      { userId: 'aa', colorHex: '#aa0000', kind: 'hit', ms: 320, warn: false },
+      null,
+      // Missed the beat: as on the curve, up to the band's top.
+      { userId: 'cc', colorHex: '#cc0000', kind: 'missed', ms: 1456, warn: false },
+      { userId: 'dd', colorHex: '#dd0000', kind: 'hit', ms: 110, warn: true },
+    ])
+  })
+
+  it('gives a wrong tile the wrong taps that landed on it, in the same slots', () => {
+    const rows = [
+      row('aa', [300, 320], 'COMPLETE'),
+      { ...row('bb', [300], 'WRONG_TILE', 7), wrongReactionMs: 250 },
+      { ...row('cc', [300], 'WRONG_TILE', 9), wrongReactionMs: 280 },
+    ]
+
+    expect(wrongBars({ level: 1, tile: 7, rows })).toEqual([
+      null,
+      { userId: 'bb', colorHex: '#bb0000', kind: 'wrong', ms: 250, warn: false },
+      null,
+    ])
+  })
+
+  it('warns at the reactions that made a run implausible, and only on a marked run', () => {
+    const marked = { ...row('aa', [110, 400, 1400], 'TOO_LATE'), implausible: true }
+
+    expect(warningsOf(frame, marked)).toEqual([
+      { x: xOf(frame, 0), y: yOf(frame, 110) },
+      { x: xOf(frame, 2), y: yOf(frame, 1400) },
+    ])
+    expect(warningsOf(frame, row('aa', [110], 'TOO_LATE'))).toEqual([])
   })
 
   it('draws one point per reaction', () => {

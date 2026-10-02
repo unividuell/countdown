@@ -195,6 +195,14 @@ describe('DedusterChart', () => {
     expect(Number(right.attributes('x'))).toBe(xOf(FRAME, 47) - 4)
   })
 
+  it('marks the reactions that made a run implausible', () => {
+    const w = mountChart({
+      rows: [{ ...row('a', [110, 320]), implausible: true }, row('b', [400])],
+    })
+
+    expect(w.findAll('[data-test="chart-warning"]')).toHaveLength(1)
+  })
+
   it('draws the guide line at the scrubbed level', () => {
     expect(mountChart({ level: 3 }).find('[data-test="chart-guide"]').exists()).toBe(true)
     expect(mountChart().find('[data-test="chart-guide"]').exists()).toBe(false)

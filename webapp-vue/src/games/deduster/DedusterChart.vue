@@ -20,6 +20,7 @@ import {
   polyline,
   runAt,
   tailOf,
+  warningsOf,
   xOf,
   yLabels,
   yOf,
@@ -53,6 +54,7 @@ const lines = computed(() =>
       row,
       points: polyline(frame.value, row.reactionsMs),
       tail: tailOf(frame.value, row),
+      warnings: warningsOf(frame.value, row),
       average: row.reactionsMs.length === 0 ? null : sum / row.reactionsMs.length,
       opacity: props.selectedUserId === null || props.selectedUserId === row.userId ? '1' : '0.25',
     }
@@ -280,6 +282,19 @@ function onMove(event: PointerEvent): void {
           :fill="line.row.colorHex"
           :fill-opacity="line.opacity"
         />
+        <text
+          v-for="(warning, at) in line.warnings"
+          :key="at"
+          data-test="chart-warning"
+          :x="warning.x"
+          :y="warning.y - 3"
+          text-anchor="middle"
+          :fill="line.row.colorHex"
+          :fill-opacity="line.opacity"
+          class="text-[7px]"
+        >
+          ⚠
+        </text>
       </template>
 
       <template v-if="readout">

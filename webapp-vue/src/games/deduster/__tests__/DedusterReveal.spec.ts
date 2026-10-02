@@ -35,7 +35,7 @@ function row(
 }
 
 const ROWS = [
-  row('a', [300], 'WRONG_TILE', 2),
+  { ...row('a', [300], 'WRONG_TILE', 2), wrongReactionMs: 250 },
   row('b', [300], 'WRONG_TILE', 2),
   row('c', [300, 300], 'TOO_LATE', null),
 ]
@@ -69,7 +69,7 @@ describe('DedusterReveal', () => {
     )
   })
 
-  it('outlines the right tile and the wrong ones of the scrubbed level, with a dot per player', async () => {
+  it('outlines the right tile and the wrong ones of the scrubbed level', async () => {
     const w = mountReveal()
 
     w.getComponent(DedusterChart).vm.$emit('scrub', 1)
@@ -80,7 +80,48 @@ describe('DedusterReveal', () => {
     )
     const wrong = w.findAll('[data-test="reveal-wrong"]')
     expect(wrong.map((c) => c.attributes('data-tile'))).toEqual(['2'])
-    expect(wrong[0]!.findAll('[data-test="reveal-dot"]')).toHaveLength(2)
+  })
+
+  it('charts each marked tile: a slot per player, bars where there is a time', async () => {
+    const w = mountReveal()
+
+    w.getComponent(DedusterChart).vm.$emit('scrub', 1)
+    await w.vm.$nextTick()
+
+    const correct = w.get('[data-test="reveal-correct"]')
+    expect(correct.findAll('[data-test="reveal-slot"]')).toHaveLength(3)
+    expect(
+      correct.findAll('[data-test="reveal-bar"]').map((b) => b.attributes('data-user')),
+    ).toEqual(['c'])
+    // The wrong tile holds a's tap; b's has no time, so its slot stays empty.
+    const wrong = w.get('[data-test="reveal-wrong"]')
+    expect(wrong.findAll('[data-test="reveal-bar"]').map((b) => b.attributes('data-user'))).toEqual(
+      ['a'],
+    )
+    expect(w.find('[data-test="reveal-dot"]').exists()).toBe(false)
+  })
+
+  it('pales the bar of a missed beat and warns on an implausible one', async () => {
+    const w = mount(DedusterReveal, {
+      props: {
+        payload: PAYLOAD,
+        photoUrl: '/asset/98',
+        rows: [
+          row('a', [300], 'TOO_LATE', null),
+          { ...row('b', [300, 110], 'TOO_LATE', null), implausible: true },
+        ],
+        live: false,
+        animate: false,
+      },
+    })
+
+    w.getComponent(DedusterChart).vm.$emit('scrub', 1)
+    await w.vm.$nextTick()
+
+    const bars = w.get('[data-test="reveal-correct"]').findAll('[data-test="reveal-bar"]')
+    expect(bars.map((b) => b.attributes('data-kind'))).toEqual(['missed', 'hit'])
+    expect(bars[1]!.find('[data-test="reveal-warning"]').exists()).toBe(true)
+    expect(bars[0]!.find('[data-test="reveal-warning"]').exists()).toBe(false)
   })
 
   it('starts with no run selected; a name or a line selects, the same again lets go', async () => {
