@@ -185,6 +185,16 @@ describe('DedusterChart', () => {
     ).toBe('Level 1 · 320 ms')
   })
 
+  it('hangs the readout on the needle, on the left of it in the right half', () => {
+    const left = mountChart({ level: 1 }).get('[data-test="chart-readout"]')
+    expect(left.attributes('text-anchor')).toBe('start')
+    expect(Number(left.attributes('x'))).toBe(xOf(FRAME, 1) + 4)
+
+    const right = mountChart({ level: 47 }).get('[data-test="chart-readout"]')
+    expect(right.attributes('text-anchor')).toBe('end')
+    expect(Number(right.attributes('x'))).toBe(xOf(FRAME, 47) - 4)
+  })
+
   it('draws the guide line at the scrubbed level', () => {
     expect(mountChart({ level: 3 }).find('[data-test="chart-guide"]').exists()).toBe(true)
     expect(mountChart().find('[data-test="chart-guide"]').exists()).toBe(false)

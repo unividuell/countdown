@@ -71,6 +71,8 @@ const readout = computed(() => {
   const ms = props.rows.find((r) => r.userId === props.selectedUserId)?.reactionsMs[level]
   return {
     x: xOf(frame.value, level),
+    // Hung on the needle, on whichever side has the room: right of it in the left half, left in the right.
+    onLeft: xOf(frame.value, level) > (VIEW.left + VIEW.width - VIEW.right) / 2,
     text: ms === undefined ? `Level ${level}` : `Level ${level} · ${ms} ms`,
   }
 })
@@ -292,7 +294,8 @@ function onMove(event: PointerEvent): void {
         />
         <text
           data-test="chart-readout"
-          :x="Math.min(readout.x + 4, VIEW.width - VIEW.right - 70)"
+          :x="readout.onLeft ? readout.x - 4 : readout.x + 4"
+          :text-anchor="readout.onLeft ? 'end' : 'start'"
           :y="VIEW.top + 10"
           class="fill-neutral-900 text-[9px]"
         >
