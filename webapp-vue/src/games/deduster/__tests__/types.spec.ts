@@ -65,10 +65,12 @@ describe('deduster types', () => {
       endedBy: 'TOO_LATE',
       wrongTileIndex: null,
       averageReactionMs: null,
-      implausible: false,
+      implausible: ['REACTION_BELOW_HUMAN', 'SUBMITTED_BEFORE_RUN_END'],
       restarted: true,
     }
     expect(asDedusterOutcome(outcome)).toEqual(outcome)
     expect(asDedusterOutcome({ ...outcome, averageReactionMs: 'fast' })).toBeNull()
+    expect(asDedusterOutcome({ ...outcome, implausible: true })).toBeNull()
+    expect(asDedusterOutcome({ ...outcome, implausible: ['TOO_PRETTY'] })).toBeNull()
   })
 })

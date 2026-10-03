@@ -35,7 +35,7 @@ function played(
       endedBy,
       wrongTileIndex: null,
       averageReactionMs: average,
-      implausible: false,
+      implausible: [],
       restarted: false,
       ...extra,
     },
@@ -89,13 +89,18 @@ describe('deduster scoreRows', () => {
 
   it('carries the marks the server set', () => {
     const [row] = scoreRows({
-      entries: [played('m', [100], 'TOO_LATE', 0, { implausible: true, restarted: true })],
+      entries: [
+        played('m', [100], 'TOO_LATE', 0, {
+          implausible: ['SUBMITTED_BEFORE_RUN_END'],
+          restarted: true,
+        }),
+      ],
       tiles: 4,
       awardRule: null,
       mineUserId: null,
     })
 
-    expect(row!.implausible).toBe(true)
+    expect(row!.implausible).toEqual(['SUBMITTED_BEFORE_RUN_END'])
     expect(row!.restarted).toBe(true)
   })
 })

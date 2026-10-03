@@ -21,7 +21,7 @@ function row(userId: string, reactionsMs: number[]): DedusterRow {
     endedBy: 'TOO_LATE',
     wrongTileIndex: null,
     wrongReactionMs: null,
-    implausible: false,
+    implausible: [],
     restarted: false,
   }
 }
@@ -225,7 +225,7 @@ describe('DedusterChart', () => {
 
   it('marks the reactions that made a run implausible', () => {
     const w = mountChart({
-      rows: [{ ...row('a', [110, 320]), implausible: true }, row('b', [400])],
+      rows: [{ ...row('a', [110, 320]), implausible: ['REACTION_BELOW_HUMAN'] }, row('b', [400])],
     })
 
     expect(w.findAll('[data-test="chart-warning"]')).toHaveLength(1)

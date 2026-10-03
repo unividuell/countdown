@@ -61,7 +61,7 @@ export function warningsOf(
   frame: Frame,
   row: Pick<DedusterRow, 'reactionsMs' | 'implausible'>,
 ): (Point & { below: boolean })[] {
-  if (!row.implausible) return []
+  if (row.implausible.length === 0) return []
   const middle = (VIEW.top + VIEW.height - VIEW.bottom) / 2
   return row.reactionsMs.flatMap((ms, level) => {
     if (!implausibleMs(ms, frame.intervalMs)) return []
@@ -102,7 +102,7 @@ export function correctBars(input: {
   return input.rows.map((row) => {
     const ms = row.reactionsMs[input.level]
     if (ms !== undefined) {
-      const warn = row.implausible && implausibleMs(ms, input.intervalMs)
+      const warn = row.implausible.length > 0 && implausibleMs(ms, input.intervalMs)
       return { userId: row.userId, colorHex: row.colorHex, kind: 'hit', ms, warn }
     }
     if (row.endedBy === 'TOO_LATE' && row.reactionsMs.length === input.level) {

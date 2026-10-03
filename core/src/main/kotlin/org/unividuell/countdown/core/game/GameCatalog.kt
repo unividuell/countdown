@@ -34,8 +34,8 @@ class GameTypeHandle<P : Any>(
     fun scene(params: JsonNode): GameScene? = type.scene(paramsOf(params))
 
     /** The game's verdict on a guess. Throws on an invalid guess; nothing is written before this. */
-    fun judge(params: JsonNode, guess: JsonNode): Judgement =
-        type.judge(params = paramsOf(params), guess = guess)
+    fun judge(params: JsonNode, guess: JsonNode, context: GuessContext): Judgement =
+        type.judge(params = paramsOf(params), guess = guess, context = context)
 
     /** What may be shown after the viewer's own guess, or `null` for a game that reveals nothing. */
     fun solution(params: JsonNode): GameSolution? = type.solution(paramsOf(params))

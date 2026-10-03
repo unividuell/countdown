@@ -646,6 +646,25 @@ class LabServiceTest(
         response.payload.shouldNotBeNull()
     }
 
+    /** The lab mirrors the round: its own reveal stamp is the span Entstauber checks a run against. */
+    @Test
+    fun `a run handed in faster than it can be played is marked in the lab too`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.reveal(
+            slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        val guessed = service.guess(
+            slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+            guess = mapper.readTree("""{"reactionsMs":[400,400,400],"endedBy":"TOO_LATE"}"""),
+        )
+
+        val outcome = mapper.valueToTree<JsonNode>(guessed.me.shouldNotBeNull().outcome)
+        outcome.get("implausible") shouldBe mapper.readTree("""["SUBMITTED_BEFORE_RUN_END"]""")
+    }
+
     @Test
     fun `a guess after the reveal carries a duration, and a reset puts the tester back in front of the gate`() {
         val (community, mine) = aCommunityWithTwoMembers()

@@ -12,6 +12,7 @@ import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameType
+import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.RoundAsset
@@ -45,6 +46,18 @@ data class DedusterPayload(val cols: Int, val rows: Int, val intervalMs: Int, va
 
 enum class DedusterEnd { COMPLETE, TOO_LATE, WRONG_TILE }
 
+/** Why a run is marked. Stored with the outcome, so the row itself says it. */
+enum class DedusterImplausible {
+    /** A reaction below [MIN_HUMAN_MS]: the tap was on its way before the tile fell. */
+    REACTION_BELOW_HUMAN,
+
+    /** A reaction above the beat: the next tile would have ended the run first. */
+    REACTION_ABOVE_BEAT,
+
+    /** The guess reached the server before the run it claims could have ended. */
+    SUBMITTED_BEFORE_RUN_END,
+}
+
 /** The guess as stored — rebuilt from the checked fields, never the client's node. */
 data class DedusterGuess(
     /** One reaction per tile hit in time, in tick order. Its size IS how far the run got. */
@@ -64,13 +77,19 @@ data class DedusterOutcome(
     val wrongTileIndex: Int?,
     /** `null` for a run without a single hit, so the table can say „—“. */
     val averageReactionMs: Double?,
-    /** A reaction below [MIN_HUMAN_MS] or above the beat. Marked, still stored and scored. */
-    val implausible: Boolean,
+    /** Every reason the run is marked, in declaration order; empty for a plausible run. Still stored and scored. */
+    val implausible: List<DedusterImplausible>,
     val restarted: Boolean,
 ) : GameOutcome
 
 /** Below this, a tap was already on its way before the tile fell. */
 private const val MIN_HUMAN_MS = 120
+
+/**
+ * Network and a slow reveal, generously: a guess later than this past its run's latest end is
+ * unexpected. Logged, never marked — a retry after a failed send arrives just as late.
+ */
+private const val LATE_SLACK_MS = 10_000L
 
 /**
  * Entstauber as an announceable game; `deduster` knows nothing about it.
@@ -124,7 +143,11 @@ class DedusterGameType(
     /** The reveal-to-guess span is idle time plus a fixed number of beats — the same for every finisher. */
     override fun scoresOnDuration(params: DedusterParams) = false
 
-    override fun judge(params: DedusterParams, guess: JsonNode): Judgement {
+    /** Without the server's span: the reactions alone are checked. */
+    override fun judge(params: DedusterParams, guess: JsonNode): Judgement =
+        judge(params = params, guess = guess, context = GuessContext(sinceRevealMs = null, playId = null))
+
+    override fun judge(params: DedusterParams, guess: JsonNode, context: GuessContext): Judgement {
         val tiles = params.cols * params.rows
         val reactions = reactionsOf(node = guess.get("reactionsMs"), tiles = tiles)
         val endedBy = endOf(guess.get("endedBy"))
@@ -141,14 +164,33 @@ class DedusterGameType(
         val wrongTileIndex = wrongTileOf(params = params, endedBy = endedBy, level = reactions.size, node = guess.get("wrongTileIndex"))
         val wrongReactionMs = wrongReactionOf(params = params, endedBy = endedBy, node = guess.get("wrongReactionMs"))
 
-        val implausible = reactions.any { it < MIN_HUMAN_MS || it > params.intervalMs }
-        if (implausible) {
-            // The row carries the mark and the player; this line is what makes it findable in the log.
+        // Against the server's span, where there is one: no run reaches the server before it ended.
+        // Later can be honest — a retry, a phone pocketed mid-send — so late is only logged, below.
+        val since = context.sinceRevealMs
+        val earliest = earliestEndMs(params = params, reactions = reactions, wrongReactionMs = wrongReactionMs)
+        val implausible = buildList {
+            if (reactions.any { it < MIN_HUMAN_MS }) add(DedusterImplausible.REACTION_BELOW_HUMAN)
+            if (reactions.any { it > params.intervalMs }) add(DedusterImplausible.REACTION_ABOVE_BEAT)
+            if (since != null && since < earliest) add(DedusterImplausible.SUBMITTED_BEFORE_RUN_END)
+        }
+
+        // The row carries the reasons; the play id leads from it to these lines.
+        val play = context.playId ?: "lab"
+        if (implausible.isNotEmpty()) {
+            val timing = since?.let { ": arrived $it ms after its reveal, ran at least $earliest ms" } ?: ""
+            logger.warn { "deduster play $play on image ${params.imageId} marked $implausible$timing" }
+        }
+
+        // The lead beat, one beat per hit, and the beat it ended in. A restarted run is late by
+        // definition, and marked already.
+        val latest = (reactions.size + 2L) * params.intervalMs
+        if (since != null && !restarted && since > latest + LATE_SLACK_MS) {
             logger.warn {
-                "deduster run on image ${params.imageId} marked implausible: a reaction outside " +
-                    "$MIN_HUMAN_MS..${params.intervalMs} ms"
+                "deduster play $play on image ${params.imageId} arrived $since ms after its reveal, " +
+                    "its run ended by $latest ms at the latest"
             }
         }
+
         val average = reactions.takeIf { it.isNotEmpty() }?.average()
 
         return Judgement(
@@ -232,6 +274,15 @@ class DedusterGameType(
     }
 
     /** Decoration like [wrongTileOf]: anything but a time inside the beat is dropped without a word. */
+    /**
+     * The earliest this run can have ended, counted from tile 0: its last hit, or its wrong tap. A
+     * tile falls on its beat or later, and every tap comes after its tile — so the run took at least
+     * this long, and the way from reveal to guess too. E.g. 28 hits at 1000 ms, the last after
+     * 706 ms: 27 · 1000 + 706 = 27 706 ms.
+     */
+    private fun earliestEndMs(params: DedusterParams, reactions: List<Int>, wrongReactionMs: Int?): Long =
+        maxOf(reactions.size - 1, 0).toLong() * params.intervalMs + maxOf(reactions.lastOrNull() ?: 0, wrongReactionMs ?: 0)
+
     private fun wrongReactionOf(params: DedusterParams, endedBy: DedusterEnd, node: JsonNode?): Int? {
         if (endedBy != DedusterEnd.WRONG_TILE) return null
         return node?.takeIf { it.isIntegralNumber && it.canConvertToInt() }?.asInt()?.takeIf { it in 0..params.intervalMs }

@@ -129,6 +129,19 @@ in `qualifies`; if nobody meets it, nobody wins — and that is the game's state
 A ported rule carries the original's name in a **comment**, not in the identifier: `CLOSEST_ONLY` says
 what happens, „winner takes it all“ says where it comes from. Keep it to a few words.
 
+## A client's time claim is checked against the server's span — as a floor only
+
+A game whose client measures what it scores (Entstauber's reaction times) overrides the
+`judge(params, guess, context)` overload and reads `GuessContext.sinceRevealMs`: the server's span from
+the reveal to the guess's arrival. Use it as a **floor** — no run reaches the server before the run it
+claims could have ended, and latency only lengthens the span, so the check needs no tolerance and
+raises no false alarm. Never as a **ceiling**: a retry after a failed send, a request parked in a
+background tab, a dead spot all arrive as late as a cheat. Log late, don't mark it.
+
+A mark names its reason in the stored `outcome` — an enum list, empty when plausible — not only in a
+log line; the line carries `GuessContext.playId`, so row and line find each other. Players' hints say
+*that* a run is marked; the reasons are for the super-admin.
+
 ## Points are a cache over persisted inputs
 
 `points` is not a verdict but a materialised view: `points = f(award rule, all verdicts of the round)`.
@@ -234,8 +247,8 @@ the lab replays the exact rule a real round applies instead of a copy of it.
 A `scoresOnDuration` game is the second case of the same shape: `PlayService.guess` overrides
 `deviation` with the reveal-to-guess duration, and the game's own `deviation` never reaches storage
 there either — same reasoning as the stage override, and for the same reason it belongs to the
-framework and not the game: a game judges its own content, but the round's timing is framework state,
-and `GameType.judge` receives no timestamps to begin with. `PlayService.guess`'s `when` checks stage,
+framework and not the game: a game judges its own content, but the round's timing is framework state.
+A game may *check* a time claim against the span (see above), never *score* on it. `PlayService.guess`'s `when` checks stage,
 then reveal duration, then the game's own `deviation`, in that order — and all three ride on the one
 `deviation` column rather than a column each, because `deviation` is already the single comparison
 value `pointsFor` and `CLOSEST_ONLY` both read.

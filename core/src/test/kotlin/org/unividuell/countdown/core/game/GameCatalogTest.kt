@@ -108,7 +108,10 @@ class GameCatalogTest {
             context = RoundContext(communityId = community, roundNumber = 12, phase = Phase.ONE),
         )
 
-        val judgement = handle.judge(params = params, guess = mapper.readTree("""{"ok":true}"""))
+        // A game that ignores the context is judged as without it.
+        val judgement = handle.judge(
+            params = params, guess = mapper.readTree("""{"ok":true}"""), context = GuessContext(sinceRevealMs = 5, playId = null),
+        )
 
         judgement.qualifies shouldBe true
         judgement.outcome shouldBe FakeOutcome(seen = "alpha-12")

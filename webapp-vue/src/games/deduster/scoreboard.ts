@@ -8,7 +8,12 @@ import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
-import { asDedusterGuess, asDedusterOutcome, type DedusterEnd } from './types'
+import {
+  asDedusterGuess,
+  asDedusterOutcome,
+  type DedusterEnd,
+  type DedusterImplausible,
+} from './types'
 
 export type OutLabel = 'mit Applaus' | 'zu spät' | 'verklickt'
 
@@ -31,7 +36,7 @@ export interface DedusterRow extends ScoreboardRow {
   wrongTileIndex: number | null
   /** The wrong tap's time, for the curve; `null` when the run did not end on one or had none. */
   wrongReactionMs: number | null
-  implausible: boolean
+  implausible: DedusterImplausible[]
   restarted: boolean
 }
 
@@ -62,7 +67,7 @@ export function scoreRows(input: {
       endedBy: outcome?.endedBy ?? null,
       wrongTileIndex: outcome?.wrongTileIndex ?? null,
       wrongReactionMs: guess?.wrongReactionMs ?? null,
-      implausible: outcome?.implausible ?? false,
+      implausible: outcome?.implausible ?? [],
       restarted: outcome?.restarted ?? false,
     }
     return { row, average }

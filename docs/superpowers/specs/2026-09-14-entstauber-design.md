@@ -364,17 +364,26 @@ WARN-Zeile geschrieben; die Auswertung zeichnet dann keine Fehlmarkierung. Er is
 Urteil, und darf nichts entscheiden. Dasselbe gilt für `wrongReactionMs`: alles außer einer ganzen
 Zahl in `0..intervalMs` wird stumm `null`, und nichts davon geht in ⌀ oder Punkte ein.
 
-**Markiert statt abgewiesen:** eine Reaktion unter `MIN_HUMAN_MS` (120) oder über dem Takt setzt
-`implausible` und eine WARN-Zeile mit Runde (über die Bild-Id) und Grund. Den Spieler nennt sie
-nicht, `judge` kennt ihn nicht; die Zeile in `round_plays` trägt die Markierung und den Spieler. Der
-Lauf wird trotzdem gespeichert und gewertet. Das ist die bewusste Umkehr gegenüber dem Original,
-das mit 400 abwies: ein Lauf ist nicht wiederholbar, ein Fehlalarm dürfte ihn also nie kosten.
+**Markiert statt abgewiesen**, mit Grund. `implausible` ist eine Liste aus `DedusterImplausible`,
+leer bei einem plausiblen Lauf:
+
+| Grund | wann |
+|---|---|
+| `REACTION_BELOW_HUMAN` | eine Reaktion unter `MIN_HUMAN_MS` (120) |
+| `REACTION_ABOVE_BEAT` | eine Reaktion über dem Takt |
+| `SUBMITTED_BEFORE_RUN_END` | der Tipp erreicht den Server, bevor sein Lauf enden konnte (siehe „Zeitwertung“) |
+
+Die Gründe stehen im `outcome` der Zeile in `round_plays`, neben dem Spieler — dort sucht man sie,
+nicht im Log. Die WARN-Zeile nennt dieselben Gründe und die Id dieser Zeile; über sie findet man vom
+Datensatz zur Log-Zeile und zurück. Der Lauf wird trotzdem gespeichert und gewertet. Das ist die
+bewusste Umkehr gegenüber dem Original, das mit 400 abwies: ein Lauf ist nicht wiederholbar, ein
+Fehlalarm dürfte ihn also nie kosten.
 
 | | |
 |---|---|
 | `qualifies` | `endedBy == COMPLETE` — wörtlich `calculateDedusterPoints` |
 | `deviation` | ⌀ der `reactionsMs`; bei leerer Liste `intervalMs` |
-| `outcome` | `tilesCleared`, `endedBy`, `wrongTileIndex`, `averageReactionMs: Double?`, `implausible`, `restarted` |
+| `outcome` | `tilesCleared`, `endedBy`, `wrongTileIndex`, `averageReactionMs: Double?`, `implausible: List<DedusterImplausible>`, `restarted` |
 | `guess` | **neu gebaut** aus den vier validierten Feldern |
 
 `deviation` bei leerer Liste auf `intervalMs` und nicht auf `0.0`: null wäre „perfekt“, und `NaN`
@@ -553,7 +562,10 @@ Acht Festlegungen, die nicht beliebig sind:
 Tabelle: Name / ⌀ ms / Level % / raus / Punkte, sortiert nach Punkten ↓, Level % ↓, ⌀ ms ↑ — die
 Spalten und die Sortierung des Originals. „raus“ liest sich `mit Applaus` / `zu spät` / `verklickt`.
 Dazu die zwei Zeichen für `implausible` und `restarted`, und „—“ statt einer Zahl, wenn jemand keine
-einzige Kachel traf.
+einzige Kachel traf. Was ein Zeichen bedeutet, steht im Tooltip, auf dem Handy nach langem Drücken
+(500 ms). Mitspieler lesen nur „Unplausible Zeiten in diesem Lauf“; den Grund zeigt der Tooltip nur
+dem Super-Admin. Das verbirgt nichts — die Gründe reisen im `outcome` mit, und die Regeln stehen im
+öffentlichen Repo —, es hält die Auswertung nur frei von Regelkunde.
 
 ### Die Kurve, ohne `echarts`
 
@@ -619,12 +631,32 @@ niemand, bevor sein Lauf zählt.
 
 **„Zeitwertung ist serverseitig — keine Client-Stempel.“** Die ⌀-Reaktionszeit kommt aus der
 Browser-Uhr. Bei festem Takt gibt es keine serverseitige Ersatzmessung: `revealedAt → guessedAt` ist
-Leerlauf plus 48 Takte und für alle Durchhalter praktisch dieselbe Zahl. Und ein Abgleich gegen sie
-wäre hier auch nicht zu haben — `GameType.judge` bekommt keine Zeitstempel, und das ist Absicht.
+Leerlauf plus 48 Takte und für alle Durchhalter praktisch dieselbe Zahl.
+
+Als **Abgleich** taugt die Spanne aber, in eine Richtung. `judge` bekommt sie über einen
+`GuessContext` (`sinceRevealMs`, `playId`); nur Entstauber liest ihn, jedes andere Spiel wird wie
+bisher ohne ihn beurteilt.
+
+- **Untergrenze, hart.** Ein Lauf kann nicht kürzer gedauert haben, als er selbst behauptet: seine
+  letzte Kachel fiel frühestens auf ihrem Takt, getippt wurde danach. Frühestes Ende ab Kachel 0 =
+  `(Treffer − 1) · Takt + max(letzte Reaktion, Fehlgriff)`, z. B. 27 · 1000 + 706 = 27 706 ms. Erreicht
+  der Tipp den Server früher nach dem Aufdecken, wird er `SUBMITTED_BEFORE_RUN_END`. Ohne Toleranz und
+  ohne Fehlalarm: der Lauf beginnt erst nach dem Aufdecken, und jede Latenz verlängert die Spanne nur.
+  Der Vorlauftakt zählt nicht mit, ein langsamer Reveal-Request kann ihn auffressen.
+- **Obergrenze, nur geloggt.** Spätestens endet ein Lauf `(Treffer + 2) · Takt` nach dem Aufdecken
+  (Vorlauf, ein Takt je Treffer, der Takt, in dem er endete). Kommt der Tipp mehr als 10 s danach,
+  schreibt `judge` eine WARN-Zeile, markiert aber nicht: „Nochmal senden“ nach einem Fehler, ein
+  Request im Hintergrund-Tab oder ein Funkloch kommen genauso spät wie ein Betrug, und wer absichtlich
+  spät liefert, muss den Request ohnehin fälschen — und könnte dann ebenso gut pünktlich fälschen. Ein
+  `restarted`-Lauf ist per Definition spät und schon markiert; für ihn gibt es keine Zeile.
+
+Gemessen an einer echten Runde (Takt 1000 ms, lokal): drei gespielte Läufe lagen 7–92 ms über
+Vorlauf + Lauf-Ende, zwei per API eingereichte 13 und 16 ms nach dem Aufdecken.
 
 Die Gegenmittel sind der Plausibilitätsboden (unter 120 ms ist keine Reaktion, über dem Takt ist
-unmöglich), die Sichtbarkeit der Markierung in der Auswertung, und die Tatsache, dass die einzelnen
-Reaktionszeiten roh gespeichert werden und jederzeit nachgerechnet werden können. Ein entschlossener
+unmöglich), die Untergrenze der Spanne, die Sichtbarkeit der Markierung in der Auswertung, und die
+Tatsache, dass die einzelnen Reaktionszeiten roh gespeichert werden und jederzeit nachgerechnet
+werden können. Ein entschlossener
 Fälscher gewinnt trotzdem. Das ist die Decke eines Reaktionsspiels ohne Roundtrips, und sie wird
 hier ausgesprochen statt versprochen.
 
@@ -645,8 +677,11 @@ hier ausgesprochen statt versprochen.
 - `PlayService.asset` und `LabService.asset`: `SCENE_ASSET_KEY` ist vor dem Aufdecken erreichbar,
   jeder andere Schlüssel nicht; ein Spiel ohne Bühnen-Asset gibt 404.
 - `judge`: wirft bei Unverwertbarem; ein unbrauchbarer `wrongTileIndex` kostet den Lauf nicht;
-  markiert statt zu werfen; `qualifies`/`deviation`/`outcome` exakt; der Tipp wird neu gebaut und
-  trägt keine Fremdfelder.
+  markiert statt zu werfen, mit jedem Grund; die Untergrenze genau an ihrer Kante, Fehlgriff
+  eingerechnet; ein später Lauf bleibt unmarkiert; `qualifies`/`deviation`/`outcome` exakt; der Tipp
+  wird neu gebaut und trägt keine Fremdfelder.
+- `PlayServiceDedusterTest` und `LabServiceTest`: ein sofort nach dem Aufdecken eingereichter Lauf
+  trägt `SUBMITTED_BEFORE_RUN_END` — die Spanne kommt im Spiel wie im Labor an.
 - Eine **Paritätstabelle**, die `calculateDedusterPoints` und `filterWorseDedusterGuesses` Zeile für
   Zeile nachstellt: mehrere Läufe einer Runde hinein, Punkte heraus, in beiden Phasen.
 - `PlayServiceTest`: ein Spiel mit `requiresReveal = true, scoresOnDuration = false` behält seine

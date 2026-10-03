@@ -6,13 +6,19 @@
  * A run's marks (a warning sign: implausible, a turning arrow: after a reload) stand behind the
  * name. Icons, not U+26A0 or U+21BB: phones draw the warning sign as a yellow emoji. Units stand in brackets
  * on the header, never on a value.
+ *
+ * The warning's hint names the server's reasons to a super-admin only: the other players learn that
+ * a run is marked, not the rule that caught it.
  */
 import { computed } from 'vue'
 import IconRestarted from '~icons/lucide/rotate-cw'
 import IconWarning from '~icons/lucide/triangle-alert'
+import { useAuth } from '@/auth/useAuth'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
+import DedusterMark from './DedusterMark.vue'
 import type { DedusterRow } from './scoreboard'
+import { MIN_HUMAN_MS, type DedusterImplausible } from './types'
 
 const props = defineProps<{
   rows: DedusterRow[]
@@ -26,6 +32,21 @@ const props = defineProps<{
 const thousands = new Intl.NumberFormat('de-DE')
 
 const emit = defineEmits<{ select: [userId: string] }>()
+
+const { user } = useAuth()
+
+const IMPLAUSIBLE_HINT = 'Unplausible Zeiten in diesem Lauf'
+const RESTARTED_HINT = 'Nach dem Neuladen gespielt'
+const REASONS: Record<DedusterImplausible, string> = {
+  REACTION_BELOW_HUMAN: `Reaktion unter ${MIN_HUMAN_MS} ms`,
+  REACTION_ABOVE_BEAT: 'Reaktion über dem Takt',
+  SUBMITTED_BEFORE_RUN_END: 'vor dem Laufende eingegangen',
+}
+
+function implausibleHint(row: DedusterRow): string {
+  if (user.value?.isSuperAdmin !== true) return IMPLAUSIBLE_HINT
+  return `${IMPLAUSIBLE_HINT}: ${row.implausible.map((reason) => REASONS[reason]).join(' · ')}`
+}
 
 // 3.75rem: „Max [ms]“ and „Level [%]“ need 53 px at the band's text-xs; 3.5rem leaves 52.
 const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
@@ -65,24 +86,18 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
           :class="props.selectedUserId === row.userId ? 'font-semibold underline' : ''"
           >{{ row.name }}</span
         >
-        <span
-          v-if="row.implausible"
+        <DedusterMark
+          v-if="row.implausible.length > 0"
           :data-test="`mark-implausible-${row.userId}`"
-          class="shrink-0 self-center"
-          title="unplausible Reaktionszeit"
-          ><IconWarning class="size-[1em]" aria-hidden="true" /><span class="sr-only">
-            unplausible Reaktionszeit</span
-          ></span
-        >
-        <span
+          :hint="implausibleHint(row)"
+          ><IconWarning class="size-[1em]" aria-hidden="true"
+        /></DedusterMark>
+        <DedusterMark
           v-if="row.restarted"
           :data-test="`mark-restarted-${row.userId}`"
-          class="shrink-0 self-center"
-          title="nach dem Neuladen gespielt"
-          ><IconRestarted class="size-[1em]" aria-hidden="true" /><span class="sr-only">
-            nach dem Neuladen gespielt</span
-          ></span
-        >
+          :hint="RESTARTED_HINT"
+          ><IconRestarted class="size-[1em]" aria-hidden="true"
+        /></DedusterMark>
       </button>
     </template>
 

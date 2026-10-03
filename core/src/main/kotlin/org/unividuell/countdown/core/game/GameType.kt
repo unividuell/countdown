@@ -73,6 +73,17 @@ data class RoundContext(
     val previousParams: List<JsonNode> = emptyList(),
 )
 
+/**
+ * What the framework knows about a guess beyond its content. Example: a run that claims 48 beats of
+ * 1000 ms, arriving 16 ms after its reveal.
+ */
+data class GuessContext(
+    /** From the reveal to this guess, on the server's clock; `null` in a lab round that had no reveal. */
+    val sinceRevealMs: Long?,
+    /** The stored play, to find a log line from its row; `null` in the lab, which stores none. */
+    val playId: UUID?,
+)
+
 /** The asset key under which a round's solution audio/artefact hides behind the solution gate. */
 const val SOLUTION_ASSET_KEY = 99
 
@@ -188,6 +199,12 @@ interface GameType<P : Any> {
      * attempt the player has.
      */
     fun judge(params: P, guess: JsonNode): Judgement
+
+    /**
+     * [judge] with [context]. Only a game whose client measures what it scores needs it: to check
+     * that claim against the one span the client cannot fake. Every other game ignores it.
+     */
+    fun judge(params: P, guess: JsonNode, context: GuessContext): Judgement = judge(params = params, guess = guess)
 
     /**
      * What may be shown once the viewer has guessed. `null` — the default — is a game that reveals

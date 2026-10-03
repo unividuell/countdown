@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DedusterRow } from '../scoreboard'
+import type { DedusterImplausible } from '../types'
 import {
   VIEW,
   correctBars,
@@ -40,7 +41,7 @@ function row(
     endedBy,
     wrongTileIndex,
     wrongReactionMs: null,
-    implausible: false,
+    implausible: [],
     restarted: false,
   }
 }
@@ -132,7 +133,10 @@ describe('deduster chart', () => {
       row('aa', [300, 320], 'COMPLETE'),
       row('bb', [300], 'WRONG_TILE', 7),
       row('cc', [300], 'TOO_LATE'),
-      { ...row('dd', [300, 110], 'TOO_LATE'), implausible: true },
+      {
+        ...row('dd', [300, 110], 'TOO_LATE'),
+        implausible: ['REACTION_BELOW_HUMAN'] as DedusterImplausible[],
+      },
     ]
 
     expect(correctBars({ level: 1, rows, intervalMs: 1300 })).toEqual([
@@ -159,7 +163,10 @@ describe('deduster chart', () => {
   })
 
   it('warns at the reactions that made a run implausible, and only on a marked run', () => {
-    const marked = { ...row('aa', [110, 400, 1400], 'TOO_LATE'), implausible: true }
+    const marked = {
+      ...row('aa', [110, 400, 1400], 'TOO_LATE'),
+      implausible: ['REACTION_BELOW_HUMAN', 'REACTION_ABOVE_BEAT'] as DedusterImplausible[],
+    }
 
     // Low on the plot the sign hangs below its point, high up above it: away from the crowd.
     expect(warningsOf(frame, marked)).toEqual([

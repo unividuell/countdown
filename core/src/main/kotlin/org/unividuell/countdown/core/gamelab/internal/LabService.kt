@@ -11,6 +11,7 @@ import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.GameTypeHandle
 import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundAsset
@@ -129,12 +130,11 @@ class LabService(
         // Whether this round needs a deliberate reveal, checked before judging: a game that asked for
         // one must have it on record before any guess counts, the same guard `PlayService.guess` gets
         // for free from a missing play row. The lab keeps no row, so it asks the store's own stamp.
-        if (handle.requiresReveal(playing.params) &&
-            !store.hasOpened(communityId = communityId, gameId = gameId, round = playing, userId = userId)
-        ) {
-            throw LabNotRevealedException()
-        }
-        val judgement = handle.judge(params = playing.params, guess = guess)
+        val sinceOpenedMs = store.sinceOpenedMs(communityId = communityId, gameId = gameId, round = playing, userId = userId)
+        if (handle.requiresReveal(playing.params) && sinceOpenedMs == null) throw LabNotRevealedException()
+        val judgement = handle.judge(
+            params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
+        )
         val stages = handle.stages(playing.params)
         // Judged and (on advance) discarded on purpose: in phase one a wrong guess below the last
         // stage only burns the stage — the same rule `PlayService.guess` applies to a real round.

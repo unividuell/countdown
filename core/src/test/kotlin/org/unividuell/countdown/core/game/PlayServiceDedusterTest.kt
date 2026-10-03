@@ -135,4 +135,25 @@ class PlayServiceDedusterTest(
         response.me.shouldNotBeNull().durationMs.shouldBeNull()
         response.game.shouldNotBeNull().scoresOnDuration shouldBe false
     }
+
+    /** 48 beats claimed, handed in at once: the server's own span from the reveal says otherwise. */
+    @Test
+    fun `a run that reaches the server before it could have ended is marked, and the row says why`() {
+        val (community, player) = aCommunity()
+        val (number, params) = announced(community)
+        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+
+        val reactions = List(params.cols * params.rows) { 400 }
+        play.guess(
+            slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number,
+            guess = mapper.readTree("""{"reactionsMs":$reactions,"endedBy":"COMPLETE"}"""),
+        )
+
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val row = plays.findByRoundGameIdAndUserId(
+            roundGameId = requireNotNull(store.find(edition = edition, roundNumber = number)?.id), userId = player,
+        ).shouldNotBeNull()
+        row.outcome.shouldNotBeNull().get("implausible") shouldBe mapper.readTree("""["SUBMITTED_BEFORE_RUN_END"]""")
+        row.qualifies shouldBe true
+    }
 }

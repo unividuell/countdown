@@ -161,11 +161,15 @@ class LabRoundStore(private val clock: Clock) {
      * must not evict, and it reads `false` for a request whose seed/phase no longer matches the
      * stored round, the same as [stageOf].
      */
-    fun hasOpened(communityId: UUID, gameId: String, round: LabRound, userId: UUID): Boolean {
-        val stored = rounds[Key(communityId, gameId)] ?: return false
-        if (!matches(stored.frozen, round)) return false
+    fun hasOpened(communityId: UUID, gameId: String, round: LabRound, userId: UUID): Boolean =
+        sinceOpenedMs(communityId = communityId, gameId = gameId, round = round, userId = userId) != null
+
+    /** How long ago this tester started their clock, the lab's reveal-to-now; `null` as for [hasOpened]. */
+    fun sinceOpenedMs(communityId: UUID, gameId: String, round: LabRound, userId: UUID): Long? {
+        val stored = rounds[Key(communityId, gameId)] ?: return null
+        if (!matches(stored.frozen, round)) return null
         synchronized(stored) {
-            return stored.openedAt.containsKey(userId)
+            return stored.openedAt[userId]?.let { Duration.between(it, clock.instant()).toMillis() }
         }
     }
 

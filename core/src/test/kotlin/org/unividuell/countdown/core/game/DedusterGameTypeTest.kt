@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.maps.shouldBeEmpty
@@ -20,9 +21,11 @@ import org.unividuell.countdown.core.deduster.RoundImageStore
 import org.unividuell.countdown.core.deduster.StoredImage
 import org.unividuell.countdown.core.game.internal.DedusterEnd
 import org.unividuell.countdown.core.game.internal.DedusterGameType
+import org.unividuell.countdown.core.game.internal.DedusterImplausible
 import org.unividuell.countdown.core.game.internal.DedusterOutcome
 import org.unividuell.countdown.core.game.internal.DedusterParams
 import org.unividuell.countdown.core.rng.SeededRandom
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
 
@@ -216,7 +219,7 @@ class DedusterGameTypeTest {
         val outcome = judgement.outcome as DedusterOutcome
         outcome.tilesCleared shouldBe 48
         outcome.averageReactionMs shouldBe 323.5
-        outcome.implausible shouldBe false
+        outcome.implausible.shouldBeEmpty()
     }
 
     @Test
@@ -313,17 +316,48 @@ class DedusterGameTypeTest {
         }
     }
 
+    private fun implausibleOf(guess: JsonNode, sinceRevealMs: Long? = null) =
+        (game.judge(params = fixed(intervalMs = 1000), guess = guess, context = GuessContext(sinceRevealMs = sinceRevealMs, playId = roundGameId))
+            .outcome as DedusterOutcome).implausible
+
     /** A run cannot be repeated, so a false alarm must never cost it: marked, stored, scored. */
     @Test
-    fun `a reaction faster than a human or slower than the beat marks the run`() {
-        val params = fixed(intervalMs = 1000)
+    fun `a reaction faster than a human or slower than the beat marks the run, with its reason`() {
+        implausibleOf(run(reactions = listOf(119, 400), endedBy = "TOO_LATE")) shouldBe
+            listOf(DedusterImplausible.REACTION_BELOW_HUMAN)
+        implausibleOf(run(reactions = listOf(400, 1001), endedBy = "TOO_LATE")) shouldBe
+            listOf(DedusterImplausible.REACTION_ABOVE_BEAT)
+        implausibleOf(run(reactions = listOf(1001, 119), endedBy = "TOO_LATE")) shouldBe
+            listOf(DedusterImplausible.REACTION_BELOW_HUMAN, DedusterImplausible.REACTION_ABOVE_BEAT)
+        implausibleOf(run(reactions = listOf(120, 1000), endedBy = "TOO_LATE")).shouldBeEmpty()
+    }
 
-        (game.judge(params = params, guess = run(reactions = listOf(119, 400), endedBy = "TOO_LATE")).outcome as DedusterOutcome)
-            .implausible shouldBe true
-        (game.judge(params = params, guess = run(reactions = listOf(400, 1001), endedBy = "TOO_LATE")).outcome as DedusterOutcome)
-            .implausible shouldBe true
-        (game.judge(params = params, guess = run(reactions = listOf(120, 1000), endedBy = "TOO_LATE")).outcome as DedusterOutcome)
-            .implausible shouldBe false
+    /** Third hit after 600 ms of its beat: 2 · 1000 + 600 ms after tile 0 at the earliest. */
+    @Test
+    fun `a run that reached the server before it could have ended is marked`() {
+        val guess = run(reactions = listOf(400, 500, 600), endedBy = "TOO_LATE")
+
+        implausibleOf(guess, sinceRevealMs = 2_599) shouldBe listOf(DedusterImplausible.SUBMITTED_BEFORE_RUN_END)
+        implausibleOf(guess, sinceRevealMs = 2_600).shouldBeEmpty()
+    }
+
+    /** The wrong tap after 700 ms of the second beat: 1 · 1000 + 700 ms at the earliest. */
+    @Test
+    fun `a wrong tap counts toward the earliest end`() {
+        val guess = run(reactions = listOf(400, 500), endedBy = "WRONG_TILE", extra = ""","wrongReactionMs":700""")
+
+        implausibleOf(guess, sinceRevealMs = 1_699) shouldBe listOf(DedusterImplausible.SUBMITTED_BEFORE_RUN_END)
+        implausibleOf(guess, sinceRevealMs = 1_700).shouldBeEmpty()
+    }
+
+    /** A retry after a failed send arrives just as late as a cheat would: logged, never marked. */
+    @Test
+    fun `a run that arrives long after it ended is not marked`() {
+        val hour = 3_600_000L
+
+        implausibleOf(run(reactions = listOf(400, 500), endedBy = "TOO_LATE"), sinceRevealMs = hour).shouldBeEmpty()
+        implausibleOf(run(reactions = listOf(400), endedBy = "TOO_LATE", restarted = true), sinceRevealMs = hour)
+            .shouldBeEmpty()
     }
 
     @Test

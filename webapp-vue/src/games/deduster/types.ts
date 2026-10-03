@@ -28,6 +28,16 @@ export type DedusterEnd = 'COMPLETE' | 'TOO_LATE' | 'WRONG_TILE'
 
 const ENDS: readonly DedusterEnd[] = ['COMPLETE', 'TOO_LATE', 'WRONG_TILE']
 
+/** The server's reasons for marking a run, as the row stores them. */
+export type DedusterImplausible =
+  'REACTION_BELOW_HUMAN' | 'REACTION_ABOVE_BEAT' | 'SUBMITTED_BEFORE_RUN_END'
+
+const IMPLAUSIBLE: readonly DedusterImplausible[] = [
+  'REACTION_BELOW_HUMAN',
+  'REACTION_ABOVE_BEAT',
+  'SUBMITTED_BEFORE_RUN_END',
+]
+
 export interface DedusterGuessWire {
   reactionsMs: number[]
   endedBy: DedusterEnd
@@ -42,7 +52,8 @@ export interface DedusterOutcome {
   endedBy: DedusterEnd
   wrongTileIndex: number | null
   averageReactionMs: number | null
-  implausible: boolean
+  /** Every reason the run is marked; empty for a plausible one. */
+  implausible: DedusterImplausible[]
   restarted: boolean
 }
 
@@ -52,6 +63,10 @@ function isInteger(value: unknown): value is number {
 
 function isEnd(value: unknown): value is DedusterEnd {
   return typeof value === 'string' && (ENDS as readonly string[]).includes(value)
+}
+
+function isImplausible(value: unknown): value is DedusterImplausible {
+  return typeof value === 'string' && (IMPLAUSIBLE as readonly string[]).includes(value)
 }
 
 function isIntegerOrNull(value: unknown): value is number | null {
@@ -109,13 +124,15 @@ export function asDedusterOutcome(value: unknown): DedusterOutcome | null {
     return null
   const average = v.averageReactionMs
   if (average !== null && !(typeof average === 'number' && Number.isFinite(average))) return null
-  if (typeof v.implausible !== 'boolean' || typeof v.restarted !== 'boolean') return null
+  const implausible = v.implausible
+  if (!Array.isArray(implausible) || !implausible.every(isImplausible)) return null
+  if (typeof v.restarted !== 'boolean') return null
   return {
     tilesCleared: v.tilesCleared,
     endedBy: v.endedBy,
     wrongTileIndex: v.wrongTileIndex,
     averageReactionMs: average,
-    implausible: v.implausible,
+    implausible,
     restarted: v.restarted,
   }
 }

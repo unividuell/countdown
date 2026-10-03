@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
@@ -93,7 +94,14 @@ class PlayService(
         //
         // Params are safe to read from the unlocked row: they are written once, at announce time,
         // and no statement ever updates them.
-        val judgement = current.handle.judge(params = current.roundGame.params, guess = guess)
+
+        // The span is the server's own, from this player's reveal: for a game that checks what its
+        // client claims about time against it.
+        val context = GuessContext(
+            sinceRevealMs = durationMsBetween(revealedAt = play.revealedAt, guessedAt = clock.instant()),
+            playId = play.id,
+        )
+        val judgement = current.handle.judge(params = current.roundGame.params, guess = guess, context = context)
 
         // Locked from here on: the re-evaluation below reads and rewrites every guess of this round.
         val round = store.lock(current.roundGame)

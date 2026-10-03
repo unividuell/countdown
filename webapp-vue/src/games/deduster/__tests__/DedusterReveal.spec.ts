@@ -29,7 +29,7 @@ function row(
     endedBy,
     wrongTileIndex,
     wrongReactionMs: null,
-    implausible: false,
+    implausible: [],
     restarted: false,
   }
 }
@@ -108,7 +108,7 @@ describe('DedusterReveal', () => {
         photoUrl: '/asset/98',
         rows: [
           row('a', [300], 'TOO_LATE', null),
-          { ...row('b', [300, 110], 'TOO_LATE', null), implausible: true },
+          { ...row('b', [300, 110], 'TOO_LATE', null), implausible: ['REACTION_BELOW_HUMAN'] },
         ],
         live: false,
         animate: false,

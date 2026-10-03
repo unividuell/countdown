@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DedusterScoreboard from '../DedusterScoreboard.vue'
 import type { DedusterRow } from '../scoreboard'
+
+const viewer = vi.hoisted(() => ({ isSuperAdmin: false }))
+vi.mock('@/auth/useAuth', async () => {
+  const { ref } = await import('vue')
+  return { useAuth: () => ({ user: ref({ isSuperAdmin: viewer.isSuperAdmin }) }) }
+})
 
 const ROW: DedusterRow = {
   userId: 'u1',
@@ -19,11 +25,52 @@ const ROW: DedusterRow = {
   endedBy: 'TOO_LATE',
   wrongTileIndex: null,
   wrongReactionMs: null,
-  implausible: true,
+  implausible: ['REACTION_BELOW_HUMAN', 'SUBMITTED_BEFORE_RUN_END'],
   restarted: true,
 }
 
 describe('DedusterScoreboard', () => {
+  beforeEach(() => {
+    viewer.isSuperAdmin = false
+  })
+
+  const hintOf = (w: ReturnType<typeof mount>, mark: string) =>
+    w.get(`[data-test="${mark}"]`).attributes('title')
+
+  it('tells the players that a run is marked, not what caught it', () => {
+    const w = mount(DedusterScoreboard, {
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
+    })
+
+    expect(hintOf(w, 'mark-implausible-u1')).toBe('Unplausible Zeiten in diesem Lauf')
+    expect(hintOf(w, 'mark-restarted-u1')).toBe('Nach dem Neuladen gespielt')
+  })
+
+  it('tells a super-admin every reason the server stored', () => {
+    viewer.isSuperAdmin = true
+    const w = mount(DedusterScoreboard, {
+      props: {
+        rows: [ROW],
+        live: false,
+        animate: false,
+        selectedUserId: null,
+        intervalMs: 1500,
+        tiles: 48,
+      },
+    })
+
+    expect(hintOf(w, 'mark-implausible-u1')).toBe(
+      'Unplausible Zeiten in diesem Lauf: Reaktion unter 120 ms · vor dem Laufende eingegangen',
+    )
+  })
+
   it('shows the original’s columns and both marks', () => {
     const w = mount(DedusterScoreboard, {
       props: {
