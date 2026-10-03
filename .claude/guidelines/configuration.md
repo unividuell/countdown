@@ -15,6 +15,8 @@ that the application can start at all.
   it. That is the only check there is.
 - A key that test *contexts* also need (a feature switch, an auth flag) must be added to
   the test file as well — see [game-lab.md](game-lab.md) for the lab's version of this.
+- One exception reads the main file directly: `SongSnippetPoolConfigTest` binds
+  `app.song-snippet.playlist-ids`. Changing that list means running the test suite too.
 
 ## A bean default is not repeated in the yaml
 

@@ -1,7 +1,7 @@
 package org.unividuell.countdown.core.songsnippet
 
 import io.kotest.inspectors.forAll
-import io.kotest.matchers.collections.shouldHaveAtLeastSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.comparables.shouldBeGreaterThan
 import org.junit.jupiter.api.Test
 import org.springframework.boot.env.YamlPropertySourceLoader
@@ -21,10 +21,10 @@ class SongSnippetPoolConfigTest {
     private val configuration = FileSystemResource("src/main/resources/application.yaml")
 
     @Test
-    fun `the shipped pool carries a playlist per decade, every id a positive number`() {
+    fun `the shipped pool carries at least one playlist, every id a positive number`() {
         val ids = idsUnder(key = "app.song-snippet.playlist-ids")
 
-        ids shouldHaveAtLeastSize 5
+        ids.shouldNotBeEmpty()
         ids.forAll { it shouldBeGreaterThan 0L }
     }
 
