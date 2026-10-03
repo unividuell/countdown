@@ -102,6 +102,10 @@ application code instead). One more consequence of the same shape: a class the h
 inject (`SnippetCutter`) lives in the plugin's **exposed root package**, never `.internal` — the host
 can't depend on what it can't see, and `ModularityTests.verify()` catches the violation immediately.
 
+`deduster` follows the same pattern: schema `deduster`, table `round_images` with a soft reference to
+`game.round_games` (no FK, like `songsnippet`), dependency `deduster → imagepool`. `imagepool` now
+exports `ImagePoolQuery`, the read-only view of the pool other modules use.
+
 ## Dependencies note
 
 Pin Spring Modulith to a **GA** version (`2.1.0`), not an RC — RC artifacts live

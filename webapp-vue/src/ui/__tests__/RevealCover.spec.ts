@@ -6,7 +6,13 @@ import RevealCover from '@/ui/RevealCover.vue'
 enableAutoUnmount(afterEach)
 
 const mountCover = (
-  props: Partial<{ state: 'preparing' | 'ready' | 'failed'; busy: boolean }> = {},
+  props: Partial<{
+    state: 'preparing' | 'ready' | 'failed'
+    busy: boolean
+    timed: boolean
+    note: string | null
+    beatMs: number
+  }> = {},
 ) => mount(RevealCover, { props: { state: 'ready', busy: false, ...props } })
 
 describe('RevealCover', () => {
@@ -15,6 +21,25 @@ describe('RevealCover', () => {
       const text = mountCover({ state }).get('[data-test="reveal-cover-cost"]').text()
       expect(text).toBe('Deine Zeit läuft ab dem Aufdecken — und du hast nur einen Versuch.')
     }
+  })
+
+  it('names a run, not a clock, for a game that is not timed', () => {
+    const text = mountCover({ timed: false }).get('[data-test="reveal-cover-cost"]').text()
+
+    expect(text).toBe('Der Lauf startet mit dem Aufdecken — und du hast nur einen Versuch.')
+  })
+
+  it('shows a note under the button when it has one, and none otherwise', () => {
+    expect(
+      mountCover({ note: 'Neu geladen — dein Lauf wird markiert.' })
+        .get('[data-test="reveal-cover-note"]')
+        .text(),
+    ).toBe('Neu geladen — dein Lauf wird markiert.')
+    expect(mountCover().find('[data-test="reveal-cover-note"]').exists()).toBe(false)
+  })
+
+  it('counts in at the beat the game gives it', () => {
+    expect(mountCover({ beatMs: 1300 }).getComponent(HoldButton).props('beatMs')).toBe(1300)
   })
 
   it('keeps the button out of reach while the scene is still being set up', () => {

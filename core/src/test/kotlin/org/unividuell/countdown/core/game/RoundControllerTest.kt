@@ -67,7 +67,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false, scoresOnDuration = false),
             noGameReason = null,
         )
 
@@ -125,7 +125,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false, scoresOnDuration = false),
             noGameReason = null,
             payload = GuessHuePayload(
                 description = "ein warmes Rot", initHue = 12.5, saturation = 0.6, lightness = 0.45,
@@ -175,7 +175,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false, scoresOnDuration = false),
             noGameReason = null,
             solution = GuessHueSolution(targetHue = 123.5, toleranceDeg = 15.0),
             me = MyPlayDto(
@@ -237,7 +237,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false, scoresOnDuration = false),
             noGameReason = null,
             me = MyPlayDto(
                 userId = uid,
@@ -358,7 +358,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
                 start = Instant.parse("2026-08-11T10:00:00Z"),
                 end = Instant.parse("2026-08-12T10:00:00Z"),
             ),
-            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false),
+            game = GameDto(id = "guess-hue", displayName = "Farbausmalung", requiresReveal = false, scoresOnDuration = false),
             noGameReason = null,
             previousRoundNumber = 14,
             solution = GuessHueSolution(targetHue = 5.0, toleranceDeg = 10.0),

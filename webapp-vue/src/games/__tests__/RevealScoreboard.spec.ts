@@ -24,6 +24,8 @@ function row(over: Partial<Row> & { userId: string }): Row {
 }
 
 const TIP: ScoreboardColumn<Row> = { key: 'tip', label: 'Tipp', width: '3.5rem', align: 'end' }
+/** The tips column with the solution standing over it, as Farbausmalung and Musterung have it. */
+const SOLVED_TIP: ScoreboardColumn<Row> = { ...TIP, fact: 'Lösung' }
 
 /** The component is generic, so `InstanceType<typeof …>['$props']` cannot reach its props. */
 type Props = {
@@ -32,7 +34,6 @@ type Props = {
   caption: string
   live: boolean
   animate: boolean
-  solutionColumn?: string | undefined
   nameWidth?: string | undefined
 }
 
@@ -108,14 +109,24 @@ describe('RevealScoreboard', () => {
     expect(wrapper.get('[data-test="scoreboard-live"]').element.closest('thead')).not.toBeNull()
   })
 
+  /** The points column is sized for three digits; the chip is wider and hangs out over the head. */
+  it('lets the live chip overhang its narrow column to the left', () => {
+    for (const columns of [[TIP], [SOLVED_TIP]]) {
+      const chip = mountBoard({ columns, live: true }).get('[data-test="scoreboard-live"]')
+
+      expect(chip.classes()).toContain('shrink-0')
+      expect(chip.element.parentElement!.classList).toContain('justify-end')
+    }
+  })
+
   it('hides the live chip once the round is settled', () => {
     expect(mountBoard({ live: false }).find('[data-test="scoreboard-live"]').exists()).toBe(false)
   })
 
   it('lines a solution block up with its own column, over two head rows', () => {
     const wrapper = mountBoard(
-      { solutionColumn: 'tip', live: true },
-      { solution: '<span data-test="solution">262,0</span>' },
+      { columns: [SOLVED_TIP], live: true },
+      { 'fact-tip': '<span data-test="solution">262,0</span>' },
     )
     const grid = headGrid(wrapper)
 
@@ -136,6 +147,42 @@ describe('RevealScoreboard', () => {
     ).toBe('2')
   })
 
+  it('lines several facts up with their own columns, the solution among them', () => {
+    const LEVEL: ScoreboardColumn<Row> = {
+      key: 'level',
+      label: 'Level',
+      fact: 'Levels',
+      align: 'end',
+    }
+    const wrapper = mountBoard(
+      { columns: [SOLVED_TIP, LEVEL] },
+      {
+        'fact-tip': '<span>262,0</span>',
+        'fact-level': '<span data-test="fact">48</span>',
+        'cell-level': '<span>1</span>',
+      },
+    )
+    const grid = headGrid(wrapper)
+
+    const levelColumn = wrapper
+      .findAll('thead tr:last-child th')
+      .findIndex((th) => th.text() === 'Level')
+    const label = wrapper
+      .get('thead')
+      .findAll('th')
+      .find((th) => th.text() === 'Levels')!
+    const value = wrapper.get('[data-test="fact"]').element.closest('td')!
+
+    expect(columnOf(grid, label.element)).toBe(levelColumn)
+    expect(columnOf(grid, value)).toBe(levelColumn)
+    expect(value.getAttribute('headers')).toBe(label.attributes('id'))
+    expect(wrapper.get('thead').text()).toContain('Lösung')
+    expect(wrapper.get('thead h2').element.closest('td')!.getAttribute('rowspan')).toBe('2')
+    for (const gridRow of grid) {
+      expect(gridRow.filter((cell) => cell !== undefined)).toHaveLength(4)
+    }
+  })
+
   it('leaves the solution rows out entirely for a game without one', () => {
     const wrapper = mountBoard()
 
@@ -144,8 +191,8 @@ describe('RevealScoreboard', () => {
   })
 
   it('keeps every head row as wide as the column band, with or without a solution', () => {
-    for (const props of [{}, { solutionColumn: 'tip' }]) {
-      const wrapper = mountBoard(props, { solution: '<span>262,0</span>' })
+    for (const props of [{}, { columns: [SOLVED_TIP] }]) {
+      const wrapper = mountBoard(props, { 'fact-tip': '<span>262,0</span>' })
       const columnCount = wrapper.get('thead tr:last-child').findAll('th').length
 
       for (const gridRow of headGrid(wrapper)) {
@@ -240,8 +287,8 @@ describe('RevealScoreboard', () => {
 
   it('writes the head on beat three, the solution a row later', () => {
     const wrapper = mountBoard(
-      { animate: true, solutionColumn: 'tip' },
-      { solution: '<span data-test="solution">262,0</span>' },
+      { animate: true, columns: [SOLVED_TIP] },
+      { 'fact-tip': '<span data-test="solution">262,0</span>' },
     )
 
     const heading = wrapper.get<HTMLElement>('thead h2').element.closest('td')!
@@ -294,5 +341,16 @@ describe('RevealScoreboard', () => {
 
     expect(wrapper.get('caption').text()).toBe('Alle Tipps der Runde, nach Punkten sortiert')
     expect(wrapper.get('caption').classes()).toContain('sr-only')
+  })
+
+  it('lets a game fill the name cell, and shows the name by default', () => {
+    const custom = mountBoard(
+      { rows: [row({ userId: 'a', name: 'Anna' })] },
+      { name: '<button data-test="named">{{ params.row.name }}</button>' },
+    )
+    expect(custom.get('[data-test="named"]').text()).toBe('Anna')
+
+    const plain = mountBoard({ rows: [row({ userId: 'a', name: 'Anna' })] })
+    expect(plain.get('tbody th').text()).toBe('Anna')
   })
 })

@@ -82,6 +82,7 @@ class ReviewServiceTest(
                 outcome = null,
             )
             override fun requiresReveal(params: ReviewParams) = false
+            override fun scoresOnDuration(params: ReviewParams) = false
             override fun allowsPeerReview(params: ReviewParams) = true
         }
     }
@@ -290,7 +291,7 @@ class ReviewServiceTest(
             edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
             params = requireNotNull(catalog.handle("guess-hue")).draw(
                 random = GameRandom.independent(SecureRandom()),
-                context = RoundContext(roundNumber = roundNumber, phase = Phase.ONE),
+                context = RoundContext(communityId = edition.communityId, roundNumber = roundNumber, phase = Phase.ONE),
             ),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )

@@ -87,6 +87,7 @@ class AnnouncementMaterialisedHookTest(
             override fun judge(params: RecParams, guess: JsonNode) =
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: RecParams) = false
+            override fun scoresOnDuration(params: RecParams) = false
             override fun materialised(params: RecParams, roundGameId: UUID) {
                 recorder.materialisedFor.add(roundGameId)
             }

@@ -66,6 +66,8 @@ class SpotObjectGameType(
     /** Phase two only — there the clock is the result, and the reveal is what starts it, once. */
     override fun requiresReveal(params: SpotObjectParams) = params.timed
 
+    override fun scoresOnDuration(params: SpotObjectParams) = params.timed
+
     /** The one game whose tips are judged by the other players rather than by the machine. */
     override fun allowsPeerReview(params: SpotObjectParams) = true
 

@@ -88,6 +88,8 @@ class SongSnippetGameType(
 
     override fun requiresReveal(params: SongSnippetParams) = false
 
+    override fun scoresOnDuration(params: SongSnippetParams) = false
+
     override fun stages(params: SongSnippetParams) = SongSnippetStages.DURATIONS_SECONDS.size
 
     override fun judge(params: SongSnippetParams, guess: JsonNode): Judgement {

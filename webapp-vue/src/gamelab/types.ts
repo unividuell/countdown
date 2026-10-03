@@ -68,6 +68,7 @@ export interface LabRoundResponse<P = unknown> {
   tookOverRound: boolean
   awardRule: LabAwardRule
   awardPoints: number
+  scoresOnDuration: boolean
   /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
   myStage: number
   /**

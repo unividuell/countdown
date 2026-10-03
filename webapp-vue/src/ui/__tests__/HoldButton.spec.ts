@@ -417,6 +417,18 @@ describe('HoldButton', () => {
       expect(w.emitted('confirm')).toHaveLength(1)
     })
 
+    it('counts in at the beat it is given', async () => {
+      const w = mountButton({ beats: 3, beatMs: 600, label: 'START' })
+
+      await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+      vi.advanceTimersByTime(700)
+      await w.vm.$nextTick()
+      expect(face(w).text()).toBe('2')
+
+      vi.advanceTimersByTime(1200)
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
     it('hides the digit on release instead of counting it back up', async () => {
       const w = mountButton({ beats: 3, label: 'START' })
       const button = w.get('[data-test="hold-button"]')

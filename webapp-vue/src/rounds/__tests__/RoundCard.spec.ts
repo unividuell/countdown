@@ -74,7 +74,12 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
 
 const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
-  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
+  game: {
+    id: 'guess-hue',
+    displayName: 'Farbausmalung',
+    requiresReveal: true,
+    scoresOnDuration: true,
+  },
   noGameReason: null,
   previousRoundNumber: null,
   scene: null,
@@ -132,6 +137,13 @@ enableAutoUnmount(afterEach)
 afterEach(_resetSharedClock)
 
 describe('RoundCard', () => {
+  /** The cover and Entstauber's lines layer inside the card; isolated, they never rise over the page's fly-in. */
+  it('keeps its own layers to itself', () => {
+    const w = mountCard({ round: aRound({ payload: null }), stage: 'sealed' })
+
+    expect(w.get('[data-test="round-card"]').classes()).toContain('isolate')
+  })
+
   it('mounts the game sealed, and reaches its reveal through to the page', async () => {
     const reveal = vi.fn().mockResolvedValue(undefined)
     const w = mountCard({
@@ -314,7 +326,12 @@ describe('RoundCard', () => {
 
   it('says so when no renderer is registered for the announced game', () => {
     const round = aRound({
-      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      game: {
+        id: 'unknown-game',
+        displayName: 'Rätselraten',
+        requiresReveal: false,
+        scoresOnDuration: false,
+      },
       me: aPlay(),
     })
     const w = mountCard({ round, stage: 'playing' })
@@ -327,7 +344,12 @@ describe('RoundCard', () => {
   // cover first and admitting the gap only once revealed would be the same lie, one step later.
   it('says so instead of offering a reveal when the sealed game has no renderer', () => {
     const round = aRound({
-      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: true },
+      game: {
+        id: 'unknown-game',
+        displayName: 'Rätselraten',
+        requiresReveal: true,
+        scoresOnDuration: true,
+      },
     })
     const w = mountCard({ round, stage: 'sealed' })
 
@@ -355,7 +377,12 @@ describe('RoundCard', () => {
 
   it('puts the unrenderable face on that same surface', () => {
     const round = aRound({
-      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      game: {
+        id: 'unknown-game',
+        displayName: 'Rätselraten',
+        requiresReveal: false,
+        scoresOnDuration: false,
+      },
       me: aPlay(),
     })
     const w = mountCard({ round, stage: 'playing' })
@@ -405,7 +432,12 @@ describe('RoundCard', () => {
 
   it('carries the band even where this build cannot render the game', () => {
     const round = aRound({
-      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      game: {
+        id: 'unknown-game',
+        displayName: 'Rätselraten',
+        requiresReveal: false,
+        scoresOnDuration: false,
+      },
       me: aPlay(),
     })
 
@@ -430,7 +462,12 @@ describe('RoundCard', () => {
 
   it('names the game exactly once where there is no renderer for it', () => {
     const round = aRound({
-      game: { id: 'unknown-game', displayName: 'Rätselraten', requiresReveal: false },
+      game: {
+        id: 'unknown-game',
+        displayName: 'Rätselraten',
+        requiresReveal: false,
+        scoresOnDuration: false,
+      },
       me: aPlay(),
     })
     const w = mountCard({ round, stage: 'playing' })
@@ -510,8 +547,30 @@ describe('RoundCard', () => {
   it('leaves the band alone for a game that is not played against the clock', () => {
     const w = mountCard({
       round: aRound({
-        game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+        game: {
+          id: 'guess-hue',
+          displayName: 'Farbausmalung',
+          requiresReveal: false,
+          scoresOnDuration: false,
+        },
         me: aPlay(),
+      }),
+    })
+
+    expect(playOf(w)).toBeNull()
+  })
+
+  // Revealed once, but the score is not the clock — Entstauber's shape.
+  it('leaves the band alone for a sealed game that does not score on time', () => {
+    const w = mountCard({
+      round: aRound({
+        game: {
+          id: 'deduster',
+          displayName: 'Entstauber',
+          requiresReveal: true,
+          scoresOnDuration: false,
+        },
+        me: aPlay({ revealedAt: '2026-08-14T11:00:00Z' }),
       }),
     })
 

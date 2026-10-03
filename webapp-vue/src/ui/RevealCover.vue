@@ -6,17 +6,28 @@
  * finger but not a keyboard or a screen reader.
  *
  * The sentence is framework copy, not a game's: sealing means the same thing for every game that
- * does it — the clock starts at the reveal, and there is no second attempt.
+ * does it — there is no second attempt; whether a clock starts with it is the one thing the game
+ * says, through [timed].
  */
 import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import type { SceneState } from '@/ui/sceneState'
+import { BEAT_MS } from '@/ui/useHoldProgress'
 
-const props = defineProps<{
-  state: SceneState
-  /** The reveal is on its way — the card's `busy`, reaching the game as `disabled`. */
-  busy: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    state: SceneState
+    /** The reveal is on its way — the card's `busy`, reaching the game as `disabled`. */
+    busy: boolean
+    /** Whether the reveal starts a scored clock. Entstauber's does not; it starts a run. */
+    timed?: boolean
+    /** One line under the button — Entstauber's after a reload. */
+    note?: string | null
+    /** The count-in's beat, handed to the button. */
+    beatMs?: number
+  }>(),
+  { timed: true, note: null, beatMs: BEAT_MS },
+)
 
 const emit = defineEmits<{ start: []; retry: [] }>()
 
@@ -52,7 +63,9 @@ watch(
     class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-white/40 p-6 text-center backdrop-blur-md"
   >
     <p data-test="reveal-cover-cost" class="max-w-xs text-sm text-neutral-800">
-      Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
+      <template v-if="props.timed">Deine Zeit läuft ab dem Aufdecken</template>
+      <template v-else>Der Lauf startet mit dem Aufdecken</template>
+      — und du hast nur <strong>einen</strong> Versuch.
     </p>
     <p
       v-if="state === 'preparing'"
@@ -83,8 +96,12 @@ watch(
         label="START"
         color="#171717"
         :beats="3"
+        :beat-ms="props.beatMs"
         @confirm="emit('start')"
       />
     </div>
+    <p v-if="props.note" data-test="reveal-cover-note" class="max-w-xs text-sm text-neutral-700">
+      {{ props.note }}
+    </p>
   </div>
 </template>

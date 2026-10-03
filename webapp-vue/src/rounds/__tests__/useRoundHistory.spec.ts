@@ -12,7 +12,12 @@ const closed = (number: number, previous: number | null): RoundResponse => ({
     start: '2026-08-10T10:00:00Z',
     end: '2026-08-11T10:00:00Z',
   },
-  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+  game: {
+    id: 'guess-hue',
+    displayName: 'Farbausmalung',
+    requiresReveal: false,
+    scoresOnDuration: false,
+  },
   noGameReason: null,
   previousRoundNumber: previous,
   scene: null,

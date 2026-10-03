@@ -121,6 +121,8 @@ class FindPatternGameType : GameType<FindPatternParams> {
      */
     override fun requiresReveal(params: FindPatternParams) = params.timed
 
+    override fun scoresOnDuration(params: FindPatternParams) = params.timed
+
     override fun judge(params: FindPatternParams, guess: JsonNode): Judgement {
         val startIndex = guess.get("startIndex")
             // isIntegralNumber() alone is not enough: it is true for LongNode/BigIntegerNode

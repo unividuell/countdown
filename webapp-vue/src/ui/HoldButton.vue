@@ -28,11 +28,13 @@ const props = withDefaults(
     holdMs?: number
     /**
      * Turns the hold into a count-in of this many beats: the button reads [label] at rest and
-     * the beat while held, and the hold lasts `beats × BEAT_MS` — [holdMs] is ignored then.
+     * the beat while held, and the hold lasts `beats × beatMs` — [holdMs] is ignored then.
      */
     beats?: number
+    /** One beat of the count-in. Entstauber counts in at its round's tempo. */
+    beatMs?: number
   }>(),
-  { holdMs: DEFAULT_HOLD_MS },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS },
 )
 
 const emit = defineEmits<{ confirm: [] }>()
@@ -50,7 +52,7 @@ function canAnimate(el: Element | null): el is Element {
 /** With `beats`, the hold is a count-in: it always restarts at [beats], never resumes a rewind. */
 const counting = props.beats !== undefined
 const { progress, holding, start, cancel } = useHoldProgress(
-  counting ? (props.beats ?? 0) * BEAT_MS : props.holdMs,
+  counting ? (props.beats ?? 0) * props.beatMs : props.holdMs,
   () => {
     if (canAnimate(button.value)) {
       button.value.animate(

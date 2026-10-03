@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.imagepool.internal.DetectedFormat
+import org.unividuell.countdown.core.imagepool.internal.Dimensions
 import org.unividuell.countdown.core.imagepool.internal.ImageIntake
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -181,5 +182,39 @@ class ImageIntakeTest {
         val bottom = Color(img.getRGB(10, 35))
         (top.red > top.blue) shouldBe true
         (bottom.blue > bottom.red) shouldBe true
+    }
+
+    @Test
+    fun `display dimensions swap for an EXIF-rotated photo`() {
+        ImageIntake.displayDimensions(bytes = fixture("exif-orientation-6.jpg"), mediaType = "image/jpeg") shouldBe
+            Dimensions(width = 20, height = 40)
+    }
+
+    @Test
+    fun `display dimensions of an unrotated image are its header`() {
+        ImageIntake.displayDimensions(bytes = encoded(format = "png", width = 30, height = 10), mediaType = "image/png") shouldBe
+            Dimensions(width = 30, height = 10)
+    }
+
+    @Test
+    fun `the displayed image is rotated as shown`() {
+        val img = ImageIntake.displayed(
+            bytes = fixture("exif-orientation-6.jpg"), mediaType = "image/jpeg", minShortEdge = 20,
+        )
+
+        img.width shouldBe 20
+        img.height shouldBe 40
+        (Color(img.getRGB(10, 5)).red > Color(img.getRGB(10, 5)).blue) shouldBe true
+    }
+
+    @Test
+    fun `the displayed image is subsampled only as far as the short edge allows`() {
+        val img = ImageIntake.displayed(
+            bytes = encoded(format = "png", width = 4000, height = 3000), mediaType = "image/png", minShortEdge = 1000,
+        )
+
+        // 3000 / 1000 = step 3 → 1334 × 1000: as small as possible, never below the asked edge.
+        img.height shouldBe 1000
+        img.width shouldBe 1334
     }
 }

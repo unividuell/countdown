@@ -25,6 +25,7 @@ const COLUMNS: ScoreboardColumn<ScoreboardRow>[] = [
   {
     key: 'tip',
     label: 'Tipp',
+    fact: 'Lösung',
     width: '3.5rem',
     align: 'end',
     numeric: true,
@@ -48,13 +49,12 @@ function degrees(value: number): string {
     v-if="props.rows.length > 0"
     :rows="props.rows"
     :columns="COLUMNS"
-    solution-column="tip"
     caption="Alle Tipps der Runde, nach Abstand zur Lösung sortiert"
     :live="props.live"
     :animate="props.animate"
   >
     <!-- The solution is nobody's row, so it brings its own surface into the bare head cell. -->
-    <template #solution>
+    <template #fact-tip>
       <span
         data-test="hue-scoreboard-solution"
         class="block px-0.5 text-end tabular-nums"

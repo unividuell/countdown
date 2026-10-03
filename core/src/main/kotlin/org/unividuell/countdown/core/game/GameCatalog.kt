@@ -20,6 +20,9 @@ class GameTypeHandle<P : Any>(
     val id: String get() = type.id
     val displayName: String get() = type.displayName
 
+    /** Whether this game can draw for the round described by [context]. */
+    fun isAvailable(context: RoundContext): Boolean = type.isAvailable(context)
+
     /** Draw a round and turn it into the tree the `params` column stores. */
     fun draw(random: GameRandom, context: RoundContext): JsonNode =
         mapper.valueToTree(type.draw(random = random, context = context))
@@ -31,14 +34,17 @@ class GameTypeHandle<P : Any>(
     fun scene(params: JsonNode): GameScene? = type.scene(paramsOf(params))
 
     /** The game's verdict on a guess. Throws on an invalid guess; nothing is written before this. */
-    fun judge(params: JsonNode, guess: JsonNode): Judgement =
-        type.judge(params = paramsOf(params), guess = guess)
+    fun judge(params: JsonNode, guess: JsonNode, context: GuessContext): Judgement =
+        type.judge(params = paramsOf(params), guess = guess, context = context)
 
     /** What may be shown after the viewer's own guess, or `null` for a game that reveals nothing. */
     fun solution(params: JsonNode): GameSolution? = type.solution(paramsOf(params))
 
     /** Whether this round needs a deliberate reveal, from a stored `params` blob. */
     fun requiresReveal(params: JsonNode): Boolean = type.requiresReveal(paramsOf(params))
+
+    /** Whether reveal-to-guess is this round's score, from a stored `params` blob. */
+    fun scoresOnDuration(params: JsonNode): Boolean = type.scoresOnDuration(paramsOf(params))
 
     /** Whether this round's tips are open to peer review, from a stored `params` blob. */
     fun allowsPeerReview(params: JsonNode): Boolean = type.allowsPeerReview(paramsOf(params))
@@ -89,6 +95,10 @@ class GameCatalog(games: List<GameType<*>>, mapper: ObjectMapper) {
      * bean order — which Spring does not promise — must not decide which game a round gets.
      */
     fun ids(): List<String> = handles.keys.sorted()
+
+    /** [ids] without the games that cannot draw for this round — still sorted, for the same reason. */
+    fun availableIds(context: RoundContext): List<String> =
+        ids().filter { id -> handles.getValue(id).isAvailable(context) }
 
     fun handle(id: String): GameTypeHandle<*>? = handles[id]
 

@@ -75,7 +75,12 @@ function mockUseRound(
 
 const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
-  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+  game: {
+    id: 'guess-hue',
+    displayName: 'Farbausmalung',
+    requiresReveal: false,
+    scoresOnDuration: false,
+  },
   noGameReason: null,
   previousRoundNumber: null,
   scene: null,

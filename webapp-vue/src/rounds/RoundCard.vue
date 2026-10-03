@@ -84,7 +84,7 @@ const disabled = computed(() => props.closed || props.busy || face.value === 'do
 const play = computed<PlayClock | null>(() => {
   const me = props.round?.me
   if (props.closed || me == null || me.guessedAt !== null) return null
-  return props.round?.game?.requiresReveal === true
+  return props.round?.game?.scoresOnDuration === true
     ? { phase: 'running', since: me.revealedAt }
     : null
 })
@@ -117,10 +117,12 @@ function onGiveUp(): void {
   <!-- Anchored under its round number, so a link into one round of the history lands on that
        round rather than on the top of the community page. -->
   <!-- No id at all without a round number, rather than a shared 'round-0': two null cards on one
-       page would otherwise collide. -->
+       page would otherwise collide. `isolate`: the cover's and a board's z-indices stack inside the
+       card, never against the page — the members' fly-in passes over the card, not under its glass. -->
   <div
     :id="round?.round?.number ? `round-${round.round.number}` : undefined"
     data-test="round-card"
+    class="isolate"
   >
     <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
          about the round on the board, and inside the frame it would push the board down. -->

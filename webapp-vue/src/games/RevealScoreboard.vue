@@ -13,6 +13,9 @@
  * What differs is only what stands between those two columns, and that arrives through
  * `cell-<key>` slots — see `scoreboardColumns.ts`. The table's box is complete from the moment it
  * mounts and only its ink appears, so nothing here ever moves — see the design doc.
+ *
+ * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
+ * the player's line in its curve.
  */
 import { computed } from 'vue'
 import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
@@ -30,24 +33,15 @@ const props = defineProps<{
   live: boolean
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
-  /**
-   * Key of the column the solution block stands over. Omitted: no solution rows at all.
-   * `| undefined` (not a bare `?`) so a caller may bind it unconditionally — see the
-   * `exactOptionalPropertyTypes` note in `frontend.md`.
-   */
-  solutionColumn?: string | undefined
   /** Width of the name column. Omitted, it takes what the fixed columns leave over. */
   nameWidth?: string | undefined
 }>()
 
 /** Grid column, so „Name“ at 0 is counted: every delay below is an index into the same row. */
-const solutionColumnIndex = computed(() =>
-  props.solutionColumn === undefined
-    ? -1
-    : props.columns.findIndex((column) => column.key === props.solutionColumn) + 1,
-)
 const pointsColumnIndex = computed(() => props.columns.length + 1)
-const bandRow = computed(() => (solutionColumnIndex.value > 0 ? 2 : 1))
+/** Two head rows when any column carries a fact — a solution, a round's tempo. */
+const hasHeadBlock = computed(() => props.columns.some((column) => column.fact !== undefined))
+const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 
 /** Asked once, when the choreography would start — the same four questions every reveal asks. */
 const still =
@@ -117,14 +111,16 @@ function pointsLabel(points: number | null): string {
           :key="column.key"
           :style="column.width === undefined ? undefined : { width: column.width }"
         />
-        <col style="width: 2.25rem" />
+        <!-- 2rem: three digits need 29 px at body size, the 1px inset leaves 30. The live chip is
+             wider; it overhangs to the left, into the head's empty cells. -->
+        <col style="width: 2rem" />
       </colgroup>
       <thead>
-        <!-- Head block with a solution: the heading spans both rows in column one, so it reads
-             level with the solution and against the table's edge rather than floating above it,
-             and the solution stands in its own column — lined up with the tips below by
-             construction, not by a right-aligned guess at the column's width. -->
-        <template v-if="solutionColumnIndex > 0">
+        <!-- Head block with facts — the solution, a round's tempo: the heading spans both rows in
+             column one, so it reads level with them and against the table's edge rather than
+             floating above it, and each fact stands in its own column — lined up with the tips
+             below by construction, not by a right-aligned guess at the column's width. -->
+        <template v-if="hasHeadBlock">
           <tr>
             <td
               rowspan="2"
@@ -136,13 +132,13 @@ function pointsLabel(points: number | null): string {
             </td>
             <template v-for="(column, at) in props.columns" :key="column.key">
               <th
-                v-if="at + 1 === solutionColumnIndex"
-                :id="`${column.key}-solution`"
+                v-if="column.fact !== undefined"
+                :id="`${column.key}-fact`"
                 class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
                 :class="opacity"
-                :style="head(0, solutionColumnIndex)"
+                :style="head(0, at + 1)"
               >
-                Lösung
+                {{ column.fact }}
               </th>
               <td v-else aria-hidden="true"></td>
             </template>
@@ -150,13 +146,13 @@ function pointsLabel(points: number | null): string {
               <!-- Two elements, not one: the fade outside, the pulse inside. See the points cell. -->
               <span
                 v-if="props.live"
-                class="block transition-opacity"
+                class="flex justify-end transition-opacity"
                 :class="opacity"
                 :style="head(0, pointsColumnIndex)"
               >
                 <span
                   data-test="scoreboard-live"
-                  class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                  class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
                 >
                   live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
                 </span>
@@ -164,24 +160,24 @@ function pointsLabel(points: number | null): string {
             </td>
           </tr>
           <!-- `headers`, not `scope` — `scope="col"` would put „Lösung“ over the guesses below,
-               whose column header is the game's own label. The cell itself is bare: a solution is
-               the one value in the table that is nobody's row, so its surface comes with it. -->
+               whose column header is the game's own label. The cell itself is bare: a fact is no
+               player's row, so its surface — or none — comes with it. -->
           <tr>
             <template v-for="(column, at) in props.columns" :key="column.key">
               <td
-                v-if="at + 1 === solutionColumnIndex"
-                :headers="`${column.key}-solution`"
+                v-if="column.fact !== undefined"
+                :headers="`${column.key}-fact`"
                 class="transition-opacity"
                 :class="opacity"
-                :style="head(1, solutionColumnIndex)"
+                :style="head(1, at + 1)"
               >
-                <slot name="solution" />
+                <slot :name="`fact-${column.key}`" />
               </td>
               <td v-else aria-hidden="true"></td>
             </template>
           </tr>
         </template>
-        <!-- Without a solution the head is one row: the heading runs to the live chip's column. -->
+        <!-- With neither the head is one row: the heading runs to the live chip's column. -->
         <tr v-else>
           <td
             :colspan="props.columns.length + 1"
@@ -194,13 +190,13 @@ function pointsLabel(points: number | null): string {
           <td class="align-bottom">
             <span
               v-if="props.live"
-              class="block transition-opacity"
+              class="flex justify-end transition-opacity"
               :class="opacity"
               :style="head(0, pointsColumnIndex)"
             >
               <span
                 data-test="scoreboard-live"
-                class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
               >
                 live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
               </span>
@@ -245,7 +241,7 @@ function pointsLabel(points: number | null): string {
             :class="opacity"
             :style="[rowGround(row), body(row.tick, 0)]"
           >
-            {{ row.name }}
+            <slot name="name" :row="row">{{ row.name }}</slot>
           </th>
           <td
             v-for="(column, at) in props.columns"
@@ -267,7 +263,7 @@ function pointsLabel(points: number | null): string {
           -->
           <td
             data-test="scoreboard-points"
-            class="px-0.5 text-end tabular-nums transition-opacity"
+            class="px-px text-end tabular-nums transition-opacity"
             :class="[opacity, row.provisional ? 'italic' : '']"
             :style="[rowGround(row), body(row.tick, pointsColumnIndex)]"
           >

@@ -42,7 +42,7 @@ class RoundResponses(
         // revealed-but-unguessed row — that says who looked, which is about people, not the round.
         val open = hasGuessed || current.closed
         // Asked once per response, not per row: it is the round's game that decides, not the player.
-        val timed = current.handle.requiresReveal(current.roundGame.params)
+        val timed = current.handle.scoresOnDuration(current.roundGame.params)
         val visible = if (open) {
             rows.filter { it.userId != viewerId && it.guessedAt != null }
         } else {
@@ -65,7 +65,8 @@ class RoundResponses(
             game = GameDto(
                 id = current.handle.id,
                 displayName = current.handle.displayName,
-                requiresReveal = timed,
+                requiresReveal = current.handle.requiresReveal(current.roundGame.params),
+                scoresOnDuration = timed,
             ),
             noGameReason = null,
             previousRoundNumber = current.previousRoundNumber,
@@ -170,7 +171,7 @@ class RoundResponses(
     }
 
     /**
-     * Only for a game that asked for the reveal, only once the play is finished, and never for a
+     * Only for a game that scores on duration, only once the play is finished, and never for a
      * give-up: `guess` stays NULL there (see [RoundPlayRepository.giveUp]), so this is not a time to
      * be beaten — publishing it would leak how long an abandoning player sat on the round.
      */

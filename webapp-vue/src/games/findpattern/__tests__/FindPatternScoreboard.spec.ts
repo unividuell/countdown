@@ -69,8 +69,8 @@ describe('FindPatternScoreboard', () => {
       const wrapper = mountBoard({ rows })
       const solution = wrapper.get('[data-test="solution-chip"]').element.closest('td')!
 
-      expect(solution.getAttribute('headers')).toBe('tip-solution')
-      expect(wrapper.get('#tip-solution').text()).toBe('Lösung')
+      expect(solution.getAttribute('headers')).toBe('tip-fact')
+      expect(wrapper.get('#tip-fact').text()).toBe('Lösung')
     }
   })
 

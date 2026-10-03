@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.game
 
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -88,6 +89,24 @@ class PlayServiceTimedTest(
                 outcome = null,
             )
             override fun requiresReveal(params: TimedParams) = true
+            override fun scoresOnDuration(params: TimedParams) = true
+        }
+
+        /** Revealed once, scored on its own number — the shape Entstauber has. */
+        @Bean
+        fun untimedRevealGame(): GameType<TimedParams> = object : GameType<TimedParams> {
+            override val id = "untimed-reveal-fake"
+            override val displayName = "Staubfänger"
+            override val paramsType = TimedParams::class.java
+            override fun draw(random: GameRandom, context: RoundContext) = TimedParams(answer = 7)
+            override fun present(params: TimedParams) = TimedPayload(prompt = "?")
+            override fun judge(params: TimedParams, guess: JsonNode) = Judgement(
+                qualifies = true,
+                deviation = guess.get("value").asDouble(),
+                outcome = null,
+            )
+            override fun requiresReveal(params: TimedParams) = true
+            override fun scoresOnDuration(params: TimedParams) = false
         }
     }
 
@@ -119,7 +138,7 @@ class PlayServiceTimedTest(
         return community
     }
 
-    private fun announce(community: Community, rule: AwardRule) {
+    private fun announce(community: Community, rule: AwardRule, gameType: String = "timed-fake") {
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = engine.roundAt(
             now = clock.instant(),
@@ -127,7 +146,7 @@ class PlayServiceTimedTest(
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
         store.announce(
-            edition = edition, roundNumber = roundNumber, gameType = "timed-fake",
+            edition = edition, roundNumber = roundNumber, gameType = gameType,
             params = mapper.readTree("""{"answer":7}"""),
             award = Award(rule = rule, points = 3), announcedAt = clock.instant(),
         )
@@ -147,6 +166,28 @@ class PlayServiceTimedTest(
         return requireNotNull(
             store.find(edition = edition, roundNumber = currentNumber(community))?.id,
         )
+    }
+
+    @Test
+    fun `a revealed game that does not score on time keeps its own distance and publishes no duration`() {
+        val community = aCommunity("Untimed Reveal")
+        announce(community = community, rule = AwardRule.CLOSEST_ONLY, gameType = "untimed-reveal-fake")
+        val viewer = aMember(community = community, login = "viewer")
+
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        clock.advance(Duration.ofSeconds(42))
+        val response = play.guess(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = currentNumber(community), guess = mapper.readTree("""{"value":311.5}"""),
+        )
+
+        val row = plays.findByRoundGameIdAndUserId(
+            roundGameId = roundGameId(community), userId = viewer,
+        ).shouldNotBeNull()
+        row.deviation shouldBe 311.5
+        response.me.shouldNotBeNull().durationMs.shouldBeNull()
+        response.game.shouldNotBeNull().requiresReveal shouldBe true
+        response.game.shouldNotBeNull().scoresOnDuration shouldBe false
     }
 
     @Test

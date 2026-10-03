@@ -41,6 +41,10 @@ interface ImageRepository : CrudRepository<Image, UUID> {
     @Query("SELECT count(*) FROM imagepool.images WHERE community_id IS NOT DISTINCT FROM :communityId")
     fun countInPool(communityId: UUID?): Long
 
+    /** Ascending, so a seeded pick over this list is reproducible. IS NOT DISTINCT FROM: see [countInPool]. */
+    @Query("SELECT id FROM imagepool.images WHERE community_id IS NOT DISTINCT FROM :communityId ORDER BY id")
+    fun idsInPool(communityId: UUID?): List<UUID>
+
     @Query(
         """
         SELECT count(*) > 0 FROM imagepool.images

@@ -59,8 +59,8 @@ describe('GuessHueScoreboard', () => {
     const w = mountBoard()
     const solution = w.get('[data-test="hue-scoreboard-solution"]').element.closest('td')!
 
-    expect(solution.getAttribute('headers')).toBe('tip-solution')
-    expect(w.get('#tip-solution').text()).toBe('Lösung')
+    expect(solution.getAttribute('headers')).toBe('tip-fact')
+    expect(w.get('#tip-fact').text()).toBe('Lösung')
   })
 
   it('paints the solution in the colour it stands for', () => {

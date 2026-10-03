@@ -60,6 +60,8 @@ data class LabRoundResponse(
     val displayName: String,
     val awardRule: AwardRule,
     val awardPoints: Int,
+    /** Whether the band's stopwatch runs for this game — mirrors `GameDto.scoresOnDuration`. */
+    val scoresOnDuration: Boolean,
     /** Before the reveal and after it alike — mirrors `RoundResponse.scene`. */
     val scene: GameScene? = null,
     /**
