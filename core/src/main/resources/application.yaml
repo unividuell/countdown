@@ -58,11 +58,6 @@ imagepool:
   max-pixels: 40000000
   thumb-edge: 400
 
-deduster:
-  # Long edge of a round's frozen photo, and its JPEG quality — ~300–500 KB a round, kept for good.
-  play-image-edge: 1600
-  play-image-quality: 0.82
-
 app:
   super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
   guess-hue:

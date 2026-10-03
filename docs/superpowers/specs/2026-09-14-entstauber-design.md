@@ -326,6 +326,8 @@ existiert — die Archivierung einer Edition, die bis heute keinen Aufrufer hat.
 | `deduster.play-image-edge` | 1600 px (lange Kante) |
 | `deduster.play-image-quality` | 0,82 |
 
+Beides sind Defaults an `DedusterProperties`; die `application.yaml` nennt sie nicht.
+
 Gemessen gegen typische Handyfotos ergibt das ~300–500 KB je Runde. Über drei Gemeinschaften und
 einen vollen Countdown sind das rund 70 MB, dauerhaft. Das ist der Preis dafür, dass eine Runde
 unveränderlich ist.

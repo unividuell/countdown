@@ -16,6 +16,13 @@ that the application can start at all.
 - A key that test *contexts* also need (a feature switch, an auth flag) must be added to
   the test file as well — see [game-lab.md](game-lab.md) for the lab's version of this.
 
+## A bean default is not repeated in the yaml
+
+When a `@ConfigurationProperties` field has a default, the yaml stays silent about it: the
+bean is the one place the value and its reasoning live, and a yaml that only names what an
+environment overrides or must supply stays readable. A key appears in the yaml when its
+value differs from the default, or when it comes from the environment (`${…}`).
+
 ## A suffixed size or duration binds only onto `DataSize` / `Duration`
 
 `max-bytes: 15MB` against a `val maxBytes: Int` fails the boot with
