@@ -59,20 +59,14 @@ app:
     # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
   song-snippet:
-    # Finding ids: the number in a playlist's web URL IS the id —
-    # https://www.deezer.com/playlist/10457025082. To go looking, the API needs no key, and the
-    # editor's own catalogue is the best entry point, because everything in it is editorial:
-    #   curl -s 'https://api.deezer.com/playlist/10457025082'        # -> creator.id 374224155
-    #   curl -s 'https://api.deezer.com/user/374224155/playlists?limit=200'   # 169 lists
-    # Free-text search works too, where `user.name` separates an editorial list ("Deezer <country>
-    # Editor") from somebody's private mixtape:
-    #   curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    # Finding an id — the API needs no key:
+    #   A) search:  curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    #   B) known:   the number in the URL, https://www.deezer.com/playlist/12873087061
+    # Usable tracks (readable + preview, as DeezerSongCatalog filters; depends on the caller's country):
+    #   curl -s 'https://api.deezer.com/playlist/<id>/tracks?limit=400' \
+    #     | jq '{total, usable: [.data[] | select(.readable and (.preview // "") != "")] | length}'
     playlist-ids:
-      - 10457025082 # Deutschland, deine Hits - 80er (fans: 7840)
-      - 10453961322 # Deutschland, deine Hits - 90er (fans: 7581)
-      - 10396822102 # Deutschland, deine Hits - 00er (fans: 5843)
-      - 10396828062 # Deutschland, deine Hits - 10er (fans: 3949)
-      - 11605921024 # Deutschland, deine Sommer Hits - 20er (fans: 650)
+      - 12873087061 # HütteHütte (178/201 usable, 2026-10-03)
   spot-object:
     # Empty means: the sample list from the classpath — a boot failure in production/staging,
     # where update.sh decrypts the real file with sops and compose mounts it in. Same shape as
