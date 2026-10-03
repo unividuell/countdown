@@ -10,6 +10,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class ImagePoolProperties(
     val perCommunityLimit: Int = 150,
     val globalLimit: Int = 40,
+    /**
+     * Must stay <= `spring.servlet.multipart.max-file-size` in application.yaml, or an upload dies
+     * in the multipart parser before this limit is checked. An override is plain bytes, not "15MB":
+     * the target is an Int, and Boot's DataSize converters only fire for a DataSize target.
+     */
     val maxBytes: Int = 15 * 1024 * 1024,
     val maxPixels: Long = 40_000_000,
     val thumbEdge: Int = 400,
