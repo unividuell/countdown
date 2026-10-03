@@ -76,6 +76,45 @@ describe('DedusterMark', () => {
     expect(hidePopover).toHaveBeenCalledOnce()
   })
 
+  /** No layout in happy-dom: the mark at y 200, a hint 24 px high. */
+  function stubLayout(w: ReturnType<typeof mount>): void {
+    vi.spyOn(mark(w).element, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(100, 200, 16, 16),
+    )
+    const hint = w.get('[data-test="mark-hint"]').element
+    Object.defineProperty(hint, 'offsetHeight', { value: 24 })
+    Object.defineProperty(hint, 'offsetWidth', { value: 120 })
+  }
+
+  it('lifts the hint clear of a finger, a mouse gets it right over the mark', async () => {
+    const top = async (pointerType: string) => {
+      const w = mount(Host)
+      stubLayout(w)
+      await mark(w).trigger('pointerdown', { isPrimary: true, pointerType, clientX: 1, clientY: 1 })
+      vi.advanceTimersByTime(500)
+      return (w.get('[data-test="mark-hint"]').element as HTMLElement).style.top
+    }
+
+    expect(await top('mouse')).toBe(`${200 - 24 - 6}px`)
+    expect(await top('touch')).toBe(`${200 - 24 - 6 - 24}px`)
+  })
+
+  it('keeps the hint inside the viewport when there is no room above', async () => {
+    const w = mount(Host)
+    stubLayout(w)
+    vi.spyOn(mark(w).element, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 20, 16, 16))
+
+    await mark(w).trigger('pointerdown', {
+      isPrimary: true,
+      pointerType: 'touch',
+      clientX: 1,
+      clientY: 1,
+    })
+    vi.advanceTimersByTime(500)
+
+    expect((w.get('[data-test="mark-hint"]').element as HTMLElement).style.top).toBe('8px')
+  })
+
   it('takes a finger that moves for a scroll, not a hold', async () => {
     const w = mount(Host)
 

@@ -15,6 +15,8 @@ const SLOP_PX = 8
 /** The popover's distance to the mark, and to the viewport's edge. */
 const GAP_PX = 6
 const EDGE_PX = 8
+/** A finger covers the mark and what is right above it: a held hint rises by one more line. */
+const FINGER_PX = 24
 
 const props = defineProps<{ hint: string }>()
 
@@ -25,6 +27,7 @@ let timer: ReturnType<typeof setTimeout> | null = null
 let origin: { x: number; y: number } | null = null
 let held = false
 let shown = false
+let touch = false
 
 useEventListener(
   window,
@@ -38,6 +41,7 @@ useEventListener(
 function press(event: PointerEvent): void {
   if (!event.isPrimary) return
   held = false
+  touch = event.pointerType === 'touch'
   origin = { x: event.clientX, y: event.clientY }
   timer = setTimeout(open, HOLD_MS)
 }
@@ -61,13 +65,13 @@ function open(): void {
   if (anchor === null || hint === null) return
   hint.showPopover()
 
-  // Centred over the mark, inside the viewport; under it when there is no room above.
+  // Centred over the mark, inside the viewport. Never under it: that is where the finger is.
   const box = anchor.getBoundingClientRect()
   const maxLeft = window.innerWidth - hint.offsetWidth - EDGE_PX
   const left = Math.min(Math.max(box.left + box.width / 2 - hint.offsetWidth / 2, EDGE_PX), maxLeft)
-  const above = box.top - hint.offsetHeight - GAP_PX
+  const above = box.top - hint.offsetHeight - GAP_PX - (touch ? FINGER_PX : 0)
   hint.style.left = `${left}px`
-  hint.style.top = `${above >= EDGE_PX ? above : box.bottom + GAP_PX}px`
+  hint.style.top = `${Math.max(above, EDGE_PX)}px`
 }
 
 /** Light dismiss closes it without asking: the scroll listener learns it from here. */
