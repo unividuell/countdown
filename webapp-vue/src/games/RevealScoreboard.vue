@@ -111,7 +111,9 @@ function pointsLabel(points: number | null): string {
           :key="column.key"
           :style="column.width === undefined ? undefined : { width: column.width }"
         />
-        <col style="width: 2.25rem" />
+        <!-- 2rem: three digits need 29 px at body size, the 1px inset leaves 30. The live chip is
+             wider; it overhangs to the left, into the head's empty cells. -->
+        <col style="width: 2rem" />
       </colgroup>
       <thead>
         <!-- Head block with facts — the solution, a round's tempo: the heading spans both rows in
@@ -144,13 +146,13 @@ function pointsLabel(points: number | null): string {
               <!-- Two elements, not one: the fade outside, the pulse inside. See the points cell. -->
               <span
                 v-if="props.live"
-                class="block transition-opacity"
+                class="flex justify-end transition-opacity"
                 :class="opacity"
                 :style="head(0, pointsColumnIndex)"
               >
                 <span
                   data-test="scoreboard-live"
-                  class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                  class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
                 >
                   live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
                 </span>
@@ -188,13 +190,13 @@ function pointsLabel(points: number | null): string {
           <td class="align-bottom">
             <span
               v-if="props.live"
-              class="block transition-opacity"
+              class="flex justify-end transition-opacity"
               :class="opacity"
               :style="head(0, pointsColumnIndex)"
             >
               <span
                 data-test="scoreboard-live"
-                class="bg-live block animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
               >
                 live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
               </span>
@@ -261,7 +263,7 @@ function pointsLabel(points: number | null): string {
           -->
           <td
             data-test="scoreboard-points"
-            class="px-0.5 text-end tabular-nums transition-opacity"
+            class="px-px text-end tabular-nums transition-opacity"
             :class="[opacity, row.provisional ? 'italic' : '']"
             :style="[rowGround(row), body(row.tick, pointsColumnIndex)]"
           >

@@ -109,6 +109,16 @@ describe('RevealScoreboard', () => {
     expect(wrapper.get('[data-test="scoreboard-live"]').element.closest('thead')).not.toBeNull()
   })
 
+  /** The points column is sized for three digits; the chip is wider and hangs out over the head. */
+  it('lets the live chip overhang its narrow column to the left', () => {
+    for (const columns of [[TIP], [SOLVED_TIP]]) {
+      const chip = mountBoard({ columns, live: true }).get('[data-test="scoreboard-live"]')
+
+      expect(chip.classes()).toContain('shrink-0')
+      expect(chip.element.parentElement!.classList).toContain('justify-end')
+    }
+  })
+
   it('hides the live chip once the round is settled', () => {
     expect(mountBoard({ live: false }).find('[data-test="scoreboard-live"]').exists()).toBe(false)
   })

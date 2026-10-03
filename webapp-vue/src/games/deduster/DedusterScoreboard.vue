@@ -48,14 +48,16 @@ function implausibleHint(row: DedusterRow): string {
   return `${IMPLAUSIBLE_HINT}: ${row.implausible.map((reason) => REASONS[reason]).join(' · ')}`
 }
 
-// 3.75rem: „Max [ms]“ and „Level [%]“ need 53 px at the band's text-xs; 3.5rem leaves 52.
+// 3.125rem: „1.000“ needs 44 px at body size, „Level %“ 44 at the band's text-xs, and 3rem leaves
+// 44 — no room for a wider system font. „Max [ms]“ needs 53, so it takes two lines: one line costs
+// the name 10 px more on a phone. % is no unit, so it stands without brackets.
 const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
-  { key: 'avg', label: '⌀ [ms]', fact: 'Max [ms]', width: '3.75rem', align: 'end', numeric: true },
+  { key: 'avg', label: '⌀ [ms]', fact: 'Max [ms]', width: '3.125rem', align: 'end', numeric: true },
   {
     key: 'level',
-    label: 'Level [%]',
+    label: 'Level %',
     fact: 'Levels',
-    width: '3.75rem',
+    width: '3.125rem',
     align: 'end',
     numeric: true,
   },

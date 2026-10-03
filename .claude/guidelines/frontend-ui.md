@@ -176,6 +176,12 @@ it is the only proof available — no unit test can see them.
   un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
   doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
   `GuessHueScoreboard`.
+- **A fixed column is as wide as its widest content, measured, plus ~2 px.** There is no web font:
+  Apple draws SF, Android Roboto, and a column cut to one font's exact pixel wraps or bleeds on the
+  other. Measure in the browser — a span with the cell's classes, `getBoundingClientRect` — not by
+  eye. A lone label that would set the width alone may take two lines instead (Entstauber's
+  „Max [ms]“); a chip that only marks state may overhang its column into empty head cells
+  (`flex justify-end` around a `shrink-0` chip). See `RevealScoreboard`'s points column.
 - **`w-full` and a negative inline margin are mutually exclusive.** A full-bleed band that breaks
   out of the page gutter (`-mx-4` against `main`'s `p-4`) only widens if its width is `auto`: with
   a definite width the margin equation is over-constrained, CSS drops the *right* margin, and the
