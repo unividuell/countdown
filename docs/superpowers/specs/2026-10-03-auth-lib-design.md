@@ -184,7 +184,13 @@ unividuell:
       enabled: true          # additionally @Profile("!production")
       key: ""                # empty = no lock
       users: …               # optional; default: the twelve Futurama characters
+    csrf-cookie:
+      excluded-paths: …      # path patterns (/api/preview/**); never set XSRF-TOKEN there
 ```
+
+`csrf-cookie.excluded-paths` braucht countdown sofort: `GET /api/preview/**` antwortet Crawlern
+öffentlich cachebar, und ein `Set-Cookie` darauf hebelt jeden geteilten Cache aus. Heute steht der
+Pfad fest im `CsrfCookieFilter` — in der Lib wird er Konfiguration.
 
 ## Abläufe je Umgebung
 
@@ -207,7 +213,7 @@ mehr, statt wie heute nur wirkungslos zu sein — die zweite Tür am Schloss vor
 |---|---|
 | `GET /login[?redirect=…]` | Test-Login aktiv: Picker (bzw. Schloss). Sonst: Weiterleitung zum Provider. Genau ein Controller besitzt die Route. |
 | `GET /login?error` | kleine Fehlerseite im Stil des Pickers mit „Erneut versuchen“ — **leitet nie weiter** |
-| `POST /login/test/as` | meldet einen Test-User an, springt zu `redirect` zurück |
+| `POST /login/test/as` | meldet einen Test-User an, springt zu `redirect` zurück; ein Login, der nicht in der Liste steht, ergibt 400 |
 | `POST /login/test/unlock` | prüft den Schlüssel, setzt das Cookie, zurück zum Picker samt `redirect` |
 | `/oauth2/authorization/{id}`, `/login/oauth2/code/{id}` | Spring, nur wenn ein Client konfiguriert ist |
 | `POST /logout` | 204 |
@@ -218,7 +224,9 @@ Claims eine Endlosschleife.
 
 **Fail-fast beim Start:**
 
-- unter `production` kein Client konfiguriert — es gäbe keinen Weg hinein;
+- weder ein Client noch ein aktiver Test-Login — es gäbe keinen Weg hinein. Unter `production` heißt
+  das: kein Client, kein Start;
+- mehr als ein Client und kein Test-Login — die Auswahlseite für mehrere Provider gibt es noch nicht;
 - Test-Login aktiv, Schlüssel leer und **irgendein** Profil aktiv. Heute bricht nur `staging` ab;
   startet eine neue App in Prod versehentlich ohne Profil, stünde der Test-Login offen. Leerer
   Schlüssel ist nur ohne Profil erlaubt — also localhost.
@@ -321,8 +329,9 @@ künftigen Apps teilen; countdown ist ihr erster Nutzer.
   OAuth App erlaubt nur eine Callback-URL“ entfällt. Preis: Für den echten Ablauf auf localhost
   liegt das Prod-Secret auf dem Entwicklerrechner — nur im Shell-Export, nie im Repo.
 - Ob Springs `CommonOAuth2Provider.GITHUB` mit einer GitHub App unverändert funktioniert (gleiche
-  Endpunkte; der `scope`-Parameter wird ignoriert), klärt ein Probelauf **vor** der Lib: heutiges
-  countdown, `app.test-auth.enabled=false`, Client-ID der GitHub App, echter Login über `:5173`.
+  Endpunkte; der `scope`-Parameter wird ignoriert): **ja**, geprüft am 2026-10-04 mit dem heutigen
+  countdown, `app.test-auth.enabled=false`, der Client-ID der GitHub App und einem echten Login über
+  `:5173`.
 - Jeder User stimmt einmal neu zu; das fällt mit dem erzwungenen Neu-Login zusammen.
 - Nach erfolgreicher Umstellung werden die beiden OAuth Apps (Prod `Ov23lihx…`, Dev `Ov23liQz…`)
   gelöscht.
