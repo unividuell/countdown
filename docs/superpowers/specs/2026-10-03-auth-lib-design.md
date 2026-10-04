@@ -313,7 +313,7 @@ künftigen Apps teilen; countdown ist ihr erster Nutzer.
 |---|---|
 | Besitzer | Organisation `unividuell` |
 | Sichtbarkeit | **öffentlich** („Any account“). Eine private App dürfen nur Mitglieder der besitzenden Organisation autorisieren — niemand sonst könnte sich anmelden. „Öffentlich“ heißt nur, dass jeder sie autorisieren darf. |
-| Callback-URLs | `https://countdown.unividuell.org/login/oauth2/code/github`, `http://localhost:5173/login/oauth2/code/github`, `http://localhost:8080/login/oauth2/code/github` — jede weitere Prod-App ergänzt ihre, bis zehn |
+| Redirect-URIs (so heißt das Feld; gemeint sind Callback-URLs) | `https://countdown.unividuell.org/login/oauth2/code/github`, `http://localhost:5173/login/oauth2/code/github`, `http://localhost:8080/login/oauth2/code/github` — jede weitere Prod-App ergänzt ihre, bis zehn |
 | Webhook | aus |
 | Berechtigungen | keine. `/user` liefert die öffentliche Profil-E-Mail wie bisher. |
 
