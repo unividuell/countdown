@@ -9,7 +9,7 @@ Test-Login-Picker — und dem Schloss aus dem
 
 **Berührt:** ein neues Repo `unividuell/auth-spring-boot-starter`; in countdown `iam` (Security,
 Provisioning, `devauth/` entfällt), die Migrationen `iam/V3` und `__root/V2`, `webapp-vue`
-(Login-Link), `deploy/` (eine Umgebungsvariable) und die Guidelines.
+(Login-Link), `deploy/` (Umgebungsvariablen), die GitHub-Client-Registrierung und die Guidelines.
 
 ## Zweck
 
@@ -255,8 +255,7 @@ Nicht Teil des ersten Wurfs, aber der Zuschnitt muss sie tragen:
 - Bekannte Macke: Twitch liefert `scope` in der Token-Antwort als JSON-Array statt String. Ob Spring 7
   daran scheitert, ist ungeprüft.
 - Mit dem zweiten Provider kommt eine Auswahlseite unter `GET /login`.
-- Zu prüfen, wenn es so weit ist: ob Discord- und Twitch-Apps mehrere Redirect-URLs erlauben, und ob
-  Springs GitHub-Voreinstellungen mit einer GitHub App unverändert funktionieren.
+- Zu prüfen, wenn es so weit ist: ob Discord- und Twitch-Apps mehrere Redirect-URLs erlauben.
 
 ## Umstellung von countdown
 
@@ -304,9 +303,29 @@ DELETE FROM spring_session;  -- old principals no longer deserialize
   `deploy/compose.yaml`, `deploy/.env.*.example`, `deploy/README.md`, `core/README.md`,
   `.claude/launch.json`.
 - Der GitHub-Client steht nur noch in `application-production.yaml`; der Platzhalter in
-  `application.yaml` fällt weg.
-- Die bestehende GitHub-OAuth-App bleibt. Der Wechsel auf eine GitHub App kommt mit der zweiten
-  Prod-App — eine Konfigurationsänderung, ein Zustimmungsklick pro User.
+  `application.yaml` fällt weg. Lokal wird er nur für den echten Ablauf per Startargument gesetzt
+  (`core/README.md`, „Real GitHub login“).
+
+**GitHub App statt OAuth Apps — im selben Zug.** Die GitHub App ist der eine Client, den alle
+künftigen Apps teilen; countdown ist ihr erster Nutzer.
+
+| | |
+|---|---|
+| Besitzer | Organisation `unividuell` |
+| Sichtbarkeit | **öffentlich** („Any account“). Eine private App dürfen nur Mitglieder der besitzenden Organisation autorisieren — niemand sonst könnte sich anmelden. „Öffentlich“ heißt nur, dass jeder sie autorisieren darf. |
+| Callback-URLs | `https://countdown.unividuell.org/login/oauth2/code/github`, `http://localhost:5173/login/oauth2/code/github`, `http://localhost:8080/login/oauth2/code/github` — jede weitere Prod-App ergänzt ihre, bis zehn |
+| Webhook | aus |
+| Berechtigungen | keine. `/user` liefert die öffentliche Profil-E-Mail wie bisher. |
+
+- Die localhost-Callbacks machen eine eigene Dev-App überflüssig; die README-Einschränkung „eine
+  OAuth App erlaubt nur eine Callback-URL“ entfällt. Preis: Für den echten Ablauf auf localhost
+  liegt das Prod-Secret auf dem Entwicklerrechner — nur im Shell-Export, nie im Repo.
+- Ob Springs `CommonOAuth2Provider.GITHUB` mit einer GitHub App unverändert funktioniert (gleiche
+  Endpunkte; der `scope`-Parameter wird ignoriert), klärt ein Probelauf **vor** der Lib: heutiges
+  countdown, `app.test-auth.enabled=false`, Client-ID der GitHub App, echter Login über `:5173`.
+- Jeder User stimmt einmal neu zu; das fällt mit dem erzwungenen Neu-Login zusammen.
+- Nach erfolgreicher Umstellung werden die beiden OAuth Apps (Prod `Ov23lihx…`, Dev `Ov23liQz…`)
+  gelöscht.
 
 **Frontend:** `/login/github` → `/login` in sechs Dateien, darunter `LabControls.vue` („Spieler
 wechseln“) und die zugehörigen Specs.
@@ -319,8 +338,8 @@ den Schlüssel einmal neu ein (Cookie-Name ändert sich).
 1. Lib `0.1.0` auf Maven Central.
 2. countdown-PR nach `develop`. **Vorher** `SUPER_ADMINS` in der staging-`.env` setzen.
 3. Vor dem Release nach `main`: in Prod nachsehen, dass `iam.users` nur die eine echte Zeile enthält
-   (keine weiteren User, keine negative `github_id`). **Vorher** `SUPER_ADMINS=github:<login>` in der
-   Prod-`.env` setzen.
+   (keine weiteren User, keine negative `github_id`). **Vorher** in der Prod-`.env`
+   `SUPER_ADMINS=github:<login>` und `GITHUB_CLIENT_SECRET` der GitHub App setzen.
 
 Fehlt die Variable, ist niemand Super-Admin — fail-closed, aber lästig.
 
@@ -356,8 +375,9 @@ Aus countdown ziehen mit und werden angepasst: `DevLoginControllerTest`, `DevLog
 - Frontend-Specs prüfen `href="/login…"`, auch beim Spieler-Wechsel.
 
 **Von Hand vor Prod:** localhost — Picker, Spieler wechseln im Lab, Logout, einmal mit
-`test-login.enabled=false` der echte GitHub-Login mit dem Dev-Client. staging nach dem Deploy —
-Schloss, Picker, Super-Admin als `test:prof`. Prod vor dem Deploy — der Blick in `iam.users`.
+`test-login.enabled=false` der echte GitHub-Login über die GitHub App. staging nach dem Deploy —
+Schloss, Picker, Super-Admin als `test:prof`. Prod vor dem Deploy — der Blick in `iam.users`; nach
+dem Deploy — echter Login, Zustimmungsseite der GitHub App.
 
 ## Pläne
 
