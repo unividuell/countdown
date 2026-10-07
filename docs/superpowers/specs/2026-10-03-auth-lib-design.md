@@ -164,12 +164,16 @@ Spring Security 7 wendet `Customizer<HttpSecurity>`-Beans an, **bevor** die App 
 `SecurityFilterChain` baut („Modular HttpSecurity Configuration“). Die Lib liefert darüber:
 
 - `oauth2Login` mit dem eigenen UserService und `loginPage = "/login"` — sonst gehört `/login` zwei
-  Besitzern, der Lib und Springs generierter Login-Seite;
+  Besitzern, der Lib und Springs generierter Login-Seite. Der `oidcUserService` lehnt ab, bis es eine
+  OIDC-Abbildung gibt — sonst meldete Spring OIDC-Nutzer am `AccountProvisioner` vorbei an. Ein
+  eigener Failure-Handler loggt Fehlercode und Beschreibung und leitet auf `/login?error`, ohne die
+  Exception in die Session zu legen;
 - 401 statt Redirect (`HttpStatusEntryPoint`), `NullRequestCache`;
 - CSRF über `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `CsrfTokenRequestAttributeHandler`,
   dazu der `CsrfCookieFilter`;
 - `POST /logout` → 204;
-- `permitAll` für `/oauth2/**` und `/login/**`.
+- `permitAll` für `/oauth2/**`, `/login/**` und Error-Dispatches — sonst würde aus jedem 400/404 eines
+  Anonymen im Container ein 401.
 
 Die App schreibt nur ihre eigenen Regeln und `anyRequest`. Definiert sie keine Chain, greift ein
 Standard der Lib: `anyRequest authenticated`.
@@ -230,13 +234,21 @@ Claims eine Endlosschleife.
 - Test-Login aktiv, Schlüssel leer und **irgendein** Profil aktiv. Heute bricht nur `staging` ab;
   startet eine neue App in Prod versehentlich ohne Profil, stünde der Test-Login offen. Leerer
   Schlüssel ist nur ohne Profil erlaubt — also localhost.
-- ein Rolleneintrag ohne `provider:`-Präfix.
+- ein Rolleneintrag ohne `provider:`-Präfix, oder zwei Rollen-Schlüssel, die auf denselben Namen
+  fallen (`super-admin`, `Super-Admin`);
+- ein Client ohne Abbildung oder mit Scope `openid` — 0.1.0 bildet nur `github` ab. Gilt auch bei
+  aktivem Test-Login;
+- Schlüssel gesetzt **und** ein Client konfiguriert — sonst führte `/oauth2/authorization/{id}` am
+  Schloss vorbei. Staging hat keinen Client.
 
 Die Profilnamen `production` und `staging` setzt die Lib voraus, wie
 [deployment.md](../../../.claude/guidelines/deployment.md) sie festlegt.
 
 **Fehler im Hook:** Wirft `AccountProvisioner`, behandelt die Lib das als fehlgeschlagenen Login —
-dieselbe Fehlerseite, ein Log-Eintrag ohne Token und ohne Claims.
+dieselbe Fehlerseite, ein Log-Eintrag ohne Token und ohne Claims. Die Ursache steht nur im Log,
+nicht in der Exception: Spring legt die in die Session, und Spring Session JDBC serialisiert sie.
+
+**Session nach dem Test-Login:** Die Session-ID wechselt wie beim Provider-Login (Session-Fixation).
 
 **Test-User:** `provider = "test"`, `subject = login`. Die Standardliste übernimmt countdowns zwölf
 Futurama-Figuren **in heutiger Schreibweise** (`Fry`, `leela`, `Bender`, …) samt Emoji. Angelegt wird
@@ -338,6 +350,12 @@ künftigen Apps teilen; countdown ist ihr erster Nutzer.
 
 **Frontend:** `/login/github` → `/login` in sechs Dateien, darunter `LabControls.vue` („Spieler
 wechseln“) und die zugehörigen Specs.
+
+**`/login` gehört dem Backend.** Heute ist `/login` eine SPA-Seite (`webapp-vue/src/pages/login.vue`,
+Ziel des Guards), und `deploy/Caddyfile` sowie `webapp-vue/dev-proxy.ts` halten das nackte `/login`
+vom Backend fern. Die Lib braucht `/login`, `/login?error` und `/login?redirect=…` selbst: Die
+SPA-Seite entfällt oder zieht um, der Guard navigiert per Full-Page-Load, Edge und Dev-Proxy leiten
+`/login` ans Backend. Gefunden im Schluss-Review der Lib.
 
 **Spürbar für Nutzer:** Jeder meldet sich einmal neu an (Sessions geleert). Tester auf staging geben
 den Schlüssel einmal neu ein (Cookie-Name ändert sich).
