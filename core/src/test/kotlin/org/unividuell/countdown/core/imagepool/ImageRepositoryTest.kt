@@ -67,7 +67,7 @@ class ImageRepositoryTest(
     }
 
     private fun user(login: String): UUID =
-        users.save(User(githubId = System.nanoTime(), githubLogin = login)).id!!
+        users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id!!
 
     /** create() derives the slug and fills createdBy -- the constructor demands both. */
     private fun community(name: String, owner: UUID): UUID =

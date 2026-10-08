@@ -63,8 +63,8 @@ class LabPeerReviewTest(
     @MockkBean lateinit var countries: CountryLookup
 
     private val communityId = UUID.randomUUID()
-    private val alice = User(id = UUID.randomUUID(), githubId = 1L, githubLogin = "alice")
-    private val bob = User(id = UUID.randomUUID(), githubId = 2L, githubLogin = "bob")
+    private val alice = User(id = UUID.randomUUID(), subject = "1", githubLogin = "alice")
+    private val bob = User(id = UUID.randomUUID(), subject = "2", githubLogin = "bob")
     private val aliceId = requireNotNull(alice.id)
     private val bobId = requireNotNull(bob.id)
     private val mapper = JsonMapper.builder().build()

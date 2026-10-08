@@ -6,7 +6,7 @@ import org.unividuell.countdown.core.iam.User
 import java.util.UUID
 
 interface UserRepository : CrudRepository<User, UUID> {
-    fun findByGithubId(githubId: Long): User?
+    fun findByProviderAndSubject(provider: String, subject: String): User?
     fun findByGithubLogin(githubLogin: String): User?
     fun findByGithubLoginIn(githubLogins: Collection<String>): List<User>
 

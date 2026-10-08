@@ -19,14 +19,13 @@ import org.unividuell.countdown.core.iam.internal.devauth.TestUserSeeder
 @SpringBootTest
 class TestUserSeederTest(@Autowired val users: UserRepository) {
     @Test
-    fun `seeds twelve futurama test users, each on its pinned negative github id`() {
-        val expected = mapOf(
-            "Fry" to -1L, "leela" to -2L, "Bender" to -3L, "prof" to -4L, "amy" to -5L,
-            "hermes" to -6L, "zoidberg" to -7L, "scruffy" to -8L, "zapp" to -9L,
-            "kif" to -10L, "nibbler" to -11L, "mom" to -12L,
+    fun `seeds twelve futurama test users, each as provider test keyed by its login`() {
+        val logins = listOf(
+            "Fry", "leela", "Bender", "prof", "amy", "hermes", "zoidberg", "scruffy", "zapp", "kif", "nibbler", "mom",
         )
-        expected.forEach { (login, githubId) ->
-            users.findByGithubLogin(login).shouldNotBeNull().githubId shouldBe githubId
+        logins.forEach { login ->
+            users.findByProviderAndSubject(provider = "test", subject = login).shouldNotBeNull()
+                .githubLogin shouldBe login
         }
     }
 
@@ -94,7 +93,7 @@ class TestUserSeederConvergenceTest(
 
         users.findByGithubLogin("farnsworth") shouldBe null
         users.findByGithubLogin("prof").shouldNotBeNull().let {
-            it.githubId shouldBe -4L
+            it.subject shouldBe "prof"
             it.displayName shouldBe "Prof Farnsworth"
         }
     }

@@ -29,12 +29,13 @@ class GitHubOAuth2UserService(
         val githubUser = delegate.loadUser(userRequest)
             ?: throw invalidClaims("GitHub user-info endpoint returned no user")
         val attributes = githubUser.attributes
-        val githubId = (attributes["id"] as? Number)?.toLong()
+        val id = (attributes["id"] as? Number)?.toLong()
             ?: throw invalidClaims("missing or non-numeric 'id' in GitHub attributes")
         val login = attributes["login"] as? String
             ?: throw invalidClaims("missing or non-string 'login' in GitHub attributes")
         val user = provisioning.provision(
-            githubId = githubId,
+            provider = "github",
+            subject = id.toString(),
             login = login,
             name = attributes["name"] as? String,
             email = attributes["email"] as? String,

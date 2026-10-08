@@ -118,7 +118,7 @@ class PlayServiceJudgeLockTest(
     /** A community whose countdown starts in 2099, with a Weltanschauung round announced now. */
     private fun aSpotObjectRound(name: String): Pair<Community, UUID> {
         val ownerId = requireNotNull(
-            users.save(User(githubId = System.nanoTime(), githubLogin = "lock-owner")).id,
+            users.save(User(subject = System.nanoTime().toString(), githubLogin = "lock-owner")).id,
         )
         val community = communities.create(creatorUserId = ownerId, rawName = name)
         communities.update(

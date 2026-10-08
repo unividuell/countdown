@@ -13,7 +13,7 @@ class AvatarTest {
         bgColorHex: String? = null,
         id: UUID = UUID.fromString("0190f1b2-0000-7000-8000-000000000001"),
     ) = User(
-        id = id, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",
+        id = id, subject = "1", githubLogin = "octocat", githubName = "The Octocat",
         displayName = displayName, bgColorHex = bgColorHex,
     )
 

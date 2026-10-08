@@ -27,12 +27,12 @@ class SuperAdminUserServiceTest(
 
     @Test
     fun `lists users by name and reports the raw clearance`() {
-        repository.save(User(githubId = 401L, githubLogin = "zoe", displayName = "Zoe"))
+        repository.save(User(subject = "401", githubLogin = "zoe", displayName = "Zoe"))
         repository.save(
-            User(githubId = 402L, githubLogin = "adam", displayName = "Adam", communityCreationAllowed = true)
+            User(subject = "402", githubLogin = "adam", displayName = "Adam", communityCreationAllowed = true)
         )
         // Super-admin without a stored clearance: the list must show the raw column, so false.
-        repository.save(User(githubId = 403L, githubLogin = "boss", displayName = "Boss", isSuperAdmin = true))
+        repository.save(User(subject = "403", githubLogin = "boss", displayName = "Boss", isSuperAdmin = true))
 
         val names = service.list().map { it.username }
         names shouldBe listOf("Adam", "Boss", "Zoe")
@@ -46,7 +46,7 @@ class SuperAdminUserServiceTest(
     @Test
     fun `returns a detail view and rejects an unknown id`() {
         val saved = repository.save(
-            User(githubId = 404L, githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
+            User(subject = "404", githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
         )
 
         val detail = service.detail(saved.id!!)
@@ -59,7 +59,7 @@ class SuperAdminUserServiceTest(
 
     @Test
     fun `grants and revokes the clearance`() {
-        val saved = repository.save(User(githubId = 405L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "405", githubLogin = "octocat"))
 
         service.setCommunityCreation(saved.id!!, allowed = true).communityCreationAllowed shouldBe true
         repository.findByIdOrNull(saved.id!!)!!.communityCreationAllowed shouldBe true
@@ -70,7 +70,7 @@ class SuperAdminUserServiceTest(
 
     @Test
     fun `setting the clearance it already has does not touch updated_at`() {
-        val saved = repository.save(User(githubId = 406L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "406", githubLogin = "octocat"))
         val before = repository.findByIdOrNull(saved.id!!)!!.updatedAt
 
         service.setCommunityCreation(saved.id!!, allowed = false)

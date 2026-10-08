@@ -26,7 +26,7 @@ class MemberProfilePreviewParityTest(
     @Test
     fun `the preview is exactly what saving the same values produces`() {
         val uid = users.save(
-            User(githubId = System.nanoTime(), githubLogin = "amy", displayName = "Amy Wong")
+            User(subject = System.nanoTime().toString(), githubLogin = "amy", displayName = "Amy Wong")
         ).id!!
         val cid = communities.save(
             Community(name = "Team", slug = "team-parity", createdBy = uid)
@@ -46,7 +46,7 @@ class MemberProfilePreviewParityTest(
     @Test
     fun `a preview leaves the membership row untouched`() {
         val uid = users.save(
-            User(githubId = System.nanoTime(), githubLogin = "bender")
+            User(subject = System.nanoTime().toString(), githubLogin = "bender")
         ).id!!
         val cid = communities.save(
             Community(name = "Team", slug = "team-untouched", createdBy = uid)

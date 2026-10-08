@@ -16,7 +16,6 @@ data class SeedUser(
     val login: String,
     val githubName: String?,
     val displayName: String?,
-    val githubId: Long,
     val emoji: String,
 )
 
@@ -29,24 +28,23 @@ class TestUserSeeder(
     private val superAdminProperties: SuperAdminProperties,
 ) : ApplicationRunner {
     /**
-     * Declaration order is the picker's render order. The synthetic negative ids are what rows are
-     * matched on, so an id already in use must never be reassigned: every dev and staging database
-     * already holds the ids handed out so far, and moving one would orphan its row and insert a
-     * duplicate beside it. A new character takes the next id counting down, never a freed one.
+     * Declaration order is the picker's render order. Rows are matched on provider "test" with the
+     * login as subject, so a login once handed out is never renamed: every dev and staging database
+     * already holds its row, and a new spelling would insert a duplicate beside it.
      */
     val seedUsers: List<SeedUser> = listOf(
-        SeedUser("Fry", null, null, -1L, "🍕"),
-        SeedUser("leela", "Leela", "Turanga Leela", -2L, "👁️"),
-        SeedUser("Bender", null, null, -3L, "🤖"),
-        SeedUser("prof", null, "Prof Farnsworth", -4L, "🔬"),
-        SeedUser("amy", null, null, -5L, "💅"),
-        SeedUser("hermes", null, "Hermes Conrad", -6L, "📋"),
-        SeedUser("zoidberg", null, "Dr. Zoidberg", -7L, "🦞"),
-        SeedUser("scruffy", null, "Scruffy", -8L, "🧹"),
-        SeedUser("zapp", null, "Zapp Brannigan", -9L, "🎖️"),
-        SeedUser("kif", null, "Kif Kroker", -10L, "😩"),
-        SeedUser("nibbler", null, "Nibbler", -11L, "🐾"),
-        SeedUser("mom", null, "Mom", -12L, "🏭"),
+        SeedUser("Fry", null, null, "🍕"),
+        SeedUser("leela", "Leela", "Turanga Leela", "👁️"),
+        SeedUser("Bender", null, null, "🤖"),
+        SeedUser("prof", null, "Prof Farnsworth", "🔬"),
+        SeedUser("amy", null, null, "💅"),
+        SeedUser("hermes", null, "Hermes Conrad", "📋"),
+        SeedUser("zoidberg", null, "Dr. Zoidberg", "🦞"),
+        SeedUser("scruffy", null, "Scruffy", "🧹"),
+        SeedUser("zapp", null, "Zapp Brannigan", "🎖️"),
+        SeedUser("kif", null, "Kif Kroker", "😩"),
+        SeedUser("nibbler", null, "Nibbler", "🐾"),
+        SeedUser("mom", null, "Mom", "🏭"),
     )
 
     /** Single source of truth for accepted test logins; DevLoginController restricts `loginAs` to these. */
@@ -55,20 +53,19 @@ class TestUserSeeder(
     /**
      * Mirrors `UserProvisioningService.sync`: identity fields and the allowlist flag are
      * authoritative and re-evaluated on every run, not just on insert — otherwise a seed row,
-     * once drifted by hand (or by a past roster edit that renamed a login without moving its
-     * pinned `githubId`), could never converge back to what `seedUsers` says. This matters
+     * once drifted by hand, could never converge back to what `seedUsers` says. This matters
      * specifically for `githubLogin`: the picker joins on it (`DevLoginController`), so a stale
      * login would leave a row in the database that no button can ever reach.
      */
     override fun run(args: org.springframework.boot.ApplicationArguments) {
         seedUsers.forEach { seed ->
             val isSuperAdmin = superAdminProperties.isSuperAdmin(seed.login)
-            val existing = users.findByGithubId(seed.githubId)
+            val existing = users.findByProviderAndSubject(provider = "test", subject = seed.login)
             if (existing == null) {
                 users.save(
                     User(
-                        githubId = seed.githubId, githubLogin = seed.login, githubName = seed.githubName,
-                        displayName = seed.displayName, isSuperAdmin = isSuperAdmin,
+                        provider = "test", subject = seed.login, githubLogin = seed.login,
+                        githubName = seed.githubName, displayName = seed.displayName, isSuperAdmin = isSuperAdmin,
                     )
                 )
             } else if (existing.isSuperAdmin != isSuperAdmin ||

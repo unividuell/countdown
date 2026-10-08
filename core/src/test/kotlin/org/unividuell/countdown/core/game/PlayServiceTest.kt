@@ -66,7 +66,7 @@ class PlayServiceTest(
     @Autowired val catalog: GameCatalog,
 ) {
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun guess(hue: Double): JsonNode = mapper.readTree("""{"hue":$hue}""")
 

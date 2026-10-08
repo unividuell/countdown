@@ -11,17 +11,18 @@ open class UserProvisioningService(
     private val repository: UserRepository,
     private val superAdminProperties: SuperAdminProperties,
 ) {
-    /** Upserts the user from GitHub claims; never touches user-owned fields. */
+    /** Upserts the user from the provider's claims; never touches user-owned fields. */
     @Transactional
-    open fun provision(githubId: Long, login: String, name: String?, email: String?): User {
+    open fun provision(provider: String, subject: String, login: String, name: String?, email: String?): User {
         val isSuperAdmin = superAdminProperties.isSuperAdmin(login)
-        repository.findByGithubId(githubId)?.let { existing ->
+        repository.findByProviderAndSubject(provider = provider, subject = subject)?.let { existing ->
             return repository.save(sync(existing, login, name, email, isSuperAdmin))
         }
         return try {
             repository.save(
                 User(
-                    githubId = githubId,
+                    provider = provider,
+                    subject = subject,
                     githubLogin = login,
                     githubName = name,
                     email = email,
@@ -30,9 +31,9 @@ open class UserProvisioningService(
             )
         } catch (e: DuplicateKeyException) {
             // a concurrent login already inserted the row: re-fetch and sync
-            val existing = repository.findByGithubId(githubId)
+            val existing = repository.findByProviderAndSubject(provider = provider, subject = subject)
                 ?: throw IllegalStateException(
-                    "DuplicateKeyException on insert but no row found for githubId=$githubId", e
+                    "DuplicateKeyException on insert but no row found for $provider:$subject", e
                 )
             repository.save(sync(existing, login, name, email, isSuperAdmin))
         }

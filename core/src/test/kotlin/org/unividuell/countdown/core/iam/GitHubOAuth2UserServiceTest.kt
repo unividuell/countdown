@@ -26,11 +26,11 @@ class GitHubOAuth2UserServiceTest {
         )
         val provisioned = User(
             id = UUID.fromString("018f0000-0000-7000-8000-000000000000"),
-            githubId = 4711L, githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com",
+            subject = "4711", githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com",
         )
 
         val provisioning = mockk<UserProvisioningService>()
-        every { provisioning.provision(4711L, "octocat", "The Octocat", "cat@example.com") } returns provisioned
+        every { provisioning.provision(provider = "github", subject = "4711", login = "octocat", name = "The Octocat", email = "cat@example.com") } returns provisioned
 
         // delegate returns canned GitHub attributes regardless of the (unused) request
         // Using SAM lambda: DefaultOAuth2UserService.loadUser is final in Spring Security 7
@@ -42,7 +42,7 @@ class GitHubOAuth2UserServiceTest {
 
         result.shouldBeInstanceOf<CountdownOAuth2User>()
         result.user shouldBe provisioned
-        verify(exactly = 1) { provisioning.provision(4711L, "octocat", "The Octocat", "cat@example.com") }
+        verify(exactly = 1) { provisioning.provision(provider = "github", subject = "4711", login = "octocat", name = "The Octocat", email = "cat@example.com") }
     }
 
     @Test

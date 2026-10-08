@@ -65,7 +65,7 @@ class DevLoginControllerTest(
 
     @Test
     fun `POST login github as rejects a login that exists but is not a seed user`() {
-        users.save(User(githubId = 4242L, githubLogin = "octocat"))
+        users.save(User(subject = "4242", githubLogin = "octocat"))
         // Pins the rejection below to "exists but isn't a seed login" rather than "no such user":
         // loginAs raises the identical error for both, so without this the test would keep
         // passing even if the save/lookup above silently stopped working.

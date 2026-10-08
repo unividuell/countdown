@@ -27,7 +27,7 @@ class CommunityServiceTest(
     @Autowired val members: CommunityMemberRepository,
     @Autowired val users: UserRepository,
 ) {
-    private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
+    private fun aUser() = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
 
     @Test
     fun `create derives slug and makes the creator an active admin`() {

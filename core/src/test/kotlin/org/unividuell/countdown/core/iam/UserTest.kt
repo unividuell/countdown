@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 class UserTest {
 
     private fun user(superAdmin: Boolean = false, allowed: Boolean = false) = User(
-        githubId = 1L, githubLogin = "octocat",
+        subject = "1", githubLogin = "octocat",
         isSuperAdmin = superAdmin, communityCreationAllowed = allowed,
     )
 

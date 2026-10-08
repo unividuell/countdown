@@ -48,7 +48,7 @@ class CommunityCreationClearanceSeamTest(
     @MockkBean lateinit var editions: EditionService
 
     private fun save(login: String) =
-        users.save(User(githubId = login.hashCode().toLong(), githubLogin = login))
+        users.save(User(subject = login, githubLogin = login))
 
     private fun createAs(user: User) =
         mockMvc.post("/api/communities") {

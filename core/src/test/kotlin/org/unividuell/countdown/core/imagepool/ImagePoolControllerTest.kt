@@ -61,7 +61,7 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
         every { service.count(memberPool) } returns 12L
         every { service.limitOf(memberPool) } returns 150
         every { users.findAllById(listOf(TEST_USER_ID)) } returns
-            listOf(User(id = TEST_USER_ID, githubId = 1L, githubLogin = "alice"))
+            listOf(User(id = TEST_USER_ID, subject = "1", githubLogin = "alice"))
 
         mockMvc.get("/api/communities/alpha/images") { with(principalFor()) }
             .andExpect {

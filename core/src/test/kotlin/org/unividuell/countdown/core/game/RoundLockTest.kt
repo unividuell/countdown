@@ -58,7 +58,7 @@ class RoundLockTest(
         val pool = Executors.newFixedThreadPool(2)
 
         try {
-            val creator = requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = "locker")).id)
+            val creator = requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = "locker")).id)
             creatorId = creator
             val community = communities.save(
                 Community(name = "Lock Round", slug = "lock-round-${System.nanoTime()}", createdBy = creator),

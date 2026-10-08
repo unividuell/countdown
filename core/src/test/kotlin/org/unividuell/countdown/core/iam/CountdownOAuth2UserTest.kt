@@ -11,7 +11,7 @@ class CountdownOAuth2UserTest {
 
     private fun user(isSuperAdmin: Boolean) = User(
         id = UUID.fromString("018f0000-0000-7000-8000-000000000000"),
-        githubId = 1L, githubLogin = "octocat", isSuperAdmin = isSuperAdmin,
+        subject = "1", githubLogin = "octocat", isSuperAdmin = isSuperAdmin,
     )
 
     @Test

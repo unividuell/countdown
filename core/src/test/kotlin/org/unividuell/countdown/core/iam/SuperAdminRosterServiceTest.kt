@@ -36,7 +36,7 @@ class SuperAdminRosterServiceTest(
 ) {
     @Test
     fun `matches an allowlist entry to a differently-cased github login exactly once`() {
-        users.save(User(githubId = 501L, githubLogin = "BossUser", displayName = "Boss", isSuperAdmin = true))
+        users.save(User(subject = "501", githubLogin = "BossUser", displayName = "Boss", isSuperAdmin = true))
 
         val rows = service.roster().filter { it.githubLogin.lowercase() == "bossuser" }
 
@@ -50,7 +50,7 @@ class SuperAdminRosterServiceTest(
     fun `an allowlisted user stored with mixed-case login resolves to their real row instead of a phantom`() {
         // Unlike the differently-cased case above, this user is NOT flagged, so findSuperAdmins()
         // can't find them either — the only path to their real row is the lowercased SQL lookup.
-        users.save(User(githubId = 504L, githubLogin = "NotYetFlagged"))
+        users.save(User(subject = "504", githubLogin = "NotYetFlagged"))
 
         val row = service.roster().single { it.githubLogin.lowercase() == "notyetflagged" }
 
@@ -61,8 +61,8 @@ class SuperAdminRosterServiceTest(
 
     @Test
     fun `orders rows by lowercased github login`() {
-        users.save(User(githubId = 505L, githubLogin = "Zulu", isSuperAdmin = true))
-        users.save(User(githubId = 506L, githubLogin = "alpha", isSuperAdmin = true))
+        users.save(User(subject = "505", githubLogin = "Zulu", isSuperAdmin = true))
+        users.save(User(subject = "506", githubLogin = "alpha", isSuperAdmin = true))
 
         val ownLogins = setOf("zulu", "alpha", "bossuser", "ghost", "notyetflagged")
         val logins = service.roster().map { it.githubLogin }.filter { it.lowercase() in ownLogins }
@@ -91,7 +91,7 @@ class SuperAdminRosterServiceTest(
 
     @Test
     fun `a flagged user missing from the allowlist is reported as stale`() {
-        users.save(User(githubId = 502L, githubLogin = "removed", isSuperAdmin = true))
+        users.save(User(subject = "502", githubLogin = "removed", isSuperAdmin = true))
 
         val row = service.roster().single { it.githubLogin == "removed" }
 
@@ -111,7 +111,7 @@ class SuperAdminRosterEmptyAllowlistTest(
 ) {
     @Test
     fun `an empty allowlist returns only flagged users`() {
-        users.save(User(githubId = 503L, githubLogin = "onlyflagged", isSuperAdmin = true))
+        users.save(User(subject = "503", githubLogin = "onlyflagged", isSuperAdmin = true))
 
         val row = service.roster().single { it.githubLogin == "onlyflagged" }
 

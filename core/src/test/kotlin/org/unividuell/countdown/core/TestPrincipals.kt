@@ -24,4 +24,4 @@ fun principalFor(
     id: UUID = TEST_USER_ID,
     superAdmin: Boolean = false,
     githubLogin: String = "octocat",
-) = principalFor(User(id = id, githubId = 1L, githubLogin = githubLogin, isSuperAdmin = superAdmin))
+) = principalFor(User(id = id, subject = "1", githubLogin = githubLogin, isSuperAdmin = superAdmin))

@@ -23,8 +23,12 @@ class UserProvisioningServiceTest(
 
     @Test
     fun `first login inserts a new user`() {
-        val user = service.provision(githubId = 100L, login = "octocat", name = "The Octocat", email = "cat@example.com")
+        val user = service.provision(
+            provider = "github", subject = "100", login = "octocat", name = "The Octocat", email = "cat@example.com",
+        )
 
+        user.provider shouldBe "github"
+        user.subject shouldBe "100"
         user.githubLogin shouldBe "octocat"
         user.githubName shouldBe "The Octocat"
         user.email shouldBe "cat@example.com"
@@ -35,11 +39,15 @@ class UserProvisioningServiceTest(
 
     @Test
     fun `repeat login syncs github fields but preserves user-owned fields`() {
-        val first = service.provision(101L, "old-login", "Old Name", "old@example.com")
+        val first = service.provision(
+            provider = "github", subject = "101", login = "old-login", name = "Old Name", email = "old@example.com",
+        )
         // simulate user-owned edits
         repository.save(first.copy(displayName = "Mr. Custom", bgColorHex = "#ff0000"))
 
-        val synced = service.provision(101L, "new-login", "New Name", "new@example.com")
+        val synced = service.provision(
+            provider = "github", subject = "101", login = "new-login", name = "New Name", email = "new@example.com",
+        )
 
         synced.githubLogin shouldBe "new-login"
         synced.githubName shouldBe "New Name"
@@ -51,10 +59,10 @@ class UserProvisioningServiceTest(
 
     @Test
     fun `super-admin flag follows the allowlist on every login`() {
-        val notSuperAdmin = service.provision(102L, "regular", null, null)
+        val notSuperAdmin = service.provision(provider = "github", subject = "102", login = "regular", name = null, email = null)
         notSuperAdmin.isSuperAdmin shouldBe false
 
-        val superAdmin = service.provision(103L, "bossuser", null, null)
+        val superAdmin = service.provision(provider = "github", subject = "103", login = "bossuser", name = null, email = null)
         superAdmin.isSuperAdmin shouldBe true
     }
 }
