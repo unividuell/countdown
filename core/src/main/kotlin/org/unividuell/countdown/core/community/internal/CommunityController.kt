@@ -10,6 +10,7 @@ import org.unividuell.countdown.core.community.MemberStatus
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
+import org.unividuell.countdown.core.iam.isSuperAdmin
 
 @RestController
 @RequestMapping("/api/communities")

@@ -1,44 +1,53 @@
 package org.unividuell.countdown.core.iam
 
-import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
-import org.springframework.dao.DuplicateKeyException
-import org.unividuell.countdown.core.iam.internal.SuperAdminProperties
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.unividuell.auth.ExternalIdentity
+import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.UserProvisioningService
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-class UserProvisioningServiceRaceTest {
+/**
+ * Two first sign-ins of one identity at once — two tabs, a double click. Not `@Transactional`:
+ * both calls run on their own threads, each in its own transaction, as two requests would. Twenty
+ * rounds, each with a subject of its own, deleted afterwards.
+ */
+@Import(TestcontainersConfiguration::class)
+@SpringBootTest
+class UserProvisioningServiceRaceTest(
+    @Autowired val service: UserProvisioningService,
+    @Autowired val repository: UserRepository,
+) {
 
-    // Simulates a concurrent insert: findByProviderAndSubject misses first (insert path),
-    // the INSERT (id == null) raises DuplicateKeyException once, then the row is
-    // found on re-fetch.
     @Test
-    fun `recovers from a concurrent insert by re-fetching and syncing`() {
-        val existing = User(
-            id = UUID.fromString("018f0000-0000-7000-8000-000000000000"),
-            subject = "42", githubLogin = "old", githubName = "Old", displayName = "Keep me",
-        )
+    fun `two concurrent first sign-ins of one identity make one row`() {
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            repeat(20) { round ->
+                val identity = ExternalIdentity(
+                    provider = "github", subject = "race-$round", login = "racer", name = null, email = null,
+                )
+                val start = CyclicBarrier(2)
 
-        val repo = mockk<UserRepository>()
-        every { repo.findByProviderAndSubject(provider = "github", subject = "42") } returnsMany listOf(null, existing)
-        every { repo.save(match { it.id == null }) } throws DuplicateKeyException("duplicate github_id")
-        every { repo.save(match { it.id != null }) } answers { firstArg() }
+                val ids = List(2) {
+                    pool.submit<UUID> {
+                        start.await()
+                        service.provision(identity = identity, roles = emptySet())
+                    }
+                }.map { it.get(10, TimeUnit.SECONDS) }
 
-        val service = UserProvisioningService(repo, SuperAdminProperties(emptyList()))
-
-        val result = service.provision(
-            provider = "github", subject = "42", login = "new-login", name = "New Name", email = "new@example.com",
-        )
-
-        result.githubLogin shouldBe "new-login"
-        result.githubName shouldBe "New Name"
-        result.displayName shouldBe "Keep me"
-
-        verify(exactly = 1) { repo.save(match { it.id == null }) }
-        verify(exactly = 2) { repo.findByProviderAndSubject(provider = "github", subject = "42") }
+                ids.distinct() shouldHaveSize 1
+                repository.deleteById(ids.first())
+            }
+        } finally {
+            pool.shutdownNow()
+        }
     }
 }

@@ -4,9 +4,10 @@ spring:
       client:
         registration:
           github:
-            # Production GitHub OAuth App (callback https://countdown.unividuell.org/login/oauth2/code/github).
-            # Public Client ID — safe to commit. The matching secret comes from ${GITHUB_CLIENT_SECRET}.
-            client-id: Ov23lihx8kIQNB9e5Vz2
+            # The organisation's GitHub App, shared by every unividuell app (up to ten callback URLs,
+            # https://countdown.unividuell.org/login/oauth2/code/github among them). Public client
+            # ID — safe to commit. The matching secret comes from ${GITHUB_CLIENT_SECRET}.
+            client-id: Iv23liJTgm6EeJ6XshRh
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user
   datasource:
@@ -25,9 +26,13 @@ server:
         secure: true
         same-site: lax
 
+unividuell:
+  auth:
+    test-login:
+      # Belt and braces: the auth lib never starts the test login under `production` anyway.
+      enabled: false
+
 app:
-  test-auth:
-    enabled: false
   game-lab:
     # Belt and braces: the beans are @Profile("!production") too. Two gates because the cost is a
     # line of yaml and the failure mode is unlimited practice against real puzzle content.

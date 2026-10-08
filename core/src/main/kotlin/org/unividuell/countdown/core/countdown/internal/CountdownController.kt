@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.iam.AuthenticatedUser
+import org.unividuell.countdown.core.iam.isSuperAdmin
 
 @RestController
 @RequestMapping("/api/communities")

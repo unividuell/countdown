@@ -27,19 +27,6 @@ spring:
   modulith:
     runtime:
       flyway-enabled: true
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: Ov23liQzcbT4kLUIXWoo
-            # Local dev logs in through the seeded test-user picker (see app.test-auth),
-            # which never performs a token exchange — so a placeholder keeps the documented
-            # local flow running without exporting anything. Production overrides both this
-            # and the client-id in application-production.yaml, where the secret has NO
-            # default and a missing env var still fails the boot fast.
-            client-secret: ${GITHUB_CLIENT_SECRET:local-dev-unused}
-            scope: read:user
   session:
     jdbc:
       initialize-schema: never
@@ -50,8 +37,23 @@ spring:
       max-file-size: 15MB
       max-request-size: 16MB
 
+unividuell:
+  auth:
+    roles:
+      # provider:login, comma-separated: test:<login> for a test user, github:<login> in production.
+      # An entry without its provider prefix refuses to start; empty means nobody.
+      super-admin: ${SUPER_ADMINS:}
+    test-login:
+      # The key that unlocks the test-user picker, once per browser profile. Empty means no lock —
+      # allowed only while no profile is active, i.e. on localhost, where multi-user testing means
+      # several browser profiles at once. The one place where env name and property path differ.
+      # unividuell.auth.test-login.enabled=false replays the real GitHub flow (core/README.md).
+      key: ${FAKE_SIGN_IN_KEY:}
+    csrf-cookie:
+      # Answered publicly cacheable to crawlers: a Set-Cookie there would defeat every shared cache.
+      excluded-paths: /api/preview/**
+
 app:
-  super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
   guess-hue:
     # Empty means: the sample dataset from the classpath — a boot failure in production/staging,
     # where update.sh decrypts the real file with sops and compose mounts it into the container.
@@ -80,17 +82,8 @@ app:
     server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY:}
     # The URL-signing secret for the Street View Static API. Server-side only.
     signing-secret: ${SPOT_OBJECT_SIGNING_SECRET:}
-  test-auth:
-    # Emulator-style test login (seeded users + picker). Default on for localhost.
-    # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
-    enabled: true
-    # The key that unlocks the picker, once per browser profile. Empty means no lock — the
-    # localhost default, because multi-user testing here means several browser profiles at once
-    # and a lock would only cost typing. The variable is named after what the thing is called in
-    # conversation; it is the one place in this file where env name and property path differ.
-    key: ${FAKE_SIGN_IN_KEY:}
   game-lab:
     # The non-prod harness for playing a mini-game against a seed from the URL. Gated twice, like
-    # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
+    # the test login: the beans are also @Profile("!production"). The switch exists so staging can be
     # closed the day real testers play a real round there — no code change, no deploy rebuild.
     enabled: true

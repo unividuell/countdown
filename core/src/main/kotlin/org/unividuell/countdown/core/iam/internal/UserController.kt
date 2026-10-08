@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
 import java.time.Instant
@@ -51,27 +52,27 @@ private fun User.toMeResponse() = MeResponse(
 class UserController(private val profileService: UserProfileService) {
 
     @GetMapping
-    fun me(@AuthenticationPrincipal principal: CountdownOAuth2User): MeResponse =
-        profileService.current(principal.user.id!!).toMeResponse()
+    fun me(@AuthenticationPrincipal principal: AuthenticatedUser): MeResponse =
+        profileService.current(principal.id).toMeResponse()
 
     @PatchMapping
     fun update(
-        @AuthenticationPrincipal principal: CountdownOAuth2User,
+        @AuthenticationPrincipal principal: AuthenticatedUser,
         @RequestBody body: UpdateProfileRequest,
     ): MeResponse =
         profileService.update(
-            userId = principal.user.id!!,
+            userId = principal.id,
             displayName = body.displayName,
             bgColorHex = body.bgColorHex,
         ).toMeResponse()
 
     @PostMapping("/avatar-preview")
     fun avatarPreview(
-        @AuthenticationPrincipal principal: CountdownOAuth2User,
+        @AuthenticationPrincipal principal: AuthenticatedUser,
         @RequestBody body: UpdateProfileRequest,
     ): AvatarPreviewResponse =
         profileService.preview(
-            userId = principal.user.id!!,
+            userId = principal.id,
             displayName = body.displayName,
             bgColorHex = body.bgColorHex,
         )

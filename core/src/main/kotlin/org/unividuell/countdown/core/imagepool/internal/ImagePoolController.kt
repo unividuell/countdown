@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
+import org.unividuell.countdown.core.iam.isSuperAdmin
 import java.util.UUID
 
 /** Immutable per id, and never shared: a year of caching, in this browser only. */

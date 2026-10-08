@@ -31,6 +31,8 @@
 		<kotlin.version>2.4.10</kotlin.version>
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
 		<kotlin-logging.version>8.0.4</kotlin-logging.version>
+		<!-- Ours, from core/maven-repo: not on Maven Central (see dependency-updates.md). -->
+		<unividuell-auth.version>0.1.0</unividuell-auth.version>
 		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<metadata-extractor.version>2.19.0</metadata-extractor.version>
 		<twelvemonkeys.version>3.12.0</twelvemonkeys.version>
@@ -67,6 +69,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter</artifactId>
+			<version>${unividuell-auth.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

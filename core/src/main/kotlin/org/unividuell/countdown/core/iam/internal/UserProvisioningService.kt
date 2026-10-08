@@ -1,50 +1,27 @@
 package org.unividuell.countdown.core.iam.internal
 
-import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.unividuell.countdown.core.iam.User
-import java.time.Instant
+import org.unividuell.auth.AccountProvisioner
+import org.unividuell.auth.ExternalIdentity
+import java.util.UUID
 
+/**
+ * The auth lib's one hook: a real provider and the test login both end here. One account per
+ * (provider, subject), never linked — not even by e-mail, which GitHub hands over unverified.
+ */
 @Service
-open class UserProvisioningService(
-    private val repository: UserRepository,
-    private val superAdminProperties: SuperAdminProperties,
-) {
-    /** Upserts the user from the provider's claims; never touches user-owned fields. */
-    @Transactional
-    open fun provision(provider: String, subject: String, login: String, name: String?, email: String?): User {
-        val isSuperAdmin = superAdminProperties.isSuperAdmin(login)
-        repository.findByProviderAndSubject(provider = provider, subject = subject)?.let { existing ->
-            return repository.save(sync(existing, login, name, email, isSuperAdmin))
-        }
-        return try {
-            repository.save(
-                User(
-                    provider = provider,
-                    subject = subject,
-                    githubLogin = login,
-                    githubName = name,
-                    email = email,
-                    isSuperAdmin = isSuperAdmin,
-                )
-            )
-        } catch (e: DuplicateKeyException) {
-            // a concurrent login already inserted the row: re-fetch and sync
-            val existing = repository.findByProviderAndSubject(provider = provider, subject = subject)
-                ?: throw IllegalStateException(
-                    "DuplicateKeyException on insert but no row found for $provider:$subject", e
-                )
-            repository.save(sync(existing, login, name, email, isSuperAdmin))
-        }
-    }
+class UserProvisioningService(private val repository: UserRepository) : AccountProvisioner {
 
-    private fun sync(existing: User, login: String, name: String?, email: String?, isSuperAdmin: Boolean): User =
-        existing.copy(
-            githubLogin = login,
-            githubName = name,
-            email = email,
-            isSuperAdmin = isSuperAdmin,
-            updatedAt = Instant.now(),
+    /** [roles] are what the allowlist grants right now; the stored flag follows them at every sign-in. */
+    @Transactional
+    override fun provision(identity: ExternalIdentity, roles: Set<String>): UUID =
+        repository.upsertIdentity(
+            provider = identity.provider,
+            subject = identity.subject,
+            login = identity.login,
+            name = identity.name,
+            email = identity.email,
+            isSuperAdmin = "SUPER_ADMIN" in roles,
         )
 }

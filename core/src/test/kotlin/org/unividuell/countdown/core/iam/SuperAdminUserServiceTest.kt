@@ -15,11 +15,11 @@ import org.unividuell.countdown.core.iam.internal.UserNotFoundException
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import java.util.UUID
 
-/** `test-auth.enabled=false` keeps the seeded Futurama users out of this context (see SuperAdminRosterServiceTest). */
+/** The test login off: a context of its own, which no other class's committed users reach. */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @Transactional
-@TestPropertySource(properties = ["app.test-auth.enabled=false"])
+@TestPropertySource(properties = ["unividuell.auth.test-login.enabled=false"])
 class SuperAdminUserServiceTest(
     @Autowired val service: SuperAdminUserService,
     @Autowired val repository: UserRepository,
