@@ -12,14 +12,17 @@ import org.unividuell.countdown.core.findpattern.FindPatternBoard
 import org.unividuell.countdown.core.findpattern.FindPatternLayout
 import org.unividuell.countdown.core.game.internal.FindPatternGameType
 import org.unividuell.countdown.core.game.internal.FindPatternOutcome
+import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 /**
  * The adapter, tested without a Spring context: it has no collaborators to inject — everything it
  * needs is `findpattern`'s pure functions.
  */
 class FindPatternGameTypeTest {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val game = FindPatternGameType()
     private val mapper = JsonMapper.builder().build()
@@ -29,8 +32,9 @@ class FindPatternGameTypeTest {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(seed),
                 presentation = SeededRandom.fromSeed(presentationSeed),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
-            context = RoundContext(roundNumber = 12, phase = phase),
+            context = RoundContext(communityId = community, roundNumber = 12, phase = phase),
         )
 
     private fun guessOf(startIndex: Int) = mapper.readTree("""{"startIndex":$startIndex}""")
@@ -94,6 +98,28 @@ class FindPatternGameTypeTest {
         payload.boardImage shouldStartWith "data:image/png;base64,"
         payload.patternImage shouldStartWith "data:image/png;base64,"
         payload.boardImage shouldNotBe payload.patternImage
+    }
+
+    @Test
+    fun `the scene carries exactly the layout`() {
+        val json = mapper.writeValueAsString(game.scene(draw(phase = Phase.TWO)))
+        val fields = mapper.readTree(json).propertyNames().toSet()
+
+        fields shouldBe setOf("cols", "rows", "patternLength")
+    }
+
+    /** Published before the reveal, so nothing drawn may reach it — from either stream. */
+    @Test
+    fun `the scene is the same for every round`() {
+        val a = game.scene(draw(phase = Phase.TWO, seed = 1, presentationSeed = 7))
+        val b = game.scene(draw(phase = Phase.TWO, seed = 2, presentationSeed = 99))
+
+        a shouldBe b
+        a shouldBe FindPatternScene(
+            cols = FindPatternLayout.COLS,
+            rows = FindPatternLayout.ROWS,
+            patternLength = FindPatternLayout.PATTERN_LENGTH,
+        )
     }
 
     @Test

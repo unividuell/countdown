@@ -15,8 +15,10 @@ import org.unividuell.countdown.core.spotobject.CountryLookup
 import org.unividuell.countdown.core.spotobject.SpotObjectTerms
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 class SpotObjectGameTypeTest {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val countries = mockk<CountryLookup>()
     private val game = SpotObjectGameType(
@@ -30,8 +32,9 @@ class SpotObjectGameTypeTest {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(seed),
                 presentation = SeededRandom.fromSeed(presentationSeed),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
-            context = RoundContext(roundNumber = 12, phase = phase),
+            context = RoundContext(communityId = community, roundNumber = 12, phase = phase),
         )
 
     private fun guessOf(
@@ -74,6 +77,11 @@ class SpotObjectGameTypeTest {
     fun `only phase two asks for a deliberate reveal`() {
         game.requiresReveal(draw(phase = Phase.ONE)) shouldBe false
         game.requiresReveal(draw(phase = Phase.TWO)) shouldBe true
+    }
+
+    @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw(phase = Phase.TWO)).shouldBeNull()
     }
 
     @Test

@@ -31,7 +31,7 @@ class EditionServiceTest(
     @Autowired val users: UserRepository,
 ) {
     private fun aCommunity(slug: String): UUID {
-        val creator = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
+        val creator = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
         return requireNotNull(communities.save(Community(name = slug, slug = slug, createdBy = creator.id!!)).id)
     }
 

@@ -14,9 +14,8 @@ export interface GuessHuePayload {
   lightness: number
   /**
    * Half-window in degrees, or `null` in phase two — there is no gate there, only the closest
-   * guess scores. Safe to see before guessing: it is set from the phase alone, identical for
-   * every round of that phase, so it says nothing about where the target hue lies. See the
-   * backend's `GuessHuePayload` KDoc.
+   * guess scores. Unused before the guess: the wire shape matches `GuessHueSolution`, and only the
+   * solution's copy of this field reaches the reveal. See the backend's `GuessHuePayload` KDoc.
    */
   toleranceDeg: number | null
 }

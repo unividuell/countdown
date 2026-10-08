@@ -14,7 +14,8 @@ We use **Spring Data JDBC** (not JPA/Hibernate). Aggregates are immutable Kotlin
 @Table(schema = "iam", name = "users")
 data class User(
     @Id val id: UUID? = null,
-    val githubId: Long,
+    val provider: String,
+    val subject: String,
     val githubLogin: String,
     // ...
     val createdAt: Instant? = null,
@@ -89,13 +90,14 @@ Do it in three steps instead, which is also three green commits:
 Both migrations ship in the same PR and run in the same boot, so operationally it is identical to one
 script — the split buys testability, not deploy safety.
 
-Two things the test suite cannot tell you, because Flyway runs before any row exists in a
-Testcontainers database:
+Two things a Spring test cannot tell you, because Flyway runs before any row exists in its
+database:
 
-- **A backfill copies zero rows in tests.** Verify it against real rows — a disposable
-  `postgres:18` container, the migrations applied in order, a couple of seeded rows, then an
-  `IS DISTINCT FROM` check between old and new. Never against the developer's own dev database,
-  and never with `docker compose down -v`.
+- **A backfill copies zero rows in a Spring test.** Verify it against real rows in a plain test:
+  run the module's Flyway up to the previous version, insert rows, migrate the rest, assert
+  (`IdentityMigrationTest`). With that test, one migration needs no expand/switch/contract split
+  for testability. Never against the developer's own dev database, and never with
+  `docker compose down -v`.
 - **`./mvnw clean test` before trusting migration behaviour.** A stale
   `application-modules.json` under `target` makes a new module's migrations silently not run — see
   [modules-and-migrations.md](modules-and-migrations.md).
@@ -130,11 +132,11 @@ serialization). See [security-and-auth.md](security-and-auth.md).
 
 ## Upsert / sync pattern
 
-For "create-or-update on each login" style flows: look up by the natural key,
-`.copy(...)` only the fields you own, and guard the insert race with a
-`UNIQUE` constraint + `catch (e: DuplicateKeyException) { re-fetch and sync }`.
-Throw a diagnosable `IllegalStateException(..., e)` if the re-fetch unexpectedly
-misses — never a bare `!!`.
+For "create-or-update on each login" style flows: one statement,
+`INSERT … ON CONFLICT (natural key) DO UPDATE SET <only the fields you own> … RETURNING id`
+(`UserRepository.upsertIdentity`). Never look up, insert and `catch (e: DuplicateKeyException)` to
+re-fetch: a unique violation aborts the Postgres transaction it ran in, so the re-fetch fails too.
+[game-rounds.md](game-rounds.md) has the `DO NOTHING` twin.
 
 ## Local dev database (Docker Compose)
 
@@ -209,7 +211,4 @@ A derived `findByXIn(values: Collection<...>)` has no `ORDER BY` — Postgres is
 in any order, and that order can change between calls even with unchanged data. Anything
 user-visible that must render in a stable, meaningful order (e.g. a fixed display order, not
 alphabetical) needs to be sorted **in code**, against an authoritative in-code list, after the
-query returns — not assumed from the query result. `DevLoginController` iterates `seedUsers` (the
-in-code, declared order) and looks each one up in a map built from
-`findByGithubLoginIn(seeder.seedLogins)`, rather than iterating the query result directly, for
-exactly this reason.
+query returns — not assumed from the query result.

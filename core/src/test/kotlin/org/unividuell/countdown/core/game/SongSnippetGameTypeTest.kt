@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -14,8 +15,10 @@ import org.unividuell.countdown.core.songsnippet.SnippetCutter
 import org.unividuell.countdown.core.songsnippet.SongCatalog
 import org.unividuell.countdown.core.songsnippet.SongSnippetAudioStore
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 class SongSnippetGameTypeTest {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val mapper = JsonMapper.builder().build()
 
@@ -44,8 +47,10 @@ class SongSnippetGameTypeTest {
         random = GameRandom(
             solution = SeededRandom.fromSeed(4711),
             presentation = SeededRandom.fromSeed(0x1234),
+            scene = SeededRandom.fromSeed(0x5CE),
         ),
         context = RoundContext(
+            communityId = community,
             roundNumber = 12,
             phase = Phase.ONE,
             previousParams = previous.map { mapper.valueToTree(it) },
@@ -114,6 +119,11 @@ class SongSnippetGameTypeTest {
     }
 
     @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw()).shouldBeNull()
+    }
+
+    @Test
     fun `five stages, no deliberate reveal`() {
         game.stages(draw()) shouldBe 5
         game.requiresReveal(draw()) shouldBe false
@@ -123,8 +133,8 @@ class SongSnippetGameTypeTest {
     fun `nothing the player sees moves when only the secret stream changes`() {
         val payloads = (1..10).map { seed ->
             game.present(game.draw(
-                random = GameRandom(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(7)),
-                context = RoundContext(roundNumber = 12, phase = Phase.ONE),
+                random = GameRandom(solution = SeededRandom.fromSeed(seed), presentation = SeededRandom.fromSeed(7), scene = SeededRandom.fromSeed(0x5CE)),
+                context = RoundContext(communityId = community, roundNumber = 12, phase = Phase.ONE),
             ))
         }
         payloads.distinct().size shouldBe 1

@@ -12,7 +12,10 @@ import java.util.UUID
 data class User(
     @Id
     val id: UUID? = null,
-    val githubId: Long,
+    /** "github", or "test" for a test user; unique together with [subject]. */
+    val provider: String = "github",
+    /** The provider's stable id, always text: GitHub's numeric id, a test user's login. */
+    val subject: String,
     val githubLogin: String,
     val githubName: String? = null,
     val displayName: String? = null,

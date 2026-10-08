@@ -34,19 +34,21 @@ class SuperAdminRosterControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `returns the roster for a super-admin`() {
         every { roster.roster() } returns listOf(
             SuperAdminUserResponse(
-                githubLogin = "boss", username = "Boss", userId = uid,
+                provider = "github", githubLogin = "boss", username = "Boss", userId = uid,
                 flagged = true, allowlisted = true,
                 createdAt = Instant.parse("2026-01-01T00:00:00Z"),
             ),
             SuperAdminUserResponse(
-                githubLogin = "ghost", username = null, userId = null,
+                provider = "test", githubLogin = "ghost", username = null, userId = null,
                 flagged = false, allowlisted = true, createdAt = null,
             ),
         )
         mockMvc.get("/api/super-admin/super-admins") { with(principalFor(superAdmin = true)) }
             .andExpect {
                 status { isOk() }
+                jsonPath("$[0].provider") { value("github") }
                 jsonPath("$[0].githubLogin") { value("boss") }
+                jsonPath("$[1].provider") { value("test") }
                 jsonPath("$[0].flagged") { value(true) }
                 jsonPath("$[1].githubLogin") { value("ghost") }
                 // Present-and-null, not omitted: no NON_NULL inclusion is configured, and the

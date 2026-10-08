@@ -4,7 +4,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.game.GuessAction
+import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.RoundAsset
+import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
@@ -92,7 +94,14 @@ class PlayService(
         //
         // Params are safe to read from the unlocked row: they are written once, at announce time,
         // and no statement ever updates them.
-        val judgement = current.handle.judge(params = current.roundGame.params, guess = guess)
+
+        // The span is the server's own, from this player's reveal: for a game that checks what its
+        // client claims about time against it.
+        val context = GuessContext(
+            sinceRevealMs = durationMsBetween(revealedAt = play.revealedAt, guessedAt = clock.instant()),
+            playId = play.id,
+        )
+        val judgement = current.handle.judge(params = current.roundGame.params, guess = guess, context = context)
 
         // Locked from here on: the re-evaluation below reads and rewrites every guess of this round.
         val round = store.lock(current.roundGame)
@@ -113,13 +122,13 @@ class PlayService(
             return responses.of(current = current.copy(roundGame = round), viewerId = userId)
         }
         // Framework state the game cannot know, in both branches. For a staged game the distance IS
-        // the stage. For a game that asked for a deliberate reveal it is the time that reveal
+        // the stage. For a game that scores on duration it is the time since that reveal
         // started: the clock belongs to the server, and `judge(params, guess)` has no way to reach
         // it — which is exactly why the game returns a meaningless 0.0 and this line decides.
         val guessedAt = clock.instant()
         val deviation = when {
             stages > 1 -> play.stage.toDouble()
-            current.handle.requiresReveal(round.params) ->
+            current.handle.scoresOnDuration(round.params) ->
                 durationMsBetween(revealedAt = play.revealedAt, guessedAt = guessedAt).toDouble()
             else -> judgement.deviation
         }
@@ -190,6 +199,8 @@ class PlayService(
      * without a membership row now gets a 409 on the RUNNING round's asset (no play row) rather
      * than a 404 (no membership) — the more honest of the two.
      *
+     * The scene key is the one exception to the play row: it is what the cover lies over.
+     *
      * Not `readOnly`: like [AnnouncementService.currentRound], the first fetch of an un-materialised
      * round inserts.
      */
@@ -214,6 +225,10 @@ class PlayService(
             is ResolvedRound.Announced -> current
         }
         val roundGameId = requireNotNull(announced.roundGame.id)
+        if (key == SCENE_ASSET_KEY) {
+            return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
+                ?: throw AssetNotFoundException()
+        }
         val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
             ?: throw NotRevealedException()
         val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage

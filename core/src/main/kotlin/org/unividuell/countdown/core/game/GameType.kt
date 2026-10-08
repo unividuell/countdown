@@ -27,6 +27,13 @@ interface GameOutcome
 interface GameSolution
 
 /**
+ * What may reach the client **before** the reveal — the scene the game is set up on under the
+ * cover, never the puzzle. A third way out next to [GamePayload] and [GameSolution], pinned per
+ * game by a field-set test like both of them. Scene, not stage: stage is the rung of a staged game.
+ */
+interface GameScene
+
+/**
  * What a game may say about a guess — and only that.
  *
  * **The game judges, the framework awards.** How many points a guess is worth, and whether it takes
@@ -54,16 +61,37 @@ data class Judgement(
     val outcome: GameOutcome?,
 )
 
-/** What a game may know about the round it is drawing for. [previousParams] are the frozen params
- *  of this edition's earlier rounds OF THE SAME GAME TYPE — for draws that avoid repetition. */
+/**
+ * What a game may know about the round it is drawing for. [communityId] is whose round it is — the
+ * image pool is per community. [previousParams] are the frozen params of this edition's earlier
+ * rounds OF THE SAME GAME TYPE — for draws that avoid repetition.
+ */
 data class RoundContext(
+    val communityId: UUID,
     val roundNumber: Int,
     val phase: Phase,
     val previousParams: List<JsonNode> = emptyList(),
 )
 
+/**
+ * What the framework knows about a guess beyond its content. Example: a run that claims 48 beats of
+ * 1000 ms, arriving 16 ms after its reveal.
+ */
+data class GuessContext(
+    /** From the reveal to this guess, on the server's clock; `null` in a lab round that had no reveal. */
+    val sinceRevealMs: Long?,
+    /** The stored play, to find a log line from its row; `null` in the lab, which stores none. */
+    val playId: UUID?,
+)
+
 /** The asset key under which a round's solution audio/artefact hides behind the solution gate. */
 const val SOLUTION_ASSET_KEY = 99
+
+/**
+ * The asset key of a round's scene: open as soon as the round is announced, no play row needed.
+ * Opening stage 0 instead would be the wrong cut — for Anspielung that is the first clip, the puzzle.
+ */
+const val SCENE_ASSET_KEY = 98
 
 /**
  * One binary artefact of a round — bytes plus how to serve them. A plain class, not a data class:
@@ -94,10 +122,19 @@ interface GameType<P : Any> {
     val paramsType: Class<P>
 
     /**
-     * Draw the round, once, at announce time. Everything the player will be shown must come from
-     * [GameRandom.presentation] — see there for why that is not a stylistic preference.
+     * Draw the round, once, at announce time. Everything the player is shown before the reveal comes
+     * from [GameRandom.scene], everything shown with or after it from [GameRandom.presentation] —
+     * see there for why that is not a stylistic preference.
      */
     fun draw(random: GameRandom, context: RoundContext): P
+
+    /**
+     * Whether this game can draw for this round at all. `true` by default — and here the default is
+     * the safe direction, because a game that says nothing does not switch itself off.
+     *
+     * The selection draws from the filtered list; a game without content never comes up.
+     */
+    fun isAvailable(context: RoundContext): Boolean = true
 
     /**
      * What the player sees. Must never carry the solution, and must be drawn from
@@ -105,6 +142,17 @@ interface GameType<P : Any> {
      * when it does not resemble it.
      */
     fun present(params: P): GamePayload
+
+    /**
+     * What may be with the client before the reveal. `null` — the default — is a game whose scene
+     * is its code alone, and the default is the safe direction: a game that says nothing hands out
+     * nothing early.
+     *
+     * Drawn from [GameRandom.scene] or not drawn at all — never from the other two streams. Both are
+     * invertible: a scene value taken from [GameRandom.presentation] would let a client rebuild the
+     * still-sealed payload before the reveal, and one from [GameRandom.solution] the solution.
+     */
+    fun scene(params: P): GameScene? = null
 
     /**
      * Whether this round needs a **deliberate** reveal before the player may play it.
@@ -124,6 +172,17 @@ interface GameType<P : Any> {
     fun requiresReveal(params: P): Boolean
 
     /**
+     * Whether the span from the reveal to the guess IS this game's score.
+     *
+     * Separate from [requiresReveal] because the two questions part ways: Entstauber needs the one
+     * deliberate reveal, but scores on reaction times its own judge computes. When `true`, the
+     * framework replaces [Judgement.deviation] with that span and publishes it as `durationMs`.
+     *
+     * No default, for the same reason as [requiresReveal]: the convenient answer is not the safe one.
+     */
+    fun scoresOnDuration(params: P): Boolean
+
+    /**
      * Whether this game's tips may be confirmed or flagged by the other players afterwards.
      *
      * **With** a default, unlike [requiresReveal] — and that is the same rule, not an exception:
@@ -140,6 +199,12 @@ interface GameType<P : Any> {
      * attempt the player has.
      */
     fun judge(params: P, guess: JsonNode): Judgement
+
+    /**
+     * [judge] with [context]. Only a game whose client measures what it scores needs it: to check
+     * that claim against the one span the client cannot fake. Every other game ignores it.
+     */
+    fun judge(params: P, guess: JsonNode, context: GuessContext): Judgement = judge(params = params, guess = guess)
 
     /**
      * What may be shown once the viewer has guessed. `null` — the default — is a game that reveals

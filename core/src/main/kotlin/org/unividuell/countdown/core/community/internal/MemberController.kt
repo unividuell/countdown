@@ -7,6 +7,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import org.unividuell.countdown.core.community.MemberStatus
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
+import org.unividuell.countdown.core.iam.isSuperAdmin
 import java.util.UUID
 
 @RestController
@@ -43,6 +44,14 @@ class MemberController(
         val c = access.requireAdmin(me.id, me.isSuperAdmin, slug); membership.revokeInvite(c.id!!)
         return ResponseEntity.noContent().build()
     }
+
+    /**
+     * The invitation as an anonymous visitor sees it, so the join page can name the community
+     * before sending anyone through GitHub. Open by design; the brake lives in SecurityConfig.
+     */
+    @GetMapping("/join/{code}")
+    fun peekInvite(@PathVariable code: String): InvitePeekResponse =
+        InvitePeekResponse(name = membership.peek(code).name)
 
     @PostMapping("/join/{token}")
     fun join(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable token: String): AcceptResponse {

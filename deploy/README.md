@@ -21,12 +21,14 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   TLS is terminated by the shared **edge-caddy** (see `/opt/unividuell/edge-caddy`), which must be running and
   routing both hostnames to their respective `-web` containers. Stacks publish no host ports; they only join
   the external `edge` network.
-- A production GitHub OAuth App (callback `https://countdown.unividuell.org/login/oauth2/code/github`);
-  its Client ID is committed in `application-production.yaml`, its secret goes into `.env.prod` as `GITHUB_CLIENT_SECRET`.
-  Staging does not use a real GitHub OAuth App (`GITHUB_CLIENT_SECRET=unused`); login is via the built-in test-user picker.
-- `SUPER_ADMIN_GITHUB_LOGINS` in `.env.prod`/`.env.staging` grants the app-level super-admin role
-  (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
-  has the role.
+- The organisation's GitHub App (`https://countdown.unividuell.org/login/oauth2/code/github` among its
+  redirect URIs); its client ID is committed in `application-production.yaml`, its client secret goes
+  into `.env.prod` as `GITHUB_CLIENT_SECRET`. Staging has no OAuth client at all — the backend refuses
+  a test-login key next to one; login there is via the built-in test-user picker.
+- `SUPER_ADMINS` in `.env.prod`/`.env.staging` grants the app-level super-admin role
+  (`/api/super-admin/...`) to a comma-separated list of `provider:login` entries — `github:<login>`
+  in prod, `test:<login>` on staging. An entry without its prefix makes the backend refuse to start;
+  leave it empty and nobody has the role.
 
 ## Prerequisite: sops + age (game content)
 
@@ -117,8 +119,7 @@ of binding an empty path.
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
 nothing to do with Guess Hue.
 
-Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml` — but that cipher
-file does not exist yet, so read the prerequisite below before the next deploy.
+Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml`.
 
 **Merge window develop → main.** `update.sh` and `README.md` always come from `main`
 (`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
@@ -134,35 +135,29 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/develop/deploy
 chmod +x update-once.sh && ./update-once.sh staging && rm -f update-once.sh
 ```
 
-The copy works because the self-update writes `update.sh`, not the file being run. This was
-done once, for the Guess Hue release, and staging came up correctly on it.
+The copy works because the self-update writes `update.sh`, not the file being run. Done twice so
+far — the Guess Hue and the Weltanschauung release — and staging came up correctly on both.
+
+Once the release has landed on `main`, the **first** regular run still executes the old script
+on disk: it fetches the new one, but the running shell keeps its inode across the `mv`, so it
+fails exactly as before. Fetch the script yourself rather than spending a run on it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/update.sh -o update.sh
+chmod +x update.sh && ./update.sh prod
+```
 
 ## Prerequisite: the Weltanschauung term list
 
-**`deploy/spot-object-terms.sops.yaml` does not exist in the repository.** `update.sh` fetches
-it on every run and aborts when it is missing, so until it is committed **every**
-`./update.sh <target>` fails — including deploys of changes that have nothing to do with
-Weltanschauung. Only the owner can produce it: it is the curated term list, and the term list
-is the game.
-
-Nothing in this repository can substitute for it. A placeholder would be worse than the abort:
-the backend refuses to start on the sample list under `production`/`staging` precisely so a
-game running on placeholder content cannot look healthy.
-
-Two things have to happen, **in this order**, before this release is deployed:
-
-1. **Encrypt and commit the real list.** Paste the terms into `.local/spot-object-terms.yaml`
-   in the **main checkout** (never a worktree), run `./scripts/spot-object-terms.sh encrypt`,
-   and commit `deploy/spot-object-terms.sops.yaml` to the branch each target deploys from —
-   `main` for prod, `develop` for staging. Never commit a term in plaintext; see core/README.md
-   ("Weltanschauung: term list, the two Maps keys, and the signing secret") and
-   [game-content.md](../.claude/guidelines/game-content.md). If the server's age key is not yet
-   a recipient, do that first (see "sops + age" above) — otherwise the server cannot decrypt it.
-2. **Let `main` carry the new `update.sh` before staging is deployed from `develop`.** This is
-   the merge window above in its concrete form: staging's `compose.yaml` comes from `develop`
-   and demands `SPOT_OBJECT_TERMS_FILE`, while `update.sh` always comes from `main` and only
-   exports it once this release has landed there. Until then, deploy staging with the one-off
-   copy of the branch's script shown above.
+`update.sh` fetches `deploy/spot-object-terms.sops.yaml` from the branch it deploys and aborts
+when it is missing — then **every** `./update.sh <target>` fails, including deploys that have
+nothing to do with Weltanschauung. It is committed on `main` and `develop` (released
+2026-09-03); a branch without it needs the list encrypted and committed first. Only the owner
+can produce it — it is the curated term list, and the term list is the game — and no
+placeholder substitutes: the backend refuses to start on the sample list under
+`production`/`staging`, precisely so a game on placeholder content cannot look healthy.
+Never commit a term in plaintext; see core/README.md ("Weltanschauung: term list, the two Maps
+keys, and the signing secret") and [game-content.md](../.claude/guidelines/game-content.md).
 
 Also add the three `SPOT_OBJECT_*` variables to `.env.prod`/`.env.staging` by hand — see
 "Migrating an existing stack for Weltanschauung" below.
@@ -183,6 +178,21 @@ doesn't exist, so a stack bootstrapped earlier keeps its old env file forever. W
 new variable to the template, add it to your `.env.prod`/`.env.staging` by hand — it will not appear
 there on its own, and a missing one binds empty without any error.
 
+**Migrating an existing stack for the fake sign-in key:** add `FAKE_SIGN_IN_KEY` to
+`.env.staging` by hand **before** the next `./update.sh staging` — the backend refuses to boot
+without it under the staging profile. Use 24+ random characters: the picker has no rate limit.
+`.env.prod` needs nothing; the picker does not exist in production.
+
+**Migrating an existing stack for the auth lib:** before the release reaches the stack, edit
+`.env.<target>` by hand: rename `SUPER_ADMIN_GITHUB_LOGINS` to `SUPER_ADMINS` and prefix every
+entry — `github:<login>` in prod, `test:<login>` on staging. An unprefixed entry makes the backend
+refuse to start; a missing variable leaves nobody super-admin. In `.env.prod`, set
+`GITHUB_CLIENT_SECRET` to the GitHub App's client secret. The first start clears every session:
+users sign in once more, and staging testers re-enter the key (the lock's cookie has a new name).
+**One-way:** after `iam/V3` an older image no longer starts against the database, so a rollback
+needs a restore (see "Backups & restore"). Take a dump right before the update: the `db-backup`
+sidecar dumps on start, so restarting it makes a fresh `app-<timestamp>.sql.gz`.
+
 **Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY`,
 `SPOT_OBJECT_SERVER_MAPS_API_KEY` and `SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging`
 by hand (see core/README.md for where each value comes from and which one is browser-restricted
@@ -198,16 +208,17 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 # prod stack
 ./update.sh prod        # first run writes .env.prod from template + stops
-# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS,
+# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMINS (github:<login>),
 #   PGADMIN_EMAIL/PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY,
 #   SPOT_OBJECT_SIGNING_SECRET
 ./update.sh prod        # pulls :latest images and starts the prod stack
 
 # staging stack (independent — own volumes, own network name)
 ./update.sh staging     # first run writes .env.staging from template + stops
-# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY,
-#   SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET; GITHUB_CLIENT_SECRET=unused is fine
-#   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
+# edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, FAKE_SIGN_IN_KEY,
+#   SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET;
+#   GITHUB_CLIENT_SECRET stays empty (staging has no OAuth client)
+#   (SUPER_ADMINS=test:bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
 
@@ -225,8 +236,9 @@ docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ## Staging login
 
 Staging uses the built-in test-user picker (Futurama characters). There is no real GitHub OAuth flow.
-Visit `beta.countdown.unividuell.org` → click Login → pick a test user. The test-user picker
-is served by the backend at `/login/github` when `SPRING_PROFILES_ACTIVE=staging`.
+Visit `beta.countdown.unividuell.org` → click Login → enter the key once per browser
+(`FAKE_SIGN_IN_KEY`) → pick a test user. The picker is the auth lib's, served by the backend at
+`/login/start` when `SPRING_PROFILES_ACTIVE=staging`.
 
 ## Debug the DB (pgAdmin — no public endpoint, SSH tunnel only)
 
@@ -275,22 +287,60 @@ ssh -L 5051:127.0.0.1:5051 <user>@<server>
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug stop pgadmin
 ```
 
+## Container memory
+
+The `core` service carries `mem_limit: ${CORE_MEM_LIMIT:-2g}`. This is not a safety net that only
+matters under load: the Buildpacks memory calculator derives the JVM's heap from the container's
+limit, and **without one it uses the host's RAM**. On this shared box that meant both stacks got
+`-Xmx20688742K` -- each JVM believed it could grow into ~20 GB of a 23 GB machine, next to
+`comunio-news`, `mobility-manager` and the edge Caddy, and both run with `-XX:+ExitOnOutOfMemoryError`.
+
+Measured with the published image:
+
+```
+docker run --rm -m 2g ghcr.io/unividuell/countdown-core:latest   # -> -Xmx1477094K (~1.41 GB)
+```
+
+Against a working set of ~715 MB RSS per stack, 2g is roughly double what the app uses. Staging
+runs the same default on purpose: a limit that is too tight must fail there first. Raise or lower
+it per environment with `CORE_MEM_LIMIT` in `.env.<target>`; the variable is optional, so an
+existing env file keeps working untouched.
+
+If you lower it, check the calculator's output again with the command above -- it subtracts
+metaspace, code cache, direct memory and 250 thread stacks (~610 MB total) before what is left
+becomes the heap, and a limit below that makes the container fail to start rather than run small.
+
 ## Backups & restore
 
-The `db-backup` service writes daily logical dumps (7-day retention):
-- prod: `./backups/app-<timestamp>.sql.gz`
-- staging: `./backups-staging/app-<timestamp>.sql.gz` (set by `BACKUP_DIR` in `.env.staging`)
+The `db-backup` service writes two kinds of dump:
+- `app-<timestamp>.sql.gz` — daily, full schema, `imagepool.images` rows excluded (7-day retention).
+- `images-<timestamp>.sql.gz` — the pool's rows only, written when the pool's fingerprint moves
+  (`IMAGE_BACKUP_KEEP` kept states, default 8).
+
+Locations:
+- prod: `./backups/`
+- staging: `./backups-staging/` (set by `BACKUP_DIR` in `.env.staging`)
 
 Copy the backup directory off-site regularly (rsync/scp).
 
-**Restore** into the running database:
+The image dump is written only when the pool actually changed, so `IMAGE_BACKUP_KEEP` counts
+**changes, not days**: a mass deletion followed by seven uploads consumes every kept state. At
+full pools eight states are ~20 GB; the host had 181 GB free when this was measured.
+
+**Restore**, in this order — the image rows reference `community.communities` and `iam.users`,
+so the daily dump has to land first:
 ```bash
 # prod:
 gunzip -c backups/app-<timestamp>.sql.gz \
+  | docker compose --env-file .env.prod -f compose.prod.yaml exec -T postgres psql -U admin -d app
+gunzip -c backups/images-<timestamp>.sql.gz \
   | docker compose --env-file .env.prod -f compose.prod.yaml exec -T postgres psql -U admin -d app
 
 # staging:
 gunzip -c backups-staging/app-<timestamp>.sql.gz \
   | docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app
+gunzip -c backups-staging/images-<timestamp>.sql.gz \
+  | docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app
 ```
-Restore into an empty/fresh `app` database.
+Restore into an empty/fresh `app` database. No `images-<timestamp>.sql.gz` yet (empty pool, or none
+since the last change) — the first command alone already yields a running app.

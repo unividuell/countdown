@@ -10,14 +10,9 @@ import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
 import { hueOf } from './types'
 import { tickOfRow } from '@/games/revealChoreography'
+import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardColumns'
 
-export interface ScoreboardRow {
-  userId: string
-  name: string
-  /** The player's own colour — the row's ground. */
-  colorHex: string
-  /** Ink that reads against [colorHex]. */
-  ink: string
+export interface ScoreboardRow extends SharedScoreboardRow {
   hue: number
   /** The guess as a colour, at the round's saturation and lightness. */
   guessHex: string
@@ -25,14 +20,6 @@ export interface ScoreboardRow {
   guessInk: string
   /** How far off, as the server judged it. Never recomputed here. */
   deviationDeg: number
-  points: number | null
-  /** Whether [points] can still be overtaken — see `isProvisional` in `@/games/awards`. */
-  provisional: boolean
-  /**
-   * Which tick of the reveal cascade this row's timing comes from. Its rank, except for the
-   * viewer's own row — see `tickOfRow`.
-   */
-  tick: number
 }
 
 /** The solution as the head block shows it: a number over a colour. */

@@ -73,12 +73,13 @@ class RoundResponsePeerReviewTest(
                 outcome = null,
             )
             override fun requiresReveal(params: ReviewParams) = false
+            override fun scoresOnDuration(params: ReviewParams) = false
             override fun allowsPeerReview(params: ReviewParams) = true
         }
     }
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     /** A community whose countdown starts in 2099, with its creator as the first ACTIVE, admin member. */
     private fun aCommunity(name: String): Pair<Community, UUID> {

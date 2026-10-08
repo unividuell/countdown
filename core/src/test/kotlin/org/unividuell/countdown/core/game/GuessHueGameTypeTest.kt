@@ -19,10 +19,12 @@ import org.unividuell.countdown.core.game.internal.GuessHueOutcome
 import org.unividuell.countdown.core.guesshue.GuessHueTolerance
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
+    private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val mapper = JsonMapper.builder().build()
 
@@ -31,8 +33,9 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
             random = GameRandom(
                 solution = SeededRandom.fromSeed(seed),
                 presentation = SeededRandom.fromSeed(presentationSeed),
+                scene = SeededRandom.fromSeed(0x5CE),
             ),
-            context = RoundContext(roundNumber = 12, phase = phase),
+            context = RoundContext(communityId = community, roundNumber = 12, phase = phase),
         )
 
     @Test
@@ -163,6 +166,11 @@ class GuessHueGameTypeTest(@Autowired val game: GuessHueGameType) {
         }
         shouldThrow<InvalidGuessException> { game.judge(params = params, guess = guess(360.0)) }
         shouldThrow<InvalidGuessException> { game.judge(params = params, guess = guess(-0.5)) }
+    }
+
+    @Test
+    fun `it sets up no scene before the reveal`() {
+        game.scene(draw(phase = Phase.TWO)).shouldBeNull()
     }
 
     @Test

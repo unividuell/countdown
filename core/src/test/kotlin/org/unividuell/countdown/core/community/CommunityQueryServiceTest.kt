@@ -25,7 +25,7 @@ class CommunityQueryServiceTest(
     @Autowired val membership: MembershipService,
     @Autowired val users: UserRepository,
 ) {
-    private fun user(login: String) = users.save(User(githubId = System.nanoTime(), githubLogin = login))
+    private fun user(login: String) = users.save(User(subject = System.nanoTime().toString(), githubLogin = login))
 
     @Test
     fun `query + membership reflect active communities and admin status`() {

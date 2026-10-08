@@ -32,13 +32,13 @@ import java.util.UUID
  *
  * `CommunityService` and `EditionService` are mocked: what a created community and its edition
  * look like is not part of this seam.
- * `test-auth.enabled=false` keeps the seeded Futurama users out of the context.
+ * The test login is off: a context of its own, which no other class's committed users reach.
  */
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@TestPropertySource(properties = ["app.test-auth.enabled=false"])
+@TestPropertySource(properties = ["unividuell.auth.test-login.enabled=false"])
 class CommunityCreationClearanceSeamTest(
     @Autowired val mockMvc: MockMvc,
     @Autowired val users: UserRepository,
@@ -48,7 +48,7 @@ class CommunityCreationClearanceSeamTest(
     @MockkBean lateinit var editions: EditionService
 
     private fun save(login: String) =
-        users.save(User(githubId = login.hashCode().toLong(), githubLogin = login))
+        users.save(User(subject = login, githubLogin = login))
 
     private fun createAs(user: User) =
         mockMvc.post("/api/communities") {

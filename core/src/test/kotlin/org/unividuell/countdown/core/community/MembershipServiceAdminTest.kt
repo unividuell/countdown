@@ -21,7 +21,7 @@ class MembershipServiceAdminTest(
     @Autowired val members: CommunityMemberRepository,
     @Autowired val users: UserRepository,
 ) {
-    private fun user(login: String) = users.save(User(githubId = System.nanoTime(), githubLogin = login))
+    private fun user(login: String) = users.save(User(subject = System.nanoTime().toString(), githubLogin = login))
 
     @Test
     fun `approve flips PENDING to ACTIVE`() {

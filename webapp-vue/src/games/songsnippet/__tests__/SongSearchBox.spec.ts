@@ -96,20 +96,29 @@ describe('SongSearchBox', () => {
     expect(w.findAll('[data-test="song-hit"]')).toHaveLength(0)
   })
 
-  it('holds its own width open with empty slots, so the card below never moves', async () => {
+  it('holds the band open with one placeholder while it has no hits', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
-    const slots = () =>
-      w.findAll('[data-test="song-hit"]').length + w.findAll('[data-test="song-hit-blank"]').length
 
-    // Enough to run off the right edge of any viewport, so the band never stops abruptly.
-    expect(slots()).toBe(9)
+    expect(w.findAll('[data-test="song-band-placeholder"]')).toHaveLength(1)
 
     await typeAndSettle(w, 'hotel')
+
+    // Hits stand for themselves: nothing waits behind them pretending to be a hit still loading.
     expect(w.findAll('[data-test="song-hit"]')).toHaveLength(2)
-    expect(slots()).toBe(9)
+    expect(w.findAll('[data-test="song-band-placeholder"]')).toHaveLength(0)
   })
 
-  it('spins every waiting slot while a request is out, and stops when it lands', async () => {
+  it('stays silent before the first search and says so when one came back empty', async () => {
+    const w = mount(SongSearchBox, { props: { disabled: false } })
+    expect(w.get('[data-test="song-band-placeholder"]').text()).toBe('')
+
+    searchSongs.mockResolvedValue([])
+    await typeAndSettle(w, 'hotel')
+
+    expect(w.get('[data-test="song-band-placeholder"]').text()).toBe('Keine Treffer')
+  })
+
+  it('spins the placeholder while a request is out, and stops when it lands', async () => {
     let settle: (hits: SongSuggestion[]) => void = () => {}
     searchSongs.mockReturnValue(
       new Promise<SongSuggestion[]>((resolve) => {
@@ -120,7 +129,7 @@ describe('SongSearchBox', () => {
     expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(0)
 
     await typeAndSettle(w, 'hotel')
-    expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(9)
+    expect(w.findAll('[data-test="song-hit-spinner"]')).toHaveLength(1)
 
     settle(HITS)
     await Promise.resolve()
@@ -154,8 +163,6 @@ describe('SongSearchBox', () => {
     await typeAndSettle(w, 'hotel')
 
     expect(w.findAll('[data-test="song-hit"]')).toHaveLength(8)
-    // One slot short of the band's resting length, so one blank is left holding it.
-    expect(w.findAll('[data-test="song-hit-blank"]')).toHaveLength(1)
   })
 
   it('scrolls the band back to the left whenever new hits arrive', async () => {
@@ -174,13 +181,12 @@ describe('SongSearchBox', () => {
 
   it('sizes every slot like the cover the reveal shows, and holds the field in the title slot', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
+    // The placeholder is measured too: it is what holds the band's height when there are no hits.
+    const placeholder = w.get('[data-test="song-band-placeholder"]')
     await typeAndSettle(w, 'hotel')
 
     // `song-cover` is the one measurement the band and the reveal's cover share.
-    for (const slot of [
-      ...w.findAll('[data-test="song-hit"]'),
-      ...w.findAll('[data-test="song-hit-blank"]'),
-    ]) {
+    for (const slot of [placeholder, ...w.findAll('[data-test="song-hit"]')]) {
       expect(slot.classes()).toContain('song-cover')
       expect(slot.classes()).toContain('aspect-square')
       // A flex child that may shrink turns a scrolling band into a squeezed row.

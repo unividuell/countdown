@@ -3,6 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import GameHeader from '@/ui/GameHeader.vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import { BAND_PAD } from '@/ui/flipdot/board'
 import { _resetSharedClock } from '@/ui/sharedClock'
 
 // Fixed so the reading is a fixed string. The board's own boot animation is irrelevant here — the
@@ -30,13 +31,15 @@ describe('GameHeader', () => {
     vi.useRealTimers()
   })
 
+  // Equality, not containment: it also pins that nothing trails the number. The band reads as a
+  // label already, and a colon behind the digits only competes with the game's name beside them.
   it('shows the round number as it stands, so T- and T+ rounds stay distinguishable', () => {
-    expect(mountHeader({ roundNumber: 5 }).get('[data-test="game-header-round"]').text()).toContain(
-      '5',
+    expect(mountHeader({ roundNumber: 5 }).get('[data-test="game-header-round"]').text()).toBe(
+      'Runde 5',
     )
-    expect(
-      mountHeader({ roundNumber: -3 }).get('[data-test="game-header-round"]').text(),
-    ).toContain('-3')
+    expect(mountHeader({ roundNumber: -3 }).get('[data-test="game-header-round"]').text()).toBe(
+      'Runde -3',
+    )
   })
 
   // The bare number carries no meaning to a screen reader, and the band is the only place the
@@ -86,6 +89,27 @@ describe('GameHeader', () => {
     ).toBe(false)
   })
 
+  // The phase mark sits on the number at the left; the clock mark sits in the field at the
+  // right. The dots stay untouched on purpose: the running stopwatch is already amber, and a
+  // timed play only exists in phase two — if both were amber, colour would no longer tell the
+  // two apart.
+  it('marks a phase two round on its number and nowhere else', () => {
+    const w = mountHeader({ phaseTwo: true })
+
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-phase-two')
+    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain('text-phase-one')
+    expect(clockOf(w).tone).toBe('default')
+  })
+
+  // Both phases mark the number, and each wears its own colour: the number is the one place a
+  // round says which phase it belongs to, so „unmarked“ would read as „phase unknown“.
+  it('marks a phase one round on its number too, in the other colour', () => {
+    const w = mountHeader()
+
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-phase-one')
+    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain('text-phase-two')
+  })
+
   // Softer than the app header's stone-900 on purpose, and NOT stone-800: DOT_OFF is #292524,
   // which is stone-800 exactly — on that background the unlit dots would vanish into the band and
   // the matrix with them.
@@ -106,5 +130,45 @@ describe('GameHeader', () => {
       expect.arrayContaining(['truncate', 'min-w-0']),
     )
     expect(w.getComponent(FlipDotBoard).classes()).toContain('shrink-0')
+  })
+
+  it('shows the play own clock once it is running, in the timed tone', () => {
+    const w = mountHeader({ play: { phase: 'running', since: '2026-06-15T06:44:22Z' } })
+
+    expect(clockOf(w).text).toBe('01:05')
+    expect(clockOf(w).label).toBe('Deine Zeit: 1 Minute, 5 Sekunden')
+    expect(clockOf(w).tone).toBe('alarm')
+  })
+
+  it('counts the play up with the shared clock', async () => {
+    const w = mountHeader({ play: { phase: 'running', since: '2026-06-15T06:44:22Z' } })
+
+    vi.advanceTimersByTime(2000)
+    await nextTick()
+
+    expect(clockOf(w).text).toBe('01:07')
+  })
+
+  it('is the round countdown in the plain tone when no play is running', () => {
+    expect(clockOf(mountHeader()).text).toBe('02:14:33')
+    expect(clockOf(mountHeader()).tone).toBe('default')
+  })
+
+  // The dark dots sit close enough to the band's own colour that a field stopping short of the
+  // edges reads as a badly cut sticker. It runs into the corner instead, and the blank columns on
+  // its right are what keep the last digit clear of the card's radius.
+  it('pads the board so it fills the band and runs into its corner', () => {
+    const w = mountHeader()
+
+    expect(clockOf(w).pad).toEqual(BAND_PAD)
+    expect(w.getComponent(FlipDotBoard).classes()).toContain('h-full')
+    expect(w.get('[data-test="game-header"]').classes()).toContain('pl-4')
+    expect(w.get('[data-test="game-header"]').classes()).not.toContain('pr-4')
+  })
+
+  it('keeps a gutter on the right where there is no board to fill it', () => {
+    const w = mountHeader({ endsAt: null })
+
+    expect(w.get('[data-test="game-header"]').classes()).toContain('pr-4')
   })
 })

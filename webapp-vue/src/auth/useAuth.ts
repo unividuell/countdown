@@ -24,7 +24,7 @@ export function useAuth() {
 
   function loginWithGitHub(): void {
     // One button everywhere; the server decides (real GitHub in prod, test-user picker in non-prod).
-    window.location.assign('/login/github')
+    window.location.assign('/login/start')
   }
 
   async function logout(): Promise<void> {

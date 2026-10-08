@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
+import type { Ref } from 'vue'
+import RevealCover from '@/ui/RevealCover.vue'
+import SpotObjectBoard from '../SpotObjectBoard.vue'
 import SpotObjectGame from '../SpotObjectGame.vue'
 import SpotObjectReviewRules from '../SpotObjectReviewRules.vue'
 import SpotObjectRules from '../SpotObjectRules.vue'
@@ -12,18 +15,23 @@ vi.mock('../useStreetView', () => ({ useStreetView: vi.fn() }))
 
 import { useStreetView } from '../useStreetView'
 
-function mockStreetView() {
+function mockStreetView(over: Partial<{ ready: Ref<boolean>; error: Ref<string | null> }> = {}) {
+  const mount = vi.fn()
   vi.mocked(useStreetView).mockReturnValue({
     error: ref<string | null>(null),
-    mount: vi.fn(),
+    ready: ref(true),
+    mount,
     pano: reactive({ visible: true, panoId: 'pano-42' }),
     noCoverage: ref(false),
-    pegmanDragging: ref(false),
     heading: ref<number | null>(null),
     currentTip: () => ({ panoId: 'pano-42', heading: 12, pitch: -3, zoom: 2 }),
-    toStreetView: vi.fn(),
     toWorldMap: vi.fn(),
+    toPanorama: vi.fn(),
+    openMiniMap: vi.fn().mockResolvedValue(undefined),
+    jumpMissed: ref(false),
+    ...over,
   })
+  return { mount }
 }
 
 const PAYLOAD = { term: 'Roter Briefkasten' }
@@ -42,7 +50,7 @@ const MINE: GameEntry = {
   adminOverride: null,
 }
 
-function mountGame(over: Record<string, unknown> = {}) {
+function mountGame(over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) {
   return mount(SpotObjectGame, {
     props: {
       payload: PAYLOAD,
@@ -52,6 +60,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       entries: [],
       mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
+      awardPoints: 1,
       disabled: false,
       review: {
         open: true,
@@ -61,6 +70,7 @@ function mountGame(over: Record<string, unknown> = {}) {
       },
       ...over,
     },
+    global,
   })
 }
 
@@ -155,5 +165,108 @@ describe('SpotObjectGame', () => {
     expect(wrapper.find('[data-test="spot-map"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="tip-grid"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('lässt sich hier nicht anzeigen')
+  })
+
+  /** The trail is the player's own walk, so it is drawn in the colour that is theirs everywhere. */
+  it('hands the board the player’s own colour for the trail', () => {
+    mockStreetView()
+
+    const w = mountGame({ entries: [{ ...MINE, guess: null }], mineUserId: 'mine' })
+
+    expect(w.getComponent(SpotObjectBoard).props('trailColor')).toBe('#7c3aed')
+  })
+
+  it('falls back to neutral until an entry of one’s own exists', () => {
+    mockStreetView()
+
+    const w = mountGame()
+
+    expect(w.getComponent(SpotObjectBoard).props('trailColor')).toBe('#404040')
+  })
+
+  // `judge()` gives everyone here `qualifies = true` — the hurdle is not correctness but the
+  // other players striking the tip afterwards. The box has to say so.
+  it('names the strike, not a correctness gate', () => {
+    mockStreetView()
+    const w = mountGame({ awardRule: 'CLOSEST_ONLY', awardPoints: 4 })
+
+    expect(w.text()).toContain('Winner takes it all: 4 Punkte')
+    expect(w.text()).toContain('kürzeste Zeit')
+    expect(w.text()).toContain('stehen lassen')
+  })
+
+  describe('sealed', () => {
+    const sealed = (over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) =>
+      mountGame({ payload: null, sealed: true, ...over }, global)
+
+    it('mounts the map under the cover instead of refusing the round', () => {
+      mockStreetView()
+      const w = sealed()
+
+      expect(w.text()).not.toContain('Diese Runde lässt sich hier nicht anzeigen.')
+      expect(w.find('[data-test="spot-map"]').exists()).toBe(true)
+      expect(w.find('[data-test="reveal-cover"]').exists()).toBe(true)
+    })
+
+    it('makes the map inert and leaves the rules outside the cover', () => {
+      mockStreetView()
+      const w = sealed()
+      const rules = w.getComponent(SpotObjectRules).element
+
+      expect(w.get('[data-test="spot-play"]').attributes('inert')).toBeDefined()
+      expect(rules.closest('[inert]')).toBeNull()
+      expect(rules.closest('[data-test="reveal-cover"]')).toBeNull()
+    })
+
+    it('tells the cover the map is still being set up', () => {
+      mockStreetView({ ready: ref(false) })
+
+      expect(sealed().getComponent(RevealCover).props('state')).toBe('preparing')
+    })
+
+    it('tells the cover once the map stands', async () => {
+      mockStreetView()
+
+      const w = sealed()
+      // `scene-state` fires during the board's own setup, a sibling render away from the cover —
+      // Vue only picks that up on the next tick, same as any other cross-component prop update.
+      await w.vm.$nextTick()
+
+      expect(w.getComponent(RevealCover).props('state')).toBe('ready')
+    })
+
+    it('turns a failed load into a retry that mounts the map again', async () => {
+      const { mount } = mockStreetView({ ready: ref(false), error: ref('boom') })
+      const w = sealed()
+      await w.vm.$nextTick()
+      expect(w.getComponent(RevealCover).props('state')).toBe('failed')
+
+      w.getComponent(RevealCover).vm.$emit('retry')
+
+      expect(mount).toHaveBeenCalledTimes(2)
+      expect(w.emitted('reveal')).toBeUndefined()
+    })
+
+    it('asks for the reveal when the cover starts', () => {
+      mockStreetView()
+      const w = sealed()
+
+      w.getComponent(RevealCover).vm.$emit('start')
+
+      expect(w.emitted('reveal')).toHaveLength(1)
+    })
+
+    it('shows no term under the cover, and drops the cover in the render the term arrives in, not behind a transition', async () => {
+      mockStreetView()
+      // Unstubbed so a `<Transition>` wrapped around the cover would actually run instead of
+      // vanishing instantly under VTU's default stub — a regression the stub would hide.
+      const w = sealed({}, { stubs: { transition: false } })
+      expect(w.text()).not.toContain(PAYLOAD.term)
+
+      await w.setProps({ sealed: false, payload: PAYLOAD })
+
+      expect(w.find('[data-test="reveal-cover"]').exists()).toBe(false)
+      expect(w.text()).toContain(PAYLOAD.term)
+    })
   })
 })

@@ -80,6 +80,7 @@ class RoundHistoryServiceTest(
             override fun draw(random: GameRandom, context: RoundContext) = PastParams(answer = "42")
             override fun present(params: PastParams) = PastPayload(hint = "zwei Ziffern")
             override fun requiresReveal(params: PastParams) = false
+            override fun scoresOnDuration(params: PastParams) = false
             override fun judge(params: PastParams, guess: JsonNode) = Judgement(
                 qualifies = guess.get("answer")?.asString() == params.answer,
                 deviation = 0.0,
@@ -90,7 +91,7 @@ class RoundHistoryServiceTest(
     }
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser("owner")

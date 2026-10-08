@@ -17,14 +17,20 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
+  /** Declared, never used here: this game never seals, and the contract has one shape. */
+  sealed?: boolean
+  /** Declared, never used here — see `sealed`. */
+  scene?: unknown
 }>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()
+const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
 
 const durations = computed(() =>
   isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],
@@ -40,10 +46,21 @@ const rows = computed(() =>
     entries: props.entries,
     durations: durations.value,
     awardRule: props.awardRule,
+    mineUserId: props.mineUserId,
   }),
 )
 /** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
 const live = computed(() => rows.value.some((row) => row.provisional))
+
+/**
+ * Whether the reveal may play its beats — the same rule every other game follows: only a round
+ * that was uncovered while this instance watched. A `watch` without `immediate` never fires for
+ * the initial value, which is what makes an instance mounting already-revealed start `false`.
+ */
+const hasRevealedLive = ref(false)
+watch(revealed, (now, before) => {
+  if (!before && now) hasRevealedLive.value = true
+})
 
 /** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
  *  skip, flagged below before the re-emit so the watch can tell the two apart. */
@@ -82,6 +99,7 @@ function onSkip(fromStage: number): void {
     :durations="durations"
     :rows="rows"
     :live="live"
+    :animate="hasRevealedLive"
     :asset-url="assetUrl"
   />
   <SongSnippetBoard
@@ -89,6 +107,7 @@ function onSkip(fromStage: number): void {
     :durations="durations"
     :stage="stage ?? 0"
     :award-rule="awardRule"
+    :award-points="awardPoints"
     :disabled="disabled"
     :asset-url="assetUrl ?? null"
     :notice="notice"

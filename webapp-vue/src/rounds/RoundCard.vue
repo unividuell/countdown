@@ -14,6 +14,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import type { PlayClock } from '@/ui/playClock'
 
 const props = withDefaults(
   defineProps<{
@@ -75,6 +76,18 @@ const endsAt = computed<string | null>(() =>
   props.closed ? null : (props.round?.round?.end ?? null),
 )
 const disabled = computed(() => props.closed || props.busy || face.value === 'done')
+/**
+ * What the band's board shows: a timed play that has not been answered yet. `closed` is asked
+ * separately from `guessedAt` — the history is full of rows nobody ever guessed on, and without it
+ * their clock would run forever.
+ */
+const play = computed<PlayClock | null>(() => {
+  const me = props.round?.me
+  if (props.closed || me == null || me.guessedAt !== null) return null
+  return props.round?.game?.scoresOnDuration === true
+    ? { phase: 'running', since: me.revealedAt }
+    : null
+})
 
 async function onReveal(): Promise<void> {
   await props.reveal?.()
@@ -104,10 +117,12 @@ function onGiveUp(): void {
   <!-- Anchored under its round number, so a link into one round of the history lands on that
        round rather than on the top of the community page. -->
   <!-- No id at all without a round number, rather than a shared 'round-0': two null cards on one
-       page would otherwise collide. -->
+       page would otherwise collide. `isolate`: the cover's and a board's z-indices stack inside the
+       card, never against the page — the members' fly-in passes over the card, not under its glass. -->
   <div
     :id="round?.round?.number ? `round-${round.round.number}` : undefined"
     data-test="round-card"
+    class="isolate"
   >
     <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
          about the round on the board, and inside the frame it would push the board down. -->
@@ -124,40 +139,16 @@ function onGiveUp(): void {
           :round-number="round?.round?.number ?? null"
           :title="round?.game?.displayName ?? null"
           :ends-at="endsAt"
+          :play="play"
+          :phase-two="round?.awardRule === 'CLOSEST_ONLY'"
         />
       </template>
 
-      <!-- Checked ahead of `stage`, not inside a `stage === 'sealed'` branch only: a sealed round
-           for a game this build cannot render is just as unrenderable as a playing one — offering
-           "Aufdecken" first and admitting the gap only afterwards would be the same lie one step
-           later. -->
+      <!-- A sealed round for a game this build cannot render is just as unrenderable as a playing
+           one. -->
       <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
-
-      <div
-        v-else-if="face === 'sealed'"
-        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
-      >
-        <!--
-          Framework copy, not a game's: `sealed` exists only because a game answered
-          `requiresReveal` with true, and that flag means the same thing for every game that ever
-          sets it — the clock starts here, and there is no second attempt. The game's own component
-          is not even mounted yet, so this is the only place the sentence can stand.
-        -->
-        <p data-test="round-reveal-cost" class="text-sm text-neutral-600">
-          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <button
-          type="button"
-          data-test="round-reveal"
-          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy"
-          @click="onReveal"
-        >
-          Aufdecken
-        </button>
-      </div>
 
       <!--
         Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
@@ -168,8 +159,10 @@ function onGiveUp(): void {
       -->
       <component
         :is="component"
-        v-else-if="face === 'playing' || face === 'done'"
+        v-else-if="face === 'sealed' || face === 'playing' || face === 'done'"
         :key="round?.round?.number"
+        :sealed="face === 'sealed'"
+        :scene="round?.scene ?? null"
         :payload="round?.payload"
         :outcome="round?.me?.outcome ?? null"
         :my-guess="round?.me?.guess ?? null"
@@ -177,11 +170,13 @@ function onGiveUp(): void {
         :entries="entries"
         :mine-user-id="round?.me?.userId ?? null"
         :award-rule="round?.awardRule ?? null"
+        :award-points="round?.awardPoints ?? null"
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
         :asset-url="assetUrl"
         :closed="props.closed"
         :review="props.review"
+        @reveal="onReveal"
         @guess="onGuess"
         @skip="onSkip"
         @give-up="onGiveUp"

@@ -22,7 +22,7 @@ class MemberProfileServiceTest {
     private val users = mockk<UserQuery>()
     private val service = MemberProfileService(members = members, users = users)
 
-    private val user = User(id = uid, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong")
+    private val user = User(id = uid, subject = "1", githubLogin = "amy", displayName = "Amy Wong")
     private val row = CommunityMember(communityId = cid, userId = uid, status = MemberStatus.ACTIVE)
 
     @Test

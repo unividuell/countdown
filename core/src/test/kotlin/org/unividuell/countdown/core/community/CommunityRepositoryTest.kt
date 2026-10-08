@@ -20,7 +20,7 @@ class CommunityRepositoryTest(
     @Autowired val repository: CommunityRepository,
     @Autowired val users: UserRepository,
 ) {
-    private fun aUser() = users.save(User(githubId = 1L, githubLogin = "octocat"))
+    private fun aUser() = users.save(User(subject = "1", githubLogin = "octocat"))
 
     @Test
     fun `saves a community with a uuid v7 id and finds it by slug`() {

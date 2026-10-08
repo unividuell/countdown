@@ -12,9 +12,10 @@ new team members (and AI assistants) stay consistent.
 | **Git workflow** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging | [git-workflow.md](git-workflow.md) |
 | Kotlin call sites — named arguments from two arguments on, and where that does not apply | [kotlin.md](kotlin.md) |
 | Testing — backend (mockk · kotest · MockMvc Kotlin DSL · Testcontainers · TDD) | [testing.md](testing.md) |
+| **Configuration** — backend (`application*.yaml` is untested, so boot it · suffixed sizes bind only onto `DataSize`) | [configuration.md](configuration.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
-| Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |
+| Security & auth — backend (auth lib · one account per provider · no session for anonymous requests · roles · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |
 | Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation · never log what storage must not have) | [logging.md](logging.md) |
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Tailwind v4 · stack · `apiFetch`/`useAuth` · lint · typecheck) | [frontend.md](frontend.md) |
 | ↳ Frontend UI & layout (mobile-first · sizing traps · accessibility) | [frontend-ui.md](frontend-ui.md) |
@@ -29,9 +30,9 @@ new team members (and AI assistants) stay consistent.
 | **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · signed T-offset rounds · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 | **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
-| **Game rounds** — how a round gets a game and a guess becomes points (run as the round coordinate · lazy materialisation via `ON CONFLICT` · one secret, two exits split per stream · game judges, framework awards · points as a cache) | [game-rounds.md](game-rounds.md) |
+| **Game rounds** — how a round gets a game and a guess becomes points (run as the round coordinate · lazy materialisation via `ON CONFLICT` · one secret, two exits · streams split by publication · game judges, framework awards · points as a cache) | [game-rounds.md](game-rounds.md) |
 | **Game lab** — the non-prod harness for playing a mini-game against a URL seed (two-gate pattern · self-limiting in-memory state · payload-hygiene test · the lab adapts, never the game) | [game-lab.md](game-lab.md) |
-| **Game integrity** — what the anti-cheat design validated at the first game (parseable → perceptual · two streams split by publication · field-set tests both directions · client never materialises the solution · server-authoritative time) | [game-integrity.md](game-integrity.md) |
+| **Game integrity** — what the anti-cheat design validated at the first game (parseable → perceptual · streams split by publication · field-set tests both directions · client never materialises the solution · server-authoritative time · the ceiling, named (Entstauber)) | [game-integrity.md](game-integrity.md) |
 
 ## Stack baseline
 

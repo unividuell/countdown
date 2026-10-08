@@ -24,6 +24,8 @@ data class UpdateCommunityRequest(
 )
 data class StartEditionRequest(val label: String)
 data class InviteResponse(val url: String, val expiresAt: Instant)
+/** What an anonymous visitor may learn from an invite link: who is inviting. Nothing else. */
+data class InvitePeekResponse(val name: String)
 data class SelectionRequest(val communityId: UUID)
 data class MemberResponse(
     val userId: UUID, val username: String, val status: String, val isAdmin: Boolean,

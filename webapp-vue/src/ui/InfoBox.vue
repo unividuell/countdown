@@ -15,25 +15,48 @@ import IconInfo from '~icons/lucide/info'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronUp from '~icons/lucide/chevron-up'
 
-const props = defineProps<{ storageKey: string }>()
+type BoxTone = 'info' | 'phase-one' | 'phase-two'
 
-const collapsed = useLocalStorage(`infobox:${props.storageKey}`, false)
+const props = withDefaults(defineProps<{ storageKey: string; tone?: BoxTone }>(), {
+  tone: 'info',
+})
+
+/** Border, ground and icon colour per tone, in one place so the two sites cannot disagree. */
+const TONES: Record<BoxTone, { box: string; icon: string }> = {
+  info: { box: 'border-sky-200 bg-sky-50/60', icon: 'text-sky-600' },
+  'phase-one': { box: 'border-phase-one/30 bg-phase-one/10', icon: 'text-phase-one' },
+  'phase-two': { box: 'border-phase-two/30 bg-phase-two/10', icon: 'text-phase-two' },
+}
+
+// Getter, not a template literal: AwardBox's key changes phase to phase on the same mounted
+// instance, and a literal would capture the key of whatever phase was current at setup.
+const collapsed = useLocalStorage(() => `infobox:${props.storageKey}`, false)
 </script>
 
 <template>
   <section
     data-test="info-box"
-    class="rounded-lg border border-sky-200 bg-sky-50/60 px-4 py-3 text-sm text-neutral-700"
+    class="rounded-lg border px-4 py-3 text-sm text-neutral-700"
+    :class="TONES[tone].box"
   >
     <div class="flex items-start gap-3">
       <!-- No nudge: the icon's box and the heading's first line box are both 20px, so aligning
            them at the top is what puts them on one line. A margin here only lifts the heading. -->
-      <IconInfo class="size-5 shrink-0 text-sky-600" aria-hidden="true" />
+      <!-- Coloured on this span, not inherited: `text-neutral-700` already sits on the section for
+           the body text, and a second `text-*` there would be a coin flip on which one wins. -->
+      <span data-test="info-box-icon" class="shrink-0" :class="TONES[tone].icon">
+        <slot name="icon"><IconInfo class="size-5" aria-hidden="true" /></slot>
+      </span>
       <div class="min-w-0 flex-1 font-medium"><slot name="abstract" /></div>
+      <!-- The button is 44px tall with centred content in an `items-start` row. Without
+           correction, the 20px chevron sits at −8 + 22 = 14px, four pixels below the icon and
+           heading's centre line. −12px margins top and bottom move it to 10px (the centre) —
+           the touch target stays 44px, only its layout footprint shrinks to 20px
+           (44 − 12 − 12 = 20px), so it stops driving the row's height. -->
       <button
         type="button"
         data-test="info-box-toggle"
-        class="-m-2 flex size-11 shrink-0 cursor-pointer items-center justify-center text-neutral-500"
+        class="-mx-2 -mt-3 -mb-3 flex size-11 shrink-0 cursor-pointer items-center justify-center text-neutral-500"
         :aria-expanded="!collapsed"
         :aria-label="collapsed ? 'Erklärung zeigen' : 'Erklärung ausblenden'"
         @click="collapsed = !collapsed"

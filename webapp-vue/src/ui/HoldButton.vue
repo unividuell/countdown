@@ -10,7 +10,7 @@
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
-import { DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
+import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
 const POP_MS = 400
@@ -26,8 +26,15 @@ const props = withDefaults(
     color: string
     /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
     holdMs?: number
+    /**
+     * Turns the hold into a count-in of this many beats: the button reads [label] at rest and
+     * the beat while held, and the hold lasts `beats × beatMs` — [holdMs] is ignored then.
+     */
+    beats?: number
+    /** One beat of the count-in. Entstauber counts in at its round's tempo. */
+    beatMs?: number
   }>(),
-  { holdMs: DEFAULT_HOLD_MS },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS },
 )
 
 const emit = defineEmits<{ confirm: [] }>()
@@ -42,14 +49,42 @@ function canAnimate(el: Element | null): el is Element {
   return !!el && typeof el.animate === 'function' && !prefersReducedMotion() && !inBackground()
 }
 
-const { progress, holding, start, cancel } = useHoldProgress(props.holdMs, () => {
-  if (canAnimate(button.value)) {
-    button.value.animate(
-      [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
-      { duration: PULSE_MS, easing: 'ease-out' },
-    )
-  }
-  emit('confirm')
+/** With `beats`, the hold is a count-in: it always restarts at [beats], never resumes a rewind. */
+const counting = props.beats !== undefined
+const { progress, holding, start, cancel } = useHoldProgress(
+  counting ? (props.beats ?? 0) * props.beatMs : props.holdMs,
+  () => {
+    if (canAnimate(button.value)) {
+      button.value.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+        { duration: PULSE_MS, easing: 'ease-out' },
+      )
+    }
+    emit('confirm')
+  },
+  { restartOnPress: counting },
+)
+
+/**
+ * The beat on the button, set only while held and frozen at release: the ring runs back after a
+ * release, and a digit read off that ring would count 1, 2, 3 back up — a countdown that looks
+ * like it is still running.
+ */
+const beat = ref<number | null>(null)
+watch(holding, (isHolding) => {
+  if (counting && isHolding) beat.value = props.beats ?? null
+})
+watch(progress, (value) => {
+  const beats = props.beats
+  if (beats === undefined || !holding.value) return
+  beat.value = Math.min(beats, Math.max(1, beats - Math.floor(value * beats)))
+})
+
+const face = computed<{ text: string; shown: boolean } | null>(() => {
+  if (!counting) return null
+  if (holding.value) return { text: String(beat.value ?? props.beats), shown: true }
+  if (progress.value > 0) return { text: String(beat.value ?? ''), shown: false }
+  return { text: props.label, shown: true }
 })
 
 /**
@@ -273,6 +308,19 @@ const popStyle = computed(() => ({
       @blur="cancel"
       @keydown="onKeyDown"
       @keyup="onKeyUp"
-    />
+    >
+      <span
+        v-if="face !== null"
+        data-test="hold-face"
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold tracking-wide text-white transition-opacity duration-150 motion-reduce:transition-none"
+        :class="face.shown ? 'opacity-100' : 'opacity-0'"
+      >
+        {{ face.text }}
+      </span>
+    </button>
+    <span v-if="counting" data-test="hold-beat" class="sr-only" aria-live="polite">
+      {{ holding ? beat : '' }}
+    </span>
   </div>
 </template>

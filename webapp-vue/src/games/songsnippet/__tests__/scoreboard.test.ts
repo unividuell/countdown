@@ -20,8 +20,12 @@ function entry(overrides: Partial<GameEntry> & { userId: string }): GameEntry {
   }
 }
 
-function rowsOf(entries: GameEntry[], awardRule: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null = null) {
-  return scoreRows({ entries, durations: DURATIONS, awardRule })
+function rowsOf(
+  entries: GameEntry[],
+  awardRule: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null = null,
+  mineUserId: string | null = null,
+) {
+  return scoreRows({ entries, durations: DURATIONS, awardRule, mineUserId })
 }
 
 describe('scoreRows', () => {
@@ -100,5 +104,26 @@ describe('scoreRows', () => {
     expect(rowsOf(scored, 'ALL_QUALIFYING')[0]!.provisional).toBe(false)
     expect(rowsOf(zero, 'CLOSEST_ONLY')[0]!.provisional).toBe(false)
     expect(rowsOf(unscored, 'CLOSEST_ONLY')[0]!.provisional).toBe(false)
+  })
+
+  it('gives each row its rank as a tick, and holds mine back to the first foreign marker', () => {
+    // The cascade that writes the table reads this — see `tickOfRow`. My own row may not land
+    // first, or its slot alone would say „I am not the best“ before a single rival was shown.
+    const rows = rowsOf(
+      [
+        entry({ userId: 'last', points: 0, stage: 4 }),
+        entry({ userId: 'me', points: 3, stage: 2 }),
+        entry({ userId: 'best', points: 5, stage: 1 }),
+      ],
+      null,
+      'me',
+    )
+
+    // Mine borrows rank 0's tick, so it lands with the winner rather than announcing itself.
+    expect(rows.map((row) => [row.userId, row.tick])).toEqual([
+      ['best', 0],
+      ['me', 0],
+      ['last', 2],
+    ])
   })
 })

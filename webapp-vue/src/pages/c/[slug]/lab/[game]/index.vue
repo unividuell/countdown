@@ -38,6 +38,8 @@ import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { nowMs, skewMs } from '@/ui/sharedClock'
+import type { PlayClock } from '@/ui/playClock'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -55,6 +57,13 @@ const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'O
 
 const round = ref<LabRoundResponse | null>(null)
 /**
+ * Bumped whenever a response reseals an already-revealed round — a reset, most often. The game
+ * component is keyed on this alongside `round.seed` (see below), because sealing again must
+ * remount it: a half-made selection or an open panorama must not carry into the next attempt, the
+ * way the old reveal screen unmounting the game used to guarantee for free.
+ */
+const resealCount = ref(0)
+/**
  * When this test round closes. Stamped once per open rather than derived per render: an end that
  * moved along with the clock would hold the band's readout at one reading forever, and a band that
  * never counts down is worse than no band at all. Everything else about it follows the seed, so a
@@ -64,6 +73,20 @@ const roundEndsAt = ref<string | null>(null)
 const unavailable = ref(false)
 const error = ref<string | null>(null)
 const busy = ref(false)
+
+/**
+ * When this tester's clock started. The lab has no server stamp on the wire and needs none —
+ * nothing is scored here, the clock is there to be looked at. It doubles as the flag: the lab's
+ * `me` stays null until a guess lands, so „stamped and still no me“ is exactly the play.
+ */
+const playStartedAt = ref<string | null>(null)
+
+const labPlay = computed<PlayClock | null>(() => {
+  const since = playStartedAt.value
+  return since !== null && round.value?.me == null && round.value?.scoresOnDuration === true
+    ? { phase: 'running', since }
+    : null
+})
 
 function writeSeed(next: number): void {
   router.replace({ query: { ...route.query, seed: String(next) } })
@@ -84,8 +107,14 @@ async function run(
   busy.value = true
   error.value = null
   try {
+    const wasRevealed = round.value?.revealed === true
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
+    if (wasRevealed && !round.value.revealed) resealCount.value++
     roundEndsAt.value = labRoundEnd(current, Date.now())
+    // Every path that reopens a round — reset, „forget mine“, a new seed — comes back
+    // `revealed: false` for a gated game, because the server clears its own `openedAt` on all of
+    // them. So this one line retires the stamp on all of them too.
+    if (!round.value.revealed) playStartedAt.value = null
     if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
@@ -110,9 +139,17 @@ const review = computed<RoundReview>(() => ({
     run((slug, game, s, p) => setLabOverride(slug, game, s, p, userId, value)),
 }))
 
-/** The lab's own „Aufdecken“ — starts the tester's clock, mirroring the real round's reveal. */
+/**
+ * Asked for by the game when its cover's hold completes — starts the tester's clock, mirroring
+ * the real round's reveal.
+ */
 async function reveal(): Promise<void> {
   await run(revealLabRound)
+  // `GameHeader` reads the stamp against the skew-corrected clock, not `Date.now()` — a raw
+  // stamp would open the stopwatch at a non-zero reading (or clamped at 00:00) on a skewed clock.
+  if (round.value?.revealed === true) {
+    playStartedAt.value = new Date(nowMs.value + skewMs.value).toISOString()
+  }
 }
 
 async function guess(value: unknown): Promise<void> {
@@ -266,34 +303,10 @@ watch(
           :round-number="labRoundNumber(round.seed)"
           :title="round.displayName"
           :ends-at="roundEndsAt"
+          :play="labPlay"
+          :phase-two="round.awardRule === 'CLOSEST_ONLY'"
         />
       </template>
-      <!--
-        Same face and the same sentence as the real round's `sealed` (`RoundCard.vue`) — the lab
-        mirrors it rather than inventing a second wording. Absent for a game that never asked for a
-        deliberate reveal: `round.revealed` is already `true` for those from the first response, so
-        this branch never renders and the game mounts straight away, exactly as before this gate
-        existed.
-      -->
-      <div
-        v-if="!round.revealed"
-        data-test="lab-sealed"
-        class="sealed-face flex flex-col items-center justify-center gap-4 text-center"
-      >
-        <p data-test="lab-reveal-cost" class="text-sm text-neutral-600">
-          Deine Zeit läuft ab dem Aufdecken — und du hast nur <strong>einen</strong> Versuch.
-        </p>
-        <button
-          type="button"
-          data-test="lab-reveal"
-          class="h-11 w-full cursor-pointer rounded-md bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-default disabled:opacity-40"
-          :disabled="busy"
-          @click="reveal"
-        >
-          Aufdecken
-        </button>
-      </div>
-
       <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
@@ -304,13 +317,19 @@ watch(
         any uncommitted scratch state a game component keeps locally (a value typed but never
         submitted) once the round it belonged to is gone.
 
+        `resealCount` rides along for the same reason: a reset keeps the seed but reseals the round,
+        and without it the instance would survive the reseal — carrying a half-made selection or an
+        open Weltanschauung panorama into the next attempt. Not keyed on `revealed` itself, which
+        would also remount at the reveal and reload the map right when the clock starts.
+
         `closed` is bound rather than left out: a lab round is never over — it is rolled again, not
         closed — and the answer „false“ is the lab's, not an omission for the game to guess at.
       -->
       <component
         :is="gameComponent"
-        v-else
-        :key="round.seed"
+        :key="`${round.seed}-${resealCount}`"
+        :sealed="!round.revealed"
+        :scene="round.scene"
         :payload="round.payload"
         :outcome="round.me?.outcome ?? null"
         :my-guess="round.me?.guess ?? null"
@@ -318,6 +337,7 @@ watch(
         :entries="gameEntries"
         :mine-user-id="gameMineUserId"
         :award-rule="round.awardRule"
+        :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
         :asset-url="
@@ -325,6 +345,7 @@ watch(
         "
         :review="review"
         :closed="false"
+        @reveal="reveal"
         @guess="guess"
         @skip="skip"
         @give-up="run(giveUpLabRound)"

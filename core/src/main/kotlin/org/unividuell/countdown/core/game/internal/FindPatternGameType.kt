@@ -8,6 +8,7 @@ import org.unividuell.countdown.core.findpattern.FindPatternPalette
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
+import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.game.GameType
 import org.unividuell.countdown.core.game.InvalidGuessException
@@ -49,6 +50,9 @@ data class FindPatternPayload(
     val boardImage: String,
     val patternImage: String,
 ) : GamePayload
+
+/** The empty board the cover lies over: the layout, which the payload repeats, and nothing drawn. */
+data class FindPatternScene(val cols: Int, val rows: Int, val patternLength: Int) : GameScene
 
 /** Right or wrong — the whole verdict this game has to give. */
 data class FindPatternOutcome(val correct: Boolean) : GameOutcome
@@ -104,12 +108,20 @@ class FindPatternGameType : GameType<FindPatternParams> {
         ),
     )
 
+    override fun scene(params: FindPatternParams) = FindPatternScene(
+        cols = FindPatternLayout.COLS,
+        rows = FindPatternLayout.ROWS,
+        patternLength = FindPatternLayout.PATTERN_LENGTH,
+    )
+
     /**
      * Phase two only. In phase one the clock is not part of the result, so a deliberate reveal would
      * cost a tap for nothing; in phase two it is the whole second half of „Winner Takes It All“ —
      * find the pattern *and* be fastest — and the reveal is what starts it, exactly once.
      */
     override fun requiresReveal(params: FindPatternParams) = params.timed
+
+    override fun scoresOnDuration(params: FindPatternParams) = params.timed
 
     override fun judge(params: FindPatternParams, guess: JsonNode): Judgement {
         val startIndex = guess.get("startIndex")

@@ -8,9 +8,15 @@ import { useRound } from '../useRound'
 
 const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
-  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+  game: {
+    id: 'guess-hue',
+    displayName: 'Farbausmalung',
+    requiresReveal: false,
+    scoresOnDuration: false,
+  },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: null,
   solution: null,
   me: null,
@@ -71,11 +77,23 @@ describe('useRound', () => {
 
   it('waits for a deliberate reveal when the game wants one', async () => {
     vi.spyOn(api, 'getCurrentRound').mockResolvedValue(
-      announced({ game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true } }),
+      announced({
+        game: {
+          id: 'guess-hue',
+          displayName: 'Farbausmalung',
+          requiresReveal: true,
+          scoresOnDuration: true,
+        },
+      }),
     )
     const revealSpy = vi.spyOn(api, 'revealRound').mockResolvedValue(
       announced({
-        game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: true },
+        game: {
+          id: 'guess-hue',
+          displayName: 'Farbausmalung',
+          requiresReveal: true,
+          scoresOnDuration: true,
+        },
         me: aPlay(),
         payload: { description: 'x' },
       }),

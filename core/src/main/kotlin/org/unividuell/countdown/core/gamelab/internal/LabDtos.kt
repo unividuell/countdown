@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.gamelab.internal
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
+import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.Vote
@@ -59,6 +60,10 @@ data class LabRoundResponse(
     val displayName: String,
     val awardRule: AwardRule,
     val awardPoints: Int,
+    /** Whether the band's stopwatch runs for this game — mirrors `GameDto.scoresOnDuration`. */
+    val scoresOnDuration: Boolean,
+    /** Before the reveal and after it alike — mirrors `RoundResponse.scene`. */
+    val scene: GameScene? = null,
     /**
      * `null` until [revealed] — withheld the same way [solution] already is: for a game that asked
      * for a deliberate reveal, the payload IS the board (Musterung's board image, e.g.), so leaving

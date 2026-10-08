@@ -35,8 +35,8 @@ class MemberIdentityServiceTest {
             member(bob),
         )
         every { users.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
-            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
         )
 
         val identities = service.of(communityId = cid, userIds = listOf(alice, bob))
@@ -50,7 +50,7 @@ class MemberIdentityServiceTest {
     fun `a user without a membership row here falls back to their global identity`() {
         every { members.findByCommunityId(cid) } returns emptyList()
         every { users.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong"),
         )
 
         service.of(communityId = cid, userIds = listOf(alice))[alice]!!.username shouldBe "Amy Wong"
@@ -69,7 +69,7 @@ class MemberIdentityServiceTest {
         every { members.findByCommunityIdAndUserId(communityId = cid, userId = alice) } returns
             member(alice, displayName = "Zwerg")
         every { users.findById(alice) } returns
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong")
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong")
 
         service.of(communityId = cid, userId = alice)!!.username shouldBe "Zwerg"
 
@@ -82,7 +82,7 @@ class MemberIdentityServiceTest {
     fun `the single lookup falls back to the global identity without a membership row`() {
         every { members.findByCommunityIdAndUserId(communityId = cid, userId = alice) } returns null
         every { users.findById(alice) } returns
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong")
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong")
 
         service.of(communityId = cid, userId = alice)!!.username shouldBe "Amy Wong"
     }

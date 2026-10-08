@@ -71,7 +71,7 @@ class AnnouncementServiceNoGameTypeTest {
         every { store.find(edition = edition, roundNumber = any()) } returns null
         every { store.history(edition = edition, roundNumber = any()) } returns emptyList()
         every { store.previousRound(edition = edition, roundNumber = any()) } returns null
-        every { catalog.ids() } returns emptyList()
+        every { catalog.availableIds(any()) } returns emptyList()
 
         val res = service.currentRound(
             slug = "empty-catalogue", userId = UUID.randomUUID(), isSuperAdmin = true,

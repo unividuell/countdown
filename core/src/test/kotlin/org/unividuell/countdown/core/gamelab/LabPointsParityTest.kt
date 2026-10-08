@@ -96,7 +96,7 @@ class LabPointsParityTest(
     @MockkBean lateinit var countries: CountryLookup
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun guess(hue: Double): JsonNode = mapper.readTree("""{"hue":$hue}""")
 
@@ -163,7 +163,7 @@ class LabPointsParityTest(
             gameType = "guess-hue",
             params = requireNotNull(catalog.handle("guess-hue")).draw(
                 random = GameRandom.independent(SecureRandom()),
-                context = RoundContext(roundNumber = roundNumber, phase = phase),
+                context = RoundContext(communityId = edition.communityId, roundNumber = roundNumber, phase = phase),
             ),
             award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound),
             announcedAt = clock.instant(),
@@ -185,7 +185,7 @@ class LabPointsParityTest(
             gameType = "spot-object",
             params = requireNotNull(catalog.handle("spot-object")).draw(
                 random = GameRandom.independent(SecureRandom()),
-                context = RoundContext(roundNumber = roundNumber, phase = phase),
+                context = RoundContext(communityId = edition.communityId, roundNumber = roundNumber, phase = phase),
             ),
             award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound),
             announcedAt = clock.instant(),

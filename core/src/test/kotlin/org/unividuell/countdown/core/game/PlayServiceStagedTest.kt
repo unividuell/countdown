@@ -72,12 +72,13 @@ class PlayServiceStagedTest(
                 outcome = null,
             )
             override fun requiresReveal(params: StagedParams) = false
+            override fun scoresOnDuration(params: StagedParams) = false
             override fun stages(params: StagedParams) = 5
         }
     }
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser("owner")

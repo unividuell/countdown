@@ -29,7 +29,7 @@ class CountdownServiceTest(
     @Autowired val editionRepository: CommunityEditionRepository,
     @Autowired val users: UserRepository,
 ) {
-    private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
+    private fun aUser() = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
 
     @Test
     fun `forSlug 404s a non-member`() {

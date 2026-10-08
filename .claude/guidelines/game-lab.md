@@ -27,7 +27,7 @@ rule without exception.
 
 ## Non-prod tooling: the two-gate pattern
 
-Second instance after the test-user picker — from here it is the convention. Every bean of a
+Second instance after the test-user picker (now the auth lib's) — from here it is the convention. Every bean of a
 non-prod tool carries **both**:
 
 ```kotlin

@@ -10,32 +10,70 @@
 // anything this component knew about `RoundResponse` would be a thing the lab had to fake.
 import { computed } from 'vue'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
+import { BAND_PAD, type Tone } from '@/ui/flipdot/board'
+import { elapsedClock, elapsedReading } from '@/ui/elapsedClock'
 import { remainingClock, remainingReading } from '@/ui/remainingClock'
+import type { PlayClock } from '@/ui/playClock'
 import { useSharedNow } from '@/ui/sharedClock'
 
-const props = defineProps<{
-  /** Signed, and shown signed: round 3 and round -3 are different rounds. */
-  roundNumber: number | null
-  title: string | null
-  /** ISO instant the round closes at. `null` where there is no such thing — then no board. */
-  endsAt: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** Signed, and shown signed: round 3 and round -3 are different rounds. */
+    roundNumber: number | null
+    title: string | null
+    /** ISO instant the round closes at. `null` where there is no such thing — then no board. */
+    endsAt: string | null
+    /**
+     * The timed play's own face, while there is one. `null` — the round countdown — is what every
+     * caller without a play of its own passes, which is all of them but two.
+     */
+    play?: PlayClock | null
+    /**
+     * Whether the round is scored „winner takes it all“. Colours one thing — the number. The
+     * dots stay white: the running stopwatch is already amber, and a timed play only exists in
+     * this phase, so amber on both would stop telling the two readouts apart.
+     */
+    phaseTwo?: boolean
+  }>(),
+  { play: null, phaseTwo: false },
+)
 
 const now = useSharedNow()
-const clock = computed(() => remainingClock(props.endsAt, now.value))
-const reading = computed(() => remainingReading(props.endsAt, now.value))
+
+/**
+ * What the board reads, says and wears — derived in one place, so the faces cannot disagree about
+ * which of them is showing.
+ */
+const face = computed<{ text: string; label: string; tone: Tone } | null>(() => {
+  const play = props.play
+  const [text, label] =
+    play !== null
+      ? [elapsedClock(play.since, now.value), elapsedReading(play.since, now.value)]
+      : [remainingClock(props.endsAt, now.value), remainingReading(props.endsAt, now.value)]
+
+  if (text === null || label === null) return null
+  return { text, label, tone: play !== null ? 'alarm' : 'default' }
+})
 </script>
 
 <template>
-  <div data-test="game-header" class="flex h-9 items-center gap-2 bg-stone-700 px-4 text-stone-50">
+  <!-- No gutter on the right while a board is up: the dot field is what meets the card's edge, and
+       the blank columns inside it are the gutter. Without a board there is nothing to meet it, so
+       the band pays for its own. -->
+  <div
+    data-test="game-header"
+    class="flex h-9 items-center gap-2 bg-stone-700 pl-4 text-stone-50"
+    :class="{ 'pr-4': face === null }"
+  >
     <span
       v-if="roundNumber !== null"
       data-test="game-header-round"
-      class="shrink-0 text-sm tabular-nums text-stone-400"
+      class="shrink-0 text-sm tabular-nums"
+      :class="phaseTwo ? 'text-phase-two' : 'text-phase-one'"
     >
       <!-- Visible: the bare number. Spoken: what it is a number of — the band is the only place
-           the round is named. The colon is decoration and stays out of the reading. -->
-      <span class="sr-only">Runde </span>{{ roundNumber }}<span aria-hidden="true">:</span>
+           the round is named. -->
+      <span class="sr-only">Runde </span>{{ roundNumber }}
     </span>
     <h1 data-test="game-header-title" class="min-w-0 flex-1 truncate text-sm font-semibold">
       {{ title }}
@@ -45,11 +83,13 @@ const reading = computed(() => remainingReading(props.endsAt, now.value))
          app header's board — the viewBox ratio supplies the width. Self-describing here (nothing
          wraps it), so its own aria-label is the announcement. -->
     <FlipDotBoard
-      v-if="clock !== null && reading !== null"
+      v-if="face !== null"
       data-test="game-header-clock"
-      class="h-[18px] w-auto shrink-0"
-      :text="clock"
-      :label="reading"
+      class="h-full w-auto shrink-0"
+      :text="face.text"
+      :label="face.label"
+      :tone="face.tone"
+      :pad="BAND_PAD"
     />
   </div>
 </template>

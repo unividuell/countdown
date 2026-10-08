@@ -15,12 +15,12 @@ proxy target with `VITE_API_PROXY_TARGET` if the backend runs elsewhere. Visit
 `/` → redirected to `/login` → "Login with GitHub" → back to `/` showing your
 profile.
 
-**GitHub OAuth App (dev):** the browser only ever talks to the SPA origin; the
-Vite proxy forwards to the backend transparently (`changeOrigin: false`), so the
-backend builds OAuth URLs on the SPA origin. Set the OAuth App's **Authorization
-callback URL** to `http://localhost:5173/login/oauth2/code/github` (the SPA origin,
-**not** `:8080`) — otherwise GitHub sends you to `:8080` after login and you land
-on the backend's raw JSON instead of the app.
+**Sign-in (dev):** the backend's test-user picker signs you in; no OAuth client is
+needed. The browser only ever talks to the SPA origin; the Vite proxy forwards to
+the backend transparently (`changeOrigin: false`), so the backend builds OAuth URLs
+on the SPA origin. The organisation's GitHub App lists
+`http://localhost:5173/login/oauth2/code/github` as a redirect URI, so the real GitHub
+login works through the proxy too: [`core/README.md`](../core/README.md#real-github-login).
 
 ## Game lab (non-production only)
 

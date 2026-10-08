@@ -124,6 +124,19 @@ once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s 
 expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
 games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
 `guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
+A game with **more** to say on a beat fills the window the clock leaves it — `SOLUTION_DELAY_MS` to
+`RESULTS_DELAY_MS` — instead of offsetting the clock: Musterung recedes its board, uncovers the
+possibilities and brings the board back inside beat 3, its return derived from beat 4 so the picture
+is whole when the outlines land on it. An offset would hand one game its own timetable, which is the
+drift the shared module exists to prevent.
+
+**The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
+heading and live chip *inside* the `thead`, „Name“ first and „Pkt“ last, the band, the gutters, the
+cascade. A game declares only the columns between those two (`games/scoreboardColumns.ts`) and fills
+them through `cell-<key>` slots; a column may bring its own surface, or `ground: () => null` for
+content that is not a table cell (Musterung's chips are a pattern). Build the frame per game and it
+drifts — four copies had already split into two families with different gutters and two places for
+the heading.
 
 **A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
 `localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire

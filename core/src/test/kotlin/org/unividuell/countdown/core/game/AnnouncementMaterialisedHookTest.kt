@@ -87,6 +87,7 @@ class AnnouncementMaterialisedHookTest(
             override fun judge(params: RecParams, guess: JsonNode) =
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: RecParams) = false
+            override fun scoresOnDuration(params: RecParams) = false
             override fun materialised(params: RecParams, roundGameId: UUID) {
                 recorder.materialisedFor.add(roundGameId)
             }
@@ -103,7 +104,7 @@ class AnnouncementMaterialisedHookTest(
     }
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser("owner")

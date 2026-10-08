@@ -24,6 +24,7 @@ function mountAdapter(props: Record<string, unknown> = {}) {
       entries: [],
       mineUserId: null,
       awardRule: null,
+      awardPoints: null,
       ...props,
     },
   })
@@ -352,8 +353,8 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
       entries: [entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 4.5 } })],
     })
 
-    expect(w.find('[data-test="hue-scoreboard"]').exists()).toBe(true)
-    expect(w.get('[data-test="hue-scoreboard"]').text()).toContain('me')
+    expect(w.find('[data-test="scoreboard"]').exists()).toBe(true)
+    expect(w.get('[data-test="scoreboard"]').text()).toContain('me')
   })
 
   it('calls the round live exactly when a score can still be overtaken', () => {
@@ -361,12 +362,12 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
 
     expect(
       spentRound({ entries, awardRule: 'CLOSEST_ONLY' })
-        .find('[data-test="hue-scoreboard-live"]')
+        .find('[data-test="scoreboard-live"]')
         .exists(),
     ).toBe(true)
     expect(
       spentRound({ entries, awardRule: 'ALL_QUALIFYING' })
-        .find('[data-test="hue-scoreboard-live"]')
+        .find('[data-test="scoreboard-live"]')
         .exists(),
     ).toBe(false)
   })

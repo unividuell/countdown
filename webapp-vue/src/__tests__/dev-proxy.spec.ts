@@ -13,8 +13,9 @@ describe('dev server proxy', () => {
 
   it.each([
     '/api/me',
-    '/login/github',
-    '/login/github/as',
+    '/login/start',
+    '/login/test/as',
+    '/login/test/unlock',
     '/login/oauth2/code/github',
     '/oauth2/authorization/github',
     '/logout',

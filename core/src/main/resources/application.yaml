@@ -27,25 +27,33 @@ spring:
   modulith:
     runtime:
       flyway-enabled: true
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: Ov23liQzcbT4kLUIXWoo
-            # Local dev logs in through the seeded test-user picker (see app.test-auth),
-            # which never performs a token exchange — so a placeholder keeps the documented
-            # local flow running without exporting anything. Production overrides both this
-            # and the client-id in application-production.yaml, where the secret has NO
-            # default and a missing env var still fails the boot fast.
-            client-secret: ${GITHUB_CLIENT_SECRET:local-dev-unused}
-            scope: read:user
   session:
     jdbc:
       initialize-schema: never
+  servlet:
+    # Boot's default is 1MB, which would reject every real upload. Must stay >= imagepool's
+    # maxBytes (ImagePoolProperties, 15 MB).
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+
+unividuell:
+  auth:
+    roles:
+      # provider:login, comma-separated: test:<login> for a test user, github:<login> in production.
+      # An entry without its provider prefix refuses to start; empty means nobody.
+      super-admin: ${SUPER_ADMINS:}
+    test-login:
+      # The key that unlocks the test-user picker, once per browser profile. Empty means no lock —
+      # allowed only while no profile is active, i.e. on localhost, where multi-user testing means
+      # several browser profiles at once. The one place where env name and property path differ.
+      # unividuell.auth.test-login.enabled=false replays the real GitHub flow (core/README.md).
+      key: ${FAKE_SIGN_IN_KEY:}
+    csrf-cookie:
+      # Answered publicly cacheable to crawlers: a Set-Cookie there would defeat every shared cache.
+      excluded-paths: /api/preview/**
 
 app:
-  super-admin-github-logins: ${SUPER_ADMIN_GITHUB_LOGINS:}
   guess-hue:
     # Empty means: the sample dataset from the classpath — a boot failure in production/staging,
     # where update.sh decrypts the real file with sops and compose mounts it into the container.
@@ -53,20 +61,14 @@ app:
     # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
   song-snippet:
-    # Finding ids: the number in a playlist's web URL IS the id —
-    # https://www.deezer.com/playlist/10457025082. To go looking, the API needs no key, and the
-    # editor's own catalogue is the best entry point, because everything in it is editorial:
-    #   curl -s 'https://api.deezer.com/playlist/10457025082'        # -> creator.id 374224155
-    #   curl -s 'https://api.deezer.com/user/374224155/playlists?limit=200'   # 169 lists
-    # Free-text search works too, where `user.name` separates an editorial list ("Deezer <country>
-    # Editor") from somebody's private mixtape:
-    #   curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    # Finding an id — the API needs no key:
+    #   A) search:  curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'
+    #   B) known:   the number in the URL, https://www.deezer.com/playlist/12873087061
+    # Usable tracks (readable + preview, as DeezerSongCatalog filters; depends on the caller's country):
+    #   curl -s 'https://api.deezer.com/playlist/<id>/tracks?limit=400' \
+    #     | jq '{total, usable: [.data[] | select(.readable and (.preview // "") != "")] | length}'
     playlist-ids:
-      - 10457025082 # Deutschland, deine Hits - 80er (fans: 7840)
-      - 10453961322 # Deutschland, deine Hits - 90er (fans: 7581)
-      - 10396822102 # Deutschland, deine Hits - 00er (fans: 5843)
-      - 10396828062 # Deutschland, deine Hits - 10er (fans: 3949)
-      - 11605921024 # Deutschland, deine Sommer Hits - 20er (fans: 650)
+      - 12873087061 # HütteHütte (178/201 usable, 2026-10-03)
   spot-object:
     # Empty means: the sample list from the classpath — a boot failure in production/staging,
     # where update.sh decrypts the real file with sops and compose mounts it in. Same shape as
@@ -80,12 +82,8 @@ app:
     server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY:}
     # The URL-signing secret for the Street View Static API. Server-side only.
     signing-secret: ${SPOT_OBJECT_SIGNING_SECRET:}
-  test-auth:
-    # Emulator-style test login (seeded users + picker). Default on for localhost.
-    # Set false to replay the real prod GitHub OAuth flow locally (no seed, no picker).
-    enabled: true
   game-lab:
     # The non-prod harness for playing a mini-game against a seed from the URL. Gated twice, like
-    # test-auth: the beans are also @Profile("!production"). The switch exists so staging can be
+    # the test login: the beans are also @Profile("!production"). The switch exists so staging can be
     # closed the day real testers play a real round there — no code change, no deploy rebuild.
     enabled: true

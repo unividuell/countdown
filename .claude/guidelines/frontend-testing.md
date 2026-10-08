@@ -156,6 +156,11 @@ actually play.
 
 ## Doubles & lifecycle
 
+- **A second `vi.spyOn` on an already-spied module function reuses that spy, call history
+  included.** An earlier test's calls leak into a later `expect(spy).not.toHaveBeenCalled()` in
+  the same file even though that later test never triggers the call — add
+  `afterEach(() => vi.restoreAllMocks())` wherever a spec re-spies the same import across
+  multiple tests/describes. See `landingGuard.spec.ts` and `pages/join/__tests__/token.spec.ts`.
 - **Under `stubs: { teleport: true }`, grab elements *after* the state change that re-renders the
   teleported slot.** The stub re-renders its content when a reactive value inside it flips, so a
   node captured before the change is a detached copy — and every `Object.defineProperty` stub on it

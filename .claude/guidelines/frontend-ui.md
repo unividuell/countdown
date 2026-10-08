@@ -12,6 +12,15 @@ Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 first, then widen with breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a
 desktop layout that was written first).
 
+- **There is no dark mode — never write a `dark:` variant.** The app paints light whatever
+  the system says; a `dark:` class only fires on a dark-themed system, on a light card, and
+  flips its colour there (a light grey line turns near-black, a dark guide turns invisible).
+  Code ported from `huettehuette` carries them: strip them on the way in.
+- **A component that layers its own content with `z-index` isolates itself.** Give its root
+  `isolate`, so those layers stack inside it and never against the page: the round card's
+  `z-10` cover sat above the members' fly-in (z ≥ 1, in the page's stacking context) until the
+  card was isolated. Raising the page's elements instead escalates — it lifts them over the
+  drawer's backdrop too.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
@@ -134,6 +143,14 @@ it is the only proof available — no unit test can see them.
   it rendered and `invisible`, with its height written down (`h-4` for `text-xs`) so an empty one
   still holds the line. `MemberRow`'s live-points chip; the section's `min-h` is then the row's only
   height rather than a second opinion about it.
+- **A placeholder that only reserves space must not be countable as content.** Padding a list out
+  to a fixed number of empty tiles holds the row's height, but the count is read as a promise: with
+  three hits and six blanks behind them the band says „six more are still loading" when the search
+  has already answered. Reserve with **exactly one** placeholder, shown only while the list is
+  empty, and let it carry the state — spinner while a request is out, „Keine Treffer" for an empty
+  answer, mute before the first one and after a failure (a failed request is not an empty result).
+  The height then hangs on „at least one child", not on a constant nobody can keep honest. See
+  `SongSearchBox`.
 - **An overlay does not reach into a rounded corner the way the content behind it does.** A caption
   laid over the foot of an image (`absolute inset-x-0 bottom-0 bg-white`) inside a
   `rounded-xl overflow-hidden` tile gets clipped out of the two bottom corner arcs, while the image
@@ -159,6 +176,12 @@ it is the only proof available — no unit test can see them.
   un-widthed column, with the neighbouring fixed-width `w-*` columns holding their own width so it
   doesn't get stolen. Works the same on a `<th scope="row">` as on a plain `<td>`. See
   `GuessHueScoreboard`.
+- **A fixed column is as wide as its widest content, measured, plus ~2 px.** There is no web font:
+  Apple draws SF, Android Roboto, and a column cut to one font's exact pixel wraps or bleeds on the
+  other. Measure in the browser — a span with the cell's classes, `getBoundingClientRect` — not by
+  eye. A lone label that would set the width alone may take two lines instead (Entstauber's
+  „Max [ms]“); a chip that only marks state may overhang its column into empty head cells
+  (`flex justify-end` around a `shrink-0` chip). See `RevealScoreboard`'s points column.
 - **`w-full` and a negative inline margin are mutually exclusive.** A full-bleed band that breaks
   out of the page gutter (`-mx-4` against `main`'s `p-4`) only widens if its width is `auto`: with
   a definite width the margin equation is over-constrained, CSS drops the *right* margin, and the
@@ -232,4 +255,17 @@ numbers themselves are a browser measurement.
   focusable, so Tab lands in an invisible menu. Bind both as `:inert="!open || undefined"` — Vue
   omits an attribute only for `null`/`undefined`/`false`, and `false` only for genuine boolean
   attributes, so `inert="false"` would otherwise end up in the DOM and still be in effect.
+
+## The reveal cover
+
+- **A sealed round mounts its game.** The game lays `RevealCover` over its own play area and
+  nothing else, and sets `inert` on that area — glass stops a finger, not a keyboard. Its rules and
+  stake stay outside both: the sealed round is when they are read at leisure.
+- **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
+  failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
+- **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
+  under the cover. The cover leaves in the same render, with no transition: the scored clock is
+  already running, and a fade would be ours on top of the line's.
+- **The hold is the count-in.** `HoldButton` with `beats`: the digit follows the hold, a release
+  hides it rather than counting it back up, and a new press always starts at the top.
 

@@ -48,7 +48,7 @@ class SuperAdminOverviewServiceTest {
         )
 
     private fun user(id: UUID, login: String, name: String) =
-        User(id = id, githubId = id.leastSignificantBits, githubLogin = login, displayName = name)
+        User(id = id, subject = id.toString(), githubLogin = login, displayName = name)
 
     @Test
     fun `sorts communities by name and members admins-active-pending, resolving users in one batch`() {

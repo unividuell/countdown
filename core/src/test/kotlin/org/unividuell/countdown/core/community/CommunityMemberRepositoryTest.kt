@@ -24,7 +24,7 @@ class CommunityMemberRepositoryTest(
 ) {
     @Test
     fun `stores membership and queries by community, user and admin count`() {
-        val uid = users.save(User(githubId = 2L, githubLogin = "u2")).id!!
+        val uid = users.save(User(subject = "2", githubLogin = "u2")).id!!
         val cid = communities.save(Community(name = "Team", slug = "team", createdBy = uid)).id!!
         members.save(CommunityMember(communityId = cid, userId = uid, status = MemberStatus.ACTIVE, isAdmin = true))
 
@@ -36,10 +36,10 @@ class CommunityMemberRepositoryTest(
 
     @Test
     fun `counts pending members`() {
-        val adminId = users.save(User(githubId = System.nanoTime(), githubLogin = "a")).id!!
+        val adminId = users.save(User(subject = System.nanoTime().toString(), githubLogin = "a")).id!!
         val cid = communities.save(Community(name = "Team", slug = "team-pc", createdBy = adminId)).id!!
         members.save(CommunityMember(communityId = cid, userId = adminId, status = MemberStatus.ACTIVE, isAdmin = true))
-        val pid = users.save(User(githubId = System.nanoTime(), githubLogin = "p")).id!!
+        val pid = users.save(User(subject = System.nanoTime().toString(), githubLogin = "p")).id!!
         members.save(CommunityMember(communityId = cid, userId = pid, status = MemberStatus.PENDING))
         members.countByCommunityIdAndStatus(cid, MemberStatus.PENDING) shouldBe 1
         members.countByCommunityIdAndStatus(cid, MemberStatus.ACTIVE) shouldBe 1
@@ -47,7 +47,7 @@ class CommunityMemberRepositoryTest(
 
     @Test
     fun `carries the per-community name and colour, both optional`() {
-        val uid = users.save(User(githubId = System.nanoTime(), githubLogin = "u-profile")).id!!
+        val uid = users.save(User(subject = System.nanoTime().toString(), githubLogin = "u-profile")).id!!
         val cid = communities.save(Community(name = "Team", slug = "team-profile", createdBy = uid)).id!!
         members.save(
             CommunityMember(
@@ -63,7 +63,7 @@ class CommunityMemberRepositoryTest(
 
     @Test
     fun `a membership without an override stores nothing in either column`() {
-        val uid = users.save(User(githubId = System.nanoTime(), githubLogin = "u-plain")).id!!
+        val uid = users.save(User(subject = System.nanoTime().toString(), githubLogin = "u-plain")).id!!
         val cid = communities.save(Community(name = "Team", slug = "team-plain", createdBy = uid)).id!!
         members.save(CommunityMember(communityId = cid, userId = uid, status = MemberStatus.ACTIVE))
 

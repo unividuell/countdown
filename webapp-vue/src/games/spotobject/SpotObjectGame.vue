@@ -7,13 +7,14 @@
  * While the round runs, my own finished entry opens everyone's tips; once it is closed they are
  * open to everyone, and a closed round must never put a live map on screen again.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
-import InfoBox from '@/ui/InfoBox.vue'
+import RevealCover from '@/ui/RevealCover.vue'
+import type { SceneState } from '@/ui/sceneState'
+import SpotObjectBriefing from './SpotObjectBriefing.vue'
 import SpotObjectBoard from './SpotObjectBoard.vue'
-import SpotObjectRules from './SpotObjectRules.vue'
 import SpotObjectReveal from './SpotObjectReveal.vue'
 import SpotObjectTerm from './SpotObjectTerm.vue'
 import { scoreRows, tipTiles } from './tips'
@@ -27,15 +28,24 @@ const props = defineProps<{
   entries: GameEntry[]
   mineUserId: string | null
   awardRule: AwardRule | null
+  /** What this round is worth — the winner box states it. `null` only without a game. */
+  awardPoints: number | null
   disabled: boolean
   stage?: number
   assetUrl?: (key: number) => string
   /** The round is over for everyone — the other half of the server's own rule for `others`. */
   closed?: boolean
   review: RoundReview
+  /** Sealed: the map mounts under the cover before the reveal, `payload` still `null`. */
+  sealed?: boolean
+  /** Declared, never read: Weltanschauung's scene is the loaded map, not data. */
+  scene?: unknown
 }>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: [] }>()
+const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+
+const sceneState = ref<SceneState>('preparing')
+const board = useTemplateRef<InstanceType<typeof SpotObjectBoard>>('board')
 
 const payload = computed(() => (isSpotObjectPayload(props.payload) ? props.payload : null))
 
@@ -53,6 +63,13 @@ const rows = computed(() =>
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 /**
+ * The colour the walk is drawn in — the player's own, so the trail on the map is recognisably
+ * theirs. Neutral until an entry of one's own exists, which is the whole of the first few seconds
+ * of a round.
+ */
+const trailColor = computed(() => mine.value?.avatar.bgColorHex ?? '#404040')
+
+/**
  * Whether the reveal is something that just happened here rather than something that was already
  * true on mount — the same flag every other game's reveal keeps. A `watch` without `immediate`
  * never fires for the initial value, which is what makes an instance mounting already-played
@@ -66,7 +83,7 @@ watch(played, (now, before) => {
 </script>
 
 <template>
-  <p v-if="payload === null" class="text-sm text-neutral-600">
+  <p v-if="payload === null && !props.sealed" class="text-sm text-neutral-600">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <!-- `-m-4` cancels RoundSurface's own body padding on every side, so the term band and the map
@@ -76,7 +93,7 @@ watch(played, (now, before) => {
     <!-- The same band either way, in the only two places it can be: over the map while somebody
          searches, so the search keeps the whole card, and in the card's own flow at the reveal,
          where there is no map left to lie over. -->
-    <div v-if="revealed" class="flex flex-col gap-4 p-4">
+    <div v-if="revealed && payload" class="flex flex-col gap-4 p-4">
       <SpotObjectTerm :term="payload.term" />
       <SpotObjectReveal
         :tiles="tiles"
@@ -88,18 +105,35 @@ watch(played, (now, before) => {
       />
     </div>
     <template v-else>
-      <SpotObjectBoard :disabled="props.disabled" @guess="(value) => emit('guess', value)">
-        <SpotObjectTerm :term="payload.term" class="mt-3" />
-      </SpotObjectBoard>
+      <div class="relative">
+        <div data-test="spot-play" :inert="props.sealed || undefined">
+          <SpotObjectBoard
+            ref="board"
+            :disabled="props.disabled || props.sealed === true"
+            :sealed="props.sealed === true"
+            :trail-color="trailColor"
+            @guess="(value) => emit('guess', value)"
+            @scene-state="(state) => (sceneState = state)"
+          >
+            <SpotObjectTerm v-if="payload" :term="payload.term" />
+          </SpotObjectBoard>
+        </div>
+        <RevealCover
+          v-if="props.sealed"
+          :state="sceneState"
+          :busy="props.disabled"
+          @start="emit('reveal')"
+          @retry="board?.retry()"
+        />
+      </div>
 
       <!-- Below the map, the way `FindPatternBoard` puts its own rules below the field: the
            explanation is for whoever wants it, and the board is for everyone. -->
-      <div class="p-4">
-        <InfoBox storage-key="spot-object">
-          <template #abstract>Finde den gesuchten Gegenstand.</template>
-          <SpotObjectRules />
-        </InfoBox>
-      </div>
+      <SpotObjectBriefing
+        class="p-4"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+      />
     </template>
   </div>
 </template>

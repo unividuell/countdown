@@ -75,9 +75,15 @@ function mockUseRound(
 
 const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
-  game: { id: 'guess-hue', displayName: 'Farbausmalung', requiresReveal: false },
+  game: {
+    id: 'guess-hue',
+    displayName: 'Farbausmalung',
+    requiresReveal: false,
+    scoresOnDuration: false,
+  },
   noGameReason: null,
   previousRoundNumber: null,
+  scene: null,
   payload: null,
   solution: null,
   me: null,
@@ -406,5 +412,19 @@ describe('community home', () => {
     const w = mountPage()
 
     expect(w.findComponent(RoundHistory).exists()).toBe(false)
+  })
+
+  it('hands the card the reveal itself — the count-in is the hold on the cover now', async () => {
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    // `game: null` for the same reason as the history test above: no real game gets mounted.
+    const hook = mockUseRound({ stage: 'sealed', round: aRoundResponse({ game: null }) })
+    vi.mocked(useRound).mockReturnValue(hook)
+    hook.busy.value = true
+
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.getComponent(RoundCard).props('reveal')).toBe(hook.reveal)
+    expect(w.getComponent(RoundCard).props('busy')).toBe(true)
   })
 })

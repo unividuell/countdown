@@ -14,6 +14,13 @@ services:
     # (e.g. a fixed IntelliJ DB connection). Spring + external tools then share it.
     ports:
       - '${POSTGRES_PORT:-0}:5432'
+    volumes:
+      # Without this, postgres:18's own `VOLUME /var/lib/postgresql` gives the container an
+      # ANONYMOUS volume: `docker compose down` then orphans it, the next `up` creates a fresh
+      # one, and the database looks wiped. Named, it is reattached instead. Mount the path the
+      # image declares, not PGDATA (/var/lib/postgresql/18/docker) -- 18 moved it, and mounting
+      # the inner path leaves the outer one unprotected.
+      - 'postgres-data:/var/lib/postgresql'
 
   pgadmin:
     image: 'dpage/pgadmin4:latest'
@@ -62,4 +69,5 @@ configs:
       }
 
 volumes:
+  postgres-data:
   pgadmin-data:

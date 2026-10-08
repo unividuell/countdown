@@ -82,12 +82,13 @@ class ReviewServiceTest(
                 outcome = null,
             )
             override fun requiresReveal(params: ReviewParams) = false
+            override fun scoresOnDuration(params: ReviewParams) = false
             override fun allowsPeerReview(params: ReviewParams) = true
         }
     }
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     /** A community whose countdown starts in 2099, with its creator as the first ACTIVE, admin member. */
     private fun aCommunity(name: String): Pair<Community, UUID> {
@@ -290,7 +291,7 @@ class ReviewServiceTest(
             edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
             params = requireNotNull(catalog.handle("guess-hue")).draw(
                 random = GameRandom.independent(SecureRandom()),
-                context = RoundContext(roundNumber = roundNumber, phase = Phase.ONE),
+                context = RoundContext(communityId = edition.communityId, roundNumber = roundNumber, phase = Phase.ONE),
             ),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )

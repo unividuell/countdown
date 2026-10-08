@@ -49,6 +49,8 @@ export interface LabRoundResponse<P = unknown> {
   game: string
   displayName: string
   phase: LabPhase
+  /** Before the reveal and after it alike — mirrors `RoundResponse.scene`. */
+  scene: unknown
   /**
    * `null` until `revealed` — withheld the same way `solution` already is: for a game that asked
    * for a deliberate reveal, the payload IS the board, so sending it early would defeat the click
@@ -66,6 +68,7 @@ export interface LabRoundResponse<P = unknown> {
   tookOverRound: boolean
   awardRule: LabAwardRule
   awardPoints: number
+  scoresOnDuration: boolean
   /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
   myStage: number
   /**

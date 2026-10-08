@@ -38,7 +38,7 @@ class RoundScoringPeerReviewTest(
     private val at = Instant.parse("2026-08-12T10:00:00Z")
 
     private fun aUser(): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = "player")).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = "player")).id)
 
     private fun aRound(slug: String, award: Award): RoundGame {
         val creator = aUser()

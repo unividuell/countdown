@@ -95,6 +95,9 @@ export interface AcceptResponse {
   name: string
   slug: string
 }
+export interface InvitePeekResponse {
+  name: string
+}
 
 /**
  * Shared by `CountdownResponse` and `RoundResponse`, whose server-side DTOs
@@ -137,7 +140,7 @@ export interface SuperAdminCommunity {
 }
 /**
  * `flagged` is the is_super_admin column, `allowlisted` is membership in
- * SUPER_ADMIN_GITHUB_LOGINS. They drift because the flag is re-derived on every login.
+ * SUPER_ADMINS. They drift because the flag is re-derived on every login.
  */
 export interface SuperAdminUser {
   githubLogin: string
@@ -195,6 +198,8 @@ export interface GameDto {
   displayName: string
   /** True when this round wants a deliberate reveal — then it may be revealed exactly once. */
   requiresReveal: boolean
+  /** Whether reveal-to-guess is the score — what starts the band's stopwatch. */
+  scoresOnDuration: boolean
 }
 
 /**
@@ -247,6 +252,12 @@ export interface RoundResponse {
    * them.
    */
   previousRoundNumber: number | null
+  /**
+   * What may be with the client before the reveal: the scene the game is set up on under the
+   * cover. On every answer to an announced round, before the reveal and after it. `null` for a
+   * game whose scene is its code alone. The shape belongs to the game.
+   */
+  scene: unknown
   /** Only once the viewer has revealed. The shape belongs to the game. */
   payload: unknown
   /** Only once the viewer has guessed. */

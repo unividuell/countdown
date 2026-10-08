@@ -31,12 +31,28 @@
 		<kotlin.version>2.4.10</kotlin.version>
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
 		<kotlin-logging.version>8.0.4</kotlin-logging.version>
+		<!-- Ours, from core/maven-repo: not on Maven Central (see dependency-updates.md). -->
+		<unividuell-auth.version>0.2.0-SNAPSHOT</unividuell-auth.version>
 		<spring-modulith.version>2.1.1</spring-modulith.version>
+		<metadata-extractor.version>2.19.0</metadata-extractor.version>
+		<twelvemonkeys.version>3.12.0</twelvemonkeys.version>
 		<!-- Image tag for spring-boot:build-image. Override in CI: -Dcountdown.image.tag=staging
 		     (the -Dspring-boot.build-image.imageName user property does NOT override a pom-set
 		     <image><name>, so parametrize the name here instead). -->
 		<countdown.image.tag>latest</countdown.image.tag>
 	</properties>
+	<repositories>
+		<!-- The auth lib is not on Maven Central: each app commits the lib's file repository
+		     (the lib's README, "Releasing"). -->
+		<repository>
+			<id>unividuell-local</id>
+			<url>file://${project.basedir}/maven-repo</url>
+			<!-- A redeployed snapshot must win over the copy in ~/.m2 and in CI's Maven cache. -->
+			<snapshots>
+				<updatePolicy>always</updatePolicy>
+			</snapshots>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -57,6 +73,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter</artifactId>
+			<version>${unividuell-auth.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -104,6 +125,21 @@
 			<groupId>javazoom</groupId>
 			<artifactId>jlayer</artifactId>
 			<version>1.0.1</version>
+		</dependency>
+		<dependency>
+			<!-- The JDK applies no EXIF orientation, and phone photos almost always carry one -
+			     without this every portrait shot lies on its side in the listing. Reading the tag
+			     is all we use it for. -->
+			<groupId>com.drewnoakes</groupId>
+			<artifactId>metadata-extractor</artifactId>
+			<version>${metadata-extractor.version}</version>
+		</dependency>
+		<dependency>
+			<!-- ImageIO has no WebP reader in any JDK (measured on 25: BMP/GIF/JPEG/PNG/TIFF/WBMP
+			     only), and WebP is what modern phones increasingly hand over. -->
+			<groupId>com.twelvemonkeys.imageio</groupId>
+			<artifactId>imageio-webp</artifactId>
+			<version>${twelvemonkeys.version}</version>
 		</dependency>
 
 		<dependency>

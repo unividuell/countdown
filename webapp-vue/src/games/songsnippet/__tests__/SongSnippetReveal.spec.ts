@@ -16,7 +16,13 @@ const SOLUTION: SongSnippetSolution = {
  */
 function mountReveal() {
   return mount(SongSnippetReveal, {
-    props: { solution: SOLUTION, durations: [0.1, 0.5, 2, 8, 15], rows: [], live: false },
+    props: {
+      solution: SOLUTION,
+      durations: [0.1, 0.5, 2, 8, 15],
+      rows: [],
+      live: false,
+      animate: false,
+    },
     global: { stubs: { SongPlayerReveal: true, SongSnippetScoreboard: true } },
   })
 }

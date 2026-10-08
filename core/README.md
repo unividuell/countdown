@@ -1,12 +1,12 @@
 ## Running locally
 
-The default local setup needs **no GitHub OAuth App and no credentials** — it logs in
-through a seeded test-user picker (see step 3). Set up a real OAuth App only to replay
-the production login flow locally (see "Real GitHub login" below).
+The default local setup needs **no OAuth client and no credentials** — it signs in through the
+auth lib's test-user picker (see step 3). Use the GitHub App only to replay the production login
+locally (see "Real GitHub login" below).
 
-1. Start Postgres + the app, granting a seeded user super-admin in the same command:
+1. Start Postgres + the app, granting a test user super-admin in the same command:
    ```bash
-   cd core && SUPER_ADMIN_GITHUB_LOGINS=Bender ./mvnw spring-boot:run
+   cd core && SUPER_ADMINS=test:bender ./mvnw spring-boot:run
    ```
    Spring Boot's docker-compose support brings up `compose.yaml` from the repo root
    (Postgres 18 + pgAdmin). It finds it via `spring.docker.compose.file: ../compose.yaml`
@@ -16,12 +16,13 @@ the production login flow locally (see "Real GitHub login" below).
    rather than the one the IDE offers to generate. The only thing it does differently is set the
    working directory to `core/`, and that is the whole difference between booting and
    `'files' content [../compose.yaml] must exist` — an IDE run configuration starts in the project
-   root, where `../compose.yaml` points above the repo. Add `SUPER_ADMIN_GITHUB_LOGINS` to its
+   root, where `../compose.yaml` points above the repo. Add `SUPER_ADMINS` to its
    environment for the same effect as the command above.
 
    The variable has to be on the start command, not exported afterwards:
-   `app.super-admin-github-logins` is bound when the context starts, so a running app never
-   picks it up. Its value is a comma-separated list of logins granted `ROLE_SUPER_ADMIN`.
+   `unividuell.auth.roles.super-admin` is bound when the context starts, so a running app never
+   picks it up. Its value is a comma-separated list of `provider:login` entries granted
+   `ROLE_SUPER_ADMIN`; an entry without its provider prefix refuses to start.
 
    **Two worktrees share one container.** `compose.yaml`'s `name: countdown` is fixed on purpose
    (see the comment above it), which also means two backends started from two different worktrees
@@ -35,22 +36,23 @@ the production login flow locally (see "Real GitHub login" below).
    all. The variable is wired through `application.yaml` under that exact name, where it
    defaults to **empty** — so with nothing set, nobody holds the role.
    Creating a community requires the `community_creation_allowed` clearance or super-admin,
-   no seeded user carries the clearance, and the only way to grant it is the super-admin area
+   no test user carries the clearance, and the only way to grant it is the super-admin area
    (`/super-admin/users`) — which needs a super-admin. So without this step every
    `POST /api/communities` answers `403`.
-   With the test-login picker on (the default), the value must be one of the **seeded** logins
-   from step 3, not your own GitHub login: only those rows exist, and only they can be picked.
-   Matching is case-insensitive, so `bender` works as well as `Bender`.
-   `.claude/launch.json`'s `backend` configuration already sets `SUPER_ADMIN_GITHUB_LOGINS=bender`,
+   With the test-login picker on (the default), the value must name a test user from step 3
+   with the `test:` prefix — not your own GitHub login. Matching is case-insensitive, so
+   `test:bender` finds `Bender`.
+   `.claude/launch.json`'s `backend` configuration already sets `SUPER_ADMINS=test:bender`,
    so starting from there needs none of this.
    The ranking row on a community home starts at all zeros and fills up as members play rounds —
    there is no stand-in for game points any more, in no environment.
-3. Log in at `http://localhost:8080/login/github` — a picker offers the seeded Futurama
-   users (`Fry`, `leela`, `Bender`, `prof`, `amy`, `hermes`, `zoidberg`, `scruffy`, `zapp`,
-   `kif`, `nibbler`, `mom`). Afterwards `GET /api/me` returns the
-   provisioned user (or `401` when not logged in). Pick the login from step 2 to get the
-   super-admin, then clear any other seeded user for community creation under
-   `/super-admin/users` — the clearance is read live, so it takes effect without a re-login.
+3. Sign in at `http://localhost:8080/login/start` — the picker offers twelve Futurama test users
+   (`Fry`, `leela`, `Bender`, `prof`, `amy`, `hermes`, `zoidberg`, `scruffy`, `zapp`,
+   `kif`, `nibbler`, `mom`); a test user's row is created the first time it is picked. Afterwards
+   `GET /api/me` returns the provisioned user (or `401` when not signed in). Pick the user from
+   step 2 to get the super-admin, then clear any other test user for community creation under
+   `/super-admin/users` — the clearance is read live, so it takes effect without a re-login. A
+   test user is listed there only after its first sign-in.
 
 When developing against the `webapp-vue` SPA (the normal setup), start the SPA too and use
 `http://localhost:5173` instead — Vite proxies `/api`, `/oauth2`, `/login` and `/logout` to
@@ -58,23 +60,19 @@ this backend. See `webapp-vue/README.md`.
 
 ### Real GitHub login
 
-To exercise the production OAuth flow instead of the picker:
+To exercise the production login instead of the picker, sign in through the organisation's GitHub
+App. Its redirect URIs already include `http://localhost:5173/login/oauth2/code/github` (through
+the SPA) and `http://localhost:8080/login/oauth2/code/github` (the backend alone). Its client
+secret is the production one: keep it in this shell only, never in a file.
 
-1. Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps).
-   - Homepage URL: `http://localhost:8080`
-   - Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
-   - **When logging in through the SPA**, use the SPA origin instead:
-     `http://localhost:5173/login/oauth2/code/github`. A GitHub OAuth App allows only one
-     callback URL — pick the one matching the origin you log in from. The `:8080` callback
-     is only for testing the backend standalone.
-2. Point the app at your app and turn the picker off:
-   ```bash
-   export GITHUB_CLIENT_SECRET=...        # from your OAuth App
-   cd core && ./mvnw spring-boot:run \
-     -Dspring-boot.run.arguments="--spring.security.oauth2.client.registration.github.client-id=<your-client-id> --app.test-auth.enabled=false"
-   ```
-   With `app.test-auth.enabled=false` there is no seeding and no picker, and
-   `/login/github` redirects into the real GitHub flow.
+```bash
+export GITHUB_CLIENT_SECRET=…   # the GitHub App's client secret
+cd core && SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_CLIENTSECRET="$GITHUB_CLIENT_SECRET" ./mvnw spring-boot:run \
+  -Dspring-boot.run.arguments="--spring.security.oauth2.client.registration.github.client-id=Iv23liJTgm6EeJ6XshRh --unividuell.auth.test-login.enabled=false"
+```
+
+The secret goes in as an environment variable rather than a start argument, so it stays out of
+the process list. With the test login off, `/login/start` sends you on to GitHub.
 
 ## Guess Hue: checking the dataset
 
@@ -180,7 +178,9 @@ because that request also carries no `Referer`.
 read by docker compose, and imported by the backend through `spring.config.import` (see
 `application.yaml`); `.env.example` carries the empty lines to copy. Nothing else picks them up:
 `.run/CoreApplication.run.xml` and `.claude/launch.json` are tracked files, so a key pasted there
-would be committed.
+would be committed. A git worktree starts without the file — git carries no gitignored file over —
+so the backend's launch configuration links the main checkout's one in first, through
+`scripts/link-dev-env.sh`.
 
 For a local board you need two more keys in Cloud Console, next to the deployed ones — a key
 carries exactly one restriction, and `localhost` is not the production hostname:

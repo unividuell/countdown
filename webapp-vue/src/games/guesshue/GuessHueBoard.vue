@@ -8,6 +8,8 @@
  * without dragging any wheel or hold logic along.
  */
 import { computed, ref, watch } from 'vue'
+import type { AwardRule } from '@/api/types'
+import GuessHueBriefing from './GuessHueBriefing.vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import HueWheelInput from './HueWheelInput.vue'
 
@@ -16,15 +18,9 @@ const props = defineProps<{
   initHue: number
   saturation: number
   lightness: number
-  /**
-   * Half-window in degrees, or `null` in phase two — there is no gate there, only the closest
-   * guess scores. Safe to show before guessing: it is set from the phase alone (see the backend's
-   * `GuessHuePayload` KDoc), so it tells the player how forgiving the round is, never where the
-   * target hue lies. Picks the hint sentence below; it plays no other part — the wheel itself
-   * stays tolerance-agnostic.
-   */
-  toleranceDeg: number | null
   disabled: boolean
+  awardRule: AwardRule | null
+  awardPoints: number | null
 }>()
 
 const emit = defineEmits<{ guess: [hue: number] }>()
@@ -43,12 +39,6 @@ const ready = ref(false)
 
 const color = computed(
   () => `hsl(${hue.value} ${props.saturation * 100}% ${props.lightness * 100}%)`,
-)
-
-const hint = computed(() =>
-  props.toleranceDeg === null
-    ? 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Hier zählt nur, wer am nächsten dran liegt.'
-    : 'Du stellst nur den Farbton ein — Sättigung und Helligkeit sind vorgegeben. Eine kleine Abweichung ist erlaubt.',
 )
 
 // `group` exists for one descendant: the centre button reacts to the leave class the reveal
@@ -97,6 +87,10 @@ const hint = computed(() =>
       </HueWheelInput>
     </div>
 
-    <p data-test="hue-hint" class="mt-8 text-xs text-neutral-500">{{ hint }}</p>
+    <GuessHueBriefing
+      class="mt-8"
+      :award-rule="props.awardRule"
+      :award-points="props.awardPoints"
+    />
   </div>
 </template>

@@ -22,7 +22,7 @@ class CommunityUserSelectionRepositoryTest(
 ) {
     @Test
     fun `upsert sets then overwrites the selected community`() {
-        val uid = users.save(User(githubId = 3L, githubLogin = "u3")).id!!
+        val uid = users.save(User(subject = "3", githubLogin = "u3")).id!!
         val c1id = communities.save(Community(name = "One", slug = "one", createdBy = uid)).id!!
         val c2id = communities.save(Community(name = "Two", slug = "two", createdBy = uid)).id!!
 

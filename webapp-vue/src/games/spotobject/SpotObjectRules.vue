@@ -10,8 +10,8 @@
 <template>
   <ul class="ms-4 list-disc space-y-1">
     <li>
-      Zieh das Männchen vom rechten Rand irgendwo auf die Weltkarte — oder ziel mit dem Fadenkreuz
-      auf eine blaue Linie und drück drauf. Beides bringt dich an dieselbe Stelle.
+      Zieh das Männchen vom rechten Rand irgendwo auf die Weltkarte — oder drück direkt auf eine
+      blaue Linie. Beides bringt dich an dieselbe Stelle.
     </li>
     <li>Hast du den gesuchten Gegenstand vor dir, drück auf „Gefunden“.</li>
     <li>

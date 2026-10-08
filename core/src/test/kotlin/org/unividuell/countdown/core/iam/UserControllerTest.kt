@@ -37,7 +37,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         displayName: String? = null,
         communityCreationAllowed: Boolean = false,
     ) = User(
-        id = uid, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",
+        id = uid, subject = "1", githubLogin = "octocat", githubName = "The Octocat",
         email = "cat@example.com", displayName = displayName, isSuperAdmin = isSuperAdmin,
         communityCreationAllowed = communityCreationAllowed,
     )
