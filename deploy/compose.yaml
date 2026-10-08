@@ -89,7 +89,7 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - SUPER_ADMIN_GITHUB_LOGINS=${SUPER_ADMIN_GITHUB_LOGINS:-}
+      - SUPER_ADMINS=${SUPER_ADMINS:-}
       # Unlocks the fake sign-in picker on staging; prod shares this file but never reads the
       # value (the picker does not exist there), so the default keeps Compose from warning.
       - FAKE_SIGN_IN_KEY=${FAKE_SIGN_IN_KEY:-}

@@ -44,7 +44,7 @@ value.shouldNotBeNull()                 // io.kotest.matchers.nulls.*
 value.shouldBeNull()
 flag shouldBe true
 shouldThrow<NoSuchElementException> { ... }   // io.kotest.assertions.throwables.*
-result.shouldBeInstanceOf<CountdownOAuth2User>()  // io.kotest.matchers.types.*
+result.shouldBeInstanceOf<AuthPrincipal>()  // io.kotest.matchers.types.*
 authorities shouldContain "ROLE_USER"   // io.kotest.matchers.collections.*
 ```
 
@@ -60,9 +60,11 @@ every { profileService.update(uid, "New Name", "#abcdef") } returns updatedUser
 ```
 
 Plain unit test (no Spring): construct the real collaborator with mockk doubles —
-`mockk<UserRepository>()`, `every { repo.findByGithubId(42L) } returnsMany listOf(null, existing)`,
+`mockk<UserRepository>()`,
+`every { repo.findByProviderAndSubject(provider = "github", subject = "42") } returnsMany listOf(null, existing)`,
 `every { repo.save(match { it.id == null }) } throws DuplicateKeyException("dup")`,
-`verify(exactly = 2) { repo.findByGithubId(42L) }`. Prefer mockk over hand-rolled fakes.
+`verify(exactly = 2) { repo.findByProviderAndSubject(provider = "github", subject = "42") }`. Prefer
+mockk over hand-rolled fakes.
 
 ## MockMvc Kotlin DSL + Spring Security test
 
@@ -72,18 +74,24 @@ Apply spring-security-test post-processors inside the DSL block via `with(...)`:
 mockMvc.get("/api/me").andExpect { status { isUnauthorized() } }
 
 mockMvc.get("/api/me") {
-    with(authentication(OAuth2AuthenticationToken(principal, principal.authorities, "github")))
+    with(principalFor(user))
 }.andExpect {
     status { isOk() }
     jsonPath("$.username") { value("Mr. Custom") }
 }
 
 mockMvc.patch("/api/me") {
-    with(authentication(...)); with(csrf())
+    with(principalFor(user)); with(csrf())
     contentType = MediaType.APPLICATION_JSON
     content = """{"displayName":"New Name","bgColorHex":"#abcdef"}"""
 }.andExpect { status { isOk() } }
 ```
+
+`principalFor` (`TestPrincipals.kt`) builds the auth lib's `AuthPrincipal` for a `User` — role
+`SUPER_ADMIN` exactly when the row is flagged; `principalFor(superAdmin = true)` when only the role
+matters. Don't build tokens by hand. To go through the real test door instead, `POST /login/test/as`
+and carry the `SESSION` cookie from its `Set-Cookie` header — not `request.session`: Spring Session
+wraps the request, and the `MvcResult` knows only the unwrapped one (`TestLoginEndToEndTest`).
 
 ## Test isolation
 
@@ -91,16 +99,17 @@ Annotate repository/service integration tests with `@Transactional` so each
 method rolls back — assertions like `repository.count()` must not see state from
 sibling tests.
 
-`app.test-auth.enabled` is `true` on the test classpath, so **`TestUserSeeder` seeds its twelve
-Futurama users into every `@SpringBootTest` context** — rows `@Transactional` cannot roll back,
-because they are committed before the test starts. Any test asserting *exact* membership over all
-users (a full `list()`, a `count()`, a roster) must switch the seeder off:
+No users are seeded. A test user's row appears when a test signs in through the lib's
+`POST /login/test/as`, and it is committed — `@Transactional` cannot roll back what a request
+wrote. Any test asserting *exact* membership over all users (a full `list()`, a `count()`) runs in
+a context of its own, which also keeps the test door shut there:
 
 ```kotlin
-@TestPropertySource(properties = ["app.test-auth.enabled=false"])
+@TestPropertySource(properties = ["unividuell.auth.test-login.enabled=false"])
 ```
 
-`SuperAdminRosterServiceTest` and `SuperAdminUserServiceTest` are the precedents.
+`SuperAdminUserServiceTest` is the precedent. The test classpath registers a placeholder GitHub
+client so that such a context still has a way in; the lib refuses to start without one.
 
 A context's Testcontainers database is shared by every test class that runs in it. A test that commits rows (no
 `@Transactional`) into a set every community can see — the global image pool — deletes them after
@@ -127,8 +136,8 @@ busy Docker host.
 Isolation lives one level down. The `JdbcConnectionDetails` bean **is** per context, and each
 instance issues `CREATE DATABASE countdown_test_<n>` before returning its URL, so every context
 still starts from an empty, freshly migrated database. Don't collapse that to one shared database:
-`TestUserSeeder` commits before any test runs, and the classes that set
-`app.test-auth.enabled=false` do so precisely to observe an empty table.
+test sign-ins commit their rows, and the classes that switch the test login off do so precisely to
+observe a table no other class wrote to.
 
 Consolidating servers consolidates their **connection budget**. Every context holds its pool open
 for the whole run, so pool size multiplies by context count against a single `max_connections` —

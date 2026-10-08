@@ -14,13 +14,13 @@ Its version is **not** in the Spring Boot BOM, so it lives in `core/pom.xml` as
 Declare the logger **inside the class**, never at file top level:
 
 ```kotlin
-@Controller
-class DevLoginController(/* … */) {
+@Service
+class CountdownService(/* … */) {
 
     private val logger = KotlinLogging.logger {}
 
-    fun picker(): String {
-        logger.warn { "no database row for seed login '$login' — omitting its button" }
+    fun forSlug(/* … */): CountdownResponse {
+        logger.warn { "community $communityId has no active edition — countdown shows no date" }
     }
 }
 ```
@@ -28,7 +28,7 @@ class DevLoginController(/* … */) {
 - `KotlinLogging.logger {}` names the logger after the lambda's **enclosing** declaration. Inside a
   class that is the class. At file top level it is the file's facade class instead — which is only
   the right name by coincidence, when the file happens to hold exactly one class named after it. A
-  file with two top-level declarations (`SeedUser` + `TestUserSeeder` in `TestUserSeeder.kt`) would
+  file with two top-level declarations (`MeResponse` + `UserController` in `UserController.kt`) would
   log both under the file's name, so the line no longer tells you where it came from. Keep it in the
   class and the name is right by construction.
 - No class literal is needed either way — a rename carries the logger name with it.
@@ -39,10 +39,10 @@ class DevLoginController(/* … */) {
 
 ## What to log
 
-Prefer a log line where behaviour degrades **silently**. The case that motivated this: the dev-login
-picker drops the button of a seed user whose database row is missing — one button short beats a
-broken page, but an absent button with no log line is close to undiagnosable. Name the identifier
-that went missing, so the line points at the cause rather than announcing that something happened.
+Prefer a log line where behaviour degrades **silently**. Example: a community without an active
+edition gets a countdown without a date — a page short of one fact beats a 500, but a missing date
+with no log line is close to undiagnosable. Name the identifier that went missing, so the line
+points at the cause rather than announcing that something happened.
 
 Cover such a branch with a test as well. A log statement on a path no test reaches proves nothing —
 and the test is what shows the branch is reachable and does not blow up.

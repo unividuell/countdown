@@ -1,53 +1,54 @@
 # Security & Auth
 
-Spring Security 7 + OAuth2 client + Spring Session JDBC. The `iam` module owns the
-app-wide `SecurityFilterChain` today (acceptable while auth is the only security
-concern; revisit when other modules gain protected resources).
+Sign-in, the SPA contract and the test login come from the auth lib
+**`org.unividuell:auth-spring-boot-starter`** — its
+[README](https://github.com/unividuell/auth-spring-boot-starter#readme) is the contract
+(endpoints, configuration, start-up refusals, its own rules). This file keeps what is countdown's.
+Design: [the auth-lib spec](../../docs/superpowers/specs/2026-10-03-auth-lib-design.md). The lib
+ships through the committed file repository `core/maven-repo/` — see
+[dependency-updates.md](dependency-updates.md).
 
-## Login & identity
+## Accounts
 
-- **GitHub OAuth2 only**, no local passwords. Scope `read:user`.
-- A custom `OAuth2UserService` (delegating to `DefaultOAuth2UserService`) extracts
-  GitHub claims, **provisions/syncs** the local user on every login, and returns a
-  custom principal (`OAuth2User`) carrying our domain user. `getName()` returns our
-  UUID. Fail fast on missing claims with `OAuth2AuthenticationException` (routes
-  through the OAuth error flow), not `ClassCastException`/NPE.
-- Sessions persist in Postgres via **Spring Session JDBC**
-  (`spring.session.jdbc.initialize-schema=never`; Flyway owns the schema, in
-  `db/migration/__root/`). The principal and its domain user must be
-  `Serializable` with a stable `serialVersionUID` (JDK serialization).
-- `DefaultOAuth2UserService.loadUser` is `final` in Security 7 — **delegate**
-  (constructor injection), don't subclass. When a `@Service` also implements the
-  type it injects, give it a secondary `@Autowired` constructor that supplies a
-  fresh delegate to avoid self-injection.
+- **One row per `(provider, subject)`** in `iam.users`, never linked — not even by e-mail: GitHub's
+  `/user` e-mail is an unverified profile field, so linking on it hands accounts over.
+  `github_login`/`github_name` keep their names until a second real provider arrives.
+- `UserProvisioningService` is the lib's one hook (`AccountProvisioner`): a single
+  `INSERT … ON CONFLICT (provider, subject) DO UPDATE … RETURNING id`. It writes the provider's
+  fields and `is_super_admin`, never `display_name`, `bg_color_hex` or `community_creation_allowed`.
+- Controllers take `@AuthenticationPrincipal me: AuthenticatedUser` — a typealias for the lib's
+  `AuthPrincipal` (`me.id`, `me.provider`, `me.login`, `me.roles`). `me.isSuperAdmin` is an
+  extension in `iam`; import it.
+- Sessions live in Postgres via **Spring Session JDBC**; Flyway owns the schema in
+  `db/migration/__root/` (`spring.session.jdbc.initialize-schema=never`). The principal is
+  JDK-serialized there, so a principal class that changes incompatibly ships with a `__root`
+  migration that empties `spring_session` (`V2` is the precedent) — or every old session answers
+  500 instead of 401.
 
-## SPA contract (same-origin)
+## No session for an anonymous request
 
-- Unauthenticated API calls return **401** (not a redirect). The frontend triggers
-  login by navigating to `/oauth2/authorization/github`. This is deliberate —
-  set `exceptionHandling { authenticationEntryPoint = HttpStatusEntryPoint(UNAUTHORIZED) }`
-  and document it so it isn't mistaken for a misconfiguration.
-- The SPA's single "Login with GitHub" button navigates to **`/login/github`** (not the OAuth
-  endpoint directly) so the *server* can choose GitHub vs the test picker. See "Test login".
-- **CSRF** via `CookieCsrfTokenRepository.withHttpOnlyFalse()` +
-  `CsrfTokenRequestAttributeHandler()` (plain handler so the cookie value matches
-  the header — avoids the BREACH/XOR mismatch that breaks SPAs). The SPA must echo
-  the `XSRF-TOKEN` cookie as the `X-XSRF-TOKEN` header on mutating requests
-  (incl. `POST /logout`). The token cookie is only written once the deferred
-  `CsrfToken` is *read*, which a plain `GET /api/me` never does — so register a
-  `CsrfCookieFilter` (an `OncePerRequestFilter` that reads `csrfToken.token`)
-  **after `CsrfFilter`** (`addFilterAfter<CsrfFilter>(CsrfCookieFilter())`) to
-  materialise it on every request. Without it, the SPA has no cookie to echo and
-  `POST /logout` returns **403**.
-- Logout: `POST /logout` → **204** (`HttpStatusReturningLogoutSuccessHandler`).
-- Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` in production.
-- **Disable the request cache** (`requestCache { requestCache = NullRequestCache() }`). On a 401 the `ExceptionTranslationFilter` caches the intercepted request *regardless* of the entry point; for a SPA the intercepted request is the bootstrap `GET /api/me`, and the OAuth2 success handler would replay it — landing the user on raw `/api/me` JSON instead of the app. With no request cache, login success goes to `/` and the SPA owns navigation.
-- **Dev behind the Vite proxy:** the proxy must be transparent (`changeOrigin: false`) so the backend sees the browser's `Host` and builds OAuth2 `redirect_uri`/redirects on the SPA origin; the GitHub OAuth App callback is the SPA origin. See [frontend.md](frontend.md).
+Never inject `HttpSession` or call `getSession()`/`getSession(true)` in code that runs for an
+anonymous request — a filter, an interceptor, a `@ModelAttribute`, a public endpoint. With Spring
+Session JDBC each session is a row: a sibling app grew ~88k empty sessions from one cookie-less
+healthcheck. The lib keeps its own paths session-free; countdown's code is countdown's job.
+
+## SPA contract — countdown's side
+
+- The SPA's one sign-in button navigates to **`/login/start`**; the lab's „Spieler wechseln“ adds
+  `?redirect=<path>`. The bare `/login` is the SPA's sign-in page — the lib maps nothing there, and
+  edge and dev proxy forward only the paths below it ([deployment-edge.md](deployment-edge.md),
+  [frontend.md](frontend.md)).
+- `unividuell.auth.csrf-cookie.excluded-paths: /api/preview/**` — the link-preview endpoint answers
+  crawlers publicly cacheable, and a `Set-Cookie` there defeats every shared cache. The test
+  classpath's `application.yaml` repeats it, since it replaces the main file.
+- **Dev behind the Vite proxy:** transparent (`changeOrigin: false`), so OAuth2 `redirect_uri` and
+  redirects land on the SPA origin. See [frontend.md](frontend.md).
 
 ## Authorization rules
 
-- Order matters: specific `permitAll` paths and role-gated paths **before**
-  `anyRequest authenticated` (the catch-all).
+- `SecurityConfig` holds countdown's rules only; the lib's (`/login/**`, `/oauth2/**`, error
+  dispatches) run first. Order matters: specific `permitAll` and role-gated paths **before**
+  `anyRequest authenticated`.
 - Keep actuator exposure narrow (`/actuator/health`, not `/actuator/**`).
 
 ## Rate-limited endpoints reachable without a session
@@ -71,20 +72,12 @@ already requires a session, so it is simply not counted here — there is no sec
 
 ## Roles
 
-- The app-level admin is **super-admin**: `is_super_admin` → authority
-  `ROLE_SUPER_ADMIN`; `/api/super-admin/**` requires `hasRole("SUPER_ADMIN")`.
-- Granted declaratively via an allowlist of GitHub logins
-  (`app.super-admin-github-logins`), **re-evaluated on every login** (so
-  adding/removing a login grants/revokes on next sign-in). The empty-string env
-  default (`${SUPER_ADMIN_GITHUB_LOGINS:}`) binds to `emptyList()`, not a
-  one-element list — nobody holds the role.
-- **Compare/key against `SuperAdminProperties.normalizedSuperAdminGithubLogins`**
-  (trimmed, blanks dropped) — never re-derive that filtering per consumer. A
-  duplicated `filter { it.isNotBlank() }` with no `.trim()` in both `isSuperAdmin`
-  and `SuperAdminRosterService` let `"alice, bob"` (space after the comma)
-  silently deny `bob` the role while leaking a phantom `" bob"` row from the
-  roster endpoint — same bug, two call sites, because the normalisation wasn't
-  centralised.
+- The app-level admin is **super-admin**: role `SUPER_ADMIN` → authority `ROLE_SUPER_ADMIN`;
+  `/api/super-admin/**` requires `hasRole("SUPER_ADMIN")`.
+- Granted by configuration: `unividuell.auth.roles.super-admin` (env **`SUPER_ADMINS`**),
+  comma-separated `provider:login` — `github:<login>` in production, `test:<login>` on staging and
+  locally. An entry without its prefix refuses to start; empty means nobody. The lib re-evaluates
+  the list at every sign-in and hands the result to the provisioner, which stores `is_super_admin`.
 - The name "super-admin" is deliberately distinct from future **community-admins**
   — don't conflate them when adding finer-grained roles later.
 - **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
@@ -95,12 +88,12 @@ already requires a session, so it is simply not counted here — there is no sec
   `SuperAdminUserController` the *user administration* — list, detail, and the
   community-creation clearance); there is no aggregating `superadmin` module, because that would
   force "give me everything" ports into the shared module API for the benefit of one UI.
-- **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived on every login,
-  so a newly allowlisted person has no flag until they sign in and a removed one keeps it until
-  their next sign-in. Anything reporting on super-admins must read both sources and say which
-  one a row came from — `GET /api/super-admin/super-admins` is the reference. Match the two
-  **case-insensitively** (lowercased login), because that is how `SuperAdminProperties` grants
-  the role; a case-sensitive join reports one person twice.
+- **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived at every sign-in,
+  so a newly listed person has no flag until they sign in and a removed one keeps it until their
+  next. Anything reporting on super-admins reads both sources and says which one a row came from —
+  `GET /api/super-admin/super-admins` is the reference, reading the list through
+  `RoleAllowlist.members("SUPER_ADMIN")`. Key rows by **provider plus lowercased login**:
+  `github:prof` and `test:prof` are two people, and the lib matches logins case-insensitively.
 - **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
   Java's: the slash before a `**` glob opens a second comment, so the doc comment's real `*/` closes
   only the inner one and the compiler swallows the rest of the file, reporting `Unclosed comment`
@@ -112,11 +105,10 @@ Finer-grained permissions than the super-admin role live in a column on `iam.use
 **read live on every request**. The first one is `community_creation_allowed`, gating
 `POST /api/communities`.
 
-- **`AuthenticatedUser` is deliberately not extended with them.** `CountdownOAuth2User` (and the
-  `User` it carries) is **JDK-serialized into the Spring Session JDBC table at login and never
-  refreshed** — a clearance granted after sign-in would stay invisible in the principal until the
-  next login. So a permission read from `me` would silently be a permission read from a snapshot.
-  Adding the field to the principal is the tempting shortcut; it is the bug.
+- **The principal is deliberately not extended with them.** `AuthPrincipal` is **JDK-serialized
+  into the Spring Session JDBC table at sign-in and never refreshed** — a clearance granted after
+  sign-in would stay invisible in it until the next login. So a permission read from `me` would
+  silently be a permission read from a snapshot. Only roles from configuration belong in it.
 - **Cross-module reads go through a port on the `iam` public API**, not through the principal and
   not by reaching into `iam.internal`: `UserQuery.mayCreateCommunities(id)` loads the row and
   returns `false` for an unknown id. `CommunityController.create` calls exactly that and throws
@@ -129,73 +121,30 @@ Finer-grained permissions than the super-admin role live in a column on `iam.use
   shows what is actually stored; `GET /api/me` carries the **effective** one, because that is what
   the SPA gates its UI on. A super-admin therefore shows `communityCreationAllowed: false` and
   `mayCreateCommunities: true` at the same time, and that is correct.
-- **`is_super_admin` is the deliberate exception.** It is re-derived from the allowlist on *every*
-  login, so keeping it on the principal is safe and its staleness window (until the next sign-in)
-  is by design — see the drift note above. Do not generalise that exception to permissions nobody
-  re-derives at login.
+- **`SUPER_ADMIN` is the deliberate exception.** It comes from configuration and is re-evaluated at
+  *every* sign-in, so carrying it in the principal is safe and its staleness window (until the next
+  sign-in) is by design — see the drift note above. Do not generalise that exception to
+  permissions nobody re-derives at sign-in.
 
-## Test login (non-prod only — Firebase-emulator pattern)
+## Test login (the lib's; never in production)
 
-To exercise multi-user flows without real GitHub accounts, non-prod envs offer a **test login**.
-One SPA button → `/login/github`; the **server** decides by profile + a config flag:
-
-- `app.test-auth.enabled` (default `true` in `application.yaml`; `false` in
-  `application-production.yaml`; `true` in `application-staging.yaml`).
-- **Gating is doubled:** the picker controller (`/login/github` → inline-HTML test-user picker),
-  the `POST /login/github/as` login action, and the `TestUserSeeder` are **all**
-  `@Profile("!production")` **and** `@ConditionalOnProperty("app.test-auth.enabled")` → in prod they
-  are not wired at all. When the flag is off, a `GitHubLoginRedirectController`
-  (`@ConditionalOnProperty("app.test-auth.enabled", havingValue="false", matchIfMissing=true)`) maps
-  `/login/github` → `/oauth2/authorization/github`. Exactly one controller owns `/login/github`.
-- **`@ConditionalOnProperty` gotcha (Spring Boot 4):** use the full key as the value
-  (`@ConditionalOnProperty("app.test-auth.enabled")`), NOT `prefix=…, name=…` with a hyphenated
-  prefix — relaxed binding doesn't apply to the hyphenated prefix segment and the condition silently
-  never matches.
-- **Seeder** is an `ApplicationRunner` (idempotent), **not** Flyway — migrations can't be
-  profile/flag-gated and would leak test data into prod. Test users get **synthetic negative
-  `github_id`s**, one per seed row counting down from −1 (−1, −2, −3, …), so they never collide
-  with real (positive) GitHub ids; an id, once assigned to a row, is never reassigned. It also
-  re-applies both the identity fields (`githubLogin`, `githubName`, `displayName`) and the
-  super-admin allowlist on every run — insert **and** update — so a picker login grants
-  `ROLE_SUPER_ADMIN` the same way a real login would, and a row can never drift out of reach of
-  its own picker button; the update half matters because the seeder used to only insert, so a
-  stale value could never converge.
-- The picker POST carries the CSRF token as a hidden `_csrf` field (server embeds
-  `csrfToken.token`); `POST /login/github/as` builds a `CountdownOAuth2User` principal and persists
-  the session via `HttpSessionSecurityContextRepository().saveContext(...)` — indistinguishable from
-  a real login.
-- **`loginAs` only accepts seed logins** (`TestUserSeeder.seedLogins`, also the picker's source
-  list) — it is `permitAll`, so resolving any stored `github_login` would let anyone assume any
-  registered identity, including a super-admin one now that seed users can hold the flag.
-- **Flip locally:** set `app.test-auth.enabled=false` to replay the exact prod GitHub flow on
-  localhost (no seed, no picker). Real GitHub OAuth is otherwise exercised only in prod (staging
-  logs in via the picker; no separate staging GitHub OAuth App).
-- Tests: the test classpath also needs `app.test-auth.enabled` set; a test that counts users (e.g.
-  provisioning) must set it `false` to avoid the seeder's rows.
-- **Server-rendered HTML needs `<meta name="viewport">` — and the mobile-first expectation.**
-  Without the tag, mobile browsers lay the page out at their ~980px desktop fallback width and scale
-  it down to fit, which looks like a CSS/sizing bug but isn't one; check for the tag before touching
-  CSS. [frontend-ui.md](frontend-ui.md) is written for `webapp-vue`, but the expectation applies to
-  any HTML the backend renders directly, the picker included.
-- **Staging's picker is locked with a key** (`app.test-auth.key`, env `FAKE_SIGN_IN_KEY` — the one
-  place where env name and property path deliberately differ). `FakeSignInGate` guards **both**
-  doors, `/login/github` and `POST /login/github/as`: `TestUserSeeder` is committed, so an
-  unguarded POST is the picker without a picker. A browser presents a year-long cookie holding the
-  key's SHA-256 (`Path=/login`, `HttpOnly`, `SameSite=Lax`, `Secure` from the request) — the hash,
-  not the key, because the DevTools cookie panel shows values in the clear. Empty key = no lock,
-  which is the localhost default; under `staging` an empty key **fails the boot**, because Compose
-  passes a missing variable through as an empty string rather than as an error. Design:
-  [the gate spec](../../docs/superpowers/specs/2026-09-11-fake-sign-in-gate-design.md).
-- **The lock sits on the picker, not on the API** — so it holds only as long as the picker is the
-  only way into a session on staging. `/oauth2/authorization/github` stays `permitAll` and is
-  merely *inert* there today (placeholder client secret, callback pointing at the prod origin).
-  **Giving staging its own GitHub OAuth App would open a second entrance past the lock** and this
-  design would have to move with it.
+- localhost: the picker, unlocked. staging: locked by `FAKE_SIGN_IN_KEY`
+  (→ `unividuell.auth.test-login.key`, no default there). production: the beans do not exist.
+  `unividuell.auth.test-login.enabled=false` replays the real GitHub flow locally
+  (`core/README.md`, "Real GitHub login").
+- Test users are provider `test`, subject = login, provisioned on their first pick through the same
+  `UserProvisioningService` as a real sign-in — no seeder, no synthetic ids.
+- **Staging has no OAuth client.** The lib refuses a test-login key next to one:
+  `/oauth2/authorization/github` would be a door past the lock. Never give staging a client.
+- **Server-rendered HTML needs `<meta name="viewport">`** — without it phones lay the page out at
+  ~980px and scale it down, which reads as a CSS bug and is not one. The lib's pages carry it; so
+  must any HTML countdown renders itself (mobile-first: [frontend-ui.md](frontend-ui.md)).
 
 ## Secrets
 
-Never commit credentials. Inject via env: `${GITHUB_CLIENT_ID}`,
-`${GITHUB_CLIENT_SECRET}`, `${SUPER_ADMIN_GITHUB_LOGINS:}`.
+Never commit credentials. Inject via env: `${GITHUB_CLIENT_SECRET}` (production only — the GitHub
+App's client ID is public and committed in `application-production.yaml`), `${SUPER_ADMINS:}`,
+`${FAKE_SIGN_IN_KEY}`.
 
 - **A third-party API key restricted by HTTP referrer cannot make server-to-server
   calls** — the request carries no `Referer`, so the provider rejects it outright, no crash,

@@ -12,8 +12,7 @@ A request crosses **edge-caddy → countdown-web → core**.
   This server hosts several `unividuell.org` sites and only one process can bind 80/443, so TLS and
   host-based routing live there. It routes `countdown.unividuell.org` → `countdown-web:80` and
   `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the test-user
-  picker — see [security-and-auth.md](security-and-auth.md); there is no separate staging GitHub
-  OAuth App).
+  picker and has no OAuth client at all — see [security-and-auth.md](security-and-auth.md)).
 - **`countdown-web`'s Caddy** is baked into the image and is the SPA+API router. It listens on plain
   **`:80`** — the Caddyfile address is `:80`, **not** the domain — and does no TLS. The same image
   runs both stacks, told apart by `container_name` (`countdown-web` / `countdown-staging-web`).
@@ -22,8 +21,8 @@ A request crosses **edge-caddy → countdown-web → core**.
 
 ## Routing inside `countdown-web`
 
-Serve the SPA with HTML5 history-mode fallback and reverse-proxy `/api`, `/oauth2`, `/login`
-(incl. `/login/github`) and `/logout` to `core:8080`.
+Serve the SPA with HTML5 history-mode fallback and reverse-proxy `/api`, `/oauth2`, the paths below
+`/login/` (`/login/start`, `/login/test/*`, the OAuth callback) and `/logout` to `core:8080`.
 
 - **Use two mutually-exclusive `handle` blocks** —
   `handle @backend { reverse_proxy core:8080 }` then `handle { root; try_files {path} /index.html; file_server }`.
