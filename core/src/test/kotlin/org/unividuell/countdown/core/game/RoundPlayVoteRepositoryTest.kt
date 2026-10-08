@@ -41,7 +41,7 @@ class RoundPlayVoteRepositoryTest(
     private fun json(raw: String): JsonNode = mapper.readTree(raw)
 
     private fun aUser(): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = "player")).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = "player")).id)
 
     private fun aRound(slug: String): RoundGame {
         val creator = aUser()

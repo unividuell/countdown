@@ -13,6 +13,8 @@ spring:
       client:
         registration:
           github:
+            # Not a real client. It gives contexts that switch the test login off a way to sign
+            # in; the auth lib refuses to start without one.
             client-id: test-client-id
             client-secret: test-client-secret
             scope: read:user
@@ -20,9 +22,16 @@ spring:
     jdbc:
       initialize-schema: never
 
+unividuell:
+  auth:
+    roles:
+      # TestLoginEndToEndTest signs in as prof and expects a super-admin.
+      super-admin: test:prof
+    csrf-cookie:
+      # Repeated from the main application.yaml, which this file replaces (PreviewControllerTest).
+      excluded-paths: /api/preview/**
+
 app:
-  test-auth:
-    enabled: true
   game-lab:
     # This file REPLACES the main application.yaml on the test classpath — without this key the
     # lab beans are absent from every test context and the conditions never match.

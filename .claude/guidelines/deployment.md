@@ -74,7 +74,7 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
   `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
   before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
-  `SUPER_ADMIN_GITHUB_LOGINS`). When adding one, document a one-line manual-migration note in
+  `SUPER_ADMINS`). When adding one, document a one-line manual-migration note in
   `deploy/README.md` right where an upgrading operator will read it — a first-run checklist alone
   isn't enough, since existing stacks skip the whole "first run" path.
 - **A var Compose must interpolate has exactly one source of truth.** `--env-file` only feeds
@@ -90,8 +90,8 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
 
 ## Backend production profile
 
-- `application-production.yaml` (profile `production`): GitHub **client-id committed** (public),
-  **client-secret via env**; explicit datasource to the compose `postgres` service;
+- `application-production.yaml` (profile `production`): the GitHub App's **client-id committed**
+  (public), **client-secret via env**; explicit datasource to the compose `postgres` service;
   `server.forward-headers-strategy=framework` (see [deployment-edge.md](deployment-edge.md) for the
   hop chain that makes it necessary); `Secure`/`SameSite=Lax` session cookies.
 - **`spring-boot-docker-compose` is excluded from the prod image** automatically — it's

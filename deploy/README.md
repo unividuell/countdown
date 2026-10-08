@@ -21,12 +21,14 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   TLS is terminated by the shared **edge-caddy** (see `/opt/unividuell/edge-caddy`), which must be running and
   routing both hostnames to their respective `-web` containers. Stacks publish no host ports; they only join
   the external `edge` network.
-- A production GitHub OAuth App (callback `https://countdown.unividuell.org/login/oauth2/code/github`);
-  its Client ID is committed in `application-production.yaml`, its secret goes into `.env.prod` as `GITHUB_CLIENT_SECRET`.
-  Staging does not use a real GitHub OAuth App (`GITHUB_CLIENT_SECRET=unused`); login is via the built-in test-user picker.
-- `SUPER_ADMIN_GITHUB_LOGINS` in `.env.prod`/`.env.staging` grants the app-level super-admin role
-  (`/api/super-admin/...`) to a comma-separated list of GitHub logins. Leave it empty and nobody
-  has the role.
+- The organisation's GitHub App (`https://countdown.unividuell.org/login/oauth2/code/github` among its
+  redirect URIs); its client ID is committed in `application-production.yaml`, its client secret goes
+  into `.env.prod` as `GITHUB_CLIENT_SECRET`. Staging has no OAuth client at all — the backend refuses
+  a test-login key next to one; login there is via the built-in test-user picker.
+- `SUPER_ADMINS` in `.env.prod`/`.env.staging` grants the app-level super-admin role
+  (`/api/super-admin/...`) to a comma-separated list of `provider:login` entries — `github:<login>`
+  in prod, `test:<login>` on staging. An entry without its prefix makes the backend refuse to start;
+  leave it empty and nobody has the role.
 
 ## Prerequisite: sops + age (game content)
 
@@ -181,6 +183,16 @@ there on its own, and a missing one binds empty without any error.
 without it under the staging profile. Use 24+ random characters: the picker has no rate limit.
 `.env.prod` needs nothing; the picker does not exist in production.
 
+**Migrating an existing stack for the auth lib:** before the release reaches the stack, edit
+`.env.<target>` by hand: rename `SUPER_ADMIN_GITHUB_LOGINS` to `SUPER_ADMINS` and prefix every
+entry — `github:<login>` in prod, `test:<login>` on staging. An unprefixed entry makes the backend
+refuse to start; a missing variable leaves nobody super-admin. In `.env.prod`, set
+`GITHUB_CLIENT_SECRET` to the GitHub App's client secret. The first start clears every session:
+users sign in once more, and staging testers re-enter the key (the lock's cookie has a new name).
+**One-way:** after `iam/V3` an older image no longer starts against the database, so a rollback
+needs a restore (see "Backups & restore"). Take a dump right before the update: the `db-backup`
+sidecar dumps on start, so restarting it makes a fresh `app-<timestamp>.sql.gz`.
+
 **Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY`,
 `SPOT_OBJECT_SERVER_MAPS_API_KEY` and `SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging`
 by hand (see core/README.md for where each value comes from and which one is browser-restricted
@@ -196,7 +208,7 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 
 # prod stack
 ./update.sh prod        # first run writes .env.prod from template + stops
-# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS,
+# edit .env.prod: POSTGRES_PASSWORD, GITHUB_CLIENT_SECRET, SUPER_ADMINS (github:<login>),
 #   PGADMIN_EMAIL/PGADMIN_PASSWORD, SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY,
 #   SPOT_OBJECT_SIGNING_SECRET
 ./update.sh prod        # pulls :latest images and starts the prod stack
@@ -205,8 +217,8 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 ./update.sh staging     # first run writes .env.staging from template + stops
 # edit .env.staging: POSTGRES_PASSWORD (own), PGADMIN_PASSWORD, FAKE_SIGN_IN_KEY,
 #   SPOT_OBJECT_MAPS_API_KEY, SPOT_OBJECT_SERVER_MAPS_API_KEY, SPOT_OBJECT_SIGNING_SECRET;
-#   GITHUB_CLIENT_SECRET=unused is fine
-#   (SUPER_ADMIN_GITHUB_LOGINS=bender comes from the template on this first run — see note above for existing stacks)
+#   GITHUB_CLIENT_SECRET stays empty (staging has no OAuth client)
+#   (SUPER_ADMINS=test:bender comes from the template on this first run — see note above for existing stacks)
 ./update.sh staging     # pulls :staging images and starts the staging stack
 ```
 
@@ -224,8 +236,9 @@ docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ## Staging login
 
 Staging uses the built-in test-user picker (Futurama characters). There is no real GitHub OAuth flow.
-Visit `beta.countdown.unividuell.org` → click Login → pick a test user. The test-user picker
-is served by the backend at `/login/github` when `SPRING_PROFILES_ACTIVE=staging`.
+Visit `beta.countdown.unividuell.org` → click Login → enter the key once per browser
+(`FAKE_SIGN_IN_KEY`) → pick a test user. The picker is the auth lib's, served by the backend at
+`/login/start` when `SPRING_PROFILES_ACTIVE=staging`.
 
 ## Debug the DB (pgAdmin — no public endpoint, SSH tunnel only)
 

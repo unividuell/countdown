@@ -35,7 +35,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Configuration](.claude/guidelines/configuration.md)** — no `application*.yaml` key is under test, so boot the app after touching one; a suffixed size binds only onto `DataSize`. *(backend)*
 - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
-- **[Security & auth](.claude/guidelines/security-and-auth.md)** — GitHub OAuth2, session, super-admin role, SPA 401/CSRF contract, browser vs. server API keys. *(backend)*
+- **[Security & auth](.claude/guidelines/security-and-auth.md)** — sign-in via the auth lib (`org.unividuell:auth-spring-boot-starter`), one account per provider, no session for anonymous requests, super-admin role, browser vs. server API keys. *(backend)*
 - **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently, never log what storage must not have. *(backend)*
 - **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); lint + `vue-tsc -b`. *(webapp-vue)*
   - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, sizing traps, accessibility.

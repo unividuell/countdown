@@ -54,7 +54,7 @@ describe('useAuth', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { assign } as unknown as Location)
     useAuth().loginWithGitHub()
-    expect(assign).toHaveBeenCalledWith('/login/github')
+    expect(assign).toHaveBeenCalledWith('/login/start')
   })
 
   it('logout posts and resets to anonymous', async () => {

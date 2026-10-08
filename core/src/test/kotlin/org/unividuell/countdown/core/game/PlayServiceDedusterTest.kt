@@ -54,7 +54,7 @@ class PlayServiceDedusterTest(
     private val image = UUID.fromString("0190f1b2-0000-7000-8000-00000000da7a")
 
     private fun aUser(login: String): UUID =
-        requireNotNull(users.save(User(githubId = System.nanoTime(), githubLogin = login)).id)
+        requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = login)).id)
 
     private fun aCommunity(): Pair<Community, UUID> {
         val owner = aUser("owner")

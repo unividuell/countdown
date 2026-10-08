@@ -32,7 +32,7 @@ class ImagePoolQueryServiceTest(
     @Autowired val communities: CommunityService,
     @Autowired val users: UserRepository,
 ) {
-    private fun user(): UUID = users.save(User(githubId = System.nanoTime(), githubLogin = "pool-query")).id!!
+    private fun user(): UUID = users.save(User(subject = System.nanoTime().toString(), githubLogin = "pool-query")).id!!
 
     private fun png(width: Int, height: Int): ByteArray {
         val img = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)

@@ -38,7 +38,7 @@ class RoundGameRepositoryTest(
 
     private fun json(raw: String): JsonNode = mapper.readTree(raw)
     private fun anEdition(slug: String): CommunityEdition {
-        val creator = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
+        val creator = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
         val community = communities.save(
             Community(name = slug, slug = slug, createdBy = requireNotNull(creator.id)),
         )

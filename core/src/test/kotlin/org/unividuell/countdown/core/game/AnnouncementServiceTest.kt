@@ -55,7 +55,7 @@ class AnnouncementServiceTest(
     @Autowired val users: UserRepository,
     @Autowired val catalog: GameCatalog,
 ) {
-    private fun aUser() = users.save(User(githubId = System.nanoTime(), githubLogin = "creator"))
+    private fun aUser() = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
 
     /**
      * A community whose countdown starts far in the future, so the current round is a large number.

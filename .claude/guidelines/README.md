@@ -15,7 +15,7 @@ new team members (and AI assistants) stay consistent.
 | **Configuration** — backend (`application*.yaml` is untested, so boot it · suffixed sizes bind only onto `DataSize`) | [configuration.md](configuration.md) |
 | Persistence — backend (Spring Data JDBC · UUID v7 · auditing) | [persistence.md](persistence.md) |
 | Modules & migrations — backend (Spring Modulith · schema-per-module · module-based Flyway) | [modules-and-migrations.md](modules-and-migrations.md) |
-| Security & auth — backend (GitHub OAuth2 · session · roles · SPA contract · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |
+| Security & auth — backend (auth lib · one account per provider · no session for anonymous requests · roles · browser vs. server API keys) | [security-and-auth.md](security-and-auth.md) |
 | Logging — backend (kotlin-logging · logger inside the class · lambda messages · log the silent degradation · never log what storage must not have) | [logging.md](logging.md) |
 | Frontend — `webapp-vue` (Vue 3 · Vite 8 · Tailwind v4 · stack · `apiFetch`/`useAuth` · lint · typecheck) | [frontend.md](frontend.md) |
 | ↳ Frontend UI & layout (mobile-first · sizing traps · accessibility) | [frontend-ui.md](frontend-ui.md) |

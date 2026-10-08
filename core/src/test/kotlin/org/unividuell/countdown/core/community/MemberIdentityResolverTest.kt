@@ -11,7 +11,7 @@ class MemberIdentityResolverTest {
     private val id = UUID.fromString("0190f1b2-0000-7000-8000-000000000001")
 
     private fun user(displayName: String? = null, bgColorHex: String? = null) = User(
-        id = id, githubId = 1L, githubLogin = "octocat", githubName = "The Octocat",
+        id = id, subject = "1", githubLogin = "octocat", githubName = "The Octocat",
         displayName = displayName, bgColorHex = bgColorHex,
     )
 

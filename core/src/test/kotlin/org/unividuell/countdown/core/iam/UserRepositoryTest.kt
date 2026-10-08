@@ -19,7 +19,7 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
     @Test
     fun `saves a new user and assigns a uuid v7 id`() {
         val saved = repository.save(
-            User(githubId = 4711L, githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
+            User(subject = "4711", githubLogin = "octocat", githubName = "The Octocat", email = "cat@example.com")
         )
 
         saved.id.shouldNotBeNull().version() shouldBe 7
@@ -28,24 +28,33 @@ class UserRepositoryTest(@Autowired val repository: UserRepository) {
     }
 
     @Test
-    fun `finds a user by github id`() {
-        repository.save(User(githubId = 1234L, githubLogin = "hubert", githubName = null, email = null))
+    fun `finds a user by provider and subject`() {
+        repository.save(User(subject = "1234", githubLogin = "hubert", githubName = null, email = null))
 
-        val found = repository.findByGithubId(1234L)
+        val found = repository.findByProviderAndSubject(provider = "github", subject = "1234")
 
         found.shouldNotBeNull()
         found.githubLogin shouldBe "hubert"
-        repository.findByGithubId(9999L).shouldBeNull()
+        repository.findByProviderAndSubject(provider = "github", subject = "9999").shouldBeNull()
+    }
+
+    @Test
+    fun `the same subject at another provider is another user`() {
+        repository.save(User(provider = "github", subject = "77", githubLogin = "octo-77"))
+        repository.save(User(provider = "test", subject = "77", githubLogin = "test-77"))
+
+        repository.findByProviderAndSubject(provider = "test", subject = "77").shouldNotBeNull()
+            .githubLogin shouldBe "test-77"
     }
 
     @Test
     fun `stores no community-creation clearance by default and round-trips it`() {
-        val saved = repository.save(User(githubId = 5150L, githubLogin = "newcomer"))
+        val saved = repository.save(User(subject = "5150", githubLogin = "newcomer"))
         saved.communityCreationAllowed shouldBe false
 
         val cleared = repository.save(saved.copy(communityCreationAllowed = true))
 
-        repository.findByGithubId(5150L)!!.communityCreationAllowed shouldBe true
+        repository.findByProviderAndSubject(provider = "github", subject = "5150")!!.communityCreationAllowed shouldBe true
         cleared.mayCreateCommunities shouldBe true
     }
 }

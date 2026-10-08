@@ -73,7 +73,7 @@ class MemberIdentityIsPerCommunityTest(
         viewer = requireNotNull(
             users.save(
                 User(
-                    githubId = System.nanoTime(), githubLogin = "amy",
+                    subject = System.nanoTime().toString(), githubLogin = "amy",
                     displayName = globalName, bgColorHex = global.bgColorHex,
                 ),
             ).id,

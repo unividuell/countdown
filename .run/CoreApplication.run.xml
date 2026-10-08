@@ -11,10 +11,10 @@
     Hence WORKING_DIRECTORY below. $PROJECT_DIR$ is the folder holding this .run directory, so this
     works in the main clone and in every git worktree alike.
 
-    Nothing else has to be set: GITHUB_CLIENT_SECRET, SUPER_ADMIN_GITHUB_LOGINS and
-    GUESS_HUE_DATASET_PATH all have defaults, and the app boots on the sample dataset with the
-    test login picker. Add SUPER_ADMIN_GITHUB_LOGINS=<your github login> to this configuration's
-    environment when you want super-admin, and see core/README.md for the real-dataset flow.
+    Nothing else has to be set: SUPER_ADMINS and GUESS_HUE_DATASET_PATH have defaults, and the
+    app boots on the sample dataset with the test login picker. Add SUPER_ADMINS=test:bender to
+    this configuration's environment when you want super-admin, and see core/README.md for the
+    real-dataset flow.
 
     IntelliJ rewrites this file when the configuration is edited in the UI and may drop this
     comment; the reason then still stands next to the property in application.yaml.

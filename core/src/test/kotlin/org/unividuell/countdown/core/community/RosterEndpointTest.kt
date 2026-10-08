@@ -58,8 +58,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(pending, MemberStatus.PENDING, "2026-01-03T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy"),
-            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+            User(id = alice, subject = "1", githubLogin = "amy"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
             alice to MemberPoints(stable = 3, live = null),
@@ -83,8 +83,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(bob, MemberStatus.ACTIVE, "2026-01-02T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy"),
-            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+            User(id = alice, subject = "1", githubLogin = "amy"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         // bob leads on stable points, alice overtakes him once the live round counts.
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
@@ -108,7 +108,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
-        every { userQuery.findAllById(any()) } returns listOf(User(id = alice, githubId = 1L, githubLogin = "amy"))
+        every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
             mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false)))
 
@@ -126,7 +126,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
-        every { userQuery.findAllById(any()) } returns listOf(User(id = alice, githubId = 1L, githubLogin = "amy"))
+        every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
             mapOf(alice to MemberPoints(stable = 3, live = null))
 
@@ -144,8 +144,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy"),
-            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+            User(id = alice, subject = "1", githubLogin = "amy"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
             alice to MemberPoints(stable = 0, live = null),
@@ -166,8 +166,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy"),
-            User(id = bob, githubId = 2L, githubLogin = "Bender"),
+            User(id = alice, subject = "1", githubLogin = "amy"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
             alice to MemberPoints(stable = 0, live = null),
@@ -187,7 +187,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns
-            listOf(User(id = alice, githubId = 1L, githubLogin = "amy", bgColorHex = null))
+            listOf(User(id = alice, subject = "1", githubLogin = "amy", bgColorHex = null))
         every { points.standings(community.id!!, uid, any()) } returns
             mapOf(alice to MemberPoints(stable = 0, live = null))
 
@@ -205,7 +205,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
                 .copy(displayName = "Zwerg", bgColorHex = "#8e44ad"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong"),
         )
         every { points.standings(community.id!!, uid, any()) } returns emptyMap()
 
@@ -224,7 +224,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 1L, githubLogin = "amy", displayName = "Amy Wong"),
+            User(id = alice, subject = "1", githubLogin = "amy", displayName = "Amy Wong"),
         )
         every { points.standings(community.id!!, uid, any()) } returns emptyMap()
 

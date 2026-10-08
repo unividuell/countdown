@@ -67,8 +67,8 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
             CommunityMember(communityId = c.id!!, userId = bob, status = MemberStatus.ACTIVE, isAdmin = false),
         )
         every { userQuery.findAllById(any()) } returns listOf(
-            User(id = alice, githubId = 2L, githubLogin = "alice"),
-            User(id = bob, githubId = 3L, githubLogin = "bob"),
+            User(id = alice, subject = "2", githubLogin = "alice"),
+            User(id = bob, subject = "3", githubLogin = "bob"),
         )
         mockMvc.get("/api/communities/team/members") { with(principalFor()) }
             .andExpect {

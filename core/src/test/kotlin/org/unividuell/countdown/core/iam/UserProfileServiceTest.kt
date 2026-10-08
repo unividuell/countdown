@@ -26,7 +26,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `updates user-owned fields and preserves github fields`() {
-        val saved = repository.save(User(githubId = 200L, githubLogin = "octocat", githubName = "The Octocat"))
+        val saved = repository.save(User(subject = "200", githubLogin = "octocat", githubName = "The Octocat"))
 
         val updated = service.update(saved.id!!, displayName = "Mr. Custom", bgColorHex = "#00ff00")
 
@@ -39,7 +39,7 @@ class UserProfileServiceTest(
     @Test
     fun `null clears a user-owned field`() {
         val saved = repository.save(
-            User(githubId = 201L, githubLogin = "octocat", displayName = "old", bgColorHex = "#111111")
+            User(subject = "201", githubLogin = "octocat", displayName = "old", bgColorHex = "#111111")
         )
 
         val updated = service.update(saved.id!!, displayName = null, bgColorHex = null)
@@ -57,7 +57,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `malformed colour throws IllegalArgumentException`() {
-        val saved = repository.save(User(githubId = 202L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "202", githubLogin = "octocat"))
 
         shouldThrow<IllegalArgumentException> {
             service.update(saved.id!!, displayName = null, bgColorHex = "12345")
@@ -66,7 +66,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `uppercase colour is persisted as lowercase`() {
-        val saved = repository.save(User(githubId = 203L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "203", githubLogin = "octocat"))
 
         val updated = service.update(saved.id!!, displayName = null, bgColorHex = "#8E44AD")
 
@@ -75,7 +75,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `blank string clears the colour`() {
-        val saved = repository.save(User(githubId = 204L, githubLogin = "octocat", bgColorHex = "#111111"))
+        val saved = repository.save(User(subject = "204", githubLogin = "octocat", bgColorHex = "#111111"))
 
         val updated = service.update(saved.id!!, displayName = null, bgColorHex = "")
 
@@ -84,7 +84,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `current returns the stored row and rejects a vanished user`() {
-        val saved = repository.save(User(githubId = 909L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "909", githubLogin = "octocat"))
 
         service.current(saved.id!!).githubLogin shouldBe "octocat"
         shouldThrow<StaleSessionException> { service.current(UUID.randomUUID()) }
@@ -92,7 +92,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `trims the display name and lowercases the colour`() {
-        val saved = repository.save(User(githubId = 210L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "210", githubLogin = "octocat"))
 
         val updated = service.update(saved.id!!, displayName = "  Leela  ", bgColorHex = "#8E44AD")
 
@@ -103,7 +103,7 @@ class UserProfileServiceTest(
     @Test
     fun `a blank display name clears the field`() {
         val saved = repository.save(
-            User(githubId = 211L, githubLogin = "octocat", displayName = "old")
+            User(subject = "211", githubLogin = "octocat", displayName = "old")
         )
 
         service.update(saved.id!!, displayName = "   ", bgColorHex = null).displayName.shouldBeNull()
@@ -111,7 +111,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `a name beyond the limit throws IllegalArgumentException`() {
-        val saved = repository.save(User(githubId = 212L, githubLogin = "octocat"))
+        val saved = repository.save(User(subject = "212", githubLogin = "octocat"))
 
         shouldThrow<IllegalArgumentException> {
             service.update(saved.id!!, displayName = "x".repeat(33), bgColorHex = null)
@@ -121,7 +121,7 @@ class UserProfileServiceTest(
     @Test
     fun `preview computes exactly what update would produce`() {
         val saved = repository.save(
-            User(githubId = 300L, githubLogin = "amy", displayName = "old name"),
+            User(subject = "300", githubLogin = "amy", displayName = "old name"),
         )
 
         val previewed = service.preview(
@@ -136,7 +136,7 @@ class UserProfileServiceTest(
 
     @Test
     fun `preview leaves the stored row untouched`() {
-        val saved = repository.save(User(githubId = 301L, githubLogin = "amy", displayName = "old name"))
+        val saved = repository.save(User(subject = "301", githubLogin = "amy", displayName = "old name"))
 
         service.preview(userId = saved.id!!, displayName = "Zwerg", bgColorHex = "#8e44ad")
 
@@ -147,7 +147,7 @@ class UserProfileServiceTest(
     fun `clearing the name in preview falls back to the GitHub name, not the stored one`() {
         val saved = repository.save(
             User(
-                githubId = 302L, githubLogin = "octocat",
+                subject = "302", githubLogin = "octocat",
                 githubName = "The Octocat", displayName = "Stored Name",
             ),
         )

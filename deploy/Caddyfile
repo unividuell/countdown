@@ -14,7 +14,7 @@
 	# Backend paths. `/logout` is listed exact (the SPA POSTs to exactly /logout) AND as
 	# `/logout/*`, because `path /logout/*` (slash before `*`) does NOT match the bare /logout.
 	# `/login` is NOT listed exact on purpose: /login is the SPA's sign-in PAGE — only its
-	# sub-paths (/login/github, /login/oauth2/code/*) are backend, so use `/login/*` only.
+	# sub-paths (/login/start, /login/test/*, /login/oauth2/code/*) are backend, so use `/login/*` only.
 	@backend path /api/* /oauth2/* /login/* /logout /logout/*
 
 	# API paths -> backend. A dedicated handle block (not a bare reverse_proxy) so it is

@@ -12,7 +12,7 @@ describe('postLoginRedirect', () => {
   })
 
   it('ignores unsafe or pointless paths', () => {
-    for (const p of ['/', '/login', '/login/github', '//evil.example', 'https://evil.example']) {
+    for (const p of ['/', '/login', '/login/start', '//evil.example', 'https://evil.example']) {
       stashPostLoginRedirect(p)
       expect(consumePostLoginRedirect()).toBeNull()
     }

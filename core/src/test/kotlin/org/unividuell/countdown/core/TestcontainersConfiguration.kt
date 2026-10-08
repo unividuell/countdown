@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * as an ordinary `@Bean` that meant twenty simultaneous containers.
  *
  * Isolation is unchanged: `jdbcConnectionDetails` is a per-context bean, so each context creates
- * and migrates its own empty database. Sharing one database instead would not be safe —
- * `TestUserSeeder` commits its users at context startup, and the tests that switch it off do so
- * precisely to observe an empty table.
+ * and migrates its own empty database. Sharing one database instead would not be safe — a test
+ * sign-in commits its user row, and the classes that run in a context of their own do so precisely
+ * to observe a table no other class wrote to.
  */
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {

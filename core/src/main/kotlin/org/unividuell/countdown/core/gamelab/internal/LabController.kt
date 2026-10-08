@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.iam.AuthenticatedUser
+import org.unividuell.countdown.core.iam.isSuperAdmin
 import java.util.UUID
 
 /**

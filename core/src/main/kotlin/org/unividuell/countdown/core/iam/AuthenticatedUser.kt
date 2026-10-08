@@ -1,9 +1,14 @@
 package org.unividuell.countdown.core.iam
 
-import java.util.UUID
+import org.unividuell.auth.AuthPrincipal
 
-/** Minimal identity of the authenticated principal, exposed for other modules' controllers. */
-interface AuthenticatedUser {
-    val id: UUID
-    val isSuperAdmin: Boolean
-}
+/**
+ * The signed-in principal as other modules' controllers take it: the auth lib's session principal
+ * (`id`, `provider`, `login`, `roles`). A snapshot from sign-in — read anything else live from the
+ * row ([UserQuery]).
+ */
+typealias AuthenticatedUser = AuthPrincipal
+
+/** Whether the allowlist (`unividuell.auth.roles.super-admin`) made this principal a super-admin at sign-in. */
+val AuthPrincipal.isSuperAdmin: Boolean
+    get() = "SUPER_ADMIN" in roles
