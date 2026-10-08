@@ -163,10 +163,12 @@ der Zeile gelesen.
 Spring Security 7 wendet `Customizer<HttpSecurity>`-Beans an, **bevor** die App ihre
 `SecurityFilterChain` baut („Modular HttpSecurity Configuration“). Die Lib liefert darüber:
 
-- `oauth2Login` mit dem eigenen UserService und `loginPage = "/login"` — sonst gehört `/login` zwei
-  Besitzern, der Lib und Springs generierter Login-Seite. Der `oidcUserService` lehnt ab, bis es eine
+- `oauth2Login` mit dem eigenen UserService und `loginPage = "/login/start"` — das schaltet Springs
+  generierte Login-Seite unter `/login` ab. **Die Lib besitzt nur Pfade unter `/login/`, nie das nackte
+  `/login`:** Das ist in SPAs eine übliche eigene Route (countdown hat sie), und Edge wie Dev-Proxy
+  leiten `/login/*` ohnehin ans Backend. Der `oidcUserService` lehnt ab, bis es eine
   OIDC-Abbildung gibt — sonst meldete Spring OIDC-Nutzer am `AccountProvisioner` vorbei an. Ein
-  eigener Failure-Handler loggt Fehlercode und Beschreibung und leitet auf `/login?error`, ohne die
+  eigener Failure-Handler loggt Fehlercode und Beschreibung und leitet auf `/login/start?error`, ohne die
   Exception in die Session zu legen;
 - 401 statt Redirect (`HttpStatusEntryPoint`), `NullRequestCache`;
 - CSRF über `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `CsrfTokenRequestAttributeHandler`,
@@ -201,7 +203,7 @@ Pfad fest im `CsrfCookieFilter` — in der Lib wird er Konfiguration.
 | | localhost | staging | prod |
 |---|---|---|---|
 | Profil | keins | `staging` | `production` |
-| `GET /login` | Picker, ohne Schloss | Schloss, dann Picker | Weiterleitung zu `/oauth2/authorization/github` |
+| `GET /login/start` | Picker, ohne Schloss | Schloss, dann Picker | Weiterleitung zu `/oauth2/authorization/github` |
 | OAuth-Client | keiner nötig | keiner | Pflicht |
 | Test-Login | aktiv | aktiv, Schlüssel Pflicht | Beans existieren nicht (404) |
 
@@ -215,16 +217,15 @@ mehr, statt wie heute nur wirkungslos zu sein — die zweite Tür am Schloss vor
 
 | | |
 |---|---|
-| `GET /login[?redirect=…]` | Test-Login aktiv: Picker (bzw. Schloss). Sonst: Weiterleitung zum Provider. Genau ein Controller besitzt die Route. |
-| `GET /login?error` | kleine Fehlerseite im Stil des Pickers mit „Erneut versuchen“ — **leitet nie weiter** |
+| `GET /login/start[?redirect=…]` | Test-Login aktiv: Picker (bzw. Schloss). Sonst: Weiterleitung zum Provider. Genau ein Controller besitzt die Route. |
+| `GET /login/start?error` | kleine Fehlerseite im Stil des Pickers mit „Erneut versuchen“ — **leitet nie weiter** |
 | `POST /login/test/as` | meldet einen Test-User an, springt zu `redirect` zurück; ein Login, der nicht in der Liste steht, ergibt 400 |
 | `POST /login/test/unlock` | prüft den Schlüssel, setzt das Cookie, zurück zum Picker samt `redirect` |
 | `/oauth2/authorization/{id}`, `/login/oauth2/code/{id}` | Spring, nur wenn ein Client konfiguriert ist |
 | `POST /logout` | 204 |
 
-**Warum `/login?error` nie weiterleitet:** Spring leitet einen fehlgeschlagenen OAuth-Login auf
-`<loginPage>?error`. Leitete `/login` in Prod dort direkt zum Provider, entstünde bei ungültigen
-Claims eine Endlosschleife.
+**Warum `/login/start?error` nie weiterleitet:** Ein fehlgeschlagener OAuth-Login landet dort. Leitete
+`/login/start` in Prod dann direkt zum Provider, entstünde bei ungültigen Claims eine Endlosschleife.
 
 **Fail-fast beim Start:**
 
@@ -274,7 +275,7 @@ Nicht Teil des ersten Wurfs, aber der Zuschnitt muss sie tragen:
   Endpunkte und Mapping; die App konfiguriert nur Client-ID und Secret.
 - Bekannte Macke: Twitch liefert `scope` in der Token-Antwort als JSON-Array statt String. Ob Spring 7
   daran scheitert, ist ungeprüft.
-- Mit dem zweiten Provider kommt eine Auswahlseite unter `GET /login`.
+- Mit dem zweiten Provider kommt eine Auswahlseite unter `GET /login/start`.
 - Zu prüfen, wenn es so weit ist: ob Discord- und Twitch-Apps mehrere Redirect-URLs erlauben.
 
 ## Umstellung von countdown
@@ -332,6 +333,7 @@ künftigen Apps teilen; countdown ist ihr erster Nutzer.
 | | |
 |---|---|
 | Besitzer | Organisation `unividuell` |
+| Client-ID | `Iv23liJTgm6EeJ6XshRh` — öffentlich, steht fest in `application-production.yaml`; nur das Secret kommt aus der Umgebung |
 | Sichtbarkeit | **öffentlich** („Any account“). Eine private App dürfen nur Mitglieder der besitzenden Organisation autorisieren — niemand sonst könnte sich anmelden. „Öffentlich“ heißt nur, dass jeder sie autorisieren darf. |
 | Redirect-URIs (so heißt das Feld; gemeint sind Callback-URLs) | `https://countdown.unividuell.org/login/oauth2/code/github`, `http://localhost:5173/login/oauth2/code/github`, `http://localhost:8080/login/oauth2/code/github` — jede weitere Prod-App ergänzt ihre, bis zehn |
 | Webhook | aus |
@@ -348,14 +350,11 @@ künftigen Apps teilen; countdown ist ihr erster Nutzer.
 - Nach erfolgreicher Umstellung werden die beiden OAuth Apps (Prod `Ov23lihx…`, Dev `Ov23liQz…`)
   gelöscht.
 
-**Frontend:** `/login/github` → `/login` in sechs Dateien, darunter `LabControls.vue` („Spieler
-wechseln“) und die zugehörigen Specs.
-
-**`/login` gehört dem Backend.** Heute ist `/login` eine SPA-Seite (`webapp-vue/src/pages/login.vue`,
-Ziel des Guards), und `deploy/Caddyfile` sowie `webapp-vue/dev-proxy.ts` halten das nackte `/login`
-vom Backend fern. Die Lib braucht `/login`, `/login?error` und `/login?redirect=…` selbst: Die
-SPA-Seite entfällt oder zieht um, der Guard navigiert per Full-Page-Load, Edge und Dev-Proxy leiten
-`/login` ans Backend. Gefunden im Schluss-Review der Lib.
+**Frontend:** `/login/github` → `/login/start` in sechs Dateien, darunter `LabControls.vue`
+(„Spieler wechseln“) und die zugehörigen Specs. countdowns SPA-Seite `/login` bleibt; Edge und
+Dev-Proxy bleiben unverändert, beide leiten `/login/*` ans Backend und behalten das nackte `/login`
+der SPA. (Das Schluss-Review der Lib hatte die Kollision gefunden, als die Lib noch `/login` selbst
+belegte; gelöst in der Lib, nicht in der App.)
 
 **Spürbar für Nutzer:** Jeder meldet sich einmal neu an (Sessions geleert). Tester auf staging geben
 den Schlüssel einmal neu ein (Cookie-Name ändert sich).
@@ -381,7 +380,8 @@ bleiben die eigenen Regeln und ein Verweis.
   Fail-fast-Fälle.
 - Abläufe per MockMvc in einer Test-App mit einem `AccountProvisioner` im Speicher: 401 auf die API,
   XSRF-Cookie schon bei GET, Logout ohne Token 403 und mit Token 204; Picker, Schloss, `as` samt
-  `redirect`; `/login?error` leitet nie weiter; in Prod leitet `/login` zum Provider.
+  `redirect`; `/login/start?error` leitet nie weiter; in Prod leitet `/login/start` zum Provider;
+  das nackte `/login` bleibt unbelegt (404).
 - `safeRedirect`: die bestehenden Fälle.
 - GitHub-Mapping Attribute → `ExternalIdentity`, fehlende `id`/`login` lassen den Login scheitern —
   mit Werten, die kein Default erzeugen könnte.
@@ -399,7 +399,7 @@ Aus countdown ziehen mit und werden angepasst: `DevLoginControllerTest`, `DevLog
 - Migration `iam/V3`: Flyway für `iam` bis V2, Zeilen mit positiver und negativer `github_id`
   einfügen, auf V3 migrieren, `provider`/`subject` prüfen.
 - Ende-zu-Ende: Login als `test:prof` → `/api/me` meldet Super-Admin.
-- Frontend-Specs prüfen `href="/login…"`, auch beim Spieler-Wechsel.
+- Frontend-Specs prüfen `/login/start…`, auch beim Spieler-Wechsel.
 
 **Von Hand vor Prod:** localhost — Picker, Spieler wechseln im Lab, Logout, einmal mit
 `test-login.enabled=false` der echte GitHub-Login über die GitHub App. staging nach dem Deploy —
