@@ -10,8 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.*
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.*
@@ -51,7 +51,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             id = UUID.randomUUID(), communityId = c.id!!, label = "Team A",
         )
         mockMvc.post("/api/communities") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect { status { isCreated() }; jsonPath("$.slug") { value("team-a") } }
     }
@@ -61,7 +61,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { users.mayCreateCommunities(uid) } returns true
         every { communityService.create(creatorUserId = uid, rawName = "Team A") } throws SlugUnavailableException("slug 'team-a' is taken")
         mockMvc.post("/api/communities") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect { status { isConflict() } }
     }
@@ -70,7 +70,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `POST is forbidden without a community-creation clearance`() {
         every { users.mayCreateCommunities(uid) } returns false
         mockMvc.post("/api/communities") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect {
             status { isForbidden() }
@@ -87,7 +87,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         // guard would pass every other POST test in this class.
         every { users.mayCreateCommunities(uid) } returns false
         mockMvc.post("/api/communities") {
-            with(principalFor(superAdmin = true)); with(csrf())
+            with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect { status { isForbidden() } }
@@ -111,7 +111,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `PATCH requires admin`() {
         every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team-a") } throws NotAdminException()
         mockMvc.patch("/api/communities/team-a") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"New"}"""
         }.andExpect { status { isForbidden() } }
     }
@@ -127,7 +127,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `PUT selection returns 204`() {
         justRun { selection.set(uid, any()) }
         mockMvc.put("/api/communities/selection") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"communityId":"018f0000-0000-7000-8000-000000000001"}"""
         }.andExpect { status { isNoContent() } }
     }
@@ -205,7 +205,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
 
         mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"label":"Rollover 2027"}"""
         }.andExpect {
             status { isCreated() }
@@ -221,7 +221,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } throws NotAdminException()
 
         mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"label":"Nope 2027"}"""
         }.andExpect { status { isForbidden() } }
     }
@@ -233,7 +233,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { editions.startNew(communityId = c.id!!, rawLabel = "ab") } throws IllegalArgumentException("label must be 3..50 chars")
 
         mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"label":"ab"}"""
         }.andExpect { status { isBadRequest() } }
     }
@@ -282,7 +282,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
 
         mockMvc.patch("/api/communities/team") {
-            with(principalFor()); with(csrf()); contentType = MediaType.APPLICATION_JSON
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
         }.andExpect { status { isConflict() } }
     }
@@ -301,7 +301,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
 
         mockMvc.patch("/api/communities/team") {
-            with(principalFor(superAdmin = true)); with(csrf())
+            with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
         }.andExpect { status { isConflict() } }

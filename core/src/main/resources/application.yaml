@@ -39,6 +39,8 @@ spring:
 
 unividuell:
   auth:
+    # The Vue SPA handles 401 itself and echoes the XSRF-TOKEN cookie (auth lib README, "The SPA contract").
+    frontend: spa
     roles:
       # provider:login, comma-separated: test:<login> for a test user, github:<login> in production.
       # An entry without its provider prefix refuses to start; empty means nobody.

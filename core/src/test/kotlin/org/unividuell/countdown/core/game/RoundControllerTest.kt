@@ -10,11 +10,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.AlreadyGuessedException
@@ -134,7 +134,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         )
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect {
             status { isOk() }
             jsonPath("$.payload.description") { value("ein warmes Rot") }
@@ -150,7 +150,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns RoundResponse(round = null, game = null, noGameReason = null)
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect { status { isOk() } }
@@ -205,7 +205,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         )
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect {
@@ -266,7 +266,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         )
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":123.5}}"""
         }.andExpect {
@@ -287,7 +287,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws NotRevealedException()
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":1.0}}"""
         }.andExpect { status { isConflict() } }
@@ -299,7 +299,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             AlreadyRevealedException()
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect { status { isConflict() } }
     }
 
@@ -310,7 +310,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws AlreadyGuessedException()
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":1.0}}"""
         }.andExpect { status { isConflict() } }
@@ -323,7 +323,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws InvalidGuessException("hue must lie in [0, 360), was 400.0")
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":12,"guess":{"hue":400.0}}"""
         }.andExpect { status { isBadRequest() } }
@@ -336,7 +336,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws RoundMovedOnException(current = 12)
 
         mockMvc.post("/api/communities/team/rounds/current/guess") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":11,"guess":{"hue":1.0}}"""
         }.andExpect { status { isConflict() } }
@@ -344,7 +344,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST reveal requires a session`() {
-        mockMvc.post("/api/communities/team/rounds/current/reveal") { with(csrf()) }
+        mockMvc.post("/api/communities/team/rounds/current/reveal") { with(withCsrfToken()) }
             .andExpect { status { isUnauthorized() } }
     }
 
@@ -419,7 +419,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws ReviewNotAllowedException()
 
         mockMvc.put("/api/communities/team/rounds/12/plays/$uid/vote") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"value":"FLAG"}"""
         }.andExpect { status { isForbidden() } }
@@ -436,7 +436,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws ReviewNotOpenException()
 
         mockMvc.put("/api/communities/team/rounds/12/plays/$target/vote") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"value":"FLAG"}"""
         }.andExpect { status { isConflict() } }

@@ -9,8 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.*
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.*
@@ -38,21 +38,21 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         every { membership.generateInvite(c.id!!) } returns InviteInfo("tok123", Instant.parse("2030-01-01T00:00:00Z"))
-        mockMvc.post("/api/communities/team/invite") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/team/invite") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isOk() }; jsonPath("$.url") { value(org.hamcrest.Matchers.containsString("/join/tok123")) } }
     }
 
     @Test
     fun `accept of expired token returns 410`() {
         every { membership.accept("tok", uid) } throws InviteExpiredException()
-        mockMvc.post("/api/communities/join/tok") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/join/tok") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isGone() } }
     }
 
     @Test
     fun `accept returns the community + status`() {
         every { membership.accept("tok", uid) } returns AcceptResult.JoinedPending(community("team"))
-        mockMvc.post("/api/communities/join/tok") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/join/tok") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isOk() }; jsonPath("$.status") { value("JOINED_PENDING") }; jsonPath("$.slug") { value("team") } }
     }
 
@@ -106,7 +106,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         justRun { membership.approve(c.id!!, memberId) }
-        mockMvc.post("/api/communities/team/members/$memberId/approve") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/team/members/$memberId/approve") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 
@@ -116,7 +116,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         justRun { membership.promote(c.id!!, memberId) }
-        mockMvc.post("/api/communities/team/members/$memberId/promote") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/team/members/$memberId/promote") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 
@@ -126,7 +126,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         justRun { membership.demote(c.id!!, memberId) }
-        mockMvc.post("/api/communities/team/members/$memberId/demote") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/team/members/$memberId/demote") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 
@@ -136,7 +136,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         every { membership.demote(c.id!!, memberId) } throws LastAdminException()
-        mockMvc.post("/api/communities/team/members/$memberId/demote") { with(principalFor()); with(csrf()) }
+        mockMvc.post("/api/communities/team/members/$memberId/demote") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isConflict() } }
     }
 
@@ -146,7 +146,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireAdmin(uid, false, "team") } returns c
         justRun { membership.remove(c.id!!, memberId) }
-        mockMvc.delete("/api/communities/team/members/$memberId") { with(principalFor()); with(csrf()) }
+        mockMvc.delete("/api/communities/team/members/$memberId") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 
@@ -155,7 +155,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(uid, false, "team") } returns c
         justRun { membership.leave(c.id!!, uid) }
-        mockMvc.delete("/api/communities/team/members/$uid") { with(principalFor()); with(csrf()) }
+        mockMvc.delete("/api/communities/team/members/$uid") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 
@@ -205,7 +205,7 @@ class MemberControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `accepting an invite still requires a session`() {
         // No stub for membership.accept; the request must not reach the controller.
         // Pass CSRF so authorization rules apply; without a principal, they reject with 401.
-        mockMvc.post("/api/communities/join/A7K2MP") { with(csrf()) }
+        mockMvc.post("/api/communities/join/A7K2MP") { with(withCsrfToken()) }
             .andExpect { status { isUnauthorized() } }
     }
 }
