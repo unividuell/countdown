@@ -39,6 +39,14 @@
 		     <image><name>, so parametrize the name here instead). -->
 		<countdown.image.tag>latest</countdown.image.tag>
 	</properties>
+	<repositories>
+		<!-- The auth lib is not on Maven Central: each app commits the lib's file repository
+		     (the lib's README, "Releasing"). -->
+		<repository>
+			<id>unividuell-local</id>
+			<url>file://${project.basedir}/maven-repo</url>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
