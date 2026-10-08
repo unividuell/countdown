@@ -73,7 +73,9 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
 - **`unividuell-auth.version` is the auth lib, which is not on Maven Central.** Bump it by
   releasing [`unividuell/auth-spring-boot-starter`](https://github.com/unividuell/auth-spring-boot-starter)
   and deploying into `core/maven-repo/` (its README, "Releasing"), then commit that directory with
-  the new version. The plugin only knows what `core/maven-repo/` already holds.
+  the new version. The plugin only knows what `core/maven-repo/` already holds. A `-SNAPSHOT` may be
+  redeployed in place: delete its directory under `core/maven-repo/` first, so only the latest
+  build stays committed; `updatePolicy=always` on that repository makes every build pick it up.
 
 ### Kotlin 2.4: drop `-Xannotation-default-target`
 

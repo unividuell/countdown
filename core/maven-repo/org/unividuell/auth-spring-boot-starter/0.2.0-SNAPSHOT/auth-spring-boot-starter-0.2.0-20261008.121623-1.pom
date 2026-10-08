@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.unividuell</groupId>
 	<artifactId>auth-spring-boot-starter</artifactId>
-	<version>0.1.0</version>
+	<version>0.2.0-SNAPSHOT</version>
 	<name>auth-spring-boot-starter</name>
 	<description>Sign-in for Spring Boot apps with a same-origin SPA: GitHub sign-in in production, a locked test-user picker everywhere else.</description>
 	<url>https://github.com/unividuell/auth-spring-boot-starter</url>
