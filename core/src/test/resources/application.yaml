@@ -13,8 +13,8 @@ spring:
       client:
         registration:
           github:
-            # Not a real client. It gives a context that switches the test login off a way in; the
-            # auth lib refuses to start without one.
+            # Not a real client. It gives contexts that switch the test login off a way to sign
+            # in; the auth lib refuses to start without one.
             client-id: test-client-id
             client-secret: test-client-secret
             scope: read:user

@@ -189,6 +189,9 @@ entry — `github:<login>` in prod, `test:<login>` on staging. An unprefixed ent
 refuse to start; a missing variable leaves nobody super-admin. In `.env.prod`, set
 `GITHUB_CLIENT_SECRET` to the GitHub App's client secret. The first start clears every session:
 users sign in once more, and staging testers re-enter the key (the lock's cookie has a new name).
+**One-way:** after `iam/V3` an older image no longer starts against the database, so a rollback
+needs a restore (see "Backups & restore"). Take a dump right before the update: the `db-backup`
+sidecar dumps on start, so restarting it makes a fresh `app-<timestamp>.sql.gz`.
 
 **Migrating an existing stack for Weltanschauung:** add `SPOT_OBJECT_MAPS_API_KEY`,
 `SPOT_OBJECT_SERVER_MAPS_API_KEY` and `SPOT_OBJECT_SIGNING_SECRET` to `.env.prod`/`.env.staging`

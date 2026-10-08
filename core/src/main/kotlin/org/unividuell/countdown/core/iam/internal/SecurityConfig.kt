@@ -10,10 +10,10 @@ import org.springframework.security.web.SecurityFilterChain
 
 /**
  * countdown's own access rules. Sign-in, the SPA contract (401 instead of a redirect, the CSRF
- * cookie, `POST /logout` answering 204) and the paths below `/login/` come from the auth lib, which
- * Spring Security applies to this chain before these rules. Lives in the `iam` module because
- * authentication is the only security concern today; revisit if other modules gain protected
- * resources.
+ * cookie, `POST /logout` answering 204), the paths below `/login/` and `/oauth2/`, and error
+ * dispatches come from the auth lib, which Spring Security applies to this chain before these
+ * rules. Lives in the `iam` module because authentication is the only security concern today;
+ * revisit if other modules gain protected resources.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PublicRateLimitProperties::class)

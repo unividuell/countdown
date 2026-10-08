@@ -30,7 +30,8 @@ ships through the committed file repository `core/maven-repo/` — see
 Never inject `HttpSession` or call `getSession()`/`getSession(true)` in code that runs for an
 anonymous request — a filter, an interceptor, a `@ModelAttribute`, a public endpoint. With Spring
 Session JDBC each session is a row: a sibling app grew ~88k empty sessions from one cookie-less
-healthcheck. The lib keeps its own paths session-free; countdown's code is countdown's job.
+healthcheck. The lib's own pages create no session; starting a provider sign-in does (it keeps
+the authorization request). countdown's code is countdown's job.
 
 ## SPA contract — countdown's side
 

@@ -61,9 +61,8 @@ every { profileService.update(uid, "New Name", "#abcdef") } returns updatedUser
 
 Plain unit test (no Spring): construct the real collaborator with mockk doubles —
 `mockk<UserRepository>()`,
-`every { repo.findByProviderAndSubject(provider = "github", subject = "42") } returnsMany listOf(null, existing)`,
-`every { repo.save(match { it.id == null }) } throws DuplicateKeyException("dup")`,
-`verify(exactly = 2) { repo.findByProviderAndSubject(provider = "github", subject = "42") }`. Prefer
+`every { repo.findByProviderAndSubject(provider = "github", subject = "42") } returns existing`,
+`verify(exactly = 1) { repo.findByProviderAndSubject(provider = "github", subject = "42") }`. Prefer
 mockk over hand-rolled fakes.
 
 ## MockMvc Kotlin DSL + Spring Security test
