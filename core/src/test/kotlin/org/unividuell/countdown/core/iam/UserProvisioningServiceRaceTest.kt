@@ -36,15 +36,20 @@ class UserProvisioningServiceRaceTest(
                 )
                 val start = CyclicBarrier(2)
 
-                val ids = List(2) {
-                    pool.submit<UUID> {
-                        start.await()
-                        service.provision(identity = identity, roles = emptySet())
-                    }
-                }.map { it.get(10, TimeUnit.SECONDS) }
+                try {
+                    val ids = List(2) {
+                        pool.submit<UUID> {
+                            start.await()
+                            service.provision(identity = identity, roles = emptySet())
+                        }
+                    }.map { it.get(10, TimeUnit.SECONDS) }
 
-                ids.distinct() shouldHaveSize 1
-                repository.deleteById(ids.first())
+                    ids.distinct() shouldHaveSize 1
+                } finally {
+                    // Also when the round fails: the database is shared with every other test class.
+                    repository.findByProviderAndSubject(provider = identity.provider, subject = identity.subject)
+                        ?.let { repository.delete(it) }
+                }
             }
         } finally {
             pool.shutdownNow()
