@@ -10,6 +10,6 @@ describe('login.vue', () => {
     vi.stubGlobal('location', { assign } as unknown as Location)
     const wrapper = mount(Login)
     await wrapper.get('[data-test="login-github"]').trigger('click')
-    expect(assign).toHaveBeenCalledWith('/login/github')
+    expect(assign).toHaveBeenCalledWith('/login/start')
   })
 })

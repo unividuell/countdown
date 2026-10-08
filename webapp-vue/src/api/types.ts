@@ -140,7 +140,7 @@ export interface SuperAdminCommunity {
 }
 /**
  * `flagged` is the is_super_admin column, `allowlisted` is membership in
- * SUPER_ADMIN_GITHUB_LOGINS. They drift because the flag is re-derived on every login.
+ * SUPER_ADMINS. They drift because the flag is re-derived on every login.
  */
 export interface SuperAdminUser {
   githubLogin: string

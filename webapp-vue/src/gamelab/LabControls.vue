@@ -200,7 +200,7 @@ const ruleText = computed(() => {
        brings us back to this exact seed so a player switch does not cost the round. -->
   <a
     data-test="lab-switch-player"
-    :href="`/login/github?redirect=${encodeURIComponent(props.returnPath)}`"
+    :href="`/login/start?redirect=${encodeURIComponent(props.returnPath)}`"
     :class="`${ROW} cursor-pointer hover:bg-neutral-100`"
   >
     Spieler wechseln
