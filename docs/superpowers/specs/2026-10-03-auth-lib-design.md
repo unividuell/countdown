@@ -71,8 +71,8 @@ Die Anforderungen, gegen die dieses Design gemessen wird:
 | Aufbau | ein Maven-Modul, Auto-Konfiguration und Starter in einem |
 | Stack | Kotlin 2.4, Bytecode Java 25 |
 | Abhängigkeiten | `spring-boot-starter-security`, `-oauth2-client`, `-webmvc`, kotlin-logging; Versionen aus dem Boot-BOM, die einbindende App gewinnt |
-| Release | Maven Central über das Central Portal; Namespace `org.unividuell` per DNS-TXT bestätigt; GitHub-Actions-Workflow auf Tag `v*` mit GPG-Signatur, Sources- und Javadoc-Jar; SemVer, `0.x` während countdown umzieht |
-| Lokal | `0.1.0-SNAPSHOT` per `./mvnw install` in `~/.m2`. Ein countdown-PR, der die Lib braucht, merged erst nach dem Release — sonst löst die CI die Version nicht auf. |
+| Release | Kein Maven Central (zu viel Aufwand für eine Lib mit einem Nutzer). Version setzen, Tag `v*`, dann `./mvnw deploy -Dmaven.install.skip=true -DaltDeploymentRepository=…` in ein dateibasiertes Maven-Repo **in der App** (`core/maven-repo/`, committet), das die App per `file://${project.basedir}/maven-repo` einbindet. SemVer, `0.x` während countdown umzieht. Das `release`-Profil für Central bleibt im POM, ruht aber |
+| Später | Ab der zweiten App: ein öffentliches Repo `unividuell/maven-repo`, gelesen über `raw.githubusercontent.com` — ein Ort für alle Apps, ohne Token und GPG |
 
 GitHub Packages scheidet aus: Es verlangt auch für öffentliche Maven-Pakete einen Token, auf jedem
 Rechner und in jeder CI. JitPack scheidet aus: Jeder Build jeder App hinge an einem fremden
@@ -362,7 +362,7 @@ den Schlüssel einmal neu ein (Cookie-Name ändert sich).
 
 **Auslieferung:**
 
-1. Lib `0.1.0` auf Maven Central.
+1. Lib `0.1.0` per `deploy` in countdowns `core/maven-repo/`, committet.
 2. countdown-PR nach `develop`. **Vorher** `SUPER_ADMINS` in der staging-`.env` setzen.
 3. Vor dem Release nach `main`: in Prod nachsehen, dass `iam.users` nur die eine echte Zeile enthält
    (keine weiteren User, keine negative `github_id`). **Vorher** in der Prod-`.env`
@@ -411,6 +411,6 @@ dem Deploy — echter Login, Zustimmungsseite der GitHub App.
 Zwei Implementierungspläne:
 
 1. **Lib bis Release `0.1.0`** — Repo, Build, Code, Tests, Release-Workflow, README.
-2. **Umstellung von countdown** — beginnt gegen den `SNAPSHOT`, merged nach dem Release.
+2. **Umstellung von countdown** — beginnt mit dem Deploy von `0.1.0` in `core/maven-repo/`.
 
 Offen für Plan 1: ob das Javadoc-Jar per Dokka entsteht oder als leeres Platzhalter-Jar.
