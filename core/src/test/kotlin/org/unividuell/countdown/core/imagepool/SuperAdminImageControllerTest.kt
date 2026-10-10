@@ -9,11 +9,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.imagepool.internal.*
@@ -88,11 +88,11 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.get("/api/super-admin/images") { with(admin) }
         mockMvc.multipart("/api/super-admin/images") {
             file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1)))
-            with(admin); with(csrf())
+            with(admin); with(withCsrfToken())
         }
         mockMvc.get("/api/super-admin/images/$id/thumb") { with(admin) }
         mockMvc.get("/api/super-admin/images/$id") { with(admin) }
-        mockMvc.delete("/api/super-admin/images/$id") { with(admin); with(csrf()) }
+        mockMvc.delete("/api/super-admin/images/$id") { with(admin); with(withCsrfToken()) }
 
         verify(exactly = 5) { gate.global(true) }
     }
@@ -107,7 +107,7 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
      * Every endpoint is listed so the refusal is proven for all of them, not just the listing.
      * Note what this does NOT prove: the refusal comes from the filter chain, so these four
      * requests never reach a handler and say nothing about whether it consults the gate. That
-     * is `every endpoint consults the gate`'s job. Mutating requests carry csrf(): without it
+     * is `every endpoint consults the gate`'s job. Mutating requests carry a CSRF token: without it
      * the 403 would come from the wrong place and prove nothing.
      */
     @Test
@@ -122,10 +122,10 @@ class SuperAdminImageControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.multipart("/api/super-admin/images") {
             file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1)))
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect { status { isForbidden() } }
 
-        mockMvc.delete("/api/super-admin/images/$id") { with(principalFor()); with(csrf()) }
+        mockMvc.delete("/api/super-admin/images/$id") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isForbidden() } }
     }
 }

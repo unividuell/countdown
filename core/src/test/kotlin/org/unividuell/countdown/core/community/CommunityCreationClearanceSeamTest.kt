@@ -8,11 +8,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.EditionService
@@ -52,7 +52,7 @@ class CommunityCreationClearanceSeamTest(
 
     private fun createAs(user: User) =
         mockMvc.post("/api/communities") {
-            with(principalFor(user)); with(csrf())
+            with(principalFor(user)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }

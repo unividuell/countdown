@@ -8,10 +8,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.put
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.SuperAdminUserDetail
@@ -103,7 +103,7 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
         every { service.setCommunityCreation(uid, true) } returns detail(allowed = true)
 
         mockMvc.put("/api/super-admin/users/$uid/community-creation") {
-            with(principalFor(superAdmin = true)); with(csrf())
+            with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"allowed":true}"""
         }.andExpect {
@@ -119,7 +119,7 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
         every { service.setCommunityCreation(uid, false) } returns detail(allowed = false)
 
         mockMvc.put("/api/super-admin/users/$uid/community-creation") {
-            with(principalFor(superAdmin = true)); with(csrf())
+            with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"allowed":false}"""
         }.andExpect {
@@ -140,7 +140,7 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `granting the clearance is forbidden for a non-super-admin`() {
         mockMvc.put("/api/super-admin/users/$uid/community-creation") {
-            with(principalFor(superAdmin = false)); with(csrf())
+            with(principalFor(superAdmin = false)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"allowed":true}"""
         }.andExpect { status { isForbidden() } }
@@ -151,7 +151,7 @@ class SuperAdminUserControllerTest(@Autowired val mockMvc: MockMvc) {
         every { service.setCommunityCreation(uid, true) } throws UserNotFoundException("user $uid not found")
 
         mockMvc.put("/api/super-admin/users/$uid/community-creation") {
-            with(principalFor(superAdmin = true)); with(csrf())
+            with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"allowed":true}"""
         }.andExpect { status { isNotFound() } }

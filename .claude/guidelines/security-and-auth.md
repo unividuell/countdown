@@ -35,6 +35,8 @@ the authorization request). countdown's code is countdown's job.
 
 ## SPA contract — countdown's side
 
+- `unividuell.auth.frontend: spa` — required since the lib's 0.3.0, which refuses to start without
+  it. The test classpath's `application.yaml` repeats it, since it replaces the main file.
 - The SPA's one sign-in button navigates to **`/login/start`**; the lab's „Spieler wechseln“ adds
   `?redirect=<path>`. The bare `/login` is the SPA's sign-in page — the lib maps nothing there, and
   edge and dev proxy forward only the paths below it ([deployment-edge.md](deployment-edge.md),
@@ -51,6 +53,14 @@ the authorization request). countdown's code is countdown's job.
   dispatches) run first. Order matters: specific `permitAll` and role-gated paths **before**
   `anyRequest authenticated`.
 - Keep actuator exposure narrow (`/actuator/health`, not `/actuator/**`).
+
+## Tests
+
+- MockMvc tests sign in with `principalFor(…)` (`TestPrincipals.kt`) and send the CSRF token with
+  the lib's `withCsrfToken()` (`auth-spring-boot-starter-test`): the `XSRF-TOKEN` cookie echoed in
+  the header, as the SPA does. **Never spring-security-test's `csrf()`**: it replaces the shared
+  CsrfFilter's cookie repository with a session-backed one for good, so later tests in the same
+  context get no `XSRF-TOKEN` cookie and create sessions, depending on which ran first.
 
 ## Rate-limited endpoints reachable without a session
 

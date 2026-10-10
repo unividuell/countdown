@@ -67,7 +67,8 @@ mockk over hand-rolled fakes.
 
 ## MockMvc Kotlin DSL + Spring Security test
 
-Apply spring-security-test post-processors inside the DSL block via `with(...)`:
+Apply request post-processors (`principalFor`, the auth lib's `withCsrfToken()` — never
+spring-security-test's `csrf()`, see security-and-auth.md) inside the DSL block via `with(...)`:
 
 ```kotlin
 mockMvc.get("/api/me").andExpect { status { isUnauthorized() } }
@@ -80,7 +81,7 @@ mockMvc.get("/api/me") {
 }
 
 mockMvc.patch("/api/me") {
-    with(principalFor(user)); with(csrf())
+    with(principalFor(user)); with(withCsrfToken())
     contentType = MediaType.APPLICATION_JSON
     content = """{"displayName":"New Name","bgColorHex":"#abcdef"}"""
 }.andExpect { status { isOk() } }

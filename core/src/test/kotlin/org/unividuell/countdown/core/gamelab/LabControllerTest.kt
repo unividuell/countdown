@@ -10,11 +10,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.AwardRule
@@ -158,7 +158,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns aResponse(seed = 42)
 
         mockMvc.post("/api/lab/team/guess-hue/guess?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":123.5}"""
         }.andExpect { status { isOk() } }
@@ -174,7 +174,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws AlreadyGuessedException()
 
         mockMvc.post("/api/lab/team/guess-hue/guess?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":123.5}"""
         }.andExpect { status { isConflict() } }
@@ -190,7 +190,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws InvalidGuessException("hue must lie in [0, 360), was 400.0")
 
         mockMvc.post("/api/lab/team/guess-hue/guess?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":400.0}"""
         }.andExpect { status { isBadRequest() } }
@@ -206,7 +206,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns aResponse(seed = 42)
 
         mockMvc.post("/api/lab/team/guess-hue/reveal?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect {
             status { isOk() }
             jsonPath("$.seed") { value(42) }
@@ -223,7 +223,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns aResponse(seed = 42)
 
         mockMvc.post("/api/lab/team/guess-hue/reset?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect {
             status { isOk() }
             jsonPath("$.seed") { value(42) }
@@ -240,7 +240,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns aResponse(seed = 42)
 
         mockMvc.delete("/api/lab/team/guess-hue/me?seed=42") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect { status { isOk() } }
     }
 

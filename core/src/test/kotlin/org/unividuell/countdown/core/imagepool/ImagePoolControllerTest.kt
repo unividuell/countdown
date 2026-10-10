@@ -9,11 +9,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.imagepool.internal.*
@@ -90,7 +90,7 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.multipart("/api/communities/alpha/images") {
             file(MockMultipartFile("file", "a.jpg", "image/jpeg", byteArrayOf(1, 2, 3)))
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect {
             status { isConflict() }
             jsonPath("$.code") { value("POOL_FULL") }
@@ -108,7 +108,7 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.multipart("/api/communities/alpha/images") {
             file(MockMultipartFile("file", "a.heic", "image/heic", byteArrayOf(1, 2, 3)))
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect {
             status { isUnsupportedMediaType() }
             jsonPath("$.code") { value("HEIC_UNSUPPORTED") }
@@ -159,7 +159,7 @@ class ImagePoolControllerTest(@Autowired val mockMvc: MockMvc) {
             service.delete(pool = memberPool, id = imageId, viewerId = TEST_USER_ID)
         } returns Unit
 
-        mockMvc.delete("/api/communities/alpha/images/$imageId") { with(principalFor()); with(csrf()) }
+        mockMvc.delete("/api/communities/alpha/images/$imageId") { with(principalFor()); with(withCsrfToken()) }
             .andExpect { status { isNoContent() } }
     }
 

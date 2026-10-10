@@ -39,7 +39,10 @@ backups, `update.sh`, secret-handling scripts, pgAdmin — lives in
   own file in `paths`, so editing the workflow re-triggers it); `permissions: { contents: read,
   packages: write }`, ghcr auth via `GITHUB_TOKEN`. Both declare **`workflow_dispatch`** for manual
   runs — needed because a path-filtered workflow does **not** trigger on the initial
-  branch-creation push (no diff base).
+  branch-creation push (no diff base), nor on a push changing **more than 300 files**: GitHub
+  then skips the path filter's run silently. A large release merge into `main` hits this (378
+  files, 2026-10-08) — check the Actions tab after merging, and start both builds by hand:
+  `gh workflow run build-core.yml --ref main` and `gh workflow run build-web.yml --ref main`.
 - **ghcr package visibility:** the `countdown-core`/`countdown-web` packages are kept **private**.
   The server therefore authenticates before pulling: `docker login ghcr.io -u <user>` with a
   token that has **`read:packages`** (the credential persists in `~/.docker/config.json`). CI

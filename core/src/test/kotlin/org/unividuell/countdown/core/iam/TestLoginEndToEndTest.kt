@@ -7,10 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import java.net.URI
 import java.net.URLEncoder
@@ -32,7 +32,7 @@ class TestLoginEndToEndTest(@Autowired val mockMvc: MockMvc) {
      */
     private fun signInAs(login: String): Cookie {
         val header = mockMvc.post("/login/test/as") {
-            with(csrf())
+            with(withCsrfToken())
             param("login", login)
         }.andExpect {
             status { is3xxRedirection() }
@@ -84,7 +84,7 @@ class TestLoginEndToEndTest(@Autowired val mockMvc: MockMvc) {
             content { string(containsString("""name="redirect" value="/c/team/lab/stub?seed=42&amp;phase=TWO&amp;note={x}"""")) }
         }
         mockMvc.post("/login/test/as") {
-            with(csrf())
+            with(withCsrfToken())
             param("login", "Bender")
             param("redirect", labUrl)
         }.andExpect {
