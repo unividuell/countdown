@@ -5,10 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.principalFor
 
@@ -56,7 +56,7 @@ class PublicRateLimitFilterTest(@Autowired val mockMvc: MockMvc) {
             mockMvc.post("/api/communities/join/ZZZZZZ") {
                 header("X-Client-IP", "203.0.113.6")
                 with(principalFor())
-                with(csrf())
+                with(withCsrfToken())
             }.andExpect { status { isNotFound() } }
         }
     }

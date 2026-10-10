@@ -32,7 +32,7 @@
 		<!-- Not in the Boot BOM, so ours to track (see .claude/guidelines/dependency-updates.md). -->
 		<kotlin-logging.version>8.0.4</kotlin-logging.version>
 		<!-- Ours, from core/maven-repo: not on Maven Central (see dependency-updates.md). -->
-		<unividuell-auth.version>0.2.0-SNAPSHOT</unividuell-auth.version>
+		<unividuell-auth.version>0.3.0</unividuell-auth.version>
 		<spring-modulith.version>2.1.1</spring-modulith.version>
 		<metadata-extractor.version>2.19.0</metadata-extractor.version>
 		<twelvemonkeys.version>3.12.0</twelvemonkeys.version>
@@ -196,6 +196,13 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<!-- MockMvc sign-in and CSRF token the way the auth lib issues them (never csrf()). -->
+			<groupId>org.unividuell</groupId>
+			<artifactId>auth-spring-boot-starter-test</artifactId>
+			<version>${unividuell-auth.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

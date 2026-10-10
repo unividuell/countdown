@@ -24,6 +24,8 @@ spring:
 
 unividuell:
   auth:
+    # Repeated from the main application.yaml, which this file replaces.
+    frontend: spa
     roles:
       # TestLoginEndToEndTest signs in as prof and expects a super-admin.
       super-admin: test:prof

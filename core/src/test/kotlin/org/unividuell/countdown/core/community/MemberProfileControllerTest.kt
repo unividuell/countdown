@@ -9,12 +9,12 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityAccess
@@ -87,7 +87,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         )
 
         mockMvc.put("/api/communities/team/me/profile") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
         }.andExpect {
@@ -104,7 +104,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws IllegalArgumentException("bgColorHex must be a valid hex colour")
 
         mockMvc.put("/api/communities/team/me/profile") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":null,"bgColorHex":"rebeccapurple"}"""
         }.andExpect {
@@ -123,7 +123,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
             MemberProfileResponse(displayName = null, bgColorHex = null, identity = identity)
 
         mockMvc.delete("/api/communities/team/me/profile") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
         }.andExpect { status { isNoContent() } }
 
         verify { profiles.clear(communityId = community.id!!, userId = uid) }
@@ -137,7 +137,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         } returns identity
 
         mockMvc.post("/api/communities/team/me/avatar-preview") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
         }.andExpect {
@@ -160,7 +160,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws CommunityAccessDeniedException()
 
         mockMvc.post("/api/communities/team/me/avatar-preview") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":null}"""
         }.andExpect { status { isNotFound() } }
@@ -174,7 +174,7 @@ class MemberProfileControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws IllegalArgumentException("bgColorHex must be a valid hex colour")
 
         mockMvc.post("/api/communities/team/me/avatar-preview") {
-            with(principalFor()); with(csrf())
+            with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":null,"bgColorHex":"rebeccapurple"}"""
         }.andExpect { status { isBadRequest() } }

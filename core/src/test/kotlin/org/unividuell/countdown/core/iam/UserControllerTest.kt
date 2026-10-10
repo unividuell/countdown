@@ -9,12 +9,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
-import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
+import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.iam.internal.AvatarPreviewResponse
@@ -90,13 +89,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         }
     }
 
-    // `with(csrf())` permanently swaps the shared, context-cached CsrfFilter's token repository
-    // for a test double, for every later request in this class — so once any test uses it, a
-    // plain GET here would stop getting a fresh XSRF-TOKEN cookie, no matter which test ran first.
-    // Forcing a pristine context right before this assertion removes that dependency entirely,
-    // rather than relying on this test happening to run before the first `with(csrf())` call.
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     fun `GET me sets the XSRF-TOKEN cookie so the SPA can echo it on mutating requests`() {
         every { profileService.current(uid) } returns user()
 
@@ -148,7 +141,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.patch("/api/me") {
             with(principalFor(user()))
-            with(csrf())
+            with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"New Name","bgColorHex":"#abcdef"}"""
         }.andExpect {
@@ -171,7 +164,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `logout clears session and returns 204`() {
         mockMvc.post("/logout") {
             with(principalFor(user()))
-            with(csrf())
+            with(withCsrfToken())
         }.andExpect {
             status { isNoContent() }
         }
@@ -184,7 +177,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.patch("/api/me") {
             with(principalFor(user()))
-            with(csrf())
+            with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":null,"bgColorHex":"12345"}"""
         }.andExpect {
@@ -233,7 +226,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         )
 
         mockMvc.post("/api/me/avatar-preview") {
-            with(principalFor(user())); with(csrf())
+            with(principalFor(user())); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":"#8e44ad"}"""
         }.andExpect {
@@ -246,7 +239,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `a preview without auth returns 401`() {
         mockMvc.post("/api/me/avatar-preview") {
-            with(csrf())
+            with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"Zwerg","bgColorHex":null}"""
         }.andExpect { status { isUnauthorized() } }
@@ -260,7 +253,7 @@ class UserControllerTest(@Autowired val mockMvc: MockMvc) {
         } throws IllegalArgumentException("displayName must be at most 32 characters, got 33")
 
         mockMvc.post("/api/me/avatar-preview") {
-            with(principalFor(user())); with(csrf())
+            with(principalFor(user())); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"displayName":"$tooLong","bgColorHex":null}"""
         }.andExpect { status { isBadRequest() } }
