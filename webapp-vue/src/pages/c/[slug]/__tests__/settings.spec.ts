@@ -136,7 +136,7 @@ describe('settings — timezone + zone-relative startsAt', () => {
     await flushPromises()
     expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
     expect(w.find('select').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Die erste Spielrunde steht fest')
   })
 })
 
@@ -153,7 +153,7 @@ describe('settings — a run that has begun', () => {
     await flushPromises()
     expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
     expect(w.find('select').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Der Lauf hat begonnen')
+    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Die erste Spielrunde steht fest')
   })
 
   it('leaves start and timezone out of the request', async () => {
