@@ -32,8 +32,11 @@ class RoundMaterialiser(
     /**
      * Announce [roundNumber] of [edition] — or, on a lost race, return the winner's row. `null` when
      * no game type is available.
+     *
+     * Rolls back on checked exceptions too: the MP3 decoder throws them, and a row committed without
+     * its assets is a round nobody can play that the fallback, finding the row, never retries.
      */
-    @Transactional
+    @Transactional(rollbackFor = [Exception::class])
     fun materialise(edition: CommunityEdition, roundNumber: Int): RoundGame? {
         val history = store.history(edition = edition, roundNumber = roundNumber)
         val random = GameRandom.independent(secureRandom)
