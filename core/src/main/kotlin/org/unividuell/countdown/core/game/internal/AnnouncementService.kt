@@ -16,10 +16,11 @@ import java.util.UUID
 /**
  * Which game the community is playing right now.
  *
- * The read path is a `SELECT`; only the first caller of a round writes. That is why this is a `GET`
- * that materialises: the announcement **is** the materialisation. Were the row written on first
- * reveal instead, the announcement would have to be computed unpersisted beforehand and could differ
- * from the row written later — exactly the drift the frozen round exists to prevent.
+ * The read path is a `SELECT`: [MaterialisationSchedule] has normally announced the round a day
+ * ahead. Only a round the schedule missed is written here, by its first caller — which is why this
+ * `GET` may still materialise. Were that row written on first reveal instead, the announcement
+ * would have to be computed unpersisted beforehand and could differ from the row written later —
+ * exactly the drift the frozen round exists to prevent.
  */
 @Service
 class AnnouncementService(
@@ -35,7 +36,7 @@ class AnnouncementService(
     private val logger = KotlinLogging.logger {}
 
     /**
-     * Not `readOnly`: the first call of a round inserts. Every later call of the same round only
+     * Not `readOnly`: the first call of a round the schedule missed inserts. Every other call only
      * reads, which is where practically all traffic lands.
      */
     @Transactional
@@ -46,7 +47,8 @@ class AnnouncementService(
 
     /**
      * The gate and the materialisation, shared by all four endpoints: membership, the run, the
-     * window, then the announced round — created here if this is the first caller of the round.
+     * window, then the announced round — created here if the schedule missed it and this is its
+     * first caller.
      */
     @Transactional
     fun resolve(slug: String, userId: UUID, isSuperAdmin: Boolean): ResolvedRound {

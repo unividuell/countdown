@@ -14,7 +14,8 @@ import java.time.Clock
 
 /**
  * Announces a round: picks its game, draws its params, persists the row and lets the game store its
- * assets. Called by [AnnouncementService] for a round that has no row yet.
+ * assets. Two callers, one draw — [MaterialisationSchedule] a day ahead, [AnnouncementService] for a
+ * round the schedule missed — so the frozen round does not depend on which of them wrote it.
  */
 @Component
 class RoundMaterialiser(

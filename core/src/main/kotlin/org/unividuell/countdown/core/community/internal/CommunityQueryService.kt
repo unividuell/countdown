@@ -21,6 +21,7 @@ class CommunityQueryService(
     override fun findById(id: UUID): Community? = communities.findByIdOrNull(id)
     override fun activeEditionOf(communityId: UUID): CommunityEdition? =
         editions.findActiveByCommunityId(communityId)
+    override fun activeEditions(): List<CommunityEdition> = editions.findAllActive()
 
     override fun isActiveMember(communityId: UUID, userId: UUID): Boolean =
         members.findByCommunityIdAndUserId(communityId = communityId, userId = userId)?.status == MemberStatus.ACTIVE
