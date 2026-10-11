@@ -142,7 +142,7 @@ class MaterialisationScheduleTest {
     }
 
     @Test
-    fun `a failing round costs neither the other round nor the next edition`() {
+    fun `a failed running round holds the next one back, not the next edition`() {
         val failing = anEdition()
         val healthy = anEdition()
         val failingCurrent = currentOf(failing)
@@ -154,10 +154,22 @@ class MaterialisationScheduleTest {
 
         schedule.run()
 
-        verify { materialiser.materialise(edition = failing, roundNumber = failingCurrent - 1) }
+        // The draw only looks back: announced before its predecessor, tomorrow could repeat today's game.
+        verify(exactly = 0) { materialiser.materialise(edition = failing, roundNumber = failingCurrent - 1) }
         verify { materialiser.releaseStagesOlderThan(edition = failing, roundNumber = failingCurrent) }
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent - 1) }
+    }
+
+    @Test
+    fun `a running round without a game holds the next one back`() {
+        val edition = anEdition()
+        val current = currentOf(edition)
+        every { materialiser.materialise(edition = edition, roundNumber = current) } returns null
+
+        schedule.prepare(edition = edition, now = now) shouldBe 0
+
+        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current - 1) }
     }
 
     @Test

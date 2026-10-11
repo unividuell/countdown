@@ -55,7 +55,7 @@ MaterialisationSchedule.run()                     game.internal, @Scheduled
          windowReasonOf(r) != null → überspringen
          store.find(r) != null     → überspringen           egal, woher die Zeile kam
          materialiser.materialise(edition, r)    eigene Tx je Runde
-           Fehler → warn(edition, r), weiter
+           Fehler/kein Spiel → warn(edition, r), n−1 nicht versuchen
        materialiser.releaseStagesOlderThan(edition, n)
 
 GET /current → AnnouncementService.resolve
@@ -77,7 +77,12 @@ GET /current → AnnouncementService.resolve
 ### Transaktionen
 
 **Eine Transaktion pro Runde**, nicht pro Edition: scheitert `n−1` an Deezer, bleibt `n` bestehen.
-Die Freigabe läuft in einer eigenen. Netzwerk-I/O im Hook liegt weiter in der Transaktion, wie heute
+Die Freigabe läuft in einer eigenen.
+
+**Keine Runde vor ihrer Vorgängerin.** Scheitert `n`, versucht der Lauf `n−1` nicht. Die Auswahl
+(„nicht zweimal dasselbe Spiel hintereinander“) schaut nur zurück; entstünde `n−1` vor `n`, sähe der
+spätere Fallback für `n` die Runde `n−1` nicht und könnte dasselbe Spiel ziehen. Kosten: an einem
+solchen Tag entsteht auch `n−1` erst über den Fallback. Netzwerk-I/O im Hook liegt weiter in der Transaktion, wie heute
 im `GET`.
 
 ### Konfiguration
@@ -156,8 +161,8 @@ und `run` direkt:
 3. Fenster: laufend = `gamesUntilRound` → nur diese; laufend = `f+1` → nur `f`; nach dem Fenster
    → keine.
 4. Edition ohne `startsAt` → nichts, auch keine Freigabe.
-5. Scheitert eine Runde, entstehen die andere Runde und die nächste Edition trotzdem; scheitert eine
-   Freigabe, ebenso.
+5. Scheitert die laufende Runde oder bleibt sie ohne Spiel, wird die nächste nicht versucht; die
+   nächste Edition entsteht trotzdem. Scheitert eine Freigabe oder ein Nachschlagen, ebenso.
 6. Die Freigabe läuft mit der laufenden Runde, auch wenn nichts angelegt wurde.
 
 **Neu: `MaterialisationScheduleBootTest`** — Testcontainers, Test-Transaktion, ruft `prepare` für die

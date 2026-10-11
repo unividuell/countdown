@@ -56,7 +56,8 @@ next 24 hours. The announcing `GET` is the fallback for a round the run missed.
 Both write via `INSERT … ON CONFLICT DO NOTHING` followed by a `SELECT` — **not** by catching
 `DuplicateKeyException`: a constraint violation marks the transaction rollback-only in Postgres, so
 the re-read inside the same transaction would fail. First writer wins, the loser reads the winner's
-row and plays their game. The run checks for a row before drawing, so whatever exists stays.
+row and plays their game. The run checks for a row before drawing, so whatever exists stays, and
+never announces a round before the one it follows: the selection only looks back.
 
 A round announced ahead holds its solution a day before it is playable: nothing may hand out a round
 newer than the running one (`MaterialisationScheduleBootTest` pins it with the row present).

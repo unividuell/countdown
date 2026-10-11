@@ -20,7 +20,7 @@ import java.time.ZoneId
  *
  *   03:00 ─┬─ for each active edition
  *          ├─ round n   (running)  missing? → materialise
- *          ├─ round n−1 (next)     missing? → materialise
+ *          ├─ round n−1 (next)     missing? → materialise, once n has its row
  *          └─ release stages of rounds older than n
  *
  * A round that has a row is left alone, whoever wrote it. [AnnouncementService] stays the fallback
@@ -65,15 +65,19 @@ class MaterialisationSchedule(
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
 
-        // A larger round number is earlier: the next round is `current - 1`.
+        // A larger round number is earlier: the next round is `current - 1`. A round is never announced
+        // before the one it follows — the draw only looks back — so a running round left without a row
+        // holds the next one back for the fallback.
         var materialised = 0
         for (roundNumber in listOf(current, current - 1)) {
             if (windowReasonOf(edition = edition, roundNumber = roundNumber) != null) continue
             if (store.find(edition = edition, roundNumber = roundNumber) != null) continue
             try {
-                if (materialiser.materialise(edition = edition, roundNumber = roundNumber) != null) materialised++
+                materialiser.materialise(edition = edition, roundNumber = roundNumber) ?: break
+                materialised++
             } catch (e: Exception) {
                 logger.warn(e) { "round $roundNumber of edition ${edition.id} not materialised" }
+                break
             }
         }
 
