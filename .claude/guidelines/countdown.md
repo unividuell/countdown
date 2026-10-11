@@ -133,9 +133,10 @@ it is recomputed from them. Moving either after rounds have been announced there
 at numbers `game.round_games` already holds: the same round a second time, or numbers skipped. Both
 are unfair and unexplainable to a player.
 
-A run is therefore **frozen** from the start of round `gamesFromRound` on — the earliest instant
-anyone could announce a round (`gamesFromRound = null` means unbounded, so a run freezes with its
-date). From then on the two fields are 409, and the way forward is a new edition.
+A run is therefore **frozen** from the start of round `gamesFromRound + 1` on — the day before its
+first game round: the daily schedule announces each round a day ahead, so that is the earliest
+instant a `round_games` row can exist (`gamesFromRound = null` means unbounded, so a run freezes
+with its date). From then on the two fields are 409, and the way forward is a new edition.
 
 The state is **derived, never stored**: `frozenSince(edition)` against the clock. That keeps it
 honest without a column, but it makes the freeze point a function of editable fields — so the check
@@ -144,8 +145,9 @@ after which the run would no longer be frozen. A rule on the effect, not on a fi
 revisit when the next field enters the computation.
 
 What does **not** freeze: `phaseTwoStartRound` and the game window. Rule and stake are frozen per
-round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds still
-to come — a game-master decision with visible effect, not a silent rewrite of history.
+round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds not yet
+announced — tomorrow's usually is — a game-master decision with visible effect, not a silent rewrite
+of history.
 
 ## Related / future
 

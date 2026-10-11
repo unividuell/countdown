@@ -132,7 +132,7 @@ async function revoke(): Promise<void> {
         {{
           editionFrozen
             ? 'Der Lauf hat begonnen — Start und Zeitzone sind fix.'
-            : 'Änderbar, bis die erste Spielrunde beginnt — danach ist der Lauf fix.'
+            : 'Änderbar bis einen Tag vor der ersten Spielrunde — danach ist der Lauf fix.'
         }}
       </p>
       <label class="block text-sm"
