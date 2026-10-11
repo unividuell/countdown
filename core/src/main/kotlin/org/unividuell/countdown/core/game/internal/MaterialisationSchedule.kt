@@ -41,7 +41,15 @@ class MaterialisationSchedule(
     fun run() {
         val now = clock.instant()
         val editions = communities.activeEditions()
-        val materialised = editions.sumOf { prepare(edition = it, now = now) }
+        // One edition's failure — a lost connection, a zone the JDK no longer knows — skips only that one.
+        val materialised = editions.sumOf { edition ->
+            try {
+                prepare(edition = edition, now = now)
+            } catch (e: Exception) {
+                logger.warn(e) { "edition ${edition.id} not prepared" }
+                0
+            }
+        }
         logger.info { "$materialised rounds materialised across ${editions.size} editions" }
     }
 

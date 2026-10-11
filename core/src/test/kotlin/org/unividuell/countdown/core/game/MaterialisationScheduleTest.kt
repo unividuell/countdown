@@ -175,4 +175,18 @@ class MaterialisationScheduleTest {
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
         verify { materialiser.releaseStagesOlderThan(edition = healthy, roundNumber = healthyCurrent) }
     }
+
+    @Test
+    fun `a failing lookup does not stop the next edition`() {
+        val failing = anEdition()
+        val healthy = anEdition()
+        val healthyCurrent = currentOf(healthy)
+        every { communities.activeEditions() } returns listOf(failing, healthy)
+        every { store.find(edition = failing, roundNumber = any()) } throws IllegalStateException("connection reset")
+
+        schedule.run()
+
+        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
+        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent - 1) }
+    }
 }
