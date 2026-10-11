@@ -9,7 +9,7 @@ dort noch „bewusst kein Scheduler“).
 
 **Berührt:** `AnnouncementService`, `RoundGameStore`/`RoundGameRepository`, `CommunityQuery`,
 `EditionFreeze`, die KDoc von `GameType.releaseStageAssets`; `game-rounds.md` und `countdown.md`.
-Kein Frontend.
+Im Frontend nur der Hinweis zum Einfrieren in den Community-Einstellungen.
 
 ## Zweck
 
@@ -106,7 +106,7 @@ Neu ist, dass `params` — samt Lösung — bis zu einen Tag vor Rundenbeginn in
 Pfad gibt eine Runde jünger als die laufende heraus: `HistoryService.resolve` lehnt alles nicht
 strikt Ältere ab, `PlayService.asset` wirft für `roundNumber < current`, `ReviewService` nimmt nur
 laufende und vorige Runde, Punkte summieren nur beendete. Diese Wächter gab es schon; sie wurden nur
-nie mit einer existierenden jüngeren Zeile geprüft. Test 8 unten pinnt das.
+nie mit einer existierenden jüngeren Zeile geprüft. Test 10 unten pinnt das.
 
 ## Einfrierpunkt einen Tag früher
 
@@ -123,8 +123,9 @@ bleibt `Instant.MIN`.
      ▲ neu frozen  ▲ Lauf legt 14 an  ▲ bisher frozen
 ```
 
-Für Admins nur sichtbar am 409, einen Tag früher. Das Frontend erhält `editionFrozen: boolean` und
-rechnet nichts selbst.
+Für Admins sichtbar am 409, einen Tag früher. Das Frontend erhält `editionFrozen: boolean` und
+rechnet nichts selbst — nur der Hinweis unter dem Startfeld verspricht „Änderbar, bis die erste
+Spielrunde beginnt“ und wird zu „Änderbar bis einen Tag vor der ersten Spielrunde“.
 
 **Folge:** `phaseTwoStartRound` und das Spielfenster wirken nur auf Runden, die noch nicht angekündigt
 sind — die von morgen ist meist schon festgeschrieben. Kein Mechanismus, ein Satz in `countdown.md`.
@@ -147,19 +148,30 @@ heute — eine Leiter, einige MB, pro Community.
 
 ## Tests
 
-**Neu: `MaterialisationScheduleTest`** — Testcontainers, feste `Clock`, ruft `run()` direkt. Ohne
-Test-Transaktion, weil jede Runde ihre eigene hat; räumt selbst auf.
+**Neu: `MaterialisationScheduleTest`** — Unit-Test mit mockk und fester `Clock`, ruft `prepare`
+und `run` direkt:
 
 1. Legt laufende und nächste Runde an.
-2. Ein zweiter Lauf ändert nichts — gleiche IDs, gleiche `params`.
-3. Eine vorher geschriebene Zeile mit anderem Typ und eigenen Params bleibt unverändert.
-4. Fenster: laufend = `gamesUntilRound` → nur diese; laufend = `f+1` → nur `f`.
-5. Edition ohne `startsAt` und archivierte Edition → keine Zeile.
-6. Scheitert eine Runde, entstehen die übrigen Runden und Editionen trotzdem — erzwungen über
-   `@SpykBean` auf den Materialiser, weil die Spielauswahl zufällig ist.
-7. `releaseStageAssets` erhält genau die Runden älter als die laufende; laufende und nächste fehlen
-   (Recorder-Muster aus `AnnouncementMaterialisedHookTest`).
-8. Nach dem Lauf liefern History- und Asset-Endpoint für `n−1` 404, obwohl die Zeile existiert.
+2. Eine Runde mit Zeile wird übersprungen, egal woher die Zeile kam.
+3. Fenster: laufend = `gamesUntilRound` → nur diese; laufend = `f+1` → nur `f`; nach dem Fenster
+   → keine.
+4. Edition ohne `startsAt` → nichts, auch keine Freigabe.
+5. Scheitert eine Runde, entstehen die andere Runde und die nächste Edition trotzdem; scheitert eine
+   Freigabe, ebenso.
+6. Die Freigabe läuft mit der laufenden Runde, auch wenn nichts angelegt wurde.
+
+**Neu: `MaterialisationScheduleBootTest`** — Testcontainers, Test-Transaktion, ruft `prepare` für die
+eigene Edition. Nicht `run`: der sähe die Editionen anderer Testklassen im selben Kontext.
+
+7. Laufende und nächste Runde sind persistiert; ein zweiter Aufruf ändert nichts.
+8. Eine vorher geschriebene Zeile bleibt unverändert; `materialise` auf eine bestehende Runde
+   (verlorenes Rennen gegen den Fallback) liefert diese Zeile ohne Fehler.
+9. `releaseStageAssets` erhält genau die Runden älter als die laufende; laufende und nächste fehlen
+   (Recorder aus `AnnouncementMaterialisedHookTest`).
+10. History- und Asset-Pfad liefern für `n−1` `RoundNotFoundException` (404), obwohl die Zeile
+    existiert.
+
+**`CommunityQueryServiceTest`:** `activeEditions()` lässt archivierte Editionen aus.
 
 **Angepasst:**
 
@@ -169,7 +181,7 @@ Test-Transaktion, weil jede Runde ihre eigene hat; räumt selbst auf.
 - `AnnouncementServiceTest` bleibt unverändert — er deckt den Fallback ab.
 
 **Cron-Verdrahtung:** kein Unit-Test. App einmal mit
-`COUNTDOWN_GAME_MATERIALISATIONCRON='*/10 * * * * *'` booten und die `info`-Zeile im Log sehen
+`SPRING_APPLICATION_JSON` und dem Cron `*/10 * * * * *` booten und die `info`-Zeile im Log sehen
 (`configuration.md`: nach einer `application.yaml`-Änderung booten).
 
 ## Folgen für andere Dokumente
