@@ -55,10 +55,10 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         return requireNotNull(rounds.findByIdForUpdate(id)) { "round $id vanished while locking it" }
     }
 
-    /** Every round id of [edition] except [roundNumber] — the rounds that stopped being playable. */
+    /** Every round id of [edition] older than [roundNumber] — the rounds that stopped being playable. */
     @Transactional(readOnly = true)
-    fun roundIdsExcept(edition: CommunityEdition, roundNumber: Int): List<UUID> =
-        rounds.idsOfOtherRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
+    fun roundIdsOlderThan(edition: CommunityEdition, roundNumber: Int): List<UUID> =
+        rounds.idsOfOlderRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
 
     /**
      * Announce [roundNumber] — or, if somebody else got there first, return their announcement.

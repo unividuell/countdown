@@ -9,11 +9,6 @@ import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.countdown.Round
 import org.unividuell.countdown.core.game.GameCatalog
-import org.unividuell.countdown.core.game.GameRandom
-import org.unividuell.countdown.core.game.Phase
-import org.unividuell.countdown.core.game.RoundContext
-import org.unividuell.countdown.core.game.awardFor
-import java.security.SecureRandom
 import java.time.Clock
 import java.time.ZoneId
 import java.util.UUID
@@ -33,14 +28,11 @@ class AnnouncementService(
     private val engine: CountdownEngine,
     private val store: RoundGameStore,
     private val catalog: GameCatalog,
-    private val selection: GameSelection,
+    private val materialiser: RoundMaterialiser,
     private val responses: RoundResponses,
     private val clock: Clock,
 ) {
     private val logger = KotlinLogging.logger {}
-
-    /** The hidden seed is drawn, never derived: `(edition, round)` would be guessable. */
-    private val secureRandom = SecureRandom()
 
     /**
      * Not `readOnly`: the first call of a round inserts. Every later call of the same round only
@@ -89,7 +81,7 @@ class AnnouncementService(
             edition = edition,
             round = round,
             previousRoundNumber = previous,
-            roundGame = existing ?: materialise(communityId = communityId, edition = edition, round = round)
+            roundGame = existing ?: materialiseNow(edition = edition, roundNumber = round.number)
                 ?: return ResolvedRound.NoGame(
                     communityId = communityId, edition = edition, round = round,
                     previousRoundNumber = previous, reason = NoGameReason.NO_GAME_TYPE,
@@ -103,66 +95,10 @@ class AnnouncementService(
         previousRoundNumber = null, reason = NoGameReason.NOT_SCHEDULED,
     )
 
-    private fun materialise(communityId: UUID, edition: CommunityEdition, round: Round): RoundGame? {
-        val history = store.history(edition = edition, roundNumber = round.number)
-        val random = GameRandom.independent(secureRandom)
-        val context = RoundContext(
-            communityId = communityId,
-            roundNumber = round.number,
-            phase = Phase.of(edition = edition, roundNumber = round.number),
-        )
-        val typeId = selection.pick(
-            candidates = catalog.availableIds(context),
-            history = history,
-            // The chosen type is announced, so it is a published value and comes from the published
-            // stream — the same rule that governs the payload.
-            random = random.presentation,
-        ) ?: run {
-            // Unreachable today, but not because Spring would refuse to inject an empty
-            // List<GameType<*>> — it does that happily. It is unreachable because GuessHueGameType
-            // is an unconditional bean, so the catalogue this branch guards against never empties.
-            logger.warn { "no game type available for round ${round.number} of edition ${edition.id}" }
-            return null
-        }
-        val handle = requireNotNull(catalog.handle(typeId)) { "selection picked unknown type '$typeId'" }
-        val announced = store.announce(
-            edition = edition,
-            roundNumber = round.number,
-            gameType = typeId,
-            params = handle.draw(
-                random = random,
-                context = context.copy(
-                    previousParams = store.previousParams(edition = edition, gameType = typeId),
-                ),
-            ),
-            award = awardFor(roundNumber = round.number, phaseTwoStartRound = edition.phaseTwoStartRound),
-            announcedAt = clock.instant(),
-        )
-        // On a lost announce race, `announced` is the WINNER's row, possibly of a different type
-        // than `typeId` drew — so the hook must run against the type the persisted row actually
-        // carries, not against this caller's `handle`. Both first callers reach this line and call
-        // the winner's hook, which is exactly why it must be idempotent.
-        val materialisedHandle = requireNotNull(catalog.handle(announced.gameType)) {
-            "announced round carries unknown type '${announced.gameType}'"
-        }
-        materialisedHandle.materialised(params = announced.params, roundGameId = requireNotNull(announced.id))
-        releaseEarlierStages(edition = edition, current = round.number)
-        return announced
-    }
-
-    /**
-     * Every round but the one just announced has stopped being playable, so whatever only a playable
-     * round needed may go. **Not** everything it stored: a past round's reveal is still rendered by
-     * the history, and its asset has to survive — which is why this is `releaseStageAssets` and not
-     * `releaseAssets`. Every game is asked; each releases only what it owns, a no-op for most.
-     */
-    private fun releaseEarlierStages(edition: CommunityEdition, current: Int) {
-        val earlier = store.roundIdsExcept(edition = edition, roundNumber = current)
-        if (earlier.isEmpty()) return
-        for (id in catalog.ids()) {
-            catalog.handle(id)?.releaseStageAssets(earlier)
-        }
-    }
+    /** Announce the running round, then release what stopped being playable with it. */
+    private fun materialiseNow(edition: CommunityEdition, roundNumber: Int): RoundGame? =
+        materialiser.materialise(edition = edition, roundNumber = roundNumber)
+            ?.also { materialiser.releaseStagesOlderThan(edition = edition, roundNumber = roundNumber) }
 
     /**
      * Reads the game type off the stored row, not off the draw: on a lost race the row belongs to
