@@ -243,7 +243,7 @@ interface GameType<P : Any> {
      * and the reveal asset stays: the history renders a past round's reveal, so deleting that one
      * would break it, while nobody can ever ask for an earlier stage again.
      *
-     * Fires at announce time, for every round of the run except the one just announced.
+     * Fires for every round of the run older than the running one.
      */
     fun releaseStageAssets(roundGameIds: List<UUID>) {}
 

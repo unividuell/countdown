@@ -1,7 +1,9 @@
 package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotContain
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -9,6 +11,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
+import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.community.internal.MembershipService
 import org.unividuell.countdown.core.community.internal.SelectionService
 import org.unividuell.countdown.core.iam.User
@@ -24,6 +27,7 @@ class CommunityQueryServiceTest(
     @Autowired val communityService: CommunityService,
     @Autowired val membership: MembershipService,
     @Autowired val users: UserRepository,
+    @Autowired val editions: EditionService,
 ) {
     private fun user(login: String) = users.save(User(subject = System.nanoTime().toString(), githubLogin = login))
 
@@ -49,5 +53,18 @@ class CommunityQueryServiceTest(
         val uid = user("u").id!!; val cid = communityService.create(uid, "Team").id!!
         selection.set(uid, cid)
         selection.get(uid) shouldBe cid
+    }
+
+    @Test
+    fun `activeEditions lists a community's running edition and not the one it archived`() {
+        val uid = user("u").id!!
+        val cid = communityService.create(creatorUserId = uid, rawName = "Team").id!!
+        val archived = requireNotNull(query.activeEditionOf(cid))
+        val running = editions.startNew(communityId = cid, rawLabel = "Run 2027")
+
+        val ids = query.activeEditions().map { it.id }
+
+        ids shouldContain running.id
+        ids shouldNotContain archived.id
     }
 }

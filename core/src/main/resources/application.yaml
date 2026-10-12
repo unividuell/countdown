@@ -89,3 +89,9 @@ app:
     # the test login: the beans are also @Profile("!production"). The switch exists so staging can be
     # closed the day real testers play a real round there — no code change, no deploy rebuild.
     enabled: true
+
+countdown:
+  game:
+    # When MaterialisationSchedule announces every active run's running and next round. The zone is
+    # Europe/Berlin, fixed in the code. "-" switches it off — the test application.yaml does.
+    materialisation-cron: "0 0 3 * * *"

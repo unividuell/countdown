@@ -40,6 +40,10 @@ app:
     enabled: true
 
 countdown:
+  game:
+    # Off: a test run crossing 03:00 must not announce rounds behind the tests' backs. This file
+    # replaces the main application.yaml, so the key has to be here at all.
+    materialisation-cron: "-"
   public-rate-limit:
     # Effectively unlimited: the counter is a shared singleton keyed by client address, and every
     # test in the default context shares one address (none of them set X-Client-IP) — the

@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -30,7 +31,7 @@ import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Three hooks [AnnouncementService.materialise] must fire — the draw, [GameType.materialised] and
+ * Three hooks a materialisation must fire — the draw, [GameType.materialised] and
  * [GameType.releaseStageAssets] for the rounds that are no longer playable — and one, the archival
  * [GameType.releaseAssets], deliberately must not. Exercised through a fake [GameType] that records
  * every call it receives: [RecordingGame].
@@ -143,7 +144,7 @@ class AnnouncementMaterialisedHookTest(
     }
 
     @Test
-    fun `materialising a round releases every earlier round's stage assets, and only those`() {
+    fun `materialising a round releases the stage assets of rounds older than it`() {
         val (community, viewer) = aCommunity("Cleanup Round")
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
@@ -161,6 +162,22 @@ class AnnouncementMaterialisedHookTest(
         // The archival hook stays untouched: what the history still plays is not this call's business,
         // and releasing everything belongs to archiving the run.
         recorder.releasedRounds.shouldBeEmpty()
+    }
+
+    @Test
+    fun `the fallback leaves a round announced ahead alone`() {
+        val (community, viewer) = aCommunity("Ahead Round")
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundNumber = currentRoundNumberOf(community)
+        // A larger round number is earlier: `roundNumber - 1` is tomorrow's round, not yet playable.
+        val ahead = store.announce(
+            edition = edition, roundNumber = roundNumber - 1, gameType = "guess-hue",
+            params = mapper.readTree("""{"n":3}"""), award = anAward(), announcedAt = clock.instant(),
+        )
+
+        announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        recorder.stagesReleasedRounds shouldNotContain requireNotNull(ahead.id)
     }
 
     @Test

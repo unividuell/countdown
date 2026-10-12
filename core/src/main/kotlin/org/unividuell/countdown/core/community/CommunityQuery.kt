@@ -14,4 +14,7 @@ interface CommunityQuery {
      * to answer "not scheduled" rather than blow up, and that decision belongs to the consumer.
      */
     fun activeEditionOf(communityId: UUID): CommunityEdition?
+
+    /** Every community's current run — one per community, archived runs left out. */
+    fun activeEditions(): List<CommunityEdition>
 }

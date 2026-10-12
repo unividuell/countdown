@@ -33,11 +33,12 @@ that pin what those two are allowed to carry.
 
 The way back through a run is a pointer on every round's own answer, not a page to request:
 `previousRoundNumber` is `MIN(round_number)` strictly above the current one within the game window,
-and `NULL` means „ganz am Anfang“. A day nobody opened the app has no `round_games` row, so it is
-simply not a link in the chain — nothing has to count the gap. The pointer lives on `ResolvedRound`
-itself rather than travelling as a parameter into `RoundResponses.of`: the client replaces its whole
-round object with every action response, so a pointer threaded through only one call site is a
-pointer some other call site can forget.
+and `NULL` means „ganz am Anfang“. A day without a `round_games` row — one before the schedule
+existed, or one both the schedule and the fallback missed — is simply not a link in the chain;
+nothing has to count the gap. The pointer lives on `ResolvedRound` itself rather than travelling as a
+parameter into `RoundResponses.of`: the client replaces its whole round object with every action
+response, so a pointer threaded through only one call site is a pointer some other call site can
+forget.
 
 `AnnouncementService.resolve`'s super-admin bypass reaches closed rounds the same way it reaches the
 running one: looking at a round is a read whether or not that round is still playable, so an operator
@@ -45,12 +46,21 @@ who never joined the community can resolve a past round through the history endp
 solution and everyone's guesses. This falls out of a contract that already existed for the running
 round — it is not a new decision — and it is currently untested; naming it here is the point.
 
-## What must be fixed per round is materialised on the first announcement
+## What must be fixed per round is materialised a day ahead
 
-Lazily, by the `GET` that announces it, via `INSERT … ON CONFLICT DO NOTHING` followed by a `SELECT`
-— **not** by catching `DuplicateKeyException`: a constraint violation marks the transaction
-rollback-only in Postgres, so the re-read inside the same transaction would fail. First writer wins,
-the loser reads the winner's row and plays their game.
+`MaterialisationSchedule` announces every active run's next round once a day — and the running one if
+an earlier run missed it. Ahead, because a round boundary is `startsAt`'s time of day in the run's own
+zone, a different hour per community: one daily run can only prepare the round that starts within the
+next 24 hours. The announcing `GET` is the fallback for a round the run missed.
+
+Both write via `INSERT … ON CONFLICT DO NOTHING` followed by a `SELECT` — **not** by catching
+`DuplicateKeyException`: a constraint violation marks the transaction rollback-only in Postgres, so
+the re-read inside the same transaction would fail. First writer wins, the loser reads the winner's
+row and plays their game. The run checks for a row before drawing, so whatever exists stays, and
+never announces a round before the one it follows: the selection only looks back.
+
+A round announced ahead holds its solution a day before it is playable: nothing may hand out a round
+newer than the running one (`MaterialisationScheduleBootTest` pins it with the row present).
 
 Persisting is allowed. The anti-cheat constraint forbids *recurring admin work*, not storage.
 
@@ -264,11 +274,13 @@ chose, so it needs no round gate at all. Which gate applies to the round-scoped 
 number, not from a second path: the running round still needs the guess spent before key `99`
 unlocks, an older round is history and is open regardless of stage — the closed-round rule above.
 
-Cleanup at announce time releases what stopped being **playable**, not everything a round stored.
-That is one hook per lifetime event, not one hook with a flag: `releaseStageAssets` fires for every
-round but the one just announced, and `releaseAssets` — the archival one — is still deliberately
-without a caller, for the day a whole edition is put to rest. Collapsing them into a single call with
-a `keepReveal` boolean would move a per-lifetime-event answer into a per-call decision.
+Cleanup on each announcement and each daily run releases what stopped being **playable**, not
+everything a round stored. That is one hook per lifetime event, not one hook with a flag:
+`releaseStageAssets` fires for every round older than the running one — never "all but the one just
+announced", which with rounds announced ahead is tomorrow's — and `releaseAssets` — the archival
+one — is still deliberately without a caller, for the day a whole edition is put to rest. Collapsing
+them into a single call with a `keepReveal` boolean would move a per-lifetime-event answer into a
+per-call decision.
 
 The split pays because the two halves are not the same size. A round's stage ladder is five WAV
 prefixes of one excerpt, some megabytes of PCM; its reveal clip is the downloaded MP3 unchanged, a

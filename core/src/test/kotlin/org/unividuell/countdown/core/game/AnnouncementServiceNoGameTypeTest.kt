@@ -16,6 +16,7 @@ import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameSelection
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.RoundGameStore
+import org.unividuell.countdown.core.game.internal.RoundMaterialiser
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.game.internal.RoundPlayVoteRepository
 import org.unividuell.countdown.core.game.internal.RoundResponses
@@ -25,7 +26,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 /**
- * `AnnouncementService.materialise` has a branch — an empty catalogue, `selection.pick` returning
+ * `RoundMaterialiser.materialise` has a branch — an empty catalogue, `selection.pick` returning
  * `null` — that [AnnouncementServiceTest] cannot reach through the real Spring context: `guesshue`
  * is an unconditional bean there, so the catalogue is never actually empty (Spring itself injects an
  * empty `List<GameType<*>>` without complaint; that is not what keeps this branch out of reach).
@@ -51,8 +52,10 @@ class AnnouncementServiceNoGameTypeTest {
     )
 
     private val service = AnnouncementService(
-        communities = communities, memberships = memberships, engine = engine,
-        store = store, catalog = catalog, selection = selection, responses = responses, clock = clock,
+        communities = communities, memberships = memberships, engine = engine, store = store,
+        catalog = catalog,
+        materialiser = RoundMaterialiser(store = store, catalog = catalog, selection = selection, clock = clock),
+        responses = responses, clock = clock,
     )
 
     @Test
