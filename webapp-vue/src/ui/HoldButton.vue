@@ -231,26 +231,23 @@ const ROUND_RIM = {
 
 /**
  * The same rim for a square: the padding box minus the content box, so a band as wide as the
- * padding. `2.8%` of the button's width is the round rim's weight in pixels.
+ * padding. A fixed hairline rather than a share of the button: the square grows with Platzierung's
+ * board, and its rim must not grow with it.
  */
 const SQUARE_RIM = {
-  padding: '2.8%',
+  padding: '1.5px',
   mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)',
   WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
   WebkitMaskComposite: 'xor',
 }
 
 /**
- * The thin light-grey outline around the button, and the hold-progress indicator, are the same
- * element: one ring, two jobs. At rest it reads as the button's own rim, the way a socket outlines
- * what sits in it; as the hold runs, colour fills it clockwise from 0° to 360°. It stays visible
- * under `prefers-reduced-motion` for free — nothing here is a transition, `progress` is a plain
- * number driven by `useHoldProgress`'s own `requestAnimationFrame` loop.
+ * The hold-progress rim around the button: empty at rest, filled clockwise from 0° to 360° as the
+ * hold runs. It stays visible under `prefers-reduced-motion` for free — nothing here is a
+ * transition, `progress` is a plain number driven by `useHoldProgress`'s own
+ * `requestAnimationFrame` loop.
  */
 const ringStyle = computed(() => ({
-  // The grey base sits in `background-color`, beneath `background-image` — the conic-gradient's
-  // `transparent` half lets it show through for whatever the hold has not yet filled.
-  backgroundColor: '#d4d4d4',
   backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
   ...(props.shape === 'square' ? SQUARE_RIM : ROUND_RIM),
 }))

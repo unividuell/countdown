@@ -100,17 +100,12 @@ describe('HoldButton', () => {
     expect(style).toContain('opacity: 1')
   })
 
-  it('shows the outline at rest, before any hold has started', () => {
-    // One element, two jobs: the thin outline reads as the button's own rim at rest, and doubles
-    // as the hold-progress track once a hold starts. It must be visible from the start, not only
-    // once `progress` leaves zero, or the button never reads as a button in the first place.
+  it('paints no rim at rest — only the hold fills one in', () => {
     const w = mountButton()
 
     const style = w.get('[data-test="hold-ring"]').attributes('style')
 
-    expect(style).toContain('d4d4d4')
-    // Progress starts at 0, so the fill stop sits at 0deg — nothing is filled in yet, but the ring
-    // itself (the grey base above) is already there to be filled.
+    expect(style).not.toContain('background-color')
     expect(style).toContain('currentColor 0deg')
   })
 
