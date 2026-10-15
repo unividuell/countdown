@@ -164,6 +164,7 @@ const slotWidth = computed(() =>
         >
           Das Bild ließ sich nicht laden.
         </p>
+        <p class="text-center text-lg">Wo gehört dieser Ausschnitt hin?</p>
         <!-- The patch lies on the hold button: the slot is the patch's diagonal wide, so the square
              fits the round button. It stands under the cover too, empty, so the reveal does not push
              the rules down. `HoldButton` fills its parent and has no size of its own. -->

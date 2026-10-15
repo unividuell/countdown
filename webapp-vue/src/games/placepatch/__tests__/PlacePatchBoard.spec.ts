@@ -70,7 +70,7 @@ describe('PlacePatchBoard', () => {
       (percent(slot.attributes('style')) * percent(patch.attributes('style'))) / 100,
     ).toBeCloseTo(25)
     expect(patch.classes()).toContain('pointer-events-none')
-    expect(wrapper.text()).not.toContain('Wo gehört dieser Ausschnitt hin?')
+    expect(wrapper.text()).toContain('Wo gehört dieser Ausschnitt hin?')
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
   })
 

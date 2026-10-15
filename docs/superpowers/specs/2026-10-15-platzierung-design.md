@@ -318,7 +318,8 @@ Von oben nach unten:
 
 1. **Das Graubild** (Asset 0), so breit wie der Container, darüber ein Overlay mit dem Rahmen in der
    **eigenen Spielerfarbe** (aus `entries`, wie Musterungs Rahmen).
-2. **Der `HoldButton`**, aktiv, sobald ein Rahmen liegt, und auf ihm **der Ausschnitt** (Asset 1),
+2. Die Frage „Wo gehört dieser Ausschnitt hin?“.
+3. **Der `HoldButton`**, aktiv, sobald ein Rahmen liegt, und auf ihm **der Ausschnitt** (Asset 1),
    **im Maßstab des Bretts** — genau so groß wie der Rahmen, damit keine Größe im Kopf umgerechnet
    werden muss. Der Knopf ist so breit wie die Diagonale des Ausschnitts, damit das Quadrat in den
    Kreis passt. Ohne Rahmen und ohne abgerundete Ecken: beides würde die Kante zurückbringen, die die
