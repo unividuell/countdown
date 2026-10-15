@@ -22,8 +22,12 @@ const props = withDefaults(
     ready: boolean
     disabled: boolean
     label: string
-    /** The colour the button shows — the hue currently under the wheel's knob. */
-    color: string
+    /**
+     * The colour the button shows — the hue currently under the wheel's knob. Without one the
+     * button paints nothing of its own, for something lying on it: Platzierung's patch, whose
+     * true edge a coloured square would give away.
+     */
+    color?: string
     /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
     holdMs?: number
     /**
@@ -256,9 +260,7 @@ const ringStyle = computed(() => ({
 }))
 
 /** Only the button's own colour — its resting visibility now lives on [popStyle], see below. */
-const buttonStyle = computed(() => ({
-  backgroundColor: props.color,
-}))
+const buttonStyle = computed(() => (props.color ? { backgroundColor: props.color } : {}))
 
 /**
  * The resting appearance of the whole control (outline and button together), bound declaratively
@@ -326,8 +328,11 @@ const popStyle = computed(() => ({
       :aria-label="props.label"
       :disabled="props.disabled"
       :style="buttonStyle"
-      class="absolute inset-0 cursor-pointer touch-none shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
-      :class="{ 'rounded-full': props.shape === 'round' }"
+      class="absolute inset-0 cursor-pointer touch-none select-none disabled:cursor-not-allowed"
+      :class="{
+        'rounded-full': props.shape === 'round',
+        'shadow-inner ring-1 ring-black/10': props.color !== undefined,
+      }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"
       @pointerup="cancel"

@@ -341,6 +341,17 @@ describe('HoldButton', () => {
     expect(w.emitted('confirm')).toHaveLength(1)
   })
 
+  it('paints nothing of its own without a colour — no fill, no shadow, no contour', () => {
+    const w = mount(HoldButton, {
+      props: { ready: true, disabled: false, label: 'Tipp bestätigen' },
+    })
+    const button = w.get('[data-test="hold-button"]')
+
+    expect(button.attributes('style') ?? '').not.toContain('background-color')
+    expect(button.classes()).not.toEqual(expect.arrayContaining(['shadow-inner']))
+    expect(button.classes()).not.toEqual(expect.arrayContaining(['ring-1']))
+  })
+
   describe('square', () => {
     it('paints button and ring as squares', () => {
       const w = mountButton({ shape: 'square' })

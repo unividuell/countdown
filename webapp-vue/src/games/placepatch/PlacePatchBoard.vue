@@ -170,7 +170,6 @@ const patchWidth = computed(() =>
             v-if="!props.sealed"
             :ready="true"
             :disabled="!playable || stamp === null"
-            :color="props.myColorHex"
             label="Tipp bestätigen — gedrückt halten"
             shape="square"
             @confirm="submit"

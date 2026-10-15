@@ -65,6 +65,10 @@ describe('PlacePatchBoard', () => {
     ])
     expect(slot.attributes('style')).toContain('width: 25%')
     expect(slot.get('[data-test="hold-button"]').classes()).not.toContain('rounded-full')
+    // A coloured square under the patch would show its true, unfrayed edge.
+    expect(slot.get('[data-test="hold-button"]').attributes('style') ?? '').not.toContain(
+      'background-color',
+    )
     expect(patch.classes()).toEqual(expect.arrayContaining(['pointer-events-none', 'size-full']))
     expect(wrapper.text()).toContain('Wo gehört dieser Ausschnitt hin?')
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
