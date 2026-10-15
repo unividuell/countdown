@@ -134,7 +134,7 @@ class PlacePatchGameTypeTest {
     fun `scene, payload, solution and outcome carry exactly their fields`() {
         val params = draw()
 
-        fields(game.scene(params)) shouldBe setOf("cols", "rows")
+        fields(game.scene(params)) shouldBe setOf("cols", "rows", "size")
         fields(game.present(params)) shouldBe setOf("cols", "rows", "size")
         fields(game.solution(params)) shouldBe setOf("x", "y")
         fields(game.judge(params = params, guess = guess("""{"x":0,"y":0}""")).outcome) shouldBe setOf("correct")

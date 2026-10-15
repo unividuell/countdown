@@ -61,10 +61,10 @@ describe('PlacePatchBoard', () => {
       '/assets/0',
       '/assets/1',
     ])
-    expect(wrapper.get('[data-test="place-patch-patch"]').attributes('style')).toContain(
+    expect(wrapper.get('[data-test="place-patch-patch-slot"]').attributes('style')).toContain(
       'width: 25%',
     )
-    expect(wrapper.text()).toContain('Wo gehört dieser Ausschnitt hin?')
+    expect(wrapper.text()).not.toContain('Wo gehört dieser Ausschnitt hin?')
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
   })
 
@@ -153,7 +153,7 @@ describe('PlacePatchBoard', () => {
   it('requests no picture while sealed, and offers the cover instead of the button', () => {
     const wrapper = mountBoard({
       payload: null,
-      scene: { cols: 40, rows: 30 },
+      scene: { cols: 40, rows: 30, size: 10 },
       sealed: true,
       boardSrc: null,
       patchSrc: null,
@@ -163,5 +163,10 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.findComponent(RevealCover).exists()).toBe(true)
     // The cover brings a hold button of its own (START); the board's submit button must be gone.
     expect(wrapper.find('[aria-label="Tipp bestätigen — gedrückt halten"]').exists()).toBe(false)
+    // Patch box and hold slot are already there, empty, so the reveal does not push the rules down.
+    expect(wrapper.get('[data-test="place-patch-patch-slot"]').attributes('style')).toContain(
+      'width: 25%',
+    )
+    expect(wrapper.find('[data-test="place-patch-hold-slot"]').exists()).toBe(true)
   })
 })

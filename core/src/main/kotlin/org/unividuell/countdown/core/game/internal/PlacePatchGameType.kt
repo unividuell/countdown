@@ -41,8 +41,8 @@ data class PlacePatchParams(
     val timed: Boolean,
 )
 
-/** What the cover lies over: the board's shape, nothing drawn. */
-data class PlacePatchScene(val cols: Int, val rows: Int) : GameScene
+/** What the cover lies over: the board's shape and the patch's size, so the card keeps its height. */
+data class PlacePatchScene(val cols: Int, val rows: Int, val size: Int) : GameScene
 
 /** What the player needs to lay out the board. Both pictures come through the round's asset endpoint. */
 data class PlacePatchPayload(val cols: Int, val rows: Int, val size: Int) : GamePayload
@@ -94,7 +94,8 @@ class PlacePatchGameType(
         )
     }
 
-    override fun scene(params: PlacePatchParams) = PlacePatchScene(cols = params.cols, rows = params.rows)
+    override fun scene(params: PlacePatchParams) =
+        PlacePatchScene(cols = params.cols, rows = params.rows, size = params.size)
 
     override fun present(params: PlacePatchParams) =
         PlacePatchPayload(cols = params.cols, rows = params.rows, size = params.size)

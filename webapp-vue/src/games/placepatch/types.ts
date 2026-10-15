@@ -14,11 +14,8 @@ export interface PlacePatchPayload {
   size: number
 }
 
-/** The board's shape under the cover — the server's `PlacePatchScene`. */
-export interface PlacePatchScene {
-  cols: number
-  rows: number
-}
+/** The board under the cover — the server's `PlacePatchScene`: the payload's numbers, sent earlier. */
+export type PlacePatchScene = PlacePatchPayload
 
 export interface PlacePatchSolution {
   x: number
@@ -44,10 +41,7 @@ export function asPlacePatchPayload(value: unknown): PlacePatchPayload | null {
 }
 
 export function asPlacePatchScene(value: unknown): PlacePatchScene | null {
-  if (typeof value !== 'object' || value === null) return null
-  const { cols, rows } = value as Partial<PlacePatchScene>
-  if (!isWhole(cols) || !isWhole(rows) || cols < 1 || rows < 1) return null
-  return { cols, rows }
+  return asPlacePatchPayload(value)
 }
 
 /** A cell where a whole patch fits on [layout], or `null` — a give-up has none, nor has junk. */

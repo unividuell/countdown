@@ -53,7 +53,7 @@ describe('PlacePatchGame', () => {
     const board = mountGame({
       payload: null,
       sealed: true,
-      scene: { cols: 40, rows: 30 },
+      scene: { cols: 40, rows: 30, size: 10 },
     }).getComponent(PlacePatchBoard)
 
     expect(board.props('boardSrc')).toBeNull()

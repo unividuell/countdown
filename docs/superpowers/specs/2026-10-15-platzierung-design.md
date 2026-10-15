@@ -266,7 +266,7 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt (Jackson 3, `propertyNames
 
 | Ausgang | wann | Felder |
 |---|---|---|
-| Bühne `PlacePatchScene` | ab Ankündigung | `cols, rows` |
+| Bühne `PlacePatchScene` | ab Ankündigung | `cols, rows, size` |
 | Payload `PlacePatchPayload` | ab Aufdecken | `cols, rows, size` |
 | Lösung `PlacePatchSolution` | nach dem eigenen Tipp | `x, y` |
 | Outcome `PlacePatchOutcome` | nach dem eigenen Tipp, für alle | `correct` |
@@ -323,6 +323,9 @@ Von oben nach unten:
    würde die Kante zurückbringen, die die Fransen wegnehmen.
 3. **Der `HoldButton`**, aktiv, sobald ein Rahmen liegt.
 
+Die Plätze für Ausschnitt und Knopf stehen schon unter der Hülle, leer — die Bühne trägt dafür
+`size` mit —, damit beim Aufdecken nichts nach unten rutscht.
+
 **`stamp.ts`** — alles in Rastereinheiten, damit es ohne Layout testbar ist:
 
 - Unter ~8 CSS-px Bewegung zwischen `pointerdown` und `pointerup` ist es ein **Tippen**: der Rahmen
@@ -339,8 +342,8 @@ Von oben nach unten:
 
 Schwelle und Übersetzung werden im Labor auf dem Telefon nachgestimmt.
 
-**Phase zwei:** die `RevealCover` liegt über dem Brett; die Bühne (`cols`, `rows`) gibt ihr vor dem
-Aufdecken schon das richtige Seitenverhältnis.
+**Phase zwei:** die `RevealCover` liegt über dem Brett; die Bühne (`cols`, `rows`, `size`) gibt ihr
+vor dem Aufdecken schon das richtige Seitenverhältnis und die Höhe des Ausschnitts.
 
 ### Auflösung
 

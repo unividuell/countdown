@@ -17,9 +17,14 @@ describe('placepatch types', () => {
     expect(asPlacePatchPayload(null)).toBeNull()
   })
 
-  it('takes a scene of two whole numbers', () => {
-    expect(asPlacePatchScene({ cols: 40, rows: 53 })).toEqual({ cols: 40, rows: 53 })
-    expect(asPlacePatchScene({ cols: 40, rows: Number.NaN })).toBeNull()
+  it('takes a scene shaped like the payload, so the cover keeps the card height', () => {
+    expect(asPlacePatchScene({ cols: 40, rows: 53, size: 10 })).toEqual({
+      cols: 40,
+      rows: 53,
+      size: 10,
+    })
+    expect(asPlacePatchScene({ cols: 40, rows: 53 })).toBeNull()
+    expect(asPlacePatchScene({ cols: 40, rows: Number.NaN, size: 10 })).toBeNull()
   })
 
   it('takes a solution only where a patch fits', () => {

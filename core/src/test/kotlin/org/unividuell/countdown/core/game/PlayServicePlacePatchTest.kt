@@ -117,7 +117,7 @@ class PlayServicePlacePatchTest(
 
         val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
         mapper.valueToTree<tools.jackson.databind.JsonNode>(revealed.scene).propertyNames().toSet() shouldBe
-            setOf("cols", "rows")
+            setOf("cols", "rows", "size")
 
         play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 0)
             .mediaType shouldBe "image/jpeg"

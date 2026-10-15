@@ -116,7 +116,7 @@ const stampStyle = computed(() => {
 
 /** The patch as wide as it is on the board: size of cols, of the same column width. */
 const patchWidth = computed(() =>
-  props.payload ? `${(100 * props.payload.size) / props.payload.cols}%` : '0%',
+  layout.value ? `${(100 * layout.value.size) / layout.value.cols}%` : '0%',
 )
 </script>
 
@@ -161,19 +161,27 @@ const patchWidth = computed(() =>
         >
           Das Bild ließ sich nicht laden.
         </p>
-        <p class="text-center text-lg">Wo gehört dieser Ausschnitt hin?</p>
-        <img
-          v-if="props.patchSrc"
-          data-test="place-patch-patch"
-          :src="props.patchSrc"
-          alt="Der gesuchte Ausschnitt"
+        <!-- Patch box and hold slot stand under the cover too, empty, so the reveal does not push the
+             rules down. -->
+        <div
+          data-test="place-patch-patch-slot"
+          class="aspect-square"
           :style="{ width: patchWidth }"
-          draggable="false"
-          @error="imageFailed = true"
-        />
+        >
+          <img
+            v-if="props.patchSrc"
+            data-test="place-patch-patch"
+            :src="props.patchSrc"
+            alt="Der gesuchte Ausschnitt"
+            class="size-full"
+            draggable="false"
+            @error="imageFailed = true"
+          />
+        </div>
         <!-- `HoldButton` fills its parent and has no size of its own; as in `RevealCover`. -->
-        <div v-if="!props.sealed" class="size-24 shrink-0">
+        <div data-test="place-patch-hold-slot" class="size-24 shrink-0">
           <HoldButton
+            v-if="!props.sealed"
             :ready="true"
             :disabled="!playable || stamp === null"
             :color="props.myColorHex"
