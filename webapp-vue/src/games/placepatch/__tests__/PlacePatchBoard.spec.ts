@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PlacePatchBoard from '@/games/placepatch/PlacePatchBoard.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import { LONG_PRESS_MS } from '@/games/placepatch/stamp'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 const PAYLOAD = { cols: 40, rows: 30, size: 10 }
@@ -104,6 +105,23 @@ describe('PlacePatchBoard', () => {
       'left: 25%',
     )
     expect(wrapper.emitted('guess')).toBeUndefined()
+  })
+
+  it('leaves the stamp where it was when a long press lifts without a drag', async () => {
+    const wrapper = mountBoard()
+    const field = sized(wrapper)
+    await field.trigger('pointerdown', { clientX: 123, clientY: 87, pointerId: 1 })
+    await field.trigger('pointerup', { clientX: 123, clientY: 87, pointerId: 1 })
+
+    let now = 1_000
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    await field.trigger('pointerdown', { clientX: 300, clientY: 250, pointerId: 2 })
+    now += LONG_PRESS_MS
+    await field.trigger('pointerup', { clientX: 300, clientY: 250, pointerId: 2 })
+
+    expect(wrapper.get('[data-test="place-patch-stamp"]').attributes('style')).toContain(
+      'left: 17.5%',
+    )
   })
 
   it('cannot submit without a stamp', () => {

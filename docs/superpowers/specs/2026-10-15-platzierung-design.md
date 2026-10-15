@@ -328,6 +328,8 @@ Von oben nach unten:
 - Unter ~8 CSS-px Bewegung zwischen `pointerdown` und `pointerup` ist es ein **Tippen**: der Rahmen
   springt zentriert unter den Finger — ungerade Größen auf die Zelle, gerade auf den nächsten
   Kreuzungspunkt.
+- Wer ab 500 ms liegen bleibt und ohne Ziehen loslässt, hat es sich anders überlegt: der Rahmen
+  bleibt, wo er war.
 - Darüber ist es **Ziehen**: der Rahmen wandert um die Fingerbewegung, 1 : 1. Die Position wird
   fein (in Bruchteilen von Zellen) mitgeführt und eingerastet angezeigt, damit langsames Ziehen nicht
   hängen bleibt.

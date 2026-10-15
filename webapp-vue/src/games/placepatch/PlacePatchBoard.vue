@@ -73,7 +73,7 @@ function onDown(event: PointerEvent): void {
   } catch {
     // Capture is an optimisation, not a precondition.
   }
-  gesture = press(board, stamp.value, pointOf(event))
+  gesture = press(board, stamp.value, pointOf(event), performance.now())
 }
 
 function onMove(event: PointerEvent): void {
@@ -87,7 +87,7 @@ function onMove(event: PointerEvent): void {
 function onUp(event: PointerEvent): void {
   const board = boardNow()
   if (gesture === null || board === null) return
-  stamp.value = release(board, gesture, pointOf(event), stamp.value)
+  stamp.value = release(board, gesture, pointOf(event), stamp.value, performance.now())
   gesture = null
 }
 

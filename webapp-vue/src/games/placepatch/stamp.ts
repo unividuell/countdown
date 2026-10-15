@@ -12,6 +12,9 @@ import type { Cell } from './types'
 /** Travel below this is a tap — a finger never lifts exactly where it landed. */
 export const TAP_SLOP_PX = 8
 
+/** Held this long without moving, a lift is no tap: the player changed their mind. */
+export const LONG_PRESS_MS = 500
+
 export interface Board {
   cols: number
   rows: number
@@ -32,6 +35,8 @@ export interface Gesture {
   from: Point
   /** Past [TAP_SLOP_PX] once — and a drag from then on. */
   dragging: boolean
+  /** When the pointer went down, in ms. */
+  at: number
 }
 
 export function clamp(board: Board, cell: Cell): Cell {
@@ -49,8 +54,8 @@ export function centredAt(board: Board, point: Point): Cell {
   })
 }
 
-export function press(board: Board, stamp: Cell | null, point: Point): Gesture {
-  return { start: point, from: stamp ?? centredAt(board, point), dragging: false }
+export function press(board: Board, stamp: Cell | null, point: Point, at: number): Gesture {
+  return { start: point, from: stamp ?? centredAt(board, point), dragging: false, at }
 }
 
 /** The stamp while the pointer moves — `null` as long as this is still a tap. */
@@ -71,12 +76,16 @@ export function drag(
   }
 }
 
-/** Where the stamp ends up: under the finger for a tap, where the drag left it otherwise. */
+/**
+ * Where the stamp ends up: under the finger for a tap, where it was for a drag or a long press.
+ */
 export function release(
   board: Board,
   gesture: Gesture,
   point: Point,
   current: Cell | null,
+  at: number,
 ): Cell | null {
-  return gesture.dragging ? current : centredAt(board, point)
+  if (gesture.dragging || at - gesture.at >= LONG_PRESS_MS) return current
+  return centredAt(board, point)
 }
