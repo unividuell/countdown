@@ -221,6 +221,13 @@ interface GameType<P : Any> {
     fun stages(params: P): Int = 1
 
     /**
+     * Which stage releases asset [key] before the guess. The default is the key itself —
+     * Anspielung's ladder, one clip per stage. A single-stage game with two images maps both to 0.
+     * A stopgap until the asset model is cleaned up as a whole (unividuell/countdown#101).
+     */
+    fun assetStage(params: P, key: Int): Int = key
+
+    /**
      * Compute the round's binary assets, keyed by stage plus [SOLUTION_ASSET_KEY]. Expensive — may
      * perform network I/O. Called once per round by whoever owns the storage: [materialised] for a
      * real round, the lab's in-memory store for a lab round.

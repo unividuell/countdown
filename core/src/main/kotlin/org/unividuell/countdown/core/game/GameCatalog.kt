@@ -52,6 +52,9 @@ class GameTypeHandle<P : Any>(
     /** How many stages a round of this game has, from a stored `params` blob. */
     fun stages(params: JsonNode): Int = type.stages(paramsOf(params))
 
+    /** Which stage releases asset [key], from a stored `params` blob. */
+    fun assetStage(params: JsonNode, key: Int): Int = type.assetStage(params = paramsOf(params), key = key)
+
     /** Compute (expensively) the round's assets — the lab's path; the real round goes through [materialised]. */
     fun produceAssets(params: JsonNode): Map<Int, RoundAsset> = type.produceAssets(paramsOf(params))
 
