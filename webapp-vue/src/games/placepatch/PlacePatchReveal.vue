@@ -113,7 +113,32 @@ function outlineStyle(outline: Outline) {
             class="size-full"
             draggable="false"
           />
-          <div class="absolute inset-0 shadow-[inset_0_0_0_2px_white]" />
+          <!-- An X, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
+          <svg
+            class="absolute inset-0 size-full drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <line
+              x1="0"
+              y1="0"
+              x2="100"
+              y2="100"
+              stroke="white"
+              stroke-width="2"
+              vector-effect="non-scaling-stroke"
+            />
+            <line
+              x1="100"
+              y1="0"
+              x2="0"
+              y2="100"
+              stroke="white"
+              stroke-width="2"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
         </div>
         <div
           v-for="outline in outlines"

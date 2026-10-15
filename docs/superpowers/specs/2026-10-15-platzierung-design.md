@@ -348,8 +348,10 @@ Im Takt von `revealChoreography.ts`, die Stufen von Musterung:
 
 1. **Wechsel** — der eigene Rahmen bleibt, wo er lag. Keine Animation, sondern die Abwesenheit einer.
 2. **`SOLUTION_DELAY_MS` (900 ms)** — **der farbige Ausschnitt setzt sich an seinen Platz ins
-   Graubild**, wie ein angenähter Flicken, mit weißem Rahmen — keine Spielerfarbe, die Lösung gehört
-   niemandem; dazu der Tabellenkopf. Dafür reicht das schon geladene Asset 1.
+   Graubild**, wie ein angenähter Flicken, mit einem weißen X über dem Quadrat — keine Spielerfarbe,
+   die Lösung gehört niemandem. Kein Rahmen: die Rahmen der Tipps liegen auf derselben Kante und
+   deckten ihn zu, und nach innen rücken dürfen sie nicht, sonst springt der eigene beim Wechsel.
+   Dazu der Tabellenkopf. Dafür reicht das schon geladene Asset 1.
 3. **`RESULTS_DELAY_MS` (ab 1900 ms)** — die Rahmen der anderen Tipps, jeder über `cellDelayMs` an
    seine Tabellenzeile gekoppelt. Der eigene liegt außen (Einrückung 0), fremde je Kollision 2 px nach
    innen (`outlines.ts`). Die eigene Zeile borgt das Timing der ersten fremden (`tickOfRow`).

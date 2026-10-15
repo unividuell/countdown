@@ -46,6 +46,16 @@ describe('PlacePatchReveal', () => {
     expect(solution.get('img').attributes('src')).toBe('/assets/1')
   })
 
+  it('marks the target with a white X, which tip boxes on its edge cannot cover', () => {
+    const lines = mountReveal([]).findAll('[data-test="place-patch-solution"] line')
+
+    expect(lines.map((line) => [line.attributes('x1'), line.attributes('y1')])).toEqual([
+      ['0', '0'],
+      ['100', '0'],
+    ])
+    expect(lines.every((line) => line.attributes('stroke') === 'white')).toBe(true)
+  })
+
   it('stacks the tips, mine outermost', () => {
     const wrapper = mountReveal([
       row({ userId: 'fry', cell: { x: 7, y: 4 }, colorHex: '#16a34a' }),
