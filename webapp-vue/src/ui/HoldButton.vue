@@ -230,16 +230,18 @@ const ROUND_RIM = {
 }
 
 /**
- * The same rim for a square: the padding box minus the content box, so a band as wide as the
- * padding. A fixed hairline rather than a share of the button: the square grows with Platzierung's
- * board, and its rim must not grow with it.
+ * The same rim for a square: four edge strips, unioned — the default way mask layers combine, so
+ * no browser has to support `mask-composite`. A phone that skipped an `exclude` composite painted
+ * the whole box instead, a thick band. A fixed hairline rather than a share of the button: the
+ * square grows with Platzierung's board, and its rim must not grow with it.
  */
-const SQUARE_RIM = {
-  padding: '1.5px',
-  mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)',
-  WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-  WebkitMaskComposite: 'xor',
-}
+const SQUARE_FRAME = [
+  'linear-gradient(#000 0 0) top / 100% 1.5px no-repeat',
+  'linear-gradient(#000 0 0) bottom / 100% 1.5px no-repeat',
+  'linear-gradient(#000 0 0) left / 1.5px 100% no-repeat',
+  'linear-gradient(#000 0 0) right / 1.5px 100% no-repeat',
+].join(', ')
+const SQUARE_RIM = { mask: SQUARE_FRAME, WebkitMask: SQUARE_FRAME }
 
 /**
  * The hold-progress rim around the button: empty at rest, filled clockwise from 0° to 360° as the

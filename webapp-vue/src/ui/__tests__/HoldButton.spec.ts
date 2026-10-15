@@ -350,6 +350,16 @@ describe('HoldButton', () => {
       expect(w.get('[data-test="hold-ring"]').attributes('style')).not.toContain('radial-gradient')
     })
 
+    it('builds the rim from four edge strips, without mask compositing', () => {
+      // An `exclude` composite was not applied on a phone: it painted the whole box, a thick band.
+      const style = mountButton({ shape: 'square' })
+        .get('[data-test="hold-ring"]')
+        .attributes('style')
+
+      expect(style).not.toMatch(/exclude|xor|composite/)
+      expect(style?.match(/linear-gradient/g)?.length).toBeGreaterThanOrEqual(4)
+    })
+
     it('keeps holding into the corners, where a round button would have let go', async () => {
       const w = mountButton({ shape: 'square' })
       const el = w.get('[data-test="hold-button"]')
