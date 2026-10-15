@@ -54,16 +54,22 @@ describe('PlacePatchBoard', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the grey board, the patch below it at board scale, and the rules', () => {
+  it('shows the grey board, the patch on the hold button at board scale, and the rules', () => {
     const wrapper = mountBoard()
+    const slot = wrapper.get('[data-test="place-patch-hold-slot"]')
+    const patch = slot.get('[data-test="place-patch-patch"]')
+    const percent = (style: string | undefined) => Number(/width: ([\d.]+)%/.exec(style ?? '')?.[1])
 
     expect(wrapper.findAll('img').map((img) => img.attributes('src'))).toEqual([
       '/assets/0',
       '/assets/1',
     ])
-    expect(wrapper.get('[data-test="place-patch-patch-slot"]').attributes('style')).toContain(
-      'width: 25%',
-    )
+    expect(slot.find('[data-test="hold-button"]').exists()).toBe(true)
+    // The slot is the patch's diagonal wide, so the square fits the round button; together 25 %.
+    expect(
+      (percent(slot.attributes('style')) * percent(patch.attributes('style'))) / 100,
+    ).toBeCloseTo(25)
+    expect(patch.classes()).toContain('pointer-events-none')
     expect(wrapper.text()).not.toContain('Wo gehört dieser Ausschnitt hin?')
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
   })
@@ -163,10 +169,9 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.findComponent(RevealCover).exists()).toBe(true)
     // The cover brings a hold button of its own (START); the board's submit button must be gone.
     expect(wrapper.find('[aria-label="Tipp bestätigen — gedrückt halten"]').exists()).toBe(false)
-    // Patch box and hold slot are already there, empty, so the reveal does not push the rules down.
-    expect(wrapper.get('[data-test="place-patch-patch-slot"]').attributes('style')).toContain(
-      'width: 25%',
+    // The slot is already there at full size, empty, so the reveal does not push the rules down.
+    expect(wrapper.get('[data-test="place-patch-hold-slot"]').attributes('style')).toMatch(
+      /width: 35\.35/,
     )
-    expect(wrapper.find('[data-test="place-patch-hold-slot"]').exists()).toBe(true)
   })
 })

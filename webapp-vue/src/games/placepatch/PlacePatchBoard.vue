@@ -114,9 +114,12 @@ const stampStyle = computed(() => {
   }
 })
 
-/** The patch as wide as it is on the board: size of cols, of the same column width. */
-const patchWidth = computed(() =>
-  layout.value ? `${(100 * layout.value.size) / layout.value.cols}%` : '0%',
+/**
+ * The patch as wide as it is on the board — size of cols, of the same column width — and its slot
+ * √2 wider, so the square fits inside the round button under it.
+ */
+const slotWidth = computed(() =>
+  layout.value ? `${(100 * Math.SQRT2 * layout.value.size) / layout.value.cols}%` : '0%',
 )
 </script>
 
@@ -161,25 +164,14 @@ const patchWidth = computed(() =>
         >
           Das Bild ließ sich nicht laden.
         </p>
-        <!-- Patch box and hold slot stand under the cover too, empty, so the reveal does not push the
-             rules down. -->
+        <!-- The patch lies on the hold button: the slot is the patch's diagonal wide, so the square
+             fits the round button. It stands under the cover too, empty, so the reveal does not push
+             the rules down. `HoldButton` fills its parent and has no size of its own. -->
         <div
-          data-test="place-patch-patch-slot"
-          class="aspect-square"
-          :style="{ width: patchWidth }"
+          data-test="place-patch-hold-slot"
+          class="relative aspect-square shrink-0"
+          :style="{ width: slotWidth }"
         >
-          <img
-            v-if="props.patchSrc"
-            data-test="place-patch-patch"
-            :src="props.patchSrc"
-            alt="Der gesuchte Ausschnitt"
-            class="size-full"
-            draggable="false"
-            @error="imageFailed = true"
-          />
-        </div>
-        <!-- `HoldButton` fills its parent and has no size of its own; as in `RevealCover`. -->
-        <div data-test="place-patch-hold-slot" class="size-24 shrink-0">
           <HoldButton
             v-if="!props.sealed"
             :ready="true"
@@ -187,6 +179,16 @@ const patchWidth = computed(() =>
             :color="props.myColorHex"
             label="Tipp bestätigen — gedrückt halten"
             @confirm="submit"
+          />
+          <img
+            v-if="props.patchSrc"
+            data-test="place-patch-patch"
+            :src="props.patchSrc"
+            alt="Der gesuchte Ausschnitt"
+            class="pointer-events-none absolute top-1/2 left-1/2 -translate-1/2"
+            :style="{ width: `${100 / Math.SQRT2}%` }"
+            draggable="false"
+            @error="imageFailed = true"
           />
         </div>
       </div>

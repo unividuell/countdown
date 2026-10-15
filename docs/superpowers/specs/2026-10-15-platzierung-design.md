@@ -318,13 +318,14 @@ Von oben nach unten:
 
 1. **Das Graubild** (Asset 0), so breit wie der Container, darüber ein Overlay mit dem Rahmen in der
    **eigenen Spielerfarbe** (aus `entries`, wie Musterungs Rahmen).
-2. **Der Ausschnitt** (Asset 1), zentriert, **im Maßstab des Bretts** — genau so groß wie der Rahmen,
-   damit keine Größe im Kopf umgerechnet werden muss. Ohne Rahmen und ohne abgerundete Ecken: beides
-   würde die Kante zurückbringen, die die Fransen wegnehmen.
-3. **Der `HoldButton`**, aktiv, sobald ein Rahmen liegt.
+2. **Der `HoldButton`**, aktiv, sobald ein Rahmen liegt, und auf ihm **der Ausschnitt** (Asset 1),
+   **im Maßstab des Bretts** — genau so groß wie der Rahmen, damit keine Größe im Kopf umgerechnet
+   werden muss. Der Knopf ist so breit wie die Diagonale des Ausschnitts, damit das Quadrat in den
+   Kreis passt. Ohne Rahmen und ohne abgerundete Ecken: beides würde die Kante zurückbringen, die die
+   Fransen wegnehmen.
 
-Die Plätze für Ausschnitt und Knopf stehen schon unter der Hülle, leer — die Bühne trägt dafür
-`size` mit —, damit beim Aufdecken nichts nach unten rutscht.
+Der Platz des Knopfs steht schon unter der Hülle, leer — die Bühne trägt dafür `size` mit —, damit
+beim Aufdecken nichts nach unten rutscht.
 
 **`stamp.ts`** — alles in Rastereinheiten, damit es ohne Layout testbar ist:
 
