@@ -14,6 +14,6 @@
     <li>
       Es zählt nur der exakte Treffer: Liegt der Rahmen auch nur ein Feld daneben, ist es keiner.
     </li>
-    <li>Abgegeben wird, indem du den Knopf gedrückt hältst.</li>
+    <li>Abgegeben wird, indem du den Knopf (unter dem Ausschnitt) gedrückt hältst.</li>
   </ul>
 </template>
