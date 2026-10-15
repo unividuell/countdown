@@ -107,66 +107,64 @@ function outlineStyle(outline: Outline) {
 
 <template>
   <div data-test="place-patch-reveal" class="flex flex-col gap-6">
-    <!-- Capped like the board, so the picture does not jump when the view switches. -->
-    <div class="mx-auto w-full max-w-[22rem]">
+    <!-- Card-wide like the board, so the picture does not jump when the view switches. -->
+    <div
+      class="relative -mx-4 -mt-4 overflow-hidden"
+      :style="{ aspectRatio: `${props.payload.cols} / ${props.payload.rows}` }"
+    >
+      <img
+        :src="props.boardSrc"
+        alt="Das Spielfeld in Graustufen"
+        class="absolute inset-0 size-full"
+        draggable="false"
+      />
       <div
-        class="relative w-full overflow-hidden"
-        :style="{ aspectRatio: `${props.payload.cols} / ${props.payload.rows}` }"
+        data-test="place-patch-solution"
+        class="pointer-events-none absolute transition-opacity"
+        :class="shown ? 'opacity-100' : 'opacity-0'"
+        :style="solutionStyle"
       >
         <img
-          :src="props.boardSrc"
-          alt="Das Spielfeld in Graustufen"
-          class="absolute inset-0 size-full"
+          :src="props.patchSrc"
+          alt="Der Ausschnitt an seinem Platz"
+          class="size-full"
           draggable="false"
         />
-        <div
-          data-test="place-patch-solution"
-          class="pointer-events-none absolute transition-opacity"
-          :class="shown ? 'opacity-100' : 'opacity-0'"
-          :style="solutionStyle"
+        <!-- Marks, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
+        <svg
+          class="absolute inset-0 size-full drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
         >
-          <img
-            :src="props.patchSrc"
-            alt="Der Ausschnitt an seinem Platz"
-            class="size-full"
-            draggable="false"
+          <line
+            v-for="([x1, y1, x2, y2], index) in centreX"
+            :key="index"
+            :x1="x1"
+            :y1="y1"
+            :x2="x2"
+            :y2="y2"
+            stroke="white"
+            stroke-width="2"
+            vector-effect="non-scaling-stroke"
           />
-          <!-- Marks, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
-          <svg
-            class="absolute inset-0 size-full drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <line
-              v-for="([x1, y1, x2, y2], index) in centreX"
-              :key="index"
-              :x1="x1"
-              :y1="y1"
-              :x2="x2"
-              :y2="y2"
-              stroke="white"
-              stroke-width="2"
-              vector-effect="non-scaling-stroke"
-            />
-          </svg>
-          <div
-            v-for="corner in CORNERS"
-            :key="corner"
-            data-test="place-patch-target-corner"
-            class="absolute size-2 border-white drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
-            :class="corner"
-          />
-        </div>
+        </svg>
         <div
-          v-for="outline in outlines"
-          :key="outline.userId"
-          :data-test="`place-patch-outline-${outline.userId}`"
-          :data-inset="outline.insetPx"
-          class="pointer-events-none absolute"
-          :style="outlineStyle(outline)"
+          v-for="corner in CORNERS"
+          :key="corner"
+          data-test="place-patch-target-corner"
+          class="absolute size-2 border-white drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
+          :class="corner"
         />
       </div>
+      <div
+        v-for="outline in outlines"
+        :key="outline.userId"
+        :data-test="`place-patch-outline-${outline.userId}`"
+        :data-inset="outline.insetPx"
+        class="pointer-events-none absolute"
+        :style="outlineStyle(outline)"
+      />
     </div>
 
     <PlacePatchScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />

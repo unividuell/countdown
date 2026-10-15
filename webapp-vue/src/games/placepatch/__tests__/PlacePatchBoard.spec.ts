@@ -54,24 +54,27 @@ describe('PlacePatchBoard', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the grey board, the patch on the hold button at board scale, and the rules', () => {
+  it('shows the grey board, the patch on a square hold button at board scale, and the rules', () => {
     const wrapper = mountBoard()
     const slot = wrapper.get('[data-test="place-patch-hold-slot"]')
     const patch = slot.get('[data-test="place-patch-patch"]')
-    const percent = (style: string | undefined) => Number(/width: ([\d.]+)%/.exec(style ?? '')?.[1])
 
     expect(wrapper.findAll('img').map((img) => img.attributes('src'))).toEqual([
       '/assets/0',
       '/assets/1',
     ])
-    expect(slot.find('[data-test="hold-button"]').exists()).toBe(true)
-    // The slot is the patch's diagonal wide, so the square fits the round button; together 25 %.
-    expect(
-      (percent(slot.attributes('style')) * percent(patch.attributes('style'))) / 100,
-    ).toBeCloseTo(25)
-    expect(patch.classes()).toContain('pointer-events-none')
+    expect(slot.attributes('style')).toContain('width: 25%')
+    expect(slot.get('[data-test="hold-button"]').classes()).not.toContain('rounded-full')
+    expect(patch.classes()).toEqual(expect.arrayContaining(['pointer-events-none', 'size-full']))
     expect(wrapper.text()).toContain('Wo gehört dieser Ausschnitt hin?')
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
+  })
+
+  it('runs the board edge to edge of the card, like Entstauber', () => {
+    const field = mountBoard().get('[data-test="place-patch-field"]').element
+
+    expect(field.parentElement!.className).not.toContain('max-w-')
+    expect(field.parentElement!.parentElement!.className).toContain('-mx-4')
   })
 
   it('keeps the board picture out of the gesture, so a long press cannot open the image menu', () => {
@@ -170,8 +173,8 @@ describe('PlacePatchBoard', () => {
     // The cover brings a hold button of its own (START); the board's submit button must be gone.
     expect(wrapper.find('[aria-label="Tipp bestätigen — gedrückt halten"]').exists()).toBe(false)
     // The slot is already there at full size, empty, so the reveal does not push the rules down.
-    expect(wrapper.get('[data-test="place-patch-hold-slot"]').attributes('style')).toMatch(
-      /width: 35\.35/,
+    expect(wrapper.get('[data-test="place-patch-hold-slot"]').attributes('style')).toContain(
+      'width: 25%',
     )
   })
 })

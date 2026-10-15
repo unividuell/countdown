@@ -83,7 +83,8 @@ describe('PlacePatchReveal', () => {
     const wrapper = mountReveal([])
 
     const field = wrapper.get('img').element.parentElement!
-    expect(field.parentElement!.className).toContain('max-w-[22rem]')
+    expect(field.className).toContain('-mx-4')
+    expect(field.className).toContain('-mt-4')
     expect(field.getAttribute('style')).toContain('aspect-ratio: 40 / 30')
   })
 

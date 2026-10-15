@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
- * Playing: the grey board with the stamp on it, the patch below, the hold that submits.
+ * Playing: the grey board with the stamp on it, below it the patch lying on the hold that submits.
  *
  * The answer is nowhere in here — the server sent pictures and three numbers. All this component
  * holds is where the player put the stamp.
  *
- * Capped at 22rem like Musterung's board: a desktop player's view must not be more informative
- * than a phone player's.
+ * Card-wide like Entstauber's board: the field runs edge to edge, for the largest cells.
  */
 import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
@@ -114,24 +113,18 @@ const stampStyle = computed(() => {
   }
 })
 
-/**
- * The patch as wide as it is on the board — size of cols, of the same column width — and its slot
- * √2 wider, so the square fits inside the round button under it.
- */
-const slotWidth = computed(() =>
-  layout.value ? `${(100 * Math.SQRT2 * layout.value.size) / layout.value.cols}%` : '0%',
+/** The patch as wide as it is on the board: size of cols, of the same column width. */
+const patchWidth = computed(() =>
+  layout.value ? `${(100 * layout.value.size) / layout.value.cols}%` : '0%',
 )
 </script>
 
 <template>
   <div data-test="place-patch-board" class="flex flex-col gap-6">
-    <!-- The outer box cancels RoundSurface's padding and pays it back, so the cover spans the card
-         edge to edge, as in Musterung. -->
-    <div v-if="layout" class="relative -mx-4 -mt-4 -mb-4 p-4">
-      <div
-        class="mx-auto flex w-full max-w-[22rem] flex-col items-center gap-3"
-        :inert="props.sealed || undefined"
-      >
+    <!-- Card-wide, like Entstauber's: the outer box cancels RoundSurface's padding, so field and
+         cover run edge to edge; the bottom padding, cancelled by `-mb-4`, keeps the rules' gap. -->
+    <div v-if="layout" class="relative -mx-4 -mt-4 -mb-4 pb-4">
+      <div class="flex flex-col items-center gap-3" :inert="props.sealed || undefined">
         <div
           ref="field"
           data-test="place-patch-field"
@@ -165,13 +158,13 @@ const slotWidth = computed(() =>
           Das Bild ließ sich nicht laden.
         </p>
         <p class="text-center text-lg">Wo gehört dieser Ausschnitt hin?</p>
-        <!-- The patch lies on the hold button: the slot is the patch's diagonal wide, so the square
-             fits the round button. It stands under the cover too, empty, so the reveal does not push
-             the rules down. `HoldButton` fills its parent and has no size of its own. -->
+        <!-- The patch lies on a square hold button of its own size. The slot stands under the cover
+             too, empty, so the reveal does not push the rules down. `HoldButton` fills its parent
+             and has no size of its own. -->
         <div
           data-test="place-patch-hold-slot"
           class="relative aspect-square shrink-0"
-          :style="{ width: slotWidth }"
+          :style="{ width: patchWidth }"
         >
           <HoldButton
             v-if="!props.sealed"
@@ -179,6 +172,7 @@ const slotWidth = computed(() =>
             :disabled="!playable || stamp === null"
             :color="props.myColorHex"
             label="Tipp bestätigen — gedrückt halten"
+            shape="square"
             @confirm="submit"
           />
           <img
@@ -186,8 +180,7 @@ const slotWidth = computed(() =>
             data-test="place-patch-patch"
             :src="props.patchSrc"
             alt="Der gesuchte Ausschnitt"
-            class="pointer-events-none absolute top-1/2 left-1/2 -translate-1/2"
-            :style="{ width: `${100 / Math.SQRT2}%` }"
+            class="pointer-events-none absolute inset-0 size-full"
             draggable="false"
             @error="imageFailed = true"
           />
