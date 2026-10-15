@@ -2,6 +2,7 @@ import type { Component } from 'vue'
 import DedusterGame from './deduster/DedusterGame.vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
+import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 import SpotObjectGame from './spotobject/SpotObjectGame.vue'
 
@@ -19,4 +20,5 @@ export const gameComponents: Record<string, Component> = {
   'find-pattern': FindPatternGame,
   'spot-object': SpotObjectGame,
   deduster: DedusterGame,
+  'place-patch': PlacePatchGame,
 }
