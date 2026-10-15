@@ -14,7 +14,6 @@
     <li>
       Es zählt nur der exakte Treffer: Liegt der Rahmen auch nur ein Feld daneben, ist es keiner.
     </li>
-    <li>In Phase zwei läuft die Uhr ab dem Aufdecken, und der schnellste Treffer gewinnt.</li>
     <li>Abgegeben wird, indem du den Knopf gedrückt hältst.</li>
   </ul>
 </template>

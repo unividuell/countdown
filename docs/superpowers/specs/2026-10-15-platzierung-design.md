@@ -372,7 +372,7 @@ Tiebreak. Als pure `scoreboard.ts`.
 
 `InfoBox` mit Storage-Key `place-patch`. Kurztext: „Finde die Stelle, an die der Ausschnitt gehört —
 aufs Feld genau.“ Die Regeln darunter: Tippen setzt den Rahmen, Ziehen verschiebt ihn; zählt nur der
-exakte Treffer; in Phase zwei läuft die Uhr ab dem Aufdecken, und der schnellste Treffer gewinnt.
+exakte Treffer. Was die Runde zahlt und dass in Phase zwei die Zeit zählt, sagt die `AwardBox`.
 
 ## Labor
 
