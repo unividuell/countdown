@@ -143,7 +143,7 @@ const patchWidth = computed(() =>
             v-if="props.boardSrc"
             :src="props.boardSrc"
             alt="Das Spielfeld in Graustufen"
-            class="absolute inset-0 size-full"
+            class="pointer-events-none absolute inset-0 size-full [-webkit-touch-callout:none]"
             draggable="false"
             @error="imageFailed = true"
           />

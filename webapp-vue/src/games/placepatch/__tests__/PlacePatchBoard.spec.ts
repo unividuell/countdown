@@ -67,6 +67,12 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
   })
 
+  it('keeps the board picture out of the gesture, so a long press cannot open the image menu', () => {
+    const board = mountBoard().get('[data-test="place-patch-field"] img')
+
+    expect(board.classes()).toContain('pointer-events-none')
+  })
+
   it('puts the stamp under the finger on a tap and submits it on hold', async () => {
     const wrapper = mountBoard()
     const field = sized(wrapper)
