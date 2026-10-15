@@ -232,14 +232,15 @@ const ROUND_RIM = {
 /**
  * The same rim for a square: four edge strips, unioned — the default way mask layers combine, so
  * no browser has to support `mask-composite`. A phone that skipped an `exclude` composite painted
- * the whole box instead, a thick band. A fixed hairline rather than a share of the button: the
+ * the whole box instead, a thick band. A fixed width rather than a share of the button: the
  * square grows with Platzierung's board, and its rim must not grow with it.
  */
+const SQUARE_RIM_PX = 2.5
 const SQUARE_FRAME = [
-  'linear-gradient(#000 0 0) top / 100% 1.5px no-repeat',
-  'linear-gradient(#000 0 0) bottom / 100% 1.5px no-repeat',
-  'linear-gradient(#000 0 0) left / 1.5px 100% no-repeat',
-  'linear-gradient(#000 0 0) right / 1.5px 100% no-repeat',
+  `linear-gradient(#000 0 0) top / 100% ${SQUARE_RIM_PX}px no-repeat`,
+  `linear-gradient(#000 0 0) bottom / 100% ${SQUARE_RIM_PX}px no-repeat`,
+  `linear-gradient(#000 0 0) left / ${SQUARE_RIM_PX}px 100% no-repeat`,
+  `linear-gradient(#000 0 0) right / ${SQUARE_RIM_PX}px 100% no-repeat`,
 ].join(', ')
 const SQUARE_RIM = { mask: SQUARE_FRAME, WebkitMask: SQUARE_FRAME }
 
