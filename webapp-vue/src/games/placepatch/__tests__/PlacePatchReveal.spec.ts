@@ -45,12 +45,21 @@ describe('PlacePatchReveal', () => {
     expect(solution.get('img').attributes('src')).toBe('/assets/1')
   })
 
-  it('marks the target with a white X, which tip boxes on its edge cannot cover', () => {
+  it('marks the target with gapped diagonals: a small X at the centre, a stroke per corner', () => {
     const lines = mountReveal([]).findAll('[data-test="place-patch-solution"] line')
+    const segments = lines.map((line) =>
+      ['x1', 'y1', 'x2', 'y2'].map((name) => Number(line.attributes(name))),
+    )
 
-    expect(lines.map((line) => [line.attributes('x1'), line.attributes('y1')])).toEqual([
-      ['0', '0'],
-      ['100', '0'],
+    // In % of the square. A corner stroke reaches 22 % in: six tips stacked on the target cover
+    // 13 px of an ~88 px square (15 %), so the strokes still show past them.
+    expect(segments).toEqual([
+      [0, 0, 22, 22],
+      [100, 0, 78, 22],
+      [0, 100, 22, 78],
+      [100, 100, 78, 78],
+      [42, 42, 58, 58],
+      [58, 42, 42, 58],
     ])
     expect(lines.every((line) => line.attributes('stroke') === 'white')).toBe(true)
   })

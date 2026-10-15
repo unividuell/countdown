@@ -71,6 +71,22 @@ function box(cell: Cell, insetPx = 0) {
   }
 }
 
+/**
+ * The target's mark, in % of the square: its diagonals with gaps — a small X at the centre, a stroke
+ * in each corner. A corner stroke reaches [CORNER_REACH] in: six tips stacked on the target cover
+ * 13 px of an ~88 px square, so it still shows past them.
+ */
+const CORNER_REACH = 22
+const CENTRE_ARM = 8
+const targetMarks = [
+  [0, 0, CORNER_REACH, CORNER_REACH],
+  [100, 0, 100 - CORNER_REACH, CORNER_REACH],
+  [0, 100, CORNER_REACH, 100 - CORNER_REACH],
+  [100, 100, 100 - CORNER_REACH, 100 - CORNER_REACH],
+  [50 - CENTRE_ARM, 50 - CENTRE_ARM, 50 + CENTRE_ARM, 50 + CENTRE_ARM],
+  [50 + CENTRE_ARM, 50 - CENTRE_ARM, 50 - CENTRE_ARM, 50 + CENTRE_ARM],
+]
+
 const solutionStyle = computed(() => ({
   ...box(props.solution),
   transitionDuration: `${FADE_MS}ms`,
@@ -113,7 +129,7 @@ function outlineStyle(outline: Outline) {
             class="size-full"
             draggable="false"
           />
-          <!-- An X, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
+          <!-- A mark, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
           <svg
             class="absolute inset-0 size-full drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
             viewBox="0 0 100 100"
@@ -121,19 +137,12 @@ function outlineStyle(outline: Outline) {
             aria-hidden="true"
           >
             <line
-              x1="0"
-              y1="0"
-              x2="100"
-              y2="100"
-              stroke="white"
-              stroke-width="2"
-              vector-effect="non-scaling-stroke"
-            />
-            <line
-              x1="100"
-              y1="0"
-              x2="0"
-              y2="100"
+              v-for="([x1, y1, x2, y2], index) in targetMarks"
+              :key="index"
+              :x1="x1"
+              :y1="y1"
+              :x2="x2"
+              :y2="y2"
               stroke="white"
               stroke-width="2"
               vector-effect="non-scaling-stroke"
