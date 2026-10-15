@@ -79,6 +79,7 @@ class PlacePatchImagesTest {
 
         (r == g && g == b) shouldBe true
         abs(r - grey) shouldBeLessThanOrEqual 4
+        abs(board.raster.getSample(100, 150, 0) - 136) shouldBeLessThanOrEqual 2
     }
 
     @Test
@@ -105,6 +106,7 @@ class PlacePatchImagesTest {
         (centre ushr 24) shouldBe 255
         channels(centre).third shouldBeGreaterThanOrEqual 240
         (patch.getRGB(0, 0) ushr 24) shouldBe 0
+        (patch.getRGB(0, 0) and 0xFFFFFF) shouldBe 0
     }
 
     @Test

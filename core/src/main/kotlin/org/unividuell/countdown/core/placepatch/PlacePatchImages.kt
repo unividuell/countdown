@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.imagepool.ImageFit
 import org.unividuell.countdown.core.imagepool.ImagePoolQuery
 import java.awt.image.BufferedImage
+import java.awt.image.DataBufferByte
 import java.io.ByteArrayInputStream
 import java.util.UUID
 import javax.imageio.ImageIO
@@ -33,6 +34,18 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
             if (c <= 0.04045) c / 12.92 else ((c + 0.055) / 1.055).pow(2.4)
         }
 
+        private const val ENCODE_STEPS = 4095
+
+        /**
+         * Linear Y in [0, 1] → sRGB grey byte, in [ENCODE_STEPS] steps: a `pow` per pixel is what a
+         * 1M-pixel board cannot afford. Off the exact curve by at most one level; 0 → 0, 1 → 255.
+         */
+        private val ENCODED = IntArray(ENCODE_STEPS + 1) {
+            val y = it.toDouble() / ENCODE_STEPS
+            val encoded = if (y <= 0.0031308) 12.92 * y else 1.055 * y.pow(1 / 2.4) - 0.055
+            (255 * encoded).roundToInt().coerceIn(minimumValue = 0, maximumValue = 255)
+        }
+
         /** Centre crop to exactly cols : rows, scaled to whole square cells. */
         fun freeze(source: BufferedImage, layout: PlacePatchLayout): ByteArray {
             val crop = ImageFit.centreCrop(source = source, ratioWidth = layout.cols, ratioHeight = layout.rows)
@@ -47,10 +60,9 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
         fun board(frozen: ByteArray): ByteArray {
             val photo = decode(frozen)
             val grey = BufferedImage(photo.width, photo.height, BufferedImage.TYPE_BYTE_GRAY)
-            val raster = grey.raster
-            for (y in 0 until photo.height) {
-                for (x in 0 until photo.width) raster.setSample(x, y, 0, greyOf(photo.getRGB(x, y)))
-            }
+            val pixels = photo.getRGB(0, 0, photo.width, photo.height, null, 0, photo.width)
+            val samples = (grey.raster.dataBuffer as DataBufferByte).data
+            for (i in pixels.indices) samples[i] = greyOf(pixels[i]).toByte()
             return ImageFit.jpeg(image = grey, quality = QUALITY)
         }
 
@@ -63,8 +75,10 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
             val out = BufferedImage(side, side, BufferedImage.TYPE_INT_ARGB)
             for (py in 0 until side) {
                 for (px in 0 until side) {
-                    val rgb = photo.getRGB(x * cell + px, y * cell + py) and 0xFFFFFF
-                    out.setRGB(px, py, ((alpha[py * side + px] * 255).roundToInt() shl 24) or rgb)
+                    val a = (alpha[py * side + px] * 255).roundToInt()
+                    // Fully frayed pixels carry no colour: a client that ignores alpha must not see the square.
+                    val rgb = if (a == 0) 0 else photo.getRGB(x * cell + px, y * cell + py) and 0xFFFFFF
+                    out.setRGB(px, py, (a shl 24) or rgb)
                 }
             }
             return ImageFit.png(out)
@@ -85,9 +99,8 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
             val m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
             val s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
             val lightness = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s
-            val y = lightness.coerceIn(minimumValue = 0.0, maximumValue = 1.0).pow(3)
-            val encoded = if (y <= 0.0031308) 12.92 * y else 1.055 * y.pow(1 / 2.4) - 0.055
-            return (255 * encoded).roundToInt().coerceIn(minimumValue = 0, maximumValue = 255)
+            val grey = lightness.coerceIn(minimumValue = 0.0, maximumValue = 1.0)
+            return ENCODED[(grey * grey * grey * ENCODE_STEPS + 0.5).toInt()]
         }
     }
 }
