@@ -110,6 +110,42 @@ class PlacePatchImagesTest {
     }
 
     @Test
+    fun `the patch is cut from the frozen photo at x and y`() {
+        // Every 10 px cell has its own colour: a patch cut from the wrong cell shows the wrong colours.
+        val photo = BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB)
+        photo.createGraphics().apply {
+            for (cy in 0 until 30) {
+                for (cx in 0 until 40) {
+                    color = Color((cx * 97 + cy * 31) % 256, (cx * 53 + cy * 171) % 256, (cx * 191 + cy * 13) % 256)
+                    fillRect(cx * 10, cy * 10, 10, 10)
+                }
+            }
+            dispose()
+        }
+        // size 8 ≠ cell 10 px, so a patch placed by size instead of cell is caught too.
+        val layout = landscape.copy(size = 8)
+        val frozen = PlacePatchImages.freeze(source = photo, layout = layout)
+        val frozenPhoto = decoded(frozen)
+        val cell = frozenPhoto.width / layout.cols
+        val x = 7
+        val y = 4
+
+        val patch = decoded(PlacePatchImages.patch(frozen = frozen, layout = layout, x = x, y = y, fraySeed = 11))
+
+        // The centre and four points well inside the fray, which reaches 12 px from the edge.
+        listOf(40 to 40, 25 to 25, 55 to 25, 25 to 55, 55 to 55).forEach { (px, py) ->
+            val actual = patch.getRGB(px, py)
+            val expected = channels(frozenPhoto.getRGB(x * cell + px, y * cell + py))
+            val (r, g, b) = channels(actual)
+
+            (actual ushr 24) shouldBe 255
+            abs(r - expected.first) shouldBeLessThanOrEqual 8
+            abs(g - expected.second) shouldBeLessThanOrEqual 8
+            abs(b - expected.third) shouldBeLessThanOrEqual 8
+        }
+    }
+
+    @Test
     fun `the patch is the same for the same round and frays differently for another seed`() {
         val frozen = PlacePatchImages.freeze(source = solid(width = 400, height = 300, color = Color.GREEN), layout = landscape)
         fun alphas(seed: Int) = decoded(PlacePatchImages.patch(frozen = frozen, layout = landscape, x = 2, y = 3, fraySeed = seed))
