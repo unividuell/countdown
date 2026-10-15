@@ -12,7 +12,6 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
     provisional: false,
     tick: 0,
     correct: false,
-    gaveUp: false,
     durationLabel: null,
     cell: { x: 1, y: 1 },
     ...over,
@@ -20,22 +19,16 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 }
 
 describe('PlacePatchScoreboard', () => {
-  it('says hit, miss or gave up per row', () => {
+  it('needs no hit column — the points say it', () => {
     const wrapper = mount(PlacePatchScoreboard, {
       props: {
-        rows: [
-          row({ userId: 'a', correct: true }),
-          row({ userId: 'b' }),
-          row({ userId: 'c', gaveUp: true, cell: null }),
-        ],
+        rows: [row({ userId: 'a', correct: true, points: 1 }), row({ userId: 'b', cell: null })],
         live: false,
         animate: false,
       },
     })
 
-    expect(wrapper.get('[data-test="hit-a"]').text()).toBe('Treffer')
-    expect(wrapper.get('[data-test="hit-b"]').text()).toBe('daneben')
-    expect(wrapper.get('[data-test="hit-c"]').text()).toBe('aufgegeben')
+    expect(wrapper.text()).not.toContain('Treffer')
   })
 
   it('shows the clock only for a timed round', () => {

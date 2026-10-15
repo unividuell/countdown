@@ -15,7 +15,6 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
     provisional: false,
     tick: 0,
     correct: false,
-    gaveUp: false,
     durationLabel: null,
     cell: null,
     ...over,
@@ -60,7 +59,7 @@ describe('PlacePatchReveal', () => {
     const wrapper = mountReveal([
       row({ userId: 'fry', cell: { x: 7, y: 4 }, colorHex: '#16a34a' }),
       row({ userId: 'mine', cell: { x: 7, y: 4 } }),
-      row({ userId: 'gave-up', gaveUp: true }),
+      row({ userId: 'gave-up' }),
     ])
 
     expect(wrapper.get('[data-test="place-patch-outline-mine"]').attributes('data-inset')).toBe('0')

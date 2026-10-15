@@ -38,8 +38,8 @@ describe('placepatch scoreRows', () => {
       entry({ userId: 'b', guess: { x: 8, y: 4 }, points: 0 }),
     ])
 
-    expect(hit).toMatchObject({ userId: 'a', correct: true, gaveUp: false, cell: { x: 7, y: 4 } })
-    expect(miss).toMatchObject({ userId: 'b', correct: false, gaveUp: false })
+    expect(hit).toMatchObject({ userId: 'a', correct: true, cell: { x: 7, y: 4 } })
+    expect(miss).toMatchObject({ userId: 'b', correct: false })
   })
 
   it('treats a give-up and a guess off the board alike: no tip', () => {
@@ -48,7 +48,7 @@ describe('placepatch scoreRows', () => {
       entry({ userId: 'junk', guess: { x: 99, y: 3 } }),
     ])
 
-    expect(result.every((row) => row.gaveUp && row.cell === null && !row.correct)).toBe(true)
+    expect(result.every((row) => row.cell === null && !row.correct)).toBe(true)
   })
 
   it('ranks by points, then hits, then the faster clock, then the user id', () => {

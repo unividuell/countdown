@@ -14,11 +14,9 @@ import type { Cell, PlacePatchPayload, PlacePatchSolution } from './types'
 
 export interface ScoreRow extends ScoreboardRow {
   correct: boolean
-  /** No tip on the board: gave up, or a stored guess that does not fit it. */
-  gaveUp: boolean
   /** `mm:ss`, or `null` for a round that did not score on time. */
   durationLabel: string | null
-  /** Where their stamp lay, for the box on the reveal board. */
+  /** Where their stamp lay, for the box on the reveal board; `null` without a tip on it. */
   cell: Cell | null
 }
 
@@ -41,7 +39,6 @@ export function scoreRows(input: {
         // Read off the board rather than off `outcome`: the box sits on the picture, so „correct“
         // has to be the comparison the reader is making.
         correct: cell !== null && cell.x === input.solution.x && cell.y === input.solution.y,
-        gaveUp: cell === null,
         durationLabel: formatDuration(entry.durationMs),
         points: entry.points,
         provisional: isProvisional(entry.points, input.awardRule),

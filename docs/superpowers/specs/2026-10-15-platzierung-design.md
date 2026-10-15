@@ -361,9 +361,10 @@ eingesetzten Flicken. Feinabstimmung der Takte im Labor.
 
 ### Rangliste
 
-Echte Tabelle im Stil von Musterung. Spalten: **Name · Treffer · [mm:ss] · Pkt** — [mm:ss] nur in
-Phase zwei. Sortierung wie bei Musterung: Punkte absteigend (`null` zuletzt), Treffer vor
-Nicht-Treffern, Dauer aufsteigend, `userId` als Tiebreak. Als pure `scoreboard.ts`.
+Echte Tabelle im Stil von Musterung. Spalten: **Name · [mm:ss] · Pkt** — [mm:ss] nur in Phase
+zwei; ob getroffen, sagen die Punkte und der Rahmen auf dem Bild. Sortierung wie bei Musterung:
+Punkte absteigend (`null` zuletzt), Treffer vor Nicht-Treffern, Dauer aufsteigend, `userId` als
+Tiebreak. Als pure `scoreboard.ts`.
 
 ### Erklärung
 
