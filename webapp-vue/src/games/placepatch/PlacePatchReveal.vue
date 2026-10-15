@@ -71,20 +71,22 @@ function box(cell: Cell, insetPx = 0) {
   }
 }
 
-/**
- * The target's mark, in % of the square: its diagonals with gaps — a small X at the centre, a stroke
- * in each corner. A corner stroke reaches [CORNER_REACH] in: six tips stacked on the target cover
- * 13 px of an ~88 px square, so it still shows past them.
- */
-const CORNER_REACH = 22
+/** The centre of the target, in % of the square: a small X. */
 const CENTRE_ARM = 8
-const targetMarks = [
-  [0, 0, CORNER_REACH, CORNER_REACH],
-  [100, 0, 100 - CORNER_REACH, CORNER_REACH],
-  [0, 100, CORNER_REACH, 100 - CORNER_REACH],
-  [100, 100, 100 - CORNER_REACH, 100 - CORNER_REACH],
+const centreX = [
   [50 - CENTRE_ARM, 50 - CENTRE_ARM, 50 + CENTRE_ARM, 50 + CENTRE_ARM],
   [50 + CENTRE_ARM, 50 - CENTRE_ARM, 50 - CENTRE_ARM, 50 + CENTRE_ARM],
+]
+
+/**
+ * The target's corners, drawn just outside it — offset by their own 2 px line, so a hit's box
+ * touches them and no stack of tip boxes, all of them inside the square, ever covers them.
+ */
+const CORNERS = [
+  '-top-0.5 -left-0.5 border-t-2 border-l-2',
+  '-top-0.5 -right-0.5 border-t-2 border-r-2',
+  '-bottom-0.5 -left-0.5 border-b-2 border-l-2',
+  '-bottom-0.5 -right-0.5 border-b-2 border-r-2',
 ]
 
 const solutionStyle = computed(() => ({
@@ -129,7 +131,7 @@ function outlineStyle(outline: Outline) {
             class="size-full"
             draggable="false"
           />
-          <!-- A mark, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
+          <!-- Marks, not a frame: the tip boxes lie on the patch's edge and would cover a frame. -->
           <svg
             class="absolute inset-0 size-full drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
             viewBox="0 0 100 100"
@@ -137,7 +139,7 @@ function outlineStyle(outline: Outline) {
             aria-hidden="true"
           >
             <line
-              v-for="([x1, y1, x2, y2], index) in targetMarks"
+              v-for="([x1, y1, x2, y2], index) in centreX"
               :key="index"
               :x1="x1"
               :y1="y1"
@@ -148,6 +150,13 @@ function outlineStyle(outline: Outline) {
               vector-effect="non-scaling-stroke"
             />
           </svg>
+          <div
+            v-for="corner in CORNERS"
+            :key="corner"
+            data-test="place-patch-target-corner"
+            class="absolute size-2 border-white drop-shadow-[0_0_1px_rgb(0_0_0/0.6)]"
+            :class="corner"
+          />
         </div>
         <div
           v-for="outline in outlines"

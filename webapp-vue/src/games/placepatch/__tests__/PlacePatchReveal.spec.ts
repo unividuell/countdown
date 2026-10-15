@@ -45,23 +45,26 @@ describe('PlacePatchReveal', () => {
     expect(solution.get('img').attributes('src')).toBe('/assets/1')
   })
 
-  it('marks the target with gapped diagonals: a small X at the centre, a stroke per corner', () => {
-    const lines = mountReveal([]).findAll('[data-test="place-patch-solution"] line')
-    const segments = lines.map((line) =>
-      ['x1', 'y1', 'x2', 'y2'].map((name) => Number(line.attributes(name))),
-    )
+  it('marks the target with a small X at the centre and its corners just outside', () => {
+    const solution = mountReveal([]).get('[data-test="place-patch-solution"]')
+    const segments = solution
+      .findAll('line')
+      .map((line) => ['x1', 'y1', 'x2', 'y2'].map((name) => Number(line.attributes(name))))
+    const corners = solution.findAll('[data-test="place-patch-target-corner"]')
 
-    // In % of the square. A corner stroke reaches 22 % in: six tips stacked on the target cover
-    // 13 px of an ~88 px square (15 %), so the strokes still show past them.
     expect(segments).toEqual([
-      [0, 0, 22, 22],
-      [100, 0, 78, 22],
-      [0, 100, 22, 78],
-      [100, 100, 78, 78],
       [42, 42, 58, 58],
       [58, 42, 42, 58],
     ])
-    expect(lines.every((line) => line.attributes('stroke') === 'white')).toBe(true)
+    // Offset outwards by their own line width: a hit's box touches them, no box covers them.
+    expect(
+      corners.map((corner) => corner.classes().filter((name) => name.startsWith('-'))),
+    ).toEqual([
+      ['-top-0.5', '-left-0.5'],
+      ['-top-0.5', '-right-0.5'],
+      ['-bottom-0.5', '-left-0.5'],
+      ['-bottom-0.5', '-right-0.5'],
+    ])
   })
 
   it('stacks the tips, mine outermost', () => {
