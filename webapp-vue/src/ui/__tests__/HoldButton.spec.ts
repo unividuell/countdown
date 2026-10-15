@@ -346,6 +346,41 @@ describe('HoldButton', () => {
     expect(w.emitted('confirm')).toHaveLength(1)
   })
 
+  describe('square', () => {
+    it('paints button and ring as squares', () => {
+      const w = mountButton({ shape: 'square' })
+
+      expect(w.get('[data-test="hold-button"]').classes()).not.toContain('rounded-full')
+      expect(w.get('[data-test="hold-ring"]').classes()).not.toContain('rounded-full')
+      expect(w.get('[data-test="hold-ring"]').attributes('style')).not.toContain('radial-gradient')
+    })
+
+    it('keeps holding into the corners, where a round button would have let go', async () => {
+      const w = mountButton({ shape: 'square' })
+      const el = w.get('[data-test="hold-button"]')
+      stubButtonRect(el.element)
+
+      await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+      // (95, 95) lies outside the radius-50 circle but inside the 100 × 100 square.
+      await el.trigger('pointermove', { clientX: 95, clientY: 95 })
+      vi.advanceTimersByTime(1200)
+
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
+    it('lets go once the pointer leaves the square', async () => {
+      const w = mountButton({ shape: 'square' })
+      const el = w.get('[data-test="hold-button"]')
+      stubButtonRect(el.element)
+
+      await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+      await el.trigger('pointermove', { clientX: 101, clientY: 50 })
+      vi.advanceTimersByTime(3000)
+
+      expect(w.emitted('confirm')).toBeUndefined()
+    })
+  })
+
   it('cancels an in-flight hold when disabled turns on mid-hold', async () => {
     // A `disabled` element stops dispatching pointer events, so flipping `disabled` mid-hold would
     // otherwise mean `pointerup` never fires and the hold completes on top of whatever caused the

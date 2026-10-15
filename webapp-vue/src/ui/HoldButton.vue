@@ -33,8 +33,10 @@ const props = withDefaults(
     beats?: number
     /** One beat of the count-in. Entstauber counts in at its round's tempo. */
     beatMs?: number
+    /** `square` when something square lies on the button — Platzierung's patch — and must not be cut. */
+    shape?: 'round' | 'square'
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
 )
 
 const emit = defineEmits<{ confirm: [] }>()
@@ -172,13 +174,22 @@ function beginHold(event: PointerEvent): void {
  * `pointerleave`: doing that would lose `pointerup` whenever the finger ends up off the element,
  * which is the very case this handler exists to catch.
  *
- * A circular test, not a rectangular one, because the button paints as a circle — a rectangular
- * test would keep the corners "inside" a shape that visually excludes them.
+ * The test follows the shape the button paints: a round button must not keep the corners of its
+ * box "inside", a square one must keep them.
  */
 function onPointerMove(event: PointerEvent): void {
   const el = button.value
   if (!el) return
   const box = el.getBoundingClientRect()
+  if (props.shape === 'square') {
+    const inside =
+      event.clientX >= box.left &&
+      event.clientX <= box.right &&
+      event.clientY >= box.top &&
+      event.clientY <= box.bottom
+    if (!inside) cancel()
+    return
+  }
   const cx = box.left + box.width / 2
   const cy = box.top + box.height / 2
   const radius = Math.min(box.width, box.height) / 2
@@ -203,6 +214,33 @@ function onKeyUp(event: KeyboardEvent): void {
 }
 
 /**
+ * `closest-side` keeps this proportional at any wheel size. The thin band near the outer edge
+ * is what makes the disc read as a ring rather than a filled circle, and, combined with the
+ * outer box being noticeably larger than the button underneath (see the `-inset` below), with a
+ * visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
+ * they scale with that box's own size — kept unscaled, the same percentage of a differently
+ * sized radius would paint a visibly thicker or thinner rim than intended. Currently
+ * `94.67%`/`95.78%`, rescaled from `95.2%`/`96.2%` when the box shrank from 50% to 45% of the
+ * wheel's width (itself once rescaled from `90%`/`92%` at ~24%) — each rescale keeps the same
+ * absolute pixel weight by scaling the distance from 100% by the old-box/new-box ratio.
+ */
+const ROUND_RIM = {
+  mask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+  WebkitMask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+}
+
+/**
+ * The same rim for a square: the padding box minus the content box, so a band as wide as the
+ * padding. `2.8%` of the button's width is the round rim's weight in pixels.
+ */
+const SQUARE_RIM = {
+  padding: '2.8%',
+  mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)',
+  WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+  WebkitMaskComposite: 'xor',
+}
+
+/**
  * The thin light-grey outline around the button, and the hold-progress indicator, are the same
  * element: one ring, two jobs. At rest it reads as the button's own rim, the way a socket outlines
  * what sits in it; as the hold runs, colour fills it clockwise from 0° to 360°. It stays visible
@@ -214,17 +252,7 @@ const ringStyle = computed(() => ({
   // `transparent` half lets it show through for whatever the hold has not yet filled.
   backgroundColor: '#d4d4d4',
   backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
-  // `closest-side` keeps this proportional at any wheel size. The thin band near the outer edge
-  // is what makes the disc read as a ring rather than a filled circle, and, combined with the
-  // outer box being noticeably larger than the button underneath (see the `-inset` below), with a
-  // visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
-  // they scale with that box's own size — kept unscaled, the same percentage of a differently
-  // sized radius would paint a visibly thicker or thinner rim than intended. Currently
-  // `94.67%`/`95.78%`, rescaled from `95.2%`/`96.2%` when the box shrank from 50% to 45% of the
-  // wheel's width (itself once rescaled from `90%`/`92%` at ~24%) — each rescale keeps the same
-  // absolute pixel weight by scaling the distance from 100% by the old-box/new-box ratio.
-  mask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
-  WebkitMask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+  ...(props.shape === 'square' ? SQUARE_RIM : ROUND_RIM),
 }))
 
 /** Only the button's own colour — its resting visibility now lives on [popStyle], see below. */
@@ -266,7 +294,8 @@ const popStyle = computed(() => ({
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[6.25%] rounded-full text-neutral-900"
+      class="pointer-events-none absolute -inset-[6.25%] text-neutral-900"
+      :class="{ 'rounded-full': props.shape === 'round' }"
       :style="ringStyle"
     />
     <!--
@@ -297,7 +326,8 @@ const popStyle = computed(() => ({
       :aria-label="props.label"
       :disabled="props.disabled"
       :style="buttonStyle"
-      class="absolute inset-0 cursor-pointer touch-none rounded-full shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
+      class="absolute inset-0 cursor-pointer touch-none shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
+      :class="{ 'rounded-full': props.shape === 'round' }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"
       @pointerup="cancel"
