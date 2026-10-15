@@ -63,15 +63,13 @@ build answers.
 ## Images belong in the payload while they are small — the asset endpoint is for expensive, stored bytes
 
 Musterung's two PNGs travel as base64 inside `FindPatternPayload`, not through the framework's binary
-round-asset endpoint (`/api/communities/{slug}/rounds/{roundNumber}/assets/{key}`). The counter-proof
-for why that is the right call, not an oversight: that endpoint's pre-guess gate (`PlayService.asset`)
-lets a key through only while `key in 0..play.stage`, and a single-stage game like Musterung
-(`play.stage` frozen at `0`) means exactly one key is reachable before the guess. A second pre-guess
-image routed through that endpoint would need either a second key opened before the guess — a change
-to what `stage` means for a single-stage game — or a second condition in the gate itself. Two small
-images that both change every round are cheaper as JSON fields than as a framework change; the asset
-endpoint earns its cost only for bytes too large or too expensive to regenerate per request (a song
-snippet's WAV ladder, not a 225-byte PNG).
+round-asset endpoint (`/api/communities/{slug}/rounds/{roundNumber}/assets/{key}`). The endpoint's
+pre-guess gate (`PlayService.asset`) opens while `assetStage(params, key) in 0..play.stage`;
+`assetStage` defaults to the key itself, and a single-stage game can map several keys to stage 0
+(Platzierung: board and patch), see „Assets before the reveal“ in `game-rounds.md`. Two small images
+that both change every round are cheaper as JSON fields than through the endpoint; the asset endpoint
+earns its cost only for bytes too large or too expensive to regenerate per request, or that must be
+frozen per round (a song snippet's WAV ladder, Platzierung's frozen photo, not a 225-byte PNG).
 
 ## The ceiling, named — Entstauber
 
