@@ -1,6 +1,6 @@
 # Blockierung („Copy Blocks“) — ein Blockgebilde exakt nachbauen
 
-**Status:** Entwurf zur Abnahme (2026-10-16).
+**Status:** beschlossenes Design (2026-10-16).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md), der
 [Hülle](2026-09-25-reveal-cover-design.md), der [Spieluhr](2026-09-11-game-stopwatch-design.md) und dem
