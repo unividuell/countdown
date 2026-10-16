@@ -283,7 +283,7 @@ Von oben nach unten:
 2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, mittig. Die Streifen links und rechts
    gehören dem Seitenscrollen, mit beiden Händen erreichbar; mittig steht sie zudem unter dem Nachbau,
    der oben meist mittig entsteht. Rasterboden einen Block breiter als ihr Grundriss, Kamera auf ihr
-   Maß eingerahmt.
+   Maß eingerahmt. Oben links auch hier **Zentrieren**, für ihre eigene Kamera.
 3. **Der `HoldButton`** „Abgeben“.
 
 Startwinkel beider Ansichten gleich, Gieren 0,6 und Neigen 0,45 wie im Spike.

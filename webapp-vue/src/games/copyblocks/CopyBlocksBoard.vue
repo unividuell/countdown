@@ -238,16 +238,20 @@ function submit(): void {
         </section>
 
         <section
-          class="mx-auto h-[34svh] w-3/4 overflow-hidden rounded-lg"
+          class="relative mx-auto h-[34svh] w-3/4 overflow-hidden rounded-lg"
           :style="{ background: TEMPLATE_GROUND }"
         >
-          <BlockScene
-            v-if="round && templateField"
-            v-model:camera="templateCamera"
-            :blocks="round.blocks"
-            :field="templateField"
-            :background="TEMPLATE_GROUND"
-          />
+          <template v-if="round && templateField">
+            <BlockScene
+              v-model:camera="templateCamera"
+              :blocks="round.blocks"
+              :field="templateField"
+              :background="TEMPLATE_GROUND"
+            />
+            <div class="absolute top-1 left-1">
+              <CentreButton v-model:camera="templateCamera" />
+            </div>
+          </template>
         </section>
 
         <!-- The slot stands under the cover too, empty, so the reveal does not push the rules

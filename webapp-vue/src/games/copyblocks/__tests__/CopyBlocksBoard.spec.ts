@@ -179,6 +179,19 @@ describe('CopyBlocksBoard', () => {
     ])
   })
 
+  it('centres the template too, on its own camera', async () => {
+    const wrapper = mountBoard()
+    const template = wrapper.findAllComponents(BlockScene)[1]!
+    template.vm.$emit('update:camera', { yaw: 2, pitch: -0.3, zoom: 0.4, target: [1, 2, 3] })
+    await nextTick()
+
+    const [, centreTemplate] = wrapper.findAll('button[aria-label="Zentrieren"]')
+    await centreTemplate!.trigger('click')
+
+    expect(template.props('camera')).toEqual({ yaw: 2, pitch: -0.3, zoom: 1, target: null })
+    expect(wrapper.emitted('update:camera')).toBeUndefined()
+  })
+
   it('has nothing to centre at the start', () => {
     expect(mountBoard().get('button[aria-label="Zentrieren"]').attributes('disabled')).toBeDefined()
   })
