@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from 'vue'
 import type { Component } from 'vue'
 import DedusterGame from './deduster/DedusterGame.vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
@@ -21,4 +22,6 @@ export const gameComponents: Record<string, Component> = {
   'spot-object': SpotObjectGame,
   deduster: DedusterGame,
   'place-patch': PlacePatchGame,
+  // Async: `three` should load only for whoever plays Blockierung.
+  'copy-blocks': defineAsyncComponent(() => import('./copyblocks/CopyBlocksGame.vue')),
 }
