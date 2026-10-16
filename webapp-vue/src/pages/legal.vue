@@ -51,8 +51,8 @@ definePage({ meta: { public: true } })
     <div class="space-y-2">
       <h2 class="font-semibold">Klänge in Blockierung</h2>
       <p>
-        Die Klänge beim Setzen und Abbauen stammen aus Minecraft; Mojang hat sie aus freien
-        Aufnahmen von Freesound bearbeitet. Wir haben sie ins AAC-Format umgewandelt.
+        Die Klänge beim Setzen und Abbauen stammen aus Minecraft; Mojang hat sie aus offen
+        lizenzierten Aufnahmen von Freesound bearbeitet. Wir haben sie ins AAC-Format umgewandelt.
       </p>
       <ul class="ms-4 list-disc space-y-1">
         <li>

@@ -40,6 +40,11 @@ of the frontend conventions live beside it:
   plugin defaults to `1.2` and would silently break the "1em, inherits from the surrounding text"
   contract; size icons purely with Tailwind (`class="size-5"`). `vue-tsc` needs
   `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`.
+- **A game with a heavy dependency (three.js) registers in `games/registry.ts` through
+  `asyncGame`** — `defineAsyncComponent` with a loading and an error component. The dependency stays
+  out of everyone else's bundle, and a tab left open across a deploy asks for a chunk that is gone:
+  without the error component the card stays empty instead of saying „Lade die Seite neu.“.
+  Blockierung is the example.
 
 ## HTTP + auth (the same-origin SPA contract)
 

@@ -89,6 +89,15 @@ desktop layout that was written first).
   them one at a time, and no happy-dom test can see it. What a test *can* pin is the structural
   rule: no element carries both.
 
+### A WebGL view gives its context back
+
+- **On unmount call `renderer.dispose()`, then `renderer.forceContextLoss()`.** A page has a budget
+  of contexts (~16 in Chrome) and drops the oldest past it. `dispose()` frees the buffers, not the
+  context — and module-level materials that outlive the view keep a disposed renderer's context
+  reachable, so the garbage collector never returns it. A page that mounts and unmounts scenes
+  (build, reveal, lab) runs dry without a visible leak. `games/copyblocks/BlockScene.vue` is the
+  example.
+
 ### A control that is not a rectangle
 
 Three traps, all invisible to tests (happy-dom computes no layout, no masks, no clipping) and all
