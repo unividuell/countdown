@@ -305,8 +305,9 @@ Servers dabei weiter — ein verlorener Nachbau wäre eine verlorene Runde.
   spiegelt das Produkt.
 - **Wiederhergestellt** wird sie, sobald das Brett erscheint — in Phase zwei also nach dem Aufdecken,
   das der Server ohnehin kennt.
-- **Gelöscht** wird sie, wenn der Tipp angenommen ist; Einträge anderer Runden räumt das Öffnen einer
-  Runde weg.
+- **Gelöscht** wird sie, wenn der Tipp angenommen ist; eigene Einträge anderer Runden, die älter als
+  zwei Tage sind, räumt das Öffnen einer Runde weg — ein jüngerer kann der laufende Nachbau einer
+  anderen Community sein.
 - **Nicht gesichert:** der Verlauf für Rückgängig, die gewählte Hotbar, die Kamera. Nach dem Neuladen
   steht der Nachbau, Rückgängig beginnt leer.
 - Was nicht lesbar ist (alt, verstümmelt, Typ außerhalb der Runde), wird verworfen, nicht repariert.
