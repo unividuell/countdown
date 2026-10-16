@@ -74,8 +74,17 @@ describe('CopyBlocksReveal', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps the field of the submitted build, so nothing moves at the switch', () => {
-    expect(scene(mountReveal()).props('field')).toEqual(fieldOf(MY_GUESS, 6))
+  it('keeps the field of the submitted build, so nothing moves at the switch', async () => {
+    // Grid 1: the template reaches one cell further than my build, so the two fields differ.
+    const payload = { ...PAYLOAD, grid: 1 }
+    const mine = fieldOf(MY_GUESS, 1)
+    expect(fieldOf(PAYLOAD.blocks, 1)).not.toEqual(mine)
+
+    const wrapper = mountReveal({ payload })
+    expect(scene(wrapper).props('field')).toEqual(mine)
+
+    await wrapper.get('[data-test="select-them"]').trigger('click')
+    expect(scene(wrapper).props('field')).toEqual(mine)
   })
 
   it('frames the view like the build field, cage included', () => {
