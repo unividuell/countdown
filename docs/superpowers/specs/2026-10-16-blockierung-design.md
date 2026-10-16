@@ -83,7 +83,7 @@ Regel des Frameworks.
 
 **Treffer heißt:** der Nachbau gleicht der Vorlage Zelle für Zelle und Typ für Typ — bis auf eine
 **Verschiebung** und eine der **vier Drehungen um die Hochachse**. Gekippt, auf dem Kopf oder gespiegelt
-ist kein Treffer; das Ergebnis sagt es dann ausdrücklich („Gekippt“, „Spiegelbild“).
+ist kein Treffer — so falsch wie jeder andere Fehler, ohne eigenen Hinweis.
 
 **Die Phasen — wörtlich die von Musterung und Platzierung:**
 
@@ -137,8 +137,11 @@ davon kennt `copyblocks`.
 data class CopyBlocksParams(
     /** Kantenlänge des Startwürfels — der Ziehung und des Baufelds. */
     val grid: Int,
-    /** Wie viele Typen die Runde spielt: die ersten [types] der Reihenfolge. */
-    val types: Int,
+    /**
+     * Die Typen der Runde — die ersten N der Reihenfolge, als Liste eingefroren: eine spätere
+     * Änderung der Reihenfolge verändert keine alte Runde.
+     */
+    val types: List<BlockType>,
     /** Die Vorlage, normalisiert: kleinste Koordinate je Achse ist 0. */
     val blocks: List<Block>,
     val timed: Boolean,
@@ -153,7 +156,7 @@ ihr bleibt danach geschützt — es gibt kein Geheimnis, das ein anderer Strom h
 | Wert | Ziehung |
 |---|---|
 | Blockzahl | `presentation.nextIntBetween(8, 58)` |
-| `types` | `presentation.nextIntBetween(3, 7)` |
+| `types` | die ersten `presentation.nextIntBetween(3, 7)` der Reihenfolge |
 | Vorlage | Generator mit `presentation` |
 | `grid` | Konstante `GRID = 6` |
 | `timed` | `context.phase == Phase.TWO` |
@@ -166,7 +169,7 @@ Admin-Regler. **Verfügbar** ist das Spiel immer (`isAvailable` bleibt `true`).
 
 Übertragung von `generate` aus dem Spike (`spike/blocks/voxels.ts`) nach Kotlin:
 
-1. Ein Block in der Mitte des `grid³`-Würfels, Typ zufällig aus den ersten `types`.
+1. Ein Block in der Mitte des `grid³`-Würfels, Typ zufällig aus `types`.
 2. Wiederholt: einen vorhandenen Block zufällig wählen, eine der sechs Richtungen zufällig, die
    Nachbarzelle prüfen — im Würfel, frei, und **die Sichtbarkeitsregel hält danach noch**. Dann bleibt
    der Block, Typ zufällig; sonst wird verworfen.
@@ -192,10 +195,10 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt (Jackson 3, `propertyNames
 | Bühne | — | `null`: Das Brett hat feste Höhen, die Hülle braucht nichts. |
 | Payload `CopyBlocksPayload` | ab Aufdecken (Phase eins: sofort) | `grid`, `types` (Liste der Codes), `blocks` |
 | Lösung | — | `null`: Die Vorlage steht bereits im Payload. |
-| Outcome `CopyBlocksOutcome` | nach dem eigenen Tipp, für alle | `correct`, `tilted`, `mirrored`, `fit`, `missing`, `extra`, `wrongType` |
+| Outcome `CopyBlocksOutcome` | nach dem eigenen Tipp, für alle | `correct`, `fit`, `missing`, `extra`, `wrongType` |
 
-`types` im Payload ist die Liste der N Codes, nicht nur die Zahl: die Hotbar zeigt genau diese — auch
-einen Typ, den die Vorlage zufällig gar nicht benutzt.
+`types` ist die Liste der N Codes aus den Params: die Hotbar zeigt genau diese — auch einen Typ, den die
+Vorlage zufällig gar nicht benutzt. Die Regel „die ersten N“ kennt nur der Zug.
 
 **Tipp auf der Leitung:** `{ "blocks": [ { "x": 0, "y": 0, "z": 1, "type": "DIRT" }, … ] }`.
 Gültig: 1 bis 200 Blöcke, ganzzahlige Koordinaten mit Betrag ≤ 64, jeder Typ einer der N Codes der
@@ -209,9 +212,7 @@ validierte Blockliste zurück (nichts anderes landet in der Spalte).
 einen Block des Tipps auf einen der Vorlage legen, die mit den meisten Positionstreffern, danach den
 meisten Typtreffern. Exakt heißt: gleiche Blockzahl und jeder Block deckt einen gleichen Typs.
 
-- `qualifies = correct`, `deviation = 0.0` — in Phase zwei ersetzt der Rahmen sie durch die Dauer.
-- `tilted`: nicht exakt, aber exakt unter einer der übrigen 20 Würfeldrehungen.
-- `mirrored`: nicht exakt, aber exakt als Spiegelbild (Spiegelungen, die die Hochachse halten).
+`qualifies = correct`, `deviation = 0.0` — in Phase zwei ersetzt der Rahmen sie durch die Dauer.
 
 **Die Passung auf der Leitung:**
 
@@ -277,9 +278,10 @@ Von oben nach unten:
 1. **Das Baufeld**, kartenbreit. Raster auf dem durchscheinenden Boden, ein dünner Käfig um das Feld.
    Oben rechts **Rückgängig**, **Alles abreißen**, **Ton**; am unteren Rand die **Hotbar** im
    Minecraft-Stil. Kein Zähler, keine Beschriftung mit Blockzahlen.
-2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, linksbündig. Der Streifen rechts daneben
-   gehört dem Seitenscrollen. Rasterboden einen Block breiter als ihr Grundriss, Kamera auf ihr Maß
-   eingerahmt.
+2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, mittig. Die Streifen links und rechts
+   gehören dem Seitenscrollen, mit beiden Händen erreichbar; mittig steht sie zudem unter dem Nachbau,
+   der oben meist mittig entsteht. Rasterboden einen Block breiter als ihr Grundriss, Kamera auf ihr
+   Maß eingerahmt.
 3. **Der `HoldButton`** „Abgeben“.
 
 Startwinkel beider Ansichten gleich, Gieren 0,6 und Neigen 0,45 wie im Spike.
@@ -320,7 +322,6 @@ Im Takt von `revealChoreography.ts`, die Stufen von Musterung und Platzierung:
 
 1. **Wechsel** — nichts bewegt sich; der eigene Nachbau steht, wo er stand.
 2. **`SOLUTION_DELAY_MS` (900 ms)** — die Lösung: fehlende Blöcke erscheinen, Fehler werden markiert.
-   Bei „Gekippt“ und „Spiegelbild“ steht der Hinweis unter dem Feld.
 3. **`RESULTS_DELAY_MS` (ab 1900 ms)** — die Rangliste baut sich auf, an der Stelle der unteren Vorlage.
 
 **Der eigene Tipp ist vorausgewählt.** Ein anderer Name in der Rangliste ist ein Knopf (wie bei
@@ -362,20 +363,20 @@ zufällig, Tonhöhe 0,8 · ±5 %. Vorab dekodiert, wenn das Spiel erscheint.
 
 `copy-blocks` / „Blockierung“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide Gesichter.
 Der Seed in der URL macht Blockzahl, Typen und Vorlage reproduzierbar. Hier werden gestimmt: der
-Übergang zur Auflösung, Breite und Seite der Vorlage, die Tippschwelle, die Takte.
+Übergang zur Auflösung, die Breite der Vorlage, die Tippschwelle, die Takte.
 
 ## Tests
 
 **Kotlin**
 
 - **Zug:** Blockzahl, `types` und Vorlage variieren nur mit dem Presentation-Seed (Bauform von
-  `GuessHueDrawTest`); Blockzahl in 8..58, `types` in 3..7; jede Vorlage hält die Sichtbarkeitsregel,
-  hängt über Flächen zusammen, ist normalisiert und nutzt nur die ersten `types` Typen; `timed` aus der
-  Phase.
+  `GuessHueDrawTest`); Blockzahl in 8..58; `types` sind die ersten 3..7 der Reihenfolge; jede Vorlage
+  hält die Sichtbarkeitsregel, hängt über Flächen zusammen, ist normalisiert und nutzt nur Typen aus
+  `types`; `timed` aus der Phase.
 - **Sichtbarkeitsregel:** hohler 3³-Würfel abgelehnt; geknickter Tunnel abgelehnt; Rinne akzeptiert.
-- **Wertung:** jede der vier Drehungen plus Verschiebung exakt; gekippt → `tilted`; gespiegelt →
-  `mirrored`; ein fehlender, ein überzähliger, ein falscher Typ landen in der richtigen Liste mit
-  Vorlagen-Koordinaten; `fit` bildet den Tipp auf die Vorlage ab.
+- **Wertung:** jede der vier Drehungen plus Verschiebung exakt; gekippt und gespiegelt falsch; ein
+  fehlender, ein überzähliger, ein falscher Typ landen in der richtigen Liste mit Vorlagen-Koordinaten;
+  `fit` bildet den Tipp auf die Vorlage ab.
 - **Validierung:** leer, über 200, doppelte Zelle, Code außerhalb der N, unbekannter Code, Koordinate
   über 64, Bruch, fehlendes Feld → `InvalidGuessException`.
 - **Ausgänge:** Feldmengen-Tests für Payload und Outcome; Bühne und Lösung sind `null`.
@@ -401,7 +402,13 @@ Der Seed in der URL macht Blockzahl, Typen und Vorlage reproduzierbar. Hier werd
   Tempovorteil nur für die Maus (ein Klick statt drei Tipps), in Phase zwei entscheidet aber das Tempo.
 - **Ansichten koppeln** und alle übrigen Spike-Regler.
 - **Teilpunkte** — ganz oder gar nicht.
-- **Das Klopfen beim Abbauen** (Minecrafts `hit`-Klang): ein Tipp baut sofort ab.
+- **Die Baureihenfolge im Tipp** — weder für eine Wiedergabe in der Auflösung noch gegen Betrug. Gegen
+  Betrug hilft sie kaum: eine gültige Reihenfolge erzeugt ein Skript in wenigen Zeilen (vom Boden aus
+  über Nachbarn), und eine Regel für den Endstand gibt es nicht — wer einen tragenden Block abbaut,
+  lässt legitim einen schwebenden zurück. Eine ehrliche Wiedergabe bräuchte das ganze Protokoll samt
+  Abbauen und Zeiten. Das öffentliche Geheimnis ist hingenommen, siehe *Integrität*.
+- **Minecrafts Klopf-Klang** (`hit`, beim Abbauen über mehrere Schläge): die Dateien gehören Mojang
+  (geprüft: `Stone_hit1`, `Gravel_hit1` — keine Freesound-Quelle).
 - **Weitere Blocktypen** — nur mit offen lizenziertem Klang; heute gibt es keinen weiteren.
 - **Schwierigkeit nach Phase oder Runde** — gezogen wird gleichverteilt, Regler gibt es keinen.
 - **Anomalie-Erkennung** unrealistisch schneller Treffer — dieselbe Begründung wie bei Musterung.
