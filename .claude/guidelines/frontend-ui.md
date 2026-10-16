@@ -25,6 +25,9 @@ desktop layout that was written first).
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
+  One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar
+  (`games/copyblocks/CopyBlocksBoard.vue`) never scrolls, so on a narrow phone its up to eight
+  slots shrink below 44px (38.6px at 375px).
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
   OS image menu and fires `pointercancel` mid-gesture — on a clock, that costs time. Give the
   image `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
