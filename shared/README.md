@@ -6,6 +6,7 @@ not generated at build time — deleting a file here breaks tests in both suites
 | File | Contract | Written by | Asserted by |
 |---|---|---|---|
 | `rng/golden-vectors.json` | The seeded-RNG stream must be byte-identical on the JVM and in the browser | `SeededRandomGoldenVectorTest` (`-Drng.vectors.write=true`) | the same Kotlin test **and** `webapp-vue/src/lib/rng/__tests__/seededRandom.spec.ts` |
+| `copy-blocks/fit.json` | How Blockierung's `fit` maps a guess cell onto the template, and back | by hand — seven cases; Kotlin's `Fit` is the source of truth | `FitGoldenVectorTest` **and** `webapp-vue/src/games/copyblocks/__tests__/fit.spec.ts` |
 
 For the RNG the browser side is a **test-scope reference implementation**, not production code —
 rounds are server-authoritative. The file still pins the Kotlin generator against accidental change,
