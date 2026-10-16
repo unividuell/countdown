@@ -114,6 +114,7 @@ class LabServiceTest(
         "spot-object" -> mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
         "deduster" -> mapper.readTree("""{"reactionsMs":[],"endedBy":"TOO_LATE"}""")
         "place-patch" -> mapper.readTree("""{"x":0,"y":0}""")
+        "copy-blocks" -> mapper.readTree("""{"blocks":[{"x":0,"y":0,"z":0,"type":"DIRT"}]}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
