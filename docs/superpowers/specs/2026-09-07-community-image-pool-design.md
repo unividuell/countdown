@@ -41,7 +41,8 @@ Beschreibungs- und Credit-Felder, Kategorien/Tags, Fokuspunkt-Auswahl, eine mitt
 und **keine nach außen exportierte Modul-API**. `org.unividuell.countdown.core.imagepool` bleibt
 leer; alles liegt in `.internal`. Das erste Bildspiel bringt die Schnittstelle mit, weil es dann
 weiß, was es braucht. Die erste exportierte Schnittstelle ist `ImagePoolQuery` mit `candidateIds`,
-`displaySize`, `displayed`.
+`displaySize`, `displayed`; mit dem zweiten Bildspiel kamen `playableIds`, `AspectRatio` und
+`ImageFit` dazu ([Platzierung](2026-10-15-platzierung-design.md)).
 
 Vorbild ist das alte, manuelle Verfahren aus `huettehuette`
 (`scripts/puzzle-scramble/prepare-puzzle-pieces.sh`): das Bild ging unverändert hinein, `magick`

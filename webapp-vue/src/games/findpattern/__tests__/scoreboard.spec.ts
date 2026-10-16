@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
-import { formatDuration, hasDurations, scoreRows, toneChips } from '@/games/findpattern/scoreboard'
+import { hasDurations, scoreRows, toneChips } from '@/games/findpattern/scoreboard'
 import type { FindPatternSolution } from '@/games/findpattern/types'
 
 const SOLUTION: FindPatternSolution = {
@@ -27,19 +27,6 @@ function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
     ...over,
   }
 }
-
-describe('formatDuration', () => {
-  it('is mm:ss, and minutes are not capped at 59', () => {
-    expect(formatDuration(0)).toBe('00:00')
-    expect(formatDuration(9_400)).toBe('00:09')
-    expect(formatDuration(61_000)).toBe('01:01')
-    expect(formatDuration(3_600_000)).toBe('60:00')
-  })
-
-  it('is null where the round did not score on time', () => {
-    expect(formatDuration(null)).toBeNull()
-  })
-})
 
 describe('toneChips', () => {
   it('pairs every tone with its colour and readable ink', () => {

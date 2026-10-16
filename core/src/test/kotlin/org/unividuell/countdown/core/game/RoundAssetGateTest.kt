@@ -78,6 +78,23 @@ class RoundAssetGateTest(
                     else -> null
                 }
         }
+
+        /** One stage, two images: both open with the reveal, a key mapped above stage 0 does not. */
+        @Bean
+        fun pairedGame(): GameType<GatedParams> = object : GameType<GatedParams> {
+            override val id = "paired-fake"
+            override val displayName = "Doppelbild"
+            override val paramsType = GatedParams::class.java
+            override fun draw(random: GameRandom, context: RoundContext) = GatedParams(answer = "42")
+            override fun present(params: GatedParams) = GatedPayload(stages = 1)
+            override fun judge(params: GatedParams, guess: JsonNode) =
+                Judgement(qualifies = false, deviation = 0.0, outcome = null)
+            override fun requiresReveal(params: GatedParams) = false
+            override fun scoresOnDuration(params: GatedParams) = false
+            override fun assetStage(params: GatedParams, key: Int) = if (key == 1) 0 else key
+            override fun asset(params: GatedParams, roundGameId: UUID, key: Int): RoundAsset? =
+                if (key in 0..2) RoundAsset(mediaType = "image/png", bytes = byteArrayOf(key.toByte())) else null
+        }
     }
 
     private fun aUser(login: String): UUID =
@@ -103,16 +120,34 @@ class RoundAssetGateTest(
         ).number
     }
 
-    /** Announces the current round as "gated-fake" with answer "42". */
-    private fun announceGated(community: Community): Int {
+    /** Announces the current round as [gameType] with answer "42". */
+    private fun announceGated(community: Community, gameType: String = "gated-fake"): Int {
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
         store.announce(
             edition = edition, roundNumber = roundNumber,
-            gameType = "gated-fake", params = mapper.readTree("""{"answer":"42"}"""),
+            gameType = gameType, params = mapper.readTree("""{"answer":"42"}"""),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )
         return roundNumber
+    }
+
+    @Test
+    fun `a single-stage game's second image opens with the reveal, a key mapped above it does not`() {
+        val (community, viewer) = aCommunity("Asset Gate Paired")
+        val roundNumber = announceGated(community = community, gameType = "paired-fake")
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+
+        play.asset(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = roundNumber, key = 1,
+        ).bytes shouldBe byteArrayOf(1)
+        shouldThrow<AssetForbiddenException> {
+            play.asset(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = roundNumber, key = 2,
+            )
+        }
     }
 
     @Test

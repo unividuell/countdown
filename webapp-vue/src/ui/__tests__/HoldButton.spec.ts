@@ -100,17 +100,12 @@ describe('HoldButton', () => {
     expect(style).toContain('opacity: 1')
   })
 
-  it('shows the outline at rest, before any hold has started', () => {
-    // One element, two jobs: the thin outline reads as the button's own rim at rest, and doubles
-    // as the hold-progress track once a hold starts. It must be visible from the start, not only
-    // once `progress` leaves zero, or the button never reads as a button in the first place.
+  it('paints no rim at rest — only the hold fills one in', () => {
     const w = mountButton()
 
     const style = w.get('[data-test="hold-ring"]').attributes('style')
 
-    expect(style).toContain('d4d4d4')
-    // Progress starts at 0, so the fill stop sits at 0deg — nothing is filled in yet, but the ring
-    // itself (the grey base above) is already there to be filled.
+    expect(style).not.toContain('background-color')
     expect(style).toContain('currentColor 0deg')
   })
 
@@ -344,6 +339,62 @@ describe('HoldButton', () => {
     vi.advanceTimersByTime(1200)
 
     expect(w.emitted('confirm')).toHaveLength(1)
+  })
+
+  it('paints nothing of its own without a colour — no fill, no shadow, no contour', () => {
+    const w = mount(HoldButton, {
+      props: { ready: true, disabled: false, label: 'Tipp bestätigen' },
+    })
+    const button = w.get('[data-test="hold-button"]')
+
+    expect(button.attributes('style') ?? '').not.toContain('background-color')
+    expect(button.classes()).not.toEqual(expect.arrayContaining(['shadow-inner']))
+    expect(button.classes()).not.toEqual(expect.arrayContaining(['ring-1']))
+  })
+
+  describe('square', () => {
+    it('paints button and ring as squares', () => {
+      const w = mountButton({ shape: 'square' })
+
+      expect(w.get('[data-test="hold-button"]').classes()).not.toContain('rounded-full')
+      expect(w.get('[data-test="hold-ring"]').classes()).not.toContain('rounded-full')
+      expect(w.get('[data-test="hold-ring"]').attributes('style')).not.toContain('radial-gradient')
+    })
+
+    it('builds the rim from four edge strips, without mask compositing', () => {
+      // An `exclude` composite was not applied on a phone: it painted the whole box, a thick band.
+      const style = mountButton({ shape: 'square' })
+        .get('[data-test="hold-ring"]')
+        .attributes('style')
+
+      expect(style).not.toMatch(/exclude|xor|composite/)
+      expect(style?.match(/linear-gradient/g)?.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('keeps holding into the corners, where a round button would have let go', async () => {
+      const w = mountButton({ shape: 'square' })
+      const el = w.get('[data-test="hold-button"]')
+      stubButtonRect(el.element)
+
+      await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+      // (95, 95) lies outside the radius-50 circle but inside the 100 × 100 square.
+      await el.trigger('pointermove', { clientX: 95, clientY: 95 })
+      vi.advanceTimersByTime(1200)
+
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
+    it('lets go once the pointer leaves the square', async () => {
+      const w = mountButton({ shape: 'square' })
+      const el = w.get('[data-test="hold-button"]')
+      stubButtonRect(el.element)
+
+      await el.trigger('pointerdown', { isPrimary: true, clientX: 50, clientY: 50 })
+      await el.trigger('pointermove', { clientX: 101, clientY: 50 })
+      vi.advanceTimersByTime(3000)
+
+      expect(w.emitted('confirm')).toBeUndefined()
+    })
   })
 
   it('cancels an in-flight hold when disabled turns on mid-hold', async () => {

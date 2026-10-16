@@ -25,6 +25,10 @@ desktop layout that was written first).
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
+- **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
+  OS image menu and fires `pointercancel` mid-gesture — on a clock, that costs time. Give the
+  image `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
+  `DedusterMark`, `PlacePatchBoard`.
 - **A horizontally scrolling strip must genuinely scroll.** `overflow-x: auto` only helps if
   the container's content is never shrunk to fit — a flex child needs `shrink-0` (or an
   equivalent intrinsic width), or `scrollWidth` stays equal to `clientWidth` and there is
@@ -126,6 +130,9 @@ it is the only proof available — no unit test can see them.
 
 ### Sizing that doesn't do what it looks like
 
+- **`HoldButton` has no size of its own.** Its root is `size-full`, so in an auto-height flex
+  column it renders 0 × 0 — invisible, and invisible to tests too. Wrap it in a sized box
+  (`size-24 shrink-0`, as `RevealCover` and `PlacePatchBoard` do).
 - **A percentage width only means what you think inside a parent that has a width.** In a flex
   column with `items-center`, a child is cross-axis **shrink-to-fit** — its width comes from its
   own max-content size, so a `w-[72%]` grandchild resolves against *that*, not against the card.

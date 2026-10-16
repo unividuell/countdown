@@ -103,6 +103,12 @@ one held.
 `SCENE_ASSET_KEY` (98) is the only asset served without a play row — what the cover lies over. Every
 other key stays behind the reveal; opening stage 0 instead would hand out Anspielung's first clip.
 
+Which stage releases any other key is `GameType.assetStage(params, key)` — the key itself by
+default, Anspielung's ladder. A single-stage game with several pictures behind one reveal maps
+them all to 0 (Platzierung: board and patch); both gates, `PlayService.asset` and the lab's, ask
+the same question. A stopgap until the asset model is cleaned up as a whole
+(unividuell/countdown#101) — do not grow it into a second visibility concept meanwhile.
+
 ## The viewer's row and the others' rows are different types
 
 `MyPlayDto` and `OtherPlayDto` are two types, not one with the private fields nulled out. What the

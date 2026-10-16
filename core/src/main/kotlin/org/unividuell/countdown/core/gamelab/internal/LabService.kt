@@ -254,7 +254,7 @@ class LabService(
         val allowed = when (key) {
             SCENE_ASSET_KEY -> true
             SOLUTION_ASSET_KEY -> hasGuessed
-            else -> key in 0..stage
+            else -> handle.assetStage(params = playing.params, key = key) in 0..stage
         }
         if (!allowed) throw LabAssetForbiddenException()
         val assets = store.assetsOf(

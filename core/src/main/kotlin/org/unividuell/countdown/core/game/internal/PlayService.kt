@@ -231,7 +231,11 @@ class PlayService(
         }
         val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
             ?: throw NotRevealedException()
-        val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage
+        val allowed = if (key == SOLUTION_ASSET_KEY) {
+            play.guessedAt != null
+        } else {
+            announced.handle.assetStage(params = announced.roundGame.params, key = key) in 0..play.stage
+        }
         if (!allowed) throw AssetForbiddenException()
         return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
             ?: throw AssetNotFoundException()

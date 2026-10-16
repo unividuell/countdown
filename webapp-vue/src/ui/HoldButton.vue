@@ -22,8 +22,12 @@ const props = withDefaults(
     ready: boolean
     disabled: boolean
     label: string
-    /** The colour the button shows — the hue currently under the wheel's knob. */
-    color: string
+    /**
+     * The colour the button shows — the hue currently under the wheel's knob. Without one the
+     * button paints nothing of its own, for something lying on it: Platzierung's patch, whose
+     * true edge a coloured square would give away.
+     */
+    color?: string
     /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
     holdMs?: number
     /**
@@ -33,8 +37,10 @@ const props = withDefaults(
     beats?: number
     /** One beat of the count-in. Entstauber counts in at its round's tempo. */
     beatMs?: number
+    /** `square` when something square lies on the button — Platzierung's patch — and must not be cut. */
+    shape?: 'round' | 'square'
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
 )
 
 const emit = defineEmits<{ confirm: [] }>()
@@ -172,13 +178,22 @@ function beginHold(event: PointerEvent): void {
  * `pointerleave`: doing that would lose `pointerup` whenever the finger ends up off the element,
  * which is the very case this handler exists to catch.
  *
- * A circular test, not a rectangular one, because the button paints as a circle — a rectangular
- * test would keep the corners "inside" a shape that visually excludes them.
+ * The test follows the shape the button paints: a round button must not keep the corners of its
+ * box "inside", a square one must keep them.
  */
 function onPointerMove(event: PointerEvent): void {
   const el = button.value
   if (!el) return
   const box = el.getBoundingClientRect()
+  if (props.shape === 'square') {
+    const inside =
+      event.clientX >= box.left &&
+      event.clientX <= box.right &&
+      event.clientY >= box.top &&
+      event.clientY <= box.bottom
+    if (!inside) cancel()
+    return
+  }
   const cx = box.left + box.width / 2
   const cy = box.top + box.height / 2
   const radius = Math.min(box.width, box.height) / 2
@@ -203,34 +218,49 @@ function onKeyUp(event: KeyboardEvent): void {
 }
 
 /**
- * The thin light-grey outline around the button, and the hold-progress indicator, are the same
- * element: one ring, two jobs. At rest it reads as the button's own rim, the way a socket outlines
- * what sits in it; as the hold runs, colour fills it clockwise from 0° to 360°. It stays visible
- * under `prefers-reduced-motion` for free — nothing here is a transition, `progress` is a plain
- * number driven by `useHoldProgress`'s own `requestAnimationFrame` loop.
+ * `closest-side` keeps this proportional at any wheel size. The thin band near the outer edge
+ * is what makes the disc read as a ring rather than a filled circle, and, combined with the
+ * outer box being noticeably larger than the button underneath (see the `-inset` below), with a
+ * visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
+ * they scale with that box's own size — kept unscaled, the same percentage of a differently
+ * sized radius would paint a visibly thicker or thinner rim than intended. Currently
+ * `94.67%`/`95.78%`, rescaled from `95.2%`/`96.2%` when the box shrank from 50% to 45% of the
+ * wheel's width (itself once rescaled from `90%`/`92%` at ~24%) — each rescale keeps the same
+ * absolute pixel weight by scaling the distance from 100% by the old-box/new-box ratio.
  */
-const ringStyle = computed(() => ({
-  // The grey base sits in `background-color`, beneath `background-image` — the conic-gradient's
-  // `transparent` half lets it show through for whatever the hold has not yet filled.
-  backgroundColor: '#d4d4d4',
-  backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
-  // `closest-side` keeps this proportional at any wheel size. The thin band near the outer edge
-  // is what makes the disc read as a ring rather than a filled circle, and, combined with the
-  // outer box being noticeably larger than the button underneath (see the `-inset` below), with a
-  // visible gap between the two. The thresholds are a *percentage of this box's own radius*, so
-  // they scale with that box's own size — kept unscaled, the same percentage of a differently
-  // sized radius would paint a visibly thicker or thinner rim than intended. Currently
-  // `94.67%`/`95.78%`, rescaled from `95.2%`/`96.2%` when the box shrank from 50% to 45% of the
-  // wheel's width (itself once rescaled from `90%`/`92%` at ~24%) — each rescale keeps the same
-  // absolute pixel weight by scaling the distance from 100% by the old-box/new-box ratio.
+const ROUND_RIM = {
   mask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
   WebkitMask: 'radial-gradient(closest-side, transparent 94.67%, #000 95.78%)',
+}
+
+/**
+ * The same rim for a square: four edge strips, unioned — the default way mask layers combine, so
+ * no browser has to support `mask-composite`. A phone that skipped an `exclude` composite painted
+ * the whole box instead, a thick band. A fixed width rather than a share of the button: the
+ * square grows with Platzierung's board, and its rim must not grow with it.
+ */
+const SQUARE_RIM_PX = 2.5
+const SQUARE_FRAME = [
+  `linear-gradient(#000 0 0) top / 100% ${SQUARE_RIM_PX}px no-repeat`,
+  `linear-gradient(#000 0 0) bottom / 100% ${SQUARE_RIM_PX}px no-repeat`,
+  `linear-gradient(#000 0 0) left / ${SQUARE_RIM_PX}px 100% no-repeat`,
+  `linear-gradient(#000 0 0) right / ${SQUARE_RIM_PX}px 100% no-repeat`,
+].join(', ')
+const SQUARE_RIM = { mask: SQUARE_FRAME, WebkitMask: SQUARE_FRAME }
+
+/**
+ * The hold-progress rim around the button: empty at rest, filled clockwise from 0° to 360° as the
+ * hold runs. It stays visible under `prefers-reduced-motion` for free — nothing here is a
+ * transition, `progress` is a plain number driven by `useHoldProgress`'s own
+ * `requestAnimationFrame` loop.
+ */
+const ringStyle = computed(() => ({
+  backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
+  ...(props.shape === 'square' ? SQUARE_RIM : ROUND_RIM),
 }))
 
 /** Only the button's own colour — its resting visibility now lives on [popStyle], see below. */
-const buttonStyle = computed(() => ({
-  backgroundColor: props.color,
-}))
+const buttonStyle = computed(() => (props.color ? { backgroundColor: props.color } : {}))
 
 /**
  * The resting appearance of the whole control (outline and button together), bound declaratively
@@ -266,7 +296,8 @@ const popStyle = computed(() => ({
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[6.25%] rounded-full text-neutral-900"
+      class="pointer-events-none absolute -inset-[6.25%] text-neutral-900"
+      :class="{ 'rounded-full': props.shape === 'round' }"
       :style="ringStyle"
     />
     <!--
@@ -297,7 +328,11 @@ const popStyle = computed(() => ({
       :aria-label="props.label"
       :disabled="props.disabled"
       :style="buttonStyle"
-      class="absolute inset-0 cursor-pointer touch-none rounded-full shadow-inner ring-1 ring-black/10 select-none disabled:cursor-not-allowed"
+      class="absolute inset-0 cursor-pointer touch-none select-none disabled:cursor-not-allowed"
+      :class="{
+        'rounded-full': props.shape === 'round',
+        'shadow-inner ring-1 ring-black/10': props.color !== undefined,
+      }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"
       @pointerup="cancel"

@@ -8,7 +8,7 @@ data class ImageSize(val width: Int, val height: Int)
 
 /**
  * The pool as other modules see it: which images there are, and what one looks like. Read-only,
- * and without a word of game knowledge — which pool a game prefers is the game's rule.
+ * and without a word of game knowledge — which images a community plays is [playableIds].
  */
 interface ImagePoolQuery {
     /** This pool's image ids in a stable order. `null` addresses the global pool. */
