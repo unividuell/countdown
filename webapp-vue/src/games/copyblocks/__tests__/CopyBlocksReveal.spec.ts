@@ -4,9 +4,12 @@ import { nextTick } from 'vue'
 import BlockScene from '@/games/copyblocks/BlockScene.vue'
 import CopyBlocksReveal from '@/games/copyblocks/CopyBlocksReveal.vue'
 import { fieldOf } from '@/games/copyblocks/field'
+import { toGuess } from '@/games/copyblocks/fit'
+import type { Fit } from '@/games/copyblocks/fit'
 import type { ScoreRow } from '@/games/copyblocks/scoreboard'
 import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from '@/games/copyblocks/types'
-import { START_CAMERA } from '@/games/copyblocks/view'
+import { SPIN_MS, START_CAMERA } from '@/games/copyblocks/view'
+import type { Camera } from '@/games/copyblocks/view'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 
 const PAYLOAD: CopyBlocksPayload = {
@@ -68,6 +71,16 @@ function mountReveal(over: Record<string, unknown> = {}) {
 
 const scene = (w: ReturnType<typeof mountReveal>) => w.getComponent(BlockScene)
 
+/** Every yaw the reveal handed back up through the camera model, in order. */
+const yaws = (w: ReturnType<typeof mountReveal>) =>
+  (w.emitted('update:camera') ?? []).map(([camera]) => (camera as Camera).yaw)
+
+/** A template block as the player with [fit] sees it. */
+function seen(fit: Fit, b: GuessBlock): GuessBlock {
+  const [x, y, z] = toGuess(fit, [b.x, b.y, b.z])
+  return { x, y, z, type: b.type }
+}
+
 describe('CopyBlocksReveal', () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -116,6 +129,52 @@ describe('CopyBlocksReveal', () => {
       expect(scene(wrapper).props('marks')).toHaveLength(1)
     })
 
+    it('turns the view once around at the solution beat, and ends where it began', () => {
+      const wrapper = mountReveal({ animate: true })
+
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 50)
+      expect(yaws(wrapper)).toEqual([])
+
+      vi.advanceTimersByTime(50 + SPIN_MS / 2)
+      expect(Math.max(...yaws(wrapper))).toBeGreaterThan(START_CAMERA.yaw + 2)
+
+      vi.advanceTimersByTime(SPIN_MS)
+      expect(yaws(wrapper).at(-1)).toBe(START_CAMERA.yaw)
+
+      const settled = yaws(wrapper).length
+      vi.advanceTimersByTime(1000)
+      expect(yaws(wrapper)).toHaveLength(settled)
+    })
+
+    it('stops turning as soon as a finger touches the view', async () => {
+      const wrapper = mountReveal({ animate: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 200)
+      const turned = yaws(wrapper).length
+      expect(turned).toBeGreaterThan(0)
+
+      await wrapper.get('[data-test="copy-blocks-reveal-view"]').trigger('pointerdown')
+      vi.advanceTimersByTime(SPIN_MS)
+
+      expect(yaws(wrapper)).toHaveLength(turned)
+    })
+
+    it('never turns on a reload', () => {
+      const wrapper = mountReveal({ animate: false })
+
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 2 * SPIN_MS)
+
+      expect(yaws(wrapper)).toEqual([])
+    })
+
+    it('stops turning when it unmounts', () => {
+      const wrapper = mountReveal({ animate: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 200)
+
+      wrapper.unmount()
+
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
     it('drops the pending beat when it unmounts first', () => {
       const wrapper = mountReveal({ animate: true })
       vi.advanceTimersByTime(100)
@@ -126,7 +185,7 @@ describe('CopyBlocksReveal', () => {
     })
   })
 
-  it('preselects my tip; another name shows theirs; tapping it again returns to mine', async () => {
+  it('preselects my tip; another name shows theirs; the same name again leaves the solution alone', async () => {
     const wrapper = mountReveal()
     expect(wrapper.get('[data-test="select-me"]').attributes('aria-pressed')).toBe('true')
 
@@ -134,7 +193,23 @@ describe('CopyBlocksReveal', () => {
     expect(scene(wrapper).props('blocks')).toEqual([{ x: 1, y: 0, z: 0, type: 'BRICKS' }])
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
-    expect(scene(wrapper).props('blocks')).toEqual(MY_GUESS)
+    expect(scene(wrapper).props('blocks')).toEqual(PAYLOAD.blocks)
+    expect(scene(wrapper).props('marks')).toEqual([])
+    expect(wrapper.findAll('[aria-pressed="true"]')).toHaveLength(0)
+  })
+
+  it('lets go of my own tip too, and draws the bare solution in my own coordinates', async () => {
+    const turned: CopyBlocksOutcome = { ...MINE, fit: { turns: 1, dx: 2, dy: 0, dz: 0 } }
+    const wrapper = mountReveal({
+      myOutcome: turned,
+      rows: [row('me', turned), row('them', THEIRS)],
+    })
+
+    await wrapper.get('[data-test="select-me"]').trigger('click')
+
+    expect(scene(wrapper).props('blocks')).toEqual(PAYLOAD.blocks.map((b) => seen(turned.fit, b)))
+    expect(scene(wrapper).props('marks')).toEqual([])
+    expect(wrapper.get('[data-test="select-me"]').attributes('aria-pressed')).toBe('false')
   })
 
   it('shows the template as it stands without a tip of my own, nobody selected', () => {

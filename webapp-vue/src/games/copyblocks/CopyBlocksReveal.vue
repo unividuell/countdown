@@ -4,8 +4,9 @@
  * framing, so nothing moves at the switch — and the scoreboard takes the template's place.
  *
  * The template is drawn through my own inverse fit, so it stands in the coordinates of my build.
- * Beats come from `revealChoreography`: my build as it stood, then the solution marks; the
- * scoreboard carries its own beat.
+ * Beats come from `revealChoreography`: my build as it stood, then the solution marks with one
+ * full turn of the field, so every error comes to the front once; the scoreboard carries its own
+ * beat.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
@@ -18,6 +19,7 @@ import { revealView } from './reveal'
 import type { Mark } from './reveal'
 import type { ScoreRow } from './scoreboard'
 import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from './types'
+import { SPIN_MS, spunYaw } from './view'
 import type { Camera } from './view'
 
 const props = defineProps<{
@@ -49,18 +51,46 @@ const solved = ref(still)
 let solutionTimer: ReturnType<typeof setTimeout> | undefined
 
 useRevealArming(still, () => {
-  solutionTimer = setTimeout(() => (solved.value = true), SOLUTION_DELAY_MS)
+  solutionTimer = setTimeout(() => {
+    solved.value = true
+    spin()
+  }, SOLUTION_DELAY_MS)
 })
 
-onBeforeUnmount(() => clearTimeout(solutionTimer))
+let spinFrame = 0
+
+/** One full turn about the vertical, timed by the frames' own clock from the first one on. */
+function spin(): void {
+  const from = camera.value.yaw
+  let startedAt: number | null = null
+
+  const step = (now: number) => {
+    startedAt ??= now
+    const elapsed = now - startedAt
+    camera.value = { ...camera.value, yaw: spunYaw(from, elapsed) }
+    spinFrame = elapsed < SPIN_MS ? requestAnimationFrame(step) : 0
+  }
+  spinFrame = requestAnimationFrame(step)
+}
+
+/** A finger or the wheel on the view takes over; the view stays where the turn left it. */
+function stopSpin(): void {
+  if (spinFrame) cancelAnimationFrame(spinFrame)
+  spinFrame = 0
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(solutionTimer)
+  stopSpin()
+})
 
 /** Mine, when there is a tip of mine to show. */
 const own = computed(() => (props.myOutcome ? props.mineUserId : null))
 const selectedUserId = ref<string | null>(own.value)
 
-/** A name shows that tip; the same one again goes back to my own. */
+/** A name shows that tip; the same one again lets go, and the bare solution stands. */
 function select(userId: string): void {
-  selectedUserId.value = selectedUserId.value === userId ? own.value : userId
+  selectedUserId.value = selectedUserId.value === userId ? null : userId
 }
 
 const shown = computed(() => {
@@ -91,8 +121,11 @@ const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
   <div data-test="copy-blocks-reveal" class="flex flex-col gap-6">
     <!-- Card-wide and as tall as the board's build field, which it replaces. -->
     <section
+      data-test="copy-blocks-reveal-view"
       class="relative -mx-4 -mt-4 h-[46svh] overflow-hidden"
       :style="{ background: BUILD_GROUND }"
+      @pointerdown.capture="stopSpin"
+      @wheel.capture.passive="stopSpin"
     >
       <BlockScene
         v-model:camera="camera"

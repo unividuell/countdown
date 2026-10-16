@@ -323,17 +323,21 @@ Darauf die Markierungen aus dem Spike: fehlend als Geist (gelb), überzählig ro
 Im Takt von `revealChoreography.ts`, die Stufen von Musterung und Platzierung:
 
 1. **Wechsel** — nichts bewegt sich; der eigene Nachbau steht, wo er stand.
-2. **`SOLUTION_DELAY_MS` (900 ms)** — die Lösung: fehlende Blöcke erscheinen, Fehler werden markiert.
+2. **`SOLUTION_DELAY_MS` (900 ms)** — die Lösung: fehlende Blöcke erscheinen, Fehler werden markiert,
+   und das Feld dreht sich einmal ganz um die Hochachse (Startwert 3 s) — so kommt jeder Fehler
+   einmal nach vorn. Ein Finger oder das Mausrad auf dem Feld hält die Drehung an; beim Neuladen, bei
+   reduzierter Bewegung und im Hintergrund dreht nichts.
 3. **`RESULTS_DELAY_MS` (ab 1900 ms)** — die Rangliste baut sich auf, an der Stelle der unteren Vorlage.
 
 **Der eigene Tipp ist vorausgewählt.** Ein anderer Name in der Rangliste ist ein Knopf (wie bei
 Entstauber): er zeigt dessen Tipp in derselben Ansicht — Vorlage plus dessen Abweichungen, über
 `missing`/`extra`/`wrongType` in Vorlagen-Koordinaten und damit mit derselben eigenen Umkehrung
-gezeichnet. Nochmal antippen kehrt zum eigenen zurück. Ohne eigenen Tipp (Historie, Zuschauer) steht
-die Vorlage in ihren eigenen Koordinaten, niemand ist gewählt.
+gezeichnet. Derselbe Name nochmal — auch der eigene — hebt die Auswahl auf: dann steht nur die Lösung
+im Bild, ohne Markierungen, im eigenen Blickwinkel. Ohne eigenen Tipp (Historie, Zuschauer) steht die
+Vorlage in ihren eigenen Koordinaten, niemand ist gewählt.
 
 **Zu stimmen im Labor:** ob statt „gleicher Blickwinkel“ eine Drehbewegung den Nachbau in die Lage der
-Vorlage führt; die Takte.
+Vorlage führt; die Takte; die Dauer der Drehung.
 
 ### Rangliste
 
