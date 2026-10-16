@@ -89,7 +89,7 @@ const hotbar = computed<HotbarSlot[]>(() => [
   { id: PICKAXE, label: 'Spitzhacke', icon: null },
 ])
 
-// Opening a round restores its draft and drops the player's drafts of other rounds.
+// Opening a round restores its draft and drops the player's stale drafts of other rounds.
 watch(
   () => props.draftKey,
   (key) => {

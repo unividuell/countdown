@@ -13,6 +13,9 @@ import type { CopyBlocksPayload, GuessBlock } from './types'
  */
 const PREFIX = 'copy-blocks:draft:'
 
+/** A round lasts a day: a draft saved two days ago belongs to no round still open. */
+const STALE_AFTER_MS = 48 * 60 * 60 * 1000
+
 /** The keys `draftKey` makes, split into the player's part and the rest. */
 const OWN_KEY = /^(copy-blocks:draft:.+:)[12]:[0-9a-f]{8}$/
 
@@ -106,11 +109,12 @@ export function saveDraft(
   storage: Storage | null,
   key: string,
   blocks: readonly GuessBlock[],
+  now: number = Date.now(),
 ): void {
   try {
     storage?.setItem(
       key,
-      JSON.stringify({ v: 1, blocks: blocks.map((b) => [b.x, b.y, b.z, b.type]) }),
+      JSON.stringify({ v: 1, at: now, blocks: blocks.map((b) => [b.x, b.y, b.z, b.type]) }),
     )
   } catch {
     // Full or denied: the build lives on in memory.
@@ -125,11 +129,24 @@ export function clearDraft(storage: Storage | null, key: string): void {
   }
 }
 
+/** When a draft was saved; `null` for anything without a readable time. */
+function savedAt(raw: string | null): number | null {
+  try {
+    const at = (JSON.parse(raw ?? '') as { at?: unknown } | null)?.at
+
+    return typeof at === 'number' && Number.isFinite(at) ? at : null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Opening a round drops the same player's drafts of every other round and phase. Keys are
- * collected before any is removed: removing shifts the indices `key(i)` walks.
+ * Opening a round drops the same player's stale drafts of other rounds and phases. A fresh one may
+ * be another community's round of the same day, so only drafts older than `STALE_AFTER_MS` go — and
+ * those without a readable time. Keys are collected before any is removed: removing shifts the
+ * indices `key(i)` walks.
  */
-export function sweepDrafts(storage: Storage | null, keep: string): void {
+export function sweepDrafts(storage: Storage | null, keep: string, now: number = Date.now()): void {
   const prefix = OWN_KEY.exec(keep)?.[1]
   if (storage === null || prefix === undefined) return
 
@@ -137,7 +154,10 @@ export function sweepDrafts(storage: Storage | null, keep: string): void {
     const stale: string[] = []
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i)
-      if (key !== null && key !== keep && key.startsWith(prefix)) stale.push(key)
+      if (key === null || key === keep || !key.startsWith(prefix)) continue
+
+      const at = savedAt(storage.getItem(key))
+      if (at === null || now - at > STALE_AFTER_MS) stale.push(key)
     }
 
     for (const key of stale) storage.removeItem(key)

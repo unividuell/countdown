@@ -9,6 +9,16 @@ const PAYLOAD: CopyBlocksPayload = {
 }
 const BUILD: GuessBlock[] = [{ x: 1, y: 0, z: 2, type: 'BRICKS' }]
 const KEY = draftKey({ userId: 'u1', payload: PAYLOAD, timed: false })
+const HOUR = 60 * 60 * 1000
+const NOW = Date.UTC(2026, 9, 16, 12)
+const OLD = NOW - 49 * HOUR
+const FRESH = NOW - 47 * HOUR
+
+function otherRound(cell: number, timed = false): string {
+  const payload = { ...PAYLOAD, blocks: [{ x: cell, y: 0, z: 0, type: 'DIRT' as const }] }
+
+  return draftKey({ userId: 'u1', payload, timed })
+}
 
 describe('draft', () => {
   beforeEach(() => localStorage.clear())
@@ -37,19 +47,27 @@ describe('draft', () => {
     expect(loadDraft(localStorage, KEY, PAYLOAD.types)).toBeNull()
   })
 
-  it('stores the compact wire form', () => {
-    saveDraft(localStorage, KEY, BUILD)
+  it('stores the compact wire form, stamped with the save time', () => {
+    saveDraft(localStorage, KEY, BUILD, 1234)
 
-    expect(localStorage.getItem(KEY)).toBe('{"v":1,"blocks":[[1,0,2,"BRICKS"]]}')
+    expect(localStorage.getItem(KEY)).toBe('{"v":1,"at":1234,"blocks":[[1,0,2,"BRICKS"]]}')
   })
 
-  it("sweeps the same player's drafts of other rounds, and nobody else's", () => {
+  it('loads a draft that carries no save time', () => {
+    localStorage.setItem(KEY, '{"v":1,"blocks":[[1,0,2,"BRICKS"]]}')
+
+    expect(loadDraft(localStorage, KEY, PAYLOAD.types)).toEqual(BUILD)
+  })
+
+  it("sweeps the same player's old drafts of other rounds, and nobody else's", () => {
     const old = draftKey({ userId: 'u1', payload: PAYLOAD, timed: true })
     const theirs = draftKey({ userId: 'u2', payload: PAYLOAD, timed: false })
-    for (const key of [KEY, old, theirs]) saveDraft(localStorage, key, BUILD)
+    saveDraft(localStorage, KEY, BUILD, NOW)
+    saveDraft(localStorage, old, BUILD, OLD)
+    saveDraft(localStorage, theirs, BUILD, OLD)
     localStorage.setItem('infobox:copy-blocks', 'true')
 
-    sweepDrafts(localStorage, KEY)
+    sweepDrafts(localStorage, KEY, NOW)
 
     expect(localStorage.getItem(KEY)).not.toBeNull()
     expect(localStorage.getItem(old)).toBeNull()
@@ -57,11 +75,33 @@ describe('draft', () => {
     expect(localStorage.getItem('infobox:copy-blocks')).toBe('true')
   })
 
+  it("spares a fresh draft of the same player's other round, and drops every stale one", () => {
+    const fresh = otherRound(1)
+    const old = otherRound(2)
+    const timeless = otherRound(3)
+    const garbled = otherRound(4)
+    const unreadable = otherRound(5)
+    saveDraft(localStorage, KEY, BUILD, NOW)
+    saveDraft(localStorage, fresh, BUILD, FRESH)
+    saveDraft(localStorage, old, BUILD, OLD)
+    localStorage.setItem(timeless, '{"v":1,"blocks":[[1,0,2,"BRICKS"]]}')
+    localStorage.setItem(garbled, '{"v":1,"at":"soon","blocks":[]}')
+    localStorage.setItem(unreadable, '{')
+
+    sweepDrafts(localStorage, KEY, NOW)
+
+    expect(localStorage.getItem(KEY)).not.toBeNull()
+    expect(localStorage.getItem(fresh)).not.toBeNull()
+    for (const key of [old, timeless, garbled, unreadable]) {
+      expect(localStorage.getItem(key)).toBeNull()
+    }
+  })
+
   it('sweeps nothing for a key that is not one of its own', () => {
     const old = draftKey({ userId: 'u1', payload: PAYLOAD, timed: true })
-    saveDraft(localStorage, old, BUILD)
+    saveDraft(localStorage, old, BUILD, OLD)
 
-    expect(() => sweepDrafts(localStorage, 'k')).not.toThrow()
+    expect(() => sweepDrafts(localStorage, 'k', NOW)).not.toThrow()
 
     expect(localStorage.getItem(old)).not.toBeNull()
   })
