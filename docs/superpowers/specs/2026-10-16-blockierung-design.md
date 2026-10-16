@@ -73,7 +73,8 @@ eine Wand.
 
 Tippen und Ziehen trennt eine Schwelle von ~8 CSS-px; Langdruck und Rechtsklick haben keine
 Bedeutung. Dazu: **Hotbar** mit den N Typen der Runde und der Spitzhacke, **Rückgängig**, **Alles
-abreißen**, **Ton an/aus**.
+abreißen**, **Ton an/aus** und **Zentrieren** — zurück zur Feldmitte, ohne die Drehung zu ändern, und so
+weit heraus, dass wieder alles zu sehen ist (der Zoom auf den Zeiger kann den Bau aus dem Bild schieben).
 
 **Zwischenstand:** Der angefangene Nachbau überlebt ein Neuladen und einen vom Handy verworfenen Tab —
 siehe *Zwischenstand* unter *Frontend*.
@@ -277,7 +278,7 @@ eingebacken (oben 1,0 · Seiten 0,62/0,82 · unten 0,5), keine Lichter.
 Von oben nach unten:
 
 1. **Das Baufeld**, kartenbreit. Raster auf dem durchscheinenden Boden, ein dünner Käfig um das Feld.
-   Oben rechts **Rückgängig**, **Alles abreißen**, **Ton**; am unteren Rand die **Hotbar** im
+   Oben links **Zentrieren**, oben rechts **Rückgängig**, **Alles abreißen**, **Ton**; am unteren Rand die **Hotbar** im
    Minecraft-Stil. Kein Zähler, keine Beschriftung mit Blockzahlen.
 2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, mittig. Die Streifen links und rechts
    gehören dem Seitenscrollen, mit beiden Händen erreichbar; mittig steht sie zudem unter dem Nachbau,

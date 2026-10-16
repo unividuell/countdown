@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { SPIN_MS, START_CAMERA, spunYaw, zoomedAt } from '@/games/copyblocks/view'
+import {
+  SPIN_MS,
+  START_CAMERA,
+  centred,
+  isCentred,
+  spunYaw,
+  zoomedAt,
+} from '@/games/copyblocks/view'
 import type { Camera } from '@/games/copyblocks/view'
 
 describe('spunYaw', () => {
@@ -52,5 +59,27 @@ describe('zoomedAt', () => {
     const far = zoomed({ ...START_CAMERA, zoom: 0.5 }, 4, [-20, 3, 3])
 
     expect(far.target).toEqual([6, 3, 3])
+  })
+})
+
+describe('centred', () => {
+  it('orbits the centre again and zooms back out to the whole field, the angle untouched', () => {
+    expect(centred({ yaw: 2, pitch: -0.3, zoom: 0.4, target: [1, 2, 3] })).toEqual({
+      yaw: 2,
+      pitch: -0.3,
+      zoom: 1,
+      target: null,
+    })
+  })
+
+  it('keeps a zoom that already shows everything', () => {
+    expect(centred({ ...START_CAMERA, zoom: 2.5, target: [1, 2, 3] }).zoom).toBe(2.5)
+  })
+
+  it('knows when there is nothing to centre', () => {
+    expect(isCentred(START_CAMERA)).toBe(true)
+    expect(isCentred({ ...START_CAMERA, zoom: 3 })).toBe(true)
+    expect(isCentred({ ...START_CAMERA, zoom: 0.5 })).toBe(false)
+    expect(isCentred({ ...START_CAMERA, target: [1, 2, 3] })).toBe(false)
   })
 })

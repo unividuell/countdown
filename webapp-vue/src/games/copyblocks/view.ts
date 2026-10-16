@@ -69,3 +69,12 @@ export function spunYaw(start: number, elapsedMs: number): number {
   const eased = t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2
   return start + 2 * Math.PI * eased
 }
+
+/** The view orbiting the framed box's centre again, zoomed out far enough to show it whole. */
+export function centred(camera: Camera): Camera {
+  return { ...camera, zoom: Math.max(1, camera.zoom), target: null }
+}
+
+export function isCentred(camera: Camera): boolean {
+  return camera.target === null && camera.zoom >= 1
+}

@@ -7,6 +7,7 @@
  */
 import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
+import IconCentre from '~icons/lucide/locate-fixed'
 import IconPickaxe from '~icons/lucide/pickaxe'
 import IconTrash from '~icons/lucide/trash-2'
 import IconUndo from '~icons/lucide/undo-2'
@@ -26,7 +27,7 @@ import { playSound, preloadSounds } from './sounds'
 import { iconUrl } from './textures'
 import { MAX_COORDINATE, MAX_GUESS_BLOCKS } from './types'
 import type { CopyBlocksGuess, CopyBlocksPayload, GuessBlock } from './types'
-import { START_CAMERA } from './view'
+import { START_CAMERA, centred, isCentred } from './view'
 import type { Camera, Hit } from './view'
 
 const props = defineProps<{
@@ -42,6 +43,11 @@ const props = defineProps<{
 
 /** The build field's camera, so the reveal opens at the angle of the submission. */
 const camera = defineModel<Camera>('camera', { required: true })
+
+/** Back to the field's centre after zooming at the pointer has walked the view off it. */
+function centre(): void {
+  camera.value = centred(camera.value)
+}
 
 const emit = defineEmits<{ guess: [value: CopyBlocksGuess]; reveal: [] }>()
 
@@ -169,6 +175,17 @@ function submit(): void {
               :background="BUILD_GROUND"
               @tap="onTap"
             />
+            <div class="absolute top-1 left-1">
+              <button
+                type="button"
+                aria-label="Zentrieren"
+                :class="TOOL_BUTTON"
+                :disabled="isCentred(camera)"
+                @click="centre"
+              >
+                <IconCentre class="size-5" aria-hidden="true" />
+              </button>
+            </div>
             <div class="absolute top-1 right-1 flex gap-1">
               <button
                 type="button"

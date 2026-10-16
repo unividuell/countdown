@@ -169,6 +169,20 @@ describe('CopyBlocksBoard', () => {
     expect(loadDraft(localStorage, 'k', PAYLOAD.types)).toHaveLength(2)
   })
 
+  it('centres the field again, without turning it', async () => {
+    const wrapper = mountBoard({ camera: { yaw: 2, pitch: -0.3, zoom: 0.4, target: [1, 2, 3] } })
+
+    await choose(wrapper, 'Zentrieren')
+
+    expect(wrapper.emitted('update:camera')).toEqual([
+      [{ yaw: 2, pitch: -0.3, zoom: 1, target: null }],
+    ])
+  })
+
+  it('has nothing to centre at the start', () => {
+    expect(mountBoard().get('button[aria-label="Zentrieren"]').attributes('disabled')).toBeDefined()
+  })
+
   it('ignores taps while disabled', async () => {
     const wrapper = mountBoard({ disabled: true })
 
