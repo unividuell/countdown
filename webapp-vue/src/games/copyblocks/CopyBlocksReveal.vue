@@ -1,0 +1,115 @@
+<script setup lang="ts">
+/**
+ * The card after the round: the build field turns into the solution — the same view, the same
+ * framing, so nothing moves at the switch — and the scoreboard takes the template's place.
+ *
+ * The template is drawn through my own inverse fit, so it stands in the coordinates of my build.
+ * Beats come from `revealChoreography`: my build as it stood, then the solution marks; the
+ * scoreboard carries its own beat.
+ */
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useRevealArming } from '@/ui/useRevealArming'
+import BlockScene from './BlockScene.vue'
+import CopyBlocksScoreboard from './CopyBlocksScoreboard.vue'
+import { fieldOf } from './field'
+import { revealView } from './reveal'
+import type { Mark } from './reveal'
+import type { ScoreRow } from './scoreboard'
+import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from './types'
+import type { Camera } from './view'
+
+const props = defineProps<{
+  payload: CopyBlocksPayload
+  rows: ScoreRow[]
+  mineUserId: string | null
+  /** `null` without a tip of my own: history, onlookers. */
+  myGuess: GuessBlock[] | null
+  myOutcome: CopyBlocksOutcome | null
+  live: boolean
+  animate: boolean
+}>()
+
+/** The board's camera, so the reveal opens at the angle of the submission. */
+const camera = defineModel<Camera>('camera', { required: true })
+
+/** The build field's ground, as on the board. */
+const BUILD_GROUND = '#cfe2f4'
+const NO_MARKS: Mark[] = []
+
+/** A reload, reduced motion, a background tab: just be there. */
+const still =
+  !props.animate ||
+  prefersReducedMotion() ||
+  inBackground() ||
+  typeof requestAnimationFrame !== 'function'
+
+const solved = ref(still)
+let solutionTimer: ReturnType<typeof setTimeout> | undefined
+
+useRevealArming(still, () => {
+  solutionTimer = setTimeout(() => (solved.value = true), SOLUTION_DELAY_MS)
+})
+
+onBeforeUnmount(() => clearTimeout(solutionTimer))
+
+/** Mine, when there is a tip of mine to show. */
+const own = computed(() => (props.myOutcome ? props.mineUserId : null))
+const selectedUserId = ref<string | null>(own.value)
+
+/** A name shows that tip; the same one again goes back to my own. */
+function select(userId: string): void {
+  selectedUserId.value = selectedUserId.value === userId ? own.value : userId
+}
+
+const shown = computed(() => {
+  const id = selectedUserId.value
+  if (id === null) return null
+
+  return id === props.mineUserId
+    ? props.myOutcome
+    : (props.rows.find((r) => r.userId === id)?.outcome ?? null)
+})
+
+const view = computed(() =>
+  revealView({
+    template: props.payload.blocks,
+    ownFit: props.myOutcome?.fit ?? null,
+    shown: shown.value,
+  }),
+)
+
+/** The field of the submitted build, whichever tip is shown: picking a name never moves the view. */
+const field = computed(() => fieldOf(props.myGuess ?? props.payload.blocks, props.payload.grid))
+
+/** Until the solution beat the view shows only the build as it stood. */
+const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
+</script>
+
+<template>
+  <div data-test="copy-blocks-reveal" class="flex flex-col gap-6">
+    <!-- Card-wide and as tall as the board's build field, which it replaces. -->
+    <section
+      class="relative -mx-4 -mt-4 h-[46svh] overflow-hidden"
+      :style="{ background: BUILD_GROUND }"
+    >
+      <BlockScene
+        v-model:camera="camera"
+        :blocks="view.blocks"
+        :field="field"
+        build
+        :marks="marks"
+        :background="BUILD_GROUND"
+      />
+    </section>
+
+    <CopyBlocksScoreboard
+      :rows="props.rows"
+      :live="props.live"
+      :animate="props.animate"
+      :selected-user-id="selectedUserId"
+      @select="select"
+    />
+  </div>
+</template>
