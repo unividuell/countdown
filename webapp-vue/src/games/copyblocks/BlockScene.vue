@@ -385,6 +385,8 @@ onBeforeUnmount(() => {
   for (const geometry of [cube, markCube, markEdges]) geometry.dispose()
 
   renderer?.dispose()
+  // Contexts are a per-page budget, and the shared materials keep this one reachable: release it.
+  renderer?.forceContextLoss()
   renderer = null
 })
 
