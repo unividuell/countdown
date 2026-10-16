@@ -320,7 +320,7 @@ Servers dabei weiter — ein verlorener Nachbau wäre eine verlorene Runde.
 Das Baufeld **wird** zur Lösung — ohne Kamerasprung. Der Client zeichnet die Vorlage in den
 Koordinaten des eigenen Nachbaus (Umkehrung der eigenen `fit`), also exakt im Blickwinkel der Abgabe.
 Darauf die Markierungen aus dem Spike: fehlend als Geist (gelb), überzählig rot, falscher Typ orange.
-Die Kamera rahmt dabei weiter das Feld der Abgabe. Der Boden aber rückt mit der Lösung unter sie: Wer
+Oben links steht wie auf dem Brett **Zentrieren**. Die Kamera rahmt dabei weiter das Feld der Abgabe. Der Boden aber rückt mit der Lösung unter sie: Wer
 nur den oberen Teil der Vorlage getroffen hat, steht höher als die Lösung, und sein eigener Boden
 schnitte sie mittendurch.
 

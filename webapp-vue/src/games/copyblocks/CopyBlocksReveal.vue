@@ -13,6 +13,7 @@ import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { useRevealArming } from '@/ui/useRevealArming'
 import BlockScene from './BlockScene.vue'
+import CentreButton from './CentreButton.vue'
 import CopyBlocksScoreboard from './CopyBlocksScoreboard.vue'
 import { fieldOf } from './field'
 import { revealView } from './reveal'
@@ -152,6 +153,9 @@ const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
         :marks="marks"
         :background="BUILD_GROUND"
       />
+      <div class="absolute top-1 left-1">
+        <CentreButton v-model:camera="camera" />
+      </div>
     </section>
 
     <CopyBlocksScoreboard

@@ -7,7 +7,6 @@
  */
 import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
-import IconCentre from '~icons/lucide/locate-fixed'
 import IconPickaxe from '~icons/lucide/pickaxe'
 import IconTrash from '~icons/lucide/trash-2'
 import IconUndo from '~icons/lucide/undo-2'
@@ -18,6 +17,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
+import CentreButton from './CentreButton.vue'
 import type { BlockCode } from './blockTypes'
 import CopyBlocksBriefing from './CopyBlocksBriefing.vue'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
@@ -25,9 +25,10 @@ import { fieldOf, templateFieldOf } from './field'
 import type { Cell } from './field'
 import { playSound, preloadSounds } from './sounds'
 import { iconUrl } from './textures'
+import { TOOL_BUTTON } from './toolButton'
 import { MAX_COORDINATE, MAX_GUESS_BLOCKS } from './types'
 import type { CopyBlocksGuess, CopyBlocksPayload, GuessBlock } from './types'
-import { START_CAMERA, centred, isCentred } from './view'
+import { START_CAMERA } from './view'
 import type { Camera, Hit } from './view'
 
 const props = defineProps<{
@@ -44,11 +45,6 @@ const props = defineProps<{
 /** The build field's camera, so the reveal opens at the angle of the submission. */
 const camera = defineModel<Camera>('camera', { required: true })
 
-/** Back to the field's centre after zooming at the pointer has walked the view off it. */
-function centre(): void {
-  camera.value = centred(camera.value)
-}
-
 const emit = defineEmits<{ guess: [value: CopyBlocksGuess]; reveal: [] }>()
 
 const PICKAXE = 'PICKAXE'
@@ -64,9 +60,6 @@ interface HotbarSlot {
 /** Painted on the sections too: under the cover they stand empty, in their view's colour. */
 const BUILD_GROUND = '#cfe2f4'
 const TEMPLATE_GROUND = '#9cc3ea'
-
-const TOOL_BUTTON =
-  'flex size-11 cursor-pointer items-center justify-center rounded-lg bg-black/50 text-white disabled:cursor-not-allowed disabled:opacity-40'
 
 /** The round on show; `null` under the cover, where no 3D view is built. */
 const round = computed(() => (props.sealed ? null : props.payload))
@@ -176,15 +169,7 @@ function submit(): void {
               @tap="onTap"
             />
             <div class="absolute top-1 left-1">
-              <button
-                type="button"
-                aria-label="Zentrieren"
-                :class="TOOL_BUTTON"
-                :disabled="isCentred(camera)"
-                @click="centre"
-              >
-                <IconCentre class="size-5" aria-hidden="true" />
-              </button>
+              <CentreButton v-model:camera="camera" />
             </div>
             <div class="absolute top-1 right-1 flex gap-1">
               <button

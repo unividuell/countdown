@@ -148,6 +148,16 @@ describe('CopyBlocksReveal', () => {
     })
   })
 
+  it('centres the view again, as on the board', async () => {
+    const wrapper = mountReveal({ camera: { yaw: 2, pitch: -0.3, zoom: 0.4, target: [1, 2, 3] } })
+
+    await wrapper.get('button[aria-label="Zentrieren"]').trigger('click')
+
+    expect(wrapper.emitted('update:camera')).toEqual([
+      [{ yaw: 2, pitch: -0.3, zoom: 1, target: null }],
+    ])
+  })
+
   it('frames the view like the build field, cage included', () => {
     expect(scene(mountReveal()).props('build')).toBe(true)
   })
