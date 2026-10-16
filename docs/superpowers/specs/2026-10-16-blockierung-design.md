@@ -67,7 +67,7 @@ eine Wand.
 | Geste | Wirkung |
 |---|---|
 | ein Finger ziehen | umkreisen; oben bleibt oben, auch von unten ansehbar |
-| zwei Finger / Mausrad | zoomen |
+| zwei Finger / Mausrad | zoomen — auf den Punkt zwischen den Fingern bzw. unter dem Zeiger, der dabei stehen bleibt; die Ansicht dreht sich danach um ihn |
 | tippen (Baufeld) | einen Block des gewählten Typs auf die getroffene Fläche setzen, oder auf den Boden |
 | tippen mit Spitzhacke (Baufeld) | den getroffenen Block abbauen |
 

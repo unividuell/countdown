@@ -5,7 +5,7 @@
 // Renders on input only, no animation loop. Gestures:
 //   one finger moves > TAP_SLOP_PX → turn (orbit the camera; up stays up, below is in reach)
 //   one finger lifts before that   → tap: the block and the free cell under it
-//   two fingers / mouse wheel      → zoom
+//   two fingers / mouse wheel      → zoom towards the point between the fingers / under the cursor
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   BoxGeometry,
@@ -31,8 +31,8 @@ import {
   type Object3D,
 } from 'three'
 import { blockMaterials } from './textures'
-import { TAP_SLOP_PX } from './view'
-import type { Camera, Hit } from './view'
+import { TAP_SLOP_PX, zoomedAt } from './view'
+import type { Camera, Hit, Point3 } from './view'
 import type { Box, Cell } from './field'
 import type { Mark } from './reveal'
 import type { GuessBlock } from './types'
@@ -63,7 +63,7 @@ const unsupported = ref(false)
 
 const scene = new Scene()
 const eye = new PerspectiveCamera(40, 1, 0.1, 500)
-/** Shifted so the field's centre sits at 0. */
+/** In cell units: the cell (x, y, z) spans x..x+1. */
 const content = new Group()
 const blockLayer = new Group()
 const markLayer = new Group()
@@ -85,12 +85,13 @@ const raycaster = new Raycaster()
 function render(): void {
   if (!renderer) return
   const r = view.zoom * fit()
+  const t = orbited()
   eye.position.set(
-    r * Math.cos(view.pitch) * Math.sin(view.yaw),
-    r * Math.sin(view.pitch),
-    r * Math.cos(view.pitch) * Math.cos(view.yaw),
+    t.x + r * Math.cos(view.pitch) * Math.sin(view.yaw),
+    t.y + r * Math.sin(view.pitch),
+    t.z + r * Math.cos(view.pitch) * Math.cos(view.yaw),
   )
-  eye.lookAt(0, 0, 0)
+  eye.lookAt(t)
   eye.updateMatrixWorld()
   renderer.render(scene, eye)
 }
@@ -112,6 +113,13 @@ function centre(): Vector3 {
   const { lo, hi } = framedBox()
   return lo.add(hi).multiplyScalar(0.5)
 }
+
+/** The point the camera orbits: the one a zoom picked, else the framed box's centre. */
+function orbited(): Vector3 {
+  return view.target ? new Vector3(...view.target) : centre()
+}
+
+const point = (v: Vector3): Point3 => [v.x, v.y, v.z]
 
 function clear(group: Group): void {
   for (const child of [...group.children]) {
@@ -170,7 +178,6 @@ function rebuildField(): void {
   const w = hi[0] - lo[0] + 1
   const h = hi[1] - lo[1] + 1
   const d = hi[2] - lo[2] + 1
-  content.position.copy(centre()).negate()
 
   floor = new Mesh(
     new PlaneGeometry(w, d),
@@ -225,16 +232,23 @@ function cast(ndc: Vector2): Intersection | undefined {
   return hits.find((h) => h.object !== floor && h.distance - hits[0]!.distance < 1e-4) ?? hits[0]
 }
 
-function pick(clientX: number, clientY: number): Hit {
+function ndcOf(clientX: number, clientY: number): Vector2 {
   const rect = canvas.value!.getBoundingClientRect()
-  return hitOf(
-    cast(
-      new Vector2(
-        ((clientX - rect.left) / rect.width) * 2 - 1,
-        -((clientY - rect.top) / rect.height) * 2 + 1,
-      ),
-    ),
+  return new Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1,
   )
+}
+
+function pick(clientX: number, clientY: number): Hit {
+  return hitOf(cast(ndcOf(clientX, clientY)))
+}
+
+/** What lies under a screen point: the block or floor hit, else the ray at the orbit's depth. */
+function anchorAt(clientX: number, clientY: number): Point3 {
+  const hit = cast(ndcOf(clientX, clientY))
+  if (hit) return point(hit.point)
+  return point(raycaster.ray.at(eye.position.distanceTo(orbited()), new Vector3()))
 }
 
 function hitOf(hit: Intersection | undefined): Hit {
@@ -263,8 +277,13 @@ function turn(dx: number, dy: number): void {
   render()
 }
 
-function zoomBy(factor: number): void {
-  view = { ...view, zoom: Math.max(0.25, Math.min(4, view.zoom * factor)) }
+/** Zoom by [factor] towards the point at a screen position, which stays under it. */
+function zoomAt(factor: number, clientX: number, clientY: number): void {
+  const { lo, hi } = framedBox()
+  view = zoomedAt(view, factor, anchorAt(clientX, clientY), point(centre()), {
+    lo: point(lo),
+    hi: point(hi),
+  })
   camera.value = { ...view }
   render()
 }
@@ -278,11 +297,16 @@ let gesture: {
   last: { x: number; y: number }
   moved: boolean
 } | null = null
-let pinch: { span: number; zoom: number } | null = null
+let pinch: { span: number } | null = null
 
 const span = (): number => {
   const [a, b] = [...pointers.values()]
   return Math.hypot(a!.x - b!.x, a!.y - b!.y)
+}
+
+const midpoint = (): { x: number; y: number } => {
+  const [a, b] = [...pointers.values()]
+  return { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 }
 }
 
 function onDown(e: PointerEvent): void {
@@ -300,7 +324,7 @@ function onDown(e: PointerEvent): void {
     gesture = { id: e.pointerId, start, last: start, moved: false }
   } else if (pointers.size === 2) {
     gesture = null
-    pinch = { span: span(), zoom: view.zoom }
+    pinch = { span: span() }
   }
 }
 
@@ -309,8 +333,10 @@ function onMove(e: PointerEvent): void {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
   if (pinch && pointers.size === 2) {
-    view = { ...view, zoom: pinch.zoom }
-    zoomBy(pinch.span / Math.max(1, span()))
+    const now = Math.max(1, span())
+    const mid = midpoint()
+    zoomAt(pinch.span / now, mid.x, mid.y)
+    pinch.span = now
     return
   }
   const g = gesture
@@ -337,7 +363,7 @@ function onCancel(e: PointerEvent): void {
 }
 
 function onWheel(e: WheelEvent): void {
-  zoomBy(Math.exp(e.deltaY * 0.001))
+  zoomAt(Math.exp(e.deltaY * 0.001), e.clientX, e.clientY)
 }
 
 // --- Lifecycle --------------------------------------------------------------
