@@ -40,14 +40,16 @@ import type { GuessBlock } from './types'
 const props = withDefaults(
   defineProps<{
     blocks: readonly GuessBlock[]
-    /** The floor's extent, and the cage's when building; the camera frames it. */
+    /** The floor's extent, and the cage's when building; the camera frames it unless [frame] is set. */
     field: Box
+    /** What the camera frames instead of [field] — the reveal keeps it while the floor moves. */
+    frame?: Box | undefined
     /** Build field: draws the cage. */
     build?: boolean
     marks?: readonly Mark[]
     background: string
   }>(),
-  { build: false, marks: () => [] },
+  { build: false, frame: undefined, marks: () => [] },
 )
 const camera = defineModel<Camera>('camera', { required: true })
 const emit = defineEmits<{ tap: [Hit] }>()
@@ -93,21 +95,21 @@ function render(): void {
   renderer.render(scene, eye)
 }
 
-/** The field in world units. */
-function frame(): { lo: Vector3; hi: Vector3 } {
-  const { lo, hi } = props.field
+/** The framed box in world units. */
+function framedBox(): { lo: Vector3; hi: Vector3 } {
+  const { lo, hi } = props.frame ?? props.field
   return { lo: new Vector3(...lo), hi: new Vector3(hi[0] + 1, hi[1] + 1, hi[2] + 1) }
 }
 
 /** The camera's distance at zoom 1. */
 function fit(): number {
-  const { lo, hi } = frame()
+  const { lo, hi } = framedBox()
   const size = hi.sub(lo)
   return Math.max(size.x, size.y, size.z) * (props.build ? 2.9 : 2.4)
 }
 
 function centre(): Vector3 {
-  const { lo, hi } = frame()
+  const { lo, hi } = framedBox()
   return lo.add(hi).multiplyScalar(0.5)
 }
 
@@ -391,7 +393,7 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => JSON.stringify(props.field),
+  () => JSON.stringify([props.field, props.frame]),
   () => {
     rebuildField()
     render()

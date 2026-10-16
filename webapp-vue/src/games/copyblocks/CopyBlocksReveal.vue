@@ -110,8 +110,24 @@ const view = computed(() =>
   }),
 )
 
-/** The field of the submitted build, whichever tip is shown: picking a name never moves the view. */
-const field = computed(() => fieldOf(props.myGuess ?? props.payload.blocks, props.payload.grid))
+/** The camera frames the submitted build, whichever tip is shown: nothing ever moves the view. */
+const frame = computed(() => fieldOf(props.myGuess ?? props.payload.blocks, props.payload.grid))
+
+/**
+ * The floor under my build and the solution together. A tip that matched only the template's top
+ * stands higher than the solution, so its own floor would cut through it.
+ */
+const solutionField = computed(() => {
+  const solution = revealView({
+    template: props.payload.blocks,
+    ownFit: props.myOutcome?.fit ?? null,
+    shown: null,
+  }).blocks
+  return fieldOf([...(props.myGuess ?? []), ...solution], props.payload.grid)
+})
+
+/** My build's floor until the solution beat, then the solution's — it arrives with the solution. */
+const field = computed(() => (solved.value ? solutionField.value : frame.value))
 
 /** Until the solution beat the view shows only the build as it stood. */
 const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
@@ -131,6 +147,7 @@ const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
         v-model:camera="camera"
         :blocks="view.blocks"
         :field="field"
+        :frame="frame"
         build
         :marks="marks"
         :background="BUILD_GROUND"

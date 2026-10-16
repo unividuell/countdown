@@ -87,17 +87,65 @@ describe('CopyBlocksReveal', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps the field of the submitted build, so nothing moves at the switch', async () => {
+  it('keeps the camera on the submitted build, so nothing moves at the switch', async () => {
     // Grid 1: the template reaches one cell further than my build, so the two fields differ.
     const payload = { ...PAYLOAD, grid: 1 }
     const mine = fieldOf(MY_GUESS, 1)
     expect(fieldOf(PAYLOAD.blocks, 1)).not.toEqual(mine)
 
     const wrapper = mountReveal({ payload })
-    expect(scene(wrapper).props('field')).toEqual(mine)
+    expect(scene(wrapper).props('frame')).toEqual(mine)
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
-    expect(scene(wrapper).props('field')).toEqual(mine)
+    expect(scene(wrapper).props('frame')).toEqual(mine)
+  })
+
+  describe('a tip that matched only the top of the template', () => {
+    // Two stacked blocks; I built only the upper one, on my floor at y = 0.
+    const STACK: CopyBlocksPayload = {
+      grid: 6,
+      types: ['DIRT', 'BRICKS', 'LEAVES'],
+      blocks: [
+        { x: 0, y: 0, z: 0, type: 'DIRT' },
+        { x: 0, y: 1, z: 0, type: 'BRICKS' },
+      ],
+    }
+    const TOP: GuessBlock[] = [{ x: 0, y: 0, z: 0, type: 'BRICKS' }]
+    const LIFTED: CopyBlocksOutcome = {
+      correct: false,
+      fit: { turns: 0, dx: 0, dy: 1, dz: 0 },
+      missing: [{ x: 0, y: 0, z: 0, type: 'DIRT' }],
+      extra: [],
+      wrongType: [],
+    }
+    const props = {
+      payload: STACK,
+      myGuess: TOP,
+      myOutcome: LIFTED,
+      rows: [row('me', LIFTED)],
+    }
+
+    it('lays the floor under the solution, not through it, and frames as before', () => {
+      const wrapper = mountReveal(props)
+
+      expect(scene(wrapper).props('field').lo[1]).toBe(-1)
+      expect(scene(wrapper).props('frame')).toEqual(fieldOf(TOP, 6))
+    })
+
+    it('keeps my floor until the solution beat, then lowers it with the solution', async () => {
+      vi.useFakeTimers({
+        toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+      })
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+      const wrapper = mountReveal({ ...props, animate: true })
+      expect(scene(wrapper).props('field')).toEqual(fieldOf(TOP, 6))
+
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 100)
+      await nextTick()
+
+      expect(scene(wrapper).props('field').lo[1]).toBe(-1)
+      expect(scene(wrapper).props('frame')).toEqual(fieldOf(TOP, 6))
+    })
   })
 
   it('frames the view like the build field, cage included', () => {
