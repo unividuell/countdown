@@ -11,9 +11,10 @@ import {
   BoxGeometry,
   BufferGeometry,
   Color,
-  DoubleSide,
+  BackSide,
   EdgesGeometry,
   Float32BufferAttribute,
+  FrontSide,
   Group,
   LineBasicMaterial,
   LineSegments,
@@ -76,6 +77,14 @@ const markEdges = new EdgesGeometry(markCube)
 const MARK_COLORS = { missing: '#facc15', extra: '#ef4444', wrongType: '#f97316' }
 
 let floor: Mesh | null = null
+/** The floor seen from below: fainter, so a template can be read from underneath. */
+let underside: Mesh | null = null
+
+const isFloor = (o: Object3D): boolean => o === floor || o === underside
+
+/** Floor opacity from above — a plate to stand on — and from below. */
+const FLOOR_OPACITY = 0.55
+const UNDERSIDE_OPACITY = 0.2
 let fieldParts: (Mesh | LineSegments)[] = []
 let renderer: WebGLRenderer | null = null
 /** Local copy: moves within one task must add up before the parent's v-model comes back. */
@@ -168,29 +177,36 @@ function dropField(): void {
   }
   fieldParts = []
   floor = null
+  underside = null
 }
 
 function rebuildField(): void {
   dropField()
 
   // A translucent floor you can tap from above or below, its grid, and the cage of the volume.
+  // Two one-sided planes, because one material cannot fade only one side.
   const { lo, hi } = props.field
   const w = hi[0] - lo[0] + 1
   const h = hi[1] - lo[1] + 1
   const d = hi[2] - lo[2] + 1
 
-  floor = new Mesh(
-    new PlaneGeometry(w, d),
-    new MeshBasicMaterial({
-      color: '#5f8f3e',
-      transparent: true,
-      opacity: 0.55,
-      side: DoubleSide,
-      depthWrite: false,
-    }),
-  )
-  floor.rotation.x = -Math.PI / 2
-  floor.position.set(lo[0] + w / 2, lo[1], lo[2] + d / 2)
+  const plane = (side: typeof FrontSide | typeof BackSide, opacity: number): Mesh => {
+    const mesh = new Mesh(
+      new PlaneGeometry(w, d),
+      new MeshBasicMaterial({
+        color: '#5f8f3e',
+        transparent: true,
+        opacity,
+        side,
+        depthWrite: false,
+      }),
+    )
+    mesh.rotation.x = -Math.PI / 2
+    mesh.position.set(lo[0] + w / 2, lo[1], lo[2] + d / 2)
+    return mesh
+  }
+  floor = plane(FrontSide, FLOOR_OPACITY)
+  underside = plane(BackSide, UNDERSIDE_OPACITY)
 
   const lines: number[] = []
   const y = lo[1] + 0.002
@@ -201,7 +217,7 @@ function rebuildField(): void {
     new LineBasicMaterial({ color: '#2f4f1f' }),
   )
 
-  fieldParts = [floor, grid]
+  fieldParts = [floor, underside, grid]
   if (props.build) {
     const cage = new LineSegments(
       new EdgesGeometry(new BoxGeometry(w, h, d)),
@@ -226,10 +242,10 @@ function cast(ndc: Vector2): Intersection | undefined {
   scene.updateMatrixWorld()
   raycaster.setFromCamera(ndc, eye)
   const targets: Object3D[] = [...blockLayer.children]
-  if (floor) targets.push(floor)
+  if (floor && underside) targets.push(floor, underside)
   const hits = raycaster.intersectObjects(targets, false)
   // From below, a block's bottom face and the floor are coplanar: the block wins.
-  return hits.find((h) => h.object !== floor && h.distance - hits[0]!.distance < 1e-4) ?? hits[0]
+  return hits.find((h) => !isFloor(h.object) && h.distance - hits[0]!.distance < 1e-4) ?? hits[0]
 }
 
 function ndcOf(clientX: number, clientY: number): Vector2 {
@@ -254,7 +270,7 @@ function anchorAt(clientX: number, clientY: number): Point3 {
 function hitOf(hit: Intersection | undefined): Hit {
   if (!hit) return { block: null, place: null }
 
-  if (hit.object === floor) {
+  if (isFloor(hit.object)) {
     const p = content.worldToLocal(hit.point.clone())
     return { block: null, place: [Math.floor(p.x), props.field.lo[1], Math.floor(p.z)] }
   }
