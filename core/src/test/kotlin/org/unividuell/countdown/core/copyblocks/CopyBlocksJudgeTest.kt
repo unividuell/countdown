@@ -90,6 +90,27 @@ class CopyBlocksJudgeTest {
     }
 
     @Test
+    fun `a lone block of a type the template never uses lands on a template block as the wrong type`() {
+        // The leftmost block sits one up: the template in my coordinates reaches below my floor.
+        val steps = listOf(
+            Block(x = 0, y = 1, z = 0, type = BlockType.DIRT),
+            Block(x = 1, y = 1, z = 0, type = BlockType.STONE),
+            Block(x = 1, y = 0, z = 0, type = BlockType.BRICKS),
+        )
+
+        CopyBlocksJudge.judge(
+            template = steps,
+            guess = listOf(Block(x = 3, y = 0, z = 3, type = BlockType.LEAVES)),
+        ).let {
+            it.correct shouldBe false
+            it.fit shouldBe Fit(turns = 0, dx = -3, dy = 1, dz = -3)
+            it.wrongType shouldBe listOf(Block(x = 0, y = 1, z = 0, type = BlockType.LEAVES))
+            it.missing shouldBe steps.drop(1)
+            it.extra.shouldBeEmpty()
+        }
+    }
+
+    @Test
     fun `an empty guess keeps the identity and misses everything`() {
         CopyBlocksJudge.judge(template = template, guess = emptyList()).let {
             it.correct shouldBe false

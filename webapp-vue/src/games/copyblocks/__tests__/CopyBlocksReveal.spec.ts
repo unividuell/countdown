@@ -100,6 +100,49 @@ describe('CopyBlocksReveal', () => {
     expect(scene(wrapper).props('frame')).toEqual(mine)
   })
 
+  describe('a lone block of a type the template never uses', () => {
+    // What CopyBlocksJudgeTest pins for this case: the block lands on the leftmost template block,
+    // which sits one up, so the rest of the solution reaches below my floor.
+    const STEPS: CopyBlocksPayload = {
+      grid: 6,
+      types: ['DIRT', 'BRICKS', 'LEAVES', 'PACKED_ICE', 'STONE'],
+      blocks: [
+        { x: 0, y: 1, z: 0, type: 'DIRT' },
+        { x: 1, y: 1, z: 0, type: 'STONE' },
+        { x: 1, y: 0, z: 0, type: 'BRICKS' },
+      ],
+    }
+    const LONE: GuessBlock[] = [{ x: 3, y: 0, z: 3, type: 'LEAVES' }]
+    const JUDGED: CopyBlocksOutcome = {
+      correct: false,
+      fit: { turns: 0, dx: -3, dy: 1, dz: -3 },
+      missing: [
+        { x: 1, y: 1, z: 0, type: 'STONE' },
+        { x: 1, y: 0, z: 0, type: 'BRICKS' },
+      ],
+      extra: [],
+      wrongType: [{ x: 0, y: 1, z: 0, type: 'LEAVES' }],
+    }
+
+    it('marks it as the wrong type, the rest as missing, and lays the floor under all of it', () => {
+      const wrapper = mountReveal({
+        payload: STEPS,
+        myGuess: LONE,
+        myOutcome: JUDGED,
+        rows: [row('me', JUDGED)],
+      })
+
+      expect(scene(wrapper).props('blocks')).toEqual(LONE)
+      expect(scene(wrapper).props('marks')).toEqual([
+        { x: 4, y: 0, z: 3, type: 'STONE', kind: 'missing' },
+        { x: 4, y: -1, z: 3, type: 'BRICKS', kind: 'missing' },
+        { x: 3, y: 0, z: 3, type: 'LEAVES', kind: 'wrongType' },
+      ])
+      expect(scene(wrapper).props('field').lo[1]).toBe(-1)
+      expect(scene(wrapper).props('frame')).toEqual(fieldOf(LONE, 6))
+    })
+  })
+
   describe('a tip that matched only the top of the template', () => {
     // Two stacked blocks; I built only the upper one, on my floor at y = 0.
     const STACK: CopyBlocksPayload = {
