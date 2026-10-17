@@ -1,3 +1,4 @@
+import type { RoundAssets } from '@/api/assets'
 import { apiFetch } from '@/api/client'
 import type { RoundResponse, Vote } from '@/api/types'
 
@@ -41,9 +42,29 @@ export const giveUpRound = (slug: string, roundNumber: number) =>
     body: JSON.stringify({ roundNumber }),
   })
 
-/** Round number and key ride in the URL so each pair is its own privately cacheable resource. */
-export const roundAssetUrl = (slug: string, roundNumber: number, key: number): string =>
-  `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/assets/${key}`
+/**
+ * The cache key is the whole URL, and a round number is reused by every new run — so the round's
+ * own id rides along, and a new run never meets an old entry. The name is unique within the round.
+ */
+export const roundAssetUrl = (
+  slug: string,
+  roundNumber: number,
+  roundGameId: string,
+  name: string,
+): string =>
+  `/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}/assets/${encodeURIComponent(name)}?round=${roundGameId}`
+
+/** `undefined` while there is nothing to address: no round on the grid, or no game row behind it. */
+export const roundAssets = (slug: string, round: RoundResponse): RoundAssets | undefined => {
+  const roundNumber = round.round?.number
+  const roundGameId = round.roundGameId
+  if (roundNumber == null || roundGameId == null) return undefined
+
+  return {
+    url: (name) => roundAssetUrl(slug, roundNumber, roundGameId, name),
+    key: (name) => round.assetKeys[name] ?? null,
+  }
+}
 
 /**
  * One ballot per voter and tip, so `PUT`: a second click replaces it, and `null` withdraws it.

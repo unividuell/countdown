@@ -122,6 +122,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   // the reveal gate existed. The gate itself gets its own tests below, with `revealed: false`.
   revealed: true,
   canOverride: true,
+  assetKeys: {},
 }
 
 /**

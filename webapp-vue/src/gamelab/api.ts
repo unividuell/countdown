@@ -1,3 +1,4 @@
+import type { RoundAssets } from '@/api/assets'
 import { apiFetch } from '@/api/client'
 import type { Vote } from '@/api/types'
 import type { LabPhase, LabRoundResponse } from './types'
@@ -62,8 +63,19 @@ export const labAssetUrl = (
   game: string,
   seed: number,
   phase: LabPhase,
-  key: number,
-): string => labUrl(slug, game, seed, phase, `/assets/${key}`)
+  name: string,
+): string => labUrl(slug, game, seed, phase, `/assets/${encodeURIComponent(name)}`)
+
+/** The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart. */
+export const labAssets = (
+  slug: string,
+  game: string,
+  phase: LabPhase,
+  round: LabRoundResponse,
+): RoundAssets => ({
+  url: (name) => labAssetUrl(slug, game, round.seed, phase, name),
+  key: (name) => round.assetKeys[name] ?? null,
+})
 
 /** Casting, changing, or withdrawing a ballot on somebody else's tip. Mirrors `castVote`. */
 export const castLabVote = <P>(

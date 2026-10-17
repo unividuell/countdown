@@ -14,6 +14,7 @@
     "format": "prettier --write src"
   },
   "dependencies": {
+    "@noble/ciphers": "^2.4.0",
     "@vueuse/core": "^14.4.0",
     "luxon": "^3.7.2",
     "three": "^0.186.1",

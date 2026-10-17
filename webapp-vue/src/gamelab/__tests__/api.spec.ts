@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as client from '@/api/client'
-import { forgetMyLabEntry, openLabRound, resetLabRound, submitLabGuess } from '@/gamelab/api'
+import {
+  forgetMyLabEntry,
+  labAssets,
+  labAssetUrl,
+  openLabRound,
+  resetLabRound,
+  submitLabGuess,
+} from '@/gamelab/api'
+import type { LabRoundResponse } from '@/gamelab/types'
 
 describe('gamelab api', () => {
   beforeEach(() => {
@@ -43,5 +51,24 @@ describe('gamelab api', () => {
     // A slug is user-chosen; an unencoded one would silently address a different path.
     await openLabRound('a b', 'x/y', 1, 'ONE')
     expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/a%20b/x%2Fy?seed=1&phase=ONE')
+  })
+
+  it('addresses an asset by name, with the seed and phase every lab call carries', () => {
+    expect(labAssetUrl('team', 'stub', 42, 'TWO', 'clip-3')).toBe(
+      '/api/lab/team/stub/assets/clip-3?seed=42&phase=TWO',
+    )
+  })
+
+  it('reads lab assets from the round it was opened with', () => {
+    const round = {
+      seed: 42,
+      assetKeys: { photo: { key: 'a2V5', mediaType: 'image/jpeg' } },
+    } as unknown as LabRoundResponse
+
+    const assets = labAssets('team', 'stub', 'ONE', round)
+
+    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=ONE')
+    expect(assets.key('photo')).toEqual({ key: 'a2V5', mediaType: 'image/jpeg' })
+    expect(assets.key('solution')).toBeNull()
   })
 })

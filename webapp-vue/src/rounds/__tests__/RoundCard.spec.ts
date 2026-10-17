@@ -90,6 +90,8 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   awardRule: null,
   awardPoints: null,
   canOverride: false,
+  roundGameId: null,
+  assetKeys: {},
   ...over,
 })
 

@@ -41,6 +41,8 @@ const closed = (number: number): RoundResponse => ({
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
   canOverride: false,
+  roundGameId: null,
+  assetKeys: {},
 })
 
 /**
@@ -99,6 +101,8 @@ const closedSpotObject = (number: number): RoundResponse => ({
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
   canOverride: false,
+  roundGameId: null,
+  assetKeys: {},
 })
 
 function mockHistory(

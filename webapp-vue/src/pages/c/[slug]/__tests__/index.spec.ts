@@ -91,6 +91,8 @@ const aRoundResponse = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   awardRule: 'ALL_QUALIFYING',
   awardPoints: 1,
   canOverride: false,
+  roundGameId: null,
+  assetKeys: {},
   ...over,
 })
 
