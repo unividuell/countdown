@@ -7,12 +7,17 @@
  * same shape for every game the round card and the lab render.
  */
 import { computed, ref, watch } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import type { SceneState } from '@/ui/sceneState'
+import { useSealedAsset } from '@/ui/useSealedAsset'
 import FindPatternBoard from './FindPatternBoard.vue'
 import FindPatternReveal from './FindPatternReveal.vue'
 import { scoreRows } from './scoreboard'
 import {
+  BOARD_ASSET,
+  PATTERN_ASSET,
   asFindPatternScene,
   asFindPatternSolution,
   isFindPatternPayload,
@@ -31,7 +36,7 @@ const props = defineProps<{
   awardPoints: number | null
   disabled: boolean
   stage?: number
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
   /** Sealed: mounted under the cover before the reveal, `payload` still `null`. */
@@ -45,6 +50,31 @@ const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal:
 const payload = computed(() => (isFindPatternPayload(props.payload) ? props.payload : null))
 const scene = computed(() => (props.sealed ? asFindPatternScene(props.scene) : null))
 const solution = computed(() => asFindPatternSolution(props.solution))
+
+// Both are fetched sealed under the cover and opened when the reveal brings the keys — nothing loads
+// on the scored clock.
+const {
+  state: boardState,
+  src: boardSrc,
+  retry: retryBoard,
+} = useSealedAsset(() => props.assets, BOARD_ASSET)
+const {
+  state: patternState,
+  src: patternSrc,
+  retry: retryPattern,
+} = useSealedAsset(() => props.assets, PATTERN_ASSET)
+
+function retry(): void {
+  retryBoard()
+  retryPattern()
+}
+
+/** The cover is ready only when both pictures are here; one failed picture fails it. */
+const sceneState = computed<SceneState>(() => {
+  if (boardState.value === 'failed' || patternState.value === 'failed') return 'failed'
+  if (boardState.value === 'preparing' || patternState.value === 'preparing') return 'preparing'
+  return 'ready'
+})
 
 /** Grey, so a player whose row has not arrived yet still sees their own selection. */
 const myColorHex = computed(
@@ -79,7 +109,10 @@ watch(solution, (now, before) => {
 </script>
 
 <template>
-  <p v-if="payload === null && scene === null" class="text-sm text-neutral-600">
+  <p
+    v-if="props.assets === undefined || (payload === null && scene === null)"
+    class="text-sm text-neutral-600"
+  >
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <!--
@@ -101,10 +134,11 @@ watch(solution, (now, before) => {
       leave-to-class="opacity-0"
     >
       <FindPatternReveal
-        v-if="solution && payload"
+        v-if="solution && payload && boardSrc"
         class="[grid-area:1/1]"
         :payload="payload"
         :solution="solution"
+        :board-src="boardSrc"
         :rows="rows"
         :mine-user-id="props.mineUserId"
         :live="live"
@@ -116,6 +150,9 @@ watch(solution, (now, before) => {
         :payload="payload"
         :scene="scene"
         :sealed="props.sealed === true"
+        :scene-state="sceneState"
+        :board-src="boardSrc"
+        :pattern-src="patternSrc"
         :my-color-hex="myColorHex"
         :disabled="props.disabled"
         :submitted-start-index="startIndexOf(props.myGuess)"
@@ -123,6 +160,7 @@ watch(solution, (now, before) => {
         :award-points="props.awardPoints"
         @guess="(value) => emit('guess', value)"
         @reveal="emit('reveal')"
+        @retry="retry"
       />
     </Transition>
   </div>

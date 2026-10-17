@@ -35,6 +35,8 @@ import type { PatternNumber } from './PatternGrid.vue'
 const props = defineProps<{
   payload: FindPatternPayload
   solution: FindPatternSolution
+  /** The opened board picture — the reveal only mounts once it is there. */
+  boardSrc: string
   rows: ScoreRow[]
   mineUserId: string | null
   live: boolean
@@ -183,7 +185,7 @@ const paletteStyle = {
            field and must stay the same size, or the picture jumps when the view switches. -->
       <div class="mx-auto w-full max-w-[22rem]">
         <PatternGrid
-          :image="props.payload.boardImage"
+          :image="props.boardSrc"
           :cols="props.payload.cols"
           :rows="props.payload.rows"
           :outlines="outlines"

@@ -3,31 +3,57 @@ import { mount } from '@vue/test-utils'
 import type { AwardRule } from '@/api/types'
 import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
+import RevealCover from '@/ui/RevealCover.vue'
 
 const PAYLOAD = {
   cols: 8,
   rows: 14,
   patternLength: 4,
-  boardImage: 'data:image/png;base64,AAA',
-  patternImage: 'data:image/png;base64,BBB',
 }
+
+const BOARD_SRC = 'blob:board'
+const PATTERN_SRC = 'blob:pattern'
+
+const SCENE = { cols: 8, rows: 14, patternLength: 4 }
 
 function mountBoard(
   disabled = false,
   submittedStartIndex?: number | null,
   award: { awardRule?: AwardRule | null; awardPoints?: number | null } = {},
+  over: Record<string, unknown> = {},
 ) {
   return mount(FindPatternBoard, {
     props: {
       payload: PAYLOAD,
+      sceneState: 'ready',
+      boardSrc: BOARD_SRC,
+      patternSrc: PATTERN_SRC,
       myColorHex: '#7c3aed',
       disabled,
       awardRule: null,
       awardPoints: null,
       ...(submittedStartIndex !== undefined ? { submittedStartIndex } : {}),
       ...award,
+      ...over,
     },
   })
+}
+
+/** Under the cover: the scene instead of the payload, no picture yet. */
+function mountSealed(over: Record<string, unknown> = {}) {
+  return mountBoard(
+    false,
+    undefined,
+    {},
+    {
+      payload: null,
+      scene: SCENE,
+      sealed: true,
+      boardSrc: null,
+      patternSrc: null,
+      ...over,
+    },
+  )
 }
 
 async function tap(wrapper: ReturnType<typeof mountBoard>, ...indices: number[]) {
@@ -37,12 +63,12 @@ async function tap(wrapper: ReturnType<typeof mountBoard>, ...indices: number[])
 }
 
 describe('FindPatternBoard', () => {
-  it('shows both server images and the rules text inside the info box', () => {
+  it('shows both pictures from its props and the rules text inside the info box', () => {
     const wrapper = mountBoard()
 
     const sources = wrapper.findAll('img').map((img) => img.attributes('src'))
-    expect(sources).toContain(PAYLOAD.boardImage)
-    expect(sources).toContain(PAYLOAD.patternImage)
+    expect(sources).toContain(BOARD_SRC)
+    expect(sources).toContain(PATTERN_SRC)
     expect(wrapper.find('[data-test="info-box"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Leserichtung')
   })
@@ -152,5 +178,82 @@ describe('FindPatternBoard', () => {
     expect(w.text()).toContain('Winner takes it all: 9 Punkte')
     expect(w.text()).toContain('richtige Muster')
     expect(w.text()).toContain('kürzeste Zeit')
+  })
+})
+
+describe('FindPatternBoard, the pictures', () => {
+  it('lays the cover in the scene state it is given', () => {
+    const wrapper = mountSealed({ sceneState: 'preparing' })
+
+    expect(wrapper.findComponent(RevealCover).props('state')).toBe('preparing')
+    expect(wrapper.find('[data-test="reveal-cover-preparing"]').exists()).toBe(true)
+  })
+
+  it('asks the game to retry when the failed cover is retried', async () => {
+    const wrapper = mountSealed({ sceneState: 'failed' })
+
+    await wrapper.get('[data-test="reveal-cover-retry"]').trigger('click')
+
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
+  it('requests no picture while sealed', () => {
+    expect(mountSealed().findAll('img')).toHaveLength(0)
+  })
+
+  it('says so when a picture does not load', async () => {
+    const wrapper = mountBoard()
+
+    await wrapper.get('img').trigger('error')
+
+    expect(wrapper.get('[data-test="pattern-image-error"]').text()).toBe(
+      'Das Bild ließ sich nicht laden.',
+    )
+  })
+
+  it('says so when the board picture does not load', async () => {
+    const wrapper = mountBoard()
+
+    await wrapper.getComponent(PatternGrid).vm.$emit('imageError')
+
+    expect(wrapper.find('[data-test="pattern-image-error"]').exists()).toBe(true)
+  })
+
+  it('says so when a picture failed on an uncovered board', () => {
+    const wrapper = mountBoard(
+      false,
+      undefined,
+      {},
+      {
+        sceneState: 'failed',
+        boardSrc: null,
+        patternSrc: null,
+      },
+    )
+
+    expect(wrapper.get('[data-test="pattern-image-error"]').text()).toBe(
+      'Das Bild ließ sich nicht laden.',
+    )
+  })
+
+  it('leaves a failed scene to the cover while the board is sealed', () => {
+    expect(
+      mountSealed({ sceneState: 'failed' }).find('[data-test="pattern-image-error"]').exists(),
+    ).toBe(false)
+  })
+
+  it('stays quiet while the pictures are still preparing', () => {
+    const wrapper = mountBoard(
+      false,
+      undefined,
+      {},
+      {
+        sceneState: 'preparing',
+        boardSrc: null,
+        patternSrc: null,
+      },
+    )
+
+    expect(wrapper.find('[data-test="pattern-image-error"]').exists()).toBe(false)
   })
 })

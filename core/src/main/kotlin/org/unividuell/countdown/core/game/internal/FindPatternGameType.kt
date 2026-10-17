@@ -5,6 +5,7 @@ import org.unividuell.countdown.core.findpattern.FindPatternBoard
 import org.unividuell.countdown.core.findpattern.FindPatternImages
 import org.unividuell.countdown.core.findpattern.FindPatternLayout
 import org.unividuell.countdown.core.findpattern.FindPatternPalette
+import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
@@ -14,6 +15,7 @@ import org.unividuell.countdown.core.game.GameType
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
 import tools.jackson.databind.JsonNode
 
@@ -38,7 +40,8 @@ data class FindPatternParams(
 
 /**
  * What the player needs in order to play — and **not a single colour**. The board and the sought run
- * are images; the three numbers are what the client lays its cell grid out from.
+ * are images, served as round assets; the three numbers are what the client lays its cell grid out
+ * from.
  *
  * Adding a field here means changing the field-set test in `FindPatternGameTypeTest`, which is the
  * point: a colour, a block value or an index would each hand over part of the answer.
@@ -47,8 +50,6 @@ data class FindPatternPayload(
     val cols: Int,
     val rows: Int,
     val patternLength: Int,
-    val boardImage: String,
-    val patternImage: String,
 ) : GamePayload
 
 /** The empty board the cover lies over: the layout, which the payload repeats, and nothing drawn. */
@@ -102,9 +103,21 @@ class FindPatternGameType : GameType<FindPatternParams> {
         cols = FindPatternLayout.COLS,
         rows = FindPatternLayout.ROWS,
         patternLength = FindPatternLayout.PATTERN_LENGTH,
-        boardImage = FindPatternImages.board(blocks = params.blocks, palette = params.palette),
-        patternImage = FindPatternImages.pattern(
-            pattern = patternOf(params = params), palette = params.palette,
+    )
+
+    /** Both pictures open with the reveal; until then they travel sealed. */
+    override fun produceAssets(params: FindPatternParams) = listOf(
+        RoundAsset(
+            name = "board",
+            visibility = AssetVisibility.FromStage(0),
+            mediaType = "image/png",
+            bytes = FindPatternImages.board(blocks = params.blocks, palette = params.palette),
+        ),
+        RoundAsset(
+            name = "pattern",
+            visibility = AssetVisibility.FromStage(0),
+            mediaType = "image/png",
+            bytes = FindPatternImages.pattern(pattern = patternOf(params = params), palette = params.palette),
         ),
     )
 

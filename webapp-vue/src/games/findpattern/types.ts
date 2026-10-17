@@ -4,13 +4,17 @@
  * style attribute.
  */
 
+/**
+ * The round's asset names — both PNGs, sealed from stage 0 and opened by the reveal. No colour ever
+ * reaches the client as a value.
+ */
+export const BOARD_ASSET = 'board'
+export const PATTERN_ASSET = 'pattern'
+
 export interface FindPatternPayload {
   cols: number
   rows: number
   patternLength: number
-  /** `data:image/png;base64,…` — the board. No colour ever reaches the client as a value. */
-  boardImage: string
-  patternImage: string
 }
 
 /** The layout the empty board is set up in under the cover — the server's `FindPatternScene`. */
@@ -57,9 +61,7 @@ export function isFindPatternPayload(value: unknown): value is FindPatternPayloa
   return (
     isFiniteInteger(candidate.cols) &&
     isFiniteInteger(candidate.rows) &&
-    isFiniteInteger(candidate.patternLength) &&
-    typeof candidate.boardImage === 'string' &&
-    typeof candidate.patternImage === 'string'
+    isFiniteInteger(candidate.patternLength)
   )
 }
 

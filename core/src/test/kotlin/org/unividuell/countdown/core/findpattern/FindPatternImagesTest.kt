@@ -1,10 +1,8 @@
 package org.unividuell.countdown.core.findpattern
 
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldStartWith
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
-import java.util.Base64
 import javax.imageio.ImageIO
 
 class FindPatternImagesTest {
@@ -12,12 +10,10 @@ class FindPatternImagesTest {
     private val palette = listOf("#ffffff", "#c0c0c0", "#808080", "#000000")
     private val blocks = List(FindPatternLayout.BLOCK_COUNT) { it % FindPatternLayout.PALETTE_SIZE }
 
-    private fun decode(dataUri: String) = ImageIO.read(
-        ByteArrayInputStream(Base64.getDecoder().decode(dataUri.substringAfter(","))),
-    )
+    private fun decode(png: ByteArray) = ImageIO.read(ByteArrayInputStream(png))
 
     @Test
-    fun `the board is one image per block at the board scale`() {
+    fun `the board decodes to the grid at its block size`() {
         val image = decode(FindPatternImages.board(blocks = blocks, palette = palette))
 
         image.width shouldBe FindPatternLayout.COLS * FindPatternImages.BOARD_BLOCK_PX
@@ -25,9 +21,10 @@ class FindPatternImagesTest {
     }
 
     @Test
-    fun `it is a PNG data uri`() {
-        FindPatternImages.board(blocks = blocks, palette = palette) shouldStartWith
-            "data:image/png;base64,"
+    fun `it is a PNG`() {
+        val png = FindPatternImages.board(blocks = blocks, palette = palette)
+
+        png.take(PNG_SIGNATURE.size) shouldBe PNG_SIGNATURE
     }
 
     /** The pattern is as wide as the board, with blocks twice the size — the original's proportion. */
@@ -59,5 +56,9 @@ class FindPatternImagesTest {
         val y = (lastIndex / FindPatternLayout.COLS) * scale + scale / 2
 
         (image.getRGB(x, y) and 0xFFFFFF) shouldBe 0x000000
+    }
+
+    private companion object {
+        val PNG_SIGNATURE = listOf(0x89, 'P'.code, 'N'.code, 'G'.code).map { it.toByte() }
     }
 }

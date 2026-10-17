@@ -18,9 +18,9 @@ const PAYLOAD: FindPatternPayload = {
   cols: 8,
   rows: 14,
   patternLength: 4,
-  boardImage: 'data:image/png;base64,AAA',
-  patternImage: 'data:image/png;base64,BBB',
 }
+
+const BOARD_SRC = 'blob:board'
 
 const SOLUTION: FindPatternSolution = {
   blocks: Array.from({ length: 112 }, (_, index) => index % 4),
@@ -55,6 +55,7 @@ function mountReveal(
     props: {
       payload: PAYLOAD,
       solution: SOLUTION,
+      boardSrc: BOARD_SRC,
       rows,
       mineUserId: 'mine',
       live: false,
@@ -161,11 +162,10 @@ describe('FindPatternReveal', () => {
     expect(wrapper.get('tbody td').classes()).toContain('opacity-0')
   })
 
-  it('does not show the search pattern image again', () => {
+  it('draws the board from boardSrc, and shows no other picture', () => {
     const wrapper = mountReveal([row({ userId: 'mine' })])
 
-    const sources = wrapper.findAll('img').map((img) => img.attributes('src'))
-    expect(sources).not.toContain(PAYLOAD.patternImage)
+    expect(wrapper.findAll('img').map((img) => img.attributes('src'))).toEqual([BOARD_SRC])
   })
 
   it('is fully drawn at once when it is not a live reveal', () => {
