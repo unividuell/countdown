@@ -136,7 +136,7 @@ class RoundAssetGateTest(
     fun `a single-stage game's second image opens with the reveal, a key mapped above it does not`() {
         val (community, viewer) = aCommunity("Asset Gate Paired")
         val roundNumber = announceGated(community = community, gameType = "paired-fake")
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
 
         play.asset(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -154,7 +154,7 @@ class RoundAssetGateTest(
     fun `a player may fetch every unlocked stage and nothing above`() {
         val (community, viewer) = aCommunity("Asset Gate Stage")
         val roundNumber = announceGated(community)
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
             roundNumber = roundNumber, fromStage = 0,
@@ -176,7 +176,7 @@ class RoundAssetGateTest(
     fun `the solution asset opens with the spent guess, not before`() {
         val (community, viewer) = aCommunity("Asset Gate Solution")
         val roundNumber = announceGated(community)
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
 
         shouldThrow<AssetForbiddenException> {
             play.asset(
@@ -221,7 +221,7 @@ class RoundAssetGateTest(
     fun `an unfilled key inside the allowed range is a 404, and a newer round is unknown`() {
         val (community, viewer) = aCommunity("Asset Gate Not Found")
         val roundNumber = announceGated(community)
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
             roundNumber = roundNumber, fromStage = 0,

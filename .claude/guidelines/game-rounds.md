@@ -204,12 +204,15 @@ Judging happens **before** the write, so an invalid guess cannot consume the one
 
 ## Whoever addresses a round says which one
 
-A guess carries the round number it believes it is playing, not just "the current one":
-`GuessRequest` pairs `roundNumber` with the guess, and `PlayService.guess` checks it against the round
-it just resolved before locking anything or judging — a mismatch is `RoundMovedOnException`, mapped to
-409. "The current round" is not the same thing for a client and a server once a day boundary passes
-between the two requests; sending the number costs one field and turns a would-be verdict against a
-target the player never saw into a result the client can react to instead.
+Every write on the current round — reveal, guess, skip, give-up — carries the round number it believes
+it is playing, not just "the current one": each request body has `roundNumber`, and `PlayService`
+checks it against the round it just resolved before writing, locking or judging anything — a mismatch
+is `RoundMovedOnException`, mapped to 409, and the client refetches. "The current round" is not the
+same thing for a client and a server once a day boundary passes between the two requests; sending the
+number costs one field and turns a would-be verdict against a target the player never saw into a
+result the client can react to instead. The reveal is the sharpest case: for a `requiresReveal` game a
+hold that ends past midnight would otherwise spend the next round's one reveal and start its scored
+clock unseen. The lab sends no number: seed and phase ride on every call and already are its round key.
 
 ## What is replayable from timestamps needs no column
 

@@ -12,10 +12,11 @@ describe('rounds api', () => {
     expect(client.apiFetch).toHaveBeenCalledWith('/api/communities/team/rounds/current')
   })
 
-  it('reveals with a post and no body', async () => {
-    await revealRound('team')
+  it('reveals the round it is meant for', async () => {
+    await revealRound('team', 12)
     expect(client.apiFetch).toHaveBeenCalledWith('/api/communities/team/rounds/current/reveal', {
       method: 'POST',
+      body: JSON.stringify({ roundNumber: 12 }),
     })
   })
 

@@ -109,6 +109,7 @@ describe('useRound', () => {
     await round().reveal()
 
     expect(revealSpy).toHaveBeenCalledTimes(1)
+    expect(revealSpy).toHaveBeenCalledWith('team', 12)
     expect(round().stage.value).toBe('playing')
   })
 
@@ -248,8 +249,42 @@ describe('useRound', () => {
     await round().submit({ hue: 1 })
 
     expect(revealSpy).toHaveBeenCalledTimes(2)
+    expect(revealSpy).toHaveBeenLastCalledWith('team', 13)
     expect(round().round.value?.round?.number).toBe(13)
     expect(round().stage.value).toBe('playing')
+  })
+
+  it('lands the next round sealed when a deliberate reveal arrives after the day boundary', async () => {
+    // The hold finished past midnight: the server refuses to open round 13 for a player who saw 12.
+    const strict = {
+      id: 'find-pattern',
+      displayName: 'Musterung',
+      requiresReveal: true,
+      scoresOnDuration: true,
+    }
+    const nextRound = {
+      number: 13,
+      label: 'T-13',
+      start: '2026-08-15T10:00:00Z',
+      end: '2026-08-16T10:00:00Z',
+    }
+    vi.spyOn(api, 'getCurrentRound')
+      .mockResolvedValueOnce(announced({ game: strict }))
+      .mockResolvedValueOnce(announced({ game: strict, round: nextRound }))
+    const revealSpy = vi
+      .spyOn(api, 'revealRound')
+      .mockRejectedValue(new ApiError(409, 'round moved on'))
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    await round().reveal()
+
+    expect(revealSpy).toHaveBeenCalledExactlyOnceWith('team', 12)
+    expect(round().round.value?.round?.number).toBe(13)
+    expect(round().stage.value).toBe('sealed')
+    expect(round().notice.value).not.toBeNull()
   })
 
   it('marks the load failed when the round cannot be fetched', async () => {

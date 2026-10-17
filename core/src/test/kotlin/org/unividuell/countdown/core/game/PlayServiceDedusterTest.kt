@@ -108,7 +108,7 @@ class PlayServiceDedusterTest(
             slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = SCENE_ASSET_KEY,
         ).mediaType shouldBe "image/jpeg"
 
-        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
         mapper.valueToTree<tools.jackson.databind.JsonNode>(revealed.scene).propertyNames().toSet() shouldBe
             setOf("cols", "rows", "intervalMs")
         revealed.payload.shouldNotBeNull()
@@ -118,7 +118,7 @@ class PlayServiceDedusterTest(
     fun `a finished run is stored with its average, and no duration is published`() {
         val (community, player) = aCommunity()
         val (number, params) = announced(community)
-        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
 
         val reactions = List(params.cols * params.rows) { 400 }
         val response = play.guess(
@@ -141,7 +141,7 @@ class PlayServiceDedusterTest(
     fun `a run that reaches the server before it could have ended is marked, and the row says why`() {
         val (community, player) = aCommunity()
         val (number, params) = announced(community)
-        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
 
         val reactions = List(params.cols * params.rows) { 400 }
         play.guess(
