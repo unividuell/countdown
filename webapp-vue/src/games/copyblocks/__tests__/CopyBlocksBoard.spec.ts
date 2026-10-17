@@ -12,7 +12,11 @@ import RevealCover from '@/ui/RevealCover.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 vi.mock('@/games/copyblocks/sounds', () => ({ preloadSounds: vi.fn(), playSound: vi.fn() }))
-vi.mock('@/games/copyblocks/textures', () => ({ iconUrl: () => '', blockMaterials: () => [] }))
+vi.mock('@/games/copyblocks/textures', () => ({
+  iconUrl: () => '',
+  pickaxeIconUrl: () => 'data:pickaxe',
+  blockMaterials: () => [],
+}))
 
 const PAYLOAD: CopyBlocksPayload = {
   grid: 6,
@@ -72,6 +76,12 @@ describe('CopyBlocksBoard', () => {
     expect(
       wrapper.findAll('[data-test^="copy-blocks-slot-"]').map((s) => s.attributes('aria-label')),
     ).toEqual(['Erde', 'Ziegel', 'Laub', 'Spitzhacke'])
+  })
+
+  it('shows the pickaxe as a pixel picture, like the blocks', () => {
+    const img = mountBoard().get('[data-test="copy-blocks-slot-PICKAXE"] img')
+
+    expect(img.attributes('src')).toBe('data:pickaxe')
   })
 
   it('places the chosen type on the tapped face, with its sound', async () => {

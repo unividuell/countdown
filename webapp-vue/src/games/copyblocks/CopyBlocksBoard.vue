@@ -7,7 +7,6 @@
  */
 import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
-import IconPickaxe from '~icons/lucide/pickaxe'
 import IconUndo from '~icons/lucide/undo-2'
 import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
@@ -23,7 +22,7 @@ import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import { fieldOf, templateFieldOf } from './field'
 import type { Cell } from './field'
 import { playSound, preloadSounds } from './sounds'
-import { iconUrl } from './textures'
+import { iconUrl, pickaxeIconUrl } from './textures'
 import { TOOL_BUTTON } from './toolButton'
 import { MAX_COORDINATE, MAX_GUESS_BLOCKS } from './types'
 import type { CopyBlocksGuess, CopyBlocksPayload, GuessBlock } from './types'
@@ -52,8 +51,8 @@ type Slot = BlockCode | typeof PICKAXE
 interface HotbarSlot {
   id: Slot
   label: string
-  /** `null` for the pickaxe, drawn as an icon. */
-  icon: string | null
+  /** A 16 × 16 pixel picture — the pickaxe's like the blocks'. */
+  icon: string
 }
 
 /** Painted on the sections too: under the cover they stand empty, in their view's colour. */
@@ -84,7 +83,7 @@ const hotbar = computed<HotbarSlot[]>(() => [
     label: BLOCK_TYPES[code].name,
     icon: iconUrl(code),
   })),
-  { id: PICKAXE, label: 'Spitzhacke', icon: null },
+  { id: PICKAXE, label: 'Spitzhacke', icon: pickaxeIconUrl() },
 ])
 
 // Opening a round restores its draft and drops the player's stale drafts of other rounds.
@@ -219,13 +218,7 @@ function submit(): void {
                   :class="slot === s.id ? 'border-white' : 'border-neutral-600'"
                   @click="picked = s.id"
                 >
-                  <IconPickaxe
-                    v-if="s.icon === null"
-                    class="h-auto w-[55%] text-white"
-                    aria-hidden="true"
-                  />
                   <img
-                    v-else
                     :src="s.icon"
                     alt=""
                     draggable="false"

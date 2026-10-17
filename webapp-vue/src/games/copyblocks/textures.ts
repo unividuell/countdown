@@ -113,6 +113,78 @@ export function iconUrl(code: BlockCode): string {
   return textureCanvas(code)?.toDataURL() ?? ''
 }
 
+/** The pickaxe's colours: a diamond head on a wooden handle, outlined dark. */
+const PICKAXE = {
+  head: '#33c3b2',
+  light: '#a6f1e6',
+  wood: '#b07a3e',
+  woodDark: '#6b4423',
+  outline: '#1c1c1c',
+}
+
+/**
+ * The hotbar's pickaxe, our own 16 × 16 drawing (Minecraft's sprite is Mojang's). Handle and head
+ * share one centre at the bottom left: the handle runs from it at 45°, the head is a ring arc
+ * across the top right, at right angles to the handle, narrowing to points at both ends.
+ */
+export function pickaxePixels(): (string | null)[][] {
+  const [cx, cy] = [2, 14]
+  const grid = Array.from({ length: PX }, () => Array<string | null>(PX).fill(null))
+
+  for (let y = 0; y < PX; y++)
+    for (let x = 0; x < PX; x++) {
+      const dx = x + 0.5 - cx
+      const dy = cy - (y + 0.5)
+      const d = Math.hypot(dx, dy)
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+      const across = dx - dy
+      if (Math.abs(across) < 1.1 && d > 0.9 && d < 9.4)
+        grid[y]![x] = across > 0 ? PICKAXE.woodDark : PICKAXE.wood
+
+      const taper = Math.max(0, Math.abs(angle - 45) - 33) * 0.09
+      if (angle > -6 && angle < 96 && d > 9.3 + taper && d < 11.5)
+        grid[y]![x] = d > 10.7 ? PICKAXE.light : PICKAXE.head
+    }
+
+  // A dark rim around everything drawn, as on Minecraft's item sprites.
+  const drawn = (x: number, y: number) => {
+    const c = grid[y]?.[x]
+    return c != null && c !== PICKAXE.outline
+  }
+  for (let y = 0; y < PX; y++)
+    for (let x = 0; x < PX; x++)
+      if (
+        grid[y]![x] === null &&
+        [drawn(x + 1, y), drawn(x - 1, y), drawn(x, y + 1), drawn(x, y - 1)].some(Boolean)
+      )
+        grid[y]![x] = PICKAXE.outline
+
+  return grid
+}
+
+let pickaxeUrl: string | null = null
+
+/** The hotbar's picture of the pickaxe; empty without a 2D context. */
+export function pickaxeIconUrl(): string {
+  if (pickaxeUrl !== null) return pickaxeUrl
+
+  const canvas = document.createElement('canvas')
+  canvas.width = PX
+  canvas.height = PX
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  pickaxePixels().forEach((row, y) =>
+    row.forEach((colour, x) => {
+      if (colour === null) return
+      ctx.fillStyle = colour
+      ctx.fillRect(x, y, 1, 1)
+    }),
+  )
+  pickaxeUrl = canvas.toDataURL()
+  return pickaxeUrl
+}
+
 /** BoxGeometry's group order: +x, −x, +y, −y, +z, −z. Top brightest, bottom darkest. */
 const FACE_SHADE = [0.62, 0.62, 1, 0.5, 0.82, 0.82]
 

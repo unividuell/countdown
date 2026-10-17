@@ -279,7 +279,8 @@ Von oben nach unten:
 
 1. **Das Baufeld**, kartenbreit. Raster auf dem durchscheinenden Boden, ein dünner Käfig um das Feld.
    Oben links **Zentrieren**, oben rechts **Rückgängig** und **Ton**; am unteren Rand die **Hotbar** im
-   Minecraft-Stil. Kein Zähler, keine Beschriftung mit Blockzahlen.
+   Minecraft-Stil. Kein Zähler, keine Beschriftung mit Blockzahlen. Die Spitzhacke ist wie die Blöcke ein
+   eigenes 16×16-Pixelbild: türkiser Diamant-Kopf auf Holzstiel (Minecrafts Sprite gehört Mojang).
 2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, mittig. Die Streifen links und rechts
    gehören dem Seitenscrollen, mit beiden Händen erreichbar; mittig steht sie zudem unter dem Nachbau,
    der oben meist mittig entsteht. Rasterboden einen Block breiter als ihr Grundriss, Kamera auf ihr
