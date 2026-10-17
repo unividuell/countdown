@@ -303,8 +303,8 @@ CASCADE` (Spielzüge, Stimmen und Assets folgen; Tagesplan und GET-Fallback mate
 `DROP SCHEMA songsnippet, deduster, placepatch CASCADE`, dazu deren Flyway-Historientabellen in
 `public`. Gemeinschaften, Mitglieder und Bildpool bleiben. Der volle Reset ist die Alternative; er
 verliert auch Gemeinschaften und `imagepool.images`. Mit Zustimmung, es gibt keine Nutzer. Das Rezept
-steht in `deploy/README.md` („Migrating an existing stack for round assets“); der PR nennt den Schritt
-ausdrücklich, er gilt je einmal für Staging und Prod.
+steht in der Beschreibung von PR #107 — ein einmaliger Schritt, je einmal für Staging und Prod, kein
+Dauertext für `deploy/README.md`.
 
 ## Backup
 
