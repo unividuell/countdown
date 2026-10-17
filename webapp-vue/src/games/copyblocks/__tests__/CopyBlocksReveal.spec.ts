@@ -201,6 +201,21 @@ describe('CopyBlocksReveal', () => {
     ])
   })
 
+  it('marks the errors by default, and the box beneath the view takes them away', async () => {
+    const wrapper = mountReveal()
+    const box = wrapper.get<HTMLInputElement>('input[type="checkbox"]')
+    expect(wrapper.get('[data-test="copy-blocks-mark-errors"]').text()).toBe('Fehler markieren')
+    expect(box.element.checked).toBe(true)
+    expect(scene(wrapper).props('marks')).toHaveLength(1)
+
+    await box.setValue(false)
+    expect(scene(wrapper).props('marks')).toEqual([])
+    expect(scene(wrapper).props('blocks')).toEqual(MY_GUESS)
+
+    await box.setValue(true)
+    expect(scene(wrapper).props('marks')).toHaveLength(1)
+  })
+
   it('frames the view like the build field, cage included', () => {
     expect(scene(mountReveal()).props('build')).toBe(true)
   })

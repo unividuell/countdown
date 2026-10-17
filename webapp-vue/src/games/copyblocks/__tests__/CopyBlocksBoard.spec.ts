@@ -102,17 +102,19 @@ describe('CopyBlocksBoard', () => {
     expect(vi.mocked(playSound)).toHaveBeenLastCalledWith('break', 'DIRT')
   })
 
-  it('undoes step by step, and clears everything in one undoable step', async () => {
+  it('undoes step by step', async () => {
     const wrapper = mountBoard()
     await tap(wrapper, { block: null, place: [0, 0, 0] })
     await tap(wrapper, { block: null, place: [1, 0, 0] })
 
-    await choose(wrapper, 'Alles abreißen')
-    expect(built(wrapper)).toEqual([])
-    await choose(wrapper, 'Rückgängig')
-    expect(built(wrapper)).toHaveLength(2)
     await choose(wrapper, 'Rückgängig')
     expect(built(wrapper)).toEqual([{ x: 0, y: 0, z: 0, type: 'DIRT' }])
+    await choose(wrapper, 'Rückgängig')
+    expect(built(wrapper)).toEqual([])
+  })
+
+  it('has no button that clears everything at once', () => {
+    expect(mountBoard().find('button[aria-label="Alles abreißen"]').exists()).toBe(false)
   })
 
   it('refuses a block the server would refuse', async () => {

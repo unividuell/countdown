@@ -72,8 +72,8 @@ eine Wand.
 | tippen mit Spitzhacke (Baufeld) | den getroffenen Block abbauen |
 
 Tippen und Ziehen trennt eine Schwelle von ~8 CSS-px; Langdruck und Rechtsklick haben keine
-Bedeutung. Dazu: **Hotbar** mit den N Typen der Runde und der Spitzhacke, **Rückgängig**, **Alles
-abreißen**, **Ton an/aus** und **Zentrieren** — zurück zur Feldmitte, ohne die Drehung zu ändern, und so
+Bedeutung. Dazu: **Hotbar** mit den N Typen der Runde und der Spitzhacke, **Rückgängig**,
+**Ton an/aus** und **Zentrieren** — zurück zur Feldmitte, ohne die Drehung zu ändern, und so
 weit heraus, dass wieder alles zu sehen ist (der Zoom auf den Zeiger kann den Bau aus dem Bild schieben).
 
 **Zwischenstand:** Der angefangene Nachbau überlebt ein Neuladen und einen vom Handy verworfenen Tab —
@@ -278,7 +278,7 @@ eingebacken (oben 1,0 · Seiten 0,62/0,82 · unten 0,5), keine Lichter.
 Von oben nach unten:
 
 1. **Das Baufeld**, kartenbreit. Raster auf dem durchscheinenden Boden, ein dünner Käfig um das Feld.
-   Oben links **Zentrieren**, oben rechts **Rückgängig**, **Alles abreißen**, **Ton**; am unteren Rand die **Hotbar** im
+   Oben links **Zentrieren**, oben rechts **Rückgängig** und **Ton**; am unteren Rand die **Hotbar** im
    Minecraft-Stil. Kein Zähler, keine Beschriftung mit Blockzahlen.
 2. **Die Vorlage**, schmaler — etwa drei Viertel der Breite, mittig. Die Streifen links und rechts
    gehören dem Seitenscrollen, mit beiden Händen erreichbar; mittig steht sie zudem unter dem Nachbau,
@@ -320,7 +320,8 @@ Servers dabei weiter — ein verlorener Nachbau wäre eine verlorene Runde.
 Das Baufeld **wird** zur Lösung — ohne Kamerasprung. Der Client zeichnet die Vorlage in den
 Koordinaten des eigenen Nachbaus (Umkehrung der eigenen `fit`), also exakt im Blickwinkel der Abgabe.
 Darauf die Markierungen aus dem Spike: fehlend als Geist (gelb), überzählig rot, falscher Typ orange.
-Oben links steht wie auf dem Brett **Zentrieren**. Die Kamera rahmt dabei weiter das Feld der Abgabe. Der Boden aber rückt mit der Lösung unter sie: Wer
+Oben links steht wie auf dem Brett **Zentrieren**. Darunter rechts das Kästchen **Fehler markieren**,
+vorgegeben an; abgewählt steht der gewählte Tipp ohne Markierungen. Die Kamera rahmt dabei weiter das Feld der Abgabe. Der Boden aber rückt mit der Lösung unter sie: Wer
 nur den oberen Teil der Vorlage getroffen hat, steht höher als die Lösung, und sein eigener Boden
 schnitte sie mittendurch.
 
@@ -416,6 +417,7 @@ Klopfer und Abbau-Klang.
 
 - **Fadenkreuz, Vorschau unter dem Finger, Lupe** — siehe *Zweck & Spielidee*: unfair oder verwirrend.
 - **Zähler** für eigene oder geforderte Blöcke.
+- **Alles abreißen** — im Labor gestrichen (2026-10-17); Rückgängig und die Spitzhacke bleiben.
 - **Langdruck und Rechtsklick zum Abbauen** — Langdruck passierte unbewusst; der Rechtsklick wäre ein
   Tempovorteil nur für die Maus (ein Klick statt drei Tipps), in Phase zwei entscheidet aber das Tempo.
 - **Ansichten koppeln** und alle übrigen Spike-Regler.

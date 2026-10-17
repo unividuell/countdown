@@ -130,8 +130,11 @@ const solutionField = computed(() => {
 /** My build's floor until the solution beat, then the solution's — it arrives with the solution. */
 const field = computed(() => (solved.value ? solutionField.value : frame.value))
 
+/** The box beneath the view: on, the errors are marked; off, the tip stands bare. */
+const markErrors = ref(true)
+
 /** Until the solution beat the view shows only the build as it stood. */
-const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
+const marks = computed(() => (solved.value && markErrors.value ? view.value.marks : NO_MARKS))
 </script>
 
 <template>
@@ -157,6 +160,14 @@ const marks = computed(() => (solved.value ? view.value.marks : NO_MARKS))
         <CentreButton v-model:camera="camera" />
       </div>
     </section>
+
+    <label
+      data-test="copy-blocks-mark-errors"
+      class="-mt-4 flex min-h-11 cursor-pointer items-center gap-2 self-end text-sm"
+    >
+      <input v-model="markErrors" type="checkbox" class="size-4 cursor-pointer" />
+      Fehler markieren
+    </label>
 
     <CopyBlocksScoreboard
       :rows="props.rows"

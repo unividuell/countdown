@@ -8,7 +8,6 @@
 import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
 import IconPickaxe from '~icons/lucide/pickaxe'
-import IconTrash from '~icons/lucide/trash-2'
 import IconUndo from '~icons/lucide/undo-2'
 import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
@@ -180,15 +179,6 @@ function submit(): void {
                 @click="undo"
               >
                 <IconUndo class="size-5" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Alles abreißen"
-                :class="TOOL_BUTTON"
-                :disabled="!playable || build.length === 0"
-                @click="commit([])"
-              >
-                <IconTrash class="size-5" aria-hidden="true" />
               </button>
               <button
                 type="button"
