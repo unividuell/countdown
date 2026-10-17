@@ -57,7 +57,7 @@ export const giveUpLabRound = <P>(slug: string, game: string, seed: number, phas
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/give-up'), { method: 'POST' })
 
 /** The round's binary assets, stage-gated exactly like the real round's — a plain URL, not a fetch:
- * callers pass it to `fetchAssetBlob` themselves, the same way the real round's `assetUrl` works. */
+ * callers pass it to `fetchAssetBlob` themselves, the same way the real round's `roundAssetUrl` works. */
 export const labAssetUrl = (
   slug: string,
   game: string,

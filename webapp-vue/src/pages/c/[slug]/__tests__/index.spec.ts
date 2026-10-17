@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { computed, defineComponent, ref } from 'vue'
 import * as api from '@/api/communities'
+import type { RoundAssets } from '@/api/assets'
 import * as client from '@/api/client'
 import { communityKey } from '@/communities/context'
 import type {
@@ -240,6 +241,40 @@ describe('community home', () => {
     const w = mountPage()
     expect(w.findComponent(RoundCard).exists()).toBe(true)
     expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  // A game this build has no renderer for, so the card mounts without a real game under it: only
+  // what the page hands the card is under test here.
+  const unrendered = {
+    id: 'no-renderer',
+    displayName: '?',
+    requiresReveal: false,
+    scoresOnDuration: false,
+  }
+
+  it("hands the card the running round's assets, addressed by its own run", () => {
+    const key = { key: 'a2V5', mediaType: 'audio/mpeg' }
+    const round = aRoundResponse({
+      game: unrendered,
+      roundGameId: 'rg-12',
+      assetKeys: { 'clip-0': key },
+    })
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing', round }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+
+    const assets = mountPage().getComponent(RoundCard).props('assets') as RoundAssets
+
+    expect(assets.url('photo')).toBe('/api/communities/team/rounds/12/assets/photo?round=rg-12')
+    expect(assets.key('clip-0')).toEqual(key)
+    expect(assets.key('clip-1')).toBeNull()
+  })
+
+  it('hands the card no assets while the round has no game row', () => {
+    const round = aRoundResponse({ game: unrendered })
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing', round }))
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+
+    expect(mountPage().getComponent(RoundCard).props('assets')).toBeUndefined()
   })
 
   it('falls back to the countdown when the round has no game', () => {

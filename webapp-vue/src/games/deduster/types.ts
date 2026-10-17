@@ -3,8 +3,8 @@
  * `unknown`, and a stale round may be junk.
  */
 
-/** The server's `SCENE_ASSET_KEY`: the photo, fetchable before the reveal. */
-export const SCENE_ASSET_KEY = 98
+/** The round's photo asset: plain, fetchable before the reveal. */
+export const PHOTO_ASSET = 'photo'
 
 /**
  * The server's `MIN_HUMAN_MS`: a reaction below it, or above the beat, marks the run. The server

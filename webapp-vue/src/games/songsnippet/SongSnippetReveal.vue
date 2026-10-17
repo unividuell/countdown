@@ -5,6 +5,7 @@
  * Composition only — every number it hands down was worked out in `SongSnippetGame` from the pure
  * `scoreboard` module, so this file has nothing to get wrong and nothing to test.
  */
+import type { RoundAssets } from '@/api/assets'
 import SongPlayerReveal from './SongPlayerReveal.vue'
 import SongSnippetScoreboard from './SongSnippetScoreboard.vue'
 import type { ScoreRow } from './scoreboard'
@@ -18,7 +19,7 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
   // `| undefined` (not a bare `?`): see the note in `SongPlayerReveal`.
-  assetUrl?: ((key: number) => string) | undefined
+  assets?: RoundAssets | undefined
 }>()
 </script>
 
@@ -27,7 +28,7 @@ const props = defineProps<{
     <SongPlayerReveal
       :solution="props.solution"
       :durations="props.durations"
-      :asset-url="props.assetUrl"
+      :assets="props.assets"
     />
     <SongSnippetScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
   </div>

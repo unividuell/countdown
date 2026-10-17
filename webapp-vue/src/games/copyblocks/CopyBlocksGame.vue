@@ -7,6 +7,7 @@
  * everything the reveal draws, and the sealed board needs no shape.
  */
 import { computed, ref, watch } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
 import type { GameEntry } from '@/games/GameEntry'
@@ -29,7 +30,7 @@ const props = defineProps<{
   awardPoints: number | null
   disabled: boolean
   stage?: number
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   closed?: boolean
   sealed?: boolean
   scene?: unknown

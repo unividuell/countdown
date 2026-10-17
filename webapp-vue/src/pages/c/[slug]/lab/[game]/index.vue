@@ -25,7 +25,7 @@ import {
   castLabVote,
   forgetMyLabEntry,
   giveUpLabRound,
-  labAssetUrl,
+  labAssets,
   openLabRound,
   resetLabRound,
   revealLabRound,
@@ -56,6 +56,10 @@ const seed = computed(() => parseSeed(route.query.seed))
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
 
 const round = ref<LabRoundResponse | null>(null)
+/** The lab round's assets by name, the same shape a real round hands its game. */
+const assets = computed(() =>
+  round.value ? labAssets(community.value.slug, gameId.value, phase.value, round.value) : undefined,
+)
 /**
  * Bumped whenever a response reseals an already-revealed round — a reset, most often. The game
  * component is keyed on this alongside `round.seed` (see below), because sealing again must
@@ -340,9 +344,7 @@ watch(
         :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
-        :asset-url="
-          (key: number) => labAssetUrl(community.slug, gameId, round?.seed ?? 0, phase, key)
-        "
+        :assets="assets"
         :review="review"
         :closed="false"
         @reveal="reveal"

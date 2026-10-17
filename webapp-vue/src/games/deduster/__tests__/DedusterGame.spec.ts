@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { RoundAssets } from '@/api/assets'
 import DedusterBoard from '../DedusterBoard.vue'
 import DedusterGame from '../DedusterGame.vue'
 import DedusterReveal from '../DedusterReveal.vue'
@@ -8,6 +9,8 @@ vi.mock('../photo', () => ({ loadPhoto: vi.fn(() => Promise.resolve()) }))
 
 const SCENE = { cols: 2, rows: 2, intervalMs: 1000 }
 const PAYLOAD = { ...SCENE, order: [3, 1, 0, 2] }
+
+const ASSETS: RoundAssets = { url: (name) => `/asset/${name}`, key: () => null }
 
 function mountGame(props: Record<string, unknown> = {}) {
   return mount(DedusterGame, {
@@ -21,7 +24,7 @@ function mountGame(props: Record<string, unknown> = {}) {
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
       disabled: false,
-      assetUrl: (key: number) => `/asset/${key}`,
+      assets: ASSETS,
       sealed: true,
       scene: SCENE,
       ...props,
@@ -34,8 +37,19 @@ describe('DedusterGame', () => {
     const board = mountGame().getComponent(DedusterBoard)
 
     expect(board.props('sealed')).toBe(true)
-    expect(board.props('photoUrl')).toBe('/asset/98')
     expect(board.props('scene')).toEqual(SCENE)
+  })
+
+  it("loads the photo from the round's photo asset", () => {
+    const board = mountGame().getComponent(DedusterBoard)
+
+    expect(board.props('photoUrl')).toBe('/asset/photo')
+  })
+
+  it('says so instead of rendering junk when the round has no assets to address', () => {
+    expect(mountGame({ assets: undefined }).text()).toContain(
+      'Diese Runde lässt sich hier nicht anzeigen.',
+    )
   })
 
   it('turns to the evaluation once a guess of mine is in', () => {

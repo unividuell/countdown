@@ -9,13 +9,14 @@
  */
 import { onUnmounted, ref } from 'vue'
 import { fetchAssetBlob } from '@/api/assets'
+import type { RoundAssets } from '@/api/assets'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import { usePlayback } from './usePlayback'
+import { SOLUTION_ASSET } from './types'
 import type { SongSnippetSolution } from './types'
 
-const SOLUTION_ASSET_KEY = 99
 const SOLUTION_SECONDS = 30
 
 const props = defineProps<{
@@ -25,7 +26,7 @@ const props = defineProps<{
   // it — passing through its own optional prop, which can itself be `undefined`; see the
   // `exactOptionalPropertyTypes` note in `frontend.md` and `LabControls.vue`/`MemberRow.vue` for
   // the same shape.
-  assetUrl?: ((key: number) => string) | undefined
+  assets?: RoundAssets | undefined
 }>()
 
 const playback = usePlayback()
@@ -44,11 +45,11 @@ const loading = ref(false)
 
 /** Loaded on the first tap, not on mount — browser policies want a gesture anyway. */
 async function playSolution(): Promise<void> {
-  if (!loaded.value && props.assetUrl) {
+  if (!loaded.value && props.assets) {
     if (loading.value) return
     loading.value = true
     try {
-      const blob = await fetchAssetBlob(props.assetUrl(SOLUTION_ASSET_KEY))
+      const blob = await fetchAssetBlob(props.assets.url(SOLUTION_ASSET))
       if (!alive) return
       objectUrl = URL.createObjectURL(blob)
       playback.setSource(objectUrl)

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
+import type { RoundAssets } from '@/api/assets'
 import type { RoundResponse } from '@/api/types'
 import LabelledDivider from '@/ui/LabelledDivider.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
@@ -18,7 +19,7 @@ vi.mock('@/rounds/useRoundHistory', () => ({ useRoundHistory: vi.fn() }))
 // tile is real (not stubbed), unlike every other game this file mounts.
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-const closed = (number: number): RoundResponse => ({
+const closed = (number: number, over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: {
     number,
     label: `T-${number}`,
@@ -43,6 +44,7 @@ const closed = (number: number): RoundResponse => ({
   canOverride: false,
   roundGameId: null,
   assetKeys: {},
+  ...over,
 })
 
 /**
@@ -143,9 +145,41 @@ describe('RoundHistory', () => {
     const cards = w.findAllComponents(RoundCard)
     expect(cards).toHaveLength(2)
     expect(cards[0]?.props('closed')).toBe(true)
-    // `props()` is typed `unknown`, so the builder has to be narrowed before it can be called.
-    const assetUrl = cards[0]?.props('assetUrl') as (key: number) => string
-    expect(assetUrl(99)).toBe('/api/communities/team/rounds/13/assets/99')
+  })
+
+  it("builds assets per past round from that round's own id", () => {
+    const key = { key: 'a2V5', mediaType: 'audio/mpeg' }
+    vi.mocked(useRoundHistory).mockReturnValue(
+      mockHistory({
+        items: [
+          closed(13, { roundGameId: 'rg-13', assetKeys: { 'clip-0': key } }),
+          closed(14, { roundGameId: 'rg-14' }),
+        ],
+      }),
+    )
+
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    // `props()` is typed `unknown`, so the assets have to be narrowed before they can be called.
+    const [first, second] = w
+      .findAllComponents(RoundCard)
+      .map((card) => card.props('assets') as RoundAssets)
+    expect(first?.url('solution')).toBe(
+      '/api/communities/team/rounds/13/assets/solution?round=rg-13',
+    )
+    expect(second?.url('solution')).toBe(
+      '/api/communities/team/rounds/14/assets/solution?round=rg-14',
+    )
+    expect(first?.key('clip-0')).toEqual(key)
+    expect(second?.key('clip-0')).toBeNull()
+  })
+
+  it('hands a round without a game row no assets, rather than a URL that cannot resolve', () => {
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [closed(13)] }))
+
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    expect(w.getComponent(RoundCard).props('assets')).toBeUndefined()
   })
 
   it('asks for more until the beginning, then says so instead', async () => {

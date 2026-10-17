@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
+import type { RoundAssets } from '@/api/assets'
 import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
 import type { RoundStage } from '@/rounds/useRound'
 import type { RoundReview } from '@/rounds/review'
@@ -29,7 +30,7 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         awardPoints: { type: Number, default: null },
         stage: { type: Number, default: 0 },
-        assetUrl: { type: Function, default: null },
+        assets: { type: Object, default: null },
         review: { type: Object, default: null },
         closed: { type: Boolean, default: false },
         sealed: { type: Boolean, default: false },
@@ -95,6 +96,11 @@ const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
   ...over,
 })
 
+const anAssets = (): RoundAssets => ({
+  url: (name) => `/assets/${name}`,
+  key: () => null,
+})
+
 function aReview(): RoundReview {
   return {
     open: true,
@@ -115,7 +121,7 @@ function mountCard(props: {
   submit?: (guess: unknown) => Promise<void>
   skip?: (fromStage: number) => Promise<void>
   giveUp?: () => Promise<void>
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   review?: RoundReview
 }): VueWrapper {
   return mount(RoundCard, {
@@ -126,7 +132,7 @@ function mountCard(props: {
       submit: vi.fn().mockResolvedValue(undefined),
       skip: vi.fn().mockResolvedValue(undefined),
       giveUp: vi.fn().mockResolvedValue(undefined),
-      assetUrl: vi.fn().mockReturnValue('https://example.invalid/asset'),
+      assets: anAssets(),
       review: aReview(),
       ...props,
     },
@@ -208,18 +214,40 @@ describe('RoundCard', () => {
     expect(w.getComponent(StubGame).props('awardRule')).toBe('CLOSEST_ONLY')
   })
 
-  it("hands the game its own stage and the round's asset-url builder", () => {
-    const assetUrl = vi.fn().mockReturnValue('https://example.invalid/asset/7')
+  it('hands the game its own stage', () => {
     const round = aRound({ me: aPlay({ stage: 2 }) })
-    const stub = mountCard({ round, stage: 'playing', assetUrl }).findComponent(StubGame)
+    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
 
     expect(stub.props('stage')).toBe(2)
-    expect(stub.props('assetUrl')).toBe(assetUrl)
+  })
+
+  it("hands the game the round's assets", () => {
+    const round = aRound({ me: aPlay() })
+    const assets: RoundAssets = {
+      url: (name) => `https://example.invalid/asset/${name}`,
+      key: (name) => (name === 'clip-0' ? { key: 'a2V5', mediaType: 'audio/mpeg' } : null),
+    }
+    const stub = mountCard({ round, stage: 'playing', assets }).findComponent(StubGame)
+
+    const handed = stub.props('assets') as RoundAssets
+    expect(handed.url('photo')).toBe('https://example.invalid/asset/photo')
+    expect(handed.key('clip-0')).toEqual({ key: 'a2V5', mediaType: 'audio/mpeg' })
+    expect(handed.key('clip-1')).toBeNull()
+  })
+
+  it('hands the game no assets for a round that has none to address', () => {
+    const round = aRound({ me: aPlay() })
+
+    const stub = mount(RoundCard, {
+      props: { round, stage: 'playing', review: aReview() },
+    }).findComponent(StubGame)
+
+    // The stub's own default: nothing was handed down, and nothing was made up on the way.
+    expect(stub.props('assets')).toBeNull()
   })
 
   // Asserted by calling through rather than by identity: `mount` makes its props reactive, so an
-  // object prop arrives at the child as a proxy of what was passed and `toBe` never holds. A
-  // function prop (`assetUrl` above) is not wrapped, which is why those tests can compare directly.
+  // object prop arrives at the child as a proxy of what was passed and `toBe` never holds.
   it("hands the game the round's review", async () => {
     const review = aReview()
     const round = aRound({ me: aPlay() })
@@ -499,7 +527,7 @@ describe('RoundCard', () => {
       props: {
         round,
         closed: true,
-        assetUrl: (key: number) => `/assets/${key}`,
+        assets: anAssets(),
         review: aReview(),
       },
     })
@@ -520,7 +548,7 @@ describe('RoundCard', () => {
       props: {
         round,
         closed: true,
-        assetUrl: (key: number) => `/assets/${key}`,
+        assets: anAssets(),
         review: aReview(),
       },
     }).findComponent(StubGame)
