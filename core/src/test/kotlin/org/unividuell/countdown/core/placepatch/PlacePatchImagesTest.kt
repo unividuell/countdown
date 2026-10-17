@@ -15,6 +15,7 @@ import java.io.ByteArrayInputStream
 import java.util.UUID
 import javax.imageio.ImageIO
 import kotlin.math.abs
+import kotlin.random.Random
 
 class PlacePatchImagesTest {
 
@@ -154,5 +155,21 @@ class PlacePatchImagesTest {
         PlacePatchImages.patch(frozen = frozen, layout = landscape, x = 2, y = 3, fraySeed = 11) shouldBe
             PlacePatchImages.patch(frozen = frozen, layout = landscape, x = 2, y = 3, fraySeed = 11)
         alphas(seed = 11) shouldNotBe alphas(seed = 12)
+    }
+
+    @Test
+    fun `the patch's size does not depend on where it was cut or how it frays`() {
+        // The ciphertext is with the client before the reveal: its length must not narrow the position down.
+        val random = Random(3)
+        val noise = BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB).also { img ->
+            for (y in 0 until 300) for (x in 0 until 400) img.setRGB(x, y, random.nextInt() and 0xFFFFFF)
+        }
+        val frozen = PlacePatchImages.freeze(source = noise, layout = landscape)
+
+        val sizes = listOf(Triple(0, 0, 1), Triple(13, 7, 2), Triple(30, 20, 3)).map { (x, y, seed) ->
+            PlacePatchImages.patch(frozen = frozen, layout = landscape, x = x, y = y, fraySeed = seed).size
+        }
+
+        sizes.toSet().size shouldBe 1
     }
 }

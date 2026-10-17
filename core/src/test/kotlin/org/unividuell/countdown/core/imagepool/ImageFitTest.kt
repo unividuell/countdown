@@ -6,6 +6,7 @@ import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import kotlin.random.Random
 
 class ImageFitTest {
 
@@ -76,5 +77,17 @@ class ImageFitTest {
 
         (back.getRGB(0, 0) ushr 24) shouldBe 0
         (back.getRGB(1, 0) ushr 24) shouldBe 255
+    }
+
+    @Test
+    fun `an uncompressed PNG's length depends only on the image's size`() {
+        val flat = BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB)
+        val noise = BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB).also { img ->
+            val random = Random(7)
+            for (y in 0 until 120) for (x in 0 until 120) img.setRGB(x, y, random.nextInt())
+        }
+
+        ImageFit.pngUncompressed(flat).size shouldBe ImageFit.pngUncompressed(noise).size
+        decoded(ImageFit.pngUncompressed(noise)).getRGB(5, 9) shouldBe noise.getRGB(5, 9)
     }
 }
