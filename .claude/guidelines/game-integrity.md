@@ -8,10 +8,10 @@ behind it. What is still intent, not yet validated anywhere, stays in the spec.
 ## From parseable to perceptual
 
 What carries the answer leaves the server as a picture, not a value. `FindPatternPayload` is exactly
-five fields — `cols`, `rows`, `patternLength`, `boardImage`, `patternImage` — pinned by a field-set
-test, and neither image field is a colour or an index: both are rendered PNGs
-(`FindPatternImages`). Had the four tones travelled as data, a three-line script could read them out
-of the payload and locate the pattern without looking at anything. Rendering moves the attack from
+three fields — `cols`, `rows`, `patternLength` — pinned by a field-set test, and the two pictures are
+sealed assets (`board`, `pattern`), rendered PNGs (`FindPatternImages`), never a colour or an index.
+Had the four tones travelled as data, a three-line script could read them out of the payload and
+locate the pattern without looking at anything. Rendering moves the attack from
 "parse the payload" to "extract pixels" — the documented ceiling for a game whose secret lives in the
 visible, not a gap to close later. The rule this generalises to: **a module exposes no helper that
 hands out a cell's colour** — nothing a caller could use to reconstruct the image's content without
@@ -34,7 +34,7 @@ would mean a stream crossed a boundary it must not.
 ## A field-set test per payload *and* per solution
 
 Not "the answer is absent" — the exact set, both directions. `FindPatternGameTypeTest` pins
-`present()` to `{cols, rows, patternLength, boardImage, patternImage}` and `solution()` separately to
+`present()` to `{cols, rows, patternLength}` and `solution()` separately to
 `{blocks, pattern, palette, delta, startIndices}`. Pinning the solution matters as much as pinning the
 payload: `game-rounds.md`'s two-exits rule says a game that withholds part of its answer must also
 make sure the other exit does not hand it back — a solution field-set test is what makes "the other
@@ -60,16 +60,15 @@ reconcile against a server value, and no rule that flags or bans an outlier — 
 not hardening" stance for this class of signal stays a spec-side open question, not something this
 build answers.
 
-## Images belong in the payload while they are small — the asset endpoint is for expensive, stored bytes
+## A picture is an asset, never a payload field
 
-Musterung's two PNGs travel as base64 inside `FindPatternPayload`, not through the framework's binary
-round-asset endpoint (`/api/communities/{slug}/rounds/{roundNumber}/assets/{key}`). The endpoint's
-pre-guess gate (`PlayService.asset`) opens while `assetStage(params, key) in 0..play.stage`;
-`assetStage` defaults to the key itself, and a single-stage game can map several keys to stage 0
-(Platzierung: board and patch), see „Assets before the reveal“ in `game-rounds.md`. Two small images
-that both change every round are cheaper as JSON fields than through the endpoint; the asset endpoint
-earns its cost only for bytes too large or too expensive to regenerate per request, or that must be
-frozen per round (a song snippet's WAV ladder, Platzierung's frozen photo, not a 225-byte PNG).
+Musterung's two PNGs are `FromStage(0)` assets (`game-rounds.md`, „Round assets“): sealed, preloaded
+under the cover, opened by the reveal's key. The payload stays three numbers, and a test pins that it
+carries no picture. A picture inside the payload would arrive on the scored clock and put its transfer
+there, with no way to load it earlier.
+
+Before the reveal the sealed bytes still give away their **size** (the size rule in `game-rounds.md`).
+For Musterung that is the compressibility of the colour distribution, which does not help the search.
 
 ## The ceiling, named — Entstauber
 

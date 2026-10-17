@@ -20,8 +20,7 @@ import java.time.ZoneId
  *
  *   03:00 ─┬─ for each active edition
  *          ├─ round n   (running)  missing? → materialise
- *          ├─ round n−1 (next)     missing? → materialise, once n has its row
- *          └─ release stages of rounds older than n
+ *          └─ round n−1 (next)     missing? → materialise, once n has its row
  *
  * A round that has a row is left alone, whoever wrote it. [AnnouncementService] stays the fallback
  * for a round this run missed.
@@ -79,12 +78,6 @@ class MaterialisationSchedule(
                 logger.warn(e) { "round $roundNumber of edition ${edition.id} not materialised" }
                 break
             }
-        }
-
-        try {
-            materialiser.releaseStagesOlderThan(edition = edition, roundNumber = current)
-        } catch (e: Exception) {
-            logger.warn(e) { "stage assets of edition ${edition.id} older than round $current not released" }
         }
         return materialised
     }

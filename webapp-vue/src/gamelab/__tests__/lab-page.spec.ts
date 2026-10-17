@@ -8,6 +8,7 @@ import { initialSeed } from '@/gamelab/seed'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import * as drawerControl from '@/nav/drawerControl'
+import type { RoundAssets } from '@/api/assets'
 import type { LabRoundResponse } from '@/gamelab/types'
 
 /**
@@ -36,6 +37,7 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         awardPoints: { type: Number, default: null },
         review: { type: Object, default: null },
+        assets: { type: Object, default: null },
         // Defaulted the wrong way round on purpose: the lab's honest answer is `false`, so a
         // default of `false` would let the case below pass with the binding missing entirely.
         closed: { type: Boolean, default: true },
@@ -122,6 +124,7 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   // the reveal gate existed. The gate itself gets its own tests below, with `revealed: false`.
   revealed: true,
   canOverride: true,
+  assetKeys: {},
 }
 
 /**
@@ -921,6 +924,23 @@ describe('lab page', () => {
     await review.vote('u9', 'FLAG')
 
     expect(api.castLabVote).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 'u9', 'FLAG')
+  })
+
+  // Same trap: `<component :is>` does not check props, so an `assets` the lab forgot would only show
+  // up as a game that cannot find its photo or its clips.
+  it("hands the game the lab round's assets, addressed by seed and phase", async () => {
+    const key = { key: 'a2V5', mediaType: 'audio/mpeg' }
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({
+      ...round,
+      assetKeys: { 'clip-0': key },
+    } as never)
+
+    const w = await mountPage()
+    const assets = w.findComponent(StubGame).props('assets') as RoundAssets
+
+    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=ONE')
+    expect(assets.key('clip-0')).toEqual(key)
+    expect(assets.key('clip-1')).toBeNull()
   })
 
   // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.

@@ -66,7 +66,11 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
             return ImageFit.jpeg(image = grey, quality = QUALITY)
         }
 
-        /** The patch: `layout.size` cells from ([x], [y]), in colour, its border frayed by [fraySeed]. */
+        /**
+         * The patch: `layout.size` cells from ([x], [y]), in colour, its border frayed by [fraySeed].
+         * Encoded uncompressed: the ciphertext reaches the client before the reveal, so its size must
+         * not follow the texture at the solution.
+         */
         fun patch(frozen: ByteArray, layout: PlacePatchLayout, x: Int, y: Int, fraySeed: Int): ByteArray {
             val photo = decode(frozen)
             val cell = photo.width / layout.cols
@@ -81,7 +85,7 @@ class PlacePatchImages(private val pool: ImagePoolQuery) {
                     out.setRGB(px, py, (a shl 24) or rgb)
                 }
             }
-            return ImageFit.png(out)
+            return ImageFit.pngUncompressed(out)
         }
 
         private fun decode(bytes: ByteArray): BufferedImage =

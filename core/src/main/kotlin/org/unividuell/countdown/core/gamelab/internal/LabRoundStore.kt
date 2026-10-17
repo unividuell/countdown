@@ -8,7 +8,7 @@ import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
-import org.unividuell.countdown.core.game.RoundAsset
+import org.unividuell.countdown.core.game.StoredAsset
 import org.unividuell.countdown.core.game.Verdict
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.game.VoteTally
@@ -100,8 +100,8 @@ class LabRoundStore(private val clock: Clock) {
         val votes = ConcurrentHashMap<UUID, ConcurrentHashMap<UUID, Vote>>()
         /** The game master's verdict per target. In the lab everybody is the game master. */
         val overrides = ConcurrentHashMap<UUID, Boolean>()
-        /** Produced once per lab round, lazily — one ladder per (community, game), self-limiting. */
-        @Volatile var assets: Map<Int, RoundAsset>? = null
+        /** Produced and sealed once per lab round, lazily — one set per (community, game), self-limiting. */
+        @Volatile var assets: List<StoredAsset>? = null
     }
 
     private val rounds = ConcurrentHashMap<Key, Round>()
@@ -189,8 +189,8 @@ class LabRoundStore(private val clock: Clock) {
         communityId: UUID,
         gameId: String,
         round: LabRound,
-        produce: () -> Map<Int, RoundAsset>,
-    ): Map<Int, RoundAsset> {
+        produce: () -> List<StoredAsset>,
+    ): List<StoredAsset> {
         val (stored, _) = openRound(Key(communityId, gameId), round)
         synchronized(stored) {
             val existing = stored.assets

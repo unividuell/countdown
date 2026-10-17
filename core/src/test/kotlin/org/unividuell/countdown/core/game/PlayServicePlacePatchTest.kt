@@ -18,10 +18,11 @@ import org.unividuell.countdown.core.community.internal.CommunityEditionReposito
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
-import org.unividuell.countdown.core.game.internal.AssetForbiddenException
-import org.unividuell.countdown.core.game.internal.NotRevealedException
+import org.unividuell.countdown.core.game.internal.AnnouncementService
+import org.unividuell.countdown.core.game.internal.AssetNotFoundException
 import org.unividuell.countdown.core.game.internal.PlacePatchParams
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.RoundAssetStore
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
@@ -34,6 +35,7 @@ import java.awt.image.BufferedImage
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Base64
 import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
@@ -41,10 +43,12 @@ import java.util.UUID
 @Transactional
 class PlayServicePlacePatchTest(
     @Autowired val play: PlayService,
+    @Autowired val announcements: AnnouncementService,
     @Autowired val catalog: GameCatalog,
     @Autowired val communities: CommunityService,
     @Autowired val editions: CommunityEditionRepository,
     @Autowired val store: RoundGameStore,
+    @Autowired val assets: RoundAssetStore,
     @Autowired val plays: RoundPlayRepository,
     @Autowired val members: CommunityMemberRepository,
     @Autowired val engine: CountdownEngine,
@@ -82,7 +86,7 @@ class PlayServicePlacePatchTest(
         ).number
     }
 
-    /** One real, timed Platzierung round, announced and materialised with its photo. */
+    /** One real, timed Platzierung round, announced and materialised with both pictures. */
     private fun announced(community: Community): Pair<Int, PlacePatchParams> {
         val photo = BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB)
         photo.createGraphics().apply { color = Color.ORANGE; fillRect(0, 0, 200, 300); dispose() }
@@ -101,31 +105,36 @@ class PlayServicePlacePatchTest(
             edition = edition, roundNumber = number, gameType = "place-patch", params = params,
             award = Award(rule = AwardRule.CLOSEST_ONLY, points = 3), announcedAt = clock.instant(),
         )
-        handle.materialised(params = params, roundGameId = requireNotNull(round.id))
+        assets.storeAll(roundGameId = requireNotNull(round.id), assets = handle.produceAssets(params).map { it.sealed() })
         return number to mapper.treeToValue(params, PlacePatchParams::class.java)
     }
 
     @Test
-    fun `board and patch open with the one reveal, and only then`() {
+    fun `board and patch come sealed before the one reveal, their keys with it`() {
         val community = aCommunity()
         val player = aMember(community = community, login = "player")
         val (number, _) = announced(community)
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundGameId = requireNotNull(store.find(edition = edition, roundNumber = number)?.id)
+        fun asset(name: String) = play.asset(
+            slug = community.slug, userId = player, isSuperAdmin = false,
+            roundNumber = number, roundGameId = roundGameId, name = name,
+        )
 
-        shouldThrow<NotRevealedException> {
-            play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 0)
-        }
+        val board = asset("board")
+        board.header.mediaType shouldBe "image/jpeg"
+        asset("patch").header.mediaType shouldBe "image/png"
+        announcements.currentRound(slug = community.slug, userId = player, isSuperAdmin = false)
+            .assetKeys shouldBe emptyMap()
 
         val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
         mapper.valueToTree<tools.jackson.databind.JsonNode>(revealed.scene).propertyNames().toSet() shouldBe
             setOf("cols", "rows", "size")
 
-        play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 0)
-            .mediaType shouldBe "image/jpeg"
-        play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 1)
-            .mediaType shouldBe "image/png"
-        shouldThrow<AssetForbiddenException> {
-            play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 2)
-        }
+        revealed.assetKeys.keys shouldBe setOf("board", "patch")
+        val key = Base64.getDecoder().decode(revealed.assetKeys.getValue("board").key)
+        AssetSeal.open(sealed = board.bytes, key = key).size shouldBe board.bytes.size - 28
+        shouldThrow<AssetNotFoundException> { asset("solution") }
     }
 
     @Test

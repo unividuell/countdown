@@ -2,7 +2,6 @@ package org.unividuell.countdown.core.game
 
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
@@ -46,7 +45,6 @@ class MaterialisationScheduleTest {
     fun nothingAnnouncedYet() {
         every { store.find(edition = any(), roundNumber = any()) } returns null
         every { materialiser.materialise(edition = any(), roundNumber = any()) } returns mockk<RoundGame>()
-        justRun { materialiser.releaseStagesOlderThan(edition = any(), roundNumber = any()) }
     }
 
     private fun anEdition(startsAt: Instant? = Instant.parse("2026-12-24T17:00:00Z")) = CommunityEdition(
@@ -127,18 +125,6 @@ class MaterialisationScheduleTest {
         schedule.prepare(edition = edition, now = now) shouldBe 0
 
         verify(exactly = 0) { materialiser.materialise(edition = any(), roundNumber = any()) }
-        verify(exactly = 0) { materialiser.releaseStagesOlderThan(edition = any(), roundNumber = any()) }
-    }
-
-    @Test
-    fun `stages older than the running round are released even when nothing was materialised`() {
-        val edition = anEdition()
-        val current = currentOf(edition)
-        every { store.find(edition = edition, roundNumber = any()) } returns mockk<RoundGame>()
-
-        schedule.prepare(edition = edition, now = now) shouldBe 0
-
-        verify { materialiser.releaseStagesOlderThan(edition = edition, roundNumber = current) }
     }
 
     @Test
@@ -156,7 +142,6 @@ class MaterialisationScheduleTest {
 
         // The draw only looks back: announced before its predecessor, tomorrow could repeat today's game.
         verify(exactly = 0) { materialiser.materialise(edition = failing, roundNumber = failingCurrent - 1) }
-        verify { materialiser.releaseStagesOlderThan(edition = failing, roundNumber = failingCurrent) }
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent - 1) }
     }
@@ -170,22 +155,6 @@ class MaterialisationScheduleTest {
         schedule.prepare(edition = edition, now = now) shouldBe 0
 
         verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current - 1) }
-    }
-
-    @Test
-    fun `a failing release does not stop the next edition`() {
-        val failing = anEdition()
-        val healthy = anEdition()
-        val healthyCurrent = currentOf(healthy)
-        every { communities.activeEditions() } returns listOf(failing, healthy)
-        every {
-            materialiser.releaseStagesOlderThan(edition = failing, roundNumber = any())
-        } throws IllegalStateException("delete failed")
-
-        schedule.run()
-
-        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
-        verify { materialiser.releaseStagesOlderThan(edition = healthy, roundNumber = healthyCurrent) }
     }
 
     @Test

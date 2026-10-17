@@ -27,6 +27,14 @@ describe('PatternGrid', () => {
     expect(wrapper.get('img').attributes('src')).toBe(IMAGE)
   })
 
+  it('reports a board picture that does not load', async () => {
+    const wrapper = mountGrid()
+
+    await wrapper.get('img').trigger('error')
+
+    expect(wrapper.emitted('imageError')).toHaveLength(1)
+  })
+
   it('reports the index of a tapped cell', async () => {
     const wrapper = mountGrid()
 

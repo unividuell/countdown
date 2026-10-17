@@ -24,10 +24,9 @@ import java.util.UUID
 /**
  * `song-snippet`'s staged flow, replayed by the lab: `guessActionFor` decides whether a wrong guess
  * below the top stage advances (no entry recorded, the new stage rides the response) or records
- * terminally — the same pure function `PlayService.guess` applies to a real round. The asset gate
- * mirrors `PlayService.asset` the same way: a stage key opens once it is at or below the tester's own
- * stage, the solution key only once the tester has spent their one guess — guessing or giving up
- * either count.
+ * terminally — the same pure function `PlayService.guess` applies to a real round. The asset rule
+ * is the real round's too: a clip's key opens once its stage is at or below the tester's own, the
+ * solution only once the tester has spent their one guess — guessing or giving up either count.
  *
  * [SongSnippetTestCatalogConfiguration] keeps `song-snippet` off the network and off the empty pool
  * the test classpath's Deezer properties would otherwise leave it with — the same stub `LabServiceTest`
@@ -76,22 +75,22 @@ class LabStagedFlowTest(@Autowired val service: LabService) {
     }
 
     @Test
-    fun `lab assets follow the same gate - unlocked stages yes, above no, solution behind the spent guess`() {
+    fun `lab assets follow the same rule - keys up to my stage, solution behind the spent guess`() {
         aCommunityWithOneMember()
         service.open(
             slug = slug, gameId = "song-snippet", seed = 7, phase = Phase.ONE,
             userId = tester, isSuperAdmin = false,
-        )
+        ).assetKeys.keys shouldBe setOf("clip-0")
 
         service.asset(
             slug = slug, gameId = "song-snippet", seed = 7, phase = Phase.ONE,
-            userId = tester, isSuperAdmin = false, key = 0,
-        ).mediaType shouldBe "audio/wav"
+            userId = tester, isSuperAdmin = false, name = "clip-3",
+        ).header.mediaType shouldBe "audio/wav"
 
         shouldThrow<LabAssetForbiddenException> {
             service.asset(
                 slug = slug, gameId = "song-snippet", seed = 7, phase = Phase.ONE,
-                userId = tester, isSuperAdmin = false, key = 3,
+                userId = tester, isSuperAdmin = false, name = "solution",
             )
         }
 
@@ -102,8 +101,8 @@ class LabStagedFlowTest(@Autowired val service: LabService) {
 
         service.asset(
             slug = slug, gameId = "song-snippet", seed = 7, phase = Phase.ONE,
-            userId = tester, isSuperAdmin = false, key = 99,
-        ).mediaType shouldBe "audio/mpeg"
+            userId = tester, isSuperAdmin = false, name = "solution",
+        ).header.mediaType shouldBe "audio/mpeg"
     }
 
     @Test

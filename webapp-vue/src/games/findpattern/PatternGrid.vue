@@ -63,7 +63,7 @@ const props = withDefaults(
   { still: true, tiles: () => [], imageOpacity: 1, imageFadeMs: 0, imageFadeDelayMs: 0 },
 )
 
-const emit = defineEmits<{ cell: [index: number] }>()
+const emit = defineEmits<{ cell: [index: number]; imageError: [] }>()
 
 interface CellView {
   index: number
@@ -147,6 +147,7 @@ function tileStyle(tile: PatternTile) {
         transitionDelay: `${props.imageFadeDelayMs}ms`,
       }"
       draggable="false"
+      @error="emit('imageError')"
     />
     <div
       v-else

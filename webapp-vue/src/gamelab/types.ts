@@ -1,3 +1,4 @@
+import type { AssetKey } from '@/api/assets'
 import type { AvatarView, Vote } from '@/api/types'
 
 /**
@@ -82,4 +83,6 @@ export interface LabRoundResponse<P = unknown> {
    * master, the one deliberate difference from the product: the lab models no roles anywhere.
    */
   canOverride: boolean
+  /** The assets this viewer may open right now, by name — mirrors `RoundResponse.assetKeys`. */
+  assetKeys: Record<string, AssetKey>
 }

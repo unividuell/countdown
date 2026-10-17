@@ -17,11 +17,11 @@ class LabStageMovedOnException(message: String = "the stage has moved on") : Run
 class LabNotRevealedException(message: String = "the round has not been revealed yet") :
     RuntimeException(message)
 
-/** The key lies above the tester's stage, or behind a solution gate that is still closed -> 403. */
+/** An after-guess asset, and the tester has no entry of their own yet -> 403. */
 class LabAssetForbiddenException(message: String = "this asset is not yours to fetch yet") :
     RuntimeException(message)
 
-/** The gate allowed it, but the game has nothing stored under this key -> 404. */
+/** The lab round has no asset of that name -> 404. */
 class LabAssetNotFoundException(message: String = "no such asset") : RuntimeException(message)
 
 /** The game's round does not allow peer review -> 409, the lab's counterpart to `ReviewNotOpenException`. */

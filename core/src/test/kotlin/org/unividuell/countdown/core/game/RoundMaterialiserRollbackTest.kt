@@ -23,11 +23,10 @@ import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
-import java.util.UUID
 
 /**
- * A hook that fails with a *checked* exception — javazoom's MP3 decoder throws them, and Kotlin lets
- * them through undeclared — must roll the round back like any other failure. Otherwise the row
+ * Producing assets that fails with a *checked* exception — javazoom's MP3 decoder throws them, and
+ * Kotlin lets them through undeclared — must roll the round back like any other failure. Otherwise the row
  * commits without its assets, and the fallback, finding the row, never retries.
  *
  * No test transaction: the rollback under test is the materialiser's own. Its own context, because
@@ -61,7 +60,7 @@ class RoundMaterialiserRollbackTest(
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: FailParams) = false
             override fun scoresOnDuration(params: FailParams) = false
-            override fun materialised(params: FailParams, roundGameId: UUID) {
+            override fun produceAssets(params: FailParams): List<RoundAsset> {
                 throw IOException("malformed mp3")
             }
         }

@@ -1,9 +1,10 @@
 package org.unividuell.countdown.core.game
 
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,11 +15,15 @@ import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.Community
+import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AnnouncementService
+import org.unividuell.countdown.core.game.internal.RoundAssetStore
+import org.unividuell.countdown.core.game.internal.RoundGame
 import org.unividuell.countdown.core.game.internal.RoundGameStore
+import org.unividuell.countdown.core.game.internal.RoundMaterialiser
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import org.unividuell.countdown.core.songsnippet.SongSnippetTestCatalogConfiguration
@@ -29,22 +34,17 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Three hooks a materialisation must fire — the draw, [GameType.materialised] and
- * [GameType.releaseStageAssets] for the rounds that are no longer playable — and one, the archival
- * [GameType.releaseAssets], deliberately must not. Exercised through a fake [GameType] that records
- * every call it receives: [RecordingGame].
+ * What a materialisation does besides the row: the draw sees the right history, and the assets of
+ * the persisted type are produced once and stored, stage assets sealed. Exercised through a fake
+ * [GameType] that records its calls: [RecordingGame].
  *
- * The catalogue here carries three games — `guess-hue` and `song-snippet` (both unconditional beans)
- * and `recording-fake` (this file's `@Import`) — so [org.unividuell.countdown.core.game.internal.GameSelection]
- * may draw any one of them for a freshly materialised round; see [PlayServiceStrictRevealTest] for why
- * that risk is not shared with the default context. Test (a) below therefore does not fight the
- * selection: it asserts conditionally on whichever type actually won. Test (b) needs no such guard
- * either, because the stage release runs across the whole catalogue regardless of which type wins. Test (c) plants two earlier rounds
- * of different types directly via [RoundGameStore.announce] and asserts, again conditionally on the
- * winner, that only the same-type params reached the draw. [SongSnippetTestCatalogConfiguration] keeps
- * a `song-snippet` win from reaching the network or an empty pool.
+ * The selection may draw any available game for a fresh round, so the asset cases plant the row
+ * first: [RoundMaterialiser.materialise] then loses the announce race and stores the assets of the
+ * type the row carries — the same line a fresh round goes through. [SongSnippetTestCatalogConfiguration]
+ * keeps a `song-snippet` draw off the network and off an empty pool.
  */
 @Import(
     TestcontainersConfiguration::class,
@@ -55,9 +55,12 @@ import java.util.concurrent.CopyOnWriteArrayList
 @Transactional
 class AnnouncementMaterialisedHookTest(
     @Autowired val announcements: AnnouncementService,
+    @Autowired val materialiser: RoundMaterialiser,
     @Autowired val communities: CommunityService,
     @Autowired val editions: CommunityEditionRepository,
     @Autowired val store: RoundGameStore,
+    @Autowired val assets: RoundAssetStore,
+    @Autowired val catalog: GameCatalog,
     @Autowired val engine: CountdownEngine,
     @Autowired val clock: Clock,
     @Autowired val users: UserRepository,
@@ -67,9 +70,7 @@ class AnnouncementMaterialisedHookTest(
     @TestConfiguration
     class RecordingGame {
         class Recorder {
-            val materialisedFor = CopyOnWriteArrayList<UUID>()
-            val releasedRounds = CopyOnWriteArrayList<UUID>()
-            val stagesReleasedRounds = CopyOnWriteArrayList<UUID>()
+            val produced = AtomicInteger()
             val previousParamsSeen = CopyOnWriteArrayList<List<JsonNode>>()
         }
 
@@ -89,14 +90,12 @@ class AnnouncementMaterialisedHookTest(
                 Judgement(qualifies = true, deviation = 0.0, outcome = null)
             override fun requiresReveal(params: RecParams) = false
             override fun scoresOnDuration(params: RecParams) = false
-            override fun materialised(params: RecParams, roundGameId: UUID) {
-                recorder.materialisedFor.add(roundGameId)
-            }
-            override fun releaseAssets(roundGameIds: List<UUID>) {
-                recorder.releasedRounds.addAll(roundGameIds)
-            }
-            override fun releaseStageAssets(roundGameIds: List<UUID>) {
-                recorder.stagesReleasedRounds.addAll(roundGameIds)
+            override fun produceAssets(params: RecParams): List<RoundAsset> {
+                recorder.produced.incrementAndGet()
+                return listOf(
+                    RoundAsset(name = "scene", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", bytes = byteArrayOf(1)),
+                    RoundAsset(name = "clip-0", visibility = AssetVisibility.FromStage(0), mediaType = "audio/wav", bytes = byteArrayOf(2)),
+                )
             }
         }
 
@@ -129,39 +128,67 @@ class AnnouncementMaterialisedHookTest(
 
     private fun anAward() = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
 
+    private fun editionOf(community: Community): CommunityEdition =
+        requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+
+    private fun aRecordingRound(edition: CommunityEdition, roundNumber: Int): RoundGame = store.announce(
+        edition = edition, roundNumber = roundNumber, gameType = "recording-fake",
+        params = mapper.valueToTree(RecordingGame.RecParams(n = roundNumber)),
+        award = anAward(), announcedAt = clock.instant(),
+    )
+
+    private fun keyOf(roundGameId: UUID, name: String): ByteArray? =
+        assets.headers(roundGameId).single { it.name == name }.key
+
     @Test
-    fun `materialising a round calls the winning type's materialised hook with the round id`() {
-        val (community, viewer) = aCommunity("Materialised Hook")
-        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+    fun `materialising a round stores its produced assets, stage assets sealed`() {
+        val (community, _) = aCommunity("Materialised Assets")
+        val edition = editionOf(community)
         val roundNumber = currentRoundNumberOf(community)
+        val round = aRecordingRound(edition = edition, roundNumber = roundNumber)
 
-        announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        materialiser.materialise(edition = edition, roundNumber = roundNumber)
 
-        val stored = requireNotNull(store.find(edition = edition, roundNumber = roundNumber))
-        if (stored.gameType == "recording-fake") {
-            recorder.materialisedFor shouldContain requireNotNull(stored.id)
-        }
+        val id = requireNotNull(round.id)
+        assets.headers(id).map { it.name } shouldContainExactlyInAnyOrder listOf("scene", "clip-0")
+        keyOf(roundGameId = id, name = "clip-0").shouldNotBeNull()
+        keyOf(roundGameId = id, name = "scene").shouldBeNull()
     }
 
     @Test
-    fun `materialising a round releases the stage assets of rounds older than it`() {
-        val (community, viewer) = aCommunity("Cleanup Round")
-        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+    fun `a second materialise keeps the first keys`() {
+        val (community, _) = aCommunity("Materialised Twice")
+        val edition = editionOf(community)
         val roundNumber = currentRoundNumberOf(community)
-        val earlier = store.announce(
-            edition = edition, roundNumber = roundNumber + 1, gameType = "guess-hue",
-            params = mapper.readTree("""{"n":1}"""), award = anAward(), announcedAt = clock.instant(),
+        val id = requireNotNull(aRecordingRound(edition = edition, roundNumber = roundNumber).id)
+        materialiser.materialise(edition = edition, roundNumber = roundNumber)
+        val first = keyOf(roundGameId = id, name = "clip-0")
+        val produced = recorder.produced.get()
+
+        materialiser.materialise(edition = edition, roundNumber = roundNumber)
+
+        keyOf(roundGameId = id, name = "clip-0") shouldBe first
+        recorder.produced.get() shouldBe produced
+    }
+
+    @Test
+    fun `a game without assets stores nothing`() {
+        val (community, _) = aCommunity("Materialised Without Assets")
+        val edition = editionOf(community)
+        val roundNumber = currentRoundNumberOf(community)
+        val guessHue = requireNotNull(catalog.handle("guess-hue"))
+        val round = store.announce(
+            edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+            params = guessHue.draw(
+                random = GameRandom.fromSeed(1),
+                context = RoundContext(communityId = requireNotNull(community.id), roundNumber = roundNumber, phase = Phase.ONE),
+            ),
+            award = anAward(), announcedAt = clock.instant(),
         )
 
-        announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        materialiser.materialise(edition = edition, roundNumber = roundNumber)
 
-        // Only the running round is playable, so nobody needs an earlier round's stage ladder again
-        // — and that ladder is the expensive part. `recording-fake` sees the call whichever type won
-        // the current round, because the release runs across the whole catalogue.
-        recorder.stagesReleasedRounds shouldContain requireNotNull(earlier.id)
-        // The archival hook stays untouched: what the history still plays is not this call's business,
-        // and releasing everything belongs to archiving the run.
-        recorder.releasedRounds.shouldBeEmpty()
+        assets.exists(requireNotNull(round.id)) shouldBe false
     }
 
     @Test
@@ -170,14 +197,12 @@ class AnnouncementMaterialisedHookTest(
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
         // A larger round number is earlier: `roundNumber - 1` is tomorrow's round, not yet playable.
-        val ahead = store.announce(
-            edition = edition, roundNumber = roundNumber - 1, gameType = "guess-hue",
-            params = mapper.readTree("""{"n":3}"""), award = anAward(), announcedAt = clock.instant(),
-        )
+        val ahead = aRecordingRound(edition = edition, roundNumber = roundNumber - 1)
 
         announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
 
-        recorder.stagesReleasedRounds shouldNotContain requireNotNull(ahead.id)
+        store.find(edition = edition, roundNumber = roundNumber - 1) shouldBe ahead
+        assets.exists(requireNotNull(ahead.id)) shouldBe false
     }
 
     @Test

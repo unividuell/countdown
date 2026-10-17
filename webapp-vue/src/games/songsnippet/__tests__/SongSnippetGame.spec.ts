@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import type { RoundAssets } from '@/api/assets'
 import SongSnippetGame from '@/games/songsnippet/SongSnippetGame.vue'
 
 vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
   default: {
     name: 'SongSnippetBoard',
-    props: ['durations', 'stage', 'awardRule', 'awardPoints', 'disabled', 'assetUrl', 'notice'],
+    props: ['durations', 'stage', 'awardRule', 'awardPoints', 'disabled', 'assets', 'notice'],
     emits: ['guess', 'skip', 'giveUp'],
     template: '<div data-test="board-stub" />',
   },
@@ -13,12 +14,14 @@ vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
 vi.mock('@/games/songsnippet/SongSnippetReveal.vue', () => ({
   default: {
     name: 'SongSnippetReveal',
-    props: ['solution', 'durations', 'rows', 'live', 'assetUrl'],
+    props: ['solution', 'durations', 'rows', 'live', 'assets'],
     template: '<div data-test="reveal-stub" />',
   },
 }))
 
 const DURATIONS = [0.1, 0.5, 2, 8, 15]
+
+const ASSETS: RoundAssets = { url: (name) => `/assets/${name}`, key: () => null }
 
 function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
   return mount(SongSnippetGame, {
@@ -33,7 +36,7 @@ function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
       awardPoints: null,
       disabled: false,
       stage,
-      assetUrl: (key: number) => `/assets/${key}`,
+      assets: ASSETS,
       ...overrides,
     },
   })
@@ -59,6 +62,20 @@ function entry(userId: string, points: number, stage: number) {
 }
 
 describe('SongSnippetGame', () => {
+  it("hands the round's assets to the board, and null where the round has none", () => {
+    const w = mountGame(0)
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).props('assets')).toStrictEqual(ASSETS)
+
+    const without = mountGame(0, { assets: undefined })
+    expect(without.findComponent({ name: 'SongSnippetBoard' }).props('assets')).toBeNull()
+  })
+
+  it("hands the round's assets to the reveal", () => {
+    const w = mountGame(4, { solution: SOLUTION })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).props('assets')).toStrictEqual(ASSETS)
+  })
+
   it('shows no wrong-guess notice when the stage grows after a skip', async () => {
     const w = mountGame(0)
     const board = w.findComponent({ name: 'SongSnippetBoard' })

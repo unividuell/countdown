@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { chacha20poly1305 } from '@noble/ciphers/chacha.js'
 import type { Mock } from 'vitest'
 import type { Ref } from 'vue'
+import type { AssetKey, RoundAssets } from '@/api/assets'
 import SongSnippetBoard from '@/games/songsnippet/SongSnippetBoard.vue'
 import type { SongSuggestion } from '@/games/songsnippet/api'
 
@@ -13,9 +15,6 @@ interface PlaybackStub {
   pause: Mock
   dispose: Mock
 }
-
-const { fetchAssetBlob } = vi.hoisted(() => ({ fetchAssetBlob: vi.fn() }))
-vi.mock('@/api/assets', () => ({ fetchAssetBlob }))
 
 const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
 vi.mock('@/games/songsnippet/usePlayback', async () => {
@@ -56,13 +55,41 @@ const HIT: SongSuggestion = {
   coverUrl: null,
 }
 
+const fetchMock = vi.fn()
+
+const KEY_BYTES = new Uint8Array(32).fill(7)
+const base64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes))
+const key = (bytes: Uint8Array = KEY_BYTES): AssetKey => ({
+  key: base64(bytes),
+  mediaType: 'audio/mpeg',
+})
+
+/** What the server serves for a sealed clip: `nonce ‖ ciphertext ‖ tag`, the plaintext its own name. */
+function sealedClip(name: string): Response {
+  const nonce = new Uint8Array(12).fill(1)
+  const body = chacha20poly1305(KEY_BYTES, nonce).encrypt(new TextEncoder().encode(name))
+  return new Response(Uint8Array.from([...nonce, ...body]) as BodyInit)
+}
+
+/** The round's assets with exactly these clips opened — a stage's key arrives with the stage. */
+const assetsWith = (...clips: number[]): RoundAssets => ({
+  url: (name) => `/assets/${name}`,
+  key: (name) => (clips.some((stage) => name === `clip-${stage}`) ? key() : null),
+})
+
+const fetchedUrls = (): unknown[] => fetchMock.mock.calls.map((call) => call[0])
+
+/** Each `fetch` hands back its own `Response`: a body can be read once. */
+const serveClips = () =>
+  fetchMock.mockImplementation(async (url: string) => sealedClip(url.split('/').pop()!))
+
 function mountBoard(props: {
   stage?: number
   awardRule?: 'ALL_QUALIFYING' | 'CLOSEST_ONLY' | null
   awardPoints?: number | null
   disabled?: boolean
   notice?: string | null
-  assetUrl?: ((key: number) => string) | null
+  assets?: RoundAssets | null
 }) {
   return mount(SongSnippetBoard, {
     props: {
@@ -71,7 +98,7 @@ function mountBoard(props: {
       awardRule: props.awardRule ?? null,
       awardPoints: props.awardPoints ?? null,
       disabled: props.disabled ?? false,
-      assetUrl: props.assetUrl === undefined ? (key: number) => `/assets/${key}` : props.assetUrl,
+      assets: props.assets === undefined ? assetsWith(0, 1, 2, 3, 4) : props.assets,
       notice: props.notice ?? null,
     },
   })
@@ -79,12 +106,15 @@ function mountBoard(props: {
 
 describe('SongSnippetBoard', () => {
   beforeEach(() => {
-    fetchAssetBlob.mockReset()
-    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
+    fetchMock.mockReset()
+    serveClips()
+    vi.stubGlobal('fetch', fetchMock)
     playbacks.length = 0
     URL.createObjectURL = vi.fn(() => 'blob:stage')
     URL.revokeObjectURL = vi.fn()
   })
+
+  afterEach(() => vi.unstubAllGlobals())
 
   it('submits the guess with the pick itself — there is no separate confirm button', async () => {
     const w = mountBoard({})
@@ -123,31 +153,64 @@ describe('SongSnippetBoard', () => {
 
   it('loads the stage clip on arrival without sounding it', async () => {
     mountBoard({ stage: 0 })
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushPromises()
 
-    expect(fetchAssetBlob).toHaveBeenCalledWith('/assets/0')
+    expect(fetchedUrls()).toEqual(['/assets/clip-0'])
     expect(playbacks[0]!.setSource).toHaveBeenCalledWith('blob:stage')
     expect(playbacks[0]!.restart).not.toHaveBeenCalled()
   })
 
   it('plays the longer clip by itself once the stage grows', async () => {
     const w = mountBoard({ stage: 0 })
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushPromises()
 
     await w.setProps({ stage: 1 })
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushPromises()
 
-    expect(fetchAssetBlob).toHaveBeenLastCalledWith('/assets/1')
+    expect(fetchedUrls().at(-1)).toBe('/assets/clip-1')
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
   })
 
+  it('a skip loads the next clip sealed and opens it with the key that came with it', async () => {
+    const w = mountBoard({ stage: 0, assets: assetsWith(0) })
+    await flushPromises()
+
+    // The round that carries stage 1 carries clip-1's key too — one response, one render.
+    await w.setProps({ stage: 1, assets: assetsWith(0, 1) })
+    await flushPromises()
+
+    expect(fetchedUrls()).toEqual(['/assets/clip-0', '/assets/clip-1'])
+    expect(playbacks[0]!.setSource).toHaveBeenLastCalledWith('blob:stage')
+    const opened = vi.mocked(URL.createObjectURL).mock.calls.at(-1)![0] as Blob
+    expect(opened.type).toBe('audio/mpeg')
+    expect(new TextDecoder().decode(await opened.arrayBuffer())).toBe('clip-1')
+  })
+
+  it('a clip that does not open shows the load error', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrongKey: RoundAssets = {
+      url: (name) => `/assets/${name}`,
+      key: () => key(new Uint8Array(32).fill(9)),
+    }
+    const w = mountBoard({ stage: 0, assets: wrongKey })
+    await flushPromises()
+
+    // Both attempts: the second one past the cache, and neither opens.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/assets/clip-0',
+      expect.objectContaining({ cache: 'reload' }),
+    )
+    expect(w.get('[data-test="song-notice"]').text()).toBe(
+      'Ausschnitt nicht geladen — Play antippen.',
+    )
+    expect(playbacks[0]!.setSource).not.toHaveBeenCalled()
+  })
+
   it('rings the play button while the clip is on its way, and takes the ring away after', async () => {
-    let deliver: (blob: Blob) => void = () => {}
-    fetchAssetBlob.mockReturnValue(
-      new Promise<Blob>((resolve) => {
+    let deliver: (response: Response) => void = () => {}
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
         deliver = resolve
       }),
     )
@@ -160,21 +223,18 @@ describe('SongSnippetBoard', () => {
     )
     expect(w.get('[data-test="play"]').attributes('disabled')).toBeDefined()
 
-    deliver(new Blob(['x']))
-    await Promise.resolve()
-    await w.vm.$nextTick()
+    deliver(sealedClip('clip-0'))
+    await flushPromises()
 
     expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
     expect(w.get('[data-test="play"]').attributes('disabled')).toBeUndefined()
   })
 
   it('says a clip did not load and makes the play button the retry', async () => {
-    fetchAssetBlob.mockRejectedValueOnce(new Error('offline'))
+    fetchMock.mockRejectedValueOnce(new Error('offline'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const w = mountBoard({ stage: 0 })
-    await Promise.resolve()
-    await Promise.resolve()
-    await w.vm.$nextTick()
+    await flushPromises()
 
     // The one control that gets out of this, named — a stage can come free two ways and neither
     // is worth mentioning here.
@@ -185,34 +245,30 @@ describe('SongSnippetBoard', () => {
     expect(play.attributes('disabled')).toBeUndefined()
     expect(play.attributes('aria-label')).toBe('Ausschnitt erneut laden')
 
-    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
     await play.trigger('click')
-    await Promise.resolve()
-    await Promise.resolve()
-    await w.vm.$nextTick()
+    await flushPromises()
 
     // Loaded and sounding, and the line is gone rather than sitting there stale.
-    expect(fetchAssetBlob).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
     expect(w.find('[data-test="song-notice"]').exists()).toBe(false)
   })
 
   it('fetches nothing and offers nothing to press for a round that carries no audio', async () => {
-    const w = mountBoard({ assetUrl: null })
-    await Promise.resolve()
+    const w = mountBoard({ assets: null })
+    await flushPromises()
 
-    expect(fetchAssetBlob).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(w.get('[data-test="play"]').attributes('disabled')).toBeDefined()
     expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
   })
 
   it('does not sound a stage clip that lands after the round resolved', async () => {
-    let deliver: (blob: Blob) => void = () => {}
+    let deliver: (response: Response) => void = () => {}
     const w = mountBoard({ stage: 0 })
-    await Promise.resolve()
-    await Promise.resolve()
-    fetchAssetBlob.mockReturnValue(
-      new Promise<Blob>((resolve) => {
+    await flushPromises()
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
         deliver = resolve
       }),
     )
@@ -220,9 +276,8 @@ describe('SongSnippetBoard', () => {
 
     // The guess landed, the card is gone — and only now does its own fetch come back.
     w.unmount()
-    deliver(new Blob(['x']))
-    await Promise.resolve()
-    await Promise.resolve()
+    deliver(sealedClip('clip-1'))
+    await flushPromises()
 
     // Neither a clip nobody can stop nor an object URL nobody will revoke.
     expect(playbacks[0]!.restart).not.toHaveBeenCalled()

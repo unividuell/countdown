@@ -91,20 +91,21 @@ locations/ordering config. Example: `community` → `iam` (uses `iam.UserQuery`)
 ## The plugin pattern: data points one way, code the other
 
 A plugin module's code arrow points **host → plugin** (the adapter lives in the host, e.g.
-`SongSnippetGameType` in `game.internal` calls into `songsnippet`), but the plugin's data hangs off
-the host's (a `round_audio` row belongs to a `round_games` row). Migration ordering follows the code
-graph above, so on a fresh database the plugin's schema migrates **before** the host's — a
-cross-schema FK against the code arrow cannot be created; the referenced table doesn't exist yet.
-Don't bend the migration strategy to fix this: drop the FK, and leave the waiver as a comment in the
-migration that would have carried it (`songsnippet.round_audio`,
-`db/migration/songsnippet/V1__create_round_audio.sql`, is the example — lifecycle is owned by
-application code instead). One more consequence of the same shape: a class the host module must
-inject (`SnippetCutter`) lives in the plugin's **exposed root package**, never `.internal` — the host
-can't depend on what it can't see, and `ModularityTests.verify()` catches the violation immediately.
+`SongSnippetGameType` in `game.internal` calls into `songsnippet`), but anything it would store hangs
+off the host's data (a round's asset belongs to a `round_games` row). Migration ordering follows the code
+graph above, so on a fresh database the plugin's schema migrates **before** the host's — a cross-schema
+FK against the code arrow cannot be created; the referenced table doesn't exist yet.
 
-`deduster` follows the same pattern: schema `deduster`, table `round_images` with a soft reference to
-`game.round_games` (no FK, like `songsnippet`), dependency `deduster → imagepool`. `imagepool` now
-exports `ImagePoolQuery`, the read-only view of the pool other modules use.
+So a plugin owns **no table** where it can avoid it: a game *produces* what it would store and the
+host stores it — `game.round_assets`, one table beside `round_games`, with a real FK
+(`game-rounds.md`, „Round assets“). A plugin with no state has no schema and no migration folder.
+Don't bend the migration strategy for a plugin table: drop the FK, leave the waiver as a comment in the
+migration that would have carried it, and own the lifecycle in application code.
+
+A class the host module must inject (`SnippetCutter`) lives in the plugin's **exposed root package**,
+never `.internal` — the host can't depend on what it can't see, and `ModularityTests.verify()` catches
+the violation immediately. `deduster` depends on `imagepool`, which exports `ImagePoolQuery`, the
+read-only view of the pool other modules use.
 
 ## Dependencies note
 

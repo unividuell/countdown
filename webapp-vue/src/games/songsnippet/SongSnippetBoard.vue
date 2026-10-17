@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
-import { fetchAssetBlob } from '@/api/assets'
+import { loadSealed } from '@/api/assets'
+import type { RoundAssets } from '@/api/assets'
 import SongSnippetBriefing from './SongSnippetBriefing.vue'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
 import { usePlayback } from './usePlayback'
+import { clipAsset } from './types'
 import type { SongSuggestion } from './api'
 
 const props = defineProps<{
@@ -21,7 +23,7 @@ const props = defineProps<{
    * nothing to fetch and nothing to play, and the play button says so by staying out of reach,
    * rather than the board fetching the empty string and getting the page itself back.
    */
-  assetUrl: ((key: number) => string) | null
+  assets: RoundAssets | null
   notice: string | null
 }>()
 
@@ -72,8 +74,8 @@ const skipCost = computed(() => (phaseTwo.value ? 'kann den Sieg kosten' : 'kost
 let objectUrl: string | null = null
 /**
  * Only the newest fetch may win — the same generation guard `SongSearchBox` uses. Two quick stage
- * advances can otherwise let the OLDER stage's `fetchAssetBlob` resolve last and overwrite the
- * newer source; `fetchAssetBlob` takes no `signal` today, so the generation check (not
+ * advances can otherwise let the OLDER stage's `loadSealed` resolve last and overwrite the
+ * newer source; `loadSealed` takes no `signal` today, so the generation check (not
  * cancellation) is what makes a stale response inert.
  */
 let stageGeneration = 0
@@ -94,13 +96,13 @@ const stageError = ref(false)
 const LOAD_FAILED = 'Ausschnitt nicht geladen — Play antippen.'
 
 async function loadStage(stage: number, andPlay: boolean): Promise<void> {
-  const url = props.assetUrl
-  if (url === null) return
+  const assets = props.assets
+  if (assets === null) return
   const mine = ++stageGeneration
   loadingStage.value = true
   stageError.value = false
   try {
-    const blob = await fetchAssetBlob(url(stage))
+    const blob = await loadSealed(assets, clipAsset(stage))
     if (mine !== stageGeneration || !alive) return
     if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
     objectUrl = URL.createObjectURL(blob)
@@ -173,7 +175,7 @@ onUnmounted(() => {
       <PlayButton
         :label="stageError ? 'Ausschnitt erneut laden' : 'Von vorn abspielen'"
         :waiting="loadingStage"
-        :disabled="assetUrl === null"
+        :disabled="assets === null"
         @press="onPlay()"
       />
       <span class="min-w-0 justify-self-start pl-4">

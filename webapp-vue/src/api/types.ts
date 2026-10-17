@@ -1,3 +1,5 @@
+import type { AssetKey } from '@/api/assets'
+
 /** How this user is drawn — resolved by the server, identical to what the roster shows. */
 export interface AvatarView {
   shortName: string
@@ -270,4 +272,8 @@ export interface RoundResponse {
   awardPoints: number | null
   /** Whether *this viewer* may set an override. Viewer-scoped, like `me` — never a round property. */
   canOverride: boolean
+  /** Names the round's assets in their URL, so a new run never meets an old cache entry. `null` without a game row. */
+  roundGameId: string | null
+  /** The assets this viewer may open right now, by name. A missing name is one that stays closed. */
+  assetKeys: Record<string, AssetKey>
 }

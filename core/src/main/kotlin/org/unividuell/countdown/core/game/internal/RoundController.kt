@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.unividuell.countdown.core.game.contentType
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.isSuperAdmin
 import java.util.UUID
@@ -95,23 +97,24 @@ class RoundController(
     )
 
     /**
-     * The round's binary assets. The round number rides in the URL so each pair is its own privately
-     * cacheable resource — without it, yesterday's cache would replay the wrong round. Which gate
-     * applies follows from the number: see [PlayService.asset].
+     * The round's binary assets. Number and round id ride in the URL so each round's asset is its
+     * own privately cacheable resource — without them, yesterday's cache, or last run's, would
+     * replay the wrong round. Which rule applies follows from the number: see [PlayService.asset].
      */
-    @GetMapping("/{roundNumber}/assets/{key}")
+    @GetMapping("/{roundNumber}/assets/{name}")
     fun asset(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
         @PathVariable roundNumber: Int,
-        @PathVariable key: Int,
+        @PathVariable name: String,
+        @RequestParam round: UUID,
     ): ResponseEntity<ByteArray> {
         val asset = plays.asset(
             slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin,
-            roundNumber = roundNumber, key = key,
+            roundNumber = roundNumber, roundGameId = round, name = name,
         )
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, asset.mediaType)
+            .header(HttpHeaders.CONTENT_TYPE, asset.contentType)
             .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable")
             .body(asset.bytes)
     }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import SongSnippetBoard from './SongSnippetBoard.vue'
@@ -21,7 +22,7 @@ const props = defineProps<{
   awardPoints: number | null
   disabled: boolean
   stage?: number
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   /** Declared, never used here: the contract is the same shape for every game the card renders. */
   closed?: boolean
   /** Declared, never used here: this game never seals, and the contract has one shape. */
@@ -100,7 +101,7 @@ function onSkip(fromStage: number): void {
     :rows="rows"
     :live="live"
     :animate="hasRevealedLive"
-    :asset-url="assetUrl"
+    :assets="assets"
   />
   <SongSnippetBoard
     v-else
@@ -109,7 +110,7 @@ function onSkip(fromStage: number): void {
     :award-rule="awardRule"
     :award-points="awardPoints"
     :disabled="disabled"
-    :asset-url="assetUrl ?? null"
+    :assets="assets ?? null"
     :notice="notice"
     @guess="onGuess"
     @skip="onSkip"

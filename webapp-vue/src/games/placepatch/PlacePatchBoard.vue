@@ -11,6 +11,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import type { SceneState } from '@/ui/sceneState'
 import PlacePatchBriefing from './PlacePatchBriefing.vue'
 import { drag, press, release } from './stamp'
 import type { Board, Gesture, Point } from './stamp'
@@ -22,7 +23,9 @@ const props = withDefaults(
     /** The board's shape under the cover, while `payload` is still withheld. */
     scene?: PlacePatchScene | null
     sealed?: boolean
-    /** `null` until the reveal: a sealed board must not ask for a picture it may not have. */
+    /** Whether both sealed pictures are here — the cover offers START only when they are. */
+    sceneState: SceneState
+    /** `null` until the reveal brings the keys: the pictures wait sealed under the cover. */
     boardSrc: string | null
     patchSrc: string | null
     /** The viewer's own avatar colour — the stamp is drawn in it, here and in the reveal. */
@@ -36,7 +39,7 @@ const props = withDefaults(
   { scene: null, sealed: false, submitted: null },
 )
 
-const emit = defineEmits<{ guess: [value: Cell]; reveal: [] }>()
+const emit = defineEmits<{ guess: [value: Cell]; reveal: []; retry: [] }>()
 
 const layout = computed(() => props.payload ?? props.scene)
 const field = useTemplateRef<HTMLDivElement>('field')
@@ -44,6 +47,12 @@ const field = useTemplateRef<HTMLDivElement>('field')
 const stamp = ref<Cell | null>(null)
 const shown = computed(() => props.submitted ?? stamp.value)
 const imageFailed = ref(false)
+/**
+ * Uncovered, a picture that never opened leaves no `<img>` to fire `error`; sealed, the cover says it.
+ */
+const pictureFailed = computed(
+  () => imageFailed.value || (!props.sealed && props.sceneState === 'failed'),
+)
 let gesture: Gesture | null = null
 
 const playable = computed(
@@ -151,7 +160,7 @@ const patchWidth = computed(() =>
           />
         </div>
         <p
-          v-if="imageFailed"
+          v-if="pictureFailed"
           data-test="place-patch-image-error"
           class="text-center text-sm text-red-700"
         >
@@ -187,9 +196,10 @@ const patchWidth = computed(() =>
       </div>
       <RevealCover
         v-if="props.sealed"
-        state="ready"
+        :state="props.sceneState"
         :busy="props.disabled"
         @start="emit('reveal')"
+        @retry="emit('retry')"
       />
     </div>
 

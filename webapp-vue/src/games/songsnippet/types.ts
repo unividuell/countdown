@@ -1,3 +1,9 @@
+/** The sealed clip for a stage: its key arrives with that stage, no earlier. */
+export const clipAsset = (stage: number): string => `clip-${stage}`
+
+/** The solution's hook: plain, served only after the guess. */
+export const SOLUTION_ASSET = 'solution'
+
 export interface SongSnippetPayload {
   stageDurationsSeconds: number[]
 }

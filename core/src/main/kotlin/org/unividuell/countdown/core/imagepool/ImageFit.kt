@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
+import javax.imageio.stream.MemoryCacheImageOutputStream
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -49,7 +50,8 @@ object ImageFit {
         val writer = ImageIO.getImageWritersByFormatName("jpeg").next()
         val out = ByteArrayOutputStream()
         try {
-            ImageIO.createImageOutputStream(out).use { stream ->
+            // In memory whatever ImageIO.setUseCache says: that global flag can send a default stream to disk.
+            MemoryCacheImageOutputStream(out).use { stream ->
                 writer.output = stream
                 val param = writer.defaultWriteParam.apply {
                     compressionMode = ImageWriteParam.MODE_EXPLICIT
@@ -66,6 +68,27 @@ object ImageFit {
     fun png(image: BufferedImage): ByteArray {
         val out = ByteArrayOutputStream()
         check(ImageIO.write(image, "png", out)) { "no PNG writer for ${image.type}" }
+        return out.toByteArray()
+    }
+
+    /** PNG with deflate level 0 (stored): the length is a function of the size and type alone, not of the pixels. */
+    fun pngUncompressed(image: BufferedImage): ByteArray {
+        val writer = ImageIO.getImageWritersByFormatName("png").next()
+        val out = ByteArrayOutputStream()
+        try {
+            // In memory whatever ImageIO.setUseCache says: that global flag can send a default stream to disk.
+            MemoryCacheImageOutputStream(out).use { stream ->
+                writer.output = stream
+                val param = writer.defaultWriteParam.apply {
+                    compressionMode = ImageWriteParam.MODE_EXPLICIT
+                    // The JDK PNG writer maps quality 1.0 to deflate level 0.
+                    compressionQuality = 1.0f
+                }
+                writer.write(null, IIOImage(image, null, null), param)
+            }
+        } finally {
+            writer.dispose()
+        }
         return out.toByteArray()
     }
 }

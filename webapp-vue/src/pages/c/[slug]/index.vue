@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuth } from '@/auth/useAuth'
-import { castVote, roundAssetUrl, setAdminOverride } from '@/api/rounds'
+import { castVote, roundAssets, setAdminOverride } from '@/api/rounds'
 import type { RoundResponse } from '@/api/types'
 import { useCommunityContext } from '@/communities/context'
 import { useRoster } from '@/members/useRoster'
@@ -34,9 +34,10 @@ const {
   giveUp,
 } = useRound(community.value.slug)
 
-/** The asset lives at `{slug}/rounds/{roundNumber}/assets/{key}` — this round's own. */
-const assetUrl = (key: number): string =>
-  roundAssetUrl(community.value.slug, round.value?.round?.number ?? 0, key)
+/** This round's assets by name; `undefined` until a round with a game row is here. */
+const assets = computed(() =>
+  round.value ? roundAssets(community.value.slug, round.value) : undefined,
+)
 
 /**
  * The ballot on somebody else's play. Both calls answer with the whole round, so nothing here is
@@ -131,7 +132,7 @@ const settledMembers = computed(() => {
     :submit="submit"
     :skip="skip"
     :give-up="giveUp"
-    :asset-url="assetUrl"
+    :assets="assets"
     :review="review"
     @guessed="refreshAfterGuess"
   />

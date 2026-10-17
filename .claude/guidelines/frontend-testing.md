@@ -63,8 +63,9 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 - **An object prop does not survive a props hop by identity.** `mount()` makes its props
   reactive, so a child sees a proxy of the object the spec passed and `toBe` never holds —
   `toStrictEqual` would pass but only compares shape. Assert by calling through the handed-down
-  object instead (`await stub.props('review').vote(…)`, then check the mock). Function props are
-  not wrapped, which is why `assetUrl`-style tests can still compare with `toBe`.
+  object instead (`await stub.props('review').vote(…)`, then check the mock; for `assets`,
+  `stub.props('assets').url('board')` against the expected string). Function props are not wrapped,
+  so they still compare with `toBe`.
 - **`expect(w.get(sel).exists()).toBe(true)` asserts nothing.** `get()` already throws when the
   node is missing — VTU types its result as `Omit<DOMWrapper, 'exists'>` for exactly that reason,
   so the call is dead weight and a type error now that specs are checked. Use `find(sel).exists()`

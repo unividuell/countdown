@@ -7,7 +7,7 @@
  * than standing next to it.
  */
 import { ref, toRef } from 'vue'
-import { castVote, roundAssetUrl, setAdminOverride } from '@/api/rounds'
+import { castVote, roundAssets, setAdminOverride } from '@/api/rounds'
 import type { RoundResponse } from '@/api/types'
 import ActionButton from '@/ui/ActionButton.vue'
 import LabelledDivider from '@/ui/LabelledDivider.vue'
@@ -25,13 +25,6 @@ const { items, busy, error, canLoadMore, loadMore } = useRoundHistory(
   props.slug,
   toRef(props, 'from'),
 )
-
-/**
- * One closure per round rather than one per card render would be cheaper, and is not needed:
- * `SongPlayerReveal` calls this only inside a click handler, so no watcher hangs off its identity.
- */
-const assetUrlFor = (roundNumber: number) => (key: number) =>
-  roundAssetUrl(props.slug, roundNumber, key)
 
 /**
  * The review of a past round, written back into the item it belongs to — the server answers each
@@ -78,7 +71,7 @@ const reviewNotice = ref<{ roundNumber: number; text: string } | null>(null)
       class="mt-6"
       :round="item"
       closed
-      :asset-url="assetUrlFor(item.round?.number ?? 0)"
+      :assets="roundAssets(slug, item)"
       :review="reviewFor(item.round?.number ?? 0)"
       :notice="
         reviewNotice && reviewNotice.roundNumber === item.round?.number ? reviewNotice.text : null

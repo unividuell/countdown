@@ -37,7 +37,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
 - **[Security & auth](.claude/guidelines/security-and-auth.md)** — sign-in via the auth lib (`org.unividuell:auth-spring-boot-starter`), one account per provider, no session for anonymous requests, super-admin role, browser vs. server API keys. *(backend)*
 - **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently, never log what storage must not have. *(backend)*
-- **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); lint + `vue-tsc -b`. *(webapp-vue)*
+- **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); no secure-context-only APIs (phones use LAN HTTP); lint + `vue-tsc -b`. *(webapp-vue)*
   - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, sizing traps, accessibility.
   - **[Routing & shells](.claude/guidelines/frontend-routing.md)** — Vue Router 5 file-based, guard-owned nav data, `[slug]` shell, role gating.
   - **[State](.claude/guidelines/frontend-state.md)** — composables/VueUse (no Pinia), shared clock, server-authoritative ticking, short-clip audio.
@@ -48,7 +48,7 @@ Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/R
 - **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
 - **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
 - **[Game content](.claude/guidelines/game-content.md)** — hand-curated puzzle data is a secret in a public repo: never in plaintext (spec, plan, commit, fixture), handed over via gitignored `.local/` → `sops -e`, sample set for tests, fail-fast under `production`/`staging`.
-- **[Game rounds](.claude/guidelines/game-rounds.md)** — the run as the round coordinate, materialised a day ahead by a daily schedule (the GET as fallback), one round secret with two exits (the rule per *stream*), the game judges / the framework awards, `points` as a cache, a row lock when writing other players' rows.
+- **[Game rounds](.claude/guidelines/game-rounds.md)** — the run as the round coordinate, materialised a day ahead by a daily schedule (the GET as fallback), one round secret with two exits (the rule per *stream*), the game judges / the framework awards, `points` as a cache, a row lock when writing other players' rows, round assets named, frozen once and sealed until their stage.
 - **[Game lab](.claude/guidelines/game-lab.md)** — non-prod harness for manual mini-game review: two-gate (`!production` + own switch), 404 not 403, self-limiting in-memory round store, payload-hygiene test; the lab adapts to the game, never the reverse.
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:

@@ -9,8 +9,6 @@ const PAYLOAD = {
   cols: 8,
   rows: 14,
   patternLength: 4,
-  boardImage: 'data:image/png;base64,AAA',
-  patternImage: 'data:image/png;base64,BBB',
 }
 
 const SOLUTION = {
@@ -26,10 +24,14 @@ describe('isFindPatternPayload', () => {
     expect(isFindPatternPayload(PAYLOAD)).toBe(true)
   })
 
+  it('accepts a payload without pictures', () => {
+    expect(isFindPatternPayload({ cols: 8, rows: 14, patternLength: 4 })).toBe(true)
+  })
+
   it('rejects anything missing or mistyped', () => {
     expect(isFindPatternPayload(null)).toBe(false)
     expect(isFindPatternPayload({ ...PAYLOAD, cols: '8' })).toBe(false)
-    expect(isFindPatternPayload({ ...PAYLOAD, boardImage: undefined })).toBe(false)
+    expect(isFindPatternPayload({ ...PAYLOAD, patternLength: undefined })).toBe(false)
   })
 
   it('rejects a fractional cols — a cell count can only be whole', () => {

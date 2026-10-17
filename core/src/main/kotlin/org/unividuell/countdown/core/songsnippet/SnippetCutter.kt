@@ -19,18 +19,17 @@ class SnippetCutter {
 
     private class Pcm(val samples: ShortArray, val channels: Int, val sampleRate: Int)
 
-    fun ladder(mp3: ByteArray): Map<Int, AudioClip> {
+    /** One WAV clip per stage; the index is the stage. */
+    fun ladder(mp3: ByteArray): List<AudioClip> {
         val pcm = decode(mp3)
         val skipFrames = (SongSnippetStages.FADE_SKIP_SECONDS * pcm.sampleRate).toInt()
         val totalFrames = pcm.samples.size / pcm.channels
-        val stages = SongSnippetStages.DURATIONS_SECONDS.mapIndexed { stage, seconds ->
+        return SongSnippetStages.DURATIONS_SECONDS.map { seconds ->
             val wantedFrames = (seconds * pcm.sampleRate).toInt()
             val from = minOf(a = skipFrames, b = totalFrames)
             val to = minOf(a = from + wantedFrames, b = totalFrames)
-            stage to AudioClip(mediaType = "audio/wav", bytes = wav(pcm = pcm, fromFrame = from, toFrame = to))
+            AudioClip(mediaType = "audio/wav", bytes = wav(pcm = pcm, fromFrame = from, toFrame = to))
         }
-        return (stages + (SongSnippetStages.SOLUTION_KEY to AudioClip(mediaType = "audio/mpeg", bytes = mp3)))
-            .toMap()
     }
 
     private fun decode(mp3: ByteArray): Pcm {

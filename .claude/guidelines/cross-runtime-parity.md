@@ -28,11 +28,13 @@ Add a header comment to the TS mirror naming its Kotlin counterpart.
 
 For a handful of cases, restating literals in both test files is acceptable (`SlugsTest.kt` /
 `slugify.spec.ts`). For anything larger — and for **all numeric** parity — generate golden vectors
-from the Kotlin side into a single file under `shared/` and have both suites read **that file**.
-Duplicated literals let one side drift without turning red.
+into a single file under `shared/` (from the Kotlin side; for a published standard from a third
+implementation, below) and have both suites read **that file**. Duplicated literals let one side drift
+without turning red.
 
 ```
 shared/rng/golden-vectors.json     # written by Kotlin, asserted by Kotlin AND Vitest
+shared/round-assets/seal-vectors.json  # written by Node's crypto, asserted by Kotlin AND Vitest
 ```
 
 Such a file keeps earning its keep even with only one consumer: it pins the Kotlin side against
@@ -40,7 +42,13 @@ accidental behaviour change, and it *is* the ready-made specification if the sec
 ever needed. That is why dropping a mirror costs no verification.
 
 Give the file a `version` field: changing the values is a breaking change for anything persisted
-against it (e.g. a stored RNG seed).
+against it (e.g. a stored RNG seed). Vectors that pin a published standard's output need none: the
+seal vectors are RFC 8439 ChaCha20-Poly1305, so a change there is a different algorithm, not a new
+version.
+
+Where both sides implement a **published standard** (`AssetSeal` on the JDK, `@noble/ciphers` in the
+browser), write the vectors with a third implementation — Node's built-in crypto, recipe in
+`shared/README.md` — so neither side vouches for itself.
 
 ## Only bit-exactly specified operations
 
