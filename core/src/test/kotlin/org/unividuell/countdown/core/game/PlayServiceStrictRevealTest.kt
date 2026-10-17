@@ -126,7 +126,7 @@ class PlayServiceStrictRevealTest(
 
     @Test
     fun `a reveal for a round that has moved on is refused, and spends nothing`() {
-        // A hold finished just past the day boundary would otherwise open the next round unseen:
+        // A hold finished just after the round switch would otherwise open the next round unseen:
         // its one reveal spent, its scored clock running.
         val (community, viewer) = aCommunity("Strict Stale")
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))

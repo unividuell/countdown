@@ -208,11 +208,12 @@ Every write on the current round — reveal, guess, skip, give-up — carries th
 it is playing, not just "the current one": each request body has `roundNumber`, and `PlayService`
 checks it against the round it just resolved before writing, locking or judging anything — a mismatch
 is `RoundMovedOnException`, mapped to 409, and the client refetches. "The current round" is not the
-same thing for a client and a server once a day boundary passes between the two requests; sending the
-number costs one field and turns a would-be verdict against a target the player never saw into a
-result the client can react to instead. The reveal is the sharpest case: for a `requiresReveal` game a
-hold that ends past midnight would otherwise spend the next round's one reveal and start its scored
-clock unseen. The lab sends no number: seed and phase ride on every call and already are its round key.
+same thing for a client and a server once the next round starts between the two requests — rounds
+switch at their own start time, not at midnight; sending the number costs one field and turns a
+would-be verdict against a target the player never saw into a result the client can react to instead.
+The reveal is the sharpest case: for a `requiresReveal` game a hold that ends just after the round
+switch would otherwise spend the next round's one reveal and start its scored clock unseen. The lab
+sends no number: seed and phase ride on every call and already are its round key.
 
 ## What is replayable from timestamps needs no column
 

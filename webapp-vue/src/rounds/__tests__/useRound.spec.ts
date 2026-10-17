@@ -254,8 +254,8 @@ describe('useRound', () => {
     expect(round().stage.value).toBe('playing')
   })
 
-  it('lands the next round sealed when a deliberate reveal arrives after the day boundary', async () => {
-    // The hold finished past midnight: the server refuses to open round 13 for a player who saw 12.
+  it('lands the next round sealed when a deliberate reveal arrives after the round switch', async () => {
+    // The hold finished after round 13 started: the server refuses to open it for a player who saw 12.
     const strict = {
       id: 'find-pattern',
       displayName: 'Musterung',

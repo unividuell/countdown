@@ -44,8 +44,8 @@ class PlayService(
     @Transactional
     fun reveal(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int): RoundResponse {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
-        // Before any write: a hold that ends past the day boundary must not spend the next round's
-        // one reveal and start its clock unseen.
+        // Before any write: a hold that ends just after the round switch must not spend the next
+        // round's one reveal and start its clock unseen.
         if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
         val roundGameId = requireNotNull(current.roundGame.id)
         val revealedAt = clock.instant()
