@@ -283,8 +283,9 @@ numbers themselves are a browser measurement.
 - **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
   failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
 - **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
-  under the cover. The cover leaves in the same render, with no transition: the scored clock is
-  already running, and a fade would be ours on top of the line's.
+  under the cover — a picture's sealed bytes included (`useSealedAsset`: `ready` means the bytes are
+  here, the key's arrival only opens them). The cover leaves in the same render, with no transition:
+  the scored clock is already running, and a fade would be ours on top of the line's.
 - **The hold is the count-in.** `HoldButton` with `beats`: the digit follows the hold, a release
   hides it rather than counting it back up, and a new press always starts at the top.
 

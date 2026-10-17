@@ -166,5 +166,4 @@ of history.
   build this yet; just don't model rounds in a way that assumes one-game-per-day or that lets a
   fast round break the daily grid.
   When it is specced: `MaterialisationSchedule` walks day numbers and must then announce every
-  sub-round of the next day, and `releaseStagesOlderThan` counts days — a morning sub-round stops
-  being playable mid-day.
+  sub-round of the next day.

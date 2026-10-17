@@ -98,16 +98,52 @@ below) — so a game that withholds its solution must also make sure its `outcom
 solution can be reconstructed from, a distance included, or the second exit gives back what the first
 one held.
 
-## Assets before the reveal
+## Round assets: named, frozen once, sealed until their stage
 
-`SCENE_ASSET_KEY` (98) is the only asset served without a play row — what the cover lies over. Every
-other key stays behind the reveal; opening stage 0 instead would hand out Anspielung's first clip.
+A game only *produces* assets; the framework stores, gates and ships them. `GameType.produceAssets(params)`
+returns `RoundAsset`s: a name (`[a-z0-9-]+`, unique per round — identity only, it says nothing about
+visibility), a media type, plain bytes, and exactly one visibility.
 
-Which stage releases any other key is `GameType.assetStage(params, key)` — the key itself by
-default, Anspielung's ladder. A single-stage game with several pictures behind one reveal maps
-them all to 0 (Platzierung: board and patch); both gates, `PlayService.asset` and the lab's, ask
-the same question. A stopgap until the asset model is cleaned up as a whole
-(unividuell/countdown#101) — do not grow it into a second visibility concept meanwhile.
+| Visibility | Bytes fetchable by | Key reaches | Delivered as |
+|---|---|---|---|
+| `Scene` | every member | — | plain; what the cover lies over |
+| `FromStage(n)` | every member | who revealed and reached stage `n` (`0` = at the reveal) | ChaCha20-Poly1305 ciphertext, one random key per asset |
+| `AfterGuess` | who guessed or gave up | — | plain |
+
+- **One rule, two callers.** `AssetVisibility.mayFetch`/`opensKey` and `keysFor` (`RoundAssets.kt`) answer
+  for the real round (`PlayService`, `RoundResponses`) and the lab (`LabService`); each caller only
+  supplies the viewer's state from its own source. A closed round (see above) opens every asset and
+  every key. Never branch on a name or a number: magic keys and per-game stage maps are how the rule
+  used to fork.
+- **Stored once, never released.** `RoundMaterialiser` calls `produceAssets` once per round into
+  `game.round_assets`, visibility frozen with the bytes; the gate never asks the game again, and a
+  source that goes away (a Deezer preview URL is ephemeral) is never resolved a second time. Both racers
+  of an announce materialise: `exists` spares the second, and the unique key means the loser's rows —
+  random keys — can never replace the winner's. Nothing frees them before the edition is archived (a
+  single `DELETE`, not built), so the table grows with every round and history has all the round had.
+- **Sealed ahead, key with the stage.** A stage asset may be fetched before its stage, so the bytes
+  travel under the reveal cover and nothing loads on the scored clock; the stage that opens it brings
+  the key (`assetKeys` in the round response, never in the payload — the game knows no keys). One key
+  per asset: a shared round key would open the whole ladder at stage 0.
+
+```
+under the cover                         reveal / stage n
+GET …/assets/{name}  ──► ciphertext ─┐
+POST /reveal ──► payload + assetKeys ─┴─► open (noble) ──► insert
+```
+
+- **`AfterGuess` is never sent ahead, not even sealed.** The ciphertext's size is public (plaintext + 28
+  bytes), and the size of Anspielung's preview MP3 identifies the track in the pool.
+- **The size of a `FromStage` asset is public before its stage and must not narrow the solution.** Same
+  rule as a scene value. If the size would follow the solution, the game makes it constant: Platzierung's
+  patch is an uncompressed PNG, because a compressed one is as large as the texture at (x, y) is busy,
+  and a script holding the photo could try every candidate. The framework does not pad. A size that only
+  names the photo (Platzierung's board) is accepted where it narrows nothing else.
+- **The asset URL carries the `round_games` id (`?round=`).** Round numbers restart with each run and the
+  response is cached `immutable` for a day: the number alone would hit the previous run's entry — a stale
+  picture, or ciphertext that no longer opens.
+- A catalogue-wide lookup (search, track metadata) lives on the module's own URL (`/api/song-snippet/...`)
+  and needs no gate: searching the catalogue reveals nothing about which song the round chose.
 
 ## The viewer's row and the others' rows are different types
 
@@ -275,37 +311,4 @@ value `pointsFor` and `CLOSEST_ONLY` both read.
 
 Giving up is `guessed_at`
 set with no `guess` — re-evaluation reads that as not qualifying, awards zero points, and opens the
-solution gate the same way a judged-and-lost guess would. Binary round assets follow the same
-stage-gating: they live behind the framework's own URL
-(`/api/communities/{slug}/rounds/{roundNumber}/assets/{key}`, where key `99` is the solution), while a
-catalogue-wide lookup (search, track metadata) is served from the module's own URL
-(`/api/song-snippet/...`) — searching the whole catalogue reveals nothing about which song the round
-chose, so it needs no round gate at all. Which gate applies to the round-scoped URL follows from the
-number, not from a second path: the running round still needs the guess spent before key `99`
-unlocks, an older round is history and is open regardless of stage — the closed-round rule above.
-
-Cleanup on each announcement and each daily run releases what stopped being **playable**, not
-everything a round stored. That is one hook per lifetime event, not one hook with a flag:
-`releaseStageAssets` fires for every round older than the running one — never "all but the one just
-announced", which with rounds announced ahead is tomorrow's — and `releaseAssets` — the archival
-one — is still deliberately without a caller, for the day a whole edition is put to rest. Collapsing
-them into a single call with a `keepReveal` boolean would move a per-lifetime-event answer into a
-per-call decision.
-
-The split pays because the two halves are not the same size. A round's stage ladder is five WAV
-prefixes of one excerpt, some megabytes of PCM; its reveal clip is the downloaded MP3 unchanged, a
-fraction of that. Nobody can ask for an earlier round's stage again — only the running round is
-playable — while the reveal clip is exactly what the history plays, so releasing the ladder and
-keeping the clip frees nearly all of a past round's bytes and costs the history nothing.
-
-What is left is small but still unbounded: the reveal clip of every round ever played, because
-`EditionService.startNew` archives the old edition without releasing a byte. So the growth is
-per-run-forever, not per-run, until the archival hook above gets a caller or an operator clears them
-by hand — a much slower climb than the ladder made, and the reason the clip is worth storing at all
-is that a Deezer preview URL is ephemeral: re-resolving one years later may find nothing, while the
-bytes in `round_audio` still play.
-
-The comment above the lifecycle in
-`core/src/main/resources/db/migration/songsnippet/V1__create_round_audio.sql` describes an
-announce-time cleanup that deletes everything, which is no longer what happens — left as written,
-because editing an applied migration breaks its Flyway checksum.
+solution gate the same way a judged-and-lost guess would.
