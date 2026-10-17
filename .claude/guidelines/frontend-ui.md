@@ -25,6 +25,9 @@ desktop layout that was written first).
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
+  One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar
+  (`games/copyblocks/CopyBlocksBoard.vue`) never scrolls, so on a narrow phone its up to eight
+  slots shrink below 44px (38.6px at 375px).
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
   OS image menu and fires `pointercancel` mid-gesture — on a clock, that costs time. Give the
   image `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
@@ -85,6 +88,15 @@ desktop layout that was written first).
   either class alone is correct, only the pair is wrong — so it survives every review that reads
   them one at a time, and no happy-dom test can see it. What a test *can* pin is the structural
   rule: no element carries both.
+
+### A WebGL view gives its context back
+
+- **On unmount call `renderer.dispose()`, then `renderer.forceContextLoss()`.** A page has a budget
+  of contexts (~16 in Chrome) and drops the oldest past it. `dispose()` frees the buffers, not the
+  context — and module-level materials that outlive the view keep a disposed renderer's context
+  reachable, so the garbage collector never returns it. A page that mounts and unmounts scenes
+  (build, reveal, lab) runs dry without a visible leak. `games/copyblocks/BlockScene.vue` is the
+  example.
 
 ### A control that is not a rectangle
 

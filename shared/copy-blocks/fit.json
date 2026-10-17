@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "rule": "template = turn(guess, turns) + (dx, dy, dz); one quarter turn maps (x, y, z) to (z, y, -x)",
+  "cases": [
+    { "fit": { "turns": 0, "dx": 0, "dy": 0, "dz": 0 }, "guess": [1, 2, 3], "template": [1, 2, 3] },
+    { "fit": { "turns": 1, "dx": 0, "dy": 0, "dz": 0 }, "guess": [1, 2, 3], "template": [3, 2, -1] },
+    { "fit": { "turns": 2, "dx": 0, "dy": 0, "dz": 0 }, "guess": [1, 2, 3], "template": [-1, 2, -3] },
+    { "fit": { "turns": 3, "dx": 0, "dy": 0, "dz": 0 }, "guess": [1, 2, 3], "template": [-3, 2, 1] },
+    { "fit": { "turns": 1, "dx": 3, "dy": 0, "dz": -2 }, "guess": [1, 0, 0], "template": [3, 0, -3] },
+    { "fit": { "turns": 2, "dx": 5, "dy": 0, "dz": 5 }, "guess": [0, 1, 0], "template": [5, 1, 5] },
+    { "fit": { "turns": 3, "dx": -1, "dy": 4, "dz": 2 }, "guess": [2, -1, 5], "template": [-6, 3, 4] }
+  ]
+}

@@ -153,7 +153,8 @@ heard at all, and `currentTime` already stands at the end before the first frame
 on Firefox for Android; Chrome for Android does not show it). **Anything under about a second goes
 through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
 the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
-already running. `usePlayback` (`src/games/songsnippet/`) is the worked example.
+already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_LOOKAHEAD_SECONDS`);
+`usePlayback` (`src/games/songsnippet/`) and Blockierung's `sounds.ts` are the worked examples.
 
 - **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
   graph may be mid-render and drop the first samples of a clip that starts in the present.
