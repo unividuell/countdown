@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
+import org.unividuell.countdown.core.game.AssetViewer
 import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
@@ -14,13 +15,14 @@ import org.unividuell.countdown.core.game.GuessAction
 import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
-import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
-import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
-import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
+import org.unividuell.countdown.core.game.StoredAsset
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.awardFor
+import org.unividuell.countdown.core.game.keysFor
+import org.unividuell.countdown.core.game.mayFetch
+import org.unividuell.countdown.core.game.sealed
 import org.unividuell.countdown.core.game.struckByReview
 import org.unividuell.countdown.core.game.guessActionFor
 import tools.jackson.databind.JsonNode
@@ -230,9 +232,9 @@ class LabService(
     }
 
     /**
-     * One of the round's binary assets. The gate is framework state, replayed exactly like
-     * `PlayService.asset`: unlocked stages stay fetchable (`key` <= the tester's stage), the solution
-     * asset opens once the tester has an entry of their own — guessed or given up, either spends it.
+     * One of the round's binary assets, under the real round's rule (`PlayService.asset`): stage
+     * assets come sealed to anyone, the after-guess asset once the tester has an entry of their own
+     * — guessed or given up, either spends it.
      */
     fun asset(
         slug: String,
@@ -241,8 +243,8 @@ class LabService(
         phase: Phase,
         userId: UUID,
         isSuperAdmin: Boolean,
-        key: Int,
-    ): RoundAsset {
+        name: String,
+    ): StoredAsset {
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
         )
@@ -250,18 +252,18 @@ class LabService(
         val playing = store.roundFor(communityId = communityId, gameId = gameId, requested = round)
         val stage = store.stageOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val snapshot = store.open(communityId = communityId, gameId = gameId, round = playing)
-        val hasGuessed = snapshot.entries.any { it.userId == userId }
-        val allowed = when (key) {
-            SCENE_ASSET_KEY -> true
-            SOLUTION_ASSET_KEY -> hasGuessed
-            else -> key in 0..stage
-        }
-        if (!allowed) throw LabAssetForbiddenException()
-        val assets = store.assetsOf(
-            communityId = communityId, gameId = gameId, round = playing,
-            produce = { handle.produceAssets(playing.params) },
+        val asset = assetsOf(communityId = communityId, handle = handle, round = playing)
+            .firstOrNull { it.header.name == name } ?: throw LabAssetNotFoundException()
+
+        val viewer = AssetViewer(
+            closed = false,
+            revealed = !handle.requiresReveal(playing.params) ||
+                store.hasOpened(communityId = communityId, gameId = gameId, round = playing, userId = userId),
+            stage = stage,
+            guessed = snapshot.entries.any { it.userId == userId },
         )
-        return assets[key] ?: throw LabAssetNotFoundException()
+        if (!asset.header.visibility.mayFetch(viewer)) throw LabAssetForbiddenException()
+        return asset
     }
 
     fun resetRound(
@@ -457,9 +459,20 @@ class LabService(
         }
 
         // Revealed already if the game never asked for a deliberate one; otherwise the store's own
-        // stamp is the only truth — a peek, so a response never mutates what it is only reporting on.
+        // stamp is the only truth, read as a peek. `assetsOf` below is not one: it may produce the
+        // round's assets and, if the stored round no longer matches the snapshot's, replace it.
         val revealed = !handle.requiresReveal(snapshot.round.params) ||
             store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        val myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        // Produced only once the tester has revealed: no key opens before, and producing may download.
+        val assetKeys = if (!revealed) {
+            emptyMap()
+        } else {
+            keysFor(
+                headers = assetsOf(communityId = communityId, handle = handle, round = snapshot.round).map { it.header },
+                viewer = AssetViewer(closed = false, revealed = revealed, stage = myStage, guessed = mine != null),
+            )
+        }
 
         return LabRoundResponse(
             seed = snapshot.round.seed,
@@ -480,13 +493,21 @@ class LabService(
             me = mine?.let(::dtoOf),
             others = visible.mapNotNull(::dtoOf),
             tookOverRound = snapshot.tookOverRound,
-            myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me),
+            myStage = myStage,
             revealed = revealed,
             // Always true: in the lab everybody is the game master, the one deliberate difference
             // from the product — the lab models no roles anywhere.
             canOverride = true,
+            assetKeys = assetKeys,
         )
     }
+
+    /** The round's assets, produced and sealed on first need, then held by the store. */
+    private fun assetsOf(communityId: UUID, handle: GameTypeHandle<*>, round: LabRound): List<StoredAsset> =
+        store.assetsOf(
+            communityId = communityId, gameId = handle.id, round = round,
+            produce = { handle.produceAssets(round.params).map { it.sealed() } },
+        )
 
     private companion object {
         /**

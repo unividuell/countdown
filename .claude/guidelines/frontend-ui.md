@@ -25,6 +25,13 @@ desktop layout that was written first).
   reachable by tap. Hover may enhance, never carry.
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
+  One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar
+  (`games/copyblocks/CopyBlocksBoard.vue`) never scrolls, so on a narrow phone its up to eight
+  slots shrink below 44px (38.6px at 375px).
+- **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
+  OS image menu and fires `pointercancel` mid-gesture — on a clock, that costs time. Give the
+  image `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
+  `DedusterMark`, `PlacePatchBoard`.
 - **A horizontally scrolling strip must genuinely scroll.** `overflow-x: auto` only helps if
   the container's content is never shrunk to fit — a flex child needs `shrink-0` (or an
   equivalent intrinsic width), or `scrollWidth` stays equal to `clientWidth` and there is
@@ -82,6 +89,15 @@ desktop layout that was written first).
   them one at a time, and no happy-dom test can see it. What a test *can* pin is the structural
   rule: no element carries both.
 
+### A WebGL view gives its context back
+
+- **On unmount call `renderer.dispose()`, then `renderer.forceContextLoss()`.** A page has a budget
+  of contexts (~16 in Chrome) and drops the oldest past it. `dispose()` frees the buffers, not the
+  context — and module-level materials that outlive the view keep a disposed renderer's context
+  reachable, so the garbage collector never returns it. A page that mounts and unmounts scenes
+  (build, reveal, lab) runs dry without a visible leak. `games/copyblocks/BlockScene.vue` is the
+  example.
+
 ### A control that is not a rectangle
 
 Three traps, all invisible to tests (happy-dom computes no layout, no masks, no clipping) and all
@@ -126,6 +142,9 @@ it is the only proof available — no unit test can see them.
 
 ### Sizing that doesn't do what it looks like
 
+- **`HoldButton` has no size of its own.** Its root is `size-full`, so in an auto-height flex
+  column it renders 0 × 0 — invisible, and invisible to tests too. Wrap it in a sized box
+  (`size-24 shrink-0`, as `RevealCover` and `PlacePatchBoard` do).
 - **A percentage width only means what you think inside a parent that has a width.** In a flex
   column with `items-center`, a child is cross-axis **shrink-to-fit** — its width comes from its
   own max-content size, so a `w-[72%]` grandchild resolves against *that*, not against the card.
@@ -264,8 +283,9 @@ numbers themselves are a browser measurement.
 - **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
   failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
 - **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
-  under the cover. The cover leaves in the same render, with no transition: the scored clock is
-  already running, and a fade would be ours on top of the line's.
+  under the cover — a picture's sealed bytes included (`useSealedAsset`: `ready` means the bytes are
+  here, the key's arrival only opens them). The cover leaves in the same render, with no transition:
+  the scored clock is already running, and a fade would be ours on top of the line's.
 - **The hold is the count-in.** `HoldButton` with `beats`: the digit follows the hold, a release
   hides it rather than counting it back up, and a new press always starts at the top.
 

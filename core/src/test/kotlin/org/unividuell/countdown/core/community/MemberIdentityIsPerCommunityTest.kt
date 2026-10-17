@@ -12,6 +12,7 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.RosterService
+import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
@@ -40,6 +41,7 @@ class MemberIdentityIsPerCommunityTest(
     @Autowired val identities: MemberIdentityQuery,
     @Autowired val roster: RosterService,
     @Autowired val play: PlayService,
+    @Autowired val announcements: AnnouncementService,
     @Autowired val communities: CommunityService,
     @Autowired val members: CommunityMemberRepository,
     @Autowired val users: UserRepository,
@@ -89,6 +91,11 @@ class MemberIdentityIsPerCommunityTest(
 
     private fun idOf(community: Community): UUID = requireNotNull(community.id)
 
+    /** The round a client has on screen before it reveals — the number the reveal must name. */
+    private fun currentRoundOf(community: Community): Int = requireNotNull(
+        announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false).round,
+    ).number
+
     @Test
     fun `the port answers the override here and the global identity there`() {
         setUpTwoCommunities()
@@ -133,8 +140,12 @@ class MemberIdentityIsPerCommunityTest(
     fun `the round answer names the same player differently in each community`() {
         setUpTwoCommunities()
 
-        val here = play.reveal(slug = withOverride.slug, userId = viewer, isSuperAdmin = false)
-        val there = play.reveal(slug = without.slug, userId = viewer, isSuperAdmin = false)
+        val here = play.reveal(
+            slug = withOverride.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundOf(withOverride),
+        )
+        val there = play.reveal(
+            slug = without.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundOf(without),
+        )
 
         val mineHere = here.me.shouldNotBeNull()
         val mineThere = there.me.shouldNotBeNull()

@@ -32,4 +32,27 @@ describe('legal', () => {
     // No coordinate is ever entered by a player — only a panorama id crosses the wire.
     expect(html).not.toMatch(/eingegebene Koordinate/)
   })
+
+  it('credits the block sounds of Blockierung, with author and license', () => {
+    const wrapper = mount(Legal)
+    const html = wrapper.html()
+
+    expect(html).toContain('Klänge in Blockierung')
+    for (const author of [
+      'carrigsound',
+      'Snoman',
+      'tigersound',
+      'datasoundsample',
+      'lsprice',
+      'cmusounddesign',
+    ]) {
+      expect(html).toContain(author)
+    }
+    expect(html).toContain('CC BY-NC 4.0')
+    for (const link of wrapper.findAll('a[href^="https://freesound.org"]')) {
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toContain('noopener')
+    }
+    expect(wrapper.findAll('a[href^="https://freesound.org"]').length).toBeGreaterThan(0)
+  })
 })

@@ -14,6 +14,7 @@
 import { computed, ref } from 'vue'
 import type { AwardRule } from '@/api/types'
 import RevealCover from '@/ui/RevealCover.vue'
+import type { SceneState } from '@/ui/sceneState'
 import FindPatternBriefing from './FindPatternBriefing.vue'
 import PatternGrid from './PatternGrid.vue'
 import { stackedOutlines } from './marks'
@@ -23,6 +24,11 @@ import type { FindPatternPayload, FindPatternScene } from './types'
 const props = withDefaults(
   defineProps<{
     payload: FindPatternPayload | null
+    /** Whether both sealed pictures are here — the cover offers START only when they are. */
+    sceneState: SceneState
+    /** `null` until the reveal brings the keys: the pictures wait sealed under the cover. */
+    boardSrc: string | null
+    patternSrc: string | null
     /** The viewer's own avatar colour — the tip is marked in it, here and in the reveal. */
     myColorHex: string
     disabled: boolean
@@ -41,12 +47,20 @@ const props = withDefaults(
   { scene: null, sealed: false, submittedStartIndex: null },
 )
 
-const emit = defineEmits<{ guess: [value: { startIndex: number }]; reveal: [] }>()
+const emit = defineEmits<{ guess: [value: { startIndex: number }]; reveal: []; retry: [] }>()
 
 /** What the board is laid out for: the real payload once it arrives, the scene while sealed. */
 const layout = computed(() => props.payload ?? props.scene)
 
 const selected = ref<number[]>([])
+
+const imageFailed = ref(false)
+/**
+ * Uncovered, a picture that never opened leaves no `<img>` to fire `error`; sealed, the cover says it.
+ */
+const pictureFailed = computed(
+  () => imageFailed.value || (!props.sealed && props.sceneState === 'failed'),
+)
 
 /**
  * The growing selection while it exists, one outline per tapped cell, all at inset 0 — the reveal
@@ -79,8 +93,14 @@ const outlines = computed(() => {
   )
 })
 
+/**
+ * One guess per round, so no tap counts before the board is on screen: uncovered, `boardSrc`
+ * stays `null` until the picture opens (or for good if it never does).
+ */
+const playable = computed(() => !props.disabled && !props.sealed && props.boardSrc !== null)
+
 function onCell(index: number): void {
-  if (props.disabled || props.sealed) return
+  if (!playable.value) return
   const patternLength = layout.value?.patternLength ?? 0
   const next = nextSelection(selected.value, index, patternLength)
   selected.value = next
@@ -105,24 +125,33 @@ function onCell(index: number): void {
         :inert="props.sealed || undefined"
       >
         <PatternGrid
-          :image="props.payload?.boardImage ?? null"
+          :image="props.boardSrc"
           :cols="layout.cols"
           :rows="layout.rows"
           :outlines="outlines"
           :numbers="[]"
-          :interactive="!props.disabled && !props.sealed"
+          :interactive="playable"
           @cell="onCell"
+          @image-error="imageFailed = true"
         />
+        <p
+          v-if="pictureFailed"
+          data-test="pattern-image-error"
+          class="text-center text-sm text-red-700"
+        >
+          Das Bild ließ sich nicht laden.
+        </p>
         <p class="text-center text-lg">Finde das folgende Muster im Spielfeld</p>
         <!-- Same width as the board, larger blocks: the run is what has to be memorised, and four
            near-identical tones separate better on area. The server renders it that way. -->
         <img
-          v-if="props.payload"
-          :src="props.payload.patternImage"
+          v-if="props.patternSrc"
+          :src="props.patternSrc"
           alt="Das gesuchte Muster"
           class="block w-full border-2 border-black"
           style="image-rendering: pixelated"
           draggable="false"
+          @error="imageFailed = true"
         />
         <div
           v-else
@@ -136,9 +165,10 @@ function onCell(index: number): void {
       </div>
       <RevealCover
         v-if="props.sealed"
-        state="ready"
+        :state="props.sceneState"
         :busy="props.disabled"
         @start="emit('reveal')"
+        @retry="emit('retry')"
       />
     </div>
 

@@ -89,7 +89,7 @@ class SpotObjectSubmissionTest(
         every { countries.countryOf(any()) } returns "ES"
         val (community, owner) = aSpotObjectRound("Smuggled Coordinate")
         val roundNumber = currentRoundNumberOf(community)
-        play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = roundNumber)
 
         play.guess(
             slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = roundNumber,

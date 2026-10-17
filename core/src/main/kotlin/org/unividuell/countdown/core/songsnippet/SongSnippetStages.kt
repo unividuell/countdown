@@ -6,7 +6,4 @@ object SongSnippetStages {
 
     /** Skipped before cutting: label-side fade-ins would make the 0.1s stage effectively silence. */
     const val FADE_SKIP_SECONDS = 0.5
-
-    /** Mirrors game's SOLUTION_ASSET_KEY (= 99) without importing it — the arrow points game -> songsnippet. */
-    const val SOLUTION_KEY = 99
 }

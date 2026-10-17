@@ -7,12 +7,13 @@
  * and it comes through the scene asset, not through a solution exit.
  */
 import { computed, ref, watch } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import DedusterBoard from './DedusterBoard.vue'
 import DedusterReveal from './DedusterReveal.vue'
 import { scoreRows } from './scoreboard'
-import { SCENE_ASSET_KEY, asDedusterGuess, asDedusterPayload, asDedusterScene } from './types'
+import { PHOTO_ASSET, asDedusterGuess, asDedusterPayload, asDedusterScene } from './types'
 
 const props = defineProps<{
   payload: unknown
@@ -25,7 +26,7 @@ const props = defineProps<{
   awardPoints: number | null
   disabled: boolean
   stage?: number
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   closed?: boolean
   sealed?: boolean
   scene?: unknown
@@ -36,7 +37,7 @@ const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal:
 const payload = computed(() => asDedusterPayload(props.payload))
 const scene = computed(() => asDedusterScene(props.scene))
 const myGuess = computed(() => asDedusterGuess(props.myGuess))
-const photoUrl = computed(() => props.assetUrl?.(SCENE_ASSET_KEY) ?? null)
+const photoUrl = computed(() => props.assets?.url(PHOTO_ASSET) ?? null)
 const done = computed(() => props.closed === true || myGuess.value !== null)
 
 const rows = computed(() =>

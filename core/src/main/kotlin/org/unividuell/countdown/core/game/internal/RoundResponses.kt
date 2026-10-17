@@ -4,7 +4,9 @@ import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
+import org.unividuell.countdown.core.game.AssetViewer
 import org.unividuell.countdown.core.game.VoteTally
+import org.unividuell.countdown.core.game.keysFor
 import org.unividuell.countdown.core.game.struckByReview
 import java.util.UUID
 
@@ -20,6 +22,7 @@ class RoundResponses(
     private val identities: MemberIdentityQuery,
     private val votes: RoundPlayVoteRepository,
     private val memberships: MembershipQuery,
+    private val assets: RoundAssetStore,
 ) {
 
     fun of(current: ResolvedRound, viewerId: UUID): RoundResponse = when (current) {
@@ -93,6 +96,16 @@ class RoundResponses(
             awardRule = current.roundGame.awardRule,
             awardPoints = current.roundGame.awardPoints,
             canOverride = memberships.isAdmin(communityId = current.communityId, userId = viewerId),
+            roundGameId = current.roundGame.id,
+            assetKeys = keysFor(
+                headers = assets.headers(requireNotNull(current.roundGame.id)),
+                viewer = AssetViewer(
+                    closed = current.closed,
+                    revealed = mine != null,
+                    stage = mine?.stage ?: 0,
+                    guessed = hasGuessed,
+                ),
+            ),
         )
     }
 

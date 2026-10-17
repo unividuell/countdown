@@ -7,6 +7,7 @@
  */
 import { computed } from 'vue'
 import type { Component } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { RoundResponse } from '@/api/types'
 import type { RoundReview } from '@/rounds/review'
 import type { RoundStage } from '@/rounds/useRound'
@@ -19,11 +20,12 @@ import type { PlayClock } from '@/ui/playClock'
 const props = withDefaults(
   defineProps<{
     round: RoundResponse | null
-    assetUrl: (key: number) => string
+    /** `undefined` while the round has nothing to address — no game row behind it yet. */
+    assets?: RoundAssets | undefined
     /**
-     * Casting a ballot on somebody else's play. Required like `assetUrl` above: only games that
-     * open a review render anything for it, but every caller supplies it regardless — an optional
-     * prop here is exactly what let a caller forget it and ship a control that throws on click.
+     * Casting a ballot on somebody else's play. Required, unlike `assets`: only games that open a
+     * review render anything for it, but every caller supplies it regardless — an optional prop
+     * here is exactly what let a caller forget it and ship a control that throws on click.
      */
     review: RoundReview
     /**
@@ -42,6 +44,7 @@ const props = withDefaults(
     giveUp?: (() => Promise<void>) | undefined
   }>(),
   {
+    assets: undefined,
     closed: false,
     busy: false,
     notice: null,
@@ -173,7 +176,7 @@ function onGiveUp(): void {
         :award-points="round?.awardPoints ?? null"
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
-        :asset-url="assetUrl"
+        :assets="assets"
         :closed="props.closed"
         :review="props.review"
         @reveal="onReveal"

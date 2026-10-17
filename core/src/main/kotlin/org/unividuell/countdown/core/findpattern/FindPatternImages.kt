@@ -6,7 +6,6 @@ import org.unividuell.countdown.core.findpattern.FindPatternLayout.ROWS
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
-import java.util.Base64
 import javax.imageio.ImageIO
 
 /**
@@ -14,11 +13,8 @@ import javax.imageio.ImageIO
  * look at never becomes a number in the browser, so the console one-liner that solved the original
  * turns into image processing (see the anti-cheat spec's documented ceiling).
  *
- * They travel inside the payload as `data:` URIs rather than through the round's asset endpoint:
- * two flat images of a few hundred bytes need no storage, no migration and no release hook, and the
- * endpoint's pre-guess gate admits exactly one key for a single-stage game. Rendered per response
- * — a millisecond — instead of frozen into the params, which keeps the round's secret free of its
- * own presentation.
+ * They are round assets, not payload fields: the framework seals them, so the browser fetches them
+ * under the cover and the reveal only has to open them — nothing loads on phase two's clock.
  */
 object FindPatternImages {
 
@@ -27,11 +23,11 @@ object FindPatternImages {
     /** As wide as the board, so both images fill the same column without either being scaled. */
     const val PATTERN_BLOCK_PX = BOARD_BLOCK_PX * COLS / PATTERN_LENGTH
 
-    fun board(blocks: List<Int>, palette: List<String>): String =
-        dataUri(grid(tones = blocks, palette = palette, cols = COLS, rows = ROWS, scale = BOARD_BLOCK_PX))
+    fun board(blocks: List<Int>, palette: List<String>): ByteArray =
+        png(grid(tones = blocks, palette = palette, cols = COLS, rows = ROWS, scale = BOARD_BLOCK_PX))
 
-    fun pattern(pattern: List<Int>, palette: List<String>): String =
-        dataUri(
+    fun pattern(pattern: List<Int>, palette: List<String>): ByteArray =
+        png(
             grid(
                 tones = pattern, palette = palette,
                 cols = PATTERN_LENGTH, rows = 1, scale = PATTERN_BLOCK_PX,
@@ -58,15 +54,15 @@ object FindPatternImages {
         return image
     }
 
-    private fun dataUri(image: BufferedImage): String {
+    private fun png(image: BufferedImage): ByteArray {
         // ImageIO's cache defaults to on, which would route this write through a
-        // FileCacheImageOutputStream — a temp file per image on a request path that has no reason
+        // FileCacheImageOutputStream — a temp file per image on a path that has no reason
         // to touch disk, and one that throws outright on a read-only /tmp. `setUseCache` is a
         // per-thread ImageIO setting, not a JVM-wide System property, so this stays this object's
         // own business.
         ImageIO.setUseCache(false)
         val bytes = ByteArrayOutputStream()
         check(ImageIO.write(image, "png", bytes)) { "no PNG writer registered for png" }
-        return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes.toByteArray())
+        return bytes.toByteArray()
     }
 }

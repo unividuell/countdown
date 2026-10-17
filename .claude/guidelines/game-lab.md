@@ -90,9 +90,15 @@ requires a reveal but has none on record — the lab's counterpart to `PlayServi
 play row.
 
 `payload` is withheld the same way `solution` already is, gated on the same `revealed` flag: for a
-reveal-gated game the payload IS the board (Musterung's board image, e.g.), so leaving it in an
+reveal-gated game the payload IS the board (Entstauber's tile order, e.g.), so leaving it in an
 unrevealed response would let the network tab show what the click is supposed to protect, making the
 gate theatre rather than a real one to review by hand.
+
+A board that is a picture is an asset, and the lab's asset gate is the framework's rule, not a copy:
+`LabService` feeds `mayFetch`/`opensKey` (`game-rounds.md`, „Round assets“) the lab's own viewer state,
+with `revealed` the same `!requiresReveal || hasOpened`. So for a reveal-gated game a stage-0
+asset's key — `LabRoundResponse.assetKeys` — comes only after `POST .../reveal`, as in a real round; a
+lab that opened it earlier would let a tester review a gate nobody ships.
 
 A reset (`resetRound`/`forget`) clears the stamp and does **not** re-stamp it — no second write path
 keeping two truths in sync. The tester lands back in front of the gate, which is exactly what "reset"

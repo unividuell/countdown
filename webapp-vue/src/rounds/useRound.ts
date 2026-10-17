@@ -53,8 +53,9 @@ export function useRound(slug: string): {
   async function reload(): Promise<void> {
     round.value = await getCurrentRound(slug)
     const game = round.value.game
-    if (game !== null && round.value.me == null && !game.requiresReveal) {
-      round.value = await revealRound(slug)
+    const number = round.value.round?.number
+    if (game !== null && number !== undefined && round.value.me == null && !game.requiresReveal) {
+      round.value = await revealRound(slug, number)
     }
   }
 
@@ -70,8 +71,10 @@ export function useRound(slug: string): {
   }
 
   async function reveal(): Promise<void> {
+    const number = round.value?.round?.number
+    if (number === undefined) return
     await run(async () => {
-      round.value = await revealRound(slug)
+      round.value = await revealRound(slug, number)
     })
   }
 

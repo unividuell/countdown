@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.springframework.stereotype.Component
+import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
@@ -13,12 +14,10 @@ import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.songsnippet.PreviewSource
 import org.unividuell.countdown.core.songsnippet.SnippetCutter
 import org.unividuell.countdown.core.songsnippet.SongCatalog
-import org.unividuell.countdown.core.songsnippet.SongSnippetAudioStore
 import org.unividuell.countdown.core.songsnippet.SongSnippetStages
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.util.Locale
-import java.util.UUID
 
 /** The frozen round. Artist and title double as the answer; the track id is its permanent handle. */
 data class SongSnippetParams(
@@ -59,7 +58,6 @@ class SongSnippetGameType(
     private val catalog: SongCatalog,
     private val previews: PreviewSource,
     private val cutter: SnippetCutter,
-    private val audio: SongSnippetAudioStore,
     private val mapper: ObjectMapper,
 ) : GameType<SongSnippetParams> {
 
@@ -121,32 +119,26 @@ class SongSnippetGameType(
         link = params.link,
     )
 
-    override fun produceAssets(params: SongSnippetParams): Map<Int, RoundAsset> {
+    /** One clip per stage, `clip-0` … `clip-4`, and the whole preview once the guess is spent. */
+    override fun produceAssets(params: SongSnippetParams): List<RoundAsset> {
         val resolved = checkNotNull(catalog.track(params.trackId)) {
             "track ${params.trackId} no longer resolvable for audio"
         }
         val mp3 = previews.download(resolved.previewUrl)
-        return cutter.ladder(mp3).mapValues { (_, clip) ->
-            RoundAsset(mediaType = clip.mediaType, bytes = clip.bytes)
+        val clips = cutter.ladder(mp3).mapIndexed { stage, clip ->
+            RoundAsset(
+                name = "clip-$stage",
+                visibility = AssetVisibility.FromStage(stage),
+                mediaType = clip.mediaType,
+                bytes = clip.bytes,
+            )
         }
-    }
-
-    override fun materialised(params: SongSnippetParams, roundGameId: UUID) {
-        for ((key, asset) in produceAssets(params)) {
-            audio.store(roundGameId = roundGameId, key = key, mediaType = asset.mediaType, bytes = asset.bytes)
-        }
-    }
-
-    override fun asset(params: SongSnippetParams, roundGameId: UUID, key: Int): RoundAsset? =
-        audio.find(roundGameId = roundGameId, key = key)
-            ?.let { RoundAsset(mediaType = it.mediaType, bytes = it.bytes) }
-
-    override fun releaseStageAssets(roundGameIds: List<UUID>) {
-        audio.releaseStages(roundGameIds)
-    }
-
-    override fun releaseAssets(roundGameIds: List<UUID>) {
-        audio.release(roundGameIds)
+        return clips + RoundAsset(
+            name = "solution",
+            visibility = AssetVisibility.AfterGuess,
+            mediaType = "audio/mpeg",
+            bytes = mp3,
+        )
     }
 }
 

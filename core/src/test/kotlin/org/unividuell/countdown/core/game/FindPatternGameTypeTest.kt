@@ -6,7 +6,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.kotest.matchers.string.shouldStartWith
+import io.kotest.matchers.string.shouldNotContain
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.findpattern.FindPatternBoard
 import org.unividuell.countdown.core.findpattern.FindPatternLayout
@@ -81,23 +81,38 @@ class FindPatternGameTypeTest {
     }
 
     @Test
-    fun `the payload carries exactly the five fields the client needs`() {
+    fun `the payload carries exactly the three numbers the client lays out from`() {
         val json = mapper.writeValueAsString(game.present(draw(phase = Phase.ONE)))
         val fields = mapper.readTree(json).propertyNames().toSet()
 
-        fields shouldBe setOf("cols", "rows", "patternLength", "boardImage", "patternImage")
+        fields shouldBe setOf("cols", "rows", "patternLength")
     }
 
     @Test
-    fun `the payload's images are png data uris and its measures are the layout`() {
+    fun `the payload carries no picture`() {
+        val json = mapper.writeValueAsString(game.present(draw(phase = Phase.ONE)))
+
+        json shouldNotContain "boardImage"
+        json shouldNotContain "patternImage"
+    }
+
+    @Test
+    fun `the payload's measures are the layout`() {
         val payload = game.present(draw(phase = Phase.ONE))
 
         payload.cols shouldBe FindPatternLayout.COLS
         payload.rows shouldBe FindPatternLayout.ROWS
         payload.patternLength shouldBe FindPatternLayout.PATTERN_LENGTH
-        payload.boardImage shouldStartWith "data:image/png;base64,"
-        payload.patternImage shouldStartWith "data:image/png;base64,"
-        payload.boardImage shouldNotBe payload.patternImage
+    }
+
+    @Test
+    fun `board and pattern open with the reveal`() {
+        val assets = game.produceAssets(draw(phase = Phase.ONE))
+
+        assets.map { it.name } shouldBe listOf("board", "pattern")
+        assets.map { it.visibility } shouldBe listOf(AssetVisibility.FromStage(0), AssetVisibility.FromStage(0))
+        assets.map { it.mediaType } shouldBe listOf("image/png", "image/png")
+        assets[0].bytes shouldNotBe assets[1].bytes
     }
 
     @Test

@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.game.internal
 
 import org.unividuell.countdown.core.countdown.Round
+import org.unividuell.countdown.core.game.AssetKey
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameScene
@@ -170,6 +171,10 @@ data class RoundResponse(
      * true. The component is the same in both worlds and asks nobody — it is told.
      */
     val canOverride: Boolean = false,
+    /** The announced round's row, for the asset URL: round numbers restart with every run. */
+    val roundGameId: UUID? = null,
+    /** The keys this viewer's state opens, by asset name; every state-changing answer brings the new ones. */
+    val assetKeys: Map<String, AssetKey> = emptyMap(),
 )
 
 /**
@@ -178,6 +183,9 @@ data class RoundResponse(
  * a verdict against a target the player never saw.
  */
 data class GuessRequest(val roundNumber: Int, val guess: JsonNode)
+
+/** Open the round the client believes it is looking at — see [GuessRequest]. */
+data class RevealRequest(val roundNumber: Int)
 
 /** Advance the staged reveal: from the stage the client believes it is on. */
 data class SkipRequest(val roundNumber: Int, val fromStage: Int)

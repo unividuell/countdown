@@ -1,3 +1,4 @@
+import type { RoundAssets } from '@/api/assets'
 import { apiFetch } from '@/api/client'
 import type { Vote } from '@/api/types'
 import type { LabPhase, LabRoundResponse } from './types'
@@ -56,14 +57,25 @@ export const giveUpLabRound = <P>(slug: string, game: string, seed: number, phas
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/give-up'), { method: 'POST' })
 
 /** The round's binary assets, stage-gated exactly like the real round's — a plain URL, not a fetch:
- * callers pass it to `fetchAssetBlob` themselves, the same way the real round's `assetUrl` works. */
+ * callers pass it to `fetchAssetBlob` themselves, the same way the real round's `roundAssetUrl` works. */
 export const labAssetUrl = (
   slug: string,
   game: string,
   seed: number,
   phase: LabPhase,
-  key: number,
-): string => labUrl(slug, game, seed, phase, `/assets/${key}`)
+  name: string,
+): string => labUrl(slug, game, seed, phase, `/assets/${encodeURIComponent(name)}`)
+
+/** The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart. */
+export const labAssets = (
+  slug: string,
+  game: string,
+  phase: LabPhase,
+  round: LabRoundResponse,
+): RoundAssets => ({
+  url: (name) => labAssetUrl(slug, game, round.seed, phase, name),
+  key: (name) => round.assetKeys[name] ?? null,
+})
 
 /** Casting, changing, or withdrawing a ballot on somebody else's tip. Mirrors `castVote`. */
 export const castLabVote = <P>(

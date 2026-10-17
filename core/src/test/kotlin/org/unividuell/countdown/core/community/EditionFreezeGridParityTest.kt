@@ -26,14 +26,14 @@ class EditionFreezeGridParityTest {
         )
 
         frozenSince(edition) shouldBe engine.intervalOf(
-            number = gamesFromRound,
+            number = gamesFromRound + 1,
             startsAt = startsAt,
             zone = ZoneId.of(zone),
         ).start
     }
 
     @Test
-    fun `the freeze point is the engine's start of that round`() {
+    fun `the freeze point is the engine's start of the round before the first game round`() {
         assertMatchesEngine(
             startsAt = Instant.parse("2026-06-25T09:00:00Z"),
             zone = "Europe/Berlin",

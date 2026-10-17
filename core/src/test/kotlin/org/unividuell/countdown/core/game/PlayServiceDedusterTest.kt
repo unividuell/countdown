@@ -20,6 +20,7 @@ import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.DedusterParams
 import org.unividuell.countdown.core.game.internal.PlayService
+import org.unividuell.countdown.core.game.internal.RoundAssetStore
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
 import org.unividuell.countdown.core.iam.User
@@ -42,6 +43,7 @@ class PlayServiceDedusterTest(
     @Autowired val communities: CommunityService,
     @Autowired val editions: CommunityEditionRepository,
     @Autowired val store: RoundGameStore,
+    @Autowired val assets: RoundAssetStore,
     @Autowired val plays: RoundPlayRepository,
     @Autowired val members: CommunityMemberRepository,
     @Autowired val engine: CountdownEngine,
@@ -95,7 +97,7 @@ class PlayServiceDedusterTest(
             edition = edition, roundNumber = number, gameType = "deduster", params = params,
             award = Award(rule = AwardRule.CLOSEST_ONLY, points = 3), announcedAt = clock.instant(),
         )
-        handle.materialised(params = params, roundGameId = requireNotNull(round.id))
+        assets.storeAll(roundGameId = requireNotNull(round.id), assets = handle.produceAssets(params).map { it.sealed() })
         return number to mapper.treeToValue(params, DedusterParams::class.java)
     }
 
@@ -103,12 +105,15 @@ class PlayServiceDedusterTest(
     fun `the photo is there before the reveal, the order only after it`() {
         val (community, player) = aCommunity()
         val (number, _) = announced(community)
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val roundGameId = requireNotNull(store.find(edition = edition, roundNumber = number)?.id)
 
         play.asset(
-            slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = SCENE_ASSET_KEY,
-        ).mediaType shouldBe "image/jpeg"
+            slug = community.slug, userId = player, isSuperAdmin = false,
+            roundNumber = number, roundGameId = roundGameId, name = "photo",
+        ).header.mediaType shouldBe "image/jpeg"
 
-        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
         mapper.valueToTree<tools.jackson.databind.JsonNode>(revealed.scene).propertyNames().toSet() shouldBe
             setOf("cols", "rows", "intervalMs")
         revealed.payload.shouldNotBeNull()
@@ -118,7 +123,7 @@ class PlayServiceDedusterTest(
     fun `a finished run is stored with its average, and no duration is published`() {
         val (community, player) = aCommunity()
         val (number, params) = announced(community)
-        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
 
         val reactions = List(params.cols * params.rows) { 400 }
         val response = play.guess(
@@ -141,7 +146,7 @@ class PlayServiceDedusterTest(
     fun `a run that reaches the server before it could have ended is marked, and the row says why`() {
         val (community, player) = aCommunity()
         val (number, params) = announced(community)
-        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
 
         val reactions = List(params.cols * params.rows) { 400 }
         play.guess(

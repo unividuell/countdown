@@ -90,8 +90,8 @@ open class EditionService(
     }
 
     /**
-     * Whether this run's grid is fixed — its first game round has begun, so round numbers are in
-     * play and moving the grid would hand out one of them twice.
+     * Whether this run's grid is fixed — the day before its first game round has begun, so the
+     * schedule may have announced that round and moving the grid would hand out a round number twice.
      */
     open fun isFrozen(edition: CommunityEdition): Boolean =
         frozenSince(edition)?.let { !clock.instant().isBefore(it) } ?: false

@@ -6,7 +6,7 @@ import org.unividuell.countdown.core.deduster.DedusterGrid
 import org.unividuell.countdown.core.deduster.DedusterImages
 import org.unividuell.countdown.core.deduster.DedusterPool
 import org.unividuell.countdown.core.deduster.DedusterTicks
-import org.unividuell.countdown.core.deduster.RoundImageStore
+import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
@@ -17,7 +17,6 @@ import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.RoundAsset
 import org.unividuell.countdown.core.game.RoundContext
-import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.util.UUID
@@ -103,7 +102,6 @@ private const val LATE_SLACK_MS = 10_000L
 class DedusterGameType(
     private val pool: DedusterPool,
     private val images: DedusterImages,
-    private val store: RoundImageStore,
     private val mapper: ObjectMapper,
 ) : GameType<DedusterParams> {
 
@@ -214,30 +212,15 @@ class DedusterGameType(
         )
     }
 
-    override fun produceAssets(params: DedusterParams): Map<Int, RoundAsset> {
+    override fun produceAssets(params: DedusterParams): List<RoundAsset> {
         val grid = DedusterGrid.ofLayout(cols = params.cols, rows = params.rows)
         val bytes = images.playImage(imageId = params.imageId, grid = grid) ?: run {
             logger.warn { "deduster image ${params.imageId} is gone; the round has no photo" }
-            return emptyMap()
+            return emptyList()
         }
-        return mapOf(SCENE_ASSET_KEY to RoundAsset(mediaType = "image/jpeg", bytes = bytes))
-    }
-
-    /** Idempotent: the race's second caller finds the row and does not render a second time. */
-    override fun materialised(params: DedusterParams, roundGameId: UUID) {
-        if (store.find(roundGameId) != null) return
-        val asset = produceAssets(params)[SCENE_ASSET_KEY] ?: return
-        store.store(roundGameId = roundGameId, mediaType = asset.mediaType, bytes = asset.bytes)
-    }
-
-    override fun asset(params: DedusterParams, roundGameId: UUID, key: Int): RoundAsset? =
-        if (key != SCENE_ASSET_KEY) null
-        else store.find(roundGameId)?.let { RoundAsset(mediaType = it.mediaType, bytes = it.bytes) }
-
-    // releaseStageAssets stays the no-op default: the history shows past rounds, photo included.
-
-    override fun releaseAssets(roundGameIds: List<UUID>) {
-        store.release(roundGameIds)
+        return listOf(
+            RoundAsset(name = "photo", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", bytes = bytes),
+        )
     }
 
     private fun reactionsOf(node: JsonNode?, tiles: Int): List<Int> {

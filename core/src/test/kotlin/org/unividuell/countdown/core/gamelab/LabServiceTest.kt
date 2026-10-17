@@ -27,9 +27,9 @@ import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
-import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
 import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
+import org.unividuell.countdown.core.gamelab.internal.LabAssetNotFoundException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
 import org.unividuell.countdown.core.gamelab.internal.LabService
@@ -112,6 +112,8 @@ class LabServiceTest(
         "find-pattern" -> mapper.readTree("""{"startIndex":3}""")
         "spot-object" -> mapper.readTree("""{"panoId":"abc","heading":12.0,"pitch":0.0,"zoom":1.0}""")
         "deduster" -> mapper.readTree("""{"reactionsMs":[],"endedBy":"TOO_LATE"}""")
+        "place-patch" -> mapper.readTree("""{"x":0,"y":0}""")
+        "copy-blocks" -> mapper.readTree("""{"blocks":[{"x":0,"y":0,"z":0,"type":"DIRT"}]}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
@@ -497,8 +499,32 @@ class LabServiceTest(
 
         service.asset(
             slug = community.slug, gameId = "deduster", seed = 42, phase = Phase.ONE,
-            userId = mine.me, isSuperAdmin = false, key = SCENE_ASSET_KEY,
-        ).mediaType shouldBe "image/jpeg"
+            userId = mine.me, isSuperAdmin = false, name = "photo",
+        ).header.mediaType shouldBe "image/jpeg"
+    }
+
+    @Test
+    fun `place-patch serves its board and its patch from one stage`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.open(
+            slug = community.slug, gameId = "place-patch", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        ).assetKeys.keys shouldBe setOf("board", "patch")
+
+        service.asset(
+            slug = community.slug, gameId = "place-patch", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, name = "board",
+        ).header.mediaType shouldBe "image/jpeg"
+        service.asset(
+            slug = community.slug, gameId = "place-patch", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, name = "patch",
+        ).header.mediaType shouldBe "image/png"
+        shouldThrow<LabAssetNotFoundException> {
+            service.asset(
+                slug = community.slug, gameId = "place-patch", seed = 42, phase = Phase.ONE,
+                userId = mine.me, isSuperAdmin = false, name = "solution",
+            )
+        }
     }
 
     @Test

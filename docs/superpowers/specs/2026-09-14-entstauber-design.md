@@ -122,9 +122,10 @@ nie dekodiert.
 Modulith verbietet dem Spiel den Zugriff darauf. Der Pool gibt das Bild deshalb schon gedreht heraus,
 nur so klein dekodiert, wie `minShortEdge` es erlaubt.
 
-Die **Vorrangregel lebt im Spiel, nicht im Pool**: `candidateIds(community) ifEmpty
-{ candidateIds(null) }`. Der Pool lernt kein Spielwissen; das hat er sich in seiner eigenen Spec
-verbeten.
+Die Vorrangregel — `candidateIds(community) ifEmpty { candidateIds(null) }` — lag hier zuerst im
+Spiel. Mit dem zweiten Bildspiel ist sie als `ImagePoolQuery.playableIds` nach `imagepool` gezogen,
+zusammen mit den Seitenverhältnis-Klassen und dem Zuschnitt: so werden Bilder ausgewählt, für jedes
+Spiel — siehe [Platzierung](2026-10-15-platzierung-design.md).
 
 ### `RoundContext` bekommt die Gemeinschaft
 

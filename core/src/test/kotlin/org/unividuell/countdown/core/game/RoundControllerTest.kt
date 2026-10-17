@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -119,7 +120,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST reveal hands out the payload`() {
-        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false) } returns RoundResponse(
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12) } returns RoundResponse(
             round = RoundDto(
                 number = 12, label = "T-12",
                 start = Instant.parse("2026-08-12T10:00:00Z"),
@@ -135,6 +136,8 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
             with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":12}"""
         }.andExpect {
             status { isOk() }
             jsonPath("$.payload.description") { value("ein warmes Rot") }
@@ -295,11 +298,13 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `a second reveal of a strict round is a conflict`() {
-        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false) } throws
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12) } throws
             AlreadyRevealedException()
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
             with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":12}"""
         }.andExpect { status { isConflict() } }
     }
 
@@ -339,6 +344,18 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":11,"guess":{"hue":1.0}}"""
+        }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `a reveal for a round that has moved on is a conflict`() {
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 11) } throws
+            RoundMovedOnException(current = 12)
+
+        mockMvc.post("/api/communities/team/rounds/current/reveal") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":11}"""
         }.andExpect { status { isConflict() } }
     }
 
@@ -407,6 +424,43 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             jsonPath("$.noGameReason") { value("NOT_SCHEDULED") }
         }
+    }
+
+    @Test
+    fun `a sealed asset is served as octet-stream, a plain one with its media type`() {
+        val roundGameId = UUID.randomUUID()
+        every {
+            plays.asset(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 12, roundGameId = roundGameId, name = "clip-0",
+            )
+        } returns StoredAsset(
+            header = AssetHeader(
+                name = "clip-0", visibility = AssetVisibility.FromStage(0), mediaType = "audio/wav", key = ByteArray(32),
+            ),
+            bytes = byteArrayOf(1, 2, 3),
+        )
+        every {
+            plays.asset(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 12, roundGameId = roundGameId, name = "scene",
+            )
+        } returns StoredAsset(
+            header = AssetHeader(name = "scene", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", key = null),
+            bytes = byteArrayOf(4),
+        )
+
+        mockMvc.get("/api/communities/team/rounds/12/assets/clip-0?round=$roundGameId") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                header { string(HttpHeaders.CONTENT_TYPE, "application/octet-stream") }
+            }
+        mockMvc.get("/api/communities/team/rounds/12/assets/scene?round=$roundGameId") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                header { string(HttpHeaders.CONTENT_TYPE, "image/jpeg") }
+                header { string(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable") }
+            }
     }
 
     @Test

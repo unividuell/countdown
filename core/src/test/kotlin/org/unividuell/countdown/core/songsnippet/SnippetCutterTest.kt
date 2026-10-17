@@ -1,6 +1,5 @@
 package org.unividuell.countdown.core.songsnippet
 
-import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
@@ -13,14 +12,14 @@ class SnippetCutterTest {
 
     private val ladder = SnippetCutter().ladder(mp3)
 
-    private fun pcmOf(key: Int): Pair<ByteArray, javax.sound.sampled.AudioFormat> {
-        val stream = AudioSystem.getAudioInputStream(ByteArrayInputStream(ladder.getValue(key).bytes))
+    private fun pcmOf(stage: Int): Pair<ByteArray, javax.sound.sampled.AudioFormat> {
+        val stream = AudioSystem.getAudioInputStream(ByteArrayInputStream(ladder[stage].bytes))
         return stream.readAllBytes() to stream.format
     }
 
     @Test
-    fun `the ladder carries the five stages plus the solution key`() {
-        ladder.keys.sorted() shouldContainExactly listOf(0, 1, 2, 3, 4, SongSnippetStages.SOLUTION_KEY)
+    fun `the ladder is five clips, without the solution`() {
+        ladder.size shouldBe 5
     }
 
     @Test
@@ -45,14 +44,7 @@ class SnippetCutterTest {
     }
 
     @Test
-    fun `the solution key passes the original mp3 through untouched`() {
-        val solution = ladder.getValue(SongSnippetStages.SOLUTION_KEY)
-        solution.mediaType shouldBe "audio/mpeg"
-        solution.bytes shouldBe mp3
-    }
-
-    @Test
     fun `stage wavs declare their media type`() {
-        (0..4).forEach { stage -> ladder.getValue(stage).mediaType shouldBe "audio/wav" }
+        ladder.forEach { it.mediaType shouldBe "audio/wav" }
     }
 }

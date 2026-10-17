@@ -4,21 +4,17 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldContainExactly
-import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.deduster.DedusterGrid
 import org.unividuell.countdown.core.deduster.DedusterImages
 import org.unividuell.countdown.core.deduster.DedusterPool
 import org.unividuell.countdown.core.deduster.DedusterTicks
-import org.unividuell.countdown.core.deduster.RoundImageStore
-import org.unividuell.countdown.core.deduster.StoredImage
 import org.unividuell.countdown.core.game.internal.DedusterEnd
 import org.unividuell.countdown.core.game.internal.DedusterGameType
 import org.unividuell.countdown.core.game.internal.DedusterImplausible
@@ -42,8 +38,7 @@ class DedusterGameTypeTest {
         every { gridOf(any()) } returns DedusterGrid.PORTRAIT
     }
     private val images = mockk<DedusterImages>()
-    private val store = mockk<RoundImageStore>(relaxed = true)
-    private val game = DedusterGameType(pool = pool, images = images, store = store, mapper = mapper)
+    private val game = DedusterGameType(pool = pool, images = images, mapper = mapper)
 
     private fun random(solution: Int = 1, presentation: Int = 2, scene: Int = 3) = GameRandom(
         solution = SeededRandom.fromSeed(solution),
@@ -147,48 +142,23 @@ class DedusterGameTypeTest {
     }
 
     @Test
-    fun `the photo is the scene asset, frozen once`() {
+    fun `the photo is the round's only asset, a scene`() {
         val params = draw()
         every { images.playImage(imageId = params.imageId, grid = DedusterGrid.PORTRAIT) } returns byteArrayOf(7)
-        every { store.find(roundGameId) } returns null
 
-        game.produceAssets(params)[SCENE_ASSET_KEY].shouldNotBeNull().mediaType shouldBe "image/jpeg"
-        game.materialised(params = params, roundGameId = roundGameId)
+        val photo = game.produceAssets(params).single()
 
-        verify(exactly = 1) { store.store(roundGameId = roundGameId, mediaType = "image/jpeg", bytes = byteArrayOf(7)) }
+        photo.name shouldBe "photo"
+        photo.visibility shouldBe AssetVisibility.Scene
+        photo.mediaType shouldBe "image/jpeg"
+        photo.bytes shouldBe byteArrayOf(7)
     }
 
     @Test
-    fun `the race's second caller does not render again`() {
-        every { store.find(roundGameId) } returns StoredImage(mediaType = "image/jpeg", bytes = byteArrayOf(1))
-
-        game.materialised(params = draw(), roundGameId = roundGameId)
-
-        verify(exactly = 0) { images.playImage(imageId = any(), grid = any()) }
-    }
-
-    @Test
-    fun `a vanished pool image yields no asset rather than a broken round`() {
+    fun `a gone pool image produces no assets`() {
         every { images.playImage(imageId = any(), grid = any()) } returns null
 
         game.produceAssets(draw()).shouldBeEmpty()
-    }
-
-    @Test
-    fun `only the scene key is served`() {
-        every { store.find(roundGameId) } returns StoredImage(mediaType = "image/jpeg", bytes = byteArrayOf(1))
-
-        game.asset(params = draw(), roundGameId = roundGameId, key = SCENE_ASSET_KEY).shouldNotBeNull()
-        game.asset(params = draw(), roundGameId = roundGameId, key = 0).shouldBeNull()
-    }
-
-    @Test
-    fun `the history keeps the photo, archiving drops it`() {
-        game.releaseStageAssets(listOf(roundGameId))
-        verify(exactly = 0) { store.release(any()) }
-
-        game.releaseAssets(listOf(roundGameId))
-        verify(exactly = 1) { store.release(listOf(roundGameId)) }
     }
 
     private fun run(

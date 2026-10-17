@@ -20,6 +20,7 @@ import org.unividuell.countdown.core.game.internal.AlreadyRevealedException
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.PlayService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
+import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.ObjectMapper
@@ -111,12 +112,37 @@ class PlayServiceStrictRevealTest(
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )
 
-        val res = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val res = play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundNumberOf(community),
+        )
         res.game.shouldNotBeNull().requiresReveal shouldBe true
 
         shouldThrow<AlreadyRevealedException> {
-            play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+            play.reveal(
+                slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundNumberOf(community),
+            )
         }
+    }
+
+    @Test
+    fun `a reveal for a round that has moved on is refused, and spends nothing`() {
+        // A hold finished just after the round switch would otherwise open the next round unseen:
+        // its one reveal spent, its scored clock running.
+        val (community, viewer) = aCommunity("Strict Stale")
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val number = currentRoundNumberOf(community)
+        store.announce(
+            edition = edition, roundNumber = number,
+            gameType = "strict-reveal", params = mapper.readTree("""{"label":"x"}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
+        )
+
+        shouldThrow<RoundMovedOnException> {
+            play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = number + 1)
+        }
+
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = number)
+            .me.shouldNotBeNull()
     }
 
     @Test
@@ -133,7 +159,9 @@ class PlayServiceStrictRevealTest(
         before.scene shouldBe StrictRevealGame.StrictScene(size = 3)
         before.payload.shouldBeNull()
 
-        val after = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val after = play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundNumberOf(community),
+        )
         after.scene shouldBe StrictRevealGame.StrictScene(size = 3)
         after.payload.shouldNotBeNull()
     }

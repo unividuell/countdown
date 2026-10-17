@@ -8,6 +8,7 @@
  * open to everyone, and a closed round must never put a live map on screen again.
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
@@ -32,7 +33,7 @@ const props = defineProps<{
   awardPoints: number | null
   disabled: boolean
   stage?: number
-  assetUrl?: (key: number) => string
+  assets?: RoundAssets
   /** The round is over for everyone — the other half of the server's own rule for `others`. */
   closed?: boolean
   review: RoundReview

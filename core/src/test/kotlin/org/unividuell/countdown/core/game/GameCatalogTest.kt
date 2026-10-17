@@ -22,6 +22,7 @@ class GameCatalogTest {
     private class FakeGame(
         override val id: String,
         private val available: Boolean = true,
+        private val assetNames: List<String> = emptyList(),
     ) : GameType<FakeParams> {
         override val displayName = "Fake $id"
         override val paramsType = FakeParams::class.java
@@ -37,6 +38,9 @@ class GameCatalogTest {
         )
         override fun solution(params: FakeParams) = FakeSolution(secret = params.secret)
         override fun isAvailable(context: RoundContext) = available
+        override fun produceAssets(params: FakeParams) = assetNames.map {
+            RoundAsset(name = it, visibility = AssetVisibility.Scene, mediaType = "image/png", bytes = byteArrayOf())
+        }
     }
 
     private val mapper = JsonMapper.builder().build()
@@ -63,6 +67,15 @@ class GameCatalogTest {
         val e = shouldThrow<IllegalArgumentException> { catalog(FakeGame("same"), FakeGame("same")) }
 
         e.message.shouldNotBeNull() shouldContain "same"
+    }
+
+    @Test
+    fun `two assets of one name are refused`() {
+        val handle = catalog(FakeGame(id = "alpha", assetNames = listOf("board", "board"))).handle("alpha").shouldNotBeNull()
+
+        shouldThrow<IllegalArgumentException> {
+            handle.produceAssets(mapper.valueToTree(FakeParams(label = "a", secret = 1)))
+        }
     }
 
     @Test

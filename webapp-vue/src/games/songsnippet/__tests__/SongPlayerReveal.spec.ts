@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { Mock } from 'vitest'
 import type { Ref } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import SongPlayerReveal from '@/games/songsnippet/SongPlayerReveal.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
 
@@ -47,10 +48,10 @@ const SOLUTION: SongSnippetSolution = {
   link: 'https://www.deezer.com/track/702871922',
 }
 
-function mountPlayer(solution: SongSnippetSolution = SOLUTION) {
-  return mount(SongPlayerReveal, {
-    props: { solution, durations: DURATIONS, assetUrl: (key: number) => `/assets/${key}` },
-  })
+const ASSETS: RoundAssets = { url: (name) => `/assets/${name}`, key: () => null }
+
+function mountPlayer(solution: SongSnippetSolution = SOLUTION, assets: RoundAssets = ASSETS) {
+  return mount(SongPlayerReveal, { props: { solution, durations: DURATIONS, assets } })
 }
 
 describe('SongPlayerReveal', () => {
@@ -140,6 +141,19 @@ describe('SongPlayerReveal', () => {
     expect(lines).toEqual(['Das geht ab', 'Die Atzen'])
   })
 
+  it('plays the solution from the plain solution asset', async () => {
+    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
+    const key = vi.fn(() => null)
+    const w = mountPlayer(SOLUTION, { url: ASSETS.url, key })
+
+    await w.get('[data-test="play"]').trigger('click')
+    await Promise.resolve()
+
+    // Plain, not sealed: fetched as it is, with no key asked for.
+    expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/solution')
+    expect(key).not.toHaveBeenCalled()
+  })
+
   it('loads the solution clip on the first tap only, then replays it', async () => {
     fetchAssetBlob.mockResolvedValue(new Blob(['x']))
     const w = mountPlayer()
@@ -149,7 +163,7 @@ describe('SongPlayerReveal', () => {
     await w.get('[data-test="play"]').trigger('click')
     await Promise.resolve()
 
-    expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/99')
+    expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/solution')
     expect(playbacks[0]!.setSource).toHaveBeenCalledExactlyOnceWith('blob:solution')
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(2)
   })

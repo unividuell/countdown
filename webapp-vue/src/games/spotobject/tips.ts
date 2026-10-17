@@ -9,6 +9,7 @@
  */
 import type { AwardRule, Vote, VoteView } from '@/api/types'
 import { isProvisional } from '@/games/awards'
+import { durationOrder, formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
 import { tickOfRow } from '@/games/revealChoreography'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
@@ -88,27 +89,8 @@ export interface ScoreRow extends ScoreboardRow {
   durationLabel: string | null
 }
 
-/** `mm:ss` with minutes running past 59 — the clock measures a round, not a wall clock. */
-function formatDuration(ms: number | null): string | null {
-  if (ms === null || !Number.isFinite(ms)) return null
-  const seconds = Math.floor(Math.max(0, ms) / 1000)
-  const minutes = Math.floor(seconds / 60)
-  return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
-}
-
 export function hasDurations(rows: readonly ScoreRow[]): boolean {
   return rows.some((row) => row.durationLabel !== null)
-}
-
-/**
- * Faster first, by the millisecond the server measured. A row without a clock sorts after one
- * with it rather than winning by default.
- */
-function durationOrder(a: number | null, b: number | null): number {
-  if (a === b) return 0
-  if (a === null) return 1
-  if (b === null) return -1
-  return a - b
 }
 
 export function scoreRows(input: {

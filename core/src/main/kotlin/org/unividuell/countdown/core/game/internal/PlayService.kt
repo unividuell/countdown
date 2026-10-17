@@ -3,12 +3,12 @@ package org.unividuell.countdown.core.game.internal
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.unividuell.countdown.core.game.AssetViewer
 import org.unividuell.countdown.core.game.GuessAction
 import org.unividuell.countdown.core.game.GuessContext
-import org.unividuell.countdown.core.game.RoundAsset
-import org.unividuell.countdown.core.game.SCENE_ASSET_KEY
-import org.unividuell.countdown.core.game.SOLUTION_ASSET_KEY
+import org.unividuell.countdown.core.game.StoredAsset
 import org.unividuell.countdown.core.game.guessActionFor
+import org.unividuell.countdown.core.game.mayFetch
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.time.Clock
@@ -28,6 +28,7 @@ class PlayService(
     private val mapper: ObjectMapper,
     private val clock: Clock,
     private val history: HistoryService,
+    private val assets: RoundAssetStore,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -42,8 +43,11 @@ class PlayService(
      * without data.
      */
     @Transactional
-    fun reveal(slug: String, userId: UUID, isSuperAdmin: Boolean): RoundResponse {
+    fun reveal(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int): RoundResponse {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
+        // Before any write: a hold that ends just after the round switch must not spend the next
+        // round's one reveal and start its clock unseen.
+        if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
         val roundGameId = requireNotNull(current.roundGame.id)
         val revealedAt = clock.instant()
         if (current.handle.requiresReveal(current.roundGame.params)) {
@@ -188,53 +192,57 @@ class PlayService(
     }
 
     /**
-     * One stored asset of a round.
+     * One stored asset of a round, under the rule in `RoundAssets.kt`.
      *
-     * Two gates behind one URL, chosen by the number: the running round keeps the stage gate
-     * (unlocked stages, the solution key with the spent guess), a closed round is open — nothing
-     * gates a round nobody can play any more, and its reveal shows the solution anyway.
+     * The number picks the round: the running one, or a closed one from the history — nothing gates
+     * a round nobody can play any more. [roundGameId] must name that round: numbers restart with
+     * every run, and a URL of last run's round must not reach this run's.
      *
      * Resolved with the caller's own super-admin flag, unlike [playable]: fetching bytes is a read,
      * and the read bypass exists so an admin may look without joining. Consequence: an admin
-     * without a membership row now gets a 409 on the RUNNING round's asset (no play row) rather
-     * than a 404 (no membership) — the more honest of the two.
-     *
-     * The scene key is the one exception to the play row: it is what the cover lies over.
+     * without a membership row gets a 409 on the RUNNING round's after-guess asset (no play row)
+     * rather than a 404 (no membership) — the more honest of the two.
      *
      * Not `readOnly`: like [AnnouncementService.currentRound], the first fetch of an un-materialised
      * round inserts.
      */
     @Transactional
-    fun asset(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int, key: Int): RoundAsset {
+    fun asset(
+        slug: String,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+        roundNumber: Int,
+        roundGameId: UUID,
+        name: String,
+    ): StoredAsset {
         val current = announcements.resolve(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
         val currentNumber = current.round?.number ?: throw RoundNotFoundException()
         // A larger number is earlier: anything above the running round is history.
-        if (roundNumber > currentNumber) {
-            val closed = history.resolve(current = current, roundNumber = roundNumber)
-            if (closed !is ResolvedRound.Announced) throw AssetNotFoundException()
-            return closed.handle.asset(
-                params = closed.roundGame.params,
-                roundGameId = requireNotNull(closed.roundGame.id),
-                key = key,
-            ) ?: throw AssetNotFoundException()
+        val round = when {
+            roundNumber > currentNumber ->
+                history.resolve(current = current, roundNumber = roundNumber) as? ResolvedRound.Announced
+                    ?: throw AssetNotFoundException()
+            roundNumber < currentNumber -> throw RoundNotFoundException()
+            else -> when (current) {
+                is ResolvedRound.NoGame -> throw NoGameToPlayException(current.reason)
+                is ResolvedRound.Announced -> current
+            }
         }
-        if (roundNumber < currentNumber) throw RoundNotFoundException()
-        // Smart-cast, no explicit cast: `ResolvedRound` has exactly two cases.
-        val announced = when (current) {
-            is ResolvedRound.NoGame -> throw NoGameToPlayException(current.reason)
-            is ResolvedRound.Announced -> current
+        val id = requireNotNull(round.roundGame.id)
+        if (id != roundGameId) throw AssetNotFoundException()
+        val asset = assets.find(roundGameId = id, name = name) ?: throw AssetNotFoundException()
+
+        val play = plays.findByRoundGameIdAndUserId(roundGameId = id, userId = userId)
+        val viewer = AssetViewer(
+            closed = round.closed,
+            revealed = play != null,
+            stage = play?.stage ?: 0,
+            guessed = play?.guessedAt != null,
+        )
+        if (!asset.header.visibility.mayFetch(viewer)) {
+            throw if (play == null) NotRevealedException() else AssetForbiddenException()
         }
-        val roundGameId = requireNotNull(announced.roundGame.id)
-        if (key == SCENE_ASSET_KEY) {
-            return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
-                ?: throw AssetNotFoundException()
-        }
-        val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
-            ?: throw NotRevealedException()
-        val allowed = if (key == SOLUTION_ASSET_KEY) play.guessedAt != null else key in 0..play.stage
-        if (!allowed) throw AssetForbiddenException()
-        return announced.handle.asset(params = announced.roundGame.params, roundGameId = roundGameId, key = key)
-            ?: throw AssetNotFoundException()
+        return asset
     }
 
     /**

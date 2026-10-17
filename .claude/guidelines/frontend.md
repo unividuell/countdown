@@ -40,6 +40,11 @@ of the frontend conventions live beside it:
   plugin defaults to `1.2` and would silently break the "1em, inherits from the surrounding text"
   contract; size icons purely with Tailwind (`class="size-5"`). `vue-tsc` needs
   `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`.
+- **A game with a heavy dependency (three.js) registers in `games/registry.ts` through
+  `asyncGame`** — `defineAsyncComponent` with a loading and an error component. The dependency stays
+  out of everyone else's bundle, and a tab left open across a deploy asks for a chunk that is gone:
+  without the error component the card stays empty instead of saying „Lade die Seite neu.“.
+  Blockierung is the example.
 
 ## HTTP + auth (the same-origin SPA contract)
 
@@ -69,14 +74,25 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `error.body.detail` is the server's own sentence about *this* request. A validation failure the
   user can fix (a rejected colour, a name over the limit) must show it; keep the constant
   „… fehlgeschlagen.“ for everything that has no explanation.
-- **`apiFetch` stays JSON-only — binary responses go through `fetchAssetBlob`.** Round assets (e.g.
-  song-snippet audio) are bytes, not JSON, so they bypass the shared client entirely: `fetchAssetBlob`
-  (`src/api/assets.ts`) is a credentialed `fetch` that turns the response into a `Blob`, which the
-  caller turns into an object URL for an `<audio>`/`<img>` element. Object URLs are not garbage
-  collected by the DOM — revoke the previous one whenever it is replaced or the component unmounts, or
-  it leaks. Where responses for the same slot can race (e.g. rapid stage advances re-requesting the
-  next clip), guard the assignment with a generation counter so a slow, stale response can't clobber a
-  newer one that already landed.
+- **`apiFetch` stays JSON-only — binary responses are the asset helpers' business.** Round assets are
+  bytes, not JSON, so they bypass the shared client: `src/api/assets.ts` does a credentialed `fetch`
+  (a GET, no CSRF). A game receives `assets: RoundAssets` (`url(name)`, `key(name)`) and never builds
+  a URL or reads a key itself. A plain asset (`Scene`, `AfterGuess`) is a URL, usable directly as
+  `<img src>`, or `fetchAssetBlob` where the bytes are needed; a sealed one is `useSealedAsset`
+  (fetched under the cover, opened once its key arrives, `retry()`) or, on demand, `loadSealed`.
+  Object URLs are not garbage collected by the DOM — revoke the previous one whenever it is replaced or
+  the component unmounts. Where responses for the same slot can race (rapid stage advances), guard the
+  assignment with a generation counter so a slow, stale response can't clobber a newer one that already
+  landed.
+- **The first sealed opening on a page runs cold — warm it up before it lands on a scored clock.**
+  `warmUpOpening` (`src/api/assets.ts`) belongs where time is free, under the cover. `useSealedAsset`
+  calls it when bytes arrive before their key; `loadSealed` does not, so a game that opens through it
+  on a clock warms up itself.
+- **No API that needs a secure context without a way around it.** The app is also opened on a phone over
+  plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
+  exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and
+  Vitest. WebCrypto may only sit *beside* it as an upgrade where available (unividuell/countdown#106),
+  never instead of it.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),
