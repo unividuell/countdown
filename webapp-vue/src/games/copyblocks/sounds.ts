@@ -32,12 +32,26 @@ const SAMPLES: Record<SoundSet, readonly string[]> = {
 export const PITCH = 0.8
 export const PITCH_SPREAD = 0.05
 
-/** Minecraft's hit setting, rebuilt from the place sample: its own hit files belong to Mojang. */
-export const KNOCK_PITCH = 0.5
-export const KNOCK_GAIN = 0.25
+/*
+ * Breaking, after survival-mode mining: a few deep knocks, then the break sound with a crumble
+ * under it. Rebuilt from our free samples — Minecraft's own hit files belong to Mojang. All
+ * starting values, to be tuned by ear in the lab.
+ *
+ *   knock  knock  knock  crack
+ *   0      60     120    180 ms
+ *                          crumble (+30 ms, pitched up, quieter)
+ */
 
-/** From knock to break sound; to be tuned by ear in the lab. */
-export const KNOCK_GAP_S = 0.06
+/** Knocks before the break: the place sample, an octave down and quieter. */
+export const HIT_COUNT = 3
+export const HIT_PITCH = 0.5
+export const HIT_GAIN = 0.4
+export const HIT_GAP_S = 0.06
+
+/** A second break variant under the first, detuned up: debris rather than echo. */
+export const CRUMBLE_DETUNE = 1.3
+export const CRUMBLE_GAIN = 0.5
+export const CRUMBLE_DELAY_S = 0.03
 
 export interface PlannedSound {
   set: SoundSet
@@ -48,7 +62,7 @@ export interface PlannedSound {
 
 /**
  * What an action sounds like, [roll] in `0..1` picking the pitch. Placing plays the place sound;
- * breaking knocks first, so a block going sounds unlike one coming.
+ * breaking knocks and crumbles, so a block going sounds unlike one coming.
  */
 export function soundPlan(
   action: 'place' | 'break',
@@ -60,9 +74,22 @@ export function soundPlan(
 
   if (action === 'place') return [{ set: type.place, rate, gain: 1, offsetS: 0 }]
 
+  const knocks = Array.from({ length: HIT_COUNT }, (_, i) => ({
+    set: type.place,
+    rate: HIT_PITCH,
+    gain: HIT_GAIN,
+    offsetS: i * HIT_GAP_S,
+  }))
+  const crack = HIT_COUNT * HIT_GAP_S
   return [
-    { set: type.place, rate: KNOCK_PITCH, gain: KNOCK_GAIN, offsetS: 0 },
-    { set: type.break, rate, gain: 1, offsetS: KNOCK_GAP_S },
+    ...knocks,
+    { set: type.break, rate, gain: 1, offsetS: crack },
+    {
+      set: type.break,
+      rate: rate * CRUMBLE_DETUNE,
+      gain: CRUMBLE_GAIN,
+      offsetS: crack + CRUMBLE_DELAY_S,
+    },
   ]
 }
 

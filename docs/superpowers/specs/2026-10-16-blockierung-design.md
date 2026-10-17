@@ -115,8 +115,8 @@ selbst geprüft — die Wiki-Angabe ist nicht verlässlich).
 | 7 | `LAPIS` | Lapis | dunkelblau mit Goldsprenkeln | Stein | Stein |
 
 Die Zuordnung der Klänge folgt Minecraft (Erde klingt dort wie Kies, Glasblöcke setzen mit Stein).
-Setzen spielt den Setz-Klang, Tonhöhe 0,8. **Abbauen** spielt erst einen dumpfen **Klopfer** und dann
-den Abbau-Klang — so hört man, ob ein Block kam oder ging (siehe *Ton*).
+Setzen spielt den Setz-Klang, Tonhöhe 0,8. **Abbauen** spielt erst dumpfe **Schläge** und dann den
+Abbau-Klang mit einem **Bröseln** darunter — so hört man, ob ein Block kam oder ging (siehe *Ton*).
 
 Die Reihenfolge lebt **einmal** im Backend (`BlockType`-Enum in `copyblocks`); die Leitung trägt die
 Codes, das Frontend bildet Code → Anzeigename, Textur, Klänge ab. Ein unbekannter Code fällt bei der
@@ -365,13 +365,16 @@ Die 15 Samples aus dem Spike (Stein 4, Gras 4, Kies 4, Glas 3), als AAC (`.m4a`,
 zufällig, Tonhöhe 0,8 · ±5 %, gleiche Lautstärke für Setzen und Abbauen. Vorab dekodiert, wenn das Spiel
 erscheint.
 
-**Der Klopfer beim Abbauen** bildet Minecrafts `hit`-Einstellung nach — mit dem freien Sample, weil
-Minecrafts eigene Klopf-Dateien Mojang gehören: eine Variante des **Setz-Klangs** des Typs (Packeis
-also Stein) mit **halber Tonhöhe** (0,5) und **Viertel-Lautstärke** (0,25), unmittelbar gefolgt vom
-Abbau-Klang. Der Abstand zwischen beiden — Startwert 60 ms — wird im Labor nach Gehör gestimmt.
+**Abbauen** bildet das Abbauen im Survival-Modus nach — mit den freien Samples, weil Minecrafts eigene
+Schlag-Dateien (`hit`) Mojang gehören. Erst **drei Schläge**: Varianten des **Setz-Klangs** des Typs
+(Packeis also Stein), **eine Oktave tiefer** (Tonhöhe 0,5), Lautstärke 0,4, alle 60 ms. Dann der
+**Abbau-Klang** und 30 ms später eine zweite Variante, um ×1,3 höher und halb so laut, als
+**Bröseln**. Ein Block bricht damit rund 0,2 s nach dem Tippen. Alles Startwerte (in `sounds.ts`
+beieinander), im Labor nach Gehör zu stimmen. Der erste Entwurf — ein einzelner leiser Klopfer — war
+im Labor kaum vom Setzen zu unterscheiden.
 
 **Rückgängig klingt wie das, was es tut:** nimmt es einen Block weg, spielt dessen Abbau-Klang (mit
-Klopfer); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet bleibt es still.
+Schlägen und Bröseln); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet bleibt es still.
 
 - **Der eine `AudioContext`** wandert aus `usePlayback` nach `ui/audio.ts` — die
   [Audio-Regel](../../../.claude/guidelines/frontend-state.md) verlangt einen für die ganze App, und
@@ -385,8 +388,8 @@ Klopfer); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet 
 
 `copy-blocks` / „Blockierung“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide Gesichter.
 Der Seed in der URL macht Blockzahl, Typen und Vorlage reproduzierbar. Hier werden gestimmt: der
-Übergang zur Auflösung, die Breite der Vorlage, die Tippschwelle, die Takte, der Abstand zwischen
-Klopfer und Abbau-Klang.
+Übergang zur Auflösung, die Breite der Vorlage, die Tippschwelle, die Takte, die Schläge und das
+Bröseln beim Abbauen.
 
 ## Tests
 
@@ -415,7 +418,7 @@ Klopfer und Abbau-Klang.
 - Brett: Halten → ein `guess` mit der Blockliste; Hotbar zeigt N + 1 Plätze.
 - Zwischenstand: gesichert nach Änderung, wiederhergestellt beim Öffnen, gelöscht nach angenommenem
   Tipp, fremde Runden weggeräumt, Unlesbares verworfen.
-- Ton: Abbauen plant zwei Klänge (Klopfer mit 0,5 / 0,25, danach Abbau-Klang), Setzen einen;
+- Ton: Abbauen plant die Schläge (Setz-Klang, tiefer, leiser), danach Abbau-Klang und Bröseln; Setzen einen;
   Stummschalter wirkt und wird gemerkt; ohne `AudioContext` still statt Fehler.
 
 ## Bewusst nicht
@@ -433,7 +436,7 @@ Klopfer und Abbau-Klang.
   lässt legitim einen schwebenden zurück. Eine ehrliche Wiedergabe bräuchte das ganze Protokoll samt
   Abbauen und Zeiten. Das öffentliche Geheimnis ist hingenommen, siehe *Integrität*.
 - **Minecrafts eigene Klopf-Dateien** (`hit`) — sie gehören Mojang (geprüft: `Stone_hit1`,
-  `Gravel_hit1`, keine Freesound-Quelle); der Klopfer wird aus dem freien Sample nachgebildet.
+  `Gravel_hit1`, keine Freesound-Quelle); die Schläge werden aus dem freien Sample nachgebildet.
 - **Weitere Blocktypen** — nur mit offen lizenziertem Klang; heute gibt es keinen weiteren.
 - **Schwierigkeit nach Phase oder Runde** — gezogen wird gleichverteilt, Regler gibt es keinen.
 - **Anomalie-Erkennung** unrealistisch schneller Treffer — dieselbe Begründung wie bei Musterung.
