@@ -49,6 +49,7 @@ const rows = computed(() =>
     entries: props.entries,
     awardRule: props.awardRule,
     mineUserId: props.mineUserId,
+    templateSize: payload.value?.blocks.length ?? null,
   }),
 )
 

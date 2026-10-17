@@ -346,8 +346,10 @@ Vorlage führt; die Takte; die Dauer der Drehung.
 
 ### Rangliste
 
-Echte Tabelle im Stil von Musterung und Platzierung. Spalten: **Name** (Knopf) **· [mm:ss] · Pkt** —
-[mm:ss] nur in Phase zwei. Sortierung wie dort: Punkte absteigend (`null` zuletzt), Treffer vor
+Echte Tabelle im Stil von Musterung und Platzierung. Spalten: **Name** (Knopf) **· K/D\* · [mm:ss] ·
+Pkt** — [mm:ss] nur in Phase zwei. **K/D** zählt wie die K/D der Shooter: korrekt gesetzte Blöcke /
+alles Markierte (fehlend, zu viel, falscher Typ), etwa `24/3`; ein perfekter Nachbau steht als `27/0`.
+Darunter rechts die Legende „* K korrekt · D daneben (fehlend, zu viel, falscher Typ)“. Sortierung wie dort: Punkte absteigend (`null` zuletzt), Treffer vor
 Nicht-Treffern, Dauer aufsteigend, `userId` als Tiebreak. Als pure `scoreboard.ts`.
 
 ### Erklärung

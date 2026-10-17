@@ -40,6 +40,7 @@ describe('scoreRows', () => {
       ],
       awardRule: 'CLOSEST_ONLY',
       mineUserId: null,
+      templateSize: 5,
     })
 
     expect(rows.map((row) => row.userId)).toEqual(['b', 'a', 'c', 'd', 'e'])
@@ -58,9 +59,48 @@ describe('scoreRows', () => {
       entries: [entry({ outcome: HIT, points: 1 })],
       awardRule: 'ALL_QUALIFYING',
       mineUserId: null,
+      templateSize: 5,
     })
 
     expect(hasDurations(rows)).toBe(false)
+  })
+
+  it('counts what a tip got right against everything marked on it', () => {
+    const block = { x: 0, y: 0, z: 0, type: 'DIRT' }
+    const mixed = {
+      ...HIT,
+      correct: false,
+      missing: [block, block],
+      extra: [block],
+      wrongType: [block],
+    }
+    const rows = scoreRows({
+      entries: [
+        entry({ userId: 'hit', outcome: HIT, points: 1 }),
+        entry({ userId: 'mixed', outcome: mixed, points: 0 }),
+        entry({ userId: 'junk', outcome: { correct: 'yes' }, points: 0 }),
+      ],
+      awardRule: 'ALL_QUALIFYING',
+      mineUserId: null,
+      templateSize: 10,
+    })
+
+    expect(Object.fromEntries(rows.map((row) => [row.userId, row.kdLabel]))).toEqual({
+      hit: '10/0',
+      mixed: '7/4',
+      junk: null,
+    })
+  })
+
+  it('has no K/D without the template', () => {
+    const [row] = scoreRows({
+      entries: [entry({ outcome: HIT, points: 1 })],
+      awardRule: null,
+      mineUserId: null,
+      templateSize: null,
+    })
+
+    expect(row!.kdLabel).toBeNull()
   })
 
   it('reads a junk outcome as no hit with nothing to show', () => {
@@ -68,6 +108,7 @@ describe('scoreRows', () => {
       entries: [entry({ outcome: { correct: 'yes' }, points: 0 })],
       awardRule: null,
       mineUserId: null,
+      templateSize: 5,
     })
 
     expect(row!.correct).toBe(false)

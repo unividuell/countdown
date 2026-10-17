@@ -49,6 +49,7 @@ function row(userId: string, outcome: CopyBlocksOutcome | null): ScoreRow {
     correct: false,
     durationLabel: null,
     outcome,
+    kdLabel: null,
   }
 }
 

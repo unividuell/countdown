@@ -14,6 +14,7 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
     correct: false,
     durationLabel: null,
     outcome: null,
+    kdLabel: null,
     ...over,
   }
 }
@@ -32,6 +33,21 @@ describe('CopyBlocksScoreboard', () => {
     expect(timed.text()).toContain('[mm:ss]')
     expect(timed.text()).toContain('00:42')
     expect(untimed.text()).not.toContain('[mm:ss]')
+  })
+
+  it('puts K/D right behind the name, and explains it beneath the table', () => {
+    const wrapper = mountBoard([
+      row({ userId: 'a', kdLabel: '24/3', durationLabel: '00:42' }),
+      row({ userId: 'b' }),
+    ])
+    const text = wrapper.text()
+
+    expect(text.indexOf('K/D*')).toBeGreaterThan(-1)
+    expect(text.indexOf('K/D*')).toBeLessThan(text.indexOf('[mm:ss]'))
+    expect(text).toContain('24/3')
+    expect(wrapper.get('[data-test="copy-blocks-kd-legend"]').text()).toBe(
+      '* K korrekt · D daneben (fehlend, zu viel, falscher Typ)',
+    )
   })
 
   it('turns a name into a button that says which is picked', async () => {

@@ -18,12 +18,27 @@ export interface ScoreRow extends ScoreboardRow {
   durationLabel: string | null
   /** What the server judged, for the reveal to redraw; `null` when it is not readable. */
   outcome: CopyBlocksOutcome | null
+  /**
+   * „K/D“ in the shooters' manner: blocks right, then everything marked — missing, extra, wrong
+   * type. `24/3`, or `null` without a readable outcome or the template's size.
+   */
+  kdLabel: string | null
+}
+
+function kdOf(outcome: CopyBlocksOutcome | null, templateSize: number | null): string | null {
+  if (outcome === null || templateSize === null) return null
+
+  const { missing, extra, wrongType } = outcome
+  const right = Math.max(0, templateSize - missing.length - wrongType.length)
+  return `${right}/${missing.length + extra.length + wrongType.length}`
 }
 
 export function scoreRows(input: {
   entries: readonly GameEntry[]
   awardRule: AwardRule | null
   mineUserId: string | null
+  /** Blocks in the template; `null` while the payload is not here. */
+  templateSize: number | null
 }): ScoreRow[] {
   const ranked = input.entries.map((entry) => {
     const outcome = asCopyBlocksOutcome(entry.outcome)
@@ -40,6 +55,7 @@ export function scoreRows(input: {
         points: entry.points,
         provisional: isProvisional(entry.points, input.awardRule),
         outcome,
+        kdLabel: kdOf(outcome, input.templateSize),
       },
     }
   })
