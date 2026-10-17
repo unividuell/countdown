@@ -9,11 +9,12 @@ import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.game.internal.SongSnippetGameType
 import org.unividuell.countdown.core.game.internal.SongSnippetParams
 import org.unividuell.countdown.core.rng.SeededRandom
+import org.unividuell.countdown.core.songsnippet.AudioClip
 import org.unividuell.countdown.core.songsnippet.CatalogTrack
 import org.unividuell.countdown.core.songsnippet.PreviewSource
+import org.unividuell.countdown.core.songsnippet.ResolvedTrack
 import org.unividuell.countdown.core.songsnippet.SnippetCutter
 import org.unividuell.countdown.core.songsnippet.SongCatalog
-import org.unividuell.countdown.core.songsnippet.SongSnippetAudioStore
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
 
@@ -35,11 +36,12 @@ class SongSnippetGameTypeTest {
     )
 
     private val catalog = mockk<SongCatalog> { every { poolTracks() } returns pool }
+    private val previews = mockk<PreviewSource>()
+    private val cutter = mockk<SnippetCutter>()
     private val game = SongSnippetGameType(
         catalog = catalog,
-        previews = mockk<PreviewSource>(),
-        cutter = mockk<SnippetCutter>(),
-        audio = mockk<SongSnippetAudioStore>(),
+        previews = previews,
+        cutter = cutter,
         mapper = mapper,
     )
 
@@ -127,6 +129,23 @@ class SongSnippetGameTypeTest {
     fun `five stages, no deliberate reveal`() {
         game.stages(draw()) shouldBe 5
         game.requiresReveal(draw()) shouldBe false
+    }
+
+    @Test
+    fun `produceAssets names five clips by stage and the solution after the guess`() {
+        val params = draw()
+        val mp3 = byteArrayOf(7, 7, 7)
+        every { catalog.track(params.trackId) } returns
+            ResolvedTrack(track = pool.single { it.trackId == params.trackId }, previewUrl = "https://cdn.example/p.mp3")
+        every { previews.download("https://cdn.example/p.mp3") } returns mp3
+        every { cutter.ladder(mp3) } returns List(5) { AudioClip(mediaType = "audio/wav", bytes = byteArrayOf(it.toByte())) }
+
+        val assets = game.produceAssets(params)
+
+        assets.map { it.name } shouldBe listOf("clip-0", "clip-1", "clip-2", "clip-3", "clip-4", "solution")
+        assets.map { it.visibility } shouldBe (0..4).map { AssetVisibility.FromStage(it) } + AssetVisibility.AfterGuess
+        assets.map { it.mediaType } shouldBe List(5) { "audio/wav" } + "audio/mpeg"
+        assets.last().bytes shouldBe mp3
     }
 
     @Test

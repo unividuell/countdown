@@ -1,24 +1,20 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeInRange
-import io.kotest.matchers.maps.shouldBeEmpty
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.game.internal.PlacePatchGameType
 import org.unividuell.countdown.core.game.internal.PlacePatchOutcome
 import org.unividuell.countdown.core.game.internal.PlacePatchParams
 import org.unividuell.countdown.core.imagepool.ImagePoolQuery
 import org.unividuell.countdown.core.imagepool.ImageSize
-import org.unividuell.countdown.core.placepatch.FrozenPhoto
-import org.unividuell.countdown.core.placepatch.PlacePatchImageStore
 import org.unividuell.countdown.core.placepatch.PlacePatchImages
 import org.unividuell.countdown.core.placepatch.PlacePatchLayout
 import org.unividuell.countdown.core.rng.SeededRandom
@@ -31,7 +27,6 @@ class PlacePatchGameTypeTest {
     private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
     private val imageA = UUID.fromString("0190f1b2-0000-7000-8000-0000000000a1")
     private val imageB = UUID.fromString("0190f1b2-0000-7000-8000-0000000000b1")
-    private val roundGameId = UUID.fromString("0190f1b2-0000-7000-8000-0000000000f1")
 
     private val mapper = JsonMapper.builder().build()
     private val pool = mockk<ImagePoolQuery> {
@@ -40,8 +35,7 @@ class PlacePatchGameTypeTest {
         every { displaySize(any()) } returns ImageSize(width = 400, height = 300)
     }
     private val images = mockk<PlacePatchImages>()
-    private val store = mockk<PlacePatchImageStore>(relaxed = true)
-    private val game = PlacePatchGameType(pool = pool, images = images, store = store, mapper = mapper)
+    private val game = PlacePatchGameType(pool = pool, images = images, mapper = mapper)
 
     private val frozen = PlacePatchImages.freeze(
         source = BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB),
@@ -187,60 +181,20 @@ class PlacePatchGameTypeTest {
     }
 
     @Test
-    fun `board and patch both open with the reveal, every other key keeps its own stage`() {
-        val params = draw()
+    fun `board and patch open with the reveal`() {
+        every { images.frozen(imageId = any(), layout = any()) } returns frozen
 
-        game.assetStage(params = params, key = 0) shouldBe 0
-        game.assetStage(params = params, key = 1) shouldBe 0
-        game.assetStage(params = params, key = 2) shouldBe 2
+        val assets = game.produceAssets(draw())
+
+        assets.map { it.name } shouldBe listOf("board", "patch")
+        assets.map { it.visibility } shouldBe listOf(AssetVisibility.FromStage(0), AssetVisibility.FromStage(0))
+        assets.map { it.mediaType } shouldBe listOf("image/jpeg", "image/png")
     }
 
     @Test
-    fun `the photo is frozen once, and a second call freezes nothing`() {
-        val params = draw()
-        every { images.frozen(imageId = params.imageId, layout = any()) } returns frozen
-        every { store.find(roundGameId) } returns null
-
-        game.materialised(params = params, roundGameId = roundGameId)
-
-        verify(exactly = 1) { store.store(roundGameId = roundGameId, mediaType = "image/jpeg", bytes = frozen) }
-
-        every { store.find(roundGameId) } returns FrozenPhoto(mediaType = "image/jpeg", bytes = frozen)
-        game.materialised(params = params, roundGameId = roundGameId)
-        verify(exactly = 1) { images.frozen(imageId = any(), layout = any()) }
-    }
-
-    @Test
-    fun `a vanished pool image yields no assets rather than a broken round`() {
+    fun `a gone pool image produces no assets`() {
         every { images.frozen(imageId = any(), layout = any()) } returns null
 
         game.produceAssets(draw()).shouldBeEmpty()
-    }
-
-    @Test
-    fun `the board is a JPEG and the patch a PNG, both from the stored photo`() {
-        every { store.find(roundGameId) } returns FrozenPhoto(mediaType = "image/jpeg", bytes = frozen)
-        val params = draw()
-
-        game.asset(params = params, roundGameId = roundGameId, key = 0).shouldNotBeNull().mediaType shouldBe "image/jpeg"
-        game.asset(params = params, roundGameId = roundGameId, key = 1).shouldNotBeNull().mediaType shouldBe "image/png"
-        game.asset(params = params, roundGameId = roundGameId, key = SOLUTION_ASSET_KEY).shouldBeNull()
-        game.asset(params = params, roundGameId = roundGameId, key = SCENE_ASSET_KEY).shouldBeNull()
-    }
-
-    @Test
-    fun `the lab gets both pictures at once`() {
-        every { images.frozen(imageId = any(), layout = any()) } returns frozen
-
-        game.produceAssets(draw()).keys shouldBe setOf(0, 1)
-    }
-
-    @Test
-    fun `the history keeps the photo, archiving deletes it`() {
-        game.releaseStageAssets(listOf(roundGameId))
-        verify(exactly = 0) { store.release(any()) }
-
-        game.releaseAssets(listOf(roundGameId))
-        verify(exactly = 1) { store.release(listOf(roundGameId)) }
     }
 }

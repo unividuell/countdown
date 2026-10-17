@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.unividuell.countdown.core.game.Phase
+import org.unividuell.countdown.core.game.contentType
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.isSuperAdmin
 import java.util.UUID
@@ -154,22 +155,22 @@ class LabController(private val service: LabService) {
         adminId = me.id, isSuperAdmin = me.isSuperAdmin, targetUserId = userId, value = body.value,
     )
 
-    /** The round's binary assets, stage-gated exactly like the real round's. */
-    @GetMapping("/assets/{key}")
+    /** The round's binary assets, under the same rule as the real round's. */
+    @GetMapping("/assets/{name}")
     fun asset(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
         @PathVariable game: String,
-        @PathVariable key: Int,
+        @PathVariable name: String,
         @RequestParam seed: Int,
         @RequestParam(defaultValue = "ONE") phase: Phase,
     ): ResponseEntity<ByteArray> {
         val asset = service.asset(
             slug = slug, gameId = game, seed = seed, phase = phase,
-            userId = me.id, isSuperAdmin = me.isSuperAdmin, key = key,
+            userId = me.id, isSuperAdmin = me.isSuperAdmin, name = name,
         )
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, asset.mediaType)
+            .header(HttpHeaders.CONTENT_TYPE, asset.contentType)
             .body(asset.bytes)
     }
 }

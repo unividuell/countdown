@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.gamelab.internal
 
+import org.unividuell.countdown.core.game.AssetKey
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
@@ -88,6 +89,8 @@ data class LabRoundResponse(
      * master, the one deliberate difference from the product: the lab models no roles anywhere.
      */
     val canOverride: Boolean = true,
+    /** The keys this tester's state opens, by asset name — mirrors `RoundResponse.assetKeys`. */
+    val assetKeys: Map<String, AssetKey> = emptyMap(),
 )
 
 /** The body of a skip request — mirrors `SkipRequest` in the real round's `RoundDtos`. */

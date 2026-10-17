@@ -9,19 +9,22 @@ import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.game.awardFor
+import org.unividuell.countdown.core.game.sealed
 import java.security.SecureRandom
 import java.time.Clock
 
 /**
- * Announces a round: picks its game, draws its params, persists the row and lets the game store its
- * assets. Two callers, one draw — [MaterialisationSchedule] a day ahead, [AnnouncementService] for a
- * round the schedule missed — so the frozen round does not depend on which of them wrote it.
+ * Announces a round: picks its game, draws its params, persists the row and stores the assets the
+ * game produces, stage assets sealed. Two callers, one draw — [MaterialisationSchedule] a day
+ * ahead, [AnnouncementService] for a round the schedule missed — so the frozen round does not
+ * depend on which of them wrote it.
  */
 @Component
 class RoundMaterialiser(
     private val store: RoundGameStore,
     private val catalog: GameCatalog,
     private val selection: GameSelection,
+    private val assets: RoundAssetStore,
     private val clock: Clock,
 ) {
     private val logger = KotlinLogging.logger {}
@@ -73,29 +76,19 @@ class RoundMaterialiser(
             announcedAt = clock.instant(),
         )
         // On a lost announce race, `announced` is the WINNER's row, possibly of a different type
-        // than `typeId` drew — so the hook must run against the type the persisted row actually
-        // carries, not against this caller's `handle`. Both first callers reach this line and call
-        // the winner's hook, which is exactly why it must be idempotent.
+        // than `typeId` drew — so the assets must come from the type the persisted row actually
+        // carries, not from this caller's `handle`. Both first callers reach this line, and keys are
+        // random: `exists` spares the second one the work, `storeAll` keeps the first writer's rows.
         val materialisedHandle = requireNotNull(catalog.handle(announced.gameType)) {
             "announced round carries unknown type '${announced.gameType}'"
         }
-        materialisedHandle.materialised(params = announced.params, roundGameId = requireNotNull(announced.id))
-        return announced
-    }
-
-    /**
-     * Every round older than [roundNumber] — the running one — has stopped being playable, so
-     * whatever only a playable round needed may go. **Not** everything it stored: a past round's
-     * reveal is still rendered by the history, and its asset has to survive — which is why this is
-     * `releaseStageAssets` and not `releaseAssets`. Every game is asked; each releases only what it
-     * owns, a no-op for most.
-     */
-    @Transactional
-    fun releaseStagesOlderThan(edition: CommunityEdition, roundNumber: Int) {
-        val older = store.roundIdsOlderThan(edition = edition, roundNumber = roundNumber)
-        if (older.isEmpty()) return
-        for (id in catalog.ids()) {
-            catalog.handle(id)?.releaseStageAssets(older)
+        val roundGameId = requireNotNull(announced.id)
+        if (!assets.exists(roundGameId)) {
+            assets.storeAll(
+                roundGameId = roundGameId,
+                assets = materialisedHandle.produceAssets(announced.params).map { it.sealed() },
+            )
         }
+        return announced
     }
 }

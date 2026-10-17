@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Plain class, like songsnippet's RoundAudio: ByteArray equality is identity, and nothing ever
+ * Plain class, like `game`'s RoundAssetRow: ByteArray equality is identity, and nothing ever
  * compares two images. [communityId] null means the global pool.
  */
 @Table(schema = "imagepool", name = "images")

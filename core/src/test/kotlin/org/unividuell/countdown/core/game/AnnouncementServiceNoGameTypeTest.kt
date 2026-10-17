@@ -15,6 +15,7 @@ import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.AnnouncementService
 import org.unividuell.countdown.core.game.internal.GameSelection
 import org.unividuell.countdown.core.game.internal.NoGameReason
+import org.unividuell.countdown.core.game.internal.RoundAssetStore
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundMaterialiser
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
@@ -49,12 +50,15 @@ class AnnouncementServiceNoGameTypeTest {
         plays = mockk<RoundPlayRepository>(), identities = mockk<MemberIdentityQuery>(),
         votes = mockk<RoundPlayVoteRepository> { every { votesOfRound(any()) } returns emptyList() },
         memberships = mockk<MembershipQuery> { every { isAdmin(any(), any()) } returns false },
+        assets = mockk<RoundAssetStore>(),
     )
 
     private val service = AnnouncementService(
         communities = communities, memberships = memberships, engine = engine, store = store,
         catalog = catalog,
-        materialiser = RoundMaterialiser(store = store, catalog = catalog, selection = selection, clock = clock),
+        materialiser = RoundMaterialiser(
+            store = store, catalog = catalog, selection = selection, assets = mockk<RoundAssetStore>(), clock = clock,
+        ),
         responses = responses, clock = clock,
     )
 

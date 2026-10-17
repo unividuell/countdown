@@ -65,4 +65,25 @@ class AssetAccessTest {
             AssetHeader(name = "photo", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", key = ByteArray(32))
         }
     }
+
+    @Test
+    fun `an asset name outside lowercase letters, digits and dashes is refused`() {
+        shouldThrow<IllegalArgumentException> {
+            RoundAsset(name = "Clip 0", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", bytes = byteArrayOf())
+        }
+    }
+
+    @Test
+    fun `sealing keys a stage asset and leaves every other one plain`() {
+        val clip = RoundAsset(
+            name = "clip-0", visibility = AssetVisibility.FromStage(0), mediaType = "audio/wav", bytes = byteArrayOf(1),
+        ).sealed()
+        val photo = RoundAsset(
+            name = "photo", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", bytes = byteArrayOf(2),
+        ).sealed()
+
+        AssetSeal.open(sealed = clip.bytes, key = requireNotNull(clip.header.key)) shouldBe byteArrayOf(1)
+        photo.header.key shouldBe null
+        photo.bytes shouldBe byteArrayOf(2)
+    }
 }

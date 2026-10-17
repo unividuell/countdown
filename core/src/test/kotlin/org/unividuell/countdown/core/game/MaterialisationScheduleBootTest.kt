@@ -1,8 +1,6 @@
 package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -33,8 +31,8 @@ import java.time.ZoneId
 import java.util.UUID
 
 /**
- * The run against a real database: what it persists, what it leaves alone, which stage assets it
- * releases, and that a round announced ahead stays out of reach. Calls
+ * The run against a real database: what it persists, what it leaves alone, and that a round
+ * announced ahead stays out of reach. Calls
  * [MaterialisationSchedule.prepare] for this class's own edition, never `run()`: that walks every
  * active edition of the context, other test classes' included.
  */
@@ -57,7 +55,6 @@ class MaterialisationScheduleBootTest(
     @Autowired val clock: Clock,
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
-    @Autowired val recorder: AnnouncementMaterialisedHookTest.RecordingGame.Recorder,
 ) {
     private data class Run(val community: Community, val owner: UUID, val edition: CommunityEdition)
 
@@ -127,26 +124,11 @@ class MaterialisationScheduleBootTest(
     }
 
     @Test
-    fun `the run releases the stages of rounds older than the running one, and only those`() {
-        val edition = aRun("Schedule Releases").edition
-        val current = currentOf(edition)
-        val earlier = aPlantedRound(edition = edition, roundNumber = current + 1)
-
-        schedule.prepare(edition = edition, now = clock.instant())
-
-        val running = store.find(edition = edition, roundNumber = current).shouldNotBeNull()
-        val next = store.find(edition = edition, roundNumber = current - 1).shouldNotBeNull()
-        recorder.stagesReleasedRounds shouldContain requireNotNull(earlier.id)
-        recorder.stagesReleasedRounds shouldNotContain requireNotNull(running.id)
-        recorder.stagesReleasedRounds shouldNotContain requireNotNull(next.id)
-    }
-
-    @Test
     fun `a round announced ahead is reachable through neither the history nor the asset path`() {
         val (community, owner, edition) = aRun("Schedule Keeps Ahead Sealed")
         val current = currentOf(edition)
         schedule.prepare(edition = edition, now = clock.instant())
-        store.find(edition = edition, roundNumber = current - 1).shouldNotBeNull()
+        val ahead = store.find(edition = edition, roundNumber = current - 1).shouldNotBeNull()
 
         shouldThrow<RoundNotFoundException> {
             history.pastRound(slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = current - 1)
@@ -154,7 +136,7 @@ class MaterialisationScheduleBootTest(
         shouldThrow<RoundNotFoundException> {
             plays.asset(
                 slug = community.slug, userId = owner, isSuperAdmin = false,
-                roundNumber = current - 1, key = SOLUTION_ASSET_KEY,
+                roundNumber = current - 1, roundGameId = requireNotNull(ahead.id), name = "solution",
             )
         }
     }

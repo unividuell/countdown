@@ -23,7 +23,7 @@ class RoundAssetRow(
     val createdAt: Instant? = null,
 )
 
-/** Everything but the bytes, no id: see `RoundImageBytes`. Lets the rule and the keys read without the payload. */
+/** Everything but the bytes, no id. Lets the rule and the keys read without the payload. */
 class RoundAssetHeaderRow(
     val name: String,
     val visibility: String,

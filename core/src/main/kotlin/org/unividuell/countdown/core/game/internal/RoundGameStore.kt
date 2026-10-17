@@ -6,7 +6,6 @@ import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.Award
 import tools.jackson.databind.JsonNode
 import java.time.Instant
-import java.util.UUID
 
 /**
  * The table, expressed in the terms the rest of the module thinks in: a run and a round number.
@@ -54,11 +53,6 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         val id = requireNotNull(roundGame.id)
         return requireNotNull(rounds.findByIdForUpdate(id)) { "round $id vanished while locking it" }
     }
-
-    /** Every round id of [edition] older than [roundNumber] — the rounds that stopped being playable. */
-    @Transactional(readOnly = true)
-    fun roundIdsOlderThan(edition: CommunityEdition, roundNumber: Int): List<UUID> =
-        rounds.idsOfOlderRounds(editionId = requireNotNull(edition.id), roundNumber = roundNumber)
 
     /**
      * Announce [roundNumber] — or, if somebody else got there first, return their announcement.

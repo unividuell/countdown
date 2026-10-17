@@ -22,7 +22,6 @@ class DedusterPointsParityTest {
             every { gridOf(image) } returns DedusterGrid.LANDSCAPE
         },
         images = mockk(),
-        store = mockk(),
         mapper = mapper,
     )
     private val params = game.draw(

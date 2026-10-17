@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.game.internal
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
+import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
@@ -16,7 +17,6 @@ import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.imagepool.AspectRatio
 import org.unividuell.countdown.core.imagepool.ImagePoolQuery
 import org.unividuell.countdown.core.imagepool.playableIds
-import org.unividuell.countdown.core.placepatch.PlacePatchImageStore
 import org.unividuell.countdown.core.placepatch.PlacePatchImages
 import org.unividuell.countdown.core.placepatch.PlacePatchLayout
 import tools.jackson.databind.JsonNode
@@ -63,7 +63,6 @@ data class PlacePatchOutcome(val correct: Boolean) : GameOutcome
 class PlacePatchGameType(
     private val pool: ImagePoolQuery,
     private val images: PlacePatchImages,
-    private val store: PlacePatchImageStore,
     private val mapper: ObjectMapper,
 ) : GameType<PlacePatchParams> {
 
@@ -115,50 +114,32 @@ class PlacePatchGameType(
 
     override fun solution(params: PlacePatchParams) = PlacePatchSolution(x = params.x, y = params.y)
 
-    override fun assetStage(params: PlacePatchParams, key: Int) =
-        if (key == BOARD_KEY || key == PATCH_KEY) 0 else key
-
-    override fun produceAssets(params: PlacePatchParams): Map<Int, RoundAsset> {
+    /** Both pictures open with the reveal; until then they travel sealed. */
+    override fun produceAssets(params: PlacePatchParams): List<RoundAsset> {
         val frozen = images.frozen(imageId = params.imageId, layout = layoutOf(params)) ?: run {
             logger.warn { "place-patch image ${params.imageId} is gone; the round has no photo" }
-            return emptyMap()
+            return emptyList()
         }
-        return mapOf(BOARD_KEY to board(frozen), PATCH_KEY to patch(params = params, frozen = frozen))
-    }
-
-    /** Idempotent: the race's second caller finds the row and freezes nothing a second time. */
-    override fun materialised(params: PlacePatchParams, roundGameId: UUID) {
-        if (store.find(roundGameId) != null) return
-        val frozen = images.frozen(imageId = params.imageId, layout = layoutOf(params)) ?: run {
-            logger.warn { "place-patch image ${params.imageId} is gone; round $roundGameId has no photo" }
-            return
-        }
-        store.store(roundGameId = roundGameId, mediaType = "image/jpeg", bytes = frozen)
-    }
-
-    override fun asset(params: PlacePatchParams, roundGameId: UUID, key: Int): RoundAsset? {
-        if (key != BOARD_KEY && key != PATCH_KEY) return null
-        val frozen = store.find(roundGameId)?.bytes ?: return null
-        return if (key == BOARD_KEY) board(frozen) else patch(params = params, frozen = frozen)
-    }
-
-    // releaseStageAssets stays the no-op default: the history shows past rounds, both pictures included.
-
-    override fun releaseAssets(roundGameIds: List<UUID>) {
-        store.release(roundGameIds)
+        return listOf(
+            RoundAsset(
+                name = "board",
+                visibility = AssetVisibility.FromStage(0),
+                mediaType = "image/jpeg",
+                bytes = PlacePatchImages.board(frozen),
+            ),
+            RoundAsset(
+                name = "patch",
+                visibility = AssetVisibility.FromStage(0),
+                mediaType = "image/png",
+                bytes = PlacePatchImages.patch(
+                    frozen = frozen, layout = layoutOf(params), x = params.x, y = params.y, fraySeed = params.fraySeed,
+                ),
+            ),
+        )
     }
 
     private fun layoutOf(params: PlacePatchParams) =
         PlacePatchLayout(cols = params.cols, rows = params.rows, size = params.size)
-
-    private fun board(frozen: ByteArray) = RoundAsset(mediaType = "image/jpeg", bytes = PlacePatchImages.board(frozen))
-
-    private fun patch(params: PlacePatchParams, frozen: ByteArray) = RoundAsset(
-        mediaType = "image/png",
-        bytes = PlacePatchImages.patch(
-            frozen = frozen, layout = layoutOf(params), x = params.x, y = params.y, fraySeed = params.fraySeed,
-        ),
-    )
 
     private fun cellOf(guess: JsonNode, field: String, max: Int): Int {
         val value = guess.get(field)
@@ -168,10 +149,5 @@ class PlacePatchGameType(
             ?: throw InvalidGuessException("guess must carry an integral '$field' in int range")
         if (value !in 0..max) throw InvalidGuessException("$field must lie in [0, $max], was $value")
         return value
-    }
-
-    companion object {
-        const val BOARD_KEY = 0
-        const val PATCH_KEY = 1
     }
 }

@@ -83,7 +83,7 @@ class AnnouncementService(
             edition = edition,
             round = round,
             previousRoundNumber = previous,
-            roundGame = existing ?: materialiseNow(edition = edition, roundNumber = round.number)
+            roundGame = existing ?: materialiser.materialise(edition = edition, roundNumber = round.number)
                 ?: return ResolvedRound.NoGame(
                     communityId = communityId, edition = edition, round = round,
                     previousRoundNumber = previous, reason = NoGameReason.NO_GAME_TYPE,
@@ -96,11 +96,6 @@ class AnnouncementService(
         communityId = communityId, edition = edition, round = null,
         previousRoundNumber = null, reason = NoGameReason.NOT_SCHEDULED,
     )
-
-    /** Announce the running round, then release what stopped being playable with it. */
-    private fun materialiseNow(edition: CommunityEdition, roundNumber: Int): RoundGame? =
-        materialiser.materialise(edition = edition, roundNumber = roundNumber)
-            ?.also { materialiser.releaseStagesOlderThan(edition = edition, roundNumber = roundNumber) }
 
     /**
      * Reads the game type off the stored row, not off the draw: on a lost race the row belongs to

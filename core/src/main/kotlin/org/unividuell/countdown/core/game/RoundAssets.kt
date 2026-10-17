@@ -98,3 +98,34 @@ fun keysFor(headers: List<AssetHeader>, viewer: AssetViewer): Map<String, AssetK
                 mediaType = header.mediaType,
             )
         }
+
+/**
+ * One asset as a game produces it, in plain bytes; sealing is the framework's job ([sealed]). A
+ * class, not a data class: [bytes] is a [ByteArray], whose equality is identity.
+ */
+class RoundAsset(val name: String, val visibility: AssetVisibility, val mediaType: String, val bytes: ByteArray) {
+    init {
+        require(ASSET_NAME.matches(name)) { "asset name must match ${ASSET_NAME.pattern}: '$name'" }
+    }
+}
+
+/** A stage asset under its own fresh key; every other asset stays plain, without a key. */
+fun RoundAsset.sealed(): StoredAsset {
+    if (visibility !is AssetVisibility.FromStage) {
+        return StoredAsset(
+            header = AssetHeader(name = name, visibility = visibility, mediaType = mediaType, key = null),
+            bytes = bytes,
+        )
+    }
+
+    val sealed = AssetSeal.sealFresh(bytes)
+
+    return StoredAsset(
+        header = AssetHeader(name = name, visibility = visibility, mediaType = mediaType, key = sealed.key),
+        bytes = sealed.bytes,
+    )
+}
+
+/** What the asset travels as: ciphertext is opaque until its key arrives, plain bytes carry their type. */
+val StoredAsset.contentType: String
+    get() = if (header.key != null) "application/octet-stream" else header.mediaType

@@ -84,21 +84,6 @@ data class GuessContext(
     val playId: UUID?,
 )
 
-/** The asset key under which a round's solution audio/artefact hides behind the solution gate. */
-const val SOLUTION_ASSET_KEY = 99
-
-/**
- * The asset key of a round's scene: open as soon as the round is announced, no play row needed.
- * Opening stage 0 instead would be the wrong cut — for Anspielung that is the first clip, the puzzle.
- */
-const val SCENE_ASSET_KEY = 98
-
-/**
- * One binary artefact of a round — bytes plus how to serve them. A plain class, not a data class:
- * ByteArray equality is identity, and nothing ever compares assets.
- */
-class RoundAsset(val mediaType: String, val bytes: ByteArray)
-
 /**
  * A game the framework can announce.
  *
@@ -221,45 +206,11 @@ interface GameType<P : Any> {
     fun stages(params: P): Int = 1
 
     /**
-     * Which stage releases asset [key] before the guess. The default is the key itself —
-     * Anspielung's ladder, one clip per stage. A single-stage game with two images maps both to 0.
-     * A stopgap until the asset model is cleaned up as a whole (unividuell/countdown#101).
+     * The round's binary assets, each named and with its [AssetVisibility]; none by default. Plain
+     * bytes: the framework seals what opens by stage. Expensive — may perform network I/O — and
+     * called once per round: at materialisation for a real round, on first need for a lab round.
      */
-    fun assetStage(params: P, key: Int): Int = key
-
-    /**
-     * Compute the round's binary assets, keyed by stage plus [SOLUTION_ASSET_KEY]. Expensive — may
-     * perform network I/O. Called once per round by whoever owns the storage: [materialised] for a
-     * real round, the lab's in-memory store for a lab round.
-     */
-    fun produceAssets(params: P): Map<Int, RoundAsset> = emptyMap()
-
-    /**
-     * After the round row exists: produce and persist this round's assets — the game owns its
-     * storage. Must be idempotent: on an announce race both first callers run the materialisation
-     * branch, so the loser calls this a second time.
-     */
-    fun materialised(params: P, roundGameId: UUID) {}
-
-    /** One stored asset of a real round. The framework gates WHO may fetch; the game only fetches. */
-    fun asset(params: P, roundGameId: UUID, key: Int): RoundAsset? = null
-
-    /**
-     * These rounds are no longer **playable** — release whatever only a playable round needed, and
-     * keep whatever a closed round still shows. For a staged game that means the stage ladder goes
-     * and the reveal asset stays: the history renders a past round's reveal, so deleting that one
-     * would break it, while nobody can ever ask for an earlier stage again.
-     *
-     * Fires for every round of the run older than the running one.
-     */
-    fun releaseStageAssets(roundGameIds: List<UUID>) {}
-
-    /**
-     * These rounds no longer need their assets **at all** — delete everything you stored for them.
-     * Meant for archiving a run, which is the point at which even the history stops needing its
-     * audio. Deliberately without a caller today; see game-rounds.md.
-     */
-    fun releaseAssets(roundGameIds: List<UUID>) {}
+    fun produceAssets(params: P): List<RoundAsset> = emptyList()
 }
 
 /**

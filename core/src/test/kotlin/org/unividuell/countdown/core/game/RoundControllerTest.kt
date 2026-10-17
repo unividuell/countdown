@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -423,6 +424,43 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             jsonPath("$.noGameReason") { value("NOT_SCHEDULED") }
         }
+    }
+
+    @Test
+    fun `a sealed asset is served as octet-stream, a plain one with its media type`() {
+        val roundGameId = UUID.randomUUID()
+        every {
+            plays.asset(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 12, roundGameId = roundGameId, name = "clip-0",
+            )
+        } returns StoredAsset(
+            header = AssetHeader(
+                name = "clip-0", visibility = AssetVisibility.FromStage(0), mediaType = "audio/wav", key = ByteArray(32),
+            ),
+            bytes = byteArrayOf(1, 2, 3),
+        )
+        every {
+            plays.asset(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 12, roundGameId = roundGameId, name = "scene",
+            )
+        } returns StoredAsset(
+            header = AssetHeader(name = "scene", visibility = AssetVisibility.Scene, mediaType = "image/jpeg", key = null),
+            bytes = byteArrayOf(4),
+        )
+
+        mockMvc.get("/api/communities/team/rounds/12/assets/clip-0?round=$roundGameId") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                header { string(HttpHeaders.CONTENT_TYPE, "application/octet-stream") }
+            }
+        mockMvc.get("/api/communities/team/rounds/12/assets/scene?round=$roundGameId") { with(principalFor()) }
+            .andExpect {
+                status { isOk() }
+                header { string(HttpHeaders.CONTENT_TYPE, "image/jpeg") }
+                header { string(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable") }
+            }
     }
 
     @Test
