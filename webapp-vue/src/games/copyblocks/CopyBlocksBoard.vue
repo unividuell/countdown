@@ -222,7 +222,7 @@ function submit(): void {
                     :src="s.icon"
                     alt=""
                     draggable="false"
-                    class="pointer-events-none w-[73%] [image-rendering:pixelated] [-webkit-touch-callout:none]"
+                    class="pointer-events-none w-[85%] [image-rendering:pixelated] [-webkit-touch-callout:none]"
                   />
                 </button>
               </div>

@@ -125,7 +125,8 @@ const PICKAXE = {
 /**
  * The hotbar's pickaxe, our own 16 × 16 drawing (Minecraft's sprite is Mojang's). Handle and head
  * share one centre at the bottom left: the handle runs from it at 45°, the head is a ring arc
- * across the top right, at right angles to the handle, narrowing to points at both ends.
+ * across the top right, at right angles to the handle, narrowing to points at both ends. The
+ * finished drawing is centred in its square, so it sits in the slot like the blocks do.
  */
 export function pickaxePixels(): (string | null)[][] {
   const [cx, cy] = [2, 14]
@@ -138,7 +139,7 @@ export function pickaxePixels(): (string | null)[][] {
       const d = Math.hypot(dx, dy)
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI
       const across = dx - dy
-      if (Math.abs(across) < 1.1 && d > 0.9 && d < 9.4)
+      if (dx > 0 && dy > 0 && Math.abs(across) < 1.1 && d < 9.4)
         grid[y]![x] = across > 0 ? PICKAXE.woodDark : PICKAXE.wood
 
       const taper = Math.max(0, Math.abs(angle - 45) - 33) * 0.09
@@ -159,7 +160,20 @@ export function pickaxePixels(): (string | null)[][] {
       )
         grid[y]![x] = PICKAXE.outline
 
-  return grid
+  return centred(grid)
+}
+
+/** [grid] moved by whole pixels so that what is drawn sits in the middle of the square. */
+function centred(grid: (string | null)[][]): (string | null)[][] {
+  const drawn = grid.flatMap((row, y) => row.flatMap((c, x) => (c === null ? [] : [{ x, y }])))
+  const shift = (values: number[]) =>
+    Math.round((PX - 1 - Math.max(...values) - Math.min(...values)) / 2)
+  const sx = shift(drawn.map((c) => c.x))
+  const sy = shift(drawn.map((c) => c.y))
+
+  return Array.from({ length: PX }, (_, y) =>
+    Array.from({ length: PX }, (_, x) => grid[y - sy]?.[x - sx] ?? null),
+  )
 }
 
 let pickaxeUrl: string | null = null

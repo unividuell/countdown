@@ -15,12 +15,29 @@ describe('pickaxePixels', () => {
     )
   })
 
-  it('runs the handle from the bottom left, the head across the top right', () => {
-    expect(grid[15]![0]).toBe('#b07a3e')
-    expect(grid[12]![3]).toBe('#b07a3e')
-    expect(grid[6]![8]).toBe('#33c3b2')
-    expect(grid[5]![9]).toBe('#a6f1e6')
-    expect(grid[0]![15]).toBeNull()
-    expect(grid[15]![15]).toBeNull()
+  const cells = (match: (c: string) => boolean) =>
+    grid.flatMap((row, y) => row.flatMap((c, x) => (c !== null && match(c) ? [{ x, y }] : [])))
+  const mean = (list: { x: number; y: number }[]) => ({
+    x: list.reduce((sum, c) => sum + c.x, 0) / list.length,
+    y: list.reduce((sum, c) => sum + c.y, 0) / list.length,
+  })
+
+  it('runs the handle up from the bottom left, the head across the top right', () => {
+    const wood = mean(cells((c) => c === '#b07a3e' || c === '#6b4423'))
+    const head = mean(cells((c) => c === '#33c3b2' || c === '#a6f1e6'))
+
+    expect(wood.x).toBeLessThan(head.x)
+    expect(wood.y).toBeGreaterThan(head.y)
+  })
+
+  it('sits centred in its square', () => {
+    const drawn = cells(() => true)
+    const xs = drawn.map((c) => c.x)
+    const ys = drawn.map((c) => c.y)
+    const [left, right] = [Math.min(...xs), 15 - Math.max(...xs)]
+    const [top, bottom] = [Math.min(...ys), 15 - Math.max(...ys)]
+
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(top - bottom)).toBeLessThanOrEqual(1)
   })
 })
