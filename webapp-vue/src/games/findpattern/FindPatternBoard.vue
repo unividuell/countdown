@@ -93,8 +93,14 @@ const outlines = computed(() => {
   )
 })
 
+/**
+ * One guess per round, so no tap counts before the board is on screen: uncovered, `boardSrc`
+ * stays `null` until the picture opens (or for good if it never does).
+ */
+const playable = computed(() => !props.disabled && !props.sealed && props.boardSrc !== null)
+
 function onCell(index: number): void {
-  if (props.disabled || props.sealed) return
+  if (!playable.value) return
   const patternLength = layout.value?.patternLength ?? 0
   const next = nextSelection(selected.value, index, patternLength)
   selected.value = next
@@ -124,7 +130,7 @@ function onCell(index: number): void {
           :rows="layout.rows"
           :outlines="outlines"
           :numbers="[]"
-          :interactive="!props.disabled && !props.sealed"
+          :interactive="playable"
           @cell="onCell"
           @image-error="imageFailed = true"
         />

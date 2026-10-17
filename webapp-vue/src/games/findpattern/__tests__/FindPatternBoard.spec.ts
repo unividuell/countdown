@@ -201,6 +201,26 @@ describe('FindPatternBoard, the pictures', () => {
     expect(mountSealed().findAll('img')).toHaveLength(0)
   })
 
+  it('takes no tap while the board picture is missing', async () => {
+    const wrapper = mountBoard(false, undefined, {}, { boardSrc: null, sceneState: 'preparing' })
+
+    await tap(wrapper, 10, 11, 12, 13)
+
+    expect(wrapper.emitted('guess')).toBeUndefined()
+    expect(wrapper.findAll('[data-test^="pattern-outline-"]')).toHaveLength(0)
+    expect(wrapper.getComponent(PatternGrid).props('interactive')).toBe(false)
+  })
+
+  it('takes taps once the board picture is here', async () => {
+    const wrapper = mountBoard(false, undefined, {}, { boardSrc: null, sceneState: 'preparing' })
+    await tap(wrapper, 10, 11)
+
+    await wrapper.setProps({ boardSrc: BOARD_SRC, sceneState: 'ready' })
+    await tap(wrapper, 10, 11, 12, 13)
+
+    expect(wrapper.emitted('guess')).toEqual([[{ startIndex: 10 }]])
+  })
+
   it('says so when a picture does not load', async () => {
     const wrapper = mountBoard()
 

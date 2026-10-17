@@ -188,6 +188,7 @@ describe('FindPatternGame', () => {
 
   it('passes a guess up unchanged', async () => {
     const wrapper = mountGame()
+    await flushPromises()
 
     for (const index of [10, 11, 12, 13]) {
       await wrapper.get(`[data-test="pattern-cell-${index}"]`).trigger('click')
