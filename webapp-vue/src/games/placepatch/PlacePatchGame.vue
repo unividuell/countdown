@@ -50,8 +50,21 @@ const solution = computed(() => asPlacePatchSolution(props.solution, payload.val
 
 // Both are fetched sealed under the cover and opened when the reveal brings the keys — nothing loads
 // on the scored clock.
-const { state: boardState, src: boardSrc } = useSealedAsset(() => props.assets, BOARD_ASSET)
-const { state: patchState, src: patchSrc } = useSealedAsset(() => props.assets, PATCH_ASSET)
+const {
+  state: boardState,
+  src: boardSrc,
+  retry: retryBoard,
+} = useSealedAsset(() => props.assets, BOARD_ASSET)
+const {
+  state: patchState,
+  src: patchSrc,
+  retry: retryPatch,
+} = useSealedAsset(() => props.assets, PATCH_ASSET)
+
+function retry(): void {
+  retryBoard()
+  retryPatch()
+}
 
 /** The cover is ready only when both pictures are here; one failed picture fails it. */
 const sceneState = computed<SceneState>(() => {
@@ -130,6 +143,7 @@ watch(solution, (now, before) => {
         :award-points="props.awardPoints"
         @guess="(value) => emit('guess', value)"
         @reveal="emit('reveal')"
+        @retry="retry"
       />
     </Transition>
   </div>

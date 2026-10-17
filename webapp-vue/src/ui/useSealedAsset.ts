@@ -13,11 +13,17 @@ import type { SceneState } from '@/ui/sceneState'
  *                       ├──open──▶ src (object URL)
  * key ──────────────────┘
  * ```
+ *
+ * `retry` is the cover's „Nochmal versuchen“: it starts over from the URL, whatever went wrong.
  */
 export function useSealedAsset(
   assets: () => RoundAssets | undefined,
   name: string,
-): { state: Readonly<Ref<SceneState>>; src: Readonly<Ref<string | null>> } {
+): {
+  state: Readonly<Ref<SceneState>>
+  src: Readonly<Ref<string | null>>
+  retry: () => void
+} {
   const state = ref<SceneState>('preparing')
   const src = ref<string | null>(null)
   const bytes = shallowRef<Uint8Array | null>(null)
@@ -43,29 +49,31 @@ export function useSealedAsset(
     src.value = null
   }
 
-  watch(
-    url,
-    (current) => {
-      const mine = ++fetching
-      release()
-      bytes.value = null
-      state.value = 'preparing'
-      if (!current) return
+  function load(current: string | undefined): void {
+    const mine = ++fetching
+    release()
+    bytes.value = null
+    state.value = 'preparing'
+    if (!current) return
 
-      fetchSealed(current).then(
-        (sealed) => {
-          if (disposed || mine !== fetching) return
-          bytes.value = sealed
-          state.value = 'ready'
-        },
-        () => {
-          if (disposed || mine !== fetching) return
-          state.value = 'failed'
-        },
-      )
-    },
-    { immediate: true },
-  )
+    fetchSealed(current).then(
+      (sealed) => {
+        if (disposed || mine !== fetching) return
+        bytes.value = sealed
+        state.value = 'ready'
+      },
+      () => {
+        if (disposed || mine !== fetching) return
+        state.value = 'failed'
+      },
+    )
+  }
+
+  watch(url, load, { immediate: true })
+
+  function retry(): void {
+    if (!disposed) load(url.value)
+  }
 
   watch([bytes, key], async ([sealed, opener]) => {
     const mine = ++opening
@@ -88,6 +96,8 @@ export function useSealedAsset(
 
     release()
     src.value = URL.createObjectURL(blob)
+    // An earlier key may have failed to open these bytes; a later one that does ends that.
+    state.value = 'ready'
   })
 
   onScopeDispose(() => {
@@ -95,5 +105,5 @@ export function useSealedAsset(
     release()
   })
 
-  return { state: readonly(state), src: readonly(src) }
+  return { state: readonly(state), src: readonly(src), retry }
 }

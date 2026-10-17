@@ -122,6 +122,113 @@ describe('useSealedAsset', () => {
     expect(src.value).toBeNull()
   })
 
+  it('turns ready when a later key opens bytes an earlier one could not', async () => {
+    const { state, src } = use()
+    await flushPromises()
+    keys.board = wrongKey
+    await flushPromises()
+    expect(state.value).toBe('failed')
+
+    keys.board = rightKey
+    await flushPromises()
+
+    expect(state.value).toBe('ready')
+    expect(src.value).toBe('blob:asset-1')
+  })
+
+  describe('retry', () => {
+    it('fetches again after a failed fetch and turns ready', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 503 }))
+      const { state, src, retry } = use()
+      await flushPromises()
+      expect(state.value).toBe('failed')
+
+      retry()
+
+      expect(state.value).toBe('preparing')
+
+      await flushPromises()
+
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(fetchMock.mock.calls[1]?.[0]).toBe('/x/board')
+      expect(state.value).toBe('ready')
+      expect(src.value).toBeNull()
+    })
+
+    it('opens the fresh bytes when the key is already there', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 503 }))
+      keys.board = rightKey
+      const { state, src, retry } = use()
+      await flushPromises()
+      expect(state.value).toBe('failed')
+
+      retry()
+      await flushPromises()
+
+      expect(state.value).toBe('ready')
+      expect(src.value).toBe('blob:asset-1')
+    })
+
+    it('starts over after bytes that would not open', async () => {
+      const { state, src, retry } = use()
+      await flushPromises()
+      keys.board = wrongKey
+      await flushPromises()
+      expect(state.value).toBe('failed')
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+
+      retry()
+
+      expect(state.value).toBe('preparing')
+
+      await flushPromises()
+
+      // One plain fetch, then the single fresh one the open allows itself.
+      expect(fetchMock).toHaveBeenCalledTimes(4)
+      expect(state.value).toBe('failed')
+      expect(src.value).toBeNull()
+    })
+
+    it('lets the fetch it replaces go unheard', async () => {
+      let arrive!: (r: Response) => void
+      fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => (arrive = resolve)))
+      keys.board = rightKey
+      const { state, src, retry } = use()
+
+      retry()
+      await flushPromises()
+      expect(src.value).toBe('blob:asset-1')
+
+      arrive(new Response(null, { status: 503 }))
+      await flushPromises()
+
+      expect(state.value).toBe('ready')
+      expect(src.value).toBe('blob:asset-1')
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+    })
+
+    it('fetches nothing while there is no url', async () => {
+      const { state, retry } = use(() => undefined)
+
+      retry()
+      await flushPromises()
+
+      expect(state.value).toBe('preparing')
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('does nothing once the scope has ended', async () => {
+      const { scope, retry } = use()
+      await flushPromises()
+
+      scope.stop()
+      retry()
+      await flushPromises()
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('fetches once more past the cache when the key does not open the cached bytes', async () => {
     fetchMock
       .mockResolvedValueOnce(new Response(foreign() as BodyInit))

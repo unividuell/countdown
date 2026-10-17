@@ -172,6 +172,74 @@ describe('PlacePatchGame', () => {
     expect(wrapper.getComponent(RevealCover).props('state')).toBe('failed')
   })
 
+  it('retries both pictures when the failed cover is retried', async () => {
+    let patchUp = false
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/patch') && !patchUp
+        ? new Response(null, { status: 503 })
+        : new Response(sealed() as BodyInit),
+    )
+    const wrapper = mountGame({
+      payload: null,
+      sealed: true,
+      scene: { cols: 40, rows: 30, size: 10 },
+    })
+    await flushPromises()
+    expect(wrapper.getComponent(RevealCover).props('state')).toBe('failed')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    patchUp = true
+    await wrapper.get('[data-test="reveal-cover-retry"]').trigger('click')
+
+    expect(wrapper.getComponent(RevealCover).props('state')).toBe('preparing')
+
+    await flushPromises()
+
+    expect(
+      fetchMock.mock.calls
+        .slice(2)
+        .map(([url]) => url)
+        .sort(),
+    ).toEqual(['/asset/board', '/asset/patch'])
+    expect(wrapper.getComponent(RevealCover).props('state')).toBe('ready')
+  })
+
+  it('says so when a picture cannot be fetched on an uncovered board', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/patch')
+        ? new Response(null, { status: 404 })
+        : new Response(sealed() as BodyInit),
+    )
+    const wrapper = mountGame({ assets: assetsWith({ board: OPEN, patch: OPEN }) })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="place-patch-image-error"]').text()).toBe(
+      'Das Bild ließ sich nicht laden.',
+    )
+  })
+
+  it('says so when the keys of the reveal do not open the pictures', async () => {
+    const wrapper = mountGame({
+      payload: null,
+      sealed: true,
+      scene: { cols: 40, rows: 30, size: 10 },
+    })
+    await flushPromises()
+    const wrong: AssetKey = { key: btoa('x'.repeat(32)), mediaType: 'image/jpeg' }
+
+    await wrapper.setProps({
+      payload: PAYLOAD,
+      sealed: false,
+      assets: assetsWith({ board: wrong, patch: wrong }),
+    })
+    await flushPromises()
+
+    expect(wrapper.findAll('img')).toHaveLength(0)
+    expect(wrapper.get('[data-test="place-patch-image-error"]').text()).toBe(
+      'Das Bild ließ sich nicht laden.',
+    )
+  })
+
   it('shows the submitted tip after a reload', () => {
     const board = mountGame({ myGuess: { x: 7, y: 4 }, disabled: true }).getComponent(
       PlacePatchBoard,

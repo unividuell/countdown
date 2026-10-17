@@ -39,7 +39,7 @@ const props = withDefaults(
   { scene: null, sealed: false, submitted: null },
 )
 
-const emit = defineEmits<{ guess: [value: Cell]; reveal: [] }>()
+const emit = defineEmits<{ guess: [value: Cell]; reveal: []; retry: [] }>()
 
 const layout = computed(() => props.payload ?? props.scene)
 const field = useTemplateRef<HTMLDivElement>('field')
@@ -47,6 +47,12 @@ const field = useTemplateRef<HTMLDivElement>('field')
 const stamp = ref<Cell | null>(null)
 const shown = computed(() => props.submitted ?? stamp.value)
 const imageFailed = ref(false)
+/**
+ * Uncovered, a picture that never opened leaves no `<img>` to fire `error`; sealed, the cover says it.
+ */
+const pictureFailed = computed(
+  () => imageFailed.value || (!props.sealed && props.sceneState === 'failed'),
+)
 let gesture: Gesture | null = null
 
 const playable = computed(
@@ -154,7 +160,7 @@ const patchWidth = computed(() =>
           />
         </div>
         <p
-          v-if="imageFailed"
+          v-if="pictureFailed"
           data-test="place-patch-image-error"
           class="text-center text-sm text-red-700"
         >
@@ -193,6 +199,7 @@ const patchWidth = computed(() =>
         :state="props.sceneState"
         :busy="props.disabled"
         @start="emit('reveal')"
+        @retry="emit('retry')"
       />
     </div>
 

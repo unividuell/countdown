@@ -196,4 +196,46 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.findComponent(RevealCover).props('state')).toBe('preparing')
     expect(wrapper.find('[data-test="reveal-cover-preparing"]').exists()).toBe(true)
   })
+
+  it('asks the game to retry when the failed cover is retried', async () => {
+    const wrapper = mountBoard({
+      payload: null,
+      scene: { cols: 40, rows: 30, size: 10 },
+      sealed: true,
+      sceneState: 'failed',
+      boardSrc: null,
+      patchSrc: null,
+    })
+
+    await wrapper.get('[data-test="reveal-cover-retry"]').trigger('click')
+
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
+  it('says so when a picture failed on an uncovered board', () => {
+    const wrapper = mountBoard({ sceneState: 'failed', boardSrc: null, patchSrc: null })
+
+    expect(wrapper.get('[data-test="place-patch-image-error"]').text()).toBe(
+      'Das Bild ließ sich nicht laden.',
+    )
+  })
+
+  it('leaves a failed scene to the cover while the board is sealed', () => {
+    const wrapper = mountBoard({
+      payload: null,
+      scene: { cols: 40, rows: 30, size: 10 },
+      sealed: true,
+      sceneState: 'failed',
+      boardSrc: null,
+      patchSrc: null,
+    })
+
+    expect(wrapper.find('[data-test="place-patch-image-error"]').exists()).toBe(false)
+  })
+
+  it('stays quiet while the pictures are still preparing', () => {
+    const wrapper = mountBoard({ sceneState: 'preparing', boardSrc: null, patchSrc: null })
+
+    expect(wrapper.find('[data-test="place-patch-image-error"]').exists()).toBe(false)
+  })
 })
