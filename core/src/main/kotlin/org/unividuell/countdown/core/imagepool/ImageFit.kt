@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
+import javax.imageio.stream.MemoryCacheImageOutputStream
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -49,7 +50,8 @@ object ImageFit {
         val writer = ImageIO.getImageWritersByFormatName("jpeg").next()
         val out = ByteArrayOutputStream()
         try {
-            ImageIO.createImageOutputStream(out).use { stream ->
+            // In memory whatever ImageIO.setUseCache says: that global flag can send a default stream to disk.
+            MemoryCacheImageOutputStream(out).use { stream ->
                 writer.output = stream
                 val param = writer.defaultWriteParam.apply {
                     compressionMode = ImageWriteParam.MODE_EXPLICIT
@@ -74,7 +76,8 @@ object ImageFit {
         val writer = ImageIO.getImageWritersByFormatName("png").next()
         val out = ByteArrayOutputStream()
         try {
-            ImageIO.createImageOutputStream(out).use { stream ->
+            // In memory whatever ImageIO.setUseCache says: that global flag can send a default stream to disk.
+            MemoryCacheImageOutputStream(out).use { stream ->
                 writer.output = stream
                 val param = writer.defaultWriteParam.apply {
                     compressionMode = ImageWriteParam.MODE_EXPLICIT
