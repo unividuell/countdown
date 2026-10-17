@@ -173,4 +173,40 @@ class RoundAssetStoreTest(
             )
         }
     }
+
+    @Test
+    fun `the table refuses a scene row with a key`() {
+        val id = aRound()
+
+        shouldThrow<DataIntegrityViolationException> {
+            jdbc.update(
+                "INSERT INTO game.round_assets (round_game_id, name, visibility, media_type, encryption_key, bytes) VALUES (?, 'x', 'SCENE', 'a/b', '\\x01', '\\x00')",
+                id,
+            )
+        }
+    }
+
+    @Test
+    fun `the table refuses a scene row with a stage`() {
+        val id = aRound()
+
+        shouldThrow<DataIntegrityViolationException> {
+            jdbc.update(
+                "INSERT INTO game.round_assets (round_game_id, name, visibility, stage, media_type, bytes) VALUES (?, 'x', 'SCENE', 0, 'a/b', '\\x00')",
+                id,
+            )
+        }
+    }
+
+    @Test
+    fun `the table refuses a negative stage`() {
+        val id = aRound()
+
+        shouldThrow<DataIntegrityViolationException> {
+            jdbc.update(
+                "INSERT INTO game.round_assets (round_game_id, name, visibility, stage, media_type, encryption_key, bytes) VALUES (?, 'x', 'STAGE', -1, 'a/b', '\\x01', '\\x00')",
+                id,
+            )
+        }
+    }
 }
