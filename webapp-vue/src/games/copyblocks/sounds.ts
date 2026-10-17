@@ -33,25 +33,18 @@ export const PITCH = 0.8
 export const PITCH_SPREAD = 0.05
 
 /*
- * Breaking, after survival-mode mining: a few deep knocks, then the break sound with a crumble
- * under it. Rebuilt from our free samples — Minecraft's own hit files belong to Mojang. All
- * starting values, to be tuned by ear in the lab.
+ * Breaking, after survival-mode mining: deep knocks, then the break sound. Rebuilt from our free
+ * samples — Minecraft's own hit files belong to Mojang. Tuned by ear in the lab.
  *
- *   knock  knock  knock  crack
- *   0      60     120    180 ms
- *                          crumble (+30 ms, pitched up, quieter)
+ *   knock  knock  crack
+ *   0      60     120 ms
  */
 
 /** Knocks before the break: the place sample, an octave down and quieter. */
-export const HIT_COUNT = 3
+export const HIT_COUNT = 2
 export const HIT_PITCH = 0.5
 export const HIT_GAIN = 0.4
 export const HIT_GAP_S = 0.06
-
-/** A second break variant under the first, detuned up: debris rather than echo. */
-export const CRUMBLE_DETUNE = 1.3
-export const CRUMBLE_GAIN = 0.5
-export const CRUMBLE_DELAY_S = 0.03
 
 export interface PlannedSound {
   set: SoundSet
@@ -62,7 +55,7 @@ export interface PlannedSound {
 
 /**
  * What an action sounds like, [roll] in `0..1` picking the pitch. Placing plays the place sound;
- * breaking knocks and crumbles, so a block going sounds unlike one coming.
+ * breaking knocks first, so a block going sounds unlike one coming.
  */
 export function soundPlan(
   action: 'place' | 'break',
@@ -81,16 +74,7 @@ export function soundPlan(
     offsetS: i * HIT_GAP_S,
   }))
   const crack = HIT_COUNT * HIT_GAP_S
-  return [
-    ...knocks,
-    { set: type.break, rate, gain: 1, offsetS: crack },
-    {
-      set: type.break,
-      rate: rate * CRUMBLE_DETUNE,
-      gain: CRUMBLE_GAIN,
-      offsetS: crack + CRUMBLE_DELAY_S,
-    },
-  ]
+  return [...knocks, { set: type.break, rate, gain: 1, offsetS: crack }]
 }
 
 /** Decoded samples by URL; null while decoding or when it failed. */

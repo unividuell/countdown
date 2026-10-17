@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CRUMBLE_DELAY_S,
-  CRUMBLE_DETUNE,
-  CRUMBLE_GAIN,
   HIT_COUNT,
   HIT_GAIN,
   HIT_GAP_S,
@@ -24,10 +21,10 @@ describe('soundPlan', () => {
     expect(soundPlan('place', 'DIRT', () => 0.5)).toHaveLength(1)
   })
 
-  it('breaks with deep knocks from the place sound, then the break sound over a crumble', () => {
+  it('breaks with deep knocks from the place sound, then the break sound', () => {
     const plan = soundPlan('break', 'PACKED_ICE', () => 0.5)
     const knocks = plan.slice(0, HIT_COUNT)
-    const [crack, crumble, ...rest] = plan.slice(HIT_COUNT)
+    const [crack, ...rest] = plan.slice(HIT_COUNT)
 
     expect(knocks).toEqual(
       Array.from({ length: HIT_COUNT }, (_, i) => ({
@@ -40,19 +37,13 @@ describe('soundPlan', () => {
     expect(crack).toMatchObject({ set: 'glass', gain: 1 })
     expect(crack!.offsetS).toBeCloseTo(HIT_COUNT * HIT_GAP_S)
     expect(crack!.rate).toBeCloseTo(0.8)
-    expect(crumble).toMatchObject({ set: 'glass', gain: CRUMBLE_GAIN })
-    expect(crumble!.offsetS).toBeCloseTo(crack!.offsetS + CRUMBLE_DELAY_S)
-    expect(crumble!.rate).toBeCloseTo(0.8 * CRUMBLE_DETUNE)
     expect(rest).toEqual([])
   })
 
-  it('starts from two to three deep, quieter knocks and a detuned, quieter crumble', () => {
-    expect(HIT_COUNT).toBeGreaterThanOrEqual(2)
-    expect(HIT_COUNT).toBeLessThanOrEqual(3)
+  it('knocks twice, deeper and quieter than the break itself', () => {
+    expect(HIT_COUNT).toBe(2)
     expect(HIT_PITCH).toBeLessThan(PITCH)
     expect(HIT_GAIN).toBeLessThan(1)
-    expect(CRUMBLE_DETUNE).not.toBe(1)
-    expect(CRUMBLE_GAIN).toBeLessThan(1)
   })
 })
 

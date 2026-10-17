@@ -115,8 +115,8 @@ selbst geprüft — die Wiki-Angabe ist nicht verlässlich).
 | 7 | `LAPIS` | Lapis | dunkelblau mit Goldsprenkeln | Stein | Stein |
 
 Die Zuordnung der Klänge folgt Minecraft (Erde klingt dort wie Kies, Glasblöcke setzen mit Stein).
-Setzen spielt den Setz-Klang, Tonhöhe 0,8. **Abbauen** spielt erst dumpfe **Schläge** und dann den
-Abbau-Klang mit einem **Bröseln** darunter — so hört man, ob ein Block kam oder ging (siehe *Ton*).
+Setzen spielt den Setz-Klang, Tonhöhe 0,8. **Abbauen** spielt erst zwei dumpfe **Schläge** und dann
+den Abbau-Klang — so hört man, ob ein Block kam oder ging (siehe *Ton*).
 
 Die Reihenfolge lebt **einmal** im Backend (`BlockType`-Enum in `copyblocks`); die Leitung trägt die
 Codes, das Frontend bildet Code → Anzeigename, Textur, Klänge ab. Ein unbekannter Code fällt bei der
@@ -366,15 +366,15 @@ zufällig, Tonhöhe 0,8 · ±5 %, gleiche Lautstärke für Setzen und Abbauen. V
 erscheint.
 
 **Abbauen** bildet das Abbauen im Survival-Modus nach — mit den freien Samples, weil Minecrafts eigene
-Schlag-Dateien (`hit`) Mojang gehören. Erst **drei Schläge**: Varianten des **Setz-Klangs** des Typs
-(Packeis also Stein), **eine Oktave tiefer** (Tonhöhe 0,5), Lautstärke 0,4, alle 60 ms. Dann der
-**Abbau-Klang** und 30 ms später eine zweite Variante, um ×1,3 höher und halb so laut, als
-**Bröseln**. Ein Block bricht damit rund 0,2 s nach dem Tippen. Alles Startwerte (in `sounds.ts`
-beieinander), im Labor nach Gehör zu stimmen. Der erste Entwurf — ein einzelner leiser Klopfer — war
-im Labor kaum vom Setzen zu unterscheiden.
+Schlag-Dateien (`hit`) Mojang gehören. Erst **zwei Schläge**: Varianten des **Setz-Klangs** des Typs
+(Packeis also Stein), **eine Oktave tiefer** (Tonhöhe 0,5), Lautstärke 0,4, im Abstand von 60 ms.
+Dann der **Abbau-Klang**, 120 ms nach dem Tippen. Die Werte stehen in `sounds.ts` beieinander und
+werden im Labor nach Gehör gestimmt. Bisher dort entschieden: ein einzelner leiser Klopfer war kaum
+vom Setzen zu unterscheiden; drei Schläge waren zu viele; ein höher gestimmtes „Bröseln“ unter dem
+Abbau-Klang war nicht hörbar und flog raus.
 
 **Rückgängig klingt wie das, was es tut:** nimmt es einen Block weg, spielt dessen Abbau-Klang (mit
-Schlägen und Bröseln); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet bleibt es still.
+den Schlägen); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet bleibt es still.
 
 - **Der eine `AudioContext`** wandert aus `usePlayback` nach `ui/audio.ts` — die
   [Audio-Regel](../../../.claude/guidelines/frontend-state.md) verlangt einen für die ganze App, und
@@ -388,8 +388,8 @@ Schlägen und Bröseln); holt es einen abgebauten zurück, dessen Setz-Klang. St
 
 `copy-blocks` / „Blockierung“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide Gesichter.
 Der Seed in der URL macht Blockzahl, Typen und Vorlage reproduzierbar. Hier werden gestimmt: der
-Übergang zur Auflösung, die Breite der Vorlage, die Tippschwelle, die Takte, die Schläge und das
-Bröseln beim Abbauen.
+Übergang zur Auflösung, die Breite der Vorlage, die Tippschwelle, die Takte, die Schläge beim
+Abbauen.
 
 ## Tests
 
@@ -418,7 +418,7 @@ Bröseln beim Abbauen.
 - Brett: Halten → ein `guess` mit der Blockliste; Hotbar zeigt N + 1 Plätze.
 - Zwischenstand: gesichert nach Änderung, wiederhergestellt beim Öffnen, gelöscht nach angenommenem
   Tipp, fremde Runden weggeräumt, Unlesbares verworfen.
-- Ton: Abbauen plant die Schläge (Setz-Klang, tiefer, leiser), danach Abbau-Klang und Bröseln; Setzen einen;
+- Ton: Abbauen plant die Schläge (Setz-Klang, tiefer, leiser), danach den Abbau-Klang; Setzen einen;
   Stummschalter wirkt und wird gemerkt; ohne `AudioContext` still statt Fehler.
 
 ## Bewusst nicht
