@@ -199,6 +199,32 @@ by hand (see core/README.md for where each value comes from and which one is bro
 versus server-only) before the next `./update.sh <target>` — the backend refuses to boot without
 them.
 
+**Migrating an existing stack for round assets:** rounds materialised before the deploy (today's,
+tomorrow's from the daily schedule, the whole history) have no `game.round_assets` rows, and nothing
+back-fills them: their assets answer 404. Platzierung's cover never offers START; the history loses
+Musterung's boards, Platzierung's pictures and Anspielung's solutions. The backend still boots against
+the old database (Modulith runs Flyway only for modules that keep a migration folder), so the cut is
+yours — once per stack, after `./update.sh <target>` has started the new image. Staging gets it with
+`develop`, prod with `main`.
+
+```bash
+# staging; prod: .env.prod and compose.prod.yaml
+docker compose --env-file .env.staging -f compose.staging.yaml exec -T postgres psql -U admin -d app <<'SQL'
+-- plays, votes and assets cascade; the daily schedule and the GET fallback materialise anew
+TRUNCATE game.round_games CASCADE;
+-- songsnippet, deduster and placepatch own no table any more; their Flyway histories live in public
+DROP SCHEMA IF EXISTS songsnippet, deduster, placepatch CASCADE;
+DROP TABLE IF EXISTS flyway_schema_history_songsnippet, flyway_schema_history_deduster,
+    flyway_schema_history_placepatch;
+SQL
+```
+
+That keeps communities, members and the image pool, and drops every play, vote and score.
+Irreversible: restart `db-backup` first for a fresh dump, as above. The alternative is a full reset
+(an empty `app` database). It also loses communities, members and `imagepool.images`: the image dump
+restores only on top of the daily dump (see "Backups & restore"), and that brings the old rounds
+back, so the cut above is the shorter way.
+
 ```bash
 # private ghcr images: authenticate first (token needs read:packages)
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin

@@ -267,7 +267,7 @@ Fällt weg: `assetStage`, `materialised`, `asset`, `releaseStageAssets`, `releas
 
 | Spiel | Assets (Name → Sichtbarkeit) | Was sich ändert |
 |---|---|---|
-| **Anspielung** | `clip-0` … `clip-4` → ab Stufe 0 … 4; `solution` → nach dem Tipp | `round_audio` mit Entity/Repo/Store fällt weg; `SongSnippetStages.SOLUTION_KEY` fällt weg; `SnippetCutter.ladder` liefert die fünf Clips, das MP3 hängt der Adapter an. Clips kommen verschlüsselt; Anspielung hat keine Uhr, gewinnt aber Vorladen beim Stufenwechsel |
+| **Anspielung** | `clip-0` … `clip-4` → ab Stufe 0 … 4; `solution` → nach dem Tipp | `round_audio` mit Entity/Repo/Store fällt weg; `SongSnippetStages.SOLUTION_KEY` fällt weg; `SnippetCutter.ladder` liefert die fünf Clips, das MP3 hängt der Adapter an. Clips kommen verschlüsselt; Anspielung hat keine Uhr, daher lädt jeder Clip erst, wenn seine Stufe öffnet (kein Vorladen) |
 | **Entstauber** | `photo` → Szene | `deduster.round_images` mit Entity/Repo/Store fällt weg |
 | **Platzierung** | `board`, `patch` → ab Stufe 0 | speichert die **fertigen** Bilder statt des Ausschnitts; `placepatch.round_images` mit Entity/Repo/Store fällt weg; das Rechnen beim Abruf entfällt. Das Stück wird unkomprimiert kodiert (*Integrität*). **Lädt nicht mehr auf der Uhr:** Chiffrate unter der Hülle, `ready` erst danach |
 | **Musterung** | `board`, `pattern` → ab Stufe 0 | `boardImage`/`patternImage` verlassen Payload; `FindPatternImages` liefert PNG-Bytes statt `data:`-URIs; Chiffrate unter der Hülle wie Platzierung |
@@ -296,10 +296,15 @@ Skip), nicht hier.
 ## Deploy
 
 Die App startet auch gegen eine alte Datenbank: Modulith lässt Flyway nur für Module laufen, die noch
-einen Migrationsordner haben; die verwaisten Historien der gelöschten Ordner werden ignoriert. Trotzdem
-werden **Staging und Prod beim Ausrollen neu aufgesetzt**: Runden, die vor dem Deploy materialisiert
-wurden, haben keine Zeilen in `game.round_assets`, und nichts füllt sie nach — ihre Assets lieferten
-404. Mit Zustimmung, es gibt keine Nutzer. Der PR nennt diesen Schritt ausdrücklich.
+einen Migrationsordner haben; die verwaisten Historien der gelöschten Ordner werden ignoriert. Runden,
+die vor dem Deploy materialisiert wurden, haben aber keine Zeilen in `game.round_assets`, und nichts
+füllt sie nach — ihre Assets lieferten 404. **Der schmale Schnitt genügt:** `TRUNCATE game.round_games
+CASCADE` (Spielzüge, Stimmen und Assets folgen; Tagesplan und GET-Fallback materialisieren neu) und
+`DROP SCHEMA songsnippet, deduster, placepatch CASCADE`, dazu deren Flyway-Historientabellen in
+`public`. Gemeinschaften, Mitglieder und Bildpool bleiben. Der volle Reset ist die Alternative; er
+verliert auch Gemeinschaften und `imagepool.images`. Mit Zustimmung, es gibt keine Nutzer. Das Rezept
+steht in `deploy/README.md` („Migrating an existing stack for round assets“); der PR nennt den Schritt
+ausdrücklich, er gilt je einmal für Staging und Prod.
 
 ## Backup
 
