@@ -140,9 +140,19 @@ function onTap(hit: Hit): void {
   else place(hit.place, chosen)
 }
 
+/** Undo sounds like what it does: a block taken away breaks, a block brought back is placed. */
 function undo(): void {
   const previous = history.pop()
-  if (previous) build.value = previous
+  if (!previous) return
+
+  const has = (blocks: GuessBlock[], b: GuessBlock) => blocks.some((o) => at(o, [b.x, b.y, b.z]))
+  const gone = build.value.find((b) => !has(previous, b))
+  const back = previous.find((b) => !has(build.value, b))
+  build.value = previous
+
+  if (!sound.value) return
+  if (gone) playSound('break', gone.type)
+  else if (back) playSound('place', back.type)
 }
 
 function submit(): void {

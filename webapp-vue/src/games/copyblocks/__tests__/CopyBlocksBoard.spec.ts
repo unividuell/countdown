@@ -113,6 +113,35 @@ describe('CopyBlocksBoard', () => {
     expect(built(wrapper)).toEqual([])
   })
 
+  it('sounds an undo like what it does: a block taken away breaks, one brought back is placed', async () => {
+    const wrapper = mountBoard()
+    await tap(wrapper, { block: null, place: [0, 0, 0] })
+    await choose(wrapper, 'Ziegel')
+    await tap(wrapper, { block: [0, 0, 0], place: [0, 1, 0] })
+    await choose(wrapper, 'Spitzhacke')
+    await tap(wrapper, { block: [0, 0, 0], place: [0, 0, 1] })
+    vi.mocked(playSound).mockClear()
+
+    await choose(wrapper, 'Rückgängig')
+    await choose(wrapper, 'Rückgängig')
+
+    expect(vi.mocked(playSound).mock.calls).toEqual([
+      ['place', 'DIRT'],
+      ['break', 'BRICKS'],
+    ])
+  })
+
+  it('keeps an undo silent while muted', async () => {
+    const wrapper = mountBoard()
+    await tap(wrapper, { block: null, place: [0, 0, 0] })
+    await choose(wrapper, 'Ton')
+    vi.mocked(playSound).mockClear()
+
+    await choose(wrapper, 'Rückgängig')
+
+    expect(vi.mocked(playSound)).not.toHaveBeenCalled()
+  })
+
   it('has no button that clears everything at once', () => {
     expect(mountBoard().find('button[aria-label="Alles abreißen"]').exists()).toBe(false)
   })

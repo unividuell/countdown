@@ -370,6 +370,9 @@ Minecrafts eigene Klopf-Dateien Mojang gehören: eine Variante des **Setz-Klangs
 also Stein) mit **halber Tonhöhe** (0,5) und **Viertel-Lautstärke** (0,25), unmittelbar gefolgt vom
 Abbau-Klang. Der Abstand zwischen beiden — Startwert 60 ms — wird im Labor nach Gehör gestimmt.
 
+**Rückgängig klingt wie das, was es tut:** nimmt es einen Block weg, spielt dessen Abbau-Klang (mit
+Klopfer); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm geschaltet bleibt es still.
+
 - **Der eine `AudioContext`** wandert aus `usePlayback` nach `ui/audio.ts` — die
   [Audio-Regel](../../../.claude/guidelines/frontend-state.md) verlangt einen für die ganze App, und
   Anspielung behält ihr Verhalten. Abspielen mit 50 ms Vorlauf.
