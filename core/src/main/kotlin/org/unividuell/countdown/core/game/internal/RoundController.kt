@@ -54,7 +54,10 @@ class RoundController(
     fun reveal(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
-    ): RoundResponse = plays.reveal(slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin)
+        @RequestBody body: RevealRequest,
+    ): RoundResponse = plays.reveal(
+        slug = slug, userId = me.id, isSuperAdmin = me.isSuperAdmin, roundNumber = body.roundNumber,
+    )
 
     /** The one guess. The body is the game's own shape, plus the round it is meant for. */
     @PostMapping("/current/guess")

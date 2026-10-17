@@ -131,7 +131,7 @@ class PlayServiceStagedTest(
     fun `a wrong guess below the last stage advances instead of recording`() {
         val (community, viewer) = aCommunity("Stage Advance")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
 
         val res = play.guess(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -147,7 +147,7 @@ class PlayServiceStagedTest(
     fun `a correct guess records with the stage as its deviation`() {
         val (community, viewer) = aCommunity("Stage Correct")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
             roundNumber = roundNumber, fromStage = 0,
@@ -167,7 +167,7 @@ class PlayServiceStagedTest(
     fun `a wrong guess on the last stage is terminal with zero points`() {
         val (community, viewer) = aCommunity("Stage Terminal")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         repeat(4) { i ->
             play.skip(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -188,7 +188,7 @@ class PlayServiceStagedTest(
     fun `under CLOSEST_ONLY every guess is terminal`() {
         val (community, viewer) = aCommunity("Stage Closest Terminal")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.CLOSEST_ONLY, points = 5))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
 
         val res = play.guess(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -202,7 +202,7 @@ class PlayServiceStagedTest(
     fun `skip is guarded by the expected stage`() {
         val (community, viewer) = aCommunity("Stage Skip Guard")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
             roundNumber = roundNumber, fromStage = 0,
@@ -230,14 +230,14 @@ class PlayServiceStagedTest(
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.CLOSEST_ONLY, points = 5))
 
         // alice: correct right away, at stage 0 — the least audio anyone will have heard.
-        play.reveal(slug = community.slug, userId = alice, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = alice, isSuperAdmin = false, roundNumber = roundNumber)
         play.guess(
             slug = community.slug, userId = alice, isSuperAdmin = false,
             roundNumber = roundNumber, guess = correctGuess(),
         )
 
         // bob: skips once (to stage 1), then guesses correctly — more audio than alice needed.
-        play.reveal(slug = community.slug, userId = bob, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = bob, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = bob, isSuperAdmin = false,
             roundNumber = roundNumber, fromStage = 0,
@@ -251,13 +251,13 @@ class PlayServiceStagedTest(
         afterBob.me.shouldNotBeNull().points shouldBe 0
 
         // carol ties alice at stage 0 — a tie pays both in full, it does not split.
-        play.reveal(slug = community.slug, userId = carol, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = carol, isSuperAdmin = false, roundNumber = roundNumber)
         play.guess(
             slug = community.slug, userId = carol, isSuperAdmin = false,
             roundNumber = roundNumber, guess = correctGuess(),
         )
 
-        val final = play.reveal(slug = community.slug, userId = alice, isSuperAdmin = false)
+        val final = play.reveal(slug = community.slug, userId = alice, isSuperAdmin = false, roundNumber = roundNumber)
         final.me.shouldNotBeNull().points shouldBe 5
         final.others.single { it.userId == carol }.points shouldBe 5
     }
@@ -266,7 +266,7 @@ class PlayServiceStagedTest(
     fun `giving up spends the round without an answer`() {
         val (community, viewer) = aCommunity("Stage Give Up")
         val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
 
         val res = play.giveUp(
             slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber,

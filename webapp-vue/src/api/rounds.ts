@@ -11,8 +11,12 @@ export const getCurrentRound = (slug: string) => apiFetch<RoundResponse>(roundUr
 export const getRound = (slug: string, roundNumber: number) =>
   apiFetch<RoundResponse>(`/api/communities/${encodeURIComponent(slug)}/rounds/${roundNumber}`)
 
-export const revealRound = (slug: string) =>
-  apiFetch<RoundResponse>(roundUrl(slug, '/reveal'), { method: 'POST' })
+/** [roundNumber] as on a guess: a reveal after the round switch must not open the next round unseen. */
+export const revealRound = (slug: string, roundNumber: number) =>
+  apiFetch<RoundResponse>(roundUrl(slug, '/reveal'), {
+    method: 'POST',
+    body: JSON.stringify({ roundNumber }),
+  })
 
 /**
  * [roundNumber] is the round the caller believes it is playing. The server refuses a mismatch with 409

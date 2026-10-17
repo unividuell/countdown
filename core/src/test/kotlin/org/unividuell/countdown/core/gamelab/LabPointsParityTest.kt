@@ -226,7 +226,7 @@ class LabPointsParityTest(
         announceGuessHue(community = realCommunity, phaseTwoStartRound = realThreshold)
 
         val realEarlyRevealed = play.reveal(
-            slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false,
+            slug = realCommunity.slug, userId = realEarlyId, isSuperAdmin = false, roundNumber = realThreshold,
         )
         val realRoundNumber = realEarlyRevealed.round.shouldNotBeNull().number
         val realFirstGuess = play.guess(
@@ -235,7 +235,7 @@ class LabPointsParityTest(
         )
         val realTargetHue = (realFirstGuess.solution.shouldNotBeNull() as GuessHueSolution).targetHue
 
-        play.reveal(slug = realCommunity.slug, userId = realLateId, isSuperAdmin = false)
+        play.reveal(slug = realCommunity.slug, userId = realLateId, isSuperAdmin = false, roundNumber = realRoundNumber)
         play.guess(
             slug = realCommunity.slug, userId = realLateId, isSuperAdmin = false,
             roundNumber = realRoundNumber, guess = guess(realTargetHue),
@@ -341,10 +341,10 @@ class LabPointsParityTest(
 
         // Same staggering as the lab half, and for the same reason: a deterministic closest tip
         // before any vote is cast.
-        play.reveal(slug = realCommunity.slug, userId = realVoter1Id, isSuperAdmin = false)
-        play.reveal(slug = realCommunity.slug, userId = realVoter2Id, isSuperAdmin = false)
+        play.reveal(slug = realCommunity.slug, userId = realVoter1Id, isSuperAdmin = false, roundNumber = realThreshold)
+        play.reveal(slug = realCommunity.slug, userId = realVoter2Id, isSuperAdmin = false, roundNumber = realThreshold)
         val realTargetRevealed = play.reveal(
-            slug = realCommunity.slug, userId = realTargetId, isSuperAdmin = false,
+            slug = realCommunity.slug, userId = realTargetId, isSuperAdmin = false, roundNumber = realThreshold,
         )
         val realRoundNumber = realTargetRevealed.round.shouldNotBeNull().number
         play.guess(

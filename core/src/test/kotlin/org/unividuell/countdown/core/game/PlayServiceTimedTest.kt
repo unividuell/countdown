@@ -174,7 +174,9 @@ class PlayServiceTimedTest(
         announce(community = community, rule = AwardRule.CLOSEST_ONLY, gameType = "untimed-reveal-fake")
         val viewer = aMember(community = community, login = "viewer")
 
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentNumber(community),
+        )
         clock.advance(Duration.ofSeconds(42))
         val response = play.guess(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -196,7 +198,9 @@ class PlayServiceTimedTest(
         announce(community = community, rule = AwardRule.ALL_QUALIFYING)
         val viewer = aMember(community = community, login = "viewer")
 
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentNumber(community),
+        )
         clock.advance(Duration.ofSeconds(42))
         play.guess(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
@@ -217,8 +221,8 @@ class PlayServiceTimedTest(
         val quick = aMember(community = community, login = "quick")
         val slow = aMember(community = community, login = "slow")
 
-        play.reveal(slug = community.slug, userId = quick, isSuperAdmin = false)
-        play.reveal(slug = community.slug, userId = slow, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = quick, isSuperAdmin = false, roundNumber = currentNumber(community))
+        play.reveal(slug = community.slug, userId = slow, isSuperAdmin = false, roundNumber = currentNumber(community))
         clock.advance(Duration.ofSeconds(5))
         play.guess(
             slug = community.slug, userId = quick, isSuperAdmin = false,
@@ -241,7 +245,7 @@ class PlayServiceTimedTest(
         announce(community = community, rule = AwardRule.CLOSEST_ONLY)
         val wrong = aMember(community = community, login = "wrong")
 
-        play.reveal(slug = community.slug, userId = wrong, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = wrong, isSuperAdmin = false, roundNumber = currentNumber(community))
         clock.advance(Duration.ofMillis(200))
         play.guess(
             slug = community.slug, userId = wrong, isSuperAdmin = false,
@@ -262,13 +266,13 @@ class PlayServiceTimedTest(
         val mine = aMember(community = community, login = "mine")
         val other = aMember(community = community, login = "other")
 
-        play.reveal(slug = community.slug, userId = other, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = other, isSuperAdmin = false, roundNumber = currentNumber(community))
         clock.advance(Duration.ofSeconds(9))
         play.guess(
             slug = community.slug, userId = other, isSuperAdmin = false,
             roundNumber = currentNumber(community), guess = mapper.readTree("""{"value":7}"""),
         )
-        play.reveal(slug = community.slug, userId = mine, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = mine, isSuperAdmin = false, roundNumber = currentNumber(community))
         clock.advance(Duration.ofSeconds(4))
         val response = play.guess(
             slug = community.slug, userId = mine, isSuperAdmin = false,
@@ -285,7 +289,9 @@ class PlayServiceTimedTest(
         announce(community = community, rule = AwardRule.ALL_QUALIFYING)
         val viewer = aMember(community = community, login = "viewer")
 
-        val response = play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        val response = play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentNumber(community),
+        )
 
         response.me.shouldNotBeNull().durationMs shouldBe null
     }
@@ -296,7 +302,9 @@ class PlayServiceTimedTest(
         announce(community = community, rule = AwardRule.ALL_QUALIFYING)
         val viewer = aMember(community = community, login = "viewer")
 
-        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false)
+        play.reveal(
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentNumber(community),
+        )
         clock.advance(Duration.ofSeconds(30))
         val response = play.giveUp(
             slug = community.slug, userId = viewer, isSuperAdmin = false,

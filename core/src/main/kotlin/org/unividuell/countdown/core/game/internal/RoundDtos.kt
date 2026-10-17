@@ -179,6 +179,9 @@ data class RoundResponse(
  */
 data class GuessRequest(val roundNumber: Int, val guess: JsonNode)
 
+/** Open the round the client believes it is looking at — see [GuessRequest]. */
+data class RevealRequest(val roundNumber: Int)
+
 /** Advance the staged reveal: from the stage the client believes it is on. */
 data class SkipRequest(val roundNumber: Int, val fromStage: Int)
 

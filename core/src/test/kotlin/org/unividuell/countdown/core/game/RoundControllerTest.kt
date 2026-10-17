@@ -119,7 +119,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `POST reveal hands out the payload`() {
-        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false) } returns RoundResponse(
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12) } returns RoundResponse(
             round = RoundDto(
                 number = 12, label = "T-12",
                 start = Instant.parse("2026-08-12T10:00:00Z"),
@@ -135,6 +135,8 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
             with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":12}"""
         }.andExpect {
             status { isOk() }
             jsonPath("$.payload.description") { value("ein warmes Rot") }
@@ -295,11 +297,13 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
 
     @Test
     fun `a second reveal of a strict round is a conflict`() {
-        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false) } throws
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12) } throws
             AlreadyRevealedException()
 
         mockMvc.post("/api/communities/team/rounds/current/reveal") {
             with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":12}"""
         }.andExpect { status { isConflict() } }
     }
 
@@ -339,6 +343,18 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"roundNumber":11,"guess":{"hue":1.0}}"""
+        }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `a reveal for a round that has moved on is a conflict`() {
+        every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 11) } throws
+            RoundMovedOnException(current = 12)
+
+        mockMvc.post("/api/communities/team/rounds/current/reveal") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":11}"""
         }.andExpect { status { isConflict() } }
     }
 

@@ -78,7 +78,7 @@ class PlayServiceJudgeLockTest(
             communityId = requireNotNull(community.id)
             val roundNumber = currentRoundNumberOf(community)
             val roundGameId = roundGameIdOf(community, roundNumber)
-            play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false)
+            play.reveal(slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = roundNumber)
             // The stall, at the exact spot Google's two calls sit: it lasts until the other
             // transaction has proven it can take the round.
             every { countries.countryOf(any()) } answers {

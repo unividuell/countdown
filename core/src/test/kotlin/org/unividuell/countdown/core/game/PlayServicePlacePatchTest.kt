@@ -115,7 +115,7 @@ class PlayServicePlacePatchTest(
             play.asset(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number, key = 0)
         }
 
-        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false)
+        val revealed = play.reveal(slug = community.slug, userId = player, isSuperAdmin = false, roundNumber = number)
         mapper.valueToTree<tools.jackson.databind.JsonNode>(revealed.scene).propertyNames().toSet() shouldBe
             setOf("cols", "rows", "size")
 
@@ -136,12 +136,12 @@ class PlayServicePlacePatchTest(
         val (number, params) = announced(community)
         val offX = if (params.x == 0) 1 else params.x - 1
 
-        play.reveal(slug = community.slug, userId = hitter, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = hitter, isSuperAdmin = false, roundNumber = number)
         val hit = play.guess(
             slug = community.slug, userId = hitter, isSuperAdmin = false, roundNumber = number,
             guess = mapper.readTree("""{"x":${params.x},"y":${params.y}}"""),
         )
-        play.reveal(slug = community.slug, userId = misser, isSuperAdmin = false)
+        play.reveal(slug = community.slug, userId = misser, isSuperAdmin = false, roundNumber = number)
         play.guess(
             slug = community.slug, userId = misser, isSuperAdmin = false, roundNumber = number,
             guess = mapper.readTree("""{"x":$offX,"y":${params.y}}"""),
