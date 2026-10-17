@@ -243,7 +243,7 @@ Fällt weg: `assetStage`, `materialised`, `asset`, `releaseStageAssets`, `releas
   `round_games`-ID** in der URL (Form dem Builder überlassen). Rundennummern beginnen mit jedem Lauf neu;
   ohne die ID träfe eine neue Runde einen 24 h `immutable` gecachten Eintrag der alten — heute zeigt das
   still ein altes Bild, mit Chiffrat scheiterte das Entschlüsseln einen Tag lang. Passt die ID nicht zur
-  aufgelösten Runde: 404. `RoundDto` bekommt dafür die ID.
+  aufgelösten Runde: 404. Die Runden-Antwort bekommt dafür die ID (`roundGameId`); `RoundDto` bleibt die Zeit-Runde.
 - Labor: derselbe Pfadteil `/assets/{name}` an der Labor-URL. Eine Labor-Runde kann neu entstehen (ein
   anderer Tester wechselt den Seed) und bekommt dann neue Schlüssel; das fängt der Frontend-Helfer ab.
 - `Content-Type`: Medientyp des Assets bei Klartext, `application/octet-stream` beim Chiffrat.
