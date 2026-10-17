@@ -64,7 +64,7 @@ build answers.
 
 Musterung's two PNGs are `FromStage(0)` assets (`game-rounds.md`, „Round assets“): sealed, preloaded
 under the cover, opened by the reveal's key. The payload stays three numbers, and a test pins that it
-carries no picture. A picture inside the payload would arrive on the scored clock and put its decoding
+carries no picture. A picture inside the payload would arrive on the scored clock and put its transfer
 there, with no way to load it earlier.
 
 Before the reveal the sealed bytes still give away their **size** (the size rule in `game-rounds.md`).

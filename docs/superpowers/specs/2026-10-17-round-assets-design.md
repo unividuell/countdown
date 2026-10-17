@@ -295,9 +295,11 @@ Skip), nicht hier.
 
 ## Deploy
 
-Weil angewandte Flyway-Skripte verschwinden, startet die App gegen eine alte Datenbank nicht
-(Flyway-Validierung). Beim Ausrollen werden die Datenbanken **lokal, auf Staging und in Prod neu
-aufgesetzt** — mit Zustimmung, es gibt keine Nutzer. Der PR nennt diesen Schritt ausdrücklich.
+Die App startet auch gegen eine alte Datenbank: Modulith lässt Flyway nur für Module laufen, die noch
+einen Migrationsordner haben; die verwaisten Historien der gelöschten Ordner werden ignoriert. Trotzdem
+werden **Staging und Prod beim Ausrollen neu aufgesetzt**: Runden, die vor dem Deploy materialisiert
+wurden, haben keine Zeilen in `game.round_assets`, und nichts füllt sie nach — ihre Assets lieferten
+404. Mit Zustimmung, es gibt keine Nutzer. Der PR nennt diesen Schritt ausdrücklich.
 
 ## Backup
 

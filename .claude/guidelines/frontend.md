@@ -77,12 +77,17 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **`apiFetch` stays JSON-only — binary responses are the asset helpers' business.** Round assets are
   bytes, not JSON, so they bypass the shared client: `src/api/assets.ts` does a credentialed `fetch`
   (a GET, no CSRF). A game receives `assets: RoundAssets` (`url(name)`, `key(name)`) and never builds
-  a URL or reads a key itself. A plain asset (`Scene`, `AfterGuess`) is `fetchAssetBlob`; a sealed one
-  is `useSealedAsset` (fetched under the cover, opened once its key arrives, `retry()`) or, on demand,
-  `loadSealed`. Object URLs are not garbage collected by the DOM — revoke the previous one whenever it
-  is replaced or the component unmounts. Where responses for the same slot can race (rapid stage
-  advances), guard the assignment with a generation counter so a slow, stale response can't clobber a
-  newer one that already landed.
+  a URL or reads a key itself. A plain asset (`Scene`, `AfterGuess`) is a URL, usable directly as
+  `<img src>`, or `fetchAssetBlob` where the bytes are needed; a sealed one is `useSealedAsset`
+  (fetched under the cover, opened once its key arrives, `retry()`) or, on demand, `loadSealed`.
+  Object URLs are not garbage collected by the DOM — revoke the previous one whenever it is replaced or
+  the component unmounts. Where responses for the same slot can race (rapid stage advances), guard the
+  assignment with a generation counter so a slow, stale response can't clobber a newer one that already
+  landed.
+- **The first sealed opening on a page runs cold — warm it up before it lands on a scored clock.**
+  `warmUpOpening` (`src/api/assets.ts`) belongs where time is free, under the cover. `useSealedAsset`
+  calls it when bytes arrive before their key; `loadSealed` does not, so a game that opens through it
+  on a clock warms up itself.
 - **No API that needs a secure context without a way around it.** The app is also opened on a phone over
   plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
   exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and

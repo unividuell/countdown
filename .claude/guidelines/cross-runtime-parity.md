@@ -28,8 +28,9 @@ Add a header comment to the TS mirror naming its Kotlin counterpart.
 
 For a handful of cases, restating literals in both test files is acceptable (`SlugsTest.kt` /
 `slugify.spec.ts`). For anything larger — and for **all numeric** parity — generate golden vectors
-from the Kotlin side into a single file under `shared/` and have both suites read **that file**.
-Duplicated literals let one side drift without turning red.
+into a single file under `shared/` (from the Kotlin side; for a published standard from a third
+implementation, below) and have both suites read **that file**. Duplicated literals let one side drift
+without turning red.
 
 ```
 shared/rng/golden-vectors.json     # written by Kotlin, asserted by Kotlin AND Vitest

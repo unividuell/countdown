@@ -113,8 +113,7 @@ visibility), a media type, plain bytes, and exactly one visibility.
 - **One rule, two callers.** `AssetVisibility.mayFetch`/`opensKey` and `keysFor` (`RoundAssets.kt`) answer
   for the real round (`PlayService`, `RoundResponses`) and the lab (`LabService`); each caller only
   supplies the viewer's state from its own source. A closed round (see above) opens every asset and
-  every key. Never branch on a name or a number: magic keys and per-game stage maps are how the rule
-  used to fork.
+  every key. Never branch on a name or a number.
 - **Stored once, never released.** `RoundMaterialiser` calls `produceAssets` once per round into
   `game.round_assets`, visibility frozen with the bytes; the gate never asks the game again, and a
   source that goes away (a Deezer preview URL is ephemeral) is never resolved a second time. Both racers
@@ -122,9 +121,11 @@ visibility), a media type, plain bytes, and exactly one visibility.
   random keys — can never replace the winner's. Nothing frees them before the edition is archived (a
   single `DELETE`, not built), so the table grows with every round and history has all the round had.
 - **Sealed ahead, key with the stage.** A stage asset may be fetched before its stage, so the bytes
-  travel under the reveal cover and nothing loads on the scored clock; the stage that opens it brings
-  the key (`assetKeys` in the round response, never in the payload — the game knows no keys). One key
-  per asset: a shared round key would open the whole ladder at stage 0.
+  travel under the reveal cover and no transfer lands on the scored clock (the opening still does); the
+  stage that opens it brings the key (`assetKeys` in the round response, never in the payload — the
+  game knows no keys). One key per asset: a shared round key would open the whole ladder at stage 0.
+  The keys sit beside the ciphertext in `game.round_assets`: sealing protects the wire before the
+  stage, not the database, so the table is never safe to expose.
 
 ```
 under the cover                         reveal / stage n
