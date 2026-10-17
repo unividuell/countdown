@@ -2,6 +2,21 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type AssetKey, loadSealed, openSealed, type RoundAssets } from '@/api/assets'
 
+// How often the cipher is built: a warm-up leaves no trace but the work it does.
+const chacha = vi.hoisted(() => ({ constructed: 0 }))
+
+vi.mock('@noble/ciphers/chacha.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@noble/ciphers/chacha.js')>()
+
+  return {
+    ...actual,
+    chacha20poly1305: (...args: Parameters<typeof actual.chacha20poly1305>) => {
+      chacha.constructed++
+      return actual.chacha20poly1305(...args)
+    },
+  }
+})
+
 // The same file the JVM suite seals against: one side cannot drift without the other going red.
 const VECTORS_PATH = '../shared/round-assets/seal-vectors.json'
 
@@ -120,5 +135,44 @@ describe('loadSealed', () => {
     await expect(loadSealed(assetsFor(longVector), 'photo')).rejects.toThrow('photo')
 
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('warmUpOpening', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  /** The module afresh, so its once-per-page state is not one a sibling test already used up. */
+  const fresh = async () => {
+    vi.resetModules()
+    chacha.constructed = 0
+    return import('@/api/assets')
+  }
+
+  it('warms the opening path once per page', async () => {
+    const { warmUpOpening } = await fresh()
+
+    warmUpOpening()
+    const first = chacha.constructed
+    warmUpOpening()
+
+    expect(first).toBeGreaterThan(0)
+    expect(chacha.constructed).toBe(first)
+  })
+
+  it('warms up without crypto.subtle, as on a phone over LAN HTTP', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+    const { warmUpOpening } = await fresh()
+
+    expect(() => warmUpOpening()).not.toThrow()
+    expect(chacha.constructed).toBeGreaterThan(0)
+  })
+
+  it('is not part of loading an asset: that opens once and nothing more', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond(hex(longVector.sealedHex))))
+    const { loadSealed: load } = await fresh()
+
+    await load(assetsFor(longVector), 'board')
+
+    expect(chacha.constructed).toBe(1)
   })
 })

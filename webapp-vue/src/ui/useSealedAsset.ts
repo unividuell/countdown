@@ -1,5 +1,11 @@
 import { computed, onScopeDispose, readonly, ref, shallowRef, watch, type Ref } from 'vue'
-import { type AssetKey, fetchSealed, openSealed, type RoundAssets } from '@/api/assets'
+import {
+  type AssetKey,
+  fetchSealed,
+  openSealed,
+  type RoundAssets,
+  warmUpOpening,
+} from '@/api/assets'
 import type { SceneState } from '@/ui/sceneState'
 
 /**
@@ -59,6 +65,11 @@ export function useSealedAsset(
     fetchSealed(current).then(
       (sealed) => {
         if (disposed || mine !== fetching) return
+
+        // No key yet: the reveal is still to come, so this is free time. With a key the opening
+        // follows right away and a warm-up would only delay it.
+        if (!key.value) warmUpOpening()
+
         bytes.value = sealed
         state.value = 'ready'
       },

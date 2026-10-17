@@ -2,8 +2,15 @@ import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, type EffectScope, nextTick, reactive } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import type { AssetKey, RoundAssets } from '@/api/assets'
+import { type AssetKey, type RoundAssets, warmUpOpening } from '@/api/assets'
+import type { SceneState } from '@/ui/sceneState'
 import { useSealedAsset } from '@/ui/useSealedAsset'
+
+// The warm-up is observed, not run: its own spec covers what it does.
+vi.mock('@/api/assets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/assets')>()),
+  warmUpOpening: vi.fn(),
+}))
 
 const { vectors } = JSON.parse(
   readFileSync('../shared/round-assets/seal-vectors.json', 'utf8'),
@@ -43,6 +50,7 @@ describe('useSealedAsset', () => {
 
   beforeEach(() => {
     for (const k of Object.keys(keys)) delete keys[k]
+    vi.mocked(warmUpOpening).mockReset()
     fetchMock = vi.fn().mockImplementation(async () => new Response(sealed() as BodyInit))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -77,6 +85,40 @@ describe('useSealedAsset', () => {
     expect(src.value).toBeNull()
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/x/board')
+  })
+
+  describe('warming up', () => {
+    it('warms the opening path when sealed bytes arrive before their key', async () => {
+      const { state } = use()
+
+      await flushPromises()
+
+      expect(warmUpOpening).toHaveBeenCalledTimes(1)
+      expect(state.value).toBe('ready')
+    })
+
+    it('does not warm up when the key is already there', async () => {
+      keys.board = rightKey
+      const { src } = use()
+
+      await flushPromises()
+
+      expect(warmUpOpening).not.toHaveBeenCalled()
+      expect(src.value).toBe('blob:asset-1')
+    })
+
+    it('warms up before the cover turns ready', async () => {
+      let stateDuringWarmUp: SceneState | undefined
+      const { state } = use()
+      vi.mocked(warmUpOpening).mockImplementation(() => {
+        stateDuringWarmUp = state.value
+      })
+
+      await flushPromises()
+
+      expect(stateDuringWarmUp).toBe('preparing')
+      expect(state.value).toBe('ready')
+    })
   })
 
   it('stays preparing and fetches nothing while there is no url yet', async () => {

@@ -25,6 +25,9 @@ export interface RoundAssets {
 
 const NONCE_BYTES = 12
 
+const WARM_UP_BYTES = 256 * 1024
+const WARM_UP_OPENINGS = 3
+
 /**
  * The sealed bytes, still closed. [reload] goes past the HTTP cache: the URL is cached `immutable`,
  * so bytes that no longer match their key would otherwise be served again and again.
@@ -47,6 +50,29 @@ export function openSealed(sealed: Uint8Array, { key, mediaType }: AssetKey): Bl
   const nonce = sealed.subarray(0, NONCE_BYTES)
   const plaintext = chacha20poly1305(keyBytes, nonce).decrypt(sealed.subarray(NONCE_BYTES))
   return new Blob([plaintext as BlobPart], { type: mediaType })
+}
+
+let warmedUp = false
+
+/**
+ * Runs the opening path once per page on a dummy buffer, so the first real opening is not the cold
+ * one: on a phone that first run costs about twice as much, and an opening on the scored clock
+ * (a reveal) is where it hurts. Call it where the time is free, under the cover.
+ *
+ * ```
+ * seal 256 KiB ─▶ open ─▶ open ─▶ open    (dummy key and nonce: zeros)
+ * ```
+ */
+export function warmUpOpening(): void {
+  if (warmedUp) return
+  warmedUp = true
+
+  const key = new Uint8Array(32)
+  const nonce = new Uint8Array(NONCE_BYTES)
+  const sealed = chacha20poly1305(key, nonce).encrypt(new Uint8Array(WARM_UP_BYTES))
+
+  // One run is not enough to be warm: the first real opening still came out slower.
+  for (let i = 0; i < WARM_UP_OPENINGS; i++) chacha20poly1305(key, nonce).decrypt(sealed)
 }
 
 /**
