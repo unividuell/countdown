@@ -11,6 +11,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import type { SceneState } from '@/ui/sceneState'
 import PlacePatchBriefing from './PlacePatchBriefing.vue'
 import { drag, press, release } from './stamp'
 import type { Board, Gesture, Point } from './stamp'
@@ -22,7 +23,9 @@ const props = withDefaults(
     /** The board's shape under the cover, while `payload` is still withheld. */
     scene?: PlacePatchScene | null
     sealed?: boolean
-    /** `null` until the reveal: a sealed board must not ask for a picture it may not have. */
+    /** Whether both sealed pictures are here — the cover offers START only when they are. */
+    sceneState: SceneState
+    /** `null` until the reveal brings the keys: the pictures wait sealed under the cover. */
     boardSrc: string | null
     patchSrc: string | null
     /** The viewer's own avatar colour — the stamp is drawn in it, here and in the reveal. */
@@ -187,7 +190,7 @@ const patchWidth = computed(() =>
       </div>
       <RevealCover
         v-if="props.sealed"
-        state="ready"
+        :state="props.sceneState"
         :busy="props.disabled"
         @start="emit('reveal')"
       />

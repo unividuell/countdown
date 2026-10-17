@@ -13,6 +13,7 @@ function mountBoard(over: Record<string, unknown> = {}) {
       payload: PAYLOAD,
       scene: null,
       sealed: false,
+      sceneState: 'ready',
       boardSrc: '/assets/0',
       patchSrc: '/assets/1',
       myColorHex: '#7c3aed',
@@ -180,5 +181,19 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.get('[data-test="place-patch-hold-slot"]').attributes('style')).toContain(
       'width: 25%',
     )
+  })
+
+  it('lays the cover in the scene state it is given', () => {
+    const wrapper = mountBoard({
+      payload: null,
+      scene: { cols: 40, rows: 30, size: 10 },
+      sealed: true,
+      sceneState: 'preparing',
+      boardSrc: null,
+      patchSrc: null,
+    })
+
+    expect(wrapper.findComponent(RevealCover).props('state')).toBe('preparing')
+    expect(wrapper.find('[data-test="reveal-cover-preparing"]').exists()).toBe(true)
   })
 })

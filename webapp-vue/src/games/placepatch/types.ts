@@ -4,9 +4,9 @@
  * box beside the board out of the picture.
  */
 
-/** The server's `PlacePatchGameType.BOARD_KEY` / `PATCH_KEY` — both released by the reveal. */
-export const BOARD_ASSET_KEY = 0
-export const PATCH_ASSET_KEY = 1
+/** The round's asset names — both sealed from stage 0, opened by the reveal. */
+export const BOARD_ASSET = 'board'
+export const PATCH_ASSET = 'patch'
 
 export interface PlacePatchPayload {
   cols: number
