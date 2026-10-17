@@ -459,7 +459,8 @@ class LabService(
         }
 
         // Revealed already if the game never asked for a deliberate one; otherwise the store's own
-        // stamp is the only truth — a peek, so a response never mutates what it is only reporting on.
+        // stamp is the only truth, read as a peek. `assetsOf` below is not one: it may produce the
+        // round's assets and, if the stored round no longer matches the snapshot's, replace it.
         val revealed = !handle.requiresReveal(snapshot.round.params) ||
             store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
         val myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
