@@ -118,11 +118,13 @@ tab. So:
 
 **A game's reveal is one event, so its choreography is shared.** The board's marker and the
 scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
-functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
-own row shape), never *when*. Its plumbing is shared the same way — `games/ranking.ts` (order,
-cascade tick), `durations.ts`, `awards.ts`, `useRevealedLive`, `useMyColorHex`: a new game imports
-it rather than copying it, and a third copy is the signal to hoist. A hoist is safe when no game's
-test expectations move.
+functions, `isStill`) is one shared module, not one per game — a game brings *what* moves (its own
+board, its own row shape), never *when*. Its plumbing is shared the same way — `GameProps`/`GameEmits`
+(`defineProps<GameProps>()`), `games/ranking.ts` (order, cascade tick), `rowHead`, `durations.ts`,
+`awards.ts`, `useRevealedLive`, `useMyColorHex`, the specs' `__tests__/gameFixtures.ts`: a new game
+imports it rather than copying it, and a third copy is the signal to hoist. Each helper is opt-in;
+none decides how a game plays, looks or lays out its card. A hoist is safe when no game's test
+expectations move.
 A game with **more** to say on a beat fills the window the clock leaves it — `SOLUTION_DELAY_MS` to
 `RESULTS_DELAY_MS` — instead of offsetting the clock: Musterung recedes its board, uncovers the
 possibilities and brings the board back inside beat 3, its return derived from beat 4 so the picture
@@ -130,12 +132,12 @@ is whole when the outlines land on it. An offset would hand one game its own tim
 drift the shared module exists to prevent.
 
 **The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
-heading and live chip *inside* the `thead`, „Name“ first and „Pkt“ last, the band, the gutters, the
-cascade. A game declares only the columns between those two (`games/scoreboardColumns.ts`) and fills
-them through `cell-<key>` slots; a column may bring its own surface, or `ground: () => null` for
-content that is not a table cell (Musterung's chips are a pattern). Build the frame per game and it
-drifts — four copies had already split into two families with different gutters and two places for
-the heading.
+heading and live chip *inside* the `thead`, „Name“ first, „Pkt“ last and the clock before it whenever
+a row has a duration, the band, the gutters, the cascade. A game declares only the columns after
+„Name“ (`games/scoreboardColumns.ts`) and fills them through `cell-<key>` slots; a column may bring
+its own surface, or `ground: () => null` for content that is not a table cell (Musterung's chips are
+a pattern). Build the frame per game and it drifts — four copies had already split into two families
+with different gutters and two places for the heading.
 
 **A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
 `localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire

@@ -11,8 +11,13 @@
  * it has not moved, so the switch from playing to reveal leaves it exactly where it was.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { FADE_MS, SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
-import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import {
+  FADE_MS,
+  SOLUTION_DELAY_MS,
+  TIP_COLUMN,
+  cellDelayMs,
+  isStill,
+} from '@/games/revealChoreography'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useRevealArming } from '@/ui/useRevealArming'
 import FindPatternScoreboard from './FindPatternScoreboard.vue'
@@ -43,17 +48,7 @@ const props = defineProps<{
   animate: boolean
 }>()
 
-/**
- * Whether the beats may run at all — the same questions every reveal in this app asks once, at
- * the moment the choreography would start: a reload (`animate` false), reduced motion, a
- * background tab, and an environment with no animation frames at all mean "just be there", not
- * "be there eventually".
- */
-const still =
-  !props.animate ||
-  prefersReducedMotion() ||
-  inBackground() ||
-  typeof requestAnimationFrame !== 'function'
+const still = isStill(props.animate)
 
 function hasStartIndex(row: ScoreRow): row is ScoreRow & { startIndex: number } {
   return row.startIndex !== null

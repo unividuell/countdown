@@ -8,11 +8,8 @@
  * open to everyone, and a closed round must never put a live map on screen again.
  */
 import { computed, ref, useTemplateRef } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useRevealedLive } from '@/games/useRevealedLive'
-import type { RoundReview } from '@/rounds/review'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
 import SpotObjectBriefing from './SpotObjectBriefing.vue'
@@ -22,29 +19,9 @@ import SpotObjectTerm from './SpotObjectTerm.vue'
 import { scoreRows, tipTiles } from './tips'
 import { isSpotObjectPayload } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  /** What this round is worth — the winner box states it. `null` only without a game. */
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  /** The round is over for everyone — the other half of the server's own rule for `others`. */
-  closed?: boolean
-  review: RoundReview
-  /** Sealed: the map mounts under the cover before the reveal, `payload` still `null`. */
-  sealed?: boolean
-  /** Declared, never read: Weltanschauung's scene is the loaded map, not data. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const sceneState = ref<SceneState>('preparing')
 const board = useTemplateRef<InstanceType<typeof SpotObjectBoard>>('board')

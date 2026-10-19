@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
@@ -11,28 +9,9 @@ import { isSongSnippetPayload } from './types'
 import type { SongSnippetSolution } from './types'
 import type { SongSuggestion } from './api'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  /** What this round is worth — the winner box states it. `null` only without a game. */
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  closed?: boolean
-  /** Declared, never used here: this game never seals, and the contract has one shape. */
-  sealed?: boolean
-  /** Declared, never used here — see `sealed`. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const durations = computed(() =>
   isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],

@@ -1,22 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 import type { VoteView } from '@/api/types'
 import { scoreRows, tipTiles } from '../tips'
 
-function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
-  return {
-    username: over.userId,
-    stage: 0,
+/** A played tip. */
+function entry(over: Partial<GameEntry>): GameEntry {
+  return gameEntry({
     guess: { panoId: 'pano-1', heading: 10, pitch: -5, zoom: 1 },
     outcome: { country: 'DE' },
     points: 1,
-    durationMs: null,
-    avatar: { bgColorHex: '#7c3aed' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
     ...over,
-  }
+  })
 }
 
 function vote(userId: string, username: string, value: VoteView['value']): VoteView {

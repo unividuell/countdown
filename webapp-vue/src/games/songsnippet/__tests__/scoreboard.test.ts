@@ -1,24 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { scoreRows } from '../scoreboard'
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 
 const DURATIONS = [0.1, 0.5, 2, 8, 15]
-
-function entry(overrides: Partial<GameEntry> & { userId: string }): GameEntry {
-  return {
-    username: overrides.userId,
-    stage: 0,
-    guess: null,
-    outcome: null,
-    points: 0,
-    durationMs: null,
-    avatar: { bgColorHex: '#406abf' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
-    ...overrides,
-  }
-}
 
 function rowsOf(
   entries: GameEntry[],
@@ -31,10 +16,10 @@ function rowsOf(
 describe('scoreRows', () => {
   it('ranks by points first, then by the least audio, then stably by user id', () => {
     const rows = rowsOf([
-      entry({ userId: 'slow-winner', points: 5, stage: 3 }),
-      entry({ userId: 'empty-b', points: 0, stage: 1 }),
-      entry({ userId: 'fast-winner', points: 5, stage: 1 }),
-      entry({ userId: 'empty-a', points: 0, stage: 1 }),
+      gameEntry({ userId: 'slow-winner', points: 5, stage: 3 }),
+      gameEntry({ userId: 'empty-b', points: 0, stage: 1 }),
+      gameEntry({ userId: 'fast-winner', points: 5, stage: 1 }),
+      gameEntry({ userId: 'empty-a', points: 0, stage: 1 }),
     ])
 
     expect(rows.map((r) => r.userId)).toEqual(['fast-winner', 'slow-winner', 'empty-a', 'empty-b'])
@@ -42,7 +27,10 @@ describe('scoreRows', () => {
 
   it('writes the guess as „Titel · Artist“ and keeps the track id for playback', () => {
     const rows = rowsOf([
-      entry({ userId: 'a', guess: { trackId: 42, artist: 'Eagles', title: 'Hotel California' } }),
+      gameEntry({
+        userId: 'a',
+        guess: { trackId: 42, artist: 'Eagles', title: 'Hotel California' },
+      }),
     ])
 
     expect(rows[0]!.guessLabel).toBe('Hotel California · Eagles')
@@ -50,14 +38,14 @@ describe('scoreRows', () => {
   })
 
   it('marks a guess-less entry as a give-up, with nothing to play', () => {
-    const rows = rowsOf([entry({ userId: 'quitter', guess: null })])
+    const rows = rowsOf([gameEntry({ userId: 'quitter', guess: null })])
 
     expect(rows[0]!.guessLabel).toBe('— aufgegeben —')
     expect(rows[0]!.trackId).toBeNull()
   })
 
   it('survives a junk guess rather than printing undefined', () => {
-    const rows = rowsOf([entry({ userId: 'junk', guess: 'not an object' })])
+    const rows = rowsOf([gameEntry({ userId: 'junk', guess: 'not an object' })])
 
     expect(rows[0]!.guessLabel).toBe('— aufgegeben —')
     expect(rows[0]!.trackId).toBeNull()
@@ -65,8 +53,8 @@ describe('scoreRows', () => {
 
   it('reads correctness from the outcome, for playability only', () => {
     const rows = rowsOf([
-      entry({ userId: 'right', guess: { trackId: 1 }, outcome: { correct: true } }),
-      entry({ userId: 'wrong', guess: { trackId: 2 }, outcome: { correct: false } }),
+      gameEntry({ userId: 'right', guess: { trackId: 1 }, outcome: { correct: true } }),
+      gameEntry({ userId: 'wrong', guess: { trackId: 2 }, outcome: { correct: false } }),
     ])
 
     expect(rows.find((r) => r.userId === 'right')!.correct).toBe(true)
@@ -75,9 +63,9 @@ describe('scoreRows', () => {
 
   it('labels the reached stage bare and with one decimal, so every comma lines up', () => {
     const rows = rowsOf([
-      entry({ userId: 'a', stage: 0 }),
-      entry({ userId: 'b', stage: 3 }),
-      entry({ userId: 'c', stage: 4 }),
+      gameEntry({ userId: 'a', stage: 0 }),
+      gameEntry({ userId: 'b', stage: 3 }),
+      gameEntry({ userId: 'c', stage: 4 }),
     ])
 
     expect(rows.find((r) => r.userId === 'a')!.timeLabel).toBe('0,1')
@@ -87,8 +75,8 @@ describe('scoreRows', () => {
 
   it('paints the row in the player colour, with ink that reads against it', () => {
     const rows = rowsOf([
-      entry({ userId: 'dark', avatar: { bgColorHex: '#101010' } }),
-      entry({ userId: 'light', avatar: { bgColorHex: '#fefefe' } }),
+      gameEntry({ userId: 'dark', avatar: { bgColorHex: '#101010' } }),
+      gameEntry({ userId: 'light', avatar: { bgColorHex: '#fefefe' } }),
     ])
 
     expect(rows.find((r) => r.userId === 'dark')!.ink).toBe('#ffffff')
@@ -96,9 +84,9 @@ describe('scoreRows', () => {
   })
 
   it('calls a positive score provisional only while the round pays the closest alone', () => {
-    const scored = [entry({ userId: 'a', points: 5 })]
-    const zero = [entry({ userId: 'b', points: 0 })]
-    const unscored = [entry({ userId: 'c', points: null })]
+    const scored = [gameEntry({ userId: 'a', points: 5 })]
+    const zero = [gameEntry({ userId: 'b', points: 0 })]
+    const unscored = [gameEntry({ userId: 'c', points: null })]
 
     expect(rowsOf(scored, 'CLOSEST_ONLY')[0]!.provisional).toBe(true)
     expect(rowsOf(scored, 'ALL_QUALIFYING')[0]!.provisional).toBe(false)
@@ -111,9 +99,9 @@ describe('scoreRows', () => {
     // first, or its slot alone would say „I am not the best“ before a single rival was shown.
     const rows = rowsOf(
       [
-        entry({ userId: 'last', points: 0, stage: 4 }),
-        entry({ userId: 'me', points: 3, stage: 2 }),
-        entry({ userId: 'best', points: 5, stage: 1 }),
+        gameEntry({ userId: 'last', points: 0, stage: 4 }),
+        gameEntry({ userId: 'me', points: 3, stage: 2 }),
+        gameEntry({ userId: 'best', points: 5, stage: 1 }),
       ],
       null,
       'me',

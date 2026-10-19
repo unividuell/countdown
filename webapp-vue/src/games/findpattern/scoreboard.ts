@@ -5,10 +5,9 @@
  * above it has nothing left to get wrong.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
-import { formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
 import { rankByClock } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { startIndexOf } from './types'
@@ -50,10 +49,7 @@ export function scoreRows(input: {
     const tones =
       startIndex === null ? [] : input.solution.blocks.slice(startIndex, startIndex + patternLength)
     return {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
+      ...rowHead(entry, input.awardRule),
       chips: toneChips(tones, input.solution.palette),
       // Read off the board rather than off `outcome`: the row's own chips sit right under the
       // solution's, so „correct“ has to be the same comparison the reader is making.
@@ -61,9 +57,6 @@ export function scoreRows(input: {
         tones.length === patternLength &&
         tones.every((tone, at) => tone === input.solution.pattern[at]),
       gaveUp: startIndex === null,
-      durationLabel: formatDuration(entry.durationMs),
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
       startIndex,
     }
   })

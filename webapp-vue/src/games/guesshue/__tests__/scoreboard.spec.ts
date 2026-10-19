@@ -1,25 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { hslToHex } from '@/games/guesshue/color'
 import { scoreboardRows, solutionCell } from '@/games/guesshue/scoreboard'
 
 const SATURATION = 0.6
 const LIGHTNESS = 0.45
 
-function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
-  return {
-    username: over.userId,
-    stage: 0,
+/** A judged guess. */
+function entry(over: Partial<GameEntry>): GameEntry {
+  return gameEntry({
     guess: { hue: 210 },
     outcome: { deviationDeg: 0, withinTolerance: true },
     points: 1,
-    durationMs: null,
-    avatar: { bgColorHex: '#3366cc' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
     ...over,
-  }
+  })
 }
 
 function rowsOf(

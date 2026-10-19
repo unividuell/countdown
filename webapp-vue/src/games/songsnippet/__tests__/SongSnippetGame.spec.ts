@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { RoundAssets } from '@/api/assets'
+import type { GameProps } from '@/games/GameProps'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import SongSnippetGame from '@/games/songsnippet/SongSnippetGame.vue'
 
 vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
@@ -23,22 +25,14 @@ const DURATIONS = [0.1, 0.5, 2, 8, 15]
 
 const ASSETS: RoundAssets = { url: (name) => `/assets/${name}`, key: () => null }
 
-function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
+function mountGame(stage = 0, overrides: Partial<GameProps> = {}) {
   return mount(SongSnippetGame, {
-    props: {
+    props: gameProps({
       payload: { stageDurationsSeconds: DURATIONS },
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
-      awardRule: null,
-      awardPoints: null,
-      disabled: false,
       stage,
       assets: ASSETS,
       ...overrides,
-    },
+    }),
   })
 }
 
@@ -50,15 +44,13 @@ const SOLUTION = {
 }
 
 function entry(userId: string, points: number, stage: number) {
-  return {
+  return gameEntry({
     userId,
-    username: userId,
     stage,
     guess: { trackId: 1, artist: 'Eagles', title: 'Hotel California' },
     outcome: { correct: true },
     points,
-    avatar: { bgColorHex: '#406abf' },
-  }
+  })
 }
 
 describe('SongSnippetGame', () => {

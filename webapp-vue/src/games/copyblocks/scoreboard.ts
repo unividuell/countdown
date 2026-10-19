@@ -3,12 +3,10 @@
  * Platzierung's `scoreboard.ts`.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
-import { formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
 import { rankByClock } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
-import { readableTextColor } from '@/ui/readableTextColor'
 import { asCopyBlocksOutcome } from './types'
 import type { CopyBlocksOutcome } from './types'
 
@@ -44,14 +42,8 @@ export function scoreRows(input: {
     const outcome = asCopyBlocksOutcome(entry.outcome)
 
     return {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
+      ...rowHead(entry, input.awardRule),
       correct: outcome?.correct ?? false,
-      durationLabel: formatDuration(entry.durationMs),
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
       outcome,
       kdLabel: kdOf(outcome, input.templateSize),
     }

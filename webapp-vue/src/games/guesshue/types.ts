@@ -32,6 +32,25 @@ export interface GuessHueSolution {
 }
 
 /**
+ * The one place a Guess Hue payload is narrowed — `unknown` by contract, like every game's. A
+ * non-finite number counts as junk: it would end up as `NaN` in a transformation matrix.
+ */
+export function asGuessHuePayload(value: unknown): GuessHuePayload | null {
+  if (typeof value !== 'object' || value === null) return null
+  const raw = value as Record<string, unknown>
+  const { description, initHue, saturation, lightness, toleranceDeg } = raw
+
+  if (typeof description !== 'string') return null
+  if (!finite(initHue) || !finite(saturation) || !finite(lightness)) return null
+  if (toleranceDeg !== null && !finite(toleranceDeg)) return null
+  return { description, initHue, saturation, lightness, toleranceDeg }
+}
+
+function finite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+/**
  * The one place a Guess Hue guess is narrowed. Narrowed rather than cast: the shape is `unknown` by
  * contract, and a stale round from another game may be junk. `typeof` alone would let `NaN` through.
  */

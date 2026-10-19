@@ -10,6 +10,21 @@
  * The numbers were first proposed in Guess Hue's reveal and turned in the lab; they are still
  * proposals, and the lab is still where they get turned.
  */
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
+
+/**
+ * Whether a reveal skips its beats and just is there: on a reload (`animate` false), under reduced
+ * motion, in a background tab, or without animation frames (happy-dom). Asked once, when the
+ * choreography would start — not reactively.
+ */
+export function isStill(animate: boolean): boolean {
+  return (
+    !animate ||
+    prefersReducedMotion() ||
+    inBackground() ||
+    typeof requestAnimationFrame !== 'function'
+  )
+}
 
 /** Beat 3: the solution appears — Guess Hue's tolerance sector, Musterung's possibilities. */
 export const SOLUTION_DELAY_MS = 900

@@ -1,6 +1,11 @@
 /**
  * The contract between a game and the shared scoreboard — see `RevealScoreboard.vue`.
  */
+import type { AwardRule } from '@/api/types'
+import { isProvisional } from '@/games/awards'
+import { formatDuration } from '@/games/durations'
+import type { GameEntry } from '@/games/GameEntry'
+import { readableTextColor } from '@/ui/readableTextColor'
 
 /** What every game's row has to say before the table can rank it, colour it and time it. */
 export interface ScoreboardRow {
@@ -13,11 +18,32 @@ export interface ScoreboardRow {
   points: number | null
   /** Whether [points] can still be overtaken — see `isProvisional` in `@/games/awards`. */
   provisional: boolean
+  /** `mm:ss`; absent or `null` where the round did not score on time. */
+  durationLabel?: string | null
   /**
    * Which tick of the reveal cascade this row's timing comes from. Its rank, except for the
    * viewer's own row — see `tickOfRow`.
    */
   tick: number
+}
+
+/** The part of a row every game reads off the entry the same way. */
+export type RowHead = Required<Omit<ScoreboardRow, 'tick'>>
+
+/**
+ * The row's head, for a game to spread before its own cells:
+ * `{ ...rowHead(entry, awardRule), correct }`. Opt-in — a row may also say all this itself.
+ */
+export function rowHead(entry: GameEntry, awardRule: AwardRule | null): RowHead {
+  return {
+    userId: entry.userId,
+    name: entry.username,
+    colorHex: entry.avatar.bgColorHex,
+    ink: readableTextColor(entry.avatar.bgColorHex),
+    points: entry.points,
+    provisional: isProvisional(entry.points, awardRule),
+    durationLabel: formatDuration(entry.durationMs),
+  }
 }
 
 /**

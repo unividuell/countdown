@@ -8,10 +8,9 @@
  * points) — see `SpotObjectReveal.vue` for why folding them together would be the wrong move.
  */
 import type { AwardRule, Vote, VoteView } from '@/api/types'
-import { isProvisional } from '@/games/awards'
-import { formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
 import { rankByClock } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { asSpotObjectOutcome, asSpotObjectTip, flagOf } from './types'
@@ -94,13 +93,5 @@ export function scoreRows(input: {
   awardRule: AwardRule | null
   mineUserId: string | null
 }): ScoreRow[] {
-  return rankByClock(input.entries, input.mineUserId, (entry) => ({
-    userId: entry.userId,
-    name: entry.username,
-    colorHex: entry.avatar.bgColorHex,
-    ink: readableTextColor(entry.avatar.bgColorHex),
-    durationLabel: formatDuration(entry.durationMs),
-    points: entry.points,
-    provisional: isProvisional(entry.points, input.awardRule),
-  }))
+  return rankByClock(input.entries, input.mineUserId, (entry) => rowHead(entry, input.awardRule))
 }

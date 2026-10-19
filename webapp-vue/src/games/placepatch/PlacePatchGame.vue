@@ -6,9 +6,7 @@
  * framework's. Declaring them keeps the contract the same shape for every game.
  */
 import { computed } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import type { SceneState } from '@/ui/sceneState'
@@ -25,26 +23,9 @@ import {
   cellOf,
 } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  closed?: boolean
-  /** Sealed: mounted under the cover before the reveal, `payload` still `null`. */
-  sealed?: boolean
-  /** The board's shape while sealed. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => asPlacePatchPayload(props.payload))
 const scene = computed(() => (props.sealed ? asPlacePatchScene(props.scene) : null))

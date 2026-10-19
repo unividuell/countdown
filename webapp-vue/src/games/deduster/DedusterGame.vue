@@ -7,33 +7,16 @@
  * and it comes through the scene asset, not through a solution exit.
  */
 import { computed } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import DedusterBoard from './DedusterBoard.vue'
 import DedusterReveal from './DedusterReveal.vue'
 import { scoreRows } from './scoreboard'
 import { PHOTO_ASSET, asDedusterGuess, asDedusterPayload, asDedusterScene } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  closed?: boolean
-  sealed?: boolean
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => asDedusterPayload(props.payload))
 const scene = computed(() => asDedusterScene(props.scene))
