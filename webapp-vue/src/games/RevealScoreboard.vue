@@ -10,14 +10,17 @@
  *
  * What every game shares is this whole box: the heading and the live chip *inside* the head rather
  * than floating above it, „Name“ first and „Pkt“ last, the band, the cascade that writes the cells.
- * What differs is only what stands between those two columns, and that arrives through
- * `cell-<key>` slots — see `scoreboardColumns.ts`. The table's box is complete from the moment it
- * mounts and only its ink appears, so nothing here ever moves — see the design doc.
+ * The clock before „Pkt“ is shared too, whenever a row has one: like the name and the points it is
+ * the entry's own (`GameEntry.durationMs`). What differs is only what stands between „Name“ and the
+ * clock, and that arrives through `cell-<key>` slots — see `scoreboardColumns.ts`. The table's box
+ * is complete from the moment it mounts and only its ink appears, so nothing here ever moves — see
+ * the design doc.
  *
  * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
  * the player's line in its curve.
  */
 import { computed } from 'vue'
+import { hasDurations } from '@/games/durations'
 import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { useRevealArming } from '@/ui/useRevealArming'
@@ -25,7 +28,7 @@ import type { ScoreboardColumn, ScoreboardRow } from './scoreboardColumns'
 
 const props = defineProps<{
   rows: Row[]
-  /** The columns between „Name“ and „Pkt“. The table adds those two itself. */
+  /** The game's columns, after „Name“. The table adds „Name“, the clock and „Pkt“ itself. */
   columns: ScoreboardColumn<Row>[]
   /** What the table is, for a screen reader. */
   caption: string
@@ -37,10 +40,22 @@ const props = defineProps<{
   nameWidth?: string | undefined
 }>()
 
+const clock: ScoreboardColumn<Row> = {
+  key: 'clock',
+  label: '[mm:ss]',
+  width: '3.5rem',
+  align: 'end',
+}
+
+/** The game's columns, then the clock whenever a row has one. */
+const tableColumns = computed(() =>
+  hasDurations(props.rows) ? [...props.columns, clock] : props.columns,
+)
+
 /** Grid column, so „Name“ at 0 is counted: every delay below is an index into the same row. */
-const pointsColumnIndex = computed(() => props.columns.length + 1)
+const pointsColumnIndex = computed(() => tableColumns.value.length + 1)
 /** Two head rows when any column carries a fact — a solution, a round's tempo. */
-const hasHeadBlock = computed(() => props.columns.some((column) => column.fact !== undefined))
+const hasHeadBlock = computed(() => tableColumns.value.some((column) => column.fact !== undefined))
 const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 
 /** Asked once, when the choreography would start — the same four questions every reveal asks. */
@@ -107,7 +122,7 @@ function pointsLabel(points: number | null): string {
       <colgroup>
         <col :style="props.nameWidth === undefined ? undefined : { width: props.nameWidth }" />
         <col
-          v-for="column in props.columns"
+          v-for="column in tableColumns"
           :key="column.key"
           :style="column.width === undefined ? undefined : { width: column.width }"
         />
@@ -130,7 +145,7 @@ function pointsLabel(points: number | null): string {
             >
               <h2 class="text-2xl">Auswertung</h2>
             </td>
-            <template v-for="(column, at) in props.columns" :key="column.key">
+            <template v-for="(column, at) in tableColumns" :key="column.key">
               <th
                 v-if="column.fact !== undefined"
                 :id="`${column.key}-fact`"
@@ -163,7 +178,7 @@ function pointsLabel(points: number | null): string {
                whose column header is the game's own label. The cell itself is bare: a fact is no
                player's row, so its surface — or none — comes with it. -->
           <tr>
-            <template v-for="(column, at) in props.columns" :key="column.key">
+            <template v-for="(column, at) in tableColumns" :key="column.key">
               <td
                 v-if="column.fact !== undefined"
                 :headers="`${column.key}-fact`"
@@ -180,7 +195,7 @@ function pointsLabel(points: number | null): string {
         <!-- With neither the head is one row: the heading runs to the live chip's column. -->
         <tr v-else>
           <td
-            :colspan="props.columns.length + 1"
+            :colspan="tableColumns.length + 1"
             class="align-bottom transition-opacity"
             :class="opacity"
             :style="head(0, 0)"
@@ -214,7 +229,7 @@ function pointsLabel(points: number | null): string {
             Name
           </th>
           <th
-            v-for="(column, at) in props.columns"
+            v-for="(column, at) in tableColumns"
             :key="column.key"
             scope="col"
             class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
@@ -244,14 +259,17 @@ function pointsLabel(points: number | null): string {
             <slot name="name" :row="row">{{ row.name }}</slot>
           </th>
           <td
-            v-for="(column, at) in props.columns"
+            v-for="(column, at) in tableColumns"
             :key="column.key"
             :data-test="`cell-${column.key}-${row.userId}`"
             class="transition-opacity"
             :class="[opacity, cellClass(column, row)]"
             :style="[groundOf(column, row) ?? {}, body(row.tick, at + 1)]"
           >
-            <slot :name="`cell-${column.key}`" :row="row" />
+            <span v-if="column === clock" class="font-mono text-xs">{{
+              row.durationLabel ?? '—'
+            }}</span>
+            <slot v-else :name="`cell-${column.key}`" :row="row" />
           </td>
           <!--
             The pulse may never share an element with the fade. Tailwind's `pulse` declares only

@@ -29,4 +29,8 @@ describe('hasDurations', () => {
     expect(hasDurations([{ durationLabel: null }])).toBe(false)
     expect(hasDurations([])).toBe(false)
   })
+
+  it('reads a row without the field as one without a clock', () => {
+    expect(hasDurations([{}])).toBe(false)
+  })
 })

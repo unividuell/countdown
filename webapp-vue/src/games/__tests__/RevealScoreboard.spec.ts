@@ -102,6 +102,46 @@ describe('RevealScoreboard', () => {
     expect(band.every((cell) => cell.attributes('scope') === 'col')).toBe(true)
   })
 
+  // The clock is the entry's own (`GameEntry.durationMs`), so the frame brings it, like „Pkt“.
+  it('adds the clock before Pkt as soon as a row has a duration', () => {
+    const wrapper = mountBoard({
+      rows: [
+        row({ userId: 'a', durationLabel: '01:05' }),
+        row({ userId: 'b', durationLabel: null }),
+      ],
+    })
+
+    const band = wrapper.findAll('thead tr:last-child th')
+    const clock = wrapper.get('[data-test="cell-clock-a"]')
+
+    expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', '[mm:ss]', 'Pkt'])
+    expect(wrapper.findAll('col')[2]!.attributes('style')).toBe('width: 3.5rem;')
+    expect(clock.classes()).toContain('text-end')
+    expect(clock.get('span').classes()).toEqual(['font-mono', 'text-xs'])
+    expect(clock.text()).toBe('01:05')
+  })
+
+  it('says „no clock“ with an em dash for a row the round could not time', () => {
+    const wrapper = mountBoard({
+      rows: [
+        row({ userId: 'a', durationLabel: '01:05' }),
+        row({ userId: 'b', durationLabel: null }),
+      ],
+    })
+
+    expect(wrapper.get('[data-test="cell-clock-b"]').text()).toBe('—')
+  })
+
+  it('leaves the clock out where no row has a duration', () => {
+    const wrapper = mountBoard({
+      rows: [row({ userId: 'a', durationLabel: null }), row({ userId: 'b' })],
+    })
+
+    const band = wrapper.findAll('thead tr:last-child th')
+
+    expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', 'Pkt'])
+  })
+
   it('keeps the heading and the live chip inside the head, not in a row above the table', () => {
     const wrapper = mountBoard({ live: true })
 
