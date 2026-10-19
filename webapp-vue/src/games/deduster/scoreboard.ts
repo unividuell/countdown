@@ -5,7 +5,7 @@
 import type { AwardRule } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
-import { tickOfRow } from '@/games/revealChoreography'
+import { withTicks } from '@/games/ranking'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import {
@@ -81,11 +81,10 @@ export function scoreRows(input: {
       a.row.userId.localeCompare(b.row.userId),
   )
 
-  const myRank = ranked.findIndex((item) => item.row.userId === input.mineUserId)
-  return ranked.map(({ row }, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
-  }))
+  return withTicks(
+    ranked.map(({ row }) => row),
+    input.mineUserId,
+  )
 }
 
 /** Faster first; a row without an average sorts after one with it rather than winning by default. */

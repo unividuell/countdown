@@ -9,7 +9,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
 import { hueOf } from './types'
-import { tickOfRow } from '@/games/revealChoreography'
+import { withTicks } from '@/games/ranking'
 import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardColumns'
 
 export interface ScoreboardRow extends SharedScoreboardRow {
@@ -75,11 +75,7 @@ export function scoreboardRows(input: {
   })
 
   ranked.sort((a, b) => a.deviationDeg - b.deviationDeg || a.userId.localeCompare(b.userId))
-  const myRank = ranked.findIndex((row) => row.userId === input.mineUserId)
-  return ranked.map((row, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
-  }))
+  return withTicks(ranked, input.mineUserId)
 }
 
 /** Narrowed, not cast: `outcome` is `unknown` by contract, and a stale round may be junk. */

@@ -6,10 +6,11 @@
  * the framework's. `solution` is declared and never read: the photo under the dust is the reward,
  * and it comes through the scene asset, not through a solution exit.
  */
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import DedusterBoard from './DedusterBoard.vue'
 import DedusterReveal from './DedusterReveal.vue'
 import { scoreRows } from './scoreboard'
@@ -53,11 +54,7 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/** As in Musterung: the table's cascade plays only when the evaluation arrives here, not on reload. */
-const hasRevealedLive = ref(false)
-watch(done, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(done)
 </script>
 
 <template>

@@ -10,9 +10,9 @@
  * unreadable on at least one of them.
  */
 import { computed } from 'vue'
+import { hasDurations } from '@/games/durations'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { hasDurations } from './scoreboard'
 import type { ScoreRow, ToneChip } from './scoreboard'
 
 const props = defineProps<{

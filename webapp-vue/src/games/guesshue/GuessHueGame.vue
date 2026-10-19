@@ -9,7 +9,7 @@
  * into typed values. `myGuess` stays beside `entries` even though it is derivable from it: it has
  * its own documented job — the wheel's starting angle after a reload.
  */
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import GuessHueBoard from './GuessHueBoard.vue'
 import GuessHueReveal from './GuessHueReveal.vue'
 import type { RevealGuess } from './reveal'
@@ -17,6 +17,7 @@ import { scoreboardRows, solutionCell } from './scoreboard'
 import type { ScoreboardRow } from './scoreboard'
 import type { GameEntry } from '@/games/GameEntry'
 import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import type { AwardRule } from '@/api/types'
 import { hueOf } from './types'
 import type { GuessHuePayload, GuessHueSolution } from './types'
@@ -117,29 +118,7 @@ const guesses = computed<RevealGuess[]>(() => {
 /** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/**
- * Whether the reveal that is about to show is something that just *happened* here, rather than
- * something that was already true when this instance mounted. Flips true only on a live
- * null→non-null transition of the narrowed `solution` — never on the initial value, because a
- * `watch` without `immediate: true` does not fire for it. That is what makes an instance that
- * mounts already-revealed start `false` and stay there: a reload must not replay the choreography.
- *
- * A setup-time constant cannot do this correctly: the lab page keys the game component on
- * `round.seed`, not on whether a guess exists, so the same instance can cross the revealed
- * boundary more than once — reload into a spent round, delete the guess (`solution` back to
- * `null`), guess again (`solution` non-null again) — and the second live transition must re-arm
- * the beats just as the first would have.
- *
- * The default `pre` flush matters here: it runs this callback before the component re-renders, so
- * the flag is already `true` by the time `GuessHueReveal` mounts and reads `animate` — that
- * ordering is what lets the first beat happen at all. A later change to `flush` would silently
- * break it.
- */
-const hasRevealedLive = ref(false)
-watch(solution, (now, before) => {
-  if (before === null && now !== null) hasRevealedLive.value = true
-})
-const animate = computed(() => hasRevealedLive.value)
+const animate = useRevealedLive(() => solution.value !== null)
 </script>
 
 <template>

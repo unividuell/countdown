@@ -119,11 +119,10 @@ tab. So:
 **A game's reveal is one event, so its choreography is shared.** The board's marker and the
 scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
 functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
-own row shape), never *when*. `revealChoreography.ts` was hoisted out of a guesshue-local `reveal.ts`
-once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s own imports and test
-expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
-games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
-`guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
+own row shape), never *when*. Its plumbing is shared the same way — `games/ranking.ts` (order,
+cascade tick), `durations.ts`, `awards.ts`, `useRevealedLive`, `useMyColorHex`: a new game imports
+it rather than copying it, and a third copy is the signal to hoist. A hoist is safe when no game's
+test expectations move.
 A game with **more** to say on a beat fills the window the clock leaves it — `SOLUTION_DELAY_MS` to
 `RESULTS_DELAY_MS` — instead of offsetting the clock: Musterung recedes its board, uncovers the
 possibilities and brings the board back inside beat 3, its return derived from beat 4 so the picture

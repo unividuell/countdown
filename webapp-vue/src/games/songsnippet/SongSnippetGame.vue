@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
 import { scoreRows } from './scoreboard'
@@ -53,15 +54,7 @@ const rows = computed(() =>
 /** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
 const live = computed(() => rows.value.some((row) => row.provisional))
 
-/**
- * Whether the reveal may play its beats — the same rule every other game follows: only a round
- * that was uncovered while this instance watched. A `watch` without `immediate` never fires for
- * the initial value, which is what makes an instance mounting already-revealed start `false`.
- */
-const hasRevealedLive = ref(false)
-watch(revealed, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(revealed)
 
 /** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
  *  skip, flagged below before the re-emit so the watch can tell the two apart. */

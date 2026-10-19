@@ -7,9 +7,9 @@
  * lives — so all that is left to decide is whether the round measured time.
  */
 import { computed } from 'vue'
+import { hasDurations } from '@/games/durations'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { hasDurations } from './tips'
 import type { ScoreRow } from './tips'
 
 const props = defineProps<{

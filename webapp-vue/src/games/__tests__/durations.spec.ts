@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { durationOrder, formatDuration } from '@/games/durations'
+import { durationOrder, formatDuration, hasDurations } from '@/games/durations'
 
 describe('formatDuration', () => {
   it('is mm:ss, and minutes are not capped at 59', () => {
@@ -20,5 +20,13 @@ describe('durationOrder', () => {
     expect(durationOrder(null, 2_000)).toBeGreaterThan(0)
     expect(durationOrder(2_000, null)).toBeLessThan(0)
     expect(durationOrder(null, null)).toBe(0)
+  })
+})
+
+describe('hasDurations', () => {
+  it('is whether any row carries a clock', () => {
+    expect(hasDurations([{ durationLabel: null }, { durationLabel: '00:09' }])).toBe(true)
+    expect(hasDurations([{ durationLabel: null }])).toBe(false)
+    expect(hasDurations([])).toBe(false)
   })
 })

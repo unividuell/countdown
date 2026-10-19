@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
-import { hasDurations, scoreRows, toneChips } from '@/games/findpattern/scoreboard'
+import { hasDurations } from '@/games/durations'
+import { scoreRows, toneChips } from '@/games/findpattern/scoreboard'
 import type { FindPatternSolution } from '@/games/findpattern/types'
 
 const SOLUTION: FindPatternSolution = {

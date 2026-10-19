@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /** „Auswertung“ for Platzierung: the shared table, with the clock when the round was timed. */
 import { computed } from 'vue'
+import { hasDurations } from '@/games/durations'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { hasDurations } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 
 const props = defineProps<{
