@@ -21,8 +21,7 @@
  */
 import { computed } from 'vue'
 import { hasDurations } from '@/games/durations'
-import { FADE_MS, cellDelayMs, headCellDelayMs } from '@/games/revealChoreography'
-import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { FADE_MS, cellDelayMs, headCellDelayMs, isStill } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import type { ScoreboardColumn, ScoreboardRow } from './scoreboardColumns'
 
@@ -58,12 +57,7 @@ const pointsColumnIndex = computed(() => tableColumns.value.length + 1)
 const hasHeadBlock = computed(() => tableColumns.value.some((column) => column.fact !== undefined))
 const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 
-/** Asked once, when the choreography would start — the same four questions every reveal asks. */
-const still =
-  !props.animate ||
-  prefersReducedMotion() ||
-  inBackground() ||
-  typeof requestAnimationFrame !== 'function'
+const still = isStill(props.animate)
 
 const { shown } = useRevealArming(still)
 const opacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
