@@ -59,6 +59,16 @@ describe('DedusterGame', () => {
     expect(w.findComponent(DedusterBoard).exists()).toBe(false)
   })
 
+  it('crossfades board and evaluation in one shared grid cell', () => {
+    const playing = mountGame()
+    const done = mountGame({ sealed: false, payload: PAYLOAD, closed: true })
+
+    expect(playing.get('[data-test="deduster-board"]').classes()).toContain('[grid-area:1/1]')
+    expect(done.get('[data-test="deduster-reveal"]').classes()).toContain('[grid-area:1/1]')
+    // No `mode`: the photo stays put while the dust fades off it.
+    expect(playing.get('transition-stub').attributes('mode')).toBeUndefined()
+  })
+
   it('forwards the board’s guess and reveal', () => {
     const w = mountGame()
     const board = w.getComponent(DedusterBoard)
