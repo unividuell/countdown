@@ -7,10 +7,11 @@
  * While the round runs, my own finished entry opens everyone's tips; once it is closed they are
  * open to everyone, and a closed round must never put a live map on screen again.
  */
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import type { RoundReview } from '@/rounds/review'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
@@ -71,16 +72,10 @@ const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 const trailColor = computed(() => mine.value?.avatar.bgColorHex ?? '#404040')
 
 /**
- * Whether the reveal is something that just happened here rather than something that was already
- * true on mount — the same flag every other game's reveal keeps. A `watch` without `immediate`
- * never fires for the initial value, which is what makes an instance mounting already-played
- * start `false` instead of replaying the choreography. Watched on `played`, not on `revealed`:
- * a round closing under someone who never played reveals nothing of theirs.
+ * Watched on `played`, not on `revealed`: a round closing under someone who never played reveals
+ * nothing of theirs.
  */
-const hasRevealedLive = ref(false)
-watch(played, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(played)
 </script>
 
 <template>

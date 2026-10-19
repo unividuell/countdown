@@ -6,7 +6,7 @@
 import type { AwardRule } from '@/api/types'
 import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
-import { tickOfRow } from '@/games/revealChoreography'
+import { withTicks } from '@/games/ranking'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 
@@ -71,11 +71,7 @@ export function scoreRows(input: {
       (b.points ?? 0) - (a.points ?? 0) || a.stage - b.stage || a.userId.localeCompare(b.userId),
   )
 
-  const myRank = rows.findIndex((row) => row.userId === input.mineUserId)
-  return rows.map((row, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, rows.length),
-  }))
+  return withTicks(rows, input.mineUserId)
 }
 
 /** Narrowed, not cast: a guess is `unknown` by contract, and a stale round may be junk. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
-import { hasDurations, scoreRows } from '@/games/placepatch/scoreboard'
+import { hasDurations } from '@/games/durations'
+import { scoreRows } from '@/games/placepatch/scoreboard'
 
 const LAYOUT = { cols: 40, rows: 30, size: 10 }
 const SOLUTION = { x: 7, y: 4 }

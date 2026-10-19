@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
-import { hasDurations, scoreRows } from '@/games/copyblocks/scoreboard'
+import { scoreRows } from '@/games/copyblocks/scoreboard'
+import { hasDurations } from '@/games/durations'
 
 function entry(over: Partial<GameEntry>): GameEntry {
   return {

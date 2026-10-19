@@ -6,10 +6,12 @@
  * both exits are the framework's, not the game's. Declaring them keeps the component contract the
  * same shape for every game the round card and the lab render.
  */
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
+import { useMyColorHex } from '@/games/useMyColorHex'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import type { SceneState } from '@/ui/sceneState'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import FindPatternBoard from './FindPatternBoard.vue'
@@ -76,11 +78,9 @@ const sceneState = computed<SceneState>(() => {
   return 'ready'
 })
 
-/** Grey, so a player whose row has not arrived yet still sees their own selection. */
-const myColorHex = computed(
-  () =>
-    props.entries.find((entry) => entry.userId === props.mineUserId)?.avatar.bgColorHex ??
-    '#525252',
+const myColorHex = useMyColorHex(
+  () => props.entries,
+  () => props.mineUserId,
 )
 
 const rows = computed(() =>
@@ -96,16 +96,7 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/**
- * Whether the reveal is something that just happened here rather than something that was already
- * true on mount — the same flag Guess Hue keeps, for the same reason: a reload must not replay the
- * choreography. A `watch` without `immediate` never fires for the initial value, which is what makes
- * an instance mounting already-revealed start `false`.
- */
-const hasRevealedLive = ref(false)
-watch(solution, (now, before) => {
-  if (before === null && now !== null) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(() => solution.value !== null)
 </script>
 
 <template>

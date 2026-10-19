@@ -11,6 +11,7 @@ import type { RoundAssets } from '@/api/assets'
 import type { AwardRule } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
 import type { GameEntry } from '@/games/GameEntry'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import CopyBlocksBoard from './CopyBlocksBoard.vue'
 import CopyBlocksReveal from './CopyBlocksReveal.vue'
 import { clearDraft, deviceStorage, draftKey } from './draft'
@@ -76,11 +77,7 @@ watch(
   { immediate: true },
 )
 
-/** As in Musterung: the table's cascade plays only when the evaluation arrives here, not on reload. */
-const hasRevealedLive = ref(false)
-watch(done, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(done)
 </script>
 
 <template>
