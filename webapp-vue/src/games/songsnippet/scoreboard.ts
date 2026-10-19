@@ -4,11 +4,10 @@
  * is the half a test can actually assert on.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { withTicks } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
-import { readableTextColor } from '@/ui/readableTextColor'
 
 export interface ScoreRow extends ScoreboardRow {
   /** „Titel · Artist“, or the give-up dash. */
@@ -53,17 +52,12 @@ export function scoreRows(input: {
   const rows = input.entries.map((entry) => {
     const guess = guessOf(entry.guess)
     return {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
+      ...rowHead(entry, input.awardRule),
       guessLabel: guess?.title === undefined ? GAVE_UP : `${guess.title} · ${guess.artist ?? '?'}`,
       trackId: guess?.trackId ?? null,
       correct: (entry.outcome as { correct?: boolean } | null)?.correct === true,
       timeLabel: oneDecimal.format(input.durations[entry.stage] ?? 0),
       stage: entry.stage,
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
     }
   })
   rows.sort(

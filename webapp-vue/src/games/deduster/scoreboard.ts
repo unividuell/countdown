@@ -3,11 +3,10 @@
  * Musterung's — the half a test can assert on.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { withTicks } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
-import { readableTextColor } from '@/ui/readableTextColor'
 import {
   asDedusterGuess,
   asDedusterOutcome,
@@ -52,12 +51,7 @@ export function scoreRows(input: {
     const reactionsMs = guess?.reactionsMs ?? []
     const average = outcome?.averageReactionMs ?? null
     const row: DedusterRow = {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
+      ...rowHead(entry, input.awardRule),
       tick: 0,
       reactionsMs,
       tilesCleared: reactionsMs.length,
