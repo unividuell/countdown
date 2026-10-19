@@ -6,6 +6,8 @@ import CopyBlocksGame from '@/games/copyblocks/CopyBlocksGame.vue'
 import CopyBlocksReveal from '@/games/copyblocks/CopyBlocksReveal.vue'
 import { draftKey, saveDraft } from '@/games/copyblocks/draft'
 import type { CopyBlocksPayload } from '@/games/copyblocks/types'
+import type { GameProps } from '@/games/GameProps'
+import { gameProps } from '@/games/__tests__/gameFixtures'
 import { gameComponents } from '@/games/registry'
 import { labGameList } from '@/gamelab/games'
 
@@ -21,23 +23,17 @@ const PAYLOAD: CopyBlocksPayload = {
 }
 const GUESS = { blocks: [{ x: 0, y: 0, z: 0, type: 'DIRT' as const }] }
 
-function mountGame(over: Record<string, unknown> = {}) {
+function mountGame(over: Partial<GameProps> = {}) {
   return mount(CopyBlocksGame, {
-    props: {
+    props: gameProps({
       payload: PAYLOAD,
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
-      disabled: false,
       closed: false,
       sealed: false,
       scene: null,
       ...over,
-    },
+    }),
     global: { stubs: { CopyBlocksBoard: true, CopyBlocksReveal: true } },
   })
 }

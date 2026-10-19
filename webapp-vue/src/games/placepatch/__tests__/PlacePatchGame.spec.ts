@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { AssetKey, RoundAssets } from '@/api/assets'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameProps } from '@/games/GameProps'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import PlacePatchBoard from '@/games/placepatch/PlacePatchBoard.vue'
 import PlacePatchGame from '@/games/placepatch/PlacePatchGame.vue'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
@@ -34,35 +35,24 @@ function assetsWith(keys: Record<string, AssetKey> = {}): RoundAssets {
   return { url: (name) => `/asset/${name}`, key: (name) => keys[name] ?? null }
 }
 
-const MINE: GameEntry = {
+const MINE = gameEntry({
   userId: 'mine',
   username: 'Leela',
-  stage: 0,
   guess: { x: 7, y: 4 },
   outcome: { correct: true },
   points: 1,
-  durationMs: null,
-  avatar: { bgColorHex: '#7c3aed' },
-  votes: [],
-  struck: false,
-  adminOverride: null,
-}
+})
 
-function mountGame(over: Record<string, unknown> = {}) {
+function mountGame(over: Partial<GameProps> = {}) {
   return mount(PlacePatchGame, {
-    props: {
+    props: gameProps({
       payload: PAYLOAD,
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
       mineUserId: 'mine',
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
-      disabled: false,
       assets: assetsWith(),
       ...over,
-    },
+    }),
   })
 }
 

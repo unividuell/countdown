@@ -1,22 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { rankByClock, withTicks } from '@/games/ranking'
-
-function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
-  return {
-    username: over.userId,
-    stage: 0,
-    guess: null,
-    outcome: null,
-    points: 0,
-    durationMs: null,
-    avatar: { bgColorHex: '#7c3aed' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
-    ...over,
-  }
-}
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 
 describe('withTicks', () => {
   it('lets every row ride its rank, except mine', () => {
@@ -43,9 +28,9 @@ describe('rankByClock', () => {
   it('orders by points, a missing score last', () => {
     const order = rank(
       [
-        entry({ userId: 'a', points: null }),
-        entry({ userId: 'b', points: 0 }),
-        entry({ userId: 'c', points: 3 }),
+        gameEntry({ userId: 'a', points: null }),
+        gameEntry({ userId: 'b', points: 0 }),
+        gameEntry({ userId: 'c', points: 3 }),
       ],
       () => false,
     )
@@ -55,7 +40,10 @@ describe('rankByClock', () => {
 
   it('puts a hit before a miss on equal points', () => {
     const order = rank(
-      [entry({ userId: 'a', durationMs: 1_000 }), entry({ userId: 'b', durationMs: 9_000 })],
+      [
+        gameEntry({ userId: 'a', durationMs: 1_000 }),
+        gameEntry({ userId: 'b', durationMs: 9_000 }),
+      ],
       (entry) => entry.userId === 'b',
     )
 
@@ -65,10 +53,10 @@ describe('rankByClock', () => {
   it('ranks a game without hits by the clock, a missing one last, then by user id', () => {
     const order = rankByClock(
       [
-        entry({ userId: 'd' }),
-        entry({ userId: 'c', durationMs: 2_000 }),
-        entry({ userId: 'b', durationMs: 1_000 }),
-        entry({ userId: 'a' }),
+        gameEntry({ userId: 'd' }),
+        gameEntry({ userId: 'c', durationMs: 2_000 }),
+        gameEntry({ userId: 'b', durationMs: 1_000 }),
+        gameEntry({ userId: 'a' }),
       ],
       null,
       (entry) => ({ userId: entry.userId, points: entry.points }),
@@ -79,7 +67,7 @@ describe('rankByClock', () => {
 
   it('stamps the ticks after ranking', () => {
     const rows = rankByClock(
-      [entry({ userId: 'a', points: 0 }), entry({ userId: 'b', points: 3 })],
+      [gameEntry({ userId: 'a', points: 0 }), gameEntry({ userId: 'b', points: 3 })],
       'b',
       (entry) => ({ userId: entry.userId, points: entry.points }),
     )

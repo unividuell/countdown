@@ -15,41 +15,17 @@ import GuessHueReveal from './GuessHueReveal.vue'
 import type { RevealGuess } from './reveal'
 import { scoreboardRows, solutionCell } from './scoreboard'
 import type { ScoreboardRow } from './scoreboard'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import { useRevealedLive } from '@/games/useRevealedLive'
-import type { AwardRule } from '@/api/types'
-import { hueOf } from './types'
-import type { GuessHuePayload, GuessHueSolution } from './types'
+import { asGuessHuePayload, hueOf } from './types'
+import type { GuessHueSolution } from './types'
 
-const props = defineProps<{
-  payload: GuessHuePayload
-  outcome: unknown
-  disabled: boolean
-  /** The viewer's own stored guess, in whatever shape the game recorded it. */
-  myGuess: unknown
-  /** What the server revealed once the viewer had spent their guess, or `null`. */
-  solution: unknown
-  /** The visible entries, in the order the caller already builds — mine first. */
-  entries: GameEntry[]
-  /** Which of them is mine. Never the position: that is a display decision. */
-  mineUserId: string | null
-  /**
-   * The rule this round was frozen with. Guess Hue reads exactly one thing off it — whether a
-   * score can still be overtaken — and the scoreboard says so. `null` where there is no round.
-   */
-  awardRule: AwardRule | null
-  /** What this round is worth — the winner box states it. `null` only without a game. */
-  awardPoints: number | null
-  /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  closed?: boolean
-  /** Declared, never used here: this game never seals, and the contract has one shape. */
-  sealed?: boolean
-  /** Declared, never used here — see `sealed`. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [value: unknown]; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
+
+const payload = computed(() => asGuessHuePayload(props.payload))
 
 const myHue = computed(() => hueOf(props.myGuess))
 
@@ -71,24 +47,28 @@ const solution = computed<GuessHueSolution | null>(() => {
 
 /** Empty until the server has revealed: without a solution there is nothing to rank against. */
 const rows = computed<ScoreboardRow[]>(() =>
-  solution.value === null
+  solution.value === null || payload.value === null
     ? []
     : scoreboardRows({
         entries: props.entries,
-        saturation: props.payload.saturation,
-        lightness: props.payload.lightness,
+        saturation: payload.value.saturation,
+        lightness: payload.value.lightness,
         awardRule: props.awardRule,
         mineUserId: props.mineUserId,
       }),
 )
 
 /**
- * The head block's solution cell. The `?? 0` is never reached in practice — the reveal card only
- * exists once `solution` is non-null — and exists so this stays a plain computed rather than a
- * nullable prop threaded through two components.
+ * The head block's solution cell. The `?? 0`s are never reached in practice — the reveal card only
+ * exists once `payload` and `solution` are non-null — and exist so this stays a plain computed
+ * rather than a nullable prop threaded through two components.
  */
 const solutionCellValue = computed(() =>
-  solutionCell(solution.value?.targetHue ?? 0, props.payload.saturation, props.payload.lightness),
+  solutionCell(
+    solution.value?.targetHue ?? 0,
+    payload.value?.saturation ?? 0,
+    payload.value?.lightness ?? 0,
+  ),
 )
 
 /**
@@ -127,7 +107,7 @@ const animate = useRevealedLive(() => solution.value !== null)
     the surroundings are as tall as whichever card is taller during the crossfade, and fall to the
     reveal card's height by themselves once the outgoing one is gone.
   -->
-  <div class="grid">
+  <div v-if="payload" class="grid">
     <!--
       Beat 2. No `mode`, so both cards overlap: my marker sits on the same radius and the same
       angle as the knob by construction, which is what makes the crossfade read as one circle
@@ -142,9 +122,9 @@ const animate = useRevealedLive(() => solution.value !== null)
       <GuessHueReveal
         v-if="solution"
         class="[grid-area:1/1]"
-        :description="props.payload.description"
-        :saturation="props.payload.saturation"
-        :lightness="props.payload.lightness"
+        :description="payload.description"
+        :saturation="payload.saturation"
+        :lightness="payload.lightness"
         :target-hue="solution.targetHue"
         :tolerance-deg="solution.toleranceDeg ?? 0"
         :guesses="guesses"
@@ -157,10 +137,10 @@ const animate = useRevealedLive(() => solution.value !== null)
       <GuessHueBoard
         v-else
         class="[grid-area:1/1]"
-        :description="props.payload.description"
-        :init-hue="myHue ?? props.payload.initHue"
-        :saturation="props.payload.saturation"
-        :lightness="props.payload.lightness"
+        :description="payload.description"
+        :init-hue="myHue ?? payload.initHue"
+        :saturation="payload.saturation"
+        :lightness="payload.lightness"
         :disabled="props.disabled"
         :award-rule="props.awardRule"
         :award-points="props.awardPoints"

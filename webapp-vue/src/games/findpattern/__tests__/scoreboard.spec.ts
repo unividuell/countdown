@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GameEntry } from '@/games/GameEntry'
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { hasDurations } from '@/games/durations'
 import { scoreRows, toneChips } from '@/games/findpattern/scoreboard'
 import type { FindPatternSolution } from '@/games/findpattern/types'
@@ -11,22 +11,6 @@ const SOLUTION: FindPatternSolution = {
   palette: ['#ffffff', '#cccccc', '#999999', '#666666'],
   delta: 0.14,
   startIndices: [1, 5, 9],
-}
-
-function entry(over: Partial<GameEntry> & { userId: string }): GameEntry {
-  return {
-    username: over.userId,
-    stage: 0,
-    guess: null,
-    outcome: null,
-    points: 0,
-    durationMs: null,
-    avatar: { bgColorHex: '#7c3aed' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
-    ...over,
-  }
 }
 
 describe('toneChips', () => {
@@ -41,7 +25,7 @@ describe('toneChips', () => {
 describe('scoreRows', () => {
   it('reads each tip off the board, so a row cannot contradict its own chips', () => {
     const rows = scoreRows({
-      entries: [entry({ userId: 'a', guess: { startIndex: 5 }, points: 1 })],
+      entries: [gameEntry({ userId: 'a', guess: { startIndex: 5 }, points: 1 })],
       solution: SOLUTION,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'a',
@@ -53,7 +37,7 @@ describe('scoreRows', () => {
 
   it('marks a miss as a miss', () => {
     const rows = scoreRows({
-      entries: [entry({ userId: 'a', guess: { startIndex: 4 }, points: 0 })],
+      entries: [gameEntry({ userId: 'a', guess: { startIndex: 4 }, points: 0 })],
       solution: SOLUTION,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'a',
@@ -65,7 +49,7 @@ describe('scoreRows', () => {
 
   it('shows a give-up row without chips', () => {
     const rows = scoreRows({
-      entries: [entry({ userId: 'a', guess: null, points: 0 })],
+      entries: [gameEntry({ userId: 'a', guess: null, points: 0 })],
       solution: SOLUTION,
       awardRule: 'CLOSEST_ONLY',
       mineUserId: 'a',
@@ -79,10 +63,10 @@ describe('scoreRows', () => {
   it('ranks points first, then hits, then the clock', () => {
     const rows = scoreRows({
       entries: [
-        entry({ userId: 'slow-hit', guess: { startIndex: 9 }, points: 0, durationMs: 30_000 }),
-        entry({ userId: 'miss', guess: { startIndex: 4 }, points: 0, durationMs: 1_000 }),
-        entry({ userId: 'winner', guess: { startIndex: 1 }, points: 3, durationMs: 12_000 }),
-        entry({ userId: 'quick-hit', guess: { startIndex: 5 }, points: 0, durationMs: 4_000 }),
+        gameEntry({ userId: 'slow-hit', guess: { startIndex: 9 }, points: 0, durationMs: 30_000 }),
+        gameEntry({ userId: 'miss', guess: { startIndex: 4 }, points: 0, durationMs: 1_000 }),
+        gameEntry({ userId: 'winner', guess: { startIndex: 1 }, points: 3, durationMs: 12_000 }),
+        gameEntry({ userId: 'quick-hit', guess: { startIndex: 5 }, points: 0, durationMs: 4_000 }),
       ],
       solution: SOLUTION,
       awardRule: 'CLOSEST_ONLY',
@@ -95,8 +79,8 @@ describe('scoreRows', () => {
   it('is stable across reloads when nothing separates two rows', () => {
     const rows = scoreRows({
       entries: [
-        entry({ userId: 'b', guess: { startIndex: 5 }, points: 1 }),
-        entry({ userId: 'a', guess: { startIndex: 9 }, points: 1 }),
+        gameEntry({ userId: 'b', guess: { startIndex: 5 }, points: 1 }),
+        gameEntry({ userId: 'a', guess: { startIndex: 9 }, points: 1 }),
       ],
       solution: SOLUTION,
       awardRule: 'ALL_QUALIFYING',
@@ -110,13 +94,13 @@ describe('scoreRows', () => {
     // "100:00" sorts before "60:00" as text ('1' < '6'), but 6_000_000 ms is the slower duration.
     const rows = scoreRows({
       entries: [
-        entry({
+        gameEntry({
           userId: 'hundred-minutes',
           guess: { startIndex: 1 },
           points: 0,
           durationMs: 6_000_000,
         }),
-        entry({
+        gameEntry({
           userId: 'sixty-minutes',
           guess: { startIndex: 5 },
           points: 0,
@@ -134,8 +118,8 @@ describe('scoreRows', () => {
   it('calls a closest-only score provisional while it can still be overtaken', () => {
     const rows = scoreRows({
       entries: [
-        entry({ userId: 'a', guess: { startIndex: 5 }, points: 3 }),
-        entry({ userId: 'b', guess: { startIndex: 4 }, points: 0 }),
+        gameEntry({ userId: 'a', guess: { startIndex: 5 }, points: 3 }),
+        gameEntry({ userId: 'b', guess: { startIndex: 4 }, points: 0 }),
       ],
       solution: SOLUTION,
       awardRule: 'CLOSEST_ONLY',
@@ -150,8 +134,8 @@ describe('scoreRows', () => {
   it('gives my own row the tick of the first row that is not mine', () => {
     const rows = scoreRows({
       entries: [
-        entry({ userId: 'mine', guess: { startIndex: 5 }, points: 3 }),
-        entry({ userId: 'other', guess: { startIndex: 4 }, points: 0 }),
+        gameEntry({ userId: 'mine', guess: { startIndex: 5 }, points: 3 }),
+        gameEntry({ userId: 'other', guess: { startIndex: 4 }, points: 0 }),
       ],
       solution: SOLUTION,
       awardRule: 'CLOSEST_ONLY',
@@ -166,7 +150,7 @@ describe('scoreRows', () => {
 describe('hasDurations', () => {
   it('is false for a phase-one round, so the column can stay away', () => {
     const rows = scoreRows({
-      entries: [entry({ userId: 'a', guess: { startIndex: 5 }, points: 1 })],
+      entries: [gameEntry({ userId: 'a', guess: { startIndex: 5 }, points: 1 })],
       solution: SOLUTION,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'a',
@@ -177,7 +161,7 @@ describe('hasDurations', () => {
 
   it('is true as soon as one row carries a duration', () => {
     const rows = scoreRows({
-      entries: [entry({ userId: 'a', guess: { startIndex: 5 }, points: 3, durationMs: 1_000 })],
+      entries: [gameEntry({ userId: 'a', guess: { startIndex: 5 }, points: 3, durationMs: 1_000 })],
       solution: SOLUTION,
       awardRule: 'CLOSEST_ONLY',
       mineUserId: 'a',

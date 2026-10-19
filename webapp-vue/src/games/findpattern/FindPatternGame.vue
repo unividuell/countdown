@@ -7,9 +7,7 @@
  * same shape for every game the round card and the lab render.
  */
 import { computed } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import type { SceneState } from '@/ui/sceneState'
@@ -26,28 +24,9 @@ import {
   startIndexOf,
 } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  /** What this round is worth — the winner box states it. `null` only without a game. */
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  closed?: boolean
-  /** Sealed: mounted under the cover before the reveal, `payload` still `null`. */
-  sealed?: boolean
-  /** The layout the empty board is set up in while sealed. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => (isFindPatternPayload(props.payload) ? props.payload : null))
 const scene = computed(() => (props.sealed ? asFindPatternScene(props.scene) : null))

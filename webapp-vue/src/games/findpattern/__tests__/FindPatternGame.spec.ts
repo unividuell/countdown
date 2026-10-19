@@ -6,7 +6,8 @@ import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
 import FindPatternBriefing from '@/games/findpattern/FindPatternBriefing.vue'
 import FindPatternGame from '@/games/findpattern/FindPatternGame.vue'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameProps } from '@/games/GameProps'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import RevealCover from '@/ui/RevealCover.vue'
 
 const PAYLOAD = {
@@ -47,49 +48,34 @@ const SOLUTION = {
   startIndices: [1, 5],
 }
 
-const MINE: GameEntry = {
+const MINE = gameEntry({
   userId: 'mine',
   username: 'Leela',
-  stage: 0,
   guess: { startIndex: 5 },
   outcome: { correct: true },
   points: 1,
   durationMs: 42_000,
-  avatar: { bgColorHex: '#7c3aed' },
-  votes: [],
-  struck: false,
-  adminOverride: null,
-}
+})
 
-const OTHER: GameEntry = {
+const OTHER = gameEntry({
   userId: 'other',
   username: 'Fry',
-  stage: 0,
   guess: { startIndex: 1 },
   outcome: { correct: false },
   points: 0,
   durationMs: 50_000,
   avatar: { bgColorHex: '#16a34a' },
-  votes: [],
-  struck: false,
-  adminOverride: null,
-}
+})
 
-function mountGame(over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) {
+function mountGame(over: Partial<GameProps> = {}, global: Record<string, unknown> = {}) {
   return mount(FindPatternGame, {
-    props: {
+    props: gameProps({
       payload: PAYLOAD,
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
-      disabled: false,
       assets: OPENED,
       ...over,
-    },
+    }),
     global,
   })
 }

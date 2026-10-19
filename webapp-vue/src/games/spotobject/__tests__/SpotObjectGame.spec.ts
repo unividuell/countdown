@@ -7,7 +7,8 @@ import SpotObjectBoard from '../SpotObjectBoard.vue'
 import SpotObjectGame from '../SpotObjectGame.vue'
 import SpotObjectReviewRules from '../SpotObjectReviewRules.vue'
 import SpotObjectRules from '../SpotObjectRules.vue'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameProps } from '@/games/GameProps'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 
 // happy-dom has no Google Maps: SpotObjectBoard delegates everything Google to `useStreetView`,
 // so this spec only ever sees the composable's public shape, exactly like `SpotObjectBoard.spec.ts`.
@@ -36,32 +37,20 @@ function mockStreetView(over: Partial<{ ready: Ref<boolean>; error: Ref<string |
 
 const PAYLOAD = { term: 'Roter Briefkasten' }
 
-const MINE: GameEntry = {
+const MINE = gameEntry({
   userId: 'mine',
   username: 'Leela',
-  stage: 0,
   guess: { panoId: 'pano-1', heading: 0, pitch: 0, zoom: 1 },
   outcome: { country: 'DE' },
   points: 1,
-  durationMs: null,
-  avatar: { bgColorHex: '#7c3aed' },
-  votes: [],
-  struck: false,
-  adminOverride: null,
-}
+})
 
-function mountGame(over: Record<string, unknown> = {}, global: Record<string, unknown> = {}) {
+function mountGame(over: Partial<GameProps> = {}, global: Record<string, unknown> = {}) {
   return mount(SpotObjectGame, {
-    props: {
+    props: gameProps({
       payload: PAYLOAD,
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
-      disabled: false,
       review: {
         open: true,
         canOverride: false,
@@ -69,7 +58,7 @@ function mountGame(over: Record<string, unknown> = {}, global: Record<string, un
         override: vi.fn().mockResolvedValue(undefined),
       },
       ...over,
-    },
+    }),
     global,
   })
 }
