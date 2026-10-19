@@ -37,6 +37,13 @@ describe('GuessHueGame', () => {
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
   })
 
+  it('says the round cannot be shown for a payload it cannot read', () => {
+    const w = mountAdapter({ payload: { saturation: 'x' } })
+
+    expect(w.text()).toContain('Diese Runde lässt sich hier nicht anzeigen.')
+    expect(w.find('[data-test="hue-wheel"]').exists()).toBe(false)
+  })
+
   it('starts the wheel on my own guess once there is one', () => {
     // After a reload the payload still carries the starting angle; showing it would misreport a
     // round that is already spent.
