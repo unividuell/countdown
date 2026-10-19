@@ -130,4 +130,14 @@ describe('SongSnippetGame', () => {
 
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(false)
   })
+
+  it('is live under „closest only“ even while every score is zero — the rule, like every game', async () => {
+    const w = mountGame(4, {
+      solution: SOLUTION,
+      awardRule: 'CLOSEST_ONLY',
+      entries: [entry('a', 0, 4)],
+    })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(true)
+  })
 })

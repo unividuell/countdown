@@ -30,8 +30,8 @@ const rows = computed(() =>
     mineUserId: props.mineUserId,
   }),
 )
-/** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
-const live = computed(() => rows.value.some((row) => row.provisional))
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 const hasRevealedLive = useRevealedLive(revealed)
 
