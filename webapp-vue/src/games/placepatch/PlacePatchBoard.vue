@@ -73,7 +73,7 @@ function pointOf(event: PointerEvent): Point {
 
 function onDown(event: PointerEvent): void {
   const board = boardNow()
-  if (!playable.value || board === null) return
+  if (!playable.value || board === null || event.button !== 0) return
   try {
     // Lets the finger leave the field mid-drag. Throws for a pointer the browser does not track —
     // uncaught, it would abort this handler and the gesture would never start.
