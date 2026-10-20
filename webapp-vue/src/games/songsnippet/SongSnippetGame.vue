@@ -5,18 +5,19 @@ import { useRevealedLive } from '@/games/useRevealedLive'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
 import { scoreRows } from './scoreboard'
-import { isSongSnippetPayload } from './types'
-import type { SongSnippetSolution } from './types'
+import { asSongSnippetPayload, asSongSnippetSolution } from './types'
 import type { SongSuggestion } from './api'
 
 const props = defineProps<GameProps>()
 
 const emit = defineEmits<GameEmits>()
 
-const durations = computed(() =>
-  isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],
-)
-const revealed = computed(() => props.solution !== null && props.solution !== undefined)
+const payload = computed(() => asSongSnippetPayload(props.payload))
+const durations = computed(() => payload.value?.stageDurationsSeconds ?? [])
+
+// A solution it cannot read leaves the board standing, as in every other game.
+const solution = computed(() => asSongSnippetSolution(props.solution))
+const revealed = computed(() => solution.value !== null)
 
 /**
  * Worked out here rather than in the reveal card, the way Guess Hue does it: this is the place that
@@ -30,8 +31,8 @@ const rows = computed(() =>
     mineUserId: props.mineUserId,
   }),
 )
-/** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
-const live = computed(() => rows.value.some((row) => row.provisional))
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 const hasRevealedLive = useRevealedLive(revealed)
 
@@ -66,9 +67,12 @@ function onSkip(fromStage: number): void {
 </script>
 
 <template>
+  <p v-if="payload === null" class="text-sm text-neutral-600">
+    Diese Runde lässt sich hier nicht anzeigen.
+  </p>
   <SongSnippetReveal
-    v-if="revealed"
-    :solution="solution as SongSnippetSolution"
+    v-else-if="solution"
+    :solution="solution"
     :durations="durations"
     :rows="rows"
     :live="live"

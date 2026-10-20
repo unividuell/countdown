@@ -39,8 +39,8 @@ const oneDecimal = new Intl.NumberFormat('de-DE', {
 })
 
 /**
- * Every entry as a row, best first: most points, then least audio, then user id so a reload shows
- * the same picture.
+ * Every entry as a row, best first: most points (`null` last), then least audio, then user id so a
+ * reload shows the same picture.
  */
 export function scoreRows(input: {
   entries: readonly GameEntry[]
@@ -62,7 +62,7 @@ export function scoreRows(input: {
   })
   rows.sort(
     (a, b) =>
-      (b.points ?? 0) - (a.points ?? 0) || a.stage - b.stage || a.userId.localeCompare(b.userId),
+      (b.points ?? -1) - (a.points ?? -1) || a.stage - b.stage || a.userId.localeCompare(b.userId),
   )
 
   return withTicks(rows, input.mineUserId)

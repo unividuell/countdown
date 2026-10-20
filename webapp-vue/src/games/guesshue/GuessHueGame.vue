@@ -148,4 +148,5 @@ const animate = useRevealedLive(() => solution.value !== null)
       />
     </Transition>
   </div>
+  <p v-else class="text-sm text-neutral-600">Diese Runde lässt sich hier nicht anzeigen.</p>
 </template>

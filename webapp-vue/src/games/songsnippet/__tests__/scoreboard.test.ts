@@ -25,6 +25,15 @@ describe('scoreRows', () => {
     expect(rows.map((r) => r.userId)).toEqual(['fast-winner', 'slow-winner', 'empty-a', 'empty-b'])
   })
 
+  it('ranks an unscored row after a scored zero, however little audio it took', () => {
+    const rows = rowsOf([
+      gameEntry({ userId: 'unscored', points: null, stage: 0 }),
+      gameEntry({ userId: 'zero', points: 0, stage: 4 }),
+    ])
+
+    expect(rows.map((r) => r.userId)).toEqual(['zero', 'unscored'])
+  })
+
   it('writes the guess as „Titel · Artist“ and keeps the track id for playback', () => {
     const rows = rowsOf([
       gameEntry({

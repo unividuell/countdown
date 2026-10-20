@@ -130,6 +130,10 @@ A game with **more** to say on a beat fills the window the clock leaves it — `
 possibilities and brings the board back inside beat 3, its return derived from beat 4 so the picture
 is whole when the outlines land on it. An offset would hand one game its own timetable, which is the
 drift the shared module exists to prevent.
+The card switch before the beats crossfades board into reveal (one grid cell, no `mode`) only where
+both cards show the same surface in the same place: the picture stays put and only what lies on it
+changes. Where they share none — a 3D scene, a map giving way to a grid — the switch is hard. The
+cover never fades (`frontend-ui.md`).
 
 **The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
 heading and live chip *inside* the `thead`, „Name“ first, „Pkt“ last and the clock before it whenever

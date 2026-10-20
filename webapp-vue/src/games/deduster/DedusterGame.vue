@@ -47,25 +47,41 @@ const hasRevealedLive = useRevealedLive(done)
   >
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <DedusterReveal
-    v-else-if="done && payload"
-    :payload="payload"
-    :photo-url="photoUrl"
-    :rows="rows"
-    :live="live"
-    :animate="hasRevealedLive"
-  />
-  <DedusterBoard
-    v-else
-    :payload="payload"
-    :scene="scene"
-    :sealed="props.sealed === true"
-    :disabled="props.disabled"
-    :submitted="myGuess !== null"
-    :photo-url="photoUrl"
-    :award-rule="props.awardRule"
-    :award-points="props.awardPoints"
-    @guess="(value) => emit('guess', value)"
-    @reveal="emit('reveal')"
-  />
+  <!--
+    Board and evaluation crossfade in one grid cell, as in Platzierung: both put the photo in the
+    same place, so the leftover dust fades off it. Cover → board stays hard, and so does every tile
+    inside the run.
+  -->
+  <div v-else class="grid">
+    <Transition
+      enter-active-class="transition-opacity duration-500 delay-200 motion-reduce:transition-none"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+      leave-to-class="opacity-0"
+    >
+      <DedusterReveal
+        v-if="done && payload"
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :photo-url="photoUrl"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+      />
+      <DedusterBoard
+        v-else
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :scene="scene"
+        :sealed="props.sealed === true"
+        :disabled="props.disabled"
+        :submitted="myGuess !== null"
+        :photo-url="photoUrl"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+        @guess="(value) => emit('guess', value)"
+        @reveal="emit('reveal')"
+      />
+    </Transition>
+  </div>
 </template>

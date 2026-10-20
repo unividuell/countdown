@@ -54,6 +54,20 @@ function entry(userId: string, points: number, stage: number) {
 }
 
 describe('SongSnippetGame', () => {
+  it('says the round cannot be shown for a payload it cannot read', () => {
+    const w = mountGame(0, { payload: { stageDurationsSeconds: ['x'] } })
+
+    expect(w.text()).toContain('Diese Runde lässt sich hier nicht anzeigen.')
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).exists()).toBe(false)
+  })
+
+  it('keeps the board for a solution it cannot read', () => {
+    const w = mountGame(4, { solution: { title: 42 } })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).exists()).toBe(false)
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).exists()).toBe(true)
+  })
+
   it("hands the round's assets to the board, and null where the round has none", () => {
     const w = mountGame(0)
     expect(w.findComponent({ name: 'SongSnippetBoard' }).props('assets')).toStrictEqual(ASSETS)
@@ -129,5 +143,15 @@ describe('SongSnippetGame', () => {
     })
 
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(false)
+  })
+
+  it('is live under „closest only“ even while every score is zero — the rule, like every game', async () => {
+    const w = mountGame(4, {
+      solution: SOLUTION,
+      awardRule: 'CLOSEST_ONLY',
+      entries: [entry('a', 0, 4)],
+    })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(true)
   })
 })
