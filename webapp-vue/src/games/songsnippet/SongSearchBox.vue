@@ -122,48 +122,62 @@ const hits = computed(() => suggestions.value)
   <!-- Two rows with the card's own spacing, so the band and the field land exactly where the reveal
        puts the cover and the title. -->
   <div class="flex flex-col gap-4">
-    <!-- With its scrollbar showing: sideways it takes nothing away from the covers, and it is the
-         only affordance a mouse has for a strip that scrolls. -->
-    <div ref="band" class="flex gap-1 overflow-x-auto" data-test="song-suggestions">
-      <!-- Artwork and caption stacked, not overlaid. An overlay looks the same — the white is
-           opaque either way — but it gets clipped out of the tile's rounded corners while the cover
-           behind it still paints there, which left a dark crescent in both bottom corners of every
-           dark cover. Stacked, those corners belong to the tile's own white and there is nothing
-           behind them to show through. -->
-      <button
-        v-for="hit in hits"
-        :key="hit.trackId"
-        type="button"
-        data-test="song-hit"
-        class="song-cover flex aspect-square shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl bg-white"
-        :aria-label="`${hit.title} von ${hit.artist} tippen`"
-        @click="choose(hit)"
+    <!-- The slot is one cover tall, held by an invisible cover; the band lies over it. A desktop
+         scrollbar then hangs into the gap below rather than pushing the field, the bar and the
+         buttons down — when hits arrive, and again when the reveal's cover replaces them. -->
+    <div class="relative">
+      <span class="song-cover invisible block aspect-square" data-test="song-band-sizer" />
+      <!-- With its scrollbar showing: sideways it takes nothing away from the covers, and it is the
+           only affordance a mouse has for a strip that scrolls. -->
+      <div
+        ref="band"
+        class="absolute inset-x-0 top-0 flex gap-1 overflow-x-auto"
+        data-test="song-suggestions"
       >
-        <span class="min-h-0 flex-1 overflow-hidden bg-neutral-200">
-          <img v-if="hit.coverUrl" :src="hit.coverUrl" alt="" class="h-full w-full object-cover" />
-        </span>
-        <span class="px-1.5 py-1 text-left">
-          <TickerLine :text="hit.title" class="text-xs leading-snug font-medium" />
-          <TickerLine :text="hit.artist" class="text-xs leading-snug text-neutral-500" />
-        </span>
-      </button>
-      <!-- Exactly one, and only while there is nothing to show: it holds the band's height so the
-           field and the bar below never move, and it is the whole state of the search — spinning
-           while a request is out, naming an empty answer, mute before the first one. Slots that
-           merely padded the band out to a fixed length read as hits still loading, which is a lie
-           whenever the search already answered. -->
-      <span
-        v-if="hits.length === 0"
-        class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-neutral-50 text-xs text-neutral-400"
-        data-test="song-band-placeholder"
-      >
+        <!-- Artwork and caption stacked, not overlaid. An overlay looks the same — the white is
+             opaque either way — but it gets clipped out of the tile's rounded corners while the
+             cover behind it still paints there, which left a dark crescent in both bottom corners of
+             every dark cover. Stacked, those corners belong to the tile's own white and there is
+             nothing behind them to show through. -->
+        <button
+          v-for="hit in hits"
+          :key="hit.trackId"
+          type="button"
+          data-test="song-hit"
+          class="song-cover flex aspect-square shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl bg-white"
+          :aria-label="`${hit.title} von ${hit.artist} tippen`"
+          @click="choose(hit)"
+        >
+          <span class="min-h-0 flex-1 overflow-hidden bg-neutral-200">
+            <img
+              v-if="hit.coverUrl"
+              :src="hit.coverUrl"
+              alt=""
+              class="h-full w-full object-cover"
+            />
+          </span>
+          <span class="px-1.5 py-1 text-left">
+            <TickerLine :text="hit.title" class="text-xs leading-snug font-medium" />
+            <TickerLine :text="hit.artist" class="text-xs leading-snug text-neutral-500" />
+          </span>
+        </button>
+        <!-- Exactly one, and only while there is nothing to show: it is the whole state of the
+             search — spinning while a request is out, naming an empty answer, mute before the first
+             one. Slots that merely padded the band out to a fixed length read as hits still loading,
+             which is a lie whenever the search already answered. -->
         <span
-          v-if="searching"
-          class="size-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500 motion-reduce:animate-none"
-          data-test="song-hit-spinner"
-        />
-        <template v-else-if="foundNothing">Keine Treffer</template>
-      </span>
+          v-if="hits.length === 0"
+          class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-neutral-50 text-xs text-neutral-400"
+          data-test="song-band-placeholder"
+        >
+          <span
+            v-if="searching"
+            class="size-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500 motion-reduce:animate-none"
+            data-test="song-hit-spinner"
+          />
+          <template v-else-if="foundNothing">Keine Treffer</template>
+        </span>
+      </div>
     </div>
 
     <!-- The slot the reveal gives to the title and the artist; the field stands centred in it, so

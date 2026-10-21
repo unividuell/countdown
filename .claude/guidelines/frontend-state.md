@@ -131,9 +131,10 @@ possibilities and brings the board back inside beat 3, its return derived from b
 is whole when the outlines land on it. An offset would hand one game its own timetable, which is the
 drift the shared module exists to prevent.
 The card switch before the beats crossfades board into reveal (one grid cell, no `mode`) only where
-both cards show the same surface in the same place: the picture stays put and only what lies on it
-changes. Where they share none — a 3D scene, a map giving way to a grid — the switch is hard. The
-cover never fades (`frontend-ui.md`).
+both cards show the same surface in the same place — a picture, or Anspielung's bar and transport:
+that stays put and only what lies on or around it changes. Where they share none — a 3D scene, a map
+giving way to a grid — the switch is hard. The cover never fades (`frontend-ui.md`). A card with a
+sideways-scrolling strip needs `grid-cols-1`: a bare `grid` widens its column to the whole strip.
 
 **The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
 heading and live chip *inside* the `thead`, „Name“ first, „Pkt“ last and the clock before it whenever

@@ -231,7 +231,9 @@ it is the only proof available — no unit test can see them.
   then assert is exactly that — both ends carry the shared class — which is the checkable half of
   „nothing moves". And where the two screens show the same *control* rather than merely the same
   size, make it one component (`PlayButton`) instead of two copies of its markup: then the agreement
-  is structural and there is nothing left to drift.
+  is structural and there is nothing left to drift. A sideways scroller is not that measurement: a
+  desktop's classic scrollbar adds its height, which a phone never shows — lay the scroller over a
+  sizer of the shared size (`SongSearchBox`'s band).
 
 None of these are visible in tests: **happy-dom computes no CSS and no box sizes**. A spec can
 only assert the structural proxy (the wrapper carries `w-full`, both cells carry `h-10`); the

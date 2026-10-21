@@ -70,26 +70,43 @@ function onSkip(fromStage: number): void {
   <p v-if="payload === null" class="text-sm text-neutral-600">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <SongSnippetReveal
-    v-else-if="solution"
-    :solution="solution"
-    :durations="durations"
-    :rows="rows"
-    :live="live"
-    :animate="hasRevealedLive"
-    :assets="assets"
-  />
-  <SongSnippetBoard
-    v-else
-    :durations="durations"
-    :stage="stage ?? 0"
-    :award-rule="awardRule"
-    :award-points="awardPoints"
-    :disabled="disabled"
-    :assets="assets ?? null"
-    :notice="notice"
-    @guess="onGuess"
-    @skip="onSkip"
-    @give-up="emit('giveUp')"
-  />
+  <!--
+    Board and reveal crossfade in one grid cell, as in Platzierung: both put the bar and the
+    transport in the same place, so those stand still while cover, title and table fade in around
+    them. The bar then makes room for the extra 15s on its own beats. `grid-cols-1`, because a bare
+    `grid` widens its column to the band's every cover and pushes the bar off the card.
+  -->
+  <div v-else class="grid grid-cols-1">
+    <Transition
+      enter-active-class="transition-opacity duration-500 delay-200 motion-reduce:transition-none"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+      leave-to-class="opacity-0"
+    >
+      <SongSnippetReveal
+        v-if="solution"
+        class="[grid-area:1/1]"
+        :solution="solution"
+        :durations="durations"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+        :assets="assets"
+      />
+      <SongSnippetBoard
+        v-else
+        class="[grid-area:1/1]"
+        :durations="durations"
+        :stage="stage ?? 0"
+        :award-rule="awardRule"
+        :award-points="awardPoints"
+        :disabled="disabled"
+        :assets="assets ?? null"
+        :notice="notice"
+        @guess="onGuess"
+        @skip="onSkip"
+        @give-up="emit('giveUp')"
+      />
+    </Transition>
+  </div>
 </template>

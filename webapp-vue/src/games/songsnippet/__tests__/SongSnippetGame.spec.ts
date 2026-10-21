@@ -82,6 +82,23 @@ describe('SongSnippetGame', () => {
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('assets')).toStrictEqual(ASSETS)
   })
 
+  it('crossfades board and reveal in one shared grid cell', () => {
+    const playing = mountGame(0)
+    const done = mountGame(4, { solution: SOLUTION })
+
+    expect(playing.get('[data-test="board-stub"]').classes()).toContain('[grid-area:1/1]')
+    expect(done.get('[data-test="reveal-stub"]').classes()).toContain('[grid-area:1/1]')
+    // No `mode`: the bar and the transport stay put while everything around them is exchanged.
+    expect(playing.get('transition-stub').attributes('mode')).toBeUndefined()
+  })
+
+  it('keeps the cell as wide as the card, however long the band of hits gets', () => {
+    // A bare `grid` sizes its column to the card's widest content: the band's covers, all of them.
+    const cell = mountGame(0).get('[data-test="board-stub"]').element.closest('.grid')
+
+    expect(cell?.classList).toContain('grid-cols-1')
+  })
+
   it('shows no wrong-guess notice when the stage grows after a skip', async () => {
     const w = mountGame(0)
     const board = w.findComponent({ name: 'SongSnippetBoard' })

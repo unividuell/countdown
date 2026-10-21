@@ -18,7 +18,7 @@ export function stageMarks(durations: number[], totalSeconds: number): number[] 
 export interface StageStep {
   /** German label: comma as the decimal separator, the unit only on whoever ends the scale. */
   label: string
-  /** Position of the boundary on the bar, 0..1, on the same scale the fill uses. */
+  /** Position of the boundary on the ladder, 0..1, on the same scale the fill uses. */
   fraction: number
   /** Already audible. A closed step's label renders dimmed. */
   open: boolean
@@ -29,10 +29,9 @@ export interface StageStep {
    */
   current: boolean
   /**
-   * Sits exactly at the bar's right edge, which happens only when this rung's duration IS the
-   * scale. Then it needs no gap (the bar simply stops) and its label hangs off that edge instead
-   * of being centred under one. On the reveal's 30s scale no rung reaches the end — the 15s one
-   * lands at 71%, and a label pinned right there would float mid-bar with the rest running past.
+   * The last rung, at the ladder's round right end. It needs no gap (the ladder simply stops) and
+   * its label hangs off that end instead of being centred under one — on the reveal too, where the
+   * extra 15s follow behind it.
    */
   atEnd: boolean
 }
@@ -53,17 +52,43 @@ export function stageSteps(
   const openCount = durations.filter((d) => d <= unlockedSeconds).length
   const longest = durations[durations.length - 1] ?? 0
   const playsWholeScale = unlockedSeconds > longest
+  const endsScale = longest >= totalSeconds
   return durations.map((d, index) => {
-    const fraction = barFraction(d, totalSeconds)
+    const fraction = barFraction(d, longest)
     const atEnd = fraction >= 1
     return {
-      label: secondsLabel(d, atEnd),
+      label: secondsLabel(d, atEnd && endsScale),
       fraction,
       open: index < openCount,
       current: !playsWholeScale && index === openCount - 1,
       atEnd,
     }
   })
+}
+
+/**
+ * How much of the bar the ladder takes: all of it on the board, √½ on the reveal's 30s scale. On a
+ * sqrt scale that share is all the shrinking there is — the ladder inside is the board's own,
+ * rungs and fill at the same fractions, so the reveal can draw it smaller without re-placing them.
+ */
+export function ladderShare(durations: number[], totalSeconds: number): number {
+  const longest = durations[durations.length - 1] ?? 0
+  // No stages, no ladder to shrink: the bar stays whole instead of turning into one long tail.
+  return longest > 0 ? barFraction(longest, totalSeconds) : 1
+}
+
+/**
+ * How far [positionSeconds] has run into the tail — the scale beyond the ladder, the reveal's extra
+ * 15s — as 0..1 of it, on the same sqrt scale as the rest of the bar. `0` where there is no tail.
+ */
+export function tailFraction(
+  positionSeconds: number,
+  durations: number[],
+  totalSeconds: number,
+): number {
+  const share = ladderShare(durations, totalSeconds)
+  if (share >= 1) return 0
+  return Math.max(barFraction(positionSeconds, totalSeconds) - share, 0) / (1 - share)
 }
 
 /**
