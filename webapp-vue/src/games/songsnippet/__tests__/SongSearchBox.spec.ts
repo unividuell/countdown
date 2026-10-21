@@ -181,7 +181,7 @@ describe('SongSearchBox', () => {
 
   it('sizes every slot like the cover the reveal shows, and holds the field in the title slot', async () => {
     const w = mount(SongSearchBox, { props: { disabled: false } })
-    // The placeholder is measured too: it is what holds the band's height when there are no hits.
+    // The placeholder is measured too: it stands where the first hit will.
     const placeholder = w.get('[data-test="song-band-placeholder"]')
     await typeAndSettle(w, 'hotel')
 
@@ -195,6 +195,18 @@ describe('SongSearchBox', () => {
     expect(
       w.get('[data-test="song-search"]').element.parentElement?.parentElement?.className,
     ).toContain('h-12')
+  })
+
+  it('keeps a scrollbar out of the layout: the band lies over a slot one cover tall', () => {
+    const band = mount(SongSearchBox, { props: { disabled: false } }).get(
+      '[data-test="song-suggestions"]',
+    )
+    const sizer = band.element.parentElement?.querySelector('[data-test="song-band-sizer"]')
+
+    expect(band.classes()).toContain('absolute')
+    // The reveal's cover is the same measurement, so the bar below stays put on both screens.
+    expect(sizer?.classList).toContain('song-cover')
+    expect(sizer?.classList).toContain('aspect-square')
   })
 
   it('writes each hit over its own cover, title above artist', async () => {
