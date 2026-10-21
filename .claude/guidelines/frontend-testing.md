@@ -84,7 +84,8 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
 ## happy-dom limits
 
 - **No CSS and no box sizes are computed** — see [frontend-ui.md](frontend-ui.md); layout facts are browser
-  measurements, and a spec can only assert the structural proxy.
+  measurements, and a spec can only assert the structural proxy. An inline value it cannot parse is
+  dropped whole: `calc(14px + (100% - 14px) * f)` leaves no `width` at all — write `calc(a% + bpx)`.
 - **A zero rect does not make pointer geometry untestable — it makes it silently *pass*. Stub the
   rect.** `getBoundingClientRect()` answers all zeroes, so anything derived from it collapses to the
   same value for every input: `HueWheel`'s dead-zone guard (`distance from centre < 0.3 × radius`)

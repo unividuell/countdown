@@ -14,14 +14,14 @@ const SOLUTION: SongSnippetSolution = {
  * Both children bring their own audio and asset machinery and are tested where they live; this
  * spec is about the reveal's own root and nothing else.
  */
-function mountReveal() {
+function mountReveal(animate = false) {
   return mount(SongSnippetReveal, {
     props: {
       solution: SOLUTION,
       durations: [0.1, 0.5, 2, 8, 15],
       rows: [],
       live: false,
-      animate: false,
+      animate,
     },
     global: { stubs: { SongPlayerReveal: true, SongSnippetScoreboard: true } },
   })
@@ -41,5 +41,10 @@ describe('SongSnippetReveal', () => {
 
   it('is reachable from the game adapter that mounts it', () => {
     expect(mountReveal().attributes('data-test')).toBe('song-reveal')
+  })
+
+  it('hands a live reveal on to the player, whose bar morphs on it', () => {
+    expect(mountReveal(true).getComponent({ name: 'SongPlayerReveal' }).props('animate')).toBe(true)
+    expect(mountReveal().getComponent({ name: 'SongPlayerReveal' }).props('animate')).toBe(false)
   })
 })
