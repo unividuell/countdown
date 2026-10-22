@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { addStroke, EMPTY_PAINT, redo, showsTemplate, undo } from '@/games/paintratio/paintHistory'
+import {
+  addStroke,
+  canRedo,
+  EMPTY_PAINT,
+  redo,
+  showsTemplate,
+  undo,
+} from '@/games/paintratio/paintHistory'
+import { MAX_PATH, MAX_POINTS, MAX_STROKES } from '@/games/paintratio/types'
 import type { Stroke } from '@/games/paintratio/types'
 
 const dot = (x: number): Stroke => ({ brush: 0, color: '#3049e8', points: [x, x] })
@@ -59,5 +67,49 @@ describe('paintHistory', () => {
 
     expect(painted).toEqual(copy)
     expect(EMPTY_PAINT).toEqual({ strokes: [], redo: [] })
+  })
+
+  describe('canRedo', () => {
+    /** One stroke of [count] points, one unit apart: a path of `count − 1`. */
+    const line = (count: number): Stroke => ({
+      brush: 0,
+      color: '#3049e8',
+      points: Array.from({ length: count }, (_, i) => [0, i % 2]).flat(),
+    })
+
+    /** Two points [step] apart in x: a path of [step]. */
+    const jump = (step: number): Stroke => ({ brush: 0, color: '#3049e8', points: [0, 0, step, 0] })
+
+    it('needs something undone', () => {
+      expect(canRedo(EMPTY_PAINT)).toBe(false)
+      expect(canRedo({ strokes: [], redo: [dot(1)] })).toBe(true)
+    })
+
+    it('refuses a stroke past the stroke limit', () => {
+      const full = Array.from({ length: MAX_STROKES }, () => dot(1))
+
+      expect(canRedo({ strokes: full, redo: [dot(2)] })).toBe(false)
+      expect(canRedo({ strokes: full.slice(1), redo: [dot(2)] })).toBe(true)
+    })
+
+    it('refuses points past the point limit together with the canvas', () => {
+      const painted = [line(MAX_POINTS - 10)]
+
+      expect(canRedo({ strokes: painted, redo: [line(11)] })).toBe(false)
+      expect(canRedo({ strokes: painted, redo: [line(10)] })).toBe(true)
+    })
+
+    it('refuses a path past the path limit together with the canvas', () => {
+      const painted = [jump(MAX_PATH - 100)]
+
+      expect(canRedo({ strokes: painted, redo: [jump(101)] })).toBe(false)
+      expect(canRedo({ strokes: painted, redo: [jump(100)] })).toBe(true)
+    })
+
+    it('judges only the stroke redo brings back next', () => {
+      const painted = [line(MAX_POINTS - 10)]
+
+      expect(canRedo({ strokes: painted, redo: [line(20), line(5)] })).toBe(true)
+    })
   })
 })
