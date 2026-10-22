@@ -5,6 +5,7 @@ import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 import type { AwardRule } from '@/api/types'
 import PaintRatioRules from './PaintRatioRules.vue'
+import { formatPercent } from './scoreboard'
 
 const props = defineProps<{
   awardRule: AwardRule | null
@@ -13,10 +14,8 @@ const props = defineProps<{
   tolerance: number | null
 }>()
 
-const percent = new Intl.NumberFormat('de-DE', { style: 'percent', maximumFractionDigits: 1 })
-
 const toleranceLabel = computed(() =>
-  props.tolerance === null ? null : percent.format(props.tolerance),
+  props.tolerance === null ? null : formatPercent(props.tolerance),
 )
 </script>
 

@@ -408,8 +408,7 @@ describe('PaintRatioBoard', () => {
 
   it('states the tolerance in the award box', () => {
     const wrapper = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
-    const five = new Intl.NumberFormat('de-DE', { style: 'percent' }).format(0.05)
 
-    expect(wrapper.text()).toContain(`Dein Anteil darf um höchstens ${five} vom Ziel abweichen.`)
+    expect(wrapper.text()).toContain('Dein Anteil darf um höchstens 5,0\u00a0% vom Ziel abweichen.')
   })
 })
