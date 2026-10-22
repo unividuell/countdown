@@ -132,7 +132,8 @@ class RasterTest {
             .cells()
 
         count()
-        val elapsed = measureTime { count() }
+        // The best of three: one slow run on a busy CI runner says nothing about the cost.
+        val elapsed = (1..3).minOf { measureTime { count() } }
 
         elapsed.inWholeMilliseconds shouldBeLessThan 1000L
     }

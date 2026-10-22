@@ -272,7 +272,7 @@ internal fun ellipseContour(center: Vec, width: Double, height: Double): List<Ve
     }
 }
 
-/** Adds support points on long edges, about every 40 units and at least 12 in all; the corners stay. */
+/** Adds support points on long edges, about every 40 units and about 12 in all; the corners stay. */
 private fun subdivide(contour: List<Vec>): List<Vec> {
     require(contour.size >= 3) { "a contour needs at least 3 points, was ${contour.size}" }
     val edges = contour.indices.map { i -> contour[i] to contour[(i + 1) % contour.size] }

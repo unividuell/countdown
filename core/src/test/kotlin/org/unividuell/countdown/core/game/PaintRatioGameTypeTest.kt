@@ -11,6 +11,7 @@ import io.kotest.matchers.longs.shouldBeLessThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.game.internal.PaintRatioGameType
@@ -18,6 +19,7 @@ import org.unividuell.countdown.core.game.internal.PaintRatioOutcome
 import org.unividuell.countdown.core.game.internal.PaintRatioParams
 import org.unividuell.countdown.core.game.internal.PaintRatioSolution
 import org.unividuell.countdown.core.paintratio.PaintCanvas
+import org.unividuell.countdown.core.paintratio.PaintRatioArtist
 import org.unividuell.countdown.core.paintratio.PaintStroke
 import org.unividuell.countdown.core.paintratio.Raster
 import org.unividuell.countdown.core.paintratio.Shape
@@ -150,6 +152,37 @@ class PaintRatioGameTypeTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `a first artwork below the minimum is redrawn from the same stream`() {
+        fun cellsOf(shape: Shape, artSeed: Int) = PaintRatioArtist
+            .paint(shape = shape, artSeed = artSeed, width = width, height = height, brushes = PaintCanvas.BRUSHES)
+            .raster(width = width, height = height)
+            .cells()
+        fun smallest(shape: Shape) = (2 * shape.tolerance * area).roundToInt()
+
+        // The first candidate of a presentation seed: the shape, then one art seed per attempt.
+        fun firstCandidateIsTooSmall(seed: Int): Boolean {
+            val replay = SeededRandom.fromSeed(seed)
+            val shape = replay.pick(Shape.entries)
+
+            return cellsOf(shape = shape, artSeed = replay.nextInt(Int.MAX_VALUE)) < smallest(shape)
+        }
+        val seed = (1..1_000).first { firstCandidateIsTooSmall(it) }
+
+        val replay = SeededRandom.fromSeed(seed)
+        val shape = replay.pick(Shape.entries)
+        val first = replay.nextInt(Int.MAX_VALUE)
+        val accepted = generateSequence { replay.nextInt(Int.MAX_VALUE) }
+            .first { cellsOf(shape = shape, artSeed = it) >= smallest(shape) }
+
+        val drawn = draw(random = random(presentation = seed))
+
+        drawn.shape shouldBe shape
+        drawn.artSeed shouldBe accepted
+        drawn.artSeed shouldNotBe first
+        draw(random = random(presentation = seed)) shouldBe drawn
     }
 
     @Test
@@ -353,7 +386,8 @@ class PaintRatioGameTypeTest {
         path shouldBeGreaterThan 2_900_000L
 
         game.judge(params = params(), guess = largest)
-        val elapsed = measureTime { game.judge(params = params(), guess = largest) }
+        // The best of three: one slow run on a busy CI runner says nothing about the cost.
+        val elapsed = (1..3).minOf { measureTime { game.judge(params = params(), guess = largest) } }
 
         elapsed.inWholeMilliseconds shouldBeLessThan 1000L
     }
