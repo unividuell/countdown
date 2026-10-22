@@ -278,7 +278,7 @@ private fun subdivide(contour: List<Vec>): List<Vec> {
     val edges = contour.indices.map { i -> contour[i] to contour[(i + 1) % contour.size] }
     val spacing = min(a = SUPPORT_SPACING, b = edges.sumOf { (p, q) -> distance(a = p, b = q) } / MIN_SUPPORTS)
     return edges.flatMap { (p, q) ->
-        val pieces = max(a = 1, b = ceil(distance(a = p, b = q) / spacing).toInt())
+        val pieces = max(a = 1, b = (distance(a = p, b = q) / spacing).roundToInt())
         List(pieces) { k ->
             val t = k.toDouble() / pieces
             Vec(x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t)

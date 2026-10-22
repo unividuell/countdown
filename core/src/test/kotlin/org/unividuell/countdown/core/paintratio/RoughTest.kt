@@ -134,6 +134,18 @@ class RoughTest {
     }
 
     @Test
+    fun `an ellipse's contour sketches as the ellipse does`() {
+        // Chords of 40.08 (600 × 600) and of 12 uneven ones (40 × 80): shape must not split them.
+        for ((width, height) in listOf(600.0 to 600.0, 1000.0 to 700.0, 40.0 to 80.0)) {
+            val contour = ellipseContour(center = centre, width = width, height = height)
+            val fill = Fill(style = FillStyle.HACHURE, gap = 32)
+
+            rough(4).shape(contours = listOf(contour), fill = fill) shouldBe
+                rough(4).ellipse(center = centre, width = width, height = height, fill = fill)
+        }
+    }
+
+    @Test
     fun `everything is integer marks`() {
         for (style in FillStyle.entries) {
             val sketch = ellipse(fill = Fill(style = style, gap = 40))
