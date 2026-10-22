@@ -243,8 +243,11 @@ Auf der Leitung eine Liste von Strichen:
 - `brush` ist ein Index in `params.brushes`, `color` ist `#rrggbb` in Kleinbuchstaben, `points` ein
   flaches Feld ganzer Zahlen, paarweise. Ein Strich mit einem Punkt ist ein Tupfer.
 - **Grenzen gegen Missbrauch, keine gegen das Malen:** höchstens 100 000 Punkte und 5 000 Striche
-  insgesamt, Koordinaten in `[−10 000, 10 000]`. Eine durchgehende Bewegung, die 66 % füllt, braucht mit
-  dem kleinsten Pinsel 2 000–4 000 Punkte; auch ein Gemälde von fünf Minuten bleibt weit darunter.
+  insgesamt, Koordinaten in `[−10 000, 10 000]` und eine Weglänge von höchstens 3 000 000 Einheiten
+  (Summe aus |dx| + |dy| über alle Strecken), weil das Zählen die Zeilen kostet, die eine Strecke quert,
+  nicht ihre Punkte: 100 000 Sprünge von Ecke zu Ecke brauchten 2,8 s. Eine durchgehende Bewegung, die
+  66 % füllt, braucht mit dem kleinsten Pinsel 2 000–4 000 Punkte; auch ein Gemälde von fünf Minuten
+  bleibt weit darunter.
 - Alles andere ist `InvalidGuessException` → 400, **vor** jedem Schreibvorgang: fehlende oder zusätzliche
   Felder, `brush` außerhalb, eine ungültige Farbe, eine ungerade Zahl von Koordinaten, ein leerer Strich,
   Grenzen überschritten. **Ein leeres Gemälde ist gültig** und hat den Anteil 0.
