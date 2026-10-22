@@ -4,7 +4,7 @@ import { nextTick } from 'vue'
 import LayerCanvas from '@/games/paintratio/LayerCanvas.vue'
 import PaintRatioBoard from '@/games/paintratio/PaintRatioBoard.vue'
 import { loadDraft, saveDraft } from '@/games/paintratio/draft'
-import { MAX_POINTS } from '@/games/paintratio/types'
+import { MAX_POINTS, MAX_STROKES } from '@/games/paintratio/types'
 import type { PaintRatioPayload, Stroke } from '@/games/paintratio/types'
 import HoldButton from '@/ui/HoldButton.vue'
 
@@ -114,6 +114,15 @@ async function confirm(w: Board) {
 function painted(w: Board): Stroke[] {
   const [layer] = layers(w)
   return layer?.kind === 'strokes' ? [...layer.strokes] : []
+}
+
+/** One stroke of [count] points, one unit apart. */
+function line(count: number): Stroke {
+  return {
+    brush: 0,
+    color: '#3049e8',
+    points: Array.from({ length: count }, (_, i) => [0, i % 2]).flat(),
+  }
 }
 
 describe('PaintRatioBoard', () => {
@@ -264,6 +273,59 @@ describe('PaintRatioBoard', () => {
     expect(painted(wrapper)).toHaveLength(2)
   })
 
+  it.each(['pointercancel', 'lostpointercapture'])(
+    'ends a stroke on %s: committed, and the hold free again',
+    async (end) => {
+      const wrapper = mountBoard()
+
+      await down(wrapper, 1, [0, 0])
+      await move(wrapper, 1, [150, 75])
+      await canvas(wrapper).trigger(end, { pointerId: 1 })
+      expect(hold(wrapper).props('disabled')).toBe(false)
+
+      await confirm(wrapper)
+      expect(wrapper.emitted('guess')).toEqual([
+        [{ strokes: [{ brush: 1, color: '#3049e8', points: [0, 0, 600, 300] }] }],
+      ])
+    },
+  )
+
+  it("takes a new stroke's budget after the strokes already on the canvas", async () => {
+    saveDraft(storage.fake, KEY, { strokes: [line(MAX_POINTS - 1)], redo: [] })
+    const wrapper = mountBoard({ draftKey: KEY })
+
+    await paint(wrapper, 1, [30, 30], [60, 30], [90, 30])
+
+    expect(painted(wrapper)[1]!.points).toEqual([120, 120])
+  })
+
+  it('commits nothing when not even the first point fits', async () => {
+    saveDraft(storage.fake, KEY, { strokes: [line(MAX_POINTS)], redo: [] })
+    const wrapper = mountBoard({ draftKey: KEY })
+
+    await paint(wrapper, 1, [30, 30], [60, 30])
+
+    expect(painted(wrapper)).toHaveLength(1)
+  })
+
+  it('starts no stroke past the stroke limit', async () => {
+    const dots = Array.from({ length: MAX_STROKES }, (): Stroke => line(1))
+    saveDraft(storage.fake, KEY, { strokes: dots, redo: [] })
+    const wrapper = mountBoard({ draftKey: KEY })
+
+    await paint(wrapper, 1, [30, 30], [60, 30])
+
+    expect(painted(wrapper)).toHaveLength(MAX_STROKES)
+  })
+
+  it('signs nothing without a stroke', async () => {
+    const wrapper = mountBoard()
+
+    await confirm(wrapper)
+
+    expect(wrapper.emitted('guess')).toBeUndefined()
+  })
+
   it('sends exactly the strokes on the canvas', async () => {
     const wrapper = mountBoard()
     await paint(wrapper, 1, [0, 0], [30, 0])
@@ -328,12 +390,15 @@ describe('PaintRatioBoard', () => {
   })
 
   it('paints nothing and signs nothing while disabled', async () => {
-    const wrapper = mountBoard({ disabled: true })
+    saveDraft(storage.fake, KEY, { strokes: [line(1)], redo: [] })
+    const wrapper = mountBoard({ draftKey: KEY, disabled: true })
 
     await paint(wrapper, 1, [30, 30])
+    await confirm(wrapper)
 
-    expect(layers(wrapper)).toEqual([{ kind: 'template' }])
+    expect(painted(wrapper)).toEqual([line(1)])
     expect(hold(wrapper).props('disabled')).toBe(true)
+    expect(wrapper.emitted('guess')).toBeUndefined()
   })
 
   it('says so when the picture failed to load', () => {
