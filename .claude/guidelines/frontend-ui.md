@@ -128,10 +128,9 @@ it is the only proof available — no unit test can see them.
   (someone who cannot hold a key for the full duration) is real and belongs in the spec, not in a
   cheaper fallback. `ui/HoldButton.vue` is the worked example.
 - **A board whose hold button can be covered draws the hold itself, large, on the play area — and
-  a touch there cancels it.** A palm resting on the button while painting submitted by accident
-  (twice, for one player). `HoldButton` emits `progress` for the board to draw; its `disabled`
-  watch cancels a running hold, so the board disables it while the play area is touched.
-  `PaintRatioBoard`.
+  a touch there cancels it.** A palm resting on the button while painting would submit unseen.
+  `HoldButton` emits `progress` for the board to draw; its `disabled` watch cancels a running hold,
+  so the board disables it while the play area is touched. `PaintRatioBoard` is the worked example.
 - **A container that reads raw pointer events must exempt whatever it nests.** `pointerdown` bubbles,
   so a press on the button in `HueWheel`'s centre slot reached the wheel, which captured the pointer
   and began a drag — and the wheel then followed every later move, so the angle finally submitted was

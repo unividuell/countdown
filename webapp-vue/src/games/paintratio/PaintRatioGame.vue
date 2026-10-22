@@ -44,8 +44,8 @@ const myColorHex = useMyColorHex(
 )
 
 /**
- * Where my painting is kept on this device. The target's address names the round (the payload is
- * the same for every round); without a player or assets there is nothing to key by, and the board
+ * Where my painting is kept on this device. The target's address names the round (the payload does
+ * not tell rounds apart); without a player or assets there is nothing to key by, and the board
  * plays without a draft.
  */
 const key = computed(() => {

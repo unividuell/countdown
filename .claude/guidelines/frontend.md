@@ -48,7 +48,7 @@ of the frontend conventions live beside it:
 - **Never measure from a canvas — it only displays.** Whatever is counted or stored is model data
   (Kreativverhältnis: strokes in fixed canvas units, counted on the server). Edge pixels are
   anti-aliased per `devicePixelRatio` and anti-fingerprinting can add noise to `getImageData`, so
-  the same painting scores differently per device — what the original „Ratio“ did.
+  the same painting scores differently per device.
 
 ## HTTP + auth (the same-origin SPA contract)
 
