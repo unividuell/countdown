@@ -13,7 +13,11 @@ import kotlin.math.sqrt
 enum class FillStyle { HACHURE, CROSS_HATCH, ZIGZAG, DOTS }
 
 /** How a shape is filled; `gap` is the distance between its lines or dots. */
-data class Fill(val style: FillStyle, val gap: Int)
+data class Fill(val style: FillStyle, val gap: Int) {
+    init {
+        require(gap > 0) { "gap must be positive, was $gap" }
+    }
+}
 
 data class Vec(val x: Double, val y: Double)
 
@@ -256,7 +260,7 @@ private class Frame(degrees: Double) {
 }
 
 /** Support points about every 40 units of circumference (Ramanujan's approximation), at least 12. */
-private fun ellipseContour(center: Vec, width: Double, height: Double): List<Vec> {
+internal fun ellipseContour(center: Vec, width: Double, height: Double): List<Vec> {
     val a = width / 2
     val b = height / 2
     val h = ((a - b) / (a + b)).let { it * it }

@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.paintratio
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.shouldBe
@@ -142,6 +143,11 @@ class RoughTest {
         }
         rough(1).line(from = Vec(x = -50.0, y = 100.0), to = Vec(x = 1250.0, y = 700.0), radius = 30)
             .map { (it as? Capsule)?.radius }.toSet() shouldBe setOf(30)
+    }
+
+    @Test
+    fun `a fill needs a positive gap`() {
+        shouldThrow<IllegalArgumentException> { Fill(style = FillStyle.DOTS, gap = 0) }
     }
 
     @Test
