@@ -1,6 +1,6 @@
 # Kreativverhältnis („Paint Ratio“) — ein Gemälde mit demselben Farbanteil
 
-**Status:** beschlossenes Design (2026-10-22).
+**Status:** umgesetzt (2026-10-22).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md), den
 [Runden-Assets](2026-10-17-round-assets-design.md) und dem [Spiel-Labor](2026-08-08-game-lab-design.md).
