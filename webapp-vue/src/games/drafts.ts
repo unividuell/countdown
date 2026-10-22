@@ -56,7 +56,8 @@ export function sweepDrafts(
   keep: string,
   now: number = Date.now(),
 ): void {
-  if (storage === null) return
+  // Every key starts with ''; a game without a prefix must not sweep the whole storage.
+  if (storage === null || prefix === '') return
 
   try {
     const stale: string[] = []

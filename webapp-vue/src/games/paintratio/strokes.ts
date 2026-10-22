@@ -47,7 +47,8 @@ export function appendPoint(
   usage: Usage,
 ): boolean {
   const [x, y] = point
-  if (Math.abs(x) > COORDINATE_LIMIT || Math.abs(y) > COORDINATE_LIMIT) return false
+  // Negated `<=`, not `>`: NaN passes the latter.
+  if (!(Math.abs(x) <= COORDINATE_LIMIT) || !(Math.abs(y) <= COORDINATE_LIMIT)) return false
   if (usage.points >= MAX_POINTS) return false
 
   const lastX = points.at(-2)

@@ -88,6 +88,18 @@ describe('sweepDrafts', () => {
     expect(keys.filter((key) => localStorage.getItem(key) !== null)).toEqual([])
   })
 
+  it('sweeps nothing for an empty prefix, which every key starts with', () => {
+    const unrelated = 'infobox:some-game'
+    const draft = `${PREFIX}bbbbbbbb`
+    localStorage.setItem(unrelated, 'true')
+    localStorage.setItem(draft, saved(NOW - 49 * HOUR))
+
+    sweepDrafts(localStorage, '', KEEP, NOW)
+
+    expect(localStorage.getItem(unrelated)).toBe('true')
+    expect(localStorage.getItem(draft)).not.toBeNull()
+  })
+
   it('reads the clock by default', () => {
     const stale = `${PREFIX}bbbbbbbb`
     localStorage.setItem(stale, saved(Date.now() - 49 * HOUR))

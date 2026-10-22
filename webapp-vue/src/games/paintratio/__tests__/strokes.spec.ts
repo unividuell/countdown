@@ -98,6 +98,16 @@ describe('appendPoint', () => {
     expect(usage).toEqual({ points: 2, path: 50 })
   })
 
+  it('drops a point that is not a number', () => {
+    const points = [1100, 450]
+    const usage = fresh()
+
+    expect(appendPoint(points, [Number.NaN, 450], usage)).toBe(false)
+    expect(appendPoint(points, [1100, Number.NaN], usage)).toBe(false)
+    expect(points).toEqual([1100, 450])
+    expect(usage).toEqual(fresh())
+  })
+
   it('keeps a point on the coordinate limit', () => {
     const points = [9_900, 0]
 
