@@ -121,6 +121,37 @@ describe('HoldButton', () => {
     expect(ring.attributes('style')).not.toBe(atRest)
   })
 
+  it('reports its progress while held and as it runs back', async () => {
+    const w = mountButton()
+    const el = w.get('[data-test="hold-button"]')
+    const values = () => (w.emitted('progress') ?? []).map(([value]) => value as number)
+
+    // Watchers flush once per tick, so each step gets its own tick to be seen.
+    await el.trigger('pointerdown', { isPrimary: true })
+    for (let i = 0; i < 10; i++) {
+      vi.advanceTimersByTime(50)
+      await w.vm.$nextTick()
+    }
+    const held = values()
+    expect(held.length).toBeGreaterThan(1)
+    expect(held).toEqual([...held].sort((a, b) => a - b))
+    expect(held.at(-1)).toBeGreaterThan(0.3)
+    expect(held.at(-1)).toBeLessThan(0.7)
+
+    await el.trigger('pointerup')
+    for (let i = 0; i < 20; i++) {
+      vi.advanceTimersByTime(50)
+      await w.vm.$nextTick()
+    }
+    const all = values()
+    const peak = Math.max(...all)
+    expect(all.at(-1)).toBe(0)
+    expect(all.slice(all.indexOf(peak))).toEqual(
+      [...all.slice(all.indexOf(peak))].sort((a, b) => b - a),
+    )
+    expect(w.emitted('confirm')).toBeUndefined()
+  })
+
   it('holds for DEFAULT_HOLD_MS when the caller passes no holdMs at all', async () => {
     // mountButton always supplies a holdMs, so a caller with no opinion (the real default path)
     // was never exercised, and nothing pinned DEFAULT_HOLD_MS's actual value.
