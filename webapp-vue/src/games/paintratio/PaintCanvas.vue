@@ -10,6 +10,7 @@
  * (a canvas that resizes mid-stroke still maps right), thinned and limited by `appendPoint`.
  */
 import { computed, shallowRef, useTemplateRef } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import LayerCanvas from './LayerCanvas.vue'
 import { showsTemplate } from './paintHistory'
 import type { PaintState } from './paintHistory'
@@ -109,6 +110,23 @@ function onEnd(event: PointerEvent): void {
 
   if (pointers.delete(event.pointerId) && pointers.size === 0) emit('touch', false)
 }
+
+/**
+ * A finger lifted while the tab was away may never report its end. Its stale id would keep `touch`
+ * set, and the hold disabled, until a reload.
+ */
+useEventListener(document, 'visibilitychange', () => {
+  if (!document.hidden) return
+
+  const live = painting.value
+  painting.value = null
+  if (live !== null && live.stroke.points.length > 0) emit('commit', live.stroke)
+
+  if (pointers.size > 0) {
+    pointers.clear()
+    emit('touch', false)
+  }
+})
 </script>
 
 <template>

@@ -11,7 +11,8 @@
  *
  * While the hold runs the canvas turns grey and shows the ring large — a palm on the button covers
  * its own ring. A finger on the canvas cancels the hold, and the hold cannot start while one lies
- * there: both go through `HoldButton`'s `disabled`.
+ * there: both go through `HoldButton`'s `disabled`. Released, the canvas is free at once, though the
+ * button's ring is still running back.
  *
  * The painting is saved as a draft after every change, undo and redo included.
  */
@@ -70,7 +71,8 @@ const color = computed(() => picked.value ?? normalizeColor(props.myColorHex) ??
 
 const holdProgress = ref(0)
 const touching = ref(false)
-const locked = computed(() => holdProgress.value > 0)
+/** Only while the ring rises: the rewind after a release is no hold. */
+const locked = ref(false)
 
 const brushTools = computed(() => BRUSH_TOOLS.slice(0, props.payload.brushes.length))
 const canSign = computed(() => !props.disabled && state.value.strokes.length > 0)
@@ -105,12 +107,16 @@ function onRedo(): void {
 
 /** A completed hold reports a full ring after `confirm`; it is no hold in progress any more. */
 function onProgress(value: number): void {
-  holdProgress.value = value < 1 ? value : 0
+  const next = value < 1 ? value : 0
+
+  locked.value = next > holdProgress.value
+  holdProgress.value = next
 }
 
 /** The lock drops here: a guess that fails hands the board back, and it must not stay grey. */
 function sign(): void {
   holdProgress.value = 0
+  locked.value = false
   if (canSign.value) emit('guess', { strokes: [...state.value.strokes] })
 }
 

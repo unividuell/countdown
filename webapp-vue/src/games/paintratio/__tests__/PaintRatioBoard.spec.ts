@@ -248,6 +248,31 @@ describe('PaintRatioBoard', () => {
     expect(painted(wrapper)).toHaveLength(2)
   })
 
+  it('frees the canvas as soon as the hold is released, while the ring still runs back', async () => {
+    const wrapper = mountBoard()
+    await paint(wrapper, 1, [30, 30])
+    await progress(wrapper, 0.4)
+
+    await progress(wrapper, 0.3)
+    expect(lock(wrapper).exists()).toBe(false)
+
+    await paint(wrapper, 2, [60, 60])
+    expect(painted(wrapper)).toHaveLength(2)
+  })
+
+  it('locks the canvas again when a press picks the ring up mid-rewind', async () => {
+    const wrapper = mountBoard()
+    await paint(wrapper, 1, [30, 30])
+    await progress(wrapper, 0.4)
+    await progress(wrapper, 0.3)
+
+    await progress(wrapper, 0.35)
+    expect(lock(wrapper).exists()).toBe(true)
+
+    await paint(wrapper, 2, [60, 60])
+    expect(painted(wrapper)).toHaveLength(1)
+  })
+
   it('keeps the hold from starting while a finger paints', async () => {
     const wrapper = mountBoard()
     await paint(wrapper, 1, [30, 30])
@@ -289,6 +314,52 @@ describe('PaintRatioBoard', () => {
       ])
     },
   )
+
+  describe('when the tab goes away', () => {
+    function hideTab(): void {
+      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+
+    it('commits the stroke in progress and frees the hold', async () => {
+      const wrapper = mountBoard()
+      await paint(wrapper, 1, [30, 30])
+      await down(wrapper, 2, [0, 0])
+      await move(wrapper, 2, [150, 75])
+      expect(hold(wrapper).props('disabled')).toBe(true)
+
+      hideTab()
+      await nextTick()
+
+      expect(hold(wrapper).props('disabled')).toBe(false)
+      expect(painted(wrapper)[1]!.points).toEqual([0, 0, 600, 300])
+    })
+
+    it('forgets a pointer whose end event was lost, so the next finger paints', async () => {
+      const wrapper = mountBoard()
+      await paint(wrapper, 1, [30, 30])
+      await down(wrapper, 2, [0, 0])
+
+      hideTab()
+      await nextTick()
+      await paint(wrapper, 3, [60, 60])
+
+      expect(painted(wrapper)).toHaveLength(3)
+    })
+
+    it('leaves the board as it is when the tab comes back', async () => {
+      const wrapper = mountBoard()
+      await paint(wrapper, 1, [30, 30])
+
+      hideTab()
+      vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+      document.dispatchEvent(new Event('visibilitychange'))
+      await nextTick()
+
+      expect(painted(wrapper)).toHaveLength(1)
+      expect(hold(wrapper).props('disabled')).toBe(false)
+    })
+  })
 
   it("takes a new stroke's budget after the strokes already on the canvas", async () => {
     saveDraft(storage.fake, KEY, { strokes: [line(MAX_POINTS - 1)], redo: [] })
