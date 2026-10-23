@@ -31,10 +31,10 @@ class PaintRatioArtistTest {
         brushes = brushes,
     )
 
-    /** Each colour of a work with the radii it paints: tells the fill from the outline. */
+    /** Each colour of a work with its capsules' radii (areas are butt ends): tells the fill from the outline. */
     private fun radiiByColour(shape: Shape, seed: Int) = paint(shape = shape, seed = seed).layers
-        .groupBy(keySelector = { it.argb }, valueTransform = { it.mark.shouldBeInstanceOf<Capsule>().radius })
-        .mapValues { (_, radii) -> radii.toSet() }
+        .groupBy(keySelector = { it.argb }, valueTransform = { (it.mark as? Capsule)?.radius })
+        .mapValues { (_, radii) -> radii.filterNotNull().toSet() }
 
     @Test
     fun `the tolerances are the spec's`() {

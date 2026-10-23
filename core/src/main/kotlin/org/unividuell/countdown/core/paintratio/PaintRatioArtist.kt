@@ -134,15 +134,15 @@ private class Easel(
     private fun ring(): List<Layer> {
         val oval = oval()
         val hole = random.nextIntBetween(min = 30, maxInclusive = 70) / 100.0
-        val contours = listOf(1.0, hole).map { scale ->
-            ellipseContour(center = oval.center, width = oval.width * scale, height = oval.height * scale)
-        }
-        return sketched(sketch = rough.shape(contours = contours, fill = Rough.fillOf(random)), argb = RED)
+        val sketch = rough.ring(
+            center = oval.center, width = oval.width, height = oval.height, hole = hole, fill = Rough.fillOf(random),
+        )
+        return sketched(sketch = sketch, argb = RED)
     }
 
     /**
      * 2–6 thick lines, each through a random point of the canvas at a common angle ±15°. Their ends lie
-     * W + H beyond that point, so neither end nor its round cap is on the canvas.
+     * W + H beyond that point, so no end is on the canvas.
      */
     private fun stripes(): List<Layer> {
         val base = 180 * random.nextDouble()
