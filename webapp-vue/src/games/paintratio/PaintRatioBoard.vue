@@ -5,7 +5,7 @@
  *   ┌──────────────────────┐
  *   │        canvas        │  template until the first stroke
  *   └──────────────────────┘
- *    ● ● ●  [colour]  ↶ ↷      brushes · picker · undo · redo
+ *   [colour]   ● ● ●     ↶ ↷   picker · brushes · undo · redo
  *     Male ein Bild …
  *        ( Signieren )         hold, in the current colour
  *
@@ -17,8 +17,8 @@
  * The painting is saved as a draft after every change, undo and redo included.
  */
 import { computed, ref, shallowRef, watch } from 'vue'
-import IconRedo from '~icons/lucide/redo-2'
-import IconUndo from '~icons/lucide/undo-2'
+import IconRedo from '~icons/lucide/redo'
+import IconUndo from '~icons/lucide/undo'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -56,8 +56,9 @@ const BRUSH_TOOLS = [
 /** `useMyColorHex`'s own fallback, for an avatar colour the server would not take. */
 const FALLBACK_COLOR = '#525252'
 
+/** 32 px wide, below the 44 px floor, so brushes and undo/redo read as groups, as in the original. */
 const TOOL =
-  'flex size-11 cursor-pointer items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40'
+  'flex h-11 w-8 cursor-pointer items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40'
 
 const RING_MASK = 'radial-gradient(closest-side, transparent 86%, #000 87%)'
 
@@ -166,53 +167,61 @@ const ringStyle = computed(() => {
         Das Bild ließ sich nicht laden.
       </p>
 
-      <!-- Six 44 px tools fit from a 360 px phone on; narrower, they wrap. -->
-      <div class="flex flex-wrap items-center justify-center gap-1">
-        <button
-          v-for="(tool, index) in brushTools"
-          :key="tool.label"
-          type="button"
-          :aria-label="tool.label"
-          :aria-pressed="brush === index"
-          :class="TOOL"
-          @click="brush = index"
-        >
-          <span
-            aria-hidden="true"
-            class="rounded-full"
-            :class="[
-              tool.dot,
-              brush === index ? 'ring-2 ring-neutral-800 ring-offset-2' : 'ring-1 ring-black/15',
-            ]"
-            :style="{ backgroundColor: color }"
-          />
-        </button>
+      <!-- Three groups as in the original, always in one row: on a narrow phone the picker gives
+           way. It is as wide as undo and redo, so the brushes sit at the centre. -->
+      <div
+        data-test="paint-ratio-tools"
+        class="flex items-center justify-between gap-1 self-stretch"
+      >
         <input
           type="color"
           aria-label="Farbe"
           :value="color"
-          class="mx-1 h-11 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+          class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-neutral-400 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-neutral-400 [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
           @input="pickColor"
         />
-        <button
-          type="button"
-          aria-label="Rückgängig"
-          :class="TOOL"
-          :disabled="props.disabled || state.strokes.length === 0"
-          @click="state = undo(state)"
-        >
-          <IconUndo class="size-5" aria-hidden="true" />
-        </button>
-        <!-- Also off while a finger paints: the stroke in progress counts against the same limits. -->
-        <button
-          type="button"
-          aria-label="Wiederholen"
-          :class="TOOL"
-          :disabled="props.disabled || touching || !canRedo(state)"
-          @click="onRedo"
-        >
-          <IconRedo class="size-5" aria-hidden="true" />
-        </button>
+        <div class="flex items-center">
+          <button
+            v-for="(tool, index) in brushTools"
+            :key="tool.label"
+            type="button"
+            :aria-label="tool.label"
+            :aria-pressed="brush === index"
+            :class="TOOL"
+            @click="brush = index"
+          >
+            <span
+              aria-hidden="true"
+              class="rounded-full"
+              :class="[
+                tool.dot,
+                brush === index ? 'ring-2 ring-neutral-800 ring-offset-2' : 'ring-1 ring-black/15',
+              ]"
+              :style="{ backgroundColor: color }"
+            />
+          </button>
+        </div>
+        <div class="flex items-center">
+          <button
+            type="button"
+            aria-label="Rückgängig"
+            :class="TOOL"
+            :disabled="props.disabled || state.strokes.length === 0"
+            @click="state = undo(state)"
+          >
+            <IconUndo class="size-5" aria-hidden="true" />
+          </button>
+          <!-- Also off while a finger paints: the stroke in progress counts against the same limits. -->
+          <button
+            type="button"
+            aria-label="Wiederholen"
+            :class="TOOL"
+            :disabled="props.disabled || touching || !canRedo(state)"
+            @click="onRedo"
+          >
+            <IconRedo class="size-5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <p class="text-center text-lg">Male ein Bild mit demselben Farbanteil.</p>

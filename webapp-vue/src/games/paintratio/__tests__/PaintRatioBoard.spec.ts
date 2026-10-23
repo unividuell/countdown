@@ -148,6 +148,23 @@ describe('PaintRatioBoard', () => {
     expect(layers(wrapper)).toEqual([{ kind: 'template' }])
   })
 
+  it('groups the tools as the original: colour, brushes, history — in one row', () => {
+    const row = mountBoard().get('[data-test="paint-ratio-tools"]')
+    expect(row.classes()).not.toContain('flex-wrap')
+
+    const groups = [...row.element.children]
+    const labels = (group: Element) =>
+      [group, ...group.querySelectorAll('[aria-label]')]
+        .map((element) => element.getAttribute('aria-label'))
+        .filter((label) => label !== null)
+
+    expect(groups.map(labels)).toEqual([
+      ['Farbe'],
+      ['Pinsel klein', 'Pinsel mittel', 'Pinsel groß'],
+      ['Rückgängig', 'Wiederholen'],
+    ])
+  })
+
   it('starts with the player colour in lower case', () => {
     const wrapper = mountBoard()
 
