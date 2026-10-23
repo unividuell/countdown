@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** How Kreativverhältnis is played. Text only — the folding lives in `ui/InfoBox`. */
+/** How Anmaßung is played. Text only — the folding lives in `ui/InfoBox`. */
 </script>
 
 <template>

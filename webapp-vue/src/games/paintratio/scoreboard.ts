@@ -1,5 +1,5 @@
 /**
- * The ranking of „Kreativverhältnis“: which rows exist, in which order, what each cell says. Pure,
+ * The ranking of „Anmaßung“: which rows exist, in which order, what each cell says. Pure,
  * like the other games' `scoreboard.ts`.
  */
 import type { AwardRule } from '@/api/types'

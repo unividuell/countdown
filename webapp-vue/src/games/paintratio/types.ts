@@ -1,5 +1,5 @@
 /**
- * Kreativverhältnis' wire shapes, narrowed by hand. `payload`, `solution`, `outcome` and every
+ * Anmaßung's wire shapes, narrowed by hand. `payload`, `solution`, `outcome` and every
  * stored guess arrive as `unknown` by contract, and a stale round may be junk — narrowing here is
  * what keeps `NaN` and an unknown brush out of the picture.
  */

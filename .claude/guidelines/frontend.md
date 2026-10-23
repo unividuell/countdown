@@ -46,7 +46,7 @@ of the frontend conventions live beside it:
   without the error component the card stays empty instead of saying „Lade die Seite neu.“.
   Blockierung is the example.
 - **Never measure from a canvas — it only displays.** Whatever is counted or stored is model data
-  (Kreativverhältnis: strokes in fixed canvas units, counted on the server). Edge pixels are
+  (Anmaßung: strokes in fixed canvas units, counted on the server). Edge pixels are
   anti-aliased per `devicePixelRatio` and anti-fingerprinting can add noise to `getImageData`, so
   the same painting scores differently per device.
 

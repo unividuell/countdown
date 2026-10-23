@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * „Auswertung“ for Kreativverhältnis: every painting of the round, nearest to the target first.
+ * „Auswertung“ for Anmaßung: every painting of the round, nearest to the target first.
  *
  * The table is `RevealScoreboard`; this file adds what stands between „Name“ and „Pkt“ — the
  * painted share and its difference — and what makes the names more than names: each is a button

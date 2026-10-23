@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Kreativverhältnis: which card the round is on, and the one place `unknown` becomes typed.
+ * Anmaßung: which card the round is on, and the one place `unknown` becomes typed.
  *
  *   board ──(solution arrives)──▶ reveal
  *

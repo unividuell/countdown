@@ -62,7 +62,7 @@ data class PaintRatioOutcome(
 data class PaintRatioSolution(val targetRatio: Double, val tolerance: Double?) : GameSolution
 
 /**
- * Kreativverhältnis as an announceable game; `paintratio` knows nothing about it.
+ * Anmaßung as an announceable game; `paintratio` knows nothing about it.
  *
  * Everything is drawn from the presentation stream: the artwork is visible at once and the target
  * share follows from it, so there is no secret for another stream to guard. The draw order — shape,
@@ -75,7 +75,7 @@ data class PaintRatioSolution(val targetRatio: Double, val tolerance: Double?) :
 class PaintRatioGameType(private val mapper: ObjectMapper) : GameType<PaintRatioParams> {
 
     override val id = "paint-ratio"
-    override val displayName = "Kreativverhältnis"
+    override val displayName = "Anmaßung"
     override val paramsType = PaintRatioParams::class.java
 
     override fun draw(random: GameRandom, context: RoundContext): PaintRatioParams {

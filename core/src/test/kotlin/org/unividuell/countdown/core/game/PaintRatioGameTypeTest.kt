@@ -96,7 +96,7 @@ class PaintRatioGameTypeTest {
     @Test
     fun `it is registered under a stable id and a German display name`() {
         game.id shouldBe "paint-ratio"
-        game.displayName shouldBe "Kreativverhältnis"
+        game.displayName shouldBe "Anmaßung"
     }
 
     @Test

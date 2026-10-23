@@ -369,7 +369,7 @@ describe('PaintRatioGame', () => {
     const ids = labGameList.map((game) => game.id)
 
     expect(gameComponents['paint-ratio']).toBe(PaintRatioGame)
-    expect(labGameList).toContainEqual({ id: 'paint-ratio', title: 'Kreativverhältnis' })
+    expect(labGameList).toContainEqual({ id: 'paint-ratio', title: 'Anmaßung' })
     expect(ids.indexOf('paint-ratio')).toBe(ids.indexOf('copy-blocks') + 1)
   })
 })

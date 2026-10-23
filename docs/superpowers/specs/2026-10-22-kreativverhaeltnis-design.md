@@ -1,4 +1,4 @@
-# Kreativverhältnis („Paint Ratio“) — ein Gemälde mit demselben Farbanteil
+# Anmaßung („Paint Ratio“) — ein Gemälde mit demselben Farbanteil
 
 **Status:** umgesetzt (2026-10-22).
 
@@ -49,7 +49,8 @@ Was im Original schiefging und hier strukturell verschwindet:
   und der Knopf darf direkt unter dem Bild liegen.
 
 - **Codename:** `paint-ratio` (Game-ID), `paintratio` (Modul), `PaintRatio*` (Klassen).
-- **Anzeigename:** „Kreativverhältnis“, der Name des Originals.
+- **Anzeigename:** „Anmaßung“ (gewählt 2026-10-23): darin *Maß* fürs Augenmaß, dazu *sich anmaßen*,
+  Künstler zu sein. Das Original hieß „Kreativverhältnis“.
 - **Der Künstler:** „Kollektiv Kommune“, wie im Original.
 
 ## Die Regeln
@@ -312,7 +313,7 @@ games/paintratio/
 ```
 
 Dazu `'paint-ratio': PaintRatioGame` in `games/registry.ts` und
-`{ id: 'paint-ratio', title: 'Kreativverhältnis' }` in `labGameList`. Das Bild kommt über die
+`{ id: 'paint-ratio', title: 'Anmaßung' }` in `labGameList`. Das Bild kommt über die
 `assets`-Prop und `useSealedAsset`, wie bei den anderen Bildspielen.
 
 ### Messen nie aus dem Canvas
@@ -411,7 +412,7 @@ Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`. Deutscher Tex
 
 ## Labor
 
-`paint-ratio` / „Kreativverhältnis“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide
+`paint-ratio` / „Anmaßung“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide
 Gesichter. Das Bild entsteht über `produceAssets` im Arbeitsspeicher. Der Seed in der URL macht Form und
 Werk reproduzierbar. **Einen Formwähler im Labor gibt es nicht:** wer eine bestimmte Form sucht,
 probiert Seeds. Hier werden Toleranzen, Freihand und Takte nachgestimmt.

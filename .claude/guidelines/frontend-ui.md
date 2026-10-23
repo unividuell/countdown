@@ -27,7 +27,7 @@ desktop layout that was written first).
   circle is deliberately at that scale.
   One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar
   (`games/copyblocks/CopyBlocksBoard.vue`) never scrolls, so on a narrow phone its up to eight
-  slots shrink below 44px (38.6px at 375px). Likewise Kreativverhältnis's tools: the owner wants
+  slots shrink below 44px (38.6px at 375px). Likewise Anmaßung's tools: the owner wants
   brushes and undo/redo packed into groups as in the original, so they are 32px wide (44 tall),
   and the row never wraps — the colour picker gives way instead (`PaintRatioBoard`).
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
@@ -136,7 +136,7 @@ it is the only proof available — no unit test can see them.
 - **A surface where play starts drags at its rim stays off the screen's side edges.** On a phone
   the OS owns a touch that starts there: Android's gesture navigation reads both edges as „back“,
   iOS Safari the left one, and no web API excludes a zone or reports its width (a user setting).
-  A stroke set at the rim of Kreativverhältnis's full-bleed canvas left the round. Keep such a
+  A stroke set at the rim of Anmaßung's full-bleed canvas left the round. Keep such a
   surface inside the page gutter — the zone may be wider still, so this shrinks the clash rather
   than ruling it out. The rim stays reachable: a drag begun inside may leave the surface under
   pointer capture.
