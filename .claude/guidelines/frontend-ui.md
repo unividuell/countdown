@@ -131,13 +131,15 @@ it is the only proof available — no unit test can see them.
   a touch there cancels it.** A palm resting on the button while painting would submit unseen.
   `HoldButton` emits `progress` for the board to draw; its `disabled` watch cancels a running hold,
   so the board disables it while the play area is touched. `PaintRatioBoard` is the worked example.
-- **A surface that takes drags stays off the screen's side edges.** On a phone the OS owns a
-  touch that starts there: Android's gesture navigation reads both edges as „back“, iOS Safari the
-  left one, and no web API excludes a zone or reports its width (a user setting). A stroke set at
-  the rim of Kreativverhältnis's full-bleed canvas left the round. Keep such a surface inside the
-  page gutter — the zone may be wider still, so this shrinks the clash rather than ruling it out.
-  The rim stays reachable: a drag begun inside may leave the surface under pointer capture.
-  Display-only bands may still bleed. See `PaintRatioBoard`.
+- **A surface where play starts drags at its rim stays off the screen's side edges.** On a phone
+  the OS owns a touch that starts there: Android's gesture navigation reads both edges as „back“,
+  iOS Safari the left one, and no web API excludes a zone or reports its width (a user setting).
+  A stroke set at the rim of Kreativverhältnis's full-bleed canvas left the round. Keep such a
+  surface inside the page gutter — the zone may be wider still, so this shrinks the clash rather
+  than ruling it out. The rim stays reachable: a drag begun inside may leave the surface under
+  pointer capture.
+  The bleed stays where nothing drags (Entstauber: taps), the player easily works around the rim
+  (Platzierung) or play happens centrally (Blockierung). See `PaintRatioBoard`.
 - **A container that reads raw pointer events must exempt whatever it nests.** `pointerdown` bubbles,
   so a press on the button in `HueWheel`'s centre slot reached the wheel, which captured the pointer
   and began a drag — and the wheel then followed every later move, so the angle finally submitted was
