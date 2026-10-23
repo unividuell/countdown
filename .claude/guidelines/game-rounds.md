@@ -239,6 +239,11 @@ every write to it is a conditional statement that simply fails on a stale read.
 
 Judging happens **before** the write, so an invalid guess cannot consume the one attempt.
 
+A play row read with `guessed_at` already set answers the 409 **before** judging — `judge` can be a
+round's most expensive call, and a spent guess must not buy it again. A shortcut, not the guard: two
+racing first guesses both pass it, and the `UPDATE` still decides. The lab does the same with its own
+entry.
+
 ## Whoever addresses a round says which one
 
 Every write on the current round — reveal, guess, skip, give-up — carries the round number it believes

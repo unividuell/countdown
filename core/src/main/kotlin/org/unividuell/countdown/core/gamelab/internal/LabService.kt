@@ -134,6 +134,11 @@ class LabService(
         // for free from a missing play row. The lab keeps no row, so it asks the store's own stamp.
         val sinceOpenedMs = store.sinceOpenedMs(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         if (handle.requiresReveal(playing.params) && sinceOpenedMs == null) throw LabNotRevealedException()
+        // A spent guess never reaches judge(), as in `PlayService.guess`. A shortcut only — record()
+        // stays the guard.
+        if (store.hasGuessed(communityId = communityId, gameId = gameId, round = playing, userId = userId)) {
+            throw AlreadyGuessedException()
+        }
         val judgement = handle.judge(
             params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
         )

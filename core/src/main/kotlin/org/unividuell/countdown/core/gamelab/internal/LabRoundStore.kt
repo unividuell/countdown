@@ -173,6 +173,15 @@ class LabRoundStore(private val clock: Clock) {
         }
     }
 
+    /** Whether this tester already has an entry on this round — a peek, like [stageOf]. */
+    fun hasGuessed(communityId: UUID, gameId: String, round: LabRound, userId: UUID): Boolean {
+        val stored = rounds[Key(communityId, gameId)] ?: return false
+        if (!matches(stored.frozen, round)) return false
+        synchronized(stored) {
+            return stored.entries.containsKey(userId)
+        }
+    }
+
     /** true when the expected stage still held — the same zero-rows idiom, in memory. */
     fun advanceStage(communityId: UUID, gameId: String, round: LabRound, userId: UUID, expected: Int): Boolean {
         val (stored, _) = openRound(Key(communityId, gameId), round)
