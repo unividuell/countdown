@@ -8,13 +8,18 @@
  *    Auswertung …
  *
  * Beats come from `revealChoreography`: my own painting stands as I signed it, then at
- * `SOLUTION_DELAY_MS` it fades into the picture. The scoreboard carries its own beats.
+ * `SOLUTION_DELAY_MS` the picture fades in under it. The scoreboard carries its own beats.
+ *
+ *   ┌──────────────────────┐        ┌──────────────────────┐
+ *   │  my painting         │  ───▶  │  picture             │
+ *   │                      │        │   + my painting      │
+ *   └──────────────────────┘        └──────────────────────┘
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import LayerCanvas from './LayerCanvas.vue'
-import { DEFAULT_LAYERS, KOLLEKTIV, toggleLayer } from './layers'
+import { KOLLEKTIV, openingLayers, toggleLayer } from './layers'
 import PaintRatioScoreboard from './PaintRatioScoreboard.vue'
 import type { CanvasLayer } from './render'
 import type { ScoreRow } from './scoreboard'
@@ -32,8 +37,6 @@ const props = defineProps<{
   mineUserId: string | null
 }>()
 
-const selected = ref<string[]>([...DEFAULT_LAYERS])
-
 /** The paintings that can be laid on the canvas, by user id. */
 const paintings = computed(() => {
   const byId = new Map<string, Stroke[]>()
@@ -43,6 +46,13 @@ const paintings = computed(() => {
 
   return byId
 })
+
+const own = computed(() =>
+  props.mineUserId === null ? undefined : paintings.value.get(props.mineUserId),
+)
+
+/** Both of us start marked: the picture and, when I have one, my painting on it. */
+const selected = ref<string[]>(openingLayers(own.value === undefined ? null : props.mineUserId))
 
 /** A selected painting whose row is gone is skipped — rows keep arriving while the round is live. */
 const layers = computed<CanvasLayer[]>(() =>
@@ -54,13 +64,9 @@ const layers = computed<CanvasLayer[]>(() =>
   }),
 )
 
-const own = computed(() =>
-  props.mineUserId === null ? undefined : paintings.value.get(props.mineUserId),
-)
-
 /**
- * Whether my painting stands over the picture until the solution beat. Asked once, on arrival:
- * without a painting of mine, or without beats, the reveal simply shows the picture.
+ * Whether my painting stands alone until the solution beat. Asked once, on arrival: without a
+ * painting of mine, or without beats, the reveal shows the finished picture at once.
  */
 const intro = !isStill(props.animate) && own.value !== undefined
 
@@ -98,7 +104,8 @@ function select(id: string): void {
         :layers="layers"
         :template-src="props.templateSrc"
       />
-      <!-- Over the picture, then transparent: the fade is this canvas leaving, not a redraw. -->
+      <!-- My painting alone, over the same painting on the picture: as this canvas leaves, the
+           picture fades in under the painting, which does not move. -->
       <LayerCanvas
         v-if="intro"
         data-test="paint-ratio-own"

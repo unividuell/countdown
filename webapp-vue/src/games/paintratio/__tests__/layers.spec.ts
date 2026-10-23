@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LAYERS, KOLLEKTIV, toggleLayer } from '@/games/paintratio/layers'
+import { KOLLEKTIV, openingLayers, toggleLayer } from '@/games/paintratio/layers'
 
 describe('toggleLayer', () => {
   it('adds a layer on top and removes it on the second tap', () => {
@@ -21,7 +21,8 @@ describe('toggleLayer', () => {
     expect(selected).toEqual([KOLLEKTIV])
   })
 
-  it('opens on the Kollektiv Kommune alone', () => {
-    expect(DEFAULT_LAYERS).toEqual([KOLLEKTIV])
+  it('opens on my painting over the picture, or on the picture alone without one', () => {
+    expect(openingLayers('me')).toEqual([KOLLEKTIV, 'me'])
+    expect(openingLayers(null)).toEqual([KOLLEKTIV])
   })
 })

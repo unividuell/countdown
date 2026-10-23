@@ -105,25 +105,37 @@ describe('PaintRatioReveal', () => {
     expect(two.find('#difference-fact').exists()).toBe(false)
   })
 
-  it('starts on the Kollektiv`s picture after a reload', () => {
+  it('opens on my painting over the picture after a reload, both marked', () => {
     const wrapper = mountReveal()
 
     expect(canvases(wrapper)).toHaveLength(1)
-    expect(layersOf(wrapper, 0)).toEqual([TEMPLATE])
+    expect(layersOf(wrapper, 0)).toEqual([TEMPLATE, strokes(MINE)])
     expect(canvases(wrapper)[0]!.props('templateSrc')).toBe('blob:template')
     expect(wrapper.find('[data-test="paint-ratio-own"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="select-kollektiv"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="select-me"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="select-anna"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('opens on the picture alone without a painting of mine', () => {
+    const wrapper = mountReveal({
+      entries: [entry('me', 0.001, { guess: { strokes: [{ brush: 9 }] } }), ENTRIES[1]!],
+    })
+
+    expect(layersOf(wrapper, 0)).toEqual([TEMPLATE])
+    expect(wrapper.get('[data-test="select-kollektiv"]').attributes('aria-pressed')).toBe('true')
   })
 
   describe('with animation', () => {
     const style = (w: Reveal) => w.get<HTMLElement>('[data-test="paint-ratio-own"]').element.style
 
-    it('keeps the own painting, then fades to the picture at SOLUTION_DELAY_MS', async () => {
+    it('keeps my painting, then fades the picture in under it at SOLUTION_DELAY_MS', async () => {
       useBeats()
       const wrapper = mountReveal({ animate: true })
 
-      // My painting lies over the picture, which waits underneath.
+      // My painting alone lies over the same painting on the picture, which waits underneath.
       expect(canvases(wrapper)).toHaveLength(2)
-      expect(layersOf(wrapper, 0)).toEqual([TEMPLATE])
+      expect(layersOf(wrapper, 0)).toEqual([TEMPLATE, strokes(MINE)])
       expect(layersOf(wrapper, 1)).toEqual([strokes(MINE)])
       expect(style(wrapper).opacity).toBe('1')
 
@@ -175,12 +187,12 @@ describe('PaintRatioReveal', () => {
       const wrapper = mountReveal({ animate: true })
 
       expect(canvases(wrapper)).toHaveLength(1)
-      expect(layersOf(wrapper, 0)).toEqual([TEMPLATE])
+      expect(layersOf(wrapper, 0)).toEqual([TEMPLATE, strokes(MINE)])
     })
   })
 
   it('lays a painting over the picture when its name is tapped, in tap order', async () => {
-    const wrapper = mountReveal()
+    const wrapper = mountReveal({ mineUserId: null })
 
     await tap(wrapper, 'bert')
     expect(layersOf(wrapper, 0)).toEqual([TEMPLATE, strokes(BERT)])
@@ -193,7 +205,7 @@ describe('PaintRatioReveal', () => {
   })
 
   it('switches the picture itself from the Kollektiv Kommune row', async () => {
-    const wrapper = mountReveal()
+    const wrapper = mountReveal({ mineUserId: null })
 
     await tap(wrapper, 'anna')
     await wrapper.get('[data-test="select-kollektiv"]').trigger('click')
@@ -222,7 +234,7 @@ describe('PaintRatioReveal', () => {
   })
 
   it('skips a selected painting whose row has gone', async () => {
-    const wrapper = mountReveal()
+    const wrapper = mountReveal({ mineUserId: null })
     await tap(wrapper, 'anna')
 
     await wrapper.setProps({

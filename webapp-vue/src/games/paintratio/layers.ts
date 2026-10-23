@@ -6,8 +6,10 @@
 /** The picture's id in the stack — no user id looks like it. */
 export const KOLLEKTIV = 'kollektiv-kommune'
 
-/** The reveal opens on the picture alone. */
-export const DEFAULT_LAYERS: readonly string[] = [KOLLEKTIV]
+/** The reveal opens on my painting over the picture — or on the picture alone, without one. */
+export function openingLayers(mine: string | null): string[] {
+  return mine === null ? [KOLLEKTIV] : [KOLLEKTIV, mine]
+}
 
 /** A tap lays the layer on top, or — when it is already there — takes it off again. */
 export function toggleLayer(selected: readonly string[], id: string): string[] {
