@@ -91,9 +91,9 @@ function select(id: string): void {
 
 <template>
   <div data-test="paint-ratio-reveal" class="flex flex-col gap-6">
-    <!-- Card-wide: the negative margins cancel RoundSurface's padding, as on the board. -->
+    <!-- Inside the gutter, as on the board: the painting must not jump between the two. -->
     <div
-      class="relative -mx-4 -mt-4 bg-neutral-100"
+      class="relative bg-neutral-100"
       :style="{ aspectRatio: `${props.payload.width} / ${props.payload.height}` }"
     >
       <LayerCanvas

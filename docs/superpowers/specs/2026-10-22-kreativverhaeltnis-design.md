@@ -325,7 +325,9 @@ damit die Striche scharf sind; das berührt nichts, was gezählt wird.
 
 Gewählt an Mockups (2026-10-22), von oben nach unten, wie im Original:
 
-1. **Die Leinwand**, kartenbreit wie bei Entstauber und Platzierung, Seitenverhältnis `width : height`,
+1. **Die Leinwand**, im Rand der Karte, nicht kartenbreit: auf dem Handy gehören die seitlichen
+   Bildschirmränder der Zurück-Geste des Systems, ein dort angesetzter Strich verließ die Runde
+   (Handprobe 2026-10-23). Seitenverhältnis `width : height`,
    weiß. Am Anfang liegt darauf die Vorlage (das PNG), danach die eigenen Striche.
 2. **Die Werkzeuge** unter der Leinwand:
    - drei Pinsel als Punkte in der aktuellen Farbe, der gewählte mit Ring;

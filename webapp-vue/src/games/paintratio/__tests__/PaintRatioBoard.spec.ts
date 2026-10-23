@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import LayerCanvas from '@/games/paintratio/LayerCanvas.vue'
+import PaintCanvas from '@/games/paintratio/PaintCanvas.vue'
 import PaintRatioBoard from '@/games/paintratio/PaintRatioBoard.vue'
 import { loadDraft, saveDraft } from '@/games/paintratio/draft'
 import { MAX_POINTS, MAX_STROKES } from '@/games/paintratio/types'
@@ -470,6 +471,12 @@ describe('PaintRatioBoard', () => {
     expect(painted(wrapper)).toEqual([line(1)])
     expect(hold(wrapper).props('disabled')).toBe(true)
     expect(wrapper.emitted('guess')).toBeUndefined()
+  })
+
+  // happy-dom lays nothing out: the absent bleed is the only checkable proxy.
+  it('keeps the canvas inside the gutter, off the edges the OS keeps for its back gesture', () => {
+    const box = mountBoard().findComponent(PaintCanvas).element.parentElement
+    expect(box?.className).not.toMatch(/-m[xt]-/)
   })
 
   it('says so when the picture failed to load', () => {

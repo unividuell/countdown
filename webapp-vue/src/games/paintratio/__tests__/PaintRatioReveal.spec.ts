@@ -191,6 +191,11 @@ describe('PaintRatioReveal', () => {
     })
   })
 
+  it('keeps the canvas inside the gutter, as on the board', () => {
+    const box = mountReveal().findComponent(LayerCanvas).element.parentElement
+    expect(box?.className).not.toMatch(/-m[xt]-/)
+  })
+
   it('lays a painting over the picture when its name is tapped, in tap order', async () => {
     const wrapper = mountReveal({ mineUserId: null })
 

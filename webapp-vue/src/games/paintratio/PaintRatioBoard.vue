@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Playing: the canvas card-wide on top, the tools below it, then the hold that signs.
+ * Playing: the canvas on top, the tools below it, then the hold that signs.
  *
  *   ┌──────────────────────┐
  *   │        canvas        │  template until the first stroke
@@ -134,9 +134,9 @@ const ringStyle = computed(() => {
 <template>
   <div data-test="paint-ratio-board" class="flex flex-col gap-6">
     <div class="flex flex-col items-center gap-3">
-      <!-- Card-wide: the negative margins cancel RoundSurface's padding. `self-stretch`, not
-           `w-full` — a definite width would only shift the box. -->
-      <div class="relative -mx-4 -mt-4 self-stretch">
+      <!-- Inside the gutter, not card-wide: on a phone the screen's side edges belong to the OS's
+           back gesture, and a stroke starting there would leave the round. -->
+      <div class="relative self-stretch">
         <PaintCanvas
           :width="props.payload.width"
           :height="props.payload.height"
