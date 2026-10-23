@@ -160,21 +160,25 @@ Toleranz verfehlt ein Tupfer immer.
 ### Der raue Strich, nach roughjs
 
 Kreis, Ellipse, Vieleck/Stern, Ring und Streifen tragen den Look von [roughjs](https://roughjs.com)
-(MIT, Preet Shihn). Nachgebaut wird das Verfahren in Kotlin, nicht der Code, und auch nicht dessen
-Zufallsfolge:
+(MIT, Preet Shihn). Übertragen wird **roughjs 4.6.6 nah am Code**, mit den Optionen des Originals
+(`fillWeight 4`, sonst roughjs-Standard) und **fester Dichte wie im Original** (Clemens, 2026-10-23,
+nach dem Vergleich mit dem Original: „Im Original wurde mehr gefüllt, es waren feine Störungen drin,
+und zwar unregelmäßig.“). Nicht übernommen wird nur roughjs' eigene Zufallsfolge:
 
-- **Umriss:** schwarz, Strichbreite ca. 4 Einheiten, **zweimal** gezogen, jeweils mit eigenem Zittern
-  der Stützpunkte und leichter Wölbung. Darum ist es „keine volle Ellipse“.
-- **Füllung:** parallele Linien im Winkel um −41° (roughjs-Standard), Linienbreite ca. 16 Einheiten
-  (Original: `fillWeight 4`). Jede Linie ist selbst rau, und ihre Enden zittern über den Umriss hinaus.
-  Daher kommen die Fransen, die die Screenshots des Originals zeigen.
-- **Füllart, pro Runde gezogen:** Schraffur, Kreuzschraffur, Zickzack oder Punkte.
-- **Dichte, pro Runde gezogen:** der Abstand der Füllinien, von „fast deckend“ (Original, ca. 16
-  Einheiten) bis „locker“ (ca. 64).
+- **Pixelraum des Originals:** gerechnet wird auf dessen 300 × 225-Canvas, ausgegeben mal 4. So
+  behalten alle Längen-Schwellen in roughjs ihre Bedeutung.
+- **Umriss:** schwarz, `strokeWidth 1` (4 Einheiten), jede Kante **zweimal** gezogen (`_doubleLine`).
+  Die Ellipse kommt aus roughjs' eigener Ellipse, darum ist es „keine volle Ellipse“.
+- **Füllung:** Linien im Winkel −41°, `fillWeight 4` (16 Einheiten) im Abstand 4 px (16 Einheiten),
+  **jede Linie zweimal** mit eigenem Zufallsversatz. Daher die feinen, unregelmäßigen Risse und die
+  Fransen über den Umriss.
+- **Füllart, pro Runde gezogen:** Schraffur, Kreuzschraffur, Zickzack oder Punkte, je als roughjs'
+  gleichnamige Füllung. Bei der Original-Dichte decken alle vier fast voll (95–99 %); die Füllart
+  ändert die Textur, kaum den Anteil.
+- **Striche wie auf dem Canvas:** gerade Enden (`lineCap: butt`), ohne Lücke an Knicken.
 
-Füllart und Dichte machen aus einer Form viele. Ein mit Punkten gefüllter Kreis wirkt groß und bemalt
-wenig. Die Region bleibt scharf und deckend, so wie im Original; ihre Schwierigkeit ist die
-Selbstüberschneidung.
+Abwechslung kommt aus Form und Füllart. Die Region bleibt scharf und deckend, so wie im Original;
+ihre Schwierigkeit ist die Selbstüberschneidung.
 
 Eine Quellenangabe auf roughjs gehört in den Kopfkommentar der nachgebauten Datei.
 
@@ -408,7 +412,7 @@ Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`. Deutscher Tex
 `paint-ratio` / „Kreativverhältnis“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide
 Gesichter. Das Bild entsteht über `produceAssets` im Arbeitsspeicher. Der Seed in der URL macht Form und
 Werk reproduzierbar. **Einen Formwähler im Labor gibt es nicht:** wer eine bestimmte Form sucht,
-probiert Seeds. Hier werden Toleranzen, Dichtebereiche, Freihand und Takte nachgestimmt.
+probiert Seeds. Hier werden Toleranzen, Freihand und Takte nachgestimmt.
 
 ## Tests
 
