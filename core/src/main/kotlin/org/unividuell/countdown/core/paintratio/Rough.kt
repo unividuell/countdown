@@ -1,5 +1,20 @@
-// Ported from roughjs 4.6.6 (https://github.com/pshihn/rough), MIT License, Copyright (c) 2019 Preet Shihn,
-// and from its scan line, hachure-fill 0.5.2, MIT License, Copyright (c) 2023 Preet Shihn.
+// Ported from roughjs 4.6.6 (https://github.com/pshihn/rough) and from its scan line, hachure-fill 0.5.2.
+//
+// MIT License. roughjs: Copyright (c) 2019 Preet Shihn. hachure-fill: Copyright (c) 2023 Preet Shihn.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+// to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+// the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+// THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
 package org.unividuell.countdown.core.paintratio
 
 import org.unividuell.countdown.core.rng.SeededRandom
@@ -559,6 +574,7 @@ private fun corner(x: Int, y: Int): Point {
     return Point(x = x, y = y)
 }
 
+/** Not kotlin.math.hypot: that is `Math.hypot`, within 1 ulp only and not the same on every JVM. */
 private fun hypot(x: Double, y: Double): Double = sqrt(x * x + y * y)
 
 private fun distance(a: Vec, b: Vec): Double = hypot(x = b.x - a.x, y = b.y - a.y)

@@ -6,7 +6,6 @@ import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.doubles.shouldBeLessThanOrEqual
 import io.kotest.matchers.ints.shouldBeGreaterThan
-import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -51,7 +50,7 @@ class RoughTest {
 
     /** How far a displacement of [perAxis] on each axis and [anyWay] in any direction moves [rho] at most. */
     private fun slack(perAxis: Double, anyWay: Double, a: Double, b: Double) =
-        perAxis * sqrt(1 / (a * a) + 1 / (b * b)) + anyWay / min(a, b)
+        perAxis * sqrt(1 / (a * a) + 1 / (b * b)) + anyWay / min(a = a, b = b)
 
     /** roughjs ops split into subpaths, each a move and what follows it. */
     private fun subpaths(ops: List<Op>): List<List<Op>> = buildList {
@@ -181,12 +180,33 @@ class RoughTest {
     }
 
     @Test
+    fun `seed 7 draws the ops roughjs draws on the same random stream`() {
+        // Counted on roughjs 4.6.6 with its random() fed by SeededRandom.fromSeed(7): a 240 px circle at (150, 112.5).
+        val roughjs = mapOf(
+            FillStyle.HACHURE to 240,
+            FillStyle.CROSS_HATCH to 480,
+            FillStyle.ZIGZAG to 472,
+            FillStyle.DOTS to 60_126,
+        )
+
+        for ((style, fillOps) in roughjs) {
+            val drawable = rough(7).ellipses(center = centre, sizes = listOf(960.0 to 960.0), fill = style)
+
+            withClue(style) {
+                drawable.outline.size shouldBe 40
+                drawable.outline.first() shouldBe Op.Move(Vec(x = 167.34303915572934, y = -11.171451764271978))
+                drawable.fill.size shouldBe fillOps
+            }
+        }
+    }
+
+    @Test
     fun `cross-hatch is hachure plus a second pass`() {
         for (seed in 1..10) {
             fun cells(style: FillStyle) =
                 raster(rough(seed).ellipse(center = centre, width = 600.0, height = 400.0, fill = style).fill).cells()
 
-            cells(FillStyle.CROSS_HATCH) shouldBeGreaterThanOrEqual cells(FillStyle.HACHURE)
+            cells(FillStyle.CROSS_HATCH) shouldBeGreaterThan cells(FillStyle.HACHURE)
         }
     }
 
