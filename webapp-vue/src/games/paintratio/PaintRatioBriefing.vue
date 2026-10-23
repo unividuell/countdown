@@ -5,7 +5,7 @@ import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 import type { AwardRule } from '@/api/types'
 import PaintRatioRules from './PaintRatioRules.vue'
-import { formatPercent } from './scoreboard'
+import { formatShare } from './scoreboard'
 
 const props = defineProps<{
   awardRule: AwardRule | null
@@ -15,7 +15,7 @@ const props = defineProps<{
 }>()
 
 const toleranceLabel = computed(() =>
-  props.tolerance === null ? null : formatPercent(props.tolerance),
+  props.tolerance === null ? null : `${formatShare(props.tolerance)} Prozentpunkte`,
 )
 </script>
 

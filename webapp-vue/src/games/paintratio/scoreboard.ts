@@ -11,7 +11,7 @@ import { asPaintRatioOutcome, strokesOf } from './types'
 import type { PaintRatioOutcome, Stroke } from './types'
 
 export interface ScoreRow extends ScoreboardRow {
-  /** The painted share, e.g. `42,3 %`; `null` without a readable outcome. */
+  /** The painted share in percentage points, e.g. `42,3`; `null` without a readable outcome. */
   ratioLabel: string | null
   /** Share minus target, signed; `null` without a readable outcome. */
   differenceLabel: string | null
@@ -19,27 +19,29 @@ export interface ScoreRow extends ScoreboardRow {
   strokes: Stroke[] | null
 }
 
-const percent = new Intl.NumberFormat('de-DE', {
-  style: 'percent',
+/**
+ * Shares and differences are percentage points, one decimal, no unit: the table's star names the
+ * unit once, and a „%“ on a difference would read as relative.
+ */
+const points = new Intl.NumberFormat('de-DE', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 })
 
-const signedPercent = new Intl.NumberFormat('de-DE', {
-  style: 'percent',
+const signedPoints = new Intl.NumberFormat('de-DE', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
   signDisplay: 'exceptZero',
 })
 
-/** `0.4234` → `42,3 %`. */
-export function formatPercent(fraction: number): string {
-  return percent.format(fraction)
+/** `0.4234` → `42,3`. */
+export function formatShare(fraction: number): string {
+  return points.format(fraction * 100)
 }
 
-/** `0.012` → `+1,2 %`; a difference that rounds to zero carries no sign. */
+/** `0.012` → `+1,2`; a difference that rounds to zero carries no sign. */
 export function formatDifference(fraction: number): string {
-  return signedPercent.format(fraction)
+  return signedPoints.format(fraction * 100)
 }
 
 /**
@@ -65,7 +67,7 @@ export function scoreRows(input: {
       outcome,
       row: {
         ...rowHead(entry, input.awardRule),
-        ratioLabel: outcome === null ? null : formatPercent(outcome.ratio),
+        ratioLabel: outcome === null ? null : formatShare(outcome.ratio),
         differenceLabel: outcome === null ? null : formatDifference(outcome.difference),
         strokes: outcome === null ? null : strokesOf(entry.guess, input.brushCount),
       },

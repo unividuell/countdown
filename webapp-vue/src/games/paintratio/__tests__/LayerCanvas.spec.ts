@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import LayerCanvas from '@/games/paintratio/LayerCanvas.vue'
+import { CANVAS_GROUND } from '@/games/paintratio/render'
 import type { CanvasLayer } from '@/games/paintratio/render'
 import type { Stroke } from '@/games/paintratio/types'
 
@@ -81,7 +82,7 @@ describe('LayerCanvas', () => {
     const painted = log
       .filter(([name]) => name === 'set fillStyle' || name === 'drawImage')
       .map(([name, value]) => (name === 'drawImage' ? 'picture' : value))
-    expect(painted).toEqual(['#ffffff', '#ff0000', 'picture', '#0000ff'])
+    expect(painted).toEqual([CANVAS_GROUND, '#ff0000', 'picture', '#0000ff'])
     expect(log.find(([name]) => name === 'drawImage')).toEqual([
       'drawImage',
       wrapper.get('img').element,
@@ -124,6 +125,12 @@ describe('LayerCanvas', () => {
 
     expect(log).toContainEqual(['moveTo', 100, 100])
     expect(log).toContainEqual(['lineTo', 200, 0])
-    expect(log).not.toContainEqual(['set fillStyle', '#ffffff'])
+    expect(log).not.toContainEqual(['set fillStyle', CANVAS_GROUND])
+  })
+})
+
+describe('CANVAS_GROUND', () => {
+  it('is an off-white, so the canvas shows where it ends on the white card', () => {
+    expect(CANVAS_GROUND).toBe('#f5f5f5')
   })
 })

@@ -7,10 +7,13 @@
  * that lays that painting on the canvas. Beneath the table, set apart, the Kollektiv Kommune is
  * the last row, and its button switches the picture itself.
  *
- *   Name                 Anteil   Differenz   Pkt
- *   anna                 41,0 %     -2,3 %     1
+ *                        Lösung*  Toleranz
+ *   Auswertung             43,3     ± 1,0
+ *   Name                 Anteil*  Differenz   Pkt
+ *   anna                   41,0      -2,3      1
  *   ─────────────────────────────────────────────
- *   Kollektiv Kommune    43,3 %      0,0 %     —
+ *   Kollektiv Kommune      43,3       0,0      —
+ *                  * Anteil Farbe auf Leinwand [%]
  */
 import { computed } from 'vue'
 import { hasDurations } from '@/games/durations'
@@ -19,7 +22,7 @@ import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { KOLLEKTIV } from './layers'
-import { formatDifference, formatPercent } from './scoreboard'
+import { formatDifference, formatShare } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 
 const props = defineProps<{
@@ -41,8 +44,8 @@ const emit = defineEmits<{ select: [id: string] }>()
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'ratio',
-    label: 'Anteil',
-    fact: formatPercent(props.targetRatio),
+    label: 'Anteil*',
+    fact: 'Lösung*',
     width: '3.5rem',
     align: 'end',
     numeric: true,
@@ -50,7 +53,7 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'difference',
     label: 'Differenz',
-    ...(props.tolerance === null ? {} : { fact: `± ${formatPercent(props.tolerance)}` }),
+    ...(props.tolerance === null ? {} : { fact: 'Toleranz' }),
     width: '4rem',
     align: 'end',
     numeric: true,
@@ -71,6 +74,9 @@ const kollektivColumns = computed(() =>
 )
 
 const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:-outline-offset-2'
+
+/** The head's values are the Kollektiv's, so they wear its row's ground, right-aligned like the column. */
+const FACT = 'block bg-neutral-200 px-0.5 text-end text-neutral-900 tabular-nums'
 
 const still = isStill(props.animate)
 const { shown } = useRevealArming(still)
@@ -104,13 +110,19 @@ const { shown } = useRevealArming(still)
         <template v-else>{{ row.name }}</template>
       </template>
 
-      <!-- Small: „+12,3 %“ must fit the narrow columns that leave the name its room. -->
-      <template #cell-ratio="{ row }">
-        <span class="text-sm">{{ row.ratioLabel ?? '—' }}</span>
+      <template #fact-ratio>
+        <span data-test="paint-ratio-solution" :class="FACT">{{
+          formatShare(props.targetRatio)
+        }}</span>
       </template>
-      <template #cell-difference="{ row }">
-        <span class="text-sm">{{ row.differenceLabel ?? '—' }}</span>
+      <template v-if="props.tolerance !== null" #fact-difference>
+        <span data-test="paint-ratio-tolerance" :class="FACT"
+          >± {{ formatShare(props.tolerance) }}</span
+        >
       </template>
+
+      <template #cell-ratio="{ row }">{{ row.ratioLabel ?? '—' }}</template>
+      <template #cell-difference="{ row }">{{ row.differenceLabel ?? '—' }}</template>
     </RevealScoreboard>
 
     <hr class="border-neutral-300" />
@@ -118,7 +130,7 @@ const { shown } = useRevealArming(still)
     <!-- Appears with the head, when the solution does: it names the target. -->
     <div
       data-test="paint-ratio-kollektiv"
-      class="grid gap-x-1 text-sm text-neutral-900 transition-opacity"
+      class="grid gap-x-1 text-neutral-900 transition-opacity"
       :class="shown ? 'opacity-100' : 'opacity-0'"
       :style="{
         gridTemplateColumns: kollektivColumns,
@@ -140,7 +152,7 @@ const { shown } = useRevealArming(still)
         >
       </button>
       <span class="flex items-center justify-end bg-neutral-200 px-0.5 tabular-nums">{{
-        formatPercent(props.targetRatio)
+        formatShare(props.targetRatio)
       }}</span>
       <span class="flex items-center justify-end bg-neutral-200 px-0.5 tabular-nums">{{
         formatDifference(0)
@@ -152,5 +164,9 @@ const { shown } = useRevealArming(still)
       >
       <span class="flex items-center justify-end bg-neutral-200 px-px tabular-nums">—</span>
     </div>
+
+    <p data-test="paint-ratio-legend" class="text-end text-xs text-neutral-600">
+      * Anteil Farbe auf Leinwand [%]
+    </p>
   </div>
 </template>

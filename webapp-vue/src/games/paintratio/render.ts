@@ -1,5 +1,10 @@
 import type { Stroke } from './types'
 
+/**
+ * The canvas's own colour: an off-white (`neutral-100`), so it shows where it ends on the white card.
+ */
+export const CANVAS_GROUND = '#f5f5f5'
+
 /** What a canvas layer shows: the template, or the player's strokes. */
 export type CanvasLayer = { kind: 'template' } | { kind: 'strokes'; strokes: readonly Stroke[] }
 

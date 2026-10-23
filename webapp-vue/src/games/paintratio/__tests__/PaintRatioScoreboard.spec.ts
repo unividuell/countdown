@@ -3,7 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { KOLLEKTIV } from '@/games/paintratio/layers'
 import PaintRatioScoreboard from '@/games/paintratio/PaintRatioScoreboard.vue'
-import { formatDifference, formatPercent } from '@/games/paintratio/scoreboard'
+import { formatDifference, formatShare } from '@/games/paintratio/scoreboard'
 import type { ScoreRow } from '@/games/paintratio/scoreboard'
 import type { Stroke } from '@/games/paintratio/types'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
@@ -20,8 +20,8 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
     points: 1,
     provisional: false,
     tick: 0,
-    ratioLabel: '40,0 %',
-    differenceLabel: '0,0 %',
+    ratioLabel: '40,0',
+    differenceLabel: '0,0',
     strokes: PAINTING,
     ...over,
   }
@@ -51,32 +51,47 @@ describe('PaintRatioScoreboard', () => {
     const wrapper = mountBoard([row({ userId: 'a' })])
 
     expect(wrapper.get('caption').text()).toBe('Alle Gemälde der Runde, nach Abweichung sortiert')
-    expect(wrapper.text()).toContain('Anteil')
+    expect(wrapper.text()).toContain('Anteil*')
     expect(wrapper.text()).toContain('Differenz')
   })
 
-  it('puts the target share and, in phase one, the tolerance in the head', () => {
+  it('says beneath the table what the starred numbers are', () => {
     const wrapper = mountBoard([row({ userId: 'a' })])
 
-    expect(wrapper.get('#ratio-fact').text()).toBe(formatPercent(0.4234))
-    expect(wrapper.get('#difference-fact').text()).toBe(`± ${formatPercent(0.05)}`)
+    expect(wrapper.get('[data-test="paint-ratio-legend"]').text()).toBe(
+      '* Anteil Farbe auf Leinwand [%]',
+    )
+  })
+
+  it('heads the target share and, in phase one, the tolerance, right-aligned under a label', () => {
+    const wrapper = mountBoard([row({ userId: 'a' })])
+    const solution = wrapper.get('[data-test="paint-ratio-solution"]')
+    const tolerance = wrapper.get('[data-test="paint-ratio-tolerance"]')
+
+    expect(wrapper.get('#ratio-fact').text()).toBe('Lösung*')
+    expect(wrapper.get('#difference-fact').text()).toBe('Toleranz')
+    expect(solution.text()).toBe(formatShare(0.4234))
+    expect(tolerance.text()).toBe(`± ${formatShare(0.05)}`)
+    expect(solution.classes()).toContain('text-end')
+    expect(tolerance.classes()).toContain('text-end')
   })
 
   it('has no tolerance in the head in phase two', () => {
     const wrapper = mountBoard([row({ userId: 'a' })], { tolerance: null })
 
-    expect(wrapper.get('#ratio-fact').text()).toBe(formatPercent(0.4234))
+    expect(wrapper.get('[data-test="paint-ratio-solution"]').text()).toBe(formatShare(0.4234))
     expect(wrapper.find('#difference-fact').exists()).toBe(false)
+    expect(wrapper.find('[data-test="paint-ratio-tolerance"]').exists()).toBe(false)
   })
 
   it('prints a row`s share and difference, a dash where there is none', () => {
     const wrapper = mountBoard([
-      row({ userId: 'a', ratioLabel: '41,0 %', differenceLabel: '+1,0 %' }),
+      row({ userId: 'a', ratioLabel: '41,0', differenceLabel: '+1,0' }),
       row({ userId: 'b', ratioLabel: null, differenceLabel: null, strokes: null, points: null }),
     ])
 
-    expect(wrapper.get('[data-test="cell-ratio-a"]').text()).toBe('41,0 %')
-    expect(wrapper.get('[data-test="cell-difference-a"]').text()).toBe('+1,0 %')
+    expect(wrapper.get('[data-test="cell-ratio-a"]').text()).toBe('41,0')
+    expect(wrapper.get('[data-test="cell-difference-a"]').text()).toBe('+1,0')
     expect(wrapper.get('[data-test="cell-ratio-b"]').text()).toBe('—')
     expect(wrapper.get('[data-test="cell-difference-b"]').text()).toBe('—')
   })
@@ -107,7 +122,7 @@ describe('PaintRatioScoreboard', () => {
       const kollektiv = wrapper.get('[data-test="paint-ratio-kollektiv"]')
 
       expect(kollektiv.text()).toContain('Kollektiv Kommune')
-      expect(kollektiv.text()).toContain(formatPercent(0.4234))
+      expect(kollektiv.text()).toContain(formatShare(0.4234))
       expect(kollektiv.text()).toContain(formatDifference(0))
       expect(kollektiv.text()).toContain('—')
       expect(wrapper.find('hr').exists()).toBe(true)

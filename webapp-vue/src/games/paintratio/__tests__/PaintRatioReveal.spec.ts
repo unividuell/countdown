@@ -6,7 +6,7 @@ import type { GameEntry } from '@/games/GameEntry'
 import LayerCanvas from '@/games/paintratio/LayerCanvas.vue'
 import PaintRatioReveal from '@/games/paintratio/PaintRatioReveal.vue'
 import type { CanvasLayer } from '@/games/paintratio/render'
-import { formatPercent, scoreRows } from '@/games/paintratio/scoreboard'
+import { formatShare, scoreRows } from '@/games/paintratio/scoreboard'
 import type { PaintRatioPayload, PaintRatioSolution, Stroke } from '@/games/paintratio/types'
 import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 
@@ -91,15 +91,17 @@ describe('PaintRatioReveal', () => {
   it('shows the target ratio and, in phase one, the tolerance in the head', () => {
     const one = mountReveal()
 
-    expect(one.get('#ratio-fact').text()).toBe(formatPercent(0.4234))
-    expect(one.get('#difference-fact').text()).toBe(`± ${formatPercent(0.05)}`)
+    expect(one.get('#ratio-fact').text()).toBe('Lösung*')
+    expect(one.get('[data-test="paint-ratio-solution"]').text()).toBe(formatShare(0.4234))
+    expect(one.get('#difference-fact').text()).toBe('Toleranz')
+    expect(one.get('[data-test="paint-ratio-tolerance"]').text()).toBe(`± ${formatShare(0.05)}`)
 
     const two = mountReveal({
       payload: { ...PAYLOAD, tolerance: null },
       solution: { targetRatio: 0.4234, tolerance: null },
     })
 
-    expect(two.get('#ratio-fact').text()).toBe(formatPercent(0.4234))
+    expect(two.get('[data-test="paint-ratio-solution"]').text()).toBe(formatShare(0.4234))
     expect(two.find('#difference-fact').exists()).toBe(false)
   })
 

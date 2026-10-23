@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import type { GameEntry } from '@/games/GameEntry'
-import { formatDifference, formatPercent, scoreRows } from '@/games/paintratio/scoreboard'
+import { formatDifference, formatShare, scoreRows } from '@/games/paintratio/scoreboard'
 import type { PaintRatioOutcome, Stroke } from '@/games/paintratio/types'
 
 const PAINTING: Stroke[] = [{ brush: 0, color: '#ff0000', points: [10, 10, 20, 20] }]
@@ -27,29 +27,28 @@ function rowsOf(
   })
 }
 
-describe('formatPercent / formatDifference', () => {
-  it('formats German percent with one decimal', () => {
-    expect(formatPercent(0.4234)).toBe('42,3 %')
-    expect(formatPercent(0.05)).toBe('5,0 %')
-    expect(formatDifference(0.012)).toBe('+1,2 %')
-    expect(formatDifference(0)).toBe('0,0 %')
+describe('formatShare / formatDifference', () => {
+  it('formats percentage points with one German decimal and no unit', () => {
+    expect(formatShare(0.4234)).toBe('42,3')
+    expect(formatShare(0.05)).toBe('5,0')
+    expect(formatDifference(0.012)).toBe('+1,2')
+    expect(formatDifference(0)).toBe('0,0')
   })
 
   it('signs a shortfall the way Intl does for German', () => {
     const intl = new Intl.NumberFormat('de-DE', {
-      style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
       signDisplay: 'exceptZero',
     })
 
-    expect(formatDifference(-0.008)).toBe(intl.format(-0.008))
+    expect(formatDifference(-0.008)).toBe(intl.format(-0.8))
     expect(formatDifference(-0.008)).toContain('0,8')
   })
 
   it('signs nothing that rounds to zero', () => {
-    expect(formatDifference(-0.0004)).toBe('0,0 %')
-    expect(formatDifference(0.0004)).toBe('0,0 %')
+    expect(formatDifference(-0.0004)).toBe('0,0')
+    expect(formatDifference(0.0004)).toBe('0,0')
   })
 })
 
@@ -70,7 +69,7 @@ describe('scoreRows', () => {
   it('labels the share and the signed difference', () => {
     const [row] = rowsOf([entry({ outcome: outcome(-0.008, 0.4234) })])
 
-    expect(row!.ratioLabel).toBe(formatPercent(0.4234))
+    expect(row!.ratioLabel).toBe(formatShare(0.4234))
     expect(row!.differenceLabel).toBe(formatDifference(-0.008))
     expect(row!.strokes).toEqual(PAINTING)
   })

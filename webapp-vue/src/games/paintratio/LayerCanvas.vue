@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * A white canvas that draws its layers in order, later over earlier: the template picture, or a
+ * An off-white canvas that draws its layers in order, later over earlier: the template picture, or a
  * set of strokes. Display only — nothing is ever read back from it; the strokes are the truth.
  *
  * The backing store follows the CSS size × `devicePixelRatio`, so strokes stay sharp on any phone.
  * Without a 2D context (happy-dom) it draws nothing.
  */
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { drawSegment as paintSegment, drawStrokes } from './render'
+import { CANVAS_GROUND, drawSegment as paintSegment, drawStrokes } from './render'
 import type { CanvasLayer } from './render'
 import type { Stroke } from './types'
 
@@ -35,7 +35,7 @@ function redraw(): void {
   const el = canvas.value
   if (ctx === null || !el) return
 
-  ctx.fillStyle = '#ffffff'
+  ctx.fillStyle = CANVAS_GROUND
   ctx.fillRect(0, 0, el.width, el.height)
 
   for (const layer of props.layers) {

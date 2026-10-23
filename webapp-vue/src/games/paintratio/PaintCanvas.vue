@@ -133,7 +133,7 @@ useEventListener(document, 'visibilitychange', () => {
   <div
     ref="field"
     data-test="paint-ratio-canvas"
-    class="relative w-full touch-none overflow-hidden bg-white select-none [-webkit-touch-callout:none]"
+    class="relative w-full touch-none overflow-hidden bg-neutral-100 select-none [-webkit-touch-callout:none]"
     :style="{ aspectRatio: `${props.width} / ${props.height}` }"
     @pointerdown="onDown"
     @pointermove="onMove"
