@@ -28,6 +28,7 @@ export const labGameList: readonly LabGameEntry[] = [
   { id: 'deduster', title: 'Entstauber' },
   { id: 'place-patch', title: 'Platzierung' },
   { id: 'copy-blocks', title: 'Blockierung' },
+  { id: 'paint-ratio', title: 'Anmaßung' },
 ]
 
 /** Lookup by URL segment, for the game page. */

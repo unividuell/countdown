@@ -23,11 +23,17 @@ desktop layout that was written first).
   drawer's backdrop too.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
+- **What changes round to round goes in a box's headline.** `InfoBox` and `AwardBox` fold, and
+  folded — remembered per game — is their usual state, so a figure only in the body goes unread:
+  the stake, a tolerance. The body may say it again in a sentence. See `AwardBox`'s `detail`
+  (Anmaßung: „Toleranz 5,0%“).
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
   One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar
   (`games/copyblocks/CopyBlocksBoard.vue`) never scrolls, so on a narrow phone its up to eight
-  slots shrink below 44px (38.6px at 375px).
+  slots shrink below 44px (38.6px at 375px). Likewise Anmaßung's tools: the owner wants
+  brushes and undo/redo packed into groups as in the original, so they are 32px wide (44 tall),
+  and the row never wraps — the colour picker gives way instead (`PaintRatioBoard`).
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the
   OS image menu and fires `pointercancel` mid-gesture — on a clock, that costs time. Give the
   image `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
@@ -127,6 +133,19 @@ it is the only proof available — no unit test can see them.
   default is prevented so the button's own click never fires. It fails closed. The residual limit
   (someone who cannot hold a key for the full duration) is real and belongs in the spec, not in a
   cheaper fallback. `ui/HoldButton.vue` is the worked example.
+- **A board whose hold button can be covered draws the hold itself, large, on the play area — and
+  a touch there cancels it.** A palm resting on the button while painting would submit unseen.
+  `HoldButton` emits `progress` for the board to draw; its `disabled` watch cancels a running hold,
+  so the board disables it while the play area is touched. `PaintRatioBoard` is the worked example.
+- **A surface where play starts drags at its rim stays off the screen's side edges.** On a phone
+  the OS owns a touch that starts there: Android's gesture navigation reads both edges as „back“,
+  iOS Safari the left one, and no web API excludes a zone or reports its width (a user setting).
+  A stroke set at the rim of Anmaßung's full-bleed canvas left the round. Keep such a
+  surface inside the page gutter — the zone may be wider still, so this shrinks the clash rather
+  than ruling it out. The rim stays reachable: a drag begun inside may leave the surface under
+  pointer capture.
+  The bleed stays where nothing drags (Entstauber: taps), the player easily works around the rim
+  (Platzierung) or play happens centrally (Blockierung). See `PaintRatioBoard`.
 - **A container that reads raw pointer events must exempt whatever it nests.** `pointerdown` bubbles,
   so a press on the button in `HueWheel`'s centre slot reached the wheel, which captured the pointer
   and began a drag — and the wheel then followed every later move, so the angle finally submitted was

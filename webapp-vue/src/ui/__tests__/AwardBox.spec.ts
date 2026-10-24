@@ -3,9 +3,13 @@ import { mount } from '@vue/test-utils'
 import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 
-function mountBox(awardRule: 'ALL_QUALIFYING' | 'CLOSEST_ONLY', awardPoints: number) {
+function mountBox(
+  awardRule: 'ALL_QUALIFYING' | 'CLOSEST_ONLY',
+  awardPoints: number,
+  detail: string | null = null,
+) {
   return mount(AwardBox, {
-    props: { awardRule, awardPoints, gameId: 'guess-hue' },
+    props: { awardRule, awardPoints, gameId: 'guess-hue', detail },
     slots: {
       qualifies: '<span>Nah genug am Farbton</span>',
       closest: '<span>Am nächsten am Farbton</span>',
@@ -23,6 +27,13 @@ describe('AwardBox', () => {
     await w.get('[data-test="info-box-toggle"]').trigger('click')
 
     expect(w.text()).toContain('7 Punkte')
+  })
+
+  it("adds the round's own figure to the abstract, collapsed too", async () => {
+    const w = mountBox('ALL_QUALIFYING', 1, 'Toleranz 5,0%')
+    await w.get('[data-test="info-box-toggle"]').trigger('click')
+
+    expect(w.text()).toContain('Jeder gültige Tipp: 1 Punkt · Toleranz 5,0%')
   })
 
   it('names the phase one rule and its single point', () => {
