@@ -82,6 +82,9 @@ class PlayService(
             roundGameId = requireNotNull(current.roundGame.id),
             userId = userId,
         ) ?: throw NotRevealedException()
+        // A spent guess never reaches judge(): it may be the round's most expensive call, and a
+        // repeat must not buy it again. A shortcut only — recordGuess() below stays the guard.
+        if (play.guessedAt != null) throw AlreadyGuessedException()
 
         // judge() before any write: an invalid guess must not consume the one attempt.
         //
