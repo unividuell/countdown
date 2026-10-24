@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import type { RoundAssets } from '@/api/assets'
+import * as rounds from '@/api/rounds'
 import type { RoundResponse } from '@/api/types'
 import LabelledDivider from '@/ui/LabelledDivider.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundHistory from '@/rounds/RoundHistory.vue'
+import type { RoundReview } from '@/rounds/review'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import { useRoundHistory } from '@/rounds/useRoundHistory'
 
@@ -223,6 +225,30 @@ describe('RoundHistory', () => {
 
     expect(w.find('[data-test="tip-grid"]').exists()).toBe(true)
     expect(w.find('[data-test="spot-map"]').exists()).toBe(false)
+  })
+
+  // A ballot re-scores the round, and its points count into the roster above this section.
+  it('tells the page once a ballot went through, so the roster can catch up', async () => {
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [closed(13)] }))
+    vi.spyOn(rounds, 'castVote').mockResolvedValue(closed(13))
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    const review = w.getComponent(RoundCard).props('review') as RoundReview
+    await review.vote('other', 'FLAG')
+
+    expect(w.emitted('reviewed')).toHaveLength(1)
+  })
+
+  it('stays silent when a ballot is refused', async () => {
+    vi.mocked(useRoundHistory).mockReturnValue(mockHistory({ items: [closed(13)] }))
+    vi.spyOn(rounds, 'castVote').mockRejectedValue(new Error('boom'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const w = mount(RoundHistory, { props: { slug: 'team', from: 13 } })
+
+    const review = w.getComponent(RoundCard).props('review') as RoundReview
+    await review.vote('other', 'FLAG')
+
+    expect(w.emitted('reviewed')).toBeUndefined()
   })
 
   it('reports a failed load without dropping what it already has', () => {
