@@ -115,6 +115,10 @@ tab. So:
   budget, never a copy of a game's timetable: a new game fits inside it or raises it, and nothing
   synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
   choreography left to protect, and lag for that reader is the wrong way round.
+- **Every call the server answers with a re-scored round refreshes the roster.** Guess, ballot,
+  override, give-up all run `RoundScoring.reevaluate`, so the roster's points move with them. A
+  guess or give-up goes through `refreshAfterGuess`; a ballot through plain `refresh` — the scoreboard already
+  shows its numbers. Ballots happen in two places: the running round and the history's open one.
 
 **A game's reveal is one event, so its choreography is shared.** The board's marker and the
 scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay

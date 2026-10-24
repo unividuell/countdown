@@ -345,6 +345,27 @@ describe('RoundCard', () => {
     expect(w.emitted('guessed')).toBeFalsy()
   })
 
+  // Giving up spends the guess and re-scores the round on the server, just like a guess.
+  it('emits guessed after giving up, too', async () => {
+    const round = aRound({ me: aPlay() })
+    const w = mountCard({ round, stage: 'playing', notice: null })
+
+    await w.findComponent(StubGame).get('[data-test="stub-give-up"]').trigger('click')
+    expect(w.emitted('guessed')).toBeTruthy()
+  })
+
+  it('does not emit guessed when giving up did not go through', async () => {
+    const round = aRound({ me: aPlay() })
+    const giveUp = vi.fn()
+    const w = mountCard({ round, stage: 'playing', notice: null, giveUp })
+    giveUp.mockImplementation(async () => {
+      await w.setProps({ notice: 'Das hat nicht funktioniert. Versuch es nochmal.' })
+    })
+
+    await w.findComponent(StubGame).get('[data-test="stub-give-up"]').trigger('click')
+    expect(w.emitted('guessed')).toBeFalsy()
+  })
+
   it('shows the notice when the server refused', () => {
     const w = mountCard({
       round: aRound(),

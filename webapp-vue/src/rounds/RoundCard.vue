@@ -111,8 +111,11 @@ function onSkip(fromStage: number): void {
   void props.skip?.(fromStage)
 }
 
-function onGiveUp(): void {
-  void props.giveUp?.()
+/** Giving up spends the guess and re-scores the round, so it ends in `guessed` like a guess does. */
+async function onGiveUp(): Promise<void> {
+  if (props.giveUp === undefined) return
+  await props.giveUp()
+  if (props.notice === null) emit('guessed')
 }
 </script>
 
