@@ -4,6 +4,7 @@ import { computed, defineComponent, ref } from 'vue'
 import * as api from '@/api/communities'
 import type { RoundAssets } from '@/api/assets'
 import * as client from '@/api/client'
+import * as rounds from '@/api/rounds'
 import { communityKey } from '@/communities/context'
 import type {
   CommunityResponse,
@@ -17,6 +18,7 @@ import Page from '@/pages/c/[slug]/index.vue'
 import RoundCard from '@/rounds/RoundCard.vue'
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import RoundHistory from '@/rounds/RoundHistory.vue'
+import type { RoundReview } from '@/rounds/review'
 import { _resetCountdownState } from '@/communities/useCountdown'
 import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import { useRound } from '@/rounds/useRound'
@@ -412,6 +414,71 @@ describe('community home', () => {
     // placeholder is the visible half of that tear-down: `state` must not dip through 'loading'.
     expect(w.get('[data-test="row"]').element).toBe(rowBefore)
     expect(w.find('[data-test="roster-placeholder"]').exists()).toBe(false)
+  })
+
+  // A ballot re-scores the round on the server, so the roster's points move just as after a guess.
+  // Unlike a guess there is nothing to hold for: the scoreboard shows the new numbers at once.
+  it('takes the new points right after a ballot on the running round', async () => {
+    const round = aRoundResponse({ game: unrendered })
+    vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing', round }))
+    vi.spyOn(rounds, 'castVote').mockResolvedValue(round)
+    const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
+    const getRoster = vi.spyOn(api, 'getRoster')
+    getRoster.mockReset()
+    getRoster.mockResolvedValue([
+      { ...amy, points: { stable: 0, live: { points: 1, provisional: false } } },
+    ])
+    const w = mountPage()
+    await flushPromises()
+    getRoster.mockResolvedValue([
+      { ...amy, points: { stable: 0, live: { points: 0, provisional: false } } },
+    ])
+
+    const review = w.getComponent(RoundCard).props('review') as RoundReview
+    await review.vote('u1', 'FLAG')
+    await flushPromises()
+
+    expect(w.get('[data-swarm-item]').attributes('aria-label')).toBe(
+      'amy, 0 Punkte, diese Runde ohne Punkte',
+    )
+  })
+
+  it('leaves the roster alone when a ballot is refused', async () => {
+    vi.mocked(useRound).mockReturnValue(
+      mockUseRound({ stage: 'playing', round: aRoundResponse({ game: unrendered }) }),
+    )
+    vi.spyOn(rounds, 'castVote').mockRejectedValue(new Error('boom'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const getRoster = vi.spyOn(api, 'getRoster')
+    getRoster.mockReset()
+    getRoster.mockResolvedValue([])
+    const w = mountPage()
+    await flushPromises()
+    getRoster.mockClear()
+
+    const review = w.getComponent(RoundCard).props('review') as RoundReview
+    await review.vote('u1', 'FLAG')
+    await flushPromises()
+
+    expect(getRoster).not.toHaveBeenCalled()
+  })
+
+  // The previous round is still open for review, and its points count into `stable`.
+  it('takes the new points after a ballot in the history', async () => {
+    const getRoster = vi.spyOn(api, 'getRoster')
+    getRoster.mockReset()
+    getRoster.mockResolvedValue([])
+    vi.mocked(useRound).mockReturnValue(
+      mockUseRound({ stage: 'no-game', round: aRoundResponse({ previousRoundNumber: 13 }) }),
+    )
+    const w = mountPage()
+    await flushPromises()
+    getRoster.mockClear()
+
+    await w.findComponent(RoundHistory).vm.$emit('reviewed')
+    await flushPromises()
+
+    expect(getRoster).toHaveBeenCalledTimes(1)
   })
 
   it("hands the history the running round's previous-round pointer", () => {
