@@ -23,6 +23,10 @@ desktop layout that was written first).
   drawer's backdrop too.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
+- **What changes round to round goes in a box's headline.** `InfoBox` and `AwardBox` fold, and
+  folded — remembered per game — is their usual state, so a figure only in the body goes unread:
+  the stake, a tolerance. The body may say it again in a sentence. See `AwardBox`'s `detail`
+  (Anmaßung: „Toleranz 5,0%“).
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
   One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar

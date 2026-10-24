@@ -17,6 +17,11 @@ const props = defineProps<{
 const toleranceLabel = computed(() =>
   props.tolerance === null ? null : `${formatShare(props.tolerance)} Prozentpunkte`,
 )
+
+/** For the award box's headline: collapsed, it is all the box shows. */
+const toleranceDetail = computed(() =>
+  props.tolerance === null ? null : `Toleranz ${formatShare(props.tolerance)}%`,
+)
 </script>
 
 <template>
@@ -32,6 +37,7 @@ const toleranceLabel = computed(() =>
       :award-rule="props.awardRule"
       :award-points="props.awardPoints"
       game-id="paint-ratio"
+      :detail="toleranceDetail"
     >
       <template v-if="toleranceLabel !== null" #qualifies>
         Dein Anteil darf um höchstens {{ toleranceLabel }} vom Ziel abweichen.

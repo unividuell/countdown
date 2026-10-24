@@ -501,9 +501,10 @@ describe('PaintRatioBoard', () => {
     expect(mountBoard({ pictureFailed: true }).text()).toContain('Das Bild ließ sich nicht laden.')
   })
 
-  it('states the tolerance in the award box', () => {
+  it('states the tolerance in the award box, in its headline too', () => {
     const wrapper = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
 
+    expect(wrapper.text()).toContain('Jeder gültige Tipp: 1 Punkt · Toleranz 5,0%')
     expect(wrapper.text()).toContain(
       'Dein Anteil darf um höchstens 5,0 Prozentpunkte vom Ziel abweichen.',
     )

@@ -19,6 +19,8 @@ const props = defineProps<{
   /** What this round is worth. 1 in phase one, growing from the threshold on in phase two. */
   awardPoints: number
   gameId: string
+  /** A figure of this round the game wants seen even when the box is collapsed: „Toleranz 5,0%“. */
+  detail?: string | null
 }>()
 
 const phaseTwo = computed(() => props.awardRule === 'CLOSEST_ONLY')
@@ -29,7 +31,7 @@ const points = computed(
 
 /**
  * In the abstract, not the body: collapsed is the state the box spends most of its life in, and
- * the point count is the one thing about it that changes round to round.
+ * the point count changes round to round — as does a game's `detail`.
  */
 const headline = computed(() =>
   phaseTwo.value ? `Winner takes it all: ${points.value}` : `Jeder gültige Tipp: ${points.value}`,
@@ -42,7 +44,12 @@ const storageKey = computed(() => `award:${props.gameId}:${phaseTwo.value ? 'p2'
 <template>
   <InfoBox :storage-key="storageKey" :tone="phaseTwo ? 'phase-two' : 'phase-one'">
     <template #icon><IconChartPie class="size-5" aria-hidden="true" /></template>
-    <template #abstract>{{ headline }}</template>
+    <template #abstract>
+      <span>{{ headline }}</span>
+      <template v-if="props.detail">
+        · <span class="whitespace-nowrap">{{ props.detail }}</span>
+      </template>
+    </template>
 
     <template v-if="phaseTwo">
       <p><slot name="closest" /></p>
