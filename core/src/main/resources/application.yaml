@@ -31,8 +31,8 @@ spring:
     jdbc:
       initialize-schema: never
   servlet:
-    # Boot's default is 1MB, which would reject every real upload. Must stay >= imagepool's
-    # maxBytes (ImagePoolProperties, 15 MB).
+    # Boot's default is 1MB, which would reject every real upload. Must stay >= both pools'
+    # maxBytes (ImagePoolProperties 15 MB, AudioPoolProperties 5 MB).
     multipart:
       max-file-size: 15MB
       max-request-size: 16MB
