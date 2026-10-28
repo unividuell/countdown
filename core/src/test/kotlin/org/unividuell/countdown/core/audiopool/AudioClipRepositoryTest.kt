@@ -19,11 +19,19 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.audiopool.internal.AUDIO_LOCK_CLASS
 import org.unividuell.countdown.core.audiopool.internal.AudioClip
 import org.unividuell.countdown.core.audiopool.internal.AudioClipRepository
+import org.unividuell.countdown.core.audiopool.internal.AudioPoolContext
+import org.unividuell.countdown.core.audiopool.internal.AudioPoolService
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.UUID
+import javax.sound.sampled.AudioFileFormat
+import javax.sound.sampled.AudioFormat
+import javax.sound.sampled.AudioInputStream
+import javax.sound.sampled.AudioSystem
 import javax.sql.DataSource
 import kotlin.test.assertFailsWith
 
@@ -42,6 +50,7 @@ class AudioClipRepositoryTest(
     @Autowired val jdbc: JdbcTemplate,
     @Autowired val dataSource: DataSource,
     @Autowired val transactions: TransactionTemplate,
+    @Autowired val service: AudioPoolService,
 ) {
     private val createdCommunities = mutableListOf<UUID>()
 
@@ -184,6 +193,38 @@ class AudioClipRepositoryTest(
                 }
             }
         }
+    }
+
+    /**
+     * The only place the upload path itself meets a database: AudioPoolServiceTest mocks the
+     * repository, so nothing else ever runs the real service's lock, quota read and insert inside
+     * its TransactionTemplate.
+     */
+    @Test
+    fun `the real upload path takes the lock and commits the row`() {
+        val alice = user("alice7")
+        val theta = community(name = "Theta", owner = alice)
+        val bytes = wav()
+
+        val stored = service.upload(
+            pool = AudioPoolContext(communityId = theta, viewerIsAdmin = false),
+            uploaderId = alice,
+            fileName = "spruch.wav",
+            bytes = bytes,
+        )
+
+        clips.countInPool(theta) shouldBe 1L
+        clips.findSummary(stored.id).shouldNotBeNull().uploadedBy shouldBe alice
+        clips.findWav(stored.id) shouldBe bytes
+    }
+
+    private fun wav(): ByteArray {
+        val format = AudioFormat(48_000f, 16, 1, true, false)
+        val out = ByteArrayOutputStream()
+        AudioInputStream(ByteArrayInputStream(ByteArray(480 * format.frameSize)), format, 480L).use {
+            AudioSystem.write(it, AudioFileFormat.Type.WAVE, out)
+        }
+        return out.toByteArray()
     }
 
     @Test
