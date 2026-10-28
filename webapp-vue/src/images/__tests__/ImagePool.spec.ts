@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ImagePool from '@/images/ImagePool.vue'
 import * as api from '@/api/images'
+import * as upload from '@/api/upload'
 import type { VueWrapper } from '@vue/test-utils'
 
 /** `defineExpose` is invisible to the wrapper's type, so reach for it once, here. */
@@ -51,41 +52,37 @@ describe('ImagePool', () => {
     expect(w.text()).not.toContain('alice')
   })
 
-  it('uploads the picked files one after another, not in parallel', async () => {
+  it("uploads through uploadFile under the file's own name", async () => {
     vi.spyOn(api, 'listImages').mockResolvedValue({ ...listResponse, images: [] })
-    let inFlight = 0
-    let maxInFlight = 0
-    const upload = vi.spyOn(api, 'uploadImage').mockImplementation(async () => {
-      inFlight += 1
-      maxInFlight = Math.max(maxInFlight, inFlight)
-      await Promise.resolve()
-      inFlight -= 1
-      return listResponse.images[0]!
-    })
+    const send = vi.spyOn(upload, 'uploadFile').mockResolvedValue(listResponse.images[0]!)
 
     const w = mount(ImagePool, { props: { base: '/api/communities/alpha/images' } })
     await flushPromises()
-    await exposed(w).enqueue([file('a.jpg'), file('b.jpg'), file('c.jpg')])
+    const picked = file('a.jpg')
+    await exposed(w).enqueue([picked])
     await flushPromises()
 
-    expect(upload).toHaveBeenCalledTimes(3)
-    expect(maxInFlight).toBe(1)
+    expect(send).toHaveBeenCalledWith(
+      '/api/communities/alpha/images',
+      picked,
+      'a.jpg',
+      expect.any(Function),
+    )
+    expect(w.get('[data-test="queue-row"]').text()).toContain('Fertig')
   })
 
-  it('names the reason on the failing file and carries on with the rest', async () => {
+  it("words a refusal with the image pool's own reasons", async () => {
     vi.spyOn(api, 'listImages').mockResolvedValue({ ...listResponse, images: [] })
-    vi.spyOn(api, 'uploadImage')
-      .mockRejectedValueOnce(new api.UploadError('HEIC_UNSUPPORTED', 415))
-      .mockResolvedValueOnce(listResponse.images[0]!)
+    vi.spyOn(upload, 'uploadFile').mockRejectedValue(
+      new upload.UploadError('HEIC_UNSUPPORTED', 415),
+    )
 
     const w = mount(ImagePool, { props: { base: '/api/communities/alpha/images' } })
     await flushPromises()
-    await exposed(w).enqueue([file('a.heic'), file('b.jpg')])
+    await exposed(w).enqueue([file('a.heic')])
     await flushPromises()
 
-    const rows = w.findAll('[data-test="queue-row"]')
-    expect(rows[0]!.text()).toContain('HEIC')
-    expect(rows[1]!.text()).toContain('Fertig')
+    expect(w.get('[data-test="queue-row"]').text()).toContain('HEIC')
   })
 
   it('asks before deleting, because it is final', async () => {
