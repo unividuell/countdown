@@ -229,12 +229,15 @@ möglich.
 **Liste:** eine Zeile pro Datei — Abspielknopf, Dateiname, Dauer (eine Nachkommastelle), für die
 Leitung der Name des Hochladenden, Löschen mit Rückfrage. Darüber der Zähler „12 von 200“.
 
-**Abspielen:** Antippen lädt das WAV (über den binären Beistand wie `fetchAssetBlob`, mit Cookie) und
-spielt es über den geteilten Graphen ab, wie in `frontend-state.md` für kurze Clips verlangt — eine
-Datei kann unter einer Sekunde liegen. Es spielt immer nur eine; ein zweites Antippen stoppt. Dafür
-gibt es `usePlayback` (`games/songsnippet/`), das genau das schon sicherstellt: wiederverwenden, nicht
-nachbauen. Ob es dafür nach `ui/` umzieht, entscheidet der Umsetzer. Geladen wird erst beim Antippen,
-nie für die ganze Liste. Der Pool spielt das gespeicherte Signal, keinen Zuschnitt eines Spiels.
+**Abspielen:** Antippen reicht die Same-Origin-URL des WAV an `usePlayback.setSource` (das Cookie
+reist ohnehin mit) und spielt es über den geteilten Graphen ab, wie in `frontend-state.md` für kurze
+Clips verlangt — eine Datei kann unter einer Sekunde liegen. So bleibt `context.resume()` in der
+Tippgeste (nötig auf iOS), die ein vorgeschalteter Blob-Abruf verstreichen ließe; dafür laden Element
+und Graph das WAV beim ersten Antippen womöglich je einmal (typisch ~300 KB). Es spielt immer nur
+eine; ein zweites Antippen stoppt. Dafür gibt es `usePlayback` (`games/songsnippet/`), das genau das
+schon sicherstellt: wiederverwenden, nicht nachbauen. Ob es dafür nach `ui/` umzieht, entscheidet der
+Umsetzer. Geladen wird erst beim Antippen, nie für die ganze Liste. Der Pool spielt das gespeicherte
+Signal, keinen Zuschnitt eines Spiels.
 
 **Gründe** an der betroffenen Zeile, deutsch, mit `„…“` wo zitiert: `UNSUPPORTED_FORMAT`,
 `BROKEN_AUDIO`, `TOO_LARGE`, `POOL_FULL`, `DUPLICATE`, `NETWORK`, dazu die beiden Browser-Gründe oben.

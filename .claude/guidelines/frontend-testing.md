@@ -102,8 +102,8 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   the wheel and the *submitted* angle was not the aimed one. Every unit test was green; it took a
   browser to see it. `setPointerCapture` is also absent from happy-dom elements — stub it per test,
   and be explicit about which test the stub is pinning, or the stub becomes what makes the suite pass.
-- **`FormData.append(name, blob, fileName)` ignores `fileName` for a plain `Blob`** — the entry is
-  named `'blob'`. Pass a `File` in the spec to see the name arrive; browsers honour it for both.
+- **happy-dom's `FormData.append(name, blob, fileName)` ignores `fileName` for a plain `Blob`** — the
+  entry is named `'blob'`. Pass a `File` in the spec to see the name arrive; browsers honour it for both.
 - **A synthetic `PointerEvent` is not a pointer.** `setPointerCapture` throws `NotFoundError` for an
   id the browser is not tracking, and an exception inside a listener does **not** propagate out of
   `dispatchEvent` — so a hand-dispatched drag silently does nothing and reads as "the feature is

@@ -329,8 +329,8 @@ Copy the backup directory off-site regularly (rsync/scp).
 The image and audio dumps are written only when their pool actually changed, so
 `IMAGE_BACKUP_KEEP` and `AUDIO_BACKUP_KEEP` count **changes, not days**: a mass deletion followed by
 seven uploads consumes every kept state. At full pools eight image states are ~20 GB; the host had
-181 GB free when this was measured. A full audio pool is 1 GB per community, but under 100 MB is
-expected.
+181 GB free when this was measured. A full audio pool is up to 3.25 GB per state (1 GB per
+community), so eight kept states can reach ~26 GB; under 100 MB per state is expected.
 
 **Restore**, in this order — the image and audio rows reference `community.communities` and
 `iam.users`, so the daily dump has to land first:
