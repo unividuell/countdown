@@ -44,8 +44,8 @@ const STEREO_BYTES_PER_SECOND = 48_000 * 2 * 2
 /** Server and browser both refuse with this code; the limit it names is the listing's, not ours. */
 function tooLarge(): string {
   const megabytes = Math.round(maxBytes.value / (1024 * 1024))
-  const seconds = Math.floor(maxBytes.value / STEREO_BYTES_PER_SECOND)
-  return `Zu lang (höchstens ${megabytes} MB als WAV, etwa ${seconds} s Stereo).`
+  const stereoSeconds = Math.floor(maxBytes.value / STEREO_BYTES_PER_SECOND)
+  return `Zu lang (höchstens ${megabytes} MB als WAV, etwa ${stereoSeconds} s Stereo).`
 }
 
 const reasonFor = (code: string): string | undefined =>

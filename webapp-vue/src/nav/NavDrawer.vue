@@ -338,14 +338,14 @@ onKeyStroke('Tab', (e) => {
                 :class="`${ROW} text-neutral-400`"
               >
                 {{ e.name }}
-                <!-- The one live thing in a row that is otherwise a label, which is why it keeps
-                     full contrast while the name and the tick stay grey. Its box is the 44px
-                     floor; only the glyph inside it is small. -->
+                <!-- The live things in a row that is otherwise a label, which is why they keep
+                     full contrast while the name and the tick stay grey. Each box is the 44px
+                     floor both ways; only the glyph inside it is small. -->
                 <RouterLink
                   :to="communityPath(e.slug, 'images')"
                   data-test="community-images"
                   aria-label="Bilder"
-                  class="ml-auto flex h-11 shrink-0 items-center px-2 text-neutral-900"
+                  class="ml-auto flex h-11 min-w-11 shrink-0 items-center justify-center px-2 text-neutral-900"
                 >
                   <IconImage class="size-4" aria-hidden="true" />
                 </RouterLink>
@@ -353,7 +353,7 @@ onKeyStroke('Tab', (e) => {
                   :to="communityPath(e.slug, 'audio')"
                   data-test="community-audio"
                   aria-label="Audio"
-                  class="flex h-11 shrink-0 items-center px-2 text-neutral-900"
+                  class="flex h-11 min-w-11 shrink-0 items-center justify-center px-2 text-neutral-900"
                 >
                   <IconAudio class="size-4" aria-hidden="true" />
                 </RouterLink>
