@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.audiopool
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
@@ -33,7 +34,6 @@ import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
 import javax.sql.DataSource
-import kotlin.test.assertFailsWith
 
 /**
  * Deliberately NOT @Transactional, for the reason given in ImageRepositoryTest: a unique
@@ -123,7 +123,7 @@ class AudioClipRepositoryTest(
         // same bytes, different pool: allowed
         clips.save(clip(communityId = beta, uploader = alice, seed = 7))
 
-        assertFailsWith<DuplicateKeyException> {
+        shouldThrow<DuplicateKeyException> {
             clips.save(clip(communityId = alpha, uploader = alice, seed = 7))
         }
     }
@@ -133,7 +133,7 @@ class AudioClipRepositoryTest(
         val alice = user("alice6")
         clips.save(clip(communityId = null, uploader = alice, seed = 8))
 
-        assertFailsWith<DuplicateKeyException> {
+        shouldThrow<DuplicateKeyException> {
             clips.save(clip(communityId = null, uploader = alice, seed = 8))
         }
     }
@@ -172,7 +172,8 @@ class AudioClipRepositoryTest(
     /**
      * Held in the image pool's key space, a pool's lock would make image and audio uploads of one
      * community wait on each other. The image pool locks with a single bigint; the audio pool's
-     * two-int form is a separate key space, so a bigint with the same low bits stays free.
+     * two-int form is a separate key space. The one bigint with the same high and low words as
+     * (AUDIO_LOCK_CLASS, key) is therefore free while the audio lock is held.
      */
     @Test
     fun `the audio lock leaves the image pool's key space free`() {
@@ -183,7 +184,7 @@ class AudioClipRepositoryTest(
 
             dataSource.connection.use { other ->
                 other.prepareStatement("SELECT pg_try_advisory_xact_lock(?::bigint)").use {
-                    it.setLong(1, key.toLong())
+                    it.setLong(1, (AUDIO_LOCK_CLASS.toLong() shl 32) or key.toLong())
                     it.executeQuery().use { rs -> rs.next(); rs.getBoolean(1) } shouldBe true
                 }
                 other.prepareStatement("SELECT pg_try_advisory_xact_lock(?, ?)").use {

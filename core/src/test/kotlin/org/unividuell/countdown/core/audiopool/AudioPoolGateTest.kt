@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.audiopool
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -11,7 +12,6 @@ import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import java.util.UUID
-import kotlin.test.assertFailsWith
 
 /** AudioPoolGate is the module's whole access control; these tests exercise each of its branches. */
 class AudioPoolGateTest {
@@ -36,13 +36,13 @@ class AudioPoolGateTest {
     @Test
     fun `an unknown slug and a non-member are both refused with the same exception`() {
         every { communities.findBySlug("ghost") } returns null
-        assertFailsWith<AudioPoolAccessDeniedException> {
+        shouldThrow<AudioPoolAccessDeniedException> {
             gate.forCommunity(slug = "ghost", userId = userId, isSuperAdmin = false)
         }
 
         every { communities.findBySlug("known") } returns community()
         every { memberships.isActiveMember(communityId = communityId, userId = userId) } returns false
-        assertFailsWith<AudioPoolAccessDeniedException> {
+        shouldThrow<AudioPoolAccessDeniedException> {
             gate.forCommunity(slug = "known", userId = userId, isSuperAdmin = false)
         }
     }
@@ -78,7 +78,7 @@ class AudioPoolGateTest {
         pool.communityId.shouldBeNull()
         pool.viewerIsAdmin shouldBe true
 
-        assertFailsWith<AudioPoolAccessDeniedException> {
+        shouldThrow<AudioPoolAccessDeniedException> {
             gate.global(isSuperAdmin = false)
         }
     }

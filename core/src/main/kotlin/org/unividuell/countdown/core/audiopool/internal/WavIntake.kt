@@ -31,7 +31,7 @@ object WavIntake {
         } catch (_: UnsupportedAudioFileException) {
             throw BrokenAudioException()
         } catch (_: IOException) {
-            // a header cut short ends in EOF
+            // the in-memory stream itself failing; a malformed or cut header is the case above
             throw BrokenAudioException()
         }
 

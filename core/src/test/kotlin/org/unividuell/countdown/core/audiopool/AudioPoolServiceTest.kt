@@ -193,6 +193,17 @@ class AudioPoolServiceTest {
         transactionManager.events shouldContainExactly listOf("begin", "rollback")
     }
 
+    /** A full pool must not hide that the file is already in it: the spec orders the duplicate first. */
+    @Test
+    fun `a full pool answers DUPLICATE for a file it already holds`() {
+        every { clips.countInPool(communityId) } returns 2
+        every { clips.existsInPool(communityId = communityId, sha256 = any()) } returns true
+
+        shouldThrow<DuplicateAudioException> {
+            service.upload(pool = pool, uploaderId = uploader, fileName = "a.wav", bytes = wav())
+        }
+    }
+
     @Test
     fun `the global limit applies to the global pool`() {
         every { clips.countInPool(null) } returns 1

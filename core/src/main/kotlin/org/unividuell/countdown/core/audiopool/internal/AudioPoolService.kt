@@ -49,8 +49,9 @@ class AudioPoolService(
         return transactions.execute {
             clips.lockPool(classId = AUDIO_LOCK_CLASS, key = lockKey(pool.communityId))
             val limit = limitOf(pool)
-            if (clips.countInPool(pool.communityId) >= limit) throw AudioPoolFullException(limit)
+            // Duplicate first: a full pool must not hide that the file is already in it.
             if (clips.existsInPool(communityId = pool.communityId, sha256 = sha256)) throw DuplicateAudioException()
+            if (clips.countInPool(pool.communityId) >= limit) throw AudioPoolFullException(limit)
 
             val saved = clips.save(
                 AudioClip(
