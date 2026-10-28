@@ -514,6 +514,7 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=pending-count]').text()).toBe('3')
     expect(w.findAll('[data-test=nav-scroll] a').map((a) => a.attributes('href'))).toEqual([
       communityPath('team', 'images'),
+      communityPath('team', 'audio'),
       communityPath('team', 'requests'),
       communityPath('team', 'members'),
       communityPath('team', 'settings'),
@@ -576,6 +577,25 @@ describe('NavDrawer content', () => {
     expect((await opened()).get('[data-test=community-images]').attributes('href')).toBe(
       communityPath('team', 'images'),
     )
+  })
+
+  it('shows the audio entry beside the images entry to a plain member', async () => {
+    activeCommunity.value = {
+      slug: 'team',
+      name: 'Team Süd',
+      startsAt: null,
+      startsAtTimezone: 'UTC',
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: null,
+    }
+    const w = await opened()
+
+    const audio = w.get('[data-test=community-audio]')
+    expect(audio.attributes('href')).toBe(communityPath('team', 'audio'))
+    expect(audio.attributes('aria-label')).toBe('Audio')
+    // Directly to the right of the images symbol, in the same row.
+    expect(w.get('[data-test=community-images]').element.nextElementSibling).toBe(audio.element)
   })
 
   it('keeps the super-admin entry out of sight for everyone else', async () => {

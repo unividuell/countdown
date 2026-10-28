@@ -66,6 +66,16 @@ onMounted(async () => {
           <IconChevron class="ml-auto size-4 text-neutral-400" />
         </RouterLink>
       </li>
+      <li>
+        <RouterLink
+          to="/super-admin/audio"
+          data-test="nav-entry"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+        >
+          Audio
+          <IconChevron class="ml-auto size-4 text-neutral-400" />
+        </RouterLink>
+      </li>
     </ul>
 
     <h2 class="mb-2 font-medium">Super-Admins</h2>
