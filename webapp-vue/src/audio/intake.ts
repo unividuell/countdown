@@ -16,17 +16,26 @@ export const UNKNOWN_DURATION_MAX_BYTES = 2 * 1024 * 1024
  * Some engines never fire either event for a file they have no mind to open, and the queue is
  * sequential: a probe that never settles would hold every file behind it.
  */
-const PROBE_TIMEOUT_MS = 10_000
+export const PROBE_TIMEOUT_MS = 10_000
 
-/** The duration the `<audio>` element reads from the file's metadata; `NaN` if it cannot. */
-export function probeDuration(file: File): Promise<number> {
+/**
+ * The duration the `<audio>` element reads from the file's metadata (`NaN` if it stays silent until
+ * the timeout, `Infinity` for some containers), or `null` when the element reports the file
+ * unplayable.
+ */
+export function probeDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const audio = new Audio()
-    const timer = setTimeout(() => settle(NaN), PROBE_TIMEOUT_MS)
+    const timer = setTimeout(() => {
+      settle(NaN)
+      // Still loading, it would go on asking for a URL that no longer exists.
+      audio.removeAttribute('src')
+      audio.load()
+    }, PROBE_TIMEOUT_MS)
 
     // Whichever comes first wins; the others are detached so the URL is revoked exactly once.
-    function settle(duration: number): void {
+    function settle(duration: number | null): void {
       clearTimeout(timer)
       audio.onloadedmetadata = null
       audio.onerror = null
@@ -36,7 +45,7 @@ export function probeDuration(file: File): Promise<number> {
 
     audio.preload = 'metadata'
     audio.onloadedmetadata = () => settle(audio.duration)
-    audio.onerror = () => settle(NaN)
+    audio.onerror = () => settle(null)
     audio.src = url
   })
 }
@@ -58,13 +67,16 @@ export async function prepareWav(
   file: File,
   maxBytes: number,
   deps: {
-    probe?: (file: File) => Promise<number>
+    probe?: (file: File) => Promise<number | null>
     decode?: (data: ArrayBuffer) => Promise<PcmSource>
   } = {},
 ): Promise<Blob> {
   const { probe = probeDuration, decode = decodeWithGraph } = deps
 
   const seconds = await probe(file)
+  // The element itself says it cannot play this: decoding would only fail after reading it all.
+  if (seconds === null) throw new UploadError('UNDECODABLE', 0)
+
   const tooLong = Number.isFinite(seconds)
     ? seconds > MAX_SECONDS
     : file.size > UNKNOWN_DURATION_MAX_BYTES
