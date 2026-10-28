@@ -17,7 +17,7 @@ interface PlaybackStub {
 }
 
 const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
-vi.mock('@/games/songsnippet/usePlayback', async () => {
+vi.mock('@/ui/usePlayback', async () => {
   const { ref } = await import('vue')
   const { vi: vitest } = await import('vitest')
   return {

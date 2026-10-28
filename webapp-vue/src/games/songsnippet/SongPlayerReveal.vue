@@ -13,7 +13,7 @@ import type { RoundAssets } from '@/api/assets'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
-import { usePlayback } from './usePlayback'
+import { usePlayback } from '@/ui/usePlayback'
 import { SOLUTION_ASSET } from './types'
 import type { SongSnippetSolution } from './types'
 

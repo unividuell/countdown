@@ -7,7 +7,7 @@ import { mount } from '@vue/test-utils'
  * test gets a fresh module — otherwise a context stubbed in one case would still be the shared one
  * in the next.
  */
-type Playback = ReturnType<typeof import('@/games/songsnippet/usePlayback').usePlayback>
+type Playback = ReturnType<typeof import('@/ui/usePlayback').usePlayback>
 
 const CLIP_SECONDS = 0.1
 
@@ -83,7 +83,7 @@ let play: ReturnType<typeof vi.spyOn>
 
 async function loadModule(): Promise<void> {
   vi.resetModules()
-  usePlayback = (await import('@/games/songsnippet/usePlayback')).usePlayback
+  usePlayback = (await import('@/ui/usePlayback')).usePlayback
 }
 
 beforeEach(async () => {
@@ -290,7 +290,7 @@ describe('usePlayback without an audio graph', () => {
     await settle()
 
     expect(warn).toHaveBeenCalledWith(
-      '[song-snippet] the browser refused to play the clip',
+      '[playback] the browser refused to play the clip',
       expect.any(Error),
     )
   })

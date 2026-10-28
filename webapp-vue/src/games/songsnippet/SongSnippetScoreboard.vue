@@ -16,7 +16,7 @@ import { ref } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import PlayerIcon from './PlayerIcon.vue'
-import { usePlayback } from './usePlayback'
+import { usePlayback } from '@/ui/usePlayback'
 import { resolveTrack } from './api'
 import type { ScoreRow } from './scoreboard'
 

@@ -20,7 +20,7 @@ vi.mock('@/games/songsnippet/api', () => ({ resolveTrack }))
 
 /** `playing` is exactly the state the play/pause toggle reads, so the composable is stubbed. */
 const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
-vi.mock('@/games/songsnippet/usePlayback', async () => {
+vi.mock('@/ui/usePlayback', async () => {
   const { ref } = await import('vue')
   const { vi: vitest } = await import('vitest')
   return {

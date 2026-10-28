@@ -21,7 +21,7 @@ vi.mock('@/api/assets', () => ({ fetchAssetBlob }))
 
 /** The real composable owns an `Audio` element happy-dom cannot sound. */
 const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
-vi.mock('@/games/songsnippet/usePlayback', async () => {
+vi.mock('@/ui/usePlayback', async () => {
   const { ref } = await import('vue')
   const { vi: vitest } = await import('vitest')
   return {
