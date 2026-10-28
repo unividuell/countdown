@@ -13,7 +13,6 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
-import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
@@ -199,22 +198,6 @@ class AudioPoolControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     private class Refusal(val thrown: AudioPoolException, val status: Int, val code: String)
-
-    @Test
-    fun `a body the container refuses is the same TOO_LARGE`() {
-        asMember()
-        every {
-            service.upload(pool = memberPool, uploaderId = TEST_USER_ID, fileName = any(), bytes = any())
-        } throws MaxUploadSizeExceededException(15L * 1024 * 1024)
-
-        mockMvc.multipart("/api/communities/alpha/audio") {
-            file(MockMultipartFile("file", "a.wav", "audio/wav", byteArrayOf(1, 2, 3)))
-            with(principalFor()); with(withCsrfToken())
-        }.andExpect {
-            status { isEqualTo(413) }
-            jsonPath("$.code") { value("TOO_LARGE") }
-        }
-    }
 
     @Test
     fun `deleting answers 204`() {

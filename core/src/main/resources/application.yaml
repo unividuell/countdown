@@ -36,6 +36,8 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 16MB
+      # The size error must carry its handler, so each pool's scoped advice can name it TOO_LARGE.
+      resolve-lazily: true
 
 unividuell:
   auth:
