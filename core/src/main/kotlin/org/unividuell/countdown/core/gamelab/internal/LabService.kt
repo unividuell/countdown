@@ -147,6 +147,7 @@ class LabService(
         // stage only burns the stage — the same rule `PlayService.guess` applies to a real round.
         if (guessActionFor(
                 rule = playing.award.rule, qualifies = judgement.qualifies, stage = stage, stages = stages,
+                stagesScore = handle.stagesScore(playing.params),
             ) == GuessAction.ADVANCE_STAGE
         ) {
             val advanced = store.advanceStage(

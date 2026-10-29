@@ -5,9 +5,11 @@ import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.AssetViewer
+import org.unividuell.countdown.core.game.GameTypeHandle
 import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.keysFor
 import org.unividuell.countdown.core.game.struckByReview
+import tools.jackson.databind.JsonNode
 import java.util.UUID
 
 /**
@@ -80,6 +82,7 @@ class RoundResponses(
                 mineDtoOf(
                     play = it, identity = byId[it.userId], timed = timed,
                     cast = tallies[it.id].orEmpty(), byId = byId,
+                    handle = current.handle, params = current.roundGame.params,
                 )
             },
             // Sorted by when they guessed — the order the round actually happened in, and stable
@@ -115,6 +118,8 @@ class RoundResponses(
         timed: Boolean,
         cast: List<PlayVote>,
         byId: Map<UUID, MemberIdentity>,
+        handle: GameTypeHandle<*>,
+        params: JsonNode,
     ): MyPlayDto? =
         identity?.let {
             val (views, struck, override) = reviewOf(play = play, cast = cast, byId = byId)
@@ -132,6 +137,12 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
+                steps = play.steps.mapIndexed { i, input ->
+                    StepDto(
+                        input = input.takeUnless { it.isNull },
+                        answer = handle.step(params = params, stage = i, input = input),
+                    )
+                },
             )
         }
 
@@ -156,6 +167,7 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
+                steps = play.steps.toList(),
             )
         }
 

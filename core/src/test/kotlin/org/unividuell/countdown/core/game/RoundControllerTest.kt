@@ -284,6 +284,41 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `POST skip passes the step input through`() {
+        val input = slot<JsonNode>()
+        every {
+            plays.skip(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 1, fromStage = 0, input = capture(input),
+            )
+        } returns RoundResponse(round = null, game = null, noGameReason = null)
+
+        mockMvc.post("/api/communities/team/rounds/current/skip") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":1,"fromStage":0,"input":{"x":1}}"""
+        }.andExpect { status { isOk() } }
+
+        input.captured shouldBe mapper.readTree("""{"x":1}""")
+    }
+
+    @Test
+    fun `an invalid step input is a bad request`() {
+        every {
+            plays.skip(
+                slug = "team", userId = uid, isSuperAdmin = false,
+                roundNumber = 1, fromStage = 0, input = any(),
+            )
+        } throws InvalidStepException("a ping needs x and y")
+
+        mockMvc.post("/api/communities/team/rounds/current/skip") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"roundNumber":1,"fromStage":0,"input":{"x":1}}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
     fun `guessing without revealing is a conflict`() {
         every {
             plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
