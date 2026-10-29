@@ -182,7 +182,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   `pointerdown` is no user activation on iOS: `resume()` is refused and the round stays silent, with
   no error. `navigator.audioSession.type = 'playback'` goes in the same handler — otherwise the
   silent switch mutes Web Audio. A play surface that only listens to touches gets a cover button
-  for it (Peilung's, `SonarField.vue`/`EchoLocateBoard.vue`).
+  for it (Peilung's, `SonarField.vue`/`EchoLocateBoard.vue`). The graph can stop again later (iOS:
+  a call, an app switch, the lock screen): on `statechange` away from `running`, or a hidden page,
+  bring the cover back and send no move that must be heard. Never `suspend()` the shared graph.
 - **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
   from the outside; a `console.warn` is what makes it a report instead of a mystery.
 - **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).

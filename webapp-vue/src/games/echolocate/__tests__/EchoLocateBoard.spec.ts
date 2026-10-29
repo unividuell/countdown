@@ -35,6 +35,7 @@ const sound = vi.hoisted(() => {
   class FakeEngine {
     headStartMs = 120
     startBed = vi.fn()
+    stopBed = vi.fn()
     ping = vi.fn(() => 1500)
     hush = vi.fn()
     dispose = vi.fn()
@@ -49,7 +50,11 @@ const sound = vi.hoisted(() => {
     engines,
     FakeEngine,
     loadSounds: vi.fn(),
-    ctx: { state: 'suspended', resume: vi.fn(() => Promise.resolve()) },
+    ctx: Object.assign(new EventTarget(), {
+      state: 'suspended' as string,
+      resume: vi.fn(() => Promise.resolve()),
+      suspend: vi.fn(() => Promise.resolve()),
+    }),
   }
 })
 
@@ -140,6 +145,20 @@ const hold = (w: Board) => w.findComponent(HoldButton)
 const status = (w: Board) => w.get('[data-test="echo-locate-status"]')
 const engine = () => sound.engines[0]!
 
+/** The graph stops on its own, as iOS does it for a call, an app switch or the lock screen. */
+async function interrupt() {
+  sound.ctx.state = 'interrupted'
+  sound.ctx.dispatchEvent(new Event('statechange'))
+  await nextTick()
+}
+
+/** The page goes to the background, or comes back. */
+async function showPage(state: 'hidden' | 'visible') {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
+  document.dispatchEvent(new Event('visibilitychange'))
+  await nextTick()
+}
+
 /** A click on the field's cover. */
 async function start(w: Board) {
   field(w).vm.$emit('start')
@@ -176,13 +195,18 @@ describe('EchoLocateBoard', () => {
     )
     sound.ctx.state = 'suspended'
     sound.ctx.resume.mockReset()
-    sound.ctx.resume.mockImplementation(() => Promise.resolve())
+    sound.ctx.resume.mockImplementation(() => {
+      sound.ctx.state = 'running'
+      return Promise.resolve()
+    })
+    sound.ctx.suspend.mockClear()
     now = vi.spyOn(performance, 'now').mockReturnValue(NOW)
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
+    Reflect.deleteProperty(document, 'visibilityState')
   })
 
   it('shows how many clips hide in the field', () => {
@@ -237,7 +261,7 @@ describe('EchoLocateBoard', () => {
     expect(status(w).text()).toBe('Antippen zum Starten')
   })
 
-  it('says so when the browser keeps the sound locked', async () => {
+  it('stays covered when the browser keeps the sound locked, and says so', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     sound.ctx.resume.mockImplementation(() => Promise.reject(new Error('not allowed')))
     const w = mountBoard()
@@ -245,7 +269,102 @@ describe('EchoLocateBoard', () => {
     await start(w)
 
     expect(warn).toHaveBeenCalledOnce()
-    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+    expect(field(w).props('covered')).toBe(true)
+    expect(status(w).text()).toBe('Antippen zum Starten')
+  })
+
+  it('opens the field only once the graph runs', async () => {
+    let resumed: () => void = () => undefined
+    sound.ctx.resume.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resumed = () => {
+            sound.ctx.state = 'running'
+            resolve()
+          }
+        }),
+    )
+    const w = mountBoard()
+
+    await start(w)
+    expect(field(w).props('covered')).toBe(true)
+
+    resumed()
+    await flushPromises()
+    expect(field(w).props('covered')).toBe(false)
+  })
+
+  it('covers the field again when the graph stops, and its click resumes it', async () => {
+    const w = mountBoard({ steps: [step(A)] })
+    await start(w)
+
+    await interrupt()
+
+    expect(field(w).props('covered')).toBe(true)
+    expect(field(w).props('waves')).toEqual([{ at: A, startMs: null, endMs: null }])
+
+    await start(w)
+    expect(sound.ctx.resume).toHaveBeenCalledTimes(2)
+    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+  })
+
+  // Pings are few and never repeat: one the graph cannot play would be gone unheard.
+  it('sends no ping the graph would not play, and covers the field instead', async () => {
+    const w = mountBoard()
+    await start(w)
+    // No event: the tap itself must look.
+    sound.ctx.state = 'suspended'
+
+    await tapAt(w, A)
+
+    expect(w.emitted('skip')).toBeUndefined()
+    expect(field(w).props('waves')).toEqual([])
+    expect(field(w).props('covered')).toBe(true)
+  })
+
+  it('lets a ping that is out finish before the cover comes', async () => {
+    const w = mountBoard()
+    await start(w)
+    await tapAt(w, A)
+
+    await interrupt()
+    expect(status(w).text()).toBe('Sonar lädt …')
+
+    // The request is over without a step: the ping is not spent, and the field is covered.
+    await w.setProps({ disabled: true })
+    await w.setProps({ disabled: false })
+    expect(field(w).props('covered')).toBe(true)
+  })
+
+  it('stops the bed while the page is hidden, and the cover starts it again', async () => {
+    const w = mountBoard()
+    await start(w)
+
+    await showPage('hidden')
+    expect(engine().stopBed).toHaveBeenCalledOnce()
+    expect(field(w).props('covered')).toBe(true)
+
+    await showPage('visible')
+    expect(field(w).props('covered')).toBe(true)
+
+    await start(w)
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+    expect(sound.loadSounds).toHaveBeenCalledOnce()
+    expect(field(w).props('covered')).toBe(false)
+    // Other games share the graph: it is never suspended from here.
+    expect(sound.ctx.suspend).not.toHaveBeenCalled()
+  })
+
+  it('lets go of the graph and the page when it goes', async () => {
+    const fromGraph = vi.spyOn(sound.ctx, 'removeEventListener')
+    const fromPage = vi.spyOn(document, 'removeEventListener')
+    const w = mountBoard()
+    await start(w)
+
+    w.unmount()
+
+    expect(fromGraph.mock.calls.map(([type]) => type)).toContain('statechange')
+    expect(fromPage.mock.calls.map(([type]) => type)).toContain('visibilitychange')
   })
 
   it('pings with a skip carrying the spot', async () => {

@@ -361,6 +361,20 @@ describe('EchoEngine', () => {
     expect([bed?.stopped, first?.stopped, second?.stopped]).toEqual([false, true, true])
   })
 
+  it('stops the bed, and starts a new one after', () => {
+    const engine = new EchoEngine(asContext(ctx))
+    const bed = bufferOf(6)
+    engine.startBed(bed, 0.1)
+
+    engine.stopBed()
+    engine.startBed(bed, 0.1)
+
+    const [stopped, again] = ctx.sources
+    expect(stopped?.stopped).toBe(true)
+    expect(stopped?.disconnect).toHaveBeenCalled()
+    expect(again).toMatchObject({ loop: true, stopped: false, buffer: bed })
+  })
+
   it('lets go of a shot that has ended, so a later hush skips it', () => {
     const engine = new EchoEngine(asContext(ctx))
     engine.ping([shot(1, 0), shot(1, 900)])

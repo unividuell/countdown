@@ -131,12 +131,17 @@ export class EchoEngine {
     for (const source of this.shots) source.stop()
   }
 
-  dispose(): void {
-    this.hush()
+  /** Silences the bed; `startBed` starts it again. */
+  stopBed(): void {
     this.bed?.source.stop()
     this.bed?.source.disconnect()
     this.bed?.gain.disconnect()
     this.bed = null
+  }
+
+  dispose(): void {
+    this.hush()
+    this.stopBed()
 
     this.out.disconnect()
     this.limiter.disconnect()

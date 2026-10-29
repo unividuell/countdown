@@ -2,10 +2,15 @@
  * What a tap on the field does follows from where the round stands — there are no mode buttons.
  * Pure: the board passes the clock and the server's answers in, and acts on the effect it gets.
  *
- *   closed ─tap─▶ pinging ─tap─▶ loading ─landed─▶ wave ─settle─▶ pinging …
- *    unlock           ▲  ping        │                taps mark       │ no pings left
- *                     └───refused────┘                rings          ▼
- *                                                                  pinning  taps set / lift pins
+ *   closed ─unlocked─▶ pinging ─tap─▶ loading ─landed─▶ wave ─settle─▶ pinging …
+ *                         ▲  ping        │                taps mark       │ no pings left
+ *                         └───refused────┘                rings          ▼
+ *                                                                      pinning  taps set / lift pins
+ *
+ *   pinging, pinning ─locked─▶ closed
+ *
+ * A tap on `closed` only asks to unlock. The field opens once the sound runs and closes once it
+ * stops — never while a ping is out or its wave runs.
  *
  * `waves[i]` is the i-th ping; `rings[i]` the radii marked around it, so the two stay aligned.
  */
@@ -65,6 +70,18 @@ function idle(state: FlowState): FlowPhase {
   return state.waves.length < state.pings ? 'pinging' : 'pinning'
 }
 
+/** The sound runs: the cover goes, and the round goes on where it stood. */
+export function unlocked(state: FlowState): FlowState {
+  return state.phase === 'closed' ? { ...state, phase: idle(state) } : state
+}
+
+/** The sound stopped: back under the cover, pings, rings and pins kept. */
+export function locked(state: FlowState): FlowState {
+  return state.phase === 'pinging' || state.phase === 'pinning'
+    ? { ...state, phase: 'closed' }
+    : state
+}
+
 /**
  * `tMs` is the tap's `event.timeStamp`, the same timeline as the wave's start. The wave is
  * settled first: a tap after its end is the next ping or pin, never a ring.
@@ -79,7 +96,7 @@ export function tap(
 
   switch (now.phase) {
     case 'closed':
-      return { state: { ...now, phase: idle(now) }, effect: { kind: 'unlock' } }
+      return { state: now, effect: { kind: 'unlock' } }
     case 'pinging':
       return ping(now, at)
     case 'wave':

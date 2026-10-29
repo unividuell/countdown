@@ -4,11 +4,13 @@ import {
   initialFlow,
   landed,
   LIFT_RADIUS,
+  locked,
   refused,
   settle,
   statusLine,
   synced,
   tap,
+  unlocked,
 } from '@/games/echolocate/flow'
 import type { FlowState } from '@/games/echolocate/flow'
 import type { Point } from '@/games/echolocate/types'
@@ -25,9 +27,9 @@ function fresh(options: { clips?: number; pings?: number } = {}): FlowState {
   })
 }
 
-/** The first tap: sound unlocked, nothing pinged. */
+/** The cover is off: the sound runs, nothing is pinged. */
 function opened(state: FlowState = fresh()): FlowState {
-  return tap(state, FIELD, 0, SPEED).state
+  return unlocked(state)
 }
 
 /** A ping at `at` whose wave runs from `startMs` to `endMs`. */
@@ -47,24 +49,13 @@ function spent(count: number, clips = 1): FlowState {
 }
 
 describe('tap', () => {
-  it('opens with the first tap and pings nothing', () => {
-    const result = tap(fresh(), FIELD, 0, SPEED)
+  // The field opens only once the graph runs: a refused unlock leaves it covered.
+  it('asks for the sound under the cover, and changes nothing', () => {
+    const closed = fresh()
+    const result = tap(closed, FIELD, 0, SPEED)
 
-    expect(result.state.phase).toBe('pinging')
     expect(result.effect).toEqual({ kind: 'unlock' })
-    expect(result.state.waves).toEqual([])
-    expect(result.state.pending).toBeNull()
-  })
-
-  it('opens straight into pinning when every ping is already spent', () => {
-    const state = initialFlow({
-      clips: 1,
-      pings: 2,
-      steps: [FIELD, FIELD],
-      draft: null,
-    })
-
-    expect(tap(state, FIELD, 0, SPEED).state.phase).toBe('pinning')
+    expect(result.state).toBe(closed)
   })
 
   it('a tap pings at its spot and counts the ping at once', () => {
@@ -196,6 +187,60 @@ describe('tap', () => {
   })
 })
 
+describe('unlocked', () => {
+  it('opens into the next ping, nothing pinged', () => {
+    const state = unlocked(fresh())
+
+    expect(state.phase).toBe('pinging')
+    expect(state.waves).toEqual([])
+    expect(state.pending).toBeNull()
+  })
+
+  it('opens straight into pinning when every ping is already spent', () => {
+    const state = initialFlow({
+      clips: 1,
+      pings: 2,
+      steps: [FIELD, FIELD],
+      draft: null,
+    })
+
+    expect(unlocked(state).phase).toBe('pinning')
+  })
+
+  it('leaves an open field alone', () => {
+    const state = opened()
+
+    expect(unlocked(state)).toBe(state)
+  })
+})
+
+describe('locked', () => {
+  it('covers the field again, keeping pings and rings, and opens where it was', () => {
+    const marked = settle(tap(pinged(opened(), FIELD, 1000, 9000), FIELD, 2000, SPEED).state, 9000)
+    const covered = locked(marked)
+
+    expect(covered.phase).toBe('closed')
+    expect(statusLine(covered)).toBe('Antippen zum Starten')
+    expect(unlocked(covered)).toEqual(marked)
+  })
+
+  it('covers the pins too, and keeps them', () => {
+    const pinning = tap(spent(3), { x: 7, y: 8 }, 200_000, SPEED).state
+    const covered = locked(pinning)
+
+    expect(covered.phase).toBe('closed')
+    expect(covered.pins).toEqual([{ x: 7, y: 8 }])
+  })
+
+  it('lets a ping that is out, and its wave, finish first', () => {
+    const loading = tap(opened(), FIELD, 500, SPEED).state
+    const running = landed(loading, 1000, 9000)
+
+    expect(locked(loading)).toBe(loading)
+    expect(locked(running)).toBe(running)
+  })
+})
+
 describe('refused', () => {
   it('a refused ping is not spent', () => {
     const before = opened()
@@ -312,7 +357,7 @@ describe('initialFlow', () => {
     expect(state.rings).toEqual(draft.rings)
     expect(state.pins).toEqual(draft.pins)
 
-    const reopened = tap(state, FIELD, 0, SPEED).state
+    const reopened = unlocked(state)
     expect(reopened.phase).toBe('pinning')
     expect(statusLine(reopened)).toBe('Schätzung · Pins 1/2')
   })

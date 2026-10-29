@@ -11,13 +11,15 @@
  *
  * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
  *
- *   cover click ─▶ unlock: playback session, graph, sounds, bed
+ *   cover click ─▶ unlock: playback session, graph, sounds, bed ─▶ unlocked, once the graph runs
  *   field tap   ─▶ ping: skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
  *                                         └─ request over, no step ─▶ refused, synced
+ *   graph stops, page hidden ─▶ locked: the cover again; hidden, the bed stops until its click
  *
  * Rings and pins are saved as a draft on every change; the pings live on the server.
  */
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import type { AwardRule, StepView } from '@/api/types'
 import { audioGraph } from '@/ui/audio'
 import HoldButton from '@/ui/HoldButton.vue'
@@ -26,7 +28,18 @@ import { loadDraft, saveDraft } from './draft'
 import EchoLocateBriefing from './EchoLocateBriefing.vue'
 import { EchoEngine, loadSounds, shotsOf } from './engine'
 import type { EchoSounds } from './engine'
-import { guessOf, initialFlow, landed, refused, settle, statusLine, synced, tap } from './flow'
+import {
+  guessOf,
+  initialFlow,
+  landed,
+  locked,
+  refused,
+  settle,
+  statusLine,
+  synced,
+  tap,
+  unlocked,
+} from './flow'
 import type { FlowState } from './flow'
 import { dbToGain } from './noise'
 import SonarField from './SonarField.vue'
@@ -53,7 +66,7 @@ const BUTTON_COLOR = '#1e1b4b'
 
 interface Audio {
   engine: EchoEngine
-  sounds: EchoSounds
+  sounds: EchoSounds & { bed: AudioBuffer }
 }
 
 const storage = deviceStorage()
@@ -88,6 +101,8 @@ let engine: EchoEngine | null = null
 /** Set by the unlock tap, replaced when a clip arrives later; `null` without Web Audio. */
 let audio: Promise<Audio | null> | null = null
 let settleTimer: ReturnType<typeof setTimeout> | undefined
+/** The shared graph from the first unlock on; `null` before, and without Web Audio. */
+const graph = shallowRef<AudioContext | null>(null)
 
 /** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
 function claimPlayback(): void {
@@ -95,18 +110,41 @@ function claimPlayback(): void {
   if (session) session.type = 'playback'
 }
 
-/** Runs inside the tap, so the browser lets the graph start. */
+/**
+ * Runs inside the click, so the browser lets the graph start; the field opens once it runs. A
+ * refused start leaves the cover on, for the next click to try again.
+ */
 function unlock(): void {
   claimPlayback()
   const ctx = audioGraph()
-  if (ctx === null) return
+  if (ctx === null) {
+    flow.value = unlocked(flow.value)
+    return
+  }
 
-  if (ctx.state !== 'running') {
-    ctx.resume().catch((err: unknown) => {
+  graph.value = ctx
+  if (audio === null) {
+    load(ctx)
+  } else {
+    // A bed stopped while the page was hidden starts again; a playing one plays on.
+    const gain = dbToGain(props.payload.bedDb)
+    void audio.then((ready) => ready?.engine.startBed(ready.sounds.bed, gain))
+  }
+
+  if (ctx.state === 'running') {
+    flow.value = unlocked(flow.value)
+    return
+  }
+
+  ctx
+    .resume()
+    .then(() => {
+      if (ctx.state !== 'running') throw new Error(`the graph is ${ctx.state}`)
+      if (alive) flow.value = unlocked(flow.value)
+    })
+    .catch((err: unknown) => {
       console.warn('[echo-locate] the browser kept the audio graph suspended', err)
     })
-  }
-  load(ctx)
 }
 
 /** The engine comes with the first sounds, and only while the board is still there. */
@@ -127,9 +165,7 @@ function load(ctx: AudioContext): void {
 function onStart(): void {
   if (props.disabled || flow.value.phase !== 'closed') return
 
-  const { state, effect } = tap(flow.value, { x: 0, y: 0 }, performance.now(), props.payload.speed)
-  flow.value = state
-
+  const { effect } = tap(flow.value, { x: 0, y: 0 }, performance.now(), props.payload.speed)
   if (effect?.kind === 'unlock') unlock()
 }
 
@@ -138,10 +174,41 @@ function onTap(at: Point, tMs: number): void {
   if (props.disabled || flow.value.phase === 'closed') return
 
   const { state, effect } = tap(flow.value, at, tMs, props.payload.speed)
-  flow.value = state
 
+  // Pings are few and never repeat: one nobody would hear stays unspent, under the cover.
+  if (effect?.kind === 'ping' && !audible()) {
+    flow.value = locked(settle(flow.value, tMs))
+    return
+  }
+
+  flow.value = state
   if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
 }
+
+/** Whether a ping would be heard now. Without Web Audio there is nothing to wait for. */
+function audible(): boolean {
+  if (document.visibilityState === 'hidden') return false
+
+  return graph.value === null || graph.value.state === 'running'
+}
+
+/** Back under the cover while nothing would be heard: only its click resumes the graph. */
+function guard(): void {
+  if (!audible()) flow.value = locked(flow.value)
+}
+
+// iOS suspends the graph for a call, an app switch or the lock screen; a tap cannot resume it.
+useEventListener(graph, 'statechange', guard)
+
+// A hidden page plays nothing on. The shared graph is not suspended: other games use it.
+useEventListener(document, 'visibilitychange', () => {
+  if (document.visibilityState === 'hidden') engine?.stopBed()
+  guard()
+})
+
+// Whatever moves the round on — a wave that ends, a refused ping — may find the sound stopped
+// meanwhile.
+watch(() => flow.value.phase, guard)
 
 /** The open ping's answer: schedule its sounds, then start its wave where they will be heard. */
 async function launch(hits: EchoHit[]): Promise<void> {
