@@ -38,11 +38,17 @@ const payload = computed(() => asEchoLocatePayload(props.payload))
 const solution = computed(() => asEchoLocateSolution(props.solution))
 const solved = computed(() => solution.value !== null)
 
-const first = useSealedAsset(() => props.assets, FIRST_CLIP)
+/**
+ * Only the board plays a clip: a reveal, a history card or a payload that cannot be read would
+ * fetch and decrypt bytes nobody hears. A solution that arrives lets them go again.
+ */
+const assets = computed(() => (payload.value !== null && !solved.value ? props.assets : undefined))
+
+const first = useSealedAsset(() => assets.value, FIRST_CLIP)
 
 // With one clip there is no second asset to ask for.
 const second = useSealedAsset(
-  () => (payload.value?.clips === 2 ? props.assets : undefined),
+  () => (payload.value?.clips === 2 ? assets.value : undefined),
   SECOND_CLIP,
 )
 

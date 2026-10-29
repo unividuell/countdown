@@ -194,11 +194,81 @@ describe('EchoLocateGame', () => {
       expect(board.props('clipSrcs')).toEqual(['blob:audio/zero', 'blob:audio/one'])
     })
 
-    it('fetches no second clip for a payload it cannot read', async () => {
+    it('fetches nothing for a payload it cannot read', async () => {
       mountGame({ payload: { ...TWO, grid: 'x' }, assets: assetsWith('r1', KEYS) })
+      mountGame({ payload: null, assets: assetsWith('r1', KEYS) })
+      await flushPromises()
+
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    // The reveal plays no clip: a history card, or a reload into a solved round, needs no bytes.
+    it('fetches nothing for a round that is solved on arrival', async () => {
+      mountGame({ solution: SOLUTION, assets: assetsWith('r1', KEYS) })
+      mountGame({ payload: TWO, solution: SOLUTION, assets: assetsWith('r1', KEYS) })
+      await flushPromises()
+
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('lets go of the clips when the solution arrives, and the reveal renders', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const wrapper = mountGame({ payload: TWO, assets: assetsWith('r1', KEYS) })
+      await flushPromises()
+      expect(wrapper.getComponent(EchoLocateBoard).props('clipSrcs')).toEqual([
+        'blob:audio/zero',
+        'blob:audio/one',
+      ])
+      fetchMock.mockClear()
+
+      await wrapper.setProps({ solution: SOLUTION })
+      await flushPromises()
+
+      expect(wrapper.findComponent(EchoLocateReveal).exists()).toBe(true)
+      expect(wrapper.findComponent(EchoLocateBoard).exists()).toBe(false)
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:audio/zero')
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:audio/one')
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(error).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it('crosses from the real board to the real reveal without a warning', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const wrapper = mount(EchoLocateGame, {
+        props: gameProps({
+          payload: PAYLOAD,
+          mineUserId: 'mine',
+          entries: [MINE],
+          awardRule: 'ALL_QUALIFYING',
+          awardPoints: 1,
+          assets: assetsWith('r1', KEYS),
+        }),
+      })
+      await flushPromises()
+      expect(wrapper.find('[data-test="echo-locate-board"]').exists()).toBe(true)
+
+      await wrapper.setProps({ solution: SOLUTION })
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="echo-locate-board"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="echo-locate-reveal"]').exists()).toBe(true)
+      expect(error).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it('asks for the clips again when the round goes back to unsolved', async () => {
+      const wrapper = mountGame({ solution: SOLUTION, assets: assetsWith('r1', KEYS) })
+      await flushPromises()
+      expect(fetchMock).not.toHaveBeenCalled()
+
+      await wrapper.setProps({ solution: null })
       await flushPromises()
 
       expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([CLIP_0])
+      expect(wrapper.getComponent(EchoLocateBoard).props('clipSrcs')).toEqual(['blob:audio/zero'])
     })
 
     it('gives the board no clip while the key is still to come', async () => {
