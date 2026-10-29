@@ -35,6 +35,10 @@ interface AudioClipRepository : CrudRepository<AudioClip, UUID> {
     @Query("SELECT $SUMMARY_COLUMNS FROM audiopool.clips WHERE id = :id")
     fun findSummary(id: UUID): AudioClipSummary?
 
+    /** Ascending, so a seeded pick over this list is reproducible. IS NOT DISTINCT FROM: see [countInPool]. */
+    @Query("SELECT id FROM audiopool.clips WHERE community_id IS NOT DISTINCT FROM :communityId ORDER BY id")
+    fun idsInPool(communityId: UUID?): List<UUID>
+
     @Query("SELECT bytes FROM audiopool.clips WHERE id = :id")
     fun findWavBytes(id: UUID): WavBytes?
 
