@@ -18,7 +18,6 @@ import {
 } from '@vueuse/core'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import IconAudio from '~icons/lucide/audio-lines'
-import IconCheck from '~icons/lucide/check'
 import IconImage from '~icons/lucide/image'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
@@ -339,25 +338,27 @@ onKeyStroke('Tab', (e) => {
               >
                 {{ e.name }}
                 <!-- The live things in a row that is otherwise a label, which is why they keep
-                     full contrast while the name and the tick stay grey. Each box is the 44px
-                     floor both ways; only the glyph inside it is small. -->
-                <RouterLink
-                  :to="communityPath(e.slug, 'images')"
-                  data-test="community-images"
-                  aria-label="Bilder"
-                  class="ml-auto flex h-11 min-w-11 shrink-0 items-center justify-center px-2 text-neutral-900"
-                >
-                  <IconImage class="size-4" aria-hidden="true" />
-                </RouterLink>
-                <RouterLink
-                  :to="communityPath(e.slug, 'audio')"
-                  data-test="community-audio"
-                  aria-label="Audio"
-                  class="flex h-11 min-w-11 shrink-0 items-center justify-center px-2 text-neutral-900"
-                >
-                  <IconAudio class="size-4" aria-hidden="true" />
-                </RouterLink>
-                <IconCheck class="ml-1 size-4" aria-hidden="true" />
+                     full contrast while the name stays grey. Packed as one group, 32px wide and
+                     44px tall each, so the name keeps the width: the frontend-ui tap-target
+                     exception, like Anmaßung's tools. -->
+                <span class="ml-auto flex shrink-0">
+                  <RouterLink
+                    :to="communityPath(e.slug, 'images')"
+                    data-test="community-images"
+                    aria-label="Bilder"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                  >
+                    <IconImage class="size-4" aria-hidden="true" />
+                  </RouterLink>
+                  <RouterLink
+                    :to="communityPath(e.slug, 'audio')"
+                    data-test="community-audio"
+                    aria-label="Audio"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                  >
+                    <IconAudio class="size-4" aria-hidden="true" />
+                  </RouterLink>
+                </span>
               </div>
               <button
                 v-else-if="showSwitcher"

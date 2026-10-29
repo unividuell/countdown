@@ -598,7 +598,7 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=community-images]').element.nextElementSibling).toBe(audio.element)
   })
 
-  it('gives the images and the audio entry a 44 px box each way', async () => {
+  it('packs the images and the audio entry 32 px wide, 44 px tall', async () => {
     activeCommunity.value = {
       slug: 'team',
       name: 'Team Süd',
@@ -613,7 +613,7 @@ describe('NavDrawer content', () => {
     // happy-dom computes no layout; the classes are the proxy for the box.
     for (const entry of ['community-images', 'community-audio']) {
       const link = w.get(`[data-test=${entry}]`)
-      expect(link.classes(), entry).toEqual(expect.arrayContaining(['h-11', 'min-w-11']))
+      expect(link.classes(), entry).toEqual(expect.arrayContaining(['h-11', 'w-8']))
     }
   })
 
