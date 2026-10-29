@@ -164,7 +164,8 @@ on Firefox for Android; Chrome for Android does not show it). **Anything under a
 through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
 the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
 already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_LOOKAHEAD_SECONDS`);
-`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples.
+`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples;
+Peilung's `echolocate/engine.ts` is the one for a looping bed plus many scheduled shots.
 
 - **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
   graph may be mid-render and drop the first samples of a clip that starts in the present.
@@ -182,6 +183,9 @@ already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_
 - **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
   Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
   routing any remote source through the graph.
+- **Synthesised samples: every write index must be an integer.** A `Float32Array` ignores
+  `a[1.5] = x` without an error — the sound just has holes. Round positions computed from
+  seconds × rate (`Math.round`/`Math.floor`) before indexing; nothing lints this.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
