@@ -167,9 +167,27 @@ describe('SonarField', () => {
     expect(mountField().get('canvas').classes()).toContain('touch-none')
   })
 
-  it('lies under a cover until the sound is unlocked', () => {
-    expect(mountField({ covered: true }).text()).toContain('Antippen zum Starten')
-    expect(mountField({ covered: false }).text()).not.toContain('Antippen zum Starten')
+  it('lies under a cover button until the sound is unlocked', () => {
+    expect(mountField({ covered: false }).find('button').exists()).toBe(false)
+
+    const field = mountField({ covered: true })
+    const cover = field.get('button')
+    expect(cover.attributes('type')).toBe('button')
+    expect(cover.text()).toBe('Antippen zum Starten')
+  })
+
+  // iOS counts a touch as a gesture from its end on: a pointerdown cannot start the graph.
+  it('asks to start on a click of the cover, never on a pointerdown', async () => {
+    const field = mountField({ covered: true })
+    const cover = field.get('button')
+
+    cover.element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(field.emitted('start')).toBeUndefined()
+    expect(field.emitted('tap')).toBeUndefined()
+
+    await cover.trigger('click')
+    expect(field.emitted('start')).toEqual([[]])
+    expect(field.emitted('tap')).toBeUndefined()
   })
 
   it('names the field for assistive technology', () => {

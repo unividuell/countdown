@@ -9,6 +9,9 @@
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
  * a finger there scrolls the page.
  *
+ * `covered` lays a button over the field, and only its click asks to `start`: iOS counts a touch
+ * as a gesture from its end on, so a `pointerdown` could not start the audio graph.
+ *
  * A wave is drawn from its `startMs`, on the clock of `performance.now()` and of a tap's
  * `event.timeStamp`. The canvas animates by `requestAnimationFrame` only while something moves.
  * The backing store follows the CSS size × `devicePixelRatio`; without a 2D context (happy-dom) it
@@ -41,7 +44,7 @@ const props = defineProps<{
 }>()
 
 /** `tMs` is the event's `timeStamp`: when the finger came down, not when the handler ran. */
-const emit = defineEmits<{ tap: [at: Point, tMs: number] }>()
+const emit = defineEmits<{ tap: [at: Point, tMs: number]; start: [] }>()
 
 const NOISE_LETTER: Record<NoiseKind, string> = {
   BIRDS: 'V',
@@ -348,12 +351,13 @@ watch(
       :class="{ 'touch-none': interactive }"
       @pointerdown="onDown"
     />
-    <div
+    <button
       v-if="props.covered"
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 text-lg font-semibold text-white"
+      type="button"
+      class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-lg bg-black/40 text-lg font-semibold text-white"
+      @click="emit('start')"
     >
       Antippen zum Starten
-    </div>
+    </button>
   </div>
 </template>

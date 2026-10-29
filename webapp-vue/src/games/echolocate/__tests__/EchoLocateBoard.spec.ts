@@ -116,7 +116,8 @@ function soundsFor(srcs: readonly (string | null)[]): EchoSounds & { bed: AudioB
 
 const step = (at: Point, hits: EchoHit[] = []): StepView => ({ input: at, answer: { hits } })
 
-function mountBoard(over: Record<string, unknown> = {}) {
+/** The field is a stub unless a case needs its own cover and canvas. */
+function mountBoard(over: Record<string, unknown> = {}, options: { realField?: boolean } = {}) {
   return mount(EchoLocateBoard, {
     props: {
       payload: PAYLOAD,
@@ -128,7 +129,7 @@ function mountBoard(over: Record<string, unknown> = {}) {
       awardPoints: null,
       ...over,
     },
-    global: { stubs: { HoldButton: true, SonarField: true } },
+    global: { stubs: { HoldButton: true, SonarField: !options.realField } },
   })
 }
 
@@ -138,6 +139,12 @@ const field = (w: Board) => w.findComponent(SonarField)
 const hold = (w: Board) => w.findComponent(HoldButton)
 const status = (w: Board) => w.get('[data-test="echo-locate-status"]')
 const engine = () => sound.engines[0]!
+
+/** A click on the field's cover. */
+async function start(w: Board) {
+  field(w).vm.$emit('start')
+  await flushPromises()
+}
 
 async function tapAt(w: Board, at: Point, tMs = performance.now()) {
   field(w).vm.$emit('tap', at, tMs)
@@ -183,28 +190,51 @@ describe('EchoLocateBoard', () => {
     expect(mountBoard({ payload: { ...PAYLOAD, clips: 2 } }).text()).toContain('2 Sprüche')
   })
 
-  it('unlocks the sound with the first tap and pings nothing', async () => {
+  // iOS takes a click as a gesture, a touch's pointerdown not: only then may the graph start.
+  it('unlocks the sound with a click on the cover, at once, and pings nothing', async () => {
     const session = { type: 'auto' }
     Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
 
     try {
-      const w = mountBoard()
+      const w = mountBoard({}, { realField: true })
       expect(field(w).props('covered')).toBe(true)
       expect(status(w).text()).toBe('Antippen zum Starten')
 
-      await tapAt(w, ANYWHERE)
+      w.get<HTMLButtonElement>('button').element.click()
 
+      // Inside the click, before anything awaits.
       expect(session.type).toBe('playback')
       expect(sound.ctx.resume).toHaveBeenCalledOnce()
       expect(sound.loadSounds).toHaveBeenCalledWith(sound.ctx, [SRC])
+
+      await flushPromises()
       expect(sound.engines).toHaveLength(1)
       expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
       expect(w.emitted('skip')).toBeUndefined()
       expect(field(w).props('covered')).toBe(false)
       expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+
+      // A late second click, from before the cover went: opened already, it pings nothing.
+      await start(w)
+      expect(w.emitted('skip')).toBeUndefined()
+      expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+      expect(sound.loadSounds).toHaveBeenCalledOnce()
     } finally {
       Reflect.deleteProperty(navigator, 'audioSession')
     }
+  })
+
+  it('does not unlock from a pointerdown on the closed field', async () => {
+    const w = mountBoard({}, { realField: true })
+
+    await w.get('button').trigger('pointerdown')
+    await w.get('canvas').trigger('pointerdown')
+    await flushPromises()
+
+    expect(sound.ctx.resume).not.toHaveBeenCalled()
+    expect(sound.loadSounds).not.toHaveBeenCalled()
+    expect(w.emitted('skip')).toBeUndefined()
+    expect(status(w).text()).toBe('Antippen zum Starten')
   })
 
   it('says so when the browser keeps the sound locked', async () => {
@@ -212,7 +242,7 @@ describe('EchoLocateBoard', () => {
     sound.ctx.resume.mockImplementation(() => Promise.reject(new Error('not allowed')))
     const w = mountBoard()
 
-    await tapAt(w, ANYWHERE)
+    await start(w)
 
     expect(warn).toHaveBeenCalledOnce()
     expect(status(w).text()).toBe('Ping + Markieren · noch 3')
@@ -220,7 +250,7 @@ describe('EchoLocateBoard', () => {
 
   it('pings with a skip carrying the spot', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
 
     await tapAt(w, A)
 
@@ -231,7 +261,7 @@ describe('EchoLocateBoard', () => {
 
   it("starts the wave once the step's answer arrives", async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     engine().ping.mockReturnValue(5000)
     await tapAt(w, A)
     const hits: EchoHit[] = [CLIP_HIT, { sound: 'COW', clip: null, delayMs: 2000 }]
@@ -247,7 +277,7 @@ describe('EchoLocateBoard', () => {
 
   it('marks for as long as the wave runs when the sound ends sooner', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A)])
@@ -259,7 +289,7 @@ describe('EchoLocateBoard', () => {
     let loaded: (sounds: EchoSounds & { bed: AudioBuffer }) => void = () => undefined
     sound.loadSounds.mockImplementation(() => new Promise((resolve) => (loaded = resolve)))
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A, [CLIP_HIT])])
@@ -275,7 +305,7 @@ describe('EchoLocateBoard', () => {
   it('ends the wave on time without a tap', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
     await answer(w, [step(A)])
 
@@ -288,7 +318,7 @@ describe('EchoLocateBoard', () => {
 
   it('gives up a ping the server did not take', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
 
     await w.setProps({ disabled: true })
@@ -301,7 +331,7 @@ describe('EchoLocateBoard', () => {
 
   it('takes a ping the server counted in place of the open one, without a wave', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, B)
 
     // The answer to an earlier ping at A was lost; the reload after the 409 brings it.
@@ -323,7 +353,7 @@ describe('EchoLocateBoard', () => {
     expect(field(w).props('rings')).toEqual([[2.5], [], [4]])
     expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
 
-    await tapAt(w, ANYWHERE)
+    await start(w)
     expect(status(w).text()).toBe('Schätzung · Pins 1/1')
     expect(engine().ping).not.toHaveBeenCalled()
   })
@@ -331,7 +361,7 @@ describe('EchoLocateBoard', () => {
   it('holds to hand in exactly the pins and rings per ping', async () => {
     saveDraft(storage.fake, KEY, { rings: [[1.5], []], pins: [] })
     const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, C)
     await answer(w, [step(A), step(B), step(C, [CLIP_HIT])])
 
@@ -356,18 +386,23 @@ describe('EchoLocateBoard', () => {
     expect(w.emitted('guess')).toBeUndefined()
   })
 
-  it('ignores taps while disabled', async () => {
+  it('ignores the cover and taps while disabled', async () => {
     const w = mountBoard({ disabled: true })
 
-    await tapAt(w, ANYWHERE)
-
+    await start(w)
     expect(sound.loadSounds).not.toHaveBeenCalled()
     expect(status(w).text()).toBe('Antippen zum Starten')
+
+    await w.setProps({ disabled: false })
+    await start(w)
+    await w.setProps({ disabled: true })
+    await tapAt(w, A)
+    expect(w.emitted('skip')).toBeUndefined()
   })
 
   it('saves rings and pins as a draft', async () => {
     const w = mountBoard({ payload: { ...PAYLOAD, pings: 1 }, draftKey: KEY })
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
     await answer(w, [step(A, [CLIP_HIT])])
 
@@ -380,7 +415,7 @@ describe('EchoLocateBoard', () => {
 
   it('keeps no draft without a key', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
 
     expect(storage.items.size).toBe(0)
@@ -388,7 +423,7 @@ describe('EchoLocateBoard', () => {
 
   it('stays silent at a missing clip', async () => {
     const w = mountBoard({ clipSrcs: [null] })
-    await tapAt(w, ANYWHERE)
+    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A, [CLIP_HIT])])
@@ -400,7 +435,7 @@ describe('EchoLocateBoard', () => {
 
   it('picks up a clip that arrives after the start', async () => {
     const w = mountBoard({ clipSrcs: [null] })
-    await tapAt(w, ANYWHERE)
+    await start(w)
 
     await w.setProps({ clipSrcs: [SRC] })
     await flushPromises()
@@ -416,7 +451,7 @@ describe('EchoLocateBoard', () => {
 
   it('stops its sound when it goes', async () => {
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
 
     w.unmount()
 
@@ -427,7 +462,7 @@ describe('EchoLocateBoard', () => {
     let loaded: (sounds: EchoSounds & { bed: AudioBuffer }) => void = () => undefined
     sound.loadSounds.mockImplementation(() => new Promise((resolve) => (loaded = resolve)))
     const w = mountBoard()
-    await tapAt(w, ANYWHERE)
+    await start(w)
 
     w.unmount()
     loaded(soundsFor([SRC]))

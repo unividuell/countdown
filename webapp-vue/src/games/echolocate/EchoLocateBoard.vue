@@ -4,16 +4,16 @@
  *
  *   1 Spruch
  *   ┌──────────────┐
- *   │  SonarField  │   covered until the first tap
+ *   │  SonarField  │   covered until its cover is clicked
  *   └──────────────┘
  *   Ping + Markieren · noch 3
  *        ( Abgeben )   once every clip has its pin
  *
  * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
  *
- *   unlock ─▶ playback session, graph, sounds, bed
- *   ping   ─▶ skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave starts ─▶ settle timer
- *                              └─ request over, no step ─▶ refused, synced
+ *   cover click ─▶ unlock: playback session, graph, sounds, bed
+ *   field tap   ─▶ ping: skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
+ *                                         └─ request over, no step ─▶ refused, synced
  *
  * Rings and pins are saved as a draft on every change; the pings live on the server.
  */
@@ -123,14 +123,24 @@ function load(ctx: AudioContext): void {
   })
 }
 
+/** The cover's click, a gesture iOS accepts; closed, a tap only unlocks, wherever and whenever. */
+function onStart(): void {
+  if (props.disabled || flow.value.phase !== 'closed') return
+
+  const { state, effect } = tap(flow.value, { x: 0, y: 0 }, performance.now(), props.payload.speed)
+  flow.value = state
+
+  if (effect?.kind === 'unlock') unlock()
+}
+
+/** Closed, the field's pointerdown is no gesture on iOS: only the cover unlocks. */
 function onTap(at: Point, tMs: number): void {
-  if (props.disabled) return
+  if (props.disabled || flow.value.phase === 'closed') return
 
   const { state, effect } = tap(flow.value, at, tMs, props.payload.speed)
   flow.value = state
 
-  if (effect?.kind === 'unlock') unlock()
-  else if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
+  if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
 }
 
 /** The open ping's answer: schedule its sounds, then start its wave where they will be heard. */
@@ -244,6 +254,7 @@ onBeforeUnmount(() => {
         :pending="flow.pending"
         :covered="flow.phase === 'closed'"
         @tap="onTap"
+        @start="onStart"
       />
       <p data-test="echo-locate-status" aria-live="polite" class="text-center text-lg">
         {{ status }}
