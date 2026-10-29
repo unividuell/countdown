@@ -120,10 +120,11 @@ visibility), a media type, plain bytes, and exactly one visibility.
   of an announce materialise: `exists` spares the second, and the unique key means the loser's rows —
   random keys — can never replace the winner's. Nothing frees them before the edition is archived (a
   single `DELETE`, not built), so the table grows with every round and history has all the round had.
-- **A failure per asset omits the asset, it never throws.** `produceAssets` runs inside the
-  materialisation: a throw rolls it back and the round is never playable. Log a warning and leave that
-  asset out — the round runs without it. Peilung's clip that is gone from the pool leaves its place
-  silent, the other clip still sounds.
+- **A failure per asset omits the asset, it never throws.** `produceAssets` runs inside
+  `materialise`'s transaction: a throw rolls back the whole announce — no round row, the announcing
+  `GET` fails, the daily schedule logs a warning and skips it, and every retry draws anew, possibly
+  another game. One broken asset must not cost the round: log a warning and leave it out. Peilung's
+  clip that is gone from the pool leaves its place silent, the other clip still sounds.
 - **Sealed ahead, key with the stage.** A stage asset may be fetched before its stage, so the bytes
   travel under the reveal cover and no transfer lands on the scored clock (the opening still does); the
   stage that opens it brings the key (`assetKeys` in the round response, never in the payload — the
@@ -315,12 +316,12 @@ gets the same curve:
 ## Stages generalise the framework, not the game
 
 `round_plays.stage` belongs to the framework, not to any one game: a single-stage game (Guess Hue)
-just always writes the constant `0`. For a staged round, the recorded `deviation` **is** the stage —
-the framework overrides whatever the game returns with the stage number, and the game's own
-`deviation` is a meaningless `0.0` that never reaches storage. "A wrong guess below the last stage
-advances the round instead of recording it" is not universal — it holds only under `ALL_QUALIFYING`;
-`CLOSEST_ONLY` (phase two) is always terminal on the first guess, whatever the stage, because only one
-guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
+just always writes the constant `0`. For a staged round whose stages score (`stagesScore`, below), the
+recorded `deviation` **is** the stage — the framework overrides whatever the game returns with the
+stage number, and the game's own `deviation` is a meaningless `0.0` that never reaches storage. "A
+wrong guess below the last stage advances the round instead of recording it" is not universal — it
+holds only where stages score and only under `ALL_QUALIFYING`; `CLOSEST_ONLY` (phase two) is always
+terminal on the first guess, whatever the stage, because only one guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
 the lab replays the exact rule a real round applies instead of a copy of it.
 
 A `scoresOnDuration` game is the second case of the same shape: `PlayService.guess` overrides
@@ -341,9 +342,9 @@ ladder (Peilung's ping, with the tapped point as `input`). The player's `input` 
 never is: `step` is pure, so every response recomputes it from the frozen params. `round_plays.steps`
 holds exactly one entry per stage — JSON `null` for a step without input — so `steps.size == stage`
 and the answer to stage `i` is `step(params, i, steps[i])`. Stage and input are written in one
-statement, both or neither. `MyPlayDto.steps` carries the answers, `OtherPlayDto.steps` only the
-inputs: what the others did, not what it told them. JSON `null` reaches `GameTypeHandle` as Jackson's
-`NullNode`, which it turns into Kotlin `null` before a game sees it.
+statement, both or neither. `MyPlayDto.steps` carries input and answer (`StepDto`),
+`OtherPlayDto.steps` only the inputs: what the others did, not what it told them. JSON `null` reaches
+`GameTypeHandle` as Jackson's `NullNode`, which it turns into Kotlin `null` before a game sees it.
 
 `stagesScore(params)` separates two meanings a ladder used to have at once: **stages are the score**
 (Anspielung: a wrong guess costs a stage, the stage is the deviation) versus **stages count steps**
