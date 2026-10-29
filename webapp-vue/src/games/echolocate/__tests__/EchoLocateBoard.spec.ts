@@ -355,6 +355,52 @@ describe('EchoLocateBoard', () => {
     expect(sound.ctx.suspend).not.toHaveBeenCalled()
   })
 
+  // The cover waits for a running wave; back before it ends, with the sound on, no cover comes.
+  it('starts the bed again when the page comes back during a wave, the sound running', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const w = mountBoard()
+    await start(w)
+    await tapAt(w, A)
+    await answer(w, [step(A, [CLIP_HIT])])
+
+    await showPage('hidden')
+    await showPage('visible')
+    await flushPromises()
+    expect(engine().stopBed).toHaveBeenCalledOnce()
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+
+    now.mockReturnValue(START + TRAVEL_MS)
+    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
+    await flushPromises()
+    expect(field(w).props('covered')).toBe(false)
+    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+  })
+
+  it('covers the field after the wave when the page comes back without sound', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const w = mountBoard()
+    await start(w)
+    await tapAt(w, A)
+    await answer(w, [step(A, [CLIP_HIT])])
+
+    await showPage('hidden')
+    await interrupt()
+    await showPage('visible')
+    await flushPromises()
+    expect(engine().startBed).toHaveBeenCalledOnce()
+    expect(status(w).text()).toBe('Markieren')
+
+    now.mockReturnValue(START + TRAVEL_MS)
+    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
+    await flushPromises()
+    expect(field(w).props('covered')).toBe(true)
+
+    await start(w)
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+    expect(field(w).props('covered')).toBe(false)
+  })
+
   it('lets go of the graph and the page when it goes', async () => {
     const fromGraph = vi.spyOn(sound.ctx, 'removeEventListener')
     const fromPage = vi.spyOn(document, 'removeEventListener')

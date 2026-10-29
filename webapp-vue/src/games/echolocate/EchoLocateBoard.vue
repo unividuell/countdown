@@ -14,7 +14,8 @@
  *   cover click ─▶ unlock: playback session, graph, sounds, bed ─▶ unlocked, once the graph runs
  *   field tap   ─▶ ping: skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
  *                                         └─ request over, no step ─▶ refused, synced
- *   graph stops, page hidden ─▶ locked: the cover again; hidden, the bed stops until its click
+ *   graph stops, page hidden ─▶ locked: the cover again; hidden, the bed stops until its click,
+ *                               or the return if a ping out or its wave kept the cover off
  *
  * Rings and pins are saved as a draft on every change; the pings live on the server.
  */
@@ -129,9 +130,7 @@ function unlock(): void {
   if (audio === null) {
     load(ctx)
   } else {
-    // A bed stopped while the page was hidden starts again; a playing one plays on.
-    const gain = dbToGain(props.payload.bedDb)
-    void audio.then((ready) => ready?.engine.startBed(ready.sounds.bed, gain))
+    restartBed()
   }
 
   if (ctx.state === 'running') {
@@ -148,6 +147,12 @@ function unlock(): void {
     .catch((err: unknown) => {
       console.warn('[echo-locate] the browser kept the audio graph suspended', err)
     })
+}
+
+/** A bed stopped while the page was hidden starts again; a playing one plays on. */
+function restartBed(): void {
+  const gain = dbToGain(props.payload.bedDb)
+  void audio?.then((ready) => ready?.engine.startBed(ready.sounds.bed, gain))
 }
 
 /** The engine comes with the first sounds, and only while the board is still there. */
@@ -206,6 +211,8 @@ useEventListener(graph, 'statechange', guard)
 // A hidden page plays nothing on. The shared graph is not suspended: other games use it.
 useEventListener(document, 'visibilitychange', () => {
   if (document.visibilityState === 'hidden') engine?.stopBed()
+  // Back while a ping or its wave runs, so no cover came: the bed comes back by itself.
+  else if (audible() && flow.value.phase !== 'closed') restartBed()
   guard()
 })
 
