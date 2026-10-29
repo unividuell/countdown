@@ -6,6 +6,7 @@ import {
   labAssetUrl,
   openLabRound,
   resetLabRound,
+  skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
 import type { LabRoundResponse } from '@/gamelab/types'
@@ -25,6 +26,14 @@ describe('gamelab api', () => {
     expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/guess?seed=42&phase=ONE', {
       method: 'POST',
       body: '{"value":123}',
+    })
+  })
+
+  it('sends the lab step input', async () => {
+    await skipLabStage('team', 'stub', 42, 'ONE', 1, { x: 1, y: 2 })
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/skip?seed=42&phase=ONE', {
+      method: 'POST',
+      body: '{"fromStage":1,"input":{"x":1,"y":2}}',
     })
   })
 

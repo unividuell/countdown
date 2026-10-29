@@ -21,6 +21,7 @@ export function gameEntry(over: Partial<GameEntry> = {}): GameEntry {
     votes: [],
     struck: false,
     adminOverride: null,
+    steps: [],
     ...over,
   }
 }

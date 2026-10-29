@@ -205,6 +205,15 @@ export interface GameDto {
 }
 
 /**
+ * One step of a staged play, as the viewer sees it: what they sent, and what the game answered.
+ * Both `unknown` — the shapes belong to the game. `input` is `null` for a step without one.
+ */
+export interface StepView {
+  input: unknown
+  answer: unknown
+}
+
+/**
  * Another player's row. No timestamps on purpose: when somebody else revealed and when they guessed
  * is theirs, and the server does not send it — see `OtherPlayDto` on the Kotlin side. The duration
  * does travel, for a timed game: see `durationMs` below.
@@ -235,12 +244,18 @@ export interface OtherPlayDto {
   struck: boolean
   /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
   adminOverride: boolean | null
+  /** The inputs of this player's steps, one per stage. Their answers stay with their player. */
+  steps: unknown[]
 }
 
-/** The viewer's own row: the same, plus the two stamps that are theirs to know. */
-export interface MyPlayDto extends OtherPlayDto {
+/**
+ * The viewer's own row: the same, plus the two stamps that are theirs to know — and their steps
+ * with the answers, not just the inputs.
+ */
+export interface MyPlayDto extends Omit<OtherPlayDto, 'steps'> {
   revealedAt: string
   guessedAt: string | null
+  steps: StepView[]
 }
 
 export interface RoundResponse {

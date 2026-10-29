@@ -15,7 +15,7 @@ export function useRound(slug: string): {
   notice: Ref<string | null>
   reveal: () => Promise<void>
   submit: (guess: unknown) => Promise<void>
-  skip: (fromStage: number) => Promise<void>
+  skip: (fromStage: number, input?: unknown) => Promise<void>
   giveUp: () => Promise<void>
   reload: () => Promise<void>
 } {
@@ -86,11 +86,11 @@ export function useRound(slug: string): {
     })
   }
 
-  async function skip(fromStage: number): Promise<void> {
+  async function skip(fromStage: number, input?: unknown): Promise<void> {
     const number = round.value?.round?.number
     if (number === undefined) return
     await run(async () => {
-      round.value = await skipStage(slug, number, fromStage)
+      round.value = await skipStage(slug, number, fromStage, input)
     })
   }
 

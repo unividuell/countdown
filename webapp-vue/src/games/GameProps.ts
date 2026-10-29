@@ -1,5 +1,5 @@
 import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
+import type { AwardRule, StepView } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
 import type { RoundReview } from '@/rounds/review'
 
@@ -29,6 +29,8 @@ export interface GameProps {
   awardPoints: number | null
   disabled: boolean
   stage?: number
+  /** The viewer's own steps, each with the answer the game gave. Empty before the first step. */
+  steps?: StepView[]
   assets?: RoundAssets | undefined
   /** The round is over for everyone. */
   closed?: boolean
@@ -40,10 +42,13 @@ export interface GameProps {
   scene?: unknown
 }
 
-/** What a game tells its host. A one-stage game never emits `skip` or `giveUp`: both are the framework's. */
+/**
+ * What a game tells its host. A one-stage game never emits `skip` or `giveUp`: both are the framework's.
+ * `skip` carries the step's input, if the game has one.
+ */
 export type GameEmits = {
   guess: [value: unknown]
-  skip: [stage: number]
+  skip: [stage: number, input?: unknown]
   giveUp: []
   reveal: []
 }

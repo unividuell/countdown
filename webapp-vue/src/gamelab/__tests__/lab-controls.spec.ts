@@ -16,4 +16,32 @@ describe('LabControls', () => {
     expect(url.pathname).toBe('/login/start')
     expect(url.searchParams.get('redirect')).toBe(returnPath)
   })
+
+  it("shows the loaded round's difficulty under the seed", () => {
+    const wrapper = mount(LabControls, {
+      props: { seed: 42, phase: 'ONE', returnPath: '/x', busy: false, difficulty: 0.7 },
+    })
+
+    expect(wrapper.get('[data-test="lab-difficulty"]').text()).toBe('Schwierigkeit 0,7')
+  })
+
+  it('writes the extremes with one decimal, zero included', () => {
+    const at = (difficulty: number) =>
+      mount(LabControls, {
+        props: { seed: 42, phase: 'ONE', returnPath: '/x', busy: false, difficulty },
+      })
+        .get('[data-test="lab-difficulty"]')
+        .text()
+
+    expect(at(0)).toBe('Schwierigkeit 0,0')
+    expect(at(1)).toBe('Schwierigkeit 1,0')
+  })
+
+  it('shows no difficulty line without a round', () => {
+    const wrapper = mount(LabControls, {
+      props: { seed: 42, phase: 'ONE', returnPath: '/x', busy: false },
+    })
+
+    expect(wrapper.find('[data-test="lab-difficulty"]').exists()).toBe(false)
+  })
 })

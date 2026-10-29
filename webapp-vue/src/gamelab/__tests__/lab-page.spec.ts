@@ -43,10 +43,12 @@ const { StubGame } = await vi.hoisted(async () => {
         closed: { type: Boolean, default: true },
         sealed: { type: Boolean, default: false },
         scene: { type: null, default: null },
+        steps: { type: null, default: null },
       },
-      emits: ['guess', 'reveal'],
+      emits: ['guess', 'reveal', 'skip'],
       template:
         '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>' +
+        '<button data-test="stub-skip" @click="$emit(\'skip\', 0, { x: 1, y: 2 })">skip</button>' +
         '<button data-test="stub-reveal" @click="$emit(\'reveal\')">reveal</button>',
     }),
   }
@@ -125,6 +127,8 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   revealed: true,
   canOverride: true,
   assetKeys: {},
+  difficulty: 0.7,
+  mySteps: [],
 }
 
 /**
@@ -253,6 +257,33 @@ describe('lab page', () => {
     await w.get('[data-test="stub-guess"]').trigger('click')
     await flushPromises()
     expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', { value: 123 })
+  })
+
+  // `StepView[]` fits `unknown[]`, so the compiler cannot tell the answers from the inputs the
+  // placeholder row must carry — and `<component :is>` checks no prop at all.
+  it('hands the game mySteps and passes a skip input to the lab', async () => {
+    const mySteps = [{ input: { x: 3, y: 4 }, answer: [{ delayMs: 400 }] }]
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, mySteps } as never)
+    vi.spyOn(api, 'skipLabStage')
+      .mockReset()
+      .mockResolvedValue({ ...round } as never)
+
+    const w = await mountPage()
+    const stub = w.getComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual(mySteps)
+    expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([{ x: 3, y: 4 }])
+
+    await w.get('[data-test="stub-skip"]').trigger('click')
+    await flushPromises()
+
+    expect(api.skipLabStage).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 0, { x: 1, y: 2 })
+  })
+
+  it("shows the loaded round's difficulty in the drawer", async () => {
+    await mountPage()
+
+    expect(tool('lab-difficulty').text()).toBe('Schwierigkeit 0,7')
   })
 
   it('resets the round', async () => {
@@ -626,6 +657,7 @@ describe('lab page', () => {
         votes: [],
         struck: false,
         adminOverride: null,
+        steps: [],
       },
     ])
     expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)

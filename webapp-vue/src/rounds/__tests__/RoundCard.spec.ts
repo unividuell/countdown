@@ -30,6 +30,7 @@ const { StubGame } = await vi.hoisted(async () => {
         awardRule: { type: String, default: null },
         awardPoints: { type: Number, default: null },
         stage: { type: Number, default: 0 },
+        steps: { type: null, default: null },
         assets: { type: Object, default: null },
         review: { type: Object, default: null },
         closed: { type: Boolean, default: false },
@@ -40,6 +41,7 @@ const { StubGame } = await vi.hoisted(async () => {
       template:
         '<button data-test="stub-guess" @click="$emit(\'guess\', 123)">guess</button>' +
         '<button data-test="stub-skip" @click="$emit(\'skip\', 1)">skip</button>' +
+        '<button data-test="stub-skip-input" @click="$emit(\'skip\', 0, { x: 1, y: 2 })">skip</button>' +
         '<button data-test="stub-give-up" @click="$emit(\'give-up\')">give up</button>' +
         '<button data-test="stub-reveal" @click="$emit(\'reveal\')">reveal</button>',
     }),
@@ -62,6 +64,7 @@ const anOther = (over: Partial<OtherPlayDto> = {}): OtherPlayDto => ({
   votes: [],
   struck: false,
   adminOverride: null,
+  steps: [],
   ...over,
 })
 
@@ -70,6 +73,7 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   avatar: { shortName: 'FRY', bgColorHex: '#bf40b3' },
   revealedAt: '2026-08-14T11:00:00Z',
   guessedAt: null,
+  steps: [],
   ...over,
 })
 
@@ -119,7 +123,7 @@ function mountCard(props: {
   notice?: string | null
   reveal?: () => Promise<void>
   submit?: (guess: unknown) => Promise<void>
-  skip?: (fromStage: number) => Promise<void>
+  skip?: (fromStage: number, input?: unknown) => Promise<void>
   giveUp?: () => Promise<void>
   assets?: RoundAssets
   review?: RoundReview
@@ -285,10 +289,54 @@ describe('RoundCard', () => {
     const w = mountCard({ round, stage: 'playing', skip, giveUp })
 
     await w.get('[data-test="stub-skip"]').trigger('click')
-    expect(skip).toHaveBeenCalledWith(1)
+    expect(skip).toHaveBeenCalledWith(1, undefined)
 
     await w.get('[data-test="stub-give-up"]').trigger('click')
     expect(giveUp).toHaveBeenCalledOnce()
+  })
+
+  // `StepView[]` is assignable to `unknown[]`, so the compiler cannot tell the objects from the
+  // inputs a `GameEntry` carries — only this test can.
+  it('hands the game its own steps with answers', () => {
+    const steps = [
+      { input: { x: 1, y: 2 }, answer: [{ delayMs: 400 }] },
+      { input: null, answer: null },
+    ]
+    const round = aRound({ me: aPlay({ steps }) })
+
+    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual(steps)
+  })
+
+  it('gives the game inputs only in entries, also for my own row', () => {
+    const me = aPlay({ steps: [{ input: 'a', answer: 1 }] })
+    const other = anOther({ steps: ['b', null] })
+    const round = aRound({ me, others: [other] })
+
+    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
+    const entries = stub.props('entries') as { steps: unknown[] }[]
+
+    expect(entries[0]?.steps).toEqual(['a'])
+    expect(entries[1]?.steps).toEqual(['b', null])
+  })
+
+  it('hands the game no steps for a viewer without a play', () => {
+    const stub = mountCard({ round: aRound({ payload: null }), stage: 'sealed' }).findComponent(
+      StubGame,
+    )
+
+    expect(stub.props('steps')).toEqual([])
+  })
+
+  it('passes a skip with input up to the page', async () => {
+    const skip = vi.fn().mockResolvedValue(undefined)
+    const round = aRound({ me: aPlay() })
+    const w = mountCard({ round, stage: 'playing', skip })
+
+    await w.get('[data-test="stub-skip-input"]').trigger('click')
+
+    expect(skip).toHaveBeenCalledWith(0, { x: 1, y: 2 })
   })
 
   it('shows the result once the viewer has guessed', () => {

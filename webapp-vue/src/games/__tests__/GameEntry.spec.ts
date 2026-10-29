@@ -23,6 +23,7 @@ describe('GameEntry', () => {
       votes: [{ userId: 'v', username: 'B', value: 'FLAG' }],
       struck: false,
       adminOverride: null,
+      steps: [{ input: { x: 1, y: 2 }, answer: null }],
     }
     const other: OtherPlayDto = { ...mine } as OtherPlayDto
     const lab: LabEntryDto = {
@@ -38,6 +39,7 @@ describe('GameEntry', () => {
       votes: [],
       struck: false,
       adminOverride: null,
+      steps: [],
     }
 
     const entries: GameEntry[] = [mine, other, lab]

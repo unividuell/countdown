@@ -30,4 +30,9 @@ export type GameEntry = {
   struck: boolean
   /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
   adminOverride: boolean | null
+  /**
+   * The inputs of this player's steps, nothing else. A host maps its own row's steps down to this
+   * before handing them over — `StepView[]` would fit the type, but not the contract.
+   */
+  steps?: readonly unknown[]
 }

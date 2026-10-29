@@ -6,6 +6,7 @@ import {
   revealRound,
   roundAssets,
   roundAssetUrl,
+  skipStage,
   submitGuess,
 } from '@/api/rounds'
 import type { RoundResponse } from '@/api/types'
@@ -33,6 +34,22 @@ describe('rounds api', () => {
     expect(client.apiFetch).toHaveBeenCalledWith('/api/communities/team/rounds/current/guess', {
       method: 'POST',
       body: JSON.stringify({ roundNumber: 12, guess: { hue: 123.5 } }),
+    })
+  })
+
+  it('sends the step input along with the stage', async () => {
+    await skipStage('team', 4, 1, { x: 1, y: 2 })
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/communities/team/rounds/current/skip', {
+      method: 'POST',
+      body: '{"roundNumber":4,"fromStage":1,"input":{"x":1,"y":2}}',
+    })
+  })
+
+  it('sends no input field for a step without one', async () => {
+    await skipStage('team', 4, 1)
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/communities/team/rounds/current/skip', {
+      method: 'POST',
+      body: '{"roundNumber":4,"fromStage":1}',
     })
   })
 

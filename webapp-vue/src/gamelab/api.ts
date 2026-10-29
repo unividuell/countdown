@@ -39,17 +39,21 @@ export const resetLabRound = <P>(slug: string, game: string, seed: number, phase
 export const forgetMyLabEntry = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/me'), { method: 'DELETE' })
 
-/** Voluntary stage advance — „mehr hören“, guarded server-side by the stage the client believes it is on. */
+/**
+ * Voluntary stage advance — „mehr hören“, guarded server-side by the stage the client believes it is on.
+ * [input] is what the step carries; `undefined` drops out of the JSON, which is a step without one.
+ */
 export const skipLabStage = <P>(
   slug: string,
   game: string,
   seed: number,
   phase: LabPhase,
   fromStage: number,
+  input?: unknown,
 ) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/skip'), {
     method: 'POST',
-    body: JSON.stringify({ fromStage }),
+    body: JSON.stringify({ fromStage, input }),
   })
 
 /** The explicit exit without an answer. */
