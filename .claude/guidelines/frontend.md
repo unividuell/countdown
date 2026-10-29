@@ -106,7 +106,9 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   WebSocket once the tab has sat in the background for ~20 s (an open picker counts); back in front,
   Vite's client pings the dev server and calls `location.reload()`, wiping e.g. the upload queue.
   Dev only — the production build has no Vite client. Seen over CDP
-  (`adb forward tcp:9222 localabstract:chrome_devtools_remote`).
+  (`adb forward tcp:9222 localabstract:chrome_devtools_remote`). For phone tests that leave the
+  tab, start the `frontend-build` launch config: a production build behind `vite preview` on
+  :4173, which inherits the dev proxy.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),
