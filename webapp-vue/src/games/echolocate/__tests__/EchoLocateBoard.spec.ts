@@ -377,6 +377,32 @@ describe('EchoLocateBoard', () => {
     expect(engine().startBed).toHaveBeenCalledTimes(2)
   })
 
+  // iOS may still read „interrupted“ when the page shows, and run again only later.
+  it('starts the bed again when the sound runs again after the page came back, mid-wave', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const w = mountBoard()
+    await start(w)
+    await tapAt(w, A)
+    await answer(w, [step(A, [CLIP_HIT])])
+
+    await showPage('hidden')
+    await interrupt()
+    await showPage('visible')
+    await flushPromises()
+    expect(engine().startBed).toHaveBeenCalledOnce()
+
+    sound.ctx.state = 'running'
+    sound.ctx.dispatchEvent(new Event('statechange'))
+    await flushPromises()
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+
+    now.mockReturnValue(START + TRAVEL_MS)
+    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
+    await flushPromises()
+    expect(field(w).props('covered')).toBe(false)
+    expect(engine().startBed).toHaveBeenCalledTimes(2)
+  })
+
   it('covers the field after the wave when the page comes back without sound', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const w = mountBoard()

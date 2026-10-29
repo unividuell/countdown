@@ -15,7 +15,7 @@
  *   field tap   ─▶ ping: skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
  *                                         └─ request over, no step ─▶ refused, synced
  *   graph stops, page hidden ─▶ locked: the cover again; hidden, the bed stops until its click,
- *                               or the return if a ping out or its wave kept the cover off
+ *                               or the sound's return if a ping out or its wave kept the cover off
  *
  * Rings and pins are saved as a draft on every change; the pings live on the server.
  */
@@ -205,15 +205,22 @@ function guard(): void {
   if (!audible()) flow.value = locked(flow.value)
 }
 
+/**
+ * The sound went or came back: page shown or hidden, graph running or not. Back while a ping or its
+ * wave runs, no cover came, so the bed comes back by itself.
+ */
+function checkSound(): void {
+  if (audible() && flow.value.phase !== 'closed') restartBed()
+  guard()
+}
+
 // iOS suspends the graph for a call, an app switch or the lock screen; a tap cannot resume it.
-useEventListener(graph, 'statechange', guard)
+useEventListener(graph, 'statechange', checkSound)
 
 // A hidden page plays nothing on. The shared graph is not suspended: other games use it.
 useEventListener(document, 'visibilitychange', () => {
   if (document.visibilityState === 'hidden') engine?.stopBed()
-  // Back while a ping or its wave runs, so no cover came: the bed comes back by itself.
-  else if (audible() && flow.value.phase !== 'closed') restartBed()
-  guard()
+  checkSound()
 })
 
 // Whatever moves the round on — a wave that ends, a refused ping, a start over — may find the
