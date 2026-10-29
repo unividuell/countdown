@@ -321,6 +321,17 @@ describe('RoundCard', () => {
     expect(entries[1]?.steps).toEqual(['b', null])
   })
 
+  it('reads a play without steps, as a server from before them sends it, as none', () => {
+    const me: Partial<MyPlayDto> = aPlay()
+    delete me.steps
+    const round = aRound({ me: me as MyPlayDto })
+
+    const stub = mountCard({ round, stage: 'playing' }).findComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual([])
+    expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([])
+  })
+
   it('hands the game no steps for a viewer without a play', () => {
     const stub = mountCard({ round: aRound({ payload: null }), stage: 'sealed' }).findComponent(
       StubGame,

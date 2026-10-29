@@ -280,6 +280,17 @@ describe('lab page', () => {
     expect(api.skipLabStage).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 0, { x: 1, y: 2 })
   })
 
+  it('reads a round without mySteps, as a server from before them sends it, as none', async () => {
+    const older: Partial<LabRoundResponse> = { ...round }
+    delete older.mySteps
+    vi.spyOn(api, 'openLabRound').mockResolvedValue(older as never)
+
+    const stub = (await mountPage()).getComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual([])
+    expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([])
+  })
+
   it("shows the loaded round's difficulty in the drawer", async () => {
     await mountPage()
 

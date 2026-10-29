@@ -67,12 +67,13 @@ const component = computed<Component | null>(() => {
 
 /**
  * Mine first, then everyone else's — the order the reading wheel expects. My steps are cut down to
- * their inputs like everyone's: an entry never carries answers, those travel as `steps` below.
+ * their inputs like everyone's: an entry never carries answers, those travel as `steps` below. A
+ * server from before steps sends none.
  */
 const entries = computed<GameEntry[]>(() => {
   const me = props.round?.me ?? null
   const others = props.round?.others ?? []
-  return me ? [{ ...me, steps: me.steps.map((step) => step.input) }, ...others] : others
+  return me ? [{ ...me, steps: (me.steps ?? []).map((step) => step.input) }, ...others] : others
 })
 
 /** A closed round is done by definition — there is no stage left to derive it from. */

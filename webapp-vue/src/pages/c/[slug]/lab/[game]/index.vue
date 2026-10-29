@@ -230,7 +230,8 @@ const gameEntries = computed<GameEntry[]>(() => {
       votes: [],
       struck: false,
       adminOverride: null,
-      steps: current.mySteps.map((step) => step.input),
+      // A server from before steps sends none.
+      steps: (current.mySteps ?? []).map((step) => step.input),
     },
     ...current.others,
   ]
@@ -346,7 +347,7 @@ watch(
         :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
-        :steps="round.mySteps"
+        :steps="round.mySteps ?? []"
         :assets="assets"
         :review="review"
         :closed="false"
