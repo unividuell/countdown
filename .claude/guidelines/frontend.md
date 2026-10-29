@@ -97,7 +97,8 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
 - **A file picker's `accept` is a platform filter, not just a hint.** iOS Safari maps a bare
   `audio/*` to video and greys out every audio file in Files; list the extensions beside it
   (`AudioPool.vue`). Android's picker filters by the MIME type Android assigns, so `.webm` and
-  `.3gp` (filed as video) and `.caf` (no type) stay unpickable whatever the list says. For images, the list decides whether HEIC arrives converted (`ImagePool.vue`).
+  `.3gp` (filed as video) and `.caf` (no type) stay unpickable whatever the list says; iOS in
+  turn greys out `.ogg`, `.opus`, `.caf` and `.wma` despite the list. For images, the list decides whether HEIC arrives converted (`ImagePool.vue`).
 - **No API that needs a secure context without a way around it.** The app is also opened on a phone over
   plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
   exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and
