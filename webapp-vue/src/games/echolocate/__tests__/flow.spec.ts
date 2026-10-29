@@ -183,6 +183,17 @@ describe('tap', () => {
     expect(third.state.pins).toEqual(second.pins)
     expect(third.effect).toBeNull()
   })
+
+  it('lifts the nearest pin when two are in reach', () => {
+    const one = tap(spent(3, 2), { x: 5, y: 5 }, 200_000, SPEED).state
+    const both = tap(one, { x: 6.3, y: 5 }, 200_001, SPEED).state
+    expect(both.pins).toHaveLength(2)
+
+    // 0.8 from the first, 0.5 from the second
+    const lifted = tap(both, { x: 5.8, y: 5 }, 200_002, SPEED).state
+
+    expect(lifted.pins).toEqual([{ x: 5, y: 5 }])
+  })
 })
 
 describe('refused', () => {

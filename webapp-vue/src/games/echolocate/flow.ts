@@ -125,9 +125,17 @@ function mark(state: FlowState, tMs: number, speed: number): FlowState {
   }
 }
 
-/** Tapping a pin lifts it; elsewhere a new one goes down, up to one per clip. */
+/** Tapping near pins lifts the nearest; elsewhere a new one goes down, up to one per clip. */
 function pin(state: FlowState, at: Point): FlowState {
-  const near = state.pins.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) < LIFT_RADIUS)
+  let near = -1
+  let nearest = LIFT_RADIUS
+  state.pins.forEach((p, i) => {
+    const distance = Math.hypot(p.x - at.x, p.y - at.y)
+    if (distance < nearest) {
+      near = i
+      nearest = distance
+    }
+  })
   if (near >= 0) return { ...state, pins: state.pins.filter((_, i) => i !== near) }
 
   return state.pins.length < state.clips ? { ...state, pins: [...state.pins, at] } : state
