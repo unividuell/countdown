@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.Community
@@ -36,6 +37,7 @@ class RoundPlayStageRepositoryTest(
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
     @Autowired val clock: Clock,
+    @Autowired val jdbc: JdbcTemplate,
 ) {
     private val revealedAt = Instant.parse("2026-08-12T10:00:00Z")
 
@@ -102,6 +104,35 @@ class RoundPlayStageRepositoryTest(
         row.stage shouldBe 2
         row.steps shouldBe json("""[{"x":1.5,"y":2.5},null]""")
     }
+
+    @Test
+    fun `the steps migration gives a play from before one null per stage`() {
+        val round = aRound("rp-stage-steps-backfill")
+        val roundGameId = requireNotNull(round.id)
+        val stepped = aUser()
+        val unstepped = aUser()
+        plays.revealOrCount(roundGameId = roundGameId, userId = stepped, revealedAt = revealedAt)
+        plays.revealOrCount(roundGameId = roundGameId, userId = unstepped, revealedAt = revealedAt)
+        repeat(2) { stage ->
+            plays.advanceStage(
+                roundGameId = roundGameId, userId = stepped, expectedStage = stage, input = json("""{"x":1}"""),
+            ) shouldBe 1
+        }
+        // As the column's default left them: stage 2, no steps.
+        jdbc.update("UPDATE game.round_plays SET steps = '[]' WHERE round_game_id = ?", roundGameId)
+
+        jdbc.update("${backfill()} AND round_game_id = ?", roundGameId)
+
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = stepped)!!.steps shouldBe
+            json("[null,null]")
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = unstepped)!!.steps shouldBe json("[]")
+    }
+
+    /** The `UPDATE` of V6 as written, without its comments; it ends on its `WHERE`. */
+    private fun backfill(): String =
+        requireNotNull(javaClass.getResource("/db/migration/game/V6__round_play_steps.sql")).readText()
+            .lines().filterNot { it.trimStart().startsWith("--") }.joinToString(separator = "\n")
+            .split(";").map { it.trim() }.single { it.startsWith("UPDATE") }
 
     @Test
     fun `a refused advance appends nothing`() {
