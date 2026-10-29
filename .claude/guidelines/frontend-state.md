@@ -164,7 +164,7 @@ on Firefox for Android; Chrome for Android does not show it). **Anything under a
 through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
 the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
 already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_LOOKAHEAD_SECONDS`);
-`usePlayback` (`src/games/songsnippet/`) and Blockierung's `sounds.ts` are the worked examples.
+`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples.
 
 - **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
   graph may be mid-render and drop the first samples of a clip that starts in the present.

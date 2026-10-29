@@ -18,6 +18,10 @@ spring:
             client-id: test-client-id
             client-secret: test-client-secret
             scope: read:user
+  servlet:
+    multipart:
+      # Repeated from the main application.yaml, which this file replaces (MultipartLimitTest).
+      resolve-lazily: true
   session:
     jdbc:
       initialize-schema: never

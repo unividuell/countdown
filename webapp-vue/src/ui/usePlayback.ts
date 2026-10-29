@@ -20,7 +20,7 @@ async function decode(context: AudioContext, url: string): Promise<AudioBuffer |
     const response = await fetch(url)
     return await context.decodeAudioData(await response.arrayBuffer())
   } catch (err) {
-    console.warn('[song-snippet] the audio graph could not take the clip; using the element', err)
+    console.warn('[playback] the audio graph could not take the clip; using the element', err)
     return null
   }
 }
@@ -120,7 +120,7 @@ export function usePlayback(): {
       // A gesture is what allows this; every path here comes from a tap, or from the answer to
       // one. Refused means no sound — the same silence the element's `play()` would give.
       await context.resume().catch((err) => {
-        console.warn('[song-snippet] the browser kept the audio graph suspended', err)
+        console.warn('[playback] the browser kept the audio graph suspended', err)
       })
     }
     const buffer = await pending
@@ -175,7 +175,7 @@ export function usePlayback(): {
     if (element.currentTime !== 0) element.currentTime = 0
     void element.play().catch((err) => {
       // Loud, because this is exactly what „sometimes you hear nothing" looks like from here.
-      console.warn('[song-snippet] the browser refused to play the clip', err)
+      console.warn('[playback] the browser refused to play the clip', err)
     })
   }
 

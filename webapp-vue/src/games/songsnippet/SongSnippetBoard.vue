@@ -8,7 +8,7 @@ import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
-import { usePlayback } from './usePlayback'
+import { usePlayback } from '@/ui/usePlayback'
 import { clipAsset } from './types'
 import type { SongSuggestion } from './api'
 

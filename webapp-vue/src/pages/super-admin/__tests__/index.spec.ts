@@ -51,11 +51,12 @@ describe('super-admin landing page', () => {
     expect(w.find('a[href="/super-admin/communities"]').exists()).toBe(true)
 
     const nav = w.findAll('[data-test=nav-entry]')
-    expect(nav).toHaveLength(3)
-    expect(nav.map((a) => a.text())).toEqual(['Nutzer', 'Spielgemeinschaften', 'Bilder'])
+    expect(nav).toHaveLength(4)
+    expect(nav.map((a) => a.text())).toEqual(['Nutzer', 'Spielgemeinschaften', 'Bilder', 'Audio'])
     expect(w.find('a[href="/super-admin/users"]').exists()).toBe(true)
     expect(w.find('a[href="/super-admin/communities"]').exists()).toBe(true)
     expect(w.find('a[href="/super-admin/images"]').exists()).toBe(true)
+    expect(w.find('a[href="/super-admin/audio"]').exists()).toBe(true)
   })
 
   it('shows an error message when the roster cannot be loaded', async () => {
@@ -72,7 +73,7 @@ describe('super-admin landing page', () => {
     const w = mount(Page)
     await flushPromises()
 
-    expect(w.findAll('[data-test=nav-entry]')).toHaveLength(3)
+    expect(w.findAll('[data-test=nav-entry]')).toHaveLength(4)
     expect(w.text()).toContain('konnten nicht geladen werden')
   })
 })

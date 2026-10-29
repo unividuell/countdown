@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setUnauthorizedHandler } from '@/api/client'
-import { UploadError, uploadImage } from '@/api/images'
+import { UploadError, uploadFile } from '@/api/upload'
 
 /** happy-dom has no usable XMLHttpRequest, so the test drives one it owns. */
 class FakeXhr {
@@ -31,7 +31,7 @@ class FakeXhr {
   }
 }
 
-describe('uploadImage', () => {
+describe('uploadFile', () => {
   beforeEach(() => {
     vi.stubGlobal('XMLHttpRequest', FakeXhr)
     document.cookie = 'XSRF-TOKEN=tok123'
@@ -42,7 +42,7 @@ describe('uploadImage', () => {
 
   it('posts multipart with the CSRF header and reports progress', async () => {
     const seen: number[] = []
-    const promise = uploadImage('/api/communities/alpha/images', file, (f) => seen.push(f))
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', (f) => seen.push(f))
 
     const xhr = FakeXhr.last
     expect(xhr.opened).toEqual(['POST', '/api/communities/alpha/images'])
@@ -66,8 +66,18 @@ describe('uploadImage', () => {
     expect(seen).toEqual([0.25])
   })
 
+  it('sends the blob under the given file name', () => {
+    // A File, not a bare Blob: happy-dom's FormData drops the name of a plain Blob ('blob').
+    const wav = new File([new Uint8Array([1, 2, 3])], 'recorded.wav', { type: 'audio/wav' })
+    uploadFile('/api/communities/alpha/audio', wav, 'spruch.wav', () => {})
+
+    const sent = (FakeXhr.last.sent as FormData).get('file')
+    expect(sent).toBeInstanceOf(File)
+    expect((sent as File).name).toBe('spruch.wav')
+  })
+
   it('turns the problem+json code into an UploadError', async () => {
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     const xhr = FakeXhr.last
     xhr.status = 409
     xhr.responseText = JSON.stringify({
@@ -82,13 +92,13 @@ describe('uploadImage', () => {
   })
 
   it('reports a network failure as an UploadError without a code', async () => {
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     FakeXhr.last.onerror?.()
     await expect(promise).rejects.toMatchObject({ code: 'NETWORK' })
   })
 
   it('falls back to NETWORK when a refusal body cannot be parsed as JSON', async () => {
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     const xhr = FakeXhr.last
     xhr.status = 502
     xhr.responseText = '<html>gateway down</html>'
@@ -100,7 +110,7 @@ describe('uploadImage', () => {
   it('lets the app know when the session is gone', async () => {
     const seen = vi.fn()
     setUnauthorizedHandler(seen)
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     const xhr = FakeXhr.last
     xhr.status = 401
     xhr.responseText = JSON.stringify({ status: 401, code: 'NO_ACCESS' })
@@ -112,7 +122,7 @@ describe('uploadImage', () => {
 
   /** A 2xx that will not parse must still settle -- a throw inside onload settles nothing. */
   it('rejects rather than hangs when a success body is not JSON', async () => {
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     const xhr = FakeXhr.last
     xhr.status = 201
     xhr.responseText = '<html>gateway</html>'
@@ -122,7 +132,7 @@ describe('uploadImage', () => {
   })
 
   it('gives up on a stalled upload instead of blocking the queue', async () => {
-    const promise = uploadImage('/api/communities/alpha/images', file, () => {})
+    const promise = uploadFile('/api/communities/alpha/images', file, 'a.jpg', () => {})
     FakeXhr.last.ontimeout?.()
     await expect(promise).rejects.toMatchObject({ code: 'NETWORK' })
   })

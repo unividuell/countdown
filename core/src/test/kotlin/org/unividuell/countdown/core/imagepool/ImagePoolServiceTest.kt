@@ -9,11 +9,8 @@ import io.mockk.unmockkObject
 import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.springframework.transaction.PlatformTransactionManager
-import org.springframework.transaction.TransactionDefinition
-import org.springframework.transaction.TransactionStatus
-import org.springframework.transaction.support.SimpleTransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
+import org.unividuell.countdown.core.RecordingTransactionManager
 import org.unividuell.countdown.core.imagepool.internal.*
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -204,31 +201,4 @@ class ImagePoolServiceTest {
         mediaType = "image/jpeg", width = 64, height = 32, byteSize = 10,
         createdAt = Instant.parse("2026-09-01T00:00:00Z"),
     )
-}
-
-/**
- * A real [TransactionTemplate] over a manager that does nothing but say when it is inside a
- * transaction. The service's own path stays unstubbed -- what is faked is the database, not the
- * boundary being tested.
- */
-private class RecordingTransactionManager : PlatformTransactionManager {
-    val events = mutableListOf<String>()
-    var active = false
-        private set
-
-    override fun getTransaction(definition: TransactionDefinition?): TransactionStatus {
-        events += "begin"
-        active = true
-        return SimpleTransactionStatus()
-    }
-
-    override fun commit(status: TransactionStatus) {
-        events += "commit"
-        active = false
-    }
-
-    override fun rollback(status: TransactionStatus) {
-        events += "rollback"
-        active = false
-    }
 }
