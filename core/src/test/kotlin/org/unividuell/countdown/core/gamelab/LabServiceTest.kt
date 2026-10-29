@@ -33,6 +33,7 @@ import org.unividuell.countdown.core.gamelab.internal.LabAssetNotFoundException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
 import org.unividuell.countdown.core.gamelab.internal.LabService
+import org.unividuell.countdown.core.gamelab.internal.labDifficulty
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
@@ -160,6 +161,29 @@ class LabServiceTest(
         response.me.shouldBeNull()
         response.others.shouldBeEmpty()
         response.tookOverRound shouldBe false
+    }
+
+    @Test
+    fun `the lab's difficulty follows the seed in tenths`() {
+        labDifficulty(0) shouldBe 0.0
+        labDifficulty(42) shouldBe 0.9
+        labDifficulty(10) shouldBe 1.0
+        labDifficulty(11) shouldBe 0.0
+        labDifficulty(-1) shouldBe 1.0
+        (labDifficulty(Int.MIN_VALUE) in 0.0..1.0) shouldBe true
+        (labDifficulty(Int.MAX_VALUE) in 0.0..1.0) shouldBe true
+    }
+
+    @Test
+    fun `the lab response carries the round's difficulty`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val response = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        response.difficulty shouldBe 0.9
     }
 
     @Test

@@ -71,6 +71,13 @@ data class RoundContext(
     val roundNumber: Int,
     val phase: Phase,
     val previousParams: List<JsonNode> = emptyList(),
+    /**
+     * How hard the round should be: `0.0` (easiest) to `1.0`. What that means is the game's call.
+     * Default `0.0`, the safe direction: a caller that says nothing gets the easiest round. In a
+     * real round [GameType.isAvailable] and the game selection run before the type is chosen and
+     * see `0.0`.
+     */
+    val difficulty: Double = 0.0,
 )
 
 /**

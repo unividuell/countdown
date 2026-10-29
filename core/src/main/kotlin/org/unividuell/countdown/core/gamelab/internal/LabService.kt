@@ -409,7 +409,10 @@ class LabService(
             roundNumber = LAB_ROUND_NUMBER,
             phaseTwoStartRound = if (phase == Phase.TWO) LAB_ROUND_NUMBER else null,
         )
-        val context = RoundContext(communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase)
+        val context = RoundContext(
+            communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase,
+            difficulty = labDifficulty(seed),
+        )
         if (!handle.isAvailable(context)) throw UnknownLabGameException("'${handle.id}' cannot draw here")
         return LabRound(
             seed = seed,
@@ -486,6 +489,7 @@ class LabService(
             displayName = handle.displayName,
             awardRule = snapshot.round.award.rule,
             awardPoints = snapshot.round.award.points,
+            difficulty = labDifficulty(snapshot.round.seed),
             scoresOnDuration = handle.scoresOnDuration(snapshot.round.params),
             scene = handle.scene(snapshot.round.params),
             // Withheld until revealed, the same way solution is withheld until guessed: for a game
@@ -522,3 +526,10 @@ class LabService(
         const val LAB_ROUND_NUMBER = 12
     }
 }
+
+/**
+ * The lab round's difficulty: `0.0` to `1.0` in tenths, from the seed — a new seed rolls it too.
+ * Not from [GameRandom]: a draw from one of its streams would shift everything the game draws
+ * after it. `mod` is never negative, so seed `-1` is `1.0`.
+ */
+internal fun labDifficulty(seed: Int): Double = seed.mod(11) / 10.0

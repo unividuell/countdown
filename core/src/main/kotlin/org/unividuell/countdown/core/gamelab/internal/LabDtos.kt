@@ -61,6 +61,8 @@ data class LabRoundResponse(
     val displayName: String,
     val awardRule: AwardRule,
     val awardPoints: Int,
+    /** How hard the round is, `0.0` to `1.0` — from the seed, see `labDifficulty`. */
+    val difficulty: Double,
     /** Whether the band's stopwatch runs for this game — mirrors `GameDto.scoresOnDuration`. */
     val scoresOnDuration: Boolean,
     /** Before the reveal and after it alike — mirrors `RoundResponse.scene`. */

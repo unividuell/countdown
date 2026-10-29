@@ -70,6 +70,12 @@ class RoundMaterialiser(
                 random = random,
                 context = context.copy(
                     previousParams = store.previousParams(edition = edition, gameType = typeId),
+                    difficulty = difficultyOf(
+                        roundNumber = roundNumber,
+                        gameType = typeId,
+                        history = history,
+                        gamesUntilRound = edition.gamesUntilRound,
+                    ),
                 ),
             ),
             award = awardFor(roundNumber = roundNumber, phaseTwoStartRound = edition.phaseTwoStartRound),

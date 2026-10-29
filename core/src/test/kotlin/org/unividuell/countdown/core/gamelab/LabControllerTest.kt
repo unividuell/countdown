@@ -48,6 +48,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         displayName = "Farbausmalung",
         awardRule = AwardRule.ALL_QUALIFYING,
         awardPoints = 1,
+        difficulty = 0.0,
         scoresOnDuration = false,
         payload = FakePayload(),
         solution = null,
