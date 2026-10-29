@@ -13,10 +13,10 @@ import org.unividuell.countdown.core.game.GameCatalog
 class SongSnippetBootTest(@Autowired val catalog: GameCatalog) {
 
     @Test
-    fun `the catalogue carries all eight real games, sorted`() {
+    fun `the catalogue carries all nine real games, sorted`() {
         catalog.ids() shouldBe listOf(
-            "copy-blocks", "deduster", "find-pattern", "guess-hue", "paint-ratio", "place-patch", "song-snippet",
-            "spot-object",
+            "copy-blocks", "deduster", "echo-locate", "find-pattern", "guess-hue", "paint-ratio", "place-patch",
+            "song-snippet", "spot-object",
         )
     }
 }
