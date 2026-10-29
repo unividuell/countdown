@@ -388,6 +388,7 @@ describe('EchoLocateBoard', () => {
 
   it('ignores the cover and taps while disabled', async () => {
     const w = mountBoard({ disabled: true })
+    expect(field(w).props('disabled')).toBe(true)
 
     await start(w)
     expect(sound.loadSounds).not.toHaveBeenCalled()

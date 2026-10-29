@@ -253,6 +253,7 @@ onBeforeUnmount(() => {
         :pins="flow.pins"
         :pending="flow.pending"
         :covered="flow.phase === 'closed'"
+        :disabled="props.disabled"
         @tap="onTap"
         @start="onStart"
       />

@@ -36,6 +36,8 @@ const props = defineProps<{
   pending: Point | null
   /** Before the first tap, while the sound is locked. */
   covered: boolean
+  /** The cover takes no click. */
+  disabled?: boolean
   solution?: EchoLocateSolution | null
   /** Everyone else's pins on the map, dimmed. */
   otherPins?: Point[]
@@ -354,7 +356,8 @@ watch(
     <button
       v-if="props.covered"
       type="button"
-      class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-lg bg-black/40 text-lg font-semibold text-white"
+      :disabled="props.disabled"
+      class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-lg bg-black/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
       @click="emit('start')"
     >
       Antippen zum Starten

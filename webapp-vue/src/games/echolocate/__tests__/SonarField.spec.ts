@@ -190,6 +190,16 @@ describe('SonarField', () => {
     expect(field.emitted('tap')).toBeUndefined()
   })
 
+  it('shows keyboard focus on the cover, and looks and is disabled with the field', () => {
+    const cover = mountField({ covered: true }).get('button')
+    expect(cover.classes()).toContain('focus-visible:outline-2')
+    expect(cover.attributes('disabled')).toBeUndefined()
+
+    const off = mountField({ covered: true, disabled: true }).get('button')
+    expect(off.attributes('disabled')).toBeDefined()
+    expect(off.classes()).toContain('disabled:opacity-40')
+  })
+
   it('names the field for assistive technology', () => {
     expect(mountField().get('canvas').attributes('aria-label')).toBe('Sonarfeld')
   })
