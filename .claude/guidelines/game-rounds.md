@@ -321,15 +321,17 @@ recorded `deviation` **is** the stage — the framework overrides whatever the g
 stage number, and the game's own `deviation` is a meaningless `0.0` that never reaches storage. "A
 wrong guess below the last stage advances the round instead of recording it" is not universal — it
 holds only where stages score and only under `ALL_QUALIFYING`; `CLOSEST_ONLY` (phase two) is always
-terminal on the first guess, whatever the stage, because only one guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
-the lab replays the exact rule a real round applies instead of a copy of it.
+terminal on the first guess, whatever the stage, because only one guess ever counts. The pure
+decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so the lab replays the exact
+rule a real round applies instead of a copy of it.
 
 A `scoresOnDuration` game is the second case of the same shape: `PlayService.guess` overrides
 `deviation` with the reveal-to-guess duration, and the game's own `deviation` never reaches storage
 there either — same reasoning as the stage override, and for the same reason it belongs to the
 framework and not the game: a game judges its own content, but the round's timing is framework state.
-A game may *check* a time claim against the span (see above), never *score* on it. `PlayService.guess`'s `when` checks stage,
-then reveal duration, then the game's own `deviation`, in that order — and all three ride on the one
+A game may *check* a time claim against the span (see above), never *score* on it.
+`PlayService.guess`'s `when` checks `stagesScore` (then the stage is the deviation), then reveal
+duration, then the game's own `deviation`, in that order — and all three ride on the one
 `deviation` column rather than a column each, because `deviation` is already the single comparison
 value `pointsFor` and `CLOSEST_ONLY` both read.
 
