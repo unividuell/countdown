@@ -112,8 +112,8 @@ Störung. Ein Tipp pro Spieler und Runde.
 
 **Jeder Clip** ist ein Asset der Runde (siehe *Der Clip*). Die **Störgeräusche spielt der Browser**:
 ein rosa Grundrauschen, das die ganze Runde läuft (−24 dB gegen den Clip), und pro Störquelle eine
-Antwort von 1,3 s (0 dB). Alle Teile werden auf dieselbe Lautheit (RMS) gebracht, auch die Clips; die
-dB-Werte sind also Signal-Rausch-Abstände.
+Antwort von 1,3 s (0 dB; Bach und Kuh 1,5 s, siehe unten). Alle Teile werden auf dieselbe Lautheit
+(RMS) gebracht, auch die Clips; die dB-Werte sind also Signal-Rausch-Abstände.
 
 **Die Störquellen sind Geräusche vom Land** (Clemens, 2026-10-26: „Vögel, Bäche, Kühe etc ist viel
 besser geeignet“):
@@ -123,6 +123,8 @@ besser geeignet“):
   liegen im Frontend unter `games/echolocate/sounds/`, als MP3, weil jeder Browser es dekodiert. Sie
   sind gemeinfrei (CC0) oder unter CC BY mit sichtbarer Nennung; Quelle und Lizenz stehen in einer
   README daneben. Es sind keine Community-Inhalte und nichts Geheimes, sie gehören also ins Repo.
+  Ihre Antwort dauert 1,5 s statt 1,3 s (Clemens' Wahl der Aufnahmen, geschnitten 2026-10-29); die
+  synthetisierten Arten bleiben bei 1,3 s.
 - **Keine Stimmen.** Der Spike hatte eine Quelle aus rückwärts gespielten Sprüchen; die hat man nicht
   verstanden (Clemens), sie fällt weg.
 
