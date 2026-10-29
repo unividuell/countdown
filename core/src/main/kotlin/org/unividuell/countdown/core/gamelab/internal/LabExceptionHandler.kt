@@ -7,6 +7,7 @@ import org.springframework.http.ProblemDetail
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.unividuell.countdown.core.game.InvalidGuessException
+import org.unividuell.countdown.core.game.InvalidStepException
 
 @RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.gamelab.internal"])
 @Profile("!production")
@@ -30,7 +31,7 @@ class LabExceptionHandler {
     fun conflict(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "already guessed")
 
-    @ExceptionHandler(InvalidGuessException::class)
+    @ExceptionHandler(InvalidGuessException::class, InvalidStepException::class)
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 

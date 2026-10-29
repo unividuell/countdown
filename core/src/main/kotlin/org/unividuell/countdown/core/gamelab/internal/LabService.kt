@@ -143,15 +143,17 @@ class LabService(
             params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
         )
         val stages = handle.stages(playing.params)
+        val stagesScore = handle.stagesScore(playing.params)
         // Judged and (on advance) discarded on purpose: in phase one a wrong guess below the last
         // stage only burns the stage — the same rule `PlayService.guess` applies to a real round.
         if (guessActionFor(
                 rule = playing.award.rule, qualifies = judgement.qualifies, stage = stage, stages = stages,
-                stagesScore = handle.stagesScore(playing.params),
+                stagesScore = stagesScore,
             ) == GuessAction.ADVANCE_STAGE
         ) {
             val advanced = store.advanceStage(
                 communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = stage,
+                input = null,
             )
             if (!advanced) throw LabStageMovedOnException()
             return respond(
@@ -160,10 +162,10 @@ class LabService(
                 me = userId,
             )
         }
-        // A staged game's distance is the stage, and the store never sees stages; a game that scores
-        // on duration has the duration since reveal, computed by the store from its own stamp. One
-        // adjustment here, one flag passed down — the same split `PlayService` makes.
-        val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
+        // A game whose stage is its score has the stage as distance, and the store never sees stages;
+        // a game that scores on duration has the duration since reveal, computed by the store from its
+        // own stamp. One adjustment here, one flag passed down — the same split `PlayService` makes.
+        val adjusted = if (stagesScore) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
             // The game's own narrowing wins where it offers one — the same line `PlayService`
@@ -179,7 +181,10 @@ class LabService(
         }
     }
 
-    /** Voluntary stage advance — the lab's own "skip", replaying `PlayService.skip`'s guard. */
+    /**
+     * Voluntary stage advance carrying the step's [input] — the lab's own "skip", replaying
+     * `PlayService.skip`'s guard and its order: range, then the game's say on the input, then the write.
+     */
     fun skip(
         slug: String,
         gameId: String,
@@ -188,6 +193,7 @@ class LabService(
         userId: UUID,
         isSuperAdmin: Boolean,
         fromStage: Int,
+        input: JsonNode?,
     ): LabRoundResponse {
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
@@ -197,8 +203,12 @@ class LabService(
         val stages = handle.stages(playing.params)
         // No skip off the top: the exits up there are the terminal guess, or giving up.
         if (fromStage < 0 || fromStage >= stages - 1) throw LabStageMovedOnException()
+        // Validated before the write: an invalid input must not spend the stage. The answer itself
+        // is recomputed for the response.
+        handle.step(params = playing.params, stage = fromStage, input = input)
         val advanced = store.advanceStage(
             communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = fromStage,
+            input = input,
         )
         if (!advanced) throw LabStageMovedOnException()
         return respond(
@@ -464,6 +474,7 @@ class LabService(
                     tally = VoteTally.of(entry.votes.values.toList()),
                 ),
                 adminOverride = entry.adminOverride,
+                steps = entry.steps,
             )
         }
 
@@ -473,6 +484,14 @@ class LabService(
         val revealed = !handle.requiresReveal(snapshot.round.params) ||
             store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
         val myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        // Answers are recomputed per response, never stored: `step` is pure, as in `RoundResponses`.
+        val mySteps = store.stepsOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+            .mapIndexed { i, input ->
+                LabStepDto(
+                    input = input.takeUnless { it.isNull },
+                    answer = handle.step(params = snapshot.round.params, stage = i, input = input),
+                )
+            }
         // Produced only once the tester has revealed: no key opens before, and producing may download.
         val assetKeys = if (!revealed) {
             emptyMap()
@@ -509,6 +528,7 @@ class LabService(
             // from the product — the lab models no roles anywhere.
             canOverride = true,
             assetKeys = assetKeys,
+            mySteps = mySteps,
         )
     }
 

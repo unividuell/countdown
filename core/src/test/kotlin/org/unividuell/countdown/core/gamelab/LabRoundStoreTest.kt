@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.gamelab
 
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.node.IntNode
+import tools.jackson.databind.node.NullNode
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -43,6 +44,9 @@ class LabRoundStoreTest {
 
     private fun judgement(qualifies: Boolean, deviation: Double) =
         Judgement(qualifies = qualifies, deviation = deviation, outcome = null)
+
+    private fun stepsOf(user: UUID, seed: Int = 8) =
+        store.stepsOf(communityId = community, gameId = "g", round = round(seed = seed), userId = user)
 
     private fun record(user: UUID, seed: Int = 42, value: Int = 1) =
         store.record(
@@ -325,6 +329,102 @@ class LabRoundStoreTest {
             timed = true,
         )
         (again as RecordResult.Recorded).snapshot.entries.single().durationMs shouldBe 2_000L
+    }
+
+    @Test
+    fun `advancing a stage appends the step's input and counts it`() {
+        val r = round(seed = 8)
+        val pos = mapper.readTree("""{"x":1.5,"y":2.5}""")
+
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 0, input = pos,
+        ) shouldBe true
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 1, input = null,
+        ) shouldBe true
+
+        store.stageOf(communityId = community, gameId = "g", round = r, userId = alice) shouldBe 2
+        // A step without input is a JSON null, so the list stays one entry per stage.
+        stepsOf(alice) shouldBe listOf(pos, NullNode.instance)
+    }
+
+    @Test
+    fun `advancing from a stage the tester has left is refused and appends nothing`() {
+        val r = round(seed = 8)
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 0, input = IntNode(1),
+        )
+
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 0, input = IntNode(2),
+        ) shouldBe false
+
+        stepsOf(alice) shouldBe listOf(IntNode(1))
+    }
+
+    @Test
+    fun `advancing after the tester's entry is refused though the stage matches`() {
+        val r = round(seed = 8)
+        store.record(
+            communityId = community, gameId = "g", round = r, userId = alice,
+            guess = IntNode(1), judgement = judgement(qualifies = true, deviation = 0.0), timed = false,
+        )
+
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 0, input = IntNode(1),
+        ) shouldBe false
+
+        store.stageOf(communityId = community, gameId = "g", round = r, userId = alice) shouldBe 0
+        stepsOf(alice).shouldBeEmpty()
+    }
+
+    @Test
+    fun `an entry takes over the steps recorded before it`() {
+        val r = round(seed = 8)
+        store.advanceStage(
+            communityId = community, gameId = "g", round = r, userId = alice, expected = 0, input = IntNode(7),
+        )
+
+        val result = store.record(
+            communityId = community, gameId = "g", round = r, userId = alice,
+            guess = IntNode(1), judgement = judgement(qualifies = true, deviation = 0.0), timed = false,
+        )
+
+        (result as RecordResult.Recorded).snapshot.entries.single().steps shouldBe listOf(IntNode(7))
+        // The viewer's own list outlives the guess: the finished round shows what they did.
+        stepsOf(alice) shouldBe listOf(IntNode(7))
+    }
+
+    @Test
+    fun `forgetting a tester and resetting the round clear the steps like the stages`() {
+        val r = round(seed = 8)
+        listOf(alice, bob).forEach {
+            store.advanceStage(
+                communityId = community, gameId = "g", round = r, userId = it, expected = 0, input = IntNode(7),
+            )
+        }
+
+        store.forget(communityId = community, gameId = "g", round = r, userId = alice)
+
+        stepsOf(alice).shouldBeEmpty()
+        stepsOf(bob) shouldBe listOf(IntNode(7))
+
+        store.resetRound(communityId = community, gameId = "g", round = r)
+
+        stepsOf(bob).shouldBeEmpty()
+    }
+
+    @Test
+    fun `peeking at steps does not evict the stored round`() {
+        store.advanceStage(
+            communityId = community, gameId = "g", round = round(seed = 8), userId = alice,
+            expected = 0, input = IntNode(7),
+        )
+
+        store.stepsOf(communityId = community, gameId = "g", round = round(seed = 9), userId = alice)
+            .shouldBeEmpty()
+
+        stepsOf(alice) shouldBe listOf(IntNode(7))
     }
 
     /** Two instants are the minimum for a duration, and `Clock.fixed` only ever gives one. */
