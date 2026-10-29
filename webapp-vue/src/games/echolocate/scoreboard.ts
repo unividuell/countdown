@@ -33,6 +33,11 @@ export function formatDistance(distance: number, clips: number): string {
   return clips > 1 ? `Ø ${label}` : label
 }
 
+/** The cells around a clip that still count: `1` → `±1 Zelle`. */
+export function formatTolerance(cells: number): string {
+  return `±${cells} ${cells === 1 ? 'Zelle' : 'Zellen'}`
+}
+
 /** All pings or none: dropping one would shift the others off the rings that belong to them. */
 function pingsOf(steps: readonly unknown[] | undefined, grid: number): Point[] {
   const pings: Point[] = []

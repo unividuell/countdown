@@ -5,6 +5,7 @@ import AwardBox from '@/ui/AwardBox.vue'
 import InfoBox from '@/ui/InfoBox.vue'
 import type { AwardRule } from '@/api/types'
 import EchoLocateRules from './EchoLocateRules.vue'
+import { formatTolerance } from './scoreboard'
 
 const props = defineProps<{
   awardRule: AwardRule | null
@@ -15,10 +16,7 @@ const props = defineProps<{
 
 /** For the award box's headline: collapsed, it is all the box shows. */
 const toleranceDetail = computed(() => {
-  const cells = props.toleranceCells
-  if (cells === null) return null
-
-  return `±${cells} ${cells === 1 ? 'Zelle' : 'Zellen'}`
+  return props.toleranceCells === null ? null : formatTolerance(props.toleranceCells)
 })
 </script>
 

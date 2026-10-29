@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import type { GameEntry } from '@/games/GameEntry'
-import { formatDistance, scoreRows } from '@/games/echolocate/scoreboard'
+import { formatDistance, formatTolerance, scoreRows } from '@/games/echolocate/scoreboard'
 import type { EchoLocateOutcome, EchoLocatePayload } from '@/games/echolocate/types'
 
 const PAYLOAD: EchoLocatePayload = {
@@ -52,6 +52,13 @@ function rowsOf(
     payload: over.payload ?? PAYLOAD,
   })
 }
+
+describe('formatTolerance', () => {
+  it('names the cells around a clip that still count', () => {
+    expect(formatTolerance(1)).toBe('±1 Zelle')
+    expect(formatTolerance(2)).toBe('±2 Zellen')
+  })
+})
 
 describe('formatDistance', () => {
   it('labels the distance with one decimal, the mean of two with Ø', () => {
