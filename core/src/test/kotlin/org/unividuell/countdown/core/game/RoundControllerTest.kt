@@ -18,9 +18,12 @@ import org.springframework.test.web.servlet.put
 import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.echolocate.EchoHit
+import org.unividuell.countdown.core.echolocate.Sound
 import org.unividuell.countdown.core.game.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.game.internal.AlreadyRevealedException
 import org.unividuell.countdown.core.game.internal.AnnouncementService
+import org.unividuell.countdown.core.game.internal.EchoLocateEcho
 import org.unividuell.countdown.core.game.internal.GameDto
 import org.unividuell.countdown.core.game.internal.GuessHuePayload
 import org.unividuell.countdown.core.game.internal.GuessHueSolution
@@ -38,6 +41,7 @@ import org.unividuell.countdown.core.game.internal.RoundDto
 import org.unividuell.countdown.core.game.internal.RoundMovedOnException
 import org.unividuell.countdown.core.game.internal.RoundNotFoundException
 import org.unividuell.countdown.core.game.internal.RoundResponse
+import org.unividuell.countdown.core.game.internal.StepDto
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.principalFor
 import tools.jackson.databind.JsonNode
@@ -281,6 +285,66 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             // The viewer's own stamps stay — `guessedAt` is what the card's face is derived from.
             jsonPath("$.me.guessedAt") { exists() }
         }
+    }
+
+    @Test
+    fun `GET current round carries my steps with answers, the others' with inputs only`() {
+        every {
+            announcements.currentRound(slug = "team", userId = uid, isSuperAdmin = false)
+        } returns RoundResponse(
+            round = null,
+            game = GameDto(id = "echo-locate", displayName = "Peilung", requiresReveal = false, scoresOnDuration = false),
+            noGameReason = null,
+            me = MyPlayDto(
+                userId = uid,
+                username = "me",
+                avatar = Avatar(shortName = "ME", bgColorHex = "#123456"),
+                stage = 1,
+                revealedAt = Instant.parse("2026-08-12T10:01:00Z"),
+                guessedAt = null,
+                guess = null,
+                outcome = null,
+                points = null,
+                durationMs = null,
+                steps = listOf(
+                    StepDto(
+                        input = mapper.readTree("""{"x":3.5,"y":4.5}"""),
+                        answer = EchoLocateEcho(
+                            hits = listOf(
+                                EchoHit(sound = Sound.CLIP, clip = 0, delayMs = 1000),
+                                EchoHit(sound = Sound.COW, clip = null, delayMs = 2000),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            others = listOf(
+                OtherPlayDto(
+                    userId = UUID.randomUUID(),
+                    username = "other",
+                    avatar = Avatar(shortName = "OTH", bgColorHex = "#abcdef"),
+                    stage = 1,
+                    guess = null,
+                    outcome = null,
+                    points = null,
+                    durationMs = null,
+                    steps = listOf(mapper.readTree("""{"x":1.5,"y":2.5}""")),
+                ),
+            ),
+        )
+
+        val body = mockMvc.get("/api/communities/team/rounds/current") { with(principalFor()) }
+            .andExpect { status { isOk() } }
+            .andReturn().response.contentAsString
+        val tree = mapper.readTree(body)
+
+        tree.at("/me/steps/0/input") shouldBe mapper.readTree("""{"x":3.5,"y":4.5}""")
+        tree.at("/me/steps/0/answer/hits/0/clip").intValue() shouldBe 0
+        // A noise has no clip and says so: the client reads a hit only with `"clip": null` present.
+        val noise = tree.at("/me/steps/0/answer/hits/1")
+        noise.has("clip") shouldBe true
+        noise.get("clip").isNull shouldBe true
+        tree.at("/others/0/steps") shouldBe mapper.readTree("""[{"x":1.5,"y":2.5}]""")
     }
 
     @Test
