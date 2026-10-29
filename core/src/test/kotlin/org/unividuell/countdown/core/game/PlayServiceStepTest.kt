@@ -28,6 +28,7 @@ import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.NullNode
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -155,6 +156,21 @@ class PlayServiceStepTest(
         val expected = listOf(StepDto(input = json("""{"n":7}"""), answer = StepGame.CountAnswer(n = 7)))
         res.me.shouldNotBeNull().steps shouldBe expected
         reveal(community = community, userId = viewer, round = round).me.shouldNotBeNull().steps shouldBe expected
+    }
+
+    @Test
+    fun `a stored step the game no longer reads is answered with null`() {
+        val (community, viewer) = aCommunity("Step Unreadable")
+        val round = announceStep(community)
+        reveal(community = community, userId = viewer, round = round)
+        // Past `step`'s check, as a play from before the column was backfilled with nulls.
+        plays.advanceStage(
+            roundGameId = requireNotNull(round.id), userId = viewer, expectedStage = 0, input = NullNode.instance,
+        )
+
+        val res = reveal(community = community, userId = viewer, round = round)
+
+        res.me.shouldNotBeNull().steps shouldBe listOf(StepDto(input = null, answer = null))
     }
 
     @Test

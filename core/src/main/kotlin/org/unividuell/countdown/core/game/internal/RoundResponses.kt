@@ -1,11 +1,14 @@
 package org.unividuell.countdown.core.game.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.AssetViewer
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.GameTypeHandle
+import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.keysFor
 import org.unividuell.countdown.core.game.struckByReview
@@ -26,6 +29,8 @@ class RoundResponses(
     private val memberships: MembershipQuery,
     private val assets: RoundAssetStore,
 ) {
+
+    private val logger = KotlinLogging.logger {}
 
     fun of(current: ResolvedRound, viewerId: UUID): RoundResponse = when (current) {
         is ResolvedRound.NoGame -> RoundResponse(
@@ -140,10 +145,30 @@ class RoundResponses(
                 steps = play.steps.mapIndexed { i, input ->
                     StepDto(
                         input = input.takeUnless { it.isNull },
-                        answer = handle.step(params = params, stage = i, input = input),
+                        answer = answerOf(play = play, handle = handle, params = params, stage = i, input = input),
                     )
                 },
             )
+        }
+
+    /**
+     * The game's answer to a stored step, or `null` where the game no longer reads its input: one
+     * step must not take the whole round response down with it.
+     */
+    private fun answerOf(
+        play: RoundPlay,
+        handle: GameTypeHandle<*>,
+        params: JsonNode,
+        stage: Int,
+        input: JsonNode,
+    ): GameStepAnswer? =
+        try {
+            handle.step(params = params, stage = stage, input = input)
+        } catch (e: InvalidStepException) {
+            logger.warn {
+                "play ${play.id}: '${handle.id}' rejects stored step $stage (${e.message}); answered with null"
+            }
+            null
         }
 
     private fun otherDtoOf(

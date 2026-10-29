@@ -226,6 +226,19 @@ class LabStagedFlowTest(
     }
 
     @Test
+    fun `a stored lab step the game no longer reads is answered with null`() {
+        aCommunityOfTwo()
+        openStepGame()
+        // Straight into the store, past `step`'s check.
+        store.advanceStage(
+            communityId = communityId, gameId = "step-fake", round = aRound(), userId = tester,
+            expected = 0, input = null,
+        )
+
+        openStepGame().mySteps shouldBe listOf(LabStepDto(input = null, answer = null))
+    }
+
+    @Test
     fun `an invalid lab step is refused and counts nothing`() {
         aCommunityOfTwo()
 

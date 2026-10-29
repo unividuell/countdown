@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.gamelab.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
@@ -10,9 +11,11 @@ import org.unividuell.countdown.core.game.AssetViewer
 import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.GameTypeHandle
 import org.unividuell.countdown.core.game.GuessAction
 import org.unividuell.countdown.core.game.GuessContext
+import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
@@ -53,6 +56,8 @@ class LabService(
     private val store: LabRoundStore,
     private val catalog: GameCatalog,
 ) {
+
+    private val logger = KotlinLogging.logger {}
 
     fun open(
         slug: String,
@@ -433,6 +438,18 @@ class LabService(
         )
     }
 
+    /** As in `RoundResponses`: a stored step the game no longer reads is answered with `null`, not a 500. */
+    private fun answerOf(handle: GameTypeHandle<*>, round: LabRound, stage: Int, input: JsonNode): GameStepAnswer? =
+        try {
+            handle.step(params = round.params, stage = stage, input = input)
+        } catch (e: InvalidStepException) {
+            logger.warn {
+                "lab seed ${round.seed} ${round.phase}: '${handle.id}' rejects stored step $stage (${e.message}); " +
+                    "answered with null"
+            }
+            null
+        }
+
     private fun respond(
         communityId: UUID,
         handle: GameTypeHandle<*>,
@@ -489,7 +506,7 @@ class LabService(
             .mapIndexed { i, input ->
                 LabStepDto(
                     input = input.takeUnless { it.isNull },
-                    answer = handle.step(params = snapshot.round.params, stage = i, input = input),
+                    answer = answerOf(handle = handle, round = snapshot.round, stage = i, input = input),
                 )
             }
         // Produced only once the tester has revealed: no key opens before, and producing may download.
