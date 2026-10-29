@@ -60,7 +60,7 @@ const clipSrcs = computed(() =>
 /**
  * Where my rings and pins are kept on this device. The first clip's address names the round (the
  * payload does not tell rounds apart); without a player or assets there is nothing to key by, and
- * the board plays without a draft. The board reads the draft once, so the key must be final here.
+ * the board plays without a draft. A new key makes the board load that key's draft.
  */
 const key = computed(() => {
   if (props.mineUserId === null || props.assets === undefined) return null

@@ -477,6 +477,56 @@ describe('EchoLocateBoard', () => {
     expect(engine().ping).not.toHaveBeenCalled()
   })
 
+  // The lab's reset and „forget mine“ keep the board and empty its steps; a real round never does.
+  it('starts over, still open, when the server takes my pings back', async () => {
+    saveDraft(storage.fake, KEY, { rings: [[2.5], []], pins: [] })
+    const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
+    await start(w)
+
+    await w.setProps({ steps: [] })
+
+    expect(field(w).props('waves')).toEqual([])
+    expect(field(w).props('rings')).toEqual([])
+    expect(field(w).props('covered')).toBe(false)
+    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+
+    await tapAt(w, C)
+    expect(w.emitted('skip')).toEqual([[0, C]])
+  })
+
+  it('silences the answer of a ping taken back', async () => {
+    const w = mountBoard()
+    await start(w)
+    await tapAt(w, A)
+    await answer(w, [step(A, [CLIP_HIT])])
+
+    await w.setProps({ steps: [] })
+
+    expect(engine().hush).toHaveBeenCalledOnce()
+    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+  })
+
+  it('starts over under the cover when it was never lifted', async () => {
+    const w = mountBoard({ steps: [step(A)] })
+
+    await w.setProps({ steps: [] })
+
+    expect(field(w).props('waves')).toEqual([])
+    expect(field(w).props('covered')).toBe(true)
+  })
+
+  // A lab phase switch keeps the board and changes its key.
+  it('takes the draft under a new key', async () => {
+    const other = 'echo-locate:draft:u1:ffff0000'
+    saveDraft(storage.fake, other, { rings: [[4]], pins: [] })
+    const w = mountBoard({ steps: [step(A)], draftKey: KEY })
+    expect(field(w).props('rings')).toEqual([[]])
+
+    await w.setProps({ draftKey: other })
+
+    expect(field(w).props('rings')).toEqual([[4]])
+  })
+
   it('holds to hand in exactly the pins and rings per ping', async () => {
     saveDraft(storage.fake, KEY, { rings: [[1.5], []], pins: [] })
     const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })

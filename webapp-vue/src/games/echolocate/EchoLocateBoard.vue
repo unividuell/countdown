@@ -82,14 +82,17 @@ const pings = computed(() =>
   ),
 )
 
-const flow = shallowRef<FlowState>(
-  initialFlow({
+/** The round as the server's pings and the draft under the current key have it, covered. */
+function fresh(): FlowState {
+  return initialFlow({
     clips: props.payload.clips,
     pings: props.payload.pings,
     steps: pings.value,
     draft: props.draftKey === null ? null : loadDraft(storage, props.draftKey, props.payload),
-  }),
-)
+  })
+}
+
+const flow = shallowRef<FlowState>(fresh())
 
 const status = computed(() => statusLine(flow.value))
 const canHandIn = computed(() => !props.disabled && guessOf(flow.value) !== null)
@@ -206,9 +209,16 @@ useEventListener(document, 'visibilitychange', () => {
   guard()
 })
 
-// Whatever moves the round on — a wave that ends, a refused ping — may find the sound stopped
-// meanwhile.
+// Whatever moves the round on — a wave that ends, a refused ping, a start over — may find the
+// sound stopped meanwhile.
 watch(() => flow.value.phase, guard)
+
+/** Over again from the server's pings and the draft; an open field stays open. */
+function restart(): void {
+  clearTimeout(settleTimer)
+  engine?.hush()
+  flow.value = flow.value.phase === 'closed' ? fresh() : unlocked(fresh())
+}
 
 /** The open ping's answer: schedule its sounds, then start its wave where they will be heard. */
 async function launch(hits: EchoHit[]): Promise<void> {
@@ -248,7 +258,13 @@ function samePoint(a: Point | undefined, b: Point | null): boolean {
 // The length, never the array: the host hands over a new one on every render.
 watch(
   () => props.steps.length,
-  () => {
+  (length, before) => {
+    // The server took my pings back: the lab's reset or „forget mine“. A real round never does.
+    if (length < before) {
+      restart()
+      return
+    }
+
     const state = flow.value
     if (state.phase !== 'loading') {
       flow.value = synced(state, pings.value)
@@ -286,6 +302,14 @@ watch(
   () => {
     const ctx = audioGraph()
     if (audio !== null && ctx !== null) load(ctx)
+  },
+)
+
+// A lab phase switch keeps the board and changes its key: that round's draft comes along.
+watch(
+  () => props.draftKey,
+  (key) => {
+    if (key !== null) restart()
   },
 )
 
