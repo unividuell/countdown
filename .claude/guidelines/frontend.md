@@ -94,6 +94,9 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   on a clock warms up itself.
 - **Binary uploads go through `uploadFile(base, blob, fileName, onProgress)`** (`src/api/upload.ts`):
   XHR, because fetch has no upload progress; bounded by a 4 min timeout, not `apiFetch`'s 10 s.
+- **A file picker's `accept` is a platform filter, not just a hint.** iOS Safari maps a bare
+  `audio/*` to video and greys out every audio file in Files; list the extensions beside it
+  (`AudioPool.vue`). For images, the list decides whether HEIC arrives converted (`ImagePool.vue`).
 - **No API that needs a secure context without a way around it.** The app is also opened on a phone over
   plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
   exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and

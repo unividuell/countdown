@@ -284,7 +284,10 @@ describe('AudioPool', () => {
       const w = await mounted()
 
       const picker = w.get('[data-test="picker"]')
-      expect(picker.attributes('accept')).toBe('audio/*')
+      // The extensions keep iOS from greying out audio files in Files.
+      expect(picker.attributes('accept')).toBe(
+        'audio/*,.m4a,.mp3,.wav,.aac,.aif,.aiff,.caf,.flac,.ogg,.opus',
+      )
       expect(picker.attributes('multiple')).toBeDefined()
       expect(w.text()).toContain('Audiodateien auswählen')
     })

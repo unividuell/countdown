@@ -141,7 +141,9 @@ defineExpose({ enqueue })
       >
     </div>
 
-    <!-- Off until the listing has named the size limit: a file picked before that could not be checked. -->
+    <!-- Off until the listing has named the size limit: a file picked before that could not be checked.
+         The extensions are for iOS: Safari turns a bare `audio/*` into a video filter (its menu
+         offers „Take Video“) and greys out every audio file in Files. -->
     <label
       class="mb-4 flex min-h-11 items-center justify-center rounded border border-dashed px-4 py-6 text-center text-sm"
       :class="limitKnown ? 'cursor-pointer' : 'opacity-50'"
@@ -149,7 +151,7 @@ defineExpose({ enqueue })
       <input
         type="file"
         class="sr-only"
-        accept="audio/*"
+        accept="audio/*,.m4a,.mp3,.wav,.aac,.aif,.aiff,.caf,.flac,.ogg,.opus"
         multiple
         :disabled="!limitKnown"
         data-test="picker"
