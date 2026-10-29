@@ -194,6 +194,37 @@ describe('AudioPool', () => {
 
       expect(playButtons(w)[0]!.attributes('aria-label')).toBe('Abspielen')
     })
+
+    it('spins until the tapped clip sounds, and the tap can still stop it', async () => {
+      const w = await mounted()
+      const [playback] = playbacks
+
+      await playButtons(w)[0]!.trigger('click')
+
+      expect(playButtons(w)[0]!.find('[data-test="play-spinner"]').exists()).toBe(true)
+      expect(playButtons(w)[0]!.attributes('aria-label')).toBe('Anhalten')
+
+      playback!.playing.value = true
+      await flushPromises()
+
+      expect(playButtons(w)[0]!.find('[data-test="play-spinner"]').exists()).toBe(false)
+    })
+
+    it('fills a bar under the sounding row as the clip plays', async () => {
+      const w = await mounted()
+      const [playback] = playbacks
+      expect(w.find('[data-test="progress"]').exists()).toBe(false)
+
+      await playButtons(w)[0]!.trigger('click')
+      playback!.playing.value = true
+      // spruch.wav runs 1.5 s, so 0.75 s is half of it.
+      playback!.positionSeconds.value = 0.75
+      await flushPromises()
+
+      const rows = w.findAll('[data-test="clip-row"]')
+      expect(rows[0]!.get('[data-test="progress"]').attributes('style')).toContain('width: 50%')
+      expect(rows[1]!.find('[data-test="progress"]').exists()).toBe(false)
+    })
   })
 
   describe('deleting', () => {

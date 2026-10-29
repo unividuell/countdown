@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import IconSpinner from '~icons/lucide/loader-circle'
 import IconPlay from '~icons/lucide/play'
 import IconSquare from '~icons/lucide/square'
 import IconX from '~icons/lucide/x'
@@ -99,6 +100,15 @@ function stop(): void {
   playingId.value = null
 }
 
+/** Tapped but not yet sounding: the fetch, the decode or a resume of the audio graph is pending. */
+const loading = computed(() => playingId.value !== null && !playback.playing.value)
+
+/** How much of the sounding clip has been heard, as a CSS width: 0.75 s of 1.5 s is `50%`. */
+function progress(clip: AudioClipResponse): string {
+  const fraction = Math.min(playback.positionSeconds.value / (clip.durationMs / 1000), 1)
+  return `${fraction * 100}%`
+}
+
 /** The source is set only now: it starts loading at once, so never for the whole list. */
 function toggle(id: string): void {
   if (playingId.value === id) {
@@ -165,7 +175,12 @@ defineExpose({ enqueue })
     <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
 
     <ul class="divide-y divide-neutral-200">
-      <li v-for="clip in clips" :key="clip.id" data-test="clip-row" class="flex items-center gap-2">
+      <li
+        v-for="clip in clips"
+        :key="clip.id"
+        data-test="clip-row"
+        class="relative flex items-center gap-2"
+      >
         <button
           data-test="play"
           :aria-label="playingId === clip.id ? 'Anhalten' : 'Abspielen'"
@@ -175,7 +190,13 @@ defineExpose({ enqueue })
           <span
             class="grid size-9 place-items-center rounded-full border border-neutral-300 bg-white text-neutral-700"
           >
-            <IconSquare v-if="playingId === clip.id" class="size-4" aria-hidden="true" />
+            <IconSpinner
+              v-if="playingId === clip.id && loading"
+              data-test="play-spinner"
+              class="size-4 motion-safe:animate-spin motion-reduce:animate-[spin_2.4s_linear_infinite]"
+              aria-hidden="true"
+            />
+            <IconSquare v-else-if="playingId === clip.id" class="size-4" aria-hidden="true" />
             <IconPlay v-else class="size-4" aria-hidden="true" />
           </span>
         </button>
@@ -197,6 +218,15 @@ defineExpose({ enqueue })
         >
           <IconX class="size-4" aria-hidden="true" />
         </button>
+
+        <!-- Lies on the row's bottom edge, over the divider, so the row keeps its height. -->
+        <div
+          v-if="playingId === clip.id && !loading"
+          data-test="progress"
+          aria-hidden="true"
+          class="absolute bottom-0 left-0 h-0.5 bg-neutral-700"
+          :style="{ width: progress(clip) }"
+        />
       </li>
     </ul>
   </section>
