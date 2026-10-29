@@ -1,5 +1,8 @@
 package org.unividuell.countdown.core.game
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
@@ -14,6 +17,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import org.unividuell.countdown.core.echolocate.Cell
 import org.unividuell.countdown.core.echolocate.EchoHit
 import org.unividuell.countdown.core.echolocate.EchoLocateClips
@@ -535,7 +539,26 @@ class EchoLocateGameTypeTest {
         val params = draw(context = context(difficulty = 1.0))
         every { clips.prepared(params.clipIds[0]) } throws IllegalArgumentException("not 16-bit PCM")
 
-        game.produceAssets(params).map { it.name } shouldBe listOf("clip-1")
+        val warnings = logOf { game.produceAssets(params).map { it.name } shouldBe listOf("clip-1") }
+
+        // The cause rides along as the throwable, stack trace and all, not flattened into the text.
+        warnings.single().throwableProxy.shouldNotBeNull().message shouldBe "not 16-bit PCM"
+    }
+
+    /** What [EchoLocateGameType] logs while [block] runs, kept off the console. */
+    private fun logOf(block: () -> Unit): List<ILoggingEvent> {
+        val logger = LoggerFactory.getLogger(EchoLocateGameType::class.java) as Logger
+        val captured = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(captured)
+        logger.isAdditive = false
+        try {
+            block()
+        } finally {
+            logger.detachAppender(captured)
+            logger.isAdditive = true
+        }
+
+        return captured.list
     }
 
     @Test

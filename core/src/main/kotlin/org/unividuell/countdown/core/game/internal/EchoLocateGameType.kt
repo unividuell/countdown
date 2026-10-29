@@ -238,7 +238,7 @@ class EchoLocateGameType(
         val bytes = try {
             clips.prepared(id)
         } catch (e: Exception) {
-            logger.warn { "echo-locate clip $id (place $place) cannot be prepared ($e); the round is silent there" }
+            logger.warn(e) { "echo-locate clip $id (place $place) cannot be prepared; the round is silent there" }
             return null
         }
 
