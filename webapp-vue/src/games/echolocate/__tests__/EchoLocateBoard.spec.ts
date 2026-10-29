@@ -527,6 +527,36 @@ describe('EchoLocateBoard', () => {
     expect(field(w).props('rings')).toEqual([[4]])
   })
 
+  // The lab hands over a phase's key and pings in one render, as the round brings both.
+  it('keeps the draft of a new key that comes with more pings', async () => {
+    const other = 'echo-locate:draft:u1:ffff0000'
+    const draft = { rings: [[1], [2], [3]], pins: [{ x: 3, y: 4 }] }
+    saveDraft(storage.fake, other, draft)
+    const w = mountBoard({ steps: [], draftKey: KEY })
+
+    await w.setProps({ draftKey: other, steps: [step(A), step(B), step(C)] })
+
+    expect(field(w).props('waves')).toEqual(
+      [A, B, C].map((at) => ({ at, startMs: null, endMs: null })),
+    )
+    expect(field(w).props('rings')).toEqual(draft.rings)
+    expect(field(w).props('pins')).toEqual(draft.pins)
+    expect(loadDraft(storage.fake, other, PAYLOAD)).toEqual(draft)
+  })
+
+  it('takes the pings of a new key that comes with as many', async () => {
+    const other = 'echo-locate:draft:u1:ffff0000'
+    saveDraft(storage.fake, other, { rings: [[4]], pins: [] })
+    const w = mountBoard({ steps: [step(A)], draftKey: KEY })
+    await start(w)
+
+    await w.setProps({ draftKey: other, steps: [step(C)] })
+
+    expect(field(w).props('waves')).toEqual([{ at: C, startMs: null, endMs: null }])
+    expect(field(w).props('rings')).toEqual([[4]])
+    expect(loadDraft(storage.fake, other, PAYLOAD)).toEqual({ rings: [[4]], pins: [] })
+  })
+
   it('holds to hand in exactly the pins and rings per ping', async () => {
     saveDraft(storage.fake, KEY, { rings: [[1.5], []], pins: [] })
     const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })

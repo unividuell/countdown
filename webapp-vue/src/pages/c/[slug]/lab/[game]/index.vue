@@ -58,7 +58,7 @@ const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'O
 const round = ref<LabRoundResponse | null>(null)
 /** The lab round's assets by name, the same shape a real round hands its game. */
 const assets = computed(() =>
-  round.value ? labAssets(community.value.slug, gameId.value, phase.value, round.value) : undefined,
+  round.value ? labAssets(community.value.slug, gameId.value, round.value) : undefined,
 )
 /**
  * Bumped whenever a response reseals an already-revealed round — a reset, most often. The game

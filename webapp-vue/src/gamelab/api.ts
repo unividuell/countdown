@@ -70,14 +70,12 @@ export const labAssetUrl = (
   name: string,
 ): string => labUrl(slug, game, seed, phase, `/assets/${encodeURIComponent(name)}`)
 
-/** The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart. */
-export const labAssets = (
-  slug: string,
-  game: string,
-  phase: LabPhase,
-  round: LabRoundResponse,
-): RoundAssets => ({
-  url: (name) => labAssetUrl(slug, game, round.seed, phase, name),
+/**
+ * The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart.
+ * Seed and phase are the round's, never the URL's: the URL runs ahead while the next round loads.
+ */
+export const labAssets = (slug: string, game: string, round: LabRoundResponse): RoundAssets => ({
+  url: (name) => labAssetUrl(slug, game, round.seed, round.phase, name),
   key: (name) => round.assetKeys[name] ?? null,
 })
 

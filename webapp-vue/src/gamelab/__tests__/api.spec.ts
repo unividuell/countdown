@@ -71,12 +71,13 @@ describe('gamelab api', () => {
   it('reads lab assets from the round it was opened with', () => {
     const round = {
       seed: 42,
+      phase: 'TWO',
       assetKeys: { photo: { key: 'a2V5', mediaType: 'image/jpeg' } },
     } as unknown as LabRoundResponse
 
-    const assets = labAssets('team', 'stub', 'ONE', round)
+    const assets = labAssets('team', 'stub', round)
 
-    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=ONE')
+    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=TWO')
     expect(assets.key('photo')).toEqual({ key: 'a2V5', mediaType: 'image/jpeg' })
     expect(assets.key('solution')).toBeNull()
   })

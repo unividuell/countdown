@@ -986,6 +986,26 @@ describe('lab page', () => {
     expect(assets.key('clip-1')).toBeNull()
   })
 
+  // The URL's phase runs ahead of the round: assets named after it would reach the game one render
+  // before the round's steps, and Peilung would load the new phase's draft against the old pings.
+  it('addresses the assets by the phase of the loaded round, not the URL', async () => {
+    let resolveSecond: (value: unknown) => void = () => {}
+    vi.spyOn(api, 'openLabRound')
+      .mockReset()
+      .mockResolvedValueOnce({ ...round, phase: 'ONE' } as never)
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)) as never)
+    const w = await mountPage()
+    const assetUrl = () => (w.findComponent(StubGame).props('assets') as RoundAssets).url('clip-0')
+
+    setQuery({ seed: '42', phase: 'TWO' })
+    await w.vm.$nextTick()
+    expect(assetUrl()).toBe('/api/lab/team/stub/assets/clip-0?seed=42&phase=ONE')
+
+    resolveSecond({ ...round, phase: 'TWO' })
+    await flushPromises()
+    expect(assetUrl()).toBe('/api/lab/team/stub/assets/clip-0?seed=42&phase=TWO')
+  })
+
   // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.
   // A lab round is never over — it is rolled again, not closed — so the honest answer is `false`.
   it('tells the game the round is not closed, the way a real card does', async () => {
