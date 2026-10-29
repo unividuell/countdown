@@ -1,6 +1,6 @@
 # Peilung („Echo Locate“) — einen Spruch im Nebel orten
 
-**Status:** Entwurf (2026-10-26).
+**Status:** umgesetzt (2026-10-29).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md), den
 [Runden-Assets](2026-10-17-round-assets-design.md), dem [Spiel-Labor](2026-08-08-game-lab-design.md)
@@ -535,6 +535,15 @@ Labor Seed und Phase), wie dort beschrieben.
 Eine abgeschlossene Runde sieht in der Historie genauso aus. **Takt** aus `revealChoreography.ts`,
 Feinabstimmung im Labor.
 
+**Umsetzung (2026-10-29):** Zwei Entscheidungen, die die Spec offen ließ.
+
+- **Die Karte zeigt immer nur einen angetippten Spieler.** „Mehrere zugleich“ bräuchte eine Farbe pro
+  Spieler (zweimal „1 2 3“ auf einem Feld sind nicht zu trennen), und die Spec gibt keine. Verschoben;
+  dann wird aus der Auswahl eine Liste samt Farben.
+- **Die Karte öffnet auf dem eigenen Spiel.** Wer gespielt hat, sieht sein Feld, wie er es verlassen
+  hat; die Karte blendet unter seinen Pings ein. Ohne eigenes Spiel (nicht mitgespielt, aufgegeben)
+  bleibt sie ohne Auswahl, bis ein Name angetippt wird.
+
 ### Erklärung
 
 `InfoBox` mit Storage-Key `echo-locate`. Kurztext: „Irgendwo im Nebel steckt ein Spruch. Peil ihn an.“
@@ -605,6 +614,7 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
   prüfen.
 - **Automatische Echo-Ringe und Nebel** — im Spike gespielt, verworfen.
 - **Mehr als zwei Clips** und **Ringe mit Farbe pro Spruch** — mit zweien gespielt, ohne Farben.
+- **Mehrere Spieler zugleich auf der Karte** — braucht eine Farbe pro Spieler, siehe *Auflösung und Historie*.
 - **Schwierigkeit in anderen Spielen** — der Rahmen liefert sie allen, nur Peilung liest sie.
 - **Ein Schnitt-Werkzeug im Audio-Pool** — Ausbaustufe 2 des Pools.
 

@@ -201,6 +201,10 @@ it is the only proof available — no unit test can see them.
   `flex-1 min-h-0` block above it, and the corners then belong to a single painted layer with
   nothing behind them. It looks identical — an opaque overlay hid the same pixels — and the tile
   stays square, so a shared size still matches. See `SongSearchBox`.
+- **A child whose own root is `relative` ignores a parent's `absolute` class.** Both classes land on
+  one element and Tailwind emits `.relative` after `.absolute`, so `relative` wins — the overlay
+  stays in flow. Wrap the child in a `div` and position that (Peilung's reveal overlay over the
+  map, `EchoLocateReveal.vue`).
 - **Beware `overflow` on animation ancestors.** `overflow-x: auto` computes `overflow-y` to
   `auto` as well, which clips transformed children — so an element that both scrolls and hosts
   an animation that escapes its box must not clip while the animation runs.
