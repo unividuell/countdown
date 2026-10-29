@@ -102,6 +102,11 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and
   Vitest. WebCrypto may only sit *beside* it as an upgrade where available (unividuell/countdown#106),
   never instead of it.
+- **A reload after a phone's file picker is Vite, not the app.** Android Chrome closes the HMR
+  WebSocket once the tab has sat in the background for ~20 s (an open picker counts); back in front,
+  Vite's client pings the dev server and calls `location.reload()`, wiping e.g. the upload queue.
+  Dev only — the production build has no Vite client. Seen over CDP
+  (`adb forward tcp:9222 localabstract:chrome_devtools_remote`).
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),
