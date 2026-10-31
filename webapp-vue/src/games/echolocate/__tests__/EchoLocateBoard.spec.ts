@@ -773,10 +773,47 @@ describe('EchoLocateBoard', () => {
   it('names the tolerance circle in the award box, never a cell', () => {
     const w = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
 
-    expect(w.text()).toContain('Irgendwo im Nebel steckt ein Spruch. Peil ihn an.')
     expect(w.text()).toContain('Jeder gültige Tipp: 1 Punkt')
-    expect(w.text()).toContain('Jeder Pin muss im Toleranzkreis um seinen Spruch liegen.')
+    expect(w.text()).toContain('Dein Pin muss im Toleranzkreis um den Spruch liegen.')
     expect(w.text()).not.toContain('Zelle')
+  })
+
+  it('speaks of one clip in the singular', () => {
+    const w = mountBoard({
+      awardRule: 'CLOSEST_ONLY',
+      awardPoints: 3,
+      payload: { ...PAYLOAD, toleranceRadius: null },
+    })
+    const rules = w.findAll('li').map((item) => item.text())
+
+    expect(w.text()).toContain('Irgendwo im Nebel steckt ein Spruch. Peil ihn an.')
+    expect(rules).toEqual([
+      'Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.',
+      'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
+      'Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
+      'Drei Pings, ein Pin für den Spruch. Zum Abgeben „Abgeben“ gedrückt halten.',
+    ])
+    expect(w.text()).toContain('Der kleinste Abstand zum Spruch.')
+  })
+
+  it('speaks of two clips in the plural', () => {
+    const two = { ...PAYLOAD, clips: 2 as const }
+    const one = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1, payload: two })
+    const w = mountBoard({
+      awardRule: 'CLOSEST_ONLY',
+      awardPoints: 3,
+      payload: { ...two, toleranceRadius: null },
+    })
+    const rules = w.findAll('li').map((item) => item.text())
+
+    expect(w.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
+    expect(rules.slice(2)).toEqual([
+      'Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
+      'Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.',
+    ])
+    expect(w.text()).toContain('Der kleinste mittlere Abstand zu beiden Sprüchen.')
+    expect(one.text()).toContain('Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.')
+    expect(w.text()).not.toContain('Später in der Edition')
   })
 
   it('keeps the status line live for screen readers', () => {

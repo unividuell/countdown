@@ -390,6 +390,7 @@ onBeforeUnmount(() => {
       :award-rule="props.awardRule"
       :award-points="props.awardPoints"
       :tolerance-radius="props.payload.toleranceRadius"
+      :clips="props.payload.clips"
     />
   </div>
 </template>

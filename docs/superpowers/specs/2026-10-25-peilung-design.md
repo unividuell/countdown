@@ -550,16 +550,21 @@ Feinabstimmung im Labor.
 
 ### Erklärung
 
-`InfoBox` mit Storage-Key `echo-locate`. Kurztext: „Irgendwo im Nebel steckt ein Spruch. Peil ihn an.“
+`InfoBox` mit Storage-Key `echo-locate`. Alle Texte stehen in der Zahl der Sprüche dieser Runde
+(Clemens, 2026-10-31); hier Einzahl, in Klammern die Mehrzahl. Kurztext: „Irgendwo im Nebel steckt
+ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
 
 - Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.
 - Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.
-- Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen.
-- Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.
-- Später in der Edition stecken manchmal zwei Sprüche im Nebel. Dann darfst du pro Welle zweimal
-  markieren, und es trifft nur, wer beide findet.
+- Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
+  Markierung für dich – er fließt nicht in die Bewertung ein. („Hörst du einen Spruch, … stehen,
+  bis zu zwei pro Welle. Diese Ringe sind … – sie fließen nicht …“)
+- Drei Pings, ein Pin für den Spruch („pro Spruch“). Zum Abgeben „Abgeben“ gedrückt halten.
 
-Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`. Deutscher Text im UI mit `„…“`.
+Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`: „Dein Pin muss im Toleranzkreis
+um den Spruch liegen.“ („Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.“), „Der kleinste
+Abstand zum Spruch.“ („Der kleinste mittlere Abstand zu beiden Sprüchen.“). Deutscher Text im UI mit
+`„…“`.
 
 ## Labor
 
