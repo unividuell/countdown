@@ -57,6 +57,8 @@ const props = defineProps<{
   disabled: boolean
   awardRule: AwardRule | null
   awardPoints: number | null
+  /** My avatar colour, for my pins. */
+  myColorHex: string
 }>()
 
 const emit = defineEmits<{ guess: [value: EchoLocateGuess]; skip: [stage: number, input: Point] }>()
@@ -354,6 +356,7 @@ onBeforeUnmount(() => {
         :waves="flow.waves"
         :rings="flow.rings"
         :pins="flow.pins"
+        :pin-color-hex="props.myColorHex"
         :pending="flow.pending"
         :covered="flow.phase === 'closed'"
         :disabled="props.disabled"

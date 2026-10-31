@@ -132,6 +132,7 @@ function mountBoard(over: Record<string, unknown> = {}, options: { realField?: b
       disabled: false,
       awardRule: null,
       awardPoints: null,
+      myColorHex: '#7c3aed',
       ...over,
     },
     global: { stubs: { HoldButton: true, SonarField: !options.realField } },
@@ -216,6 +217,10 @@ describe('EchoLocateBoard', () => {
 
     expect(mountBoard({ payload: { ...PAYLOAD, clips: 2 } }).text()).not.toContain('2 Sprüche')
     expect(mountBoard({}, { realField: true }).get('button').text()).toContain('1 Spruch')
+  })
+
+  it('draws my pins in my colour', () => {
+    expect(field(mountBoard({ myColorHex: '#0ea5e9' })).props('pinColorHex')).toBe('#0ea5e9')
   })
 
   // The cover says it already; the line keeps its height, so nothing jumps when it fills.

@@ -506,7 +506,7 @@ zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping … (bis alle 
    Nachklang ist der nächste Tipp der nächste Ping.
 4. **Pin:** Ist die Welle des letzten Pings verklungen, setzt ein Tipp einen Pin, solange welche
    fehlen; ein Tipp auf einen Pin (näher als 1,2 Zellen) hebt ihn ab. Mit allen Pins sind weitere Tipps
-   daneben wirkungslos.
+   daneben wirkungslos. Die Pins stehen in der Farbe des eigenen Avatars (Clemens, 2026-10-31).
 
 **Unter dem Feld** eine Zeile, die sagt, was ein Tipp gerade tut (Wortlaut meine Festlegung, der erste
 von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren – noch 2“, während einer Welle
@@ -526,10 +526,12 @@ Labor Seed und Phase), wie dort beschrieben.
 
 1. **Kopf:** ohne Toleranz; die zeigt der Kreis auf der Karte (Clemens, 2026-10-31).
 2. **Die Karte:** dasselbe Feld, darauf die Clips (grün), in Phase eins ihre Toleranzkreise
-   hervorgehoben, die Störquellen (V, B, K, W, R) und alle Pins. **Wer einen Namen antippt, sieht dessen
-   Pings** (Mitten), **dessen Ringe und Pins** hervorgehoben, dazu je eine Linie vom Pin zu seinem Clip
+   hervorgehoben, die Störquellen (V, B, K, W, R) und alle Pins, jeder in der Farbe seines Spielers
+   (Clemens, 2026-10-31). **Wer einen Namen antippt, sieht dessen Pings** (Mitten), **dessen Ringe und
+   Pins** hervorgehoben (die Pins größer, weiß umrandet), dazu je eine Linie vom Pin zu seinem Clip
    (`pinOf`), wie die Ebenen bei Anmaßung; ein zweites Antippen nimmt sie wieder weg. Die Ping-Stellen
-   kommen aus `steps`, die Radien aus dem Tipp.
+   kommen aus `steps`, die Radien aus dem Tipp. Unter der Karte eine kleine Legende: „V Vögel · B Bach ·
+   K Kuh · W Wind · R Regen“, „Spruch“ und in Phase eins „Toleranzkreis“ (Clemens, 2026-10-31).
 3. **Die Rangliste:** **Name · Abstand · Pkt**, Abstand in Zellen mit einer Nachkommastelle, aufsteigend,
    bei zwei Clips der Mittelwert („Ø 2,3“); Aufgegebene zuletzt, `userId` als Tiebreak. Als pure
    `scoreboard.ts`.

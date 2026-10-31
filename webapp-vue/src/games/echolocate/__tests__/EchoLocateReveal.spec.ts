@@ -71,10 +71,16 @@ const GUESSES: Record<string, EchoLocateGuess> = {
   bert: { pins: [{ x: 11.5, y: 4.5 }], rings: [[], [5], [8]] },
 }
 
-/** A judged entry with its own pings, pin and rings; its distance as given. */
+const COLORS: Record<string, string> = { me: '#2563eb', anna: '#f59e0b', bert: '#111827' }
+
+/** A player's pin as the map gets it from someone else: in that player's colour. */
+const theirs = (userId: string) => ({ at: GUESSES[userId]!.pins[0], colorHex: COLORS[userId] })
+
+/** A judged entry with its own pings, pin, rings and colour; its distance as given. */
 function entry(userId: string, distance: number, over: Partial<GameEntry> = {}): GameEntry {
   return gameEntry({
     userId,
+    avatar: { bgColorHex: COLORS[userId] ?? '#7c3aed' },
     guess: GUESSES[userId] ?? GUESSES['anna'],
     outcome: { distance, withinTolerance: true, pinOf: [0] },
     points: 1,
@@ -128,7 +134,7 @@ describe('EchoLocateReveal', () => {
   })
 
   describe('the map', () => {
-    it('shows clips, their blocks in phase one, the noises and all pins', () => {
+    it("shows clips, the noises and every pin in its player's colour", () => {
       const wrapper = mountReveal()
 
       expect(fields(wrapper)).toHaveLength(1)
@@ -143,7 +149,7 @@ describe('EchoLocateReveal', () => {
         rings: [],
         pins: [],
         links: [],
-        otherPins: [GUESSES['me']!.pins[0], GUESSES['anna']!.pins[0], GUESSES['bert']!.pins[0]],
+        otherPins: [theirs('me'), theirs('anna'), theirs('bert')],
       })
     })
 
@@ -164,7 +170,7 @@ describe('EchoLocateReveal', () => {
         ],
       })
 
-      expect(map(wrapper).props('otherPins')).toEqual([GUESSES['anna']!.pins[0]])
+      expect(map(wrapper).props('otherPins')).toEqual([theirs('anna')])
     })
   })
 
@@ -178,10 +184,11 @@ describe('EchoLocateReveal', () => {
         waves: PINGS['anna']!.map(wave),
         rings: GUESSES['anna']!.rings,
         pins: GUESSES['anna']!.pins,
+        pinColorHex: COLORS['anna'],
         links: [[GUESSES['anna']!.pins[0], SOLUTION.targets[0]]],
         solution: SOLUTION,
-        // The others stay, dimmed; hers is drawn as her own, not twice.
-        otherPins: [GUESSES['me']!.pins[0], GUESSES['bert']!.pins[0]],
+        // The others stay, smaller; hers is drawn as her own, not twice.
+        otherPins: [theirs('me'), theirs('bert')],
       })
       expect(wrapper.get('[data-test="select-anna"]').attributes('aria-pressed')).toBe('true')
       expect(wrapper.get('[data-test="select-bert"]').attributes('aria-pressed')).toBe('false')
@@ -270,7 +277,8 @@ describe('EchoLocateReveal', () => {
         waves: PINGS['me']!.map(wave),
         rings: GUESSES['me']!.rings,
         pins: GUESSES['me']!.pins,
-        otherPins: [GUESSES['anna']!.pins[0], GUESSES['bert']!.pins[0]],
+        pinColorHex: COLORS['me'],
+        otherPins: [theirs('anna'), theirs('bert')],
       })
       expect(wrapper.get('[data-test="select-me"]').attributes('aria-pressed')).toBe('true')
     })
@@ -309,6 +317,7 @@ describe('EchoLocateReveal', () => {
         waves: PINGS['me']!.map(wave),
         rings: GUESSES['me']!.rings,
         pins: GUESSES['me']!.pins,
+        pinColorHex: COLORS['me'],
         covered: false,
       })
       // Nothing of the solution, nobody else's pins: my field as the board left it.

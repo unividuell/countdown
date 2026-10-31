@@ -156,7 +156,15 @@ describe('EchoLocateGame', () => {
         disabled: true,
         awardRule: 'ALL_QUALIFYING',
         awardPoints: 1,
+        myColorHex: '#7c3aed',
       })
+    })
+
+    it('hands the board my avatar colour for my pins', () => {
+      const me = { ...MINE, avatar: { bgColorHex: '#0ea5e9' } }
+      const board = mountGame({ entries: [FRY, me] }).getComponent(EchoLocateBoard)
+
+      expect(board.props('myColorHex')).toBe('#0ea5e9')
     })
 
     it('hands the board no steps when the host has none', () => {

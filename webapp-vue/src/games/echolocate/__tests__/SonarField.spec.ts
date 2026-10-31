@@ -64,11 +64,21 @@ function mountField(over: Record<string, unknown> = {}) {
       waves: [],
       rings: [],
       pins: [],
+      pinColorHex: '#7c3aed',
       pending: null,
       covered: false,
       ...over,
     },
   })
+}
+
+/** The calls right after the `arc` that traced a circle at (x, y) with radius r, in px. */
+function after(log: Call[], x: number, y: number, r: number, count: number): Call[] {
+  const at = log.findIndex(
+    ([name, ...args]) => name === 'arc' && args[0] === x && args[1] === y && args[2] === r,
+  )
+
+  return at < 0 ? [] : log.slice(at + 1, at + 1 + count)
 }
 
 /** The handler runs a little after the finger came down: the clock has moved on by then. */
@@ -158,6 +168,51 @@ describe('SonarField', () => {
     log.length = 0
     mountField({ solution: { ...SOLUTION, toleranceRadius: null } })
     expect(log).not.toContainEqual(circle)
+  })
+
+  it('explains the map in a legend, the tolerance circle in phase one only', () => {
+    const items = (solution: EchoLocateSolution) =>
+      mountField({ solution })
+        .get('[data-test="sonar-legend"]')
+        .findAll('li')
+        .map((item) => item.text())
+    const noises = ['V Vögel', 'B Bach', 'K Kuh', 'W Wind', 'R Regen']
+
+    expect(items(SOLUTION)).toEqual([...noises, 'Spruch', 'Toleranzkreis'])
+    expect(items({ ...SOLUTION, toleranceRadius: null })).toEqual([...noises, 'Spruch'])
+    expect(mountField().find('[data-test="sonar-legend"]').exists()).toBe(false)
+  })
+
+  it("draws the pins in their player's colour, outlined white for the dark ground", () => {
+    mountField({ pins: [{ x: 4, y: 5 }], pinColorHex: '#1e3a8a' })
+
+    expect(after(log, 40, 50, 6, 6)).toEqual([
+      ['set fillStyle', '#1e3a8a'],
+      ['fill'],
+      ['set strokeStyle', '#ffffff'],
+      ['set lineWidth', 2],
+      ['stroke'],
+      ['set lineWidth', 1],
+    ])
+  })
+
+  it("draws everyone else's pins smaller, each in its own player's colour", () => {
+    mountField({
+      solution: SOLUTION,
+      otherPins: [
+        { at: { x: 2, y: 3 }, colorHex: '#fde047' },
+        { at: { x: 12, y: 13 }, colorHex: '#111827' },
+      ],
+    })
+
+    const outlined = (colorHex: string) => [
+      ['set fillStyle', colorHex],
+      ['fill'],
+      ['set strokeStyle', 'rgba(255,255,255,0.6)'],
+      ['stroke'],
+    ]
+    expect(after(log, 20, 30, 4, 4)).toEqual(outlined('#fde047'))
+    expect(after(log, 120, 130, 4, 4)).toEqual(outlined('#111827'))
   })
 
   it('takes no taps as a map, so a finger there scrolls the page', () => {

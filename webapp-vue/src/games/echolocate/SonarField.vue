@@ -7,7 +7,7 @@
  *   · [clips, noises, links, other pins] · pins · sparks
  *
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
- * a finger there scrolls the page.
+ * a finger there scrolls the page — and a legend under it names what the map shows.
  *
  * `covered` lays a button over the field, and only its click asks to `start`: iOS counts a touch
  * as a gesture from its end on, so a `pointerdown` could not start the audio graph.
@@ -34,6 +34,8 @@ const props = defineProps<{
   /** `rings[i]` are the radii marked around `waves[i]`. */
   rings: number[][]
   pins: Point[]
+  /** The colour of `pins`: their player's avatar colour. */
+  pinColorHex: string
   /** A ping whose answer is out: it pulses until its wave starts. */
   pending: Point | null
   /** Before the first tap, while the sound is locked. */
@@ -41,8 +43,8 @@ const props = defineProps<{
   /** The cover takes no click. */
   disabled?: boolean
   solution?: EchoLocateSolution | null
-  /** Everyone else's pins on the map, dimmed. */
-  otherPins?: Point[]
+  /** Everyone else's pins on the map, smaller, each in its player's colour. */
+  otherPins?: { at: Point; colorHex: string }[]
   /** A pin and the target cell it was matched with. */
   links?: [Point, Cell][]
 }>()
@@ -56,6 +58,14 @@ const NOISE_LETTER: Record<NoiseKind, string> = {
   COW: 'K',
   WIND: 'W',
   RAIN: 'R',
+}
+
+const NOISE_NAME: Record<NoiseKind, string> = {
+  BIRDS: 'Vögel',
+  BROOK: 'Bach',
+  COW: 'Kuh',
+  WIND: 'Wind',
+  RAIN: 'Regen',
 }
 
 interface Spark {
@@ -221,17 +231,20 @@ function draw(now = performance.now()): void {
 
   if (props.solution) drawSolution(c, cell, props.solution)
 
+  // Pins in their player's colour; a white outline reads on the dark ground, light colour or dark.
   for (const pin of props.otherPins ?? []) {
-    circle(pin, Math.max(4, cell * 0.3))
-    c.fillStyle = 'rgba(251,191,36,0.45)'
+    circle(pin.at, Math.max(4, cell * 0.3))
+    c.fillStyle = pin.colorHex
     c.fill()
+    c.strokeStyle = 'rgba(255,255,255,0.6)'
+    c.stroke()
   }
 
   for (const pin of props.pins) {
     circle(pin, Math.max(6, cell * 0.45))
-    c.fillStyle = '#fbbf24'
+    c.fillStyle = props.pinColorHex
     c.fill()
-    c.strokeStyle = '#78350f'
+    c.strokeStyle = '#ffffff'
     c.lineWidth = 2
     c.stroke()
     c.lineWidth = 1
@@ -369,5 +382,26 @@ watch(
       </span>
       <span>Antippen zum Starten</span>
     </button>
+    <ul
+      v-if="props.solution"
+      data-test="sonar-legend"
+      aria-label="Legende"
+      class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-neutral-500"
+    >
+      <li v-for="(letter, kind) in NOISE_LETTER" :key="kind" class="whitespace-nowrap">
+        <span class="font-bold text-red-400">{{ letter }}</span> {{ NOISE_NAME[kind] }}
+      </li>
+      <li class="flex items-center gap-1">
+        <span aria-hidden="true" class="size-2.5 rounded-full bg-emerald-400" />
+        Spruch
+      </li>
+      <li v-if="props.solution.toleranceRadius !== null" class="flex items-center gap-1">
+        <span
+          aria-hidden="true"
+          class="size-3 rounded-full border border-emerald-400 bg-emerald-400/15"
+        />
+        Toleranzkreis
+      </li>
+    </ul>
   </div>
 </template>

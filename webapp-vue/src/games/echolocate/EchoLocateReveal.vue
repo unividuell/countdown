@@ -3,9 +3,10 @@
  * The card after the round: the field as a map, and the scoreboard under it.
  *
  *   ┌──────────────────────┐
- *   │  clips · noises      │  every pin dimmed; a tapped name lights that player's
- *   │  pins ·  ·  ·        │  pings, rings and pin, and draws the pin's line to its clip
- *   └──────────────────────┘
+ *   │  clips · noises      │  every pin in its player's colour; a tapped name lights that
+ *   │  pins ·  ·  ·        │  player's pings, rings and pins, larger, and draws each
+ *   └──────────────────────┘  pin's line to its clip
+ *    V Vögel  B Bach  …       the field's legend
  *    Auswertung …
  *
  * Beats come from `revealChoreography`: my own field stands as I left it, then at
@@ -37,11 +38,18 @@ const props = defineProps<{
 }>()
 
 /** What one player's play puts on the field. Pings are centres only: no wave is running. */
-function fieldOf(row: ScoreRow | undefined): { waves: Wave[]; rings: number[][]; pins: Point[] } {
+function fieldOf(row: ScoreRow | undefined): {
+  waves: Wave[]
+  rings: number[][]
+  pins: Point[]
+  pinColorHex: string
+} {
   return {
     waves: (row?.pings ?? []).map((at) => ({ at, startMs: null, endMs: null })),
     rings: row?.guess?.rings ?? [],
     pins: row?.guess?.pins ?? [],
+    // Without a row there is no pin to colour.
+    pinColorHex: row?.colorHex ?? '#525252',
   }
 }
 
@@ -74,11 +82,11 @@ const links = computed(() => {
   })
 })
 
-/** Everyone else's pins, dimmed; the chosen player's own are drawn bright. */
+/** Everyone else's pins, each in its player's colour; the chosen player's own are drawn larger. */
 const otherPins = computed(() =>
   props.rows
     .filter((row) => row.userId !== chosen.value?.userId)
-    .flatMap((row) => row.guess?.pins ?? []),
+    .flatMap((row) => (row.guess?.pins ?? []).map((at) => ({ at, colorHex: row.colorHex }))),
 )
 
 /**
@@ -115,6 +123,7 @@ function select(userId: string): void {
         :waves="shown.waves"
         :rings="shown.rings"
         :pins="shown.pins"
+        :pin-color-hex="shown.pinColorHex"
         :pending="null"
         :covered="false"
         :solution="props.solution"
@@ -138,6 +147,7 @@ function select(userId: string): void {
           :waves="ownField.waves"
           :rings="ownField.rings"
           :pins="ownField.pins"
+          :pin-color-hex="ownField.pinColorHex"
           :pending="null"
           :covered="false"
         />

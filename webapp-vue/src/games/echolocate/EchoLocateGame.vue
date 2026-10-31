@@ -19,6 +19,7 @@
 import { computed, watch } from 'vue'
 import { clearDraft, deviceStorage, sweepDrafts } from '@/games/drafts'
 import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import { draftKey, draftPrefix } from './draft'
@@ -101,6 +102,11 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
+const myColorHex = useMyColorHex(
+  () => props.entries,
+  () => props.mineUserId,
+)
+
 const animate = useRevealedLive(solved)
 </script>
 
@@ -126,6 +132,7 @@ const animate = useRevealedLive(solved)
     :disabled="props.disabled"
     :award-rule="props.awardRule"
     :award-points="props.awardPoints"
+    :my-color-hex="myColorHex"
     @guess="(guess) => emit('guess', guess)"
     @skip="(stage, input) => emit('skip', stage, input)"
   />
