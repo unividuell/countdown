@@ -7,8 +7,13 @@
  * moved, so the switch to the reveal leaves it exactly where it was.
  */
 import { computed } from 'vue'
-import { FADE_MS, SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
-import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import {
+  FADE_MS,
+  SOLUTION_DELAY_MS,
+  TIP_COLUMN,
+  cellDelayMs,
+  isStill,
+} from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import PlacePatchScoreboard from './PlacePatchScoreboard.vue'
 import { stackedOutlines } from './outlines'
@@ -27,12 +32,7 @@ const props = defineProps<{
   patchSrc: string
 }>()
 
-/** A reload, reduced motion, a background tab: just be there. */
-const still =
-  !props.animate ||
-  prefersReducedMotion() ||
-  inBackground() ||
-  typeof requestAnimationFrame !== 'function'
+const still = isStill(props.animate)
 
 const { shown } = useRevealArming(still)
 

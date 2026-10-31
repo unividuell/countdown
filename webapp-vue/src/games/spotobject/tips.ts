@@ -8,10 +8,9 @@
  * points) — see `SpotObjectReveal.vue` for why folding them together would be the wrong move.
  */
 import type { AwardRule, Vote, VoteView } from '@/api/types'
-import { isProvisional } from '@/games/awards'
-import { durationOrder, formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
-import { tickOfRow } from '@/games/revealChoreography'
+import { rankByClock } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { asSpotObjectOutcome, asSpotObjectTip, flagOf } from './types'
@@ -89,38 +88,10 @@ export interface ScoreRow extends ScoreboardRow {
   durationLabel: string | null
 }
 
-export function hasDurations(rows: readonly ScoreRow[]): boolean {
-  return rows.some((row) => row.durationLabel !== null)
-}
-
 export function scoreRows(input: {
   entries: readonly GameEntry[]
   awardRule: AwardRule | null
   mineUserId: string | null
 }): ScoreRow[] {
-  const ranked = input.entries.map((entry) => ({
-    durationMs: entry.durationMs,
-    row: {
-      userId: entry.userId,
-      name: entry.username,
-      colorHex: entry.avatar.bgColorHex,
-      ink: readableTextColor(entry.avatar.bgColorHex),
-      durationLabel: formatDuration(entry.durationMs),
-      points: entry.points,
-      provisional: isProvisional(entry.points, input.awardRule),
-    },
-  }))
-
-  ranked.sort(
-    (a, b) =>
-      (b.row.points ?? -1) - (a.row.points ?? -1) ||
-      durationOrder(a.durationMs, b.durationMs) ||
-      a.row.userId.localeCompare(b.row.userId),
-  )
-
-  const myRank = ranked.findIndex((item) => item.row.userId === input.mineUserId)
-  return ranked.map(({ row }, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
-  }))
+  return rankByClock(input.entries, input.mineUserId, (entry) => rowHead(entry, input.awardRule))
 }

@@ -51,6 +51,7 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | '/c/[slug]/'
+      | '/c/[slug]/audio'
       | '/c/[slug]/images'
       | '/c/[slug]/lab/'
       | '/c/[slug]/lab/[game]/'
@@ -62,6 +63,13 @@ declare module 'vue-router/auto-routes' {
     '/c/[slug]/': RouteRecordInfo<
       '/c/[slug]/',
       '/c/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/audio': RouteRecordInfo<
+      '/c/[slug]/audio',
+      '/c/:slug/audio',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -163,6 +171,7 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       Record<never, never>,
       | '/super-admin/'
+      | '/super-admin/audio'
       | '/super-admin/communities'
       | '/super-admin/images'
       | '/super-admin/users/'
@@ -171,6 +180,13 @@ declare module 'vue-router/auto-routes' {
     '/super-admin/': RouteRecordInfo<
       '/super-admin/',
       '/super-admin',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/super-admin/audio': RouteRecordInfo<
+      '/super-admin/audio',
+      '/super-admin/audio',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -236,6 +252,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/c/[slug]'
         | '/c/[slug]/'
+        | '/c/[slug]/audio'
         | '/c/[slug]/images'
         | '/c/[slug]/lab/'
         | '/c/[slug]/lab/[game]/'
@@ -251,6 +268,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/c/[slug]/index.vue': {
       routes:
         | '/c/[slug]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/audio.vue': {
+      routes:
+        | '/c/[slug]/audio'
       views:
         | never
       pathParamNames:
@@ -364,6 +389,7 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/super-admin'
         | '/super-admin/'
+        | '/super-admin/audio'
         | '/super-admin/communities'
         | '/super-admin/images'
         | '/super-admin/users/'
@@ -376,6 +402,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/super-admin/index.vue': {
       routes:
         | '/super-admin/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/super-admin/audio.vue': {
+      routes:
+        | '/super-admin/audio'
       views:
         | never
       pathParamNames:

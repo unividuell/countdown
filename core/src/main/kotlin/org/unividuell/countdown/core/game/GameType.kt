@@ -34,6 +34,12 @@ interface GameSolution
 interface GameScene
 
 /**
+ * What a game answers to one step of a staged round. A fourth way out next to [GamePayload],
+ * [GameSolution] and [GameOutcome], pinned per game by a field-set test like them.
+ */
+interface GameStepAnswer
+
+/**
  * What a game may say about a guess — and only that.
  *
  * **The game judges, the framework awards.** How many points a guess is worth, and whether it takes
@@ -71,6 +77,13 @@ data class RoundContext(
     val roundNumber: Int,
     val phase: Phase,
     val previousParams: List<JsonNode> = emptyList(),
+    /**
+     * How hard the round should be: `0.0` (easiest) to `1.0`. What that means is the game's call.
+     * Default `0.0`, the safe direction: a caller that says nothing gets the easiest round. In a
+     * real round [GameType.isAvailable] and the game selection run before the type is chosen and
+     * see `0.0`.
+     */
+    val difficulty: Double = 0.0,
 )
 
 /**
@@ -206,6 +219,24 @@ interface GameType<P : Any> {
     fun stages(params: P): Int = 1
 
     /**
+     * Whether the reached stage is the score: a wrong guess in phase one costs a stage, and the
+     * deviation is the stage (Anspielung). `false`: stages only count steps; the guess is scored as
+     * in a single-stage game.
+     */
+    fun stagesScore(params: P): Boolean = stages(params) > 1
+
+    /**
+     * A step from [stage] to `stage + 1`, with the player's input. Pure: the same arguments give the
+     * same answer, so it is not stored but recomputed for every response. `null`: this step has no
+     * answer (Anspielung). An invalid input throws [InvalidStepException] → 400, before anything is
+     * written.
+     */
+    fun step(params: P, stage: Int, input: JsonNode?): GameStepAnswer? {
+        if (input != null) throw InvalidStepException("this game takes no step input")
+        return null
+    }
+
+    /**
      * The round's binary assets, each named and with its [AssetVisibility]; none by default. Plain
      * bytes: the framework seals what opens by stage. Expensive — may perform network I/O — and
      * called once per round: at materialisation for a real round, on first need for a lab round.
@@ -219,3 +250,6 @@ interface GameType<P : Any> {
  * exposed — the round's controller and the lab's both map it.
  */
 class InvalidGuessException(message: String) : RuntimeException(message)
+
+/** The game rejected a step's input → 400. Thrown by [GameType.step] before the step is written. */
+class InvalidStepException(message: String) : RuntimeException(message)

@@ -21,6 +21,9 @@ const props = defineProps<{
   from: number | null
 }>()
 
+/** `reviewed`: a ballot went through, so the points it re-scored are stale wherever else they show. */
+const emit = defineEmits<{ reviewed: [] }>()
+
 const { items, busy, error, canLoadMore, loadMore } = useRoundHistory(
   props.slug,
   toRef(props, 'from'),
@@ -39,6 +42,7 @@ function reviewFor(roundNumber: number): RoundReview {
     try {
       const loaded = await action()
       items.value = items.value.map((item) => (item.round?.number === roundNumber ? loaded : item))
+      emit('reviewed')
     } catch (err) {
       console.error('[review] ballot failed', err)
       reviewNotice.value = { roundNumber, text: 'Die Wertung konnte nicht gespeichert werden.' }

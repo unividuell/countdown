@@ -29,6 +29,7 @@ const props = defineProps<{
       :solution="props.solution"
       :durations="props.durations"
       :assets="props.assets"
+      :animate="props.animate"
     />
     <SongSnippetScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
   </div>

@@ -6,6 +6,7 @@ import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameSolution
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.iam.Avatar
 import tools.jackson.databind.JsonNode
@@ -97,7 +98,15 @@ data class OtherPlayDto(
     val struck: Boolean = false,
     /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
     val adminOverride: Boolean? = null,
+    /**
+     * The inputs only, without the answers: the reveal needs where the others stepped (Peilung's
+     * ping positions), not what each step told them.
+     */
+    val steps: List<JsonNode> = emptyList(),
 )
+
+/** One step of the viewer's own: what they sent, and the game's answer to it, recomputed. */
+data class StepDto(val input: JsonNode?, val answer: GameStepAnswer?)
 
 /**
  * The viewer's own row: [OtherPlayDto] plus the two stamps that are theirs to know. [guessedAt] is
@@ -126,6 +135,7 @@ data class MyPlayDto(
     val struck: Boolean = false,
     /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
     val adminOverride: Boolean? = null,
+    val steps: List<StepDto> = emptyList(),
 )
 
 /**
@@ -187,8 +197,11 @@ data class GuessRequest(val roundNumber: Int, val guess: JsonNode)
 /** Open the round the client believes it is looking at — see [GuessRequest]. */
 data class RevealRequest(val roundNumber: Int)
 
-/** Advance the staged reveal: from the stage the client believes it is on. */
-data class SkipRequest(val roundNumber: Int, val fromStage: Int)
+/**
+ * Advance the staged reveal: from the stage the client believes it is on, with the step's input for
+ * a game that takes one.
+ */
+data class SkipRequest(val roundNumber: Int, val fromStage: Int, val input: JsonNode? = null)
 
 /** Spend the round without an answer. */
 data class GiveUpRequest(val roundNumber: Int)

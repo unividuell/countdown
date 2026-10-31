@@ -4,6 +4,9 @@ import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import type { GuessHuePayload } from '@/games/guesshue/types'
+import type { GameProps } from '@/games/GameProps'
+import type { GameEntry } from '@/games/GameEntry'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 
 const PAYLOAD: GuessHuePayload = {
   description: 'Testbeschreibung einer Farbe.',
@@ -13,21 +16,8 @@ const PAYLOAD: GuessHuePayload = {
   toleranceDeg: 10,
 }
 
-function mountAdapter(props: Record<string, unknown> = {}) {
-  return mount(GuessHueGame, {
-    props: {
-      payload: PAYLOAD,
-      outcome: null,
-      disabled: false,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
-      awardRule: null,
-      awardPoints: null,
-      ...props,
-    },
-  })
+function mountAdapter(props: Partial<GameProps> = {}) {
+  return mount(GuessHueGame, { props: gameProps({ payload: PAYLOAD, ...props }) })
 }
 
 describe('GuessHueGame', () => {
@@ -45,6 +35,13 @@ describe('GuessHueGame', () => {
     const w = mountAdapter()
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('210')
+  })
+
+  it('says the round cannot be shown for a payload it cannot read', () => {
+    const w = mountAdapter({ payload: { saturation: 'x' } })
+
+    expect(w.text()).toContain('Diese Runde lässt sich hier nicht anzeigen.')
+    expect(w.find('[data-test="hue-wheel"]').exists()).toBe(false)
   })
 
   it('starts the wheel on my own guess once there is one', () => {
@@ -115,6 +112,19 @@ describe('GuessHueGame', () => {
     expect(centreWrapper.classes().some((c) => c.includes('hue-card-leaving'))).toBe(true)
   })
 
+  // `<component :is>` checks no prop, so one a game leaves undeclared lands on its root.
+  it('takes every host prop as a prop, none as a DOM attribute', () => {
+    const w = mountAdapter({
+      review: { open: false, canOverride: false, vote: vi.fn(), override: vi.fn() },
+      stage: 0,
+      assets: { url: (name: string) => `/asset/${name}`, key: () => null },
+    })
+
+    // A selector, not `w.attributes()`: the root starts with a comment, so the wrapper is the
+    // mount container, not the game's element.
+    expect(w.find('[review], [stage], [assets]').exists()).toBe(false)
+  })
+
   it("keeps the input card in the crossfade's shared grid cell", () => {
     // Both cards need `[grid-area:1/1]` so the surroundings stay as tall as the taller card
     // during the switch — losing it on either one would stack the cards vertically instead.
@@ -130,23 +140,16 @@ function entry(
   userId: string,
   hue: unknown,
   bgColorHex = '#3366cc',
-  over: Record<string, unknown> = {},
-) {
-  return {
+  over: Partial<GameEntry> = {},
+): GameEntry {
+  return gameEntry({
     userId,
-    username: userId,
-    avatar: { shortName: userId.toUpperCase(), bgColorHex },
-    stage: 0,
+    avatar: { bgColorHex },
     guess: { hue },
     outcome: { deviationDeg: 0 },
     points: 1,
-    durationMs: null,
-    at: '2026-08-09T12:00:00Z',
-    votes: [],
-    struck: false,
-    adminOverride: null,
     ...over,
-  }
+  })
 }
 
 describe('GuessHueGame, once the round is spent', () => {
@@ -338,7 +341,7 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
     vi.restoreAllMocks()
   })
 
-  function spentRound(props: Record<string, unknown> = {}) {
+  function spentRound(props: Partial<GameProps> = {}) {
     return mountAdapter({
       solution: SOLUTION,
       mineUserId: 'me',

@@ -43,10 +43,12 @@ const { StubGame } = await vi.hoisted(async () => {
         closed: { type: Boolean, default: true },
         sealed: { type: Boolean, default: false },
         scene: { type: null, default: null },
+        steps: { type: null, default: null },
       },
-      emits: ['guess', 'reveal'],
+      emits: ['guess', 'reveal', 'skip'],
       template:
         '<button data-test="stub-guess" @click="$emit(\'guess\', { value: 123 })">guess</button>' +
+        '<button data-test="stub-skip" @click="$emit(\'skip\', 0, { x: 1, y: 2 })">skip</button>' +
         '<button data-test="stub-reveal" @click="$emit(\'reveal\')">reveal</button>',
     }),
   }
@@ -125,6 +127,8 @@ const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   revealed: true,
   canOverride: true,
   assetKeys: {},
+  difficulty: 0.7,
+  mySteps: [],
 }
 
 /**
@@ -253,6 +257,44 @@ describe('lab page', () => {
     await w.get('[data-test="stub-guess"]').trigger('click')
     await flushPromises()
     expect(api.submitLabGuess).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', { value: 123 })
+  })
+
+  // `StepView[]` fits `unknown[]`, so the compiler cannot tell the answers from the inputs the
+  // placeholder row must carry — and `<component :is>` checks no prop at all.
+  it('hands the game mySteps and passes a skip input to the lab', async () => {
+    const mySteps = [{ input: { x: 3, y: 4 }, answer: [{ delayMs: 400 }] }]
+    vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, mySteps } as never)
+    vi.spyOn(api, 'skipLabStage')
+      .mockReset()
+      .mockResolvedValue({ ...round } as never)
+
+    const w = await mountPage()
+    const stub = w.getComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual(mySteps)
+    expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([{ x: 3, y: 4 }])
+
+    await w.get('[data-test="stub-skip"]').trigger('click')
+    await flushPromises()
+
+    expect(api.skipLabStage).toHaveBeenCalledWith('team', 'stub', 42, 'ONE', 0, { x: 1, y: 2 })
+  })
+
+  it('reads a round without mySteps, as a server from before them sends it, as none', async () => {
+    const older: Partial<LabRoundResponse> = { ...round }
+    delete older.mySteps
+    vi.spyOn(api, 'openLabRound').mockResolvedValue(older as never)
+
+    const stub = (await mountPage()).getComponent(StubGame)
+
+    expect(stub.props('steps')).toEqual([])
+    expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([])
+  })
+
+  it("shows the loaded round's difficulty in the drawer", async () => {
+    await mountPage()
+
+    expect(tool('lab-difficulty').text()).toBe('Schwierigkeit 0,7')
   })
 
   it('resets the round', async () => {
@@ -626,6 +668,7 @@ describe('lab page', () => {
         votes: [],
         struck: false,
         adminOverride: null,
+        steps: [],
       },
     ])
     expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
@@ -941,6 +984,26 @@ describe('lab page', () => {
     expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=ONE')
     expect(assets.key('clip-0')).toEqual(key)
     expect(assets.key('clip-1')).toBeNull()
+  })
+
+  // The URL's phase runs ahead of the round: assets named after it would reach the game one render
+  // before the round's steps, and Peilung would load the new phase's draft against the old pings.
+  it('addresses the assets by the phase of the loaded round, not the URL', async () => {
+    let resolveSecond: (value: unknown) => void = () => {}
+    vi.spyOn(api, 'openLabRound')
+      .mockReset()
+      .mockResolvedValueOnce({ ...round, phase: 'ONE' } as never)
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)) as never)
+    const w = await mountPage()
+    const assetUrl = () => (w.findComponent(StubGame).props('assets') as RoundAssets).url('clip-0')
+
+    setQuery({ seed: '42', phase: 'TWO' })
+    await w.vm.$nextTick()
+    expect(assetUrl()).toBe('/api/lab/team/stub/assets/clip-0?seed=42&phase=ONE')
+
+    resolveSecond({ ...round, phase: 'TWO' })
+    await flushPromises()
+    expect(assetUrl()).toBe('/api/lab/team/stub/assets/clip-0?seed=42&phase=TWO')
   })
 
   // Same call site, same trap: a prop the product passes and the lab omits is how `tipPath` broke.

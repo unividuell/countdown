@@ -17,3 +17,8 @@ export function durationOrder(a: number | null, b: number | null): number {
   if (b === null) return -1
   return a - b
 }
+
+/** Whether the clock column has anything to show: a round that does not score on time has no label. */
+export function hasDurations(rows: readonly { durationLabel?: string | null }[]): boolean {
+  return rows.some((row) => (row.durationLabel ?? null) !== null)
+}

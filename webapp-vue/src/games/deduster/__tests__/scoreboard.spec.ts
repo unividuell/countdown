@@ -1,22 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { GameEntry } from '@/games/GameEntry'
+import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { scoreRows } from '../scoreboard'
-
-function entry(userId: string, guess: unknown, outcome: unknown, points: number | null): GameEntry {
-  return {
-    userId,
-    username: userId,
-    stage: 0,
-    guess,
-    outcome,
-    points,
-    durationMs: null,
-    avatar: { bgColorHex: '#2563eb' },
-    votes: [],
-    struck: false,
-    adminOverride: null,
-  }
-}
 
 function played(
   userId: string,
@@ -27,10 +11,10 @@ function played(
 ) {
   const average =
     reactions.length === 0 ? null : reactions.reduce((a, b) => a + b, 0) / reactions.length
-  return entry(
+  return gameEntry({
     userId,
-    { reactionsMs: reactions, endedBy, wrongTileIndex: null, restarted: false },
-    {
+    guess: { reactionsMs: reactions, endedBy, wrongTileIndex: null, restarted: false },
+    outcome: {
       tilesCleared: reactions.length,
       endedBy,
       wrongTileIndex: null,
@@ -40,7 +24,7 @@ function played(
       ...extra,
     },
     points,
-  )
+  })
 }
 
 describe('deduster scoreRows', () => {

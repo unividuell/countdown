@@ -47,3 +47,10 @@ Test code is not exempt: a mockk `every { … }` stub, a `@SpringBootTest` fixtu
 constructor call in a unit test are calls like any other. The mocked-collaborator constructor in a
 plain unit test is in fact a prime case — four repositories of four different types today, two of
 the same type after the next change.
+
+## A `JsonNode` is an `Iterable`
+
+Jackson's `JsonNode` iterates its children, so `list + node` resolves to `plus(Iterable)`: it
+compiles and appends the node's *children* (nothing, for a leaf). Append with `+ listOf(node)`.
+kotest's `shouldContainExactly(vararg nodes)` is ambiguous for the same reason — compare with
+`shouldBe listOf(…)`.

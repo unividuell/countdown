@@ -89,16 +89,20 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
      * Advance the staged reveal by one, guarded like the guess: `stage = :expectedStage` makes a
      * raced second click affect zero rows, and zero rows is the caller's 409. `guessed_at IS NULL`
      * keeps a finished play frozen.
+     *
+     * Appends [input] to `steps` in the same statement — both or neither. `NullNode` for a step
+     * without input. `jsonb_build_array` keeps an array input one entry instead of splicing it.
      */
     @Modifying
     @Query(
         """
-        UPDATE game.round_plays SET stage = stage + 1
+        UPDATE game.round_plays
+        SET stage = stage + 1, steps = steps || jsonb_build_array(CAST(:input AS jsonb))
         WHERE round_game_id = :roundGameId AND user_id = :userId
           AND stage = :expectedStage AND guessed_at IS NULL
         """,
     )
-    fun advanceStage(roundGameId: UUID, userId: UUID, expectedStage: Int): Int
+    fun advanceStage(roundGameId: UUID, userId: UUID, expectedStage: Int, input: JsonNode): Int
 
     /**
      * Spend the round without an answer: `guessed_at` set, `guess` and the verdict columns stay

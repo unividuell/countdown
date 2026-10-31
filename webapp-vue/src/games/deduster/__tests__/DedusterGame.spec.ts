@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { RoundAssets } from '@/api/assets'
+import type { GameProps } from '@/games/GameProps'
+import { gameProps } from '@/games/__tests__/gameFixtures'
 import DedusterBoard from '../DedusterBoard.vue'
 import DedusterGame from '../DedusterGame.vue'
 import DedusterReveal from '../DedusterReveal.vue'
@@ -12,23 +14,17 @@ const PAYLOAD = { ...SCENE, order: [3, 1, 0, 2] }
 
 const ASSETS: RoundAssets = { url: (name) => `/asset/${name}`, key: () => null }
 
-function mountGame(props: Record<string, unknown> = {}) {
+function mountGame(props: Partial<GameProps> = {}) {
   return mount(DedusterGame, {
-    props: {
-      payload: null,
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
+    props: gameProps({
       mineUserId: 'me',
       awardRule: 'ALL_QUALIFYING',
       awardPoints: 1,
-      disabled: false,
       assets: ASSETS,
       sealed: true,
       scene: SCENE,
       ...props,
-    },
+    }),
   })
 }
 
@@ -61,6 +57,16 @@ describe('DedusterGame', () => {
 
     expect(w.findComponent(DedusterReveal).exists()).toBe(true)
     expect(w.findComponent(DedusterBoard).exists()).toBe(false)
+  })
+
+  it('crossfades board and evaluation in one shared grid cell', () => {
+    const playing = mountGame()
+    const done = mountGame({ sealed: false, payload: PAYLOAD, closed: true })
+
+    expect(playing.get('[data-test="deduster-board"]').classes()).toContain('[grid-area:1/1]')
+    expect(done.get('[data-test="deduster-reveal"]').classes()).toContain('[grid-area:1/1]')
+    // No `mode`: the photo stays put while the dust fades off it.
+    expect(playing.get('transition-stub').attributes('mode')).toBeUndefined()
   })
 
   it('forwards the board’s guess and reveal', () => {

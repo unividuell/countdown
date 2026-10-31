@@ -33,3 +33,12 @@ a `DataSize` target only; against a numeric target the string goes straight to
 `Integer.parseInt`. Write the plain number (`15728640`) when the property is an
 `Int`/`Long`, or declare the property `DataSize`. `30s` against a `Long` fails the same
 way.
+
+## A scoped advice sees a multipart size error only with `resolve-lazily`
+
+A `@RestControllerAdvice(basePackages = …)` catches only what is raised once a handler is
+known. Multipart size errors are raised before handler lookup, so an oversized upload skips the
+advice and the client gets a bare framework 413 without the module's code — unless
+`spring.servlet.multipart.resolve-lazily: true`. That holds only while nothing in the filter
+chain reads request parameters (CSRF reads the header, so it is safe). Pins:
+`MultipartConfigTest` (shipped yaml), `MultipartLimitTest` (real socket).

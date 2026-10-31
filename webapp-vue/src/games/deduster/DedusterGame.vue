@@ -6,33 +6,17 @@
  * the framework's. `solution` is declared and never read: the photo under the dust is the reward,
  * and it comes through the scene asset, not through a solution exit.
  */
-import { computed, ref, watch } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import { computed } from 'vue'
+import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import DedusterBoard from './DedusterBoard.vue'
 import DedusterReveal from './DedusterReveal.vue'
 import { scoreRows } from './scoreboard'
 import { PHOTO_ASSET, asDedusterGuess, asDedusterPayload, asDedusterScene } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  closed?: boolean
-  sealed?: boolean
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => asDedusterPayload(props.payload))
 const scene = computed(() => asDedusterScene(props.scene))
@@ -53,11 +37,7 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/** As in Musterung: the table's cascade plays only when the evaluation arrives here, not on reload. */
-const hasRevealedLive = ref(false)
-watch(done, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(done)
 </script>
 
 <template>
@@ -67,25 +47,41 @@ watch(done, (now, before) => {
   >
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <DedusterReveal
-    v-else-if="done && payload"
-    :payload="payload"
-    :photo-url="photoUrl"
-    :rows="rows"
-    :live="live"
-    :animate="hasRevealedLive"
-  />
-  <DedusterBoard
-    v-else
-    :payload="payload"
-    :scene="scene"
-    :sealed="props.sealed === true"
-    :disabled="props.disabled"
-    :submitted="myGuess !== null"
-    :photo-url="photoUrl"
-    :award-rule="props.awardRule"
-    :award-points="props.awardPoints"
-    @guess="(value) => emit('guess', value)"
-    @reveal="emit('reveal')"
-  />
+  <!--
+    Board and evaluation crossfade in one grid cell, as in Platzierung: both put the photo in the
+    same place, so the leftover dust fades off it. Cover → board stays hard, and so does every tile
+    inside the run.
+  -->
+  <div v-else class="grid">
+    <Transition
+      enter-active-class="transition-opacity duration-500 delay-200 motion-reduce:transition-none"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+      leave-to-class="opacity-0"
+    >
+      <DedusterReveal
+        v-if="done && payload"
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :photo-url="photoUrl"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+      />
+      <DedusterBoard
+        v-else
+        class="[grid-area:1/1]"
+        :payload="payload"
+        :scene="scene"
+        :sealed="props.sealed === true"
+        :disabled="props.disabled"
+        :submitted="myGuess !== null"
+        :photo-url="photoUrl"
+        :award-rule="props.awardRule"
+        :award-points="props.awardPoints"
+        @guess="(value) => emit('guess', value)"
+        @reveal="emit('reveal')"
+      />
+    </Transition>
+  </div>
 </template>

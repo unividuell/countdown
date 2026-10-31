@@ -45,6 +45,10 @@ of the frontend conventions live beside it:
   out of everyone else's bundle, and a tab left open across a deploy asks for a chunk that is gone:
   without the error component the card stays empty instead of saying „Lade die Seite neu.“.
   Blockierung is the example.
+- **Never measure from a canvas — it only displays.** Whatever is counted or stored is model data
+  (Anmaßung: strokes in fixed canvas units, counted on the server). Edge pixels are
+  anti-aliased per `devicePixelRatio` and anti-fingerprinting can add noise to `getImageData`, so
+  the same painting scores differently per device.
 
 ## HTTP + auth (the same-origin SPA contract)
 
@@ -88,11 +92,25 @@ The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (no
   `warmUpOpening` (`src/api/assets.ts`) belongs where time is free, under the cover. `useSealedAsset`
   calls it when bytes arrive before their key; `loadSealed` does not, so a game that opens through it
   on a clock warms up itself.
+- **Binary uploads go through `uploadFile(base, blob, fileName, onProgress)`** (`src/api/upload.ts`):
+  XHR, because fetch has no upload progress; bounded by a 4 min timeout, not `apiFetch`'s 10 s.
+- **A file picker's `accept` is a platform filter, not just a hint.** iOS Safari maps a bare
+  `audio/*` to video and greys out every audio file in Files; list the extensions beside it
+  (`AudioPool.vue`). Android's picker filters by the MIME type Android assigns, so `.webm` and
+  `.3gp` (filed as video) and `.caf` (no type) stay unpickable whatever the list says; iOS in
+  turn greys out `.ogg`, `.opus`, `.caf` and `.wma` despite the list. For images, the list decides whether HEIC arrives converted (`ImagePool.vue`).
 - **No API that needs a secure context without a way around it.** The app is also opened on a phone over
   plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
   exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and
   Vitest. WebCrypto may only sit *beside* it as an upgrade where available (unividuell/countdown#106),
   never instead of it.
+- **A reload after a phone's file picker is Vite, not the app.** Android Chrome closes the HMR
+  WebSocket once the tab has sat in the background for ~20 s (an open picker counts); back in front,
+  Vite's client pings the dev server and calls `location.reload()`, wiping e.g. the upload queue.
+  Dev only — the production build has no Vite client. Seen over CDP
+  (`adb forward tcp:9222 localabstract:chrome_devtools_remote`). For phone tests that leave the
+  tab, start the `frontend-build` launch config: a production build behind `vite preview` on
+  :4173, which inherits the dev proxy.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
   `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
   correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),

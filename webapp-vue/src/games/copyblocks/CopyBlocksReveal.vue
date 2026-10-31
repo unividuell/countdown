@@ -9,8 +9,7 @@
  * beat.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import BlockScene from './BlockScene.vue'
 import CentreButton from './CentreButton.vue'
@@ -41,12 +40,7 @@ const camera = defineModel<Camera>('camera', { required: true })
 const BUILD_GROUND = '#cfe2f4'
 const NO_MARKS: Mark[] = []
 
-/** A reload, reduced motion, a background tab: just be there. */
-const still =
-  !props.animate ||
-  prefersReducedMotion() ||
-  inBackground() ||
-  typeof requestAnimationFrame !== 'function'
+const still = isStill(props.animate)
 
 const solved = ref(still)
 let solutionTimer: ReturnType<typeof setTimeout> | undefined

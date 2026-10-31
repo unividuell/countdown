@@ -27,7 +27,12 @@ Sibling: [deployment.md](deployment.md) (images, CI, the compose topology, backe
   own `--data-only --table=<table>` dump, triggered by a fingerprint
   (`count(*) || md5(string_agg(id))`) instead of a schedule, so an unchanged table costs one query
   a day instead of its own size. Retention then counts **changes, not days**: say so where the
-  number is configured, or someone will read "keep 8" as "eight days of safety".
+  number is configured, or someone will read "keep 8" as "eight days of safety". Today that is
+  `imagepool.images` and `audiopool.clips`, both through one `dump_on_change <table> <prefix>
+  <keep>` function in `db-backup`: a new heavy table is one more call plus one more
+  `--exclude-table-data` and `<PREFIX>_BACKUP_KEEP`, not another copy of the block. Inside it
+  guard with `if`, never a trailing `[ ... ] && cmd`: the function would return 1 and `set -e`
+  would end the loop.
 
 - **A JVM container without `mem_limit` sizes its heap from the HOST.** The Buildpacks memory
   calculator reads the cgroup limit, and with none it reads the machine: on this shared box both

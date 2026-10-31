@@ -1,13 +1,18 @@
 package org.unividuell.countdown.core.game.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.AssetViewer
+import org.unividuell.countdown.core.game.GameStepAnswer
+import org.unividuell.countdown.core.game.GameTypeHandle
+import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.VoteTally
 import org.unividuell.countdown.core.game.keysFor
 import org.unividuell.countdown.core.game.struckByReview
+import tools.jackson.databind.JsonNode
 import java.util.UUID
 
 /**
@@ -24,6 +29,8 @@ class RoundResponses(
     private val memberships: MembershipQuery,
     private val assets: RoundAssetStore,
 ) {
+
+    private val logger = KotlinLogging.logger {}
 
     fun of(current: ResolvedRound, viewerId: UUID): RoundResponse = when (current) {
         is ResolvedRound.NoGame -> RoundResponse(
@@ -80,6 +87,7 @@ class RoundResponses(
                 mineDtoOf(
                     play = it, identity = byId[it.userId], timed = timed,
                     cast = tallies[it.id].orEmpty(), byId = byId,
+                    handle = current.handle, params = current.roundGame.params,
                 )
             },
             // Sorted by when they guessed — the order the round actually happened in, and stable
@@ -115,6 +123,8 @@ class RoundResponses(
         timed: Boolean,
         cast: List<PlayVote>,
         byId: Map<UUID, MemberIdentity>,
+        handle: GameTypeHandle<*>,
+        params: JsonNode,
     ): MyPlayDto? =
         identity?.let {
             val (views, struck, override) = reviewOf(play = play, cast = cast, byId = byId)
@@ -132,7 +142,33 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
+                steps = play.steps.mapIndexed { i, input ->
+                    StepDto(
+                        input = input.takeUnless { it.isNull },
+                        answer = answerOf(play = play, handle = handle, params = params, stage = i, input = input),
+                    )
+                },
             )
+        }
+
+    /**
+     * The game's answer to a stored step, or `null` where the game no longer reads its input: one
+     * step must not take the whole round response down with it.
+     */
+    private fun answerOf(
+        play: RoundPlay,
+        handle: GameTypeHandle<*>,
+        params: JsonNode,
+        stage: Int,
+        input: JsonNode,
+    ): GameStepAnswer? =
+        try {
+            handle.step(params = params, stage = stage, input = input)
+        } catch (e: InvalidStepException) {
+            logger.warn {
+                "play ${play.id}: '${handle.id}' rejects stored step $stage (${e.message}); answered with null"
+            }
+            null
         }
 
     private fun otherDtoOf(
@@ -156,6 +192,7 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
+                steps = play.steps.toList(),
             )
         }
 

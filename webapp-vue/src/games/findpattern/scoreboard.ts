@@ -5,10 +5,9 @@
  * above it has nothing left to get wrong.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
-import { durationOrder, formatDuration } from '@/games/durations'
 import type { GameEntry } from '@/games/GameEntry'
-import { tickOfRow } from '@/games/revealChoreography'
+import { rankByClock } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { startIndexOf } from './types'
@@ -45,47 +44,20 @@ export function scoreRows(input: {
   mineUserId: string | null
 }): ScoreRow[] {
   const patternLength = input.solution.pattern.length
-  const ranked = input.entries.map((entry) => {
+  return rankByClock(input.entries, input.mineUserId, (entry) => {
     const startIndex = startIndexOf(entry.guess)
     const tones =
       startIndex === null ? [] : input.solution.blocks.slice(startIndex, startIndex + patternLength)
     return {
-      durationMs: entry.durationMs,
-      row: {
-        userId: entry.userId,
-        name: entry.username,
-        colorHex: entry.avatar.bgColorHex,
-        ink: readableTextColor(entry.avatar.bgColorHex),
-        chips: toneChips(tones, input.solution.palette),
-        // Read off the board rather than off `outcome`: the row's own chips sit right under the
-        // solution's, so „correct“ has to be the same comparison the reader is making.
-        correct:
-          tones.length === patternLength &&
-          tones.every((tone, at) => tone === input.solution.pattern[at]),
-        gaveUp: startIndex === null,
-        durationLabel: formatDuration(entry.durationMs),
-        points: entry.points,
-        provisional: isProvisional(entry.points, input.awardRule),
-        startIndex,
-      },
+      ...rowHead(entry, input.awardRule),
+      chips: toneChips(tones, input.solution.palette),
+      // Read off the board rather than off `outcome`: the row's own chips sit right under the
+      // solution's, so „correct“ has to be the same comparison the reader is making.
+      correct:
+        tones.length === patternLength &&
+        tones.every((tone, at) => tone === input.solution.pattern[at]),
+      gaveUp: startIndex === null,
+      startIndex,
     }
   })
-
-  ranked.sort(
-    (a, b) =>
-      (b.row.points ?? -1) - (a.row.points ?? -1) ||
-      Number(b.row.correct) - Number(a.row.correct) ||
-      durationOrder(a.durationMs, b.durationMs) ||
-      a.row.userId.localeCompare(b.row.userId),
-  )
-
-  const myRank = ranked.findIndex((item) => item.row.userId === input.mineUserId)
-  return ranked.map(({ row }, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
-  }))
-}
-
-export function hasDurations(rows: readonly ScoreRow[]): boolean {
-  return rows.some((row) => row.durationLabel !== null)
 }

@@ -7,10 +7,9 @@
  * everything the reveal draws, and the sealed board needs no shape.
  */
 import { computed, ref, watch } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import CopyBlocksBoard from './CopyBlocksBoard.vue'
 import CopyBlocksReveal from './CopyBlocksReveal.vue'
 import { clearDraft, deviceStorage, draftKey } from './draft'
@@ -19,24 +18,9 @@ import { asCopyBlocksGuess, asCopyBlocksOutcome, asCopyBlocksPayload } from './t
 import { START_CAMERA } from './view'
 import type { Camera } from './view'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  closed?: boolean
-  sealed?: boolean
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const { user } = useAuth()
 
@@ -76,11 +60,7 @@ watch(
   { immediate: true },
 )
 
-/** As in Musterung: the table's cascade plays only when the evaluation arrives here, not on reload. */
-const hasRevealedLive = ref(false)
-watch(done, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(done)
 </script>
 
 <template>

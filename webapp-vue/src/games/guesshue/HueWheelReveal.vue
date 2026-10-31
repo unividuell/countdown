@@ -14,8 +14,7 @@ import HueRing from './HueRing.vue'
 import HueToleranceSector from './HueToleranceSector.vue'
 import { BAND_GROW_MS, layoutGuesses, sectorInk, type RevealGuess } from './reveal'
 import { BAND_INNER_FRACTION, easeOutCubic, trackBoxStyle } from './wheel'
-import { FADE_MS, RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { FADE_MS, RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 
 const props = defineProps<{
@@ -34,15 +33,7 @@ const props = defineProps<{
 const layout = computed(() => layoutGuesses(props.guesses, props.mineUserId))
 const ink = computed(() => sectorInk(props.targetHue, props.saturation, props.lightness))
 
-/**
- * Asked once, when the choreography would start, not reactively — the same two questions every
- * animation in this game asks, plus the environment that has no clock at all (happy-dom).
- */
-const still =
-  !props.animate ||
-  prefersReducedMotion() ||
-  inBackground() ||
-  typeof requestAnimationFrame !== 'function'
+const still = isStill(props.animate)
 
 /** Driven by hand — see [growBand]. */
 const innerFraction = ref(still ? layout.value.bandInnerFraction : BAND_INNER_FRACTION)

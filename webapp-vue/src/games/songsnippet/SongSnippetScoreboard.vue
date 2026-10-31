@@ -16,7 +16,7 @@ import { ref } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import PlayerIcon from './PlayerIcon.vue'
-import { usePlayback } from './usePlayback'
+import { usePlayback } from '@/ui/usePlayback'
 import { resolveTrack } from './api'
 import type { ScoreRow } from './scoreboard'
 
@@ -31,7 +31,7 @@ const COLUMNS: ScoreboardColumn<ScoreRow>[] = [
 
 const props = defineProps<{
   rows: ScoreRow[]
-  /** True while a score can still be overtaken — then the head carries the „live“ chip. */
+  /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean

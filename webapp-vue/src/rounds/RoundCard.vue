@@ -40,7 +40,7 @@ const props = withDefaults(
     notice?: string | null
     reveal?: (() => Promise<void>) | undefined
     submit?: ((guess: unknown) => Promise<void>) | undefined
-    skip?: ((fromStage: number) => Promise<void>) | undefined
+    skip?: ((fromStage: number, input?: unknown) => Promise<void>) | undefined
     giveUp?: (() => Promise<void>) | undefined
   }>(),
   {
@@ -65,11 +65,15 @@ const component = computed<Component | null>(() => {
   return id === undefined ? null : (gameComponents[id] ?? null)
 })
 
-/** Mine first, then everyone else's — the order the reading wheel expects. */
+/**
+ * Mine first, then everyone else's — the order the reading wheel expects. My steps are cut down to
+ * their inputs like everyone's: an entry never carries answers, those travel as `steps` below. A
+ * server from before steps sends none.
+ */
 const entries = computed<GameEntry[]>(() => {
   const me = props.round?.me ?? null
   const others = props.round?.others ?? []
-  return me ? [me, ...others] : others
+  return me ? [{ ...me, steps: (me.steps ?? []).map((step) => step.input) }, ...others] : others
 })
 
 /** A closed round is done by definition — there is no stage left to derive it from. */
@@ -107,12 +111,15 @@ async function onGuess(value: unknown): Promise<void> {
   if (props.notice === null) emit('guessed')
 }
 
-function onSkip(fromStage: number): void {
-  void props.skip?.(fromStage)
+function onSkip(fromStage: number, input?: unknown): void {
+  void props.skip?.(fromStage, input)
 }
 
-function onGiveUp(): void {
-  void props.giveUp?.()
+/** Giving up spends the guess and re-scores the round, so it ends in `guessed` like a guess does. */
+async function onGiveUp(): Promise<void> {
+  if (props.giveUp === undefined) return
+  await props.giveUp()
+  if (props.notice === null) emit('guessed')
 }
 </script>
 
@@ -176,6 +183,7 @@ function onGiveUp(): void {
         :award-points="round?.awardPoints ?? null"
         :disabled="disabled"
         :stage="round?.me?.stage ?? 0"
+        :steps="round?.me?.steps ?? []"
         :assets="assets"
         :closed="props.closed"
         :review="props.review"

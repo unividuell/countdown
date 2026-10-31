@@ -12,7 +12,6 @@
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { hasDurations } from './scoreboard'
 import type { ScoreRow, ToneChip } from './scoreboard'
 
 const props = defineProps<{
@@ -23,8 +22,6 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
 }>()
-
-const timed = computed(() => hasDurations(props.rows))
 
 /**
  * Exactly as wide as the chips it holds — `size-6` (`1.5rem`) each, `gap-px` (`1px`) between —
@@ -40,9 +37,6 @@ const tipColumnWidth = computed(() => {
 
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   { key: 'tip', label: 'Tipp', fact: 'Lösung', width: tipColumnWidth.value, ground: () => null },
-  ...(timed.value
-    ? [{ key: 'clock', label: '[mm:ss]', width: '3.5rem', align: 'end' as const }]
-    : []),
 ])
 </script>
 
@@ -86,10 +80,6 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
       >
         aufgegeben
       </div>
-    </template>
-
-    <template #cell-clock="{ row }">
-      <span class="font-mono text-xs">{{ row.durationLabel ?? '—' }}</span>
     </template>
   </RevealScoreboard>
 </template>

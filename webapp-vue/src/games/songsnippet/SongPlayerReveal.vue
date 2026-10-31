@@ -13,7 +13,7 @@ import type { RoundAssets } from '@/api/assets'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
-import { usePlayback } from './usePlayback'
+import { usePlayback } from '@/ui/usePlayback'
 import { SOLUTION_ASSET } from './types'
 import type { SongSnippetSolution } from './types'
 
@@ -27,6 +27,8 @@ const props = defineProps<{
   // `exactOptionalPropertyTypes` note in `frontend.md` and `LabControls.vue`/`MemberRow.vue` for
   // the same shape.
   assets?: RoundAssets | undefined
+  /** False when this card was already the reveal on arrival: the bar then skips its morph. */
+  animate: boolean
 }>()
 
 const playback = usePlayback()
@@ -118,6 +120,7 @@ onUnmounted(() => {
       :total-seconds="SOLUTION_SECONDS"
       :unlocked-seconds="SOLUTION_SECONDS"
       :position-seconds="playback.positionSeconds.value"
+      :animate="animate"
     />
 
     <!-- The board's play row, same grid and same sizes, so nothing jumps on reveal. -->

@@ -11,6 +11,7 @@ import org.unividuell.countdown.core.game.guessActionFor
 import org.unividuell.countdown.core.game.mayFetch
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.NullNode
 import java.time.Clock
 import java.util.UUID
 
@@ -82,6 +83,9 @@ class PlayService(
             roundGameId = requireNotNull(current.roundGame.id),
             userId = userId,
         ) ?: throw NotRevealedException()
+        // A spent guess never reaches judge(): it may be the round's most expensive call, and a
+        // repeat must not buy it again. A shortcut only — recordGuess() below stays the guard.
+        if (play.guessedAt != null) throw AlreadyGuessedException()
 
         // judge() before any write: an invalid guess must not consume the one attempt.
         //
@@ -110,28 +114,31 @@ class PlayService(
         // Locked from here on: the re-evaluation below reads and rewrites every guess of this round.
         val round = store.lock(current.roundGame)
         val stages = current.handle.stages(round.params)
+        val stagesScore = current.handle.stagesScore(round.params)
         val action = guessActionFor(
             rule = round.awardRule,
             qualifies = judgement.qualifies,
             stage = play.stage,
             stages = stages,
+            stagesScore = stagesScore,
         )
         if (action == GuessAction.ADVANCE_STAGE) {
             // Judged and discarded on purpose: in phase one a wrong guess below the last stage only
             // burns the stage. The terminal write below stays the only guess the row ever keeps.
             val advanced = plays.advanceStage(
                 roundGameId = requireNotNull(round.id), userId = userId, expectedStage = play.stage,
+                input = NullNode.instance,
             )
             if (advanced == 0) throw StageMovedOnException()
             return responses.of(current = current.copy(roundGame = round), viewerId = userId)
         }
-        // Framework state the game cannot know, in both branches. For a staged game the distance IS
-        // the stage. For a game that scores on duration it is the time since that reveal
+        // Framework state the game cannot know, in both branches. Where stages score, the distance
+        // IS the stage. For a game that scores on duration it is the time since that reveal
         // started: the clock belongs to the server, and `judge(params, guess)` has no way to reach
         // it — which is exactly why the game returns a meaningless 0.0 and this line decides.
         val guessedAt = clock.instant()
         val deviation = when {
-            stages > 1 -> play.stage.toDouble()
+            stagesScore -> play.stage.toDouble()
             current.handle.scoresOnDuration(round.params) ->
                 durationMsBetween(revealedAt = play.revealedAt, guessedAt = guessedAt).toDouble()
             else -> judgement.deviation
@@ -157,16 +164,32 @@ class PlayService(
         return responses.of(current = current.copy(roundGame = round), viewerId = userId)
     }
 
-    /** Voluntary stage advance. Own row only — no round lock needed, the guard is the statement. */
+    /**
+     * Voluntary stage advance, carrying the step's [input]. Own row only — no round lock needed, the
+     * guard is the statement.
+     */
     @Transactional
-    fun skip(slug: String, userId: UUID, isSuperAdmin: Boolean, roundNumber: Int, fromStage: Int): RoundResponse {
+    fun skip(
+        slug: String,
+        userId: UUID,
+        isSuperAdmin: Boolean,
+        roundNumber: Int,
+        fromStage: Int,
+        input: JsonNode?,
+    ): RoundResponse {
         val current = playable(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
         if (current.round.number != roundNumber) throw RoundMovedOnException(current.round.number)
         val stages = current.handle.stages(current.roundGame.params)
         // No skip off the top: the exits up there are the terminal guess, or giving up.
         if (fromStage < 0 || fromStage >= stages - 1) throw StageMovedOnException()
+        // Validated before the write: an invalid input must not spend the stage. The answer itself
+        // is recomputed for the response.
+        current.handle.step(params = current.roundGame.params, stage = fromStage, input = input)
         val roundGameId = requireNotNull(current.roundGame.id)
-        val advanced = plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = fromStage)
+        val advanced = plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = fromStage,
+            input = input ?: NullNode.instance,
+        )
         if (advanced == 0) {
             plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
                 ?: throw NotRevealedException()

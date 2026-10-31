@@ -1,42 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
 import { scoreRows } from './scoreboard'
-import { isSongSnippetPayload } from './types'
-import type { SongSnippetSolution } from './types'
+import { asSongSnippetPayload, asSongSnippetSolution } from './types'
 import type { SongSuggestion } from './api'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  /** What this round is worth — the winner box states it. `null` only without a game. */
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  /** Declared, never used here: the contract is the same shape for every game the card renders. */
-  closed?: boolean
-  /** Declared, never used here: this game never seals, and the contract has one shape. */
-  sealed?: boolean
-  /** Declared, never used here — see `sealed`. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
-const durations = computed(() =>
-  isSongSnippetPayload(props.payload) ? props.payload.stageDurationsSeconds : [],
-)
-const revealed = computed(() => props.solution !== null && props.solution !== undefined)
+const payload = computed(() => asSongSnippetPayload(props.payload))
+const durations = computed(() => payload.value?.stageDurationsSeconds ?? [])
+
+// A solution it cannot read leaves the board standing, as in every other game.
+const solution = computed(() => asSongSnippetSolution(props.solution))
+const revealed = computed(() => solution.value !== null)
 
 /**
  * Worked out here rather than in the reveal card, the way Guess Hue does it: this is the place that
@@ -50,18 +31,10 @@ const rows = computed(() =>
     mineUserId: props.mineUserId,
   }),
 )
-/** A score nobody can overtake any more is not live — so the chip follows the rows, not the rule. */
-const live = computed(() => rows.value.some((row) => row.provisional))
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/**
- * Whether the reveal may play its beats — the same rule every other game follows: only a round
- * that was uncovered while this instance watched. A `watch` without `immediate` never fires for
- * the initial value, which is what makes an instance mounting already-revealed start `false`.
- */
-const hasRevealedLive = ref(false)
-watch(revealed, (now, before) => {
-  if (!before && now) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(revealed)
 
 /** A stage that grew without the play ending is „falsch geraten“ — unless the growth was our own
  *  skip, flagged below before the re-emit so the watch can tell the two apart. */
@@ -94,26 +67,46 @@ function onSkip(fromStage: number): void {
 </script>
 
 <template>
-  <SongSnippetReveal
-    v-if="revealed"
-    :solution="solution as SongSnippetSolution"
-    :durations="durations"
-    :rows="rows"
-    :live="live"
-    :animate="hasRevealedLive"
-    :assets="assets"
-  />
-  <SongSnippetBoard
-    v-else
-    :durations="durations"
-    :stage="stage ?? 0"
-    :award-rule="awardRule"
-    :award-points="awardPoints"
-    :disabled="disabled"
-    :assets="assets ?? null"
-    :notice="notice"
-    @guess="onGuess"
-    @skip="onSkip"
-    @give-up="emit('giveUp')"
-  />
+  <p v-if="payload === null" class="text-sm text-neutral-600">
+    Diese Runde lässt sich hier nicht anzeigen.
+  </p>
+  <!--
+    Board and reveal crossfade in one grid cell, as in Platzierung: both put the bar and the
+    transport in the same place, so those stand still while cover, title and table fade in around
+    them. The bar then makes room for the extra 15s on its own beats. `grid-cols-1`, because a bare
+    `grid` widens its column to the band's every cover and pushes the bar off the card.
+  -->
+  <div v-else class="grid grid-cols-1">
+    <Transition
+      enter-active-class="transition-opacity duration-500 delay-200 motion-reduce:transition-none"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+      leave-to-class="opacity-0"
+    >
+      <SongSnippetReveal
+        v-if="solution"
+        class="[grid-area:1/1]"
+        :solution="solution"
+        :durations="durations"
+        :rows="rows"
+        :live="live"
+        :animate="hasRevealedLive"
+        :assets="assets"
+      />
+      <SongSnippetBoard
+        v-else
+        class="[grid-area:1/1]"
+        :durations="durations"
+        :stage="stage ?? 0"
+        :award-rule="awardRule"
+        :award-points="awardPoints"
+        :disabled="disabled"
+        :assets="assets ?? null"
+        :notice="notice"
+        @guess="onGuess"
+        @skip="onSkip"
+        @give-up="emit('giveUp')"
+      />
+    </Transition>
+  </div>
 </template>

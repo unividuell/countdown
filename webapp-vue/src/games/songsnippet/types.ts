@@ -18,10 +18,23 @@ export interface SongSnippetGuessWire {
   artist: string
   title: string
 }
-export function isSongSnippetPayload(value: unknown): value is SongSnippetPayload {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    Array.isArray((value as SongSnippetPayload).stageDurationsSeconds)
-  )
+/** Narrowed, not cast: `payload` is `unknown` by contract, and a stale round may be junk. */
+export function asSongSnippetPayload(value: unknown): SongSnippetPayload | null {
+  if (typeof value !== 'object' || value === null) return null
+
+  const { stageDurationsSeconds } = value as Record<string, unknown>
+  if (!Array.isArray(stageDurationsSeconds)) return null
+  if (!stageDurationsSeconds.every((seconds) => typeof seconds === 'number')) return null
+  return { stageDurationsSeconds }
+}
+
+/** Narrowed like the payload. A missing cover is no cover — the server writes `null` for one. */
+export function asSongSnippetSolution(value: unknown): SongSnippetSolution | null {
+  if (typeof value !== 'object' || value === null) return null
+
+  const { artist, title, coverUrl, link } = value as Record<string, unknown>
+  if (typeof artist !== 'string' || typeof title !== 'string' || typeof link !== 'string') {
+    return null
+  }
+  return { artist, title, coverUrl: typeof coverUrl === 'string' ? coverUrl : null, link }
 }

@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cellDelayMs,
   CELL_STAGGER_MS,
   FADE_MS,
   headCellDelayMs,
+  isStill,
   RESULTS_DELAY_MS,
   rowStagger,
   ROW_STAGGER_MS,
@@ -64,5 +65,38 @@ describe('tickOfRow', () => {
   it('leaves every row alone when none of them is mine', () => {
     expect(tickOfRow(0, null, 3)).toBe(0)
     expect(tickOfRow(2, null, 3)).toBe(2)
+  })
+})
+
+describe('isStill', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('runs the beats of a live reveal in a foreground tab', () => {
+    expect(isStill(true)).toBe(false)
+  })
+
+  it('just is there on a reload', () => {
+    expect(isStill(false)).toBe(true)
+  })
+
+  it('just is there under reduced motion', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+
+    expect(isStill(true)).toBe(true)
+  })
+
+  it('just is there in a background tab', () => {
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+
+    expect(isStill(true)).toBe(true)
+  })
+
+  it('just is there without animation frames', () => {
+    vi.stubGlobal('requestAnimationFrame', undefined)
+
+    expect(isStill(true)).toBe(true)
   })
 })

@@ -4,10 +4,8 @@
  * round was timed. The name is a button — tapping it shows that player's tip in the reveal's view.
  * The star on „K/D“ points at the legend beneath the table.
  */
-import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { hasDurations } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 
 const props = defineProps<{
@@ -21,12 +19,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
-const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
+const columns: ScoreboardColumn<ScoreRow>[] = [
   { key: 'kd', label: 'K/D*', width: '3.5rem', align: 'end' },
-  ...(hasDurations(props.rows)
-    ? [{ key: 'clock', label: '[mm:ss]', width: '3.5rem', align: 'end' as const }]
-    : []),
-])
+]
 </script>
 
 <template>
@@ -56,10 +51,6 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
 
       <template #cell-kd="{ row }">
         <span class="font-mono text-xs">{{ row.kdLabel ?? '—' }}</span>
-      </template>
-
-      <template #cell-clock="{ row }">
-        <span class="font-mono text-xs">{{ row.durationLabel ?? '—' }}</span>
       </template>
     </RevealScoreboard>
 

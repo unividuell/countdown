@@ -1,8 +1,10 @@
 import { defineAsyncComponent, h } from 'vue'
 import type { AsyncComponentLoader, Component } from 'vue'
 import DedusterGame from './deduster/DedusterGame.vue'
+import EchoLocateGame from './echolocate/EchoLocateGame.vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
+import PaintRatioGame from './paintratio/PaintRatioGame.vue'
 import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 import SpotObjectGame from './spotobject/SpotObjectGame.vue'
@@ -45,4 +47,6 @@ export const gameComponents: Record<string, Component> = {
   'place-patch': PlacePatchGame,
   // Async: `three` should load only for whoever plays Blockierung.
   'copy-blocks': asyncGame(() => import('./copyblocks/CopyBlocksGame.vue')),
+  'paint-ratio': PaintRatioGame,
+  'echo-locate': EchoLocateGame,
 }

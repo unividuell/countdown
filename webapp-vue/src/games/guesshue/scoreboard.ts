@@ -4,12 +4,12 @@
  * computes no layout, so this is the half a test can actually assert on.
  */
 import type { AwardRule } from '@/api/types'
-import { isProvisional } from '@/games/awards'
 import type { GameEntry } from '@/games/GameEntry'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
 import { hueOf } from './types'
-import { tickOfRow } from '@/games/revealChoreography'
+import { withTicks } from '@/games/ranking'
+import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardColumns'
 
 export interface ScoreboardRow extends SharedScoreboardRow {
@@ -60,26 +60,17 @@ export function scoreboardRows(input: {
     const guessHex = hslToHex(hue, input.saturation, input.lightness)
     return [
       {
-        userId: entry.userId,
-        name: entry.username,
-        colorHex: entry.avatar.bgColorHex,
-        ink: readableTextColor(entry.avatar.bgColorHex),
+        ...rowHead(entry, input.awardRule),
         hue,
         guessHex,
         guessInk: readableTextColor(guessHex),
         deviationDeg,
-        points: entry.points,
-        provisional: isProvisional(entry.points, input.awardRule),
       },
     ]
   })
 
   ranked.sort((a, b) => a.deviationDeg - b.deviationDeg || a.userId.localeCompare(b.userId))
-  const myRank = ranked.findIndex((row) => row.userId === input.mineUserId)
-  return ranked.map((row, rank) => ({
-    ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
-  }))
+  return withTicks(ranked, input.mineUserId)
 }
 
 /** Narrowed, not cast: `outcome` is `unknown` by contract, and a stale round may be junk. */

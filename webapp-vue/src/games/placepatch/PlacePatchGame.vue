@@ -5,10 +5,10 @@
  * `skip` and `giveUp` are declared but never emitted — one stage, one attempt, and both exits are the
  * framework's. Declaring them keeps the contract the same shape for every game.
  */
-import { computed, ref, watch } from 'vue'
-import type { RoundAssets } from '@/api/assets'
-import type { AwardRule } from '@/api/types'
-import type { GameEntry } from '@/games/GameEntry'
+import { computed } from 'vue'
+import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useMyColorHex } from '@/games/useMyColorHex'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import type { SceneState } from '@/ui/sceneState'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import PlacePatchBoard from './PlacePatchBoard.vue'
@@ -23,26 +23,9 @@ import {
   cellOf,
 } from './types'
 
-const props = defineProps<{
-  payload: unknown
-  outcome: unknown
-  myGuess: unknown
-  solution: unknown
-  entries: GameEntry[]
-  mineUserId: string | null
-  awardRule: AwardRule | null
-  awardPoints: number | null
-  disabled: boolean
-  stage?: number
-  assets?: RoundAssets
-  closed?: boolean
-  /** Sealed: mounted under the cover before the reveal, `payload` still `null`. */
-  sealed?: boolean
-  /** The board's shape while sealed. */
-  scene?: unknown
-}>()
+const props = defineProps<GameProps>()
 
-const emit = defineEmits<{ guess: [unknown]; skip: [number]; giveUp: []; reveal: [] }>()
+const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => asPlacePatchPayload(props.payload))
 const scene = computed(() => (props.sealed ? asPlacePatchScene(props.scene) : null))
@@ -73,11 +56,9 @@ const sceneState = computed<SceneState>(() => {
   return 'ready'
 })
 
-/** Grey, so a player whose row has not arrived yet still sees their own stamp. */
-const myColorHex = computed(
-  () =>
-    props.entries.find((entry) => entry.userId === props.mineUserId)?.avatar.bgColorHex ??
-    '#525252',
+const myColorHex = useMyColorHex(
+  () => props.entries,
+  () => props.mineUserId,
 )
 
 const rows = computed(() =>
@@ -94,11 +75,7 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
-/** A reload must not replay the choreography — Musterung's flag, for the same reason. */
-const hasRevealedLive = ref(false)
-watch(solution, (now, before) => {
-  if (before === null && now !== null) hasRevealedLive.value = true
-})
+const hasRevealedLive = useRevealedLive(() => solution.value !== null)
 </script>
 
 <template>

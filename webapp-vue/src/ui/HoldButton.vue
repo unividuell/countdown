@@ -7,6 +7,9 @@
  * `keyup` abandons it. Letting Enter confirm outright would be exactly the accidental submission
  * the hold exists to prevent. Known limit: someone who cannot hold a key for the full duration
  * cannot confirm; lifting that needs a setting, and the setting is not this component's business.
+ *
+ * `progress` reports the ring's value (0 … 1, also while it runs back) for a board whose button can
+ * be covered — a palm resting on it — and which therefore draws the progress itself, large.
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
@@ -43,7 +46,7 @@ const props = withDefaults(
   { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
 )
 
-const emit = defineEmits<{ confirm: [] }>()
+const emit = defineEmits<{ confirm: []; progress: [value: number] }>()
 
 const button = useTemplateRef<HTMLButtonElement>('button')
 /** The outline and the button arrive as one object — this is what the entrance animates. */
@@ -85,6 +88,8 @@ watch(progress, (value) => {
   if (beats === undefined || !holding.value) return
   beat.value = Math.min(beats, Math.max(1, beats - Math.floor(value * beats)))
 })
+
+watch(progress, (value) => emit('progress', value))
 
 const face = computed<{ text: string; shown: boolean } | null>(() => {
   if (!counting) return null

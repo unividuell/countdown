@@ -115,28 +115,38 @@ tab. So:
   budget, never a copy of a game's timetable: a new game fits inside it or raises it, and nothing
   synchronises with anyone's beats. Skip the hold under `prefers-reduced-motion` — there is no
   choreography left to protect, and lag for that reader is the wrong way round.
+- **Every call the server answers with a re-scored round refreshes the roster.** Guess, ballot,
+  override, give-up all run `RoundScoring.reevaluate`, so the roster's points move with them. A
+  guess or give-up goes through `refreshAfterGuess`; a ballot through plain `refresh` — the scoreboard already
+  shows its numbers. Ballots happen in two places: the running round and the history's open one.
 
 **A game's reveal is one event, so its choreography is shared.** The board's marker and the
 scoreboard's row settle on the same beats, so `games/revealChoreography.ts` (stagger constants, delay
-functions) is one shared module, not one per game — a game brings *what* moves (its own board, its
-own row shape), never *when*. `revealChoreography.ts` was hoisted out of a guesshue-local `reveal.ts`
-once `findpattern/` needed the same beats as its second consumer; `guesshue/`'s own imports and test
-expectations did not move when it did — the rule that makes a hoist safe is that it never touches the
-games that already worked. `isProvisional` in `games/awards.ts` is the hoist with three consumers —
-`guesshue/`, `songsnippet/` and `findpattern/` all import it from the one place, one call each.
+functions, `isStill`) is one shared module, not one per game — a game brings *what* moves (its own
+board, its own row shape), never *when*. Its plumbing is shared the same way — `GameProps`/`GameEmits`
+(`defineProps<GameProps>()`), `games/ranking.ts` (order, cascade tick), `rowHead`, `durations.ts`,
+`awards.ts`, `useRevealedLive`, `useMyColorHex`, the specs' `__tests__/gameFixtures.ts`: a new game
+imports it rather than copying it, and a third copy is the signal to hoist. Each helper is opt-in;
+none decides how a game plays, looks or lays out its card. A hoist is safe when no game's test
+expectations move.
 A game with **more** to say on a beat fills the window the clock leaves it — `SOLUTION_DELAY_MS` to
 `RESULTS_DELAY_MS` — instead of offsetting the clock: Musterung recedes its board, uncovers the
 possibilities and brings the board back inside beat 3, its return derived from beat 4 so the picture
 is whole when the outlines land on it. An offset would hand one game its own timetable, which is the
 drift the shared module exists to prevent.
+The card switch before the beats crossfades board into reveal (one grid cell, no `mode`) only where
+both cards show the same surface in the same place — a picture, or Anspielung's bar and transport:
+that stays put and only what lies on or around it changes. Where they share none — a 3D scene, a map
+giving way to a grid — the switch is hard. The cover never fades (`frontend-ui.md`). A card with a
+sideways-scrolling strip needs `grid-cols-1`: a bare `grid` widens its column to the whole strip.
 
 **The reveal table is shared the same way.** `games/RevealScoreboard.vue` owns the whole frame —
-heading and live chip *inside* the `thead`, „Name“ first and „Pkt“ last, the band, the gutters, the
-cascade. A game declares only the columns between those two (`games/scoreboardColumns.ts`) and fills
-them through `cell-<key>` slots; a column may bring its own surface, or `ground: () => null` for
-content that is not a table cell (Musterung's chips are a pattern). Build the frame per game and it
-drifts — four copies had already split into two families with different gutters and two places for
-the heading.
+heading and live chip *inside* the `thead`, „Name“ first, „Pkt“ last and the clock before it whenever
+a row has a duration, the band, the gutters, the cascade. A game declares only the columns after
+„Name“ (`games/scoreboardColumns.ts`) and fills them through `cell-<key>` slots; a column may bring
+its own surface, or `ground: () => null` for content that is not a table cell (Musterung's chips are
+a pattern). Build the frame per game and it drifts — four copies had already split into two families
+with different gutters and two places for the heading.
 
 **A dismissible explanation is permanent, keyed by game.** `InfoBox.vue` collapses "how to play" into
 `localStorage` under `` `infobox:${storageKey}` ``, one key per game id. Understanding does not expire
@@ -154,7 +164,8 @@ on Firefox for Android; Chrome for Android does not show it). **Anything under a
 through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
 the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
 already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_LOOKAHEAD_SECONDS`);
-`usePlayback` (`src/games/songsnippet/`) and Blockierung's `sounds.ts` are the worked examples.
+`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples;
+Peilung's `echolocate/engine.ts` is the one for a looping bed plus many scheduled shots.
 
 - **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
   graph may be mid-render and drop the first samples of a clip that starts in the present.
@@ -167,11 +178,26 @@ already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_
 - **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
   resumes (our play button is „always from the start", pause is its own control). Check that
   before choosing the graph; a resume needs an offset you keep yourself.
+- **Unlock the graph synchronously inside a `click` (or `pointerup`) handler.** A touch
+  `pointerdown` is no user activation on iOS: `resume()` is refused and the round stays silent, with
+  no error. `navigator.audioSession.type = 'playback'` goes in the same handler — otherwise the
+  silent switch mutes Web Audio. A play surface that only listens to touches gets a cover button
+  for it (Peilung's, `SonarField.vue`/`EchoLocateBoard.vue`). The graph can stop again later (iOS:
+  a call, an app switch, the lock screen): on `statechange` away from `running`, or a hidden page,
+  bring the cover back and send no move that must be heard. What a hidden page stops restarts on
+  every way back, not only the cover's click. Never `suspend()` the shared graph.
 - **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
   from the outside; a `console.warn` is what makes it a report instead of a mystery.
 - **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
   Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
   routing any remote source through the graph.
+- **Synthesised samples: every write index must be an integer.** A `Float32Array` ignores
+  `a[1.5] = x` without an error — the sound just has holes. Round positions computed from
+  seconds × rate (`Math.round`/`Math.floor`) before indexing; nothing lints this.
+- **Noise made in the browser is levelled to the clip's loudness.** Peilung's bed and bursts
+  (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
+  one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
+  and no source is simply louder because of how it was made.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`

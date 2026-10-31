@@ -105,6 +105,18 @@ describe('PlacePatchBoard', () => {
     expect(wrapper.emitted('guess')).toEqual([[{ x: 7, y: 4 }]])
   })
 
+  it('places nothing on a right or middle click', async () => {
+    const wrapper = mountBoard()
+    const field = sized(wrapper)
+
+    for (const button of [1, 2]) {
+      await field.trigger('pointerdown', { clientX: 123, clientY: 87, pointerId: 1, button })
+      await field.trigger('pointerup', { clientX: 123, clientY: 87, pointerId: 1, button })
+    }
+
+    expect(wrapper.find('[data-test="place-patch-stamp"]').exists()).toBe(false)
+  })
+
   it('moves the stamp by the drag and keeps it where a cancelled gesture left it', async () => {
     const wrapper = mountBoard()
     const field = sized(wrapper)

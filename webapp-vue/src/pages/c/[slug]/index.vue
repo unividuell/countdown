@@ -13,7 +13,7 @@ import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import RoundHistory from '@/rounds/RoundHistory.vue'
 
 const { community } = useCommunityContext()
-const { members, state, refreshAfterGuess } = useRoster(community.value.slug)
+const { members, state, refresh, refreshAfterGuess } = useRoster(community.value.slug)
 // The row rearranges itself after a guess, and only the viewer's own climb boxes its way forward
 // (see members/reorder.ts). The session and the roster meet here, nowhere further down.
 const { user } = useAuth()
@@ -64,6 +64,9 @@ async function ballot(action: () => Promise<RoundResponse>): Promise<void> {
   notice.value = null
   try {
     round.value = await action()
+    // The server re-scored the round, so the roster's points moved too. No spoiler hold: the
+    // scoreboard already shows the new numbers.
+    void refresh()
   } catch (err) {
     console.error('[review] ballot failed', err)
     notice.value = 'Die Wertung konnte nicht gespeichert werden.'
@@ -145,5 +148,6 @@ const settledMembers = computed(() => {
     v-if="roundState === 'ready'"
     :slug="community.slug"
     :from="round?.previousRoundNumber ?? null"
+    @reviewed="refresh"
   />
 </template>

@@ -39,17 +39,21 @@ export const resetLabRound = <P>(slug: string, game: string, seed: number, phase
 export const forgetMyLabEntry = <P>(slug: string, game: string, seed: number, phase: LabPhase) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/me'), { method: 'DELETE' })
 
-/** Voluntary stage advance — „mehr hören“, guarded server-side by the stage the client believes it is on. */
+/**
+ * Voluntary stage advance — „mehr hören“, guarded server-side by the stage the client believes it is on.
+ * [input] is what the step carries; `undefined` drops out of the JSON, which is a step without one.
+ */
 export const skipLabStage = <P>(
   slug: string,
   game: string,
   seed: number,
   phase: LabPhase,
   fromStage: number,
+  input?: unknown,
 ) =>
   apiFetch<LabRoundResponse<P>>(labUrl(slug, game, seed, phase, '/skip'), {
     method: 'POST',
-    body: JSON.stringify({ fromStage }),
+    body: JSON.stringify({ fromStage, input }),
   })
 
 /** The explicit exit without an answer. */
@@ -66,14 +70,12 @@ export const labAssetUrl = (
   name: string,
 ): string => labUrl(slug, game, seed, phase, `/assets/${encodeURIComponent(name)}`)
 
-/** The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart. */
-export const labAssets = (
-  slug: string,
-  game: string,
-  phase: LabPhase,
-  round: LabRoundResponse,
-): RoundAssets => ({
-  url: (name) => labAssetUrl(slug, game, round.seed, phase, name),
+/**
+ * The lab round's assets in the same shape as `roundAssets`, so a game cannot tell the two apart.
+ * Seed and phase are the round's, never the URL's: the URL runs ahead while the next round loads.
+ */
+export const labAssets = (slug: string, game: string, round: LabRoundResponse): RoundAssets => ({
+  url: (name) => labAssetUrl(slug, game, round.seed, round.phase, name),
   key: (name) => round.assetKeys[name] ?? null,
 })
 

@@ -165,7 +165,7 @@ class RoundAssetGateTest(
 
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
-            roundNumber = round.number, fromStage = 0,
+            roundNumber = round.number, fromStage = 0, input = null,
         ).assetKeys.keys shouldBe setOf("clip-0", "clip-1")
     }
 

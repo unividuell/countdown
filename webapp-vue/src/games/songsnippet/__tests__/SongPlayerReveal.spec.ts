@@ -4,6 +4,7 @@ import type { Mock } from 'vitest'
 import type { Ref } from 'vue'
 import type { RoundAssets } from '@/api/assets'
 import SongPlayerReveal from '@/games/songsnippet/SongPlayerReveal.vue'
+import StageBar from '@/games/songsnippet/StageBar.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
 
 interface PlaybackStub {
@@ -20,7 +21,7 @@ vi.mock('@/api/assets', () => ({ fetchAssetBlob }))
 
 /** The real composable owns an `Audio` element happy-dom cannot sound. */
 const { playbacks } = vi.hoisted(() => ({ playbacks: [] as PlaybackStub[] }))
-vi.mock('@/games/songsnippet/usePlayback', async () => {
+vi.mock('@/ui/usePlayback', async () => {
   const { ref } = await import('vue')
   const { vi: vitest } = await import('vitest')
   return {
@@ -50,8 +51,12 @@ const SOLUTION: SongSnippetSolution = {
 
 const ASSETS: RoundAssets = { url: (name) => `/assets/${name}`, key: () => null }
 
-function mountPlayer(solution: SongSnippetSolution = SOLUTION, assets: RoundAssets = ASSETS) {
-  return mount(SongPlayerReveal, { props: { solution, durations: DURATIONS, assets } })
+function mountPlayer(
+  solution: SongSnippetSolution = SOLUTION,
+  assets: RoundAssets = ASSETS,
+  animate = false,
+) {
+  return mount(SongPlayerReveal, { props: { solution, durations: DURATIONS, assets, animate } })
 }
 
 describe('SongPlayerReveal', () => {
@@ -166,6 +171,11 @@ describe('SongPlayerReveal', () => {
     expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/solution')
     expect(playbacks[0]!.setSource).toHaveBeenCalledExactlyOnceWith('blob:solution')
     expect(playbacks[0]!.restart).toHaveBeenCalledTimes(2)
+  })
+
+  it('lets the bar morph only on a live reveal', () => {
+    expect(mountPlayer(SOLUTION, ASSETS, true).getComponent(StageBar).props('animate')).toBe(true)
+    expect(mountPlayer().getComponent(StageBar).props('animate')).toBe(false)
   })
 
   it('pauses through its own smaller button', async () => {

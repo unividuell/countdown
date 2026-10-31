@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { RoundAssets } from '@/api/assets'
+import type { GameProps } from '@/games/GameProps'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import SongSnippetGame from '@/games/songsnippet/SongSnippetGame.vue'
 
 vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
@@ -23,22 +25,14 @@ const DURATIONS = [0.1, 0.5, 2, 8, 15]
 
 const ASSETS: RoundAssets = { url: (name) => `/assets/${name}`, key: () => null }
 
-function mountGame(stage = 0, overrides: Record<string, unknown> = {}) {
+function mountGame(stage = 0, overrides: Partial<GameProps> = {}) {
   return mount(SongSnippetGame, {
-    props: {
+    props: gameProps({
       payload: { stageDurationsSeconds: DURATIONS },
-      outcome: null,
-      myGuess: null,
-      solution: null,
-      entries: [],
-      mineUserId: null,
-      awardRule: null,
-      awardPoints: null,
-      disabled: false,
       stage,
       assets: ASSETS,
       ...overrides,
-    },
+    }),
   })
 }
 
@@ -50,18 +44,30 @@ const SOLUTION = {
 }
 
 function entry(userId: string, points: number, stage: number) {
-  return {
+  return gameEntry({
     userId,
-    username: userId,
     stage,
     guess: { trackId: 1, artist: 'Eagles', title: 'Hotel California' },
     outcome: { correct: true },
     points,
-    avatar: { bgColorHex: '#406abf' },
-  }
+  })
 }
 
 describe('SongSnippetGame', () => {
+  it('says the round cannot be shown for a payload it cannot read', () => {
+    const w = mountGame(0, { payload: { stageDurationsSeconds: ['x'] } })
+
+    expect(w.text()).toContain('Diese Runde lässt sich hier nicht anzeigen.')
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).exists()).toBe(false)
+  })
+
+  it('keeps the board for a solution it cannot read', () => {
+    const w = mountGame(4, { solution: { title: 42 } })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).exists()).toBe(false)
+    expect(w.findComponent({ name: 'SongSnippetBoard' }).exists()).toBe(true)
+  })
+
   it("hands the round's assets to the board, and null where the round has none", () => {
     const w = mountGame(0)
     expect(w.findComponent({ name: 'SongSnippetBoard' }).props('assets')).toStrictEqual(ASSETS)
@@ -74,6 +80,23 @@ describe('SongSnippetGame', () => {
     const w = mountGame(4, { solution: SOLUTION })
 
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('assets')).toStrictEqual(ASSETS)
+  })
+
+  it('crossfades board and reveal in one shared grid cell', () => {
+    const playing = mountGame(0)
+    const done = mountGame(4, { solution: SOLUTION })
+
+    expect(playing.get('[data-test="board-stub"]').classes()).toContain('[grid-area:1/1]')
+    expect(done.get('[data-test="reveal-stub"]').classes()).toContain('[grid-area:1/1]')
+    // No `mode`: the bar and the transport stay put while everything around them is exchanged.
+    expect(playing.get('transition-stub').attributes('mode')).toBeUndefined()
+  })
+
+  it('keeps the cell as wide as the card, however long the band of hits gets', () => {
+    // A bare `grid` sizes its column to the card's widest content: the band's covers, all of them.
+    const cell = mountGame(0).get('[data-test="board-stub"]').element.closest('.grid')
+
+    expect(cell?.classList).toContain('grid-cols-1')
   })
 
   it('shows no wrong-guess notice when the stage grows after a skip', async () => {
@@ -137,5 +160,15 @@ describe('SongSnippetGame', () => {
     })
 
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(false)
+  })
+
+  it('is live under „closest only“ even while every score is zero — the rule, like every game', async () => {
+    const w = mountGame(4, {
+      solution: SOLUTION,
+      awardRule: 'CLOSEST_ONLY',
+      entries: [entry('a', 0, 4)],
+    })
+
+    expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(true)
   })
 })

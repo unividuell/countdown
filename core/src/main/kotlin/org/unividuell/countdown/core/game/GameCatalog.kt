@@ -51,6 +51,16 @@ class GameTypeHandle<P : Any>(
     /** How many stages a round of this game has, from a stored `params` blob. */
     fun stages(params: JsonNode): Int = type.stages(paramsOf(params))
 
+    /** Whether the reached stage is this round's score, from a stored `params` blob. */
+    fun stagesScore(params: JsonNode): Boolean = type.stagesScore(paramsOf(params))
+
+    /**
+     * The game's answer to one step. JSON `null` is no input: `"input": null` arrives as a
+     * `NullNode`, and so does a stored step without one.
+     */
+    fun step(params: JsonNode, stage: Int, input: JsonNode?): GameStepAnswer? =
+        type.step(params = paramsOf(params), stage = stage, input = input?.takeUnless { it.isNull })
+
     /** Compute (expensively) the round's assets, from a stored `params` blob. Names are unique per round. */
     fun produceAssets(params: JsonNode): List<RoundAsset> =
         type.produceAssets(paramsOf(params)).also { assets ->
