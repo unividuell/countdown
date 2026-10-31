@@ -524,7 +524,7 @@ Labor Seed und Phase), wie dort beschrieben.
 
 ### Auflösung und Historie
 
-1. **Kopf:** ohne Toleranz; die zeigt der Kreis auf der Karte (Clemens, 2026-10-31).
+1. **Kopf:** in Phase eins über „Abstand“ die Angabe „Toleranz“ mit „± 1,5“, wie „Lösung“ bei Farbausmalung (Clemens, 2026-10-31).
 2. **Die Karte:** dasselbe Feld, darauf die Clips (grün), in Phase eins ihre Toleranzkreise
    hervorgehoben, die Störquellen (V, B, K, W, R) und alle Pins, jeder in der Farbe seines Spielers
    (Clemens, 2026-10-31). **Wer einen Namen antippt, sieht dessen Pings** (Mitten), **dessen Ringe und
