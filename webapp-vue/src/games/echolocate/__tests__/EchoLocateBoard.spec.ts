@@ -84,7 +84,7 @@ const PAYLOAD: EchoLocatePayload = {
   clips: 1,
   bedDb: -24,
   noiseDb: 0,
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 const KEY = 'echo-locate:draft:u1:0000abcd'
 const SRC = 'blob:clip-0'
@@ -743,14 +743,13 @@ describe('EchoLocateBoard', () => {
     expect(sound.engines).toHaveLength(0)
   })
 
-  it('states the tolerance in the award box, in its headline too', () => {
+  it('names the tolerance circle in the award box, never a cell', () => {
     const w = mountBoard({ awardRule: 'ALL_QUALIFYING', awardPoints: 1 })
 
     expect(w.text()).toContain('Irgendwo im Nebel steckt ein Spruch. Peil ihn an.')
-    expect(w.text()).toContain('Jeder gültige Tipp: 1 Punkt · ±1 Zelle')
-    expect(w.text()).toContain(
-      'Jeder Pin muss in der Zelle seines Spruchs liegen oder in einer der acht daneben.',
-    )
+    expect(w.text()).toContain('Jeder gültige Tipp: 1 Punkt')
+    expect(w.text()).toContain('Jeder Pin muss im Toleranzkreis um seinen Spruch liegen.')
+    expect(w.text()).not.toContain('Zelle')
   })
 
   it('keeps the status line live for screen readers', () => {

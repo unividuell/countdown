@@ -6,7 +6,6 @@
  * distance — and makes each name a button that lights that player's pings, rings and pins on
  * the map above.
  *
- *                       ±1 Zelle
  *   Auswertung
  *   Name               Abstand     Pkt
  *   anna                 1,6        1
@@ -15,7 +14,6 @@
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { formatTolerance } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
 
 const props = defineProps<{
@@ -26,8 +24,6 @@ const props = defineProps<{
   animate: boolean
   /** The player whose pings are on the map. */
   selected: string | null
-  /** `null` in phase two — there is no gate there. */
-  toleranceCells: number | null
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
@@ -36,7 +32,6 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'distance',
     label: 'Abstand',
-    ...(props.toleranceCells === null ? {} : { fact: formatTolerance(props.toleranceCells) }),
     width: '4rem',
     align: 'end',
     numeric: true,

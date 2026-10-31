@@ -34,8 +34,8 @@ export interface EchoLocatePayload {
   clips: 1 | 2
   bedDb: number
   noiseDb: number
-  /** Cells around a target that still count, or `null` in phase two — there is no gate there. */
-  toleranceCells: number | null
+  /** Phase one's circle around a target's centre, in cells; `null` in phase two — no gate there. */
+  toleranceRadius: number | null
 }
 
 /** One source a ping reaches. `clip` is the clip's place for `CLIP`, otherwise `null`. */
@@ -49,7 +49,7 @@ export interface EchoHit {
 export interface EchoLocateSolution {
   targets: Cell[]
   noises: { cell: Cell; kind: NoiseKind }[]
-  toleranceCells: number | null
+  toleranceRadius: number | null
 }
 
 export interface EchoLocateOutcome {
@@ -79,8 +79,8 @@ function isWhole(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value)
 }
 
-function isNullOrWhole(value: unknown): value is number | null {
-  return value === null || (isWhole(value) && value >= 0)
+function isNullOrRadius(value: unknown): value is number | null {
+  return value === null || (isFiniteNumber(value) && value > 0)
 }
 
 function isNoiseKind(value: unknown): value is NoiseKind {
@@ -99,15 +99,15 @@ function hasExactly(record: Record<string, unknown>, fields: readonly string[]):
 
 export function asEchoLocatePayload(raw: unknown): EchoLocatePayload | null {
   if (!isRecord(raw)) return null
-  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceCells } = raw
+  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius } = raw
   if (!isWhole(grid) || grid < 1 || !isWhole(pings) || pings < 0) return null
   if (!isFiniteNumber(reach) || reach <= 0 || !isFiniteNumber(speed) || speed <= 0) return null
   if (clips !== 1 && clips !== 2) return null
-  if (!isFiniteNumber(bedDb) || !isFiniteNumber(noiseDb) || !isNullOrWhole(toleranceCells)) {
+  if (!isFiniteNumber(bedDb) || !isFiniteNumber(noiseDb) || !isNullOrRadius(toleranceRadius)) {
     return null
   }
 
-  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceCells }
+  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius }
 }
 
 function asHit(raw: unknown): EchoHit | null {
@@ -158,8 +158,8 @@ function asCell(raw: unknown): Cell | null {
 
 export function asEchoLocateSolution(raw: unknown): EchoLocateSolution | null {
   if (!isRecord(raw)) return null
-  const { targets, noises, toleranceCells } = raw
-  if (!isNullOrWhole(toleranceCells)) return null
+  const { targets, noises, toleranceRadius } = raw
+  if (!isNullOrRadius(toleranceRadius)) return null
   if (!Array.isArray(targets) || targets.length === 0 || !Array.isArray(noises)) return null
 
   const cells: Cell[] = []
@@ -180,7 +180,7 @@ export function asEchoLocateSolution(raw: unknown): EchoLocateSolution | null {
     sources.push({ cell, kind })
   }
 
-  return { targets: cells, noises: sources, toleranceCells }
+  return { targets: cells, noises: sources, toleranceRadius }
 }
 
 /** `clips` is the round's: `pinOf` names one pin per clip, so a stray index is no outcome. */

@@ -24,14 +24,14 @@ const PAYLOAD: EchoLocatePayload = {
   clips: 1,
   bedDb: -24,
   noiseDb: 0,
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
 
 const SOLUTION = {
   targets: [{ col: 5, row: 7 }],
   noises: [{ cell: { col: 1, row: 1 }, kind: 'BIRDS' }],
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 
 const { vectors } = JSON.parse(
@@ -133,7 +133,7 @@ describe('EchoLocateGame', () => {
     })
 
     it('stays on the board for a solution it cannot read', () => {
-      const wrapper = mountGame({ solution: { targets: [], noises: [], toleranceCells: 1 } })
+      const wrapper = mountGame({ solution: { targets: [], noises: [], toleranceRadius: 1.5 } })
 
       expect(wrapper.findComponent(EchoLocateBoard).exists()).toBe(true)
       expect(wrapper.findComponent(EchoLocateReveal).exists()).toBe(false)

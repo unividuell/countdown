@@ -8,43 +8,10 @@ class PinsTest {
 
     private val target = Cell(col = 5, row = 5)
 
-    private fun holds(x: Double, y: Double = 5.5, target: Cell = this.target) =
-        inBlock(pin = Pin(x = x, y = y), target = target, grid = 20, tolerance = 1)
-
     @Test
     fun `the distance runs to the cell's centre`() {
         distanceToCentre(pin = Pin(x = 3.5, y = 4.5), cell = Cell(col = 0, row = 0)) shouldBe (5.0 plusOrMinus 1e-12)
         distanceToCentre(pin = Pin(x = 5.5, y = 5.5), cell = target) shouldBe 0.0
-    }
-
-    @Test
-    fun `the 3 by 3 block holds its edge and refuses the next cell`() {
-        holds(x = 4.0) shouldBe true
-        holds(x = 3.999) shouldBe false
-        holds(x = 6.999) shouldBe true
-        holds(x = 7.0) shouldBe false
-
-        holds(x = 5.5, y = 4.0) shouldBe true
-        holds(x = 5.5, y = 3.999) shouldBe false
-        holds(x = 5.5, y = 6.999) shouldBe true
-        holds(x = 5.5, y = 7.0) shouldBe false
-    }
-
-    @Test
-    fun `the tolerance sets the block's size`() {
-        inBlock(pin = Pin(x = 5.5, y = 5.5), target = target, grid = 20, tolerance = 0) shouldBe true
-        inBlock(pin = Pin(x = 6.5, y = 5.5), target = target, grid = 20, tolerance = 0) shouldBe false
-        inBlock(pin = Pin(x = 7.5, y = 5.5), target = target, grid = 20, tolerance = 2) shouldBe true
-    }
-
-    @Test
-    fun `a pin on the far edge belongs to the last cell`() {
-        // x = 20.0 is column 19, not 20: still 1 away from column 18, and 2 from column 17.
-        holds(x = 20.0, target = Cell(col = 18, row = 5)) shouldBe true
-        holds(x = 20.0, target = Cell(col = 17, row = 5)) shouldBe false
-
-        holds(x = 5.5, y = 20.0, target = Cell(col = 5, row = 18)) shouldBe true
-        holds(x = 5.5, y = 20.0, target = Cell(col = 5, row = 17)) shouldBe false
     }
 
     @Test

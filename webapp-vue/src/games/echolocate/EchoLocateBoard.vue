@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
     <EchoLocateBriefing
       :award-rule="props.awardRule"
       :award-points="props.awardPoints"
-      :tolerance-cells="props.payload.toleranceCells"
+      :tolerance-radius="props.payload.toleranceRadius"
     />
   </div>
 </template>

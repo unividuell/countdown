@@ -24,10 +24,10 @@ const PAYLOAD: EchoLocatePayload = {
   clips: 1,
   bedDb: -24,
   noiseDb: 0,
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
-const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceCells: null }
+const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceRadius: null }
 
 const SOLUTION: EchoLocateSolution = {
   targets: [{ col: 5, row: 7 }],
@@ -35,7 +35,7 @@ const SOLUTION: EchoLocateSolution = {
     { cell: { col: 1, row: 1 }, kind: 'BIRDS' },
     { cell: { col: 14, row: 3 }, kind: 'COW' },
   ],
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 const SOLUTION_TWO: EchoLocateSolution = {
   ...SOLUTION,
@@ -44,7 +44,7 @@ const SOLUTION_TWO: EchoLocateSolution = {
     { col: 15, row: 12 },
   ],
 }
-const PHASE_TWO_SOLUTION: EchoLocateSolution = { ...SOLUTION, toleranceCells: null }
+const PHASE_TWO_SOLUTION: EchoLocateSolution = { ...SOLUTION, toleranceRadius: null }
 
 const wave = (at: Point) => ({ at, startMs: null, endMs: null })
 
@@ -151,7 +151,7 @@ describe('EchoLocateReveal', () => {
       const wrapper = mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION })
 
       expect(map(wrapper).props('solution')).toEqual(PHASE_TWO_SOLUTION)
-      expect(map(wrapper).props('solution')?.toleranceCells).toBeNull()
+      expect(map(wrapper).props('solution')?.toleranceRadius).toBeNull()
     })
 
     it('leaves the pins of rows without a play off the map', () => {
@@ -406,15 +406,14 @@ describe('EchoLocateReveal', () => {
       expect(two.get('[data-test="cell-distance-anna"]').text()).toBe('Ø 2,3')
     })
 
-    it('heads the distance with ±1 Zelle in phase one only', () => {
+    it('heads the distance with no fact in either phase, never a cell', () => {
       const one = mountReveal()
-
-      expect(one.get('#distance-fact').text()).toBe('±1 Zelle')
-
       const two = mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION })
 
-      expect(two.find('#distance-fact').exists()).toBe(false)
-      expect(two.text()).not.toContain('Zelle')
+      for (const wrapper of [one, two]) {
+        expect(wrapper.find('#distance-fact').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain('Zelle')
+      }
     })
 
     it('offers no button for a row without a play, and says nothing of its distance', () => {

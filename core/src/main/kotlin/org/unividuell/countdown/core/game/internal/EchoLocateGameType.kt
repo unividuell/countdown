@@ -11,7 +11,6 @@ import org.unividuell.countdown.core.echolocate.NoiseSource
 import org.unividuell.countdown.core.echolocate.Pin
 import org.unividuell.countdown.core.echolocate.distanceToCentre
 import org.unividuell.countdown.core.echolocate.echoOf
-import org.unividuell.countdown.core.echolocate.inBlock
 import org.unividuell.countdown.core.echolocate.pinOf
 import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
@@ -36,8 +35,8 @@ import kotlin.math.min
  * player's own guess; [clipIds] are soft references into the audio pool and, once the round is
  * announced, only provenance: the assets are the round's own copies.
  *
- * [targets] are one cell per clip, in [clipIds]' order. [toleranceCells] is phase one's margin
- * around a target (1 → the 3 × 3 block); `null` in phase two, where there is no gate.
+ * [targets] are one cell per clip, in [clipIds]' order. [toleranceRadius] is phase one's circle
+ * around a target's centre, in cells; `null` in phase two, where there is no gate.
  */
 data class EchoLocateParams(
     val clipIds: List<UUID>,
@@ -49,7 +48,7 @@ data class EchoLocateParams(
     val noiseDb: Double,
     val targets: List<Cell>,
     val noises: List<NoiseSource>,
-    val toleranceCells: Int?,
+    val toleranceRadius: Double?,
 )
 
 /** What the player needs to lay out the field and the sound; [clips] is how many to find. */
@@ -61,7 +60,7 @@ data class EchoLocatePayload(
     val clips: Int,
     val bedDb: Double,
     val noiseDb: Double,
-    val toleranceCells: Int?,
+    val toleranceRadius: Double?,
 ) : GamePayload
 
 /** What one ping heard: delays only, never a position. */
@@ -71,7 +70,7 @@ data class EchoLocateEcho(val hits: List<EchoHit>) : GameStepAnswer
 data class EchoLocateSolution(
     val targets: List<Cell>,
     val noises: List<NoiseSource>,
-    val toleranceCells: Int?,
+    val toleranceRadius: Double?,
 ) : GameSolution
 
 /**
@@ -138,8 +137,8 @@ class EchoLocateGameType(
             noiseDb = NOISE_DB,
             targets = layout.targets,
             noises = layout.noises,
-            toleranceCells = when (context.phase) {
-                Phase.ONE -> TOLERANCE_CELLS
+            toleranceRadius = when (context.phase) {
+                Phase.ONE -> TOLERANCE_RADIUS
                 Phase.TWO -> null
             },
         )
@@ -153,7 +152,7 @@ class EchoLocateGameType(
         clips = params.clipIds.size,
         bedDb = params.bedDb,
         noiseDb = params.noiseDb,
-        toleranceCells = params.toleranceCells,
+        toleranceRadius = params.toleranceRadius,
     )
 
     /** Never, in either phase: the field is there at once, and the clock is statistics. */
@@ -195,12 +194,9 @@ class EchoLocateGameType(
         val order = pinOf(pins = pins, targets = params.targets)
         val served = params.targets.mapIndexed { i, target -> pins[order[i]] to target }
 
-        val mean = served.map { (pin, target) -> distanceToCentre(pin = pin, cell = target) }.average()
-        val within = params.toleranceCells?.let { tolerance ->
-            served.all { (pin, target) ->
-                inBlock(pin = pin, target = target, grid = params.grid, tolerance = tolerance)
-            }
-        }
+        val distances = served.map { (pin, target) -> distanceToCentre(pin = pin, cell = target) }
+        val mean = distances.average()
+        val within = params.toleranceRadius?.let { radius -> distances.all { it <= radius } }
 
         return Judgement(
             // No gate in phase two: everybody is a candidate, and CLOSEST_ONLY picks the winner.
@@ -214,7 +210,7 @@ class EchoLocateGameType(
     override fun solution(params: EchoLocateParams) = EchoLocateSolution(
         targets = params.targets,
         noises = params.noises,
-        toleranceCells = params.toleranceCells,
+        toleranceRadius = params.toleranceRadius,
     )
 
     /**
@@ -302,6 +298,6 @@ class EchoLocateGameType(
         const val BED_DB = -24.0
         const val NOISE_DB = 0.0
         const val NOISES = 6
-        const val TOLERANCE_CELLS = 1
+        const val TOLERANCE_RADIUS = 1.5
     }
 }

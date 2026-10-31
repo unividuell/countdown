@@ -96,15 +96,14 @@ Modus-Knöpfe gibt es nicht; was ein Tipp tut, folgt aus dem Ablauf (siehe *Das 
 |---|---|---|
 | Aufdecken | nein, das Feld ist sofort da | nein |
 | Zeit | läuft nicht ins Ergebnis ein | läuft nicht ins Ergebnis ein |
-| Gate | **jeder** Pin in der Zielzelle seines Clips oder einer ihrer 8 Nachbarn | keins |
+| Gate | **jeder** Pin im Toleranzkreis seines Clips | keins |
 | Award | `ALL_QUALIFYING`: jeder Treffer 1 Punkt | `CLOSEST_ONLY`: der kleinste Abstand nimmt alles |
 
 Im Vertrag: `requiresReveal = scoresOnDuration = false`, unbedingt. **`deviation` ist der euklidische
 Abstand vom Pin zur Mitte der Zielzelle, in Zellen; bei zwei Clips der Mittelwert der beiden.** Welcher
-Pin zu welchem Clip gehört, entscheidet die kleinste Summe der Abstände, wie im Spike. Das Gate
-(Clemens, 2026-10-25) rechnet dagegen in Zellen: ein Block von 3 × 3 um die Zielzelle, also höchstens
-1,5 Zellen waagerecht *und* senkrecht neben der Mitte. Es ist im Spiel leicht zu erklären und in der
-Auflösung leicht zu zeigen, auch wenn man das Raster beim Spielen kaum sieht. Bei zwei Clips trifft
+Pin zu welchem Clip gehört, entscheidet die kleinste Summe der Abstände, wie im Spike. Das Gate ist
+ein Kreis mit Radius 1,5 um die Mitte der Zielzelle (Durchmesser 3; Clemens, 2026-10-31, statt des
+3 × 3-Blocks): Ein Pin trifft, wenn sein Abstand höchstens 1,5 ist. Bei zwei Clips trifft
 nur, wessen **beide** Pins sitzen (Clemens, 2026-10-26); sonst wäre der zweite Spruch in Phase eins nur
 Störung. Ein Tipp pro Spieler und Runde.
 
@@ -150,8 +149,8 @@ data class EchoLocateParams(
     val noiseDb: Double,            // 0.0
     val targets: List<Cell>,        // Zielzelle je Clip, gleiche Reihenfolge — das Rundengeheimnis
     val noises: List<NoiseSource>,  // Zelle und Art — ebenfalls geheim
-    /** Rand um die Zielzelle in Phase eins (1 → 3 × 3); `null` in Phase zwei, wie `toleranceDeg`. */
-    val toleranceCells: Int?,
+    /** Kreis um die Mitte der Zielzelle in Phase eins (1.5); `null` in Phase zwei, wie `toleranceDeg`. */
+    val toleranceRadius: Double?,
 )
 
 data class Cell(val col: Int, val row: Int)
@@ -174,7 +173,7 @@ liest nur dort. Andere Werte sind später eine Änderung der Konstanten; alte Ru
   auseinander, dann die Störquellen, jede mit Mindestabstand 2 zu allen vorigen; nach 200 Versuchen
   nimmt eine Quelle die letzte gezogene Zelle (wie im Spike, bei 8 Quellen auf 400 Zellen praktisch
   nie).
-- `toleranceCells` = 1 in Phase eins, `null` in Phase zwei.
+- `toleranceRadius` = 1,5 in Phase eins, `null` in Phase zwei.
 
 **Verfügbar** ist das Spiel, wenn `playableIds(communityId)` nicht leer ist.
 
@@ -380,9 +379,9 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt:
 
 | Ausgang | wann | Felder |
 |---|---|---|
-| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceCells` |
+| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius` |
 | Schritt-Antwort `EchoLocateEcho` | pro Ping, nur dem Spieler | `hits[].sound, hits[].clip, hits[].delayMs` |
-| Lösung `EchoLocateSolution` | nach dem eigenen Tipp | `targets, noises, toleranceCells` |
+| Lösung `EchoLocateSolution` | nach dem eigenen Tipp | `targets, noises, toleranceRadius` |
 | Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf` |
 
 `clips` ist die Anzahl. `distance` ist der Mittelwert, `pinOf[i]` der Pin, der Ziel `i` zugeordnet
@@ -418,15 +417,14 @@ Ping verrät und gewinnt nichts. Die Auflösung zeichnet einen Ring nur, wo es P
 - **Zuordnung:** die Permutation der Pins auf die Ziele mit der kleinsten Summe der Abstände
   `hypot(x − (col + 0.5), y − (row + 0.5))`; bei zwei Clips gibt es zwei Kandidaten. Sie ergibt `pinOf`.
 - `deviation` = Mittelwert der zugeordneten Abstände;
-- `qualifies = toleranceCells == null ||` jeder Pin liegt im Block seines Ziels:
-  `|col(x) − target.col| ≤ toleranceCells && |row(y) − target.row| ≤ toleranceCells`, mit
-  `col(x) = min(grid − 1, floor(x))`, ebenso `row`;
+- `qualifies = toleranceRadius == null ||` jeder Pin liegt im Kreis seines Ziels: sein Abstand
+  zur Zellmitte ist `≤ toleranceRadius`;
 - `guess` neu aufgebaut aus genau `pins` und `rings`.
 
-**Warum zwei Clips mindestens 5 Zellen auseinander liegen** (meine Festlegung): Ein Pin im 3 × 3-Block
-liegt höchstens 2,12 Zellen von dessen Mitte. Bei 5 Zellen Abstand sind die Blöcke getrennt, und wer
-in beiden je einen Pin hat, bekommt genau diese Zuordnung (über Kreuz wären es mindestens
-2 × (5 − 2,12) = 5,76 gegen höchstens 4,24). Gate und Zuordnung können sich so nicht widersprechen.
+**Warum zwei Clips mindestens 5 Zellen auseinander liegen** (meine Festlegung): Kreise mit Radius 1,5
+überlappen bei 5 Zellen Abstand nie, und ein Pin in seinem Kreis liegt mindestens 3,5 vom anderen
+Clip. Wer in beiden je einen Pin hat, bekommt genau diese Zuordnung (über Kreuz wären es mindestens
+2 × 3,5 = 7 gegen höchstens 3). Gate und Zuordnung können sich so nicht widersprechen.
 Nebenbei klingen zwei Sprüche seltener gleichzeitig.
 
 ## Integrität — die Decke, benannt
@@ -524,8 +522,8 @@ Labor Seed und Phase), wie dort beschrieben.
 
 ### Auflösung und Historie
 
-1. **Kopf:** in Phase eins „±1 Zelle“.
-2. **Die Karte:** dasselbe Feld, darauf die Clips (grün), in Phase eins ihre 3 × 3-Blöcke
+1. **Kopf:** ohne Toleranz; die zeigt der Kreis auf der Karte (Clemens, 2026-10-31).
+2. **Die Karte:** dasselbe Feld, darauf die Clips (grün), in Phase eins ihre Toleranzkreise
    hervorgehoben, die Störquellen (V, B, K, W, R) und alle Pins. **Wer einen Namen antippt, sieht dessen
    Pings** (Mitten), **dessen Ringe und Pins** hervorgehoben, dazu je eine Linie vom Pin zu seinem Clip
    (`pinOf`), wie die Ebenen bei Anmaßung; ein zweites Antippen nimmt sie wieder weg. Die Ping-Stellen
@@ -577,7 +575,7 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
 - **Zug:** Anzahl und Clips aus dem Scene-Strom; Schwierigkeit 0 → ein Clip, 1 → zwei; nur ein
   spielbarer Clip → einer; zwei verschiedene; Clips dieser Edition ausgeschlossen, Auffüllen aus allen;
   Positionen variieren nur mit dem Solution-Seed (Bauform von `GuessHueDrawTest`); Mindestabstände 2
-  und 5; Arten reihum; `toleranceCells` aus der Phase; nicht verfügbar ohne Clips.
+  und 5; Arten reihum; `toleranceRadius` aus der Phase; nicht verfügbar ohne Clips.
 - **Clip:** Einsatz auf 5 ms genau bei Stille + Ton, Rauschen + Ton, Stereo; kein Einsatz → kein
   Schnitt; Deckel bei 3 s; Ausgabe Mono 16 Bit; ein gelöschter Clip fehlt unter den Assets, der andere
   bleibt.
@@ -588,8 +586,8 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
   kommt aus `judge`; ein Schritt mit Eingabe erhöht die Stufe und speichert die Eingabe atomar;
   `MyPlayDto.steps` trägt die neu berechnete Antwort; `OtherPlayDto.steps` nur die Eingaben;
   Anspielungs Verhalten unverändert (bestehende Tests grün); Labor spiegelt.
-- **`judge`:** Rand des 3 × 3-Blocks drinnen und knapp draußen; zwei Clips: beide drin trifft, einer
-  drin nicht, Pins in vertauschter Reihenfolge ergeben dasselbe; Mittelwert und `pinOf`; Phase zwei
+- **`judge`:** Rand des Kreises drinnen (1,5), knapp draußen (1,51), die alte Blockecke draußen;
+  zwei Clips: beide drin trifft, einer drin nicht, Pins in vertauschter Reihenfolge ergeben dasselbe; Mittelwert und `pinOf`; Phase zwei
   ohne Gate; ungültige Tipps, auch falsche Zahl Pins, zu viele oder unzulässige Ringe; der gespeicherte
   `guess` enthält genau `pins` und `rings`.
 - **Ausgänge:** Feldmengen-Tests für Payload, Antwort, Lösung, Outcome.

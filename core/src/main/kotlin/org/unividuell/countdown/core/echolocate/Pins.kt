@@ -1,9 +1,6 @@
 package org.unividuell.countdown.core.echolocate
 
-import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.hypot
-import kotlin.math.min
 
 /** A point on the field in cell units: (0, 0) is the top-left corner, (grid, grid) the far one. */
 data class Pin(val x: Double, val y: Double)
@@ -23,16 +20,6 @@ fun pinOf(pins: List<Pin>, targets: List<Cell>): List<Int> {
         targets.indices.sumOf { i -> distanceToCentre(pin = pins[order[i]], cell = targets[i]) }
     }
 }
-
-/**
- * Whether [pin] sits in [target]'s cell or within [tolerance] cells of it, e.g. 1 → the 3 × 3 block.
- * A pin on the far edge (x = grid) belongs to the last cell, not to a cell outside the field.
- */
-fun inBlock(pin: Pin, target: Cell, grid: Int, tolerance: Int): Boolean =
-    abs(cellIndex(coordinate = pin.x, grid = grid) - target.col) <= tolerance &&
-        abs(cellIndex(coordinate = pin.y, grid = grid) - target.row) <= tolerance
-
-private fun cellIndex(coordinate: Double, grid: Int): Int = min(a = grid - 1, b = floor(coordinate).toInt())
 
 private fun permutations(items: List<Int>): List<List<Int>> =
     if (items.size <= 1) {

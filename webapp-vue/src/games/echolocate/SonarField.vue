@@ -3,7 +3,7 @@
  * Peilung's field on a canvas. It draws and reports taps, nothing else: what a tap means is the
  * board's business (`flow.ts`). Layers, bottom up:
  *
- *   ground · dot grid · [clip blocks] · rings · waves · loading pulse · ping centres
+ *   ground · dot grid · [tolerance circles] · rings · waves · loading pulse · ping centres
  *   · [clips, noises, links, other pins] · pins · sparks
  *
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
@@ -150,7 +150,7 @@ function draw(now = performance.now()): void {
     }
   }
 
-  if (props.solution) drawBlocks(c, cell, props.solution)
+  if (props.solution) drawTolerance(c, cell, props.solution)
 
   // The player's rings, all alike: a ring does not say which clip it meant.
   c.lineWidth = 1.5
@@ -247,20 +247,22 @@ function draw(now = performance.now()): void {
   c.globalCompositeOperation = 'source-over'
 }
 
-/** Phase one: the cells around each clip that still count, cut at the field's edge. */
-function drawBlocks(c: CanvasRenderingContext2D, cell: number, solution: EchoLocateSolution): void {
-  const tolerance = solution.toleranceCells
-  if (tolerance === null) return
+/** Phase one: the circle around each clip's centre that a pin must land in. */
+function drawTolerance(
+  c: CanvasRenderingContext2D,
+  cell: number,
+  solution: EchoLocateSolution,
+): void {
+  const radius = solution.toleranceRadius
+  if (radius === null) return
 
   c.fillStyle = 'rgba(52,211,153,0.15)'
   c.strokeStyle = 'rgba(52,211,153,0.5)'
   for (const target of solution.targets) {
-    const col = Math.max(0, target.col - tolerance)
-    const row = Math.max(0, target.row - tolerance)
-    const cols = Math.min(props.grid, target.col + tolerance + 1) - col
-    const rows = Math.min(props.grid, target.row + tolerance + 1) - row
-    c.fillRect(col * cell, row * cell, cols * cell, rows * cell)
-    c.strokeRect(col * cell, row * cell, cols * cell, rows * cell)
+    c.beginPath()
+    c.arc((target.col + 0.5) * cell, (target.row + 0.5) * cell, radius * cell, 0, 2 * Math.PI)
+    c.fill()
+    c.stroke()
   }
 }
 

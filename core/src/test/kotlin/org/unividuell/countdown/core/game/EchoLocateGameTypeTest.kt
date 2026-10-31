@@ -89,7 +89,7 @@ class EchoLocateGameTypeTest {
                 clipIds = all.take(targets.size),
                 targets = targets.toList(),
                 noises = emptyList(),
-                toleranceCells = if (phase == Phase.ONE) 1 else null,
+                toleranceRadius = if (phase == Phase.ONE) 1.5 else null,
             )
         }
 
@@ -211,9 +211,9 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `phase one freezes a tolerance of one cell, phase two none`() {
-        draw(context = context(phase = Phase.ONE)).toleranceCells shouldBe 1
-        draw(context = context(phase = Phase.TWO)).toleranceCells.shouldBeNull()
+    fun `phase one freezes a tolerance radius of 1,5 cells, phase two none`() {
+        draw(context = context(phase = Phase.ONE)).toleranceRadius shouldBe 1.5
+        draw(context = context(phase = Phase.TWO)).toleranceRadius.shouldBeNull()
     }
 
     @Test
@@ -248,13 +248,13 @@ class EchoLocateGameTypeTest {
         )
 
         fields(game.present(params)) shouldBe
-            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceCells")
+            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceRadius")
 
         fields(ping) shouldBe setOf("hits")
         (ping as EchoLocateEcho).hits.map { it.sound } shouldContain Sound.CLIP
         fields(ping.hits.first { it.sound == Sound.CLIP }) shouldBe setOf("sound", "clip", "delayMs")
 
-        fields(game.solution(params)) shouldBe setOf("targets", "noises", "toleranceCells")
+        fields(game.solution(params)) shouldBe setOf("targets", "noises", "toleranceRadius")
         fields(judge(params = params, guess = pins(1.0 to 1.0, 9.0 to 9.0)).outcome) shouldBe
             setOf("distance", "withinTolerance", "pinOf")
     }
@@ -265,7 +265,7 @@ class EchoLocateGameTypeTest {
 
         mapper.valueToTree<JsonNode>(game.present(params)) shouldBe json(
             """
-            {"grid":20,"reach":12.0,"speed":3.0,"pings":3,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceCells":1}
+            {"grid":20,"reach":12.0,"speed":3.0,"pings":3,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
             """.trimIndent(),
         )
     }
@@ -277,7 +277,7 @@ class EchoLocateGameTypeTest {
         game.solution(params) shouldBe EchoLocateSolution(
             targets = params.targets,
             noises = params.noises,
-            toleranceCells = 1,
+            toleranceRadius = 1.5,
         )
     }
 
@@ -351,39 +351,37 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `one clip - a pin in the 3 by 3 block hits, the next cell misses`() {
+    fun `one clip - a pin 1,5 from the centre hits, 1,51 misses`() {
         val params = roundOf(Cell(col = 5, row = 5))
 
-        // The block spans columns and rows 4..6, i.e. coordinates [4, 7).
-        listOf(4.0 to 4.0, 6.99 to 6.99, 5.5 to 5.5, 4.0 to 6.99).forEach { (x, y) ->
+        // The circle runs around the centre (5.5, 5.5).
+        listOf(5.5 to 5.5, 7.0 to 5.5, 4.0 to 5.5, 5.5 to 7.0, 5.5 to 4.0).forEach { (x, y) ->
             judge(params = params, guess = pins(x to y)).qualifies shouldBe true
         }
-        listOf(3.99 to 5.5, 7.0 to 5.5, 5.5 to 3.99, 5.5 to 7.0, 7.0 to 7.0).forEach { (x, y) ->
+        listOf(7.01 to 5.5, 3.99 to 5.5, 5.5 to 7.01, 5.5 to 3.99).forEach { (x, y) ->
             judge(params = params, guess = pins(x to y)).qualifies shouldBe false
         }
     }
 
     @Test
-    fun `a pin on the far edge belongs to the last cell`() {
-        val params = roundOf(Cell(col = 18, row = 18))
+    fun `a pin in the old block's corner misses`() {
+        // dx = dy = 1.4: inside the former 3 × 3 block, but ≈ 1.98 from the centre.
+        val corner = judge(params = roundOf(Cell(col = 5, row = 5)), guess = pins(6.9 to 6.9))
 
-        // Cell 20 does not exist: x = 20 is cell 19, one off the target — a 21st cell would be two.
-        val edge = judge(params = params, guess = pins(20.0 to 20.0))
-
-        edge.qualifies shouldBe true
-        (edge.outcome as EchoLocateOutcome).withinTolerance shouldBe true
-        edge.deviation shouldBe (2.1213203435596424 plusOrMinus 1e-9)
+        corner.qualifies shouldBe false
+        (corner.outcome as EchoLocateOutcome).withinTolerance shouldBe false
+        corner.deviation shouldBe (1.9798989873223332 plusOrMinus 1e-9)
     }
 
     @Test
-    fun `two clips - both pins in their blocks hit, one alone does not`() {
+    fun `two clips - both pins in their circles hit, one alone does not`() {
         val params = roundOf(Cell(col = 3, row = 3), Cell(col = 15, row = 15))
 
         judge(params = params, guess = pins(3.5 to 3.5, 15.5 to 15.5)).qualifies shouldBe true
-        judge(params = params, guess = pins(2.0 to 4.99, 16.99 to 14.0)).qualifies shouldBe true
+        judge(params = params, guess = pins(2.0 to 3.5, 15.5 to 17.0)).qualifies shouldBe true
         judge(params = params, guess = pins(3.5 to 3.5, 10.0 to 10.0)).qualifies shouldBe false
         judge(params = params, guess = pins(10.0 to 10.0, 15.5 to 15.5)).qualifies shouldBe false
-        judge(params = params, guess = pins(3.5 to 3.5, 17.0 to 15.5)).qualifies shouldBe false
+        judge(params = params, guess = pins(3.5 to 3.5, 17.01 to 15.5)).qualifies shouldBe false
     }
 
     @Test

@@ -52,7 +52,7 @@ const SOLUTION: EchoLocateSolution = {
     { cell: { col: 7, row: 1 }, kind: 'WIND' },
     { cell: { col: 9, row: 1 }, kind: 'RAIN' },
   ],
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 
 function mountField(over: Record<string, unknown> = {}) {
@@ -148,13 +148,16 @@ describe('SonarField', () => {
     expect(log).toContainEqual(['fillText', 'K', 55, 15])
   })
 
-  it("highlights a clip's 3 × 3 block in phase one only", () => {
+  it("draws a clip's tolerance circle in phase one only", () => {
+    // 1.5 cells around the centre of cell (5, 7): 15 px around (55, 75).
+    const circle = ['arc', 55, 75, 15, 0, 2 * Math.PI]
+
     mountField({ solution: SOLUTION })
-    expect(log).toContainEqual(['fillRect', 40, 60, 30, 30])
+    expect(log).toContainEqual(circle)
 
     log.length = 0
-    mountField({ solution: { ...SOLUTION, toleranceCells: null } })
-    expect(log.some(([name]) => name === 'strokeRect')).toBe(false)
+    mountField({ solution: { ...SOLUTION, toleranceRadius: null } })
+    expect(log).not.toContainEqual(circle)
   })
 
   it('takes no taps as a map, so a finger there scrolls the page', () => {

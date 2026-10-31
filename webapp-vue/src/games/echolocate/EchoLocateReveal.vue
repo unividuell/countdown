@@ -149,7 +149,6 @@ function select(userId: string): void {
       :live="props.live"
       :animate="props.animate"
       :selected="selected"
-      :tolerance-cells="props.solution.toleranceCells"
       @select="select"
     />
   </div>

@@ -19,7 +19,7 @@ const PAYLOAD: EchoLocatePayload = {
   clips: 1,
   bedDb: -24,
   noiseDb: 0,
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
 
@@ -27,9 +27,9 @@ describe('asEchoLocatePayload', () => {
   it('narrows a payload with one or two clips and keeps a null tolerance', () => {
     expect(asEchoLocatePayload(PAYLOAD)).toEqual(PAYLOAD)
     expect(asEchoLocatePayload(TWO)).toEqual(TWO)
-    expect(asEchoLocatePayload({ ...PAYLOAD, toleranceCells: null })).toEqual({
+    expect(asEchoLocatePayload({ ...PAYLOAD, toleranceRadius: null })).toEqual({
       ...PAYLOAD,
-      toleranceCells: null,
+      toleranceRadius: null,
     })
   })
 
@@ -48,10 +48,11 @@ describe('asEchoLocatePayload', () => {
     ['no clips', { ...PAYLOAD, clips: 0 }],
     ['clips as text', { ...PAYLOAD, clips: '1' }],
     ['a missing clips field', { ...PAYLOAD, clips: undefined }],
-    ['a fractional tolerance', { ...PAYLOAD, toleranceCells: 1.5 }],
-    ['a negative tolerance', { ...PAYLOAD, toleranceCells: -1 }],
-    ['a tolerance as text', { ...PAYLOAD, toleranceCells: '1' }],
-    ['a missing tolerance', { ...PAYLOAD, toleranceCells: undefined }],
+    ['a zero tolerance', { ...PAYLOAD, toleranceRadius: 0 }],
+    ['a negative tolerance', { ...PAYLOAD, toleranceRadius: -1.5 }],
+    ['an infinite tolerance', { ...PAYLOAD, toleranceRadius: Infinity }],
+    ['a tolerance as text', { ...PAYLOAD, toleranceRadius: '1.5' }],
+    ['a missing tolerance', { ...PAYLOAD, toleranceRadius: undefined }],
     ['a NaN reach', { ...PAYLOAD, reach: NaN }],
     ['no reach', { ...PAYLOAD, reach: 0 }],
     ['an infinite speed', { ...PAYLOAD, speed: Infinity }],
@@ -142,14 +143,14 @@ describe('asEchoLocateSolution', () => {
       { cell: { col: 10, row: 2 }, kind: 'BIRDS' },
       { cell: { col: 0, row: 19 }, kind: 'RAIN' },
     ],
-    toleranceCells: 1,
+    toleranceRadius: 1.5,
   }
 
   it('narrows a solution and keeps a null tolerance', () => {
     expect(asEchoLocateSolution(SOLUTION)).toEqual(SOLUTION)
-    expect(asEchoLocateSolution({ ...SOLUTION, toleranceCells: null })).toEqual({
+    expect(asEchoLocateSolution({ ...SOLUTION, toleranceRadius: null })).toEqual({
       ...SOLUTION,
-      toleranceCells: null,
+      toleranceRadius: null,
     })
   })
 
@@ -160,7 +161,7 @@ describe('asEchoLocateSolution', () => {
         { col: 9, row: 9 },
       ],
       noises: [],
-      toleranceCells: null,
+      toleranceRadius: null,
     }
 
     expect(asEchoLocateSolution(solution)).toEqual(solution)
@@ -186,9 +187,10 @@ describe('asEchoLocateSolution', () => {
       'the clip as a noise kind',
       { ...SOLUTION, noises: [{ cell: { col: 1, row: 1 }, kind: 'CLIP' }] },
     ],
-    ['a fractional tolerance', { ...SOLUTION, toleranceCells: 1.5 }],
-    ['a missing tolerance', { ...SOLUTION, toleranceCells: undefined }],
-    ['missing noises', { targets: SOLUTION.targets, toleranceCells: 1 }],
+    ['a NaN tolerance', { ...SOLUTION, toleranceRadius: NaN }],
+    ['a tolerance as text', { ...SOLUTION, toleranceRadius: '1.5' }],
+    ['a missing tolerance', { ...SOLUTION, toleranceRadius: undefined }],
+    ['missing noises', { targets: SOLUTION.targets, toleranceRadius: 1.5 }],
   ])('turns %s into null', (_label, solution) => {
     expect(asEchoLocateSolution(solution)).toBeNull()
   })

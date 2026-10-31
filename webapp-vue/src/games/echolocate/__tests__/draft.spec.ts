@@ -15,7 +15,7 @@ const PAYLOAD: EchoLocatePayload = {
   clips: 2,
   bedDb: -24,
   noiseDb: 0,
-  toleranceCells: 1,
+  toleranceRadius: 1.5,
 }
 
 const DRAFT: EchoDraft = {
