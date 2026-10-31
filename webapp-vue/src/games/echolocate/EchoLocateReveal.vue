@@ -159,6 +159,7 @@ function select(userId: string): void {
       :live="props.live"
       :animate="props.animate"
       :selected="selected"
+      :tolerance-radius="props.solution.toleranceRadius"
       @select="select"
     />
   </div>

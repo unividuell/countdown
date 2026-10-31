@@ -6,6 +6,8 @@
  * distance — and makes each name a button that lights that player's pings, rings and pins on
  * the map above.
  *
+ *                      Toleranz
+ *                         ± 1,5            phase one only: the circle's radius
  *   Auswertung
  *   Name               Abstand     Pkt
  *   anna                 1,6        1
@@ -24,14 +26,22 @@ const props = defineProps<{
   animate: boolean
   /** The player whose pings are on the map. */
   selected: string | null
+  /** The tolerance circle's radius; `null` in phase two, where there is no gate. */
+  toleranceRadius: number | null
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
+
+const oneDecimal = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+})
 
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'distance',
     label: 'Abstand',
+    ...(props.toleranceRadius === null ? {} : { fact: 'Toleranz' }),
     width: '4rem',
     align: 'end',
     numeric: true,
@@ -69,6 +79,11 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
       <template v-else>{{ row.name }}</template>
     </template>
 
+    <template v-if="props.toleranceRadius !== null" #fact-distance>
+      <span data-test="distance-tolerance" class="block text-end tabular-nums">
+        ±&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
+      </span>
+    </template>
     <template #cell-distance="{ row }">{{ row.distanceLabel ?? '—' }}</template>
   </RevealScoreboard>
 </template>
