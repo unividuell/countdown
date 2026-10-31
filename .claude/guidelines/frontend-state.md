@@ -164,7 +164,8 @@ on Firefox for Android; Chrome for Android does not show it). **Anything under a
 through Web Audio instead** — one module-level `AudioContext` for the whole app, never closed, so
 the output stream stays open *across* clips and a short clip is scheduled into a pipeline that is
 already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_LOOKAHEAD_SECONDS`);
-`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples.
+`usePlayback` (`src/ui/usePlayback.ts`) and Blockierung's `sounds.ts` are the worked examples;
+Peilung's `echolocate/engine.ts` is the one for a looping bed plus many scheduled shots.
 
 - **Schedule with a small lookahead**, `node.start(ctx.currentTime + 0.05)`, never at „now": the
   graph may be mid-render and drop the first samples of a clip that starts in the present.
@@ -177,11 +178,26 @@ already running. The context lives in `src/ui/audio.ts` (`audioGraph()`, `START_
 - **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
   resumes (our play button is „always from the start", pause is its own control). Check that
   before choosing the graph; a resume needs an offset you keep yourself.
+- **Unlock the graph synchronously inside a `click` (or `pointerup`) handler.** A touch
+  `pointerdown` is no user activation on iOS: `resume()` is refused and the round stays silent, with
+  no error. `navigator.audioSession.type = 'playback'` goes in the same handler — otherwise the
+  silent switch mutes Web Audio. A play surface that only listens to touches gets a cover button
+  for it (Peilung's, `SonarField.vue`/`EchoLocateBoard.vue`). The graph can stop again later (iOS:
+  a call, an app switch, the lock screen): on `statechange` away from `running`, or a hidden page,
+  bring the cover back and send no move that must be heard. What a hidden page stops restarts on
+  every way back, not only the cover's click. Never `suspend()` the shared graph.
 - **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
   from the outside; a `console.warn` is what makes it a report instead of a mystery.
 - **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
   Deezer's preview CDN sends `Access-Control-Allow-Origin: *`; verify with `curl -sI` before
   routing any remote source through the graph.
+- **Synthesised samples: every write index must be an integer.** A `Float32Array` ignores
+  `a[1.5] = x` without an error — the sound just has holes. Round positions computed from
+  seconds × rate (`Math.round`/`Math.floor`) before indexing; nothing lints this.
+- **Noise made in the browser is levelled to the clip's loudness.** Peilung's bed and bursts
+  (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
+  one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
+  and no source is simply louder because of how it was made.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`

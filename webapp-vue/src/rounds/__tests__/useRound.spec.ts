@@ -43,6 +43,7 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
   votes: [],
   struck: false,
   adminOverride: null,
+  steps: [],
   ...over,
 })
 
@@ -177,7 +178,25 @@ describe('useRound', () => {
 
     await round().skip(0)
 
-    expect(skipSpy).toHaveBeenCalledWith('team', 12, 0)
+    expect(skipSpy).toHaveBeenCalledWith('team', 12, 0, undefined)
+  })
+
+  it('passes a step input through to the server', async () => {
+    vi.spyOn(api, 'getCurrentRound').mockResolvedValue(announced())
+    vi.spyOn(api, 'revealRound').mockResolvedValue(
+      announced({ me: aPlay(), payload: { description: 'x' } }),
+    )
+    const skipSpy = vi
+      .spyOn(api, 'skipStage')
+      .mockResolvedValue(announced({ me: aPlay({ stage: 1 }) }))
+    const { Cmp, round } = host()
+
+    mount(Cmp)
+    await flushPromises()
+
+    await round().skip(0, { x: 1, y: 2 })
+
+    expect(skipSpy).toHaveBeenCalledWith('team', 12, 0, { x: 1, y: 2 })
   })
 
   it('sends the round number on give-up', async () => {

@@ -58,7 +58,7 @@ const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'O
 const round = ref<LabRoundResponse | null>(null)
 /** The lab round's assets by name, the same shape a real round hands its game. */
 const assets = computed(() =>
-  round.value ? labAssets(community.value.slug, gameId.value, phase.value, round.value) : undefined,
+  round.value ? labAssets(community.value.slug, gameId.value, round.value) : undefined,
 )
 /**
  * Bumped whenever a response reseals an already-revealed round — a reset, most often. The game
@@ -162,10 +162,10 @@ async function guess(value: unknown): Promise<void> {
   await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
 }
 
-/** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries one extra
- * argument beyond `run`'s four-argument action shape. */
-async function skip(fromStage: number): Promise<void> {
-  await run((slug, game, s, p) => skipLabStage(slug, game, s, p, fromStage))
+/** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries extra
+ * arguments beyond `run`'s four-argument action shape. */
+async function skip(fromStage: number, input?: unknown): Promise<void> {
+  await run((slug, game, s, p) => skipLabStage(slug, game, s, p, fromStage, input))
 }
 
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
@@ -230,6 +230,8 @@ const gameEntries = computed<GameEntry[]>(() => {
       votes: [],
       struck: false,
       adminOverride: null,
+      // A server from before steps sends none.
+      steps: (current.mySteps ?? []).map((step) => step.input),
     },
     ...current.others,
   ]
@@ -274,6 +276,7 @@ watch(
         :round-phase="round?.phase"
         :award-rule="round?.awardRule"
         :award-points="round?.awardPoints"
+        :difficulty="round?.difficulty"
         :return-path="`${route.path}?seed=${seed}&phase=${phase}`"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
@@ -344,6 +347,7 @@ watch(
         :award-points="round.awardPoints"
         :disabled="busy || round.me !== null"
         :stage="round.myStage"
+        :steps="round.mySteps ?? []"
         :assets="assets"
         :review="review"
         :closed="false"

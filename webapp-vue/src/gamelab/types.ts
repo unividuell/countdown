@@ -1,5 +1,5 @@
 import type { AssetKey } from '@/api/assets'
-import type { AvatarView, Vote } from '@/api/types'
+import type { AvatarView, StepView, Vote } from '@/api/types'
 
 /**
  * Lab types live here rather than in `src/api/types.ts` so the whole non-prod harness is one
@@ -43,6 +43,8 @@ export interface LabEntryDto {
   struck: boolean
   /** The game master's verdict, shown openly — it would otherwise be the one hidden move. */
   adminOverride: boolean | null
+  /** The inputs of this entry's steps, one per stage — never their answers. */
+  steps: unknown[]
 }
 
 export interface LabRoundResponse<P = unknown> {
@@ -72,6 +74,13 @@ export interface LabRoundResponse<P = unknown> {
   scoresOnDuration: boolean
   /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
   myStage: number
+  /**
+   * The viewer's own steps with the answers, recomputed by the server. Present before the viewer's
+   * entry is stored, which is why they do not live on `me`.
+   */
+  mySteps: StepView[]
+  /** Follows from the seed, `0` to `1` in tenths. A property of the loaded round, not of the URL. */
+  difficulty: number
   /**
    * Whether the viewer may see the board. Always `true` for a game that never asked for a
    * deliberate reveal — there is nothing to gate. The one field the page acts on; it does not

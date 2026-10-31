@@ -1,5 +1,6 @@
 package org.unividuell.countdown.core.gamelab.internal
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
@@ -10,9 +11,11 @@ import org.unividuell.countdown.core.game.AssetViewer
 import org.unividuell.countdown.core.game.Award
 import org.unividuell.countdown.core.game.GameCatalog
 import org.unividuell.countdown.core.game.GameRandom
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.GameTypeHandle
 import org.unividuell.countdown.core.game.GuessAction
 import org.unividuell.countdown.core.game.GuessContext
+import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
@@ -53,6 +56,8 @@ class LabService(
     private val store: LabRoundStore,
     private val catalog: GameCatalog,
 ) {
+
+    private val logger = KotlinLogging.logger {}
 
     fun open(
         slug: String,
@@ -143,14 +148,17 @@ class LabService(
             params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
         )
         val stages = handle.stages(playing.params)
+        val stagesScore = handle.stagesScore(playing.params)
         // Judged and (on advance) discarded on purpose: in phase one a wrong guess below the last
         // stage only burns the stage — the same rule `PlayService.guess` applies to a real round.
         if (guessActionFor(
                 rule = playing.award.rule, qualifies = judgement.qualifies, stage = stage, stages = stages,
+                stagesScore = stagesScore,
             ) == GuessAction.ADVANCE_STAGE
         ) {
             val advanced = store.advanceStage(
                 communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = stage,
+                input = null,
             )
             if (!advanced) throw LabStageMovedOnException()
             return respond(
@@ -159,10 +167,10 @@ class LabService(
                 me = userId,
             )
         }
-        // A staged game's distance is the stage, and the store never sees stages; a game that scores
-        // on duration has the duration since reveal, computed by the store from its own stamp. One
-        // adjustment here, one flag passed down — the same split `PlayService` makes.
-        val adjusted = if (stages > 1) judgement.copy(deviation = stage.toDouble()) else judgement
+        // A game whose stage is its score has the stage as distance, and the store never sees stages;
+        // a game that scores on duration has the duration since reveal, computed by the store from its
+        // own stamp. One adjustment here, one flag passed down — the same split `PlayService` makes.
+        val adjusted = if (stagesScore) judgement.copy(deviation = stage.toDouble()) else judgement
         val result = store.record(
             communityId = communityId, gameId = gameId, round = playing,
             // The game's own narrowing wins where it offers one — the same line `PlayService`
@@ -178,7 +186,10 @@ class LabService(
         }
     }
 
-    /** Voluntary stage advance — the lab's own "skip", replaying `PlayService.skip`'s guard. */
+    /**
+     * Voluntary stage advance carrying the step's [input] — the lab's own "skip", replaying
+     * `PlayService.skip`'s guard and its order: range, then the game's say on the input, then the write.
+     */
     fun skip(
         slug: String,
         gameId: String,
@@ -187,6 +198,7 @@ class LabService(
         userId: UUID,
         isSuperAdmin: Boolean,
         fromStage: Int,
+        input: JsonNode?,
     ): LabRoundResponse {
         val (communityId, handle) = resolve(
             slug = slug, gameId = gameId, userId = userId, isSuperAdmin = isSuperAdmin,
@@ -196,8 +208,12 @@ class LabService(
         val stages = handle.stages(playing.params)
         // No skip off the top: the exits up there are the terminal guess, or giving up.
         if (fromStage < 0 || fromStage >= stages - 1) throw LabStageMovedOnException()
+        // Validated before the write: an invalid input must not spend the stage. The answer itself
+        // is recomputed for the response.
+        handle.step(params = playing.params, stage = fromStage, input = input)
         val advanced = store.advanceStage(
             communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = fromStage,
+            input = input,
         )
         if (!advanced) throw LabStageMovedOnException()
         return respond(
@@ -409,7 +425,10 @@ class LabService(
             roundNumber = LAB_ROUND_NUMBER,
             phaseTwoStartRound = if (phase == Phase.TWO) LAB_ROUND_NUMBER else null,
         )
-        val context = RoundContext(communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase)
+        val context = RoundContext(
+            communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase,
+            difficulty = labDifficulty(seed),
+        )
         if (!handle.isAvailable(context)) throw UnknownLabGameException("'${handle.id}' cannot draw here")
         return LabRound(
             seed = seed,
@@ -418,6 +437,18 @@ class LabService(
             award = award,
         )
     }
+
+    /** As in `RoundResponses`: a stored step the game no longer reads is answered with `null`, not a 500. */
+    private fun answerOf(handle: GameTypeHandle<*>, round: LabRound, stage: Int, input: JsonNode): GameStepAnswer? =
+        try {
+            handle.step(params = round.params, stage = stage, input = input)
+        } catch (e: InvalidStepException) {
+            logger.warn {
+                "lab seed ${round.seed} ${round.phase}: '${handle.id}' rejects stored step $stage (${e.message}); " +
+                    "answered with null"
+            }
+            null
+        }
 
     private fun respond(
         communityId: UUID,
@@ -460,6 +491,7 @@ class LabService(
                     tally = VoteTally.of(entry.votes.values.toList()),
                 ),
                 adminOverride = entry.adminOverride,
+                steps = entry.steps,
             )
         }
 
@@ -469,6 +501,14 @@ class LabService(
         val revealed = !handle.requiresReveal(snapshot.round.params) ||
             store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
         val myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        // Answers are recomputed per response, never stored: `step` is pure, as in `RoundResponses`.
+        val mySteps = store.stepsOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+            .mapIndexed { i, input ->
+                LabStepDto(
+                    input = input.takeUnless { it.isNull },
+                    answer = answerOf(handle = handle, round = snapshot.round, stage = i, input = input),
+                )
+            }
         // Produced only once the tester has revealed: no key opens before, and producing may download.
         val assetKeys = if (!revealed) {
             emptyMap()
@@ -486,6 +526,7 @@ class LabService(
             displayName = handle.displayName,
             awardRule = snapshot.round.award.rule,
             awardPoints = snapshot.round.award.points,
+            difficulty = labDifficulty(snapshot.round.seed),
             scoresOnDuration = handle.scoresOnDuration(snapshot.round.params),
             scene = handle.scene(snapshot.round.params),
             // Withheld until revealed, the same way solution is withheld until guessed: for a game
@@ -504,6 +545,7 @@ class LabService(
             // from the product — the lab models no roles anywhere.
             canOverride = true,
             assetKeys = assetKeys,
+            mySteps = mySteps,
         )
     }
 
@@ -522,3 +564,10 @@ class LabService(
         const val LAB_ROUND_NUMBER = 12
     }
 }
+
+/**
+ * The lab round's difficulty: `0.0` to `1.0` in tenths, from the seed — a new seed rolls it too.
+ * Not from [GameRandom]: a draw from one of its streams would shift everything the game draws
+ * after it. `mod` is never negative, so seed `-1` is `1.0`.
+ */
+internal fun labDifficulty(seed: Int): Double = seed.mod(11) / 10.0

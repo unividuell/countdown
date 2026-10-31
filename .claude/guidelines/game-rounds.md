@@ -120,6 +120,11 @@ visibility), a media type, plain bytes, and exactly one visibility.
   of an announce materialise: `exists` spares the second, and the unique key means the loser's rows —
   random keys — can never replace the winner's. Nothing frees them before the edition is archived (a
   single `DELETE`, not built), so the table grows with every round and history has all the round had.
+- **A failure per asset omits the asset, it never throws.** `produceAssets` runs inside
+  `materialise`'s transaction: a throw rolls back the whole announce — no round row, the announcing
+  `GET` fails, the daily schedule logs a warning and skips it, and every retry draws anew, possibly
+  another game. One broken asset must not cost the round: log a warning and leave it out. Peilung's
+  clip that is gone from the pool leaves its place silent, the other clip still sounds.
 - **Sealed ahead, key with the stage.** A stage asset may be fetched before its stage, so the bytes
   travel under the reveal cover and no transfer lands on the scored clock (the opening still does); the
   stage that opens it brings the key (`assetKeys` in the round response, never in the payload — the
@@ -295,26 +300,55 @@ dozen two-column rows, once per round.
 A game whose content may be absent says so in `isAvailable(context)`; the selection draws among the
 available ones only, and the lab answers 404 for the others.
 
+## Difficulty: the framework says how hard, the game says what that means
+
+`RoundContext.difficulty` is a number from `0.0` to `1.0`; the game decides what it changes (Peilung:
+one clip or two). `difficultyOf` (`Difficulty.kt`) is its one source for a real round, so every game
+gets the same curve:
+
+- **A game's first appearance in the edition is `0.0`**, however late it comes — whoever meets a game
+  for the first time is learning it. After that it climbs linearly with the edition's progress.
+- **Not stored; only its effect is.** The game draws with it into `params`, and `params` freeze at
+  materialisation, so changing the curve later alters no round already announced.
+- **`0.0` is the default.** A caller that says nothing gets the easiest round; `isAvailable` and the
+  game selection run before a type is chosen and see `0.0`, so availability must not depend on it.
+
 ## Stages generalise the framework, not the game
 
 `round_plays.stage` belongs to the framework, not to any one game: a single-stage game (Guess Hue)
-just always writes the constant `0`. For a staged round, the recorded `deviation` **is** the stage —
-the framework overrides whatever the game returns with the stage number, and the game's own
-`deviation` is a meaningless `0.0` that never reaches storage. "A wrong guess below the last stage
-advances the round instead of recording it" is not universal — it holds only under `ALL_QUALIFYING`;
-`CLOSEST_ONLY` (phase two) is always terminal on the first guess, whatever the stage, because only one
-guess ever counts. The pure decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so
-the lab replays the exact rule a real round applies instead of a copy of it.
+just always writes the constant `0`. For a staged round whose stages score (`stagesScore`, below), the
+recorded `deviation` **is** the stage — the framework overrides whatever the game returns with the
+stage number, and the game's own `deviation` is a meaningless `0.0` that never reaches storage. "A
+wrong guess below the last stage advances the round instead of recording it" is not universal — it
+holds only where stages score and only under `ALL_QUALIFYING`; `CLOSEST_ONLY` (phase two) is always
+terminal on the first guess, whatever the stage, because only one guess ever counts. The pure
+decision lives in one place, `guessActionFor` in `PlayFlow.kt`, exposed so the lab replays the exact
+rule a real round applies instead of a copy of it.
 
 A `scoresOnDuration` game is the second case of the same shape: `PlayService.guess` overrides
 `deviation` with the reveal-to-guess duration, and the game's own `deviation` never reaches storage
 there either — same reasoning as the stage override, and for the same reason it belongs to the
 framework and not the game: a game judges its own content, but the round's timing is framework state.
-A game may *check* a time claim against the span (see above), never *score* on it. `PlayService.guess`'s `when` checks stage,
-then reveal duration, then the game's own `deviation`, in that order — and all three ride on the one
+A game may *check* a time claim against the span (see above), never *score* on it.
+`PlayService.guess`'s `when` checks `stagesScore` (then the stage is the deviation), then reveal
+duration, then the game's own `deviation`, in that order — and all three ride on the one
 `deviation` column rather than a column each, because `deviation` is already the single comparison
 value `pointsFor` and `CLOSEST_ONLY` both read.
 
 Giving up is `guessed_at`
 set with no `guess` — re-evaluation reads that as not qualifying, awards zero points, and opens the
 solution gate the same way a judged-and-lost guess would.
+
+**A stage can carry data: the step.** `GameType.step(params, stage, input)` answers one move of the
+ladder (Peilung's ping, with the tapped point as `input`). The player's `input` is stored, the answer
+never is: `step` is pure, so every response recomputes it from the frozen params. `round_plays.steps`
+holds exactly one entry per stage — JSON `null` for a step without input — so `steps.size == stage`
+and the answer to stage `i` is `step(params, i, steps[i])`. Stage and input are written in one
+statement, both or neither. `MyPlayDto.steps` carries input and answer (`StepDto`),
+`OtherPlayDto.steps` only the inputs: what the others did, not what it told them. JSON `null` reaches
+`GameTypeHandle` as Jackson's `NullNode`, which it turns into Kotlin `null` before a game sees it.
+
+`stagesScore(params)` separates two meanings a ladder used to have at once: **stages are the score**
+(Anspielung: a wrong guess costs a stage, the stage is the deviation) versus **stages count steps**
+(Peilung: three pings, then one guess `judge` scores as in a single-stage game). `guessActionFor`
+takes it as a parameter without a default — a caller that forgets it must not compile.

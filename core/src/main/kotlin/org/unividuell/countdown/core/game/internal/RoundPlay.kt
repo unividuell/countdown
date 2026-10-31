@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 import org.unividuell.countdown.core.game.AwardRule
 import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.JsonNodeFactory
 import java.time.Instant
 import java.util.UUID
 
@@ -30,6 +31,11 @@ data class RoundPlay(
     val revealCount: Int = 1,
     /** Staged progression, 0-based. Advanced by skip or (phase one) a wrong non-terminal guess. */
     val stage: Int = 0,
+    /**
+     * One input per stage stepped, JSON `null` for a step without one. A [JsonNode] array, not a
+     * `List`: Spring Data JDBC would map a `List` as a relation.
+     */
+    val steps: JsonNode = JsonNodeFactory.instance.arrayNode(),
     val guess: JsonNode? = null,
     val guessedAt: Instant? = null,
     val qualifies: Boolean? = null,

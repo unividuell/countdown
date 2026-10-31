@@ -1,6 +1,7 @@
 package org.unividuell.countdown.core.gamelab.internal
 
 import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.NullNode
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
@@ -56,6 +57,8 @@ data class LabEntry(
     val votes: Map<UUID, Vote> = emptyMap(),
     /** The game master's verdict, or `null` when nobody has set one. */
     val adminOverride: Boolean? = null,
+    /** The inputs of this tester's steps, in order — one per stage, JSON `null` for a step without. */
+    val steps: List<JsonNode> = emptyList(),
 )
 
 /** The state of a lab round after an operation, plus whether that operation displaced another round. */
@@ -94,6 +97,8 @@ class LabRoundStore(private val clock: Clock) {
         val counter = AtomicLong()
         /** Per-tester staged progress — the lab's stand-in for round_plays.stage. */
         val stages = ConcurrentHashMap<UUID, Int>()
+        /** The input of every step per tester — the lab's stand-in for round_plays.steps. */
+        val steps = ConcurrentHashMap<UUID, List<JsonNode>>()
         /** First open per tester — the lab's `revealed_at`. A reload must not restart it. */
         val openedAt = ConcurrentHashMap<UUID, Instant>()
         /** Peer review: target -> voter -> value. Cleared with everything else. */
@@ -146,6 +151,18 @@ class LabRoundStore(private val clock: Clock) {
     }
 
     /**
+     * The inputs of this tester's steps, in order. A peek, like [stageOf]: empty for a tester who has
+     * not stepped yet or whose request no longer matches the stored round, and it never evicts.
+     */
+    fun stepsOf(communityId: UUID, gameId: String, round: LabRound, userId: UUID): List<JsonNode> {
+        val stored = rounds[Key(communityId, gameId)] ?: return emptyList()
+        if (!matches(stored.frozen, round)) return emptyList()
+        synchronized(stored) {
+            return stored.steps[userId].orEmpty()
+        }
+    }
+
+    /**
      * Start this tester's clock, once. `putIfAbsent`, so a reload keeps the first stamp — the same
      * property `revealed_at` has in a real round.
      */
@@ -182,13 +199,28 @@ class LabRoundStore(private val clock: Clock) {
         }
     }
 
-    /** true when the expected stage still held — the same zero-rows idiom, in memory. */
-    fun advanceStage(communityId: UUID, gameId: String, round: LabRound, userId: UUID, expected: Int): Boolean {
+    /**
+     * true when the expected stage still held and the tester has no entry yet — the same zero-rows
+     * idiom, in memory. Appends [input] in the same step as the stage, `null` as JSON `null`: one
+     * input per stage, so `steps.size == stage` always holds.
+     */
+    fun advanceStage(
+        communityId: UUID,
+        gameId: String,
+        round: LabRound,
+        userId: UUID,
+        expected: Int,
+        input: JsonNode?,
+    ): Boolean {
         val (stored, _) = openRound(Key(communityId, gameId), round)
-        // Same lock as record(): a raced skip or a raced wrong guess must not both advance the stage.
+        // Same lock as record(): a raced skip or a raced wrong guess must not both advance the stage,
+        // and a step must not slip in behind the guess — the real UPDATE's `guessed_at IS NULL`.
         synchronized(stored) {
             if ((stored.stages[userId] ?: 0) != expected) return false
+            if (stored.entries.containsKey(userId)) return false
             stored.stages[userId] = expected + 1
+            // `listOf(…)`, not `+ node`: a JsonNode is an Iterable, so a bare `+` would append its children.
+            stored.steps[userId] = stored.steps[userId].orEmpty() + listOf(input ?: NullNode.instance)
             return true
         }
     }
@@ -246,6 +278,7 @@ class LabRoundStore(private val clock: Clock) {
                 at = at,
                 stage = stored.stages[userId] ?: 0,
                 durationMs = if (timed) durationMs else null,
+                steps = stored.steps[userId].orEmpty(),
             )
             // putIfAbsent, not put: one guess per player and round is the real game's rule, enforced
             // here so the lab exercises it. Repeating a round is what the two reset actions are for.
@@ -266,6 +299,7 @@ class LabRoundStore(private val clock: Clock) {
             // Everybody replays from stage 0 — a reset that kept old stages would let a tester who
             // had advanced skip straight past assets a fresh player has not unlocked yet.
             stored.stages.clear()
+            stored.steps.clear()
             stored.openedAt.clear()
             stored.votes.clear()
             stored.overrides.clear()
@@ -283,6 +317,7 @@ class LabRoundStore(private val clock: Clock) {
             // The forgotten tester is back in front of the gate at stage 0 too — otherwise deleting a
             // guess would still leave them standing on whatever stage they had advanced to.
             stored.stages.remove(userId)
+            stored.steps.remove(userId)
             stored.openedAt.remove(userId)
             // The votes cast on this tester's own tip go with it, and so do the ballots this tester
             // cast on everybody else's — they are back in front of the gate at stage 0, with no

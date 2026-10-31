@@ -15,11 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.audiopool.AudioPoolQuery
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
+import org.unividuell.countdown.core.echolocate.pcmWav
 import org.unividuell.countdown.core.findpattern.FindPatternLayout
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GameCatalog
@@ -33,6 +35,7 @@ import org.unividuell.countdown.core.gamelab.internal.LabAssetNotFoundException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
 import org.unividuell.countdown.core.gamelab.internal.LabService
+import org.unividuell.countdown.core.gamelab.internal.labDifficulty
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
@@ -73,8 +76,12 @@ class LabServiceTest(
     // Entstauber draws from the image pool; one fake image keeps it drawable and off the database.
     @MockkBean lateinit var pool: ImagePoolQuery
 
+    // Peilung draws from the audio pool; one short clip keeps it available and off the database.
+    @MockkBean lateinit var audio: AudioPoolQuery
+
     private val communityId = UUID.randomUUID()
     private val LAB_IMAGE = UUID.fromString("0190f1b2-0000-7000-8000-00000000da7a")
+    private val LAB_CLIP = UUID.fromString("0190f1b2-0000-7000-8000-00000000c11b")
     private val alice = User(id = UUID.randomUUID(), subject = "1", githubLogin = "alice")
     private val bob = User(id = UUID.randomUUID(), subject = "2", githubLogin = "bob")
     private val aliceId = requireNotNull(alice.id)
@@ -100,6 +107,9 @@ class LabServiceTest(
         every { pool.displaySize(LAB_IMAGE) } returns ImageSize(width = 400, height = 300)
         every { pool.displayed(id = LAB_IMAGE, minShortEdge = any()) } returns
             BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB)
+        every { audio.candidateIds(any()) } returns listOf(LAB_CLIP)
+        every { audio.wav(LAB_CLIP) } returns
+            pcmWav(interleaved = ShortArray(800) { 1_000 }, channels = 1, sampleRate = 8_000)
         return community to TwoMembers(me = aliceId, other = bobId)
     }
 
@@ -115,6 +125,7 @@ class LabServiceTest(
         "place-patch" -> mapper.readTree("""{"x":0,"y":0}""")
         "copy-blocks" -> mapper.readTree("""{"blocks":[{"x":0,"y":0,"z":0,"type":"DIRT"}]}""")
         "paint-ratio" -> mapper.readTree("""{"strokes":[{"brush":0,"color":"#000000","points":[600,450]}]}""")
+        "echo-locate" -> mapper.readTree("""{"pins":[{"x":1.5,"y":1.5}],"rings":[]}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
@@ -160,6 +171,29 @@ class LabServiceTest(
         response.me.shouldBeNull()
         response.others.shouldBeEmpty()
         response.tookOverRound shouldBe false
+    }
+
+    @Test
+    fun `the lab's difficulty follows the seed in tenths`() {
+        labDifficulty(0) shouldBe 0.0
+        labDifficulty(42) shouldBe 0.9
+        labDifficulty(10) shouldBe 1.0
+        labDifficulty(11) shouldBe 0.0
+        labDifficulty(-1) shouldBe 1.0
+        (labDifficulty(Int.MIN_VALUE) in 0.0..1.0) shouldBe true
+        (labDifficulty(Int.MAX_VALUE) in 0.0..1.0) shouldBe true
+    }
+
+    @Test
+    fun `the lab response carries the round's difficulty`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val response = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        response.difficulty shouldBe 0.9
     }
 
     @Test

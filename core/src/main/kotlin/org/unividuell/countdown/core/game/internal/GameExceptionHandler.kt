@@ -5,6 +5,7 @@ import org.springframework.http.ProblemDetail
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.unividuell.countdown.core.game.InvalidGuessException
+import org.unividuell.countdown.core.game.InvalidStepException
 
 @RestControllerAdvice(basePackages = ["org.unividuell.countdown.core.game.internal"])
 class GameExceptionHandler {
@@ -16,7 +17,7 @@ class GameExceptionHandler {
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
-    @ExceptionHandler(InvalidGuessException::class)
+    @ExceptionHandler(InvalidGuessException::class, InvalidStepException::class)
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 

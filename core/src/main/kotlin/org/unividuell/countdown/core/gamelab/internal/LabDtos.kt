@@ -6,6 +6,7 @@ import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameSolution
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.Vote
 import org.unividuell.countdown.core.iam.Avatar
@@ -43,7 +44,15 @@ data class LabEntryDto(
     val struck: Boolean = false,
     /** The game master's verdict, shown openly: it would otherwise be the one hidden move. */
     val adminOverride: Boolean? = null,
+    /**
+     * The inputs only, without the answers — mirrors `OtherPlayDto.steps`: what a reveal needs is
+     * where this tester stepped, not what each step told them.
+     */
+    val steps: List<JsonNode> = emptyList(),
 )
+
+/** One step of the viewer's own: what they sent, and the game's answer to it, recomputed. */
+data class LabStepDto(val input: JsonNode?, val answer: GameStepAnswer?)
 
 /**
  * Every endpoint answers with this, so the client can redraw after any action without a second
@@ -61,6 +70,8 @@ data class LabRoundResponse(
     val displayName: String,
     val awardRule: AwardRule,
     val awardPoints: Int,
+    /** How hard the round is, `0.0` to `1.0` — from the seed, see `labDifficulty`. */
+    val difficulty: Double,
     /** Whether the band's stopwatch runs for this game — mirrors `GameDto.scoresOnDuration`. */
     val scoresOnDuration: Boolean,
     /** Before the reveal and after it alike — mirrors `RoundResponse.scene`. */
@@ -91,10 +102,12 @@ data class LabRoundResponse(
     val canOverride: Boolean = true,
     /** The keys this tester's state opens, by asset name — mirrors `RoundResponse.assetKeys`. */
     val assetKeys: Map<String, AssetKey> = emptyMap(),
+    /** The viewer's own steps with their recomputed answers — mirrors `MyPlayDto.steps`. */
+    val mySteps: List<LabStepDto> = emptyList(),
 )
 
 /** The body of a skip request — mirrors `SkipRequest` in the real round's `RoundDtos`. */
-data class LabSkipRequest(val fromStage: Int)
+data class LabSkipRequest(val fromStage: Int, val input: JsonNode? = null)
 
 /** `null` withdraws the ballot — mirrors `VoteRequest` in the real round's `RoundDtos`. */
 data class LabVoteRequest(val value: Vote?)

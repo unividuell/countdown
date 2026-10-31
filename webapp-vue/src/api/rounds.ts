@@ -29,11 +29,14 @@ export const submitGuess = (slug: string, roundNumber: number, guess: unknown) =
     body: JSON.stringify({ roundNumber, guess }),
   })
 
-/** [fromStage] is the stage the caller believes it is on — the server 409s a mismatch. */
-export const skipStage = (slug: string, roundNumber: number, fromStage: number) =>
+/**
+ * [fromStage] is the stage the caller believes it is on — the server 409s a mismatch. [input] is what
+ * the step carries; `undefined` drops out of the JSON, which is a step without one.
+ */
+export const skipStage = (slug: string, roundNumber: number, fromStage: number, input?: unknown) =>
   apiFetch<RoundResponse>(roundUrl(slug, '/skip'), {
     method: 'POST',
-    body: JSON.stringify({ roundNumber, fromStage }),
+    body: JSON.stringify({ roundNumber, fromStage, input }),
   })
 
 export const giveUpRound = (slug: string, roundNumber: number) =>

@@ -27,6 +27,7 @@ import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.NullNode
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -150,7 +151,7 @@ class PlayServiceStagedTest(
         play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
-            roundNumber = roundNumber, fromStage = 0,
+            roundNumber = roundNumber, fromStage = 0, input = null,
         )
 
         val res = play.guess(
@@ -171,7 +172,7 @@ class PlayServiceStagedTest(
         repeat(4) { i ->
             play.skip(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = roundNumber, fromStage = i,
+                roundNumber = roundNumber, fromStage = i, input = null,
             )
         }
 
@@ -205,21 +206,57 @@ class PlayServiceStagedTest(
         play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
-            roundNumber = roundNumber, fromStage = 0,
+            roundNumber = roundNumber, fromStage = 0, input = null,
         )
 
         shouldThrow<StageMovedOnException> {
             play.skip(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = roundNumber, fromStage = 0,
+                roundNumber = roundNumber, fromStage = 0, input = null,
             )
         }
         shouldThrow<StageMovedOnException> {
             play.skip(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = roundNumber, fromStage = 4,
+                roundNumber = roundNumber, fromStage = 4, input = null,
             )
         }
+    }
+
+    @Test
+    fun `a step without input still counts and stores null`() {
+        val (community, viewer) = aCommunity("Stage Step Null")
+        val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
+        play.skip(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = roundNumber, fromStage = 0, input = null,
+        )
+
+        // `"input": null` arrives as a NullNode, not as Kotlin null: still no input.
+        val res = play.skip(
+            slug = community.slug, userId = viewer, isSuperAdmin = false,
+            roundNumber = roundNumber, fromStage = 1, input = NullNode.instance,
+        )
+
+        res.me.shouldNotBeNull().stage shouldBe 2
+        res.me.shouldNotBeNull().steps.map { it.input } shouldBe listOf(null, null)
+    }
+
+    @Test
+    fun `a staged game refuses a step input`() {
+        val (community, viewer) = aCommunity("Stage Step Input")
+        val roundNumber = announceStaged(community = community, award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1))
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
+
+        shouldThrow<InvalidStepException> {
+            play.skip(
+                slug = community.slug, userId = viewer, isSuperAdmin = false,
+                roundNumber = roundNumber, fromStage = 0, input = mapper.readTree("""{"n":1}"""),
+            )
+        }
+        play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = roundNumber)
+            .me.shouldNotBeNull().stage shouldBe 0
     }
 
     @Test
@@ -240,7 +277,7 @@ class PlayServiceStagedTest(
         play.reveal(slug = community.slug, userId = bob, isSuperAdmin = false, roundNumber = roundNumber)
         play.skip(
             slug = community.slug, userId = bob, isSuperAdmin = false,
-            roundNumber = roundNumber, fromStage = 0,
+            roundNumber = roundNumber, fromStage = 0, input = null,
         )
         val afterBob = play.guess(
             slug = community.slug, userId = bob, isSuperAdmin = false,

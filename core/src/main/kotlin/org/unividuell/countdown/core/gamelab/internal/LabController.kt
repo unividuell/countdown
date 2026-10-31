@@ -98,7 +98,10 @@ class LabController(private val service: LabService) {
         userId = me.id, isSuperAdmin = me.isSuperAdmin,
     )
 
-    /** Voluntary stage advance — „mehr hören“. Guarded by the stage the client believes it is on. */
+    /**
+     * Voluntary stage advance — „mehr hören“, or a step that carries input. Guarded by the stage the
+     * client believes it is on.
+     */
     @PostMapping("/skip")
     fun skip(
         @AuthenticationPrincipal me: AuthenticatedUser,
@@ -109,7 +112,7 @@ class LabController(private val service: LabService) {
         @RequestBody body: LabSkipRequest,
     ) = service.skip(
         slug = slug, gameId = game, seed = seed, phase = phase,
-        userId = me.id, isSuperAdmin = me.isSuperAdmin, fromStage = body.fromStage,
+        userId = me.id, isSuperAdmin = me.isSuperAdmin, fromStage = body.fromStage, input = body.input,
     )
 
     /** The explicit exit without an answer. */

@@ -66,6 +66,11 @@ holds.
 It is **application-scoped, not session-scoped**: a session-bound store would hide every tester's
 guess from every other tester, which is exactly what multi-player testing needs to see.
 
+**Difficulty follows from the seed** (`labDifficulty`, `seed.mod(11) / 10.0`), not from a control of
+its own: a harder round is another seed, and the seed already is the round's key. It is not drawn from
+`GameRandom` — one more draw from a stream would shift everything the game draws after it. `mod`,
+not `%`: it is never negative, so a negative seed stays in `[0, 1]`.
+
 ## The lab adapts to a clock the same way it adapted to everything else
 
 The lab had no notion of time at all until a time-scored game needed one to review. It did not gain a

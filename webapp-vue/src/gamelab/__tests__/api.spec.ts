@@ -6,6 +6,7 @@ import {
   labAssetUrl,
   openLabRound,
   resetLabRound,
+  skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
 import type { LabRoundResponse } from '@/gamelab/types'
@@ -25,6 +26,14 @@ describe('gamelab api', () => {
     expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/guess?seed=42&phase=ONE', {
       method: 'POST',
       body: '{"value":123}',
+    })
+  })
+
+  it('sends the lab step input', async () => {
+    await skipLabStage('team', 'stub', 42, 'ONE', 1, { x: 1, y: 2 })
+    expect(client.apiFetch).toHaveBeenCalledWith('/api/lab/team/stub/skip?seed=42&phase=ONE', {
+      method: 'POST',
+      body: '{"fromStage":1,"input":{"x":1,"y":2}}',
     })
   })
 
@@ -62,12 +71,13 @@ describe('gamelab api', () => {
   it('reads lab assets from the round it was opened with', () => {
     const round = {
       seed: 42,
+      phase: 'TWO',
       assetKeys: { photo: { key: 'a2V5', mediaType: 'image/jpeg' } },
     } as unknown as LabRoundResponse
 
-    const assets = labAssets('team', 'stub', 'ONE', round)
+    const assets = labAssets('team', 'stub', round)
 
-    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=ONE')
+    expect(assets.url('photo')).toBe('/api/lab/team/stub/assets/photo?seed=42&phase=TWO')
     expect(assets.key('photo')).toEqual({ key: 'a2V5', mediaType: 'image/jpeg' })
     expect(assets.key('solution')).toBeNull()
   })

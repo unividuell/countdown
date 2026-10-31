@@ -19,12 +19,15 @@ import org.unividuell.countdown.core.TEST_USER_ID
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
+import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.InvalidGuessException
+import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabRoundResponse
 import org.unividuell.countdown.core.gamelab.internal.LabService
+import org.unividuell.countdown.core.gamelab.internal.LabStepDto
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.principalFor
 
@@ -41,6 +44,8 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
     /** A stand-in payload: the controller only forwards what the (mocked) service returns. */
     private data class FakePayload(val note: String = "test") : GamePayload
 
+    private data class FakeAnswer(val note: String) : GameStepAnswer
+
     private fun aResponse(seed: Int = 42, phase: Phase = Phase.ONE, tookOver: Boolean = false) = LabRoundResponse(
         seed = seed,
         phase = phase,
@@ -48,6 +53,7 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
         displayName = "Farbausmalung",
         awardRule = AwardRule.ALL_QUALIFYING,
         awardPoints = 1,
+        difficulty = 0.0,
         scoresOnDuration = false,
         payload = FakePayload(),
         solution = null,
@@ -193,6 +199,80 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
             with(principalFor()); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
             content = """{"hue":400.0}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `POST skip hands the step's input to the service`() {
+        every {
+            service.skip(
+                slug = "team", gameId = "echo-locate", seed = 42, phase = Phase.ONE,
+                userId = uid, isSuperAdmin = false, fromStage = 1, input = mapper.readTree("""{"x":7.5,"y":3.0}"""),
+            )
+        } returns aResponse(seed = 42)
+
+        mockMvc.post("/api/lab/team/echo-locate/skip?seed=42") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"fromStage":1,"input":{"x":7.5,"y":3.0}}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `the response carries my steps with their answers`() {
+        every {
+            service.skip(
+                slug = "team", gameId = "echo-locate", seed = 42, phase = Phase.ONE,
+                userId = uid, isSuperAdmin = false, fromStage = 0, input = any(),
+            )
+        } returns aResponse(seed = 42).copy(
+            mySteps = listOf(
+                LabStepDto(input = mapper.readTree("""{"x":7.5}"""), answer = FakeAnswer(note = "echo")),
+                LabStepDto(input = null, answer = null),
+            ),
+        )
+
+        mockMvc.post("/api/lab/team/echo-locate/skip?seed=42") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"fromStage":0,"input":{"x":7.5}}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.mySteps[0].input.x") { value(7.5) }
+            jsonPath("$.mySteps[0].answer.note") { value("echo") }
+            jsonPath("$.mySteps[1].input") { value(null) }
+        }
+    }
+
+    @Test
+    fun `POST skip without an input passes none`() {
+        every {
+            service.skip(
+                slug = "team", gameId = "song-snippet", seed = 42, phase = Phase.ONE,
+                userId = uid, isSuperAdmin = false, fromStage = 0, input = null,
+            )
+        } returns aResponse(seed = 42)
+
+        mockMvc.post("/api/lab/team/song-snippet/skip?seed=42") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"fromStage":0}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `POST skip 400s an input the game rejects`() {
+        every {
+            service.skip(
+                slug = "team", gameId = "echo-locate", seed = 42, phase = Phase.ONE,
+                userId = uid, isSuperAdmin = false, fromStage = 0, input = any(),
+            )
+        } throws InvalidStepException("x must lie in [0, 20], was 25.0")
+
+        mockMvc.post("/api/lab/team/echo-locate/skip?seed=42") {
+            with(principalFor()); with(withCsrfToken())
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"fromStage":0,"input":{"x":25.0,"y":3.0}}"""
         }.andExpect { status { isBadRequest() } }
     }
 

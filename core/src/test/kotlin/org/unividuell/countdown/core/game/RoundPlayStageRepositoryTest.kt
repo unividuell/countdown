@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.Community
@@ -20,6 +21,7 @@ import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.NullNode
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -35,6 +37,7 @@ class RoundPlayStageRepositoryTest(
     @Autowired val users: UserRepository,
     @Autowired val mapper: ObjectMapper,
     @Autowired val clock: Clock,
+    @Autowired val jdbc: JdbcTemplate,
 ) {
     private val revealedAt = Instant.parse("2026-08-12T10:00:00Z")
 
@@ -66,10 +69,10 @@ class RoundPlayStageRepositoryTest(
         val userId = aUser()
         plays.revealOrCount(roundGameId = roundGameId, userId = userId, revealedAt = revealedAt)
 
-        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0) shouldBe 1
+        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0, input = NullNode.instance) shouldBe 1
         plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)!!.stage shouldBe 1
         // same expected stage again: zero rows -- the idiom, not an error
-        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0) shouldBe 0
+        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0, input = NullNode.instance) shouldBe 0
     }
 
     @Test
@@ -80,7 +83,79 @@ class RoundPlayStageRepositoryTest(
         plays.revealOrCount(roundGameId = roundGameId, userId = userId, revealedAt = revealedAt)
 
         plays.giveUp(roundGameId = roundGameId, userId = userId, guessedAt = clock.instant()) shouldBe 1
-        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0) shouldBe 0
+        plays.advanceStage(roundGameId = roundGameId, userId = userId, expectedStage = 0, input = NullNode.instance) shouldBe 0
+    }
+
+    @Test
+    fun `advanceStage appends the input in the same statement`() {
+        val round = aRound("rp-stage-steps")
+        val roundGameId = requireNotNull(round.id)
+        val userId = aUser()
+        plays.revealOrCount(roundGameId = roundGameId, userId = userId, revealedAt = revealedAt)
+
+        plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = 0, input = json("""{"x":1.5,"y":2.5}"""),
+        ) shouldBe 1
+        plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = 1, input = NullNode.instance,
+        ) shouldBe 1
+
+        val row = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)!!
+        row.stage shouldBe 2
+        row.steps shouldBe json("""[{"x":1.5,"y":2.5},null]""")
+    }
+
+    @Test
+    fun `the steps migration gives a play from before one null per stage`() {
+        val round = aRound("rp-stage-steps-backfill")
+        val roundGameId = requireNotNull(round.id)
+        val stepped = aUser()
+        val unstepped = aUser()
+        plays.revealOrCount(roundGameId = roundGameId, userId = stepped, revealedAt = revealedAt)
+        plays.revealOrCount(roundGameId = roundGameId, userId = unstepped, revealedAt = revealedAt)
+        repeat(2) { stage ->
+            plays.advanceStage(
+                roundGameId = roundGameId, userId = stepped, expectedStage = stage, input = json("""{"x":1}"""),
+            ) shouldBe 1
+        }
+        // As the column's default left them: stage 2, no steps.
+        jdbc.update("UPDATE game.round_plays SET steps = '[]' WHERE round_game_id = ?", roundGameId)
+
+        jdbc.update("${backfill()} AND round_game_id = ?", roundGameId)
+
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = stepped)!!.steps shouldBe
+            json("[null,null]")
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = unstepped)!!.steps shouldBe json("[]")
+    }
+
+    /** The `UPDATE` of V6 as written, without its comments; it ends on its `WHERE`. */
+    private fun backfill(): String =
+        requireNotNull(javaClass.getResource("/db/migration/game/V6__round_play_steps.sql")).readText()
+            .lines().filterNot { it.trimStart().startsWith("--") }.joinToString(separator = "\n")
+            .split(";").map { it.trim() }.single { it.startsWith("UPDATE") }
+
+    @Test
+    fun `a refused advance appends nothing`() {
+        val round = aRound("rp-stage-steps-refused")
+        val roundGameId = requireNotNull(round.id)
+        val userId = aUser()
+        plays.revealOrCount(roundGameId = roundGameId, userId = userId, revealedAt = revealedAt)
+        plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = 0, input = json("""{"x":1}"""),
+        ) shouldBe 1
+
+        plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = 0, input = json("""{"x":2}"""),
+        ) shouldBe 0
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)!!.steps shouldBe
+            json("""[{"x":1}]""")
+
+        plays.giveUp(roundGameId = roundGameId, userId = userId, guessedAt = clock.instant()) shouldBe 1
+        plays.advanceStage(
+            roundGameId = roundGameId, userId = userId, expectedStage = 1, input = json("""{"x":3}"""),
+        ) shouldBe 0
+        plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)!!.steps shouldBe
+            json("""[{"x":1}]""")
     }
 
     @Test
