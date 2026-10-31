@@ -212,15 +212,15 @@ export function settle(state: FlowState, nowMs: number): FlowState {
   return endMs !== null && nowMs >= endMs ? { ...state, phase: idle(state) } : state
 }
 
-/** What a tap does right now, as the line under the field says it. */
+/** What a tap does right now, as the line under the field says it; closed, the cover says it. */
 export function statusLine(state: FlowState): string {
   switch (state.phase) {
     case 'closed':
-      return 'Antippen zum Starten'
+      return ''
     case 'loading':
       return 'Sonar lädt …'
     case 'pinging':
-      return `Ping + Markieren · noch ${state.pings - state.waves.length}`
+      return `1. Klick: Ping, 2. Klick: Markieren – noch ${state.pings - state.waves.length}`
     case 'wave':
       return 'Markieren'
     case 'pinning':

@@ -8,6 +8,10 @@
       Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort
       ankommt.
     </li>
+    <li>
+      Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping
+      nicht.
+    </li>
     <li>Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen.</li>
     <li>Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.</li>
     <li>

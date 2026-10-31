@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
- * Playing Peilung: the count, the field, a line saying what a tap does now, the hold that hands in.
+ * Playing Peilung: the field, a line saying what a tap does now, the hold that hands in.
  *
- *   1 Spruch
  *   ┌──────────────┐
- *   │  SonarField  │   covered until its cover is clicked
+ *   │  SonarField  │   covered until its cover is clicked; the cover names the count
  *   └──────────────┘
- *   Ping + Markieren · noch 3
+ *   1. Klick: Ping, 2. Klick: Markieren – noch 3
  *        ( Abgeben )   once every clip has its pin
  *
  * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
@@ -97,7 +96,6 @@ const flow = shallowRef<FlowState>(fresh())
 
 const status = computed(() => statusLine(flow.value))
 const canHandIn = computed(() => !props.disabled && guessOf(flow.value) !== null)
-const count = computed(() => (props.payload.clips === 1 ? '1 Spruch' : '2 Sprüche'))
 
 /** Cleared on unmount: a load or an answer that resolves later must start nothing. */
 let alive = true
@@ -347,9 +345,9 @@ onBeforeUnmount(() => {
 <template>
   <div data-test="echo-locate-board" class="flex flex-col gap-6">
     <div class="flex flex-col items-center gap-3">
-      <p class="text-sm font-semibold text-neutral-700">{{ count }}</p>
       <SonarField
         class="self-stretch"
+        :clips="props.payload.clips"
         :grid="props.payload.grid"
         :speed="props.payload.speed"
         :reach="props.payload.reach"
@@ -362,7 +360,8 @@ onBeforeUnmount(() => {
         @tap="onTap"
         @start="onStart"
       />
-      <p data-test="echo-locate-status" aria-live="polite" class="text-center text-lg">
+      <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
+      <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
         {{ status }}
       </p>
 

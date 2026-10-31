@@ -23,6 +23,8 @@ import { toCell, waveRadius } from './sonar'
 import type { Cell, EchoLocateSolution, NoiseKind, Point } from './types'
 
 const props = defineProps<{
+  /** How many sayings hide in the field; the cover names them. */
+  clips?: number
   grid: number
   /** Cells per second. */
   speed: number
@@ -359,10 +361,13 @@ watch(
       v-if="props.covered"
       type="button"
       :disabled="props.disabled"
-      class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-lg bg-black/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+      class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg bg-black/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
       @click="emit('start')"
     >
-      Antippen zum Starten
+      <span v-if="props.clips" class="text-base font-normal text-white/80">
+        {{ props.clips === 1 ? '1 Spruch' : `${props.clips} Sprüche` }}
+      </span>
+      <span>Antippen zum Starten</span>
     </button>
   </div>
 </template>

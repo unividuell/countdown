@@ -484,7 +484,8 @@ aus dem Ablauf (Clemens, 2026-10-28).
 
 - Abstrakte, dunkle Fläche, Punkt-Raster an den Zellmitten, kaum sichtbar. Funken unter dem Finger
   ohne jede Information über den Ton.
-- Über dem Feld immer die Anzahl: „1 Spruch“ oder „2 Sprüche“.
+- Die Anzahl, „1 Spruch“ oder „2 Sprüche“, steht auf der Abdeckung über „Antippen zum Starten“
+  (Clemens, 2026-10-31).
 
 **Der Ablauf, alles per Tipp aufs Feld:**
 
@@ -507,8 +508,9 @@ zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping … (bis alle 
    fehlen; ein Tipp auf einen Pin (näher als 1,2 Zellen) hebt ihn ab. Mit allen Pins sind weitere Tipps
    daneben wirkungslos.
 
-**Unter dem Feld** eine Zeile, die sagt, was ein Tipp gerade tut (Wortlaut meine Festlegung):
-„Ping + Markieren · noch 2“, während einer Welle „Markieren“, danach „Schätzung · Pins 1/2“.
+**Unter dem Feld** eine Zeile, die sagt, was ein Tipp gerade tut (Wortlaut meine Festlegung, der erste
+von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren – noch 2“, während einer Welle
+„Markieren“, danach „Schätzung · Pins 1/2“. Unter der Abdeckung bleibt sie leer und behält ihre Höhe.
 **Darunter** der `HoldButton` „Abgeben“, aktiv, sobald genau `clips` Pins stehen.
 - **Abgeben:** Halten schickt `{pins, rings}` — die Pins und die Radien der eigenen Ringe, je Ping.
 - **Neuladen:** Die Pings kommen vom Server (`steps`), ihre Mitten stehen wieder da; Ringe und Pin aus
@@ -549,6 +551,7 @@ Feinabstimmung im Labor.
 `InfoBox` mit Storage-Key `echo-locate`. Kurztext: „Irgendwo im Nebel steckt ein Spruch. Peil ihn an.“
 
 - Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.
+- Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.
 - Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen.
 - Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.
 - Später in der Edition stecken manchmal zwei Sprüche im Nebel. Dann darfst du pro Welle zweimal

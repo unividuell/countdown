@@ -220,7 +220,7 @@ describe('locked', () => {
     const covered = locked(marked)
 
     expect(covered.phase).toBe('closed')
-    expect(statusLine(covered)).toBe('Antippen zum Starten')
+    expect(statusLine(covered)).toBe('')
     expect(unlocked(covered)).toEqual(marked)
   })
 
@@ -251,7 +251,7 @@ describe('refused', () => {
     expect(after.pending).toBeNull()
     expect(after.waves).toEqual(before.waves)
     expect(after.rings).toEqual(before.rings)
-    expect(statusLine(after)).toBe('Ping + Markieren · noch 3')
+    expect(statusLine(after)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
   })
 
   it('keeps what is already pinged', () => {
@@ -313,7 +313,7 @@ describe('synced', () => {
     expect(state.waves).toEqual([{ at: lost, startMs: null, endMs: null }])
     expect(state.rings).toEqual([[]])
     expect(state.phase).toBe('pinging')
-    expect(statusLine(state)).toBe('Ping + Markieren · noch 2')
+    expect(statusLine(state)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
   })
 
   it('moves on to the pins when that was the last ping', () => {
@@ -379,12 +379,12 @@ describe('initialFlow', () => {
 })
 
 describe('statusLine', () => {
-  it('follows the status line', () => {
+  it('follows the status line, empty while the cover says it', () => {
     const closed = fresh()
-    expect(statusLine(closed)).toBe('Antippen zum Starten')
+    expect(statusLine(closed)).toBe('')
 
     const pinging = opened()
-    expect(statusLine(pinging)).toBe('Ping + Markieren · noch 3')
+    expect(statusLine(pinging)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
 
     const loading = tap(pinging, FIELD, 500, SPEED).state
     expect(statusLine(loading)).toBe('Sonar lädt …')
@@ -392,7 +392,7 @@ describe('statusLine', () => {
     const wave = landed(loading, 1000, 9000)
     expect(statusLine(wave)).toBe('Markieren')
 
-    expect(statusLine(settle(wave, 9000))).toBe('Ping + Markieren · noch 2')
+    expect(statusLine(settle(wave, 9000))).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
 
     const pinning = spent(3, 2)
     expect(statusLine(pinning)).toBe('Schätzung · Pins 0/2')

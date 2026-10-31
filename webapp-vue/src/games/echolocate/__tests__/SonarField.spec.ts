@@ -179,6 +179,17 @@ describe('SonarField', () => {
     expect(cover.text()).toBe('Antippen zum Starten')
   })
 
+  it('names how many clips hide in the field, above „Antippen zum Starten“', () => {
+    const lines = (clips: number) =>
+      mountField({ covered: true, clips })
+        .get('button')
+        .findAll('span')
+        .map((line) => line.text())
+
+    expect(lines(1)).toEqual(['1 Spruch', 'Antippen zum Starten'])
+    expect(lines(2)).toEqual(['2 Sprüche', 'Antippen zum Starten'])
+  })
+
   // iOS counts a touch as a gesture from its end on: a pointerdown cannot start the graph.
   it('asks to start on a click of the cover, never on a pointerdown', async () => {
     const field = mountField({ covered: true })

@@ -209,9 +209,21 @@ describe('EchoLocateBoard', () => {
     Reflect.deleteProperty(document, 'visibilityState')
   })
 
-  it('shows how many clips hide in the field', () => {
-    expect(mountBoard().text()).toContain('1 Spruch')
-    expect(mountBoard({ payload: { ...PAYLOAD, clips: 2 } }).text()).toContain('2 Sprüche')
+  it('names how many clips hide in the field on its cover, not above it', () => {
+    const w = mountBoard()
+    expect(field(w).props('clips')).toBe(1)
+    expect(w.text()).not.toContain('1 Spruch')
+
+    expect(mountBoard({ payload: { ...PAYLOAD, clips: 2 } }).text()).not.toContain('2 Sprüche')
+    expect(mountBoard({}, { realField: true }).get('button').text()).toContain('1 Spruch')
+  })
+
+  // The cover says it already; the line keeps its height, so nothing jumps when it fills.
+  it('leaves the status line empty under the cover, at its height', () => {
+    const line = status(mountBoard())
+
+    expect(line.text()).toBe('')
+    expect(line.classes()).toContain('min-h-7')
   })
 
   // iOS takes a click as a gesture, a touch's pointerdown not: only then may the graph start.
@@ -222,7 +234,7 @@ describe('EchoLocateBoard', () => {
     try {
       const w = mountBoard({}, { realField: true })
       expect(field(w).props('covered')).toBe(true)
-      expect(status(w).text()).toBe('Antippen zum Starten')
+      expect(status(w).text()).toBe('')
 
       w.get<HTMLButtonElement>('button').element.click()
 
@@ -236,12 +248,12 @@ describe('EchoLocateBoard', () => {
       expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
       expect(w.emitted('skip')).toBeUndefined()
       expect(field(w).props('covered')).toBe(false)
-      expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
 
       // A late second click, from before the cover went: opened already, it pings nothing.
       await start(w)
       expect(w.emitted('skip')).toBeUndefined()
-      expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
       expect(sound.loadSounds).toHaveBeenCalledOnce()
     } finally {
       Reflect.deleteProperty(navigator, 'audioSession')
@@ -258,7 +270,7 @@ describe('EchoLocateBoard', () => {
     expect(sound.ctx.resume).not.toHaveBeenCalled()
     expect(sound.loadSounds).not.toHaveBeenCalled()
     expect(w.emitted('skip')).toBeUndefined()
-    expect(status(w).text()).toBe('Antippen zum Starten')
+    expect(status(w).text()).toBe('')
   })
 
   it('stays covered when the browser keeps the sound locked, and says so', async () => {
@@ -270,7 +282,7 @@ describe('EchoLocateBoard', () => {
 
     expect(warn).toHaveBeenCalledOnce()
     expect(field(w).props('covered')).toBe(true)
-    expect(status(w).text()).toBe('Antippen zum Starten')
+    expect(status(w).text()).toBe('')
   })
 
   it('opens the field only once the graph runs', async () => {
@@ -305,7 +317,7 @@ describe('EchoLocateBoard', () => {
 
     await start(w)
     expect(sound.ctx.resume).toHaveBeenCalledTimes(2)
-    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
   })
 
   // Pings are few and never repeat: one the graph cannot play would be gone unheard.
@@ -373,7 +385,7 @@ describe('EchoLocateBoard', () => {
     vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
     await flushPromises()
     expect(field(w).props('covered')).toBe(false)
-    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
     expect(engine().startBed).toHaveBeenCalledTimes(2)
   })
 
@@ -504,7 +516,7 @@ describe('EchoLocateBoard', () => {
     vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
     await nextTick()
 
-    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
   })
 
   it('gives up a ping the server did not take', async () => {
@@ -515,7 +527,7 @@ describe('EchoLocateBoard', () => {
     await w.setProps({ disabled: true })
     await w.setProps({ disabled: false })
 
-    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
     expect(field(w).props('waves')).toEqual([])
     expect(field(w).props('pending')).toBeNull()
   })
@@ -530,7 +542,7 @@ describe('EchoLocateBoard', () => {
 
     expect(engine().ping).not.toHaveBeenCalled()
     expect(field(w).props('waves')).toEqual([{ at: A, startMs: null, endMs: null }])
-    expect(status(w).text()).toBe('Ping + Markieren · noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
   })
 
   it('restores pings from the server and rings and pins from the draft', async () => {
@@ -560,7 +572,7 @@ describe('EchoLocateBoard', () => {
     expect(field(w).props('waves')).toEqual([])
     expect(field(w).props('rings')).toEqual([])
     expect(field(w).props('covered')).toBe(false)
-    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
 
     await tapAt(w, C)
     expect(w.emitted('skip')).toEqual([[0, C]])
@@ -575,7 +587,7 @@ describe('EchoLocateBoard', () => {
     await w.setProps({ steps: [] })
 
     expect(engine().hush).toHaveBeenCalledOnce()
-    expect(status(w).text()).toBe('Ping + Markieren · noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
   })
 
   it('starts over under the cover when it was never lifted', async () => {
@@ -663,7 +675,7 @@ describe('EchoLocateBoard', () => {
 
     await start(w)
     expect(sound.loadSounds).not.toHaveBeenCalled()
-    expect(status(w).text()).toBe('Antippen zum Starten')
+    expect(status(w).text()).toBe('')
 
     await w.setProps({ disabled: false })
     await start(w)
@@ -741,6 +753,16 @@ describe('EchoLocateBoard', () => {
     await flushPromises()
 
     expect(sound.engines).toHaveLength(0)
+  })
+
+  it('tells in the rules that a wave does not cross the whole field', () => {
+    const rules = mountBoard()
+      .findAll('li')
+      .map((item) => item.text())
+
+    expect(rules[1]).toBe(
+      'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
+    )
   })
 
   it('names the tolerance circle in the award box, never a cell', () => {
