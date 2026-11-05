@@ -38,6 +38,25 @@ describe('EditionCalendar', () => {
     expect(months).toEqual(['Nov.', 'Dez.'])
   })
 
+  it('shows one month label per column, the later month winning', () => {
+    // 2026-10-29 is a Thursday; Sun 1 Nov falls into the same week column.
+    const shared = editionCells(
+      {
+        startsAt: '2026-12-20T17:00:00Z',
+        zone: 'Europe/Berlin',
+        gamesFromRound: -30,
+        gamesUntilRound: 0,
+        phaseTwoStartRound: -7,
+      },
+      DateTime.fromISO('2026-10-29T11:00:00Z'),
+    )
+    const months = mount(EditionCalendar, { props: { cells: shared } }).findAll(
+      '[data-test="edition-month"]',
+    )
+
+    expect(months.map((m) => m.text())).toEqual(['Nov.', 'Dez.'])
+  })
+
   it('always shows the full legend', () => {
     const legend = mountCalendar()
       .findAll('[data-test="edition-legend"] li')

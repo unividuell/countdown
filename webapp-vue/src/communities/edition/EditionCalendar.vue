@@ -42,19 +42,24 @@ const padAfter = computed(() =>
     : 7 - ((padBefore.value + props.cells.length) % 7),
 )
 
-/** The month name goes above the column holding a month's first cell; the first column always has one. */
-const months = computed(() =>
-  props.cells.flatMap((c, i) =>
-    i === 0 || c.start.day === 1
-      ? [
-          {
-            column: Math.floor((padBefore.value + i) / 7) + 1,
-            label: c.start.setLocale('de').toFormat('MMM'),
-          },
-        ]
-      : [],
-  ),
-)
+/**
+ * The month name goes above the column holding a month's first cell; the first column always has
+ * one. A column gets at most one label: when the first cell and a 1st share a week, the later
+ * month wins.
+ */
+const months = computed(() => {
+  const byColumn = new Map<number, string>()
+  props.cells.forEach((c, i) => {
+    if (i === 0 || c.start.day === 1) {
+      byColumn.set(
+        Math.floor((padBefore.value + i) / 7) + 1,
+        c.start.setLocale('de').toFormat('MMM'),
+      )
+    }
+  })
+
+  return [...byColumn].map(([column, label]) => ({ column, label }))
+})
 
 const columns = computed(() => Math.ceil((padBefore.value + props.cells.length) / 7))
 
@@ -73,7 +78,15 @@ const detail = computed(() => {
   return parts.join(' · ')
 })
 
-const LEGEND = ['kein Spiel', 'Phase 1', 'Phase 2', 'Start', 'heute', 'ab hier fix']
+/** Legend entries; `sample` says how to draw the swatch, mirroring the cell styling. */
+const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
+  { label: 'kein Spiel', kind: 'none' },
+  { label: 'Phase 1', kind: 'phase-one' },
+  { label: 'Phase 2', kind: 'phase-two' },
+  { label: 'Start', kind: 'start' },
+  { label: 'heute', sample: 'today' },
+  { label: 'ab hier fix', sample: 'fix' },
+]
 </script>
 
 <template>
@@ -129,7 +142,20 @@ const LEGEND = ['kein Spiel', 'Phase 1', 'Phase 2', 'Start', 'heute', 'ab hier f
     <p data-test="edition-detail" class="min-h-5 text-sm text-neutral-700">{{ detail }}</p>
 
     <ul data-test="edition-legend" class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
-      <li v-for="l in LEGEND" :key="l">{{ l }}</li>
+      <li v-for="l in LEGEND" :key="l.label" class="flex items-center gap-1.5">
+        <span
+          class="relative flex size-4 items-center justify-center rounded"
+          :class="[
+            l.kind ? KIND_COLOR[l.kind] : 'bg-stone-200',
+            l.sample === 'today' ? 'ring-2 ring-neutral-900 ring-offset-1' : '',
+            l.sample === 'fix' ? 'border-l-4 border-red-600' : '',
+          ]"
+          aria-hidden="true"
+        >
+          <IconLock v-if="l.sample === 'fix'" class="size-3" />
+        </span>
+        {{ l.label }}
+      </li>
     </ul>
   </div>
 </template>
