@@ -52,7 +52,7 @@ open class EditionService(
 
     /**
      * Overwrites every admin-editable field of the active run; `gamesUntilRound` stays. A frozen run
-     * keeps its grid: start and zone are fixed, and the freeze point may only move earlier.
+     * keeps its grid: start and zone are fixed, and the first game round may move, but never so the run thaws.
      */
     @Transactional
     open fun replace(communityId: UUID, draft: EditionDraft): CommunityEdition {

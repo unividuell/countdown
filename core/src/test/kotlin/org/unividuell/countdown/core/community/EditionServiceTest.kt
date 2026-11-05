@@ -285,6 +285,18 @@ class EditionServiceTest {
     }
 
     @Test
+    fun `replace on a frozen run rejects a new zone`() {
+        every { repository.findActiveByCommunityId(communityId) } returns frozen
+
+        shouldThrow<EditionFrozenException> {
+            service.replace(
+                communityId = communityId,
+                draft = draft.copy(startsAt = frozen.startsAt, startsAtTimezone = "America/New_York", gamesFromRound = -45),
+            )
+        }
+    }
+
+    @Test
     fun `replace on a frozen run rejects thawing`() {
         every { repository.findActiveByCommunityId(communityId) } returns frozen
 
