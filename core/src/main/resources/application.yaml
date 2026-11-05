@@ -39,6 +39,34 @@ spring:
       # The size error must carry its handler, so each pool's scoped advice can name it TOO_LARGE.
       resolve-lazily: true
 
+# Metrics and traces go to the `lgtm` container in compose.yaml (Grafana: `docker compose port lgtm 3000`).
+# Its OTLP endpoints come from Boot's docker-compose support, not from here.
+management:
+  opentelemetry:
+    # One Grafana serves several projects and environments: these tell them apart.
+    resource-attributes:
+      "[service.namespace]": countdown
+      "[deployment.environment.name]": local
+  logging:
+    export:
+      otlp:
+        # Logs travel via the container's stdout, read by the collector, not via OTLP.
+        enabled: false
+  tracing:
+    sampling:
+      # Every request, so a log line always links to its trace; the traffic is small.
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        # Default 60 s makes the dashboard feel dead while clicking through the app.
+        step: 10s
+  metrics:
+    distribution:
+      # p95 latency per endpoint in Grafana.
+      percentiles-histogram:
+        http.server.requests: true
+
 unividuell:
   auth:
     # The Vue SPA handles 401 itself and echoes the XSRF-TOKEN cookie (auth lib README, "The SPA contract").

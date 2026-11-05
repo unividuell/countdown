@@ -123,6 +123,7 @@ prepare_spot_object_terms
 curl -fsSL "$BASE/compose.yaml" -o "$COMPOSE_FILE"
 
 docker network create edge 2>/dev/null || true
+docker network create monitoring 2>/dev/null || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
 docker image prune -f

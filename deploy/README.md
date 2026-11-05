@@ -21,6 +21,10 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   TLS is terminated by the shared **edge-caddy** (see `/opt/unividuell/edge-caddy`), which must be running and
   routing both hostnames to their respective `-web` containers. Stacks publish no host ports; they only join
   the external `edge` network.
+- Monitoring: postgres also joins the external `monitoring` network, which edge-caddy's `update.sh` creates —
+  deploy the edge first. `edge-lgtm` reads the database statistics as role `monitor`, created by the one-shot
+  `db-monitor-role` service from `MONITORING_DB_PASSWORD` (same value as `COUNTDOWN_DB_MONITOR_PASSWORD` in
+  edge-caddy's `.env`). Empty means no role and no database panels.
 - The organisation's GitHub App (`https://countdown.unividuell.org/login/oauth2/code/github` among its
   redirect URIs); its client ID is committed in `application-production.yaml`, its client secret goes
   into `.env.prod` as `GITHUB_CLIENT_SECRET`. Staging has no OAuth client at all — the backend refuses
