@@ -98,7 +98,7 @@ Ob das Formular eine eigene Route ist oder in der Seite aufklappt, entscheidet d
 | Start-Datum, Uhrzeit | ja | Siehe „Termin“. |
 | Zeitzone | ja | IANA-Region, Default `Europe/Berlin`. |
 | Erste Spielrunde | ja | Negative Zahl. Darunter das abgeleitete Datum („beginnt Do., 19. Nov. 18:00“). Siehe „Kein Sofortstart“. |
-| Phase 2 ab | nein | Negative Zahl. Leer: keine Phase 2. Darunter das abgeleitete Datum. |
+| Phase 2 ab | nein | Zahl ≤ 0, nicht vor der ersten Spielrunde. Leer: keine Phase 2. Darunter das abgeleitete Datum. |
 
 Eine Zeile unter den Rundenfeldern nennt den Nullpunkt (Runde `0` = letzter Tag vor dem Start).
 

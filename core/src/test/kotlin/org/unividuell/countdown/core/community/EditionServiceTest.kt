@@ -154,21 +154,55 @@ class EditionServiceTest {
     }
 
     @Test
-    fun `create rejects a phaseTwoStartRound that is not negative`() {
+    fun `create rejects a phaseTwoStartRound after round 0`() {
         openForCreate()
 
         shouldThrow<IllegalArgumentException> {
-            service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 0))
+            service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 1))
         }
     }
 
     @Test
-    fun `replace rejects a phaseTwoStartRound that is not negative`() {
+    fun `replace rejects a phaseTwoStartRound after round 0`() {
         openForReplace()
 
         shouldThrow<IllegalArgumentException> {
-            service.replace(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 0))
+            service.replace(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 1))
         }
+    }
+
+    @Test
+    fun `phase two may start on round 0`() {
+        openForCreate()
+
+        service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 0))
+            .phaseTwoStartRound shouldBe 0
+    }
+
+    @Test
+    fun `create rejects a phase two that starts before the first game round`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = -31))
+        }.message shouldBe "gamesFromRound (-30) must not be above phaseTwoStartRound (-31)"
+    }
+
+    @Test
+    fun `replace rejects a phase two that starts before the first game round`() {
+        openForReplace()
+
+        shouldThrow<IllegalArgumentException> {
+            service.replace(communityId = communityId, draft = draft.copy(phaseTwoStartRound = -31))
+        }
+    }
+
+    @Test
+    fun `phase two may start on the first game round`() {
+        openForCreate()
+
+        service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = -30))
+            .phaseTwoStartRound shouldBe -30
     }
 
     @Test

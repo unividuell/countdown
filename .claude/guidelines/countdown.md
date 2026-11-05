@@ -161,9 +161,12 @@ A community has **0..1** active edition; "none" is a normal state (new community
 an error — the countdown then shows no date. An edition always has `startsAt` and `gamesFromRound`
 (NOT NULL); only `label` is optional (null = called like the community).
 
-Write paths are separate: `PATCH /communities/{slug}` renames only, `POST .../editions` creates (409
-while one is active), `PUT .../editions/active` **replaces it completely** — an absent optional field
-clears it, there is no "null = keep".
+Write paths are separate: `PATCH /communities/{slug}` renames only (the slug never changes),
+`POST .../editions` creates (409 while one is active), `PUT .../editions/active` **replaces it
+completely** — an absent optional field clears it, there is no "null = keep".
+
+Round bounds: `gamesFromRound <= phaseTwoStartRound <= 0` (phase two optional); e.g. games from
+`-30`, phase two from `-7`.
 
 ## Related / future
 

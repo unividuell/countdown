@@ -105,7 +105,7 @@ open class EditionService(
     /** Validating the finished aggregate, not the arguments — one place covers create and replace. */
     private fun validate(edition: CommunityEdition) {
         edition.label?.let { require(it.length in 3..50) { "label must be 3..50 chars" } }
-        edition.phaseTwoStartRound?.let { require(it < 0) { "phaseTwoStartRound must be < 0" } }
+        edition.phaseTwoStartRound?.let { require(it <= 0) { "phaseTwoStartRound must be <= 0" } }
         // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
         require(AVAILABLE_ZONE_IDS.contains(edition.startsAtTimezone)) {
             "invalid timezone: ${edition.startsAtTimezone}"
@@ -113,6 +113,13 @@ open class EditionService(
         // A smaller round number is earlier in time, so the first round must not be above the last.
         require(edition.gamesFromRound <= edition.gamesUntilRound) {
             "gamesFromRound (${edition.gamesFromRound}) must not be above gamesUntilRound (${edition.gamesUntilRound})"
+        }
+
+        // Phase two starts inside the run's games, e.g. first round -30, phase two from -7.
+        edition.phaseTwoStartRound?.let {
+            require(edition.gamesFromRound <= it) {
+                "gamesFromRound (${edition.gamesFromRound}) must not be above phaseTwoStartRound ($it)"
+            }
         }
         // A run longer than a century of daily rounds is not a real run; the bound also keeps
         // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
