@@ -70,12 +70,40 @@ class EditionServiceTest {
     }
 
     @Test
-    fun `create rejects a draft whose freeze moment has passed`() {
+    fun `create rejects a first game round that has already ended`() {
         every { repository.findActiveByCommunityId(communityId) } returns null
         val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
 
         shouldThrow<IllegalArgumentException> { service.create(communityId = communityId, draft = begun) }
-            .message.shouldContain("already")
+            .message.shouldContain("already ended")
+    }
+
+    // `now` (2026-11-05 13:00 Berlin) lies in round -45: 2026-11-04 18:00 to 2026-11-05 18:00.
+    @Test
+    fun `create may start at once with the running round, frozen from the outset`() {
+        openForCreate()
+
+        val edition = service.create(communityId = communityId, draft = draft.copy(gamesFromRound = -45, phaseTwoStartRound = null))
+
+        edition.gamesFromRound shouldBe -45
+        service.isFrozen(edition) shouldBe true
+    }
+
+    @Test
+    fun `create may start with the next round although its eve has begun`() {
+        openForCreate()
+
+        service.create(communityId = communityId, draft = draft.copy(gamesFromRound = -44, phaseTwoStartRound = null))
+            .gamesFromRound shouldBe -44
+    }
+
+    @Test
+    fun `create rejects the round that ended just before the running one`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(gamesFromRound = -46, phaseTwoStartRound = null))
+        }.message.shouldContain("already ended")
     }
 
     @Test
@@ -118,12 +146,20 @@ class EditionServiceTest {
     }
 
     @Test
-    fun `replace of a not yet frozen run rejects a draft whose freeze moment has passed`() {
+    fun `replace of a not yet frozen run rejects a first game round that has already ended`() {
         every { repository.findActiveByCommunityId(communityId) } returns anEdition(communityId = communityId)
         val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
 
         shouldThrow<IllegalArgumentException> { service.replace(communityId = communityId, draft = begun) }
-            .message.shouldContain("already")
+            .message.shouldContain("already ended")
+    }
+
+    @Test
+    fun `replace of a not yet frozen run may start it at once`() {
+        every { repository.findActiveByCommunityId(communityId) } returns anEdition(communityId = communityId)
+
+        service.replace(communityId = communityId, draft = draft.copy(gamesFromRound = -45, phaseTwoStartRound = null))
+            .gamesFromRound shouldBe -45
     }
 
     private fun openForCreate() {

@@ -46,7 +46,7 @@ open class EditionService(
             gamesFromRound = draft.gamesFromRound,
         )
         validate(edition)
-        requireGridStillOpen(edition)
+        requireFirstGameRoundAhead(edition)
         return saveOrConflict(communityId = communityId, edition = edition)
     }
 
@@ -74,7 +74,7 @@ open class EditionService(
                 throw EditionFrozenException("a frozen run must not be thawed")
             }
         } else {
-            requireGridStillOpen(next)
+            requireFirstGameRoundAhead(next)
         }
         return saveOrConflict(communityId = communityId, edition = next)
     }
@@ -85,10 +85,13 @@ open class EditionService(
      */
     open fun isFrozen(edition: CommunityEdition): Boolean = !clock.instant().isBefore(frozenSince(edition))
 
-    /** A new run must not start out frozen: its first announced round would already be out. */
-    private fun requireGridStillOpen(edition: CommunityEdition) {
-        require(!isFrozen(edition)) {
-            "the run would be fixed since ${frozenSince(edition)}, which has already begun"
+    /**
+     * The first game round may be the running one — the run then starts at once and is frozen from
+     * the outset, as no round has been announced yet — but not one that is already over.
+     */
+    private fun requireFirstGameRoundAhead(edition: CommunityEdition) {
+        require(clock.instant().isBefore(firstGameRoundEnd(edition))) {
+            "the first game round (${edition.gamesFromRound}) already ended at ${firstGameRoundEnd(edition)}"
         }
     }
 

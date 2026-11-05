@@ -141,8 +141,10 @@ are unfair and unexplainable to a player.
 A run is therefore **frozen** from the start of round `gamesFromRound - 1` on — the day before its
 first game round: the daily schedule announces each round a day ahead, so that is the earliest
 instant a `round_games` row can exist. From then on the two fields are 409, and the way forward is a
-new edition. Conversely there is no instant start: an edition whose freeze moment has already begun
-is rejected on create/replace, unless the run is already frozen (then start and zone stay fixed).
+new edition. An unfrozen run may start at once: on create/replace its first game round may be the
+running round (it is then frozen from the outset — no round is announced yet, and the GET
+materialises it), never one that has ended (`firstGameRoundEnd`). The form makes the admin confirm
+such an instant start, because start and zone are fixed right away.
 
 The state is **derived, never stored**: `frozenSince(edition)` against the clock. That keeps it
 honest without a column, but it makes the freeze point a function of editable fields — so the check
