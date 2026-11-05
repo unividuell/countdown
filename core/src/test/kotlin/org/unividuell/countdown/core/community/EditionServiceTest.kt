@@ -117,6 +117,154 @@ class EditionServiceTest {
         shouldThrow<EditionNotFoundException> { service.replace(communityId = communityId, draft = draft) }
     }
 
+    @Test
+    fun `replace of a not yet frozen run rejects a draft whose freeze moment has passed`() {
+        every { repository.findActiveByCommunityId(communityId) } returns anEdition(communityId = communityId)
+        val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
+
+        shouldThrow<IllegalArgumentException> { service.replace(communityId = communityId, draft = begun) }
+            .message.shouldContain("already")
+    }
+
+    private fun openForCreate() {
+        every { repository.findActiveByCommunityId(communityId) } returns null
+    }
+
+    private fun openForReplace() {
+        every { repository.findActiveByCommunityId(communityId) } returns
+            anEdition(communityId = communityId, gamesUntilRound = -2)
+    }
+
+    @Test
+    fun `create rejects an invalid IANA zone`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(startsAtTimezone = "Mars/Olympus"))
+        }
+    }
+
+    @Test
+    fun `replace rejects an invalid IANA zone`() {
+        openForReplace()
+
+        shouldThrow<IllegalArgumentException> {
+            service.replace(communityId = communityId, draft = draft.copy(startsAtTimezone = "Mars/Olympus"))
+        }
+    }
+
+    @Test
+    fun `create rejects a phaseTwoStartRound that is not negative`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 0))
+        }
+    }
+
+    @Test
+    fun `replace rejects a phaseTwoStartRound that is not negative`() {
+        openForReplace()
+
+        shouldThrow<IllegalArgumentException> {
+            service.replace(communityId = communityId, draft = draft.copy(phaseTwoStartRound = 0))
+        }
+    }
+
+    @Test
+    fun `create rejects a gamesFromRound above gamesUntilRound`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(gamesFromRound = 89))
+        }.message shouldBe "gamesFromRound (89) must not be above gamesUntilRound (0)"
+    }
+
+    @Test
+    fun `replace rejects a gamesFromRound above the kept gamesUntilRound`() {
+        openForReplace()
+
+        // A smaller number is earlier: from=-1 with the stored until=-2 would end before it begins.
+        shouldThrow<IllegalArgumentException> {
+            service.replace(communityId = communityId, draft = draft.copy(gamesFromRound = -1))
+        }
+    }
+
+    @Test
+    fun `create rejects a gamesFromRound below the hundred-year bound`() {
+        openForCreate()
+
+        shouldThrow<IllegalArgumentException> {
+            service.create(communityId = communityId, draft = draft.copy(gamesFromRound = -36501))
+        }
+    }
+
+    @Test
+    fun `replace rejects a gamesFromRound below the hundred-year bound`() {
+        openForReplace()
+
+        shouldThrow<IllegalArgumentException> {
+            service.replace(communityId = communityId, draft = draft.copy(gamesFromRound = -36501))
+        }
+    }
+
+    // Far-future start, so the freeze moment 36502 days earlier still lies ahead of `now`.
+    private val farFuture = draft.copy(startsAt = Instant.parse("2200-01-01T17:00:00Z"))
+
+    @Test
+    fun `create accepts a gamesFromRound exactly at the hundred-year bound`() {
+        openForCreate()
+
+        service.create(communityId = communityId, draft = farFuture.copy(gamesFromRound = -36500))
+            .gamesFromRound shouldBe -36500
+    }
+
+    @Test
+    fun `replace accepts a gamesFromRound exactly at the hundred-year bound`() {
+        openForReplace()
+
+        service.replace(communityId = communityId, draft = farFuture.copy(gamesFromRound = -36500))
+            .gamesFromRound shouldBe -36500
+    }
+
+    @Test
+    fun `create rejects a label shorter than 3 or longer than 50 chars`() {
+        openForCreate()
+
+        listOf("ab", "x".repeat(51)).forEach { label ->
+            shouldThrow<IllegalArgumentException> {
+                service.create(communityId = communityId, draft = draft.copy(label = label))
+            }
+        }
+    }
+
+    @Test
+    fun `replace rejects a label shorter than 3 or longer than 50 chars`() {
+        openForReplace()
+
+        listOf("ab", "x".repeat(51)).forEach { label ->
+            shouldThrow<IllegalArgumentException> {
+                service.replace(communityId = communityId, draft = draft.copy(label = label))
+            }
+        }
+    }
+
+    @Test
+    fun `labels of exactly 3 and 50 chars are accepted`() {
+        openForCreate()
+
+        listOf("abc", "x".repeat(50)).forEach { label ->
+            service.create(communityId = communityId, draft = draft.copy(label = label)).label shouldBe label
+        }
+    }
+
+    @Test
+    fun `replace turns a blank label into null`() {
+        openForReplace()
+
+        service.replace(communityId = communityId, draft = draft.copy(label = "   ")).label shouldBe null
+    }
+
     // The grid froze on 2026-11-03 (the start of round -46), so this run is frozen at `now`.
     private val frozen = anEdition(
         communityId = communityId,
