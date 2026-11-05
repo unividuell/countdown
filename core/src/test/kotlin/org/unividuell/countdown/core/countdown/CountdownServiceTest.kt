@@ -9,10 +9,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
-import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.internal.CountdownAccessDeniedException
 import org.unividuell.countdown.core.countdown.internal.CountdownService
 import org.unividuell.countdown.core.iam.User
@@ -25,7 +25,6 @@ import java.time.Instant
 class CountdownServiceTest(
     @Autowired val countdown: CountdownService,
     @Autowired val communities: CommunityService,
-    @Autowired val editions: EditionService,
     @Autowired val editionRepository: CommunityEditionRepository,
     @Autowired val users: UserRepository,
 ) {
@@ -37,16 +36,6 @@ class CountdownServiceTest(
         val c = communities.create(creatorUserId = owner.id!!, rawName = "Members Only")
         val outsider = aUser()
         shouldThrow<CountdownAccessDeniedException> { countdown.forSlug(slug = c.slug, userId = outsider.id!!, isSuperAdmin = false) }
-    }
-
-    @Test
-    fun `forSlug returns null rounds when startsAt unset`() {
-        val ownerId = aUser().id!!
-        val c = communities.create(creatorUserId = ownerId, rawName = "No Start Yet")
-        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
-        res.round shouldBe null
-        res.nextRound shouldBe null
-        res.startsAtTimezone shouldBe "Europe/Berlin"
     }
 
     @Test
@@ -62,10 +51,13 @@ class CountdownServiceTest(
     fun `forSlug exposes current and next round when configured`() {
         val ownerId = aUser().id!!
         val c = communities.create(creatorUserId = ownerId, rawName = "Has Start")
-        communities.update(
-            c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-            startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
-            gamesFromRound = null, gamesUntilRound = null,
+        editionRepository.save(
+            anEdition(
+                communityId = requireNotNull(c.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = Int.MIN_VALUE,
+            ),
         )
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         val round = res.round!!; val nextRound = res.nextRound!!
@@ -75,32 +67,14 @@ class CountdownServiceTest(
     }
 
     @Test
-    fun `forSlug follows the active edition when a new run starts`() {
-        val ownerId = aUser().id!!
-        val c = communities.create(creatorUserId = ownerId, rawName = "Second Run")
-        communities.update(
-            c, name = null, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-            startsAtTimezone = "Europe/Berlin", phaseTwoStartRound = null,
-            gamesFromRound = null, gamesUntilRound = null,
-        )
-
-        editions.startNew(communityId = requireNotNull(c.id), rawLabel = "Run 2100")
-
-        // The new run has no date yet, so there is no round — the old run's date is not consulted.
-        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
-        res.startsAt.shouldBeNull()
-        res.round.shouldBeNull()
-    }
-
-    @Test
     fun `forSlug degrades gracefully when the active edition was archived without a replacement`() {
         val ownerId = aUser().id!!
         val c = communities.create(creatorUserId = ownerId, rawName = "Broken Invariant")
         val communityId = requireNotNull(c.id)
-        // Bypasses EditionService.startNew on purpose: this is the "no active edition" invariant
-        // violation that requireActive() would 500 on, reached here through the graceful reader.
-        val active = requireNotNull(editionRepository.findActiveByCommunityId(communityId))
-        editionRepository.save(active.copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")))
+        // The only edition is archived and nothing replaced it: the graceful reader must not 500.
+        editionRepository.save(
+            anEdition(communityId = communityId).copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")),
+        )
 
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 

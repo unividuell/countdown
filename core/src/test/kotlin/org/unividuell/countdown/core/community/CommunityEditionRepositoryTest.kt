@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.dao.DuplicateKeyException
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -27,6 +28,7 @@ class CommunityEditionRepositoryTest(
     @Autowired val editions: CommunityEditionRepository,
     @Autowired val communities: CommunityRepository,
     @Autowired val users: UserRepository,
+    @Autowired val jdbc: JdbcTemplate,
 ) {
     private fun aCommunity(slug: String): UUID {
         val creator = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
@@ -38,13 +40,13 @@ class CommunityEditionRepositoryTest(
     fun `saves an edition with a uuid v7 id and finds the active one`() {
         val communityId = aCommunity("edition-basics")
 
-        val saved = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+        val saved = editions.save(anEdition(communityId = communityId, label = "Run 2026"))
 
         saved.id.shouldNotBeNull().version() shouldBe 7
         saved.createdAt.shouldNotBeNull()
         saved.startsAtTimezone shouldBe "Europe/Berlin"
         saved.gamesUntilRound shouldBe 0
-        saved.gamesFromRound.shouldBeNull()
+        saved.gamesFromRound shouldBe -30
 
         val active = editions.findActiveByCommunityId(communityId).shouldNotBeNull()
         active.label shouldBe "Run 2026"
@@ -53,7 +55,7 @@ class CommunityEditionRepositoryTest(
     @Test
     fun `an archived edition is no longer the active one`() {
         val communityId = aCommunity("edition-archived")
-        val first = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+        val first = editions.save(anEdition(communityId = communityId, label = "Run 2026"))
 
         editions.save(first.copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")))
 
@@ -64,10 +66,10 @@ class CommunityEditionRepositoryTest(
     fun `findAllActive returns one row per community and skips archived ones`() {
         val a = aCommunity("edition-active-a")
         val b = aCommunity("edition-active-b")
-        editions.save(CommunityEdition(communityId = a, label = "A 2026"))
-        val old = editions.save(CommunityEdition(communityId = b, label = "B 2025"))
+        editions.save(anEdition(communityId = a, label = "A 2026"))
+        val old = editions.save(anEdition(communityId = b, label = "B 2025"))
         editions.save(old.copy(archivedAt = Instant.parse("2026-01-01T00:00:00Z")))
-        editions.save(CommunityEdition(communityId = b, label = "B 2026"))
+        editions.save(anEdition(communityId = b, label = "B 2026"))
 
         val active = editions.findAllActive()
 
@@ -81,10 +83,10 @@ class CommunityEditionRepositoryTest(
     @Test
     fun `a second active edition for the same community is rejected`() {
         val communityId = aCommunity("edition-only-one-active")
-        editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+        editions.save(anEdition(communityId = communityId, label = "Run 2026"))
 
         shouldThrow<DuplicateKeyException> {
-            editions.save(CommunityEdition(communityId = communityId, label = "Run 2027"))
+            editions.save(anEdition(communityId = communityId, label = "Run 2027"))
         }
     }
 
@@ -97,11 +99,39 @@ class CommunityEditionRepositoryTest(
         // begins — the CHECK constraint, not just the service-level validation, rejects it.
         shouldThrow<DataIntegrityViolationException> {
             editions.save(
-                CommunityEdition(
+                anEdition(
                     communityId = communityId, label = "Run 2026",
                     gamesFromRound = -5, gamesUntilRound = -10,
                 )
             )
+        }
+    }
+
+    @Test
+    fun `saves an edition without label`() {
+        val communityId = aCommunity("edition-no-label")
+
+        val saved = editions.save(anEdition(communityId = communityId, label = null))
+
+        editions.findById(saved.id!!).get().label shouldBe null
+    }
+
+    // Same rollback-only caveat as above: assert the throw, query nothing afterwards.
+    @Test
+    fun `rejects an edition without startsAt at the database`() {
+        val communityId = aCommunity("edition-no-starts-at")
+
+        shouldThrow<DataIntegrityViolationException> {
+            jdbc.update("INSERT INTO community.editions (community_id, games_from_round) VALUES (?, -5)", communityId)
+        }
+    }
+
+    @Test
+    fun `rejects an edition without gamesFromRound at the database`() {
+        val communityId = aCommunity("edition-no-from-round")
+
+        shouldThrow<DataIntegrityViolationException> {
+            jdbc.update("INSERT INTO community.editions (community_id, starts_at) VALUES (?, now())", communityId)
         }
     }
 }

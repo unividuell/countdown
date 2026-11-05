@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
@@ -64,16 +65,20 @@ class AnnouncementServiceTest(
      */
     private fun aCommunityWithOwner(
         name: String,
-        gamesFromRound: Int? = null,
-        gamesUntilRound: Int? = null,
+        gamesFromRound: Int = Int.MIN_VALUE,
+        gamesUntilRound: Int = 0,
     ): Pair<Community, UUID> {
         val owner = aUser()
         val ownerId = requireNotNull(owner.id)
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = gamesFromRound, gamesUntilRound = gamesUntilRound,
+        editionRepository.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = gamesFromRound,
+                gamesUntilRound = gamesUntilRound,
+            ),
         )
         return community to ownerId
     }
@@ -182,7 +187,7 @@ class AnnouncementServiceTest(
         ).round
         // Close the window entirely below the current round: until < current means it already ended.
         editionRepository.save(
-            edition.copy(gamesFromRound = null, gamesUntilRound = requireNotNull(current).number - 5),
+            edition.copy(gamesFromRound = Int.MIN_VALUE, gamesUntilRound = requireNotNull(current).number - 5),
         )
 
         val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)

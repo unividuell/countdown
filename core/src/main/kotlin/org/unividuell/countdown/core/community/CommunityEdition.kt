@@ -12,7 +12,7 @@ import java.util.UUID
  *
  * The community itself is permanent, the run is not: the target event recurs (annually, sometimes
  * more often), so `(community, -58)` is not a key — every run has its own round -58 with its own guesses
- * and its own ranking. Exactly one edition per community is active, enforced by a partial unique
+ * and its own ranking. At most one edition per community is active, enforced by a partial unique
  * index on `archived_at IS NULL`.
  *
  * Exposed rather than internal because `countdown` (and later the game framework) resolves rounds
@@ -23,16 +23,16 @@ data class CommunityEdition(
     @Id
     val id: UUID? = null,
     val communityId: UUID,
-    /** Display name of the run, e.g. „Hüttenwochenende 2026“. */
-    val label: String,
-    val startsAt: Instant? = null,
+    /** Optional display name of the run, e.g. „Hüttenwochenende 2026“. */
+    val label: String?,
+    val startsAt: Instant,
     val startsAtTimezone: String = DEFAULT_TIMEZONE,
     val phaseTwoStartRound: Int? = null,
     /**
      * First round that carries a game — the *smaller* number, because a smaller round number is
-     * earlier in time. `null` means "from the very first round".
+     * earlier in time.
      */
-    val gamesFromRound: Int? = null,
+    val gamesFromRound: Int,
     /** Last round that carries a game — the larger number. `0` is the last day before the start. */
     val gamesUntilRound: Int = 0,
     /** `null` = active. Archiving is how a run ends; rows are never deleted. */

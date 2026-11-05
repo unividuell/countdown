@@ -15,12 +15,15 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.MemberPoints
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
+import org.unividuell.countdown.core.community.internal.EditionDraft
 import org.unividuell.countdown.core.community.internal.EditionFrozenException
+import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.countdown.internal.CountdownService
 import org.unividuell.countdown.core.game.internal.AnnouncementService
@@ -76,6 +79,7 @@ class RoundTimelineOracleTest(
     @Autowired val users: UserRepository,
     @Autowired val communities: CommunityService,
     @Autowired val editions: CommunityEditionRepository,
+    @Autowired val editionService: EditionService,
     @Autowired val schedule: MaterialisationSchedule,
     @Autowired val store: RoundGameStore,
     @Autowired val announcements: AnnouncementService,
@@ -192,12 +196,15 @@ class RoundTimelineOracleTest(
             users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id,
         )
         val community = communities.create(creatorUserId = owner, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = START, startsAtTimezone = BERLIN.id,
-            phaseTwoStartRound = numberAt(noon(PHASE_TWO_DAY)),
-            gamesFromRound = numberAt(noon(FIRST_GAME_DAY)),
-            gamesUntilRound = numberAt(noon(LAST_GAME_DAY)),
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = START,
+                startsAtTimezone = BERLIN.id,
+                phaseTwoStartRound = numberAt(noon(PHASE_TWO_DAY)),
+                gamesFromRound = numberAt(noon(FIRST_GAME_DAY)),
+                gamesUntilRound = numberAt(noon(LAST_GAME_DAY)),
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         return Run(community = community, owner = owner, edition = edition)
@@ -359,10 +366,15 @@ class RoundTimelineOracleTest(
     @Test
     fun `start and zone stay editable until the round before the first game begins`() {
         val run = aRun("Oracle Freeze")
-        fun moveStart(to: Instant) = communities.update(
-            community = run.community, name = null, label = null,
-            startsAt = to, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        fun moveStart(to: Instant) = editionService.replace(
+            communityId = requireNotNull(run.community.id),
+            draft = EditionDraft(
+                label = run.edition.label,
+                startsAt = to,
+                startsAtTimezone = run.edition.startsAtTimezone,
+                phaseTwoStartRound = run.edition.phaseTwoStartRound,
+                gamesFromRound = run.edition.gamesFromRound,
+            ),
         )
 
         clock.now = at(date = june(17), hour = 10, minute = 59, second = 59)

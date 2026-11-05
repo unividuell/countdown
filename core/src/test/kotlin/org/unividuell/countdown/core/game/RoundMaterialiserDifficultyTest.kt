@@ -4,6 +4,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.internal.GameSelection
 import org.unividuell.countdown.core.game.internal.PastRound
@@ -62,9 +63,7 @@ class RoundMaterialiserDifficultyTest {
 
     @Test
     fun `the draw sees the difficulty, the selection does not`() {
-        val edition = CommunityEdition(
-            id = UUID.randomUUID(), communityId = UUID.randomUUID(), label = "Team 2026", gamesUntilRound = 0,
-        )
+        val edition = anEdition(communityId = UUID.randomUUID(), id = UUID.randomUUID())
         // Oldest round -20 played "fake"; round -10 is now: (-10 - -20) / (0 - -20) = 0.5.
         val history = (-13 downTo -19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
             PastRound(roundNumber = -20, gameType = "fake")

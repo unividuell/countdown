@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -64,10 +65,13 @@ class MaterialisationScheduleBootTest(
             users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id,
         )
         val community = communities.create(creatorUserId = owner, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = Int.MIN_VALUE,
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         return Run(community = community, owner = owner, edition = edition)

@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -50,10 +51,13 @@ class RoundPlayPointsTest(
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser()
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = Int.MIN_VALUE,
+            ),
         )
         return community to ownerId
     }
@@ -224,7 +228,7 @@ class RoundPlayPointsTest(
         // Re-opening brings the same number back, untouched: the points sit frozen on the row and
         // only their inclusion in the sum is dynamic.
         editions.save(
-            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = null),
+            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = Int.MIN_VALUE),
         )
         val reopened = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
 

@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -47,7 +48,7 @@ class RoundPlayVoteRepositoryTest(
         val creator = aUser()
         val community = communities.save(Community(name = slug, slug = slug, createdBy = creator))
         val edition = editions.save(
-            CommunityEdition(communityId = requireNotNull(community.id), label = "Run 2026"),
+            anEdition(communityId = requireNotNull(community.id)),
         )
         return store.announce(
             edition = edition,

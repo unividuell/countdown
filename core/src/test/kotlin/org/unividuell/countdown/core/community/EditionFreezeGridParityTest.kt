@@ -17,9 +17,8 @@ class EditionFreezeGridParityTest {
     private val engine = CountdownEngine()
 
     private fun assertMatchesEngine(startsAt: Instant, zone: String, gamesFromRound: Int) {
-        val edition = CommunityEdition(
+        val edition = anEdition(
             communityId = UUID.randomUUID(),
-            label = "Run 2026",
             startsAt = startsAt,
             startsAtTimezone = zone,
             gamesFromRound = gamesFromRound,

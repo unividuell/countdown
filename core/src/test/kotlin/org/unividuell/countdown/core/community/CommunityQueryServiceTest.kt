@@ -11,11 +11,12 @@ import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
-import org.unividuell.countdown.core.community.internal.EditionService
+import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.MembershipService
 import org.unividuell.countdown.core.community.internal.SelectionService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import java.time.Instant
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -27,7 +28,7 @@ class CommunityQueryServiceTest(
     @Autowired val communityService: CommunityService,
     @Autowired val membership: MembershipService,
     @Autowired val users: UserRepository,
-    @Autowired val editions: EditionService,
+    @Autowired val editionRepository: CommunityEditionRepository,
 ) {
     private fun user(login: String) = users.save(User(subject = System.nanoTime().toString(), githubLogin = login))
 
@@ -59,8 +60,10 @@ class CommunityQueryServiceTest(
     fun `activeEditions lists a community's running edition and not the one it archived`() {
         val uid = user("u").id!!
         val cid = communityService.create(creatorUserId = uid, rawName = "Team").id!!
-        val archived = requireNotNull(query.activeEditionOf(cid))
-        val running = editions.startNew(communityId = cid, rawLabel = "Run 2027")
+        val archived = editionRepository.save(
+            anEdition(communityId = cid, label = "Run 2026").copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")),
+        )
+        val running = editionRepository.save(anEdition(communityId = cid, label = "Run 2027"))
 
         val ids = query.activeEditions().map { it.id }
 

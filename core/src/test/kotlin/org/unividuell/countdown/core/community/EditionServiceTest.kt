@@ -1,367 +1,159 @@
 package org.unividuell.countdown.core.community
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
-import org.springframework.transaction.annotation.Transactional
-import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
-import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.community.internal.EditionConflictException
+import org.unividuell.countdown.core.community.internal.EditionDraft
 import org.unividuell.countdown.core.community.internal.EditionFrozenException
+import org.unividuell.countdown.core.community.internal.EditionNotFoundException
 import org.unividuell.countdown.core.community.internal.EditionService
-import org.unividuell.countdown.core.iam.User
-import org.unividuell.countdown.core.iam.internal.UserRepository
+import java.time.Clock
 import java.time.Instant
-import java.time.temporal.ChronoUnit
+import java.time.ZoneOffset
 import java.util.UUID
 
-@Import(TestcontainersConfiguration::class)
-@SpringBootTest
-@Transactional
-class EditionServiceTest(
-    @Autowired val service: EditionService,
-    @Autowired val editions: CommunityEditionRepository,
-    @Autowired val communities: CommunityRepository,
-    @Autowired val users: UserRepository,
-) {
-    private fun aCommunity(slug: String): UUID {
-        val creator = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
-        return requireNotNull(communities.save(Community(name = slug, slug = slug, createdBy = creator.id!!)).id)
+class EditionServiceTest {
+    private val now = Instant.parse("2026-11-05T12:00:00Z")
+    private val repository = mockk<CommunityEditionRepository>()
+    private val service = EditionService(
+        editions = repository,
+        clock = Clock.fixed(now, ZoneOffset.UTC),
+    )
+    private val communityId = UUID.randomUUID()
+
+    // Starts 2026-12-20 18:00 Berlin; round -30 begins 2026-11-19, so the grid is still open at `now`.
+    private val draft = EditionDraft(
+        label = "Run 2026",
+        startsAt = Instant.parse("2026-12-20T17:00:00Z"),
+        startsAtTimezone = "Europe/Berlin",
+        phaseTwoStartRound = -7,
+        gamesFromRound = -30,
+    )
+
+    init {
+        every { repository.save(any()) } answers { firstArg() }
     }
 
     @Test
-    fun `create makes the first active edition with the defaults`() {
-        val communityId = aCommunity("es-create")
+    fun `create stores the draft as the active edition`() {
+        every { repository.findActiveByCommunityId(communityId) } returns null
 
-        val edition = service.create(communityId = communityId, rawLabel = "  Run 2026  ")
+        val edition = service.create(communityId = communityId, draft = draft.copy(label = "  Run 2026  "))
 
+        edition.communityId shouldBe communityId
         edition.label shouldBe "Run 2026"
-        edition.startsAt.shouldBeNull()
-        edition.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+        edition.startsAt shouldBe draft.startsAt
+        edition.phaseTwoStartRound shouldBe -7
+        edition.gamesFromRound shouldBe -30
         edition.gamesUntilRound shouldBe 0
-        edition.archivedAt.shouldBeNull()
     }
 
     @Test
-    fun `requireActive fails loudly when the invariant is broken`() {
-        val communityId = aCommunity("es-no-edition")
+    fun `create turns a blank label into null`() {
+        every { repository.findActiveByCommunityId(communityId) } returns null
 
-        shouldThrow<IllegalStateException> { service.requireActive(communityId) }
+        service.create(communityId = communityId, draft = draft.copy(label = "   ")).label shouldBe null
     }
 
     @Test
-    fun `update sets a valid IANA timezone and keeps unset fields`() {
-        val communityId = aCommunity("es-update")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+    fun `create rejects a second active edition with 409`() {
+        every { repository.findActiveByCommunityId(communityId) } returns anEdition(communityId = communityId)
 
-        val updated = service.update(
-            edition, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-            startsAtTimezone = "America/New_York", phaseTwoStartRound = -20,
-            gamesFromRound = -24, gamesUntilRound = null,
+        shouldThrow<EditionConflictException> { service.create(communityId = communityId, draft = draft) }
+        verify(exactly = 0) { repository.save(any()) }
+    }
+
+    @Test
+    fun `create rejects a draft whose freeze moment has passed`() {
+        every { repository.findActiveByCommunityId(communityId) } returns null
+        val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
+
+        shouldThrow<IllegalArgumentException> { service.create(communityId = communityId, draft = begun) }
+            .message.shouldContain("already")
+    }
+
+    @Test
+    fun `replace swaps every field, null clears phase two`() {
+        val current = anEdition(communityId = communityId, id = UUID.randomUUID(), phaseTwoStartRound = -7)
+        every { repository.findActiveByCommunityId(communityId) } returns current
+
+        val replaced = service.replace(
+            communityId = communityId,
+            draft = EditionDraft(
+                label = "Neu",
+                startsAt = Instant.parse("2027-01-10T17:00:00Z"),
+                startsAtTimezone = "America/New_York",
+                phaseTwoStartRound = null,
+                gamesFromRound = -20,
+            ),
         )
 
-        updated.label shouldBe "Run 2026"
-        updated.startsAtTimezone shouldBe "America/New_York"
-        updated.phaseTwoStartRound shouldBe -20
-        updated.gamesFromRound shouldBe -24
-        updated.gamesUntilRound shouldBe 0
+        replaced.id shouldBe current.id
+        replaced.label shouldBe "Neu"
+        replaced.startsAt shouldBe Instant.parse("2027-01-10T17:00:00Z")
+        replaced.startsAtTimezone shouldBe "America/New_York"
+        replaced.phaseTwoStartRound shouldBe null
+        replaced.gamesFromRound shouldBe -20
     }
 
     @Test
-    fun `update rejects an invalid timezone`() {
-        val communityId = aCommunity("es-bad-zone")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+    fun `replace keeps gamesUntilRound`() {
+        every { repository.findActiveByCommunityId(communityId) } returns
+            anEdition(communityId = communityId, gamesUntilRound = -2)
 
-        shouldThrow<IllegalArgumentException> {
-            service.update(
-                edition, label = null, startsAt = null, startsAtTimezone = "Mars/Olympus",
-                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
-            )
-        }
+        service.replace(communityId = communityId, draft = draft).gamesUntilRound shouldBe -2
     }
 
     @Test
-    fun `update rejects a phaseTwoStartRound that is not negative`() {
-        val communityId = aCommunity("es-bad-phase")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+    fun `replace without an active edition throws EditionNotFoundException`() {
+        every { repository.findActiveByCommunityId(communityId) } returns null
 
-        shouldThrow<IllegalArgumentException> {
-            service.update(
-                edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = 0, gamesFromRound = null, gamesUntilRound = null,
-            )
-        }
+        shouldThrow<EditionNotFoundException> { service.replace(communityId = communityId, draft = draft) }
     }
+
+    // The grid froze on 2026-11-03 (the start of round -46), so this run is frozen at `now`.
+    private val frozen = anEdition(
+        communityId = communityId,
+        startsAt = Instant.parse("2026-12-20T17:00:00Z"),
+        gamesFromRound = -45,
+    )
 
     @Test
-    fun `update rejects a window whose first round is later than its last`() {
-        val communityId = aCommunity("es-bad-window")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        // A smaller number is earlier: from=-5 with until=-10 would end before it begins.
-        shouldThrow<IllegalArgumentException> {
-            service.update(
-                edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = -5, gamesUntilRound = -10,
-            )
-        }
-    }
-
-    @Test
-    fun `update rejects a positive first game round, which would lie after round 0`() {
-        val communityId = aCommunity("es-positive-from")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        shouldThrow<IllegalArgumentException> {
-            service.update(
-                edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = 89, gamesUntilRound = null,
-            )
-        }.message shouldBe "gamesFromRound (89) must not be above gamesUntilRound (0)"
-    }
-
-    @Test
-    fun `update rejects a gamesFromRound below the hundred-year bound`() {
-        val communityId = aCommunity("es-round-too-big")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        shouldThrow<IllegalArgumentException> {
-            service.update(
-                edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = -36501, gamesUntilRound = null,
-            )
-        }
-    }
-
-    @Test
-    fun `update accepts a gamesFromRound exactly at the hundred-year bound`() {
-        val communityId = aCommunity("es-round-at-bound")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        val updated = service.update(
-            edition, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = -36500, gamesUntilRound = null,
-        )
-
-        updated.gamesFromRound shouldBe -36500
-    }
-
-    @Test
-    fun `update accepts a positive last round so games can run past the start`() {
-        val communityId = aCommunity("es-negative-window")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        val updated = service.update(
-            edition, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = -24, gamesUntilRound = 3,
-        )
-
-        updated.gamesUntilRound shouldBe 3
-    }
-
-    @Test
-    fun `startNew archives the current edition and inherits its setup`() {
-        val communityId = aCommunity("es-start-new")
-        val first = service.create(communityId = communityId, rawLabel = "Run 2026")
-        service.update(
-            first, label = null, startsAt = Instant.parse("2026-10-01T16:00:00Z"),
-            startsAtTimezone = "America/New_York", phaseTwoStartRound = -20,
-            gamesFromRound = -24, gamesUntilRound = 1,
-        )
-
-        val second = service.startNew(communityId = communityId, rawLabel = "Run 2027")
-
-        second.label shouldBe "Run 2027"
-        second.startsAt.shouldBeNull()          // the new date is not known yet
-        second.startsAtTimezone shouldBe "America/New_York"
-        second.phaseTwoStartRound shouldBe -20
-        second.gamesFromRound shouldBe -24
-        second.gamesUntilRound shouldBe 1
-
-        service.requireActive(communityId).label shouldBe "Run 2027"
-        editions.findAllActive().count { it.communityId == communityId } shouldBe 1
-        val archived = editions.findAll().single { it.label == "Run 2026" }
-        archived.archivedAt.shouldNotBeNull()
-    }
-
-    @Test
-    fun `create fails with EditionConflictException when trying to insert a second active edition`() {
-        val communityId = aCommunity("es-duplicate-active")
-        service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        shouldThrow<EditionConflictException> { service.create(communityId = communityId, rawLabel = "Run 2027") }
-    }
-
-    @Test
-    fun `startNew opens the first edition when the community has none yet`() {
-        val communityId = aCommunity("es-start-new-no-current")
-
-        val started = service.startNew(communityId = communityId, rawLabel = "Run 2026")
-
-        started.label shouldBe "Run 2026"
-        started.startsAt.shouldBeNull()
-        started.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
-        started.gamesUntilRound shouldBe 0
-        started.archivedAt.shouldBeNull()
-        service.requireActive(communityId).label shouldBe "Run 2026"
-    }
-
-    // A DuplicateKeyException marks THIS test's transaction rollback-only, so the test asserts the
-    // throw and queries nothing afterwards, matching CommunityEditionRepositoryTest's convention.
-    @Test
-    fun `update conflicts when the edition was archived by a concurrent startNew`() {
-        val communityId = aCommunity("es-update-stale")
-        val stale = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        // Simulates admin B's POST .../editions committing between admin A's read and A's update:
-        // this archives `stale` and opens a fresh active edition in its place.
-        service.startNew(communityId = communityId, rawLabel = "Run 2027")
-
-        shouldThrow<EditionConflictException> {
-            service.update(
-                stale, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
-            )
-        }
-    }
-
-    // The suite runs against the real clock, so the fixtures are relative to it: a run that starts
-    // in 10 days has round -24 behind it (25 days before the start) and round -2 ahead of it (3 days
-    // before the start). That is one edition that is frozen and, one field later, would not be.
-    private fun aStartedRun(slug: String): CommunityEdition {
-        val communityId = aCommunity(slug)
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-        return service.update(
-            edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
-            startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = -24, gamesUntilRound = null,
-        )
-    }
-
-    @Test
-    fun `a run whose first game round has begun is frozen`() {
-        service.isFrozen(aStartedRun("es-frozen")) shouldBe true
-    }
-
-    @Test
-    fun `a run whose first game round is still ahead is not frozen`() {
-        val communityId = aCommunity("es-not-yet")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        val dated = service.update(
-            edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
-            startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = -2, gamesUntilRound = null,
-        )
-
-        service.isFrozen(dated) shouldBe false
-    }
-
-    @Test
-    fun `update rejects moving the start of a frozen run`() {
-        val started = aStartedRun("es-frozen-start")
+    fun `replace on a frozen run rejects a new startsAt`() {
+        every { repository.findActiveByCommunityId(communityId) } returns frozen
 
         shouldThrow<EditionFrozenException> {
-            service.update(
-                started, label = null, startsAt = Instant.now().plus(12, ChronoUnit.DAYS),
-                startsAtTimezone = null, phaseTwoStartRound = null,
-                gamesFromRound = null, gamesUntilRound = null,
+            service.replace(
+                communityId = communityId,
+                draft = draft.copy(startsAt = Instant.parse("2026-12-21T17:00:00Z"), gamesFromRound = -45),
             )
         }
     }
 
     @Test
-    fun `update rejects re-zoning a frozen run`() {
-        val started = aStartedRun("es-frozen-zone")
+    fun `replace on a frozen run rejects thawing`() {
+        every { repository.findActiveByCommunityId(communityId) } returns frozen
 
         shouldThrow<EditionFrozenException> {
-            service.update(
-                started, label = null, startsAt = null, startsAtTimezone = "America/New_York",
-                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
-            )
+            service.replace(communityId = communityId, draft = draft.copy(gamesFromRound = -30))
         }
     }
 
     @Test
-    fun `update accepts the unchanged grid of a frozen run so a rename still works`() {
-        val started = aStartedRun("es-frozen-rename")
+    fun `replace on a frozen run allows a new label`() {
+        every { repository.findActiveByCommunityId(communityId) } returns frozen
 
-        val updated = service.update(
-            started, label = "Run 2026 reloaded", startsAt = started.startsAt,
-            startsAtTimezone = started.startsAtTimezone, phaseTwoStartRound = -20,
-            gamesFromRound = null, gamesUntilRound = null,
+        val replaced = service.replace(
+            communityId = communityId,
+            draft = draft.copy(label = "Umbenannt", gamesFromRound = -45),
         )
 
-        updated.label shouldBe "Run 2026 reloaded"
-        updated.phaseTwoStartRound shouldBe -20
-    }
-
-    @Test
-    fun `update rejects a first game round that would thaw a frozen run`() {
-        val started = aStartedRun("es-frozen-thaw")
-
-        // Round -2 begins three days before the start, which is still ahead — the same edition
-        // would no longer be frozen, and the next PATCH could move the date.
-        shouldThrow<EditionFrozenException> {
-            service.update(
-                started, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = -2, gamesUntilRound = null,
-            )
-        }
-    }
-
-    @Test
-    fun `update accepts a first game round that only pulls the freeze point forward`() {
-        val started = aStartedRun("es-frozen-earlier")
-
-        val updated = service.update(
-            started, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = -40, gamesUntilRound = null,
-        )
-
-        updated.gamesFromRound shouldBe -40
-    }
-
-    // gamesFromRound == null is an unbounded window: frozenSince answers Instant.MIN, which must
-    // never reach a public 409 body as "-1000000000-01-01T00:00:00Z".
-    @Test
-    fun `the frozen-since message is readable for an unbounded window`() {
-        val communityId = aCommunity("es-frozen-unbounded-message")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-        val started = service.update(
-            edition, label = null, startsAt = Instant.now().minus(1, ChronoUnit.DAYS),
-            startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = null, gamesUntilRound = null,
-        )
-
-        val thrown = shouldThrow<EditionFrozenException> {
-            service.update(
-                started, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
-                startsAtTimezone = null, phaseTwoStartRound = null,
-                gamesFromRound = null, gamesUntilRound = null,
-            )
-        }
-
-        thrown.message shouldBe "the run's grid is fixed since its first round"
-    }
-
-    @Test
-    fun `update moves the start freely while there is no date yet`() {
-        val communityId = aCommunity("es-no-date")
-        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
-
-        val updated = service.update(
-            edition, label = null, startsAt = Instant.parse("2020-01-01T10:00:00Z"),
-            startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = null, gamesUntilRound = null,
-        )
-
-        updated.startsAt shouldBe Instant.parse("2020-01-01T10:00:00Z")
+        replaced.label shouldBe "Umbenannt"
     }
 }

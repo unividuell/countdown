@@ -7,6 +7,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.CommunityEdition
+import org.unividuell.countdown.core.community.anEdition as editionFixture
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import org.unividuell.countdown.core.game.internal.MaterialisationSchedule
@@ -47,11 +48,11 @@ class MaterialisationScheduleTest {
         every { materialiser.materialise(edition = any(), roundNumber = any()) } returns mockk<RoundGame>()
     }
 
-    private fun anEdition(startsAt: Instant? = Instant.parse("2026-12-24T17:00:00Z")) = CommunityEdition(
+    private fun anEdition(startsAt: Instant = Instant.parse("2026-12-24T17:00:00Z")) = editionFixture(
         id = UUID.randomUUID(),
         communityId = UUID.randomUUID(),
-        label = "Run 2026",
         startsAt = startsAt,
+        gamesFromRound = Int.MIN_VALUE,
     )
 
     private fun currentOf(edition: CommunityEdition): Int = engine.roundAt(
@@ -112,15 +113,6 @@ class MaterialisationScheduleTest {
         val dated = anEdition()
         val current = currentOf(dated)
         val edition = dated.copy(gamesFromRound = current - 5, gamesUntilRound = current - 1)
-
-        schedule.prepare(edition = edition, now = now) shouldBe 0
-
-        verify(exactly = 0) { materialiser.materialise(edition = any(), roundNumber = any()) }
-    }
-
-    @Test
-    fun `a run without a date has no grid to prepare`() {
-        val edition = anEdition(startsAt = null)
 
         schedule.prepare(edition = edition, now = now) shouldBe 0
 

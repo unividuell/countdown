@@ -4,6 +4,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
+import org.unividuell.countdown.core.community.Community
+import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MemberStatus
@@ -11,6 +13,7 @@ import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.iam.AuthenticatedUser
 import org.unividuell.countdown.core.iam.UserQuery
 import org.unividuell.countdown.core.iam.isSuperAdmin
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/communities")
@@ -28,11 +31,10 @@ class CommunityController(
     fun create(@AuthenticationPrincipal me: AuthenticatedUser, @RequestBody body: CreateCommunityRequest): ResponseEntity<CommunityResponse> {
         if (!users.mayCreateCommunities(me.id)) throw CommunityCreationNotAllowedException()
         val community = communityService.create(creatorUserId = me.id, rawName = body.name)
-        val edition = editions.requireActive(requireNotNull(community.id))
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(
                 community.toResponse(
-                    edition = edition, editionFrozen = editions.isFrozen(edition),
+                    edition = null,
                     viewerIsAdmin = true, pendingCount = 0,
                     viewerIdentity = identities.of(communityId = requireNotNull(community.id), userId = me.id),
                 ),
@@ -57,58 +59,56 @@ class CommunityController(
         val c = access.requireActiveMember(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
         val id = requireNotNull(c.id)
         val isAdmin = me.isSuperAdmin || membershipQuery.isAdmin(communityId = id, userId = me.id)
-        val pending = if (isAdmin) memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt() else 0
-        val edition = editions.requireActive(id)
-        return c.toResponse(
-            edition = edition, editionFrozen = editions.isFrozen(edition),
-            viewerIsAdmin = isAdmin, pendingCount = pending,
-            viewerIdentity = identities.of(communityId = id, userId = me.id),
-        )
+        val pending = if (isAdmin) pendingCount(id) else 0
+        return respond(community = c, viewerIsAdmin = isAdmin, pendingCount = pending, userId = me.id)
     }
 
     @PatchMapping("/{slug}")
     fun update(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String, @RequestBody body: UpdateCommunityRequest): CommunityResponse {
         val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
-        val id = requireNotNull(c.id)
-        val updated = communityService.update(
-            community = c,
-            name = body.name,
-            label = body.editionLabel,
-            startsAt = body.startsAt,
-            startsAtTimezone = body.startsAtTimezone,
-            phaseTwoStartRound = body.phaseTwoStartRound,
-            gamesFromRound = body.gamesFromRound,
-            gamesUntilRound = body.gamesUntilRound,
-        )
-        val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
-        return updated.community.toResponse(
-            edition = updated.edition, editionFrozen = editions.isFrozen(updated.edition),
-            viewerIsAdmin = true, pendingCount = pending,
-            viewerIdentity = identities.of(communityId = id, userId = me.id),
-        )
+        val renamed = communityService.rename(community = c, name = body.name)
+        return respond(community = renamed, viewerIsAdmin = true, pendingCount = pendingCount(requireNotNull(c.id)), userId = me.id)
     }
 
-    /**
-     * Start the next run: the current one is archived, the new one inherits its setup and starts
-     * without a date. The membership stays where it belongs — on the community.
-     */
+    /** Opens the community's run; 409 while one is active. The membership stays on the community. */
     @PostMapping("/{slug}/editions")
-    fun startEdition(
+    fun createEdition(
         @AuthenticationPrincipal me: AuthenticatedUser,
         @PathVariable slug: String,
-        @RequestBody body: StartEditionRequest,
+        @RequestBody body: EditionRequest,
     ): ResponseEntity<CommunityResponse> {
         val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
         val id = requireNotNull(c.id)
-        val edition = editions.startNew(communityId = id, rawLabel = body.label)
-        val pending = memberRepo.countByCommunityIdAndStatus(communityId = id, status = MemberStatus.PENDING).toInt()
+        val edition = editions.create(communityId = id, draft = body.toDraft())
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(
-                c.toResponse(
-                    edition = edition, editionFrozen = editions.isFrozen(edition),
-                    viewerIsAdmin = true, pendingCount = pending,
-                    viewerIdentity = identities.of(communityId = id, userId = me.id),
-                ),
-            )
+            .body(respond(community = c, edition = edition, viewerIsAdmin = true, pendingCount = pendingCount(id), userId = me.id))
     }
+
+    /** Overwrites the active run's editable fields; 404 without one, 409 where the freeze forbids it. */
+    @PutMapping("/{slug}/editions/active")
+    fun replaceEdition(
+        @AuthenticationPrincipal me: AuthenticatedUser,
+        @PathVariable slug: String,
+        @RequestBody body: EditionRequest,
+    ): CommunityResponse {
+        val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
+        val id = requireNotNull(c.id)
+        val edition = editions.replace(communityId = id, draft = body.toDraft())
+        return respond(community = c, edition = edition, viewerIsAdmin = true, pendingCount = pendingCount(id), userId = me.id)
+    }
+
+    private fun pendingCount(communityId: UUID): Int =
+        memberRepo.countByCommunityIdAndStatus(communityId = communityId, status = MemberStatus.PENDING).toInt()
+
+    private fun respond(
+        community: Community,
+        edition: CommunityEdition? = editions.active(requireNotNull(community.id)),
+        viewerIsAdmin: Boolean,
+        pendingCount: Int,
+        userId: UUID,
+    ) = community.toResponse(
+        edition = edition?.toResponse(frozen = editions.isFrozen(edition)),
+        viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount,
+        viewerIdentity = identities.of(communityId = requireNotNull(community.id), userId = userId),
+    )
 }

@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -43,7 +44,7 @@ class RoundGameRepositoryTest(
             Community(name = slug, slug = slug, createdBy = requireNotNull(creator.id)),
         )
         return editions.save(
-            CommunityEdition(communityId = requireNotNull(community.id), label = "Run 2026"),
+            anEdition(communityId = requireNotNull(community.id)),
         )
     }
 
@@ -133,11 +134,8 @@ class RoundGameRepositoryTest(
     fun `two editions of the same community keep their own rounds`() {
         val first = anEdition("rg-two-editions")
         val second = editions.save(
-            CommunityEdition(
-                communityId = first.communityId,
-                label = "Run 2027",
-                archivedAt = Instant.parse("2027-01-01T00:00:00Z"),
-            ),
+            anEdition(communityId = first.communityId, label = "Run 2027")
+                .copy(archivedAt = Instant.parse("2027-01-01T00:00:00Z")),
         )
         val award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
         store.announce(

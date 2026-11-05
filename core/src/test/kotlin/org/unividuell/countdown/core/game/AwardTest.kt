@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.game
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.game.internal.NoGameReason
 import org.unividuell.countdown.core.game.internal.windowReasonOf
@@ -60,9 +61,7 @@ class AwardTest {
 
     @Test
     fun `the edition overload reads the threshold off the run`() {
-        val edition = CommunityEdition(
-            communityId = UUID.randomUUID(), label = "Run 2026", phaseTwoStartRound = -20,
-        )
+        val edition = anEdition(communityId = UUID.randomUUID(), phaseTwoStartRound = -20)
 
         Phase.of(edition = edition, roundNumber = -20) shouldBe Phase.TWO
         Phase.of(edition = edition, roundNumber = -21) shouldBe Phase.ONE

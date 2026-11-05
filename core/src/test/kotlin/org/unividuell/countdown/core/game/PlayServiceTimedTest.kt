@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberStatus
@@ -130,10 +131,13 @@ class PlayServiceTimedTest(
     private fun aCommunity(name: String): Community {
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = Int.MIN_VALUE,
+            ),
         )
         return community
     }

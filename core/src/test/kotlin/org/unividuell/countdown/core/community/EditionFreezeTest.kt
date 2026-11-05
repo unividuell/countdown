@@ -1,8 +1,6 @@
 package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.comparables.shouldBeLessThan
-import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.community.internal.frozenSince
@@ -12,31 +10,26 @@ import java.util.UUID
 class EditionFreezeTest {
 
     private fun edition(
-        startsAt: Instant?,
+        startsAt: Instant,
         zone: String = "Europe/Berlin",
-        gamesFromRound: Int? = -24,
-    ) = CommunityEdition(
+        gamesFromRound: Int = -24,
+    ) = anEdition(
         communityId = UUID.randomUUID(),
-        label = "Run 2026",
         startsAt = startsAt,
         startsAtTimezone = zone,
         gamesFromRound = gamesFromRound,
     )
 
     @Test
-    fun `without a date there is no grid to freeze`() {
-        frozenSince(edition(startsAt = null)).shouldBeNull()
-    }
-
-    @Test
-    fun `an unbounded window has no moment before the first playable round`() {
-        val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = null)
-
-        frozenSince(e) shouldBe Instant.MIN
-    }
-
-    @Test
     fun `the freeze point is the start of the round before the first game round`() {
+        // 17:00Z is 18:00 in Berlin (CET); round -31 starts 32 days earlier, same wall-clock.
+        val e = edition(startsAt = Instant.parse("2026-12-20T17:00:00Z"), gamesFromRound = -30)
+
+        frozenSince(e) shouldBe Instant.parse("2026-11-18T17:00:00Z")
+    }
+
+    @Test
+    fun `the freeze point is the start of the round before the first game round in summer`() {
         // 09:00Z is 11:00 in Berlin (CEST); round -25 starts 26 days earlier, same wall-clock.
         val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = -24)
 
@@ -67,9 +60,6 @@ class EditionFreezeTest {
         val startsAt = Instant.parse("2026-06-25T09:00:00Z")
         val e = edition(startsAt = startsAt, gamesFromRound = Int.MIN_VALUE)
 
-        val since = frozenSince(e)
-
-        since.shouldNotBeNull()
-        since shouldBeLessThan startsAt
+        frozenSince(e) shouldBeLessThan startsAt
     }
 }
