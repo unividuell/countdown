@@ -75,6 +75,36 @@ describe('EditionCalendar', () => {
     )
   })
 
+  it('keeps the detail line current when the cells change', async () => {
+    const wrapper = mountCalendar()
+    await wrapper.get('[data-round="-7"]').trigger('click')
+
+    const moved = editionCells(
+      {
+        startsAt: '2026-12-20T17:00:00Z',
+        zone: 'Europe/Berlin',
+        gamesFromRound: -30,
+        gamesUntilRound: 0,
+        phaseTwoStartRound: -3,
+      },
+      DateTime.fromISO('2026-11-05T11:00:00Z'),
+    )
+    await wrapper.setProps({ cells: moved })
+
+    expect(wrapper.get('[data-test="edition-detail"]').text()).toBe(
+      'Runde -7 · Sa., 12. Dez. 18:00 · Phase 1',
+    )
+  })
+
+  it('clears the detail line when the selected round is gone', async () => {
+    const wrapper = mountCalendar()
+    await wrapper.get('[data-round="-45"]').trigger('click')
+
+    await wrapper.setProps({ cells: cells.filter((c) => c.round !== -45) })
+
+    expect(wrapper.get('[data-test="edition-detail"]').text()).toBe('')
+  })
+
   it('scrolls the grid inside its own container', () => {
     expect(mountCalendar().get('[data-test="edition-scroll"]').classes()).toContain(
       'overflow-x-auto',

@@ -30,7 +30,10 @@ const KIND_COLOR: Record<CellKind, string> = {
   start: 'bg-stone-900',
 }
 
-const selected = ref<GridCell | null>(null)
+/** The tapped round, not its cell: the cells recompute while the form is edited. */
+const selectedRound = ref<number | null>(null)
+
+const selected = computed(() => props.cells.find((c) => c.round === selectedRound.value) ?? null)
 
 /** Monday-padding in front, so that the first cell lands on its weekday row. */
 const padBefore = computed(() => (props.cells.length ? props.cells[0]!.start.weekday - 1 : 0))
@@ -125,7 +128,7 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
             selected?.round === c.round ? 'outline-2 outline-sky-500' : '',
           ]"
           :aria-label="`Runde ${c.round}`"
-          @click="selected = c"
+          @click="selectedRound = c.round"
         >
           {{ c.start.day }}
           <IconLock

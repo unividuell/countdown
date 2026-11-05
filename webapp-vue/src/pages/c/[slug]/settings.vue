@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
 import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
+import EditionCalendar from '@/communities/edition/EditionCalendar.vue'
+import { editionCells } from '@/communities/edition/editionGrid'
 
 useAdminGuard()
 const { community, refresh } = useCommunityContext()
@@ -14,12 +17,35 @@ const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
 
+const edition = computed(() => community.value.edition)
+const cells = computed(() => {
+  const e = edition.value
+  if (!e) return []
+
+  return editionCells(
+    {
+      startsAt: e.startsAt,
+      zone: e.startsAtTimezone,
+      gamesFromRound: e.gamesFromRound,
+      gamesUntilRound: e.gamesUntilRound,
+      phaseTwoStartRound: e.phaseTwoStartRound,
+    },
+    DateTime.now(),
+  )
+})
+
 function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
+// The name field follows the context, e.g. after a refresh.
+watch(
+  () => community.value.name,
+  (n) => (name.value = n),
+  { immediate: true },
+)
+
 onMounted(async () => {
-  name.value = community.value.name
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -60,6 +86,27 @@ async function revoke(): Promise<void> {
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </form>
+
+    <div class="mt-6 border-t pt-4">
+      <h2 class="mb-2 font-medium">Edition</h2>
+      <div v-if="edition" class="space-y-3">
+        <p data-test="edition-title" class="text-sm">{{ edition.label ?? community.name }}</p>
+        <EditionCalendar :cells="cells" />
+        <RouterLink
+          :to="communityPath(slug, 'edition')"
+          class="inline-block rounded border px-3 py-1.5 hover:bg-neutral-200"
+          >Edition bearbeiten</RouterLink
+        >
+      </div>
+      <div v-else>
+        <p class="mb-2 text-sm text-neutral-500">Kein Lauf aktiv.</p>
+        <RouterLink
+          :to="communityPath(slug, 'edition')"
+          class="inline-block rounded border px-3 py-1.5 hover:bg-neutral-200"
+          >Edition erzeugen</RouterLink
+        >
+      </div>
+    </div>
 
     <div class="mt-6 border-t pt-4">
       <h2 class="mb-2 font-medium">Einladungslink</h2>
