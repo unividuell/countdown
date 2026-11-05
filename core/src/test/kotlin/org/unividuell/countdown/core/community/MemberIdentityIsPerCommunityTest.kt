@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
+import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityMemberRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.community.internal.RosterService
@@ -44,6 +46,7 @@ class MemberIdentityIsPerCommunityTest(
     @Autowired val announcements: AnnouncementService,
     @Autowired val communities: CommunityService,
     @Autowired val members: CommunityMemberRepository,
+    @Autowired val editionRepository: CommunityEditionRepository,
     @Autowired val users: UserRepository,
 ) {
     /** "AMY WONG" loses its vowels and its space before it is cut to four. */
@@ -63,10 +66,13 @@ class MemberIdentityIsPerCommunityTest(
      */
     private fun aCommunity(name: String): Community {
         val community = communities.create(creatorUserId = viewer, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editionRepository.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         return community
     }

@@ -8,8 +8,6 @@ export interface Chip {
 }
 export interface CountdownView {
   state: 'idle' | 'before' | 'after'
-  prefix: string
-  label: string
   chips: Chip[]
 }
 export interface BaseUnitConfig {
@@ -32,8 +30,8 @@ export function nextBaseUnitConfig(cfg: BaseUnitConfig): BaseUnitConfig {
 
 /**
  * Pure display projection. Round logic stays on the backend; here we only subtract + format
- * absolute instants. Before start (number >= 0): day count = |number|, h:m:s = round.end - now.
- * After start (number < 0): "event running", count up since startsAt. Weeks/months are a cosmetic
+ * absolute instants. Before start (number <= 0): day count = |number|, h:m:s = round.end - now.
+ * After start (number > 0): "event running", count up since startsAt. Weeks/months are a cosmetic
  * calendar re-expression of the time to startsAt.
  */
 export function computeView(
@@ -43,11 +41,11 @@ export function computeView(
   nowMs: number,
   cfg: BaseUnitConfig,
 ): CountdownView {
-  if (!round || !startsAt) return { state: 'idle', prefix: '', label: '', chips: [] }
+  if (!round || !startsAt) return { state: 'idle', chips: [] }
   const now = DateTime.fromMillis(nowMs, { zone })
   const start = DateTime.fromISO(startsAt, { zone })
 
-  if (round.number < 0) {
+  if (round.number > 0) {
     // The base unit applies here too. It used to be ignored, which made the header's readout — the
     // same button before and after the start — do nothing at all once an event was running.
     const units: DurationUnit[] = []
@@ -64,7 +62,7 @@ export function computeView(
       { value: pad2(up.minutes), unit: 'm' },
       { value: pad2(up.seconds), unit: 's' },
     )
-    return { state: 'after', prefix: 'T+', label: round.label, chips }
+    return { state: 'after', chips }
   }
 
   const lower = DateTime.fromISO(round.end, { zone })
@@ -86,7 +84,7 @@ export function computeView(
   chips.push({ value: pad2(lower.hours), unit: 'h' })
   chips.push({ value: pad2(lower.minutes), unit: 'm' })
   chips.push({ value: pad2(lower.seconds), unit: 's' })
-  return { state: 'before', prefix: 'T-', label: round.label, chips }
+  return { state: 'before', chips }
 }
 
 export type BoundaryAction = 'none' | 'shift' | 'refetch'

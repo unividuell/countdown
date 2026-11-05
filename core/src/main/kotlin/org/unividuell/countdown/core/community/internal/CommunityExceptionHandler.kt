@@ -15,7 +15,11 @@ class CommunityExceptionHandler {
     )
     fun conflict(e: RuntimeException) = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "conflict")
 
-    @ExceptionHandler(CommunityAccessDeniedException::class, InviteNotFoundException::class)
+    @ExceptionHandler(
+        CommunityAccessDeniedException::class,
+        InviteNotFoundException::class,
+        EditionNotFoundException::class,
+    )
     fun notFound(e: RuntimeException) = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
     @ExceptionHandler(NotAdminException::class, CommunityCreationNotAllowedException::class)

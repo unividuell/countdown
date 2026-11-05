@@ -7,14 +7,40 @@ const ms = (iso: string) => Date.parse(iso)
 const daysBase = { months: false, weeks: false, days: true }
 
 const round10: Round = {
-  number: 10,
-  label: 'T-10',
+  number: -10,
   start: '2026-06-14T09:00:00Z',
   end: '2026-06-15T09:00:00Z',
 }
 const startsAt = '2026-06-25T09:00:00Z'
 
 describe('computeView', () => {
+  // The anchor: liftoff 2027-06-24 11:00 Berlin (09:00Z). Round 0 is the last day before it.
+  const liftoff = '2027-06-24T09:00:00Z'
+
+  it('one hour before the start is round 0, counting down an hour', () => {
+    const round0: Round = { number: 0, start: '2027-06-23T09:00:00Z', end: liftoff }
+    const v = computeView(round0, liftoff, zone, ms('2027-06-24T08:00:00Z'), daysBase)
+    expect(v.state).toBe('before')
+    expect(v.chips).toEqual([
+      { value: '0', unit: 'd' },
+      { value: '01', unit: 'h' },
+      { value: '00', unit: 'm' },
+      { value: '00', unit: 's' },
+    ])
+  })
+
+  it('the start instant is round 1 and counts up from zero', () => {
+    const round1: Round = { number: 1, start: liftoff, end: '2027-06-25T09:00:00Z' }
+    const v = computeView(round1, liftoff, zone, ms(liftoff), daysBase)
+    expect(v.state).toBe('after')
+    expect(v.chips).toEqual([
+      { value: '0', unit: 'd' },
+      { value: '00', unit: 'h' },
+      { value: '00', unit: 'm' },
+      { value: '00', unit: 's' },
+    ])
+  })
+
   it('is idle without a round or startsAt', () => {
     expect(computeView(null, startsAt, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
       'idle',
@@ -28,8 +54,6 @@ describe('computeView', () => {
     // 12h before round end (2026-06-14T21:00:00Z)
     const v = computeView(round10, startsAt, zone, ms('2026-06-14T21:00:00Z'), daysBase)
     expect(v.state).toBe('before')
-    expect(v.prefix).toBe('T-')
-    expect(v.label).toBe('T-10')
     expect(v.chips).toEqual([
       { value: '10', unit: 'd' },
       { value: '12', unit: 'h' },
@@ -54,8 +78,7 @@ describe('computeView', () => {
     // the same diff in UTC truncates to 0. This would fail if {zone} were dropped from fromMillis/fromISO.
     const weeksBase = { months: false, weeks: true, days: true }
     const r: Round = {
-      number: 1,
-      label: 'T-1',
+      number: -1,
       start: '2026-03-28T22:00:00Z',
       end: '2026-03-29T09:00:00Z',
     }
@@ -72,15 +95,12 @@ describe('computeView', () => {
 
   it('counts up after start (event running)', () => {
     const r: Round = {
-      number: -1,
-      label: 'T+1',
+      number: 1,
       start: '2026-06-25T09:00:00Z',
       end: '2026-06-26T09:00:00Z',
     }
     const v = computeView(r, startsAt, zone, ms('2026-06-25T11:30:00Z'), daysBase)
     expect(v.state).toBe('after')
-    expect(v.prefix).toBe('T+')
-    expect(v.label).toBe('T+1')
     expect(v.chips[0]).toEqual({ value: '0', unit: 'd' }) // 2h30m after start
     expect(v.chips[1]).toEqual({ value: '02', unit: 'h' })
   })
@@ -90,8 +110,7 @@ describe('computeView', () => {
   // clicking a running community's countdown did nothing at all, in every browser.
   it('re-expresses the elapsed time in the chosen base unit, as it does before the start', () => {
     const r: Round = {
-      number: -43,
-      label: 'T+43',
+      number: 43,
       start: '2026-06-25T09:00:00Z',
       end: '2026-06-26T09:00:00Z',
     }
@@ -119,8 +138,7 @@ describe('computeView', () => {
 
   it('keeps counting up in plain days when no higher base unit is chosen', () => {
     const r: Round = {
-      number: -43,
-      label: 'T+43',
+      number: 43,
       start: '2026-06-25T09:00:00Z',
       end: '2026-06-26T09:00:00Z',
     }
@@ -143,8 +161,7 @@ describe('nextBaseUnitConfig cycles days -> months+weeks -> weeks -> days', () =
 
 describe('boundaryAction', () => {
   const next: Round = {
-    number: 9,
-    label: 'T-9',
+    number: -9,
     start: '2026-06-15T09:00:00Z',
     end: '2026-06-16T09:00:00Z',
   }

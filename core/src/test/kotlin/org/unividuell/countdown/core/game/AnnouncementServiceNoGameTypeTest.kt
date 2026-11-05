@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.CommunityQuery
@@ -69,9 +70,10 @@ class AnnouncementServiceNoGameTypeTest {
             id = communityId, name = "Empty Catalogue", slug = "empty-catalogue",
             createdBy = UUID.randomUUID(),
         )
-        val edition = CommunityEdition(
-            id = UUID.randomUUID(), communityId = communityId, label = "Run 2026",
+        val edition = anEdition(
+            id = UUID.randomUUID(), communityId = communityId,
             startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
+            gamesFromRound = -36500,
         )
         every { communities.findBySlug("empty-catalogue") } returns community
         every { communities.activeEditionOf(communityId) } returns edition

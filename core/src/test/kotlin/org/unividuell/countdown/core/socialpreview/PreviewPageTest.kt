@@ -10,12 +10,12 @@ class PreviewPageTest {
 
     @Test
     fun `renders the tags a messenger reads`() {
-        val html = PreviewPage(title = "Hütte Hütte", description = "T-58: Spiel mit!", path = "/c/huettehuette")
+        val html = PreviewPage(title = "Hütte Hütte", description = "Noch 58 Tage: Spiel mit!", path = "/c/huettehuette")
             .html(baseUrl = "https://countdown.unividuell.org")
 
         html shouldContain "<title>Hütte Hütte</title>"
         html shouldContain """<meta property="og:title" content="Hütte Hütte">"""
-        html shouldContain """<meta property="og:description" content="T-58: Spiel mit!">"""
+        html shouldContain """<meta property="og:description" content="Noch 58 Tage: Spiel mit!">"""
         html shouldContain """<meta property="og:url" content="https://countdown.unividuell.org/c/huettehuette">"""
         html shouldContain """<html lang="de">"""
     }

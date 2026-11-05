@@ -7,7 +7,7 @@ import type { MyPlayDto, RoundResponse } from '@/api/types'
 import { useRound } from '../useRound'
 
 const announced = (over: Partial<RoundResponse> = {}): RoundResponse => ({
-  round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
+  round: { number: 12, start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
   game: {
     id: 'guess-hue',
     displayName: 'Farbausmalung',
@@ -248,7 +248,6 @@ describe('useRound', () => {
     // `no-game`'s fallback ("Und jetzt viel Spaß zusammen!") in front of a live, playable round.
     const nextRound = {
       number: 13,
-      label: 'T-13',
       start: '2026-08-15T10:00:00Z',
       end: '2026-08-16T10:00:00Z',
     }
@@ -285,7 +284,6 @@ describe('useRound', () => {
     }
     const nextRound = {
       number: 13,
-      label: 'T-13',
       start: '2026-08-15T10:00:00Z',
       end: '2026-08-16T10:00:00Z',
     }

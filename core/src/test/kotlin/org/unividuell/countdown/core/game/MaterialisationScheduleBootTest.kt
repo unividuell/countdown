@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -64,10 +65,13 @@ class MaterialisationScheduleBootTest(
             users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id,
         )
         val community = communities.create(creatorUserId = owner, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         return Run(community = community, owner = owner, edition = edition)
@@ -95,22 +99,22 @@ class MaterialisationScheduleBootTest(
 
         schedule.prepare(edition = edition, now = clock.instant()) shouldBe 2
         val running = store.find(edition = edition, roundNumber = current).shouldNotBeNull()
-        val next = store.find(edition = edition, roundNumber = current - 1).shouldNotBeNull()
+        val next = store.find(edition = edition, roundNumber = current + 1).shouldNotBeNull()
 
         schedule.prepare(edition = edition, now = clock.instant()) shouldBe 0
         store.find(edition = edition, roundNumber = current) shouldBe running
-        store.find(edition = edition, roundNumber = current - 1) shouldBe next
+        store.find(edition = edition, roundNumber = current + 1) shouldBe next
     }
 
     @Test
     fun `a row written before the run is left as it was`() {
         val edition = aRun("Schedule Leaves Alone").edition
         val current = currentOf(edition)
-        val planted = aPlantedRound(edition = edition, roundNumber = current - 1)
+        val planted = aPlantedRound(edition = edition, roundNumber = current + 1)
 
         schedule.prepare(edition = edition, now = clock.instant()) shouldBe 1
 
-        store.find(edition = edition, roundNumber = current - 1) shouldBe planted
+        store.find(edition = edition, roundNumber = current + 1) shouldBe planted
     }
 
     @Test
@@ -128,15 +132,15 @@ class MaterialisationScheduleBootTest(
         val (community, owner, edition) = aRun("Schedule Keeps Ahead Sealed")
         val current = currentOf(edition)
         schedule.prepare(edition = edition, now = clock.instant())
-        val ahead = store.find(edition = edition, roundNumber = current - 1).shouldNotBeNull()
+        val ahead = store.find(edition = edition, roundNumber = current + 1).shouldNotBeNull()
 
         shouldThrow<RoundNotFoundException> {
-            history.pastRound(slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = current - 1)
+            history.pastRound(slug = community.slug, userId = owner, isSuperAdmin = false, roundNumber = current + 1)
         }
         shouldThrow<RoundNotFoundException> {
             plays.asset(
                 slug = community.slug, userId = owner, isSuperAdmin = false,
-                roundNumber = current - 1, roundGameId = requireNotNull(ahead.id), name = "solution",
+                roundNumber = current + 1, roundGameId = requireNotNull(ahead.id), name = "solution",
             )
         }
     }

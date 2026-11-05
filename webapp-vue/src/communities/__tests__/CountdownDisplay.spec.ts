@@ -23,14 +23,12 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
       nextRound: {
-        number: 9,
-        label: 'T-9',
+        number: -9,
         start: '2026-06-15T09:00:00Z',
         end: '2026-06-16T09:00:00Z',
       },
@@ -54,8 +52,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -84,14 +81,12 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
       nextRound: {
-        number: 9,
-        label: 'T-9',
+        number: -9,
         start: '2026-06-15T09:00:00Z',
         end: '2026-06-16T09:00:00Z',
       },
@@ -122,8 +117,7 @@ describe('CountdownDisplay', () => {
         startsAt: '2026-06-25T09:00:00Z',
         startsAtTimezone: 'Europe/Berlin',
         round: {
-          number: 10,
-          label: 'T-10',
+          number: -10,
           start: '2026-06-14T09:00:00Z',
           end: '2026-06-15T09:00:00Z',
         },
@@ -152,8 +146,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -173,8 +166,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-14T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: -1,
-        label: 'T+1',
+        number: 1,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -199,8 +191,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 5,
-        label: 'T-5',
+        number: -5,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -218,8 +209,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -245,8 +235,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -274,8 +263,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -293,8 +281,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -318,8 +305,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },
@@ -342,8 +328,7 @@ describe('CountdownDisplay', () => {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },

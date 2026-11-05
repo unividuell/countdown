@@ -8,7 +8,6 @@ import { useRoundHistory } from '../useRoundHistory'
 const closed = (number: number, previous: number | null): RoundResponse => ({
   round: {
     number,
-    label: `T-${number}`,
     start: '2026-08-10T10:00:00Z',
     end: '2026-08-11T10:00:00Z',
   },

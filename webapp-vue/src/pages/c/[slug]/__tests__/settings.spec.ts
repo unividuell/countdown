@@ -1,174 +1,158 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { ref } from 'vue'
 import * as api from '@/api/communities'
+import { ApiError } from '@/api/client'
+import type { CommunityResponse, EditionResponse } from '@/api/types'
+
+const { community } = vi.hoisted(() => ({ community: { current: null as never } }))
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }))
 vi.mock('@/communities/useAdminGuard', () => ({ useAdminGuard: vi.fn() }))
 vi.mock('@/communities/context', () => ({
-  useCommunityContext: () => ({
-    community: { value: { slug: 'team', viewerIsAdmin: true } },
-    refresh: vi.fn(),
-  }),
+  useCommunityContext: () => ({ community: community.current, refresh: vi.fn() }),
 }))
 
-const community = {
-  id: '1',
-  name: 'Team',
-  slug: 'team',
-  startsAt: '2026-06-25T09:00:00Z', // 11:00 in Europe/Berlin (summer)
+const edition: EditionResponse = {
+  label: 'Hüttenwochenende',
+  startsAt: '2099-12-20T17:00:00.000Z',
   startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: 24,
-  viewerIsAdmin: true,
-  pendingCount: 0,
-  editionFrozen: false,
-  viewerIdentity: null,
+  phaseTwoStartRound: -7,
+  gamesFromRound: -30,
+  gamesUntilRound: 0,
+  frozen: false,
 }
 
-describe('settings — timezone + zone-relative startsAt', () => {
+function useCommunity(e: EditionResponse | null) {
+  const c = ref<CommunityResponse>({
+    id: '1',
+    slug: 'team',
+    name: 'Team',
+    edition: e,
+    viewerIsAdmin: true,
+    pendingCount: 0,
+    viewerIdentity: null,
+  })
+  community.current = c as never
+
+  return c
+}
+
+async function mountSettings() {
+  const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+  const w = mount(Settings, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  await flushPromises()
+
+  return w
+}
+
+describe('settings — name', () => {
   beforeEach(() => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({ ...community })
+    useCommunity(null)
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
-    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community })
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({} as CommunityResponse)
   })
 
-  it('renders the startsAt as wall-time in the selected zone (11:00, not browser-local)', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    const startInput = w.find('input[type="datetime-local"]').element as HTMLInputElement
-    expect(startInput.value).toBe('2026-06-25T11:00')
-    const zoneSelect = w.find('select')
-    expect((zoneSelect.element as HTMLSelectElement).value).toBe('Europe/Berlin')
+  it('prefills the name from the community in context', async () => {
+    const w = await mountSettings()
+    expect((w.find('input').element as HTMLInputElement).value).toBe('Team')
   })
 
-  it('saves startsAt converted from the selected zone and sends startsAtTimezone', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
+  it('saves only the trimmed name', async () => {
+    const w = await mountSettings()
+    await w.find('input').setValue('  Team Nord ')
     await w.find('form').trigger('submit')
     await flushPromises()
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.objectContaining({
-        startsAt: '2026-06-25T09:00:00.000Z',
-        startsAtTimezone: 'Europe/Berlin',
-      }),
-    )
+    expect(api.updateCommunity).toHaveBeenCalledWith('team', 'Team Nord')
   })
 
-  it('renders startsAt in a non-default community zone (America/New_York)', async () => {
-    // 09:00Z is 05:00 EDT on 2026-06-25 (summer, UTC-4)
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({
-      ...community,
-      startsAtTimezone: 'America/New_York',
-    })
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    expect((w.find('input[type="datetime-local"]').element as HTMLInputElement).value).toBe(
-      '2026-06-25T05:00',
+  it('quotes the server detail when saving the name fails', async () => {
+    vi.spyOn(api, 'updateCommunity').mockRejectedValue(
+      new ApiError(400, 'Bad Request', { detail: 'Name vergeben.' }),
     )
-    expect((w.find('select').element as HTMLSelectElement).value).toBe('America/New_York')
+    const w = await mountSettings()
     await w.find('form').trigger('submit')
     await flushPromises()
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.objectContaining({
-        startsAt: '2026-06-25T09:00:00.000Z',
-        startsAtTimezone: 'America/New_York',
-      }),
-    )
+
+    expect(w.text()).toContain('Speichern fehlgeschlagen: „Name vergeben.“')
   })
 
   it('shows the community URL prefixed with /c/, not the bare slug', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
+    const w = await mountSettings()
     expect(w.text()).toContain('/c/team/')
   })
 
-  it('renders gamesFromRound and sends it back', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    const field = w.find('[data-test="games-from-round"]')
-    expect((field.element as HTMLInputElement).value).toBe('24')
+  it('follows the community name after a refresh', async () => {
+    const c = useCommunity(null)
+    const w = await mountSettings()
 
-    await field.setValue(40)
-    await w.find('form').trigger('submit')
+    c.value = { ...c.value, name: 'Team Süd' }
     await flushPromises()
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.objectContaining({ gamesFromRound: 40 }),
-    )
-  })
 
-  it('omits gamesFromRound when the field is cleared', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    await w.find('[data-test="games-from-round"]').setValue('')
-    await w.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.not.objectContaining({ gamesFromRound: expect.anything() }),
-    )
-  })
-
-  it('says the grid is still open while the first game round is ahead', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeUndefined()
-    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Änderbar')
-  })
-
-  it('reflects a freeze the save itself just caused, without a remount', async () => {
-    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    await w.find('form').trigger('submit')
-    await flushPromises()
-    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
-    expect(w.find('select').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Die erste Spielrunde steht fest')
+    expect((w.find('input').element as HTMLInputElement).value).toBe('Team Süd')
   })
 })
 
-describe('settings — a run that has begun', () => {
+describe('settings — edition', () => {
   beforeEach(() => {
-    vi.spyOn(api, 'getCommunity').mockResolvedValue({ ...community, editionFrozen: true })
+    // The calendar draws one cell per round from today; a 2099 start would be ~27k cells.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2099-12-01T12:00:00Z'))
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
-    vi.spyOn(api, 'updateCommunity').mockResolvedValue({ ...community, editionFrozen: true })
   })
 
-  it('locks start and timezone and says why', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    expect(w.find('input[type="datetime-local"]').attributes('disabled')).toBeDefined()
-    expect(w.find('select').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-test="freeze-hint"]').text()).toContain('Die erste Spielrunde steht fest')
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it('leaves start and timezone out of the request', async () => {
-    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
-    const w = mount(Settings)
-    await flushPromises()
-    await w.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.not.objectContaining({ startsAt: expect.anything() }),
+  it('without an edition offers to create one, with no date fields', async () => {
+    useCommunity(null)
+    const w = await mountSettings()
+
+    expect(w.text()).toContain('Kein Lauf aktiv.')
+    const link = w.getComponent(RouterLinkStub)
+    expect(link.text()).toBe('Edition erzeugen')
+    expect(link.props('to')).toBe('/c/team/edition')
+    expect(w.find('select').exists()).toBe(false)
+    expect(w.find('input[type=date]').exists()).toBe(false)
+  })
+
+  it('with an edition shows its label, the calendar and an edit link', async () => {
+    useCommunity(edition)
+    const w = await mountSettings()
+
+    expect(w.text()).toContain('Hüttenwochenende')
+    expect(w.get('[data-test=edition-start]').text()).toBe('So., 20. Dez. 2099, 18:00')
+    expect(w.find('[data-test=edition-grid]').exists()).toBe(true)
+    const link = w.getComponent(RouterLinkStub)
+    expect(link.text()).toBe('Edition bearbeiten')
+    expect(link.props('to')).toBe('/c/team/edition')
+  })
+
+  it('says from when start and zone are fixed', async () => {
+    useCommunity({ ...edition, startsAt: '2100-01-20T17:00:00.000Z' })
+    const w = await mountSettings()
+
+    expect(w.get('[data-test=edition-frozen-since]').text()).toBe(
+      'Start und Zeitzone sind ab Sa., 19. Dez. 2099 18:00 fest.',
     )
-    expect(api.updateCommunity).toHaveBeenCalledWith(
-      'team',
-      expect.not.objectContaining({ startsAtTimezone: expect.anything() }),
+  })
+
+  it('words it in the past once fixed', async () => {
+    useCommunity({ ...edition, frozen: true })
+    const w = await mountSettings()
+
+    expect(w.get('[data-test=edition-frozen-since]').text()).toMatch(
+      /^Start und Zeitzone sind seit /,
     )
+  })
+
+  it('falls back to the community name without a label', async () => {
+    useCommunity({ ...edition, label: null })
+    const w = await mountSettings()
+
+    expect(w.get('[data-test=edition-title]').text()).toBe('Team')
   })
 })

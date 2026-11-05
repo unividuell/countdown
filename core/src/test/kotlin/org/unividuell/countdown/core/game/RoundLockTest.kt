@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.support.TransactionTemplate
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -64,7 +65,7 @@ class RoundLockTest(
                 Community(name = "Lock Round", slug = "lock-round-${System.nanoTime()}", createdBy = creator),
             )
             communityId = requireNotNull(community.id)
-            val edition = editions.save(CommunityEdition(communityId = communityId, label = "Run 2026"))
+            val edition = editions.save(anEdition(communityId = communityId))
             editionId = requireNotNull(edition.id)
             val round = store.announce(
                 edition = edition, roundNumber = 12, gameType = "guess-hue",

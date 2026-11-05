@@ -17,10 +17,15 @@ describe('labRoundNumber', () => {
   it('stays inside the grid a real countdown has, for every seed the URL accepts', () => {
     for (const seed of SEEDS) {
       const number = labRoundNumber(seed)
-      expect(number).toBeGreaterThanOrEqual(0)
-      expect(number).toBeLessThanOrEqual(140)
+      expect(number).toBeGreaterThanOrEqual(-140)
+      expect(number).toBeLessThanOrEqual(0)
       expect(Number.isInteger(number)).toBe(true)
     }
+  })
+
+  // An unary minus turns round 0 into -0, which renders as „0“ but is not `0` to Object.is.
+  it('never yields negative zero', () => {
+    for (let seed = 0; seed <= 2000; seed++) expect(Object.is(labRoundNumber(seed), -0)).toBe(false)
   })
 
   it('separates neighbouring seeds, so rolling visibly changes the round', () => {

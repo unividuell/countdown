@@ -5,16 +5,17 @@ How a community's round gets a game, and how a guess becomes points. See
 
 ## The run is the round coordinate, not the community
 
-A community is permanent, its countdown is not: the target event recurs, so `(community, T-58)` is not
-a key — every run has its own T-58 with its own guesses and its own ranking. Everything that hangs off
-a round hangs off `edition_id` (`community.editions`), and exactly one edition per community is active,
+A community is permanent, its countdown is not: the target event recurs, so `(community, -58)` is not
+a key — every run has its own round -58 with its own guesses and its own ranking. Everything that hangs off
+a round hangs off `edition_id` (`community.editions`), and at most one edition per community is active,
 enforced by a partial unique index on `archived_at IS NULL`.
 
-## A larger round number is earlier
+## A smaller round number is earlier
 
-The game window's bounds are named `from`/`until`, never start/end. "The previous round" is `round_number > n`, ascending
-— the first row is the most recently played one. Phase two is `round_number <= phase_two_start_round`.
-The game window is inclusive on both ends, and `games_from_round = NULL` means unbounded above.
+Round numbers rise with time (see `countdown.md`). The game window's bounds are named `from`/`until`,
+never start/end. "The previous round" is `round_number < n`, descending — the first row is the most
+recently played one. Phase two is `round_number >= phase_two_start_round`. The game window is
+inclusive on both ends (`from <= n <= until`).
 
 ## A closed round is open
 
@@ -32,7 +33,7 @@ the running round's own solution, one that walks past `present()`/`solution()` a
 that pin what those two are allowed to carry.
 
 The way back through a run is a pointer on every round's own answer, not a page to request:
-`previousRoundNumber` is `MIN(round_number)` strictly above the current one within the game window,
+`previousRoundNumber` is `MAX(round_number)` strictly below the current one within the game window,
 and `NULL` means „ganz am Anfang“. A day without a `round_games` row — one before the schedule
 existed, or one both the schedule and the fallback missed — is simply not a link in the chain;
 nothing has to count the gap. The pointer lives on `ResolvedRound` itself rather than travelling as a

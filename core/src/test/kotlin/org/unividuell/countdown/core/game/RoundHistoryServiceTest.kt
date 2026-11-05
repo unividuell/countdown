@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberStatus
@@ -96,10 +97,13 @@ class RoundHistoryServiceTest(
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         return community to ownerId
     }
@@ -156,7 +160,7 @@ class RoundHistoryServiceTest(
     fun `a closed round shows its payload, its solution and every finished guess to someone who never played it`() {
         val (community, viewer) = aCommunity("History Open")
         val player = aMember(community, "player")
-        val past = currentRoundNumberOf(community) + 1
+        val past = currentRoundNumberOf(community) - 1
         val roundGameId = announceAt(community = community, roundNumber = past)
         aFinishedPlay(roundGameId = roundGameId, userId = player, answer = "42")
 
@@ -177,7 +181,7 @@ class RoundHistoryServiceTest(
     fun `a revealed but never guessed row stays out of a closed round's others`() {
         val (community, viewer) = aCommunity("History Lurker")
         val lurker = aMember(community, "lurker")
-        val past = currentRoundNumberOf(community) + 1
+        val past = currentRoundNumberOf(community) - 1
         val roundGameId = announceAt(community = community, roundNumber = past)
         plays.revealOrCount(roundGameId = roundGameId, userId = lurker, revealedAt = clock.instant())
 
@@ -202,7 +206,7 @@ class RoundHistoryServiceTest(
         shouldThrow<RoundNotFoundException> {
             history.pastRound(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = current - 1,
+                roundNumber = current + 1,
             )
         }
     }
@@ -214,7 +218,7 @@ class RoundHistoryServiceTest(
         shouldThrow<RoundNotFoundException> {
             history.pastRound(
                 slug = community.slug, userId = viewer, isSuperAdmin = false,
-                roundNumber = currentRoundNumberOf(community) + 5,
+                roundNumber = currentRoundNumberOf(community) - 5,
             )
         }
     }
@@ -222,10 +226,10 @@ class RoundHistoryServiceTest(
     @Test
     fun `a round that fell out of the run's window is not history`() {
         val (community, viewer) = aCommunity("History Window")
-        val past = currentRoundNumberOf(community) + 1
+        val past = currentRoundNumberOf(community) - 1
         announceAt(community = community, roundNumber = past)
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
-        editions.save(edition.copy(gamesFromRound = past - 1))
+        editions.save(edition.copy(gamesFromRound = past + 1))
 
         shouldThrow<RoundNotFoundException> {
             history.pastRound(
@@ -238,14 +242,14 @@ class RoundHistoryServiceTest(
     fun `previousRoundNumber chains through the history and ends at null`() {
         val (community, viewer) = aCommunity("History Chain")
         val current = currentRoundNumberOf(community)
-        announceAt(community = community, roundNumber = current + 1)
-        announceAt(community = community, roundNumber = current + 4)
+        announceAt(community = community, roundNumber = current - 1)
+        announceAt(community = community, roundNumber = current - 4)
 
         history.pastRound(
-            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current + 1,
-        ).previousRoundNumber shouldBe current + 4
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current - 1,
+        ).previousRoundNumber shouldBe current - 4
         history.pastRound(
-            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current + 4,
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current - 4,
         ).previousRoundNumber.shouldBeNull()
     }
 
@@ -253,25 +257,25 @@ class RoundHistoryServiceTest(
     fun `a closed round whose game this build lacks keeps its round and its pointer`() {
         val (community, viewer) = aCommunity("History Unknown Type")
         val current = currentRoundNumberOf(community)
-        announceAt(community = community, roundNumber = current + 1, gameType = "gone-away")
-        announceAt(community = community, roundNumber = current + 2)
+        announceAt(community = community, roundNumber = current - 1, gameType = "gone-away")
+        announceAt(community = community, roundNumber = current - 2)
 
         val res = history.pastRound(
-            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current + 1,
+            slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = current - 1,
         )
 
         res.game.shouldBeNull()
         res.noGameReason shouldBe NoGameReason.NO_GAME_TYPE
-        res.round.shouldNotBeNull().number shouldBe current + 1
+        res.round.shouldNotBeNull().number shouldBe current - 1
         // The chain walks past the gap instead of ending at it.
-        res.previousRoundNumber shouldBe current + 2
+        res.previousRoundNumber shouldBe current - 2
     }
 
     @Test
     fun `a non-member gets no history at all`() {
         val (community, _) = aCommunity("History Secret")
         val outsider = aUser("outsider")
-        val past = currentRoundNumberOf(community) + 1
+        val past = currentRoundNumberOf(community) - 1
         announceAt(community = community, roundNumber = past)
 
         shouldThrow<RoundAccessDeniedException> {

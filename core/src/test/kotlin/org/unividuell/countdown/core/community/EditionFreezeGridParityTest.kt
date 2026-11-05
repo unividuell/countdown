@@ -17,16 +17,15 @@ class EditionFreezeGridParityTest {
     private val engine = CountdownEngine()
 
     private fun assertMatchesEngine(startsAt: Instant, zone: String, gamesFromRound: Int) {
-        val edition = CommunityEdition(
+        val edition = anEdition(
             communityId = UUID.randomUUID(),
-            label = "Run 2026",
             startsAt = startsAt,
             startsAtTimezone = zone,
             gamesFromRound = gamesFromRound,
         )
 
         frozenSince(edition) shouldBe engine.intervalOf(
-            number = gamesFromRound + 1,
+            number = gamesFromRound - 1,
             startsAt = startsAt,
             zone = ZoneId.of(zone),
         ).start
@@ -37,7 +36,7 @@ class EditionFreezeGridParityTest {
         assertMatchesEngine(
             startsAt = Instant.parse("2026-06-25T09:00:00Z"),
             zone = "Europe/Berlin",
-            gamesFromRound = 24,
+            gamesFromRound = -24,
         )
     }
 
@@ -46,7 +45,7 @@ class EditionFreezeGridParityTest {
         assertMatchesEngine(
             startsAt = Instant.parse("2026-04-05T16:00:00Z"),
             zone = "Europe/Berlin",
-            gamesFromRound = 9,
+            gamesFromRound = -9,
         )
     }
 
@@ -55,7 +54,7 @@ class EditionFreezeGridParityTest {
         assertMatchesEngine(
             startsAt = Instant.parse("2026-11-10T14:00:00Z"),
             zone = "America/New_York",
-            gamesFromRound = 30,
+            gamesFromRound = -30,
         )
     }
 }

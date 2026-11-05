@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
@@ -44,10 +45,13 @@ class PlayServiceSpentGuessTest(
     fun `a second guess is refused without judging it`() {
         val ownerId = requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id)
         val community = communities.create(creatorUserId = ownerId, rawName = "Spent Guess")
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = engine.roundAt(

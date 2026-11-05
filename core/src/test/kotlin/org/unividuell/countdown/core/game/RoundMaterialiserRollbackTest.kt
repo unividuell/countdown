@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.countdown.CountdownEngine
@@ -73,10 +74,13 @@ class RoundMaterialiserRollbackTest(
     fun `a hook failing with a checked exception leaves no round behind`() {
         val owner = requireNotNull(users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id)
         val community = communities.create(creatorUserId = owner, rawName = "Checked Failure")
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val current = engine.roundAt(

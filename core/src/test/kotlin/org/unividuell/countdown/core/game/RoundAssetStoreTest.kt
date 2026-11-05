@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
 import org.unividuell.countdown.core.game.internal.RoundAssetStore
@@ -79,7 +80,7 @@ class RoundAssetStoreTest(
             users.save(User(subject = System.nanoTime().toString(), githubLogin = "owner")).id,
         )
         val community = communities.create(creatorUserId = ownerId, rawName = "Round Asset Store")
-        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val edition = editions.save(anEdition(communityId = requireNotNull(community.id)))
 
         val round = rounds.announce(
             edition = edition, roundNumber = 1, gameType = "asset-store-fake",

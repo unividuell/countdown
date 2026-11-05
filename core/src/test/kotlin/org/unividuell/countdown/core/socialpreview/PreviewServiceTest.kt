@@ -32,27 +32,22 @@ class PreviewServiceTest {
     private val id = UUID.randomUUID()
     private val community = Community(id = id, name = "Hütte Hütte", slug = "huettehuette", createdBy = UUID.randomUUID())
 
-    private fun round(number: Int) = Round(
-        number = number,
-        label = if (number >= 0) "T-$number" else "T+${-number}",
-        start = now,
-        end = now,
-    )
+    private fun round(number: Int) = Round(number = number, start = now, end = now)
 
     @Test
     fun `a community with a running countdown shows its name and round`() {
         every { communities.findBySlug("huettehuette") } returns community
-        every { countdown.currentRound(communityId = id, now = now) } returns round(58)
+        every { countdown.currentRound(communityId = id, now = now) } returns round(-58)
 
         service.forCommunity("huettehuette") shouldBe PreviewPage(
             title = "Hütte Hütte",
-            description = "T-58: Spiel mit!",
+            description = "Noch 58 Tage: Spiel mit!",
             path = "/c/huettehuette",
         )
     }
 
     @Test
-    fun `a community without a date drops the round part`() {
+    fun `a community without an active edition drops the round part`() {
         every { communities.findBySlug("huettehuette") } returns community
         every { countdown.currentRound(communityId = id, now = now) } returns null
 
@@ -62,7 +57,26 @@ class PreviewServiceTest {
     @Test
     fun `a community past its start drops the round part`() {
         every { communities.findBySlug("huettehuette") } returns community
-        every { countdown.currentRound(communityId = id, now = now) } returns round(-3)
+        every { countdown.currentRound(communityId = id, now = now) } returns round(3)
+
+        service.forCommunity("huettehuette").description shouldBe "Spiel mit!"
+    }
+
+    @Test
+    fun `the last rounds before the start count the days down to zero`() {
+        every { communities.findBySlug("huettehuette") } returns community
+
+        every { countdown.currentRound(communityId = id, now = now) } returns round(-1)
+        service.forCommunity("huettehuette").description shouldBe "Noch 1 Tag: Spiel mit!"
+
+        every { countdown.currentRound(communityId = id, now = now) } returns round(0)
+        service.forCommunity("huettehuette").description shouldBe "Noch 0 Tage: Spiel mit!"
+    }
+
+    @Test
+    fun `the first round of the event drops the round part`() {
+        every { communities.findBySlug("huettehuette") } returns community
+        every { countdown.currentRound(communityId = id, now = now) } returns round(1)
 
         service.forCommunity("huettehuette").description shouldBe "Spiel mit!"
     }
@@ -77,11 +91,11 @@ class PreviewServiceTest {
     @Test
     fun `a valid invite names the community and says it is an invitation`() {
         every { invites.communityOfValidInvite("A7K2MP") } returns community
-        every { countdown.currentRound(communityId = id, now = now) } returns round(58)
+        every { countdown.currentRound(communityId = id, now = now) } returns round(-58)
 
         service.forInvite("A7K2MP") shouldBe PreviewPage(
             title = "Hütte Hütte",
-            description = "Du bist eingeladen — T-58: Spiel mit!",
+            description = "Du bist eingeladen — Noch 58 Tage: Spiel mit!",
             path = "/join/A7K2MP",
         )
     }

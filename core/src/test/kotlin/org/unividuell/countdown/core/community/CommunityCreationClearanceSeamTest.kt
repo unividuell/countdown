@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
 import org.unividuell.auth.test.withCsrfToken
 import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.CommunityService
-import org.unividuell.countdown.core.community.internal.EditionService
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.SuperAdminUserService
 import org.unividuell.countdown.core.iam.internal.UserRepository
@@ -30,8 +29,7 @@ import java.util.UUID
  * Here the port and the database are real, and the principal is built from the *saved* row — so
  * the principal's id and the row's id are the same by construction, not by a shared constant.
  *
- * `CommunityService` and `EditionService` are mocked: what a created community and its edition
- * look like is not part of this seam.
+ * `CommunityService` is mocked: what a created community looks like is not part of this seam.
  * The test login is off: a context of its own, which no other class's committed users reach.
  */
 @Import(TestcontainersConfiguration::class)
@@ -45,7 +43,6 @@ class CommunityCreationClearanceSeamTest(
     @Autowired val superAdminUsers: SuperAdminUserService,
 ) {
     @MockkBean lateinit var communityService: CommunityService
-    @MockkBean lateinit var editions: EditionService
 
     private fun save(login: String) =
         users.save(User(subject = login, githubLogin = login))
@@ -63,9 +60,6 @@ class CommunityCreationClearanceSeamTest(
         val communityId = UUID.randomUUID()
         every { communityService.create(creatorUserId = user.id!!, rawName = "Team A") } returns
             Community(id = communityId, name = "Team A", slug = "team-a", createdBy = user.id!!)
-        every { editions.requireActive(communityId) } returns
-            CommunityEdition(id = UUID.randomUUID(), communityId = communityId, label = "Team A")
-        every { editions.isFrozen(any()) } returns false
 
         createAs(user).andExpect {
             status { isForbidden() }

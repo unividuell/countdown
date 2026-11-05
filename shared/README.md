@@ -6,6 +6,7 @@ not generated at build time — deleting a file here breaks tests in both suites
 | File | Contract | Written by | Asserted by |
 |---|---|---|---|
 | `rng/golden-vectors.json` | The seeded-RNG stream must be byte-identical on the JVM and in the browser | `SeededRandomGoldenVectorTest` (`-Drng.vectors.write=true`) | the same Kotlin test **and** `webapp-vue/src/lib/rng/__tests__/seededRandom.spec.ts` |
+| `edition-grid/vectors.json` | Round start/`roundAt` arithmetic of the edition form's calendar, in `CountdownEngine` and in TS | `EditionGridGoldenVectorTest` (`-Dedition.vectors.write=true`) | the same Kotlin test **and** `webapp-vue/src/communities/edition/__tests__/editionGrid.spec.ts` |
 | `copy-blocks/fit.json` | How Blockierung's `fit` maps a guess cell onto the template, and back | by hand — seven cases; Kotlin's `Fit` is the source of truth | `FitGoldenVectorTest` **and** `webapp-vue/src/games/copyblocks/__tests__/fit.spec.ts` |
 | `round-assets/seal-vectors.json` | A round asset sealed with ChaCha20-Poly1305 (`nonce ‖ ciphertext ‖ tag`) opens in the browser with `@noble/ciphers` | Node's built-in crypto, see below — an implementation independent of both sides | `AssetSealTest` **and** the frontend's decrypt spec |
 

@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberStatus
@@ -71,21 +72,24 @@ class PlayServiceTest(
     private fun guess(hue: Double): JsonNode = mapper.readTree("""{"hue":$hue}""")
 
     /**
-     * A community whose countdown starts in 2099 — so the current round is a large number — with its
-     * creator as first ACTIVE member. [phaseTwo] shifts the threshold above the current round, which
-     * is what puts the round into phase two, because later in time is a smaller number.
+     * A community whose countdown starts in 2099 — so the current round is a large negative number — with its
+     * creator as first ACTIVE member. [phaseTwo] shifts the threshold below the current round, which
+     * is what puts the round into phase two, because later in time is a larger number.
      */
     private fun aCommunity(name: String, phaseTwo: Boolean = false): Pair<Community, UUID> {
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         if (phaseTwo) {
             val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
-            editions.save(edition.copy(phaseTwoStartRound = currentRoundNumberOf(community) + 10))
+            editions.save(edition.copy(phaseTwoStartRound = currentRoundNumberOf(community) - 10))
         }
         announceGuessHue(community)
         return community to ownerId
@@ -235,7 +239,7 @@ class PlayServiceTest(
         val current = play.reveal(
             slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = currentRoundNumberOf(community),
         )
-        val staleNumber = requireNotNull(current.round).number + 1
+        val staleNumber = requireNotNull(current.round).number - 1
 
         shouldThrow<RoundMovedOnException> {
             play.guess(
@@ -369,7 +373,7 @@ class PlayServiceTest(
             roundNumber = ownerRevealed.round.shouldNotBeNull().number, guess = guess(0.0),
         ).solution as GuessHueSolution
         // The owner scored: in phase two there is no gate, so the only guess so far is the best one.
-        // awardFor in phase two is (threshold - round + 2), and the threshold sits 10 rounds above
+        // awardFor in phase two is (round - threshold + 2), and the threshold sits 10 rounds below
         // the current one, so the stake is 12.
         announcements.currentRound(slug = community.slug, userId = owner, isSuperAdmin = false)
             .me.shouldNotBeNull().points shouldBe 12
@@ -420,7 +424,7 @@ class PlayServiceTest(
     fun `an action response names the previous round too`() {
         val (community, viewer) = aCommunity("Pointer On Actions")
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
-        val older = currentRoundNumberOf(community) + 2
+        val older = currentRoundNumberOf(community) - 2
         store.announce(
             edition = edition, roundNumber = older, gameType = "guess-hue",
             params = mapper.readTree("""{"n":1}"""),

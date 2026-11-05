@@ -22,13 +22,9 @@ function community(over: Partial<CommunityResponse> = {}): CommunityResponse {
     id: 'c1',
     name: 'Team Süd',
     slug: 'team',
-    startsAt: null,
-    startsAtTimezone: 'Europe/Berlin',
-    phaseTwoStartRound: null,
-    gamesFromRound: null,
+    edition: null,
     viewerIsAdmin: false,
     pendingCount: 0,
-    editionFrozen: false,
     viewerIdentity: null,
     ...over,
   }
@@ -293,5 +289,31 @@ describe('community route data guard', () => {
     })
 
     expect(activeCommunity.value?.viewerIdentity?.avatar.shortName).toBe('ZWRG')
+  })
+
+  it('publishes no date and no label for a community without an edition', () => {
+    publishCommunity(community({ edition: null }))
+
+    expect(activeCommunity.value?.startsAt).toBeNull()
+    expect(activeCommunity.value?.editionLabel).toBeNull()
+  })
+
+  it('publishes the label and date of the active edition', () => {
+    publishCommunity(
+      community({
+        edition: {
+          label: 'Hüttenwochenende',
+          startsAt: '2026-06-25T09:00:00Z',
+          startsAtTimezone: 'Europe/Berlin',
+          phaseTwoStartRound: null,
+          gamesFromRound: -24,
+          gamesUntilRound: 0,
+          frozen: false,
+        },
+      }),
+    )
+
+    expect(activeCommunity.value?.editionLabel).toBe('Hüttenwochenende')
+    expect(activeCommunity.value?.startsAt).toBe('2026-06-25T09:00:00Z')
   })
 })

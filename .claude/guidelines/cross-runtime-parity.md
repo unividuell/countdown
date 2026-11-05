@@ -6,7 +6,9 @@ project preference still stands: **keep logic in one place** (the countdown engi
 Kotlin and ships absolute instants). Duplicate a function across runtimes **only when both sides
 genuinely must compute it locally**, and then treat parity as a contract, not a hope.
 
-Worked examples: `Slugs.slugify` ↔ `slugify.ts` (string parity, both in production), and
+Worked examples: `Slugs.slugify` ↔ `slugify.ts` (string parity, both in production),
+`CountdownEngine` round dates ↔ `editionGrid.ts` (live form preview; vectors in
+`shared/edition-grid/vectors.json`, rewritten with `-Dedition.vectors.write=true`), and
 `SeededRandom.kt` ↔ `seededRandom.reference.ts` (bit-exact numeric parity — see
 [`docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md`](../../docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md)).
 

@@ -3,6 +3,7 @@ import type {
   AcceptResponse,
   CommunityResponse,
   CommunitySummary,
+  EditionRequest,
   InvitePeekResponse,
   InviteResponse,
   MemberResponse,
@@ -24,18 +25,19 @@ export const createCommunity = (name: string) =>
   })
 export const getCommunity = (slug: string) =>
   apiFetch<CommunityResponse>(`/api/communities/${slug}`)
-export const updateCommunity = (
-  slug: string,
-  body: Partial<{
-    name: string
-    startsAt: string
-    startsAtTimezone: string
-    phaseTwoStartRound: number
-    gamesFromRound: number
-  }>,
-) =>
+export const updateCommunity = (slug: string, name: string) =>
   apiFetch<CommunityResponse>(`/api/communities/${slug}`, {
     method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+export const createEdition = (slug: string, body: EditionRequest) =>
+  apiFetch<CommunityResponse>(`/api/communities/${slug}/editions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+export const replaceEdition = (slug: string, body: EditionRequest) =>
+  apiFetch<CommunityResponse>(`/api/communities/${slug}/editions/active`, {
+    method: 'PUT',
     body: JSON.stringify(body),
   })
 export const generateInvite = (slug: string) =>

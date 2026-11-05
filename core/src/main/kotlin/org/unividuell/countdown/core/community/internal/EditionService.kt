@@ -9,9 +9,18 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 
+/** What an admin submits for a run: everything but what the system owns (`gamesUntilRound`, archiving). */
+data class EditionDraft(
+    val label: String?,
+    val startsAt: Instant,
+    val startsAtTimezone: String,
+    val phaseTwoStartRound: Int?,
+    val gamesFromRound: Int,
+)
+
 /**
- * The lifecycle of a community's runs. A run is never deleted, only archived, and a community has
- * exactly one active run at a time — the partial unique index is the enforcement, this service is
+ * The lifecycle of a community's run. A run is never deleted, only archived, and a community has
+ * at most one active run at a time — the partial unique index is the enforcement, this service is
  * the well-lit path to it.
  */
 @Service
@@ -22,108 +31,101 @@ open class EditionService(
     @Transactional(readOnly = true)
     open fun active(communityId: UUID): CommunityEdition? = editions.findActiveByCommunityId(communityId)
 
-    /**
-     * Every community has an active edition: `CommunityService.create` makes one and the V3
-     * migration backfilled the rest. A miss is a broken invariant, not a user error — hence 500.
-     */
-    @Transactional(readOnly = true)
-    open fun requireActive(communityId: UUID): CommunityEdition =
-        active(communityId) ?: throw IllegalStateException("community $communityId has no active edition")
-
-    /** [inheritFrom] carries the setup forward when a follow-up run starts; only the date resets. */
+    /** Opens the community's first run — or the next one, once the previous was archived. */
     @Transactional
-    open fun create(communityId: UUID, rawLabel: String, inheritFrom: CommunityEdition? = null): CommunityEdition {
-        val fresh = CommunityEdition(communityId = communityId, label = rawLabel.trim())
-        val edition = inheritFrom?.let {
-            fresh.copy(
-                startsAtTimezone = it.startsAtTimezone,
-                phaseTwoStartRound = it.phaseTwoStartRound,
-                gamesFromRound = it.gamesFromRound,
-                gamesUntilRound = it.gamesUntilRound,
-            )
-        } ?: fresh
+    open fun create(communityId: UUID, draft: EditionDraft): CommunityEdition {
+        if (active(communityId) != null) {
+            throw EditionConflictException("community $communityId already has an active edition")
+        }
+        val edition = CommunityEdition(
+            communityId = communityId,
+            label = draft.label.toLabel(),
+            startsAt = draft.startsAt,
+            startsAtTimezone = draft.startsAtTimezone,
+            phaseTwoStartRound = draft.phaseTwoStartRound,
+            gamesFromRound = draft.gamesFromRound,
+        )
         validate(edition)
+        requireGridStillOpen(edition)
         return saveOrConflict(communityId = communityId, edition = edition)
     }
 
     /**
-     * Archive the current run and open the next one. Two concurrent calls both archive and both
-     * insert; the partial index rejects the loser, which surfaces as a 409 rather than a second
-     * active run.
+     * Overwrites every admin-editable field of the active run; `gamesUntilRound` stays. A frozen run
+     * keeps its grid: start and zone are fixed, and the first game round may move, but never so the run thaws.
      */
     @Transactional
-    open fun startNew(communityId: UUID, rawLabel: String): CommunityEdition {
-        val current = active(communityId)
-        if (current != null) editions.save(current.copy(archivedAt = clock.instant()))
-        return create(communityId = communityId, rawLabel = rawLabel, inheritFrom = current)
-    }
-
-    /** "null = keep" throughout, matching `CommunityService.update`; clearing a value is out of scope. */
-    @Transactional
-    open fun update(
-        edition: CommunityEdition,
-        label: String?,
-        startsAt: Instant?,
-        startsAtTimezone: String?,
-        phaseTwoStartRound: Int?,
-        gamesFromRound: Int?,
-        gamesUntilRound: Int?,
-    ): CommunityEdition {
-        val next = edition.copy(
-            label = label?.trim() ?: edition.label,
-            startsAt = startsAt ?: edition.startsAt,
-            startsAtTimezone = startsAtTimezone ?: edition.startsAtTimezone,
-            phaseTwoStartRound = phaseTwoStartRound ?: edition.phaseTwoStartRound,
-            gamesFromRound = gamesFromRound ?: edition.gamesFromRound,
-            gamesUntilRound = gamesUntilRound ?: edition.gamesUntilRound,
+    open fun replace(communityId: UUID, draft: EditionDraft): CommunityEdition {
+        val current = active(communityId) ?: throw EditionNotFoundException()
+        val next = current.copy(
+            label = draft.label.toLabel(),
+            startsAt = draft.startsAt,
+            startsAtTimezone = draft.startsAtTimezone,
+            phaseTwoStartRound = draft.phaseTwoStartRound,
+            gamesFromRound = draft.gamesFromRound,
         )
-        if (isFrozen(edition)) {
-            if (next.startsAt != edition.startsAt || next.startsAtTimezone != edition.startsAtTimezone) {
-                throw EditionFrozenException("the run's grid is fixed since ${frozenSinceDescription(edition)}")
+        validate(next)
+
+        if (isFrozen(current)) {
+            if (next.startsAt != current.startsAt || next.startsAtTimezone != current.startsAtTimezone) {
+                throw EditionFrozenException("the run's grid is fixed since ${frozenSince(current)}")
             }
             if (!isFrozen(next)) {
                 throw EditionFrozenException("a frozen run must not be thawed")
             }
+        } else {
+            requireGridStillOpen(next)
         }
-        validate(next)
-        return saveOrConflict(communityId = edition.communityId, edition = next)
+        return saveOrConflict(communityId = communityId, edition = next)
     }
 
     /**
      * Whether this run's grid is fixed — the day before its first game round has begun, so the
      * schedule may have announced that round and moving the grid would hand out a round number twice.
      */
-    open fun isFrozen(edition: CommunityEdition): Boolean =
-        frozenSince(edition)?.let { !clock.instant().isBefore(it) } ?: false
+    open fun isFrozen(edition: CommunityEdition): Boolean = !clock.instant().isBefore(frozenSince(edition))
 
-    /**
-     * Both [create] and [update] can lose the race against the partial unique index — [update]
-     * whenever it writes back a read that has since been archived by a concurrent [startNew] —
-     * and both need the same 409 rather than a raw 500.
-     */
+    /** A new run must not start out frozen: its first announced round would already be out. */
+    private fun requireGridStillOpen(edition: CommunityEdition) {
+        require(!isFrozen(edition)) {
+            "the run would be fixed since ${frozenSince(edition)}, which has already begun"
+        }
+    }
+
+    /** Blank counts as "no label"; a stored empty string would render as an empty heading. */
+    private fun String?.toLabel(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** Both [create] and [replace] can lose the race against the partial unique index; both need a 409, not a 500. */
     private fun saveOrConflict(communityId: UUID, edition: CommunityEdition): CommunityEdition = try {
         editions.save(edition)
     } catch (e: DuplicateKeyException) {
         throw EditionConflictException(message = "community $communityId already has an active edition", cause = e)
     }
 
-    /** Validating the finished aggregate, not the arguments — one place covers create and update. */
+    /** Validating the finished aggregate, not the arguments — one place covers create and replace. */
     private fun validate(edition: CommunityEdition) {
-        require(edition.label.length in 3..50) { "label must be 3..50 chars" }
-        edition.phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
+        edition.label?.let { require(it.length in 3..50) { "label must be 3..50 chars" } }
+        edition.phaseTwoStartRound?.let { require(it <= 0) { "phaseTwoStartRound must be <= 0" } }
         // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
         require(AVAILABLE_ZONE_IDS.contains(edition.startsAtTimezone)) {
             "invalid timezone: ${edition.startsAtTimezone}"
         }
-        // A larger round number is earlier in time, so the first round must not be below the last.
-        edition.gamesFromRound?.let {
-            require(it >= edition.gamesUntilRound) {
-                "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
+        // A smaller round number is earlier in time, so the first round must not be above the last.
+        require(edition.gamesFromRound <= edition.gamesUntilRound) {
+            "gamesFromRound (${edition.gamesFromRound}) must not be above gamesUntilRound (${edition.gamesUntilRound})"
+        }
+
+        // Phase two starts inside the run's games, e.g. first round -30, phase two from -7.
+        edition.phaseTwoStartRound?.let {
+            require(edition.gamesFromRound <= it) {
+                "gamesFromRound (${edition.gamesFromRound}) must not be above phaseTwoStartRound ($it)"
             }
-            // A run longer than a century of daily rounds is not a real run; the bound also keeps
-            // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
-            // seeing a round number close enough to Int.MAX_VALUE to overflow.
-            require(it <= MAX_GAMES_FROM_ROUND) { "gamesFromRound ($it) must not exceed $MAX_GAMES_FROM_ROUND" }
+        }
+        // A run longer than a century of daily rounds is not a real run; the bound also keeps
+        // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
+        // seeing a round number close enough to Int.MIN_VALUE to overflow.
+        require(edition.gamesFromRound >= -MAX_GAMES_FROM_ROUND) {
+            "gamesFromRound (${edition.gamesFromRound}) must not be below -$MAX_GAMES_FROM_ROUND"
         }
     }
 

@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityMember
 import org.unividuell.countdown.core.community.MemberStatus
@@ -116,13 +117,13 @@ class LabPointsParityTest(
     }
 
     /**
-     * A community whose countdown starts in 2099 — so the current round is a large number — with its
+     * A community whose countdown starts in 2099 — so the current round is a large negative number — with its
      * creator as first ACTIVE member, and `phaseTwoStartRound` pinned to exactly that current round
      * number. Unlike `PlayServiceTest.aCommunity(phaseTwo = true)`, which sets the threshold ten rounds
-     * above the current one, this pins it directly on top: the current round becomes phase two's
+     * below the current one, this pins it directly on top: the current round becomes phase two's
      * **first** round, the one `awardFor` pays least for. That is what makes its stake comparable to
-     * the lab's own first-phase-two-round stake at all — both numbers are then "threshold minus current
-     * round plus two", with the "minus current round" part cancelling out to zero on both sides.
+     * the lab's own first-phase-two-round stake at all — both numbers are then "current round minus
+     * threshold plus two", with the "current round minus threshold" part cancelling out to zero on both sides.
      *
      * Returns the threshold alongside the community: rounds are a daily grid, so the round number "now"
      * is not necessarily the round number by the time the test plays through reveal/guess/resolve —
@@ -133,10 +134,13 @@ class LabPointsParityTest(
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
         val communityId = requireNotNull(community.id)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(communityId))
         val currentRoundNumber = engine.roundAt(
@@ -199,7 +203,7 @@ class LabPointsParityTest(
     fun `a lab round in phase two awards what a real round in phase two awards`() {
         // The number both halves must land on, pinned independently of either side's own machinery:
         // the first round of phase two pays 2, straight out of the function both sides call.
-        awardFor(roundNumber = 12, phaseTwoStartRound = 12).points shouldBe 2
+        awardFor(roundNumber = -12, phaseTwoStartRound = -12).points shouldBe 2
 
         // --- the lab half: two testers, phase two, the second guessing exactly the target ---------
         val labEarlyId = aUser("lab-early")

@@ -52,6 +52,7 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | '/c/[slug]/'
       | '/c/[slug]/audio'
+      | '/c/[slug]/edition'
       | '/c/[slug]/images'
       | '/c/[slug]/lab/'
       | '/c/[slug]/lab/[game]/'
@@ -70,6 +71,13 @@ declare module 'vue-router/auto-routes' {
     '/c/[slug]/audio': RouteRecordInfo<
       '/c/[slug]/audio',
       '/c/:slug/audio',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/edition': RouteRecordInfo<
+      '/c/[slug]/edition',
+      '/c/:slug/edition',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
       | never
@@ -253,6 +261,7 @@ declare module 'vue-router/auto-routes' {
         | '/c/[slug]'
         | '/c/[slug]/'
         | '/c/[slug]/audio'
+        | '/c/[slug]/edition'
         | '/c/[slug]/images'
         | '/c/[slug]/lab/'
         | '/c/[slug]/lab/[game]/'
@@ -276,6 +285,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/c/[slug]/audio.vue': {
       routes:
         | '/c/[slug]/audio'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/edition.vue': {
+      routes:
+        | '/c/[slug]/edition'
       views:
         | never
       pathParamNames:

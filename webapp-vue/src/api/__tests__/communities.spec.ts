@@ -2,6 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import * as client from '@/api/client'
 import {
   createCommunity,
+  createEdition,
+  replaceEdition,
+  updateCommunity,
   listCommunities,
   joinByToken,
   getInvite,
@@ -9,6 +12,7 @@ import {
 } from '@/api/communities'
 import type {
   AcceptResponse,
+  EditionRequest,
   CommunityResponse,
   CommunitySummary,
   InviteResponse,
@@ -25,13 +29,9 @@ describe('communities api', () => {
       id: '1',
       name: 'Team A',
       slug: 'team-a',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      gamesFromRound: null,
+      edition: null,
       viewerIsAdmin: true,
       pendingCount: 0,
-      editionFrozen: false,
       viewerIdentity: null,
     } satisfies CommunityResponse)
     const c = await createCommunity('Team A')
@@ -72,5 +72,37 @@ describe('communities api', () => {
     apiFetch.mockResolvedValue(undefined)
     await revokeInvite('team')
     expect(apiFetch).toHaveBeenCalledWith('/api/communities/team/invite', { method: 'DELETE' })
+  })
+
+  it('renames a community with the name only', async () => {
+    apiFetch.mockResolvedValue({})
+    await updateCommunity('team', 'Team B')
+    expect(apiFetch).toHaveBeenCalledWith('/api/communities/team', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Team B' }),
+    })
+  })
+
+  it('creates and replaces the active edition', async () => {
+    const body: EditionRequest = {
+      label: null,
+      startsAt: '2026-06-25T09:00:00.000Z',
+      startsAtTimezone: 'Europe/Berlin',
+      phaseTwoStartRound: null,
+      gamesFromRound: -24,
+    }
+    apiFetch.mockResolvedValue({})
+
+    await createEdition('team', body)
+    expect(apiFetch).toHaveBeenLastCalledWith('/api/communities/team/editions', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+
+    await replaceEdition('team', body)
+    expect(apiFetch).toHaveBeenLastCalledWith('/api/communities/team/editions/active', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    })
   })
 })

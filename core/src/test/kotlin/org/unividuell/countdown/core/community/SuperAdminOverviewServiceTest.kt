@@ -109,7 +109,7 @@ class SuperAdminOverviewServiceTest {
         // Only alpha has an active edition, with a non-default timezone and a set date: a batch
         // keyed on the wrong column (e.g. the edition's own id) would still pass with defaults.
         every { editions.findAllActive() } returns listOf(
-            CommunityEdition(
+            anEdition(
                 id = UUID.randomUUID(), communityId = alphaId, label = "Alpha 2026",
                 startsAt = Instant.parse("2026-06-01T00:00:00Z"), startsAtTimezone = "America/New_York",
             ),

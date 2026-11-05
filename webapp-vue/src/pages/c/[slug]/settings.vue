@@ -1,61 +1,77 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
-import {
-  getCommunity,
-  updateCommunity,
-  generateInvite,
-  getInvite,
-  revokeInvite,
-} from '@/api/communities'
-import type { CommunityResponse } from '@/api/types'
+import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
+import EditionCalendar from '@/communities/edition/EditionCalendar.vue'
+import { saveErrorMessage } from '@/profile/saveError'
+import {
+  MAX_CALENDAR_ROUNDS,
+  calendarSpan,
+  editionCells,
+  frozenSince,
+} from '@/communities/edition/editionGrid'
 
 useAdminGuard()
 const { community, refresh } = useCommunityContext()
 const slug = community.value.slug
 const name = ref('')
-const startsAt = ref('')
-const startsAtTimezone = ref('Europe/Berlin')
-const zones = Intl.supportedValuesOf('timeZone')
-const phaseTwoStartRound = ref<number | null>(null)
-const gamesFromRound = ref<number | null>(null)
-const editionFrozen = ref(false)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
+
+const edition = computed(() => community.value.edition)
+const start = computed(() => {
+  const e = edition.value
+  if (!e) return ''
+
+  return DateTime.fromISO(e.startsAt, { zone: e.startsAtTimezone })
+    .setLocale('de')
+    .toFormat('EEE, d. MMM yyyy, HH:mm')
+})
+const shape = computed(() => {
+  const e = edition.value
+  if (!e) return null
+
+  return {
+    startsAt: e.startsAt,
+    zone: e.startsAtTimezone,
+    gamesFromRound: e.gamesFromRound,
+    gamesUntilRound: e.gamesUntilRound,
+    phaseTwoStartRound: e.phaseTwoStartRound,
+  }
+})
+const cells = computed(() => {
+  const s = shape.value
+  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return []
+
+  return editionCells(s, DateTime.now())
+})
+const frozenNote = computed(() => {
+  const s = shape.value
+  if (!s) return ''
+
+  const at = frozenSince(s.startsAt, s.zone, s.gamesFromRound)
+  const when = at.setLocale('de').toFormat('EEE, d. MMM yyyy HH:mm')
+
+  return `Start und Zeitzone sind ${at <= DateTime.now() ? 'seit' : 'ab'} ${when} fest.`
+})
 
 function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
-// <input type="datetime-local"> holds a zone-less wall-clock string. We interpret it IN the
-// community's startsAtTimezone (not the browser zone): instant <-> "yyyy-MM-dd'T'HH:mm" in that zone.
-function toLocalInput(iso: string, zone: string): string {
-  return DateTime.fromISO(iso, { zone }).toFormat("yyyy-MM-dd'T'HH:mm")
-}
-function toInstant(local: string, zone: string): string | null {
-  return DateTime.fromISO(local, { zone }).toUTC().toISO()
-}
-
-// Reflects whatever the server actually stored — called after both the initial load and every
-// save, so a save that freezes the run (or otherwise changes what was persisted) shows up without
-// waiting for a remount.
-function applyCommunity(c: CommunityResponse): void {
-  name.value = c.name
-  startsAtTimezone.value = c.startsAtTimezone
-  startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
-  phaseTwoStartRound.value = c.phaseTwoStartRound
-  gamesFromRound.value = c.gamesFromRound
-  editionFrozen.value = c.editionFrozen
-}
+// The name field follows the context, e.g. after a refresh.
+watch(
+  () => community.value.name,
+  (n) => (name.value = n),
+  { immediate: true },
+)
 
 onMounted(async () => {
-  const c = await getCommunity(slug)
-  applyCommunity(c)
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -63,28 +79,10 @@ onMounted(async () => {
 async function save(): Promise<void> {
   error.value = null
   try {
-    const body: Partial<{
-      name: string
-      startsAt: string
-      startsAtTimezone: string
-      phaseTwoStartRound: number
-      gamesFromRound: number
-    }> = { name: name.value.trim() }
-    if (!editionFrozen.value) {
-      body.startsAtTimezone = startsAtTimezone.value
-      if (startsAt.value) {
-        const instant = toInstant(startsAt.value, startsAtTimezone.value)
-        if (instant) body.startsAt = instant
-      }
-    }
-    if (typeof phaseTwoStartRound.value === 'number')
-      body.phaseTwoStartRound = phaseTwoStartRound.value
-    if (typeof gamesFromRound.value === 'number') body.gamesFromRound = gamesFromRound.value
-    const updated = await updateCommunity(slug, body)
-    applyCommunity(updated)
+    await updateCommunity(slug, name.value.trim())
     await refresh()
-  } catch {
-    error.value = 'Speichern fehlgeschlagen.'
+  } catch (e) {
+    error.value = saveErrorMessage(e)
   }
 }
 async function regenerate(): Promise<void> {
@@ -111,51 +109,32 @@ async function revoke(): Promise<void> {
       <p class="text-xs text-neutral-500">
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
       </p>
-      <label class="block text-sm"
-        >Zeitzone<select
-          v-model="startsAtTimezone"
-          :disabled="editionFrozen"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-        >
-          <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
-        </select></label
-      >
-      <label class="block text-sm"
-        >Start<input
-          v-model="startsAt"
-          type="datetime-local"
-          :disabled="editionFrozen"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <p class="text-xs text-neutral-500">Startzeit gilt in der gewählten Zeitzone.</p>
-      <p data-test="freeze-hint" class="text-xs text-neutral-500">
-        {{
-          editionFrozen
-            ? 'Die erste Spielrunde steht fest — Start und Zeitzone sind fix.'
-            : 'Änderbar bis einen Tag vor der ersten Spielrunde — danach ist der Lauf fix.'
-        }}
-      </p>
-      <label class="block text-sm"
-        >Phase-2-Startrunde<input
-          v-model.number="phaseTwoStartRound"
-          type="number"
-          min="1"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <label class="block text-sm"
-        >Erste Spielrunde<input
-          v-model.number="gamesFromRound"
-          data-test="games-from-round"
-          type="number"
-          min="1"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <p class="text-xs text-neutral-500">
-        Größere Nummer = früher. Leer lässt den gespeicherten Wert unverändert.
-      </p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
     </form>
+
+    <div class="mt-6 border-t pt-4">
+      <h2 class="mb-2 font-medium">Edition</h2>
+      <div v-if="edition" class="space-y-3">
+        <p data-test="edition-title" class="text-sm">{{ edition.label ?? community.name }}</p>
+        <p data-test="edition-start" class="text-sm text-neutral-600">{{ start }}</p>
+        <EditionCalendar :cells="cells" />
+        <p data-test="edition-frozen-since" class="text-xs text-neutral-500">{{ frozenNote }}</p>
+        <RouterLink
+          :to="communityPath(slug, 'edition')"
+          class="inline-block rounded border px-3 py-1.5 hover:bg-neutral-200"
+          >Edition bearbeiten</RouterLink
+        >
+      </div>
+      <div v-else>
+        <p class="mb-2 text-sm text-neutral-500">Kein Lauf aktiv.</p>
+        <RouterLink
+          :to="communityPath(slug, 'edition')"
+          class="inline-block rounded border px-3 py-1.5 hover:bg-neutral-200"
+          >Edition erzeugen</RouterLink
+        >
+      </div>
+    </div>
 
     <div class="mt-6 border-t pt-4">
       <h2 class="mb-2 font-medium">Einladungslink</h2>

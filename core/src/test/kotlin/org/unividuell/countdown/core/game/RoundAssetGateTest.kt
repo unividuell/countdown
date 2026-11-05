@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
 import org.unividuell.countdown.core.community.internal.CommunityService
@@ -90,10 +91,13 @@ class RoundAssetGateTest(
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser("owner")
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         return community to ownerId
     }
@@ -226,7 +230,7 @@ class RoundAssetGateTest(
     @Test
     fun `a closed round hands out every key and its after-guess bytes`() {
         val (community, viewer, running) = aGatedRound("Asset Gate Closed")
-        val past = announceGated(community = community, roundNumber = running.number + 1)
+        val past = announceGated(community = community, roundNumber = running.number - 1)
 
         // Never revealed, never guessed: whoever missed the round may still hear it afterwards.
         history.pastRound(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = past.number)
@@ -240,7 +244,7 @@ class RoundAssetGateTest(
     @Test
     fun `a closed round's assets survive the window closing over them`() {
         val (community, viewer) = aCommunity("Asset Gate After Window")
-        val past = announceGated(community = community, roundNumber = currentRoundNumberOf(community) + 1)
+        val past = announceGated(community = community, roundNumber = currentRoundNumberOf(community) - 1)
         // The run's window now ends one round before the running one, so the running round carries
         // no game at all (AFTER_WINDOW). The branch has to key off the round NUMBER — off „does the
         // running round carry a game“ it would take every reveal clip of the history down with it
