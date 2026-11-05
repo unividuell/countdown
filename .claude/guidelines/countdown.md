@@ -140,14 +140,25 @@ are unfair and unexplainable to a player.
 
 A run is therefore **frozen** from the start of round `gamesFromRound - 1` on — the day before its
 first game round: the daily schedule announces each round a day ahead, so that is the earliest
-instant a `round_games` row can exist (`gamesFromRound = null` means unbounded, so a run freezes
-with its date). From then on the two fields are 409, and the way forward is a new edition.
+instant a `round_games` row can exist. From then on the two fields are 409, and the way forward is a
+new edition. Conversely there is no instant start: an edition whose freeze moment has already begun
+is rejected on create/replace, unless the run is already frozen (then start and zone stay fixed).
 
 The state is **derived, never stored**: `frozenSince(edition)` against the clock. That keeps it
 honest without a column, but it makes the freeze point a function of editable fields — so the check
 compares the persisted edition with the one the update would produce and rejects **any** update
 after which the run would no longer be frozen. A rule on the effect, not on a field, needs no
 revisit when the next field enters the computation.
+
+## Editions: 0..1 active, always dated
+
+A community has **0..1** active edition; "none" is a normal state (new community, archived run), never
+an error — the countdown then shows no date. An edition always has `startsAt` and `gamesFromRound`
+(NOT NULL); only `label` is optional (null = called like the community).
+
+Write paths are separate: `PATCH /communities/{slug}` renames only, `POST .../editions` creates (409
+while one is active), `PUT .../editions/active` **replaces it completely** — an absent optional field
+clears it, there is no "null = keep".
 
 What does **not** freeze: `phaseTwoStartRound` and the game window. Rule and stake are frozen per
 round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds not yet

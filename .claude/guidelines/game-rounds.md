@@ -7,7 +7,7 @@ How a community's round gets a game, and how a guess becomes points. See
 
 A community is permanent, its countdown is not: the target event recurs, so `(community, -58)` is not
 a key — every run has its own round -58 with its own guesses and its own ranking. Everything that hangs off
-a round hangs off `edition_id` (`community.editions`), and exactly one edition per community is active,
+a round hangs off `edition_id` (`community.editions`), and at most one edition per community is active,
 enforced by a partial unique index on `archived_at IS NULL`.
 
 ## A smaller round number is earlier
