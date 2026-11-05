@@ -204,7 +204,7 @@ class RoundGameRepositoryTest(
     }
 
     @Test
-    fun `previousRound does not point below the run's game window either`() {
+    fun `previousRound does not point above the run's game window either`() {
         val edition = editions.save(anEdition("rg-previous-window-younger").copy(gamesUntilRound = -18))
         // Announced while `gamesUntilRound` was higher or absent; the admin has since lowered it,
         // leaving this round strictly between the running round and the new upper edge.

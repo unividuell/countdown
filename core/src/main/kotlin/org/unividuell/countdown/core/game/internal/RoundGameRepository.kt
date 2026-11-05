@@ -50,7 +50,7 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
      * below it, because a smaller round number is earlier. [notOlderThan] and [notNewerThan] cap the
      * walk at the run's game window on both sides; older means a smaller number, so `gamesFromRound`
      * bounds one side and `gamesUntilRound` the other. Both bounds are needed even though [before]
-     * itself may already sit outside the window — e.g. an admin raising `gamesUntilRound` after a
+     * itself may already sit outside the window — e.g. an admin lowering `gamesUntilRound` after a
      * round strictly between [before] and the new edge was already announced — otherwise the pointer
      * names a round `HistoryService.resolve`'s own window check then 404s on.
      *

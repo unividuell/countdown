@@ -56,7 +56,7 @@ class DifficultyTest {
     }
 
     @Test
-    fun `it is 1 when gamesUntilRound has been raised past the oldest played round`() {
+    fun `it is 1 when gamesUntilRound has been lowered past the oldest played round`() {
         // oldest = -8, until = -9: the denominator would be negative.
         difficultyOf(
             roundNumber = -3,

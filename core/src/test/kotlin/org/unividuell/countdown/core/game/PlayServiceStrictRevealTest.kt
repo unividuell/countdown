@@ -138,7 +138,7 @@ class PlayServiceStrictRevealTest(
         )
 
         shouldThrow<RoundMovedOnException> {
-            play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = number + 1)
+            play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = number - 1)
         }
 
         play.reveal(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = number)

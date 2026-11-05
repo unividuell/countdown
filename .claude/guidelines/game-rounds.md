@@ -33,7 +33,7 @@ the running round's own solution, one that walks past `present()`/`solution()` a
 that pin what those two are allowed to carry.
 
 The way back through a run is a pointer on every round's own answer, not a page to request:
-`previousRoundNumber` is `MIN(round_number)` strictly above the current one within the game window,
+`previousRoundNumber` is `MAX(round_number)` strictly below the current one within the game window,
 and `NULL` means „ganz am Anfang“. A day without a `round_games` row — one before the schedule
 existed, or one both the schedule and the fallback missed — is simply not a link in the chain;
 nothing has to count the gap. The pointer lives on `ResolvedRound` itself rather than travelling as a

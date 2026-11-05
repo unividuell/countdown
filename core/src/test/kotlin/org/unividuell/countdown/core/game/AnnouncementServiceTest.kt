@@ -58,7 +58,7 @@ class AnnouncementServiceTest(
     private fun aUser() = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
 
     /**
-     * A community whose countdown starts far in the future, so the current round is a large number.
+     * A community whose countdown starts far in the future, so the current round is a large negative number.
      * Its creator is automatically its first ACTIVE member (`CommunityService.create`), so the
      * returned UUID is a valid viewer without fetching one from a second, unrelated community.
      */

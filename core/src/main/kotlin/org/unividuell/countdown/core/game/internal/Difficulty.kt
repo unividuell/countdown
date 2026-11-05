@@ -22,7 +22,7 @@ fun difficultyOf(roundNumber: Int, gameType: String, history: List<PastRound>, g
     if (history.none { it.gameType == gameType }) return 0.0
 
     val first = history.last().roundNumber
-    // A window moved up to the oldest played round or past it: nothing is left to climb.
+    // A window end moved back to the oldest played round or before it: nothing is left to climb.
     if (first >= gamesUntilRound) return 1.0
 
     return ((roundNumber - first).toDouble() / (gamesUntilRound - first)).coerceIn(0.0, 1.0)

@@ -116,13 +116,13 @@ class LabPointsParityTest(
     }
 
     /**
-     * A community whose countdown starts in 2099 — so the current round is a large number — with its
+     * A community whose countdown starts in 2099 — so the current round is a large negative number — with its
      * creator as first ACTIVE member, and `phaseTwoStartRound` pinned to exactly that current round
      * number. Unlike `PlayServiceTest.aCommunity(phaseTwo = true)`, which sets the threshold ten rounds
-     * above the current one, this pins it directly on top: the current round becomes phase two's
+     * below the current one, this pins it directly on top: the current round becomes phase two's
      * **first** round, the one `awardFor` pays least for. That is what makes its stake comparable to
-     * the lab's own first-phase-two-round stake at all — both numbers are then "threshold minus current
-     * round plus two", with the "minus current round" part cancelling out to zero on both sides.
+     * the lab's own first-phase-two-round stake at all — both numbers are then "current round minus
+     * threshold plus two", with the "current round minus threshold" part cancelling out to zero on both sides.
      *
      * Returns the threshold alongside the community: rounds are a daily grid, so the round number "now"
      * is not necessarily the round number by the time the test plays through reveal/guess/resolve —

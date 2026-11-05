@@ -30,8 +30,8 @@ model it is built against.
 
 ## A round = an interval + a signed number
 
-- A **round is a half-open time interval `[start, end)` with an integer number** (and a derived
-  label). **Start-inclusive, end-exclusive.** Modelling it as an interval (not literally "a day")
+- A **round is a half-open time interval `[start, end)` with an integer number**.
+  **Start-inclusive, end-exclusive.** Modelling it as an interval (not literally "a day")
   keeps the math clean and lets multiple games **nest inside a day** later (see *fast rounds*). The
   **daily grid is the invariant base** — fast rounds add sub-rounds *within* a day, they don't
   replace it. The daily computation below is the base round generator.
@@ -79,7 +79,8 @@ round is `n + 1`; history is `round_number < current`, most recent first (`ORDER
 DESC`); phase two is `n >= phaseTwoStartRound`; the window is `gamesFromRound <= n <= gamesUntilRound`.
 The direction lives in many comparisons and an `Int` stays an `Int`, so a missed site compiles and
 runs backwards. `RoundTimelineOracleTest` walks a run through dates and asserts dates only — keep it
-that way, it is the net for exactly this.
+that way, it is the net for exactly this. Prose drifts the same way: when touching round order, grep
+comments and guidelines for `MIN`/`MAX`, above/below, raise/lower and up/back next to round terms.
 
 **Display — the number, no label.** The game header shows the number as is (`-89`, `0`, `1`). The
 countdown shows no sign: it counts down before the start (days = `|n|`) and up from it — the
@@ -122,7 +123,7 @@ direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. The
   backend Spring Modulith module (working name **`countdown`**, schema-per-module), depending on
   `community` (for `startsAt` + `startsAtTimezone` + `phaseTwoStartRound`). Expose a public query
   (current round for `now`; the round number for any instant; a round's `[start, end)`).
-- **Heavily unit-tested**, TDD: port the huettehuette test vectors (same numbering; adjust the
+- **Heavily unit-tested**, TDD: port the huettehuette test vectors (numbers negated; adjust the
   exact-boundary cases for the **start-inclusive** boundary), and cover the **DST transitions**
   explicitly (spring-forward / fall-back days) and the exact-boundary instants.
 - **Frontend** shows the live countdown + current round. If the SPA computes it client-side

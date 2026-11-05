@@ -71,7 +71,7 @@ class PlayServiceTest(
     private fun guess(hue: Double): JsonNode = mapper.readTree("""{"hue":$hue}""")
 
     /**
-     * A community whose countdown starts in 2099 — so the current round is a large number — with its
+     * A community whose countdown starts in 2099 — so the current round is a large negative number — with its
      * creator as first ACTIVE member. [phaseTwo] shifts the threshold below the current round, which
      * is what puts the round into phase two, because later in time is a larger number.
      */
