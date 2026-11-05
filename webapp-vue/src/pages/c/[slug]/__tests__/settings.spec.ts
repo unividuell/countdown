@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { ref } from 'vue'
 import * as api from '@/api/communities'
+import { ApiError } from '@/api/client'
 import type { CommunityResponse, EditionResponse } from '@/api/types'
 
 const { community } = vi.hoisted(() => ({ community: { current: null as never } }))
@@ -67,6 +68,17 @@ describe('settings — name', () => {
     expect(api.updateCommunity).toHaveBeenCalledWith('team', 'Team Nord')
   })
 
+  it('quotes the server detail when saving the name fails', async () => {
+    vi.spyOn(api, 'updateCommunity').mockRejectedValue(
+      new ApiError(400, 'Bad Request', { detail: 'Name vergeben.' }),
+    )
+    const w = await mountSettings()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(w.text()).toContain('Speichern fehlgeschlagen: „Name vergeben.“')
+  })
+
   it('shows the community URL prefixed with /c/, not the bare slug', async () => {
     const w = await mountSettings()
     expect(w.text()).toContain('/c/team/')
@@ -117,6 +129,24 @@ describe('settings — edition', () => {
     const link = w.getComponent(RouterLinkStub)
     expect(link.text()).toBe('Edition bearbeiten')
     expect(link.props('to')).toBe('/c/team/edition')
+  })
+
+  it('says from when start and zone are fixed', async () => {
+    useCommunity({ ...edition, startsAt: '2100-01-20T17:00:00.000Z' })
+    const w = await mountSettings()
+
+    expect(w.get('[data-test=edition-frozen-since]').text()).toBe(
+      'Start und Zeitzone sind ab Sa., 19. Dez. 2099 18:00 fest.',
+    )
+  })
+
+  it('words it in the past once fixed', async () => {
+    useCommunity({ ...edition, frozen: true })
+    const w = await mountSettings()
+
+    expect(w.get('[data-test=edition-frozen-since]').text()).toMatch(
+      /^Start und Zeitzone sind seit /,
+    )
   })
 
   it('falls back to the community name without a label', async () => {

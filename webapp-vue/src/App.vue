@@ -14,7 +14,7 @@ const { user } = useAuth()
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
 
-// Top-left brand: the active community's title + a '<YY> edition suffix (always startsAt.year).
+// Top-left brand: the edition label, else the community name + a '<YY> edition suffix (always startsAt.year).
 const brand = computed(
   () => activeCommunity.value?.editionLabel ?? activeCommunity.value?.name ?? 'countdown',
 )

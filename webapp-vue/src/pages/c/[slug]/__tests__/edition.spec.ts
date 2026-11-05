@@ -157,6 +157,50 @@ describe('edition page', () => {
     expect(w.find(sel('freeze-warning')).exists()).toBe(false)
   })
 
+  it('explains why a frozen edition is locked, once', async () => {
+    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.000Z', frozen: true }
+    const w = await mountPage(frozen)
+
+    expect(w.get(sel('frozen-note')).text()).toBe(
+      'Start und Zeitzone sind seit Fr., 9. Okt. 18:00 fest – die erste Spielrunde kann schon angekündigt sein.',
+    )
+    expect(w.find(sel('frozen-since')).exists()).toBe(false)
+  })
+
+  it('says under the calendar from when start and zone are fixed', async () => {
+    const w = await mountPage(edition)
+
+    expect(w.find(sel('frozen-note')).exists()).toBe(false)
+    expect(w.get(sel('frozen-since')).text()).toBe(
+      'Start und Zeitzone sind ab Mi., 18. Nov. 18:00 fest.',
+    )
+  })
+
+  it('shows the hint instead of the calendar for an out-of-range first round', async () => {
+    const w = await mountPage(null)
+    await fillNew(w)
+    await w.get(sel('first-round')).setValue('-100000')
+
+    expect(w.find('[data-test=edition-grid]').exists()).toBe(false)
+    expect(w.find(sel('calendar-hint')).exists()).toBe(true)
+  })
+
+  it('shows the hint instead of the calendar for a far-future start', async () => {
+    const w = await mountPage(null)
+    await fillNew(w)
+    await w.get(sel('date')).setValue('9999-12-20')
+
+    expect(w.find('[data-test=edition-grid]').exists()).toBe(false)
+    expect(w.find(sel('calendar-hint')).exists()).toBe(true)
+  })
+
+  it('caps the round inputs', async () => {
+    const w = await mountPage(null)
+
+    expect(w.get(sel('first-round')).attributes('min')).toBe('-36500')
+    expect(w.get(sel('phase-two')).attributes('min')).toBe('-36500')
+  })
+
   it('sends a frozen edition start and zone exactly as stored', async () => {
     const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.123Z', frozen: true }
     const w = await mountPage(frozen)

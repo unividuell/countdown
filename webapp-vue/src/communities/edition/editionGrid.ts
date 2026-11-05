@@ -52,6 +52,14 @@ export function frozenSince(startsAt: string, zone: string, gamesFromRound: numb
   return roundStart(startsAt, zone, gamesFromRound - 1)
 }
 
+/** The calendar draws one cell per round; beyond ~100 years it would hang the tab. */
+export const MAX_CALENDAR_ROUNDS = 36500
+
+/** How many cells [editionCells] would draw. */
+export function calendarSpan(e: EditionShape, now: DateTime): number {
+  return 2 - Math.min(roundAt(now, e.startsAt, e.zone), e.gamesFromRound)
+}
+
 /** One cell per round, from today (or the first game round, if earlier) up to the start. */
 export function editionCells(e: EditionShape, now: DateTime): GridCell[] {
   const current = roundAt(now, e.startsAt, e.zone)

@@ -7,7 +7,13 @@ import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
 import EditionCalendar from '@/communities/edition/EditionCalendar.vue'
-import { editionCells } from '@/communities/edition/editionGrid'
+import { saveErrorMessage } from '@/profile/saveError'
+import {
+  MAX_CALENDAR_ROUNDS,
+  calendarSpan,
+  editionCells,
+  frozenSince,
+} from '@/communities/edition/editionGrid'
 
 useAdminGuard()
 const { community, refresh } = useCommunityContext()
@@ -26,20 +32,32 @@ const start = computed(() => {
     .setLocale('de')
     .toFormat('EEE, d. MMM yyyy, HH:mm')
 })
-const cells = computed(() => {
+const shape = computed(() => {
   const e = edition.value
-  if (!e) return []
+  if (!e) return null
 
-  return editionCells(
-    {
-      startsAt: e.startsAt,
-      zone: e.startsAtTimezone,
-      gamesFromRound: e.gamesFromRound,
-      gamesUntilRound: e.gamesUntilRound,
-      phaseTwoStartRound: e.phaseTwoStartRound,
-    },
-    DateTime.now(),
-  )
+  return {
+    startsAt: e.startsAt,
+    zone: e.startsAtTimezone,
+    gamesFromRound: e.gamesFromRound,
+    gamesUntilRound: e.gamesUntilRound,
+    phaseTwoStartRound: e.phaseTwoStartRound,
+  }
+})
+const cells = computed(() => {
+  const s = shape.value
+  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return []
+
+  return editionCells(s, DateTime.now())
+})
+const frozenNote = computed(() => {
+  const s = shape.value
+  if (!s) return ''
+
+  const at = frozenSince(s.startsAt, s.zone, s.gamesFromRound)
+  const when = at.setLocale('de').toFormat('EEE, d. MMM yyyy HH:mm')
+
+  return `Start und Zeitzone sind ${at <= DateTime.now() ? 'seit' : 'ab'} ${when} fest.`
 })
 
 function fullUrl(path: string): string {
@@ -63,8 +81,8 @@ async function save(): Promise<void> {
   try {
     await updateCommunity(slug, name.value.trim())
     await refresh()
-  } catch {
-    error.value = 'Speichern fehlgeschlagen.'
+  } catch (e) {
+    error.value = saveErrorMessage(e)
   }
 }
 async function regenerate(): Promise<void> {
@@ -101,6 +119,7 @@ async function revoke(): Promise<void> {
         <p data-test="edition-title" class="text-sm">{{ edition.label ?? community.name }}</p>
         <p data-test="edition-start" class="text-sm text-neutral-600">{{ start }}</p>
         <EditionCalendar :cells="cells" />
+        <p data-test="edition-frozen-since" class="text-xs text-neutral-500">{{ frozenNote }}</p>
         <RouterLink
           :to="communityPath(slug, 'edition')"
           class="inline-block rounded border px-3 py-1.5 hover:bg-neutral-200"

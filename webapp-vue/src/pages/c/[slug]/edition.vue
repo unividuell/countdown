@@ -8,7 +8,13 @@ import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
 import { saveErrorMessage } from '@/profile/saveError'
 import EditionCalendar from '@/communities/edition/EditionCalendar.vue'
-import { editionCells, frozenSince, roundStart } from '@/communities/edition/editionGrid'
+import {
+  MAX_CALENDAR_ROUNDS,
+  calendarSpan,
+  editionCells,
+  frozenSince,
+  roundStart,
+} from '@/communities/edition/editionGrid'
 
 useAdminGuard()
 const router = useRouter()
@@ -83,21 +89,25 @@ const freezeAt = computed(() =>
     : '',
 )
 
-const cells = computed(() =>
+const shape = computed(() =>
   startsAt.value && first.value !== null
-    ? editionCells(
-        {
-          startsAt: startsAt.value,
-          zone: zone.value,
-          gamesFromRound: first.value,
-          // A new edition has no end yet; the server's default is 0.
-          gamesUntilRound: existing?.gamesUntilRound ?? 0,
-          phaseTwoStartRound: second.value,
-        },
-        DateTime.now(),
-      )
-    : [],
+    ? {
+        startsAt: startsAt.value,
+        zone: zone.value,
+        gamesFromRound: first.value,
+        // A new edition has no end yet; the server's default is 0.
+        gamesUntilRound: existing?.gamesUntilRound ?? 0,
+        phaseTwoStartRound: second.value,
+      }
+    : null,
 )
+/** Null while incomplete or beyond [MAX_CALENDAR_ROUNDS]: the hint shows instead. */
+const cells = computed(() => {
+  const s = shape.value
+  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return null
+
+  return editionCells(s, DateTime.now())
+})
 
 async function save(): Promise<void> {
   if (!startsAt.value || first.value === null) return
@@ -175,12 +185,18 @@ const input =
         </select></label
       >
 
+      <p v-if="existing?.frozen" data-test="frozen-note" class="text-xs text-neutral-500">
+        Start und Zeitzone sind seit {{ freezeAt }} fest – die erste Spielrunde kann schon
+        angekündigt sein.
+      </p>
+
       <div class="grid grid-cols-2 gap-3">
         <label class="block text-sm"
           >Erste Spielrunde<input
             v-model="firstRound"
             data-test="first-round"
             type="number"
+            min="-36500"
             max="0"
             step="1"
             :class="input"
@@ -191,6 +207,7 @@ const input =
             v-model="phaseTwo"
             data-test="phase-two"
             type="number"
+            min="-36500"
             max="-1"
             step="1"
             :class="input"
@@ -209,7 +226,16 @@ const input =
         Die Einstellungen wären seit {{ freezeAt }} fix — das ist vorbei.
       </p>
 
-      <EditionCalendar v-if="complete" :cells="cells" />
+      <template v-if="cells">
+        <EditionCalendar :cells="cells" />
+        <p
+          v-if="!existing?.frozen && !freezePassed"
+          data-test="frozen-since"
+          class="text-xs text-neutral-500"
+        >
+          Start und Zeitzone sind ab {{ freezeAt }} fest.
+        </p>
+      </template>
       <p v-else data-test="calendar-hint" class="text-sm text-neutral-500">
         Start und erste Spielrunde angeben, dann erscheint der Kalender.
       </p>
