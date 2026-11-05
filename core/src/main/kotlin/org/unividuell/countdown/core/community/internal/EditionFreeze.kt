@@ -18,3 +18,12 @@ fun frozenSince(edition: CommunityEdition): Instant =
     edition.startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
         .plusDays(edition.gamesFromRound.toLong() - 2)
         .toInstant()
+
+/**
+ * When the run's first game round is over — the end of round `gamesFromRound`. A run may start at
+ * once with the running round, but never with one that has already ended.
+ */
+fun firstGameRoundEnd(edition: CommunityEdition): Instant =
+    edition.startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
+        .plusDays(edition.gamesFromRound.toLong())
+        .toInstant()

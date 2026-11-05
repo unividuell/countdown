@@ -14,6 +14,7 @@ import {
   calendarSpan,
   editionCells,
   frozenSince,
+  roundAt,
   roundStart,
 } from '@/communities/edition/editionGrid'
 
@@ -76,13 +77,34 @@ const zeroPoint = computed(() =>
   startsAt.value ? fmt(roundStart(startsAt.value, zone.value, 1)) : null,
 )
 
-/** Only an unfrozen run can be refused for this; a frozen one is not being moved. */
-const freezePassed = computed(
+/**
+ * Only an unfrozen run is checked; a frozen one is not being moved. The first game round may be the
+ * running one, e.g. round -45 at noon when -45 runs until 18:00, but not one that is already over.
+ */
+const firstRoundOver = computed(
   () =>
     !existing?.frozen &&
     startsAt.value !== null &&
     first.value !== null &&
+    first.value < roundAt(DateTime.now(), startsAt.value, zone.value),
+)
+
+/** A run whose freeze moment has passed starts at once and is fixed from then on: confirm it. */
+const startsNow = computed(
+  () =>
+    !existing?.frozen &&
+    !firstRoundOver.value &&
+    startsAt.value !== null &&
+    first.value !== null &&
     frozenSince(startsAt.value, zone.value, first.value) <= DateTime.now(),
+)
+const startNowConfirmed = ref(false)
+const canSubmit = computed(
+  () =>
+    complete.value &&
+    !saving.value &&
+    !firstRoundOver.value &&
+    (!startsNow.value || startNowConfirmed.value),
 )
 /** The server refuses it too; saying so here spares the round trip. */
 const phaseTwoTooEarly = computed(
@@ -115,7 +137,7 @@ const cells = computed(() => {
 })
 
 async function save(): Promise<void> {
-  if (!startsAt.value || first.value === null) return
+  if (!canSubmit.value || !startsAt.value || first.value === null) return
   error.value = null
   saving.value = true
 
@@ -246,14 +268,19 @@ const input =
         Phase 2 kann nicht vor der ersten Spielrunde beginnen.
       </p>
 
-      <p v-if="freezePassed" data-test="freeze-warning" class="text-sm text-red-600">
-        Die Einstellungen wären seit {{ freezeAt }} fix — das ist vorbei.
+      <p v-if="firstRoundOver" data-test="first-round-over" class="text-sm text-red-600">
+        Die erste Spielrunde ist schon vorbei. Frühestens die laufende Runde geht.
       </p>
+
+      <label v-if="startsNow" class="flex items-start gap-2 text-sm">
+        <input v-model="startNowConfirmed" data-test="start-now" type="checkbox" class="mt-1" />
+        <span>Sofort starten – Start und Zeitzone lassen sich danach nicht mehr ändern.</span>
+      </label>
 
       <template v-if="cells">
         <EditionCalendar :cells="cells" />
         <p
-          v-if="!existing?.frozen && !freezePassed"
+          v-if="!existing?.frozen && !startsNow && !firstRoundOver"
           data-test="frozen-since"
           class="text-xs text-neutral-500"
         >
@@ -267,7 +294,7 @@ const input =
       <button
         data-test="submit"
         class="rounded border px-3 py-1.5 hover:bg-neutral-200 disabled:opacity-50"
-        :disabled="!complete || saving"
+        :disabled="!canSubmit"
       >
         Speichern
       </button>
