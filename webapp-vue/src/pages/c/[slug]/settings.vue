@@ -18,6 +18,14 @@ const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
 
 const edition = computed(() => community.value.edition)
+const start = computed(() => {
+  const e = edition.value
+  if (!e) return ''
+
+  return DateTime.fromISO(e.startsAt, { zone: e.startsAtTimezone })
+    .setLocale('de')
+    .toFormat('EEE, d. MMM yyyy, HH:mm')
+})
 const cells = computed(() => {
   const e = edition.value
   if (!e) return []
@@ -91,6 +99,7 @@ async function revoke(): Promise<void> {
       <h2 class="mb-2 font-medium">Edition</h2>
       <div v-if="edition" class="space-y-3">
         <p data-test="edition-title" class="text-sm">{{ edition.label ?? community.name }}</p>
+        <p data-test="edition-start" class="text-sm text-neutral-600">{{ start }}</p>
         <EditionCalendar :cells="cells" />
         <RouterLink
           :to="communityPath(slug, 'edition')"

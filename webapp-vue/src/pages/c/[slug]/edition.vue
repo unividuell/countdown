@@ -106,8 +106,9 @@ async function save(): Promise<void> {
 
   const body = {
     label: label.value.trim() || null,
-    startsAt: startsAt.value,
-    startsAtTimezone: zone.value,
+    // Frozen: resend the stored values; a rebuild drops seconds and is ambiguous in the DST fold.
+    startsAt: existing?.frozen ? existing.startsAt : startsAt.value,
+    startsAtTimezone: existing?.frozen ? existing.startsAtTimezone : zone.value,
     phaseTwoStartRound: second.value,
     gamesFromRound: first.value,
   }

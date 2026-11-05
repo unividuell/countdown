@@ -147,12 +147,30 @@ describe('edition page', () => {
   })
 
   it('locks date, time and zone of a frozen edition, without a warning', async () => {
-    const w = await mountPage({ ...edition, frozen: true })
+    // Freeze moment (round -31 start, 10 Oct) is long past; the guard alone hides the line.
+    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.000Z', frozen: true }
+    const w = await mountPage(frozen)
 
     for (const f of ['date', 'time', 'zone']) {
       expect(w.get(sel(f)).attributes('disabled')).toBeDefined()
     }
     expect(w.find(sel('freeze-warning')).exists()).toBe(false)
+  })
+
+  it('sends a frozen edition start and zone exactly as stored', async () => {
+    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.123Z', frozen: true }
+    const w = await mountPage(frozen)
+    await w.get(sel('label')).setValue('Neu')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(api.replaceEdition).toHaveBeenCalledWith(
+      'hh',
+      expect.objectContaining({
+        startsAt: '2026-11-10T17:00:00.123Z',
+        startsAtTimezone: 'Europe/Berlin',
+      }),
+    )
   })
 
   it('quotes the server detail on a rejected save', async () => {

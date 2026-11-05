@@ -105,6 +105,7 @@ describe('settings — edition', () => {
     const w = await mountSettings()
 
     expect(w.text()).toContain('Hüttenwochenende')
+    expect(w.get('[data-test=edition-start]').text()).toBe('So., 20. Dez. 2099, 18:00')
     expect(w.find('[data-test=edition-grid]').exists()).toBe(true)
     const link = w.getComponent(RouterLinkStub)
     expect(link.text()).toBe('Edition bearbeiten')
