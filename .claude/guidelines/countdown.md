@@ -150,6 +150,11 @@ compares the persisted edition with the one the update would produce and rejects
 after which the run would no longer be frozen. A rule on the effect, not on a field, needs no
 revisit when the next field enters the computation.
 
+What does **not** freeze: `phaseTwoStartRound` and the game window. Rule and stake are frozen per
+round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds not yet
+announced — tomorrow's usually is — a game-master decision with visible effect, not a silent rewrite
+of history.
+
 ## Editions: 0..1 active, always dated
 
 A community has **0..1** active edition; "none" is a normal state (new community, archived run), never
@@ -159,11 +164,6 @@ an error — the countdown then shows no date. An edition always has `startsAt` 
 Write paths are separate: `PATCH /communities/{slug}` renames only, `POST .../editions` creates (409
 while one is active), `PUT .../editions/active` **replaces it completely** — an absent optional field
 clears it, there is no "null = keep".
-
-What does **not** freeze: `phaseTwoStartRound` and the game window. Rule and stake are frozen per
-round at announcement time (`award_rule`, `award_points`), so moving them only touches rounds not yet
-announced — tomorrow's usually is — a game-master decision with visible effect, not a silent rewrite
-of history.
 
 ## Related / future
 

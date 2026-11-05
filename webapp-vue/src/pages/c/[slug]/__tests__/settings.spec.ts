@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { ref } from 'vue'
 import * as api from '@/api/communities'
@@ -85,7 +85,14 @@ describe('settings — name', () => {
 
 describe('settings — edition', () => {
   beforeEach(() => {
+    // The calendar draws one cell per round from today; a 2099 start would be ~27k cells.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2099-12-01T12:00:00Z'))
     vi.spyOn(api, 'getInvite').mockResolvedValue(null)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('without an edition offers to create one, with no date fields', async () => {

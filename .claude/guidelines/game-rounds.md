@@ -15,7 +15,7 @@ enforced by a partial unique index on `archived_at IS NULL`.
 Round numbers rise with time (see `countdown.md`). The game window's bounds are named `from`/`until`,
 never start/end. "The previous round" is `round_number < n`, descending — the first row is the most
 recently played one. Phase two is `round_number >= phase_two_start_round`. The game window is
-inclusive on both ends (`from <= n <= until`), and `games_from_round = NULL` means unbounded below.
+inclusive on both ends (`from <= n <= until`).
 
 ## A closed round is open
 
