@@ -41,17 +41,30 @@ export interface MemberProfileResponse {
   identity: IdentityView
 }
 
+export interface EditionResponse {
+  label: string | null
+  startsAt: string
+  startsAtTimezone: string
+  phaseTwoStartRound: number | null
+  gamesFromRound: number
+  gamesUntilRound: number
+  frozen: boolean
+}
+export interface EditionRequest {
+  label: string | null
+  startsAt: string
+  startsAtTimezone: string
+  phaseTwoStartRound: number | null
+  gamesFromRound: number
+}
 export interface CommunityResponse {
   id: string
   name: string
   slug: string
-  startsAt: string | null
-  startsAtTimezone: string
-  phaseTwoStartRound: number | null
-  gamesFromRound: number | null
+  /** The running edition; null while the community has no date yet. */
+  edition: EditionResponse | null
   viewerIsAdmin: boolean
   pendingCount: number
-  editionFrozen: boolean
   /** How the viewer appears here; null when they have no membership row in this community. */
   viewerIdentity: IdentityView | null
 }
@@ -109,9 +122,8 @@ export interface InvitePeekResponse {
  * that ever stops being true, TypeScript will say so at the call site that first disagrees.
  */
 export interface Round {
-  /** Signed T-offset. A larger number is *earlier* in time. */
+  /** Rises with time; `0` is the last day before the start. */
   number: number
-  label: string
   start: string
   end: string
 }

@@ -68,7 +68,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             announcements.currentRound(slug = "team", userId = uid, isSuperAdmin = false)
         } returns RoundResponse(
             round = RoundDto(
-                number = 12, label = "T-12",
+                number = 12,
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
@@ -79,7 +79,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
         mockMvc.get("/api/communities/team/rounds/current") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.round.number") { value(12) }
-            jsonPath("$.round.label") { value("T-12") }
+            jsonPath("$.round.label") { doesNotExist() }
             jsonPath("$.game.id") { value("guess-hue") }
             jsonPath("$.game.displayName") { value("Farbausmalung") }
         }
@@ -126,7 +126,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `POST reveal hands out the payload`() {
         every { plays.reveal(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12) } returns RoundResponse(
             round = RoundDto(
-                number = 12, label = "T-12",
+                number = 12,
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
@@ -178,7 +178,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } returns RoundResponse(
             round = RoundDto(
-                number = 12, label = "T-12",
+                number = 12,
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
@@ -240,7 +240,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             plays.guess(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 12, guess = any())
         } returns RoundResponse(
             round = RoundDto(
-                number = 12, label = "T-12",
+                number = 12,
                 start = Instant.parse("2026-08-12T10:00:00Z"),
                 end = Instant.parse("2026-08-13T10:00:00Z"),
             ),
@@ -470,7 +470,7 @@ class RoundControllerTest(@Autowired val mockMvc: MockMvc) {
             histories.pastRound(slug = "team", userId = uid, isSuperAdmin = false, roundNumber = 13)
         } returns RoundResponse(
             round = RoundDto(
-                number = 13, label = "T-13",
+                number = 13,
                 start = Instant.parse("2026-08-11T10:00:00Z"),
                 end = Instant.parse("2026-08-12T10:00:00Z"),
             ),

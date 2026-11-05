@@ -49,11 +49,10 @@ class HistoryService(
      */
     fun resolve(current: ResolvedRound, roundNumber: Int): ResolvedRound {
         val edition = current.edition ?: throw RoundNotFoundException()
-        val startsAt = edition.startsAt ?: throw RoundNotFoundException()
         val currentNumber = current.round?.number ?: throw RoundNotFoundException()
-        // A larger number is earlier: only strictly older rounds are history. This is the line that
+        // A smaller number is earlier: only strictly older rounds are history. This is the line that
         // keeps the running round's solution out of here.
-        if (roundNumber <= currentNumber) throw RoundNotFoundException()
+        if (roundNumber >= currentNumber) throw RoundNotFoundException()
         if (windowReasonOf(edition = edition, roundNumber = roundNumber) != null) {
             throw RoundNotFoundException()
         }
@@ -61,7 +60,7 @@ class HistoryService(
             ?: throw RoundNotFoundException()
         val round = engine.intervalOf(
             number = roundNumber,
-            startsAt = startsAt,
+            startsAt = edition.startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
         val previous = store.previousRound(edition = edition, roundNumber = roundNumber)

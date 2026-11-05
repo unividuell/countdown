@@ -4,10 +4,8 @@ import org.unividuell.countdown.core.community.CommunityEdition
 
 /**
  * Where a round falls relative to a run's game window — inclusive on both ends:
- * `gamesUntilRound <= roundNumber <= gamesFromRound`. `null` means inside the window;
+ * `gamesFromRound <= roundNumber <= gamesUntilRound`. `null` means inside the window;
  * [NoGameReason.BEFORE_WINDOW] and [NoGameReason.AFTER_WINDOW] say which side it fell off.
- *
- * `gamesFromRound == null` means unbounded above — there is no "before" for that edition.
  *
  * A pure function rather than an inline comparison in [AnnouncementService] so the boundary can be
  * unit-tested directly: the existing suite only ever calls it with round numbers thousands away from
@@ -18,9 +16,9 @@ import org.unividuell.countdown.core.community.CommunityEdition
  * announcement, and the lab has no window at all. Exposing it would publish a DTO for a consumer
  * that does not exist.
  */
-fun windowReasonOf(roundNumber: Int, gamesFromRound: Int?, gamesUntilRound: Int): NoGameReason? {
-    if (gamesFromRound != null && roundNumber > gamesFromRound) return NoGameReason.BEFORE_WINDOW
-    if (roundNumber < gamesUntilRound) return NoGameReason.AFTER_WINDOW
+fun windowReasonOf(roundNumber: Int, gamesFromRound: Int, gamesUntilRound: Int): NoGameReason? {
+    if (roundNumber < gamesFromRound) return NoGameReason.BEFORE_WINDOW
+    if (roundNumber > gamesUntilRound) return NoGameReason.AFTER_WINDOW
     return null
 }
 

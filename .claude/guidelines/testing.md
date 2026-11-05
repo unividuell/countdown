@@ -27,7 +27,7 @@ looks like coverage and is worth nothing:
 ```kotlin
 // Community defaults to "Europe/Berlin", the stubbed edition defaults to "Europe/Berlin" too —
 // this passes whichever one the controller actually read.
-every { editions.requireActive(id) } returns CommunityEdition(communityId = id, label = "Team 2026")
+every { editions.active(id) } returns anEdition(communityId = id, label = "Team 2026")
 jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
 ```
 

@@ -20,7 +20,7 @@ import java.time.ZoneId
  *
  *   03:00 ─┬─ for each active edition
  *          ├─ round n   (running)  missing? → materialise
- *          └─ round n−1 (next)     missing? → materialise, once n has its row
+ *          └─ round n+1 (next)     missing? → materialise, once n has its row
  *
  * A round that has a row is left alone, whoever wrote it. [AnnouncementService] stays the fallback
  * for a round this run missed.
@@ -57,18 +57,17 @@ class MaterialisationSchedule(
      * tomorrow must not cost today's round. Returns how many rounds this call announced.
      */
     fun prepare(edition: CommunityEdition, now: Instant): Int {
-        val startsAt = edition.startsAt ?: return 0
         val current = engine.roundAt(
             now = now,
-            startsAt = startsAt,
+            startsAt = edition.startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
 
-        // A larger round number is earlier: the next round is `current - 1`. A round is never announced
+        // A larger round number is later: the next round is `current + 1`. A round is never announced
         // before the one it follows — the draw only looks back — so a running round left without a row
         // holds the next one back for the fallback.
         var materialised = 0
-        for (roundNumber in listOf(current, current - 1)) {
+        for (roundNumber in listOf(current, current + 1)) {
             if (windowReasonOf(edition = edition, roundNumber = roundNumber) != null) continue
             if (store.find(edition = edition, roundNumber = roundNumber) != null) continue
             try {

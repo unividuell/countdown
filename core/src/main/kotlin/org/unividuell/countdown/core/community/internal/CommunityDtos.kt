@@ -6,23 +6,41 @@ import org.unividuell.countdown.core.community.MemberIdentity
 import java.time.Instant
 import java.util.UUID
 
+data class EditionResponse(
+    val label: String?,
+    val startsAt: Instant,
+    val startsAtTimezone: String,
+    val phaseTwoStartRound: Int?,
+    val gamesFromRound: Int,
+    val gamesUntilRound: Int,
+    val frozen: Boolean,
+)
 data class CommunityResponse(
     val id: UUID, val name: String, val slug: String,
-    val startsAt: Instant?, val startsAtTimezone: String, val phaseTwoStartRound: Int?,
-    val editionLabel: String, val gamesFromRound: Int?, val gamesUntilRound: Int,
-    val editionFrozen: Boolean,
+    /** `null` until an admin has set the run up. */
+    val edition: EditionResponse?,
     val viewerIsAdmin: Boolean, val pendingCount: Int,
     /** How the viewer appears here; null when they have no membership row in this community. */
     val viewerIdentity: MemberIdentity?,
 )
 data class CommunitySummary(val id: UUID, val name: String, val slug: String)
 data class CreateCommunityRequest(val name: String)
-data class UpdateCommunityRequest(
-    val name: String?, val editionLabel: String?,
-    val startsAt: Instant?, val startsAtTimezone: String?, val phaseTwoStartRound: Int?,
-    val gamesFromRound: Int?, val gamesUntilRound: Int?,
-)
-data class StartEditionRequest(val label: String)
+data class UpdateCommunityRequest(val name: String)
+data class EditionRequest(
+    val label: String?,
+    val startsAt: Instant,
+    val startsAtTimezone: String,
+    val phaseTwoStartRound: Int?,
+    val gamesFromRound: Int,
+) {
+    fun toDraft() = EditionDraft(
+        label = label,
+        startsAt = startsAt,
+        startsAtTimezone = startsAtTimezone,
+        phaseTwoStartRound = phaseTwoStartRound,
+        gamesFromRound = gamesFromRound,
+    )
+}
 data class InviteResponse(val url: String, val expiresAt: Instant)
 /** What an anonymous visitor may learn from an invite link: who is inviting. Nothing else. */
 data class InvitePeekResponse(val name: String)
@@ -45,21 +63,23 @@ data class RosterMemberResponse(
     val points: RosterPointsResponse,
 )
 
+fun CommunityEdition.toResponse(frozen: Boolean) = EditionResponse(
+    label = label,
+    startsAt = startsAt,
+    startsAtTimezone = startsAtTimezone,
+    phaseTwoStartRound = phaseTwoStartRound,
+    gamesFromRound = gamesFromRound,
+    gamesUntilRound = gamesUntilRound,
+    frozen = frozen,
+)
 fun Community.toResponse(
-    edition: CommunityEdition,
-    editionFrozen: Boolean,
+    edition: EditionResponse?,
     viewerIsAdmin: Boolean,
     pendingCount: Int,
     viewerIdentity: MemberIdentity?,
 ) = CommunityResponse(
     id = requireNotNull(id), name = name, slug = slug,
-    startsAt = edition.startsAt,
-    startsAtTimezone = edition.startsAtTimezone,
-    phaseTwoStartRound = edition.phaseTwoStartRound,
-    editionLabel = edition.label,
-    gamesFromRound = edition.gamesFromRound,
-    gamesUntilRound = edition.gamesUntilRound,
-    editionFrozen = editionFrozen,
+    edition = edition,
     viewerIsAdmin = viewerIsAdmin, pendingCount = pendingCount, viewerIdentity = viewerIdentity,
 )
 fun Community.toSummary() = CommunitySummary(id = requireNotNull(id), name = name, slug = slug)

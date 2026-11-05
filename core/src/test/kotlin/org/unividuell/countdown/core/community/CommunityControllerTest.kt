@@ -3,6 +3,8 @@ package org.unividuell.countdown.core.community
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.justRun
+import io.mockk.verify
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +19,7 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.community.internal.*
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.principalFor
+import java.time.Instant
 import java.util.UUID
 
 @Import(TestcontainersConfiguration::class)
@@ -47,13 +50,26 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team-a")
         every { users.mayCreateCommunities(uid) } returns true
         every { communityService.create(creatorUserId = uid, rawName = "Team A") } returns c
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team A",
-        )
+        every { identities.of(communityId = c.id!!, userId = uid) } returns null
         mockMvc.post("/api/communities") {
             with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Team A"}"""
         }.andExpect { status { isCreated() }; jsonPath("$.slug") { value("team-a") } }
+    }
+
+    @Test
+    fun `create answers with edition null`() {
+        val c = community("team-a")
+        every { users.mayCreateCommunities(uid) } returns true
+        every { communityService.create(creatorUserId = uid, rawName = "Team A") } returns c
+        mockMvc.post("/api/communities") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Team A"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.edition") { value(null) }
+        }
+        verify(exactly = 0) { editions.create(communityId = any(), draft = any()) }
     }
 
     @Test
@@ -138,9 +154,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
         every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
         every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 3
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-        )
+        every { editions.active(c.id!!) } returns anEdition(communityId = c.id!!, id = UUID.randomUUID())
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(true) }
@@ -153,9 +167,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
         every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-        )
+        every { editions.active(c.id!!) } returns anEdition(communityId = c.id!!, id = UUID.randomUUID())
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(false) }
@@ -168,143 +180,210 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(userId = uid, isSuperAdmin = true, slug = "team") } returns c
         every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-        )
+        every { editions.active(c.id!!) } returns anEdition(communityId = c.id!!, id = UUID.randomUUID())
         mockMvc.get("/api/communities/team") { with(principalFor(superAdmin = true)) }.andExpect {
             status { isOk() }
             jsonPath("$.viewerIsAdmin") { value(true) }
         }
     }
 
+    private fun asMember(c: Community, admin: Boolean = false) {
+        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = c.slug) } returns c
+        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns admin
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
+    }
+
+    private fun asAdmin(c: Community) {
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = c.slug) } returns c
+        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
+    }
+
+    private val editionJson = """
+        {"label":null,"startsAt":"2026-12-20T17:00:00Z","startsAtTimezone":"Europe/Berlin",
+         "phaseTwoStartRound":null,"gamesFromRound":-30}
+    """.trimIndent()
+
     @Test
-    fun `GET by slug returns the timezone of the active edition`() {
+    fun `get without an active edition answers 200 with edition null`() {
         val c = community("team")
-        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
-        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-            startsAtTimezone = "America/New_York",
-        )
+        asMember(c)
+        every { editions.active(c.id!!) } returns null
+
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.startsAtTimezone") { value("America/New_York") }
-            jsonPath("$.editionLabel") { value("Team 2026") }
-            jsonPath("$.gamesUntilRound") { value(0) }
+            jsonPath("$.edition") { value(null) }
+            jsonPath("$.viewerIsAdmin") { value(false) }
         }
     }
 
     @Test
-    fun `POST editions returns the new run with the inherited setup`() {
-        val c = community("rollover")
-        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } returns c
-        every { editions.startNew(communityId = c.id!!, rawLabel = "Rollover 2027") } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Rollover 2027",
-            startsAtTimezone = "America/New_York", phaseTwoStartRound = 20, gamesFromRound = 24,
-        )
-        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
-
-        mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
-            content = """{"label":"Rollover 2027"}"""
-        }.andExpect {
-            status { isCreated() }
-            jsonPath("$.editionLabel") { value("Rollover 2027") }
-            jsonPath("$.startsAtTimezone") { value("America/New_York") }
-            jsonPath("$.phaseTwoStartRound") { value(20) }
-            jsonPath("$.gamesFromRound") { value(24) }
-        }
-    }
-
-    @Test
-    fun `POST editions is forbidden for a non-admin member`() {
-        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } throws NotAdminException()
-
-        mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
-            content = """{"label":"Nope 2027"}"""
-        }.andExpect { status { isForbidden() } }
-    }
-
-    @Test
-    fun `POST editions surfaces a too-short label as 400`() {
-        val c = community("rollover")
-        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "rollover") } returns c
-        every { editions.startNew(communityId = c.id!!, rawLabel = "ab") } throws IllegalArgumentException("label must be 3..50 chars")
-
-        mockMvc.post("/api/communities/rollover/editions") {
-            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
-            content = """{"label":"ab"}"""
-        }.andExpect { status { isBadRequest() } }
-    }
-
-    @Test
-    fun `GET by slug reports a frozen run`() {
+    fun `get with an active edition nests it`() {
         val c = community("team")
-        val edition = CommunityEdition(id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026")
-        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
-        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
-        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
-        every { editions.requireActive(c.id!!) } returns edition
+        asMember(c)
+        val edition = anEdition(communityId = c.id!!, label = "Team 2026", startsAtTimezone = "America/New_York")
+        every { editions.active(c.id!!) } returns edition
         every { editions.isFrozen(edition) } returns true
 
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.editionFrozen") { value(true) }
+            jsonPath("$.edition.label") { value("Team 2026") }
+            jsonPath("$.edition.startsAtTimezone") { value("America/New_York") }
+            jsonPath("$.edition.gamesFromRound") { value(-30) }
+            jsonPath("$.edition.gamesUntilRound") { value(0) }
+            jsonPath("$.edition.frozen") { value(true) }
         }
     }
 
     @Test
-    fun `GET by slug reports a run that is not frozen`() {
+    fun `get with an active edition reports one that is not frozen`() {
         val c = community("team")
-        val edition = CommunityEdition(id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026")
-        every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
-        every { query.isAdmin(communityId = c.id!!, userId = uid) } returns true
-        every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
-        every { editions.requireActive(c.id!!) } returns edition
+        asMember(c, admin = true)
+        val edition = anEdition(communityId = c.id!!)
+        every { editions.active(c.id!!) } returns edition
         every { editions.isFrozen(edition) } returns false
 
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.editionFrozen") { value(false) }
+            jsonPath("$.edition.frozen") { value(false) }
         }
     }
 
     @Test
-    fun `PATCH surfaces a frozen run as 409`() {
+    fun `patch renames only`() {
         val c = community("team")
-        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team") } returns c
-        every {
-            communityService.update(
-                community = c, name = null, label = null, startsAt = any(), startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
-            )
-        } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
+        asAdmin(c)
+        every { communityService.rename(community = c, name = "Neu Name") } returns c.copy(name = "Neu Name")
+        every { editions.active(c.id!!) } returns null
 
         mockMvc.patch("/api/communities/team") {
             with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
-            content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
+            content = """{"name":"Neu Name"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.name") { value("Neu Name") }
+        }
+        verify(exactly = 0) { editions.create(communityId = any(), draft = any()) }
+        verify(exactly = 0) { editions.replace(communityId = any(), draft = any()) }
+    }
+
+    @Test
+    fun `post editions creates and answers 201`() {
+        val c = community("team")
+        asAdmin(c)
+        val draft = EditionDraft(
+            label = null, startsAt = Instant.parse("2026-12-20T17:00:00Z"), startsAtTimezone = "Europe/Berlin",
+            phaseTwoStartRound = null, gamesFromRound = -30,
+        )
+        every { editions.create(communityId = c.id!!, draft = draft) } returns
+            anEdition(communityId = c.id!!, label = null)
+
+        mockMvc.post("/api/communities/team/editions") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.edition.label") { value(null) }
+            jsonPath("$.edition.gamesFromRound") { value(-30) }
+        }
+    }
+
+    @Test
+    fun `post editions answers 409 when one is active`() {
+        val c = community("team")
+        asAdmin(c)
+        every { editions.create(communityId = c.id!!, draft = any()) } throws
+            EditionConflictException("community already has an active edition")
+
+        mockMvc.post("/api/communities/team/editions") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
         }.andExpect { status { isConflict() } }
     }
 
     @Test
-    fun `PATCH is 409 for a super-admin too`() {
-        // The rule protects the play history, not the roles — without this case a bypass branch in
-        // the controller would pass every other test in this class.
+    fun `put active edition replaces it and answers 200`() {
+        val c = community("team")
+        asAdmin(c)
+        every { editions.replace(communityId = c.id!!, draft = any()) } returns
+            anEdition(communityId = c.id!!, label = "Neu")
+
+        mockMvc.put("/api/communities/team/editions/active") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.edition.label") { value("Neu") }
+        }
+    }
+
+    @Test
+    fun `put active edition answers 404 without one`() {
+        val c = community("team")
+        asAdmin(c)
+        every { editions.replace(communityId = c.id!!, draft = any()) } throws EditionNotFoundException()
+
+        mockMvc.put("/api/communities/team/editions/active") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `put active edition answers 400 without gamesFromRound`() {
+        val c = community("team")
+        asAdmin(c)
+
+        mockMvc.put("/api/communities/team/editions/active") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = """{"label":null,"startsAt":"2026-12-20T17:00:00Z","startsAtTimezone":"Europe/Berlin","phaseTwoStartRound":null}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `put active edition answers 409 with the reason when frozen`() {
+        val c = community("team")
+        asAdmin(c)
+        every { editions.replace(communityId = c.id!!, draft = any()) } throws
+            EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
+
+        mockMvc.put("/api/communities/team/editions/active") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect {
+            status { isConflict() }
+            jsonPath("$.detail") { value(containsString("fixed")) }
+        }
+    }
+
+    @Test
+    fun `put active edition is 409 for a super-admin too`() {
+        // The rule protects the play history, not the roles — a bypass branch in the controller
+        // would otherwise pass every other test in this class.
         val c = community("team")
         every { access.requireAdmin(userId = uid, isSuperAdmin = true, slug = "team") } returns c
-        every {
-            communityService.update(
-                community = c, name = null, label = null, startsAt = any(), startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
-            )
-        } throws EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
+        every { editions.replace(communityId = c.id!!, draft = any()) } throws
+            EditionFrozenException("the run's grid is fixed since 2026-05-31T09:00:00Z")
 
-        mockMvc.patch("/api/communities/team") {
+        mockMvc.put("/api/communities/team/editions/active") {
             with(principalFor(superAdmin = true)); with(withCsrfToken())
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startsAt":"2026-07-01T09:00:00Z"}"""
+            content = editionJson
         }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `post and put editions are admin-only`() {
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team") } throws NotAdminException()
+
+        mockMvc.post("/api/communities/team/editions") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect { status { isForbidden() } }
+
+        mockMvc.put("/api/communities/team/editions/active") {
+            with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
+            content = editionJson
+        }.andExpect { status { isForbidden() } }
     }
 
     @Test
@@ -312,9 +391,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(userId = uid, isSuperAdmin = false, slug = "team") } returns c
         every { query.isAdmin(communityId = c.id!!, userId = uid) } returns false
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-        )
+        every { editions.active(c.id!!) } returns anEdition(communityId = c.id!!, id = UUID.randomUUID())
         every {
             identities.of(communityId = any(), userId = TEST_USER_ID)
         } returns MemberIdentity(
@@ -334,9 +411,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         every { access.requireActiveMember(userId = uid, isSuperAdmin = true, slug = "team") } returns c
         every { memberRepo.countByCommunityIdAndStatus(communityId = c.id!!, status = MemberStatus.PENDING) } returns 0
-        every { editions.requireActive(c.id!!) } returns CommunityEdition(
-            id = UUID.randomUUID(), communityId = c.id!!, label = "Team 2026",
-        )
+        every { editions.active(c.id!!) } returns anEdition(communityId = c.id!!, id = UUID.randomUUID())
         every { identities.of(communityId = any(), userId = TEST_USER_ID) } returns null
 
         mockMvc.get("/api/communities/team") { with(principalFor(superAdmin = true)) }.andExpect {

@@ -26,19 +26,18 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
     /** The rounds of [edition] earlier in time than [roundNumber], most recently played first. */
     @Transactional(readOnly = true)
     fun history(edition: CommunityEdition, roundNumber: Int): List<PastRound> =
-        rounds.historyOf(editionId = requireNotNull(edition.id), after = roundNumber)
+        rounds.historyOf(editionId = requireNotNull(edition.id), before = roundNumber)
 
     /**
      * The next older announced round of [edition], or `null` when [roundNumber] is the oldest one
-     * the run has. `Int.MAX_VALUE` stands in for an unbounded window, which is what a `null`
-     * `gamesFromRound` means.
+     * the run has.
      */
     @Transactional(readOnly = true)
     fun previousRound(edition: CommunityEdition, roundNumber: Int): Int? =
         rounds.previousRoundNumber(
             editionId = requireNotNull(edition.id),
-            after = roundNumber,
-            notOlderThan = edition.gamesFromRound ?: Int.MAX_VALUE,
+            before = roundNumber,
+            notOlderThan = edition.gamesFromRound,
             notNewerThan = edition.gamesUntilRound,
         )
 

@@ -13,11 +13,11 @@ import { hash32 } from '@/gamelab/seed'
  * visibly different rounds instead of on a run of neighbours.
  */
 
-/** T-0 … T-140: the same span a real edition's grid covers. */
+/** -140 … 0: the same span a real edition's grid covers. */
 const ROUND_MAX = 140
 
 export function labRoundNumber(seed: number): number {
-  return hash32(`${seed}:round`) % (ROUND_MAX + 1)
+  return 0 - (hash32(`${seed}:round`) % (ROUND_MAX + 1))
 }
 
 const MIN_MINUTES = 60

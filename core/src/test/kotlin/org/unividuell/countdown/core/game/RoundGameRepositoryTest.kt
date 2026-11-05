@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityEdition
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -43,7 +44,7 @@ class RoundGameRepositoryTest(
             Community(name = slug, slug = slug, createdBy = requireNotNull(creator.id)),
         )
         return editions.save(
-            CommunityEdition(communityId = requireNotNull(community.id), label = "Run 2026"),
+            anEdition(communityId = requireNotNull(community.id)),
         )
     }
 
@@ -92,26 +93,26 @@ class RoundGameRepositoryTest(
         second.gameType shouldBe "guess-hue"
         second.params shouldBe json("""{"n":1}""")
         second.awardPoints shouldBe 1
-        rounds.historyOf(editionId = requireNotNull(edition.id), after = Int.MIN_VALUE) shouldHaveSize 1
+        rounds.historyOf(editionId = requireNotNull(edition.id), before = Int.MAX_VALUE) shouldHaveSize 1
     }
 
     @Test
     fun `history is the rounds earlier in time, most recent first`() {
         val edition = anEdition("rg-history")
         val award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
-        // Larger number = earlier in time. Round 8 is "now"; 9, 10, 12 came before it, 7 comes after.
-        for (n in listOf(12, 10, 9, 8, 7)) {
+        // Smaller number = earlier in time. Round -8 is "now"; -9, -10, -12 came before it, -7 comes after.
+        for (n in listOf(-12, -10, -9, -8, -7)) {
             store.announce(
                 edition = edition, roundNumber = n, gameType = "game-$n",
                 params = json("""{"n":$n}"""), award = award, announcedAt = announcedAt,
             )
         }
 
-        val history = store.history(edition = edition, roundNumber = 8)
+        val history = store.history(edition = edition, roundNumber = -8)
 
-        // Ascending round_number = most recently played first: 9 is the round before 8.
-        history.map { it.roundNumber } shouldContainExactly listOf(9, 10, 12)
-        history.first().gameType shouldBe "game-9"
+        // Descending round_number = most recently played first: -9 is the round before -8.
+        history.map { it.roundNumber } shouldContainExactly listOf(-9, -10, -12)
+        history.first().gameType shouldBe "game--9"
     }
 
     @Test
@@ -119,25 +120,22 @@ class RoundGameRepositoryTest(
         val edition = anEdition("rg-gap")
         val award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
         store.announce(
-            edition = edition, roundNumber = 20, gameType = "long-ago",
+            edition = edition, roundNumber = -20, gameType = "long-ago",
             params = json("""{}"""), award = award, announcedAt = announcedAt,
         )
 
-        // Nobody opened rounds 19..9, so they do not exist. Round 20 is still the previous round.
-        val history = store.history(edition = edition, roundNumber = 8)
+        // Nobody opened rounds -19..-9, so they do not exist. Round -20 is still the previous round.
+        val history = store.history(edition = edition, roundNumber = -8)
 
-        history.map { it.roundNumber } shouldContainExactly listOf(20)
+        history.map { it.roundNumber } shouldContainExactly listOf(-20)
     }
 
     @Test
     fun `two editions of the same community keep their own rounds`() {
         val first = anEdition("rg-two-editions")
         val second = editions.save(
-            CommunityEdition(
-                communityId = first.communityId,
-                label = "Run 2027",
-                archivedAt = Instant.parse("2027-01-01T00:00:00Z"),
-            ),
+            anEdition(communityId = first.communityId, label = "Run 2027")
+                .copy(archivedAt = Instant.parse("2027-01-01T00:00:00Z")),
         )
         val award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
         store.announce(
@@ -154,9 +152,9 @@ class RoundGameRepositoryTest(
     }
 
     @Test
-    fun `previousRound is the next larger announced round number, skipping gaps`() {
+    fun `previousRound is the next smaller announced round number, skipping gaps`() {
         val edition = anEdition("rg-previous")
-        for (roundNumber in listOf(20, 17, 12)) {
+        for (roundNumber in listOf(-20, -17, -12)) {
             store.announce(
                 edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
                 params = json("""{"n":$roundNumber}"""),
@@ -165,16 +163,31 @@ class RoundGameRepositoryTest(
             )
         }
 
-        store.previousRound(edition = edition, roundNumber = 12) shouldBe 17
-        // 18 and 19 were never announced; the chain steps over them instead of ending there.
-        store.previousRound(edition = edition, roundNumber = 17) shouldBe 20
-        store.previousRound(edition = edition, roundNumber = 20).shouldBeNull()
+        store.previousRound(edition = edition, roundNumber = -12) shouldBe -17
+        // -18 and -19 were never announced; the chain steps over them instead of ending there.
+        store.previousRound(edition = edition, roundNumber = -17) shouldBe -20
+        store.previousRound(edition = edition, roundNumber = -20).shouldBeNull()
+    }
+
+    @Test
+    fun `an open window still points back to older rounds`() {
+        val edition = anEdition("rg-previous-open")
+        for (roundNumber in listOf(-3, -2, -1)) {
+            store.announce(
+                edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+                params = json("""{"n":$roundNumber}"""),
+                award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
+                announcedAt = announcedAt,
+            )
+        }
+
+        store.previousRound(edition = edition, roundNumber = -1) shouldBe -2
     }
 
     @Test
     fun `previousRound stops at the run's game window`() {
-        val edition = editions.save(anEdition("rg-previous-window").copy(gamesFromRound = 18))
-        for (roundNumber in listOf(20, 17)) {
+        val edition = editions.save(anEdition("rg-previous-window").copy(gamesFromRound = -18))
+        for (roundNumber in listOf(-20, -17)) {
             store.announce(
                 edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
                 params = json("""{"n":$roundNumber}"""),
@@ -183,25 +196,25 @@ class RoundGameRepositoryTest(
             )
         }
 
-        // Round 20 lies BEFORE the window — a larger number is earlier — so it is not reachable,
+        // Round -20 lies BEFORE the window — a smaller number is earlier — so it is not reachable,
         // exactly as the standings do not sum it.
-        store.previousRound(edition = edition, roundNumber = 17).shouldBeNull()
+        store.previousRound(edition = edition, roundNumber = -17).shouldBeNull()
     }
 
     @Test
-    fun `previousRound does not point below the run's game window either`() {
-        val edition = editions.save(anEdition("rg-previous-window-younger").copy(gamesUntilRound = 18))
-        // Announced while `gamesUntilRound` was lower or absent; the admin has since raised it,
-        // leaving this round strictly between the running round and the new lower edge.
+    fun `previousRound does not point above the run's game window either`() {
+        val edition = editions.save(anEdition("rg-previous-window-younger").copy(gamesUntilRound = -18))
+        // Announced while `gamesUntilRound` was higher or absent; the admin has since lowered it,
+        // leaving this round strictly between the running round and the new upper edge.
         store.announce(
-            edition = edition, roundNumber = 15, gameType = "guess-hue",
-            params = json("""{"n":15}"""),
+            edition = edition, roundNumber = -15, gameType = "guess-hue",
+            params = json("""{"n":-15}"""),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1),
             announcedAt = announcedAt,
         )
 
-        // Round 15 lies AFTER the window — a smaller number is later — so it must not be reachable
+        // Round -15 lies AFTER the window — a larger number is later — so it must not be reachable
         // from a round further back either, exactly as the standings do not sum it.
-        store.previousRound(edition = edition, roundNumber = 10).shouldBeNull()
+        store.previousRound(edition = edition, roundNumber = -10).shouldBeNull()
     }
 }

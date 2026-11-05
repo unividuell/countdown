@@ -5,30 +5,16 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * From when on this run's round grid is fixed — `null` while there is no grid at all.
+ * From when on this run's round grid is fixed.
  *
- * The moment is the start of round `gamesFromRound + 1`, the day before the first game round: the
+ * The moment is the start of round `gamesFromRound - 1`, the day before the first game round: the
  * daily schedule announces each round a day ahead, so that is the earliest instant a
- * `game.round_games` row can exist. An unbounded window (`gamesFromRound == null`) has no such
- * moment, so it answers [Instant.MIN] and every caller's `now >= frozenSince` holds.
+ * `game.round_games` row can exist.
  *
  * Deliberately not `CountdownEngine.intervalOf`: `countdown` depends on `community`, never the other
  * way round. `EditionFreezeGridParityTest` pins this copy against the engine.
  */
-fun frozenSince(edition: CommunityEdition): Instant? {
-    val startsAt = edition.startsAt ?: return null
-    val firstGameRound = edition.gamesFromRound ?: return Instant.MIN
-    return startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
-        .minusDays(firstGameRound.toLong() + 2)
+fun frozenSince(edition: CommunityEdition): Instant =
+    edition.startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
+        .plusDays(edition.gamesFromRound.toLong() - 2)
         .toInstant()
-}
-
-/**
- * Human-readable form of [frozenSince] for error messages. The unbounded window's [Instant.MIN]
- * would otherwise print as a year with nine digits and a leading minus sign in a public 409 body.
- */
-fun frozenSinceDescription(edition: CommunityEdition): String =
-    when (val since = frozenSince(edition)) {
-        Instant.MIN -> "its first round"
-        else -> "$since"
-    }

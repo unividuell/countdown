@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 import org.unividuell.countdown.core.TestcontainersConfiguration
+import org.unividuell.countdown.core.community.anEdition
 import org.unividuell.countdown.core.community.Community
 import org.unividuell.countdown.core.community.CommunityQuery
 import org.unividuell.countdown.core.community.internal.CommunityEditionRepository
@@ -50,10 +51,13 @@ class RoundPlayPointsTest(
     private fun aCommunity(name: String): Pair<Community, UUID> {
         val ownerId = aUser()
         val community = communities.create(creatorUserId = ownerId, rawName = name)
-        communities.update(
-            community = community, name = null, label = null,
-            startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            phaseTwoStartRound = null, gamesFromRound = null, gamesUntilRound = null,
+        editions.save(
+            anEdition(
+                communityId = requireNotNull(community.id),
+                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
+                startsAtTimezone = "Europe/Berlin",
+                gamesFromRound = -36500,
+            ),
         )
         return community to ownerId
     }
@@ -108,9 +112,9 @@ class RoundPlayPointsTest(
     fun `finished rounds are summed and the running one is not`() {
         val (community, owner) = aCommunity("Points Sum")
         val current = currentRoundNumberOf(community)
-        // Larger number = earlier in time, so current + 1 and + 2 are finished rounds.
-        scored(community = community, roundNumber = current + 1, user = owner, points = 3)
-        scored(community = community, roundNumber = current + 2, user = owner, points = 4)
+        // Smaller number = earlier in time, so current - 1 and - 2 are finished rounds.
+        scored(community = community, roundNumber = current - 1, user = owner, points = 3)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 4)
         scored(community = community, roundNumber = current, user = owner, points = 9)
 
         val standings = points.standings(
@@ -214,17 +218,17 @@ class RoundPlayPointsTest(
         val (community, owner) = aCommunity("Points Window")
         val communityId = requireNotNull(community.id)
         val current = currentRoundNumberOf(community)
-        scored(community = community, roundNumber = current + 1, user = owner, points = 3)
-        scored(community = community, roundNumber = current + 2, user = owner, points = 4)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 3)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 4)
         val edition = requireNotNull(editions.findActiveByCommunityId(communityId))
 
-        // The admin closes the window below the older round: it is no longer in play.
-        editions.save(edition.copy(gamesFromRound = current + 1))
+        // The admin starts the window after the older round: it is no longer in play.
+        editions.save(edition.copy(gamesFromRound = current - 1))
         val shrunk = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
         // Re-opening brings the same number back, untouched: the points sit frozen on the row and
         // only their inclusion in the sum is dynamic.
         editions.save(
-            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = null),
+            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = -36500),
         )
         val reopened = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
 
@@ -233,9 +237,9 @@ class RoundPlayPointsTest(
     }
 
     @Test
-    fun `a run without a target date has no rounds and therefore no points`() {
+    fun `a community without an active edition has no rounds and therefore no points`() {
         val ownerId = aUser()
-        val community = communities.create(creatorUserId = ownerId, rawName = "Points No Date")
+        val community = communities.create(creatorUserId = ownerId, rawName = "Points No Edition")
 
         val standings = points.standings(
             communityId = requireNotNull(community.id), viewerId = ownerId, userIds = listOf(ownerId),

@@ -9,13 +9,20 @@ const community = (startsAt: string | null): CommunityResponse => ({
   id: 'c1',
   name: 'Team',
   slug: 'team',
-  startsAt,
-  startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: null,
+  edition:
+    startsAt === null
+      ? null
+      : {
+          label: null,
+          startsAt,
+          startsAtTimezone: 'Europe/Berlin',
+          phaseTwoStartRound: null,
+          gamesFromRound: -24,
+          gamesUntilRound: 0,
+          frozen: false,
+        },
   viewerIsAdmin: false,
   pendingCount: 0,
-  editionFrozen: false,
   viewerIdentity: null,
 })
 
@@ -23,7 +30,7 @@ const before: CountdownResponse = {
   serverNow: '2026-06-14T21:00:00Z',
   startsAt: '2026-08-11T09:00:00Z',
   startsAtTimezone: 'Europe/Berlin',
-  round: { number: 58, label: 'T-58', start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
+  round: { number: -58, start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
   nextRound: null,
 }
 
@@ -31,7 +38,7 @@ const after: CountdownResponse = {
   serverNow: '2026-06-14T21:00:00Z',
   startsAt: '2026-06-14T09:00:00Z',
   startsAtTimezone: 'Europe/Berlin',
-  round: { number: -1, label: 'T+1', start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
+  round: { number: 1, start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
   nextRound: null,
 }
 

@@ -21,8 +21,11 @@ class InviteExpiredException(message: String = "Invite expired") : RuntimeExcept
 /** Caller is not cleared to create communities → 403. */
 class CommunityCreationNotAllowedException(message: String = "Not allowed to create communities") : RuntimeException(message)
 
-/** A community already has an active edition (partial unique index lost the race) → 409. */
+/** A community already has an active edition → 409. */
 class EditionConflictException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 /** The run's grid is fixed because its first game round has begun → 409. */
 class EditionFrozenException(message: String) : RuntimeException(message)
+
+/** The community has no active edition to replace → 404. */
+class EditionNotFoundException(message: String = "No active edition") : RuntimeException(message)

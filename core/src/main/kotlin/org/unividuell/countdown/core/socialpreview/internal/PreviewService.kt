@@ -40,10 +40,12 @@ class PreviewService(
         )
     }
 
-    /** A negative round number is at or past the start: there is nothing left to count down. */
+    /** A positive round number is at or past the start: there is nothing left to count down. */
     private fun describe(communityId: UUID, lead: String?): String {
         val round = countdown.currentRound(communityId = communityId, now = clock.instant())
-        val tail = if (round != null && round.number >= 0) "${round.label}: Spiel mit!" else "Spiel mit!"
+        val tail = if (round != null && round.number <= 0) "${daysToGo(-round.number)}: Spiel mit!" else "Spiel mit!"
         return if (lead == null) tail else "$lead — $tail"
     }
+
+    private fun daysToGo(days: Int): String = if (days == 1) "Noch 1 Tag" else "Noch $days Tage"
 }

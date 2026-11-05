@@ -80,13 +80,9 @@ describe('create community page', () => {
       id: 'c1',
       name: 'Team A',
       slug: 'team-a',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
-      phaseTwoStartRound: null,
-      gamesFromRound: null,
+      edition: null,
       viewerIsAdmin: true,
       pendingCount: 0,
-      editionFrozen: false,
       viewerIdentity: null,
     })
     await flushPromises()

@@ -17,6 +17,7 @@ export interface ActiveCommunity {
   name: string
   startsAt: string | null
   startsAtTimezone: string
+  editionLabel: string | null
   viewerIsAdmin: boolean
   pendingCount: number
   /** How the viewer appears HERE; null when there is no community-bound identity. */
