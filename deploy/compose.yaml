@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:18
+    # Named, so edge-lgtm's collector finds each stack's database on the shared `monitoring` network.
+    container_name: ${COMPOSE_PROJECT_NAME:-countdown}-postgres
     restart: unless-stopped
     environment:
       - POSTGRES_DB=app
@@ -13,6 +15,7 @@ services:
       - pgdata:/var/lib/postgresql
     networks:
       - internal
+      - monitoring  # read by edge-lgtm as role `monitor`, see db-monitor-role
 
   db-backup:
     image: postgres:18
@@ -87,6 +90,37 @@ services:
 
           sleep 86400
         done
+    depends_on:
+      - postgres
+    networks:
+      - internal
+
+  # Read-only login for edge-lgtm's postgres receiver: pg_monitor sees statistics, never table
+  # rows. One-shot and idempotent, so every `up -d` re-applies the current password. A compose
+  # service rather than an update.sh step: compose comes from the deployed branch, update.sh
+  # only from main. Without MONITORING_DB_PASSWORD it does nothing.
+  db-monitor-role:
+    image: postgres:18
+    restart: "no"
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - MONITORING_DB_PASSWORD=${MONITORING_DB_PASSWORD:-}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -eo pipefail
+        if [ -z "$$MONITORING_DB_PASSWORD" ]; then
+          echo "MONITORING_DB_PASSWORD is empty -- no monitor role"
+          exit 0
+        fi
+        until pg_isready -h postgres -U admin -d app; do sleep 2; done
+        psql -h postgres -U admin -d app -v ON_ERROR_STOP=1 -v pw="$$MONITORING_DB_PASSWORD" <<'SQL'
+        SELECT 'CREATE ROLE monitor LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'monitor')
+        \gexec
+        ALTER ROLE monitor PASSWORD :'pw';
+        GRANT pg_monitor TO monitor;
+        SQL
+        echo "monitor role ready"
     depends_on:
       - postgres
     networks:
@@ -196,6 +230,9 @@ volumes:
 
 networks:
   edge:
+    external: true
+  # Shared with edge-caddy's monitoring stack, which creates it.
+  monitoring:
     external: true
   internal:
     driver: bridge

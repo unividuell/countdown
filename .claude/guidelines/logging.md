@@ -54,3 +54,13 @@ database row it was kept out of. If a doc-comment claims a value never reaches p
 guarantee covers the logs too: `GoogleCountryLookup` resolves a Street View coordinate to a
 country precisely so the coordinate never reaches the database (see `CountryLookup`'s doc-comment)
 — a log line printing it on the error path would have quietly broken that promise.
+
+## Where logs go
+
+Staging and production log ECS JSON to stdout (`logging.structured.format.console: ecs`);
+edge-caddy's `edge-lgtm` reads it from docker's log files and unpacks level, logger, trace id
+and stack trace. So: no OTLP log appender, no log file, no second format — anything else on
+stdout arrives as unparsed text. Locally the console stays human-readable and logs never reach
+the local Grafana. Metrics and traces, unlike logs, go out via OTLP, tagged
+`service.namespace=countdown` and `deployment.environment.name`; an app-level metric is a
+Micrometer meter named `countdown.*` (`observability/ActivePlayers.kt`).
