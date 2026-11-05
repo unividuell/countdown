@@ -190,7 +190,10 @@ describe('edition page', () => {
     await w.get('form').trigger('submit')
     await flushPromises()
 
-    expect(api.createEdition).toHaveBeenCalledWith('hh', expect.objectContaining({ gamesFromRound: -45 }))
+    expect(api.createEdition).toHaveBeenCalledWith(
+      'hh',
+      expect.objectContaining({ gamesFromRound: -45 }),
+    )
   })
 
   it('also asks when the first game round starts later today', async () => {

@@ -251,9 +251,8 @@ const input =
               @click="phaseTwo = ''"
             >
               <IconX aria-hidden="true" />
-            </button>
-          </span></label
-        >
+            </button> </span
+        ></label>
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-xs text-neutral-500">
