@@ -69,8 +69,8 @@ class CountdownServiceTest(
         )
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
         val round = res.round!!; val nextRound = res.nextRound!!
-        (round.number > 0) shouldBe true
-        nextRound.number shouldBe round.number - 1
+        (round.number < 0) shouldBe true
+        nextRound.number shouldBe round.number + 1
         nextRound.start shouldBe round.end
     }
 

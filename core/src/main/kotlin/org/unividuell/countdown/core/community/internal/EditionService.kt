@@ -110,20 +110,20 @@ open class EditionService(
     /** Validating the finished aggregate, not the arguments — one place covers create and update. */
     private fun validate(edition: CommunityEdition) {
         require(edition.label.length in 3..50) { "label must be 3..50 chars" }
-        edition.phaseTwoStartRound?.let { require(it > 0) { "phaseTwoStartRound must be > 0" } }
+        edition.phaseTwoStartRound?.let { require(it < 0) { "phaseTwoStartRound must be < 0" } }
         // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
         require(AVAILABLE_ZONE_IDS.contains(edition.startsAtTimezone)) {
             "invalid timezone: ${edition.startsAtTimezone}"
         }
-        // A larger round number is earlier in time, so the first round must not be below the last.
+        // A smaller round number is earlier in time, so the first round must not be above the last.
         edition.gamesFromRound?.let {
-            require(it >= edition.gamesUntilRound) {
-                "gamesFromRound ($it) must not be below gamesUntilRound (${edition.gamesUntilRound})"
+            require(it <= edition.gamesUntilRound) {
+                "gamesFromRound ($it) must not be above gamesUntilRound (${edition.gamesUntilRound})"
             }
             // A run longer than a century of daily rounds is not a real run; the bound also keeps
             // `frozenSince`'s grid math (and its parity with `CountdownEngine.intervalOf`) from ever
-            // seeing a round number close enough to Int.MAX_VALUE to overflow.
-            require(it <= MAX_GAMES_FROM_ROUND) { "gamesFromRound ($it) must not exceed $MAX_GAMES_FROM_ROUND" }
+            // seeing a round number close enough to Int.MIN_VALUE to overflow.
+            require(it >= -MAX_GAMES_FROM_ROUND) { "gamesFromRound ($it) must not be below -$MAX_GAMES_FROM_ROUND" }
         }
     }
 

@@ -18,10 +18,10 @@ enum class NoGameReason {
     /** No active run, or the run has no target date yet — the countdown has not begun. */
     NOT_SCHEDULED,
 
-    /** The round lies before the run's game window: a larger number than `games_from_round`. */
+    /** The round lies before the run's game window: a smaller number than `games_from_round`. */
     BEFORE_WINDOW,
 
-    /** The round lies after it: a smaller number than `games_until_round`. */
+    /** The round lies after it: a larger number than `games_until_round`. */
     AFTER_WINDOW,
 
     /** The window is open but the catalogue offers nothing. */
@@ -31,9 +31,9 @@ enum class NoGameReason {
 /**
  * Mirrors `countdown.internal.RoundDto` field for field, deliberately rather than reusing it: that
  * one is `internal` to the `countdown` module, and a shared DTO would tie two modules' wire formats
- * together. Four fields are cheaper than that coupling.
+ * together. Three fields are cheaper than that coupling.
  */
-data class RoundDto(val number: Int, val label: String, val start: Instant, val end: Instant)
+data class RoundDto(val number: Int, val start: Instant, val end: Instant)
 
 /**
  * [requiresReveal] and [scoresOnDuration] ride on the game rather than on the round, because they
@@ -212,4 +212,4 @@ data class VoteRequest(val value: Vote?)
 /** `null` hands the decision back to the vote. */
 data class OverrideRequest(val value: Boolean?)
 
-fun Round.toDto() = RoundDto(number = number, label = label, start = start, end = end)
+fun Round.toDto() = RoundDto(number = number, start = start, end = end)

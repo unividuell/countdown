@@ -10,10 +10,9 @@ CREATE TABLE community.editions (
     archived_at               TIMESTAMPTZ  NULL,
     created_at                TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at                TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    -- A larger round number is EARLIER in time, so the window is until <= number <= from.
-    -- Spelled out here because "from < until" reads correct to a newcomer and is not.
+    -- Round numbers rise with time, so the window is from <= number <= until.
     CONSTRAINT editions_window_ordered
-        CHECK (games_from_round IS NULL OR games_from_round >= games_until_round)
+        CHECK (games_from_round IS NULL OR games_from_round <= games_until_round)
 );
 
 -- The invariant: exactly one active edition per community. A partial index, not a trigger.

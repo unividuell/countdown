@@ -27,8 +27,8 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     fun findByIdForUpdate(id: UUID): RoundGame?
 
     /**
-     * The rounds of this edition that lie **earlier in time** than [after] — a larger round number is
-     * earlier, so that is `round_number > :after`, ascending, which puts the most recently played
+     * The rounds of this edition that lie **earlier in time** than [before] — a smaller round number is
+     * earlier, so that is `round_number < :before`, descending, which puts the most recently played
      * round first.
      *
      * Returns the whole history rather than just the previous round: the selection rule is meant to
@@ -39,32 +39,32 @@ interface RoundGameRepository : CrudRepository<RoundGame, UUID> {
     @Query(
         """
         SELECT round_number, game_type FROM game.round_games
-        WHERE edition_id = :editionId AND round_number > :after
-        ORDER BY round_number ASC
+        WHERE edition_id = :editionId AND round_number < :before
+        ORDER BY round_number DESC
         """,
     )
-    fun historyOf(editionId: UUID, after: Int): List<PastRound>
+    fun historyOf(editionId: UUID, before: Int): List<PastRound>
 
     /**
-     * The next round of this edition **earlier in time** than [after] — the smallest round number
-     * above it, because a larger round number is earlier. [notOlderThan] and [notNewerThan] cap the
-     * walk at the run's game window on both sides; older means a larger number, so `gamesFromRound`
-     * bounds one side and `gamesUntilRound` the other. Both bounds are needed even though [after]
+     * The next round of this edition **earlier in time** than [before] — the largest round number
+     * below it, because a smaller round number is earlier. [notOlderThan] and [notNewerThan] cap the
+     * walk at the run's game window on both sides; older means a smaller number, so `gamesFromRound`
+     * bounds one side and `gamesUntilRound` the other. Both bounds are needed even though [before]
      * itself may already sit outside the window — e.g. an admin raising `gamesUntilRound` after a
-     * round strictly between [after] and the new edge was already announced — otherwise the pointer
+     * round strictly between [before] and the new edge was already announced — otherwise the pointer
      * names a round `HistoryService.resolve`'s own window check then 404s on.
      *
-     * `MIN` over an empty set is `NULL`, and that IS „ganz am Anfang" — no second query and no
+     * `MAX` over an empty set is `NULL`, and that IS „ganz am Anfang" — no second query and no
      * `COUNT` needed to tell the two apart.
      */
     @Query(
         """
-        SELECT MIN(round_number) FROM game.round_games
-        WHERE edition_id = :editionId AND round_number > :after
-            AND round_number <= :notOlderThan AND round_number >= :notNewerThan
+        SELECT MAX(round_number) FROM game.round_games
+        WHERE edition_id = :editionId AND round_number < :before
+            AND round_number >= :notOlderThan AND round_number <= :notNewerThan
         """,
     )
-    fun previousRoundNumber(editionId: UUID, after: Int, notOlderThan: Int, notNewerThan: Int): Int?
+    fun previousRoundNumber(editionId: UUID, before: Int, notOlderThan: Int, notNewerThan: Int): Int?
 
     /**
      * First writer wins, and the loser gets no exception.

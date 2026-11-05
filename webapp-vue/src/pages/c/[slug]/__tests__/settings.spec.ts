@@ -20,7 +20,7 @@ const community = {
   startsAt: '2026-06-25T09:00:00Z', // 11:00 in Europe/Berlin (summer)
   startsAtTimezone: 'Europe/Berlin',
   phaseTwoStartRound: null,
-  gamesFromRound: 24,
+  gamesFromRound: -24,
   viewerIsAdmin: true,
   pendingCount: 0,
   editionFrozen: false,
@@ -95,15 +95,26 @@ describe('settings — timezone + zone-relative startsAt', () => {
     const w = mount(Settings)
     await flushPromises()
     const field = w.find('[data-test="games-from-round"]')
-    expect((field.element as HTMLInputElement).value).toBe('24')
+    expect((field.element as HTMLInputElement).value).toBe('-24')
 
-    await field.setValue(40)
+    await field.setValue(-40)
     await w.find('form').trigger('submit')
     await flushPromises()
     expect(api.updateCommunity).toHaveBeenCalledWith(
       'team',
-      expect.objectContaining({ gamesFromRound: 40 }),
+      expect.objectContaining({ gamesFromRound: -40 }),
     )
+  })
+
+  it('takes negative round numbers and says where round 0 is', async () => {
+    const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
+    const w = mount(Settings)
+    await flushPromises()
+
+    for (const field of w.findAll('input[type="number"]')) {
+      expect(field.attributes('min')).toBeUndefined()
+    }
+    expect(w.text()).toContain('Runde 0 ist der letzte Tag vor dem Start, -89 liegt 89 Tage davor.')
   })
 
   it('omits gamesFromRound when the field is cleared', async () => {

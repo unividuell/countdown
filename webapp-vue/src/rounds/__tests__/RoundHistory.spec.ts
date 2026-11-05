@@ -24,7 +24,6 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 const closed = (number: number, over: Partial<RoundResponse> = {}): RoundResponse => ({
   round: {
     number,
-    label: `T-${number}`,
     start: '2026-08-10T10:00:00Z',
     end: '2026-08-11T10:00:00Z',
   },
@@ -57,7 +56,6 @@ const closed = (number: number, over: Partial<RoundResponse> = {}): RoundRespons
 const closedSpotObject = (number: number): RoundResponse => ({
   round: {
     number,
-    label: `T-${number}`,
     start: '2026-08-10T10:00:00Z',
     end: '2026-08-11T10:00:00Z',
   },

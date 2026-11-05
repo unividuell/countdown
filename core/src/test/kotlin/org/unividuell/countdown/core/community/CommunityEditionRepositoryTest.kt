@@ -93,13 +93,13 @@ class CommunityEditionRepositoryTest(
     fun `a window whose first round is later than its last is rejected`() {
         val communityId = aCommunity("edition-window-inverted")
 
-        // A larger round number is earlier in time, so from=5 with until=10 would end before it
+        // A smaller round number is earlier in time, so from=-5 with until=-10 would end before it
         // begins — the CHECK constraint, not just the service-level validation, rejects it.
         shouldThrow<DataIntegrityViolationException> {
             editions.save(
                 CommunityEdition(
                     communityId = communityId, label = "Run 2026",
-                    gamesFromRound = 5, gamesUntilRound = 10,
+                    gamesFromRound = -5, gamesUntilRound = -10,
                 )
             )
         }

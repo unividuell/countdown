@@ -78,7 +78,7 @@ const aPlay = (over: Partial<MyPlayDto> = {}): MyPlayDto => ({
 })
 
 const aRound = (over: Partial<RoundResponse> = {}): RoundResponse => ({
-  round: { number: 12, label: 'T-12', start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
+  round: { number: 12, start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
   game: {
     id: 'guess-hue',
     displayName: 'Farbausmalung',

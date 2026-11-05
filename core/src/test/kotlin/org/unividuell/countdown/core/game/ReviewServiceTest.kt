@@ -241,7 +241,7 @@ class ReviewServiceTest(
         val (community, target) = aCommunity("Two Rounds")
         val voter = aMember(community, "voter")
         val currentNumber = currentRoundNumberOf(community)
-        val previousNumber = currentNumber + 1
+        val previousNumber = currentNumber - 1
         announceReview(community, previousNumber)
         announceReview(community, currentNumber)
         val currentGameId = roundGameIdOf(community, currentNumber)
@@ -269,14 +269,14 @@ class ReviewServiceTest(
         val (community, target) = aCommunity("Too Old")
         val voter = aMember(community, "voter")
         val currentNumber = currentRoundNumberOf(community)
-        val previousNumber = currentNumber + 1
+        val previousNumber = currentNumber - 1
         announceReview(community, previousNumber)
         announceReview(community, currentNumber)
 
         shouldThrow<RoundNotFoundException> {
             review.vote(
                 slug = community.slug, voterId = voter, isSuperAdmin = false,
-                roundNumber = previousNumber + 1, targetUserId = target, value = Vote.FLAG,
+                roundNumber = previousNumber - 1, targetUserId = target, value = Vote.FLAG,
             )
         }
     }

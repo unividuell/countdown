@@ -51,9 +51,9 @@ class HistoryService(
         val edition = current.edition ?: throw RoundNotFoundException()
         val startsAt = edition.startsAt ?: throw RoundNotFoundException()
         val currentNumber = current.round?.number ?: throw RoundNotFoundException()
-        // A larger number is earlier: only strictly older rounds are history. This is the line that
+        // A smaller number is earlier: only strictly older rounds are history. This is the line that
         // keeps the running round's solution out of here.
-        if (roundNumber <= currentNumber) throw RoundNotFoundException()
+        if (roundNumber >= currentNumber) throw RoundNotFoundException()
         if (windowReasonOf(edition = edition, roundNumber = roundNumber) != null) {
             throw RoundNotFoundException()
         }

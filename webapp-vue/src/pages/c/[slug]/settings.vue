@@ -139,7 +139,6 @@ async function revoke(): Promise<void> {
         >Phase-2-Startrunde<input
           v-model.number="phaseTwoStartRound"
           type="number"
-          min="1"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
       <label class="block text-sm"
@@ -147,11 +146,11 @@ async function revoke(): Promise<void> {
           v-model.number="gamesFromRound"
           data-test="games-from-round"
           type="number"
-          min="1"
           class="mt-1 w-full rounded border px-3 py-1.5"
       /></label>
       <p class="text-xs text-neutral-500">
-        Größere Nummer = früher. Leer lässt den gespeicherten Wert unverändert.
+        Runde 0 ist der letzte Tag vor dem Start, -89 liegt 89 Tage davor. Leer lässt den
+        gespeicherten Wert unverändert.
       </p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>

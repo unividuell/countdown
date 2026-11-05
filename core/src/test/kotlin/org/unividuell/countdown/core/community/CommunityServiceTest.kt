@@ -74,14 +74,14 @@ class CommunityServiceTest(
         val (community, edition) = service.update(
             c, name = "Zone Team Renamed", label = null,
             startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "America/New_York",
-            phaseTwoStartRound = 20, gamesFromRound = 24, gamesUntilRound = null,
+            phaseTwoStartRound = -20, gamesFromRound = -24, gamesUntilRound = null,
         )
 
         community.name shouldBe "Zone Team Renamed"
         community.slug shouldBe "zone-team"           // the slug is immutable
         edition.startsAtTimezone shouldBe "America/New_York"
-        edition.phaseTwoStartRound shouldBe 20
-        edition.gamesFromRound shouldBe 24
+        edition.phaseTwoStartRound shouldBe -20
+        edition.gamesFromRound shouldBe -24
         edition.gamesUntilRound shouldBe 0
         query.activeEditionOf(requireNotNull(c.id))!!.startsAtTimezone shouldBe "America/New_York"
     }

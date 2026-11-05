@@ -31,13 +31,14 @@ class CountdownControllerTest(@Autowired val mockMvc: MockMvc) {
         val now = Instant.parse("2026-06-14T09:00:00Z")
         every { service.forSlug("team", uid, false) } returns CountdownResponse(
             serverNow = now, startsAt = Instant.parse("2026-06-25T09:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            round = RoundDto(10, "T-10", Instant.parse("2026-06-14T09:00:00Z"), Instant.parse("2026-06-15T09:00:00Z")),
-            nextRound = RoundDto(9, "T-9", Instant.parse("2026-06-15T09:00:00Z"), Instant.parse("2026-06-16T09:00:00Z")),
+            round = RoundDto(-11, Instant.parse("2026-06-14T09:00:00Z"), Instant.parse("2026-06-15T09:00:00Z")),
+            nextRound = RoundDto(-10, Instant.parse("2026-06-15T09:00:00Z"), Instant.parse("2026-06-16T09:00:00Z")),
         )
         mockMvc.get("/api/communities/team/countdown") { with(principalFor()) }.andExpect {
             status { isOk() }
-            jsonPath("$.round.label") { value("T-10") }
-            jsonPath("$.nextRound.number") { value(9) }
+            jsonPath("$.round.number") { value(-11) }
+            jsonPath("$.round.label") { doesNotExist() }
+            jsonPath("$.nextRound.number") { value(-10) }
             jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
         }
     }

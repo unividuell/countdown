@@ -5,9 +5,9 @@ import org.unividuell.countdown.core.community.CommunityEdition
 enum class Phase { ONE, TWO;
 
     companion object {
-        /** Later in time means a smaller round number, so phase two is `roundNumber <= threshold`. */
+        /** Later in time means a larger round number, so phase two is `roundNumber >= threshold`. */
         fun of(roundNumber: Int, phaseTwoStartRound: Int?): Phase =
-            if (phaseTwoStartRound != null && roundNumber <= phaseTwoStartRound) TWO else ONE
+            if (phaseTwoStartRound != null && roundNumber >= phaseTwoStartRound) TWO else ONE
 
         fun of(edition: CommunityEdition, roundNumber: Int): Phase =
             of(roundNumber = roundNumber, phaseTwoStartRound = edition.phaseTwoStartRound)
@@ -36,6 +36,6 @@ fun awardFor(roundNumber: Int, phaseTwoStartRound: Int?): Award =
         // Over Gauß summable — what is still up for grabs from here on.
         Phase.TWO -> Award(
             rule = AwardRule.CLOSEST_ONLY,
-            points = requireNotNull(phaseTwoStartRound) - roundNumber + 2,
+            points = roundNumber - requireNotNull(phaseTwoStartRound) + 2,
         )
     }

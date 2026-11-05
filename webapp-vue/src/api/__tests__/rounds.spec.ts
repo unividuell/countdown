@@ -73,7 +73,6 @@ describe('rounds api', () => {
     const response = (over: Partial<RoundResponse> = {}): RoundResponse => ({
       round: {
         number: 7,
-        label: 'T-7',
         start: '2026-08-14T10:00:00Z',
         end: '2026-08-15T10:00:00Z',
       },

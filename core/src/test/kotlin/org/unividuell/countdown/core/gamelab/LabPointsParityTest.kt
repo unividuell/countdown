@@ -199,7 +199,7 @@ class LabPointsParityTest(
     fun `a lab round in phase two awards what a real round in phase two awards`() {
         // The number both halves must land on, pinned independently of either side's own machinery:
         // the first round of phase two pays 2, straight out of the function both sides call.
-        awardFor(roundNumber = 12, phaseTwoStartRound = 12).points shouldBe 2
+        awardFor(roundNumber = -12, phaseTwoStartRound = -12).points shouldBe 2
 
         // --- the lab half: two testers, phase two, the second guessing exactly the target ---------
         val labEarlyId = aUser("lab-early")

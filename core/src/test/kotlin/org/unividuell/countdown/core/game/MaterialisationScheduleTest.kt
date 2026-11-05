@@ -67,20 +67,20 @@ class MaterialisationScheduleTest {
 
         schedule.prepare(edition = edition, now = now) shouldBe 2
 
-        // A larger round number is earlier: the next round is `current - 1`.
+        // A larger round number is later: the next round is `current + 1`.
         verify { materialiser.materialise(edition = edition, roundNumber = current) }
-        verify { materialiser.materialise(edition = edition, roundNumber = current - 1) }
+        verify { materialiser.materialise(edition = edition, roundNumber = current + 1) }
     }
 
     @Test
     fun `a round that already has a row is left alone, whoever wrote it`() {
         val edition = anEdition()
         val current = currentOf(edition)
-        every { store.find(edition = edition, roundNumber = current - 1) } returns mockk<RoundGame>()
+        every { store.find(edition = edition, roundNumber = current + 1) } returns mockk<RoundGame>()
 
         schedule.prepare(edition = edition, now = now) shouldBe 1
 
-        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current - 1) }
+        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current + 1) }
     }
 
     @Test
@@ -92,26 +92,26 @@ class MaterialisationScheduleTest {
         schedule.prepare(edition = edition, now = now) shouldBe 1
 
         verify { materialiser.materialise(edition = edition, roundNumber = current) }
-        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current - 1) }
+        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current + 1) }
     }
 
     @Test
     fun `the day before the window only its first round is materialised`() {
         val dated = anEdition()
-        val edition = dated.copy(gamesFromRound = currentOf(dated) - 1)
+        val edition = dated.copy(gamesFromRound = currentOf(dated) + 1)
         val current = currentOf(edition)
 
         schedule.prepare(edition = edition, now = now) shouldBe 1
 
         verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current) }
-        verify { materialiser.materialise(edition = edition, roundNumber = current - 1) }
+        verify { materialiser.materialise(edition = edition, roundNumber = current + 1) }
     }
 
     @Test
     fun `after the window nothing is materialised`() {
         val dated = anEdition()
         val current = currentOf(dated)
-        val edition = dated.copy(gamesFromRound = current + 5, gamesUntilRound = current + 1)
+        val edition = dated.copy(gamesFromRound = current - 5, gamesUntilRound = current - 1)
 
         schedule.prepare(edition = edition, now = now) shouldBe 0
 
@@ -141,9 +141,9 @@ class MaterialisationScheduleTest {
         schedule.run()
 
         // The draw only looks back: announced before its predecessor, tomorrow could repeat today's game.
-        verify(exactly = 0) { materialiser.materialise(edition = failing, roundNumber = failingCurrent - 1) }
+        verify(exactly = 0) { materialiser.materialise(edition = failing, roundNumber = failingCurrent + 1) }
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
-        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent - 1) }
+        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent + 1) }
     }
 
     @Test
@@ -154,7 +154,7 @@ class MaterialisationScheduleTest {
 
         schedule.prepare(edition = edition, now = now) shouldBe 0
 
-        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current - 1) }
+        verify(exactly = 0) { materialiser.materialise(edition = edition, roundNumber = current + 1) }
     }
 
     @Test
@@ -168,6 +168,6 @@ class MaterialisationScheduleTest {
         schedule.run()
 
         verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent) }
-        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent - 1) }
+        verify { materialiser.materialise(edition = healthy, roundNumber = healthyCurrent + 1) }
     }
 }

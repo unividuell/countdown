@@ -226,7 +226,7 @@ class RoundAssetGateTest(
     @Test
     fun `a closed round hands out every key and its after-guess bytes`() {
         val (community, viewer, running) = aGatedRound("Asset Gate Closed")
-        val past = announceGated(community = community, roundNumber = running.number + 1)
+        val past = announceGated(community = community, roundNumber = running.number - 1)
 
         // Never revealed, never guessed: whoever missed the round may still hear it afterwards.
         history.pastRound(slug = community.slug, userId = viewer, isSuperAdmin = false, roundNumber = past.number)
@@ -240,7 +240,7 @@ class RoundAssetGateTest(
     @Test
     fun `a closed round's assets survive the window closing over them`() {
         val (community, viewer) = aCommunity("Asset Gate After Window")
-        val past = announceGated(community = community, roundNumber = currentRoundNumberOf(community) + 1)
+        val past = announceGated(community = community, roundNumber = currentRoundNumberOf(community) - 1)
         // The run's window now ends one round before the running one, so the running round carries
         // no game at all (AFTER_WINDOW). The branch has to key off the round NUMBER — off „does the
         // running round carry a game“ it would take every reveal clip of the history down with it

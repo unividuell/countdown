@@ -62,14 +62,14 @@ class EditionServiceTest(
 
         val updated = service.update(
             edition, label = null, startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-            startsAtTimezone = "America/New_York", phaseTwoStartRound = 20,
-            gamesFromRound = 24, gamesUntilRound = null,
+            startsAtTimezone = "America/New_York", phaseTwoStartRound = -20,
+            gamesFromRound = -24, gamesUntilRound = null,
         )
 
         updated.label shouldBe "Run 2026"
         updated.startsAtTimezone shouldBe "America/New_York"
-        updated.phaseTwoStartRound shouldBe 20
-        updated.gamesFromRound shouldBe 24
+        updated.phaseTwoStartRound shouldBe -20
+        updated.gamesFromRound shouldBe -24
         updated.gamesUntilRound shouldBe 0
     }
 
@@ -87,7 +87,7 @@ class EditionServiceTest(
     }
 
     @Test
-    fun `update rejects a phaseTwoStartRound that is not positive`() {
+    fun `update rejects a phaseTwoStartRound that is not negative`() {
         val communityId = aCommunity("es-bad-phase")
         val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
@@ -104,24 +104,37 @@ class EditionServiceTest(
         val communityId = aCommunity("es-bad-window")
         val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
-        // A larger number is earlier: from=5 with until=10 would end before it begins.
+        // A smaller number is earlier: from=-5 with until=-10 would end before it begins.
         shouldThrow<IllegalArgumentException> {
             service.update(
                 edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = 5, gamesUntilRound = 10,
+                phaseTwoStartRound = null, gamesFromRound = -5, gamesUntilRound = -10,
             )
         }
     }
 
     @Test
-    fun `update rejects a gamesFromRound above the hundred-year bound`() {
+    fun `update rejects a positive first game round, which would lie after round 0`() {
+        val communityId = aCommunity("es-positive-from")
+        val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
+
+        shouldThrow<IllegalArgumentException> {
+            service.update(
+                edition, label = null, startsAt = null, startsAtTimezone = null,
+                phaseTwoStartRound = null, gamesFromRound = 89, gamesUntilRound = null,
+            )
+        }.message shouldBe "gamesFromRound (89) must not be above gamesUntilRound (0)"
+    }
+
+    @Test
+    fun `update rejects a gamesFromRound below the hundred-year bound`() {
         val communityId = aCommunity("es-round-too-big")
         val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         shouldThrow<IllegalArgumentException> {
             service.update(
                 edition, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = 36501, gamesUntilRound = null,
+                phaseTwoStartRound = null, gamesFromRound = -36501, gamesUntilRound = null,
             )
         }
     }
@@ -133,23 +146,23 @@ class EditionServiceTest(
 
         val updated = service.update(
             edition, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = 36500, gamesUntilRound = null,
+            phaseTwoStartRound = null, gamesFromRound = -36500, gamesUntilRound = null,
         )
 
-        updated.gamesFromRound shouldBe 36500
+        updated.gamesFromRound shouldBe -36500
     }
 
     @Test
-    fun `update accepts a negative last round so games can run past the start`() {
+    fun `update accepts a positive last round so games can run past the start`() {
         val communityId = aCommunity("es-negative-window")
         val edition = service.create(communityId = communityId, rawLabel = "Run 2026")
 
         val updated = service.update(
             edition, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = 24, gamesUntilRound = -3,
+            phaseTwoStartRound = null, gamesFromRound = -24, gamesUntilRound = 3,
         )
 
-        updated.gamesUntilRound shouldBe -3
+        updated.gamesUntilRound shouldBe 3
     }
 
     @Test
@@ -158,8 +171,8 @@ class EditionServiceTest(
         val first = service.create(communityId = communityId, rawLabel = "Run 2026")
         service.update(
             first, label = null, startsAt = Instant.parse("2026-10-01T16:00:00Z"),
-            startsAtTimezone = "America/New_York", phaseTwoStartRound = 20,
-            gamesFromRound = 24, gamesUntilRound = -1,
+            startsAtTimezone = "America/New_York", phaseTwoStartRound = -20,
+            gamesFromRound = -24, gamesUntilRound = 1,
         )
 
         val second = service.startNew(communityId = communityId, rawLabel = "Run 2027")
@@ -167,9 +180,9 @@ class EditionServiceTest(
         second.label shouldBe "Run 2027"
         second.startsAt.shouldBeNull()          // the new date is not known yet
         second.startsAtTimezone shouldBe "America/New_York"
-        second.phaseTwoStartRound shouldBe 20
-        second.gamesFromRound shouldBe 24
-        second.gamesUntilRound shouldBe -1
+        second.phaseTwoStartRound shouldBe -20
+        second.gamesFromRound shouldBe -24
+        second.gamesUntilRound shouldBe 1
 
         service.requireActive(communityId).label shouldBe "Run 2027"
         editions.findAllActive().count { it.communityId == communityId } shouldBe 1
@@ -219,7 +232,7 @@ class EditionServiceTest(
     }
 
     // The suite runs against the real clock, so the fixtures are relative to it: a run that starts
-    // in 10 days has round 24 behind it (25 days before the start) and round 2 ahead of it (3 days
+    // in 10 days has round -24 behind it (25 days before the start) and round -2 ahead of it (3 days
     // before the start). That is one edition that is frozen and, one field later, would not be.
     private fun aStartedRun(slug: String): CommunityEdition {
         val communityId = aCommunity(slug)
@@ -227,7 +240,7 @@ class EditionServiceTest(
         return service.update(
             edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
             startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = 24, gamesUntilRound = null,
+            gamesFromRound = -24, gamesUntilRound = null,
         )
     }
 
@@ -244,7 +257,7 @@ class EditionServiceTest(
         val dated = service.update(
             edition, label = null, startsAt = Instant.now().plus(10, ChronoUnit.DAYS),
             startsAtTimezone = null, phaseTwoStartRound = null,
-            gamesFromRound = 2, gamesUntilRound = null,
+            gamesFromRound = -2, gamesUntilRound = null,
         )
 
         service.isFrozen(dated) shouldBe false
@@ -281,24 +294,24 @@ class EditionServiceTest(
 
         val updated = service.update(
             started, label = "Run 2026 reloaded", startsAt = started.startsAt,
-            startsAtTimezone = started.startsAtTimezone, phaseTwoStartRound = 20,
+            startsAtTimezone = started.startsAtTimezone, phaseTwoStartRound = -20,
             gamesFromRound = null, gamesUntilRound = null,
         )
 
         updated.label shouldBe "Run 2026 reloaded"
-        updated.phaseTwoStartRound shouldBe 20
+        updated.phaseTwoStartRound shouldBe -20
     }
 
     @Test
     fun `update rejects a first game round that would thaw a frozen run`() {
         val started = aStartedRun("es-frozen-thaw")
 
-        // Round 2 begins three days before the start, which is still ahead — the same edition
+        // Round -2 begins three days before the start, which is still ahead — the same edition
         // would no longer be frozen, and the next PATCH could move the date.
         shouldThrow<EditionFrozenException> {
             service.update(
                 started, label = null, startsAt = null, startsAtTimezone = null,
-                phaseTwoStartRound = null, gamesFromRound = 2, gamesUntilRound = null,
+                phaseTwoStartRound = null, gamesFromRound = -2, gamesUntilRound = null,
             )
         }
     }
@@ -309,10 +322,10 @@ class EditionServiceTest(
 
         val updated = service.update(
             started, label = null, startsAt = null, startsAtTimezone = null,
-            phaseTwoStartRound = null, gamesFromRound = 40, gamesUntilRound = null,
+            phaseTwoStartRound = null, gamesFromRound = -40, gamesUntilRound = null,
         )
 
-        updated.gamesFromRound shouldBe 40
+        updated.gamesFromRound shouldBe -40
     }
 
     // gamesFromRound == null is an unbounded window: frozenSince answers Instant.MIN, which must

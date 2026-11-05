@@ -196,12 +196,12 @@ class AnnouncementMaterialisedHookTest(
         val (community, viewer) = aCommunity("Ahead Round")
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
-        // A larger round number is earlier: `roundNumber - 1` is tomorrow's round, not yet playable.
-        val ahead = aRecordingRound(edition = edition, roundNumber = roundNumber - 1)
+        // A larger round number is later: `roundNumber + 1` is tomorrow's round, not yet playable.
+        val ahead = aRecordingRound(edition = edition, roundNumber = roundNumber + 1)
 
         announcements.resolve(slug = community.slug, userId = viewer, isSuperAdmin = false)
 
-        store.find(edition = edition, roundNumber = roundNumber - 1) shouldBe ahead
+        store.find(edition = edition, roundNumber = roundNumber + 1) shouldBe ahead
         assets.exists(requireNotNull(ahead.id)) shouldBe false
     }
 
@@ -211,12 +211,12 @@ class AnnouncementMaterialisedHookTest(
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = currentRoundNumberOf(community)
         val sameType = store.announce(
-            edition = edition, roundNumber = roundNumber + 1, gameType = "recording-fake",
+            edition = edition, roundNumber = roundNumber - 1, gameType = "recording-fake",
             params = mapper.valueToTree(RecordingGame.RecParams(n = 999)),
             award = anAward(), announcedAt = clock.instant(),
         )
         store.announce(
-            edition = edition, roundNumber = roundNumber + 2, gameType = "guess-hue",
+            edition = edition, roundNumber = roundNumber - 2, gameType = "guess-hue",
             params = mapper.readTree("""{"n":2}"""), award = anAward(), announcedAt = clock.instant(),
         )
 

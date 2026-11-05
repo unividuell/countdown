@@ -33,8 +33,7 @@ function stubCountdown() {
       startsAt: '2026-06-25T09:00:00Z',
       startsAtTimezone: 'Europe/Berlin',
       round: {
-        number: 10,
-        label: 'T-10',
+        number: -10,
         start: '2026-06-14T09:00:00Z',
         end: '2026-06-15T09:00:00Z',
       },

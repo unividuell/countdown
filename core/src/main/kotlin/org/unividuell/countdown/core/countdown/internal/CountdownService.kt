@@ -55,8 +55,8 @@ class CountdownService(
             )
         val zone = ZoneId.of(edition.startsAtTimezone)
         val current = engine.roundAt(now = now, startsAt = startsAt, zone = zone)
-        // later in time = number - 1
-        val next = engine.intervalOf(number = current.number - 1, startsAt = startsAt, zone = zone)
+        // later in time = number + 1
+        val next = engine.intervalOf(number = current.number + 1, startsAt = startsAt, zone = zone)
         return CountdownResponse(
             serverNow = now, startsAt = startsAt, startsAtTimezone = edition.startsAtTimezone,
             round = current.toDto(), nextRound = next.toDto(),

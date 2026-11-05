@@ -45,12 +45,12 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `a community path carries the name and the round`() {
         every { preview.forCommunity("huettehuette") } returns
-            PreviewPage(title = "Hütte Hütte", description = "T-58: Spiel mit!", path = "/c/huettehuette")
+            PreviewPage(title = "Hütte Hütte", description = "Noch 58 Tage: Spiel mit!", path = "/c/huettehuette")
 
         mockMvc.get("/api/preview/c/huettehuette").andExpect {
             status { isOk() }
             content { string(containsString("""<meta property="og:title" content="Hütte Hütte">""")) }
-            content { string(containsString("T-58: Spiel mit!")) }
+            content { string(containsString("Noch 58 Tage: Spiel mit!")) }
             content { string(containsString("""content="http://localhost/c/huettehuette"""")) }
         }
     }
@@ -69,7 +69,7 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `an invite path names the inviting community`() {
         every { preview.forInvite("A7K2MP") } returns
-            PreviewPage(title = "Hütte Hütte", description = "Du bist eingeladen — T-58: Spiel mit!", path = "/join/A7K2MP")
+            PreviewPage(title = "Hütte Hütte", description = "Du bist eingeladen — Noch 58 Tage: Spiel mit!", path = "/join/A7K2MP")
 
         mockMvc.get("/api/preview/join/A7K2MP").andExpect {
             status { isOk() }
@@ -82,7 +82,7 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
         // path "/" on purpose: og:url would otherwise echo the code the crawler just asked for,
         // which is harmless but would make the assertion below measure the wrong thing
         every { preview.forInvite("A7K2MP") } returns
-            PreviewPage(title = "Hütte Hütte", description = "Du bist eingeladen — T-58: Spiel mit!", path = "/")
+            PreviewPage(title = "Hütte Hütte", description = "Du bist eingeladen — Noch 58 Tage: Spiel mit!", path = "/")
 
         mockMvc.get("/api/preview/join/A7K2MP").andExpect {
             status { isOk() }

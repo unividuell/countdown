@@ -60,8 +60,8 @@ class RoundPlayPoints(
             userIds = (userIds + viewerId).distinct(),
         ).filter { windowReasonOf(edition = edition, roundNumber = it.roundNumber) == null }
 
-        // A larger round number is earlier in time, so "finished" is `> current`.
-        val stable = scored.filter { it.roundNumber > current }
+        // A smaller round number is earlier in time, so "finished" is `< current`.
+        val stable = scored.filter { it.roundNumber < current }
             .groupBy { it.userId }
             .mapValues { (_, rounds) -> rounds.sumOf { it.points } }
         val running = scored.filter { it.roundNumber == current }

@@ -65,26 +65,26 @@ class RoundMaterialiserDifficultyTest {
         val edition = CommunityEdition(
             id = UUID.randomUUID(), communityId = UUID.randomUUID(), label = "Team 2026", gamesUntilRound = 0,
         )
-        // Oldest round 20 played "fake"; round 10 is now: (20 - 10) / (20 - 0) = 0.5.
-        val history = (13..19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
-            PastRound(roundNumber = 20, gameType = "fake")
-        every { store.history(edition = edition, roundNumber = 10) } returns history
+        // Oldest round -20 played "fake"; round -10 is now: (-10 - -20) / (0 - -20) = 0.5.
+        val history = (-13 downTo -19).map { PastRound(roundNumber = it, gameType = "guess-hue") } +
+            PastRound(roundNumber = -20, gameType = "fake")
+        every { store.history(edition = edition, roundNumber = -10) } returns history
         every { selection.pick(candidates = any(), history = any(), random = any()) } returns "fake"
         every { store.previousParams(edition = edition, gameType = "fake") } returns emptyList()
         every {
             store.announce(
-                edition = edition, roundNumber = 10, gameType = "fake", params = any(), award = any(), announcedAt = any(),
+                edition = edition, roundNumber = -10, gameType = "fake", params = any(), award = any(), announcedAt = any(),
             )
         } answers {
             RoundGame(
-                id = UUID.randomUUID(), editionId = requireNotNull(edition.id), roundNumber = 10, gameType = "fake",
+                id = UUID.randomUUID(), editionId = requireNotNull(edition.id), roundNumber = -10, gameType = "fake",
                 params = arg<JsonNode>(3), awardRule = AwardRule.ALL_QUALIFYING, awardPoints = 1,
                 announcedAt = Instant.parse("2026-10-29T10:00:00Z"),
             )
         }
         every { assets.exists(any()) } returns true
 
-        materialiser.materialise(edition = edition, roundNumber = 10)
+        materialiser.materialise(edition = edition, roundNumber = -10)
 
         game.drawContexts.single().difficulty shouldBe 0.5
         game.availableContexts.single().difficulty shouldBe 0.0

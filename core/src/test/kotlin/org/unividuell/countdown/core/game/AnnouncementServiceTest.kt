@@ -2,7 +2,7 @@ package org.unividuell.countdown.core.game
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -138,8 +138,8 @@ class AnnouncementServiceTest(
 
         val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
 
-        // With a target date in 2099, the current round number is far above zero.
-        res.round.shouldNotBeNull().number shouldBeGreaterThan 0
+        // With a target date in 2099, the current round number is far below zero.
+        res.round.shouldNotBeNull().number shouldBeLessThan 0
         // Whichever type won: this asserts a game was announced at all, not which one — the
         // catalogue carries several unconditional games and GameSelection may draw any of them.
         // Read from the catalogue itself, not a retyped map, so a new game never leaves this stale.
@@ -162,9 +162,9 @@ class AnnouncementServiceTest(
 
     @Test
     fun `a round before the window has no game but still has a round`() {
-        // The current round is a large number (the date is in 2099); a window that starts later in
-        // time — a smaller number — has not begun yet.
-        val (community, viewer) = aCommunityWithOwner("Before Window", gamesFromRound = 5, gamesUntilRound = 0)
+        // The current round is a large negative number (the date is in 2099); a window that starts
+        // later in time — a larger number — has not begun yet.
+        val (community, viewer) = aCommunityWithOwner("Before Window", gamesFromRound = -5, gamesUntilRound = 0)
 
         val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
 
@@ -180,9 +180,9 @@ class AnnouncementServiceTest(
         val current = announcements.currentRound(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
         ).round
-        // Close the window entirely above the current round: until > current means it already ended.
+        // Close the window entirely below the current round: until < current means it already ended.
         editionRepository.save(
-            edition.copy(gamesFromRound = null, gamesUntilRound = requireNotNull(current).number + 5),
+            edition.copy(gamesFromRound = null, gamesUntilRound = requireNotNull(current).number - 5),
         )
 
         val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
@@ -201,7 +201,7 @@ class AnnouncementServiceTest(
 
         second.game shouldBe first.game
         val edition = requireNotNull(editionRepository.findActiveByCommunityId(requireNotNull(community.id)))
-        rounds.historyOf(editionId = requireNotNull(edition.id), after = Int.MIN_VALUE) shouldHaveSize 1
+        rounds.historyOf(editionId = requireNotNull(edition.id), before = Int.MAX_VALUE) shouldHaveSize 1
     }
 
     @Test
@@ -238,16 +238,16 @@ class AnnouncementServiceTest(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
         ).previousRoundNumber.shouldBeNull()
 
-        // Three rounds earlier in time — a larger number — and with a gap, so the pointer has to
+        // Three rounds earlier in time — a smaller number — and with a gap, so the pointer has to
         // answer with the nearest one rather than the oldest.
         store.announce(
-            edition = edition, roundNumber = currentNumber + 3, gameType = "guess-hue",
+            edition = edition, roundNumber = currentNumber - 3, gameType = "guess-hue",
             params = mapper.readTree("""{"n":1}"""),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )
 
         announcements.currentRound(
             slug = community.slug, userId = viewer, isSuperAdmin = false,
-        ).previousRoundNumber shouldBe currentNumber + 3
+        ).previousRoundNumber shouldBe currentNumber - 3
     }
 }

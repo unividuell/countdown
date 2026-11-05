@@ -109,9 +109,8 @@ export interface InvitePeekResponse {
  * that ever stops being true, TypeScript will say so at the call site that first disagrees.
  */
 export interface Round {
-  /** Signed T-offset. A larger number is *earlier* in time. */
+  /** Rises with time; `0` is the last day before the start. */
   number: number
-  label: string
   start: string
   end: string
 }

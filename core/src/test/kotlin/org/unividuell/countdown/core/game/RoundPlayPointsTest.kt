@@ -108,9 +108,9 @@ class RoundPlayPointsTest(
     fun `finished rounds are summed and the running one is not`() {
         val (community, owner) = aCommunity("Points Sum")
         val current = currentRoundNumberOf(community)
-        // Larger number = earlier in time, so current + 1 and + 2 are finished rounds.
-        scored(community = community, roundNumber = current + 1, user = owner, points = 3)
-        scored(community = community, roundNumber = current + 2, user = owner, points = 4)
+        // Smaller number = earlier in time, so current - 1 and - 2 are finished rounds.
+        scored(community = community, roundNumber = current - 1, user = owner, points = 3)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 4)
         scored(community = community, roundNumber = current, user = owner, points = 9)
 
         val standings = points.standings(
@@ -214,12 +214,12 @@ class RoundPlayPointsTest(
         val (community, owner) = aCommunity("Points Window")
         val communityId = requireNotNull(community.id)
         val current = currentRoundNumberOf(community)
-        scored(community = community, roundNumber = current + 1, user = owner, points = 3)
-        scored(community = community, roundNumber = current + 2, user = owner, points = 4)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 3)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 4)
         val edition = requireNotNull(editions.findActiveByCommunityId(communityId))
 
-        // The admin closes the window below the older round: it is no longer in play.
-        editions.save(edition.copy(gamesFromRound = current + 1))
+        // The admin starts the window after the older round: it is no longer in play.
+        editions.save(edition.copy(gamesFromRound = current - 1))
         val shrunk = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
         // Re-opening brings the same number back, untouched: the points sit frozen on the row and
         // only their inclusion in the sum is dynamic.

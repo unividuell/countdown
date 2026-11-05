@@ -561,7 +561,7 @@ class LabService(
          * The round every lab round pretends to be. The lab has no grid, and `awardFor` needs a
          * number; which number it is only shifts phase two's stake, and the lab is about the rule.
          */
-        const val LAB_ROUND_NUMBER = 12
+        const val LAB_ROUND_NUMBER = -12
     }
 }
 

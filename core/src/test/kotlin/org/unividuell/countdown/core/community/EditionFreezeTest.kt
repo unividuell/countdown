@@ -14,7 +14,7 @@ class EditionFreezeTest {
     private fun edition(
         startsAt: Instant?,
         zone: String = "Europe/Berlin",
-        gamesFromRound: Int? = 24,
+        gamesFromRound: Int? = -24,
     ) = CommunityEdition(
         communityId = UUID.randomUUID(),
         label = "Run 2026",
@@ -37,8 +37,8 @@ class EditionFreezeTest {
 
     @Test
     fun `the freeze point is the start of the round before the first game round`() {
-        // 09:00Z is 11:00 in Berlin (CEST); round 25 starts 26 days earlier, same wall-clock.
-        val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = 24)
+        // 09:00Z is 11:00 in Berlin (CEST); round -25 starts 26 days earlier, same wall-clock.
+        val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = -24)
 
         frozenSince(e) shouldBe Instant.parse("2026-05-30T09:00:00Z")
     }
@@ -47,25 +47,25 @@ class EditionFreezeTest {
     fun `day stepping is calendar-aware across a DST boundary`() {
         // 16:00Z is 18:00 in Berlin (CEST). Eleven days earlier is 2026-03-25, still CET (UTC+1),
         // so the same wall-clock 18:00 is 17:00Z — an instant-based minus(11 days) would say 16:00Z.
-        val e = edition(startsAt = Instant.parse("2026-04-05T16:00:00Z"), gamesFromRound = 9)
+        val e = edition(startsAt = Instant.parse("2026-04-05T16:00:00Z"), gamesFromRound = -9)
 
         frozenSince(e) shouldBe Instant.parse("2026-03-25T17:00:00Z")
     }
 
     @Test
     fun `a window that opens only after the start freezes a day before the start`() {
-        val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = -1)
+        val e = edition(startsAt = Instant.parse("2026-06-25T09:00:00Z"), gamesFromRound = 1)
 
         frozenSince(e) shouldBe Instant.parse("2026-06-24T09:00:00Z")
     }
 
-    // `gamesFromRound + 2` must not run in Int: at Int.MAX_VALUE it wraps to Int.MIN_VALUE, and
-    // `minusDays` of a negative count adds days instead of subtracting — the freeze point then lands
+    // `gamesFromRound - 2` must not run in Int: at Int.MIN_VALUE it wraps to Int.MAX_VALUE, and
+    // `plusDays` of a positive count adds days instead of subtracting — the freeze point then lands
     // millions of years in the future rather than in the past, and `isFrozen` is false forever.
     @Test
     fun `an enormous gamesFromRound still lands in the past, not millions of years in the future`() {
         val startsAt = Instant.parse("2026-06-25T09:00:00Z")
-        val e = edition(startsAt = startsAt, gamesFromRound = Int.MAX_VALUE)
+        val e = edition(startsAt = startsAt, gamesFromRound = Int.MIN_VALUE)
 
         val since = frozenSince(e)
 

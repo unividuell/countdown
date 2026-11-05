@@ -240,12 +240,12 @@ class PlayService(
     ): StoredAsset {
         val current = announcements.resolve(slug = slug, userId = userId, isSuperAdmin = isSuperAdmin)
         val currentNumber = current.round?.number ?: throw RoundNotFoundException()
-        // A larger number is earlier: anything above the running round is history.
+        // A smaller number is earlier: anything below the running round is history.
         val round = when {
-            roundNumber > currentNumber ->
+            roundNumber < currentNumber ->
                 history.resolve(current = current, roundNumber = roundNumber) as? ResolvedRound.Announced
                     ?: throw AssetNotFoundException()
-            roundNumber < currentNumber -> throw RoundNotFoundException()
+            roundNumber > currentNumber -> throw RoundNotFoundException()
             else -> when (current) {
                 is ResolvedRound.NoGame -> throw NoGameToPlayException(current.reason)
                 is ResolvedRound.Announced -> current

@@ -1,5 +1,7 @@
 package org.unividuell.countdown.core.countdown
 
+import io.kotest.assertions.withClue
+import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -12,40 +14,51 @@ class CountdownEngineTest {
     private fun at(y: Int, mo: Int, d: Int, h: Int, mi: Int = 0, s: Int = 0) =
         ZonedDateTime.of(y, mo, d, h, mi, s, 0, berlin).toInstant()
 
-    private val startsAt = at(2026, 6, 25, 11) // 2026-06-25 11:00 Europe/Berlin (= 09:00Z, summer)
+    private val startsAt = at(2027, 6, 24, 11) // 2027-06-24 11:00 Europe/Berlin (MESZ)
 
     @Test
-    fun `labels flip sign around the start`() {
-        engine.labelOf(10) shouldBe "T-10"
-        engine.labelOf(0) shouldBe "T-0"
-        engine.labelOf(-1) shouldBe "T+1"
-        engine.labelOf(-2) shouldBe "T+2"
+    fun `the anchor - one hour before the start is round 0 with an hour left`() {
+        val now = at(2027, 6, 24, 10)
+        val r = engine.roundAt(now, startsAt, berlin)
+        r.number shouldBe 0
+        r.end shouldBe startsAt
+        Duration.between(now, r.end) shouldBe Duration.ofHours(1)
     }
 
     @Test
-    fun `the last day before start is round 0, start-inclusive`() {
-        engine.roundAt(at(2026, 6, 24, 11), startsAt, berlin).number shouldBe 0
-        engine.roundAt(at(2026, 6, 24, 11, 0, 1), startsAt, berlin).number shouldBe 0
-        engine.roundAt(at(2026, 6, 25, 10, 59, 59), startsAt, berlin).number shouldBe 0
-    }
-
-    @Test
-    fun `the start instant begins round -1 (T+1)`() {
+    fun `the start instant begins round 1`() {
         val r = engine.roundAt(startsAt, startsAt, berlin)
-        r.number shouldBe -1
-        r.label shouldBe "T+1"
+        r.number shouldBe 1
         r.start shouldBe startsAt
-        r.end shouldBe at(2026, 6, 26, 11)
-        engine.roundAt(at(2026, 6, 25, 10, 59, 59), startsAt, berlin).number shouldBe 0
+        r.end shouldBe at(2027, 6, 25, 11)
+        engine.roundAt(at(2027, 6, 24, 10, 59, 59), startsAt, berlin).number shouldBe 0
     }
 
     @Test
-    fun `a day eleven days out is round 10`() {
-        val r = engine.roundAt(at(2026, 6, 14, 11), startsAt, berlin)
-        r.number shouldBe 10
-        r.label shouldBe "T-10"
-        r.start shouldBe at(2026, 6, 14, 11)
-        r.end shouldBe at(2026, 6, 15, 11)
+    fun `round 0 begins one day before the start`() {
+        engine.roundAt(at(2027, 6, 23, 11), startsAt, berlin).number shouldBe 0
+        engine.roundAt(at(2027, 6, 23, 10, 59, 59), startsAt, berlin).number shouldBe -1
+    }
+
+    @Test
+    fun `round -89 is the day 90 days before the start`() {
+        val r = engine.intervalOf(-89, startsAt, berlin)
+        r.start shouldBe at(2027, 3, 26, 11)
+        r.end shouldBe at(2027, 3, 27, 11)
+    }
+
+    @Test
+    fun `numbers rise with time and never skip`() {
+        val instants = generateSequence(at(2027, 3, 20, 0)) { it.plus(Duration.ofHours(7)) }
+            .takeWhile { it < at(2027, 7, 10, 0) }
+        instants.map { engine.roundAt(it, startsAt, berlin).number }.zipWithNext().forEach { (earlier, later) ->
+            (later - earlier) shouldBeInRange 0..1
+        }
+        (-100..20).forEach { n ->
+            withClue("round $n") {
+                engine.intervalOf(n, startsAt, berlin).end shouldBe engine.intervalOf(n + 1, startsAt, berlin).start
+            }
+        }
     }
 
     @Test
@@ -70,10 +83,10 @@ class CountdownEngineTest {
 
     @Test
     fun `intervalOf is consistent with roundAt`() {
-        val r = engine.intervalOf(10, startsAt, berlin)
-        r.number shouldBe 10
-        r.start shouldBe at(2026, 6, 14, 11)
-        r.end shouldBe at(2026, 6, 15, 11)
-        engine.intervalOf(9, startsAt, berlin).start shouldBe r.end
+        val r = engine.intervalOf(-10, startsAt, berlin)
+        r.start shouldBe at(2027, 6, 13, 11)
+        r.end shouldBe at(2027, 6, 14, 11)
+        engine.roundAt(r.start, startsAt, berlin) shouldBe r
+        engine.intervalOf(-9, startsAt, berlin).start shouldBe r.end
     }
 }
