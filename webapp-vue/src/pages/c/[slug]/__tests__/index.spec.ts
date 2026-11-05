@@ -107,13 +107,9 @@ const community: CommunityResponse = {
   id: 'c1',
   name: 'Team',
   slug: 'team',
-  startsAt: null,
-  startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: null,
+  edition: null,
   viewerIsAdmin: false,
   pendingCount: 0,
-  editionFrozen: false,
   viewerIdentity: null,
 }
 

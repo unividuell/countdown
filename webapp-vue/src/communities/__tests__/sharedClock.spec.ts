@@ -13,13 +13,17 @@ const community: CommunityResponse = {
   id: 'c1',
   name: 'Team',
   slug: 'team',
-  startsAt: '2026-06-25T09:00:00Z',
-  startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: null,
+  edition: {
+    label: null,
+    startsAt: '2026-06-25T09:00:00Z',
+    startsAtTimezone: 'Europe/Berlin',
+    phaseTwoStartRound: null,
+    gamesFromRound: -24,
+    gamesUntilRound: 0,
+    frozen: false,
+  },
   viewerIsAdmin: false,
   pendingCount: 0,
-  editionFrozen: false,
   viewerIdentity: null,
 }
 

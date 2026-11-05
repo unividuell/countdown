@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
-import {
-  getCommunity,
-  updateCommunity,
-  generateInvite,
-  getInvite,
-  revokeInvite,
-} from '@/api/communities'
-import type { CommunityResponse } from '@/api/types'
+import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
@@ -18,12 +10,6 @@ useAdminGuard()
 const { community, refresh } = useCommunityContext()
 const slug = community.value.slug
 const name = ref('')
-const startsAt = ref('')
-const startsAtTimezone = ref('Europe/Berlin')
-const zones = Intl.supportedValuesOf('timeZone')
-const phaseTwoStartRound = ref<number | null>(null)
-const gamesFromRound = ref<number | null>(null)
-const editionFrozen = ref(false)
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
@@ -32,30 +18,8 @@ function fullUrl(path: string): string {
   return `${window.location.origin}${path}`
 }
 
-// <input type="datetime-local"> holds a zone-less wall-clock string. We interpret it IN the
-// community's startsAtTimezone (not the browser zone): instant <-> "yyyy-MM-dd'T'HH:mm" in that zone.
-function toLocalInput(iso: string, zone: string): string {
-  return DateTime.fromISO(iso, { zone }).toFormat("yyyy-MM-dd'T'HH:mm")
-}
-function toInstant(local: string, zone: string): string | null {
-  return DateTime.fromISO(local, { zone }).toUTC().toISO()
-}
-
-// Reflects whatever the server actually stored — called after both the initial load and every
-// save, so a save that freezes the run (or otherwise changes what was persisted) shows up without
-// waiting for a remount.
-function applyCommunity(c: CommunityResponse): void {
-  name.value = c.name
-  startsAtTimezone.value = c.startsAtTimezone
-  startsAt.value = c.startsAt ? toLocalInput(c.startsAt, c.startsAtTimezone) : ''
-  phaseTwoStartRound.value = c.phaseTwoStartRound
-  gamesFromRound.value = c.gamesFromRound
-  editionFrozen.value = c.editionFrozen
-}
-
 onMounted(async () => {
-  const c = await getCommunity(slug)
-  applyCommunity(c)
+  name.value = community.value.name
   const inv = await getInvite(slug)
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
@@ -63,25 +27,7 @@ onMounted(async () => {
 async function save(): Promise<void> {
   error.value = null
   try {
-    const body: Partial<{
-      name: string
-      startsAt: string
-      startsAtTimezone: string
-      phaseTwoStartRound: number
-      gamesFromRound: number
-    }> = { name: name.value.trim() }
-    if (!editionFrozen.value) {
-      body.startsAtTimezone = startsAtTimezone.value
-      if (startsAt.value) {
-        const instant = toInstant(startsAt.value, startsAtTimezone.value)
-        if (instant) body.startsAt = instant
-      }
-    }
-    if (typeof phaseTwoStartRound.value === 'number')
-      body.phaseTwoStartRound = phaseTwoStartRound.value
-    if (typeof gamesFromRound.value === 'number') body.gamesFromRound = gamesFromRound.value
-    const updated = await updateCommunity(slug, body)
-    applyCommunity(updated)
+    await updateCommunity(slug, name.value.trim())
     await refresh()
   } catch {
     error.value = 'Speichern fehlgeschlagen.'
@@ -110,47 +56,6 @@ async function revoke(): Promise<void> {
       /></label>
       <p class="text-xs text-neutral-500">
         URL-Slug <code>{{ communityPath(slug) }}</code> ist unveränderlich.
-      </p>
-      <label class="block text-sm"
-        >Zeitzone<select
-          v-model="startsAtTimezone"
-          :disabled="editionFrozen"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-        >
-          <option v-for="z in zones" :key="z" :value="z">{{ z }}</option>
-        </select></label
-      >
-      <label class="block text-sm"
-        >Start<input
-          v-model="startsAt"
-          type="datetime-local"
-          :disabled="editionFrozen"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <p class="text-xs text-neutral-500">Startzeit gilt in der gewählten Zeitzone.</p>
-      <p data-test="freeze-hint" class="text-xs text-neutral-500">
-        {{
-          editionFrozen
-            ? 'Die erste Spielrunde steht fest — Start und Zeitzone sind fix.'
-            : 'Änderbar bis einen Tag vor der ersten Spielrunde — danach ist der Lauf fix.'
-        }}
-      </p>
-      <label class="block text-sm"
-        >Phase-2-Startrunde<input
-          v-model.number="phaseTwoStartRound"
-          type="number"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <label class="block text-sm"
-        >Erste Spielrunde<input
-          v-model.number="gamesFromRound"
-          data-test="games-from-round"
-          type="number"
-          class="mt-1 w-full rounded border px-3 py-1.5"
-      /></label>
-      <p class="text-xs text-neutral-500">
-        Runde 0 ist der letzte Tag vor dem Start, -89 liegt 89 Tage davor. Leer lässt den
-        gespeicherten Wert unverändert.
       </p>
       <button class="rounded border px-3 py-1.5 hover:bg-neutral-200">Speichern</button>
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>

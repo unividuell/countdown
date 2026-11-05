@@ -15,7 +15,9 @@ const { user } = useAuth()
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
 
 // Top-left brand: the active community's title + a '<YY> edition suffix (always startsAt.year).
-const brand = computed(() => activeCommunity.value?.name ?? 'countdown')
+const brand = computed(
+  () => activeCommunity.value?.editionLabel ?? activeCommunity.value?.name ?? 'countdown',
+)
 const yearSuffix = computed(() => {
   const c = activeCommunity.value
   if (!c?.startsAt) return ''

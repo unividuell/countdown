@@ -9,13 +9,20 @@ const community = (startsAt: string | null): CommunityResponse => ({
   id: 'c1',
   name: 'Team',
   slug: 'team',
-  startsAt,
-  startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: null,
+  edition:
+    startsAt === null
+      ? null
+      : {
+          label: null,
+          startsAt,
+          startsAtTimezone: 'Europe/Berlin',
+          phaseTwoStartRound: null,
+          gamesFromRound: -24,
+          gamesUntilRound: 0,
+          frozen: false,
+        },
   viewerIsAdmin: false,
   pendingCount: 0,
-  editionFrozen: false,
   viewerIdentity: null,
 })
 

@@ -11,9 +11,9 @@ const props = defineProps<{
   members: readonly RosterMemberResponse[] | null
 }>()
 
-// A null slug keeps useCountdown from firing: without a startsAt there is nothing to count. Tested
+// A null slug keeps useCountdown from firing: without an edition there is nothing to count. Tested
 // against null exactly as the template branch below is, so no third case can slip between them.
-const slug = computed(() => (props.community.startsAt === null ? null : props.community.slug))
+const slug = computed(() => (props.community.edition === null ? null : props.community.slug))
 const { view } = useCountdown(slug)
 
 const chip = (i: number) => view.value.chips[i]?.value ?? '00'
@@ -29,7 +29,7 @@ const winnerNames = computed(() =>
 
 <template>
   <MessageCard
-    v-if="community.startsAt === null"
+    v-if="community.edition === null"
     data-test="fallback-no-date"
     title="Noch kein Termin"
     text="Diese Spielgemeinschaft entsteht gerade. Komm später wieder."

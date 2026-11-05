@@ -21,13 +21,9 @@ const team: CommunityResponse = {
   id: 'c1',
   name: 'Team Süd',
   slug: 'team',
-  startsAt: null,
-  startsAtTimezone: 'Europe/Berlin',
-  phaseTwoStartRound: null,
-  gamesFromRound: null,
+  edition: null,
   viewerIsAdmin: false,
   pendingCount: 0,
-  editionFrozen: false,
   viewerIdentity: null,
 }
 const nord: CommunityResponse = { ...team, id: 'c2', name: 'Team Nord', slug: 'nord' }

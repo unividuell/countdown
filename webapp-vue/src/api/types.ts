@@ -41,17 +41,30 @@ export interface MemberProfileResponse {
   identity: IdentityView
 }
 
+export interface EditionResponse {
+  label: string | null
+  startsAt: string
+  startsAtTimezone: string
+  phaseTwoStartRound: number | null
+  gamesFromRound: number
+  gamesUntilRound: number
+  frozen: boolean
+}
+export interface EditionRequest {
+  label: string | null
+  startsAt: string
+  startsAtTimezone: string
+  phaseTwoStartRound: number | null
+  gamesFromRound: number
+}
 export interface CommunityResponse {
   id: string
   name: string
   slug: string
-  startsAt: string | null
-  startsAtTimezone: string
-  phaseTwoStartRound: number | null
-  gamesFromRound: number | null
+  /** The running edition; null while the community has no date yet. */
+  edition: EditionResponse | null
   viewerIsAdmin: boolean
   pendingCount: number
-  editionFrozen: boolean
   /** How the viewer appears here; null when they have no membership row in this community. */
   viewerIdentity: IdentityView | null
 }
