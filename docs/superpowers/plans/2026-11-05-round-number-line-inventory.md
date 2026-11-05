@@ -116,10 +116,10 @@ Durchreich-Nummern (z. B. `RoundContext(roundNumber = 3, phase = ONE)` in Spielt
 
 | Ort | Ausdruck | erledigt |
 |---|---|---|
-| `.claude/guidelines/countdown.md:42-88` | Abschnitt „count-down with a round 0“, `T−`/`T+` | |
-| `.claude/guidelines/countdown.md:136-138` | Freeze ab `gamesFromRound + 1` | |
-| `.claude/guidelines/countdown.md:154-166` | `phaseTwoStartRound` „T-offset“, Fast Rounds `T+1.1` | |
-| `.claude/guidelines/game-rounds.md:8-17` | `T-58`, Abschnitt „A larger round number is earlier“, `<= phase_two_start_round` | |
+| `.claude/guidelines/countdown.md:42-88` | Abschnitt „count-down with a round 0“, `T−`/`T+` | ✓ |
+| `.claude/guidelines/countdown.md:136-138` | Freeze ab `gamesFromRound + 1` | ✓ |
+| `.claude/guidelines/countdown.md:154-166` | `phaseTwoStartRound` „T-offset“, Fast Rounds `T+1.1` | ✓ |
+| `.claude/guidelines/game-rounds.md:8-17` | `T-58`, Abschnitt „A larger round number is earlier“, `<= phase_two_start_round` | ✓ |
 
 ## Notiert, nicht geändert
 

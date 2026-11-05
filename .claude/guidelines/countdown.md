@@ -39,53 +39,57 @@ model it is built against.
   time-of-day. If `startsAt` is `…T11:00` in `Europe/Berlin`, each round runs
   `[day 11:00, next-day 11:00)` local time.
 
-### Round numbering — count-down with a round 0 (faithful to huettehuette)
+### Round numbering — a number line
 
-The canonical **round number `n` is a signed integer that strictly decreases as time advances**.
-Counting *down* before the start it reaches **0 on the last day, then continues negative** once the
-event has begun:
+The canonical **round number `n` is a signed integer that rises with time**, like a number line —
+earlier is smaller, later is larger:
+
+```
+… −90  −89  …  −1   0 │ 1   2  …  20 …
+                      │
+                   startsAt (liftoff)
+```
 
 - **`n = 0`** is the **last day before the start**: `[startsAt − 1 day, startsAt)`. This is the
   "zero days to go" window — whole-days-until-start is already `0` while up to ~24 h still tick away
   (e.g. *0 Tage, 23 h, 12 s bis Start*). **Round 0 is real and necessary** — an earlier draft of
   this file wrongly tried to remove it; that was the knot-that-isn't-one.
-- **`n > 0`** are the earlier countdown days; **`n < 0`** are the days at/after the start.
+- **`n < 0`** are the earlier countdown days; **`n > 0`** are the days at/after the start — `1` is
+  the first event day, and `startsAt` starts it.
 
 Uniform interval formula (all integers `n`, zone- and DST-aware day stepping):
 
 ```
-round n = [ startsAt − (n+1) days , startsAt − n days )
+round n = [ startsAt + (n−1) days , startsAt + n days )
 ```
 
-- `n =  0` → `[startsAt − 1d, startsAt)`     (last day before start)
-- `n = −1` → `[startsAt,       startsAt + 1d)` (first day of the event — `startsAt` starts it)
-- `n = 10` → `[startsAt − 11d, startsAt − 10d)`
+- `n =   0` → `[startsAt − 1d,  startsAt)`       (last day before start)
+- `n =   1` → `[startsAt,       startsAt + 1d)`  (first day of the event)
+- `n = −89` → `[startsAt − 90d, startsAt − 89d)`
 
-The **current round for `now`** is the `n` whose interval contains `now` (start-inclusive),
-i.e. count zone-aware calendar days between `now` and `startsAt`. Equivalent to huettehuette's
-`trunc(daysUntil)` for `now < startsAt` and `floor(daysUntil)` after — but on **start-inclusive**
-boundaries (see *Differences* below).
+**Anchor** (pinned in `CountdownEngineTest` and `RoundTimelineOracleTest`): `startsAt` 2027-06-24
+11:00 `Europe/Berlin`. At 2027-06-24 10:00 round `0` runs and the clock shows 0 days, 0 hours,
+60 minutes; 11:00 begins round `1`.
 
-**Display label** flips the sign so the event itself reads as a count-up:
+The **current round for `now`** is the `n` whose interval contains `now` (start-inclusive), i.e.
+count zone-aware calendar days between `startsAt` and `now`.
 
-```
-n ≥ 0  →  "T−n"     (T−58, … , T−1, T−0)
-n < 0  →  "T+|n|"   (T+1, T+2, …)            ← n = −1 shows "T+1"
-```
+**A rule about round order is a comparison on the number line**, never "larger is earlier": the next
+round is `n + 1`; history is `round_number < current`, most recent first (`ORDER BY round_number
+DESC`); phase two is `n >= phaseTwoStartRound`; the window is `gamesFromRound <= n <= gamesUntilRound`.
+The direction lives in many comparisons and an `Int` stays an `Int`, so a missed site compiles and
+runs backwards. `RoundTimelineOracleTest` walks a run through dates and asserts dates only — keep it
+that way, it is the net for exactly this.
 
-So the sequence over time is `T−58 … T−1 T−0 │ T+1 T+2 …`, where `│` = the **liftoff instant
-`startsAt`** (the `T−0 → T+1`, i.e. `n: 0 → −1`, boundary). There is a `T−0` but no `T+0`.
+**Display — the number, no label.** The game header shows the number as is (`-89`, `0`, `1`). The
+countdown shows no sign: it counts down before the start (days = `|n|`) and up from it — the
+direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. There is no `T−`/`T+`.
 
-**Mental model — liftoff at the `T−0 → T+1` boundary:** like a rocket count-down the days tick
-…3, 2, 1, 0 (`T−0` = the final day before liftoff), and the **liftoff instant is `startsAt`
-itself** — the boundary where round `0` ends and round `−1` (displayed `T+1`) begins. The UI may
-flash a "T−0 — Start!" around that instant; purely a labelling aid.
-
-> **Differences from huettehuette:** we deliberately **keep** huettehuette's numbering — a
-> count-down with a real **round 0** (the last day) that continues negative after the start — and
-> its **`T−` / `T+`** display (prefix + absolute value; `T+1` = first event day). The **only**
-> deliberate change is boundary inclusivity: huettehuette was **end-inclusive** (the exact
-> `11:00:00` instant belonged to the *older* round); per the spec (`[11..11)`) the port is
+> **Differences from huettehuette:** huettehuette counted down — `T−58 … T−1, T−0 │ T+1 …`, a larger
+> number being earlier. The port negates that onto a number line: same round 0, same grid, mirrored
+> numbers, no `T−`/`T+` (2026-11-05 — an admin setting the first game round had to be told "a larger
+> number is earlier"). Boundary inclusivity differs too: huettehuette was **end-inclusive** (the
+> exact `11:00:00` instant belonged to the *older* round); per the spec (`[11..11)`) the port is
 > **start-inclusive** — `11:00:00` belongs to the round it *starts*.
 
 ## DST handling
@@ -133,7 +137,7 @@ it is recomputed from them. Moving either after rounds have been announced there
 at numbers `game.round_games` already holds: the same round a second time, or numbers skipped. Both
 are unfair and unexplainable to a player.
 
-A run is therefore **frozen** from the start of round `gamesFromRound + 1` on — the day before its
+A run is therefore **frozen** from the start of round `gamesFromRound - 1` on — the day before its
 first game round: the daily schedule announces each round a day ahead, so that is the earliest
 instant a `round_games` row can exist (`gamesFromRound = null` means unbounded, so a run freezes
 with its date). From then on the two fields are 409, and the way forward is a new edition.
@@ -153,14 +157,14 @@ of history.
 
 - **`phaseTwoStartRound`** (already a `community` field): a **round threshold** that changes
   **scoring** (tolerance / point curve) at/after that round — a concern of the future *points*
-  logic, not the round grid itself. With the signed convention it holds a T-offset value; pin its
-  exact meaning when the points module is specced.
+  logic, not the round grid itself. It holds a round number: phase two is `n >= phaseTwoStartRound`,
+  and the stake grows by one per round from 2 on (`n − phaseTwoStartRound + 2`).
 - **Fast rounds** (still vague — a *future spec*; capturing the agreed shape only): the **daily
   interval stays the invariant base grid**. Fast rounds do **not** shorten or replace the day —
   instead a day can hold **multiple games (sub-rounds)** of varying length. So a normal day has one
-  game; a fast-round day has several. Numbering is **two-level, `T{major}.{minor}`** where `major`
-  is the day's T-offset and `minor` the game within that day:
-  `T+1.1` (5 min), `T+1.2` (30 min), `T+2.1` (5 min), `T+2.2`, `T+2.3`, …
+  game; a fast-round day has several. Numbering is **two-level, `{major}.{minor}`** where `major`
+  is the day's round number and `minor` the game within that day:
+  `1.1` (5 min), `1.2` (30 min), `2.1` (5 min), `2.2`, `2.3`, …
   Each game is still a half-open `[start, end)` interval, nested inside its day's `[start, end)`.
   The classic single-game-per-day is just `minor = 1` (the `.1` may be hidden in the UI). Don't
   build this yet; just don't model rounds in a way that assumes one-game-per-day or that lets a
