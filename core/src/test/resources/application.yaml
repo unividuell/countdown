@@ -55,3 +55,13 @@ countdown:
     # PublicRateLimitFilterTest overrides this per-context via @SpringBootTest(properties = [...]),
     # which wins over this file.
     permits-per-minute: 1000000
+
+management:
+  # Tests have no collector; this file replaces the main application.yaml.
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  tracing:
+    export:
+      enabled: false

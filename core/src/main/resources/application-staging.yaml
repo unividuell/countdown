@@ -26,3 +26,22 @@ app:
     maps-api-key: ${SPOT_OBJECT_MAPS_API_KEY}
     server-maps-api-key: ${SPOT_OBJECT_SERVER_MAPS_API_KEY}
     signing-secret: ${SPOT_OBJECT_SIGNING_SECRET}
+
+logging:
+  structured:
+    format:
+      # One JSON object per line, stack trace included: the collector reads it from docker's log file.
+      console: ecs
+
+management:
+  opentelemetry:
+    resource-attributes:
+      "[deployment.environment.name]": staging
+  # No OTLP collector deployed yet; the exporters would retry against localhost forever.
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  tracing:
+    export:
+      enabled: false
