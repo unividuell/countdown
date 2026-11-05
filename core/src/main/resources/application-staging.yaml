@@ -33,15 +33,17 @@ logging:
       # One JSON object per line, stack trace included: the collector reads it from docker's log file.
       console: ecs
 
+# Metrics and traces go to edge-caddy's edge-lgtm over the shared `monitoring` network
+# (deploy/compose.yaml). Unreachable, the exporters only log a warning and drop the batch.
 management:
   opentelemetry:
     resource-attributes:
       "[deployment.environment.name]": staging
-  # No OTLP collector deployed yet; the exporters would retry against localhost forever.
+    tracing:
+      export:
+        otlp:
+          endpoint: http://edge-lgtm:4318/v1/traces
   otlp:
     metrics:
       export:
-        enabled: false
-  tracing:
-    export:
-      enabled: false
+        url: http://edge-lgtm:4318/v1/metrics

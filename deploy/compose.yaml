@@ -168,6 +168,7 @@ services:
       - postgres
     networks:
       - internal
+      - monitoring  # OTLP metrics and traces to edge-lgtm
 
   caddy:
     image: ghcr.io/unividuell/countdown-web:${IMAGE_TAG:-latest}

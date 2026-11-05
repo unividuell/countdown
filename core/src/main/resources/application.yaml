@@ -54,7 +54,7 @@ management:
         enabled: false
   tracing:
     sampling:
-      # Dev only: every request, so a log line always links to its trace.
+      # Every request, so a log line always links to its trace; the traffic is small.
       probability: 1.0
   otlp:
     metrics:
