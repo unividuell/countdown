@@ -94,7 +94,7 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
 
 <template>
   <div class="flex flex-col gap-3">
-    <div data-test="edition-scroll" class="overflow-x-auto pb-1">
+    <div data-test="edition-scroll" class="overflow-x-auto p-1">
       <div class="grid w-max gap-1" :style="{ gridTemplateColumns: `repeat(${columns}, 2.5rem)` }">
         <span
           v-for="m in months"

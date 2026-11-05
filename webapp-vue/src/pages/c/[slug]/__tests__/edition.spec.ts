@@ -132,6 +132,45 @@ describe('edition page', () => {
     expect(w.get(sel('phase-two-date')).text()).toBe('beginnt Sa., 12. Dez. 18:00')
   })
 
+  it('lets phase two start on round 0', async () => {
+    const w = await mountPage(edition)
+
+    expect(w.get(sel('phase-two')).attributes('max')).toBe('0')
+  })
+
+  it('cancels back to the settings without saving', async () => {
+    // The spies outlive each test; earlier saves would count here.
+    vi.clearAllMocks()
+    const w = await mountPage(edition)
+    await w.get(sel('phase-two')).setValue('-3')
+
+    await w.get(sel('cancel')).trigger('click')
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledWith('/c/hh/settings')
+    expect(api.replaceEdition).not.toHaveBeenCalled()
+    expect(api.createEdition).not.toHaveBeenCalled()
+  })
+
+  it('clears phase two with the × button, which only shows while it has a value', async () => {
+    const w = await mountPage(edition)
+
+    await w.get(sel('phase-two-clear')).trigger('click')
+
+    expect((w.get(sel('phase-two')).element as HTMLInputElement).value).toBe('')
+    expect(w.get(sel('phase-two-date')).text()).toBe('')
+    expect(w.find(sel('phase-two-clear')).exists()).toBe(false)
+  })
+
+  it('warns in red when phase two starts before the first game round', async () => {
+    const w = await mountPage(edition)
+    expect(w.find(sel('phase-two-warning')).exists()).toBe(false)
+
+    await w.get(sel('phase-two')).setValue('-31')
+
+    expect(w.get(sel('phase-two-warning')).classes()).toContain('text-red-600')
+  })
+
   it('warns in red when the freeze has passed, but still submits', async () => {
     const w = await mountPage(null)
     await w.get(sel('date')).setValue('2026-11-10')

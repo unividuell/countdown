@@ -8,6 +8,7 @@ import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
 import { saveErrorMessage } from '@/profile/saveError'
 import EditionCalendar from '@/communities/edition/EditionCalendar.vue'
+import IconX from '~icons/lucide/x'
 import {
   MAX_CALENDAR_ROUNDS,
   calendarSpan,
@@ -82,6 +83,10 @@ const freezePassed = computed(
     startsAt.value !== null &&
     first.value !== null &&
     frozenSince(startsAt.value, zone.value, first.value) <= DateTime.now(),
+)
+/** The server refuses it too; saying so here spares the round trip. */
+const phaseTwoTooEarly = computed(
+  () => first.value !== null && second.value !== null && second.value < first.value,
 )
 const freezeAt = computed(() =>
   startsAt.value && first.value !== null
@@ -203,15 +208,30 @@ const input =
             required
         /></label>
         <label class="block text-sm"
-          >Phase 2 ab (optional)<input
-            v-model="phaseTwo"
-            data-test="phase-two"
-            type="number"
-            min="-36500"
-            max="-1"
-            step="1"
-            :class="input"
-        /></label>
+          >Phase 2 ab (optional)
+          <!-- The × clears the field: empty = no phase two. The native spinner stays left of it. -->
+          <span class="relative block">
+            <input
+              v-model="phaseTwo"
+              data-test="phase-two"
+              type="number"
+              min="-36500"
+              max="0"
+              step="1"
+              :class="[input, 'pr-8']"
+            />
+            <button
+              v-if="phaseTwo !== ''"
+              type="button"
+              data-test="phase-two-clear"
+              aria-label="Phase 2 leeren"
+              class="absolute top-1 right-0 bottom-0 flex w-8 items-center justify-center text-neutral-500 hover:text-neutral-900"
+              @click="phaseTwo = ''"
+            >
+              <IconX aria-hidden="true" />
+            </button>
+          </span></label
+        >
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-xs text-neutral-500">
@@ -220,6 +240,10 @@ const input =
       </div>
       <p v-if="zeroPoint" class="text-xs text-neutral-500">
         Runde 1 ist der Start ({{ zeroPoint }}), Runde 0 der letzte Tag davor.
+      </p>
+
+      <p v-if="phaseTwoTooEarly" data-test="phase-two-warning" class="text-sm text-red-600">
+        Phase 2 kann nicht vor der ersten Spielrunde beginnen.
       </p>
 
       <p v-if="freezePassed" data-test="freeze-warning" class="text-sm text-red-600">
@@ -246,6 +270,14 @@ const input =
         :disabled="!complete || saving"
       >
         Speichern
+      </button>
+      <button
+        type="button"
+        data-test="cancel"
+        class="ml-2 rounded border px-3 py-1.5 hover:bg-neutral-200"
+        @click="router.push(communityPath(slug, 'settings'))"
+      >
+        Abbrechen
       </button>
       <p v-if="error" data-test="error" class="text-sm text-red-600">{{ error }}</p>
     </form>

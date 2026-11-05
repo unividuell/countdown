@@ -110,4 +110,9 @@ describe('EditionCalendar', () => {
       'overflow-x-auto',
     )
   })
+
+  it('leaves room for the today ring, which the scroll container would clip', () => {
+    // ring-2 + ring-offset-1 = 3px outside the cell; p-1 gives 4px.
+    expect(mountCalendar().get('[data-test="edition-scroll"]').classes()).toContain('p-1')
+  })
 })
