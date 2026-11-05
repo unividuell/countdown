@@ -91,7 +91,7 @@ class RoundResponsePeerReviewTest(
                 communityId = requireNotNull(community.id),
                 startsAt = Instant.parse("2099-01-01T10:00:00Z"),
                 startsAtTimezone = "Europe/Berlin",
-                gamesFromRound = Int.MIN_VALUE,
+                gamesFromRound = -36500,
             ),
         )
         return community to ownerId

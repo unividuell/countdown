@@ -56,7 +56,7 @@ class CountdownServiceTest(
                 communityId = requireNotNull(c.id),
                 startsAt = Instant.parse("2099-01-01T10:00:00Z"),
                 startsAtTimezone = "Europe/Berlin",
-                gamesFromRound = Int.MIN_VALUE,
+                gamesFromRound = -36500,
             ),
         )
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
@@ -67,14 +67,26 @@ class CountdownServiceTest(
     }
 
     @Test
-    fun `forSlug degrades gracefully when the active edition was archived without a replacement`() {
+    fun `forSlug shows no date for a community whose only edition is archived`() {
         val ownerId = aUser().id!!
-        val c = communities.create(creatorUserId = ownerId, rawName = "Broken Invariant")
+        val c = communities.create(creatorUserId = ownerId, rawName = "Archived Only")
         val communityId = requireNotNull(c.id)
-        // The only edition is archived and nothing replaced it: the graceful reader must not 500.
         editionRepository.save(
             anEdition(communityId = communityId).copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")),
         )
+
+        val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
+
+        res.startsAt.shouldBeNull()
+        res.round.shouldBeNull()
+        res.nextRound.shouldBeNull()
+        res.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+    }
+
+    @Test
+    fun `forSlug shows no date for a community that never had an edition`() {
+        val ownerId = aUser().id!!
+        val c = communities.create(creatorUserId = ownerId, rawName = "Never Had One")
 
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 

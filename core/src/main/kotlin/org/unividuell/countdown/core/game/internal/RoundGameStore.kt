@@ -30,15 +30,14 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
 
     /**
      * The next older announced round of [edition], or `null` when [roundNumber] is the oldest one
-     * the run has. `Int.MIN_VALUE` stands in for an unbounded window, which is what a `null`
-     * `gamesFromRound` means.
+     * the run has.
      */
     @Transactional(readOnly = true)
     fun previousRound(edition: CommunityEdition, roundNumber: Int): Int? =
         rounds.previousRoundNumber(
             editionId = requireNotNull(edition.id),
             before = roundNumber,
-            notOlderThan = edition.gamesFromRound ?: Int.MIN_VALUE,
+            notOlderThan = edition.gamesFromRound,
             notNewerThan = edition.gamesUntilRound,
         )
 

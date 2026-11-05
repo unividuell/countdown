@@ -56,7 +56,7 @@ class RoundPlayPointsTest(
                 communityId = requireNotNull(community.id),
                 startsAt = Instant.parse("2099-01-01T10:00:00Z"),
                 startsAtTimezone = "Europe/Berlin",
-                gamesFromRound = Int.MIN_VALUE,
+                gamesFromRound = -36500,
             ),
         )
         return community to ownerId
@@ -228,7 +228,7 @@ class RoundPlayPointsTest(
         // Re-opening brings the same number back, untouched: the points sit frozen on the row and
         // only their inclusion in the sum is dynamic.
         editions.save(
-            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = Int.MIN_VALUE),
+            requireNotNull(editions.findActiveByCommunityId(communityId)).copy(gamesFromRound = -36500),
         )
         val reopened = points.standings(communityId = communityId, viewerId = owner, userIds = listOf(owner))
 
@@ -237,9 +237,9 @@ class RoundPlayPointsTest(
     }
 
     @Test
-    fun `a run without a target date has no rounds and therefore no points`() {
+    fun `a community without an active edition has no rounds and therefore no points`() {
         val ownerId = aUser()
-        val community = communities.create(creatorUserId = ownerId, rawName = "Points No Date")
+        val community = communities.create(creatorUserId = ownerId, rawName = "Points No Edition")
 
         val standings = points.standings(
             communityId = requireNotNull(community.id), viewerId = ownerId, userIds = listOf(ownerId),

@@ -52,7 +52,7 @@ class MaterialisationScheduleTest {
         id = UUID.randomUUID(),
         communityId = UUID.randomUUID(),
         startsAt = startsAt,
-        gamesFromRound = Int.MIN_VALUE,
+        gamesFromRound = -36500,
     )
 
     private fun currentOf(edition: CommunityEdition): Int = engine.roundAt(

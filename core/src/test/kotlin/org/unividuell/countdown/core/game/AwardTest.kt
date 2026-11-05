@@ -79,15 +79,9 @@ class AwardTest {
     }
 
     @Test
-    fun `a null gamesFromRound is unbounded below`() {
-        windowReasonOf(roundNumber = Int.MIN_VALUE, gamesFromRound = null, gamesUntilRound = 0)
-            .shouldBeNull()
-    }
-
-    @Test
     fun `gamesUntilRound may be positive, and its boundary is still inclusive`() {
-        windowReasonOf(roundNumber = 5, gamesFromRound = null, gamesUntilRound = 5).shouldBeNull()
-        windowReasonOf(roundNumber = 6, gamesFromRound = null, gamesUntilRound = 5) shouldBe
+        windowReasonOf(roundNumber = 5, gamesFromRound = -24, gamesUntilRound = 5).shouldBeNull()
+        windowReasonOf(roundNumber = 6, gamesFromRound = -24, gamesUntilRound = 5) shouldBe
             NoGameReason.AFTER_WINDOW
     }
 }

@@ -57,14 +57,11 @@ class AnnouncementService(
         if (!isSuperAdmin && !memberships.isActiveMember(communityId = communityId, userId = userId)) {
             throw RoundAccessDeniedException()
         }
-        val edition = communities.activeEditionOf(communityId)
-            ?: return notScheduled(communityId = communityId, edition = null)
-        val startsAt = edition.startsAt
-            ?: return notScheduled(communityId = communityId, edition = edition)
+        val edition = communities.activeEditionOf(communityId) ?: return notScheduled(communityId)
 
         val round = engine.roundAt(
             now = clock.instant(),
-            startsAt = startsAt,
+            startsAt = edition.startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         )
         // Computed for every answer, including the ones that carry no game: the history hangs under
@@ -91,9 +88,9 @@ class AnnouncementService(
         )
     }
 
-    /** No run, or a run without a target date: no grid, so nothing can be previous to anything. */
-    private fun notScheduled(communityId: UUID, edition: CommunityEdition?) = ResolvedRound.NoGame(
-        communityId = communityId, edition = edition, round = null,
+    /** No active edition: no grid, so nothing can be previous to anything. */
+    private fun notScheduled(communityId: UUID) = ResolvedRound.NoGame(
+        communityId = communityId, edition = null, round = null,
         previousRoundNumber = null, reason = NoGameReason.NOT_SCHEDULED,
     )
 

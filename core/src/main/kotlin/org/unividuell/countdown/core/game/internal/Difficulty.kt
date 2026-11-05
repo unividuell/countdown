@@ -12,8 +12,8 @@ package org.unividuell.countdown.core.game.internal
  * it shows again in -6                               -> (-6 - -30) / (0 - -30) = 0.8
  * ```
  *
- * The oldest *played* round and not `gamesFromRound`: that bound may be open (`null`), and an
- * edition created mid-window starts with its first real round.
+ * The oldest *played* round and not `gamesFromRound`: an edition created mid-window starts with
+ * its first real round.
  *
  * [history] as `RoundGameStore.history` returns it: the rounds earlier than [roundNumber], numbers
  * descending, so the last entry is the oldest round.

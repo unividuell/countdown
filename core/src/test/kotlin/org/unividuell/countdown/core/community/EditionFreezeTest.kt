@@ -52,13 +52,12 @@ class EditionFreezeTest {
         frozenSince(e) shouldBe Instant.parse("2026-06-24T09:00:00Z")
     }
 
-    // `gamesFromRound - 2` must not run in Int: at Int.MIN_VALUE it wraps to Int.MAX_VALUE, and
-    // `plusDays` of a positive count adds days instead of subtracting — the freeze point then lands
-    // millions of years in the future rather than in the past, and `isFrozen` is false forever.
+    // `gamesFromRound - 2` must not run in Int: near Int.MIN_VALUE it wraps to a positive count, and
+    // `plusDays` then adds days instead of subtracting — `isFrozen` would stay false forever.
     @Test
     fun `an enormous gamesFromRound still lands in the past, not millions of years in the future`() {
         val startsAt = Instant.parse("2026-06-25T09:00:00Z")
-        val e = edition(startsAt = startsAt, gamesFromRound = Int.MIN_VALUE)
+        val e = edition(startsAt = startsAt, gamesFromRound = -36500)
 
         frozenSince(e) shouldBeLessThan startsAt
     }

@@ -46,11 +46,10 @@ class RoundPlayPoints(
         if (userIds.isEmpty()) return emptyMap()
         val blank = userIds.associateWith { MemberPoints(stable = 0, live = null) }
         val edition = communities.activeEditionOf(communityId) ?: return blank
-        val startsAt = edition.startsAt ?: return blank
 
         val current = engine.roundAt(
             now = clock.instant(),
-            startsAt = startsAt,
+            startsAt = edition.startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
         val scored = plays.pointsOf(

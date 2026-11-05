@@ -73,7 +73,7 @@ class AnnouncementServiceNoGameTypeTest {
         val edition = anEdition(
             id = UUID.randomUUID(), communityId = communityId,
             startsAt = Instant.parse("2099-01-01T10:00:00Z"), startsAtTimezone = "Europe/Berlin",
-            gamesFromRound = Int.MIN_VALUE,
+            gamesFromRound = -36500,
         )
         every { communities.findBySlug("empty-catalogue") } returns community
         every { communities.activeEditionOf(communityId) } returns edition

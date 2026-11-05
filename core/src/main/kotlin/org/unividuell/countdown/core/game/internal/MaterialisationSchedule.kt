@@ -57,10 +57,9 @@ class MaterialisationSchedule(
      * tomorrow must not cost today's round. Returns how many rounds this call announced.
      */
     fun prepare(edition: CommunityEdition, now: Instant): Int {
-        val startsAt = edition.startsAt ?: return 0
         val current = engine.roundAt(
             now = now,
-            startsAt = startsAt,
+            startsAt = edition.startsAt,
             zone = ZoneId.of(edition.startsAtTimezone),
         ).number
 

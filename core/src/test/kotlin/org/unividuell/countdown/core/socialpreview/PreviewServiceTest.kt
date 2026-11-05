@@ -47,7 +47,7 @@ class PreviewServiceTest {
     }
 
     @Test
-    fun `a community without a date drops the round part`() {
+    fun `a community without an active edition drops the round part`() {
         every { communities.findBySlug("huettehuette") } returns community
         every { countdown.currentRound(communityId = id, now = now) } returns null
 

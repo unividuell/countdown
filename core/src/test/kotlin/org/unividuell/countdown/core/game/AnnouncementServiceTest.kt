@@ -65,7 +65,7 @@ class AnnouncementServiceTest(
      */
     private fun aCommunityWithOwner(
         name: String,
-        gamesFromRound: Int = Int.MIN_VALUE,
+        gamesFromRound: Int = -36500,
         gamesUntilRound: Int = 0,
     ): Pair<Community, UUID> {
         val owner = aUser()
@@ -124,9 +124,9 @@ class AnnouncementServiceTest(
     }
 
     @Test
-    fun `without a date there is no round and no game`() {
+    fun `without an active edition there is no round and no game`() {
         val owner = aUser()
-        val community = communities.create(creatorUserId = requireNotNull(owner.id), rawName = "No Date Round")
+        val community = communities.create(creatorUserId = requireNotNull(owner.id), rawName = "No Edition Round")
 
         val res = announcements.currentRound(
             slug = community.slug, userId = requireNotNull(owner.id), isSuperAdmin = false,
@@ -187,7 +187,7 @@ class AnnouncementServiceTest(
         ).round
         // Close the window entirely below the current round: until < current means it already ended.
         editionRepository.save(
-            edition.copy(gamesFromRound = Int.MIN_VALUE, gamesUntilRound = requireNotNull(current).number - 5),
+            edition.copy(gamesFromRound = -36500, gamesUntilRound = requireNotNull(current).number - 5),
         )
 
         val res = announcements.currentRound(slug = community.slug, userId = viewer, isSuperAdmin = false)
