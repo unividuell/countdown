@@ -60,7 +60,11 @@ management:
       export:
         otlp:
           endpoint: http://edge-lgtm:4318/v1/traces
+  tracing:
+    export:
+      enabled: true
   otlp:
     metrics:
       export:
+        enabled: true
         url: http://edge-lgtm:4318/v1/metrics

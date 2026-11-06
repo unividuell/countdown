@@ -39,8 +39,8 @@ spring:
       # The size error must carry its handler, so each pool's scoped advice can name it TOO_LARGE.
       resolve-lazily: true
 
-# Metrics and traces go to the `lgtm` container in compose.yaml (Grafana: `docker compose port lgtm 3000`).
-# Its OTLP endpoints come from Boot's docker-compose support, not from here.
+# Metrics and traces go out via OTLP only on staging and production (edge-caddy's edge-lgtm).
+# Locally there is no collector: export stays off.
 management:
   opentelemetry:
     # One Grafana serves several projects and environments: these tell them apart.
@@ -53,12 +53,15 @@ management:
         # Logs travel via the container's stdout, read by the collector, not via OTLP.
         enabled: false
   tracing:
+    export:
+      enabled: false
     sampling:
       # Every request, so a log line always links to its trace; the traffic is small.
       probability: 1.0
   otlp:
     metrics:
       export:
+        enabled: false
         # Default 60 s makes the dashboard feel dead while clicking through the app.
         step: 10s
   metrics:
