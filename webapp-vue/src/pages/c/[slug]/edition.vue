@@ -131,7 +131,7 @@ const shape = computed(() =>
 /** Null while incomplete or beyond [MAX_CALENDAR_ROUNDS]: the hint shows instead. */
 const cells = computed(() => {
   const s = shape.value
-  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return null
+  if (!s || calendarSpan(s) > MAX_CALENDAR_ROUNDS) return null
 
   return editionCells(s, DateTime.now())
 })
