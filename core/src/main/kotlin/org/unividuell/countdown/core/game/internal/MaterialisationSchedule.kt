@@ -14,7 +14,7 @@ import java.time.ZoneId
  * Announces every active run's rounds a day ahead, so no player's request draws a round's seed and a
  * day nobody opens still gets its round.
  *
- * A round boundary is the time of day of `startsAt` in the run's own zone — a different hour per
+ * A round boundary is the time of day of `targetAt` in the run's own zone — a different hour per
  * community — so one daily run cannot meet them; it can only prepare the next round, which always
  * starts within the next 24 hours. The running round is taken along in case yesterday's run missed it.
  *
@@ -59,8 +59,8 @@ class MaterialisationSchedule(
     fun prepare(edition: CommunityEdition, now: Instant): Int {
         val current = engine.roundAt(
             now = now,
-            startsAt = edition.startsAt,
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = edition.targetAt,
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
 
         // A larger round number is later: the next round is `current + 1`. A round is never announced

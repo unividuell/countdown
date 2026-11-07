@@ -199,7 +199,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     private val editionJson = """
-        {"label":null,"startsAt":"2026-12-20T17:00:00Z","startsAtTimezone":"Europe/Berlin",
+        {"label":null,"targetAt":"2026-12-20T17:00:00Z","targetTimezone":"Europe/Berlin",
          "phaseTwoStartRound":null,"gamesFromRound":-30}
     """.trimIndent()
 
@@ -220,14 +220,14 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `get with an active edition nests it`() {
         val c = community("team")
         asMember(c)
-        val edition = anEdition(communityId = c.id!!, label = "Team 2026", startsAtTimezone = "America/New_York")
+        val edition = anEdition(communityId = c.id!!, label = "Team 2026", targetTimezone = "America/New_York")
         every { editions.active(c.id!!) } returns edition
         every { editions.isFrozen(edition) } returns true
 
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
             jsonPath("$.edition.label") { value("Team 2026") }
-            jsonPath("$.edition.startsAtTimezone") { value("America/New_York") }
+            jsonPath("$.edition.targetTimezone") { value("America/New_York") }
             jsonPath("$.edition.gamesFromRound") { value(-30) }
             jsonPath("$.edition.gamesUntilRound") { value(0) }
             jsonPath("$.edition.frozen") { value(true) }
@@ -271,7 +271,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         asAdmin(c)
         val draft = EditionDraft(
-            label = null, startsAt = Instant.parse("2026-12-20T17:00:00Z"), startsAtTimezone = "Europe/Berlin",
+            label = null, targetAt = Instant.parse("2026-12-20T17:00:00Z"), targetTimezone = "Europe/Berlin",
             phaseTwoStartRound = null, gamesFromRound = -30,
         )
         every { editions.create(communityId = c.id!!, draft = draft) } returns
@@ -335,7 +335,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
 
         mockMvc.put("/api/communities/team/editions/active") {
             with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
-            content = """{"label":null,"startsAt":"2026-12-20T17:00:00Z","startsAtTimezone":"Europe/Berlin","phaseTwoStartRound":null}"""
+            content = """{"label":null,"targetAt":"2026-12-20T17:00:00Z","targetTimezone":"Europe/Berlin","phaseTwoStartRound":null}"""
         }.andExpect { status { isBadRequest() } }
     }
 

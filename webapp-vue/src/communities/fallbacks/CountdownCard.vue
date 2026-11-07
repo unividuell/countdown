@@ -18,7 +18,7 @@ const heroWidth = computed(() => {
 })
 const heroLabel = computed(() => {
   const n = Number(props.days)
-  return `${n} ${n === 1 ? 'Tag' : 'Tage'} bis zum Start`
+  return `${n} ${n === 1 ? 'Tag' : 'Tage'} bis zum Ziel`
 })
 const time = computed(() => `${props.hours}:${props.minutes}:${props.seconds}`)
 

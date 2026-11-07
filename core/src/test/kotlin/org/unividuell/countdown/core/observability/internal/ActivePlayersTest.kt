@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.observability
+package org.unividuell.countdown.core.observability.internal
 
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry

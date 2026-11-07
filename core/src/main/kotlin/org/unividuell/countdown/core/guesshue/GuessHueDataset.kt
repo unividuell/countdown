@@ -7,8 +7,10 @@ import org.unividuell.countdown.core.rng.SeededRandom
  * gets this bean and draws its round from it.
  *
  * Immutable and stateless — the randomness lives in the [SeededRandom] passed in, never here.
+ *
+ * `open`, members too: spring-modulith-observability wraps a module's API beans in a CGLIB subclass.
  */
-class GuessHueDataset(val entries: List<GuessHueEntry>) {
+open class GuessHueDataset(open val entries: List<GuessHueEntry>) {
 
     /**
      * **The draw order is a contract, per stream.** [presentation] draws the entry and then the
@@ -30,7 +32,7 @@ class GuessHueDataset(val entries: List<GuessHueEntry>) {
      * What remains after the split is not a generator problem: whoever knows the curated dataset can
      * read the nominal hue off the description. That is what game-content.md protects, not this.
      */
-    fun draw(solution: SeededRandom, presentation: SeededRandom): GuessHueTarget {
+    open fun draw(solution: SeededRandom, presentation: SeededRandom): GuessHueTarget {
         val entry = presentation.pick(entries)
         val initHue = presentation.nextDouble() * 360.0
         val jittered = entry.hue + solution.nextDouble() * (2 * JITTER_DEGREES) - JITTER_DEGREES

@@ -28,7 +28,7 @@ const start = computed(() => {
   const e = edition.value
   if (!e) return ''
 
-  return DateTime.fromISO(e.startsAt, { zone: e.startsAtTimezone })
+  return DateTime.fromISO(e.targetAt, { zone: e.targetTimezone })
     .setLocale('de')
     .toFormat('EEE, d. MMM yyyy, HH:mm')
 })
@@ -37,8 +37,8 @@ const shape = computed(() => {
   if (!e) return null
 
   return {
-    startsAt: e.startsAt,
-    zone: e.startsAtTimezone,
+    targetAt: e.targetAt,
+    zone: e.targetTimezone,
     gamesFromRound: e.gamesFromRound,
     gamesUntilRound: e.gamesUntilRound,
     phaseTwoStartRound: e.phaseTwoStartRound,
@@ -46,7 +46,7 @@ const shape = computed(() => {
 })
 const cells = computed(() => {
   const s = shape.value
-  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return []
+  if (!s || calendarSpan(s) > MAX_CALENDAR_ROUNDS) return []
 
   return editionCells(s, DateTime.now())
 })
@@ -54,10 +54,10 @@ const frozenNote = computed(() => {
   const s = shape.value
   if (!s) return ''
 
-  const at = frozenSince(s.startsAt, s.zone, s.gamesFromRound)
+  const at = frozenSince(s.targetAt, s.zone, s.gamesFromRound)
   const when = at.setLocale('de').toFormat('EEE, d. MMM yyyy HH:mm')
 
-  return `Start und Zeitzone sind ${at <= DateTime.now() ? 'seit' : 'ab'} ${when} fest.`
+  return `Ziel und Zeitzone sind ${at <= DateTime.now() ? 'seit' : 'ab'} ${when} fest.`
 })
 
 function fullUrl(path: string): string {

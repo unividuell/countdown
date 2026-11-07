@@ -11,8 +11,10 @@ import org.unividuell.countdown.core.rng.SeededRandom
  * to turns it into an argument.
  *
  * Immutable and stateless — the randomness lives in the [SeededRandom] passed in, never here.
+ *
+ * `open`, members too: spring-modulith-observability wraps a module's API beans in a CGLIB subclass.
  */
-class SpotObjectTerms(val terms: List<String>) {
+open class SpotObjectTerms(open val terms: List<String>) {
 
     /**
      * Drawn from the **presentation** stream, which is the whole of this game's draw: the term is
@@ -22,5 +24,5 @@ class SpotObjectTerms(val terms: List<String>) {
      * `GameRandom.independent`, not from round coordinates, so owning the list still does not tell
      * anybody which term comes tomorrow.
      */
-    fun draw(presentation: SeededRandom): String = presentation.pick(terms)
+    open fun draw(presentation: SeededRandom): String = presentation.pick(terms)
 }

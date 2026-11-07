@@ -44,7 +44,7 @@ class CountdownServiceTest(
         val c = communities.create(creatorUserId = owner.id!!, rawName = "Super Visible")
         val superAdmin = aUser()
         val res = countdown.forSlug(slug = c.slug, userId = superAdmin.id!!, isSuperAdmin = true)
-        res.startsAtTimezone shouldBe "Europe/Berlin"
+        res.targetTimezone shouldBe "Europe/Berlin"
     }
 
     @Test
@@ -54,8 +54,8 @@ class CountdownServiceTest(
         editionRepository.save(
             anEdition(
                 communityId = requireNotNull(c.id),
-                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-                startsAtTimezone = "Europe/Berlin",
+                targetAt = Instant.parse("2099-01-01T10:00:00Z"),
+                targetTimezone = "Europe/Berlin",
                 gamesFromRound = -36500,
             ),
         )
@@ -77,10 +77,10 @@ class CountdownServiceTest(
 
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 
-        res.startsAt.shouldBeNull()
+        res.targetAt.shouldBeNull()
         res.round.shouldBeNull()
         res.nextRound.shouldBeNull()
-        res.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+        res.targetTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
     }
 
     @Test
@@ -90,9 +90,9 @@ class CountdownServiceTest(
 
         val res = countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 
-        res.startsAt.shouldBeNull()
+        res.targetAt.shouldBeNull()
         res.round.shouldBeNull()
         res.nextRound.shouldBeNull()
-        res.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+        res.targetTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
     }
 }

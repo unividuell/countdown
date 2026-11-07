@@ -15,12 +15,12 @@ swapped pair reliably; the parameter name at the call site does.
 ```kotlin
 // no
 countdown.forSlug(c.slug, ownerId, false)
-CountdownResponse(now, null, edition.startsAtTimezone, null, null)
+CountdownResponse(now, null, edition.targetTimezone, null, null)
 
 // yes
 countdown.forSlug(slug = c.slug, userId = ownerId, isSuperAdmin = false)
 CountdownResponse(
-    serverNow = now, startsAt = null, startsAtTimezone = edition.startsAtTimezone,
+    serverNow = now, targetAt = null, targetTimezone = edition.targetTimezone,
     round = null, nextRound = null,
 )
 ```

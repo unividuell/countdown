@@ -41,13 +41,13 @@ function fetchCountdownOnce(slug: string): Promise<CountdownResponse> {
 export function useCountdown(slug: Ref<string | null | undefined>) {
   const round = ref<Round | null>(null)
   const nextRound = ref<Round | null>(null)
-  const startsAt = ref<string | null>(null)
+  const targetAt = ref<string | null>(null)
   const zone = ref('UTC')
   const cfg = reactive<BaseUnitConfig>({ months: false, weeks: false, days: true })
 
   let loadSeq = 0
   // Tracked, rather than inferring "never loaded" from round === null: the backend legitimately
-  // answers round: null for a community without a startsAt, and that must not be retried at all.
+  // answers round: null for a community without a targetAt, and that must not be retried at all.
   let loaded = false
   // Recorded synchronously by load(), before its first await, which is what keeps a tick arriving in
   // the same frame as the mount from reading 0 as "attempted long ago". The retry branch tests for 0
@@ -62,8 +62,8 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
       if (seq !== loadSeq) return // a newer load superseded this one
       round.value = r.round
       nextRound.value = r.nextRound
-      startsAt.value = r.startsAt
-      zone.value = r.startsAtTimezone
+      targetAt.value = r.targetAt
+      zone.value = r.targetTimezone
       skewMs.value = Date.parse(r.serverNow) - Date.now()
       loaded = true
     } catch {
@@ -84,7 +84,7 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
       void load(slug.value)
   }
 
-  // Per instance, on top of the module refcount: a community without a startsAt has nothing to tick
+  // Per instance, on top of the module refcount: a community without a targetAt has nothing to tick
   // for, and this instance must release exactly the one subscription it holds — no more, no less,
   // whether the slug appeared late or vanished again.
   let subscribed = false
@@ -116,13 +116,13 @@ export function useCountdown(slug: Ref<string | null | undefined>) {
         unsubscribe()
         round.value = null
         nextRound.value = null
-        startsAt.value = null
+        targetAt.value = null
       }
     },
   )
 
   const view = computed(() =>
-    computeView(round.value, startsAt.value, zone.value, nowMs.value + skewMs.value, cfg),
+    computeView(round.value, targetAt.value, zone.value, nowMs.value + skewMs.value, cfg),
   )
 
   function cycleBaseUnit() {

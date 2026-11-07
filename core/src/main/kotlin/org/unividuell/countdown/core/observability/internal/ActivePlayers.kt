@@ -1,4 +1,4 @@
-package org.unividuell.countdown.core.observability
+package org.unividuell.countdown.core.observability.internal
 
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry

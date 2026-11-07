@@ -294,7 +294,7 @@ describe('community route data guard', () => {
   it('publishes no date and no label for a community without an edition', () => {
     publishCommunity(community({ edition: null }))
 
-    expect(activeCommunity.value?.startsAt).toBeNull()
+    expect(activeCommunity.value?.targetAt).toBeNull()
     expect(activeCommunity.value?.editionLabel).toBeNull()
   })
 
@@ -303,8 +303,8 @@ describe('community route data guard', () => {
       community({
         edition: {
           label: 'Hüttenwochenende',
-          startsAt: '2026-06-25T09:00:00Z',
-          startsAtTimezone: 'Europe/Berlin',
+          targetAt: '2026-06-25T09:00:00Z',
+          targetTimezone: 'Europe/Berlin',
           phaseTwoStartRound: null,
           gamesFromRound: -24,
           gamesUntilRound: 0,
@@ -314,6 +314,6 @@ describe('community route data guard', () => {
     )
 
     expect(activeCommunity.value?.editionLabel).toBe('Hüttenwochenende')
-    expect(activeCommunity.value?.startsAt).toBe('2026-06-25T09:00:00Z')
+    expect(activeCommunity.value?.targetAt).toBe('2026-06-25T09:00:00Z')
   })
 })

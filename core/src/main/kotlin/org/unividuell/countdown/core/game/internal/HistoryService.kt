@@ -60,8 +60,8 @@ class HistoryService(
             ?: throw RoundNotFoundException()
         val round = engine.intervalOf(
             number = roundNumber,
-            startsAt = edition.startsAt,
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = edition.targetAt,
+            zone = ZoneId.of(edition.targetTimezone),
         )
         val previous = store.previousRound(edition = edition, roundNumber = roundNumber)
         // A type this build has no game for is a gap the history shows rather than hides, and the

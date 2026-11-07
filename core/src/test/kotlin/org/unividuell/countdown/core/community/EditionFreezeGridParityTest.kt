@@ -17,23 +17,23 @@ class EditionFreezeGridParityTest {
 
     private val engine = CountdownEngine()
 
-    private fun assertMatchesEngine(startsAt: Instant, zone: String, gamesFromRound: Int) {
+    private fun assertMatchesEngine(targetAt: Instant, zone: String, gamesFromRound: Int) {
         val edition = anEdition(
             communityId = UUID.randomUUID(),
-            startsAt = startsAt,
-            startsAtTimezone = zone,
+            targetAt = targetAt,
+            targetTimezone = zone,
             gamesFromRound = gamesFromRound,
         )
 
         frozenSince(edition) shouldBe engine.intervalOf(
             number = gamesFromRound - 1,
-            startsAt = startsAt,
+            targetAt = targetAt,
             zone = ZoneId.of(zone),
         ).start
 
         firstGameRoundEnd(edition) shouldBe engine.intervalOf(
             number = gamesFromRound,
-            startsAt = startsAt,
+            targetAt = targetAt,
             zone = ZoneId.of(zone),
         ).end
     }
@@ -41,7 +41,7 @@ class EditionFreezeGridParityTest {
     @Test
     fun `the freeze point is the engine's start of the round before the first game round`() {
         assertMatchesEngine(
-            startsAt = Instant.parse("2026-06-25T09:00:00Z"),
+            targetAt = Instant.parse("2026-06-25T09:00:00Z"),
             zone = "Europe/Berlin",
             gamesFromRound = -24,
         )
@@ -50,7 +50,7 @@ class EditionFreezeGridParityTest {
     @Test
     fun `still the engine's answer across a DST boundary`() {
         assertMatchesEngine(
-            startsAt = Instant.parse("2026-04-05T16:00:00Z"),
+            targetAt = Instant.parse("2026-04-05T16:00:00Z"),
             zone = "Europe/Berlin",
             gamesFromRound = -9,
         )
@@ -59,7 +59,7 @@ class EditionFreezeGridParityTest {
     @Test
     fun `still the engine's answer in a zone that is not the default`() {
         assertMatchesEngine(
-            startsAt = Instant.parse("2026-11-10T14:00:00Z"),
+            targetAt = Instant.parse("2026-11-10T14:00:00Z"),
             zone = "America/New_York",
             gamesFromRound = -30,
         )

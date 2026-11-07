@@ -15,9 +15,9 @@ describe('super-admin community overview', () => {
         id: 'c1',
         name: 'Team',
         slug: 'team',
-        startsAt: null,
+        targetAt: null,
         // UTC+14: the joinedAt below lands on the next day here, but not in UTC.
-        startsAtTimezone: 'Pacific/Kiritimati',
+        targetTimezone: 'Pacific/Kiritimati',
         createdAt: '2026-01-01T00:00:00Z',
         members: [
           {
@@ -61,8 +61,8 @@ describe('super-admin community overview', () => {
         id: 'c2',
         name: 'Leer',
         slug: 'leer',
-        startsAt: null,
-        startsAtTimezone: 'Europe/Berlin',
+        targetAt: null,
+        targetTimezone: 'Europe/Berlin',
         createdAt: '2026-01-01T00:00:00Z',
         members: [],
       },

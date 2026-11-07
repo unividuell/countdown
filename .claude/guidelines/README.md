@@ -27,7 +27,7 @@ new team members (and AI assistants) stay consistent.
 | ↳ Deployment server ops (`update.sh` · secret-handling scripts · pg_dump backup · pgAdmin SSH) | [deployment-server.md](deployment-server.md) |
 | **Dependency updates** — Maven · npm · Docker, and the versions we deliberately hold back (TS 6.x, `@types/node` 24, Node LTS) | [dependency-updates.md](dependency-updates.md) |
 | Multi-tenancy (community module · `community_id` scoping · slug-derivation parity · URL-slug routing guard) | [multi-tenancy.md](multi-tenancy.md) |
-| **Countdown & rounds** — the core principle (`startsAt` + community `timezone` · round numbers on a number line, 0 = last day before the start · interval model · DST) | [countdown.md](countdown.md) |
+| **Countdown & rounds** — the core principle (`targetAt` + community `timezone` · round numbers on a number line, 0 = last day before the start · interval model · DST) | [countdown.md](countdown.md) |
 | **Cross-runtime parity** — logic that must compute identically in Kotlin and TS (golden vectors · bit-exact ops · UTF-8 hashing · no `Long` in JSON) | [cross-runtime-parity.md](cross-runtime-parity.md) |
 | **Game content** — hand-curated puzzle data is a secret in a public repo (`.local/` → `sops` → ciphertext · sample set for tests · fail-fast) | [game-content.md](game-content.md) |
 | **Game rounds** — how a round gets a game and a guess becomes points (run as the round coordinate · materialised a day ahead by a daily schedule, the GET as fallback · one secret, two exits · streams split by publication · game judges, framework awards · points as a cache · round assets: named, frozen once, sealed until their stage · difficulty from the framework · stages that carry data) | [game-rounds.md](game-rounds.md) |

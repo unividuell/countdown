@@ -28,7 +28,7 @@ looks like coverage and is worth nothing:
 // Community defaults to "Europe/Berlin", the stubbed edition defaults to "Europe/Berlin" too —
 // this passes whichever one the controller actually read.
 every { editions.active(id) } returns anEdition(communityId = id, label = "Team 2026")
-jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+jsonPath("$.targetTimezone") { value("Europe/Berlin") }
 ```
 
 Stub a value that **only** the intended source could have produced (`"America/New_York"`), then assert

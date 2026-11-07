@@ -223,11 +223,11 @@ refetch can't recover, since `boundaryAction(null, …)` answers `'none'`. Two c
 generalise: every consumer must decide what the conflated state means for *its* surface (a header
 widget rendering nothing is a fine degradation; a page's most prominent card going permanently blank
 is not), and the retry (`FAILED_LOAD_RETRY_MS`, 10 s) must be gated on the explicit flag — the
-backend legitimately answers `round: null` for a community without a `startsAt`, and polling that
+backend legitimately answers `round: null` for a community without a `targetAt`, and polling that
 would be a request every 10 s per open page for nothing.
 
 **App-level header state:** `App.vue` sits above the `[slug]` provider tree, so state it needs from
-the active community (title, `startsAt`, `startsAtTimezone`) is published via a module-level ref
+the active community (title, `targetAt`, `targetTimezone`) is published via a module-level ref
 `activeCommunity` in `src/communities/context.ts` — not via `provide`/`inject`. `publishCommunity()`
 is the single path that *publishes* a loaded community: `registerCommunityDataGuard`'s `afterEach`
 (`src/communities/routeData.ts`) calls it once the community is fetched, and the shell's `refresh()`
@@ -240,7 +240,7 @@ behind (the pending dot would survive an admin clearing the requests). Navigatio
 the main header (`nav/NavDrawer.vue`, the app's only menu), never inside the `[slug]` content area.
 
 **Zone-relative time entry:** a `datetime-local` value is a naive wall-clock string; interpret it in
-the community's `startsAtTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
+the community's `targetTimezone`, not the browser zone — `DateTime.fromISO(local, { zone }).toUTC()`
 to store, `DateTime.fromISO(iso, { zone }).toFormat(...)` to display. Test zone-correctness with a
 fixture whose zone year/day differs from UTC. Luxon's fallback when `{ zone }` is dropped is the
 **system** zone, not UTC — `vitest.config.ts` pins `env: { TZ: 'UTC' }` so that fallback is the same

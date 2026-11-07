@@ -15,8 +15,8 @@ const community: CommunityResponse = {
   slug: 'team',
   edition: {
     label: null,
-    startsAt: '2026-06-25T09:00:00Z',
-    startsAtTimezone: 'Europe/Berlin',
+    targetAt: '2026-06-25T09:00:00Z',
+    targetTimezone: 'Europe/Berlin',
     phaseTwoStartRound: null,
     gamesFromRound: -24,
     gamesUntilRound: 0,
@@ -34,8 +34,8 @@ function stubCountdown() {
   return vi.spyOn(api, 'getCountdown').mockImplementation(() =>
     Promise.resolve({
       serverNow: new Date(Date.now()).toISOString(),
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',

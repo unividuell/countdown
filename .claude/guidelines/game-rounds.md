@@ -50,7 +50,7 @@ round — it is not a new decision — and it is currently untested; naming it h
 ## What must be fixed per round is materialised a day ahead
 
 `MaterialisationSchedule` announces every active run's next round once a day — and the running one if
-an earlier run missed it. Ahead, because a round boundary is `startsAt`'s time of day in the run's own
+an earlier run missed it. Ahead, because a round boundary is `targetAt`'s time of day in the run's own
 zone, a different hour per community: one daily run can only prepare the round that starts within the
 next 24 hours. The announcing `GET` is the fallback for a round the run missed.
 

@@ -49,8 +49,8 @@ class RoundPlayPoints(
 
         val current = engine.roundAt(
             now = clock.instant(),
-            startsAt = edition.startsAt,
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = edition.targetAt,
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
         val scored = plays.pointsOf(
             editionId = requireNotNull(edition.id),

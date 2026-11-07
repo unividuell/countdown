@@ -8,6 +8,7 @@ import { registerLandingRedirect } from '@/communities/landingGuard'
 import { registerCommunityDataGuard } from '@/communities/routeData'
 import { registerNavigationProgress } from '@/ui/navigationProgress'
 import { scrollBehavior } from '@/ui/scrollBehavior'
+import { registerStaleBuildReload } from '@/ui/staleBuildReload'
 import { setUnauthorizedHandler } from '@/api/client'
 import './assets/main.css'
 
@@ -22,6 +23,7 @@ registerAuthGuard(router)
 registerLandingRedirect(router)
 registerCommunityDataGuard(router)
 registerNavigationProgress(router)
+registerStaleBuildReload(router)
 
 const { bootstrap, markAnonymous } = useAuth()
 setUnauthorizedHandler(() => {

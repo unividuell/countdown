@@ -89,7 +89,7 @@ onMounted(async () => {
                   Admin
                 </span>
               </td>
-              <td class="py-1">{{ formatDate(m.joinedAt, c.startsAtTimezone) }}</td>
+              <td class="py-1">{{ formatDate(m.joinedAt, c.targetTimezone) }}</td>
             </tr>
           </tbody>
         </table>

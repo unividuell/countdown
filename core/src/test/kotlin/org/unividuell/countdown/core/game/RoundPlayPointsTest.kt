@@ -54,8 +54,8 @@ class RoundPlayPointsTest(
         editions.save(
             anEdition(
                 communityId = requireNotNull(community.id),
-                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-                startsAtTimezone = "Europe/Berlin",
+                targetAt = Instant.parse("2099-01-01T10:00:00Z"),
+                targetTimezone = "Europe/Berlin",
                 gamesFromRound = -36500,
             ),
         )
@@ -66,8 +66,8 @@ class RoundPlayPointsTest(
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         return engine.roundAt(
             now = clock.instant(),
-            startsAt = requireNotNull(edition.startsAt),
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = requireNotNull(edition.targetAt),
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
     }
 

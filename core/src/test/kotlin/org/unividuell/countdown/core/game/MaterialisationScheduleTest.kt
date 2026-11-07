@@ -48,17 +48,17 @@ class MaterialisationScheduleTest {
         every { materialiser.materialise(edition = any(), roundNumber = any()) } returns mockk<RoundGame>()
     }
 
-    private fun anEdition(startsAt: Instant = Instant.parse("2026-12-24T17:00:00Z")) = editionFixture(
+    private fun anEdition(targetAt: Instant = Instant.parse("2026-12-24T17:00:00Z")) = editionFixture(
         id = UUID.randomUUID(),
         communityId = UUID.randomUUID(),
-        startsAt = startsAt,
+        targetAt = targetAt,
         gamesFromRound = -36500,
     )
 
     private fun currentOf(edition: CommunityEdition): Int = engine.roundAt(
         now = now,
-        startsAt = requireNotNull(edition.startsAt),
-        zone = ZoneId.of(edition.startsAtTimezone),
+        targetAt = requireNotNull(edition.targetAt),
+        zone = ZoneId.of(edition.targetTimezone),
     ).number
 
     @Test

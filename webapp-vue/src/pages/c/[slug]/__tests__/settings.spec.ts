@@ -17,8 +17,8 @@ vi.mock('@/communities/context', () => ({
 
 const edition: EditionResponse = {
   label: 'Hüttenwochenende',
-  startsAt: '2099-12-20T17:00:00.000Z',
-  startsAtTimezone: 'Europe/Berlin',
+  targetAt: '2099-12-20T17:00:00.000Z',
+  targetTimezone: 'Europe/Berlin',
   phaseTwoStartRound: -7,
   gamesFromRound: -30,
   gamesUntilRound: 0,
@@ -132,11 +132,11 @@ describe('settings — edition', () => {
   })
 
   it('says from when start and zone are fixed', async () => {
-    useCommunity({ ...edition, startsAt: '2100-01-20T17:00:00.000Z' })
+    useCommunity({ ...edition, targetAt: '2100-01-20T17:00:00.000Z' })
     const w = await mountSettings()
 
     expect(w.get('[data-test=edition-frozen-since]').text()).toBe(
-      'Start und Zeitzone sind ab Sa., 19. Dez. 2099 18:00 fest.',
+      'Ziel und Zeitzone sind ab Sa., 19. Dez. 2099 18:00 fest.',
     )
   })
 
@@ -145,7 +145,7 @@ describe('settings — edition', () => {
     const w = await mountSettings()
 
     expect(w.get('[data-test=edition-frozen-since]').text()).toMatch(
-      /^Start und Zeitzone sind seit /,
+      /^Ziel und Zeitzone sind seit /,
     )
   })
 

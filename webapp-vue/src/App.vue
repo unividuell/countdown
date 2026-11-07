@@ -14,18 +14,18 @@ const { user } = useAuth()
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
 
-// Top-left brand: the edition label, else the community name + a '<YY> edition suffix (always startsAt.year).
+// Top-left brand: the edition label, else the community name + a '<YY> edition suffix (always targetAt.year).
 const brand = computed(
   () => activeCommunity.value?.editionLabel ?? activeCommunity.value?.name ?? 'countdown',
 )
 const yearSuffix = computed(() => {
   const c = activeCommunity.value
-  if (!c?.startsAt) return ''
-  const year = DateTime.fromISO(c.startsAt, { zone: c.startsAtTimezone }).year
+  if (!c?.targetAt) return ''
+  const year = DateTime.fromISO(c.targetAt, { zone: c.targetTimezone }).year
   return ` '${String(year).slice(-2)}`
 })
 
-const hasCountdown = computed(() => Boolean(activeCommunity.value?.startsAt))
+const hasCountdown = computed(() => Boolean(activeCommunity.value?.targetAt))
 
 // From md the board shares row 1, and the row is then as tall as the board plus its legend (44px).
 // Centring the title and the avatar in that row would sit them 9px below the middle of the digits,
@@ -77,7 +77,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
           <NavDrawer v-if="user" :user="user" />
         </div>
         <div
-          v-if="activeCommunity?.startsAt"
+          v-if="activeCommunity?.targetAt"
           data-test="countdown-row"
           class="col-span-2 col-start-1 row-start-2 h-11 md:col-span-1 md:col-start-2 md:row-start-1 md:self-start"
         >

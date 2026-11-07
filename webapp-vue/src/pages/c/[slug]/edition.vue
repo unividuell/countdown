@@ -27,8 +27,8 @@ const communityName = community.value.name
 
 const zones = Intl.supportedValuesOf('timeZone')
 
-const zone = ref(existing?.startsAtTimezone ?? 'Europe/Berlin')
-const startLocal = existing ? DateTime.fromISO(existing.startsAt, { zone: zone.value }) : null
+const zone = ref(existing?.targetTimezone ?? 'Europe/Berlin')
+const startLocal = existing ? DateTime.fromISO(existing.targetAt, { zone: zone.value }) : null
 const label = ref(existing?.label ?? '')
 const date = ref(startLocal?.toFormat('yyyy-MM-dd') ?? '')
 const time = ref(startLocal?.toFormat('HH:mm') ?? '')
@@ -41,7 +41,7 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 
 /** Date and time are wall-clock values IN the chosen zone, not in the browser's. */
-const startsAt = computed(() => {
+const targetAt = computed(() => {
   if (!date.value || !time.value) return null
   const at = DateTime.fromISO(`${date.value}T${time.value}`, { zone: zone.value })
 
@@ -50,12 +50,12 @@ const startsAt = computed(() => {
 
 const first = computed(() => (firstRound.value === '' ? null : Number(firstRound.value)))
 const second = computed(() => (phaseTwo.value === '' ? null : Number(phaseTwo.value)))
-const complete = computed(() => startsAt.value !== null && first.value !== null)
+const complete = computed(() => targetAt.value !== null && first.value !== null)
 
 /** The header's brand line, as App.vue will render it after saving. */
 const preview = computed(() => {
-  const year = startsAt.value
-    ? ` '${String(DateTime.fromISO(startsAt.value, { zone: zone.value }).year).slice(-2)}`
+  const year = targetAt.value
+    ? ` '${String(DateTime.fromISO(targetAt.value, { zone: zone.value }).year).slice(-2)}`
     : ''
 
   return `${label.value.trim() || communityName}${year}`
@@ -64,17 +64,17 @@ const preview = computed(() => {
 const fmt = (d: DateTime) => d.setLocale('de').toFormat('EEE, d. MMM HH:mm')
 
 const firstRoundDate = computed(() =>
-  startsAt.value && first.value !== null
-    ? fmt(roundStart(startsAt.value, zone.value, first.value))
+  targetAt.value && first.value !== null
+    ? fmt(roundStart(targetAt.value, zone.value, first.value))
     : null,
 )
 const phaseTwoDate = computed(() =>
-  startsAt.value && second.value !== null
-    ? fmt(roundStart(startsAt.value, zone.value, second.value))
+  targetAt.value && second.value !== null
+    ? fmt(roundStart(targetAt.value, zone.value, second.value))
     : null,
 )
 const zeroPoint = computed(() =>
-  startsAt.value ? fmt(roundStart(startsAt.value, zone.value, 1)) : null,
+  targetAt.value ? fmt(roundStart(targetAt.value, zone.value, 1)) : null,
 )
 
 /**
@@ -84,9 +84,9 @@ const zeroPoint = computed(() =>
 const firstRoundOver = computed(
   () =>
     !existing?.frozen &&
-    startsAt.value !== null &&
+    targetAt.value !== null &&
     first.value !== null &&
-    first.value < roundAt(DateTime.now(), startsAt.value, zone.value),
+    first.value < roundAt(DateTime.now(), targetAt.value, zone.value),
 )
 
 /** A run whose freeze moment has passed starts at once and is fixed from then on: confirm it. */
@@ -94,9 +94,9 @@ const startsNow = computed(
   () =>
     !existing?.frozen &&
     !firstRoundOver.value &&
-    startsAt.value !== null &&
+    targetAt.value !== null &&
     first.value !== null &&
-    frozenSince(startsAt.value, zone.value, first.value) <= DateTime.now(),
+    frozenSince(targetAt.value, zone.value, first.value) <= DateTime.now(),
 )
 const startNowConfirmed = ref(false)
 const canSubmit = computed(
@@ -111,15 +111,15 @@ const phaseTwoTooEarly = computed(
   () => first.value !== null && second.value !== null && second.value < first.value,
 )
 const freezeAt = computed(() =>
-  startsAt.value && first.value !== null
-    ? fmt(frozenSince(startsAt.value, zone.value, first.value))
+  targetAt.value && first.value !== null
+    ? fmt(frozenSince(targetAt.value, zone.value, first.value))
     : '',
 )
 
 const shape = computed(() =>
-  startsAt.value && first.value !== null
+  targetAt.value && first.value !== null
     ? {
-        startsAt: startsAt.value,
+        targetAt: targetAt.value,
         zone: zone.value,
         gamesFromRound: first.value,
         // A new edition has no end yet; the server's default is 0.
@@ -131,21 +131,21 @@ const shape = computed(() =>
 /** Null while incomplete or beyond [MAX_CALENDAR_ROUNDS]: the hint shows instead. */
 const cells = computed(() => {
   const s = shape.value
-  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return null
+  if (!s || calendarSpan(s) > MAX_CALENDAR_ROUNDS) return null
 
   return editionCells(s, DateTime.now())
 })
 
 async function save(): Promise<void> {
-  if (!canSubmit.value || !startsAt.value || first.value === null) return
+  if (!canSubmit.value || !targetAt.value || first.value === null) return
   error.value = null
   saving.value = true
 
   const body = {
     label: label.value.trim() || null,
     // Frozen: resend the stored values; a rebuild drops seconds and is ambiguous in the DST fold.
-    startsAt: existing?.frozen ? existing.startsAt : startsAt.value,
-    startsAtTimezone: existing?.frozen ? existing.startsAtTimezone : zone.value,
+    targetAt: existing?.frozen ? existing.targetAt : targetAt.value,
+    targetTimezone: existing?.frozen ? existing.targetTimezone : zone.value,
     phaseTwoStartRound: second.value,
     gamesFromRound: first.value,
   }
@@ -182,7 +182,7 @@ const input =
 
       <div class="grid grid-cols-2 gap-3">
         <label class="block text-sm"
-          >Start-Datum<input
+          >Ziel-Datum<input
             v-model="date"
             data-test="date"
             type="date"
@@ -200,6 +200,7 @@ const input =
             required
         /></label>
       </div>
+      <p class="text-xs text-neutral-500">Darauf läuft der Countdown zu.</p>
 
       <label class="block text-sm"
         >Zeitzone<select
@@ -213,13 +214,13 @@ const input =
       >
 
       <p v-if="existing?.frozen" data-test="frozen-note" class="text-xs text-neutral-500">
-        Start und Zeitzone sind seit {{ freezeAt }} fest – die erste Spielrunde kann schon
+        Ziel und Zeitzone sind seit {{ freezeAt }} fest – die Runde zum Spielstart kann schon
         angekündigt sein.
       </p>
 
       <div class="grid grid-cols-2 gap-3">
         <label class="block text-sm"
-          >Erste Spielrunde<input
+          >Spielstart<input
             v-model="firstRound"
             data-test="first-round"
             type="number"
@@ -260,20 +261,20 @@ const input =
         <p data-test="phase-two-date">{{ phaseTwoDate ? `beginnt ${phaseTwoDate}` : '' }}</p>
       </div>
       <p v-if="zeroPoint" class="text-xs text-neutral-500">
-        Runde 1 ist der Start ({{ zeroPoint }}), Runde 0 der letzte Tag davor.
+        Runde 1 beginnt mit dem Ziel ({{ zeroPoint }}), Runde 0 ist der letzte Tag davor.
       </p>
 
       <p v-if="phaseTwoTooEarly" data-test="phase-two-warning" class="text-sm text-red-600">
-        Phase 2 kann nicht vor der ersten Spielrunde beginnen.
+        Phase 2 kann nicht vor dem Spielstart beginnen.
       </p>
 
       <p v-if="firstRoundOver" data-test="first-round-over" class="text-sm text-red-600">
-        Die erste Spielrunde ist schon vorbei. Frühestens die laufende Runde geht.
+        Der Spielstart ist schon vorbei. Frühestens die laufende Runde geht.
       </p>
 
       <label v-if="startsNow" class="flex items-start gap-2 text-sm">
         <input v-model="startNowConfirmed" data-test="start-now" type="checkbox" class="mt-1" />
-        <span>Sofort starten – Start und Zeitzone lassen sich danach nicht mehr ändern.</span>
+        <span>Sofort starten – Ziel und Zeitzone lassen sich danach nicht mehr ändern.</span>
       </label>
 
       <template v-if="cells">
@@ -283,11 +284,11 @@ const input =
           data-test="frozen-since"
           class="text-xs text-neutral-500"
         >
-          Start und Zeitzone sind ab {{ freezeAt }} fest.
+          Ziel und Zeitzone sind ab {{ freezeAt }} fest.
         </p>
       </template>
       <p v-else data-test="calendar-hint" class="text-sm text-neutral-500">
-        Start und erste Spielrunde angeben, dann erscheint der Kalender.
+        Ziel und Spielstart angeben, dann erscheint der Kalender.
       </p>
 
       <button

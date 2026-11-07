@@ -18,8 +18,8 @@ vi.mock('@/communities/context', () => ({
 
 const edition: EditionResponse = {
   label: 'Hüttenwochenende',
-  startsAt: '2026-12-20T17:00:00.000Z',
-  startsAtTimezone: 'Europe/Berlin',
+  targetAt: '2026-12-20T17:00:00.000Z',
+  targetTimezone: 'Europe/Berlin',
   phaseTwoStartRound: -7,
   gamesFromRound: -30,
   gamesUntilRound: 0,
@@ -77,8 +77,8 @@ describe('edition page', () => {
 
     expect(api.createEdition).toHaveBeenCalledWith('hh', {
       label: null,
-      startsAt: '2026-12-20T17:00:00.000Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-12-20T17:00:00.000Z',
+      targetTimezone: 'Europe/Berlin',
       phaseTwoStartRound: -7,
       gamesFromRound: -30,
     })
@@ -109,8 +109,8 @@ describe('edition page', () => {
 
     expect(api.replaceEdition).toHaveBeenCalledWith('hh', {
       label: 'Hüttenwochenende',
-      startsAt: '2026-12-20T17:00:00.000Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-12-20T17:00:00.000Z',
+      targetTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       gamesFromRound: -30,
     })
@@ -216,7 +216,7 @@ describe('edition page', () => {
 
   it('locks date, time and zone of a frozen edition, without a warning', async () => {
     // Freeze moment (round -31 start, 10 Oct) is long past; the guard alone hides the line.
-    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.000Z', frozen: true }
+    const frozen = { ...edition, targetAt: '2026-11-10T17:00:00.000Z', frozen: true }
     const w = await mountPage(frozen)
 
     for (const f of ['date', 'time', 'zone']) {
@@ -227,11 +227,11 @@ describe('edition page', () => {
   })
 
   it('explains why a frozen edition is locked, once', async () => {
-    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.000Z', frozen: true }
+    const frozen = { ...edition, targetAt: '2026-11-10T17:00:00.000Z', frozen: true }
     const w = await mountPage(frozen)
 
     expect(w.get(sel('frozen-note')).text()).toBe(
-      'Start und Zeitzone sind seit Fr., 9. Okt. 18:00 fest – die erste Spielrunde kann schon angekündigt sein.',
+      'Ziel und Zeitzone sind seit Fr., 9. Okt. 18:00 fest – die Runde zum Spielstart kann schon angekündigt sein.',
     )
     expect(w.find(sel('frozen-since')).exists()).toBe(false)
   })
@@ -241,7 +241,7 @@ describe('edition page', () => {
 
     expect(w.find(sel('frozen-note')).exists()).toBe(false)
     expect(w.get(sel('frozen-since')).text()).toBe(
-      'Start und Zeitzone sind ab Mi., 18. Nov. 18:00 fest.',
+      'Ziel und Zeitzone sind ab Mi., 18. Nov. 18:00 fest.',
     )
   })
 
@@ -254,13 +254,13 @@ describe('edition page', () => {
     expect(w.find(sel('calendar-hint')).exists()).toBe(true)
   })
 
-  it('shows the hint instead of the calendar for a far-future start', async () => {
+  it('draws a far-future start like any other: the range no longer starts today', async () => {
     const w = await mountPage(null)
     await fillNew(w)
     await w.get(sel('date')).setValue('9999-12-20')
 
-    expect(w.find('[data-test=edition-grid]').exists()).toBe(false)
-    expect(w.find(sel('calendar-hint')).exists()).toBe(true)
+    expect(w.findAll('[data-test=edition-grid] [data-round]')).toHaveLength(35)
+    expect(w.find(sel('calendar-hint')).exists()).toBe(false)
   })
 
   it('caps the round inputs', async () => {
@@ -271,7 +271,7 @@ describe('edition page', () => {
   })
 
   it('sends a frozen edition start and zone exactly as stored', async () => {
-    const frozen = { ...edition, startsAt: '2026-11-10T17:00:00.123Z', frozen: true }
+    const frozen = { ...edition, targetAt: '2026-11-10T17:00:00.123Z', frozen: true }
     const w = await mountPage(frozen)
     await w.get(sel('label')).setValue('Neu')
     await w.get('form').trigger('submit')
@@ -280,8 +280,8 @@ describe('edition page', () => {
     expect(api.replaceEdition).toHaveBeenCalledWith(
       'hh',
       expect.objectContaining({
-        startsAt: '2026-11-10T17:00:00.123Z',
-        startsAtTimezone: 'Europe/Berlin',
+        targetAt: '2026-11-10T17:00:00.123Z',
+        targetTimezone: 'Europe/Berlin',
       }),
     )
   })
