@@ -63,9 +63,12 @@ and stack trace. So: no OTLP log appender, no log file, no second format — any
 stdout arrives as unparsed text. Locally the console stays human-readable and nothing is
 exported. Metrics and traces, unlike logs, go out via OTLP, tagged
 `service.namespace=countdown` and `deployment.environment.name`; an app-level metric is a
-Micrometer meter named `countdown.*` (`observability/ActivePlayers.kt`).
+Micrometer meter named `countdown.*` (`observability/internal/ActivePlayers.kt`).
 
 Every SQL query and every pooled connection is a trace span (`datasource-micrometer`), with
-the SQL text but no parameter values. `spring-modulith-observability` does not fit here: it
-CGLIB-proxies each module's API beans, and the app fails to start on any final Kotlin class
-among them (e.g. `GuessHueDataset`).
+the SQL text but no parameter values. Above them, `spring-modulith-observability` adds a span
+per call into a module. It wraps each controller, cross-module listener and **API-package
+bean** in a CGLIB subclass, so such a bean must be `open` with `open` members (the Kotlin
+spring plugin does that only for annotated classes; a `@Bean`-built one like `GuessHueDataset`
+needs it spelled out), and a servlet filter belongs in `internal` (proxied, Tomcat's call to
+its final `init` meets a null `logger`). Get it wrong and the app does not start.
