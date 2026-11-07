@@ -46,7 +46,7 @@ const shape = computed(() => {
 })
 const cells = computed(() => {
   const s = shape.value
-  if (!s || calendarSpan(s, DateTime.now()) > MAX_CALENDAR_ROUNDS) return []
+  if (!s || calendarSpan(s) > MAX_CALENDAR_ROUNDS) return []
 
   return editionCells(s, DateTime.now())
 })

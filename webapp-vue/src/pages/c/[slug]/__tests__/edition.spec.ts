@@ -254,13 +254,13 @@ describe('edition page', () => {
     expect(w.find(sel('calendar-hint')).exists()).toBe(true)
   })
 
-  it('shows the hint instead of the calendar for a far-future start', async () => {
+  it('draws a far-future start like any other: the range no longer starts today', async () => {
     const w = await mountPage(null)
     await fillNew(w)
     await w.get(sel('date')).setValue('9999-12-20')
 
-    expect(w.find('[data-test=edition-grid]').exists()).toBe(false)
-    expect(w.find(sel('calendar-hint')).exists()).toBe(true)
+    expect(w.findAll('[data-test=edition-grid] [data-round]')).toHaveLength(35)
+    expect(w.find(sel('calendar-hint')).exists()).toBe(false)
   })
 
   it('caps the round inputs', async () => {

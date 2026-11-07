@@ -117,8 +117,9 @@ Wie die Aktivitätsansicht auf GitHub:
 
 - Spalten = Wochen, Zeilen = Wochentage Mo–So, Monatsnamen über der ersten Spalte eines Monats.
 - Ein Kästchen pro Runde, datiert auf den Tag, an dem die Runde beginnt.
-- Reicht von heute oder der ersten Spielrunde (was früher liegt) bis zum Start-Kästchen
-  (Runde `1`). Wird es breiter als der Bildschirm, scrollt es seitlich.
+- Reicht von drei Runden vor der ersten Spielrunde bis zum Start-Kästchen (Runde `1`), vor und
+  während des Laufs gleich; „heute“ ist nur markiert, wenn es darin liegt. Wird es breiter als der
+  Bildschirm, scrollt es seitlich.
 - Farben:
   - keine Spielrunde: neutral (Stone)
   - Phase 1: `--color-phase-one`

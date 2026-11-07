@@ -55,15 +55,21 @@ export function frozenSince(startsAt: string, zone: string, gamesFromRound: numb
 /** The calendar draws one cell per round; beyond ~100 years it would hang the tab. */
 export const MAX_CALENDAR_ROUNDS = 36500
 
+/** Days shown before the first game round, e.g. games from -30 → the calendar opens at -33. */
+const LEAD_ROUNDS = 3
+
 /** How many cells [editionCells] would draw. */
-export function calendarSpan(e: EditionShape, now: DateTime): number {
-  return 2 - Math.min(roundAt(now, e.startsAt, e.zone), e.gamesFromRound)
+export function calendarSpan(e: EditionShape): number {
+  return 2 - (e.gamesFromRound - LEAD_ROUNDS)
 }
 
-/** One cell per round, from today (or the first game round, if earlier) up to the start. */
+/**
+ * One cell per round, from [LEAD_ROUNDS] before the first game round up to the start — the same
+ * range before and during the run. Today is marked only when it falls inside.
+ */
 export function editionCells(e: EditionShape, now: DateTime): GridCell[] {
   const current = roundAt(now, e.startsAt, e.zone)
-  const first = Math.min(current, e.gamesFromRound)
+  const first = e.gamesFromRound - LEAD_ROUNDS
 
   const kindOf = (m: number): CellKind => {
     if (m === 1) return 'start'

@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest'
 import EditionCalendar from '../EditionCalendar.vue'
 import { editionCells } from '../editionGrid'
 
+// Games from -31: the calendar opens three rounds earlier, at -34 = Sun 15 Nov 18:00.
 const cells = editionCells(
   {
     startsAt: '2026-12-20T17:00:00Z',
     zone: 'Europe/Berlin',
-    gamesFromRound: -30,
+    gamesFromRound: -31,
     gamesUntilRound: 0,
     phaseTwoStartRound: -7,
   },
@@ -22,10 +23,9 @@ describe('EditionCalendar', () => {
     const grid = mountCalendar().get('[data-test="edition-grid"]')
     const children = grid.element.children
 
-    // 2026-11-04 is a Wednesday: Monday and Tuesday are padding.
-    expect(children[0]!.getAttribute('data-test')).toBe('edition-pad')
-    expect(children[1]!.getAttribute('data-test')).toBe('edition-pad')
-    expect(children[2]!.getAttribute('data-round')).toBe('-45')
+    // 2026-11-15 is a Sunday: Monday to Saturday are padding.
+    for (let i = 0; i < 6; i++) expect(children[i]!.getAttribute('data-test')).toBe('edition-pad')
+    expect(children[6]!.getAttribute('data-round')).toBe('-34')
     expect(children.length % 7).toBe(0)
     expect(grid.attributes('style')).toContain('repeat(7')
   })
@@ -39,12 +39,12 @@ describe('EditionCalendar', () => {
   })
 
   it('shows one month label per column, the later month winning', () => {
-    // 2026-10-29 is a Thursday; Sun 1 Nov falls into the same week column.
+    // Games from -48 open the calendar at -51 = Thu 29 Oct; Sun 1 Nov shares its week column.
     const shared = editionCells(
       {
         startsAt: '2026-12-20T17:00:00Z',
         zone: 'Europe/Berlin',
-        gamesFromRound: -30,
+        gamesFromRound: -48,
         gamesUntilRound: 0,
         phaseTwoStartRound: -7,
       },
@@ -98,9 +98,9 @@ describe('EditionCalendar', () => {
 
   it('clears the detail line when the selected round is gone', async () => {
     const wrapper = mountCalendar()
-    await wrapper.get('[data-round="-45"]').trigger('click')
+    await wrapper.get('[data-round="-34"]').trigger('click')
 
-    await wrapper.setProps({ cells: cells.filter((c) => c.round !== -45) })
+    await wrapper.setProps({ cells: cells.filter((c) => c.round !== -34) })
 
     expect(wrapper.get('[data-test="edition-detail"]').text()).toBe('')
   })
