@@ -64,3 +64,8 @@ stdout arrives as unparsed text. Locally the console stays human-readable and no
 exported. Metrics and traces, unlike logs, go out via OTLP, tagged
 `service.namespace=countdown` and `deployment.environment.name`; an app-level metric is a
 Micrometer meter named `countdown.*` (`observability/ActivePlayers.kt`).
+
+Every SQL query and every pooled connection is a trace span (`datasource-micrometer`), with
+the SQL text but no parameter values. `spring-modulith-observability` does not fit here: it
+CGLIB-proxies each module's API beans, and the app fails to start on any final Kotlin class
+among them (e.g. `GuessHueDataset`).
