@@ -63,7 +63,7 @@ earlier is smaller, later is larger:
 
 - **`n = 0`** is the **last day before the target**: `[targetAt − 1 day, targetAt)`. This is the
   "zero days to go" window — whole-days-until-target is already `0` while up to ~24 h still tick away
-  (e.g. *0 Tage, 23 h, 12 s bis Start*). **Round 0 is real and necessary** — an earlier draft of
+  (e.g. *0 Tage, 23 h, 12 s bis zum Ziel*). **Round 0 is real and necessary** — an earlier draft of
   this file wrongly tried to remove it; that was the knot-that-isn't-one.
 - **`n < 0`** are the earlier countdown days; **`n > 0`** are the days at/after the target — `1` is
   the first event day, and `targetAt` starts it.

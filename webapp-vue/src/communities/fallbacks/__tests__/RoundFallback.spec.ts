@@ -105,7 +105,7 @@ describe('RoundFallback', () => {
     await flushPromises()
     expect(w.find('[data-test="countdown-card"]').exists()).toBe(true)
     expect(w.find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
-      '58 Tage bis zum Start',
+      '58 Tage bis zum Ziel',
     )
   })
 

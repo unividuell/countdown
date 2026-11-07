@@ -44,7 +44,7 @@ const reading = computed(() => {
   })
   return view.value.state === 'after'
     ? `Laufzeit ${parts.join(', ')}`
-    : `Noch ${parts.join(', ')} bis zum Start`
+    : `Noch ${parts.join(', ')} bis zum Ziel`
 })
 
 const legendVisible = ref(false)
@@ -60,7 +60,7 @@ const hintId = useId()
     data-test="countdown"
     type="button"
     class="w-fit max-w-full cursor-pointer select-none"
-    :title="view.state === 'after' ? undefined : 'Countdown bis zum Start'"
+    :title="view.state === 'after' ? undefined : 'Countdown bis zum Ziel'"
     :aria-label="reading"
     :aria-describedby="hintId"
     @click="cycleBaseUnit"

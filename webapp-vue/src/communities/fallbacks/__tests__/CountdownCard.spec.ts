@@ -97,16 +97,16 @@ describe('CountdownCard', () => {
 
   it('names the day count without its padding for assistive tech', () => {
     expect(mountCard('07').find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
-      '7 Tage bis zum Start',
+      '7 Tage bis zum Ziel',
     )
   })
 
   it('uses the German singular on the last full day', () => {
     expect(mountCard('01').find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
-      '1 Tag bis zum Start',
+      '1 Tag bis zum Ziel',
     )
     expect(mountCard('00').find('[data-test="countdown-hero"]').attributes('aria-label')).toBe(
-      '0 Tage bis zum Start',
+      '0 Tage bis zum Ziel',
     )
   })
 
