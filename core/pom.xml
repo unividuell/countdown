@@ -62,6 +62,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-opentelemetry</artifactId>
 		</dependency>
+		<!-- A trace span per SQL query and per connection taken from the pool. -->
+		<dependency>
+			<groupId>net.ttddyy.observation</groupId>
+			<artifactId>datasource-micrometer-spring-boot</artifactId>
+			<version>2.3.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jdbc</artifactId>
@@ -175,6 +181,12 @@
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
 			<artifactId>spring-modulith-runtime</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- A trace span per call into a module (controllers, API beans, cross-module listeners). -->
+		<dependency>
+			<groupId>org.springframework.modulith</groupId>
+			<artifactId>spring-modulith-observability-core</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
