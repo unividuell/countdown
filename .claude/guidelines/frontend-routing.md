@@ -58,6 +58,10 @@ not component lifecycle hooks — `src/communities/routeData.ts` and
   result — the same technique `useCountdown` uses for stale responses.
 - **A pending indicator needs a delay (~150 ms, `PENDING_DELAY_MS`).** An indicator that flashes on
   a fast transition is itself the flicker it was added to explain.
+- **A failed lazy-route import means a stale build: reload, once.** A tab open across a deploy
+  requests chunk hashes that no longer exist; the router aborts silently and clicks do nothing.
+  `staleBuildReload.ts` turns that error into a full load of the target, guarded per path in
+  `sessionStorage` against a loop. Engines word the error differently — match all three.
 
 ## Community context + admin gating
 
