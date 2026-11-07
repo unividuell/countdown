@@ -2,6 +2,7 @@ package org.unividuell.countdown.core.community
 
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import org.unividuell.countdown.core.community.internal.firstGameRoundEnd
 import org.unividuell.countdown.core.community.internal.frozenSince
 import org.unividuell.countdown.core.countdown.CountdownEngine
 import java.time.Instant
@@ -29,6 +30,12 @@ class EditionFreezeGridParityTest {
             startsAt = startsAt,
             zone = ZoneId.of(zone),
         ).start
+
+        firstGameRoundEnd(edition) shouldBe engine.intervalOf(
+            number = gamesFromRound,
+            startsAt = startsAt,
+            zone = ZoneId.of(zone),
+        ).end
     }
 
     @Test

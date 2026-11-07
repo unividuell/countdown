@@ -125,7 +125,8 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
 ## Docker
 
 The compose files and `web.Dockerfile` intentionally use **floating major tags** —
-`postgres:18`, `caddy:2-alpine`, `node:24-alpine`, `dpage/pgadmin4:latest`. Patch and minor
+`postgres:18`, `caddy:2`, `node:24-trixie-slim`, `debian:trixie-slim`,
+`gcr.io/distroless/static-debian13`, `dpage/pgadmin4:latest`. Patch and minor
 updates therefore arrive on `docker pull` with **no file to edit**. A dependency pass here
 means *verifying the pinned major is still the right one*, not bumping a string:
 
@@ -133,6 +134,9 @@ means *verifying the pinned major is still the right one*, not bumping a string:
 docker pull -q postgres:18 && docker run --rm postgres:18 postgres --version
 docker compose -f compose.yaml config -q          # validate after any edit
 ```
+
+**No Alpine images** (musl breaks things). Use Debian-slim or distroless. Caddy publishes only
+Alpine images, so `web.Dockerfile` copies its static binary out of `caddy:2` into distroless.
 
 Only edit a tag when the **major** should move (e.g. Postgres 19, Caddy 3) — and for Node,
 only to the next **Active LTS** (see the holdback table).

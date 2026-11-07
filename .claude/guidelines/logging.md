@@ -60,7 +60,7 @@ country precisely so the coordinate never reaches the database (see `CountryLook
 Staging and production log ECS JSON to stdout (`logging.structured.format.console: ecs`);
 edge-caddy's `edge-lgtm` reads it from docker's log files and unpacks level, logger, trace id
 and stack trace. So: no OTLP log appender, no log file, no second format — anything else on
-stdout arrives as unparsed text. Locally the console stays human-readable and logs never reach
-the local Grafana. Metrics and traces, unlike logs, go out via OTLP, tagged
+stdout arrives as unparsed text. Locally the console stays human-readable and nothing is
+exported. Metrics and traces, unlike logs, go out via OTLP, tagged
 `service.namespace=countdown` and `deployment.environment.name`; an app-level metric is a
 Micrometer meter named `countdown.*` (`observability/ActivePlayers.kt`).

@@ -207,6 +207,11 @@ Entschieden:
 Das Formular zeigt die Verletzung schon vor dem Absenden unter dem Kalender an (rote Zeile), der
 Server ist die Instanz, die entscheidet.
 
+**Nachtrag (2026-11-05):** Die Regel „Freeze-Zeitpunkt muss in der Zukunft liegen“ erzwang ein bis
+zwei Tage Wartezeit. Jetzt darf die erste Spielrunde die laufende Runde sein (der Lauf ist dann von
+Anfang an fest), nur keine schon vorbei gegangene. Das Formular verlangt dafür eine Bestätigung
+(„Sofort starten“). Den Fehler aus #120 verhindert weiter die Pflicht-Spielrunde.
+
 ## Dem Builder überlassen
 
 - Eigene Route oder Aufklappen für das Formular.

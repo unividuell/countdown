@@ -171,18 +171,47 @@ describe('edition page', () => {
     expect(w.get(sel('phase-two-warning')).classes()).toContain('text-red-600')
   })
 
-  it('warns in red when the freeze has passed, but still submits', async () => {
+  // Now is 2026-11-05 12:00 Berlin: with a start on 20 Dec 18:00, round -45 is running.
+  it('asks to confirm an instant start, and only then saves', async () => {
+    vi.clearAllMocks()
     const w = await mountPage(null)
-    await w.get(sel('date')).setValue('2026-11-10')
-    await w.get(sel('time')).setValue('18:00')
-    await w.get(sel('first-round')).setValue('-30')
+    await fillNew(w)
+    expect(w.find(sel('start-now')).exists()).toBe(false)
 
-    expect(w.find(sel('freeze-warning')).exists()).toBe(true)
-    expect(w.get(sel('freeze-warning')).classes()).toContain('text-red-600')
+    await w.get(sel('first-round')).setValue('-45')
+    expect(w.get(sel('submit')).attributes('disabled')).toBeDefined()
 
+    // Enter in a field submits the form too, past the disabled button.
     await w.get('form').trigger('submit')
     await flushPromises()
-    expect(api.createEdition).toHaveBeenCalled()
+    expect(api.createEdition).not.toHaveBeenCalled()
+
+    await w.get(sel('start-now')).setValue(true)
+    await w.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(api.createEdition).toHaveBeenCalledWith(
+      'hh',
+      expect.objectContaining({ gamesFromRound: -45 }),
+    )
+  })
+
+  it('also asks when the first game round starts later today', async () => {
+    const w = await mountPage(null)
+    await fillNew(w)
+    await w.get(sel('first-round')).setValue('-44')
+
+    expect(w.find(sel('start-now')).exists()).toBe(true)
+  })
+
+  it('refuses in red a first game round that is already over', async () => {
+    const w = await mountPage(null)
+    await fillNew(w)
+    await w.get(sel('first-round')).setValue('-46')
+
+    expect(w.get(sel('first-round-over')).classes()).toContain('text-red-600')
+    expect(w.find(sel('start-now')).exists()).toBe(false)
+    expect(w.get(sel('submit')).attributes('disabled')).toBeDefined()
   })
 
   it('locks date, time and zone of a frozen edition, without a warning', async () => {
@@ -193,7 +222,8 @@ describe('edition page', () => {
     for (const f of ['date', 'time', 'zone']) {
       expect(w.get(sel(f)).attributes('disabled')).toBeDefined()
     }
-    expect(w.find(sel('freeze-warning')).exists()).toBe(false)
+    expect(w.find(sel('first-round-over')).exists()).toBe(false)
+    expect(w.find(sel('start-now')).exists()).toBe(false)
   })
 
   it('explains why a frozen edition is locked, once', async () => {
