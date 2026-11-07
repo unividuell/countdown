@@ -30,8 +30,8 @@ class EditionServiceTest {
     // Starts 2026-12-20 18:00 Berlin; round -30 begins 2026-11-19, so the grid is still open at `now`.
     private val draft = EditionDraft(
         label = "Run 2026",
-        startsAt = Instant.parse("2026-12-20T17:00:00Z"),
-        startsAtTimezone = "Europe/Berlin",
+        targetAt = Instant.parse("2026-12-20T17:00:00Z"),
+        targetTimezone = "Europe/Berlin",
         phaseTwoStartRound = -7,
         gamesFromRound = -30,
     )
@@ -48,7 +48,7 @@ class EditionServiceTest {
 
         edition.communityId shouldBe communityId
         edition.label shouldBe "Run 2026"
-        edition.startsAt shouldBe draft.startsAt
+        edition.targetAt shouldBe draft.targetAt
         edition.phaseTwoStartRound shouldBe -7
         edition.gamesFromRound shouldBe -30
         edition.gamesUntilRound shouldBe 0
@@ -72,7 +72,7 @@ class EditionServiceTest {
     @Test
     fun `create rejects a first game round that has already ended`() {
         every { repository.findActiveByCommunityId(communityId) } returns null
-        val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
+        val begun = draft.copy(targetAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
 
         shouldThrow<IllegalArgumentException> { service.create(communityId = communityId, draft = begun) }
             .message.shouldContain("already ended")
@@ -115,8 +115,8 @@ class EditionServiceTest {
             communityId = communityId,
             draft = EditionDraft(
                 label = "Neu",
-                startsAt = Instant.parse("2027-01-10T17:00:00Z"),
-                startsAtTimezone = "America/New_York",
+                targetAt = Instant.parse("2027-01-10T17:00:00Z"),
+                targetTimezone = "America/New_York",
                 phaseTwoStartRound = null,
                 gamesFromRound = -20,
             ),
@@ -124,8 +124,8 @@ class EditionServiceTest {
 
         replaced.id shouldBe current.id
         replaced.label shouldBe "Neu"
-        replaced.startsAt shouldBe Instant.parse("2027-01-10T17:00:00Z")
-        replaced.startsAtTimezone shouldBe "America/New_York"
+        replaced.targetAt shouldBe Instant.parse("2027-01-10T17:00:00Z")
+        replaced.targetTimezone shouldBe "America/New_York"
         replaced.phaseTwoStartRound shouldBe null
         replaced.gamesFromRound shouldBe -20
     }
@@ -148,7 +148,7 @@ class EditionServiceTest {
     @Test
     fun `replace of a not yet frozen run rejects a first game round that has already ended`() {
         every { repository.findActiveByCommunityId(communityId) } returns anEdition(communityId = communityId)
-        val begun = draft.copy(startsAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
+        val begun = draft.copy(targetAt = Instant.parse("2026-11-10T17:00:00Z"), gamesFromRound = -89)
 
         shouldThrow<IllegalArgumentException> { service.replace(communityId = communityId, draft = begun) }
             .message.shouldContain("already ended")
@@ -176,7 +176,7 @@ class EditionServiceTest {
         openForCreate()
 
         shouldThrow<IllegalArgumentException> {
-            service.create(communityId = communityId, draft = draft.copy(startsAtTimezone = "Mars/Olympus"))
+            service.create(communityId = communityId, draft = draft.copy(targetTimezone = "Mars/Olympus"))
         }
     }
 
@@ -185,7 +185,7 @@ class EditionServiceTest {
         openForReplace()
 
         shouldThrow<IllegalArgumentException> {
-            service.replace(communityId = communityId, draft = draft.copy(startsAtTimezone = "Mars/Olympus"))
+            service.replace(communityId = communityId, draft = draft.copy(targetTimezone = "Mars/Olympus"))
         }
     }
 
@@ -279,7 +279,7 @@ class EditionServiceTest {
     }
 
     // Far-future start, so the freeze moment 36502 days earlier still lies ahead of `now`.
-    private val farFuture = draft.copy(startsAt = Instant.parse("2200-01-01T17:00:00Z"))
+    private val farFuture = draft.copy(targetAt = Instant.parse("2200-01-01T17:00:00Z"))
 
     @Test
     fun `create accepts a gamesFromRound exactly at the hundred-year bound`() {
@@ -338,18 +338,18 @@ class EditionServiceTest {
     // The grid froze on 2026-11-03 (the start of round -46), so this run is frozen at `now`.
     private val frozen = anEdition(
         communityId = communityId,
-        startsAt = Instant.parse("2026-12-20T17:00:00Z"),
+        targetAt = Instant.parse("2026-12-20T17:00:00Z"),
         gamesFromRound = -45,
     )
 
     @Test
-    fun `replace on a frozen run rejects a new startsAt`() {
+    fun `replace on a frozen run rejects a new targetAt`() {
         every { repository.findActiveByCommunityId(communityId) } returns frozen
 
         shouldThrow<EditionFrozenException> {
             service.replace(
                 communityId = communityId,
-                draft = draft.copy(startsAt = Instant.parse("2026-12-21T17:00:00Z"), gamesFromRound = -45),
+                draft = draft.copy(targetAt = Instant.parse("2026-12-21T17:00:00Z"), gamesFromRound = -45),
             )
         }
     }
@@ -361,7 +361,7 @@ class EditionServiceTest {
         shouldThrow<EditionFrozenException> {
             service.replace(
                 communityId = communityId,
-                draft = draft.copy(startsAt = frozen.startsAt, startsAtTimezone = "America/New_York", gamesFromRound = -45),
+                draft = draft.copy(targetAt = frozen.targetAt, targetTimezone = "America/New_York", gamesFromRound = -45),
             )
         }
     }

@@ -43,8 +43,8 @@ export interface MemberProfileResponse {
 
 export interface EditionResponse {
   label: string | null
-  startsAt: string
-  startsAtTimezone: string
+  targetAt: string
+  targetTimezone: string
   phaseTwoStartRound: number | null
   gamesFromRound: number
   gamesUntilRound: number
@@ -52,8 +52,8 @@ export interface EditionResponse {
 }
 export interface EditionRequest {
   label: string | null
-  startsAt: string
-  startsAtTimezone: string
+  targetAt: string
+  targetTimezone: string
   phaseTwoStartRound: number | null
   gamesFromRound: number
 }
@@ -129,8 +129,8 @@ export interface Round {
 }
 export interface CountdownResponse {
   serverNow: string
-  startsAt: string | null
-  startsAtTimezone: string
+  targetAt: string | null
+  targetTimezone: string
   round: Round | null
   nextRound: Round | null
 }
@@ -147,8 +147,8 @@ export interface SuperAdminCommunity {
   id: string
   name: string
   slug: string
-  startsAt: string | null
-  startsAtTimezone: string
+  targetAt: string | null
+  targetTimezone: string
   createdAt: string | null
   members: SuperAdminMember[]
 }

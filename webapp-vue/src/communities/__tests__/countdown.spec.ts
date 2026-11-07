@@ -11,7 +11,7 @@ const round10: Round = {
   start: '2026-06-14T09:00:00Z',
   end: '2026-06-15T09:00:00Z',
 }
-const startsAt = '2026-06-25T09:00:00Z'
+const targetAt = '2026-06-25T09:00:00Z'
 
 describe('computeView', () => {
   // The anchor: liftoff 2027-06-24 11:00 Berlin (09:00Z). Round 0 is the last day before it.
@@ -41,8 +41,8 @@ describe('computeView', () => {
     ])
   })
 
-  it('is idle without a round or startsAt', () => {
-    expect(computeView(null, startsAt, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
+  it('is idle without a round or targetAt', () => {
+    expect(computeView(null, targetAt, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
       'idle',
     )
     expect(computeView(round10, null, zone, ms('2026-06-14T09:00:00Z'), daysBase).state).toBe(
@@ -52,7 +52,7 @@ describe('computeView', () => {
 
   it('counts down before start: day count = |round.number|, h:m:s to next boundary', () => {
     // 12h before round end (2026-06-14T21:00:00Z)
-    const v = computeView(round10, startsAt, zone, ms('2026-06-14T21:00:00Z'), daysBase)
+    const v = computeView(round10, targetAt, zone, ms('2026-06-14T21:00:00Z'), daysBase)
     expect(v.state).toBe('before')
     expect(v.chips).toEqual([
       { value: '10', unit: 'd' },
@@ -63,7 +63,7 @@ describe('computeView', () => {
   })
 
   it('weeks base re-expresses the time to start with a w chip', () => {
-    const v = computeView(round10, startsAt, zone, ms('2026-06-14T21:00:00Z'), {
+    const v = computeView(round10, targetAt, zone, ms('2026-06-14T21:00:00Z'), {
       months: false,
       weeks: true,
       days: true,
@@ -99,7 +99,7 @@ describe('computeView', () => {
       start: '2026-06-25T09:00:00Z',
       end: '2026-06-26T09:00:00Z',
     }
-    const v = computeView(r, startsAt, zone, ms('2026-06-25T11:30:00Z'), daysBase)
+    const v = computeView(r, targetAt, zone, ms('2026-06-25T11:30:00Z'), daysBase)
     expect(v.state).toBe('after')
     expect(v.chips[0]).toEqual({ value: '0', unit: 'd' }) // 2h30m after start
     expect(v.chips[1]).toEqual({ value: '02', unit: 'h' })
@@ -115,7 +115,7 @@ describe('computeView', () => {
       end: '2026-06-26T09:00:00Z',
     }
     const now = ms('2026-08-06T16:30:00Z') // 42 days and change after the start
-    const monthsWeeks = computeView(r, startsAt, zone, now, {
+    const monthsWeeks = computeView(r, targetAt, zone, now, {
       months: true,
       weeks: true,
       days: true,
@@ -125,7 +125,7 @@ describe('computeView', () => {
     expect(monthsWeeks.chips[0]).toEqual({ value: '1', unit: 'M' })
     expect(monthsWeeks.chips[1]).toEqual({ value: '1', unit: 'w' })
 
-    const weeks = computeView(r, startsAt, zone, now, { months: false, weeks: true, days: true })
+    const weeks = computeView(r, targetAt, zone, now, { months: false, weeks: true, days: true })
     expect(weeks.chips.map((c) => c.unit)).toEqual(['w', 'd', 'h', 'm', 's'])
     expect(weeks.chips[0]).toEqual({ value: '6', unit: 'w' })
 
@@ -142,7 +142,7 @@ describe('computeView', () => {
       start: '2026-06-25T09:00:00Z',
       end: '2026-06-26T09:00:00Z',
     }
-    const v = computeView(r, startsAt, zone, ms('2026-08-06T16:30:00Z'), daysBase)
+    const v = computeView(r, targetAt, zone, ms('2026-08-06T16:30:00Z'), daysBase)
     expect(v.chips.map((c) => c.unit)).toEqual(['d', 'h', 'm', 's'])
     expect(v.chips[0]).toEqual({ value: '42', unit: 'd' })
   })

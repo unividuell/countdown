@@ -21,8 +21,8 @@ object EditionGridVectors {
 
     val mapper = jacksonObjectMapper()
 
-    data class RoundStartCase(val startsAt: String, val zone: String, val round: Int, val roundStart: String)
-    data class RoundAtCase(val now: String, val startsAt: String, val zone: String, val round: Int)
+    data class RoundStartCase(val targetAt: String, val zone: String, val round: Int, val roundStart: String)
+    data class RoundAtCase(val now: String, val targetAt: String, val zone: String, val round: Int)
 
     data class Vectors(
         val version: Int,
@@ -31,7 +31,7 @@ object EditionGridVectors {
         val roundAt: List<RoundAtCase>,
     )
 
-    private data class Start(val startsAt: String, val zone: String, val rounds: IntRange)
+    private data class Start(val targetAt: String, val zone: String, val rounds: IntRange)
 
     // Each start is chosen so its rounds straddle a DST change (a 23h or 25h day is one round).
     private val starts = listOf(
@@ -51,19 +51,19 @@ object EditionGridVectors {
             note = "Generated from the JVM CountdownEngine. Regenerate with: ./mvnw test -Dtest=EditionGridGoldenVectorTest -Dedition.vectors.write=true",
             roundStart = starts.flatMap { s ->
                 s.rounds.map { round ->
-                    val interval = engine.intervalOf(round, Instant.parse(s.startsAt), ZoneId.of(s.zone))
-                    RoundStartCase(s.startsAt, s.zone, round, interval.start.toString())
+                    val interval = engine.intervalOf(round, Instant.parse(s.targetAt), ZoneId.of(s.zone))
+                    RoundStartCase(s.targetAt, s.zone, round, interval.start.toString())
                 }
             },
             // Every boundary, one millisecond either side of it: the start-inclusive edge is where
             // an off-by-one hides.
             roundAt = starts.flatMap { s ->
                 s.rounds.flatMap { round ->
-                    val interval = engine.intervalOf(round, Instant.parse(s.startsAt), ZoneId.of(s.zone))
+                    val interval = engine.intervalOf(round, Instant.parse(s.targetAt), ZoneId.of(s.zone))
                     listOf(interval.start.minusMillis(1), interval.start, interval.start.plusMillis(1))
                 }.distinct().map { now ->
-                    val at = engine.roundAt(now, Instant.parse(s.startsAt), ZoneId.of(s.zone))
-                    RoundAtCase(now.toString(), s.startsAt, s.zone, at.number)
+                    val at = engine.roundAt(now, Instant.parse(s.targetAt), ZoneId.of(s.zone))
+                    RoundAtCase(now.toString(), s.targetAt, s.zone, at.number)
                 }
             },
         )

@@ -36,8 +36,8 @@ describe('super-admin api', () => {
         id: 'c1',
         name: 'Team',
         slug: 'team',
-        startsAt: null,
-        startsAtTimezone: 'Europe/Berlin',
+        targetAt: null,
+        targetTimezone: 'Europe/Berlin',
         createdAt: '2026-01-01T00:00:00Z',
         members: [
           {

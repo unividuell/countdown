@@ -137,12 +137,12 @@ describe('FlipDotBoard', () => {
   })
 
   it('exposes the text to assistive tech, which cannot read a dot matrix', async () => {
-    const w = mount(FlipDotBoard, { props: { text: '58', label: '58 Tage bis zum Start' } })
+    const w = mount(FlipDotBoard, { props: { text: '58', label: '58 Tage bis zum Ziel' } })
     expect(w.attributes('role')).toBe('img')
     // Also during the boot's white phase: a screen reader is never told the board is blank.
-    expect(w.attributes('aria-label')).toBe('58 Tage bis zum Start')
+    expect(w.attributes('aria-label')).toBe('58 Tage bis zum Ziel')
     await bootDone()
-    expect(w.attributes('aria-label')).toBe('58 Tage bis zum Start')
+    expect(w.attributes('aria-label')).toBe('58 Tage bis zum Ziel')
   })
 
   it('mounts without a Web Animations API', () => {

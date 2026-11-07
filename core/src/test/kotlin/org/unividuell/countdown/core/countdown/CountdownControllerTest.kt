@@ -30,7 +30,7 @@ class CountdownControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `GET countdown returns the current and next round`() {
         val now = Instant.parse("2026-06-14T09:00:00Z")
         every { service.forSlug("team", uid, false) } returns CountdownResponse(
-            serverNow = now, startsAt = Instant.parse("2026-06-25T09:00:00Z"), startsAtTimezone = "Europe/Berlin",
+            serverNow = now, targetAt = Instant.parse("2026-06-25T09:00:00Z"), targetTimezone = "Europe/Berlin",
             round = RoundDto(-11, Instant.parse("2026-06-14T09:00:00Z"), Instant.parse("2026-06-15T09:00:00Z")),
             nextRound = RoundDto(-10, Instant.parse("2026-06-15T09:00:00Z"), Instant.parse("2026-06-16T09:00:00Z")),
         )
@@ -39,7 +39,7 @@ class CountdownControllerTest(@Autowired val mockMvc: MockMvc) {
             jsonPath("$.round.number") { value(-11) }
             jsonPath("$.round.label") { doesNotExist() }
             jsonPath("$.nextRound.number") { value(-10) }
-            jsonPath("$.startsAtTimezone") { value("Europe/Berlin") }
+            jsonPath("$.targetTimezone") { value("Europe/Berlin") }
         }
     }
 
@@ -51,7 +51,7 @@ class CountdownControllerTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
-    fun `GET countdown returns null rounds when startsAt is unset`() {
+    fun `GET countdown returns null rounds when targetAt is unset`() {
         val now = Instant.parse("2026-06-14T09:00:00Z")
         every { service.forSlug("team", uid, false) } returns CountdownResponse(now, null, "Europe/Berlin", null, null)
         mockMvc.get("/api/communities/team/countdown") { with(principalFor()) }.andExpect {

@@ -173,10 +173,10 @@ class RoundTimelineOracleTest(
     )
 
     private fun numberAt(instant: Instant): Int =
-        engine.roundAt(now = instant, startsAt = START, zone = BERLIN).number
+        engine.roundAt(now = instant, targetAt = START, zone = BERLIN).number
 
     private fun startDayOf(number: Int): LocalDate =
-        engine.intervalOf(number = number, startsAt = START, zone = BERLIN).start.atZone(BERLIN).toLocalDate()
+        engine.intervalOf(number = number, targetAt = START, zone = BERLIN).start.atZone(BERLIN).toLocalDate()
 
     private fun rowOf(run: Run, day: LocalDate): RoundGame? =
         store.find(edition = run.edition, roundNumber = numberAt(noon(day)))
@@ -199,8 +199,8 @@ class RoundTimelineOracleTest(
         editions.save(
             anEdition(
                 communityId = requireNotNull(community.id),
-                startsAt = START,
-                startsAtTimezone = BERLIN.id,
+                targetAt = START,
+                targetTimezone = BERLIN.id,
                 phaseTwoStartRound = numberAt(noon(PHASE_TWO_DAY)),
                 gamesFromRound = numberAt(noon(FIRST_GAME_DAY)),
                 gamesUntilRound = numberAt(noon(LAST_GAME_DAY)),
@@ -370,8 +370,8 @@ class RoundTimelineOracleTest(
             communityId = requireNotNull(run.community.id),
             draft = EditionDraft(
                 label = run.edition.label,
-                startsAt = to,
-                startsAtTimezone = run.edition.startsAtTimezone,
+                targetAt = to,
+                targetTimezone = run.edition.targetTimezone,
                 phaseTwoStartRound = run.edition.phaseTwoStartRound,
                 gamesFromRound = run.edition.gamesFromRound,
             ),

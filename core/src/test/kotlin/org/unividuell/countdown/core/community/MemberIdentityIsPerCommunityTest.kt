@@ -69,8 +69,8 @@ class MemberIdentityIsPerCommunityTest(
         editionRepository.save(
             anEdition(
                 communityId = requireNotNull(community.id),
-                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-                startsAtTimezone = "Europe/Berlin",
+                targetAt = Instant.parse("2099-01-01T10:00:00Z"),
+                targetTimezone = "Europe/Berlin",
                 gamesFromRound = -36500,
             ),
         )

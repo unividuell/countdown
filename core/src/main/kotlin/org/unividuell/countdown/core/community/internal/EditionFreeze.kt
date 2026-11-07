@@ -15,7 +15,7 @@ import java.time.ZoneId
  * way round. `EditionFreezeGridParityTest` pins this copy against the engine.
  */
 fun frozenSince(edition: CommunityEdition): Instant =
-    edition.startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
+    edition.targetAt.atZone(ZoneId.of(edition.targetTimezone))
         .plusDays(edition.gamesFromRound.toLong() - 2)
         .toInstant()
 
@@ -24,6 +24,6 @@ fun frozenSince(edition: CommunityEdition): Instant =
  * once with the running round, but never with one that has already ended.
  */
 fun firstGameRoundEnd(edition: CommunityEdition): Instant =
-    edition.startsAt.atZone(ZoneId.of(edition.startsAtTimezone))
+    edition.targetAt.atZone(ZoneId.of(edition.targetTimezone))
         .plusDays(edition.gamesFromRound.toLong())
         .toInstant()

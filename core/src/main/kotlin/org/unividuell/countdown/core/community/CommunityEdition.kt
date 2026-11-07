@@ -25,8 +25,8 @@ data class CommunityEdition(
     val communityId: UUID,
     /** Optional display name of the run, e.g. „Hüttenwochenende 2026“. */
     val label: String?,
-    val startsAt: Instant,
-    val startsAtTimezone: String = DEFAULT_TIMEZONE,
+    val targetAt: Instant,
+    val targetTimezone: String = DEFAULT_TIMEZONE,
     val phaseTwoStartRound: Int? = null,
     /**
      * First round that carries a game — the *smaller* number, because a smaller round number is

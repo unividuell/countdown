@@ -11,8 +11,8 @@ describe('countdown api', () => {
   it('fetches the countdown for a slug', async () => {
     apiFetch.mockResolvedValue({
       serverNow: '2026-06-14T09:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -29,11 +29,11 @@ describe('countdown api', () => {
     expect(r.round?.number).toBe(-10)
   })
 
-  it('handles a community with no startsAt (null rounds)', async () => {
+  it('handles a community with no targetAt (null rounds)', async () => {
     apiFetch.mockResolvedValue({
       serverNow: '2026-06-14T09:00:00Z',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: null,
+      targetTimezone: 'Europe/Berlin',
       round: null,
       nextRound: null,
     })

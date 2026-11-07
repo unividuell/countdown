@@ -20,14 +20,14 @@ const KIND_LABEL: Record<CellKind, string> = {
   none: 'kein Spiel',
   'phase-one': 'Phase 1',
   'phase-two': 'Phase 2',
-  start: 'Start',
+  target: 'Ziel',
 }
 
 const KIND_COLOR: Record<CellKind, string> = {
   none: 'bg-stone-200',
   'phase-one': 'bg-phase-one',
   'phase-two': 'bg-phase-two',
-  start: 'bg-stone-900',
+  target: 'bg-stone-900',
 }
 
 /** The tapped round, not its cell: the cells recompute while the form is edited. */
@@ -86,7 +86,7 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
   { label: 'kein Spiel', kind: 'none' },
   { label: 'Phase 1', kind: 'phase-one' },
   { label: 'Phase 2', kind: 'phase-two' },
-  { label: 'Start', kind: 'start' },
+  { label: 'Ziel', kind: 'target' },
   { label: 'heute', sample: 'today' },
   { label: 'ab hier fix', sample: 'fix' },
 ]

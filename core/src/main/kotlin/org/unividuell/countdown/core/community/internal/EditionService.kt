@@ -12,8 +12,8 @@ import java.util.UUID
 /** What an admin submits for a run: everything but what the system owns (`gamesUntilRound`, archiving). */
 data class EditionDraft(
     val label: String?,
-    val startsAt: Instant,
-    val startsAtTimezone: String,
+    val targetAt: Instant,
+    val targetTimezone: String,
     val phaseTwoStartRound: Int?,
     val gamesFromRound: Int,
 )
@@ -40,8 +40,8 @@ open class EditionService(
         val edition = CommunityEdition(
             communityId = communityId,
             label = draft.label.toLabel(),
-            startsAt = draft.startsAt,
-            startsAtTimezone = draft.startsAtTimezone,
+            targetAt = draft.targetAt,
+            targetTimezone = draft.targetTimezone,
             phaseTwoStartRound = draft.phaseTwoStartRound,
             gamesFromRound = draft.gamesFromRound,
         )
@@ -59,15 +59,15 @@ open class EditionService(
         val current = active(communityId) ?: throw EditionNotFoundException()
         val next = current.copy(
             label = draft.label.toLabel(),
-            startsAt = draft.startsAt,
-            startsAtTimezone = draft.startsAtTimezone,
+            targetAt = draft.targetAt,
+            targetTimezone = draft.targetTimezone,
             phaseTwoStartRound = draft.phaseTwoStartRound,
             gamesFromRound = draft.gamesFromRound,
         )
         validate(next)
 
         if (isFrozen(current)) {
-            if (next.startsAt != current.startsAt || next.startsAtTimezone != current.startsAtTimezone) {
+            if (next.targetAt != current.targetAt || next.targetTimezone != current.targetTimezone) {
                 throw EditionFrozenException("the run's grid is fixed since ${frozenSince(current)}")
             }
             if (!isFrozen(next)) {
@@ -110,8 +110,8 @@ open class EditionService(
         edition.label?.let { require(it.length in 3..50) { "label must be 3..50 chars" } }
         edition.phaseTwoStartRound?.let { require(it <= 0) { "phaseTwoStartRound must be <= 0" } }
         // IANA region IDs only (by design): DST-correct round math needs region zones, not offsets.
-        require(AVAILABLE_ZONE_IDS.contains(edition.startsAtTimezone)) {
-            "invalid timezone: ${edition.startsAtTimezone}"
+        require(AVAILABLE_ZONE_IDS.contains(edition.targetTimezone)) {
+            "invalid timezone: ${edition.targetTimezone}"
         }
         // A smaller round number is earlier in time, so the first round must not be above the last.
         require(edition.gamesFromRound <= edition.gamesUntilRound) {

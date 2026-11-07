@@ -111,19 +111,19 @@ class SuperAdminOverviewServiceTest {
         every { editions.findAllActive() } returns listOf(
             anEdition(
                 id = UUID.randomUUID(), communityId = alphaId, label = "Alpha 2026",
-                startsAt = Instant.parse("2026-06-01T00:00:00Z"), startsAtTimezone = "America/New_York",
+                targetAt = Instant.parse("2026-06-01T00:00:00Z"), targetTimezone = "America/New_York",
             ),
         )
 
         val result = service.overview()
 
         val alpha = result.first { it.slug == "alpha" }
-        alpha.startsAt shouldBe Instant.parse("2026-06-01T00:00:00Z")
-        alpha.startsAtTimezone shouldBe "America/New_York"
+        alpha.targetAt shouldBe Instant.parse("2026-06-01T00:00:00Z")
+        alpha.targetTimezone shouldBe "America/New_York"
 
         // zulu has no active edition — it stays visible with the default rather than vanishing.
         val zulu = result.first { it.slug == "zulu" }
-        zulu.startsAt.shouldBeNull()
-        zulu.startsAtTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
+        zulu.targetAt.shouldBeNull()
+        zulu.targetTimezone shouldBe CommunityEdition.DEFAULT_TIMEZONE
     }
 }
