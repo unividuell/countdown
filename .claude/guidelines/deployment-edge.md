@@ -75,7 +75,7 @@ then the catch-all with `header Cache-Control "no-cache"` + `try_files`.
 - `caddy adapt` confirms Caddy orders the `headers` handler **before** `rewrite`, so the deep-link
   fallback (`/countdowns/42` → `/index.html`) still carries `no-cache`. Verify against a **real
   response**, not just the config: `curl -sSI` both a page and an asset. Locally, build
-  `caddy:2-alpine` + the repo Caddyfile + a fake `dist` into a throwaway image and curl that — no
+  `deploy/web.Dockerfile` into a throwaway image and curl that — no
   bind mounts (see the Docker Desktop gotcha in [deployment.md](deployment.md)).
 
 ## `X-Forwarded-*` across the two hops

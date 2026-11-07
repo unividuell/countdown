@@ -109,7 +109,7 @@ This project lives under `/opt`, which Docker Desktop does **not** share by defa
 
 - inject small config files via inline compose **`configs: [{ content: ... }]`** (no host mount);
 - validate a Caddyfile by piping it via **stdin** into a container
-  (`docker run -i caddy:2-alpine sh -c 'cat > /tmp/Caddyfile && caddy adapt --config /tmp/Caddyfile --adapter caddyfile'`),
+  (`docker run -i --rm ghcr.io/unividuell/countdown-web caddy adapt --config /dev/stdin --adapter caddyfile < Caddyfile`),
   not with `-v`.
 
 Named volumes are unaffected (Docker-managed).
