@@ -20,8 +20,8 @@ describe('CountdownDisplay', () => {
   it('renders the ticking countdown for the active community', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -49,8 +49,8 @@ describe('CountdownDisplay', () => {
   it('cycles the base unit on click', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -78,8 +78,8 @@ describe('CountdownDisplay', () => {
   it('stops fetching after unmount', async () => {
     const spy = vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -114,8 +114,8 @@ describe('CountdownDisplay', () => {
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValue({
         serverNow: '2026-06-14T21:00:10Z',
-        startsAt: '2026-06-25T09:00:00Z',
-        startsAtTimezone: 'Europe/Berlin',
+        targetAt: '2026-06-25T09:00:00Z',
+        targetTimezone: 'Europe/Berlin',
         round: {
           number: -10,
           start: '2026-06-14T09:00:00Z',
@@ -143,8 +143,8 @@ describe('CountdownDisplay', () => {
   it('fetches once on a first mount, not twice', async () => {
     const spy = vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -163,8 +163,8 @@ describe('CountdownDisplay', () => {
   it('counts up without announcing the event, which the fallback card now says', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-14T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-14T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: 1,
         start: '2026-06-14T09:00:00Z',
@@ -188,8 +188,8 @@ describe('CountdownDisplay', () => {
   it('pads only the leading group, so the widest state still fits the header', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -5,
         start: '2026-06-14T09:00:00Z',
@@ -206,8 +206,8 @@ describe('CountdownDisplay', () => {
   it('hides the board from assistive tech, since the button now carries the reading itself', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -232,8 +232,8 @@ describe('CountdownDisplay', () => {
   it('is a real button, so the browser owns click, keyboard and focus', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -260,8 +260,8 @@ describe('CountdownDisplay', () => {
   it('keeps its contents valid inside a button', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -278,8 +278,8 @@ describe('CountdownDisplay', () => {
   it('still cycles on click', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -302,8 +302,8 @@ describe('CountdownDisplay', () => {
   it('describes what pressing the button does, not just what it is', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',
@@ -325,8 +325,8 @@ describe('CountdownDisplay', () => {
   it('caps the board width instead of letting it push the header apart', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue({
       serverNow: '2026-06-14T21:00:00Z',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       round: {
         number: -10,
         start: '2026-06-14T09:00:00Z',

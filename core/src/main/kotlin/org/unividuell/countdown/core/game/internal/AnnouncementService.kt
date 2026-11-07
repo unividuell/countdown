@@ -61,8 +61,8 @@ class AnnouncementService(
 
         val round = engine.roundAt(
             now = clock.instant(),
-            startsAt = edition.startsAt,
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = edition.targetAt,
+            zone = ZoneId.of(edition.targetTimezone),
         )
         // Computed for every answer, including the ones that carry no game: the history hangs under
         // the fallback too, and after the event that is the only reason to open the page.

@@ -8,8 +8,8 @@ const VECTORS_PATH = '../shared/edition-grid/vectors.json'
 
 interface Vectors {
   version: number
-  roundStart: { startsAt: string; zone: string; round: number; roundStart: string }[]
-  roundAt: { now: string; startsAt: string; zone: string; round: number }[]
+  roundStart: { targetAt: string; zone: string; round: number; roundStart: string }[]
+  roundAt: { now: string; targetAt: string; zone: string; round: number }[]
 }
 
 const vectors = JSON.parse(readFileSync(VECTORS_PATH, 'utf8')) as Vectors
@@ -19,14 +19,14 @@ describe('golden vectors', () => {
     expect(vectors.version).toBe(1)
   })
 
-  it.each(vectors.roundStart)('roundStart $startsAt $zone round $round', (c) => {
-    expect(roundStart(c.startsAt, c.zone, c.round).toMillis()).toBe(
+  it.each(vectors.roundStart)('roundStart $targetAt $zone round $round', (c) => {
+    expect(roundStart(c.targetAt, c.zone, c.round).toMillis()).toBe(
       DateTime.fromISO(c.roundStart).toMillis(),
     )
   })
 
-  it.each(vectors.roundAt)('roundAt $now in $startsAt $zone', (c) => {
-    expect(roundAt(DateTime.fromISO(c.now), c.startsAt, c.zone)).toBe(c.round)
+  it.each(vectors.roundAt)('roundAt $now in $targetAt $zone', (c) => {
+    expect(roundAt(DateTime.fromISO(c.now), c.targetAt, c.zone)).toBe(c.round)
   })
 })
 
@@ -42,7 +42,7 @@ describe('frozenSince', () => {
 
 describe('editionCells', () => {
   const edition = {
-    startsAt: '2026-12-20T17:00:00Z',
+    targetAt: '2026-12-20T17:00:00Z',
     zone: 'Europe/Berlin',
     gamesFromRound: -30,
     gamesUntilRound: 0,
@@ -56,7 +56,7 @@ describe('editionCells', () => {
     expect(cells[0]!.round).toBe(-33)
     expect(cells[0]!.start.toISO()).toBe('2026-11-16T18:00:00.000+01:00')
     expect(cells.at(-1)!.round).toBe(1)
-    expect(cells.at(-1)!.kind).toBe('start')
+    expect(cells.at(-1)!.kind).toBe('target')
     expect(cells).toHaveLength(35)
     expect(calendarSpan(edition)).toBe(35)
   })

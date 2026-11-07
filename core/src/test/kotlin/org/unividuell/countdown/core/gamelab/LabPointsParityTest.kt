@@ -137,16 +137,16 @@ class LabPointsParityTest(
         editions.save(
             anEdition(
                 communityId = requireNotNull(community.id),
-                startsAt = Instant.parse("2099-01-01T10:00:00Z"),
-                startsAtTimezone = "Europe/Berlin",
+                targetAt = Instant.parse("2099-01-01T10:00:00Z"),
+                targetTimezone = "Europe/Berlin",
                 gamesFromRound = -36500,
             ),
         )
         val edition = requireNotNull(editions.findActiveByCommunityId(communityId))
         val currentRoundNumber = engine.roundAt(
             now = clock.instant(),
-            startsAt = requireNotNull(edition.startsAt),
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = requireNotNull(edition.targetAt),
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
         editions.save(edition.copy(phaseTwoStartRound = currentRoundNumber))
         return Triple(community, ownerId, currentRoundNumber)
@@ -157,8 +157,8 @@ class LabPointsParityTest(
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = engine.roundAt(
             now = clock.instant(),
-            startsAt = requireNotNull(edition.startsAt),
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = requireNotNull(edition.targetAt),
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
         val phase = Phase.of(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound)
         store.announce(
@@ -179,8 +179,8 @@ class LabPointsParityTest(
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = engine.roundAt(
             now = clock.instant(),
-            startsAt = requireNotNull(edition.startsAt),
-            zone = ZoneId.of(edition.startsAtTimezone),
+            targetAt = requireNotNull(edition.targetAt),
+            zone = ZoneId.of(edition.targetTimezone),
         ).number
         val phase = Phase.of(roundNumber = roundNumber, phaseTwoStartRound = phaseTwoStartRound)
         store.announce(

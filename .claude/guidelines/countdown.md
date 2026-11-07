@@ -1,6 +1,6 @@
 # Countdown & Rounds (the app's core principle)
 
-The defining USP: each **community** counts down to its event start (`startsAt`). To shorten
+The defining USP: each **community** counts down to its target (`targetAt`). To shorten
 the wait, the time before (and during/after) the event is divided into **rounds** that carry
 gameplay. This file is the **binding domain model** for the countdown/round mechanics — capture
 decisions here, don't re-derive them. (Origin reference: `huettehuette.unividuell.org`
@@ -10,22 +10,33 @@ conventions — see below.)
 Implemented in the `countdown` module (`CountdownEngine` is the grid); this file stays the binding
 model it is built against.
 
-## Anchor: `startsAt` + community `startsAtTimezone`
+## Terms: target vs. game start
 
-- A community has **`startsAt`** (the event start) stored as Postgres `TIMESTAMPTZ` → mapped to a
+Two instants, often weeks apart. Never call either "start" or "first round":
+
+| Term | Code | Admin form | Meaning |
+|---|---|---|---|
+| **Ziel** (target) | `targetAt` | „Ziel-Datum“ | what the countdown runs to; round `1` begins here |
+| **Spielstart** (game start) | `gamesFromRound` | „Spielstart“ | the first round with a game, e.g. `-30` |
+
+"Start" alone reads as game start and "first round" as round `1` — both point at the wrong instant.
+
+## Anchor: `targetAt` + community `targetTimezone`
+
+- A community has **`targetAt`** (the target) stored as Postgres `TIMESTAMPTZ` → mapped to a
   Kotlin **`Instant`** (an absolute moment, **zone-less**).
 - **`TIMESTAMPTZ` does NOT store a timezone.** Postgres converts the input to UTC on write and
-  **discards the offset/zone**; on read it renders in the session zone. So `startsAt` alone only
+  **discards the offset/zone**; on read it renders in the session zone. So `targetAt` alone only
   knows *"this instant"*, not *"11:00 in which zone"*. A fixed numeric offset wouldn't help either
   — it can't do DST (winter `+01:00` vs summer `+02:00`).
-- Therefore each community also has **`startsAtTimezone`** (DB column `starts_at_timezone`) — an
+- Therefore each community also has **`targetTimezone`** (DB column `target_timezone`) — an
   **IANA zone id** (e.g. `Europe/Berlin`), **admin-editable**, default `Europe/Berlin`. (New
   `community` column; validate it's a real IANA zone.) The name keeps the explicit relation to the
-  field it zones — it is *the zone in which `startsAt`'s wall-clock is anchored*, not a generic
+  field it zones — it is *the zone in which `targetAt`'s wall-clock is anchored*, not a generic
   community timezone.
 - The round-anchor **time-of-day (e.g. 11:00) is NOT a separate field** — it falls out of
-  `startsAt` rendered in `startsAtTimezone` (`startsAt.atZone(startsAtTimezone)`). So **`startsAt`
-  (instant) + `startsAtTimezone` (zone)** together fully define the countdown anchor and the round
+  `targetAt` rendered in `targetTimezone` (`targetAt.atZone(targetTimezone)`). So **`targetAt`
+  (instant) + `targetTimezone` (zone)** together fully define the countdown anchor and the round
   grid.
 
 ## A round = an interval + a signed number
@@ -35,8 +46,8 @@ model it is built against.
   keeps the math clean and lets multiple games **nest inside a day** later (see *fast rounds*). The
   **daily grid is the invariant base** — fast rounds add sub-rounds *within* a day, they don't
   replace it. The daily computation below is the base round generator.
-- **Default round = one calendar day** in the community `startsAtTimezone`, anchored to `startsAt`'s
-  time-of-day. If `startsAt` is `…T11:00` in `Europe/Berlin`, each round runs
+- **Default round = one calendar day** in the community `targetTimezone`, anchored to `targetAt`'s
+  time-of-day. If `targetAt` is `…T11:00` in `Europe/Berlin`, each round runs
   `[day 11:00, next-day 11:00)` local time.
 
 ### Round numbering — a number line
@@ -47,32 +58,32 @@ earlier is smaller, later is larger:
 ```
 … −90  −89  …  −1   0 │ 1   2  …  20 …
                       │
-                   startsAt (liftoff)
+                   targetAt (liftoff)
 ```
 
-- **`n = 0`** is the **last day before the start**: `[startsAt − 1 day, startsAt)`. This is the
-  "zero days to go" window — whole-days-until-start is already `0` while up to ~24 h still tick away
+- **`n = 0`** is the **last day before the target**: `[targetAt − 1 day, targetAt)`. This is the
+  "zero days to go" window — whole-days-until-target is already `0` while up to ~24 h still tick away
   (e.g. *0 Tage, 23 h, 12 s bis Start*). **Round 0 is real and necessary** — an earlier draft of
   this file wrongly tried to remove it; that was the knot-that-isn't-one.
-- **`n < 0`** are the earlier countdown days; **`n > 0`** are the days at/after the start — `1` is
-  the first event day, and `startsAt` starts it.
+- **`n < 0`** are the earlier countdown days; **`n > 0`** are the days at/after the target — `1` is
+  the first event day, and `targetAt` starts it.
 
 Uniform interval formula (all integers `n`, zone- and DST-aware day stepping):
 
 ```
-round n = [ startsAt + (n−1) days , startsAt + n days )
+round n = [ targetAt + (n−1) days , targetAt + n days )
 ```
 
-- `n =   0` → `[startsAt − 1d,  startsAt)`       (last day before start)
-- `n =   1` → `[startsAt,       startsAt + 1d)`  (first day of the event)
-- `n = −89` → `[startsAt − 90d, startsAt − 89d)`
+- `n =   0` → `[targetAt − 1d,  targetAt)`       (last day before target)
+- `n =   1` → `[targetAt,       targetAt + 1d)`  (first day of the event)
+- `n = −89` → `[targetAt − 90d, targetAt − 89d)`
 
-**Anchor** (pinned in `CountdownEngineTest` and `RoundTimelineOracleTest`): `startsAt` 2027-06-24
+**Anchor** (pinned in `CountdownEngineTest` and `RoundTimelineOracleTest`): `targetAt` 2027-06-24
 11:00 `Europe/Berlin`. At 2027-06-24 10:00 round `0` runs and the clock shows 0 days, 0 hours,
 60 minutes; 11:00 begins round `1`.
 
 The **current round for `now`** is the `n` whose interval contains `now` (start-inclusive), i.e.
-count zone-aware calendar days between `startsAt` and `now`.
+count zone-aware calendar days between `targetAt` and `now`.
 
 **A rule about round order is a comparison on the number line**, never "larger is earlier": the next
 round is `n + 1`; history is `round_number < current`, most recent first (`ORDER BY round_number
@@ -83,12 +94,12 @@ that way, it is the net for exactly this. Prose drifts the same way: when touchi
 comments and guidelines for `MIN`/`MAX`, above/below, raise/lower and up/back next to round terms.
 
 **Display — the number, no label.** The game header shows the number as is (`-89`, `0`, `1`). The
-countdown shows no sign: it counts down before the start (days = `|n|`) and up from it — the
+countdown shows no sign: it counts down before the target (days = `|n|`) and up from it — the
 direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. There is no `T−`/`T+`.
 
 > **Differences from huettehuette:** huettehuette counted down — `T−58 … T−1, T−0 │ T+1 …`, a larger
 > number being earlier. The port negates that onto a number line: same round 0, same grid, mirrored
-> numbers, no `T−`/`T+` (2026-11-05 — an admin setting the first game round had to be told "a larger
+> numbers, no `T−`/`T+` (2026-11-05 — an admin setting the game start had to be told "a larger
 > number is earlier"). Boundary inclusivity differs too: huettehuette was **end-inclusive** (the
 > exact `11:00:00` instant belonged to the *older* round); per the spec (`[11..11)`) the port is
 > **start-inclusive** — `11:00:00` belongs to the round it *starts*.
@@ -107,7 +118,7 @@ direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. The
 > DateTime.local(2017,3,11,10).plus({hours:24}).hour   //=> 11  (24 h of real time → +1 h post-DST)
 > ```
 
-- **Round-boundary grid = calendar units.** Day math runs in the community `startsAtTimezone` and is
+- **Round-boundary grid = calendar units.** Day math runs in the community `targetTimezone` and is
   **calendar-aware**: a DST-transition day (23 h or 25 h real time) still counts as **exactly one
   round** — the boundary stays glued to the wall-clock time-of-day (11:00). Use `plus({days})` /
   `ZonedDateTime.plusDays`, **never** `instant ± 86400s`.
@@ -119,9 +130,9 @@ direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. The
 ## Computation & placement
 
 - **Server-authoritative.** The current-round computation is a **pure function** of
-  `(now, startsAt, startsAtTimezone, roundLength)` — no DB needed for the number itself. Put it in a
+  `(now, targetAt, targetTimezone, roundLength)` — no DB needed for the number itself. Put it in a
   backend Spring Modulith module (working name **`countdown`**, schema-per-module), depending on
-  `community` (for `startsAt` + `startsAtTimezone` + `phaseTwoStartRound`). Expose a public query
+  `community` (for `targetAt` + `targetTimezone` + `phaseTwoStartRound`). Expose a public query
   (current round for `now`; the round number for any instant; a round's `[start, end)`).
 - **Heavily unit-tested**, TDD: port the huettehuette test vectors (numbers negated; adjust the
   exact-boundary cases for the **start-inclusive** boundary), and cover the **DST transitions**
@@ -133,18 +144,18 @@ direction is the sign. The link preview says „Noch 58 Tage: Spiel mit!“. The
 
 ## A grid that is in play is fixed
 
-`startsAt` and `startsAtTimezone` define the round grid, and a round number is not stored anywhere —
+`targetAt` and `targetTimezone` define the round grid, and a round number is not stored anywhere —
 it is recomputed from them. Moving either after rounds have been announced therefore points the grid
 at numbers `game.round_games` already holds: the same round a second time, or numbers skipped. Both
 are unfair and unexplainable to a player.
 
 A run is therefore **frozen** from the start of round `gamesFromRound - 1` on — the day before its
-first game round: the daily schedule announces each round a day ahead, so that is the earliest
+game start: the daily schedule announces each round a day ahead, so that is the earliest
 instant a `round_games` row can exist. From then on the two fields are 409, and the way forward is a
-new edition. An unfrozen run may start at once: on create/replace its first game round may be the
+new edition. An unfrozen run may start at once: on create/replace its game start may be the
 running round (it is then frozen from the outset — no round is announced yet, and the GET
 materialises it), never one that has ended (`firstGameRoundEnd`). The form makes the admin confirm
-such an instant start, because start and zone are fixed right away.
+such an instant start, because target and zone are fixed right away.
 
 The state is **derived, never stored**: `frozenSince(edition)` against the clock. That keeps it
 honest without a column, but it makes the freeze point a function of editable fields — so the check
@@ -160,7 +171,7 @@ of history.
 ## Editions: 0..1 active, always dated
 
 A community has **0..1** active edition; "none" is a normal state (new community, archived run), never
-an error — the countdown then shows no date. An edition always has `startsAt` and `gamesFromRound`
+an error — the countdown then shows no date. An edition always has `targetAt` and `gamesFromRound`
 (NOT NULL); only `label` is optional (null = called like the community).
 
 Write paths are separate: `PATCH /communities/{slug}` renames only (the slug never changes),

@@ -5,17 +5,17 @@ import type { CommunityResponse, CountdownResponse, RosterMemberResponse } from 
 import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import { _resetCountdownState } from '@/communities/useCountdown'
 
-const community = (startsAt: string | null): CommunityResponse => ({
+const community = (targetAt: string | null): CommunityResponse => ({
   id: 'c1',
   name: 'Team',
   slug: 'team',
   edition:
-    startsAt === null
+    targetAt === null
       ? null
       : {
           label: null,
-          startsAt,
-          startsAtTimezone: 'Europe/Berlin',
+          targetAt,
+          targetTimezone: 'Europe/Berlin',
           phaseTwoStartRound: null,
           gamesFromRound: -24,
           gamesUntilRound: 0,
@@ -28,16 +28,16 @@ const community = (startsAt: string | null): CommunityResponse => ({
 
 const before: CountdownResponse = {
   serverNow: '2026-06-14T21:00:00Z',
-  startsAt: '2026-08-11T09:00:00Z',
-  startsAtTimezone: 'Europe/Berlin',
+  targetAt: '2026-08-11T09:00:00Z',
+  targetTimezone: 'Europe/Berlin',
   round: { number: -58, start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
   nextRound: null,
 }
 
 const after: CountdownResponse = {
   serverNow: '2026-06-14T21:00:00Z',
-  startsAt: '2026-06-14T09:00:00Z',
-  startsAtTimezone: 'Europe/Berlin',
+  targetAt: '2026-06-14T09:00:00Z',
+  targetTimezone: 'Europe/Berlin',
   round: { number: 1, start: '2026-06-14T09:00:00Z', end: '2026-06-15T09:00:00Z' },
   nextRound: null,
 }
@@ -56,8 +56,8 @@ function member(fullName: string, stable: number): RosterMemberResponse {
 // would fetch inside the *next* test case.
 enableAutoUnmount(afterEach)
 
-function mountFallback(startsAt: string | null, members: RosterMemberResponse[] | null = []) {
-  return mount(RoundFallback, { props: { community: community(startsAt), members } })
+function mountFallback(targetAt: string | null, members: RosterMemberResponse[] | null = []) {
+  return mount(RoundFallback, { props: { community: community(targetAt), members } })
 }
 
 describe('RoundFallback', () => {

@@ -6,8 +6,8 @@ import java.time.Instant
 data class RoundDto(val number: Int, val start: Instant, val end: Instant)
 data class CountdownResponse(
     val serverNow: Instant,
-    val startsAt: Instant?,
-    val startsAtTimezone: String,
+    val targetAt: Instant?,
+    val targetTimezone: String,
     val round: RoundDto?,
     val nextRound: RoundDto?,
 )

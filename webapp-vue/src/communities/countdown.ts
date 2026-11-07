@@ -31,19 +31,19 @@ export function nextBaseUnitConfig(cfg: BaseUnitConfig): BaseUnitConfig {
 /**
  * Pure display projection. Round logic stays on the backend; here we only subtract + format
  * absolute instants. Before start (number <= 0): day count = |number|, h:m:s = round.end - now.
- * After start (number > 0): "event running", count up since startsAt. Weeks/months are a cosmetic
- * calendar re-expression of the time to startsAt.
+ * After start (number > 0): "event running", count up since targetAt. Weeks/months are a cosmetic
+ * calendar re-expression of the time to targetAt.
  */
 export function computeView(
   round: Round | null,
-  startsAt: string | null,
+  targetAt: string | null,
   zone: string,
   nowMs: number,
   cfg: BaseUnitConfig,
 ): CountdownView {
-  if (!round || !startsAt) return { state: 'idle', chips: [] }
+  if (!round || !targetAt) return { state: 'idle', chips: [] }
   const now = DateTime.fromMillis(nowMs, { zone })
-  const start = DateTime.fromISO(startsAt, { zone })
+  const start = DateTime.fromISO(targetAt, { zone })
 
   if (round.number > 0) {
     // The base unit applies here too. It used to be ignored, which made the header's readout — the

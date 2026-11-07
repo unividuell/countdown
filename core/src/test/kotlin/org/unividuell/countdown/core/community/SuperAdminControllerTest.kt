@@ -37,8 +37,8 @@ class SuperAdminControllerTest(@Autowired val mockMvc: MockMvc) {
         every { overview.overview() } returns listOf(
             SuperAdminCommunityResponse(
                 id = UUID.fromString("018f0000-0000-7000-8000-0000000000a1"),
-                name = "Alpha", slug = "alpha", startsAt = null,
-                startsAtTimezone = "Europe/Berlin",
+                name = "Alpha", slug = "alpha", targetAt = null,
+                targetTimezone = "Europe/Berlin",
                 createdAt = Instant.parse("2026-01-01T00:00:00Z"),
                 members = listOf(
                     SuperAdminMemberResponse(
@@ -53,7 +53,7 @@ class SuperAdminControllerTest(@Autowired val mockMvc: MockMvc) {
             .andExpect {
                 status { isOk() }
                 jsonPath("$[0].slug") { value("alpha") }
-                jsonPath("$[0].startsAtTimezone") { value("Europe/Berlin") }
+                jsonPath("$[0].targetTimezone") { value("Europe/Berlin") }
                 jsonPath("$[0].members[0].githubLogin") { value("alice") }
                 jsonPath("$[0].members[0].isAdmin") { value(true) }
             }

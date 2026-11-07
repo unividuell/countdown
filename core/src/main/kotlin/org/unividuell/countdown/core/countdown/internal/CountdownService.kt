@@ -24,7 +24,7 @@ class CountdownService(
 
     override fun currentRound(communityId: UUID, now: Instant): Round? {
         val edition = communityQuery.activeEditionOf(communityId) ?: return null
-        return engine.roundAt(now = now, startsAt = edition.startsAt, zone = ZoneId.of(edition.startsAtTimezone))
+        return engine.roundAt(now = now, targetAt = edition.targetAt, zone = ZoneId.of(edition.targetTimezone))
     }
 
     /** Build the display payload for [slug], gated to active members (super-admin allowed). */
@@ -37,15 +37,15 @@ class CountdownService(
         val now = clock.instant()
         // No active edition: there is nothing to count down to, so the display says so.
         val edition = communityQuery.activeEditionOf(communityId) ?: return CountdownResponse(
-            serverNow = now, startsAt = null,
-            startsAtTimezone = CommunityEdition.DEFAULT_TIMEZONE, round = null, nextRound = null,
+            serverNow = now, targetAt = null,
+            targetTimezone = CommunityEdition.DEFAULT_TIMEZONE, round = null, nextRound = null,
         )
-        val zone = ZoneId.of(edition.startsAtTimezone)
-        val current = engine.roundAt(now = now, startsAt = edition.startsAt, zone = zone)
+        val zone = ZoneId.of(edition.targetTimezone)
+        val current = engine.roundAt(now = now, targetAt = edition.targetAt, zone = zone)
         // later in time = number + 1
-        val next = engine.intervalOf(number = current.number + 1, startsAt = edition.startsAt, zone = zone)
+        val next = engine.intervalOf(number = current.number + 1, targetAt = edition.targetAt, zone = zone)
         return CountdownResponse(
-            serverNow = now, startsAt = edition.startsAt, startsAtTimezone = edition.startsAtTimezone,
+            serverNow = now, targetAt = edition.targetAt, targetTimezone = edition.targetTimezone,
             round = current.toDto(), nextRound = next.toDto(),
         )
     }

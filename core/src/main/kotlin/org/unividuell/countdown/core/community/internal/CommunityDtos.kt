@@ -8,8 +8,8 @@ import java.util.UUID
 
 data class EditionResponse(
     val label: String?,
-    val startsAt: Instant,
-    val startsAtTimezone: String,
+    val targetAt: Instant,
+    val targetTimezone: String,
     val phaseTwoStartRound: Int?,
     val gamesFromRound: Int,
     val gamesUntilRound: Int,
@@ -28,15 +28,15 @@ data class CreateCommunityRequest(val name: String)
 data class UpdateCommunityRequest(val name: String)
 data class EditionRequest(
     val label: String?,
-    val startsAt: Instant,
-    val startsAtTimezone: String,
+    val targetAt: Instant,
+    val targetTimezone: String,
     val phaseTwoStartRound: Int?,
     val gamesFromRound: Int,
 ) {
     fun toDraft() = EditionDraft(
         label = label,
-        startsAt = startsAt,
-        startsAtTimezone = startsAtTimezone,
+        targetAt = targetAt,
+        targetTimezone = targetTimezone,
         phaseTwoStartRound = phaseTwoStartRound,
         gamesFromRound = gamesFromRound,
     )
@@ -65,8 +65,8 @@ data class RosterMemberResponse(
 
 fun CommunityEdition.toResponse(frozen: Boolean) = EditionResponse(
     label = label,
-    startsAt = startsAt,
-    startsAtTimezone = startsAtTimezone,
+    targetAt = targetAt,
+    targetTimezone = targetTimezone,
     phaseTwoStartRound = phaseTwoStartRound,
     gamesFromRound = gamesFromRound,
     gamesUntilRound = gamesUntilRound,
@@ -99,6 +99,6 @@ data class SuperAdminMemberResponse(
 )
 data class SuperAdminCommunityResponse(
     val id: UUID, val name: String, val slug: String,
-    val startsAt: Instant?, val startsAtTimezone: String, val createdAt: Instant?,
+    val targetAt: Instant?, val targetTimezone: String, val createdAt: Instant?,
     val members: List<SuperAdminMemberResponse>,
 )

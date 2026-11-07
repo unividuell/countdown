@@ -86,8 +86,8 @@ describe('communities api', () => {
   it('creates and replaces the active edition', async () => {
     const body: EditionRequest = {
       label: null,
-      startsAt: '2026-06-25T09:00:00.000Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00.000Z',
+      targetTimezone: 'Europe/Berlin',
       phaseTwoStartRound: null,
       gamesFromRound: -24,
     }

@@ -25,8 +25,8 @@ export function publishCommunity(c: CommunityResponse): void {
   activeCommunity.value = {
     slug: c.slug,
     name: c.name,
-    startsAt: c.edition?.startsAt ?? null,
-    startsAtTimezone: c.edition?.startsAtTimezone ?? 'Europe/Berlin',
+    targetAt: c.edition?.targetAt ?? null,
+    targetTimezone: c.edition?.targetTimezone ?? 'Europe/Berlin',
     editionLabel: c.edition?.label ?? null,
     viewerIsAdmin: c.viewerIsAdmin,
     pendingCount: c.pendingCount,

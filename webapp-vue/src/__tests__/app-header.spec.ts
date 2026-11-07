@@ -58,8 +58,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -71,12 +71,12 @@ describe('App main header', () => {
     expect(w.find('[data-test="countdown-widget"]').exists()).toBe(true)
   })
 
-  it('shows the title without a year suffix and hides the countdown when startsAt is unset', () => {
+  it('shows the title without a year suffix and hides the countdown when targetAt is unset', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: null,
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: null,
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -91,8 +91,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: 'Hüttenwochenende',
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -109,8 +109,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2025-12-31T23:30:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2025-12-31T23:30:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -193,8 +193,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -226,8 +226,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,
@@ -257,8 +257,8 @@ describe('App main header', () => {
     activeCommunity.value = {
       slug: 'huette',
       name: 'Hütte Hütte',
-      startsAt: '2026-06-25T09:00:00Z',
-      startsAtTimezone: 'Europe/Berlin',
+      targetAt: '2026-06-25T09:00:00Z',
+      targetTimezone: 'Europe/Berlin',
       editionLabel: null,
       viewerIsAdmin: false,
       pendingCount: 0,

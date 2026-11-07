@@ -40,8 +40,8 @@ class SuperAdminOverviewService(
                     id = id,
                     name = c.name,
                     slug = c.slug,
-                    startsAt = edition?.startsAt,
-                    startsAtTimezone = edition?.startsAtTimezone ?: CommunityEdition.DEFAULT_TIMEZONE,
+                    targetAt = edition?.targetAt,
+                    targetTimezone = edition?.targetTimezone ?: CommunityEdition.DEFAULT_TIMEZONE,
                     createdAt = c.createdAt,
                     members = byCommunity[id].orEmpty()
                         .map { it.toResponse(usersById[it.userId]) }

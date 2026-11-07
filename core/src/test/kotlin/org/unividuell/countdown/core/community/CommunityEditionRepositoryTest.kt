@@ -44,7 +44,7 @@ class CommunityEditionRepositoryTest(
 
         saved.id.shouldNotBeNull().version() shouldBe 7
         saved.createdAt.shouldNotBeNull()
-        saved.startsAtTimezone shouldBe "Europe/Berlin"
+        saved.targetTimezone shouldBe "Europe/Berlin"
         saved.gamesUntilRound shouldBe 0
         saved.gamesFromRound shouldBe -30
 
@@ -118,8 +118,8 @@ class CommunityEditionRepositoryTest(
 
     // Same rollback-only caveat as above: assert the throw, query nothing afterwards.
     @Test
-    fun `rejects an edition without startsAt at the database`() {
-        val communityId = aCommunity("edition-no-starts-at")
+    fun `rejects an edition without targetAt at the database`() {
+        val communityId = aCommunity("edition-no-target-at")
 
         shouldThrow<DataIntegrityViolationException> {
             jdbc.update("INSERT INTO community.editions (community_id, games_from_round) VALUES (?, -5)", communityId)
@@ -131,7 +131,7 @@ class CommunityEditionRepositoryTest(
         val communityId = aCommunity("edition-no-from-round")
 
         shouldThrow<DataIntegrityViolationException> {
-            jdbc.update("INSERT INTO community.editions (community_id, starts_at) VALUES (?, now())", communityId)
+            jdbc.update("INSERT INTO community.editions (community_id, target_at) VALUES (?, now())", communityId)
         }
     }
 }

@@ -7,7 +7,7 @@ import { editionCells } from '../editionGrid'
 // Games from -31: the calendar opens three rounds earlier, at -34 = Sun 15 Nov 18:00.
 const cells = editionCells(
   {
-    startsAt: '2026-12-20T17:00:00Z',
+    targetAt: '2026-12-20T17:00:00Z',
     zone: 'Europe/Berlin',
     gamesFromRound: -31,
     gamesUntilRound: 0,
@@ -42,7 +42,7 @@ describe('EditionCalendar', () => {
     // Games from -48 open the calendar at -51 = Thu 29 Oct; Sun 1 Nov shares its week column.
     const shared = editionCells(
       {
-        startsAt: '2026-12-20T17:00:00Z',
+        targetAt: '2026-12-20T17:00:00Z',
         zone: 'Europe/Berlin',
         gamesFromRound: -48,
         gamesUntilRound: 0,
@@ -62,7 +62,7 @@ describe('EditionCalendar', () => {
       .findAll('[data-test="edition-legend"] li')
       .map((li) => li.text())
 
-    expect(legend).toEqual(['kein Spiel', 'Phase 1', 'Phase 2', 'Start', 'heute', 'ab hier fix'])
+    expect(legend).toEqual(['kein Spiel', 'Phase 1', 'Phase 2', 'Ziel', 'heute', 'ab hier fix'])
   })
 
   it('shows the detail line of a tapped cell', async () => {
@@ -81,7 +81,7 @@ describe('EditionCalendar', () => {
 
     const moved = editionCells(
       {
-        startsAt: '2026-12-20T17:00:00Z',
+        targetAt: '2026-12-20T17:00:00Z',
         zone: 'Europe/Berlin',
         gamesFromRound: -30,
         gamesUntilRound: 0,

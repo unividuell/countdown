@@ -15,8 +15,8 @@ export const communityKey: InjectionKey<CommunityContext> = Symbol('community')
 export interface ActiveCommunity {
   slug: string
   name: string
-  startsAt: string | null
-  startsAtTimezone: string
+  targetAt: string | null
+  targetTimezone: string
   editionLabel: string | null
   viewerIsAdmin: boolean
   pendingCount: number
