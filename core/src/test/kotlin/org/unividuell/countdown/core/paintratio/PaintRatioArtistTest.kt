@@ -34,7 +34,54 @@ class PaintRatioArtistTest {
     fun `the tolerances are the spec's`() {
         Shape.entries.associateWith { it.tolerance } shouldBe mapOf(
             Shape.SPARKLE to 0.05, Shape.REGION to 0.08, Shape.SPLATTER to 0.05, Shape.FREEHAND to 0.05,
+            Shape.SIERPINSKI_TRIANGLE to 0.03, Shape.SIERPINSKI_CARPET to 0.05, Shape.PYTHAGORAS_TREE to 0.03,
+            Shape.FERN to 0.03, Shape.JULIA to 0.03, Shape.ROSE to 0.01, Shape.SPIROGRAPH to 0.01,
+            Shape.LISSAJOUS to 0.03, Shape.PHYLLOTAXIS to 0.01, Shape.TRUCHET to 0.05, Shape.SPIRAL to 0.03,
         )
+    }
+
+    @Test
+    fun `every shape but freehand paints in one colour`() {
+        for (shape in Shape.entries - Shape.FREEHAND) {
+            for (seed in 1..10) {
+                withClue("$shape, seed $seed") {
+                    paint(shape = shape, seed = seed).layers.map { it.argb }.toSet().size shouldBe 1
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `the fractals repeat their part per level`() {
+        for (seed in 1..20) {
+            // Depth 4–6: 3ⁿ triangles. Depth 3–4: 8ⁿ squares. Depth 9–11: 2ⁿ⁺¹ − 1 squares.
+            paint(shape = Shape.SIERPINSKI_TRIANGLE, seed = seed).layers.size shouldBeIn listOf(81, 243, 729)
+            paint(shape = Shape.SIERPINSKI_CARPET, seed = seed).layers.size shouldBeIn listOf(512, 4096)
+            paint(shape = Shape.PYTHAGORAS_TREE, seed = seed).layers.size shouldBeIn listOf(1023, 2047, 4095)
+        }
+    }
+
+    @Test
+    fun `fern and phyllotaxis are dots`() {
+        for (seed in 1..20) {
+            val fern = paint(shape = Shape.FERN, seed = seed).layers.map { it.mark.shouldBeInstanceOf<Capsule>() }
+            fern.size shouldBeInRange 4000..12000
+            fern.filterNot { it.ax == it.bx && it.ay == it.by && it.radius in 3..5 } shouldBe emptyList()
+
+            val seeds = paint(shape = Shape.PHYLLOTAXIS, seed = seed).layers
+                .map { it.mark.shouldBeInstanceOf<Capsule>() }
+            seeds.size shouldBeInRange 150..700
+            seeds.filterNot { it.ax == it.bx && it.ay == it.by } shouldBe emptyList()
+        }
+    }
+
+    @Test
+    fun `rose and spirograph are one area filled even-odd`() {
+        for (seed in 1..20) {
+            for (shape in listOf(Shape.ROSE, Shape.SPIROGRAPH)) {
+                paint(shape = shape, seed = seed).layers.single().mark.shouldBeInstanceOf<Area>()
+            }
+        }
     }
 
     @Test
