@@ -24,14 +24,15 @@ vi.mock('@/profile/GlobalProfileBlock.vue', () => ({
   default: {
     template:
       '<button data-test="global-block" :data-several="String(severalCommunities)" @click="$emit(\'saved\')" />',
-    props: ['severalCommunities'],
+    props: { severalCommunities: Boolean },
     emits: ['saved'],
   },
 }))
 vi.mock('@/profile/CommunityProfileBlock.vue', () => ({
   default: {
-    template: '<button data-test="community-block" @click="$emit(\'saved\')" />',
-    props: ['slug', 'communityName'],
+    template:
+      '<button data-test="community-block" :data-sole="String(!!sole)" @click="$emit(\'saved\')" />',
+    props: { slug: String, communityName: String, sole: Boolean },
     emits: ['saved'],
     methods: { refreshInherited },
   },
@@ -87,14 +88,17 @@ describe('/c/:slug/profile', () => {
   it('offers the split only to a member of several communities', async () => {
     const Page = (await import('@/pages/c/[slug]/profile.vue')).default
     const w = mount(Page)
+    expect(w.get('[data-test="community-block"]').attributes('data-sole')).toBe('false')
     expect(w.get('[data-test="global-block"]').attributes('data-several')).toBe('true')
   })
 
-  it('shows a member of one community the global profile alone', async () => {
+  // Edits land in the community and nowhere else: leaving or joining another community later
+  // cannot change what applies here.
+  it('lets a member of one community edit this community alone', async () => {
     active.value = [{ id: '1', name: 'Team', slug: 'team' }]
     const Page = (await import('@/pages/c/[slug]/profile.vue')).default
     const w = mount(Page)
-    expect(w.find('[data-test="community-block"]').exists()).toBe(false)
-    expect(w.get('[data-test="global-block"]').attributes('data-several')).toBe('false')
+    expect(w.get('[data-test="community-block"]').attributes('data-sole')).toBe('true')
+    expect(w.find('[data-test="global-block"]').exists()).toBe(false)
   })
 })
