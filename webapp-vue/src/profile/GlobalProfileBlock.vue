@@ -18,6 +18,9 @@ import { saveErrorMessage } from '@/profile/saveError'
 // emit nobody listens to costs nothing.
 const emit = defineEmits<{ saved: [] }>()
 
+// Without several communities the block is the whole profile and must not hint at others.
+const props = defineProps<{ severalCommunities?: boolean }>()
+
 const { user, bootstrap } = useAuth()
 const draft = useProfileDraft(previewAvatar)
 const { busy, error, run } = useAction(saveErrorMessage)
@@ -61,10 +64,13 @@ function save(): Promise<void> {
 
 <template>
   <section class="rounded border border-neutral-200 p-4">
-    <h2 class="mb-1 text-lg font-semibold">Überall</h2>
-    <p class="mb-4 text-sm text-neutral-600">
-      So erscheinst du in jeder Spielgemeinschaft, die nichts anderes sagt.
-    </p>
+    <template v-if="props.severalCommunities">
+      <h2 class="mb-1 text-lg font-semibold">Überall</h2>
+      <p class="mb-4 text-sm text-neutral-600">
+        So erscheinst du in jeder Spielgemeinschaft, die nichts anderes sagt.
+      </p>
+    </template>
+    <p v-else class="mb-4 text-sm text-neutral-600">So sehen dich die anderen.</p>
 
     <div class="flex items-center gap-3">
       <Avatar

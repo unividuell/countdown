@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 
 const refresh = vi.fn().mockResolvedValue(undefined)
 const refreshInherited = vi.fn()
@@ -9,9 +10,21 @@ vi.mock('@/communities/context', () => ({
     refresh,
   }),
 }))
+const active = ref([
+  { id: '1', name: 'Team', slug: 'team' },
+  { id: '2', name: 'Other', slug: 'other' },
+])
+vi.mock('@/communities/useCommunities', async () => {
+  const { computed } = await import('vue')
+  return {
+    useCommunities: () => ({ active, severalCommunities: computed(() => active.value.length > 1) }),
+  }
+})
 vi.mock('@/profile/GlobalProfileBlock.vue', () => ({
   default: {
-    template: '<button data-test="global-block" @click="$emit(\'saved\')" />',
+    template:
+      '<button data-test="global-block" :data-several="String(severalCommunities)" @click="$emit(\'saved\')" />',
+    props: ['severalCommunities'],
     emits: ['saved'],
   },
 }))
@@ -26,6 +39,10 @@ vi.mock('@/profile/CommunityProfileBlock.vue', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  active.value = [
+    { id: '1', name: 'Team', slug: 'team' },
+    { id: '2', name: 'Other', slug: 'other' },
+  ]
 })
 
 describe('/c/:slug/profile', () => {
@@ -65,5 +82,19 @@ describe('/c/:slug/profile', () => {
     const w = mount(Page)
     await w.get('[data-test="community-block"]').trigger('click')
     expect(refreshInherited).not.toHaveBeenCalled()
+  })
+
+  it('offers the split only to a member of several communities', async () => {
+    const Page = (await import('@/pages/c/[slug]/profile.vue')).default
+    const w = mount(Page)
+    expect(w.get('[data-test="global-block"]').attributes('data-several')).toBe('true')
+  })
+
+  it('shows a member of one community the global profile alone', async () => {
+    active.value = [{ id: '1', name: 'Team', slug: 'team' }]
+    const Page = (await import('@/pages/c/[slug]/profile.vue')).default
+    const w = mount(Page)
+    expect(w.find('[data-test="community-block"]').exists()).toBe(false)
+    expect(w.get('[data-test="global-block"]').attributes('data-several')).toBe('false')
   })
 })

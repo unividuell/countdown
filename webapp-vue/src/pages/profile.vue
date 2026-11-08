@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import GlobalProfileBlock from '@/profile/GlobalProfileBlock.vue'
+import { useCommunities } from '@/communities/useCommunities'
+
+const { severalCommunities } = useCommunities()
 </script>
 
 <template>
   <section class="mx-auto max-w-lg space-y-4 py-8">
     <h1 class="text-xl font-semibold">Profil</h1>
-    <GlobalProfileBlock />
+    <GlobalProfileBlock :several-communities="severalCommunities" />
   </section>
 </template>
