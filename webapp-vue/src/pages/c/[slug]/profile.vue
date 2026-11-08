@@ -7,8 +7,11 @@ import { useTemplateRef } from 'vue'
 import CommunityProfileBlock from '@/profile/CommunityProfileBlock.vue'
 import GlobalProfileBlock from '@/profile/GlobalProfileBlock.vue'
 import { useCommunityContext } from '@/communities/context'
+import { useCommunities } from '@/communities/useCommunities'
 
 const { community, refresh } = useCommunityContext()
+// A member of one community edits this community alone — see CommunityProfileBlock's `sole`.
+const { severalCommunities } = useCommunities()
 const communityBlock = useTemplateRef<InstanceType<typeof CommunityProfileBlock>>('communityBlock')
 
 function refreshCommunity(): void {
@@ -31,12 +34,15 @@ function onGlobalSaved(): void {
 <template>
   <section class="mx-auto max-w-lg space-y-4 py-8">
     <h1 class="text-xl font-semibold">Profil</h1>
+    <!-- Keyed: the switch's state means something else in each mode, so it must not carry over. -->
     <CommunityProfileBlock
+      :key="String(severalCommunities)"
       ref="communityBlock"
       :slug="community.slug"
       :community-name="community.name"
+      :sole="!severalCommunities"
       @saved="refreshCommunity"
     />
-    <GlobalProfileBlock @saved="onGlobalSaved" />
+    <GlobalProfileBlock v-if="severalCommunities" several-communities @saved="onGlobalSaved" />
   </section>
 </template>
