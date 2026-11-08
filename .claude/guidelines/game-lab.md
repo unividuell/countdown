@@ -176,6 +176,14 @@ opening state in a round the viewer has already spent: Guess Hue's wheel would s
 angle rather than on the angle that was submitted. Narrow it defensively; it is `unknown` by contract,
 and `typeof x === 'number'` alone lets `NaN` through all the way to the screen.
 
+## Keyboard shortcuts are bare keys
+
+The browser owns every modifier combination, and some it never hands to the page: ⌘⇧W closes the
+window in Chrome, Safari and Firefox, ⌘⇧R reloads. So the lab's shortcuts are single letters with
+**no** modifier (`R` roll, `W` switch player, `X` reset, `Z` forget mine): any modifier, a held key
+(`repeat`) or focus in an editable field lets the event pass untouched. A game that wants letter keys
+on `document` collides with these — move the lab's, never the game's.
+
 ## What the lab deliberately cannot check
 
 The lab's seed is **public, in the URL** — requirement 2 demands it. So the lab verifies "the
