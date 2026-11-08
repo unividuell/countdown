@@ -83,7 +83,7 @@ function shortJson(value: unknown): string {
           @click="emit('forgetMine')"
         >
           <IconX class="size-3.5" />
-          <span aria-hidden="true" class="font-mono text-[10px] leading-none">(⌘⇧Z)</span>
+          <span aria-hidden="true" class="font-mono text-[10px] leading-none">(Z)</span>
         </button>
       </li>
     </ul>
@@ -98,7 +98,7 @@ function shortJson(value: unknown): string {
       >
         <IconRotateCcw class="size-3.5" />
         Runde zurücksetzen
-        <span aria-hidden="true" class="font-mono text-[10px]">(⌘⇧X)</span>
+        <span aria-hidden="true" class="font-mono text-[10px]">(X)</span>
       </button>
     </div>
   </div>

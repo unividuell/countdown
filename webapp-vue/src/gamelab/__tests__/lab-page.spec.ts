@@ -318,6 +318,19 @@ describe('lab page', () => {
     expect(Number.isInteger(seed)).toBe(true)
   })
 
+  it('rolls a new seed into the URL on R', async () => {
+    await mountPage()
+    const event = new KeyboardEvent('keydown', {
+      key: 'r',
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+    const seed = Number((replace.mock.calls[0]![0] as { query: { seed: number } }).query.seed)
+    expect(Number.isInteger(seed)).toBe(true)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
   it('refreshes to pick up another window s guess', async () => {
     await mountPage()
     await tool('lab-refresh').trigger('click')
@@ -356,6 +369,24 @@ describe('lab page', () => {
     const redirect = new URL(href!, 'https://example.test').searchParams.get('redirect')
 
     expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=TWO')
+  })
+
+  it('switches player on W, back to the same seed and phase', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign } as unknown as Location)
+    setQuery({ seed: '42', phase: 'TWO' })
+    await mountPage()
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'w',
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+
+    expect(assign).toHaveBeenCalledWith(tool('lab-switch-player').attributes('href'))
+    expect(event.defaultPrevented).toBe(true)
+    vi.unstubAllGlobals()
   })
 
   it('reopens the round when only the phase changes', async () => {
@@ -631,11 +662,11 @@ describe('lab page', () => {
     const forget = w.get('[data-test="lab-entry-forget-mine"]')
     const reset = w.get('[data-test="lab-entries-reset"]')
 
-    // `labShortcut` listens for meta+shift+z and meta+shift+x — the hints must say exactly that.
-    expect(forget.get('[aria-hidden="true"]').text()).toBe('(⌘⇧Z)')
+    // `labShortcut` listens for the bare keys z and x — the hints must say exactly that.
+    expect(forget.get('[aria-hidden="true"]').text()).toBe('(Z)')
     expect(forget.attributes('aria-label')).toBe('Meinen Guess löschen')
 
-    expect(reset.get('[aria-hidden="true"]').text()).toBe('(⌘⇧X)')
+    expect(reset.get('[aria-hidden="true"]').text()).toBe('(X)')
     expect(reset.text()).toContain('Runde zurücksetzen')
   })
 
@@ -854,14 +885,12 @@ describe('lab page', () => {
     expect(spy).toHaveBeenCalledTimes(3)
   })
 
-  it('executes shortcuts ⌘⇧Z and ⌘⇧X when not in an editable target and not busy', async () => {
+  it('executes shortcuts Z and X when not in an editable target and not busy', async () => {
     const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
     await mountPage()
 
     const eventZ = new KeyboardEvent('keydown', {
       key: 'z',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -873,8 +902,6 @@ describe('lab page', () => {
 
     const eventX = new KeyboardEvent('keydown', {
       key: 'x',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -895,8 +922,6 @@ describe('lab page', () => {
     const seedInput = document.querySelector('[data-test="lab-seed"]') as HTMLInputElement
     const eventInInput = new KeyboardEvent('keydown', {
       key: 'x',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -907,8 +932,6 @@ describe('lab page', () => {
     await tool('lab-reset').trigger('click')
     const eventBusy = new KeyboardEvent('keydown', {
       key: 'z',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })

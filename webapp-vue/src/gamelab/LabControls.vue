@@ -11,9 +11,8 @@
  * the drawer's rows and would read as a foreign object at any other height or inset.
  */
 import { computed, ref, watch } from 'vue'
-import IconArrowUp from '~icons/lucide/arrow-up'
-import IconCommand from '~icons/lucide/command'
 import { parseSeed } from './seed'
+import { switchPlayerHref } from './switchPlayer'
 import type { LabAwardRule, LabPhase } from './types'
 
 const props = defineProps<{
@@ -122,6 +121,8 @@ const ruleText = computed(() => {
     <button
       type="button"
       data-test="lab-roll"
+      title="R"
+      aria-keyshortcuts="R"
       class="h-11 shrink-0 cursor-pointer rounded-md border px-2 text-sm"
       @click="emit('roll')"
     >
@@ -188,8 +189,6 @@ const ruleText = computed(() => {
       aria-hidden="true"
       class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
     >
-      <IconCommand class="size-3" />
-      <IconArrowUp class="size-3" />
       <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">X</kbd>
     </span>
   </button>
@@ -205,8 +204,6 @@ const ruleText = computed(() => {
       aria-hidden="true"
       class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
     >
-      <IconCommand class="size-3" />
-      <IconArrowUp class="size-3" />
       <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">Z</kbd>
     </span>
   </button>
@@ -214,9 +211,15 @@ const ruleText = computed(() => {
        brings us back to this exact seed so a player switch does not cost the round. -->
   <a
     data-test="lab-switch-player"
-    :href="`/login/start?redirect=${encodeURIComponent(props.returnPath)}`"
+    :href="switchPlayerHref(props.returnPath)"
     :class="`${ROW} cursor-pointer hover:bg-neutral-100`"
   >
     Spieler wechseln
+    <span
+      aria-hidden="true"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
+    >
+      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">W</kbd>
+    </span>
   </a>
 </template>

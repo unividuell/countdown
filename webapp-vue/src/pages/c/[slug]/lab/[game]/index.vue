@@ -21,6 +21,7 @@ import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
 import { labShortcut } from '@/gamelab/shortcuts'
+import { switchPlayerHref } from '@/gamelab/switchPlayer'
 import {
   castLabVote,
   forgetMyLabEntry,
@@ -54,6 +55,9 @@ const seed = computed(() => parseSeed(route.query.seed))
 // value is visible at a glance rather than an error state, and every link that predates this
 // selector keeps opening phase one.
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
+
+// Where a player switch comes back to: phase included, or the other tester's phase-two round is lost.
+const returnPath = computed(() => `${route.path}?seed=${seed.value}&phase=${phase.value}`)
 
 const round = ref<LabRoundResponse | null>(null)
 /** The lab round's assets by name, the same shape a real round hands its game. */
@@ -188,6 +192,10 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
     void run(forgetMyLabEntry, true)
   } else if (shortcut === 'reset') {
     void run(resetLabRound, true)
+  } else if (shortcut === 'roll') {
+    writeSeed(rollSeed())
+  } else if (shortcut === 'switchPlayer') {
+    window.location.assign(switchPlayerHref(returnPath.value))
   }
 })
 
@@ -277,7 +285,7 @@ watch(
         :award-rule="round?.awardRule"
         :award-points="round?.awardPoints"
         :difficulty="round?.difficulty"
-        :return-path="`${route.path}?seed=${seed}&phase=${phase}`"
+        :return-path="returnPath"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
         @phase-change="writePhase"
