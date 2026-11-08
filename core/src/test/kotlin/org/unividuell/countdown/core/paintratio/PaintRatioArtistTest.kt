@@ -16,7 +16,6 @@ class PaintRatioArtistTest {
     private val width = PaintCanvas.WIDTH
     private val height = PaintCanvas.HEIGHT
     private val brushes = PaintCanvas.BRUSHES
-    private val black = 0xFF000000.toInt()
 
     private fun paint(shape: Shape, seed: Int) =
         PaintRatioArtist.paint(shape = shape, artSeed = seed, width = width, height = height, brushes = brushes)
@@ -31,17 +30,10 @@ class PaintRatioArtistTest {
         brushes = brushes,
     )
 
-    /** Each colour of a work with its capsules' radii (areas are butt ends): tells the fill from the outline. */
-    private fun radiiByColour(shape: Shape, seed: Int) = paint(shape = shape, seed = seed).layers
-        .groupBy(keySelector = { it.argb }, valueTransform = { (it.mark as? Capsule)?.radius })
-        .mapValues { (_, radii) -> radii.filterNotNull().toSet() }
-
     @Test
     fun `the tolerances are the spec's`() {
         Shape.entries.associateWith { it.tolerance } shouldBe mapOf(
-            Shape.SPARKLE to 0.05, Shape.CIRCLE to 0.01, Shape.ELLIPSE to 0.01, Shape.REGION to 0.08,
-            Shape.POLYGON to 0.01, Shape.RING to 0.01, Shape.STRIPES to 0.03, Shape.SPLATTER to 0.05,
-            Shape.FREEHAND to 0.05,
+            Shape.SPARKLE to 0.05, Shape.REGION to 0.08, Shape.SPLATTER to 0.05, Shape.FREEHAND to 0.05,
         )
     }
 
@@ -68,13 +60,9 @@ class PaintRatioArtistTest {
     }
 
     @Test
-    fun `the original four wear the original colours`() {
-        val fillAndOutline = mapOf(0xFF841ED6.toInt() to setOf(Rough.FILL_RADIUS), black to setOf(Rough.OUTLINE_RADIUS))
-
+    fun `sparkle and region wear the original colours`() {
         for (seed in 1..20) {
             paint(shape = Shape.SPARKLE, seed = seed).layers.map { it.argb }.toSet() shouldBe setOf(0xFFEFC202.toInt())
-            radiiByColour(shape = Shape.CIRCLE, seed = seed) shouldBe fillAndOutline
-            radiiByColour(shape = Shape.ELLIPSE, seed = seed) shouldBe fillAndOutline
             paint(shape = Shape.REGION, seed = seed).layers.map { it.argb }.toSet() shouldBe setOf(0xFF008000.toInt())
         }
     }

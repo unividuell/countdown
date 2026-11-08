@@ -60,7 +60,7 @@ class PaintRatioGameTypeTest {
     private fun draw(random: GameRandom = random(), context: RoundContext = context()) =
         game.draw(random = random, context = context)
 
-    private fun params(shape: Shape = Shape.CIRCLE, targetCells: Int = 100_000, tolerance: Double? = 0.01) =
+    private fun params(shape: Shape = Shape.SPARKLE, targetCells: Int = 100_000, tolerance: Double? = 0.01) =
         PaintRatioParams(
             shape = shape,
             artSeed = 1,
