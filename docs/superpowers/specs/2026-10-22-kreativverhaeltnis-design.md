@@ -31,8 +31,8 @@ Es ist das einzige kreative Spiel der Plattform. Was es trägt, laut Clemens:
 - **Die Gemälde danach gemeinsam anzuschauen ist witzig.** Sie werden in der Auflösung und in der
   Historie veröffentlicht.
 - **Das Abschätzen ist schwer, und das soll so bleiben.** Die Vorlage verschwindet mit dem ersten
-  Strich, also braucht man vorher einen Plan. Die rauen Formen (Schraffur mit Lücken, ein Umriss, der
-  keine volle Ellipse ist, Fransen über den Rand) machen das Schätzen erst schwierig. Die Werke des
+  Strich, also braucht man vorher einen Plan. Die Formen (Fraktale mit Lücken, Kurven, die sich selbst
+  überschneiden, Punktwolken) machen das Schätzen erst schwierig. Die Werke des
   Kollektivs waren im Original „nicht sehr kreativ, aber gerade schwer genug“.
 
 Was im Original schiefging und hier strukturell verschwindet:
@@ -121,7 +121,7 @@ Referenzschleife über alle Felder prüft den schnellen Rasterer.
 
 ## Die Werke des Kollektivs
 
-Der Server zeichnet die Vorlage beim Ziehen selbst. **Zehn Formen**, gleichverteilt gezogen aus denen,
+Der Server zeichnet die Vorlage beim Ziehen selbst. **Fünfzehn Formen**, gleichverteilt gezogen aus denen,
 die diese Edition noch nicht hatte (`context.previousParams`); bleibt keine übrig, zählen wieder alle —
 wörtlich die Regel, mit der Entstauber seine Bilder zieht. `previousParams` ist ungeordnet, eine Regel
 „nicht wie die Vorrunde“ ließe sich daraus nicht lesen.
@@ -129,21 +129,31 @@ wörtlich die Regel, mit der Entstauber seine Bilder zieht. `previousParams` ist
 | Form | Beschreibung | Toleranz Phase eins |
 |---|---|---|
 | `SPARKLE` Funken | 10–2000 Tupfer, Radius 20, gleichmäßig verteilt, `#EFC202` (Original) | 5 % |
-| `CIRCLE` Kreis | rau, Mitte 40…W−40 / 40…H−40, Radius 40–600 (Original) | 1 % |
-| `ELLIPSE` Ellipse | rau, Mitte wie Kreis, Breite 40–1200, Höhe 80–1200, darf hinausragen (Original) | 1 % |
 | `REGION` Region | 3–90 Punkte über die ganze Leinwand, ein Vieleck, Gerade-ungerade, scharf, grün (Original) | 8 % |
-| `POLYGON` Vieleck oder Stern | rau, 3–8 Ecken oder 5–9 Zacken | 1 % |
-| `RING` Ring | raue Ellipse mit Loch | 1 % |
-| `STRIPES` Streifen | einige dicke, raue Linien quer übers Bild | 3 % |
 | `SPLATTER` Spritzer | Tupfer in verschiedenen Größen, in Häufungen | 5 % |
 | `FREEHAND` Freihand | das Kollektiv malt mit den Werkzeugen der Spieler (siehe unten) | 5 % |
-| `COMPOSITION` Komposition | zwei bis drei andere Formen übereinander | 8 % |
+| `SIERPINSKI_TRIANGLE` Sierpinski-Dreieck | gedrehtes Dreieck, Tiefe 4–6 | 3 % |
+| `SIERPINSKI_CARPET` Sierpinski-Teppich | Quadrat ohne mittleres Neuntel, Tiefe 3–4, gerade oder gedreht | 5 % |
+| `PYTHAGORAS_TREE` Pythagoras-Baum | Quadrate auf den Katheten, 9–11 Ebenen, Winkel 30–60° | 3 % |
+| `FERN` Farn | Barnsley-Farn, 4000–12000 Tupfer, zufällig gespiegelt | 3 % |
+| `JULIA` Julia-Menge | gefüllte Menge zu einem von sechs Parametern plus jedes zweite oder dritte Fluchtband | 3 % |
+| `ROSE` Rosenkurve | r = R·cos(k·θ), k aus zehn Brüchen, Gerade-ungerade | 1 % |
+| `SPIROGRAPH` Spirograph | Hypotrochoide, Stift auf oder außerhalb des rollenden Kreises, Gerade-ungerade | 1 % |
+| `LISSAJOUS` Lissajous-Figur | teilerfremde Frequenzen 1–5, eine dicke Linie | 3 % |
+| `PHYLLOTAXIS` Phyllotaxis | Sonnenblume, 150–700 Tupfer im goldenen Winkel | 1 % |
+| `TRUCHET` Truchet-Kacheln | Kacheln 75/100/150 mit je zwei Viertelbögen | 5 % |
+| `SPIRAL` Log. Spirale | 1–4 logarithmische Arme, dicker nach außen | 3 % |
 
-Die Toleranzen der vier Originalformen sind die des Originals, die übrigen meine Startwerte. Nachgestimmt
-wird im Labor. Die Toleranz ist ein Absolutwert in Prozentpunkten des Anteils, wie im Original.
+Die Toleranzen von Funken und Region sind die des Originals. Die übrigen hat Clemens am 2026-11-08
+anhand gerenderter Beispiele festgelegt. Die Toleranz ist ein Absolutwert in Prozentpunkten des
+Anteils, wie im Original.
 
-Die Bereiche der Originalformen sind die des Originals, vom 300 × 225-Canvas mit Faktor 4 übertragen.
-Die Bereiche der neuen Formen legt der Umsetzer fest, mit Blick aufs Labor.
+Kreis, Ellipse, Ring, Vieleck/Stern, Streifen und Komposition sind seit 2026-11-08 gestrichen (Clemens:
+„häßlich“). Mit ihnen ging der roughjs-Nachbau: alle neuen Formen sind scharf gefüllt, der raue Look
+stünde allein.
+
+Die Bereiche von Funken und Region sind die des Originals, vom 300 × 225-Canvas mit Faktor 4 übertragen.
+Die Bereiche der übrigen Formen legt der Umsetzer fest, mit Blick aufs Labor.
 
 **Mindestziel: der Zielanteil ist mindestens die doppelte Toleranz seiner Form** (Clemens, nach dem
 Gegenlesen). Ohne diese Regel trifft in Phase eins ein einziger Tupfer jedes Ziel, das kleiner ist als
@@ -158,49 +168,22 @@ Toleranz verfehlt ein Tupfer immer.
 - Nach 100 Versuchen scheitert `draw` laut (`check`). Das passiert nur mit einem kaputten Zeichner;
   die Bereiche der neuen Formen sind so zu wählen, dass das Mindestziel meist beim ersten Zug hält.
 
-### Der raue Strich, nach roughjs
-
-Kreis, Ellipse, Vieleck/Stern, Ring und Streifen tragen den Look von [roughjs](https://roughjs.com)
-(MIT, Preet Shihn). Übertragen wird **roughjs 4.6.6 nah am Code**, mit den Optionen des Originals
-(`fillWeight 4`, sonst roughjs-Standard) und **fester Dichte wie im Original** (Clemens, 2026-10-23,
-nach dem Vergleich mit dem Original: „Im Original wurde mehr gefüllt, es waren feine Störungen drin,
-und zwar unregelmäßig.“). Nicht übernommen wird nur roughjs' eigene Zufallsfolge:
-
-- **Pixelraum des Originals:** gerechnet wird auf dessen 300 × 225-Canvas, ausgegeben mal 4. So
-  behalten alle Längen-Schwellen in roughjs ihre Bedeutung.
-- **Umriss:** schwarz, `strokeWidth 1` (4 Einheiten), jede Kante **zweimal** gezogen (`_doubleLine`).
-  Die Ellipse kommt aus roughjs' eigener Ellipse, darum ist es „keine volle Ellipse“.
-- **Füllung:** Linien im Winkel −41°, `fillWeight 4` (16 Einheiten) im Abstand 4 px (16 Einheiten),
-  **jede Linie zweimal** mit eigenem Zufallsversatz. Daher die feinen, unregelmäßigen Risse und die
-  Fransen über den Umriss.
-- **Füllart, pro Runde gezogen:** Schraffur, Kreuzschraffur, Zickzack oder Punkte, je als roughjs'
-  gleichnamige Füllung. Bei der Original-Dichte decken alle vier fast voll (95–99 %); die Füllart
-  ändert die Textur, kaum den Anteil.
-- **Striche wie auf dem Canvas:** gerade Enden (`lineCap: butt`), ohne Lücke an Knicken.
-
-Abwechslung kommt aus Form und Füllart. Die Region bleibt scharf und deckend, so wie im Original;
-ihre Schwierigkeit ist die Selbstüberschneidung.
-
-Eine Quellenangabe auf roughjs gehört in den Kopfkommentar der nachgebauten Datei.
-
 ### Freihand
 
 Das Kollektiv malt mit **denselben Werkzeugen** wie die Spieler und wird mit **derselben Regel**
-gezählt: 1–5 Striche, jeder mit einem der drei Pinsel und einer Farbe aus einer festen Palette. Die Bahn
+gezählt: 1–5 Striche, jeder mit einem der drei Pinsel. Die Farben sind Nachbarn: ein gewürfelter
+Grundton, die Striche höchstens 12° davon entfernt (OKLCH), unterschieden durch die Helligkeit, die bei
+0,75 endet, damit kein Strich im Malgrund verschwindet (Clemens, 2026-11-08: bunte Paletten waren ihm
+„zu bunt“). Die Bahn
 ist ein gesteuerter Zufallsweg: eine Richtung, die sich über geglättetes Rauschen dreht, mit Schwüngen,
 Schleifen und Zickzack. Sie darf die Leinwand verlassen und zurückkehren. Länge und Krümmung legt der
 Umsetzer fest.
-
-### Komposition
-
-Zwei bis drei Elemente aus den anderen Formen, ohne Komposition selbst, übereinander gemalt. Sie
-überlappen. Überlappungen zählen einmal, genau wie beim Spieler, und genau das macht sie schwer.
 
 ## Der Zug
 
 ```kotlin
 data class PaintRatioParams(
-    val shape: Shape,          // eine der zehn Formen
+    val shape: Shape,          // eine der Formen
     val artSeed: Int,          // reproduziert das Werk Strich für Strich
     val width: Int,
     val height: Int,
@@ -429,7 +412,7 @@ probiert Seeds. Hier werden Toleranzen, Freihand und Takte nachgestimmt.
   `GuessHueDrawTest`); Formen dieser Edition werden ausgeschlossen, Rückfall auf alle; `tolerance` aus
   der Phase; kein Werk unter der doppelten Toleranz seiner Form, in beiden Phasen; ein Seed, dessen
   erstes Werk zu klein ist, zieht neu und bleibt reproduzierbar.
-- **Werke:** jede der zehn Formen zeichnet für eine Handvoll Seeds ohne Fehler; Anteil in `(0, 1)`;
+- **Werke:** jede Form zeichnet für eine Handvoll Seeds ohne Fehler; Anteil in `(0, 1)`;
   gleiche Params ergeben dieselben Bytes.
 - **Bild:** das PNG dekodiert und gezählt (Alpha ≠ 0) ergibt `targetCells`; ein abweichender Zeichner
   lässt `produceAssets` scheitern.
