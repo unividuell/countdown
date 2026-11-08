@@ -41,7 +41,7 @@ class PaintRatioArtistTest {
         Shape.entries.associateWith { it.tolerance } shouldBe mapOf(
             Shape.SPARKLE to 0.05, Shape.CIRCLE to 0.01, Shape.ELLIPSE to 0.01, Shape.REGION to 0.08,
             Shape.POLYGON to 0.01, Shape.RING to 0.01, Shape.STRIPES to 0.03, Shape.SPLATTER to 0.05,
-            Shape.FREEHAND to 0.05, Shape.COMPOSITION to 0.08,
+            Shape.FREEHAND to 0.05,
         )
     }
 

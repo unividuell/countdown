@@ -80,7 +80,7 @@ class PaintRatioGameType(private val mapper: ObjectMapper) : GameType<PaintRatio
 
     override fun draw(random: GameRandom, context: RoundContext): PaintRatioParams {
         val used = context.previousParams.map { mapper.treeToValue(it, PaintRatioParams::class.java).shape }.toSet()
-        // Ten shapes must not starve: once each has had its round, all count again.
+        // Nine shapes must not starve: once each has had its round, all count again.
         val shape = random.presentation.pick(Shape.entries.filterNot { it in used }.ifEmpty { Shape.entries })
         val width = PaintCanvas.WIDTH
         val height = PaintCanvas.HEIGHT

@@ -107,8 +107,8 @@ class PaintRatioGameTypeTest {
 
     @Test
     fun `the shape skips those this edition had and falls back to all`() {
-        val nineUsed = Shape.entries.take(9)
-        val previous = nineUsed.map { params(shape = it) }
+        val allButLast = Shape.entries.dropLast(1)
+        val previous = allButLast.map { params(shape = it) }
 
         (1..20).forEach { seed ->
             draw(random = random(presentation = seed), context = context(previous = previous)).shape shouldBe

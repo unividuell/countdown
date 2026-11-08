@@ -15,7 +15,6 @@ enum class Shape(val tolerance: Double) {
     STRIPES(0.03),
     SPLATTER(0.05),
     FREEHAND(0.05),
-    COMPOSITION(0.08),
 }
 
 data class Layer(val mark: Mark, val argb: Int)
@@ -73,7 +72,6 @@ private class Easel(
         Shape.STRIPES -> stripes()
         Shape.SPLATTER -> splatter()
         Shape.FREEHAND -> freehand()
-        Shape.COMPOSITION -> composition()
     }
 
     private fun sparkle(): List<Layer> = List(random.nextIntBetween(min = 10, maxInclusive = 2000)) {
@@ -183,18 +181,6 @@ private class Easel(
     private fun freehand(): List<Layer> =
         PaintRatioArtist.freehand(random = random, width = width, height = height, brushes = brushes)
             .flatMap { stroke -> stroke.marks(brushes).map { Layer(mark = it, argb = stroke.argb()) } }
-
-    /** 2–3 different other shapes, each from its own seed, one over the other. */
-    private fun composition(): List<Layer> {
-        val count = random.nextIntBetween(min = 2, maxInclusive = 3)
-        val shapes = random.sample(items = Shape.entries - Shape.COMPOSITION, k = count)
-
-        return shapes.flatMap { shape ->
-            val artSeed = random.nextInt(Int.MAX_VALUE)
-            PaintRatioArtist.paint(shape = shape, artSeed = artSeed, width = width, height = height, brushes = brushes)
-                .layers
-        }
-    }
 
     private fun center() = Vec(
         x = random.nextIntBetween(min = MARGIN, maxInclusive = width - MARGIN).toDouble(),
