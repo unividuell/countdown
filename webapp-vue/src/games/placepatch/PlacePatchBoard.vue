@@ -101,7 +101,7 @@ function onDown(event: PointerEvent): void {
 
   const board = boardNow()
   if (!playable.value || locked.value || board === null) return
-  gesture = press(board, stamp.value, pointOf(event), performance.now())
+  gesture = press(board, stamp.value, pointOf(event))
 }
 
 function onMove(event: PointerEvent): void {
@@ -116,7 +116,7 @@ function onUp(event: PointerEvent): void {
   lift(event)
   const board = boardNow()
   if (gesture === null || board === null) return
-  stamp.value = release(board, gesture, pointOf(event), stamp.value, performance.now())
+  stamp.value = release(board, gesture, pointOf(event), stamp.value)
   gesture = null
 }
 
