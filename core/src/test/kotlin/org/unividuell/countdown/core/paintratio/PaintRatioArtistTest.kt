@@ -7,6 +7,7 @@ import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.rng.SeededRandom
@@ -139,15 +140,13 @@ class PaintRatioArtistTest {
 
     @Test
     fun `freehand paints with the players' brushes`() {
-        val palette = listOf("#3049e8", "#e8304f", "#f2b705", "#2a9d4b", "#111111", "#8e44ad", "#f07c1b")
-
         for (seed in 1..50) {
             val strokes = freehand(seed)
             strokes.size shouldBeInRange 1..5
 
             for (stroke in strokes) {
                 stroke.brush shouldBeInRange brushes.indices
-                stroke.color shouldBeIn palette
+                stroke.color shouldMatch Regex("#[0-9a-f]{6}")
                 stroke.points.size % 2 shouldBe 0
                 stroke.points.filterNot { it in -10_000..10_000 } shouldBe emptyList()
 
@@ -157,6 +156,37 @@ class PaintRatioArtistTest {
                 points.zipWithNext().filter { (p, q) ->
                     (q[0] - p[0]) * (q[0] - p[0]) + (q[1] - p[1]) * (q[1] - p[1]) < 4
                 } shouldBe emptyList()
+            }
+        }
+    }
+
+    /** OKLab lightness and hue in degrees of `#rrggbb`, the inverse of what the artist mixes. */
+    private fun lightnessAndHue(hex: String): Pair<Double, Double> {
+        val (r, g, b) = (0..2).map {
+            val v = hex.substring(1 + 2 * it, 3 + 2 * it).toInt(radix = 16) / 255.0
+            if (v <= 0.04045) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
+        }
+        val l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+        val m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+        val s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+        val a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+        val bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+        return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s) to Math.toDegrees(Math.atan2(bb, a))
+    }
+
+    @Test
+    fun `freehand mixes neighbouring hues that stand out from the canvas`() {
+        for (seed in 1..200) {
+            val colours = freehand(seed).map { lightnessAndHue(it.color) }
+
+            withClue("seed $seed: $colours") {
+                // ±12° around one base hue, plus a little for rounding to 8 bits per channel.
+                for ((_, h1) in colours) for ((_, h2) in colours) {
+                    val apart = Math.abs(((h1 - h2) % 360 + 540) % 360 - 180)
+                    (apart <= 26.0) shouldBe true
+                }
+                // The canvas ground is #f5f5f5: nothing lighter than 0.75 may vanish into it.
+                colours.filterNot { (l, _) -> l <= 0.76 } shouldBe emptyList()
             }
         }
     }

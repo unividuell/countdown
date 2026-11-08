@@ -48,15 +48,20 @@ object PaintRatioArtist {
         return Artwork(easel.paint(shape))
     }
 
-    /** 1–5 strokes with the players' brushes, each valid as a player's stroke on the wire. */
-    fun freehand(random: SeededRandom, width: Int, height: Int, brushes: List<Int>): List<PaintStroke> =
-        List(random.nextIntBetween(min = 1, maxInclusive = 5)) {
+    /**
+     * 1–5 strokes with the players' brushes, each valid as a player's stroke on the wire. Their colours are
+     * neighbours: one drawn base hue, the strokes at most 12° from it, set apart by lightness.
+     */
+    fun freehand(random: SeededRandom, width: Int, height: Int, brushes: List<Int>): List<PaintStroke> {
+        val palette = analogPalette(baseHue = 360 * random.nextDouble())
+        return List(random.nextIntBetween(min = 1, maxInclusive = 5)) { i ->
             PaintStroke(
                 brush = random.nextInt(brushes.size),
-                color = random.pick(PALETTE),
+                color = palette[i % palette.size],
                 points = walk(random = random, width = width, height = height),
             )
         }
+    }
 }
 
 /** One work in progress: its random stream and the canvas. */
@@ -485,6 +490,46 @@ private fun distance(a: Vec, b: Vec) = StrictMath.hypot(a.x - b.x, a.y - b.y)
 
 private tailrec fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(a = b, b = a % b)
 
+/**
+ * Five colours around [baseHue] in OKLCH, where equal numbers look equally light and strong. Lightness stays
+ * at most 0.75: anything lighter fades into the canvas ground.
+ */
+private fun analogPalette(baseHue: Double): List<String> =
+    listOf(0.0 to 0.62, -12.0 to 0.74, 12.0 to 0.50, -6.0 to 0.70, 6.0 to 0.56).map { (offset, lightness) ->
+        oklch(lightness = lightness, chroma = 0.16, hue = baseHue + offset)
+    }
+
+/** OKLCH → `#rrggbb`. Out of the sRGB gamut, chroma drops in steps of 0.005 until the colour fits. */
+private fun oklch(lightness: Double, chroma: Double, hue: Double): String {
+    val angle = Math.toRadians(hue)
+    var c = chroma
+    while (true) {
+        val a = c * StrictMath.cos(angle)
+        val b = c * StrictMath.sin(angle)
+        val l = cube(lightness + 0.3963377774 * a + 0.2158037573 * b)
+        val m = cube(lightness - 0.1055613458 * a - 0.0638541728 * b)
+        val s = cube(lightness - 0.0894841775 * a - 1.2914855480 * b)
+        val rgb = listOf(
+            4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+        )
+        if (rgb.all { it in 0.0..1.0 } || c <= 0.0) {
+            return rgb.joinToString(separator = "", prefix = "#") { channel ->
+                val encoded = gamma(channel.coerceIn(minimumValue = 0.0, maximumValue = 1.0))
+                "%02x".format((255 * encoded).roundToInt())
+            }
+        }
+        c -= 0.005
+    }
+}
+
+private fun cube(x: Double) = x * x * x
+
+/** Linear light to sRGB's transfer curve. */
+private fun gamma(linear: Double) =
+    if (linear <= 0.0031308) 12.92 * linear else 1.055 * StrictMath.pow(linear, 1 / 2.4) - 0.055
+
 private fun dot(x: Int, y: Int, radius: Int, argb: Int) =
     Layer(mark = Capsule(ax = x, ay = y, bx = x, by = y, radius = radius), argb = argb)
 
@@ -516,5 +561,3 @@ private const val RED = 0xFFDC2626.toInt()
 private const val TEAL = 0xFF0F766E.toInt()
 private const val ORANGE = 0xFFEA580C.toInt()
 
-/** Lower case, as a player's colour on the wire. */
-private val PALETTE = listOf("#3049e8", "#e8304f", "#f2b705", "#2a9d4b", "#111111", "#8e44ad", "#f07c1b")
