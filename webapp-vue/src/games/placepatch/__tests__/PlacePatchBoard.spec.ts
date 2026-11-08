@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import PlacePatchBoard from '@/games/placepatch/PlacePatchBoard.vue'
+import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import { LONG_PRESS_MS } from '@/games/placepatch/stamp'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
@@ -43,6 +45,26 @@ function sized(wrapper: ReturnType<typeof mountBoard>) {
   return field
 }
 
+type Board = ReturnType<typeof mountBoard>
+
+const hold = (w: Board) => w.findComponent(HoldButton)
+const lock = (w: Board) => w.find('[data-test="place-patch-lock"]')
+const stampAt = (w: Board) => w.get('[data-test="place-patch-stamp"]').attributes('style')
+
+async function progress(w: Board, value: number) {
+  hold(w).vm.$emit('progress', value)
+  await nextTick()
+}
+
+/** A board with the stamp tapped at (7, 4). */
+async function stamped() {
+  const wrapper = mountBoard()
+  const field = sized(wrapper)
+  await field.trigger('pointerdown', { clientX: 123, clientY: 87, pointerId: 1 })
+  await field.trigger('pointerup', { clientX: 123, clientY: 87, pointerId: 1 })
+  return { wrapper, field }
+}
+
 describe('PlacePatchBoard', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
@@ -55,19 +77,20 @@ describe('PlacePatchBoard', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the grey board, the patch on a square hold button at board scale, and the rules', () => {
+  it('shows the grey board, the patch at board scale, a round hold in my colour beside it, and the rules', () => {
     const wrapper = mountBoard()
-    const slot = wrapper.get('[data-test="place-patch-hold-slot"]')
+    const slot = wrapper.get('[data-test="place-patch-slot"]')
     const patch = slot.get('[data-test="place-patch-patch"]')
+    const submit = wrapper.get('[data-test="place-patch-submit"]')
 
     expect(wrapper.findAll('img').map((img) => img.attributes('src'))).toEqual([
       '/assets/0',
       '/assets/1',
     ])
     expect(slot.attributes('style')).toContain('width: 25%')
-    expect(slot.get('[data-test="hold-button"]').classes()).not.toContain('rounded-full')
-    // A coloured square under the patch would show its true, unfrayed edge.
-    expect(slot.get('[data-test="hold-button"]').attributes('style') ?? '').not.toContain(
+    expect(slot.find('[data-test="hold-button"]').exists()).toBe(false)
+    expect(submit.get('[data-test="hold-button"]').classes()).toContain('rounded-full')
+    expect(submit.get('[data-test="hold-button"]').attributes('style')).toContain(
       'background-color',
     )
     expect(patch.classes()).toEqual(expect.arrayContaining(['pointer-events-none', 'size-full']))
@@ -150,6 +173,61 @@ describe('PlacePatchBoard', () => {
     )
   })
 
+  it('greys the field and shows „Abgeben …“ while the hold runs', async () => {
+    const { wrapper } = await stamped()
+    expect(lock(wrapper).exists()).toBe(false)
+
+    await progress(wrapper, 0.4)
+    expect(lock(wrapper).text()).toBe('Abgeben …')
+
+    await progress(wrapper, 0)
+    expect(lock(wrapper).exists()).toBe(false)
+  })
+
+  it('cancels the hold when a finger touches the field, and moves no stamp then', async () => {
+    const { wrapper, field } = await stamped()
+    await progress(wrapper, 0.4)
+
+    await field.trigger('pointerdown', { clientX: 300, clientY: 250, pointerId: 2 })
+    expect(hold(wrapper).props('disabled')).toBe(true)
+    await field.trigger('pointerup', { clientX: 300, clientY: 250, pointerId: 2 })
+    expect(stampAt(wrapper)).toContain('left: 17.5%')
+
+    expect(hold(wrapper).props('disabled')).toBe(false)
+  })
+
+  it('frees the field as soon as the hold is released, while the ring still runs back', async () => {
+    const { wrapper, field } = await stamped()
+    await progress(wrapper, 0.4)
+    await progress(wrapper, 0.3)
+    expect(lock(wrapper).exists()).toBe(false)
+
+    await field.trigger('pointerdown', { clientX: 300, clientY: 250, pointerId: 2 })
+    await field.trigger('pointerup', { clientX: 300, clientY: 250, pointerId: 2 })
+    expect(stampAt(wrapper)).not.toContain('left: 17.5%')
+  })
+
+  it.each(['pointercancel', 'lostpointercapture'])('frees the hold again on %s', async (type) => {
+    const { wrapper, field } = await stamped()
+    await field.trigger('pointerdown', { clientX: 300, clientY: 250, pointerId: 2 })
+    expect(hold(wrapper).props('disabled')).toBe(true)
+
+    await field.trigger(type, { pointerId: 2 })
+    expect(hold(wrapper).props('disabled')).toBe(false)
+  })
+
+  it('drops the lock once submitted, so a guess that failed leaves the field playable', async () => {
+    const { wrapper } = await stamped()
+    await progress(wrapper, 0.9)
+
+    // A completed hold fires `confirm` first, then reports the full ring.
+    hold(wrapper).vm.$emit('confirm')
+    await progress(wrapper, 1)
+
+    expect(lock(wrapper).exists()).toBe(false)
+    expect(wrapper.emitted('guess')).toEqual([[{ x: 7, y: 4 }]])
+  })
+
   it('cannot submit without a stamp', () => {
     expect(mountBoard().get('[data-test="hold-button"]').attributes('disabled')).toBeDefined()
   })
@@ -190,7 +268,7 @@ describe('PlacePatchBoard', () => {
     // The cover brings a hold button of its own (START); the board's submit button must be gone.
     expect(wrapper.find('[aria-label="Tipp bestätigen — gedrückt halten"]').exists()).toBe(false)
     // The slot is already there at full size, empty, so the reveal does not push the rules down.
-    expect(wrapper.get('[data-test="place-patch-hold-slot"]').attributes('style')).toContain(
+    expect(wrapper.get('[data-test="place-patch-slot"]').attributes('style')).toContain(
       'width: 25%',
     )
   })

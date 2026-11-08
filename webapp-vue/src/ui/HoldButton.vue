@@ -27,8 +27,7 @@ const props = withDefaults(
     label: string
     /**
      * The colour the button shows — the hue currently under the wheel's knob. Without one the
-     * button paints nothing of its own, for something lying on it: Platzierung's patch, whose
-     * true edge a coloured square would give away.
+     * button paints nothing of its own, for something lying on it.
      */
     color?: string
     /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
@@ -40,7 +39,7 @@ const props = withDefaults(
     beats?: number
     /** One beat of the count-in. Entstauber counts in at its round's tempo. */
     beatMs?: number
-    /** `square` when something square lies on the button — Platzierung's patch — and must not be cut. */
+    /** `square` when something square lies on the button and must not be cut. */
     shape?: 'round' | 'square'
   }>(),
   { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
@@ -242,7 +241,7 @@ const ROUND_RIM = {
  * The same rim for a square: four edge strips, unioned — the default way mask layers combine, so
  * no browser has to support `mask-composite`. A phone that skipped an `exclude` composite painted
  * the whole box instead, a thick band. A fixed width rather than a share of the button: the
- * square grows with Platzierung's board, and its rim must not grow with it.
+ * square's size is the caller's, and its rim must not grow with it.
  */
 const SQUARE_RIM_PX = 2.5
 const SQUARE_FRAME = [
