@@ -1,15 +1,20 @@
 <script setup lang="ts">
 /**
- * Playing: the grey board with the stamp on it, below it the patch lying on the hold that submits.
+ * Playing: the grey board with the stamp on it, below it the patch and, to its right, the hold that submits in the player's colour.
  *
  * The answer is nowhere in here — the server sent pictures and three numbers. All this component
  * holds is where the player put the stamp.
  *
  * Card-wide like Entstauber's board: the field runs edge to edge, for the largest cells.
+ *
+ * The hold in sync with the field, as Anmaßung signs: while it runs the field turns grey and shows
+ * the ring large, a finger on the field cancels it, and it cannot start while one lies there.
  */
+import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
 import PlacePatchBriefing from './PlacePatchBriefing.vue'
@@ -55,6 +60,15 @@ const pictureFailed = computed(
 )
 let gesture: Gesture | null = null
 
+const RING_MASK = 'radial-gradient(closest-side, transparent 86%, #000 87%)'
+
+const holdProgress = ref(0)
+/** Only while the ring rises: the rewind after a release is no hold. */
+const locked = ref(false)
+/** Every pointer on the field, playing or not: any of them keeps the hold off. */
+const pointers = new Set<number>()
+const touching = ref(false)
+
 const playable = computed(
   () => props.payload !== null && !props.disabled && !props.sealed && props.submitted === null,
 )
@@ -72,8 +86,7 @@ function pointOf(event: PointerEvent): Point {
 }
 
 function onDown(event: PointerEvent): void {
-  const board = boardNow()
-  if (!playable.value || board === null || event.button !== 0) return
+  if (event.button !== 0) return
   try {
     // Lets the finger leave the field mid-drag. Throws for a pointer the browser does not track —
     // uncaught, it would abort this handler and the gesture would never start.
@@ -81,7 +94,14 @@ function onDown(event: PointerEvent): void {
   } catch {
     // Capture is an optimisation, not a precondition.
   }
-  gesture = press(board, stamp.value, pointOf(event), performance.now())
+
+  // Reported before anything else: a finger on a locked field is what cancels the hold.
+  pointers.add(event.pointerId)
+  touching.value = true
+
+  const board = boardNow()
+  if (!playable.value || locked.value || board === null) return
+  gesture = press(board, stamp.value, pointOf(event))
 }
 
 function onMove(event: PointerEvent): void {
@@ -93,20 +113,56 @@ function onMove(event: PointerEvent): void {
 }
 
 function onUp(event: PointerEvent): void {
+  lift(event)
   const board = boardNow()
   if (gesture === null || board === null) return
-  stamp.value = release(board, gesture, pointOf(event), stamp.value, performance.now())
+  stamp.value = release(board, gesture, pointOf(event), stamp.value)
   gesture = null
 }
 
 /** The browser took the gesture over — scrolling, say. The stamp stays where it was. */
-function onCancel(): void {
+function onCancel(event: PointerEvent): void {
+  lift(event)
   gesture = null
 }
 
+function lift(event: PointerEvent): void {
+  if (pointers.delete(event.pointerId) && pointers.size === 0) touching.value = false
+}
+
+/** A finger lifted while the tab was away may never report it, and would keep the hold off. */
+useEventListener(document, 'visibilitychange', () => {
+  if (!document.hidden) return
+
+  gesture = null
+  pointers.clear()
+  touching.value = false
+})
+
+/** A completed hold reports a full ring after `confirm`; it is no hold in progress any more. */
+function onProgress(value: number): void {
+  const next = value < 1 ? value : 0
+
+  locked.value = next > holdProgress.value
+  holdProgress.value = next
+}
+
+/** The lock drops here: a guess that fails hands the board back, and it must not stay grey. */
 function submit(): void {
+  holdProgress.value = 0
+  locked.value = false
   if (stamp.value !== null) emit('guess', { ...stamp.value })
 }
+
+const ringStyle = computed(() => {
+  const deg = holdProgress.value * 360
+
+  return {
+    backgroundImage: `conic-gradient(#fff ${deg}deg, rgb(255 255 255 / 0.3) ${deg}deg 360deg)`,
+    mask: RING_MASK,
+    WebkitMask: RING_MASK,
+  }
+})
 
 const stampStyle = computed(() => {
   const cell = shown.value
@@ -143,6 +199,7 @@ const patchWidth = computed(() =>
           @pointermove="onMove"
           @pointerup="onUp"
           @pointercancel="onCancel"
+          @lostpointercapture="lift"
         >
           <img
             v-if="props.boardSrc"
@@ -158,6 +215,17 @@ const patchWidth = computed(() =>
             class="pointer-events-none absolute"
             :style="stampStyle"
           />
+          <!-- Lets every touch through to the field: a touch there is what cancels the hold. -->
+          <div
+            v-if="locked"
+            data-test="place-patch-lock"
+            class="pointer-events-none absolute inset-0 flex items-center justify-center bg-neutral-500/60"
+          >
+            <div class="relative flex size-40 items-center justify-center">
+              <span aria-hidden="true" class="absolute inset-0 rounded-full" :style="ringStyle" />
+              <span class="text-lg font-semibold text-white">Abgeben …</span>
+            </div>
+          </div>
         </div>
         <p
           v-if="pictureFailed"
@@ -167,31 +235,47 @@ const patchWidth = computed(() =>
           Das Bild ließ sich nicht laden.
         </p>
         <p class="text-center text-lg">Wo gehört dieser Ausschnitt hin?</p>
-        <!-- The patch lies on a square hold button of its own size. The slot stands under the cover
-             too, empty, so the reveal does not push the rules down. `HoldButton` fills its parent
-             and has no size of its own. -->
-        <div
-          data-test="place-patch-hold-slot"
-          class="relative aspect-square shrink-0"
-          :style="{ width: patchWidth }"
-        >
-          <HoldButton
+        <!-- One row: the patch centred at board scale, the hold that submits at its right. The
+             patch slot stands under the cover too, empty, so the reveal does not push the rules
+             down. `HoldButton` fills its parent and has no size of its own. -->
+        <div class="relative flex w-full items-center justify-center">
+          <div
+            data-test="place-patch-slot"
+            class="relative aspect-square shrink-0"
+            :style="{ width: patchWidth }"
+          >
+            <img
+              v-if="props.patchSrc"
+              data-test="place-patch-patch"
+              :src="props.patchSrc"
+              alt="Der gesuchte Ausschnitt"
+              class="pointer-events-none absolute inset-0 size-full"
+              draggable="false"
+              @error="imageFailed = true"
+            />
+          </div>
+          <div
             v-if="!props.sealed"
-            :ready="true"
-            :disabled="!playable || stamp === null"
-            label="Tipp bestätigen — gedrückt halten"
-            shape="square"
-            @confirm="submit"
-          />
-          <img
-            v-if="props.patchSrc"
-            data-test="place-patch-patch"
-            :src="props.patchSrc"
-            alt="Der gesuchte Ausschnitt"
-            class="pointer-events-none absolute inset-0 size-full"
-            draggable="false"
-            @error="imageFailed = true"
-          />
+            data-test="place-patch-submit"
+            class="absolute top-1/2 right-4 size-20 -translate-y-1/2"
+            :class="{ 'opacity-40': !playable || stamp === null }"
+          >
+            <HoldButton
+              :ready="true"
+              :disabled="!playable || stamp === null || touching"
+              label="Tipp bestätigen — gedrückt halten"
+              :color="props.myColorHex"
+              @confirm="submit"
+              @progress="onProgress"
+            />
+            <span
+              aria-hidden="true"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+              :style="{ color: readableTextColor(props.myColorHex) }"
+            >
+              Abgeben
+            </span>
+          </div>
         </div>
       </div>
       <RevealCover
