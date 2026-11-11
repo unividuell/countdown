@@ -45,8 +45,15 @@ let alive = true
  */
 const loading = ref(false)
 
-/** Loaded on the first tap, not on mount — browser policies want a gesture anyway. */
+/**
+ * Play, or pause while sounding — the board's transport. Loaded on the first tap, not on mount —
+ * browser policies want a gesture anyway.
+ */
 async function playSolution(): Promise<void> {
+  if (playback.playing.value) {
+    playback.pause()
+    return
+  }
   if (!loaded.value && props.assets) {
     if (loading.value) return
     loading.value = true
@@ -65,7 +72,7 @@ async function playSolution(): Promise<void> {
       loading.value = false
     }
   }
-  playback.restart()
+  playback.resume()
 }
 
 /** Same lifecycle as the board's own snippet blob: the object URL outlives nothing beyond this
@@ -128,15 +135,20 @@ onUnmounted(() => {
       <span class="min-w-0 justify-self-end pr-4">
         <button
           type="button"
-          data-test="pause-solution"
+          data-test="stop-solution"
           class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
-          aria-label="Pause"
-          @click="playback.pause()"
+          aria-label="Stopp"
+          @click="playback.stop()"
         >
-          <PlayerIcon name="pause" />
+          <PlayerIcon name="stop" />
         </button>
       </span>
-      <PlayButton label="Auflösung abspielen" :waiting="loading" @press="playSolution()" />
+      <PlayButton
+        :label="playback.playing.value ? 'Pause' : 'Auflösung abspielen'"
+        :waiting="loading"
+        :playing="playback.playing.value"
+        @press="playSolution()"
+      />
       <span class="min-w-0" />
     </div>
   </div>
