@@ -175,9 +175,13 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **Keep the element as a fallback** for browsers without an `AudioContext` and for a clip
   `decodeAudioData` rejects — resolve the decode to `null` rather than rejecting, and let the
   element carry the same source all along, so falling back costs no second load.
-- **The graph has no pause/resume, only `stop()`.** That is free as long as nothing in the UI
-  resumes (our play button is „always from the start", pause is its own control). Check that
-  before choosing the graph; a resume needs an offset you keep yourself.
+- **The graph has no pause/resume, only `stop()`.** A resume is `start(at, offset)` with an offset
+  you keep yourself (`usePlayback`'s `heldAt`); keep `startedAt = at - offset` so the position stays
+  `currentTime - startedAt`, and hold the bar at the offset through the lookahead.
+- **Swapping to a longer clip without a gap:** one clock schedules both — `old.stop(at)` and
+  `next.start(at, offsetAt(at))` with the same `at`. Bump the generation first, so the old node's
+  `onended` (it may run out while the new clip decodes) cannot flip the transport to „stopped“
+  mid-handover (`usePlayback.extend`).
 - **Unlock the graph synchronously inside a `click` (or `pointerup`) handler.** A touch
   `pointerdown` is no user activation on iOS: `resume()` is refused and the round stays silent, with
   no error. `navigator.audioSession.type = 'playback'` goes in the same handler — otherwise the

@@ -30,6 +30,8 @@ defineProps<{
   waiting: boolean
   /** Anything else that makes pressing pointless — no audio to load at all, say. */
   disabled?: boolean
+  /** Sounding: the button is the pause. */
+  playing?: boolean
 }>()
 const emit = defineEmits<{ press: [] }>()
 </script>
@@ -47,7 +49,7 @@ const emit = defineEmits<{ press: [] }>()
       :aria-label="label"
       @click="emit('press')"
     >
-      <PlayerIcon name="play" />
+      <PlayerIcon :name="playing ? 'pause' : 'play'" />
     </button>
     <span
       v-if="waiting"

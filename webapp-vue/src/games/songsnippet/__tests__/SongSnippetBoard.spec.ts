@@ -11,8 +11,12 @@ interface PlaybackStub {
   positionSeconds: Ref<number>
   playing: Ref<boolean>
   setSource: Mock
+  play: Mock
   restart: Mock
+  resume: Mock
   pause: Mock
+  stop: Mock
+  extend: Mock
   dispose: Mock
 }
 
@@ -26,8 +30,12 @@ vi.mock('@/ui/usePlayback', async () => {
         positionSeconds: ref(0),
         playing: ref(false),
         setSource: vitest.fn(),
+        play: vitest.fn(),
         restart: vitest.fn(),
+        resume: vitest.fn(),
         pause: vitest.fn(),
+        stop: vitest.fn(),
+        extend: vitest.fn(),
         dispose: vitest.fn(),
       }
       playbacks.push(stub)
@@ -157,7 +165,7 @@ describe('SongSnippetBoard', () => {
 
     expect(fetchedUrls()).toEqual(['/assets/clip-0'])
     expect(playbacks[0]!.setSource).toHaveBeenCalledWith('blob:stage')
-    expect(playbacks[0]!.restart).not.toHaveBeenCalled()
+    expect(playbacks[0]!.play).not.toHaveBeenCalled()
   })
 
   it('plays the longer clip by itself once the stage grows', async () => {
@@ -168,7 +176,81 @@ describe('SongSnippetBoard', () => {
     await flushPromises()
 
     expect(fetchedUrls().at(-1)).toBe('/assets/clip-1')
-    expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
+    // 0.1s orients nobody, so the second stage plays from the top as well.
+    expect(playbacks[0]!.play).toHaveBeenCalledExactlyOnceWith(0)
+  })
+
+  it('starts every later stage where the one before it ended — new music, not a rerun', async () => {
+    const w = mountBoard({ stage: 1 })
+    await flushPromises()
+
+    await w.setProps({ stage: 2 })
+    await flushPromises()
+    expect(playbacks[0]!.play).toHaveBeenLastCalledWith(0.5)
+
+    await w.setProps({ stage: 4 })
+    await flushPromises()
+    expect(playbacks[0]!.play).toHaveBeenLastCalledWith(8)
+  })
+
+  it('a skip while the clip sounds plays on into the longer one instead of starting over', async () => {
+    const w = mountBoard({ stage: 1 })
+    await flushPromises()
+    playbacks[0]!.playing.value = true
+
+    await w.setProps({ stage: 2 })
+    await flushPromises()
+
+    expect(playbacks[0]!.extend).toHaveBeenCalledExactlyOnceWith('blob:stage')
+    expect(playbacks[0]!.setSource).toHaveBeenCalledTimes(1)
+    expect(playbacks[0]!.play).not.toHaveBeenCalled()
+  })
+
+  it('a pause tapped while the next stage loads keeps it from starting by itself', async () => {
+    let deliver: (response: Response) => void = () => {}
+    const w = mountBoard({ stage: 1 })
+    await flushPromises()
+    playbacks[0]!.playing.value = true
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    await w.setProps({ stage: 2 })
+
+    await w.get('[data-test="play"]').trigger('click')
+    playbacks[0]!.playing.value = false
+    deliver(sealedClip('clip-2'))
+    await flushPromises()
+
+    expect(playbacks[0]!.pause).toHaveBeenCalledTimes(1)
+    expect(playbacks[0]!.play).not.toHaveBeenCalled()
+  })
+
+  it('turns play into pause while the clip sounds, and resumes from there', async () => {
+    const w = mountBoard({ stage: 2 })
+    await flushPromises()
+    const button = w.get('[data-test="play"]')
+    expect(button.attributes('aria-label')).toBe('Abspielen')
+
+    await button.trigger('click')
+    expect(playbacks[0]!.resume).toHaveBeenCalledTimes(1)
+
+    playbacks[0]!.playing.value = true
+    await w.vm.$nextTick()
+    expect(button.attributes('aria-label')).toBe('Pause')
+
+    await button.trigger('click')
+    expect(playbacks[0]!.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops back to the start with its own button', async () => {
+    const w = mountBoard({ stage: 2 })
+    await flushPromises()
+
+    await w.get('[data-test="stop"]').trigger('click')
+
+    expect(playbacks[0]!.stop).toHaveBeenCalledTimes(1)
   })
 
   it('a skip loads the next clip sealed and opens it with the key that came with it', async () => {
@@ -250,7 +332,7 @@ describe('SongSnippetBoard', () => {
 
     // Loaded and sounding, and the line is gone rather than sitting there stale.
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(playbacks[0]!.restart).toHaveBeenCalledTimes(1)
+    expect(playbacks[0]!.play).toHaveBeenCalledExactlyOnceWith(0)
     expect(w.find('[data-test="song-notice"]').exists()).toBe(false)
   })
 
@@ -280,7 +362,7 @@ describe('SongSnippetBoard', () => {
     await flushPromises()
 
     // Neither a clip nobody can stop nor an object URL nobody will revoke.
-    expect(playbacks[0]!.restart).not.toHaveBeenCalled()
+    expect(playbacks[0]!.play).not.toHaveBeenCalled()
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
   })
 
@@ -335,7 +417,7 @@ describe('SongSnippetBoard', () => {
     // Hits and field first (both the search box's), then the bar, then the transport, then the
     // explanation box — the reveal fills the same rows with the cover and the title, so nothing
     // moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'pause', 'info-box', 'give-up'])
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'stop', 'info-box', 'give-up'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
