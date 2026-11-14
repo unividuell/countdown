@@ -12,7 +12,9 @@ interface PlaybackStub {
   playing: Ref<boolean>
   setSource: Mock
   restart: Mock
+  resume: Mock
   pause: Mock
+  stop: Mock
   dispose: Mock
 }
 
@@ -31,7 +33,9 @@ vi.mock('@/ui/usePlayback', async () => {
         playing: ref(false),
         setSource: vitest.fn(),
         restart: vitest.fn(),
+        resume: vitest.fn(),
         pause: vitest.fn(),
+        stop: vitest.fn(),
         dispose: vitest.fn(),
       }
       playbacks.push(stub)
@@ -104,7 +108,7 @@ describe('SongPlayerReveal', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="play-loading"]').exists()).toBe(false)
-    expect(playbacks[0]!.restart).toHaveBeenCalled()
+    expect(playbacks[0]!.resume).toHaveBeenCalled()
   })
 
   it('fetches the solution once however often it is tapped, and lets go of nothing twice', async () => {
@@ -159,7 +163,7 @@ describe('SongPlayerReveal', () => {
     expect(key).not.toHaveBeenCalled()
   })
 
-  it('loads the solution clip on the first tap only, then replays it', async () => {
+  it('loads the solution clip on the first tap only, then plays on from where it was', async () => {
     fetchAssetBlob.mockResolvedValue(new Blob(['x']))
     const w = mountPlayer()
 
@@ -170,7 +174,7 @@ describe('SongPlayerReveal', () => {
 
     expect(fetchAssetBlob).toHaveBeenCalledExactlyOnceWith('/assets/solution')
     expect(playbacks[0]!.setSource).toHaveBeenCalledExactlyOnceWith('blob:solution')
-    expect(playbacks[0]!.restart).toHaveBeenCalledTimes(2)
+    expect(playbacks[0]!.resume).toHaveBeenCalledTimes(2)
   })
 
   it('lets the bar morph only on a live reveal', () => {
@@ -178,11 +182,26 @@ describe('SongPlayerReveal', () => {
     expect(mountPlayer().getComponent(StageBar).props('animate')).toBe(false)
   })
 
-  it('pauses through its own smaller button', async () => {
+  it('turns play into pause while the solution sounds', async () => {
+    fetchAssetBlob.mockResolvedValue(new Blob(['x']))
+    const w = mountPlayer()
+    const button = w.get('[data-test="play"]')
+    expect(button.attributes('aria-label')).toBe('Auflösung abspielen')
+
+    playbacks[0]!.playing.value = true
+    await w.vm.$nextTick()
+    expect(button.attributes('aria-label')).toBe('Pause')
+
+    await button.trigger('click')
+    expect(playbacks[0]!.pause).toHaveBeenCalledTimes(1)
+    expect(fetchAssetBlob).not.toHaveBeenCalled()
+  })
+
+  it('stops back to the start through its own smaller button', async () => {
     const w = mountPlayer()
 
-    await w.get('[data-test="pause-solution"]').trigger('click')
+    await w.get('[data-test="stop-solution"]').trigger('click')
 
-    expect(playbacks[0]!.pause).toHaveBeenCalled()
+    expect(playbacks[0]!.stop).toHaveBeenCalled()
   })
 })

@@ -11,18 +11,28 @@ type Playback = ReturnType<typeof import('@/ui/usePlayback').usePlayback>
 
 const CLIP_SECONDS = 0.1
 
+/** How long every decoded clip lasts; a case that needs room to seek in sets it longer. */
+let decodeSeconds = CLIP_SECONDS
+function clipsLast(seconds: number): void {
+  decodeSeconds = seconds
+}
+
 class FakeNode {
   buffer: unknown = null
   onended: (() => void) | null = null
   startedAt: number | null = null
+  offset = 0
   stopped = false
+  stoppedAt: number | null = null
   connect = vi.fn()
   disconnect = vi.fn()
-  start(when: number): void {
+  start(when: number, offset = 0): void {
     this.startedAt = when
+    this.offset = offset
   }
-  stop(): void {
+  stop(when?: number): void {
     this.stopped = true
+    this.stoppedAt = when ?? null
   }
 }
 
@@ -35,7 +45,7 @@ class FakeContext {
   resume = vi.fn(async () => {
     this.state = 'running'
   })
-  decodeAudioData = vi.fn(async () => ({ duration: CLIP_SECONDS }))
+  decodeAudioData = vi.fn(async (): Promise<{ duration: number }> => ({ duration: decodeSeconds }))
   constructor() {
     FakeContext.instances.push(this)
   }
@@ -88,6 +98,7 @@ async function loadModule(): Promise<void> {
 
 beforeEach(async () => {
   FakeContext.instances = []
+  decodeSeconds = CLIP_SECONDS
   frames = []
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb))
   vi.stubGlobal('cancelAnimationFrame', () => {})
@@ -178,6 +189,151 @@ describe('usePlayback with an audio graph', () => {
     expect(ctx.nodes[0]!.stopped).toBe(true)
     expect(playback.playing.value).toBe(false)
     expect(playback.positionSeconds.value).toBeCloseTo(0.06)
+  })
+
+  it('starts mid-clip where asked, and reports that spot as heard', async () => {
+    const { playback } = withPlayback(usePlayback)
+    clipsLast(2)
+    playback.setSource('blob:stage-2')
+    playback.play(0.5)
+    await settle()
+    const ctx = context()
+
+    const node = ctx.nodes[0]!
+    expect(node.offset).toBe(0.5)
+    expect(playback.positionSeconds.value).toBe(0.5)
+
+    // Through the lookahead the position stands still at the start, never behind it.
+    ctx.currentTime = 10.02
+    runFrame()
+    expect(playback.positionSeconds.value).toBe(0.5)
+
+    ctx.currentTime = 10.55
+    runFrame()
+    expect(playback.positionSeconds.value).toBeCloseTo(1)
+  })
+
+  it('resumes from where a pause left off', async () => {
+    const { playback } = withPlayback(usePlayback)
+    clipsLast(2)
+    playback.setSource('blob:stage-2')
+    playback.restart()
+    await settle()
+    const ctx = context()
+    ctx.currentTime = 10.85
+    playback.pause()
+
+    playback.resume()
+    await settle()
+
+    expect(ctx.nodes[1]!.offset).toBeCloseTo(0.8)
+  })
+
+  it('resumes from the start once the clip has played out', async () => {
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-0')
+    playback.restart()
+    await settle()
+    context().nodes[0]!.onended?.()
+
+    playback.resume()
+    await settle()
+
+    expect(context().nodes[1]!.offset).toBe(0)
+  })
+
+  it('stops back to the start: the bar empties and a resume starts over', async () => {
+    const { playback } = withPlayback(usePlayback)
+    clipsLast(2)
+    playback.setSource('blob:stage-2')
+    playback.restart()
+    await settle()
+    const ctx = context()
+    ctx.currentTime = 10.85
+
+    playback.stop()
+
+    expect(ctx.nodes[0]!.stopped).toBe(true)
+    expect(playback.playing.value).toBe(false)
+    expect(playback.positionSeconds.value).toBe(0)
+
+    playback.resume()
+    await settle()
+    expect(ctx.nodes[1]!.offset).toBe(0)
+  })
+
+  it('hands a sounding clip over to the longer one without a break, at the spot it reached', async () => {
+    const { playback } = withPlayback(usePlayback)
+    clipsLast(0.5)
+    playback.setSource('blob:stage-1')
+    playback.restart()
+    await settle()
+    const ctx = context()
+    ctx.currentTime = 10.35
+
+    ctx.decodeAudioData.mockResolvedValueOnce({ duration: 2 })
+    playback.extend('blob:stage-2')
+    await settle()
+
+    const [old, longer] = ctx.nodes
+    expect(fetch).toHaveBeenLastCalledWith('blob:stage-2')
+    // The old one ends exactly where the new one picks up — the graph schedules both.
+    expect(old!.stoppedAt).toBeCloseTo(10.4)
+    expect(longer!.startedAt).toBeCloseTo(10.4)
+    expect(longer!.offset).toBeCloseTo(0.35)
+    expect(playback.playing.value).toBe(true)
+
+    ctx.currentTime = 11.4
+    runFrame()
+    expect(playback.positionSeconds.value).toBeCloseTo(1.35)
+  })
+
+  it('plays on past the end of a clip that ran out before the longer one arrived', async () => {
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-0')
+    playback.restart()
+    await settle()
+    const ctx = context()
+
+    let decoded: (buffer: { duration: number }) => void = () => {}
+    ctx.decodeAudioData.mockReturnValueOnce(
+      new Promise((resolve) => {
+        decoded = resolve
+      }),
+    )
+    playback.extend('blob:stage-1')
+    ctx.nodes[0]!.onended?.()
+    // Still „playing": the button must not flip back to play inside the handover.
+    expect(playback.playing.value).toBe(true)
+
+    ctx.currentTime = 11
+    decoded({ duration: 0.5 })
+    await settle()
+
+    expect(ctx.nodes[1]!.offset).toBe(CLIP_SECONDS)
+  })
+
+  it('lets a pause reach a handover that is still decoding — and resume into the longer clip', async () => {
+    const { playback } = withPlayback(usePlayback)
+    clipsLast(0.5)
+    playback.setSource('blob:stage-1')
+    playback.restart()
+    await settle()
+    const ctx = context()
+    ctx.currentTime = 10.25
+
+    ctx.decodeAudioData.mockResolvedValueOnce({ duration: 2 })
+    playback.extend('blob:stage-2')
+    playback.pause()
+    await settle()
+
+    expect(ctx.nodes).toHaveLength(1)
+    expect(playback.playing.value).toBe(false)
+
+    playback.resume()
+    await settle()
+    expect(ctx.nodes[1]!.buffer).toEqual({ duration: 2 })
+    expect(ctx.nodes[1]!.offset).toBeCloseTo(0.2)
   })
 
   it('lets a second player silence the first, since only one clip may sound', async () => {
@@ -278,6 +434,31 @@ describe('usePlayback without an audio graph', () => {
     playback.restart()
 
     expect(seek).not.toHaveBeenCalled()
+  })
+
+  it('seeks the element to where a play is asked to start', () => {
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-2')
+    const seek = vi.spyOn(window.HTMLMediaElement.prototype, 'currentTime', 'set')
+
+    playback.play(0.5)
+
+    expect(seek).toHaveBeenCalledWith(0.5)
+    expect(play).toHaveBeenCalled()
+  })
+
+  it('hands a sounding element over to the longer clip at the spot it reached', () => {
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-1')
+    playback.restart()
+    playback.playing.value = true
+    vi.spyOn(window.HTMLMediaElement.prototype, 'currentTime', 'get').mockReturnValue(0.3)
+    const seek = vi.spyOn(window.HTMLMediaElement.prototype, 'currentTime', 'set')
+
+    playback.extend('blob:stage-2')
+
+    expect(seek).toHaveBeenCalledWith(0.3)
+    expect(play).toHaveBeenCalledTimes(2)
   })
 
   it('says out loud when the browser refuses to play — that is what silence looks like', async () => {

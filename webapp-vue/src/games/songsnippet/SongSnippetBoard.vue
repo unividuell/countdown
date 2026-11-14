@@ -80,6 +80,11 @@ let objectUrl: string | null = null
  */
 let stageGeneration = 0
 /**
+ * Where the clip on its way starts by itself, or `null` for not at all. Kept outside the fetch so a
+ * pause or a stop tapped while it loads can still call it off.
+ */
+let autoStart: number | null = null
+/**
  * A fetch outlives the card it was started from: resolving the round swaps this board for the
  * reveal, and the callback still runs. It must then do nothing at all — not create an object URL
  * nobody will revoke, and not hand a clip to a player that has been disposed.
@@ -95,19 +100,35 @@ let alive = true
 const stageError = ref(false)
 const LOAD_FAILED = 'Ausschnitt nicht geladen — Play antippen.'
 
-async function loadStage(stage: number, andPlay: boolean): Promise<void> {
+/**
+ * Where a freshly unlocked stage starts. The first two from the top — 0.1s alone orients nobody —
+ * every later one where the stage before it ended, so a skip brings new music, not a rerun.
+ * e.g. ladder 0.1 · 0.5 · 2 · 8 · 15 → starts 0 · 0 · 0.5 · 2 · 8
+ */
+function startOf(stage: number): number {
+  return stage <= 1 ? 0 : (props.durations[stage - 1] ?? 0)
+}
+
+async function loadStage(stage: number, startAt: number | null): Promise<void> {
   const assets = props.assets
   if (assets === null) return
+  autoStart = startAt
   const mine = ++stageGeneration
   loadingStage.value = true
   stageError.value = false
   try {
     const blob = await loadSealed(assets, clipAsset(stage))
     if (mine !== stageGeneration || !alive) return
-    if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
+    const previous = objectUrl
     objectUrl = URL.createObjectURL(blob)
-    playback.setSource(objectUrl)
-    if (andPlay) playback.restart()
+    // Sounding: play on into the longer clip. Each clip begins with the one before it.
+    if (playback.playing.value) {
+      playback.extend(objectUrl)
+    } else {
+      playback.setSource(objectUrl)
+      if (autoStart !== null) playback.play(autoStart)
+    }
+    if (previous !== null) URL.revokeObjectURL(previous)
   } catch (err) {
     console.error('[song-snippet] stage audio failed', err)
     if (mine === stageGeneration && alive) stageError.value = true
@@ -122,19 +143,34 @@ watch(
     // A stage only ever grows by skipping or by guessing wrong, and both mean „let me hear the
     // longer one" — so the new clip plays itself. `previous` is undefined on the immediate run:
     // arriving at a round must not start sounding on its own.
-    void loadStage(stage, previous !== undefined)
+    void loadStage(stage, previous === undefined ? null : startOf(stage))
   },
   { immediate: true },
 )
 
-/** Play, or — when the last attempt failed — the retry that has to come before playing. */
+/** Play, pause, or — when the last attempt failed — the retry that has to come before playing. */
 function onPlay(): void {
   if (stageError.value) {
-    void loadStage(props.stage, true)
+    void loadStage(props.stage, 0)
     return
   }
-  playback.restart()
+  if (playback.playing.value) {
+    autoStart = null
+    playback.pause()
+    return
+  }
+  playback.resume()
 }
+
+function onStop(): void {
+  autoStart = null
+  playback.stop()
+}
+
+const playLabel = computed(() => {
+  if (stageError.value) return 'Ausschnitt erneut laden'
+  return playback.playing.value ? 'Pause' : 'Abspielen'
+})
 onUnmounted(() => {
   alive = false
   if (objectUrl !== null) URL.revokeObjectURL(objectUrl)
@@ -157,25 +193,27 @@ onUnmounted(() => {
       :notice="barNotice"
     />
 
-    <!-- Play stays horizontally centered, flanked by its two smaller siblings: pause on the left,
-         skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift the
-         middle. -->
+    <!-- Play/pause stays horizontally centered, flanked by its two smaller siblings: stop on the
+         left, skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift
+         the middle. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
       <span class="min-w-0 justify-self-end pr-4">
         <button
           type="button"
-          data-test="pause"
+          data-test="stop"
           class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
-          aria-label="Pause"
-          @click="playback.pause()"
+          aria-label="Stopp"
+          @click="onStop()"
         >
-          <PlayerIcon name="pause" />
+          <PlayerIcon name="stop" />
         </button>
       </span>
+      <!-- A clip loading while another sounds is no wait: the sounding one must stay pausable. -->
       <PlayButton
-        :label="stageError ? 'Ausschnitt erneut laden' : 'Von vorn abspielen'"
-        :waiting="loadingStage"
+        :label="playLabel"
+        :waiting="loadingStage && !playback.playing.value"
         :disabled="assets === null"
+        :playing="playback.playing.value"
         @press="onPlay()"
       />
       <span class="min-w-0 justify-self-start pl-4">
