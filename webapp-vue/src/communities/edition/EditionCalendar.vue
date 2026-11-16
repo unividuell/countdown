@@ -24,10 +24,10 @@ const KIND_LABEL: Record<CellKind, string> = {
 }
 
 const KIND_COLOR: Record<CellKind, string> = {
-  none: 'bg-stone-200',
+  none: 'bg-surface-container-highest',
   'phase-one': 'bg-phase-one',
   'phase-two': 'bg-phase-two',
-  target: 'bg-stone-900',
+  target: 'bg-inverse-surface',
 }
 
 /** The tapped round, not its cell: the cells recompute while the form is edited. */
@@ -100,7 +100,7 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
           v-for="m in months"
           :key="m.column"
           data-test="edition-month"
-          class="text-xs text-neutral-500"
+          class="text-xs text-on-surface-variant"
           :style="{ gridColumn: m.column, gridRow: 1 }"
           >{{ m.label }}</span
         >
@@ -122,10 +122,10 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
           class="relative flex size-10 cursor-pointer items-center justify-center rounded text-xs"
           :class="[
             KIND_COLOR[c.kind],
-            c.kind === 'none' ? 'text-neutral-600' : 'text-white',
-            c.today ? 'ring-2 ring-neutral-900 ring-offset-1' : '',
-            c.freezesHere ? 'border-l-4 border-red-600' : '',
-            selected?.round === c.round ? 'outline-2 outline-sky-500' : '',
+            c.kind === 'none' ? 'text-on-surface-variant' : 'text-white',
+            c.today ? 'ring-2 ring-on-surface ring-offset-1' : '',
+            c.freezesHere ? 'border-l-4 border-error' : '',
+            selected?.round === c.round ? 'outline-2 outline-primary' : '',
           ]"
           :aria-label="`Runde ${c.round}`"
           @click="selectedRound = c.round"
@@ -142,16 +142,19 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
       </div>
     </div>
 
-    <p data-test="edition-detail" class="min-h-5 text-sm text-neutral-700">{{ detail }}</p>
+    <p data-test="edition-detail" class="min-h-5 text-sm text-on-surface-variant">{{ detail }}</p>
 
-    <ul data-test="edition-legend" class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
+    <ul
+      data-test="edition-legend"
+      class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant"
+    >
       <li v-for="l in LEGEND" :key="l.label" class="flex items-center gap-1.5">
         <span
           class="relative flex size-4 items-center justify-center rounded"
           :class="[
-            l.kind ? KIND_COLOR[l.kind] : 'bg-stone-200',
-            l.sample === 'today' ? 'ring-2 ring-neutral-900 ring-offset-1' : '',
-            l.sample === 'fix' ? 'border-l-4 border-red-600' : '',
+            l.kind ? KIND_COLOR[l.kind] : 'bg-surface-container-highest',
+            l.sample === 'today' ? 'ring-2 ring-on-surface ring-offset-1' : '',
+            l.sample === 'fix' ? 'border-l-4 border-error' : '',
           ]"
           aria-hidden="true"
         >

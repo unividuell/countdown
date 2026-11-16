@@ -64,7 +64,7 @@ const hasRevealedLive = useRevealedLive(done)
 </script>
 
 <template>
-  <p v-if="!props.sealed && payload === null" class="text-sm text-neutral-600">
+  <p v-if="!props.sealed && payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <CopyBlocksReveal

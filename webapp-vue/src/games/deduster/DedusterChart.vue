@@ -149,7 +149,7 @@ onClickOutside(svg, () => {
       ref="svg"
       data-test="deduster-chart"
       :viewBox="`0 0 ${VIEW.width} ${VIEW.height}`"
-      class="w-full touch-pan-y text-neutral-500 select-none"
+      class="w-full touch-pan-y text-on-surface-variant select-none"
       role="img"
       aria-label="Reaktionszeit je Level, ein Verlauf je Spieler"
       @pointerdown="onDown"
@@ -167,7 +167,7 @@ onClickOutside(svg, () => {
         :x2="VIEW.width - VIEW.right"
         :y1="yOf(frame, ms)"
         :y2="yOf(frame, ms)"
-        class="stroke-neutral-200"
+        class="stroke-outline"
         stroke-width="0.5"
       />
       <rect
@@ -320,7 +320,7 @@ onClickOutside(svg, () => {
           :x2="readout.x"
           :y1="VIEW.top"
           :y2="VIEW.height - VIEW.bottom"
-          class="stroke-neutral-900"
+          class="stroke-on-surface"
           stroke-width="0.75"
         />
         <text
@@ -328,7 +328,7 @@ onClickOutside(svg, () => {
           :x="readout.onLeft ? readout.x - 4 : readout.x + 4"
           :text-anchor="readout.onLeft ? 'end' : 'start'"
           :y="VIEW.top + 10"
-          class="fill-neutral-900 text-[9px]"
+          class="fill-on-surface text-[9px]"
         >
           {{ readout.text }}
         </text>

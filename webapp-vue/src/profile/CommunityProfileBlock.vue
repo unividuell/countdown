@@ -120,15 +120,17 @@ function save(): Promise<void> {
 </script>
 
 <template>
-  <section class="rounded border border-neutral-200 p-4">
+  <section class="rounded border border-outline p-4">
     <h2 v-if="!props.sole" class="mb-1 text-lg font-semibold">Bei {{ props.communityName }}</h2>
 
-    <p v-if="noMembership" data-test="override-none" class="text-sm text-neutral-600">
+    <p v-if="noMembership" data-test="override-none" class="text-sm text-on-surface-variant">
       Du bist hier kein Mitglied. Einen eigenen Auftritt gibt es nur, wo du dazugehörst.
     </p>
 
     <template v-else>
-      <p v-if="props.sole" class="mb-4 text-sm text-neutral-600">So sehen dich die anderen.</p>
+      <p v-if="props.sole" class="mb-4 text-sm text-on-surface-variant">
+        So sehen dich die anderen.
+      </p>
       <label v-else class="mb-3 flex items-center gap-2 text-sm">
         <input
           v-model="enabled"
@@ -145,7 +147,7 @@ function save(): Promise<void> {
         class="flex items-center gap-3 text-sm"
       >
         <Avatar v-bind="inherited.avatar" size="sm" />
-        <span class="text-neutral-600"
+        <span class="text-on-surface-variant"
           >Hier gilt dein globales Profil: „{{ inherited.username }}“.</span
         >
       </p>
@@ -163,14 +165,14 @@ function save(): Promise<void> {
             type="text"
             :maxlength="NAME_MAX"
             :placeholder="props.sole ? (inherited?.username ?? '') : undefined"
-            class="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1.5"
+            class="min-w-0 flex-1 rounded border border-outline px-2 py-1.5"
           />
           <input
             v-model="draft.colorInput.value"
             data-test="override-color"
             type="color"
             aria-label="Hintergrundfarbe"
-            class="h-9 w-12 shrink-0 cursor-pointer rounded border border-neutral-300"
+            class="h-9 w-12 shrink-0 cursor-pointer rounded border border-outline"
             @input="draft.colorSet.value = true"
           />
         </div>
@@ -182,13 +184,13 @@ function save(): Promise<void> {
           v-if="props.sole && draft.colorSet.value"
           data-test="override-auto"
           type="button"
-          class="cursor-pointer text-sm text-neutral-600 underline"
+          class="cursor-pointer text-sm text-on-surface-variant underline"
           @click="draft.colorSet.value = false"
         >
           Farbe automatisch
         </button>
       </div>
-      <p v-if="error" data-test="override-error" class="mt-2 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" data-test="override-error" class="mt-2 text-sm text-error">{{ error }}</p>
     </template>
   </section>
 </template>

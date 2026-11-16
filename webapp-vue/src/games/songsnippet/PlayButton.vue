@@ -44,7 +44,7 @@ const emit = defineEmits<{ press: [] }>()
     <button
       type="button"
       data-test="play"
-      class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
+      class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-on-surface disabled:opacity-40"
       :disabled="waiting || disabled"
       :aria-label="label"
       @click="emit('press')"

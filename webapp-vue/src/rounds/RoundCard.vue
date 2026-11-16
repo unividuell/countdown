@@ -156,7 +156,11 @@ async function onGiveUp(): Promise<void> {
 
       <!-- A sealed round for a game this build cannot render is just as unrenderable as a playing
            one. -->
-      <p v-if="component === null" data-test="round-unrenderable" class="text-sm text-neutral-600">
+      <p
+        v-if="component === null"
+        data-test="round-unrenderable"
+        class="text-sm text-on-surface-variant"
+      >
         In dieser Version gibt es dafür noch keine Ansicht.
       </p>
 

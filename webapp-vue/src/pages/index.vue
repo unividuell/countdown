@@ -27,13 +27,13 @@ async function retry(): Promise<void> {
 <template>
   <section v-if="landingFailed" class="mx-auto max-w-md py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
-    <p class="mb-4 text-sm text-neutral-600">
+    <p class="mb-4 text-sm text-on-surface-variant">
       Deine Spielgemeinschaften konnten nicht geladen werden.
     </p>
     <button
       type="button"
       data-test="landing-retry"
-      class="cursor-pointer rounded border px-3 py-1.5 text-sm hover:bg-neutral-200"
+      class="cursor-pointer rounded border px-3 py-1.5 text-sm hover:bg-surface-container-highest"
       @click="retry"
     >
       Erneut versuchen

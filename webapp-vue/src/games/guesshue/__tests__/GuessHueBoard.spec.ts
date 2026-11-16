@@ -99,7 +99,7 @@ describe('GuessHueBoard', () => {
 
     expect(classes).not.toContain('rounded-xl')
     expect(classes).not.toContain('border')
-    expect(classes).not.toContain('border-neutral-200')
+    expect(classes).not.toContain('border-outline')
     expect(classes).not.toContain('bg-white')
     expect(classes).not.toContain('p-4')
   })

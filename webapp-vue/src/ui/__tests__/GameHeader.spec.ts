@@ -96,8 +96,10 @@ describe('GameHeader', () => {
   it('marks a phase two round on its number and nowhere else', () => {
     const w = mountHeader({ phaseTwo: true })
 
-    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-phase-two')
-    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain('text-phase-one')
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-inverse-phase-two')
+    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain(
+      'text-inverse-phase-one',
+    )
     expect(clockOf(w).tone).toBe('default')
   })
 
@@ -106,19 +108,20 @@ describe('GameHeader', () => {
   it('marks a phase one round on its number too, in the other colour', () => {
     const w = mountHeader()
 
-    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-phase-one')
-    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain('text-phase-two')
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-inverse-phase-one')
+    expect(w.get('[data-test="game-header-round"]').classes()).not.toContain(
+      'text-inverse-phase-two',
+    )
   })
 
-  // Softer than the app header's stone-900 on purpose, and NOT stone-800: DOT_OFF is #292524,
-  // which is stone-800 exactly — on that background the unlit dots would vanish into the band and
-  // the matrix with them.
+  // Softer than the app header's solid inverse-surface on purpose: at 80% over the white card it
+  // lands on #3d3d3d, while DOT_OFF is #292524 — on a band of the dots' own colour the unlit dots
+  // would vanish into it and the matrix with them.
   it('sits on a band one step softer than the app header, and not on the dots own colour', () => {
     const classes = mountHeader().get('[data-test="game-header"]').classes()
 
-    expect(classes).toContain('bg-stone-700')
-    expect(classes).not.toContain('bg-stone-800')
-    expect(classes).not.toContain('bg-stone-900')
+    expect(classes).toContain('bg-inverse-surface/80')
+    expect(classes).not.toContain('bg-inverse-surface')
   })
 
   // happy-dom computes no layout, so the only assertable form of "the clock never gets squeezed

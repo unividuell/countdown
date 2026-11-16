@@ -22,7 +22,7 @@ definePage({ meta: { public: true } })
           href="https://policies.google.com/terms"
           target="_blank"
           rel="noopener"
-          class="text-blue-700 underline"
+          class="text-primary underline"
           >Nutzungsbedingungen von Google</a
         >.
       </p>
@@ -37,7 +37,7 @@ definePage({ meta: { public: true } })
           href="https://policies.google.com/privacy"
           target="_blank"
           rel="noopener"
-          class="text-blue-700 underline"
+          class="text-primary underline"
           >Datenschutzerklärung von Google</a
         >.
       </p>
@@ -60,42 +60,42 @@ definePage({ meta: { public: true } })
             href="https://freesound.org/s/32639/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >32639</a
           >,
           <a
             href="https://freesound.org/s/32640/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >32640</a
           >,
           <a
             href="https://freesound.org/s/32643/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >32643</a
           >,
           <a
             href="https://freesound.org/s/32636/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >32636</a
           >,
           <a
             href="https://freesound.org/s/32637/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >32637</a
           >) von carrigsound —
           <a
             href="https://creativecommons.org/publicdomain/zero/1.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC0 1.0</a
           >
         </li>
@@ -104,35 +104,35 @@ definePage({ meta: { public: true } })
             href="https://freesound.org/s/9904/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >9904</a
           >,
           <a
             href="https://freesound.org/s/9905/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >9905</a
           >,
           <a
             href="https://freesound.org/s/9906/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >9906</a
           >,
           <a
             href="https://freesound.org/s/9907/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >9907</a
           >) von Snoman —
           <a
             href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC BY 4.0</a
           >
         </li>
@@ -141,14 +141,14 @@ definePage({ meta: { public: true } })
             href="https://freesound.org/s/15562/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >gravel walking</a
           >“ von tigersound —
           <a
             href="https://creativecommons.org/licenses/by-nc/4.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC BY-NC 4.0</a
           >
         </li>
@@ -157,40 +157,40 @@ definePage({ meta: { public: true } })
             href="https://freesound.org/s/41348/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >glass shatter</a
           >“ von datasoundsample —
           <a
             href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC BY 4.0</a
           >; „<a
             href="https://freesound.org/s/88808/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >gb12</a
           >“ von lsprice —
           <a
             href="https://creativecommons.org/licenses/by/3.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC BY 3.0</a
           >; „<a
             href="https://freesound.org/s/71947/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >bm_Glass_Break</a
           >“ von cmusounddesign —
           <a
             href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank"
             rel="noopener"
-            class="text-blue-700 underline"
+            class="text-primary underline"
             >CC BY 4.0</a
           >
         </li>

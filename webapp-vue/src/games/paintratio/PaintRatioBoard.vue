@@ -163,7 +163,7 @@ const ringStyle = computed(() => {
         </div>
       </div>
 
-      <p v-if="props.pictureFailed" class="text-center text-sm text-red-700">
+      <p v-if="props.pictureFailed" class="text-center text-sm text-error">
         Das Bild ließ sich nicht laden.
       </p>
 
@@ -177,7 +177,7 @@ const ringStyle = computed(() => {
           type="color"
           aria-label="Farbe"
           :value="color"
-          class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-neutral-400 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-neutral-400 [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
+          class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-outline [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-outline [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
           @input="pickColor"
         />
         <div class="flex items-center">
@@ -195,7 +195,7 @@ const ringStyle = computed(() => {
               class="rounded-full"
               :class="[
                 tool.dot,
-                brush === index ? 'ring-2 ring-neutral-800 ring-offset-2' : 'ring-1 ring-black/15',
+                brush === index ? 'ring-2 ring-on-surface ring-offset-2' : 'ring-1 ring-black/15',
               ]"
               :style="{ backgroundColor: color }"
             />

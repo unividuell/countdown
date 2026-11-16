@@ -107,7 +107,7 @@ onBeforeUnmount(release)
       popover="auto"
       role="tooltip"
       data-test="mark-hint"
-      class="fixed inset-auto m-0 max-w-64 rounded-md border-0 bg-neutral-900 px-2 py-1 text-xs font-normal text-white shadow-md"
+      class="fixed inset-auto m-0 max-w-64 rounded-md border-0 bg-inverse-surface px-2 py-1 text-xs font-normal text-inverse-on-surface shadow-md"
       @pointerdown.stop
       @click.stop
       @toggle="onToggle"

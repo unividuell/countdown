@@ -114,7 +114,7 @@ const profilePath = computed(() =>
  * the container was going to scroll either way.
  */
 const ROW = 'flex h-11 w-full shrink-0 items-center gap-2.5 px-5 text-left text-sm'
-const LINK = `${ROW} cursor-pointer hover:bg-neutral-100`
+const LINK = `${ROW} cursor-pointer hover:bg-surface-container`
 
 function go(slug: string): void {
   router.push(communityPath(slug)).catch((e) => console.error('navigation failed', e))
@@ -280,7 +280,7 @@ onKeyStroke('Tab', (e) => {
     aria-haspopup="dialog"
     :aria-expanded="open"
     aria-controls="nav-drawer"
-    class="flex cursor-pointer items-center rounded p-1 hover:bg-stone-800"
+    class="flex cursor-pointer items-center rounded p-1 hover:bg-inverse-on-surface/10"
     @click="setOpen(!open)"
   >
     <!-- The spin lives on this wrapper, not on Avatar itself, so the rotation cannot fight
@@ -295,7 +295,7 @@ onKeyStroke('Tab', (e) => {
         v-if="showDot"
         data-test="pending-dot"
         aria-hidden="true"
-        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-stone-900 bg-blue-600"
+        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-inverse-surface bg-inverse-primary"
       />
     </span>
   </button>
@@ -304,7 +304,7 @@ onKeyStroke('Tab', (e) => {
     <div
       data-test="nav-scrim"
       aria-hidden="true"
-      class="fixed inset-0 z-10 bg-black/45 transition-opacity duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:duration-150"
+      class="fixed inset-0 z-10 bg-scrim/45 transition-opacity duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:duration-150"
       :class="open ? 'opacity-100' : 'pointer-events-none opacity-0'"
     />
     <aside
@@ -318,7 +318,7 @@ onKeyStroke('Tab', (e) => {
       :inert="!open || undefined"
       :aria-hidden="!open || undefined"
       :style="{ width: `${drawerWidth}px`, top: `${drawerTop}px` }"
-      class="fixed right-0 bottom-0 z-20 flex flex-col bg-white text-neutral-900 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
+      class="fixed right-0 bottom-0 z-20 flex flex-col bg-surface-container-lowest text-on-surface shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
       :class="open ? 'translate-x-0' : 'translate-x-full'"
     >
       <div class="relative flex min-h-0 flex-1 flex-col">
@@ -334,7 +334,7 @@ onKeyStroke('Tab', (e) => {
                 v-if="e.current"
                 data-test="current-community"
                 aria-current="true"
-                :class="`${ROW} text-neutral-400`"
+                :class="`${ROW} text-on-surface/40`"
               >
                 {{ e.name }}
                 <!-- The live things in a row that is otherwise a label, which is why they keep
@@ -346,7 +346,7 @@ onKeyStroke('Tab', (e) => {
                     :to="communityPath(e.slug, 'images')"
                     data-test="community-images"
                     aria-label="Bilder"
-                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-on-surface"
                   >
                     <IconImage class="size-4" aria-hidden="true" />
                   </RouterLink>
@@ -354,7 +354,7 @@ onKeyStroke('Tab', (e) => {
                     :to="communityPath(e.slug, 'audio')"
                     data-test="community-audio"
                     aria-label="Audio"
-                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-on-surface"
                   >
                     <IconAudio class="size-4" aria-hidden="true" />
                   </RouterLink>
@@ -376,7 +376,7 @@ onKeyStroke('Tab', (e) => {
               v-if="mayCreate"
               to="/communities/new"
               data-test="create-community"
-              :class="`${LINK} text-neutral-600`"
+              :class="`${LINK} text-on-surface-variant`"
             >
               <IconPlus class="size-4" aria-hidden="true" />
               Spielgemeinschaft
@@ -389,11 +389,11 @@ onKeyStroke('Tab', (e) => {
             <div
               v-if="showCommunityBlock"
               data-test="admin-divider"
-              class="mt-1.5 border-t border-neutral-200"
+              class="mt-1.5 border-t border-outline"
             />
             <div
               data-test="admin-heading"
-              class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
+              class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
             >
               {{ admin.name }}
             </div>
@@ -402,7 +402,7 @@ onKeyStroke('Tab', (e) => {
               <span
                 v-if="admin.pendingCount > 0"
                 data-test="pending-count"
-                class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
+                class="ml-auto rounded-full bg-primary px-1.5 text-xs text-on-primary"
                 >{{ admin.pendingCount }}</span
               >
             </RouterLink>
@@ -428,7 +428,7 @@ onKeyStroke('Tab', (e) => {
           <div
             ref="navMark"
             data-test="nav-mark"
-            class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
+            class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-outline"
           >
             <BrandMark class="w-[200px] max-w-full" />
           </div>
@@ -438,7 +438,7 @@ onKeyStroke('Tab', (e) => {
           v-if="scrollHintVisible"
           data-test="nav-scroll-cue"
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-neutral-400"
+          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-on-surface/40"
         >
           <IconChevronDown
             class="size-4 animate-bounce [animation-iteration-count:2] motion-reduce:animate-none"
@@ -447,7 +447,7 @@ onKeyStroke('Tab', (e) => {
       </div>
 
       <div data-test="nav-foot" class="flex-none pb-1.5">
-        <div class="border-t border-neutral-200" />
+        <div class="border-t border-outline" />
         <RouterLink :to="profilePath" data-test="edit-profile" :class="LINK">
           Profil bearbeiten
         </RouterLink>
@@ -462,10 +462,10 @@ onKeyStroke('Tab', (e) => {
         <button type="button" data-test="logout" :class="LINK" @click="handleLogout">
           Abmelden
         </button>
-        <RouterLink to="/legal" data-test="legal" :class="`${LINK} text-neutral-500`">
+        <RouterLink to="/legal" data-test="legal" :class="`${LINK} text-on-surface-variant`">
           Rechtliches
         </RouterLink>
-        <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-red-600">
+        <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-error">
           Abmelden fehlgeschlagen
         </p>
       </div>

@@ -143,7 +143,7 @@ function pointsLabel(points: number | null): string {
               <th
                 v-if="column.fact !== undefined"
                 :id="`${column.key}-fact`"
-                class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
+                class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
                 :class="opacity"
                 :style="head(0, at + 1)"
               >
@@ -216,7 +216,7 @@ function pointsLabel(points: number | null): string {
         <tr>
           <th
             scope="col"
-            class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
+            class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
             :class="opacity"
             :style="head(bandRow, 0)"
           >
@@ -226,7 +226,7 @@ function pointsLabel(points: number | null): string {
             v-for="(column, at) in tableColumns"
             :key="column.key"
             scope="col"
-            class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
+            class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
             :class="opacity"
             :style="head(bandRow, at + 1)"
           >
@@ -234,7 +234,7 @@ function pointsLabel(points: number | null): string {
           </th>
           <th
             scope="col"
-            class="bg-neutral-900 px-0.5 text-start text-xs font-normal text-white transition-opacity"
+            class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
             :class="opacity"
             :style="head(bandRow, pointsColumnIndex)"
           >

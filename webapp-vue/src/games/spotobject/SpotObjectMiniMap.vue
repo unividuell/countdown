@@ -171,7 +171,9 @@ function between(value: number, min: number, max: number): number {
       handle hanging off the corner. On a phone the board is the viewport anyway; on a desktop the
       board is capped at `max-w-xl` and the cap takes over.
     -->
-    <div class="relative aspect-square overflow-hidden rounded-lg bg-neutral-200 shadow-lg">
+    <div
+      class="relative aspect-square overflow-hidden rounded-lg bg-surface-container-highest shadow-lg"
+    >
       <div ref="stage" data-test="spot-mini-stage" class="absolute inset-0" />
 
       <!-- Both sizes out of here have their own control, because a press on the map itself moves
@@ -182,7 +184,7 @@ function between(value: number, min: number, max: number): number {
         type="button"
         data-test="spot-mini-full"
         aria-label="Karte bildschirmfüllend"
-        class="absolute top-2 left-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
+        class="absolute top-2 left-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-on-surface shadow"
         @click="emit('expand')"
       >
         <IconMaximize aria-hidden="true" class="h-4 w-4" />
@@ -192,7 +194,7 @@ function between(value: number, min: number, max: number): number {
         type="button"
         data-test="spot-mini-close"
         aria-label="Übersichtskarte schließen"
-        class="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow"
+        class="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-on-surface shadow"
         @click="emit('collapse')"
       >
         <IconX aria-hidden="true" class="h-4 w-4" />
@@ -203,7 +205,7 @@ function between(value: number, min: number, max: number): number {
       <p
         v-if="props.missed"
         data-test="spot-mini-missed"
-        class="pointer-events-none absolute top-12 left-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] text-white"
+        class="pointer-events-none absolute top-12 left-2 rounded-full bg-inverse-surface/80 px-2 py-0.5 text-[10px] text-inverse-on-surface"
       >
         Keine Aufnahme hier.
       </p>
@@ -224,7 +226,7 @@ function between(value: number, min: number, max: number): number {
       type="button"
       data-test="spot-mini-grab"
       aria-label="Übersichtskarte verschieben"
-      class="absolute -bottom-3 -left-3 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded-full bg-white text-neutral-900 shadow active:cursor-grabbing"
+      class="absolute -bottom-3 -left-3 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded-full bg-surface-container-lowest text-on-surface shadow active:cursor-grabbing"
       @pointerdown="startDrag"
     >
       <IconMove aria-hidden="true" class="h-3.5 w-3.5" />

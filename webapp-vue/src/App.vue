@@ -37,7 +37,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col overflow-x-clip bg-neutral-100 text-neutral-900">
+  <div class="flex min-h-screen flex-col overflow-x-clip bg-surface text-on-surface">
     <!-- The member row's fly-in travels the full viewport, and its own resting width can exceed
          it (many members on a narrow phone). Clipping horizontally here — the unpadded root,
          not `main` — is what keeps the page from gaining a scrollbar mid-animation without
@@ -55,7 +55,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
            alone would leave the login page, which has no NavDrawer, 8px shorter than every other
            page. -->
       <header
-        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-stone-900 px-4 py-3 text-stone-50 shadow-lg md:grid-cols-[1fr_auto_auto]"
+        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-inverse-surface px-4 py-3 text-inverse-on-surface shadow-lg md:grid-cols-[1fr_auto_auto]"
       >
         <div
           data-test="title-row"
@@ -63,7 +63,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
           :class="alignToBoardBand"
         >
           <RouterLink to="/" class="font-semibold hover:underline"
-            >{{ brand }}<span class="text-stone-400">{{ yearSuffix }}</span></RouterLink
+            >{{ brand }}<span class="text-inverse-on-surface/70">{{ yearSuffix }}</span></RouterLink
           >
         </div>
         <!-- Account before countdown in the DOM, because that is the narrow layout's reading order
@@ -90,20 +90,22 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
         data-test="navigation-progress"
         role="progressbar"
         aria-label="Seite wird geladen"
-        class="absolute inset-x-0 top-full h-1 overflow-hidden bg-stone-300"
+        class="absolute inset-x-0 top-full h-1 overflow-hidden bg-outline"
       >
         <!-- A looping animation is physically unpleasant for some viewers, so reduced
              motion gets a static full-width fill instead — still legibly "busy". -->
         <div
           data-test="navigation-progress-segment"
-          class="nav-shuttle h-full w-1/4 bg-blue-600 motion-reduce:w-full"
+          class="nav-shuttle h-full w-1/4 bg-primary motion-reduce:w-full"
         />
       </div>
     </div>
     <main class="flex-1 p-4">
       <RouterView />
     </main>
-    <footer class="bg-stone-900 px-4 py-3 text-sm text-stone-300">countdown.unividuell.org</footer>
+    <footer class="bg-inverse-surface px-4 py-3 text-sm text-inverse-on-surface/70">
+      countdown.unividuell.org
+    </footer>
   </div>
 </template>
 

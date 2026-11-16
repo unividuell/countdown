@@ -40,52 +40,52 @@ onMounted(async () => {
         <RouterLink
           to="/super-admin/users"
           data-test="nav-entry"
-          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-surface-container"
         >
           Nutzer
-          <IconChevron class="ml-auto size-4 text-neutral-400" />
+          <IconChevron class="ml-auto size-4 text-on-surface/40" />
         </RouterLink>
       </li>
       <li>
         <RouterLink
           to="/super-admin/communities"
           data-test="nav-entry"
-          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-surface-container"
         >
           Spielgemeinschaften
-          <IconChevron class="ml-auto size-4 text-neutral-400" />
+          <IconChevron class="ml-auto size-4 text-on-surface/40" />
         </RouterLink>
       </li>
       <li>
         <RouterLink
           to="/super-admin/images"
           data-test="nav-entry"
-          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-surface-container"
         >
           Bilder
-          <IconChevron class="ml-auto size-4 text-neutral-400" />
+          <IconChevron class="ml-auto size-4 text-on-surface/40" />
         </RouterLink>
       </li>
       <li>
         <RouterLink
           to="/super-admin/audio"
           data-test="nav-entry"
-          class="flex min-h-11 items-center px-4 py-3 hover:bg-neutral-100"
+          class="flex min-h-11 items-center px-4 py-3 hover:bg-surface-container"
         >
           Audio
-          <IconChevron class="ml-auto size-4 text-neutral-400" />
+          <IconChevron class="ml-auto size-4 text-on-surface/40" />
         </RouterLink>
       </li>
     </ul>
 
     <h2 class="mb-2 font-medium">Super-Admins</h2>
-    <p v-if="state === 'loading'" class="text-sm text-neutral-500">Lade…</p>
-    <p v-else-if="state === 'error'" class="text-sm text-red-600">
+    <p v-if="state === 'loading'" class="text-sm text-on-surface-variant">Lade…</p>
+    <p v-else-if="state === 'error'" class="text-sm text-error">
       Die Super-Admins konnten nicht geladen werden.
     </p>
     <table v-else class="w-full text-left text-sm">
       <thead>
-        <tr class="border-b text-neutral-500">
+        <tr class="border-b text-on-surface-variant">
           <th class="py-1 pr-4 font-medium">GitHub</th>
           <th class="py-1 pr-4 font-medium">Name</th>
           <th class="py-1 pr-4 font-medium">Status</th>

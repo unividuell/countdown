@@ -209,7 +209,7 @@ describe('MemberRow', () => {
     })
     const classes = settled.find('[data-test="live-points"]').classes()
     expect(classes).not.toContain('animate-pulse')
-    expect(classes).toContain('bg-neutral-900')
+    expect(classes).toContain('bg-inverse-surface')
     expect(classes).not.toContain('bg-yellow-400')
 
     // Scored or scoreless, a finished round is the same state and wears the same chip.
@@ -218,7 +218,7 @@ describe('MemberRow', () => {
         members: [member({ points: { stable: 3, live: { points: 0, provisional: false } } })],
       },
     })
-    expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-neutral-900')
+    expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-inverse-surface')
   })
 
   it('paints a provisional chip in the shared live colour, not a local one', () => {

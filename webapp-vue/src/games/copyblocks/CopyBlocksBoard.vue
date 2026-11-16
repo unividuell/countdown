@@ -205,7 +205,7 @@ function submit(): void {
                  phone the slots shrink below 44 px instead — the one exception to that floor. -->
             <div class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
               <div
-                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-neutral-800/75 p-0.5"
+                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-inverse-surface/75 p-0.5"
               >
                 <button
                   v-for="s in hotbar"

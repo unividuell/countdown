@@ -193,7 +193,7 @@ const patchWidth = computed(() =>
         <div
           ref="field"
           data-test="place-patch-field"
-          class="relative w-full touch-none overflow-hidden bg-neutral-200 select-none"
+          class="relative w-full touch-none overflow-hidden bg-surface-container-highest select-none"
           :style="{ aspectRatio: `${layout.cols} / ${layout.rows}` }"
           @pointerdown="onDown"
           @pointermove="onMove"
@@ -230,7 +230,7 @@ const patchWidth = computed(() =>
         <p
           v-if="pictureFailed"
           data-test="place-patch-image-error"
-          class="text-center text-sm text-red-700"
+          class="text-center text-sm text-error"
         >
           Das Bild ließ sich nicht laden.
         </p>

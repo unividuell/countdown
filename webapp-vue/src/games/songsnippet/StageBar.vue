@@ -130,7 +130,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
   <div class="relative pt-7">
     <div class="relative h-5 w-full" data-test="stage-bar">
       <div
-        class="absolute inset-y-0 left-0 overflow-hidden rounded-full bg-neutral-200"
+        class="absolute inset-y-0 left-0 overflow-hidden rounded-full bg-surface-container-highest"
         data-test="stage-ladder"
         :style="ladderStyle"
       >
@@ -200,8 +200,8 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
             step.current
               ? 'font-medium text-amber-600'
               : step.open
-                ? 'text-neutral-500'
-                : 'text-neutral-300',
+                ? 'text-on-surface-variant'
+                : 'text-outline',
           ]"
           :style="{ left: `${step.fraction * 100}%` }"
         >
@@ -211,7 +211,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
       <!-- Where the ladder stops short of the bar, the scale itself gets the last word. -->
       <span
         v-if="endLabel"
-        class="absolute -translate-x-full text-[10px] leading-4 tabular-nums text-neutral-500"
+        class="absolute -translate-x-full text-[10px] leading-4 tabular-nums text-on-surface-variant"
         data-test="stage-scale-end"
         :style="endLabelStyle"
       >

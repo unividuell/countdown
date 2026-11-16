@@ -265,11 +265,13 @@ watch(
 <template>
   <div v-if="unavailable" data-test="lab-unavailable" class="py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Spiel-Labor nicht verfügbar</h1>
-    <p class="text-sm text-neutral-600">In dieser Umgebung ist das Labor abgeschaltet.</p>
+    <p class="text-sm text-on-surface-variant">In dieser Umgebung ist das Labor abgeschaltet.</p>
   </div>
   <div v-else-if="!gameComponent" data-test="lab-unknown-game" class="py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Unbekanntes Spiel</h1>
-    <p class="text-sm text-neutral-600">Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.</p>
+    <p class="text-sm text-on-surface-variant">
+      Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.
+    </p>
   </div>
   <div v-else-if="seed !== null">
     <!-- Everything that only exists because this is a lab lives in the nav drawer, not here. A
@@ -293,7 +295,7 @@ watch(
         @reset="run(resetLabRound, true)"
         @forget-mine="run(forgetMyLabEntry, true)"
       />
-      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-neutral-500">
+      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-on-surface-variant">
         Testrunde in „{{ community.name }}“
         <span
           v-if="round?.tookOverRound"
@@ -307,7 +309,7 @@ watch(
 
     <!-- Stays in the column: an error is the one thing that must not wait behind a closed
          drawer, and it is absent whenever the page is worth looking at. -->
-    <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
+    <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-error">{{ error }}</p>
 
     <RoundSurface v-if="round">
       <!-- The game's name lives in the band now, exactly as it does in a real round — that is the

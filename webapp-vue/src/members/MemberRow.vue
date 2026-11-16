@@ -109,7 +109,7 @@ function liveChipClass(m: RosterMemberResponse): string {
   if (live === undefined) return 'invisible'
   return live.provisional
     ? 'animate-pulse bg-live text-white ring-yellow-400 motion-reduce:animate-none'
-    : 'bg-neutral-900 text-white ring-white'
+    : 'bg-inverse-surface text-inverse-on-surface ring-white'
 }
 
 function paint(): void {
@@ -350,7 +350,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
       >
         <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" data-swarm-circle />
         <div
-          class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-900 ring-1 ring-white"
+          class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-on-surface ring-1 ring-white"
         >
           {{ m.points.stable }}
         </div>

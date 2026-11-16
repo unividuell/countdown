@@ -1,25 +1,57 @@
 @import 'tailwindcss';
 
-@theme {
-  /* „Vorläufig“: a score that can still be overtaken. Rose plus a pulse says that in the member
-     row and in the scoreboard, and one meaning must not have two colours. Aliased onto rose-600;
-     if Tailwind ever tree-shakes the referenced variable away, inline the literal
-     `oklch(58.6% 0.253 17.585)` here and keep the name in this comment. */
-  --color-live: var(--color-rose-600);
+/* The palette, as Material 3 colour roles. Components name a role, never a Tailwind shade, so the
+   look changes here and nowhere else. Only roles the app actually wears exist; M3's others
+   (secondary, tertiary, containers, fixed, dim/bright) are added when something needs them.
 
-  /* "Phase two": rounds where the stake grows and only the best guess gets it. The band's play
-     clock has worn this amber since it was built — timed games exist only in phase two, so the
-     colour already carried the meaning, just no name. One meaning, one colour, as with
-     --color-live above. Twin in the dot matrix: `DOT_ALARM_ON` in `src/ui/flipdot/board.ts` —
-     whoever changes one changes the other. */
-  --color-phase-two: var(--color-amber-500);
+     ┌──────────── inverse-surface ────────────┐  header, footer, game band, dark chips
+     │ inverse-on-surface   inverse-primary    │  text / accent on dark
+     └─────────────────────────────────────────┘
+       surface                                    the page
+         surface-container-lowest                 cards (white)
+           surface-container / -highest           wells and fills inside a card
+       on-surface · on-surface-variant · outline  text, secondary text, lines
+
+   One black for text, dark surfaces and scrim. Hover and pressed states are no extra shade but the
+   role at an opacity (`hover:bg-inverse-surface/80`), as M3's state layers. Disabled text is
+   `text-on-surface/40`. */
+@theme {
+  --color-primary: #0e3b9d; /* Race Blue */
+  --color-on-primary: #ffffff;
+  --color-inverse-primary: #92b7fe; /* primary's hue, light enough for inverse-surface (9.6:1) */
+
+  --color-error: var(--color-red-600);
+  --color-on-error: #ffffff;
+
+  --color-surface: #f7f5f1;
+  --color-on-surface: #0d0d0d;
+  --color-on-surface-variant: var(--color-neutral-600);
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container: var(--color-neutral-100);
+  --color-surface-container-highest: var(--color-neutral-200);
+  --color-outline: var(--color-neutral-300);
+
+  --color-inverse-surface: #0d0d0d;
+  --color-inverse-on-surface: var(--color-neutral-50);
+
+  --color-scrim: #0d0d0d;
+
 
   /* "Phase one": rounds where the point is not exclusive — everyone who qualifies collects it.
-     Named for the same reason as --color-phase-two above, and chosen against what it has to stand
-     beside: green enough to read as a different family from the rules box's sky when the two boxes
-     stack, dark enough not to compete with the amber. Nothing in the dot matrix wears it — phase
-     one has no play clock — so unlike --color-phase-two this one has no twin to keep in step. */
-  --color-phase-one: var(--color-teal-500);
+     "Phase two": the stake grows and only the best guess gets it. Two names even while phase one
+     borrows primary, so the two can be told apart again without touching a component.
+     The `inverse-` twins are for the dark game band, where the base colours fall to ~2:1.
+     Twin in the dot matrix: `DOT_ALARM_ON` in `src/ui/flipdot/board.ts` is inverse-phase-two —
+     timed games exist only in phase two. Whoever changes one changes the other. */
+  --color-phase-one: var(--color-primary);
+  --color-phase-two: var(--color-fuchsia-800);
+  --color-inverse-phase-one: var(--color-inverse-primary);
+  --color-inverse-phase-two: var(--color-fuchsia-300);
+
+  /* „Vorläufig“: a score that can still be overtaken — the best-guess-takes-it rule of phase two
+     at work, so it wears phase two's colour, plus a pulse, in the member row and the scoreboard.
+     Its own name, so the two can part again without touching a component. */
+  --color-live: var(--color-phase-two);
 }
 
 /* The round slot's full-bleed on a phone: the band spans the viewport by giving back exactly the

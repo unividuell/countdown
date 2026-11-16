@@ -9,10 +9,10 @@
 
 <template>
   <div data-test="labelled-divider" class="flex items-center">
-    <span class="grow border-t border-neutral-300" aria-hidden="true" />
-    <span data-test="labelled-divider-label" class="mx-4 shrink-0 text-sm text-neutral-500">
+    <span class="grow border-t border-outline" aria-hidden="true" />
+    <span data-test="labelled-divider-label" class="mx-4 shrink-0 text-sm text-on-surface-variant">
       <slot />
     </span>
-    <span class="grow border-t border-neutral-300" aria-hidden="true" />
+    <span class="grow border-t border-outline" aria-hidden="true" />
   </div>
 </template>

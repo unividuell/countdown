@@ -25,6 +25,17 @@ of the frontend conventions live beside it:
     `const body: Partial<{ name: string; targetAt: string }> = { name: name.value.trim() }`,
     then `if (targetAt.value) body.targetAt = targetAt.value`.
 - **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
+  - **Colours are Material 3 roles, defined once in `main.css`'s `@theme`** (`bg-surface`,
+    `text-on-surface-variant`, `border-outline`, `bg-inverse-surface`, `text-primary`, `text-error`,
+    …). App UI names a role, never a Tailwind shade, so a palette change touches one file. Only
+    roles the app wears exist; add an M3 role when something needs it, not ahead. No extra shades
+    for states: hover and pressed are the role at an opacity (`hover:bg-inverse-surface/80`),
+    disabled text is `text-on-surface/40`. Text on a role fill takes its `on-` role (`bg-primary
+    text-on-primary`). On `inverse-surface` the base colours fall to ~2:1 — use the `inverse-`
+    twins (`text-inverse-primary`, `text-inverse-phase-two`). A meaning that may part from its
+    colour later gets its own name even while it borrows one (`--color-live` →
+    `--color-phase-two`, `--color-phase-one` → `--color-primary`). Game artwork (crosshairs,
+    glass over photos, chart fills) is not app UI and may keep literal colours.
   - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
     meaning (`--color-live`, the phase colours), layout utilities several areas share
     (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a

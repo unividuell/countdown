@@ -484,7 +484,7 @@ describe('NavDrawer content', () => {
     const current = w.get('[data-test=current-community]')
     expect(current.element.tagName).toBe('DIV')
     expect(current.attributes('aria-current')).toBe('true')
-    expect(current.classes()).toContain('text-neutral-400')
+    expect(current.classes()).toContain('text-on-surface/40')
   })
 
   it('navigates to a community that is not the current one', async () => {

@@ -76,7 +76,7 @@ defineExpose({ enqueue })
   <section class="mx-auto max-w-2xl px-4 py-6">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-semibold">Bilder</h1>
-      <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-neutral-500"
+      <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-on-surface-variant"
         >{{ used }} von {{ limit }}</span
       >
     </div>
@@ -103,7 +103,7 @@ defineExpose({ enqueue })
 
     <UploadQueueRows :rows="queue" />
 
-    <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
+    <p v-if="error" class="mb-3 text-sm text-error">{{ error }}</p>
 
     <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <li v-for="image in images" :key="image.id" class="relative space-y-1">
@@ -134,13 +134,13 @@ defineExpose({ enqueue })
           @click="remove(image.id)"
         >
           <span
-            class="grid size-7 place-items-center rounded-full border border-neutral-300 bg-white text-neutral-700 shadow-sm"
+            class="grid size-7 place-items-center rounded-full border border-outline bg-surface-container-lowest text-on-surface-variant shadow-sm"
           >
             <IconX class="size-4" aria-hidden="true" />
           </span>
         </button>
 
-        <p v-if="viewerIsAdmin" class="truncate text-xs text-neutral-500">
+        <p v-if="viewerIsAdmin" class="truncate text-xs text-on-surface-variant">
           {{ image.uploadedBy }}
         </p>
       </li>

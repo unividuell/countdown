@@ -147,8 +147,8 @@ describe('SongSnippetBoard', () => {
 
     expect(cheap.attributes('title')).toContain('kostet nur Ruhm')
     expect(dear.attributes('title')).toContain('kann den Sieg kosten')
-    expect(cheap.classes()).toContain('border-neutral-300')
-    expect(dear.classes()).toContain('border-neutral-300')
+    expect(cheap.classes()).toContain('border-outline')
+    expect(dear.classes()).toContain('border-outline')
   })
 
   it('gives up on a single press of an ordinary button', async () => {
@@ -434,7 +434,7 @@ describe('SongSnippetBoard', () => {
 
     expect(classes).not.toContain('rounded-xl')
     expect(classes).not.toContain('border')
-    expect(classes).not.toContain('border-neutral-200')
+    expect(classes).not.toContain('border-outline')
     expect(classes).not.toContain('bg-white')
     expect(classes).not.toContain('p-4')
   })

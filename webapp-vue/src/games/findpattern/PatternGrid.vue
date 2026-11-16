@@ -152,7 +152,7 @@ function tileStyle(tile: PatternTile) {
     <div
       v-else
       data-test="pattern-grid-placeholder"
-      class="block w-full bg-neutral-100"
+      class="block w-full bg-surface-container"
       :style="{ aspectRatio: `${props.cols} / ${props.rows}` }"
     />
     <div

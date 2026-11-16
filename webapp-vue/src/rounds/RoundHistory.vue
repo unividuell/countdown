@@ -82,7 +82,9 @@ const reviewNotice = ref<{ roundNumber: number; text: string } | null>(null)
       "
     />
 
-    <p v-if="error" data-test="history-error" class="mt-6 text-sm text-neutral-500">{{ error }}</p>
+    <p v-if="error" data-test="history-error" class="mt-6 text-sm text-on-surface-variant">
+      {{ error }}
+    </p>
 
     <div v-if="canLoadMore" class="mt-6 flex justify-center">
       <ActionButton data-test="history-more" :busy="busy" @click="loadMore">

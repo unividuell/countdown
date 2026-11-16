@@ -14,7 +14,7 @@ const { user } = useAuth()
 <template>
   <div v-if="!user?.isSuperAdmin" class="mx-auto max-w-md py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Kein Zugriff</h1>
-    <p class="text-sm text-neutral-600">Dieser Bereich ist Super-Admins vorbehalten.</p>
+    <p class="text-sm text-on-surface-variant">Dieser Bereich ist Super-Admins vorbehalten.</p>
   </div>
   <RouterView v-else />
 </template>

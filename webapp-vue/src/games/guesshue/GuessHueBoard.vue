@@ -53,10 +53,10 @@ const color = computed(
       is not cosmetic — without it a thumb resting beside the wheel selects the text and raises
       the iOS callout.
     -->
-    <blockquote class="border-l-4 border-neutral-300 py-1 pl-4">
+    <blockquote class="border-l-4 border-outline py-1 pl-4">
       <p
         data-test="hue-description"
-        class="text-xl leading-relaxed font-medium text-neutral-900 italic select-none"
+        class="text-xl leading-relaxed font-medium text-on-surface italic select-none"
       >
         „{{ props.description }}“
       </p>

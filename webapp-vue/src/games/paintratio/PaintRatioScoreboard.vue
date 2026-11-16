@@ -76,7 +76,7 @@ const kollektivColumns = computed(() =>
 const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:-outline-offset-2'
 
 /** The head's values are the Kollektiv's, so they wear its row's ground, right-aligned like the column. */
-const FACT = 'block bg-neutral-200 px-0.5 text-end text-neutral-900 tabular-nums'
+const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface tabular-nums'
 
 const still = isStill(props.animate)
 const { shown } = useRevealArming(still)
@@ -125,12 +125,12 @@ const { shown } = useRevealArming(still)
       <template #cell-difference="{ row }">{{ row.differenceLabel ?? '—' }}</template>
     </RevealScoreboard>
 
-    <hr class="border-neutral-300" />
+    <hr class="border-outline" />
 
     <!-- Appears with the head, when the solution does: it names the target. -->
     <div
       data-test="paint-ratio-kollektiv"
-      class="grid gap-x-1 text-neutral-900 transition-opacity"
+      class="grid gap-x-1 text-on-surface transition-opacity"
       :class="shown ? 'opacity-100' : 'opacity-0'"
       :style="{
         gridTemplateColumns: kollektivColumns,
@@ -143,7 +143,7 @@ const { shown } = useRevealArming(still)
         type="button"
         data-test="select-kollektiv"
         :class="BUTTON"
-        class="min-w-0 bg-neutral-200 px-0.5"
+        class="min-w-0 bg-surface-container-highest px-0.5"
         :aria-pressed="props.selected.includes(KOLLEKTIV)"
         @click="emit('select', KOLLEKTIV)"
       >
@@ -151,21 +151,25 @@ const { shown } = useRevealArming(still)
           >Kollektiv Kommune</span
         >
       </button>
-      <span class="flex items-center justify-end bg-neutral-200 px-0.5 tabular-nums">{{
-        formatShare(props.targetRatio)
-      }}</span>
-      <span class="flex items-center justify-end bg-neutral-200 px-0.5 tabular-nums">{{
-        formatDifference(0)
-      }}</span>
+      <span
+        class="flex items-center justify-end bg-surface-container-highest px-0.5 tabular-nums"
+        >{{ formatShare(props.targetRatio) }}</span
+      >
+      <span
+        class="flex items-center justify-end bg-surface-container-highest px-0.5 tabular-nums"
+        >{{ formatDifference(0) }}</span
+      >
       <span
         v-if="hasDurations(props.rows)"
-        class="flex items-center justify-end bg-neutral-200 px-0.5 font-mono text-xs"
+        class="flex items-center justify-end bg-surface-container-highest px-0.5 font-mono text-xs"
         >—</span
       >
-      <span class="flex items-center justify-end bg-neutral-200 px-px tabular-nums">—</span>
+      <span class="flex items-center justify-end bg-surface-container-highest px-px tabular-nums"
+        >—</span
+      >
     </div>
 
-    <p data-test="paint-ratio-legend" class="text-end text-xs text-neutral-600">
+    <p data-test="paint-ratio-legend" class="text-end text-xs text-on-surface-variant">
       * Anteil Farbe auf Leinwand [%]
     </p>
   </div>

@@ -201,7 +201,7 @@ onUnmounted(() => {
         <button
           type="button"
           data-test="stop"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-surface-container-highest text-xl text-on-surface-variant"
           aria-label="Stopp"
           @click="onStop()"
         >
@@ -220,7 +220,7 @@ onUnmounted(() => {
         <button
           type="button"
           data-test="skip"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 border-neutral-300 text-xl text-neutral-700 disabled:opacity-40"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-2 border-outline text-xl text-on-surface-variant disabled:opacity-40"
           :disabled="disabled || lastStage"
           aria-label="Nächste Stufe freischalten"
           :title="`Nächste Stufe freischalten — ${skipCost}`"
@@ -239,7 +239,7 @@ onUnmounted(() => {
       <button
         type="button"
         data-test="give-up"
-        class="cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1 text-xs whitespace-nowrap text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+        class="cursor-pointer rounded-lg border border-outline px-2.5 py-1 text-xs whitespace-nowrap text-on-surface-variant hover:bg-surface-container disabled:opacity-40"
         :disabled="disabled"
         @click="emit('giveUp')"
       >

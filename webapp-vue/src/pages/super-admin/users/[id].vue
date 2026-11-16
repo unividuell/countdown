@@ -49,31 +49,31 @@ onMounted(async () => {
   <section class="mx-auto max-w-2xl px-4 py-8">
     <RouterLink
       to="/super-admin/users"
-      class="mb-4 inline-block text-sm text-blue-700 hover:underline"
+      class="mb-4 inline-block text-sm text-primary hover:underline"
     >
       ← Nutzer
     </RouterLink>
 
-    <p v-if="state === 'loading'" class="text-sm text-neutral-500">Lade…</p>
-    <p v-else-if="state === 'error' || !user" class="text-sm text-red-600">
+    <p v-if="state === 'loading'" class="text-sm text-on-surface-variant">Lade…</p>
+    <p v-else-if="state === 'error' || !user" class="text-sm text-error">
       Der Nutzer konnte nicht geladen werden.
     </p>
     <template v-else>
       <h1 class="text-xl font-semibold">{{ user.username }}</h1>
-      <code class="mb-6 block text-sm text-neutral-500">@{{ user.githubLogin }}</code>
+      <code class="mb-6 block text-sm text-on-surface-variant">@{{ user.githubLogin }}</code>
 
       <dl class="mb-8 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt class="text-neutral-500">GitHub-Login</dt>
+        <dt class="text-on-surface-variant">GitHub-Login</dt>
         <dd>
           <code>{{ user.githubLogin }}</code>
         </dd>
-        <dt class="text-neutral-500">GitHub-Name</dt>
+        <dt class="text-on-surface-variant">GitHub-Name</dt>
         <dd>{{ user.githubName ?? '—' }}</dd>
-        <dt class="text-neutral-500">Anzeigename</dt>
+        <dt class="text-on-surface-variant">Anzeigename</dt>
         <dd>{{ user.displayName ?? '—' }}</dd>
-        <dt class="text-neutral-500">E-Mail</dt>
+        <dt class="text-on-surface-variant">E-Mail</dt>
         <dd>{{ user.email ?? '—' }}</dd>
-        <dt class="text-neutral-500">Farbe</dt>
+        <dt class="text-on-surface-variant">Farbe</dt>
         <dd>
           <span v-if="user.bgColorHex" class="flex items-center gap-2">
             <span
@@ -84,14 +84,14 @@ onMounted(async () => {
           </span>
           <span v-else>—</span>
         </dd>
-        <dt class="text-neutral-500">Mitglied seit</dt>
+        <dt class="text-on-surface-variant">Mitglied seit</dt>
         <dd>{{ formatDate(user.createdAt) }}</dd>
-        <dt class="text-neutral-500">zuletzt geändert</dt>
+        <dt class="text-on-surface-variant">zuletzt geändert</dt>
         <dd>{{ formatDate(user.updatedAt) }}</dd>
       </dl>
 
       <h2 class="mb-1 font-medium">Spielgemeinschaften erstellen</h2>
-      <p class="mb-3 text-sm text-neutral-600">
+      <p class="mb-3 text-sm text-on-surface-variant">
         <span v-if="locked">Super-Admins dürfen immer erstellen.</span>
         <span v-else-if="allowed">Dieser Nutzer darf eigene Spielgemeinschaften erstellen.</span>
         <span v-else>Dieser Nutzer darf keine eigenen Spielgemeinschaften erstellen.</span>
@@ -99,7 +99,7 @@ onMounted(async () => {
       <ActionButton data-test="toggle-clearance" :busy="busy" :disabled="locked" @click="toggle">
         {{ allowed ? 'Berechtigung entziehen' : 'Freischalten' }}
       </ActionButton>
-      <p v-if="error" data-test="toggle-error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" data-test="toggle-error" class="mt-3 text-sm text-error">{{ error }}</p>
     </template>
   </section>
 </template>

@@ -91,7 +91,7 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
           class="flex items-end justify-center gap-px px-1 pb-0.5"
           :class="{
             'bg-white/60 ring-2 ring-white ring-inset': markOf(cell - 1) === 'reveal-correct',
-            'bg-white/60 ring-2 ring-red-600 ring-inset': markOf(cell - 1) === 'reveal-wrong',
+            'bg-white/60 ring-2 ring-error ring-inset': markOf(cell - 1) === 'reveal-wrong',
           }"
         >
           <!-- No axes, no labels: 0 at the bottom, the band's top near the tile's; thin enough for
@@ -117,7 +117,7 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
               <IconWarning
                 v-if="bar.warn"
                 data-test="reveal-warning"
-                class="absolute bottom-full left-1/2 size-2 -translate-x-1/2 text-neutral-900"
+                class="absolute bottom-full left-1/2 size-2 -translate-x-1/2 text-on-surface"
               />
             </div>
           </div>

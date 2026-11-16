@@ -137,7 +137,7 @@ function onCell(index: number): void {
         <p
           v-if="pictureFailed"
           data-test="pattern-image-error"
-          class="text-center text-sm text-red-700"
+          class="text-center text-sm text-error"
         >
           Das Bild ließ sich nicht laden.
         </p>
@@ -156,7 +156,7 @@ function onCell(index: number): void {
         <div
           v-else
           data-test="pattern-image-placeholder"
-          class="block w-full border-2 border-black bg-neutral-100"
+          class="block w-full border-2 border-black bg-surface-container"
         >
           <!-- The ratio sits inside the border, as on the `img`: on the outer box it would count
                the border too, and the reveal would push the rules down. -->

@@ -49,7 +49,7 @@ function shortJson(value: unknown): string {
       <li
         v-for="entry in entries"
         :key="entry.userId"
-        class="relative flex items-center gap-3 rounded-md border border-neutral-200 p-2"
+        class="relative flex items-center gap-3 rounded-md border border-outline p-2"
       >
         <!-- The name is the avatar's four characters. The full one stays reachable: `title` for a
              pointer, `sr-only` for everything else — the avatar itself is a bare div with no
@@ -61,7 +61,7 @@ function shortJson(value: unknown): string {
           :title="entry.username"
         />
         <span class="sr-only">{{ entry.username }}</span>
-        <code class="text-xs break-all text-neutral-500">
+        <code class="text-xs break-all text-on-surface-variant">
           {{ shortJson(entry.guess)
           }}<template v-if="entry.outcome !== null"> → {{ shortJson(entry.outcome) }}</template>
         </code>
@@ -79,7 +79,7 @@ function shortJson(value: unknown): string {
           data-test="lab-entry-forget-mine"
           :disabled="busy"
           aria-label="Meinen Guess löschen"
-          class="absolute -top-3.5 -right-3.5 flex cursor-pointer items-center gap-1 rounded-full border border-neutral-200 bg-white px-2 py-1.5 text-neutral-400 after:absolute after:-inset-2.5 after:content-[''] hover:bg-neutral-100 hover:text-neutral-700 disabled:cursor-default disabled:opacity-40"
+          class="absolute -top-3.5 -right-3.5 flex cursor-pointer items-center gap-1 rounded-full border border-outline bg-surface-container-lowest px-2 py-1.5 text-on-surface/40 after:absolute after:-inset-2.5 after:content-[''] hover:bg-surface-container hover:text-on-surface-variant disabled:cursor-default disabled:opacity-40"
           @click="emit('forgetMine')"
         >
           <IconX class="size-3.5" />
@@ -93,7 +93,7 @@ function shortJson(value: unknown): string {
         type="button"
         data-test="lab-entries-reset"
         :disabled="busy"
-        class="flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs text-neutral-500 hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40"
+        class="flex h-11 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs text-on-surface-variant hover:bg-surface-container disabled:cursor-default disabled:opacity-40"
         @click="emit('reset')"
       >
         <IconRotateCcw class="size-3.5" />

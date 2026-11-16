@@ -300,7 +300,7 @@ const popStyle = computed(() => ({
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[6.25%] text-neutral-900"
+      class="pointer-events-none absolute -inset-[6.25%] text-on-surface"
       :class="{ 'rounded-full': props.shape === 'round' }"
       :style="ringStyle"
     />

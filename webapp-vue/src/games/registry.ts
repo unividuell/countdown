@@ -9,7 +9,7 @@ import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 import SpotObjectGame from './spotobject/SpotObjectGame.vue'
 
-const NOTE = 'text-sm text-neutral-600'
+const NOTE = 'text-sm text-on-surface-variant'
 
 const Loading = () => h('p', { class: NOTE }, 'Lädt …')
 

@@ -59,13 +59,15 @@ function signIn(): void {
 
 <template>
   <section class="mx-auto max-w-md py-8 text-center">
-    <p v-if="state === 'loading'" class="text-sm text-neutral-500">Einladung wird geprüft…</p>
+    <p v-if="state === 'loading'" class="text-sm text-on-surface-variant">
+      Einladung wird geprüft…
+    </p>
 
     <template v-else-if="state === 'invited'">
       <p class="mb-6 text-base">Du bist zu „{{ name }}“ eingeladen.</p>
       <button
         data-test="join-accept"
-        class="rounded bg-stone-900 px-4 py-2 text-stone-50 hover:bg-stone-700"
+        class="rounded bg-inverse-surface px-4 py-2 text-inverse-on-surface hover:bg-inverse-surface/80"
         @click="signIn"
       >
         Beitreten
@@ -73,6 +75,6 @@ function signIn(): void {
     </template>
 
     <p v-else-if="state === 'pending'" class="text-sm">{{ message }}</p>
-    <p v-else class="text-sm text-red-600">{{ message }}</p>
+    <p v-else class="text-sm text-error">{{ message }}</p>
   </section>
 </template>

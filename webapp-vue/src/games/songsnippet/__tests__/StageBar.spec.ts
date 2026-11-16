@@ -182,7 +182,7 @@ describe('StageBar', () => {
     const labels = mountBar(15, 2).get('[data-test="stage-steps"]').findAll('span')
 
     expect(labels[2]!.classes()).toContain('text-amber-600')
-    expect(labels[3]!.classes()).toContain('text-neutral-300')
-    expect(labels[1]!.classes()).toContain('text-neutral-500')
+    expect(labels[3]!.classes()).toContain('text-outline')
+    expect(labels[1]!.classes()).toContain('text-on-surface-variant')
   })
 })

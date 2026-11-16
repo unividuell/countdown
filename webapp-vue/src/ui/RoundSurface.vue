@@ -15,7 +15,7 @@
 <template>
   <div
     data-test="round-surface"
-    class="round-bleed border-y border-neutral-200 bg-white sm:overflow-hidden sm:rounded-xl sm:border-x"
+    class="round-bleed border-y border-outline bg-surface-container-lowest sm:overflow-hidden sm:rounded-xl sm:border-x"
   >
     <div v-if="$slots.header" data-test="round-surface-header">
       <slot name="header" />
