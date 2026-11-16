@@ -41,4 +41,15 @@ describe('groupCentres', () => {
     expect(three[1]!).toBeGreaterThan(two[1]!)
     expect(three).toHaveLength(4)
   })
+
+  // A padded field is wider and starts further left of the digits; the labels must still land on
+  // their groups. '58' alone is centred, and a symmetric pad keeps it centred.
+  it('measures over the padded field', () => {
+    expect(groupCentres('58', { top: 1, right: 1, bottom: 1, left: 1 })[0]).toBeCloseTo(50, 10)
+
+    // Pad on the left only: the group moves right by one pitch on a field one pitch wider.
+    const [plain] = groupCentres('58')
+    const [shifted] = groupCentres('58', { top: 0, right: 0, bottom: 0, left: 1 })
+    expect(shifted!).toBeGreaterThan(plain!)
+  })
 })

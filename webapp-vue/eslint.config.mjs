@@ -19,7 +19,7 @@ export default [
     // `pad` has no default on purpose — an absent pad means no padding, not a padding of
     // zero — and under `exactOptionalPropertyTypes` that means leaving it out of
     // `withDefaults` entirely, which this rule otherwise flags.
-    files: ['src/ui/flipdot/FlipDotBoard.vue'],
+    files: ['src/ui/flipdot/FlipDotBoard.vue', 'src/ui/flipdot/FlipDotLegend.vue'],
     rules: { 'vue/require-default-prop': 'off' },
   },
   {

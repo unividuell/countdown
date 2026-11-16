@@ -49,6 +49,9 @@ export const SURFACE_LIGHT = { on: '#0d0d0d', off: '#f0ede8' }
  */
 export const BAND_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 5 }
 
+/** The header countdown's field: one free dot round the digits, so they do not touch its edge. */
+export const HEADER_PAD: Pad = { top: 1, right: 1, bottom: 1, left: 1 }
+
 export const FLIP_MS = 170
 export const STAGGER_MS = 9
 // Chosen: long enough to register as "off" before the board slams on, short enough to read as the
@@ -80,15 +83,13 @@ export const CREATE_LEAD_MS = 48
  * It lives here and not in font.ts because it needs PITCH and RADIUS: where a label sits is a
  * question about the rendered geometry, not about the glyph pattern.
  *
- * Measured over the UNPADDED text, so `groupCentres` and `pad` do not compose: a padded board's
- * labels would sit shifted against its digits. Today nothing brings the two together — the one
- * padded board carries no legend, and the one board with a legend takes no pad. Whoever changes
- * that has to pass the padding in here.
+ * A padded board passes its `pad`: the field is wider and the digits start `pad.left` columns in.
  */
-export function groupCentres(text: string): number[] {
-  const width = bitmap(text).cols * PITCH - (PITCH - 2 * RADIUS)
+export function groupCentres(text: string, pad?: Pad): number[] {
+  const cols = bitmap(text).cols + (pad?.left ?? 0) + (pad?.right ?? 0)
+  const width = cols * PITCH - (PITCH - 2 * RADIUS)
   const centres: number[] = []
-  let col = 0
+  let col = pad?.left ?? 0
   let start: number | null = null
 
   // The empty sentinel closes a group that runs to the end of the text.

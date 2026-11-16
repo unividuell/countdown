@@ -1,11 +1,17 @@
 <script setup lang="ts">
-// Positioned from `groupCentres`, which measures the unpadded text — so this legend cannot sit
-// under a board that was given a `pad` without the padding reaching that function first.
+// Positioned from `groupCentres`; under a padded board it takes the same `pad`.
 import { computed } from 'vue'
 import { groupCentres, type Ground } from './board'
+import type { Pad } from './font'
 
 const props = withDefaults(
-  defineProps<{ text: string; labels: readonly string[]; visible: boolean; ground?: Ground }>(),
+  defineProps<{
+    text: string
+    labels: readonly string[]
+    visible: boolean
+    ground?: Ground
+    pad?: Pad
+  }>(),
   { ground: 'board' },
 )
 
@@ -13,7 +19,7 @@ const props = withDefaults(
 // where nothing wraps it, and by the wrapping button in the header, where the board is aria-hidden
 // too. Either way, a second reading of the same numbers here would just be noise.
 const cells = computed(() =>
-  groupCentres(props.text).map((centre, i) => ({
+  groupCentres(props.text, props.pad).map((centre, i) => ({
     left: `${centre}%`,
     label: props.labels[i] ?? '',
   })),

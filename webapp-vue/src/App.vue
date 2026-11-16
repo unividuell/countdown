@@ -27,13 +27,13 @@ const yearSuffix = computed(() => {
 
 const hasCountdown = computed(() => Boolean(activeCommunity.value?.targetAt))
 
-// From md the board shares row 1, and the row is then as tall as the board plus its legend (44px).
+// From md the board shares row 1, and the row is then as tall as the board plus its legend (52px).
 // Centring the title and the avatar in that row would sit them 9px below the middle of the digits,
 // which reads as the avatar having come loose from the band it belongs to. So both are pinned to the
 // top of the row inside a board-tall box instead: their centres land on the digits' centre line and
 // the legend hangs below all three. Only with a board to align to — without one the cells keep their
 // own 40px and the header stays at its old height.
-const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:self-start' : ''))
+const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:self-start' : ''))
 </script>
 
 <template>
@@ -44,10 +44,10 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
          confining the animation to the content column. -->
     <div class="relative">
       <!-- The board needs its own row until there is width for it beside the title. Narrow: two rows,
-           24px padding + 40px + 8px + 44px = 116px. From md: one row, 24px + 44px = 68px, with the
+           24px padding + 40px + 8px + 52px = 124px. From md: one row, 24px + 52px = 76px, with the
            board and the account menu together on the right and the slack between them and the title.
-           md and not sm, because the widest cycle state is 303px and a long community name plus that
-           board plus the avatar needs 636px — more than sm's 608px of content, which would push the
+           md and not sm, because the widest cycle state is 314px and a long community name plus that
+           board plus the avatar needs 647px — more than sm's 608px of content, which would push the
            row past the viewport. Without a countdown there is no second row at all and the header is
            back to its old 64px.
            Both cells of row 1 state their 40px: a grid track is as tall as its tallest item, and
@@ -79,7 +79,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
         <div
           v-if="activeCommunity?.targetAt"
           data-test="countdown-row"
-          class="col-span-2 col-start-1 row-start-2 h-11 md:col-span-1 md:col-start-2 md:row-start-1 md:self-start"
+          class="col-span-2 col-start-1 row-start-2 h-[52px] md:col-span-1 md:col-start-2 md:row-start-1 md:self-start"
         >
           <CountdownDisplay :slug="activeCommunity.slug" />
         </div>

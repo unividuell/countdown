@@ -243,19 +243,19 @@ describe('App main header', () => {
     }
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
-      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:h-[26px]')
+      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:h-[34px]')
       expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:self-start')
     }
     expect(w.get('[data-test="countdown-row"]').classes()).toContain('md:self-start')
   })
 
   // Without a board there is nothing to align to, and the cells must keep their own 40px — otherwise
-  // a 26px override would shrink the header below the height it had before this feature existed.
+  // a 34px override would shrink the header below the height it had before this feature existed.
   it('leaves the row-1 cells at their own height where there is no board', () => {
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
       expect(w.get(`[data-test="${cell}"]`).classes()).toContain('h-10')
-      expect(w.get(`[data-test="${cell}"]`).classes()).not.toContain('md:h-[26px]')
+      expect(w.get(`[data-test="${cell}"]`).classes()).not.toContain('md:h-[34px]')
     }
   })
 
@@ -281,7 +281,7 @@ describe('App main header', () => {
 
   // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.
   // With it on the title cell alone, the login page (no NavDrawer, whose toggle is 40px) would be
-  // 108px while every other page was 116px — the very variance the fixed height exists to remove.
+  // 116px while every other page was 124px — the very variance the fixed height exists to remove.
   // happy-dom computes no box heights, so the classes are all a test can see here; the measurement
   // itself belongs to the browser step.
   it('states row 1 height on both of its cells, so it cannot depend on being signed in', () => {

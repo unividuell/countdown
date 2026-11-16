@@ -81,4 +81,14 @@ describe('FlipDotLegend', () => {
     expect(w.classes()).toContain('text-on-surface-variant')
     expect(w.classes()).not.toContain('text-on-board/70')
   })
+
+  // Under a padded board the labels must be measured over the same padded field.
+  it('places the labels over a padded field', () => {
+    const pad = { top: 1, right: 1, bottom: 1, left: 1 }
+    const w = mount(FlipDotLegend, {
+      props: { text: '13:42:07', labels: ['STD', 'MIN', 'SEK'], visible: true, pad },
+    })
+    const expected = groupCentres('13:42:07', pad)
+    lefts(w).forEach((left, i) => expect(left).toBeCloseTo(expected[i]!, 3))
+  })
 })
