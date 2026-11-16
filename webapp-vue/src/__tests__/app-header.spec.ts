@@ -129,11 +129,19 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=nav-toggle]').exists()).toBe(true)
   })
 
-  it('lifts the header above the drawer that slides in under it', () => {
-    // The drawer is z-20 and hangs off the header's bottom edge; without z-30 and a shadow the
-    // header would be overrun by it instead of sitting on top with an edge you can see.
+  it('lifts the header above the drawer and its scrim', () => {
+    // The scrim (z-10) covers the whole page and the drawer (z-20) hangs off the header's bottom
+    // edge; z-30 keeps the avatar, the drawer's toggle, above both and clickable.
     const header = mount(App, { global: { stubs } }).get('header')
-    expect(header.classes()).toEqual(expect.arrayContaining(['relative', 'z-30', 'shadow-lg']))
+    expect(header.classes()).toEqual(expect.arrayContaining(['relative', 'z-30']))
+  })
+
+  // Header and footer write straight onto the page: a band of their own clashed with the
+  // scrollbar gutter beside it.
+  it('gives header and footer no surface of their own', () => {
+    const w = mount(App, { global: { stubs } })
+    for (const el of [w.get('header'), w.get('footer')])
+      expect(el.classes().some((c) => c.startsWith('bg-'))).toBe(false)
   })
 
   it('shows the navigation progress bar only while a navigation is pending', () => {

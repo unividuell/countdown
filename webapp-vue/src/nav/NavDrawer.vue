@@ -281,7 +281,7 @@ onKeyStroke('Tab', (e) => {
     aria-haspopup="dialog"
     :aria-expanded="open"
     aria-controls="nav-drawer"
-    class="flex cursor-pointer items-center rounded p-1 hover:bg-inverse-on-surface/10"
+    class="flex cursor-pointer items-center rounded p-1 hover:bg-on-surface/10"
     @click="setOpen(!open)"
   >
     <!-- The spin lives on this wrapper, not on Avatar itself, so the rotation cannot fight
@@ -296,7 +296,7 @@ onKeyStroke('Tab', (e) => {
         v-if="showDot"
         data-test="pending-dot"
         aria-hidden="true"
-        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-inverse-surface bg-inverse-primary"
+        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-surface bg-primary"
       />
     </span>
   </button>
@@ -319,8 +319,8 @@ onKeyStroke('Tab', (e) => {
       :inert="!open || undefined"
       :aria-hidden="!open || undefined"
       :style="{ width: `${drawerWidth}px`, top: `${drawerTop}px` }"
-      class="fixed right-0 bottom-0 z-20 flex flex-col bg-surface-container-lowest text-on-surface shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
-      :class="open ? 'translate-x-0' : 'translate-x-full'"
+      class="fixed right-0 bottom-0 z-20 flex flex-col bg-surface-container-lowest text-on-surface transition-[translate,box-shadow] duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
+      :class="open ? 'translate-x-0 shadow-2xl' : 'translate-x-full'"
     >
       <div class="relative flex min-h-0 flex-1 flex-col">
         <div

@@ -4,10 +4,10 @@
    look changes here and nowhere else. Only roles the app actually wears exist; M3's others
    (secondary, tertiary, containers, dim/bright) are added when something needs them.
 
-     ┌──────────── inverse-surface ────────────┐  header, footer, dark chips
-     │ inverse-on-surface   inverse-primary    │  text / accent on it
+     ┌──────────── inverse-surface ────────────┐  dark chips and buttons
+     │ inverse-on-surface                      │  text on it
      └─────────────────────────────────────────┘
-       surface                                    the page
+       surface                                    the page, header and footer on it
          surface-container-lowest                 cards
            surface-container / -highest           wells and fills inside a card
        on-surface · on-surface-variant · outline  text, secondary text, lines
@@ -15,7 +15,7 @@
 
    Each role is `light-dark(light, dark)`: the browser picks by `color-scheme` — the system's by
    default, the user's choice once `ui/colorScheme.ts` pins `data-color-scheme` on <html>. So no component carries a
-   `dark:` class. In the dark the frame flips light, the page goes stone-700 and cards go near-black:
+   `dark:` class. In the dark the page goes stone-700 and cards go near-black:
    without shadows only the step in lightness (1.7:1) sets a card off the page.
 
    Hover and pressed states are no extra shade but the role at an opacity
@@ -23,7 +23,6 @@
 @theme {
   --color-primary: light-dark(#0e3b9d, #92b7fe); /* Race Blue; its light twin on dark ground */
   --color-on-primary: light-dark(#ffffff, #0d0d0d);
-  --color-inverse-primary: light-dark(#92b7fe, #0e3b9d);
 
   --color-error: light-dark(var(--color-red-600), var(--color-red-400));
   --color-on-error: light-dark(#ffffff, #0d0d0d);
@@ -97,6 +96,8 @@
 @layer base {
   html {
     scrollbar-gutter: stable;
+    /* The track in the page's colour: the browser's own track is a shade off it (dark: near-black). */
+    scrollbar-color: var(--color-on-surface-variant) var(--color-surface);
     /* Follows the system until `ui/colorScheme.ts` pins the user's pick. */
     color-scheme: light dark;
   }

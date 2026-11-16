@@ -31,8 +31,8 @@ of the frontend conventions live beside it:
     roles the app wears exist; add an M3 role when something needs it, not ahead. No extra shades
     for states: hover and pressed are the role at an opacity (`hover:bg-inverse-surface/80`),
     disabled text is `text-on-surface/40`. Text on a role fill takes its `on-` role (`bg-primary
-    text-on-primary`). On `inverse-surface` the base colours fall to ~2:1 — use the `inverse-`
-    twins (`text-inverse-primary`). A meaning that may part from its
+    text-on-primary`). On `inverse-surface` the base colours fall to ~2:1 — use an `inverse-`
+    twin (M3's `inverse-primary`, added when needed). A meaning that may part from its
     colour later gets its own name even while it borrows one (`--color-live` →
     `--color-phase-two`, `--color-phase-one` → `--color-primary`). Game artwork (crosshairs,
     glass over photos, chart fills) is not app UI and may keep literal colours.

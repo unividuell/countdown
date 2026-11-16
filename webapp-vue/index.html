@@ -7,9 +7,9 @@
     <title>webapp-vue</title>
     <style>
       /* The app now resolves its first route before mounting, so #app is empty for a
-         moment longer. Paint the header bar and the page background up front rather
-         than flashing white. `:empty` stops applying the instant Vue mounts. */
-      /* Twins of --color-surface and --color-inverse-surface in src/assets/main.css. */
+         moment longer. Paint the page background up front rather
+         than flashing white. */
+      /* Twin of --color-surface in src/assets/main.css. */
       html {
         color-scheme: light dark;
       }
@@ -22,12 +22,6 @@
       body {
         margin: 0;
         background: light-dark(#f7f5f1, #44403c);
-      }
-      #app:empty::before {
-        content: '';
-        display: block;
-        height: 3rem; /* header: py-3 (2 x 0.75rem) + a 1.5rem line box */
-        background: light-dark(#0d0d0d, #f7f5f1);
       }
     </style>
     <script>

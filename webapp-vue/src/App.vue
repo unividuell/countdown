@@ -55,7 +55,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
            alone would leave the login page, which has no NavDrawer, 8px shorter than every other
            page. -->
       <header
-        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 bg-inverse-surface px-4 py-3 text-inverse-on-surface shadow-lg md:grid-cols-[1fr_auto_auto]"
+        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 md:grid-cols-[1fr_auto_auto]"
       >
         <div
           data-test="title-row"
@@ -63,7 +63,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
           :class="alignToBoardBand"
         >
           <RouterLink to="/" class="font-semibold hover:underline"
-            >{{ brand }}<span class="text-inverse-on-surface/70">{{ yearSuffix }}</span></RouterLink
+            >{{ brand }}<span class="text-on-surface-variant">{{ yearSuffix }}</span></RouterLink
           >
         </div>
         <!-- Account before countdown in the DOM, because that is the narrow layout's reading order
@@ -103,9 +103,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
     <main class="flex-1 p-4">
       <RouterView />
     </main>
-    <footer class="bg-inverse-surface px-4 py-3 text-sm text-inverse-on-surface/70">
-      countdown.unividuell.org
-    </footer>
+    <footer class="px-4 py-3 text-sm text-on-surface-variant">countdown.unividuell.org</footer>
   </div>
 </template>
 
