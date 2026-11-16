@@ -208,3 +208,5 @@ const hits = computed(() => suggestions.value)
     </div>
   </div>
 </template>
+
+<style scoped src="./song-cover.css"></style>

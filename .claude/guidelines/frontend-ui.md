@@ -245,12 +245,12 @@ it is the only proof available — no unit test can see them.
 
 - **Two screens that must not jump share one measurement, not two matching numbers.** Where a
   round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of
-  the band's search hits, then the solution's own), the size belongs in a single `@utility`
-  (`song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
+  the band's search hits, then the solution's own), the size belongs in a single class
+  (`song-cover.css`, `.song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
   `h-32 w-32` on one side and an equal-looking value on the other, which drifts the moment either
   is touched. The colour wheel is the same story with a sharper edge: `max-w-80` stood identically on
   `HueWheelInput` and `HueWheelReveal`, and the reveal lays its markers on the input wheel's own
-  radius — so `@utility hue-wheel` is the one place, and both templates spell it by name. The same
+  radius — so `hue-wheel.css` is the one place, and both templates spell it by name. The same
   for a slot one screen fills with a control and the other with text: give
   both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
   then assert is exactly that — both ends carry the shared class — which is the checkable half of

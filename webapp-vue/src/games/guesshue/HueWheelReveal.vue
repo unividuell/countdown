@@ -157,3 +157,5 @@ const label = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped src="./hue-wheel.css"></style>

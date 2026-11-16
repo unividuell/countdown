@@ -25,6 +25,18 @@ of the frontend conventions live beside it:
     `const body: Partial<{ name: string; targetAt: string }> = { name: name.value.trim() }`,
     then `if (targetAt.value) body.targetAt = targetAt.value`.
 - **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
+  - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
+    meaning (`--color-live`, the phase colours), layout utilities several areas share
+    (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a
+    measurement two components of one game share goes into a CSS file beside them, pulled in by
+    each as `<style scoped src="./x.css">` (`song-cover.css`, `hue-wheel.css`). Need a theme value
+    there (`theme(--breakpoint-sm)`)? Start the file with `@reference '…/assets/main.css'` —
+    it lends the theme and emits nothing.
+  - **A scoped rule beats every Tailwind utility on the same element**, because Tailwind's
+    output is layered and scoped CSS is not. So `motion-reduce:animate-none` cannot stop a scoped
+    animation: write the animation under `@media (prefers-reduced-motion: no-preference)` instead
+    (`App.vue`'s `nav-shuttle`, `PlayButton`'s `song-loading`). Name scoped classes without
+    Tailwind's prefixes (`animate-…`), or they read like utilities a variant could take.
 - **Date/time: Luxon** (`luxon` + `@types/luxon`) — the project's date-time lib (also used by the
   origin huettehuette app). Don't reach for native `Date` math. For a wall-clock UI field use
   `<input type="datetime-local">` (combined date+time picker, naive string, no tz) and convert

@@ -159,8 +159,8 @@ describe('App main header', () => {
     const w = mount(App, { global: { stubs } })
     const segment = w.find('[data-test=navigation-progress-segment]')
     expect(segment.exists()).toBe(true)
-    expect(segment.classes()).toContain('animate-nav-shuttle')
-    expect(segment.classes()).toContain('motion-reduce:animate-none')
+    expect(segment.classes()).toContain('nav-shuttle')
+    expect(segment.classes()).toContain('motion-reduce:w-full')
   })
 
   it('clips horizontally at the unpadded root, not at <main>, so the member row fly-in cannot open a page scrollbar', () => {

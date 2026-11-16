@@ -153,3 +153,5 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped src="./song-cover.css"></style>

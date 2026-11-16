@@ -96,7 +96,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
              motion gets a static full-width fill instead — still legibly "busy". -->
         <div
           data-test="navigation-progress-segment"
-          class="animate-nav-shuttle h-full w-1/4 bg-blue-600 motion-reduce:w-full motion-reduce:animate-none"
+          class="nav-shuttle h-full w-1/4 bg-blue-600 motion-reduce:w-full"
         />
       </div>
     </div>
@@ -106,3 +106,31 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[26px] md:se
     <footer class="bg-stone-900 px-4 py-3 text-sm text-stone-300">countdown.unividuell.org</footer>
   </div>
 </template>
+
+<!--
+  Indeterminate navigation bar: a segment shuttles right and back. The easing is the point — slow
+  at the turns, fast through the middle — so the motion reads as deliberate rather than mechanical.
+  The 1.4s cycle is tuned for the spans this actually covers (<5s): long enough not to look frantic,
+  short enough that a one-second navigation still shows most of a traverse. translateX(300%) lands
+  a 25%-wide segment exactly on the right edge. Motion is opt-in (`no-preference`): a scoped rule
+  outranks Tailwind's layered `motion-reduce:animate-none`, so reduced motion is the default here.
+-->
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .nav-shuttle {
+    animation: nav-shuttle 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+}
+
+@keyframes nav-shuttle {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(300%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+</style>
