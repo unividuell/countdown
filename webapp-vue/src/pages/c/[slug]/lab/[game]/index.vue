@@ -9,7 +9,7 @@
  *
  * See docs/superpowers/specs/2026-08-08-game-lab-design.md.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
@@ -17,6 +17,7 @@ import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
+import { labRoster } from '@/gamelab/roster'
 import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
@@ -36,11 +37,15 @@ import {
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
 import type { GameEntry } from '@/games/GameEntry'
+import MemberRow from '@/members/MemberRow.vue'
+import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { prefersReducedMotion } from '@/ui/motion'
 import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
+import type { RosterMemberResponse } from '@/api/types'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -163,8 +168,31 @@ async function reveal(): Promise<void> {
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
   if (current === null) return
+  holdRoster = true
   await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
 }
+
+/**
+ * The product's member row, fed from the lab round. Every response replaces it at once, except the
+ * one a guess brings: that waits [SPOILER_HOLD_MS], as `useRoster.refreshAfterGuess` does on the
+ * community page, so the row's reorder lands after the game's reveal rather than into it.
+ */
+const rosterMembers = ref<RosterMemberResponse[]>([])
+let holdRoster = false
+let rosterHold: ReturnType<typeof setTimeout> | undefined
+
+watch(round, (current) => {
+  if (!current) return
+  const next = labRoster(current, user.value)
+  clearTimeout(rosterHold)
+  if (holdRoster && !prefersReducedMotion()) {
+    rosterHold = setTimeout(() => (rosterMembers.value = next), SPOILER_HOLD_MS)
+  } else {
+    rosterMembers.value = next
+  }
+  holdRoster = false
+})
+onBeforeUnmount(() => clearTimeout(rosterHold))
 
 /** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries extra
  * arguments beyond `run`'s four-argument action shape. */
@@ -311,7 +339,12 @@ watch(
          drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-error">{{ error }}</p>
 
-    <RoundSurface v-if="round">
+    <!-- The community page's row, same height reservation (see `pages/c/[slug]/index.vue`). -->
+    <section class="flex min-h-[72px] items-center">
+      <MemberRow v-if="rosterMembers.length" :members="rosterMembers" :me-id="user?.id" />
+    </section>
+
+    <RoundSurface v-if="round" class="mt-6">
       <!-- The game's name lives in the band now, exactly as it does in a real round — that is the
            whole point of the lab wearing the product's header rather than a heading of its own.
            Its round number and its end are the lab's two inventions; both follow the seed. -->
