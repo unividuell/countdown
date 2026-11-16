@@ -13,7 +13,9 @@ import {
   PITCH,
   RADIUS,
   STAGGER_MS,
+  SURFACE_LIGHT,
 } from '@/ui/flipdot/board'
+import { COLOR_SCHEME_KEY, useColorScheme } from '@/ui/colorScheme'
 import { bitmap } from '@/ui/flipdot/font'
 
 // When each animation was created, which is half of what the schedule assertions need: the board
@@ -666,5 +668,51 @@ describe('FlipDotBoard', () => {
         .slice(0, 17)
         .every((f) => f === DOT_OFF),
     ).toBe(true)
+  })
+
+  // The header countdown has no board under it: its dots stand on the page and follow the colour
+  // scheme. The card and the game band keep their dark instrument in both modes.
+  describe('on the page surface', () => {
+    afterEach(() => {
+      localStorage.clear()
+      delete document.documentElement.dataset.colorScheme
+    })
+
+    it('paints dark dots on the light page', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'light')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'surface' } })
+      await bootDone()
+
+      expect(fills(w).filter((f) => f === SURFACE_LIGHT.on).length).toBe(10)
+      expect(fills(w).filter((f) => f === SURFACE_LIGHT.off).length).toBe(5 * 7 - 10)
+    })
+
+    it('keeps the board colours on the dark page', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'dark')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'surface' } })
+      await bootDone()
+
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+      expect(fills(w).filter((f) => f === DOT_OFF).length).toBe(5 * 7 - 10)
+    })
+
+    it('repaints when the user switches the scheme', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'light')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'surface' } })
+      await bootDone()
+
+      useColorScheme().value = 'dark'
+      await nextTick()
+
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+    })
+
+    it('leaves a board-ground board alone in the light', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'light')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })
+      await bootDone()
+
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+    })
   })
 })

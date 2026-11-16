@@ -71,4 +71,14 @@ describe('FlipDotLegend', () => {
   it('meets the contrast floor against a dark background', () => {
     expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain('text-on-board/70')
   })
+
+  // On the page (the header countdown) the labels take the page's secondary text, which follows
+  // the colour scheme; on-board's near-white would vanish on the light page.
+  it('takes the page text colour on the page surface', () => {
+    const w = mount(FlipDotLegend, {
+      props: { text: '13:42:07', labels: ['STD', 'MIN', 'SEK'], visible: true, ground: 'surface' },
+    })
+    expect(w.classes()).toContain('text-on-surface-variant')
+    expect(w.classes()).not.toContain('text-on-board/70')
+  })
 })

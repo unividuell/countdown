@@ -11,9 +11,12 @@ import {
   PITCH,
   RADIUS,
   STAGGER_MS,
+  SURFACE_LIGHT,
   TONES,
+  type Ground,
   type Tone,
 } from './board'
+import { useDarkScheme } from '@/ui/colorScheme'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 // Props: tone defaults to what the board did before it existed. pad has no default
@@ -25,8 +28,9 @@ const props = withDefaults(
     label: string
     tone?: Tone
     pad?: Pad
+    ground?: Ground
   }>(),
-  { tone: 'default' },
+  { tone: 'default', ground: 'board' },
 )
 const emit = defineEmits<{ phase: ['white' | 'live'] }>()
 
@@ -35,7 +39,11 @@ function uniform(b: Bitmap, on: boolean): Bitmap {
 }
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
-const colours = computed(() => TONES[props.tone])
+// On the light page the board's near-white dots would vanish; everywhere else the tone decides.
+// Read once: a board does not move between the page and a board, and only a page board needs to
+// watch the scheme.
+const dark = props.ground === 'surface' ? useDarkScheme() : null
+const colours = computed(() => (dark !== null && !dark.value ? SURFACE_LIGHT : TONES[props.tone]))
 const bm = computed(() => {
   const glyphs = bitmap(props.text)
   return props.pad === undefined ? glyphs : padded(glyphs, props.pad)

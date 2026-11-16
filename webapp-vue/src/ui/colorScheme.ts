@@ -1,5 +1,5 @@
-import { useLocalStorage } from '@vueuse/core'
-import { computed, watchEffect, type WritableComputedRef } from 'vue'
+import { useLocalStorage, usePreferredDark } from '@vueuse/core'
+import { computed, watchEffect, type ComputedRef, type WritableComputedRef } from 'vue'
 
 export type ColorScheme = 'light' | 'dark' | 'system'
 
@@ -36,4 +36,15 @@ export function useColorScheme(): WritableComputedRef<ColorScheme> {
   })
 
   return scheme
+}
+
+/**
+ * Whether the dark scheme is in force: the user's pick, else the system's. For colours CSS cannot
+ * reach — the flip-dot dots are painted from TS — everything else follows `light-dark()` alone.
+ */
+export function useDarkScheme(): ComputedRef<boolean> {
+  const scheme = useColorScheme()
+  const systemDark = usePreferredDark()
+
+  return computed(() => scheme.value === 'dark' || (scheme.value === 'system' && systemDark.value))
 }

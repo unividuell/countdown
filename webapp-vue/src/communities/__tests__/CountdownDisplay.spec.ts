@@ -44,6 +44,9 @@ describe('CountdownDisplay', () => {
     // The button, not the board, must carry the accessible name: Chromium doesn't pull a child
     // img's aria-label up into its role="button" ancestor's name from content.
     expect(w.find('[data-test="countdown"]').attributes('aria-label')).toContain('10 Tage')
+    // No board under the header countdown: its dots and legend stand on the page.
+    expect(w.getComponent(FlipDotBoard).props('ground')).toBe('surface')
+    expect(w.getComponent(FlipDotLegend).props('ground')).toBe('surface')
   })
 
   it('cycles the base unit on click', async () => {
