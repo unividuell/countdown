@@ -24,10 +24,10 @@ const KIND_LABEL: Record<CellKind, string> = {
 }
 
 const KIND_COLOR: Record<CellKind, string> = {
-  none: 'bg-surface-container-highest',
-  'phase-one': 'bg-phase-one',
-  'phase-two': 'bg-phase-two',
-  target: 'bg-inverse-surface',
+  none: 'bg-surface-container-highest text-on-surface-variant',
+  'phase-one': 'bg-phase-one text-on-phase-one',
+  'phase-two': 'bg-phase-two text-on-phase-two',
+  target: 'bg-inverse-surface text-inverse-on-surface',
 }
 
 /** The tapped round, not its cell: the cells recompute while the form is edited. */
@@ -122,7 +122,6 @@ const LEGEND: { label: string; kind?: CellKind; sample?: 'today' | 'fix' }[] = [
           class="relative flex size-10 cursor-pointer items-center justify-center rounded text-xs"
           :class="[
             KIND_COLOR[c.kind],
-            c.kind === 'none' ? 'text-on-surface-variant' : 'text-white',
             c.today ? 'ring-2 ring-on-surface ring-offset-1' : '',
             c.freezesHere ? 'border-l-4 border-error' : '',
             selected?.round === c.round ? 'outline-2 outline-primary' : '',

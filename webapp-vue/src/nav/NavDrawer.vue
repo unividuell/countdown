@@ -23,6 +23,7 @@ import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
 import BrandMark from '@/ui/BrandMark.vue'
+import ColorSchemeSwitch from './ColorSchemeSwitch.vue'
 import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
 import { communityPath } from '@/communities/routes'
@@ -438,7 +439,7 @@ onKeyStroke('Tab', (e) => {
           v-if="scrollHintVisible"
           data-test="nav-scroll-cue"
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-on-surface/40"
+          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/80 to-transparent pb-1 text-on-surface/40"
         >
           <IconChevronDown
             class="size-4 animate-bounce [animation-iteration-count:2] motion-reduce:animate-none"
@@ -448,6 +449,7 @@ onKeyStroke('Tab', (e) => {
 
       <div data-test="nav-foot" class="flex-none pb-1.5">
         <div class="border-t border-outline" />
+        <ColorSchemeSwitch />
         <RouterLink :to="profilePath" data-test="edit-profile" :class="LINK">
           Profil bearbeiten
         </RouterLink>

@@ -284,8 +284,8 @@ numbers themselves are a browser measurement.
 - **`DOT_OFF` is `#292524` — `stone-800` exactly.** So a board placed on a `bg-stone-800` surface
   loses its unlit dots and with them the matrix that makes it read as flip-dot at all; nothing
   fails, it just quietly becomes floating digits. Put a board on a ground either lighter or darker
-  than that (the app header's solid `inverse-surface`, `#0d0d0d`; the game band's
-  `inverse-surface/80`, `#3d3d3d` over a white card) and assert the class, since happy-dom renders
+  than that (the countdown card's solid `board`, `#0d0d0d`; the game band's `board/80`,
+  `#3d3d3d` over a white card) and assert the class, since happy-dom renders
   no colour.
 
 ### Accessible by construction

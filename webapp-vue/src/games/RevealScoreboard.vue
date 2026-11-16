@@ -161,7 +161,7 @@ function pointsLabel(points: number | null): string {
               >
                 <span
                   data-test="scoreboard-live"
-                  class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                  class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-on-live italic motion-reduce:animate-none"
                 >
                   live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
                 </span>
@@ -205,7 +205,7 @@ function pointsLabel(points: number | null): string {
             >
               <span
                 data-test="scoreboard-live"
-                class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-white italic motion-reduce:animate-none"
+                class="bg-live shrink-0 animate-pulse rounded-md px-1.5 text-center text-sm text-on-live italic motion-reduce:animate-none"
               >
                 live<span class="sr-only">: Die Punkte können sich noch ändern.</span>
               </span>

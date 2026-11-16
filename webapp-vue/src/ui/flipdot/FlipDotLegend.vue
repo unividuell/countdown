@@ -20,7 +20,7 @@ const cells = computed(() =>
 <template>
   <span
     aria-hidden="true"
-    class="relative block h-4 font-mono text-[11px] tracking-[0.14em] text-inverse-on-surface/70 transition-opacity duration-300"
+    class="relative block h-4 font-mono text-[11px] tracking-[0.14em] text-on-board/70 transition-opacity duration-300"
     :class="visible ? 'opacity-100' : 'opacity-0'"
   >
     <!-- The row is a span and not a div so it stays valid inside the header's <button>, whose content

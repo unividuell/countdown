@@ -66,11 +66,9 @@ describe('FlipDotLegend', () => {
   })
 
   // This is a contrast floor, not a styling preference: 11px text needs 4.5:1 (WCAG AA).
-  // inverse-on-surface at 70% measures 6.0:1 on the game band (#3d3d3d) and 9.3:1 on the countdown
-  // card's solid inverse-surface. Do not dim this without checking both backgrounds.
+  // on-board at 70% measures 6.0:1 on the game band (#3d3d3d) and 9.3:1 on the countdown
+  // card's solid board. Do not dim this without checking both backgrounds.
   it('meets the contrast floor against a dark background', () => {
-    expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain(
-      'text-inverse-on-surface/70',
-    )
+    expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain('text-on-board/70')
   })
 })

@@ -62,14 +62,14 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
        the band pays for its own. -->
   <div
     data-test="game-header"
-    class="flex h-9 items-center gap-2 bg-inverse-surface/80 pl-4 text-inverse-on-surface"
+    class="flex h-9 items-center gap-2 bg-board/80 pl-4 text-on-board"
     :class="{ 'pr-4': face === null }"
   >
     <span
       v-if="roundNumber !== null"
       data-test="game-header-round"
       class="shrink-0 text-sm tabular-nums"
-      :class="phaseTwo ? 'text-inverse-phase-two' : 'text-inverse-phase-one'"
+      :class="phaseTwo ? 'text-board-phase-two' : 'text-board-phase-one'"
     >
       <!-- Visible: the bare number. Spoken: what it is a number of — the band is the only place
            the round is named. -->

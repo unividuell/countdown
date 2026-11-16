@@ -2,56 +2,67 @@
 
 /* The palette, as Material 3 colour roles. Components name a role, never a Tailwind shade, so the
    look changes here and nowhere else. Only roles the app actually wears exist; M3's others
-   (secondary, tertiary, containers, fixed, dim/bright) are added when something needs them.
+   (secondary, tertiary, containers, dim/bright) are added when something needs them.
 
-     ┌──────────── inverse-surface ────────────┐  header, footer, game band, dark chips
-     │ inverse-on-surface   inverse-primary    │  text / accent on dark
+     ┌──────────── inverse-surface ────────────┐  header, footer, dark chips
+     │ inverse-on-surface   inverse-primary    │  text / accent on it
      └─────────────────────────────────────────┘
        surface                                    the page
-         surface-container-lowest                 cards (white)
+         surface-container-lowest                 cards
            surface-container / -highest           wells and fills inside a card
        on-surface · on-surface-variant · outline  text, secondary text, lines
+       board · on-board · board-phase-*           game band + flip-dot board, fixed
 
-   One black for text, dark surfaces and scrim. Hover and pressed states are no extra shade but the
-   role at an opacity (`hover:bg-inverse-surface/80`), as M3's state layers. Disabled text is
-   `text-on-surface/40`. */
+   Each role is `light-dark(light, dark)`: the browser picks by `color-scheme` — the system's by
+   default, the user's choice once `ui/colorScheme.ts` pins `data-color-scheme` on <html>. So no component carries a
+   `dark:` class. In the dark the frame flips light, the page goes stone-700 and cards go near-black:
+   without shadows only the step in lightness (1.7:1) sets a card off the page.
+
+   Hover and pressed states are no extra shade but the role at an opacity
+   (`hover:bg-inverse-surface/80`), as M3's state layers. Disabled text is `text-on-surface/40`. */
 @theme {
-  --color-primary: #0e3b9d; /* Race Blue */
-  --color-on-primary: #ffffff;
-  --color-inverse-primary: #92b7fe; /* primary's hue, light enough for inverse-surface (9.6:1) */
+  --color-primary: light-dark(#0e3b9d, #92b7fe); /* Race Blue; its light twin on dark ground */
+  --color-on-primary: light-dark(#ffffff, #0d0d0d);
+  --color-inverse-primary: light-dark(#92b7fe, #0e3b9d);
 
-  --color-error: var(--color-red-600);
-  --color-on-error: #ffffff;
+  --color-error: light-dark(var(--color-red-600), var(--color-red-400));
+  --color-on-error: light-dark(#ffffff, #0d0d0d);
 
-  --color-surface: #f7f5f1;
-  --color-on-surface: #0d0d0d;
-  --color-on-surface-variant: var(--color-neutral-600);
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container: var(--color-neutral-100);
-  --color-surface-container-highest: var(--color-neutral-200);
-  --color-outline: var(--color-neutral-300);
+  --color-surface: light-dark(#f7f5f1, var(--color-stone-700));
+  --color-on-surface: light-dark(#0d0d0d, #f7f5f1);
+  --color-on-surface-variant: light-dark(var(--color-neutral-600), var(--color-neutral-400));
+  --color-surface-container-lowest: light-dark(#ffffff, #1c1b19);
+  --color-surface-container: light-dark(var(--color-neutral-100), #2a2826);
+  --color-surface-container-highest: light-dark(var(--color-neutral-200), #3a3734);
+  --color-outline: light-dark(var(--color-neutral-300), var(--color-stone-700));
 
-  --color-inverse-surface: #0d0d0d;
-  --color-inverse-on-surface: var(--color-neutral-50);
+  --color-inverse-surface: light-dark(#0d0d0d, #f7f5f1);
+  --color-inverse-on-surface: light-dark(var(--color-neutral-50), #0d0d0d);
 
-  --color-scrim: #0d0d0d;
-
+  --color-scrim: light-dark(#0d0d0d, #000000);
 
   /* "Phase one": rounds where the point is not exclusive — everyone who qualifies collects it.
      "Phase two": the stake grows and only the best guess gets it. Two names even while phase one
-     borrows primary, so the two can be told apart again without touching a component.
-     The `inverse-` twins are for the dark game band, where the base colours fall to ~2:1.
-     Twin in the dot matrix: `DOT_ALARM_ON` in `src/ui/flipdot/board.ts` is inverse-phase-two —
-     timed games exist only in phase two. Whoever changes one changes the other. */
+     borrows primary, so the two can be told apart again without touching a component. */
   --color-phase-one: var(--color-primary);
-  --color-phase-two: var(--color-fuchsia-800);
-  --color-inverse-phase-one: var(--color-inverse-primary);
-  --color-inverse-phase-two: var(--color-fuchsia-300);
+  --color-on-phase-one: var(--color-on-primary);
+  --color-phase-two: light-dark(var(--color-fuchsia-800), var(--color-fuchsia-300));
+  --color-on-phase-two: light-dark(#ffffff, #0d0d0d);
 
   /* „Vorläufig“: a score that can still be overtaken — the best-guess-takes-it rule of phase two
      at work, so it wears phase two's colour, plus a pulse, in the member row and the scoreboard.
      Its own name, so the two can part again without touching a component. */
   --color-live: var(--color-phase-two);
+  --color-on-live: var(--color-on-phase-two);
+
+  /* The game band and the flip-dot board: one dark instrument, the same in both modes, because
+     the band runs on into the board and the dots are painted outside CSS. Twin in
+     `src/ui/flipdot/board.ts`: `DOT_ALARM_ON` is board-phase-two — timed games exist only in phase
+     two. Whoever changes one changes the other. */
+  --color-board: #0d0d0d;
+  --color-on-board: var(--color-neutral-50);
+  --color-board-phase-one: #92b7fe;
+  --color-board-phase-two: var(--color-fuchsia-300);
 }
 
 /* The round slot's full-bleed on a phone: the band spans the viewport by giving back exactly the
@@ -86,5 +97,13 @@
 @layer base {
   html {
     scrollbar-gutter: stable;
+    /* Follows the system until `ui/colorScheme.ts` pins the user's pick. */
+    color-scheme: light dark;
+  }
+  html[data-color-scheme='light'] {
+    color-scheme: light;
+  }
+  html[data-color-scheme='dark'] {
+    color-scheme: dark;
   }
 }

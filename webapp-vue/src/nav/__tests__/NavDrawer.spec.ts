@@ -640,6 +640,11 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test=nav-foot]').text()).toContain('Abmelden')
   })
 
+  it('offers the colour scheme switch in the foot', async () => {
+    const w = await opened()
+    expect(w.get('[data-test=nav-foot]').find('[data-test=color-scheme]').exists()).toBe(true)
+  })
+
   it('keeps the foot outside the scrolling area so it cannot scroll away', async () => {
     const w = await opened()
     const scroll = w.get('[data-test=nav-scroll]')

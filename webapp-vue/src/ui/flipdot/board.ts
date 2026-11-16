@@ -6,11 +6,11 @@ export const DOT_ON = '#fafaf9'
 export const DOT_OFF = '#292524'
 
 /**
- * inverse-phase-two — the reading of a play that is being timed. Only the reading changes colour;
+ * board-phase-two — the reading of a play that is being timed. Only the reading changes colour;
  * the field stays as it is, so the board reads as the same instrument in a different mode rather
  * than as a warning lamp in the corner of the band.
  *
- * Twin in CSS: `--color-inverse-phase-two` in `src/assets/main.css`. A hex here and a token there,
+ * Twin in CSS: `--color-board-phase-two` in `src/assets/main.css`. A hex here and a token there,
  * because the dots get their colour via `setAttribute` and in WAAPI keyframes — no class helps
  * there. Whoever changes the colour changes it in both places.
  *

@@ -32,10 +32,21 @@ of the frontend conventions live beside it:
     for states: hover and pressed are the role at an opacity (`hover:bg-inverse-surface/80`),
     disabled text is `text-on-surface/40`. Text on a role fill takes its `on-` role (`bg-primary
     text-on-primary`). On `inverse-surface` the base colours fall to ~2:1 — use the `inverse-`
-    twins (`text-inverse-primary`, `text-inverse-phase-two`). A meaning that may part from its
+    twins (`text-inverse-primary`). A meaning that may part from its
     colour later gets its own name even while it borrows one (`--color-live` →
     `--color-phase-two`, `--color-phase-one` → `--color-primary`). Game artwork (crosshairs,
     glass over photos, chart fills) is not app UI and may keep literal colours.
+  - **Dark mode lives in the role values, not in components.** Each role is
+    `light-dark(light, dark)`; the browser picks by `color-scheme` — the system's, or the user's
+    pick pinned as `data-color-scheme` on `<html>` by `ui/colorScheme.ts` (and before first paint
+    by `index.html`). Never set `color-scheme` from JS: the build polyfills `light-dark()` with
+    Lightning CSS variables that only stylesheet `color-scheme` rules set — an inline style works
+    in dev and does nothing in the build. So no `dark:` classes, and a literal colour in app UI (`text-white`, `ring-white`) is a bug
+    that only shows in the dark: pair a fill with its `on-` role, ring with the ground's role
+    (`ring-surface`). `inverse-surface` flips with the mode (frame light in the dark). What must
+    look the same in both — the game band and the flip-dot board, one dark instrument whose dots
+    are painted outside CSS — takes the fixed `board` roles (`bg-board`, `text-on-board`,
+    `text-board-phase-two`).
   - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
     meaning (`--color-live`, the phase colours), layout utilities several areas share
     (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a
