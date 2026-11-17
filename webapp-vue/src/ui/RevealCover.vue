@@ -60,24 +60,18 @@ watch(
   <div
     ref="cover"
     data-test="reveal-cover"
-    class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-white/40 p-6 text-center backdrop-blur-md"
+    class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-surface-container-lowest/70 p-6 text-center text-on-surface backdrop-blur-md"
   >
-    <p data-test="reveal-cover-cost" class="max-w-xs text-sm text-on-surface-variant">
+    <p data-test="reveal-cover-cost" class="max-w-xs text-sm">
       <template v-if="props.timed">Deine Zeit läuft ab dem Aufdecken</template>
       <template v-else>Der Lauf startet mit dem Aufdecken</template>
       — und du hast nur <strong>einen</strong> Versuch.
     </p>
-    <p
-      v-if="state === 'preparing'"
-      data-test="reveal-cover-preparing"
-      class="text-sm text-on-surface-variant"
-    >
+    <p v-if="state === 'preparing'" data-test="reveal-cover-preparing" class="text-sm">
       Wird vorbereitet …
     </p>
     <template v-else-if="state === 'failed'">
-      <p data-test="reveal-cover-failed" class="text-sm text-on-surface-variant">
-        Das Spiel konnte nicht geladen werden.
-      </p>
+      <p data-test="reveal-cover-failed" class="text-sm">Das Spiel konnte nicht geladen werden.</p>
       <button
         type="button"
         data-test="reveal-cover-retry"
@@ -95,16 +89,13 @@ watch(
         :disabled="busy"
         label="START"
         color="#171717"
+        contour="neutral"
         :beats="3"
         :beat-ms="props.beatMs"
         @confirm="emit('start')"
       />
     </div>
-    <p
-      v-if="props.note"
-      data-test="reveal-cover-note"
-      class="max-w-xs text-sm text-on-surface-variant"
-    >
+    <p v-if="props.note" data-test="reveal-cover-note" class="max-w-xs text-sm">
       {{ props.note }}
     </p>
   </div>

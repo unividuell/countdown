@@ -380,6 +380,15 @@ describe('HoldButton', () => {
     expect(button.classes()).toEqual(expect.arrayContaining(['ring-1', 'ring-on-surface']))
   })
 
+  it('keeps a neutral contour for a fill that never changes with the mode', () => {
+    const button = mountButton({ color: '#171717', contour: 'neutral' }).get(
+      '[data-test="hold-button"]',
+    )
+
+    expect(button.classes()).toEqual(expect.arrayContaining(['ring-1', 'ring-neutral-500']))
+    expect(button.classes()).not.toContain('ring-on-surface')
+  })
+
   it('paints nothing of its own without a colour — no fill, no shadow, no contour', () => {
     const w = mount(HoldButton, {
       props: { ready: true, disabled: false, label: 'Tipp bestätigen' },

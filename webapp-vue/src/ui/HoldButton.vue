@@ -41,8 +41,13 @@ const props = withDefaults(
     beatMs?: number
     /** `square` when something square lies on the button and must not be cut. */
     shape?: 'round' | 'square'
+    /**
+     * The coloured button's edge. `opposite` is the mode's ink, for a fill that may be as dark or
+     * as light as the card (a hue); `neutral` is one grey for a fill that is the same in both modes.
+     */
+    contour?: 'opposite' | 'neutral'
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round', contour: 'opposite' },
 )
 
 const emit = defineEmits<{ confirm: []; progress: [value: number] }>()
@@ -335,7 +340,9 @@ const popStyle = computed(() => ({
       class="absolute inset-0 cursor-pointer touch-none select-none disabled:cursor-not-allowed"
       :class="{
         'rounded-full': props.shape === 'round',
-        'shadow-inner ring-1 ring-on-surface': props.color !== undefined,
+        'shadow-inner ring-1': props.color !== undefined,
+        'ring-on-surface': props.color !== undefined && props.contour === 'opposite',
+        'ring-neutral-500': props.color !== undefined && props.contour === 'neutral',
       }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"

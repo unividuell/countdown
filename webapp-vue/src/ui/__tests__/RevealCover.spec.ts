@@ -16,6 +16,26 @@ const mountCover = (
 ) => mount(RevealCover, { props: { state: 'ready', busy: false, ...props } })
 
 describe('RevealCover', () => {
+  // White glass with secondary-grey text went grey on grey in the dark. The glass follows the
+  // mode, thick enough to carry its text over a light scene and a dark one alike.
+  it('frosts the scene in the card’s ground, with text in full ink', () => {
+    const cover = mountCover({ note: 'Weiter geht’s.' }).get('[data-test="reveal-cover"]')
+
+    expect(cover.classes()).toContain('bg-surface-container-lowest/70')
+    expect(cover.classes()).toContain('text-on-surface')
+    expect(cover.classes()).not.toContain('bg-white/40')
+    expect(cover.find('.text-on-surface-variant').exists()).toBe(false)
+  })
+
+  // The start button is black in both modes, so its edge is too: a neutral line, never one that
+  // flips with the mode.
+  it('gives the black start button the same edge in both modes', () => {
+    const button = mountCover().getComponent(HoldButton)
+
+    expect(button.props('color')).toBe('#171717')
+    expect(button.props('contour')).toBe('neutral')
+  })
+
   it('says what the reveal costs, in every state', () => {
     for (const state of ['preparing', 'ready', 'failed'] as const) {
       const text = mountCover({ state }).get('[data-test="reveal-cover-cost"]').text()
