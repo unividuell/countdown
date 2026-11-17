@@ -73,6 +73,17 @@ describe('FindPatternBoard', () => {
     expect(wrapper.text()).toContain('Leserichtung')
   })
 
+  // Like the board's frame: in the ink opposite the mode, picture or placeholder.
+  it('frames the target pattern in the ink opposite the mode', () => {
+    const img = mountBoard().get('img[alt="Das gesuchte Muster"]')
+    const placeholder = mountSealed().get('[data-test="pattern-image-placeholder"]')
+
+    for (const frame of [img, placeholder]) {
+      expect(frame.classes()).toContain('border-on-surface')
+      expect(frame.classes()).not.toContain('border-black')
+    }
+  })
+
   it('caps the board width even on a desktop viewport', () => {
     const wrapper = mountBoard()
 

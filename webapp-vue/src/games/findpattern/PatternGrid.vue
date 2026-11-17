@@ -134,7 +134,7 @@ function tileStyle(tile: PatternTile) {
 </script>
 
 <template>
-  <div class="relative w-full border-2 border-black">
+  <div class="relative w-full border-2 border-on-surface">
     <img
       v-if="props.image !== null"
       :src="props.image"

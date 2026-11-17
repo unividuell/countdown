@@ -148,7 +148,7 @@ function onCell(index: number): void {
           v-if="props.patternSrc"
           :src="props.patternSrc"
           alt="Das gesuchte Muster"
-          class="block w-full border-2 border-black"
+          class="block w-full border-2 border-on-surface"
           style="image-rendering: pixelated"
           draggable="false"
           @error="imageFailed = true"
@@ -156,7 +156,7 @@ function onCell(index: number): void {
         <div
           v-else
           data-test="pattern-image-placeholder"
-          class="block w-full border-2 border-black bg-surface-container"
+          class="block w-full border-2 border-on-surface bg-surface-container"
         >
           <!-- The ratio sits inside the border, as on the `img`: on the outer box it would count
                the border too, and the reveal would push the rules down. -->
