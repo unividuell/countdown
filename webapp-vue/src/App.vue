@@ -15,11 +15,11 @@ const { user } = useAuth()
 useColorSchemeShortcut()
 
 // Tab title follows the community in context, else the app name.
-useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
+useTitle(computed(() => activeCommunity.value?.name ?? 'daily'))
 
 // Top-left brand: the edition label, else the community name + a '<YY> edition suffix (always targetAt.year).
 const brand = computed(
-  () => activeCommunity.value?.editionLabel ?? activeCommunity.value?.name ?? 'countdown',
+  () => activeCommunity.value?.editionLabel ?? activeCommunity.value?.name ?? 'daily',
 )
 const yearSuffix = computed(() => {
   const c = activeCommunity.value

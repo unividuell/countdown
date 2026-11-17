@@ -70,7 +70,7 @@ describe('App main header', () => {
 
   it('shows the app name and no countdown when no community is active', () => {
     const w = mount(App, { global: { stubs } })
-    expect(w.find('a[href="/"]').text()).toBe('countdown')
+    expect(w.find('a[href="/"]').text()).toBe('daily')
     expect(w.find('[data-test="countdown-widget"]').exists()).toBe(false)
   })
 
@@ -184,7 +184,7 @@ describe('App main header', () => {
     expect(footer.classes()).toEqual(expect.arrayContaining(['flex', 'flex-col', 'items-end']))
     expect(footer.get('a[href="/legal"]').text()).toBe('Rechtliches')
     expect(footer.text()).toContain(`© 2024 – ${new Date().getFullYear()} unividuell.org`)
-    expect(footer.text()).not.toContain('countdown.unividuell.org')
+    expect(footer.text()).not.toContain('daily.unividuell.org')
   })
 
   // Header and footer write straight onto the page: a band of their own clashed with the

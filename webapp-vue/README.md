@@ -1,6 +1,6 @@
 # webapp-vue
 
-Vue 3 SPA frontend for countdown.unividuell.org. Talks to the `core` Spring
+Vue 3 SPA frontend for daily.unividuell.org. Talks to the `core` Spring
 backend (GitHub OAuth2 login, session cookie, CSRF) same-origin.
 
 ## Develop

@@ -1,8 +1,8 @@
 # countdown — server operations
 
 Two stacks from one parametrized compose file, fetched per target as `compose.prod.yaml` / `compose.staging.yaml`:
-- **prod** (`countdown.unividuell.org`) — branch `main`, images `:latest`, `SPRING_PROFILES_ACTIVE=production`, real GitHub OAuth.
-- **staging** (`beta.countdown.unividuell.org`) — branch `develop`, images `:staging`, `SPRING_PROFILES_ACTIVE=staging`, test-user picker login.
+- **prod** (`daily.unividuell.org`) — branch `main`, images `:latest`, `SPRING_PROFILES_ACTIVE=production`, real GitHub OAuth.
+- **staging** (`nightly.unividuell.org`) — branch `develop`, images `:staging`, `SPRING_PROFILES_ACTIVE=staging`, test-user picker login.
 
 Both live in `/opt/unividuell/countdown/` on the server, identified by `COMPOSE_PROJECT_NAME` in their per-env file.
 Images come from `ghcr.io/unividuell/countdown-*` (**private** packages — the server must `docker login ghcr.io` first, see below).
@@ -17,7 +17,7 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
   ```
   The credential persists in `~/.docker/config.json`, so `update.sh`'s `docker compose pull` works.
-- DNS: `A`/`AAAA` `countdown.unividuell.org` and `beta.countdown.unividuell.org` → this server's public IP.
+- DNS: `A`/`AAAA` `daily.unividuell.org` and `nightly.unividuell.org` → this server's public IP.
   TLS is terminated by the shared **edge-caddy** (see `/opt/unividuell/edge-caddy`), which must be running and
   routing both hostnames to their respective `-web` containers. Stacks publish no host ports; they only join
   the external `edge` network.
@@ -25,7 +25,7 @@ Everything below is run **on the server**, e.g. in `/opt/unividuell/countdown/`.
   deploy the edge first. `edge-lgtm` reads the database statistics as role `monitor`, created by the one-shot
   `db-monitor-role` service from `MONITORING_DB_PASSWORD` (same value as `COUNTDOWN_DB_MONITOR_PASSWORD` in
   edge-caddy's `.env`). Empty means no role and no database panels.
-- The organisation's GitHub App (`https://countdown.unividuell.org/login/oauth2/code/github` among its
+- The organisation's GitHub App (`https://daily.unividuell.org/login/oauth2/code/github` among its
   redirect URIs); its client ID is committed in `application-production.yaml`, its client secret goes
   into `.env.prod` as `GITHUB_CLIENT_SECRET`. Staging has no OAuth client at all — the backend refuses
   a test-login key next to one; login there is via the built-in test-user picker.
@@ -240,7 +240,7 @@ docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ## Staging login
 
 Staging uses the built-in test-user picker (Futurama characters). There is no real GitHub OAuth flow.
-Visit `beta.countdown.unividuell.org` → click Login → enter the key once per browser
+Visit `nightly.unividuell.org` → click Login → enter the key once per browser
 (`FAKE_SIGN_IN_KEY`) → pick a test user. The picker is the auth lib's, served by the backend at
 `/login/start` when `SPRING_PROFILES_ACTIVE=staging`.
 

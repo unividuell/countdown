@@ -29,7 +29,7 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             content { contentTypeCompatibleWith(MediaType.TEXT_HTML) }
             header { string(name = "Cache-Control", value = "max-age=600, public") }
-            content { string(containsString("<title>Countdown</title>")) }
+            content { string(containsString("<title>daily</title>")) }
             content { string(containsString("Spiel jeden Tag ein Mini-Game")) }
         }
     }
@@ -98,7 +98,7 @@ class PreviewControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `an unmapped path falls back to the generic page`() {
         mockMvc.get("/api/preview/nonsense").andExpect {
             status { isOk() }
-            content { string(containsString("<title>Countdown</title>")) }
+            content { string(containsString("<title>daily</title>")) }
         }
     }
 }
