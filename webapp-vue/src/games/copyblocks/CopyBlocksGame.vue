@@ -9,6 +9,7 @@
 import { computed, ref, watch } from 'vue'
 import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
+import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import CopyBlocksBoard from './CopyBlocksBoard.vue'
 import CopyBlocksReveal from './CopyBlocksReveal.vue'
@@ -61,6 +62,11 @@ watch(
 )
 
 const hasRevealedLive = useRevealedLive(done)
+
+const myColorHex = useMyColorHex(
+  () => props.entries,
+  () => props.mineUserId,
+)
 </script>
 
 <template>
@@ -87,6 +93,7 @@ const hasRevealedLive = useRevealedLive(done)
     :draft-key="key"
     :award-rule="props.awardRule"
     :award-points="props.awardPoints"
+    :my-color-hex="myColorHex"
     @guess="(value) => emit('guess', value)"
     @reveal="emit('reveal')"
   />

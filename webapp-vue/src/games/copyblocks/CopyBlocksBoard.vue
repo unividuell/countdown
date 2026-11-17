@@ -5,14 +5,17 @@
  *
  * The build is saved as a draft after every change; undo, the chosen slot and the cameras are not.
  */
-import { useLocalStorage } from '@vueuse/core'
+import { useEventListener, useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
 import IconUndo from '~icons/lucide/undo-2'
 import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
+import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
+import { useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
 import CentreButton from './CentreButton.vue'
@@ -38,6 +41,8 @@ const props = defineProps<{
   draftKey: string | null
   awardRule: AwardRule | null
   awardPoints: number | null
+  /** The viewer's avatar colour: the submit button wears it, as in Place Patch. */
+  myColorHex: string
 }>()
 
 /** The build field's camera, so the reveal opens at the angle of the submission. */
@@ -131,7 +136,37 @@ function remove(cell: Cell | null): void {
   if (sound.value) playSound('break', gone.type)
 }
 
+// As in Place Patch: while the submit ring rises the field is greyed, a finger on it cancels the
+// hold, and the tap that finger makes builds nothing — what is being sent cannot change under it.
+const { progress: holdProgress, locked, onProgress, unlock } = useHoldLock()
+/** Every pointer on the field: any of them keeps the hold off. */
+const pointers = new Set<number>()
+const touching = ref(false)
+/** The finger came down on a locked field; its tap is swallowed. */
+let tapSwallowed = false
+
+function onFieldDown(event: PointerEvent): void {
+  pointers.add(event.pointerId)
+  touching.value = true
+  tapSwallowed = locked.value
+}
+
+function onFieldUp(event: PointerEvent): void {
+  if (pointers.delete(event.pointerId) && pointers.size === 0) touching.value = false
+}
+
+/** A finger lifted while the tab was away may never report it, and would keep the hold off. */
+useEventListener(document, 'visibilitychange', () => {
+  if (!document.hidden) return
+  pointers.clear()
+  touching.value = false
+})
+
 function onTap(hit: Hit): void {
+  if (tapSwallowed) {
+    tapSwallowed = false
+    return
+  }
   if (!playable.value) return
 
   const chosen = slot.value
@@ -155,6 +190,7 @@ function undo(): void {
 }
 
 function submit(): void {
+  unlock()
   if (canSubmit.value) emit('guess', { blocks: [...build.value] })
 }
 </script>
@@ -166,7 +202,16 @@ function submit(): void {
          rules' gap. -->
     <div class="relative -mx-4 -mt-4 -mb-4 pb-4">
       <div class="flex flex-col gap-3" :inert="!round || undefined">
-        <section class="relative h-[46svh] overflow-hidden" :style="{ background: BUILD_GROUND }">
+        <!-- Capture: the 3D view captures its own pointer, and the hold must hear every finger. -->
+        <section
+          data-test="copy-blocks-field"
+          class="relative h-[46svh] overflow-hidden"
+          :style="{ background: BUILD_GROUND }"
+          @pointerdown.capture="onFieldDown"
+          @pointerup.capture="onFieldUp"
+          @pointercancel.capture="onFieldUp"
+          @lostpointercapture.capture="onFieldUp"
+        >
           <template v-if="buildField">
             <BlockScene
               v-model:camera="camera"
@@ -205,7 +250,7 @@ function submit(): void {
                  phone the slots shrink below 44 px instead — the one exception to that floor. -->
             <div class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
               <div
-                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-inverse-surface/75 p-0.5"
+                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-scrim/75 p-0.5"
               >
                 <button
                   v-for="s in hotbar"
@@ -228,6 +273,7 @@ function submit(): void {
               </div>
             </div>
           </template>
+          <HoldLock v-if="locked" data-test="copy-blocks-lock" :progress="holdProgress" />
         </section>
 
         <section
@@ -253,14 +299,17 @@ function submit(): void {
           <template v-if="round">
             <HoldButton
               :ready="true"
-              :disabled="!canSubmit"
+              :disabled="!canSubmit || touching"
               label="Nachbau abgeben — gedrückt halten"
-              color="#171717"
+              :color="props.myColorHex"
               @confirm="submit"
+              @progress="onProgress"
             />
             <span
+              data-test="copy-blocks-submit-label"
               aria-hidden="true"
-              class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold text-white"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+              :style="{ color: readableTextColor(props.myColorHex) }"
             >
               Abgeben
             </span>
