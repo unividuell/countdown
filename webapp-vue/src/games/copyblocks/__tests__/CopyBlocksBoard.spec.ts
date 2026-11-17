@@ -10,6 +10,7 @@ import type { Hit } from '@/games/copyblocks/view'
 import { START_CAMERA } from '@/games/copyblocks/view'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 vi.mock('@/games/copyblocks/sounds', () => ({ preloadSounds: vi.fn(), playSound: vi.fn() }))
@@ -55,12 +56,21 @@ async function choose(w: Board, label: string) {
   await w.get(`button[aria-label="${label}"]`).trigger('click')
 }
 
+/** A `matchMedia` answer the scenes can also subscribe to: their ground follows the mode. */
+function mediaQuery(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  } as unknown as MediaQueryList
+}
+
 describe('CopyBlocksBoard', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.mocked(playSound).mockClear()
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(true))
   })
 
   afterEach(() => {
@@ -80,13 +90,27 @@ describe('CopyBlocksBoard', () => {
     ).toEqual(['Erde', 'Ziegel', 'Laub', 'Spitzhacke'])
   })
 
-  // Over the 3D view, like the tool buttons: dark glass in both modes. `inverse-surface` turned
-  // light in the dark, and the white ring of the chosen slot vanished on it.
-  it('lays the hotbar on dark glass in both modes', () => {
+  // One ground for both views, the card's container tone, following the mode: the two light
+  // blues read foreign in either mode. Painted by WebGL, so the scenes are handed the hex.
+  it('grounds both views in the container tone of the mode', () => {
+    for (const [mode, tone] of Object.entries(SURFACE_CONTAINER)) {
+      localStorage.setItem('color-scheme', mode)
+      const wrapper = mountBoard()
+
+      const scenes = wrapper.findAllComponents(BlockScene)
+      expect(scenes.map((s) => s.props('background'))).toEqual([tone, tone])
+      wrapper.unmount()
+    }
+  })
+
+  // One hotbar for both modes, solid near-black: `inverse-surface` turned light in the dark, and
+  // see-through glass went mid-grey over the light ground, where the unselected slots' grey
+  // frames vanished.
+  it('lays the hotbar on solid black in both modes', () => {
     const bar = mountBoard().get('[data-test="copy-blocks-slot-PICKAXE"]').element.parentElement!
 
-    expect(bar.classList).toContain('bg-scrim/75')
-    expect(bar.classList).not.toContain('bg-inverse-surface/75')
+    expect(bar.classList).toContain('bg-neutral-950')
+    expect(bar.classList).not.toContain('bg-scrim/75')
   })
 
   // As in Place Patch: the tip is the player's, so the button wears their colour. That colour

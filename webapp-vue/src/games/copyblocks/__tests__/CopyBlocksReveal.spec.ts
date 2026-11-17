@@ -11,6 +11,7 @@ import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from '@/games/c
 import { SPIN_MS, START_CAMERA } from '@/games/copyblocks/view'
 import type { Camera } from '@/games/copyblocks/view'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 
 const PAYLOAD: CopyBlocksPayload = {
   grid: 6,
@@ -82,10 +83,25 @@ function seen(fit: Fit, b: GuessBlock): GuessBlock {
   return { x, y, z, type: b.type }
 }
 
+/** A `matchMedia` answer the scenes can also subscribe to: their ground follows the mode. */
+function mediaQuery(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  } as unknown as MediaQueryList
+}
+
 describe('CopyBlocksReveal', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
+  })
+
+  it('grounds the reveal in the container tone of the mode, as the board', () => {
+    localStorage.setItem('color-scheme', 'dark')
+    expect(scene(mountReveal()).props('background')).toBe(SURFACE_CONTAINER.dark)
+    localStorage.clear()
   })
 
   it('keeps the camera on the submitted build, so nothing moves at the switch', async () => {
@@ -180,7 +196,7 @@ describe('CopyBlocksReveal', () => {
       vi.useFakeTimers({
         toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
       })
-      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
       const wrapper = mountReveal({ ...props, animate: true })
       expect(scene(wrapper).props('field')).toEqual(fieldOf(TOP, 6))
 
@@ -232,7 +248,7 @@ describe('CopyBlocksReveal', () => {
       vi.useFakeTimers({
         toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
       })
-      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
     })
 
     it('shows my build as it stood, and the solution at its beat', async () => {

@@ -15,6 +15,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
+import { useSurfaceContainer } from '@/ui/surfaceTone'
 import { useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
@@ -60,9 +61,11 @@ interface HotbarSlot {
   icon: string
 }
 
-/** Painted on the sections too: under the cover they stand empty, in their view's colour. */
-const BUILD_GROUND = '#cfe2f4'
-const TEMPLATE_GROUND = '#9cc3ea'
+/**
+ * Both views stand on the card's container tone, following the mode. Painted on the sections too:
+ * under the cover they stand empty, in their view's colour.
+ */
+const ground = useSurfaceContainer()
 
 /** The round on show; `null` under the cover, where no 3D view is built. */
 const round = computed(() => (props.sealed ? null : props.payload))
@@ -206,7 +209,7 @@ function submit(): void {
         <section
           data-test="copy-blocks-field"
           class="relative h-[46svh] overflow-hidden"
-          :style="{ background: BUILD_GROUND }"
+          :style="{ background: ground }"
           @pointerdown.capture="onFieldDown"
           @pointerup.capture="onFieldUp"
           @pointercancel.capture="onFieldUp"
@@ -218,7 +221,7 @@ function submit(): void {
               :blocks="build"
               :field="buildField"
               build
-              :background="BUILD_GROUND"
+              :background="ground"
               @tap="onTap"
             />
             <div class="absolute top-1 left-1">
@@ -250,7 +253,7 @@ function submit(): void {
                  phone the slots shrink below 44 px instead — the one exception to that floor. -->
             <div class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
               <div
-                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-scrim/75 p-0.5"
+                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-neutral-950 p-0.5"
               >
                 <button
                   v-for="s in hotbar"
@@ -278,14 +281,14 @@ function submit(): void {
 
         <section
           class="relative mx-auto h-[34svh] w-3/4 overflow-hidden rounded-lg"
-          :style="{ background: TEMPLATE_GROUND }"
+          :style="{ background: ground }"
         >
           <template v-if="round && templateField">
             <BlockScene
               v-model:camera="templateCamera"
               :blocks="round.blocks"
               :field="templateField"
-              :background="TEMPLATE_GROUND"
+              :background="ground"
             />
             <div class="absolute top-1 left-1">
               <CentreButton v-model:camera="templateCamera" />
