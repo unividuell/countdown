@@ -42,7 +42,7 @@ definePage({ meta: { public: true } })
         >.
       </p>
       <p>
-        Zu einem im Spiel „Weltanschauung“ abgegebenen Tipp speichert countdown die Panorama-ID der
+        Zu einem im Spiel „Weltanschauung“ abgegebenen Tipp speichert daily die Panorama-ID der
         Street-View-Aufnahme und das daraus ermittelte Land; die Position hinter der Panorama-ID
         wird serverseitig nur zur Bestimmung des Landes aufgelöst und nicht gespeichert.
       </p>

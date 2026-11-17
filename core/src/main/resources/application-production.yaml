@@ -5,7 +5,7 @@ spring:
         registration:
           github:
             # The organisation's GitHub App, shared by every unividuell app (up to ten callback URLs,
-            # https://countdown.unividuell.org/login/oauth2/code/github among them). Public client
+            # https://daily.unividuell.org/login/oauth2/code/github among them). Public client
             # ID — safe to commit. The matching secret comes from ${GITHUB_CLIENT_SECRET}.
             client-id: Iv23liJTgm6EeJ6XshRh
             client-secret: ${GITHUB_CLIENT_SECRET}
@@ -17,7 +17,7 @@ spring:
 
 server:
   # Caddy terminates TLS and forwards X-Forwarded-*; honour it so the app builds
-  # correct https://countdown.unividuell.org URLs (OAuth redirect_uri) and treats
+  # correct https://daily.unividuell.org URLs (OAuth redirect_uri) and treats
   # requests as secure.
   forward-headers-strategy: framework
   servlet:

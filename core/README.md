@@ -146,7 +146,7 @@ Four environment variables, same "fails fast rather than looking healthy" rule a
   not the server one. No default in `production`/`staging`: missing it fails the boot instead
   of shipping a board that cannot draw a map. In Google Cloud Console, enable **Maps JavaScript
   API** and **Street View Static API** on the project, then create a key restricted to **HTTP
-  referrers** — `https://countdown.unividuell.org/*` for prod, the staging hostname for
+  referrers** — `https://daily.unividuell.org/*` for prod, `https://nightly.unividuell.org/*` for
   staging. It is referrer-restricted *by design*: anything handed to a browser must be, so it
   cannot be replayed from anywhere else.
 - `SPOT_OBJECT_SERVER_MAPS_API_KEY` — the **server** key: used only by `GoogleCountryLookup`'s

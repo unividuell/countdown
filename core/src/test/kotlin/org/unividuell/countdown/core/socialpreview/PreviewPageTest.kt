@@ -11,12 +11,12 @@ class PreviewPageTest {
     @Test
     fun `renders the tags a messenger reads`() {
         val html = PreviewPage(title = "Hütte Hütte", description = "Noch 58 Tage: Spiel mit!", path = "/c/huettehuette")
-            .html(baseUrl = "https://countdown.unividuell.org")
+            .html(baseUrl = "https://daily.unividuell.org")
 
         html shouldContain "<title>Hütte Hütte</title>"
         html shouldContain """<meta property="og:title" content="Hütte Hütte">"""
         html shouldContain """<meta property="og:description" content="Noch 58 Tage: Spiel mit!">"""
-        html shouldContain """<meta property="og:url" content="https://countdown.unividuell.org/c/huettehuette">"""
+        html shouldContain """<meta property="og:url" content="https://daily.unividuell.org/c/huettehuette">"""
         html shouldContain """<html lang="de">"""
     }
 
@@ -33,7 +33,7 @@ class PreviewPageTest {
     @Test
     fun `the generic page speaks for the app and points at the root`() {
         val page = PreviewPage.generic()
-        page.title shouldBe "Countdown"
+        page.title shouldBe "daily"
         page.description shouldBe "Spiel jeden Tag ein Mini-Game - gemeinsam auf euer Event hinfiebern"
         page.path shouldBe "/"
     }

@@ -1,5 +1,8 @@
 # countdown.unividuell.org
 
+Users see **daily** (`daily.unividuell.org`, staging `nightly.unividuell.org`). `countdown` stays
+the internal name: repo, packages, modules, containers, server paths.
+
 Porting the Nuxt/Firebase `huettehuette.unividuell.org` app to a leaner stack:
 - **Backend `core/`** — Spring Boot 4.1 · Kotlin 2.4 · Java 25 · Spring Modulith 2.1 · PostgreSQL 18.
 - **Frontend `webapp-vue/`** — Vite 8 · Vue 3 · TypeScript (strict) · Vue Router 5 (file-based) · Tailwind v4 · pnpm.

@@ -42,7 +42,7 @@ data class PreviewPage(val title: String, val description: String, val path: Str
          * whether a community or an invite exists at all. Both are the same bytes on purpose.
          */
         fun generic() = PreviewPage(
-            title = "Countdown",
+            title = "daily",
             description = "Spiel jeden Tag ein Mini-Game - gemeinsam auf euer Event hinfiebern",
             path = "/",
         )

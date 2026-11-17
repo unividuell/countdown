@@ -10,8 +10,8 @@ A request crosses **edge-caddy → countdown-web → core**.
 
 - **`edge-caddy`** is a separate project (`unividuell/edge-caddy`, its own guideline: shared-edge).
   This server hosts several `unividuell.org` sites and only one process can bind 80/443, so TLS and
-  host-based routing live there. It routes `countdown.unividuell.org` → `countdown-web:80` and
-  `beta.countdown.unividuell.org` → `countdown-staging-web:80` (staging logs in via the test-user
+  host-based routing live there. It routes `daily.unividuell.org` → `countdown-web:80` and
+  `nightly.unividuell.org` → `countdown-staging-web:80` (staging logs in via the test-user
   picker and has no OAuth client at all — see [security-and-auth.md](security-and-auth.md)).
 - **`countdown-web`'s Caddy** is baked into the image and is the SPA+API router. It listens on plain
   **`:80`** — the Caddyfile address is `:80`, **not** the domain — and does no TLS. The same image
