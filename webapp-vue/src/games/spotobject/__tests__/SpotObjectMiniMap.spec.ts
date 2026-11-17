@@ -97,6 +97,19 @@ describe('SpotObjectMiniMap', () => {
     expect(w.emitted('expand')).toHaveLength(1)
   })
 
+  // A white chip with on-surface ink went white on white in the dark. Chip and ink follow the
+  // mode together, as the drag handle at the corner does.
+  it('paints its corner buttons in the card’s ground and ink', () => {
+    const w = mountMiniMap({ open: true })
+
+    for (const id of ['spot-mini-full', 'spot-mini-close']) {
+      const button = w.get(`[data-test="${id}"]`)
+      expect(button.classes()).toContain('bg-surface-container-lowest/90')
+      expect(button.classes()).toContain('text-on-surface')
+      expect(button.classes()).not.toContain('bg-white/90')
+    }
+  })
+
   it('says so when a tap found nothing', async () => {
     const w = mountMiniMap({ open: true })
 

@@ -184,7 +184,7 @@ function between(value: number, min: number, max: number): number {
         type="button"
         data-test="spot-mini-full"
         aria-label="Karte bildschirmfüllend"
-        class="absolute top-2 left-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-on-surface shadow"
+        class="absolute top-2 left-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-surface-container-lowest/90 text-on-surface shadow"
         @click="emit('expand')"
       >
         <IconMaximize aria-hidden="true" class="h-4 w-4" />
@@ -194,7 +194,7 @@ function between(value: number, min: number, max: number): number {
         type="button"
         data-test="spot-mini-close"
         aria-label="Übersichtskarte schließen"
-        class="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-on-surface shadow"
+        class="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-surface-container-lowest/90 text-on-surface shadow"
         @click="emit('collapse')"
       >
         <IconX aria-hidden="true" class="h-4 w-4" />

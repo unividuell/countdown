@@ -195,6 +195,8 @@ describe('SpotObjectBoard', () => {
     await w.vm.$nextTick()
 
     expect(w.find('[data-test="spot-error"]').exists()).toBe(true)
+    // On white, its on-surface-variant text went light grey on white in the dark.
+    expect(w.get('[data-test="spot-error"]').classes()).toContain('bg-surface-container-lowest/95')
   })
 
   it('stays quiet about a failed load while sealed — the cover already says so', async () => {

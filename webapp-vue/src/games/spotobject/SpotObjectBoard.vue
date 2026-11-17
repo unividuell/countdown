@@ -140,7 +140,7 @@ function submitGuess(): void {
     <div
       v-if="error && !props.sealed"
       data-test="spot-error"
-      class="absolute inset-0 flex items-center justify-center bg-white/95 p-6 text-center"
+      class="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/95 p-6 text-center"
     >
       <p class="text-sm text-on-surface-variant">
         Die Karte konnte nicht geladen werden. Versuch es später noch einmal.
