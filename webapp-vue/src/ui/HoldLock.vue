@@ -6,7 +6,9 @@
  */
 import { computed } from 'vue'
 
-const props = defineProps<{ progress: number }>()
+const props = withDefaults(defineProps<{ progress: number; label?: string }>(), {
+  label: 'Abgeben …',
+})
 
 const RING_MASK = 'radial-gradient(closest-side, transparent 86%, #000 87%)'
 
@@ -26,7 +28,7 @@ const ringStyle = computed(() => {
   >
     <div class="relative flex size-40 items-center justify-center">
       <span aria-hidden="true" class="absolute inset-0 rounded-full" :style="ringStyle" />
-      <span class="text-lg font-semibold text-white">Abgeben …</span>
+      <span class="text-lg font-semibold text-white">{{ props.label }}</span>
     </div>
   </div>
 </template>

@@ -12,7 +12,7 @@ export interface HoldLock {
 }
 
 /**
- * The board under a submitting hold. Place Patch and Copy Blocks grey their field while the ring
+ * The board under a submitting hold. Place Patch, Copy Blocks and Paint Ratio grey their field while the ring
  * rises, so what is about to be sent cannot change under the hold — see `HoldLock.vue`.
  */
 export function useHoldLock(): HoldLock {

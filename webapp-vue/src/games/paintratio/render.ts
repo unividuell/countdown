@@ -1,9 +1,11 @@
 import type { Stroke } from './types'
 
 /**
- * The canvas's own colour: an off-white (`neutral-100`), so it shows where it ends on the white card.
+ * The canvas's own colour per mode: a step off the card, so it shows where it ends. Twin of
+ * `--color-surface-container` in `main.css` (light `neutral-100`, dark `#2a2826`); the canvas is
+ * painted from TS, where the role cannot reach. Whoever changes one changes the other.
  */
-export const CANVAS_GROUND = '#f5f5f5'
+export const CANVAS_GROUND = { light: '#f5f5f5', dark: '#2a2826' } as const
 
 /** What a canvas layer shows: the template, or the player's strokes. */
 export type CanvasLayer = { kind: 'template' } | { kind: 'strokes'; strokes: readonly Stroke[] }
