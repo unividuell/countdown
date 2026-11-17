@@ -5,7 +5,7 @@
  *
  * The build is saved as a draft after every change; undo, the chosen slot and the cameras are not.
  */
-import { useEventListener, useLocalStorage } from '@vueuse/core'
+import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
 import IconUndo from '~icons/lucide/undo-2'
 import IconVolume from '~icons/lucide/volume-2'
@@ -16,7 +16,7 @@ import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
 import { useSurfaceContainer } from '@/ui/surfaceTone'
-import { useHoldLock } from '@/ui/useHoldLock'
+import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
 import CentreButton from './CentreButton.vue'
@@ -142,34 +142,10 @@ function remove(cell: Cell | null): void {
 // As in Place Patch: while the submit ring rises the field is greyed, a finger on it cancels the
 // hold, and the tap that finger makes builds nothing — what is being sent cannot change under it.
 const { progress: holdProgress, locked, onProgress, unlock } = useHoldLock()
-/** Every pointer on the field: any of them keeps the hold off. */
-const pointers = new Set<number>()
-const touching = ref(false)
-/** The finger came down on a locked field; its tap is swallowed. */
-let tapSwallowed = false
-
-function onFieldDown(event: PointerEvent): void {
-  pointers.add(event.pointerId)
-  touching.value = true
-  tapSwallowed = locked.value
-}
-
-function onFieldUp(event: PointerEvent): void {
-  if (pointers.delete(event.pointerId) && pointers.size === 0) touching.value = false
-}
-
-/** A finger lifted while the tab was away may never report it, and would keep the hold off. */
-useEventListener(document, 'visibilitychange', () => {
-  if (!document.hidden) return
-  pointers.clear()
-  touching.value = false
-})
+const { touching, onDown: onFieldDown, onUp: onFieldUp, takeTap } = useFieldTouch(locked)
 
 function onTap(hit: Hit): void {
-  if (tapSwallowed) {
-    tapSwallowed = false
-    return
-  }
+  if (takeTap()) return
   if (!playable.value) return
 
   const chosen = slot.value
