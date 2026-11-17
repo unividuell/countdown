@@ -36,6 +36,8 @@ describe('StageBar', () => {
     expect(line.classes()).toContain('absolute')
     expect(line.classes()).toContain('top-0')
     expect(line.classes()).toContain('pointer-events-none')
+    // amber-700 drops to 3.4:1 on the dark card; the warning role holds in both modes.
+    expect(line.classes()).toContain('text-warning')
     // Reserved on the bar, so the board and the reveal cannot drift apart over it.
     expect(told.get('[data-test="stage-bar"]').element.parentElement?.className).toContain('pt-7')
   })
@@ -61,6 +63,23 @@ describe('StageBar', () => {
   it('cuts a gap at every inner boundary — the ladder ends round on both screens', () => {
     expect(mountBar(15).findAll('[data-test="stage-gap"]')).toHaveLength(4)
     expect(mountBar(30).findAll('[data-test="stage-gap"]')).toHaveLength(4)
+  })
+
+  // The card's own ground cutting through: white on the light card, near-black on the dark one.
+  it('cuts the gaps in the card’s ground, not in white', () => {
+    const gap = mountBar(15).get('[data-test="stage-gap"]')
+
+    expect(gap.classes()).toContain('bg-surface-container-lowest')
+    expect(gap.classes()).not.toContain('bg-white')
+  })
+
+  // Pale shades turn into glare on the dark card; mixed into the ground they dim with it instead.
+  it('mixes the paler ambers into the card’s ground', () => {
+    const w = mountBar(30, 15, 20)
+
+    expect(w.get('[data-test="stage-unlocked"]').classes()).toContain('stage-unlocked')
+    expect(w.get('[data-test="stage-tail"]').classes()).toContain('stage-tail')
+    expect(w.get('[data-test="stage-tail-playhead"]').classes()).toContain('stage-tail-playhead')
   })
 
   it('gives the board’s ladder the whole bar, and no tail', () => {

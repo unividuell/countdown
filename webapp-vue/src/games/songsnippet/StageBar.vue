@@ -135,7 +135,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
         :style="ladderStyle"
       >
         <div
-          class="absolute inset-y-0 left-0 bg-amber-200 transition-[width] duration-500 ease-out motion-reduce:transition-none"
+          class="stage-unlocked absolute inset-y-0 left-0 transition-[width] duration-500 ease-out motion-reduce:transition-none"
           data-test="stage-unlocked"
           :style="{ width: `${unlockedPct}%` }"
         />
@@ -150,7 +150,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
         <div
           v-for="step in steps.filter((s) => !s.atEnd)"
           :key="step.label"
-          class="absolute inset-y-0 w-[3px] -translate-x-1/2 bg-white"
+          class="absolute inset-y-0 w-[3px] -translate-x-1/2 bg-surface-container-lowest"
           data-test="stage-gap"
           :style="{ left: `${step.fraction * 100}%` }"
         />
@@ -159,12 +159,12 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
            apart from the ladder. -->
       <div
         v-if="hasTail"
-        class="absolute inset-y-0 overflow-hidden rounded-r-full bg-amber-100"
+        class="stage-tail absolute inset-y-0 overflow-hidden rounded-r-full"
         data-test="stage-tail"
         :style="tailStyle"
       >
         <div
-          class="absolute inset-y-0 left-0 bg-amber-300"
+          class="stage-tail-playhead absolute inset-y-0 left-0"
           data-test="stage-tail-playhead"
           :style="{ width: tailPlayheadWidth }"
         />
@@ -180,7 +180,7 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
     >
       <p
         v-if="notice"
-        class="pointer-events-none absolute inset-x-0 top-0 flex h-7 items-center justify-center text-sm whitespace-nowrap text-amber-700"
+        class="pointer-events-none absolute inset-x-0 top-0 flex h-7 items-center justify-center text-sm whitespace-nowrap text-warning"
         data-test="song-notice"
       >
         {{ notice }}
@@ -220,3 +220,32 @@ const endLabel = computed(() => scaleEndLabel(props.durations, props.totalSecond
     </div>
   </div>
 </template>
+
+<style scoped>
+@reference '../../assets/main.css';
+
+/* The paler ambers, mixed into the card's ground instead of spelled as shades: on the white card
+   they come out as amber-200, -100 and -300, on the dark card as a dimmed amber rather than cream
+   glare. Paler still means further from the playhead in both modes. */
+.stage-unlocked {
+  background-color: color-mix(
+    in srgb,
+    theme(--color-amber-400) 45%,
+    var(--color-surface-container-lowest)
+  );
+}
+.stage-tail {
+  background-color: color-mix(
+    in srgb,
+    theme(--color-amber-400) 20%,
+    var(--color-surface-container-lowest)
+  );
+}
+.stage-tail-playhead {
+  background-color: color-mix(
+    in srgb,
+    theme(--color-amber-400) 75%,
+    var(--color-surface-container-lowest)
+  );
+}
+</style>
