@@ -60,6 +60,14 @@ describe('App main header', () => {
     delete document.documentElement.dataset.colorScheme
   })
 
+  // The title shares row 1 with the 40px account toggle, so it may be as tall: a 40px line, text
+  // that fills it, and a long name cut short rather than pushing the toggle off the row.
+  it('sets the title as tall as the account toggle, cut short when long', () => {
+    const title = mount(App, { global: { stubs } }).get('a[href="/"]')
+
+    expect(title.classes()).toEqual(expect.arrayContaining(['text-3xl', 'leading-10', 'truncate']))
+  })
+
   it('shows the app name and no countdown when no community is active', () => {
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('countdown')
@@ -114,6 +122,10 @@ describe('App main header', () => {
     expect(w.find('a[href="/"]').text()).toContain('Hüttenwochenende')
     expect(w.find('a[href="/"]').text()).not.toContain('Hütte Hütte')
     expect(w.find('a[href="/"]').text()).toContain("'26")
+    // Raised and small beside the large title, so it reads as an annotation of the name.
+    expect(w.get('[data-test="year-suffix"]').classes()).toEqual(
+      expect.arrayContaining(['align-super', 'text-base']),
+    )
   })
 
   it('derives the year suffix in the community zone, not UTC (boundary case)', () => {

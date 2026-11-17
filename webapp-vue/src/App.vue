@@ -69,8 +69,11 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:se
           class="col-start-1 row-start-1 flex h-10 min-w-0 items-center gap-2"
           :class="alignToBoardBand"
         >
-          <RouterLink to="/" class="font-semibold hover:underline"
-            >{{ brand }}<span class="text-on-surface-variant">{{ yearSuffix }}</span></RouterLink
+          <RouterLink to="/" class="truncate text-3xl leading-10 font-light hover:underline"
+            >{{ brand
+            }}<span data-test="year-suffix" class="align-super text-base text-on-surface-variant">{{
+              yearSuffix
+            }}</span></RouterLink
           >
         </div>
         <!-- Account before countdown in the DOM, because that is the narrow layout's reading order
