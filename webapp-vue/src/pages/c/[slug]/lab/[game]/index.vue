@@ -327,11 +327,7 @@ watch(
       />
       <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-on-surface-variant">
         Testrunde in „{{ community.name }}“
-        <span
-          v-if="round?.tookOverRound"
-          data-test="lab-takeover"
-          class="mt-1 block text-amber-700"
-        >
+        <span v-if="round?.tookOverRound" data-test="lab-takeover" class="mt-1 block text-warning">
           Seed {{ seed }} hat die vorherige Test-Runde verworfen.
         </span>
       </p>

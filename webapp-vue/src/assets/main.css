@@ -27,6 +27,8 @@
 
   --color-error: light-dark(var(--color-red-600), var(--color-red-400));
   --color-on-error: light-dark(#ffffff, #0d0d0d);
+  /* Not M3: a heads-up that is no failure. Text only, ≥ 4.6:1 on every ground incl. the menu. */
+  --color-warning: light-dark(var(--color-amber-700), var(--color-amber-300));
 
   --color-surface: light-dark(#f7f5f1, var(--color-stone-700));
   --color-on-surface: light-dark(#0d0d0d, #f7f5f1);

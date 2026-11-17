@@ -136,7 +136,7 @@ async function onGiveUp(): Promise<void> {
   >
     <!-- Above the surface, not inside it: the notice is about the attempt that just failed, not
          about the round on the board, and inside the frame it would push the board down. -->
-    <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-amber-700">{{ notice }}</p>
+    <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-warning">{{ notice }}</p>
 
     <RoundSurface>
       <!-- The band belongs to the card, not to any one face: every face below is the same round of
