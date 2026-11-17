@@ -107,7 +107,7 @@ onUnmounted(() => {
         />
         <span
           v-else
-          class="flex h-full w-full items-center justify-center rounded-xl bg-neutral-100 text-5xl"
+          class="flex h-full w-full items-center justify-center rounded-xl bg-surface-container text-5xl"
         >
           🎵
         </span>
@@ -119,7 +119,9 @@ onUnmounted(() => {
          search field, so the bar below sits at the same height on both screens. -->
     <div class="h-12" data-test="solution-line">
       <p class="truncate text-center text-sm leading-6 font-medium">{{ solution.title }}</p>
-      <p class="truncate text-center text-sm leading-6 text-neutral-500">{{ solution.artist }}</p>
+      <p class="truncate text-center text-sm leading-6 text-on-surface-variant">
+        {{ solution.artist }}
+      </p>
     </div>
 
     <StageBar
@@ -136,7 +138,7 @@ onUnmounted(() => {
         <button
           type="button"
           data-test="stop-solution"
-          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-neutral-200 text-xl text-neutral-700"
+          class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-surface-container-highest text-xl text-on-surface-variant"
           aria-label="Stopp"
           @click="playback.stop()"
         >
@@ -153,3 +155,5 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped src="./song-cover.css"></style>

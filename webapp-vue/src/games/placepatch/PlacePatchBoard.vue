@@ -14,7 +14,9 @@ import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
+import { useHoldLock } from '@/ui/useHoldLock'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
 import PlacePatchBriefing from './PlacePatchBriefing.vue'
@@ -60,11 +62,7 @@ const pictureFailed = computed(
 )
 let gesture: Gesture | null = null
 
-const RING_MASK = 'radial-gradient(closest-side, transparent 86%, #000 87%)'
-
-const holdProgress = ref(0)
-/** Only while the ring rises: the rewind after a release is no hold. */
-const locked = ref(false)
+const { progress: holdProgress, locked, onProgress, unlock } = useHoldLock()
 /** Every pointer on the field, playing or not: any of them keeps the hold off. */
 const pointers = new Set<number>()
 const touching = ref(false)
@@ -139,30 +137,10 @@ useEventListener(document, 'visibilitychange', () => {
   touching.value = false
 })
 
-/** A completed hold reports a full ring after `confirm`; it is no hold in progress any more. */
-function onProgress(value: number): void {
-  const next = value < 1 ? value : 0
-
-  locked.value = next > holdProgress.value
-  holdProgress.value = next
-}
-
-/** The lock drops here: a guess that fails hands the board back, and it must not stay grey. */
 function submit(): void {
-  holdProgress.value = 0
-  locked.value = false
+  unlock()
   if (stamp.value !== null) emit('guess', { ...stamp.value })
 }
-
-const ringStyle = computed(() => {
-  const deg = holdProgress.value * 360
-
-  return {
-    backgroundImage: `conic-gradient(#fff ${deg}deg, rgb(255 255 255 / 0.3) ${deg}deg 360deg)`,
-    mask: RING_MASK,
-    WebkitMask: RING_MASK,
-  }
-})
 
 const stampStyle = computed(() => {
   const cell = shown.value
@@ -193,7 +171,7 @@ const patchWidth = computed(() =>
         <div
           ref="field"
           data-test="place-patch-field"
-          class="relative w-full touch-none overflow-hidden bg-neutral-200 select-none"
+          class="relative w-full touch-none overflow-hidden bg-surface-container-highest select-none"
           :style="{ aspectRatio: `${layout.cols} / ${layout.rows}` }"
           @pointerdown="onDown"
           @pointermove="onMove"
@@ -215,22 +193,12 @@ const patchWidth = computed(() =>
             class="pointer-events-none absolute"
             :style="stampStyle"
           />
-          <!-- Lets every touch through to the field: a touch there is what cancels the hold. -->
-          <div
-            v-if="locked"
-            data-test="place-patch-lock"
-            class="pointer-events-none absolute inset-0 flex items-center justify-center bg-neutral-500/60"
-          >
-            <div class="relative flex size-40 items-center justify-center">
-              <span aria-hidden="true" class="absolute inset-0 rounded-full" :style="ringStyle" />
-              <span class="text-lg font-semibold text-white">Abgeben …</span>
-            </div>
-          </div>
+          <HoldLock v-if="locked" data-test="place-patch-lock" :progress="holdProgress" />
         </div>
         <p
           v-if="pictureFailed"
           data-test="place-patch-image-error"
-          class="text-center text-sm text-red-700"
+          class="text-center text-sm text-error"
         >
           Das Bild ließ sich nicht laden.
         </p>

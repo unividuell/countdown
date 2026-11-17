@@ -21,6 +21,14 @@ desktop layout that was written first).
   `z-10` cover sat above the members' fly-in (z ≥ 1, in the page's stacking context) until the
   card was isolated. Raising the page's elements instead escalates — it lifts them over the
   drawer's backdrop too.
+- **Place a fixed box against a fixed `inset-0` box, never against `clientWidth`.** With a classic
+  scrollbar the scroll lock keeps the gutter (`scrollbar-gutter: stable`) yet `clientWidth` then
+  counts it as content: measured while locked, `NavDrawer`'s dialog sat 15px off its toggle. Its
+  scrim's box is the frame a fixed `right` counts from, lock or not.
+- **Only the element that must ride above an overlay gets the `z-index`, not its container.** A
+  z-index makes the container a stacking context and lifts all of it: the header's `z-30` would
+  put title and countdown over the full-height drawer. `NavDrawer`'s toggle carries `relative
+  z-30` itself; the header carries none.
 - **No hover-only affordances.** Anything discoverable by hovering must also be
   reachable by tap. Hover may enhance, never carry.
 - **What changes round to round goes in a box's headline.** `InfoBox` and `AwardBox` fold, and
@@ -242,15 +250,19 @@ it is the only proof available — no unit test can see them.
   from (`margin-inline: calc(var(--spacing) * -4)` is byte-for-byte what `-mx-4` emits), name it once
   as an `@utility`, and pin the ancestor's padding in a test — that assertion is the only mechanical
   guard there is. See `@utility round-bleed` and the `<main>` guard in `app-header.spec.ts`.
+- **`<main>` owns the side gutter; a page's column sets width and rhythm only.** `main`'s `p-4` is
+  the header's and footer's 16px, so a page root is `mx-auto max-w-* py-8` and nothing sideways. A
+  `px-4` of its own doubled the gutter on six pages (the pools, super-admin) and put their content
+  out of line with the header on a phone. `page-gutter.spec.ts` reads every page's source for it.
 
 - **Two screens that must not jump share one measurement, not two matching numbers.** Where a
   round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of
-  the band's search hits, then the solution's own), the size belongs in a single `@utility`
-  (`song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
+  the band's search hits, then the solution's own), the size belongs in a single class
+  (`song-cover.css`, `.song-cover { width: min(43.5%, 9rem) }`) that both screens spell out by name — never as an
   `h-32 w-32` on one side and an equal-looking value on the other, which drifts the moment either
   is touched. The colour wheel is the same story with a sharper edge: `max-w-80` stood identically on
   `HueWheelInput` and `HueWheelReveal`, and the reveal lays its markers on the input wheel's own
-  radius — so `@utility hue-wheel` is the one place, and both templates spell it by name. The same
+  radius — so `hue-wheel.css` is the one place, and both templates spell it by name. The same
   for a slot one screen fills with a control and the other with text: give
   both the same named height (`h-12`) and centre the shorter content inside it. What a spec can
   then assert is exactly that — both ends carry the shared class — which is the checkable half of
@@ -284,8 +296,9 @@ numbers themselves are a browser measurement.
 - **`DOT_OFF` is `#292524` — `stone-800` exactly.** So a board placed on a `bg-stone-800` surface
   loses its unlit dots and with them the matrix that makes it read as flip-dot at all; nothing
   fails, it just quietly becomes floating digits. Put a board on a ground either lighter or darker
-  than that (the app header's `stone-900`, the game band's `stone-700`) and assert the class, since
-  happy-dom renders no colour.
+  than that (the countdown card's solid `board`, `#0d0d0d`; the game band's `board/80`,
+  `#3d3d3d` over a white card) and assert the class, since happy-dom renders
+  no colour.
 
 ### Accessible by construction
 

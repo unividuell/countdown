@@ -7,19 +7,33 @@
     <title>webapp-vue</title>
     <style>
       /* The app now resolves its first route before mounting, so #app is empty for a
-         moment longer. Paint the header bar and the page background up front rather
-         than flashing white. `:empty` stops applying the instant Vue mounts. */
+         moment longer. Paint the page background up front rather
+         than flashing white. */
+      /* Twin of --color-surface in src/assets/main.css. */
+      html {
+        color-scheme: light dark;
+      }
+      html[data-color-scheme='light'] {
+        color-scheme: light;
+      }
+      html[data-color-scheme='dark'] {
+        color-scheme: dark;
+      }
       body {
         margin: 0;
-        background: #f5f5f4; /* neutral-100 */
-      }
-      #app:empty::before {
-        content: '';
-        display: block;
-        height: 3rem; /* header: py-3 (2 x 0.75rem) + a 1.5rem line box */
-        background: #1c1917; /* stone-900 */
+        background: light-dark(#f7f5f1, #44403c);
       }
     </style>
+    <script>
+      // The user's light/dark pick, pinned before the first paint. Twin of src/ui/colorScheme.ts.
+      try {
+        const scheme = localStorage.getItem('color-scheme')
+        if (scheme === 'light' || scheme === 'dark')
+          document.documentElement.dataset.colorScheme = scheme
+      } catch {
+        // No storage (denied cookies, sandboxed frame): follow the system.
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

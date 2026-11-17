@@ -76,7 +76,7 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
       <div
         v-else
         :data-test="`tip-${row.userId}`"
-        class="bg-neutral-900 px-1 text-center text-xs text-neutral-50"
+        class="bg-inverse-surface px-1 text-center text-xs text-inverse-on-surface"
       >
         aufgegeben
       </div>

@@ -293,6 +293,38 @@ class LabServiceTest(
     }
 
     @Test
+    fun `who already played is named before I guess, without what they guessed`() {
+        // The member row seats everyone who played. Names and avatars are not guesses, so they go
+        // out under the gate that keeps `others` empty.
+        val (community, mine) = aCommunityWithTwoMembers()
+        service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+        )
+
+        val before = service.open(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false,
+        )
+
+        before.others.shouldBeEmpty()
+        before.players.map { it.userId } shouldContainExactly listOf(mine.other)
+    }
+
+    @Test
+    fun `the viewer is not among the players`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val response = service.guess(
+            slug = community.slug, gameId = "guess-hue", seed = 42, phase = Phase.ONE,
+            userId = mine.me, isSuperAdmin = false, guess = aValidGuessFor("guess-hue"),
+        )
+
+        response.me.shouldNotBeNull()
+        response.players.shouldBeEmpty()
+    }
+
+    @Test
     fun `an invalid guess is rejected without consuming the player's one attempt`() {
         // Pins the order in LabService.guess: judge() runs before store.record(), so an
         // out-of-range guess must not count against the player's single attempt — a later

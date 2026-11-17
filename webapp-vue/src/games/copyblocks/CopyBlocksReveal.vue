@@ -21,6 +21,7 @@ import type { ScoreRow } from './scoreboard'
 import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from './types'
 import { SPIN_MS, spunYaw } from './view'
 import type { Camera } from './view'
+import { useSurfaceContainer } from '@/ui/surfaceTone'
 
 const props = defineProps<{
   payload: CopyBlocksPayload
@@ -37,7 +38,7 @@ const props = defineProps<{
 const camera = defineModel<Camera>('camera', { required: true })
 
 /** The build field's ground, as on the board. */
-const BUILD_GROUND = '#cfe2f4'
+const ground = useSurfaceContainer()
 const NO_MARKS: Mark[] = []
 
 const still = isStill(props.animate)
@@ -137,7 +138,7 @@ const marks = computed(() => (solved.value && markErrors.value ? view.value.mark
     <section
       data-test="copy-blocks-reveal-view"
       class="relative -mx-4 -mt-4 h-[46svh] overflow-hidden"
-      :style="{ background: BUILD_GROUND }"
+      :style="{ background: ground }"
       @pointerdown.capture="stopSpin"
       @wheel.capture.passive="stopSpin"
     >
@@ -148,7 +149,7 @@ const marks = computed(() => (solved.value && markErrors.value ? view.value.mark
         :frame="frame"
         build
         :marks="marks"
-        :background="BUILD_GROUND"
+        :background="ground"
       />
       <div class="absolute top-1 left-1">
         <CentreButton v-model:camera="camera" />

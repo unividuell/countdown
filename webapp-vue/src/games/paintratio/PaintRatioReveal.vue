@@ -93,7 +93,7 @@ function select(id: string): void {
   <div data-test="paint-ratio-reveal" class="flex flex-col gap-6">
     <!-- Inside the gutter, as on the board: the painting must not jump between the two. -->
     <div
-      class="relative bg-neutral-100"
+      class="relative bg-surface-container"
       :style="{ aspectRatio: `${props.payload.width} / ${props.payload.height}` }"
     >
       <LayerCanvas

@@ -59,7 +59,7 @@ function apply(): void {
 }
 
 const ROW = 'flex h-11 w-full shrink-0 items-center px-5 text-left text-sm'
-const ACTION = `${ROW} cursor-pointer hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40`
+const ACTION = `${ROW} cursor-pointer hover:bg-surface-container disabled:cursor-default disabled:opacity-40`
 
 const PHASES = ['ONE', 'TWO'] as const
 
@@ -95,10 +95,10 @@ const ruleText = computed(() => {
 </script>
 
 <template>
-  <div class="mt-1.5 border-t border-neutral-200" />
+  <div class="mt-1.5 border-t border-outline" />
   <div
     data-test="lab-heading"
-    class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
+    class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
   >
     Spiel-Labor
   </div>
@@ -112,7 +112,7 @@ const ruleText = computed(() => {
       inputmode="numeric"
       :aria-invalid="invalid || undefined"
       class="h-11 w-full min-w-0 rounded-md border px-2 font-mono text-sm"
-      :class="invalid ? 'border-red-500' : 'border-neutral-300'"
+      :class="invalid ? 'border-error' : 'border-outline'"
       @input="invalid = false"
     />
     <button type="submit" class="h-11 shrink-0 cursor-pointer rounded-md border px-2 text-sm">
@@ -129,13 +129,13 @@ const ruleText = computed(() => {
       Würfeln
     </button>
   </form>
-  <p v-if="invalid" data-test="lab-seed-invalid" class="px-5 pb-1 text-xs text-red-600">
+  <p v-if="invalid" data-test="lab-seed-invalid" class="px-5 pb-1 text-xs text-error">
     Kein gültiger Seed — eine ganze Zahl von −2147483648 bis 2147483647.
   </p>
   <p
     v-if="props.difficulty !== undefined"
     data-test="lab-difficulty"
-    class="px-5 pb-1.5 text-xs text-neutral-500"
+    class="px-5 pb-1.5 text-xs text-on-surface-variant"
   >
     Schwierigkeit {{ DIFFICULTY_FORMAT.format(props.difficulty) }}
   </p>
@@ -156,15 +156,15 @@ const ruleText = computed(() => {
       class="h-11 flex-1 cursor-pointer rounded-md border text-sm disabled:cursor-default disabled:opacity-40"
       :class="
         props.phase === option
-          ? 'border-neutral-900 bg-neutral-900 font-semibold text-white'
-          : 'border-neutral-300 hover:bg-neutral-100'
+          ? 'border-inverse-surface bg-inverse-surface font-semibold text-inverse-on-surface'
+          : 'border-outline hover:bg-surface-container'
       "
       @click="emit('phaseChange', option)"
     >
       {{ option === 'ONE' ? 'Phase 1' : 'Phase 2' }}
     </button>
   </div>
-  <p v-if="ruleText" data-test="lab-award-rule" class="px-5 pb-1.5 text-xs text-neutral-500">
+  <p v-if="ruleText" data-test="lab-award-rule" class="px-5 pb-1.5 text-xs text-on-surface-variant">
     {{ ruleText }}
   </p>
 
@@ -187,9 +187,9 @@ const ruleText = computed(() => {
     Runde zurücksetzen
     <span
       aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
     >
-      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">X</kbd>
+      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">X</kbd>
     </span>
   </button>
   <button
@@ -202,9 +202,9 @@ const ruleText = computed(() => {
     Meinen Guess löschen
     <span
       aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
     >
-      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">Z</kbd>
+      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">Z</kbd>
     </span>
   </button>
   <!-- Full page load, not router navigation: the picker is server-rendered HTML, and the redirect
@@ -212,14 +212,14 @@ const ruleText = computed(() => {
   <a
     data-test="lab-switch-player"
     :href="switchPlayerHref(props.returnPath)"
-    :class="`${ROW} cursor-pointer hover:bg-neutral-100`"
+    :class="`${ROW} cursor-pointer hover:bg-surface-container`"
   >
     Spieler wechseln
     <span
       aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-neutral-400"
+      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
     >
-      <kbd class="rounded border border-neutral-300 px-1 py-0.5 font-sans text-[10px]">W</kbd>
+      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">W</kbd>
     </span>
   </a>
 </template>

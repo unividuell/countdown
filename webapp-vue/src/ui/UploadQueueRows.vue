@@ -15,11 +15,13 @@ defineProps<{ rows: QueueRow[] }>()
         <span v-if="row.state === 'running'" class="shrink-0"
           >{{ Math.round(row.progress * 100) }} %</span
         >
-        <span v-else-if="row.state === 'done'" class="shrink-0 text-neutral-500">Fertig</span>
-        <span v-else-if="row.state === 'failed'" class="shrink-0 text-red-600">Fehlgeschlagen</span>
-        <span v-else class="shrink-0 text-neutral-400">Wartet</span>
+        <span v-else-if="row.state === 'done'" class="shrink-0 text-on-surface-variant"
+          >Fertig</span
+        >
+        <span v-else-if="row.state === 'failed'" class="shrink-0 text-error">Fehlgeschlagen</span>
+        <span v-else class="shrink-0 text-on-surface/40">Wartet</span>
       </div>
-      <p v-if="row.state === 'failed'" class="text-xs text-red-600">{{ row.message }}</p>
+      <p v-if="row.state === 'failed'" class="text-xs text-error">{{ row.message }}</p>
     </li>
   </ul>
 </template>

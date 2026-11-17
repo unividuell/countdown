@@ -9,7 +9,7 @@
  *
  * See docs/superpowers/specs/2026-08-08-game-lab-design.md.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
@@ -17,6 +17,7 @@ import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
 import LabEntries from '@/gamelab/LabEntries.vue'
+import { labRoster } from '@/gamelab/roster'
 import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
@@ -36,11 +37,16 @@ import {
 } from '@/gamelab/api'
 import { requestDrawerClose } from '@/nav/drawerControl'
 import type { GameEntry } from '@/games/GameEntry'
+import MemberRow from '@/members/MemberRow.vue'
+import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { isEditableTarget } from '@/ui/editableTarget'
+import { prefersReducedMotion } from '@/ui/motion'
 import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
+import type { RosterMemberResponse } from '@/api/types'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
@@ -163,8 +169,33 @@ async function reveal(): Promise<void> {
 async function guess(value: unknown): Promise<void> {
   const current = seed.value
   if (current === null) return
+  holdRoster = true
   await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
+  // A failed guess brings no round, so the watcher never clears the hold for it.
+  holdRoster = false
 }
+
+/**
+ * The product's member row, fed from the lab round. Every response replaces it at once, except the
+ * one a guess brings: that waits [SPOILER_HOLD_MS], as `useRoster.refreshAfterGuess` does on the
+ * community page, so the row's reorder lands after the game's reveal rather than into it.
+ */
+const rosterMembers = ref<RosterMemberResponse[]>([])
+let holdRoster = false
+let rosterHold: ReturnType<typeof setTimeout> | undefined
+
+watch(round, (current) => {
+  if (!current) return
+  const next = labRoster(current, user.value)
+  clearTimeout(rosterHold)
+  if (holdRoster && !prefersReducedMotion()) {
+    rosterHold = setTimeout(() => (rosterMembers.value = next), SPOILER_HOLD_MS)
+  } else {
+    rosterMembers.value = next
+  }
+  holdRoster = false
+})
+onBeforeUnmount(() => clearTimeout(rosterHold))
 
 /** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries extra
  * arguments beyond `run`'s four-argument action shape. */
@@ -175,17 +206,7 @@ async function skip(fromStage: number, input?: unknown): Promise<void> {
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
   if (busy.value) return
   const shortcut = labShortcut(event)
-  if (!shortcut) return
-
-  // `closest`, not `matches`: inside a rich-text host the event target is whichever inline element
-  // the caret sits in, and only its ancestor carries `contenteditable`.
-  const target = event.target
-  if (
-    target instanceof Element &&
-    target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
-  ) {
-    return
-  }
+  if (!shortcut || isEditableTarget(event.target)) return
 
   event.preventDefault()
   if (shortcut === 'forgetMine') {
@@ -265,11 +286,13 @@ watch(
 <template>
   <div v-if="unavailable" data-test="lab-unavailable" class="py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Spiel-Labor nicht verfügbar</h1>
-    <p class="text-sm text-neutral-600">In dieser Umgebung ist das Labor abgeschaltet.</p>
+    <p class="text-sm text-on-surface-variant">In dieser Umgebung ist das Labor abgeschaltet.</p>
   </div>
   <div v-else-if="!gameComponent" data-test="lab-unknown-game" class="py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Unbekanntes Spiel</h1>
-    <p class="text-sm text-neutral-600">Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.</p>
+    <p class="text-sm text-on-surface-variant">
+      Für „{{ gameId }}“ gibt es im Labor nichts zu spielen.
+    </p>
   </div>
   <div v-else-if="seed !== null">
     <!-- Everything that only exists because this is a lab lives in the nav drawer, not here. A
@@ -293,13 +316,9 @@ watch(
         @reset="run(resetLabRound, true)"
         @forget-mine="run(forgetMyLabEntry, true)"
       />
-      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-neutral-500">
+      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-on-surface-variant">
         Testrunde in „{{ community.name }}“
-        <span
-          v-if="round?.tookOverRound"
-          data-test="lab-takeover"
-          class="mt-1 block text-amber-700"
-        >
+        <span v-if="round?.tookOverRound" data-test="lab-takeover" class="mt-1 block text-warning">
           Seed {{ seed }} hat die vorherige Test-Runde verworfen.
         </span>
       </p>
@@ -307,9 +326,14 @@ watch(
 
     <!-- Stays in the column: an error is the one thing that must not wait behind a closed
          drawer, and it is absent whenever the page is worth looking at. -->
-    <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-red-700">{{ error }}</p>
+    <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-error">{{ error }}</p>
 
-    <RoundSurface v-if="round">
+    <!-- The community page's row, same height reservation (see `pages/c/[slug]/index.vue`). -->
+    <section class="flex min-h-[72px] items-center">
+      <MemberRow v-if="rosterMembers.length" :members="rosterMembers" :me-id="user?.id" />
+    </section>
+
+    <RoundSurface v-if="round" class="mt-6">
       <!-- The game's name lives in the band now, exactly as it does in a real round — that is the
            whole point of the lab wearing the product's header rather than a heading of its own.
            Its round number and its end are the lab's two inventions; both follow the seed. -->

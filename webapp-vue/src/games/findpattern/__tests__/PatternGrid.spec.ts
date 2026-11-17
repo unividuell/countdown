@@ -27,6 +27,14 @@ describe('PatternGrid', () => {
     expect(wrapper.get('img').attributes('src')).toBe(IMAGE)
   })
 
+  // Black on the light card, white on the dark one: a frame in a fixed black vanishes there.
+  it('frames the board in the ink opposite the mode', () => {
+    const frame = mountGrid().get('img').element.parentElement!
+
+    expect(frame.classList).toContain('border-on-surface')
+    expect(frame.classList).not.toContain('border-black')
+  })
+
   it('reports a board picture that does not load', async () => {
     const wrapper = mountGrid()
 

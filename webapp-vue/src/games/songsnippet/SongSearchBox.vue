@@ -144,11 +144,11 @@ const hits = computed(() => suggestions.value)
           :key="hit.trackId"
           type="button"
           data-test="song-hit"
-          class="song-cover flex aspect-square shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl bg-white"
+          class="song-cover flex aspect-square shrink-0 cursor-pointer flex-col overflow-hidden rounded-xl bg-surface-container-lowest"
           :aria-label="`${hit.title} von ${hit.artist} tippen`"
           @click="choose(hit)"
         >
-          <span class="min-h-0 flex-1 overflow-hidden bg-neutral-200">
+          <span class="min-h-0 flex-1 overflow-hidden bg-surface-container-highest">
             <img
               v-if="hit.coverUrl"
               :src="hit.coverUrl"
@@ -158,7 +158,7 @@ const hits = computed(() => suggestions.value)
           </span>
           <span class="px-1.5 py-1 text-left">
             <TickerLine :text="hit.title" class="text-xs leading-snug font-medium" />
-            <TickerLine :text="hit.artist" class="text-xs leading-snug text-neutral-500" />
+            <TickerLine :text="hit.artist" class="text-xs leading-snug text-on-surface-variant" />
           </span>
         </button>
         <!-- Exactly one, and only while there is nothing to show: it is the whole state of the
@@ -167,12 +167,12 @@ const hits = computed(() => suggestions.value)
              which is a lie whenever the search already answered. -->
         <span
           v-if="hits.length === 0"
-          class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-neutral-50 text-xs text-neutral-400"
+          class="song-cover flex aspect-square shrink-0 items-center justify-center rounded-xl bg-surface-container text-xs text-on-surface/40"
           data-test="song-band-placeholder"
         >
           <span
             v-if="searching"
-            class="size-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500 motion-reduce:animate-none"
+            class="size-5 animate-spin rounded-full border-2 border-outline border-t-neutral-500 motion-reduce:animate-none"
             data-test="song-hit-spinner"
           />
           <template v-else-if="foundNothing">Keine Treffer</template>
@@ -189,7 +189,7 @@ const hits = computed(() => suggestions.value)
           v-model="query"
           type="text"
           data-test="song-search"
-          class="h-11 w-full rounded-full border border-neutral-300 bg-white pr-11 pl-4 text-sm"
+          class="h-11 w-full rounded-full border border-outline bg-surface-container-lowest pr-11 pl-4 text-sm"
           placeholder="Song suchen und tippen…"
           :disabled="disabled"
         />
@@ -197,7 +197,7 @@ const hits = computed(() => suggestions.value)
           v-if="query.length > 0"
           type="button"
           data-test="song-search-clear"
-          class="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-lg text-neutral-400 hover:text-neutral-600"
+          class="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-lg text-on-surface/40 hover:text-on-surface-variant"
           aria-label="Eingabe löschen"
           @pointerdown.prevent
           @click="clearAndKeepTyping()"
@@ -208,3 +208,5 @@ const hits = computed(() => suggestions.value)
     </div>
   </div>
 </template>
+
+<style scoped src="./song-cover.css"></style>

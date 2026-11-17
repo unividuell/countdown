@@ -8,6 +8,7 @@ import { loadDraft, saveDraft } from '@/games/paintratio/draft'
 import { MAX_POINTS, MAX_STROKES } from '@/games/paintratio/types'
 import type { PaintRatioPayload, Stroke } from '@/games/paintratio/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
 
 /** A `Storage` over a map, handed to the board through `deviceStorage`. */
 const storage = vi.hoisted(() => {
@@ -236,6 +237,27 @@ describe('PaintRatioBoard', () => {
     await paint(wrapper, 1, [30, 30])
 
     expect(hold(wrapper).props('disabled')).toBe(false)
+  })
+
+  // The selection's gap is the card cutting through, not white: on the dark card a white gap
+  // plus the light ring read as one fat ring. Unselected dots keep an edge in either mode.
+  it('rings the brushes against the card in both modes', () => {
+    const dot = (w: Board, label: string) => button(w, label).get('span')
+    const wrapper = mountBoard()
+
+    expect(dot(wrapper, 'Pinsel mittel').classes()).toEqual(
+      expect.arrayContaining(['ring-2', 'ring-on-surface', 'ring-offset-surface-container-lowest']),
+    )
+    expect(dot(wrapper, 'Pinsel klein').classes()).toContain('ring-on-surface/15')
+    expect(dot(wrapper, 'Pinsel klein').classes()).not.toContain('ring-black/15')
+  })
+
+  it('locks the canvas with the shared hold lock', async () => {
+    const wrapper = mountBoard()
+    await paint(wrapper, 1, [30, 30])
+    await progress(wrapper, 0.4)
+
+    expect(wrapper.findComponent(HoldLock).exists()).toBe(true)
   })
 
   it('greys the canvas and shows „Signieren …“ while the hold runs', async () => {

@@ -20,21 +20,21 @@ const { community } = useCommunityContext()
 <template>
   <div>
     <h1 class="mb-1 text-lg font-semibold">Spiel-Labor</h1>
-    <p class="mb-4 text-sm text-neutral-600">Testrunde in „{{ community.name }}“</p>
+    <p class="mb-4 text-sm text-on-surface-variant">Testrunde in „{{ community.name }}“</p>
 
     <ul v-if="labGameList.length" data-test="lab-game-list" class="space-y-2">
       <li v-for="game in labGameList" :key="game.id">
         <RouterLink
           :to="`/c/${community.slug}/lab/${game.id}`"
           :data-test="`lab-game-${game.id}`"
-          class="flex min-h-11 items-center justify-between rounded-lg border border-neutral-200 px-4 hover:bg-neutral-100"
+          class="flex min-h-11 items-center justify-between rounded-lg border border-outline px-4 hover:bg-surface-container"
         >
           <span class="text-sm font-medium">{{ game.title }}</span>
-          <code class="text-xs text-neutral-500">{{ game.id }}</code>
+          <code class="text-xs text-on-surface-variant">{{ game.id }}</code>
         </RouterLink>
       </li>
     </ul>
-    <p v-else data-test="lab-no-games" class="text-sm text-neutral-600">
+    <p v-else data-test="lab-no-games" class="text-sm text-on-surface-variant">
       Im Labor ist noch kein Spiel eingetragen.
     </p>
   </div>

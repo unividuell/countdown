@@ -12,7 +12,11 @@ import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
+import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
+import { useSurfaceContainer } from '@/ui/surfaceTone'
+import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
 import CentreButton from './CentreButton.vue'
@@ -38,6 +42,8 @@ const props = defineProps<{
   draftKey: string | null
   awardRule: AwardRule | null
   awardPoints: number | null
+  /** The viewer's avatar colour: the submit button wears it, as in Place Patch. */
+  myColorHex: string
 }>()
 
 /** The build field's camera, so the reveal opens at the angle of the submission. */
@@ -55,9 +61,11 @@ interface HotbarSlot {
   icon: string
 }
 
-/** Painted on the sections too: under the cover they stand empty, in their view's colour. */
-const BUILD_GROUND = '#cfe2f4'
-const TEMPLATE_GROUND = '#9cc3ea'
+/**
+ * Both views stand on the card's container tone, following the mode. Painted on the sections too:
+ * under the cover they stand empty, in their view's colour.
+ */
+const ground = useSurfaceContainer()
 
 /** The round on show; `null` under the cover, where no 3D view is built. */
 const round = computed(() => (props.sealed ? null : props.payload))
@@ -131,7 +139,13 @@ function remove(cell: Cell | null): void {
   if (sound.value) playSound('break', gone.type)
 }
 
+// As in Place Patch: while the submit ring rises the field is greyed, a finger on it cancels the
+// hold, and the tap that finger makes builds nothing — what is being sent cannot change under it.
+const { progress: holdProgress, locked, onProgress, unlock } = useHoldLock()
+const { touching, onDown: onFieldDown, onUp: onFieldUp, takeTap } = useFieldTouch(locked)
+
 function onTap(hit: Hit): void {
+  if (takeTap()) return
   if (!playable.value) return
 
   const chosen = slot.value
@@ -155,6 +169,7 @@ function undo(): void {
 }
 
 function submit(): void {
+  unlock()
   if (canSubmit.value) emit('guess', { blocks: [...build.value] })
 }
 </script>
@@ -166,14 +181,23 @@ function submit(): void {
          rules' gap. -->
     <div class="relative -mx-4 -mt-4 -mb-4 pb-4">
       <div class="flex flex-col gap-3" :inert="!round || undefined">
-        <section class="relative h-[46svh] overflow-hidden" :style="{ background: BUILD_GROUND }">
+        <!-- Capture: the 3D view captures its own pointer, and the hold must hear every finger. -->
+        <section
+          data-test="copy-blocks-field"
+          class="relative h-[46svh] overflow-hidden"
+          :style="{ background: ground }"
+          @pointerdown.capture="onFieldDown"
+          @pointerup.capture="onFieldUp"
+          @pointercancel.capture="onFieldUp"
+          @lostpointercapture.capture="onFieldUp"
+        >
           <template v-if="buildField">
             <BlockScene
               v-model:camera="camera"
               :blocks="build"
               :field="buildField"
               build
-              :background="BUILD_GROUND"
+              :background="ground"
               @tap="onTap"
             />
             <div class="absolute top-1 left-1">
@@ -205,7 +229,7 @@ function submit(): void {
                  phone the slots shrink below 44 px instead — the one exception to that floor. -->
             <div class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
               <div
-                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-neutral-800/75 p-0.5"
+                class="pointer-events-auto flex max-w-full items-start gap-0.5 rounded-md bg-neutral-950 p-0.5"
               >
                 <button
                   v-for="s in hotbar"
@@ -228,18 +252,19 @@ function submit(): void {
               </div>
             </div>
           </template>
+          <HoldLock v-if="locked" data-test="copy-blocks-lock" :progress="holdProgress" />
         </section>
 
         <section
           class="relative mx-auto h-[34svh] w-3/4 overflow-hidden rounded-lg"
-          :style="{ background: TEMPLATE_GROUND }"
+          :style="{ background: ground }"
         >
           <template v-if="round && templateField">
             <BlockScene
               v-model:camera="templateCamera"
               :blocks="round.blocks"
               :field="templateField"
-              :background="TEMPLATE_GROUND"
+              :background="ground"
             />
             <div class="absolute top-1 left-1">
               <CentreButton v-model:camera="templateCamera" />
@@ -253,14 +278,17 @@ function submit(): void {
           <template v-if="round">
             <HoldButton
               :ready="true"
-              :disabled="!canSubmit"
+              :disabled="!canSubmit || touching"
               label="Nachbau abgeben — gedrückt halten"
-              color="#171717"
+              :color="props.myColorHex"
               @confirm="submit"
+              @progress="onProgress"
             />
             <span
+              data-test="copy-blocks-submit-label"
               aria-hidden="true"
-              class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold text-white"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+              :style="{ color: readableTextColor(props.myColorHex) }"
             >
               Abgeben
             </span>

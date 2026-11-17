@@ -115,7 +115,11 @@ function submitGuess(): void {
          stacking context here those compete with our overlay row in the ROOT context and win —
          the map mode's controls are modest enough that the row only vanishes once a panorama
          opens. Isolating traps them where they belong. -->
-    <div ref="stage" data-test="spot-map" class="stage absolute inset-0 isolate bg-neutral-200" />
+    <div
+      ref="stage"
+      data-test="spot-map"
+      class="stage absolute inset-0 isolate bg-surface-container-highest"
+    />
 
     <!-- Only in the panorama, where it is the one thing it was always for: the centre the object
          belongs in before „Gefunden“, and the mark the reveal lays over the stills so that what a
@@ -128,7 +132,7 @@ function submitGuess(): void {
     <p
       v-if="noCoverage"
       data-test="spot-no-coverage"
-      class="pointer-events-none absolute top-1/2 left-1/2 mt-8 w-max max-w-[80%] -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1.5 text-center text-xs text-white"
+      class="pointer-events-none absolute top-1/2 left-1/2 mt-8 w-max max-w-[80%] -translate-x-1/2 rounded-full bg-inverse-surface/80 px-3 py-1.5 text-center text-xs text-inverse-on-surface"
     >
       Keine Aufnahme hier — ziel auf eine blaue Linie.
     </p>
@@ -136,9 +140,9 @@ function submitGuess(): void {
     <div
       v-if="error && !props.sealed"
       data-test="spot-error"
-      class="absolute inset-0 flex items-center justify-center bg-white/95 p-6 text-center"
+      class="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/95 p-6 text-center"
     >
-      <p class="text-sm text-neutral-700">
+      <p class="text-sm text-on-surface-variant">
         Die Karte konnte nicht geladen werden. Versuch es später noch einmal.
       </p>
     </div>
@@ -194,7 +198,7 @@ function submitGuess(): void {
             type="button"
             data-test="spot-mini-open"
             aria-label="Übersichtskarte öffnen"
-            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-surface-container-lowest text-on-surface shadow disabled:cursor-default disabled:opacity-40"
             :disabled="props.disabled"
             @click="miniMapOpen = true"
           >
@@ -205,7 +209,7 @@ function submitGuess(): void {
             type="button"
             data-test="spot-street-view"
             aria-label="Zurück zur Straßenansicht"
-            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-900 shadow disabled:cursor-default disabled:opacity-40"
+            class="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-surface-container-lowest text-on-surface shadow disabled:cursor-default disabled:opacity-40"
             :disabled="props.disabled"
             @click="toPanorama"
           >
@@ -220,7 +224,7 @@ function submitGuess(): void {
         <button
           type="button"
           data-test="spot-guess-button"
-          class="pointer-events-auto h-11 shrink-0 cursor-pointer rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow disabled:cursor-default disabled:opacity-40"
+          class="pointer-events-auto h-11 shrink-0 cursor-pointer rounded-full bg-inverse-surface px-4 text-sm font-medium text-inverse-on-surface shadow disabled:cursor-default disabled:opacity-40"
           :disabled="props.disabled || !pano.visible"
           @click="submitGuess"
         >

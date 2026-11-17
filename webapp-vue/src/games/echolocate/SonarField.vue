@@ -374,7 +374,7 @@ watch(
       v-if="props.covered"
       type="button"
       :disabled="props.disabled"
-      class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg bg-black/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+      class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg bg-scrim/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
       @click="emit('start')"
     >
       <span v-if="props.clips" class="text-base font-normal text-white/80">
@@ -386,7 +386,7 @@ watch(
       v-if="props.solution"
       data-test="sonar-legend"
       aria-label="Legende"
-      class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-neutral-500"
+      class="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-on-surface-variant"
     >
       <li v-for="(letter, kind) in NOISE_LETTER" :key="kind" class="whitespace-nowrap">
         <span class="font-bold text-red-400">{{ letter }}</span> {{ NOISE_NAME[kind] }}

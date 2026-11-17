@@ -125,9 +125,13 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   path animates: `FlipDotBoard` animates only inside its watcher, so a mount-only test never reaches
   it. `src/ui/flipdot/FlipDotBoard.vue` and the two specs around it — `FlipDotBoard.spec.ts`
   (installs the spy) and `CountdownCard.spec.ts` (deletes it) — are the worked example.
-  `window.matchMedia` *does* exist throughout and answers `matches: false` for every query.
-- **Reduced motion** needs a stub, since `matchMedia` always answers `false`:
+  `window.matchMedia` *does* exist throughout. Preference queries answer `matches: false`; width
+  queries are evaluated against happy-dom's own 1024px viewport.
+- **Reduced motion** needs a stub, since preference queries always answer `false`:
   `vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)`.
+- **A width-dependent component needs `happyDOM.setViewport({ width })`, not `window.innerWidth`.**
+  Assigning `innerWidth` moves `useWindowSize()` but not `matchMedia()`, so a `useMediaQuery('(min-
+  width: 48rem)')` stays at desktop. `NavDrawer.spec.ts`'s `setViewportWidth` is the worked example.
 - **VueUse's `onClickOutside` does not fire.** `src/nav/NavDrawer.vue`'s outside-click-to-close
   listens directly instead — `useEventListener(document, 'click', ...)` plus a
   `drawer.value?.contains(e.target as Node) || trigger.value?.contains(e.target as Node)` check.

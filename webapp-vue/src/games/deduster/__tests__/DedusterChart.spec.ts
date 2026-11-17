@@ -197,7 +197,7 @@ describe('DedusterChart', () => {
 
   it('draws the grid lines light, in one colour, whatever the system theme', () => {
     for (const line of mountChart().findAll('[data-test="chart-grid"]')) {
-      expect(line.attributes('class')).toBe('stroke-neutral-200')
+      expect(line.attributes('class')).toBe('stroke-outline')
     }
   })
 

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import LayerCanvas from '@/games/paintratio/LayerCanvas.vue'
 import { CANVAS_GROUND } from '@/games/paintratio/render'
+import { useColorScheme } from '@/ui/colorScheme'
 import type { CanvasLayer } from '@/games/paintratio/render'
 import type { Stroke } from '@/games/paintratio/types'
 
@@ -82,7 +84,7 @@ describe('LayerCanvas', () => {
     const painted = log
       .filter(([name]) => name === 'set fillStyle' || name === 'drawImage')
       .map(([name, value]) => (name === 'drawImage' ? 'picture' : value))
-    expect(painted).toEqual([CANVAS_GROUND, '#ff0000', 'picture', '#0000ff'])
+    expect(painted).toEqual([CANVAS_GROUND.light, '#ff0000', 'picture', '#0000ff'])
     expect(log.find(([name]) => name === 'drawImage')).toEqual([
       'drawImage',
       wrapper.get('img').element,
@@ -125,12 +127,39 @@ describe('LayerCanvas', () => {
 
     expect(log).toContainEqual(['moveTo', 100, 100])
     expect(log).toContainEqual(['lineTo', 200, 0])
-    expect(log).not.toContainEqual(['set fillStyle', CANVAS_GROUND])
+    expect(log).not.toContainEqual(['set fillStyle', CANVAS_GROUND.light])
   })
 })
 
 describe('CANVAS_GROUND', () => {
-  it('is an off-white, so the canvas shows where it ends on the white card', () => {
-    expect(CANVAS_GROUND).toBe('#f5f5f5')
+  // Twin of `--color-surface-container`: a step off the card in either mode, so the canvas shows
+  // where it ends — off-white on the white card, a shade above the near-black one.
+  it('is the card’s container tone in each mode', () => {
+    expect(CANVAS_GROUND).toEqual({ light: '#f5f5f5', dark: '#2a2826' })
+  })
+})
+
+describe('LayerCanvas in the dark', () => {
+  beforeEach(() => localStorage.setItem('color-scheme', 'dark'))
+
+  afterEach(() => {
+    localStorage.clear()
+    delete document.documentElement.dataset.colorScheme
+    vi.restoreAllMocks()
+  })
+
+  // The light grey glared on the dark card; painted from TS, the ground has to ask for the mode.
+  it('grounds the canvas in the dark tone, and repaints when the mode flips', async () => {
+    const { ctx, log } = recorder()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx)
+    mountCanvas([])
+
+    expect(log).toContainEqual(['set fillStyle', CANVAS_GROUND.dark])
+
+    log.length = 0
+    useColorScheme().value = 'light'
+    await nextTick()
+
+    expect(log).toContainEqual(['set fillStyle', CANVAS_GROUND.light])
   })
 })

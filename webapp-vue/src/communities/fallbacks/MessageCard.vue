@@ -15,7 +15,7 @@ defineProps<{ title: string; text?: string }>()
 
 <template>
   <RoundSurface class="flex aspect-square flex-col items-center justify-center text-center">
-    <p class="text-base font-semibold text-neutral-900">{{ title }}</p>
-    <p v-if="text" class="mt-2 text-sm leading-relaxed text-neutral-600">{{ text }}</p>
+    <p class="text-base font-semibold text-on-surface">{{ title }}</p>
+    <p v-if="text" class="mt-2 text-sm leading-relaxed text-on-surface-variant">{{ text }}</p>
   </RoundSurface>
 </template>

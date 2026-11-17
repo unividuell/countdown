@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<{ storageKey: string; tone?: BoxTone }>()
 
 /** Border, ground and icon colour per tone, in one place so the two sites cannot disagree. */
 const TONES: Record<BoxTone, { box: string; icon: string }> = {
-  info: { box: 'border-sky-200 bg-sky-50/60', icon: 'text-sky-600' },
+  info: { box: 'border-primary/15 bg-primary/5', icon: 'text-primary/70' },
   'phase-one': { box: 'border-phase-one/30 bg-phase-one/10', icon: 'text-phase-one' },
   'phase-two': { box: 'border-phase-two/30 bg-phase-two/10', icon: 'text-phase-two' },
 }
@@ -36,13 +36,13 @@ const collapsed = useLocalStorage(() => `infobox:${props.storageKey}`, false)
 <template>
   <section
     data-test="info-box"
-    class="rounded-lg border px-4 py-3 text-sm text-neutral-700"
+    class="rounded-lg border px-4 py-3 text-sm text-on-surface-variant"
     :class="TONES[tone].box"
   >
     <div class="flex items-start gap-3">
       <!-- No nudge: the icon's box and the heading's first line box are both 20px, so aligning
            them at the top is what puts them on one line. A margin here only lifts the heading. -->
-      <!-- Coloured on this span, not inherited: `text-neutral-700` already sits on the section for
+      <!-- Coloured on this span, not inherited: `text-on-surface-variant` already sits on the section for
            the body text, and a second `text-*` there would be a coin flip on which one wins. -->
       <span data-test="info-box-icon" class="shrink-0" :class="TONES[tone].icon">
         <slot name="icon"><IconInfo class="size-5" aria-hidden="true" /></slot>
@@ -56,7 +56,7 @@ const collapsed = useLocalStorage(() => `infobox:${props.storageKey}`, false)
       <button
         type="button"
         data-test="info-box-toggle"
-        class="-mx-2 -mt-3 -mb-3 flex size-11 shrink-0 cursor-pointer items-center justify-center text-neutral-500"
+        class="-mx-2 -mt-3 -mb-3 flex size-11 shrink-0 cursor-pointer items-center justify-center text-on-surface-variant"
         :aria-expanded="!collapsed"
         :aria-label="collapsed ? 'Erklärung zeigen' : 'Erklärung ausblenden'"
         @click="collapsed = !collapsed"

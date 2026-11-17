@@ -60,9 +60,9 @@ describe('InfoBox', () => {
     const w = mountBox()
 
     expect(w.get('[data-test="info-box"]').classes()).toEqual(
-      expect.arrayContaining(['border-sky-200', 'bg-sky-50/60']),
+      expect.arrayContaining(['border-primary/15', 'bg-primary/5']),
     )
-    expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-sky-600')
+    expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-primary/70')
   })
 
   // Teal means "phase one" — the same colour the band wears on the round number of such a round.
@@ -71,7 +71,7 @@ describe('InfoBox', () => {
     const classes = w.get('[data-test="info-box"]').classes()
 
     expect(classes).toEqual(expect.arrayContaining(['border-phase-one/30', 'bg-phase-one/10']))
-    expect(classes).not.toContain('bg-sky-50/60')
+    expect(classes).not.toContain('bg-primary/5')
     expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-phase-one')
   })
 
@@ -81,7 +81,7 @@ describe('InfoBox', () => {
     const classes = w.get('[data-test="info-box"]').classes()
 
     expect(classes).toEqual(expect.arrayContaining(['border-phase-two/30', 'bg-phase-two/10']))
-    expect(classes).not.toContain('bg-sky-50/60')
+    expect(classes).not.toContain('bg-primary/5')
     expect(w.get('[data-test="info-box-icon"]').classes()).toContain('text-phase-two')
   })
 

@@ -11,6 +11,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch 
 import {
   onKeyStroke,
   useEventListener,
+  useMediaQuery,
   useMutationObserver,
   usePreferredReducedMotion,
   useScrollLock,
@@ -23,6 +24,7 @@ import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
 import BrandMark from '@/ui/BrandMark.vue'
+import ColorSchemeSwitch from './ColorSchemeSwitch.vue'
 import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
 import { communityPath } from '@/communities/routes'
@@ -40,13 +42,22 @@ const DRAWER_VW = 0.85
 const AVATAR_PX = 32
 
 const open = ref(false)
-const drawerTop = ref(0)
+/** The toggle's box, read at open time: both the drawer and the dialog are laid out round it. */
+const toggleBox = ref({ top: 0, bottom: 0, left: 0, right: 0, viewportRight: 0 })
 const trigger = useTemplateRef<HTMLButtonElement>('trigger')
 const drawer = useTemplateRef<HTMLElement>('drawer')
+const spinner = useTemplateRef<HTMLElement>('spinner')
+const scrim = useTemplateRef<HTMLElement>('scrim')
 const route = useRoute()
 const router = useRouter()
 const { logout } = useAuth()
 const { width: viewport } = useWindowSize()
+
+/**
+ * Mobile-first: a drawer from the right, where the header stacks into two rows. From `md`, where
+ * it is one row, a centred dialog — a drawer's height is wasted on a wide screen.
+ */
+const asDialog = useMediaQuery('(min-width: 48rem)')
 const reduced = usePreferredReducedMotion()
 const bodyLocked = useScrollLock(document.body)
 const { active, refresh } = useCommunities()
@@ -56,9 +67,81 @@ const logoutFailed = ref(false)
 // and two sources for one width drift the moment somebody edits one of them.
 const drawerWidth = computed(() => Math.min(DRAWER_MAX_PX, Math.round(viewport.value * DRAWER_VW)))
 
+// Only the drawer has a rail for the avatar to roll along.
 const spin = computed(() =>
-  open.value && reduced.value !== 'reduce' ? spinDegrees(drawerWidth.value, AVATAR_PX) : 0,
+  open.value && reduced.value !== 'reduce' && !asDialog.value
+    ? spinDegrees(drawerWidth.value, AVATAR_PX)
+    : 0,
 )
+
+/** Room the dialog leaves round the toggle it encloses; also the name's gap to the toggle. */
+const ENCLOSE_PX = 8
+
+/**
+ * Where the frame stands, in the viewport. The drawer runs from the top to the right edge; the
+ * dialog's top-right corner sits ENCLOSE_PX outside the toggle, so the toggle is anchored in it.
+ */
+const frame = computed(() => {
+  const t = toggleBox.value
+  return asDialog.value
+    ? { top: t.top - ENCLOSE_PX, right: t.right + ENCLOSE_PX }
+    : { top: 0, right: t.viewportRight }
+})
+
+// The content starts under the toggle. Scrolled past, the toggle's edge is negative and the clamp
+// starts the drawer's content at the top.
+const frameStyle = computed(() => {
+  const t = toggleBox.value
+  const top = frame.value.top
+  const paddingTop = `${Math.max(0, t.bottom - top)}px`
+  return asDialog.value
+    ? {
+        top: `${top}px`,
+        right: `${t.viewportRight - frame.value.right}px`,
+        paddingTop,
+        maxHeight: `calc(100dvh - ${top + 16}px)`,
+      }
+    : { width: `${drawerWidth.value}px`, paddingTop }
+})
+
+/** The viewer's name, on the toggle's row: from the frame's left edge up to the toggle. */
+const nameStyle = computed(() => {
+  const t = toggleBox.value
+  return {
+    top: `${t.top - frame.value.top}px`,
+    height: `${t.bottom - t.top}px`,
+    right: `${frame.value.right - t.left + ENCLOSE_PX}px`,
+  }
+})
+
+const viewerName = computed(
+  () => activeCommunity.value?.viewerIdentity?.username ?? props.user.username,
+)
+
+/**
+ * Crossing md swaps the closed frame's classes — a drawer translated off becomes a dialog faded
+ * out — and with transitions on, the browser animates between the two: the menu flashes up. So the
+ * switch renders without transitions; a forced style read commits it before they come back.
+ * Not a remount (`:key`): the lab teleports its tools into the frame.
+ */
+const switchingMode = ref(false)
+
+watch(asDialog, async () => {
+  switchingMode.value = true
+  await nextTick()
+  void drawer.value?.offsetWidth
+  switchingMode.value = false
+})
+
+const drawerClasses = computed(() => [
+  'inset-y-0 right-0 transition-[translate,box-shadow]',
+  open.value ? 'translate-x-0 shadow-2xl' : 'translate-x-full',
+])
+
+const dialogClasses = computed(() => [
+  'w-80 origin-top-right rounded-xl shadow-2xl transition-[opacity,scale]',
+  open.value ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
+])
 
 const showDot = computed(
   () =>
@@ -114,7 +197,7 @@ const profilePath = computed(() =>
  * the container was going to scroll either way.
  */
 const ROW = 'flex h-11 w-full shrink-0 items-center gap-2.5 px-5 text-left text-sm'
-const LINK = `${ROW} cursor-pointer hover:bg-neutral-100`
+const LINK = `${ROW} cursor-pointer hover:bg-surface-container`
 
 function go(slug: string): void {
   router.push(communityPath(slug)).catch((e) => console.error('navigation failed', e))
@@ -178,20 +261,30 @@ onUnmounted(() => {
 })
 
 /**
- * The header scrolls away with the page, so its bottom edge is read at open time rather than
- * assumed. Scrolled past, the edge is negative and the clamp gives the drawer the full height —
- * which is right: there is no header left to stay below. The scroll lock is what keeps the
- * measured value from going stale while the drawer is up.
+ * The toggle stays above the open frame, which is laid out round it. Read at open time, because
+ * the header scrolls away with the page; the scroll lock keeps the value from going stale while
+ * the frame is up.
+ *
+ * The right edge is the scrim's: it is fixed and inset 0, so its box is exactly the frame a fixed
+ * `right` counts from. Not `clientWidth`: with a classic scrollbar the lock keeps the gutter
+ * reserved yet `clientWidth` then counts it as content, so a re-measure while open (a resize) put
+ * the dialog 15px too far left.
  */
-function measureTop(): void {
-  const header = trigger.value?.closest('header')
-  drawerTop.value = Math.max(0, header?.getBoundingClientRect().bottom ?? 0)
+function measureToggle(): void {
+  const r = trigger.value?.getBoundingClientRect()
+  toggleBox.value = {
+    top: r?.top ?? 0,
+    bottom: r?.bottom ?? 0,
+    left: r?.left ?? 0,
+    right: r?.right ?? 0,
+    viewportRight: scrim.value?.getBoundingClientRect().right ?? 0,
+  }
 }
 
 async function setOpen(next: boolean): Promise<void> {
   if (next) {
     logoutFailed.value = false
-    measureTop()
+    measureToggle()
     loadCommunities()
     open.value = true
     await nextTick()
@@ -203,19 +296,34 @@ async function setOpen(next: boolean): Promise<void> {
   }
 }
 
+/**
+ * The dialog has no rail for the avatar to roll along, so it answers a press with a boing
+ * instead: squashed, overshooting, settled. `scale`, not `transform`, so it composes with the
+ * spin's rotate rather than replacing it.
+ */
+const BOING: Keyframe[] = [
+  { scale: 1 },
+  { scale: 0.82, offset: 0.25 },
+  { scale: 1.12, offset: 0.55 },
+  { scale: 0.97, offset: 0.8 },
+  { scale: 1 },
+]
+
 watch(open, (v) => {
   bodyLocked.value = v
+  if (asDialog.value && reduced.value !== 'reduce') {
+    spinner.value?.animate?.(BOING, { duration: 450, easing: 'ease-out' })
+  }
 })
 
-// drawerWidth and spin already track the viewport through useWindowSize(); drawerTop does not,
-// because measureTop() only runs at open time. Without this, a resize or orientation change
-// while the drawer is open (e.g. a community header that goes from two rows to one across the
-// `md` breakpoint) leaves drawerTop stale — either a gap of scrimmed page above the drawer, or
-// the drawer's first row hidden behind the header. Gated on open: closed, there is nothing to
-// re-measure, and the open-time call in setOpen still runs first for the initial value.
+// drawerWidth and spin already track the viewport through useWindowSize(); the toggle's box does
+// not, because measureToggle() only runs at open time. Without this, a resize or orientation
+// change while the frame is open leaves it stale — the first row under the toggle, or the dialog
+// beside it. Gated on open: closed, there is nothing to re-measure, and the open-time call in
+// setOpen still runs first for the initial value.
 watch(viewport, () => {
   if (open.value) {
-    measureTop()
+    measureToggle()
     updateScrollHint()
   }
 })
@@ -280,12 +388,13 @@ onKeyStroke('Tab', (e) => {
     aria-haspopup="dialog"
     :aria-expanded="open"
     aria-controls="nav-drawer"
-    class="flex cursor-pointer items-center rounded p-1 hover:bg-stone-800"
+    class="relative z-30 flex cursor-pointer items-center rounded-full p-1 hover:ring-2 hover:ring-on-surface/20"
     @click="setOpen(!open)"
   >
     <!-- The spin lives on this wrapper, not on Avatar itself, so the rotation cannot fight
          whatever transform the avatar uses for its own label. -->
     <span
+      ref="spinner"
       data-test="nav-spinner"
       class="relative flex transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:transition-none"
       :style="{ transform: `rotate(${spin}deg)` }"
@@ -295,16 +404,17 @@ onKeyStroke('Tab', (e) => {
         v-if="showDot"
         data-test="pending-dot"
         aria-hidden="true"
-        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-stone-900 bg-blue-600"
+        class="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-surface bg-primary"
       />
     </span>
   </button>
 
   <Teleport to="body">
     <div
+      ref="scrim"
       data-test="nav-scrim"
       aria-hidden="true"
-      class="fixed inset-0 z-10 bg-black/45 transition-opacity duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:duration-150"
+      class="fixed inset-0 z-10 bg-scrim/45 transition-opacity duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:duration-150"
       :class="open ? 'opacity-100' : 'pointer-events-none opacity-0'"
     />
     <aside
@@ -317,10 +427,19 @@ onKeyStroke('Tab', (e) => {
       tabindex="-1"
       :inert="!open || undefined"
       :aria-hidden="!open || undefined"
-      :style="{ width: `${drawerWidth}px`, top: `${drawerTop}px` }"
-      class="fixed right-0 bottom-0 z-20 flex flex-col bg-white text-neutral-900 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
-      :class="open ? 'translate-x-0' : 'translate-x-full'"
+      :style="frameStyle"
+      class="raised fixed z-20 flex flex-col bg-surface-container-high text-on-surface duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
+      :class="[asDialog ? dialogClasses : drawerClasses, switchingMode && 'transition-none!']"
     >
+      <!-- Whose menu this is, on the toggle's row; a touch stronger than the rows below. -->
+      <div
+        v-if="toggleBox.bottom > 0"
+        data-test="nav-viewer"
+        class="absolute left-0 flex items-center pl-5 text-sm font-medium"
+        :style="nameStyle"
+      >
+        <span class="truncate">{{ viewerName }}</span>
+      </div>
       <div class="relative flex min-h-0 flex-1 flex-col">
         <div
           ref="navScroll"
@@ -334,7 +453,7 @@ onKeyStroke('Tab', (e) => {
                 v-if="e.current"
                 data-test="current-community"
                 aria-current="true"
-                :class="`${ROW} text-neutral-400`"
+                :class="`${ROW} text-on-surface/40`"
               >
                 {{ e.name }}
                 <!-- The live things in a row that is otherwise a label, which is why they keep
@@ -346,7 +465,7 @@ onKeyStroke('Tab', (e) => {
                     :to="communityPath(e.slug, 'images')"
                     data-test="community-images"
                     aria-label="Bilder"
-                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-on-surface"
                   >
                     <IconImage class="size-4" aria-hidden="true" />
                   </RouterLink>
@@ -354,7 +473,7 @@ onKeyStroke('Tab', (e) => {
                     :to="communityPath(e.slug, 'audio')"
                     data-test="community-audio"
                     aria-label="Audio"
-                    class="flex h-11 w-8 shrink-0 items-center justify-center text-neutral-900"
+                    class="flex h-11 w-8 shrink-0 items-center justify-center text-on-surface"
                   >
                     <IconAudio class="size-4" aria-hidden="true" />
                   </RouterLink>
@@ -376,7 +495,7 @@ onKeyStroke('Tab', (e) => {
               v-if="mayCreate"
               to="/communities/new"
               data-test="create-community"
-              :class="`${LINK} text-neutral-600`"
+              :class="`${LINK} text-on-surface-variant`"
             >
               <IconPlus class="size-4" aria-hidden="true" />
               Spielgemeinschaft
@@ -389,11 +508,11 @@ onKeyStroke('Tab', (e) => {
             <div
               v-if="showCommunityBlock"
               data-test="admin-divider"
-              class="mt-1.5 border-t border-neutral-200"
+              class="mt-1.5 border-t border-outline"
             />
             <div
               data-test="admin-heading"
-              class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
+              class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
             >
               {{ admin.name }}
             </div>
@@ -402,7 +521,7 @@ onKeyStroke('Tab', (e) => {
               <span
                 v-if="admin.pendingCount > 0"
                 data-test="pending-count"
-                class="ml-auto rounded-full bg-blue-600 px-1.5 text-xs text-white"
+                class="ml-auto rounded-full bg-primary px-1.5 text-xs text-on-primary"
                 >{{ admin.pendingCount }}</span
               >
             </RouterLink>
@@ -428,7 +547,7 @@ onKeyStroke('Tab', (e) => {
           <div
             ref="navMark"
             data-test="nav-mark"
-            class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-neutral-300"
+            class="grid shrink-0 grow basis-auto place-items-center px-3 py-6 text-outline"
           >
             <BrandMark class="w-[200px] max-w-full" />
           </div>
@@ -438,7 +557,7 @@ onKeyStroke('Tab', (e) => {
           v-if="scrollHintVisible"
           data-test="nav-scroll-cue"
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/80 to-transparent pb-1 text-neutral-400"
+          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-surface-container-high via-surface-container-high/80 to-transparent pb-1 text-on-surface/40"
         >
           <IconChevronDown
             class="size-4 animate-bounce [animation-iteration-count:2] motion-reduce:animate-none"
@@ -447,7 +566,8 @@ onKeyStroke('Tab', (e) => {
       </div>
 
       <div data-test="nav-foot" class="flex-none pb-1.5">
-        <div class="border-t border-neutral-200" />
+        <div class="border-t border-outline" />
+        <ColorSchemeSwitch />
         <RouterLink :to="profilePath" data-test="edit-profile" :class="LINK">
           Profil bearbeiten
         </RouterLink>
@@ -462,10 +582,7 @@ onKeyStroke('Tab', (e) => {
         <button type="button" data-test="logout" :class="LINK" @click="handleLogout">
           Abmelden
         </button>
-        <RouterLink to="/legal" data-test="legal" :class="`${LINK} text-neutral-500`">
-          Rechtliches
-        </RouterLink>
-        <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-red-600">
+        <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-error">
           Abmelden fehlgeschlagen
         </p>
       </div>

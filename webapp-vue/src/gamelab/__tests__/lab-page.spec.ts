@@ -5,6 +5,8 @@ import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
+import MemberRow from '@/members/MemberRow.vue'
+import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import * as drawerControl from '@/nav/drawerControl'
@@ -250,6 +252,48 @@ describe('lab page', () => {
     const w = await mountPage()
 
     expect(w.getComponent(StubGame).props('awardPoints')).toBe(round.awardPoints)
+  })
+
+  // The product's row, fed by the lab: the tester is seated before guessing, without a chip.
+  it('seats the tester in the member row before their first guess', async () => {
+    const w = await mountPage()
+
+    const members = w.getComponent(MemberRow).props('members')
+    expect(members.map((m) => [m.userId, m.points])).toEqual([['auth-me', { stable: 0 }]])
+  })
+
+  // Same hold as the community page's `refreshAfterGuess`: the row moves after the reveal.
+  it('holds the member row back after a guess, then shows the new points', async () => {
+    const w = await mountPage()
+    const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+    vi.mocked(api.submitLabGuess).mockResolvedValueOnce({ ...round, me } as never)
+
+    vi.useFakeTimers()
+    await w.get('[data-test="stub-guess"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toEqual({
+      points: 1,
+      provisional: false,
+    })
+  })
+
+  // A failed guess brings no round, so nothing may be left waiting for one.
+  it('shows the next round at once after a failed guess', async () => {
+    const w = await mountPage()
+    const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+    vi.mocked(api.submitLabGuess).mockRejectedValueOnce(new ApiError(409, 'conflict'))
+    vi.mocked(api.resetLabRound).mockResolvedValueOnce({ ...round, me } as never)
+
+    vi.useFakeTimers()
+    await w.get('[data-test="stub-guess"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+    await tool('lab-reset').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live?.points).toBe(1)
   })
 
   it('submits a guess from the game', async () => {

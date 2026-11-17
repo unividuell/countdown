@@ -11,7 +11,7 @@ const { loginWithGitHub } = useAuth()
     <h1 class="mb-6 text-xl font-semibold">Sign in</h1>
     <button
       data-test="login-github"
-      class="rounded bg-stone-900 px-4 py-2 text-stone-50 hover:bg-stone-700"
+      class="rounded bg-inverse-surface px-4 py-2 text-inverse-on-surface hover:bg-inverse-surface/80"
       @click="loginWithGitHub"
     >
       Login with GitHub

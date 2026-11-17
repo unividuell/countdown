@@ -31,6 +31,7 @@ import {
   type Material,
   type Object3D,
 } from 'three'
+import { readableTextColor } from '@/ui/readableTextColor'
 import { blockMaterials } from './textures'
 import { TAP_SLOP_PX, zoomedAt } from './view'
 import type { Camera, Hit, Point3 } from './view'
@@ -85,6 +86,11 @@ const isFloor = (o: Object3D): boolean => o === floor || o === underside
 /** Floor opacity from above — a plate to stand on — and from below. */
 const FLOOR_OPACITY = 0.55
 const UNDERSIDE_OPACITY = 0.2
+/**
+ * The floor's grid: a darker green on a light ground, a lighter one on a dark ground, where the
+ * dark green sank into the translucent floor.
+ */
+const GRID = { onLight: '#2f4f1f', onDark: '#9fcf7c' } as const
 let fieldParts: (Mesh | LineSegments)[] = []
 let renderer: WebGLRenderer | null = null
 /** Local copy: moves within one task must add up before the parent's v-model comes back. */
@@ -180,6 +186,11 @@ function dropField(): void {
   underside = null
 }
 
+/** A ground light text would be written on, as `readableTextColor` judges it. */
+function darkGround(): boolean {
+  return readableTextColor(props.background) === '#ffffff'
+}
+
 function rebuildField(): void {
   dropField()
 
@@ -214,14 +225,19 @@ function rebuildField(): void {
   for (let i = 0; i <= d; i++) lines.push(lo[0], y, lo[2] + i, lo[0] + w, y, lo[2] + i)
   const grid = new LineSegments(
     new BufferGeometry().setAttribute('position', new Float32BufferAttribute(lines, 3)),
-    new LineBasicMaterial({ color: '#2f4f1f' }),
+    new LineBasicMaterial({ color: darkGround() ? GRID.onDark : GRID.onLight }),
   )
 
   fieldParts = [floor, underside, grid]
   if (props.build) {
     const cage = new LineSegments(
       new EdgesGeometry(new BoxGeometry(w, h, d)),
-      new LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.4 }),
+      // Inked against the ground, as text is against a fill: white on the dark one, dark on the light.
+      new LineBasicMaterial({
+        color: readableTextColor(props.background),
+        transparent: true,
+        opacity: 0.4,
+      }),
     )
     cage.position.set(lo[0] + w / 2, lo[1] + h / 2, lo[2] + d / 2)
     fieldParts.push(cage)
@@ -437,6 +453,14 @@ onBeforeUnmount(() => {
 watch(
   () => JSON.stringify([props.field, props.frame]),
   () => {
+    rebuildField()
+    render()
+  },
+)
+watch(
+  () => props.background,
+  (next) => {
+    scene.background = new Color(next)
     rebuildField()
     render()
   },

@@ -48,6 +48,26 @@ describe('App main header', () => {
     navigationPending.value = false
   })
 
+  // On every page, since the shell is: `P` flips light and dark.
+  it('flips the colour scheme on P', async () => {
+    const w = mount(App, { global: { stubs } })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }))
+    await w.vm.$nextTick()
+    expect(document.documentElement.dataset.colorScheme).toBe('dark')
+
+    w.unmount()
+    localStorage.clear()
+    delete document.documentElement.dataset.colorScheme
+  })
+
+  // The title shares row 1 with the 40px account toggle, so it may be as tall: a 40px line, text
+  // that fills it, and a long name cut short rather than pushing the toggle off the row.
+  it('sets the title as tall as the account toggle, cut short when long', () => {
+    const title = mount(App, { global: { stubs } }).get('a[href="/"]')
+
+    expect(title.classes()).toEqual(expect.arrayContaining(['text-3xl', 'leading-10', 'truncate']))
+  })
+
   it('shows the app name and no countdown when no community is active', () => {
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('countdown')
@@ -102,6 +122,10 @@ describe('App main header', () => {
     expect(w.find('a[href="/"]').text()).toContain('Hüttenwochenende')
     expect(w.find('a[href="/"]').text()).not.toContain('Hütte Hütte')
     expect(w.find('a[href="/"]').text()).toContain("'26")
+    // Raised and small beside the large title, so it reads as an annotation of the name.
+    expect(w.get('[data-test="year-suffix"]').classes()).toEqual(
+      expect.arrayContaining(['align-super', 'text-base']),
+    )
   })
 
   it('derives the year suffix in the community zone, not UTC (boundary case)', () => {
@@ -129,11 +153,46 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=nav-toggle]').exists()).toBe(true)
   })
 
-  it('lifts the header above the drawer that slides in under it', () => {
-    // The drawer is z-20 and hangs off the header's bottom edge; without z-30 and a shadow the
-    // header would be overrun by it instead of sitting on top with an edge you can see.
+  // Only the menu toggle stays above the open drawer and its scrim (NavDrawer gives it z-30). A
+  // z-index here would make the header a stacking context and lift title and countdown over the
+  // full-height drawer with it.
+  it('leaves the header out of the stacking order, so only the toggle rides above the drawer', () => {
     const header = mount(App, { global: { stubs } }).get('header')
-    expect(header.classes()).toEqual(expect.arrayContaining(['relative', 'z-30', 'shadow-lg']))
+    expect(header.classes().some((c) => c.startsWith('z-'))).toBe(false)
+  })
+
+  // On a wide screen title and avatar would drift to the far edges; both stop at 6xl (1152px),
+  // Tailwind's nearest step to ~1100px, and centre.
+  it('caps header and footer at 6xl and centres them', () => {
+    const w = mount(App, { global: { stubs } })
+    for (const el of [w.get('header'), w.get('footer')])
+      expect(el.classes()).toEqual(expect.arrayContaining(['mx-auto', 'w-full', 'max-w-6xl']))
+  })
+
+  // From md the menu is a dialog enclosing the avatar by 8px; 12px of top padding left it 1px
+  // short of the viewport's edge, 24px leaves it a margin.
+  it('gives the header more room above from md, for the menu dialog', () => {
+    expect(mount(App, { global: { stubs } }).get('header').classes()).toEqual(
+      expect.arrayContaining(['py-3', 'md:pt-6']),
+    )
+  })
+
+  // The footer carries the legal link (moved out of the menu) and the copyright, both
+  // right-aligned; the bare domain line is gone.
+  it('carries the legal link and the copyright in the footer, right-aligned', () => {
+    const footer = mount(App, { global: { stubs } }).get('footer')
+    expect(footer.classes()).toEqual(expect.arrayContaining(['flex', 'flex-col', 'items-end']))
+    expect(footer.get('a[href="/legal"]').text()).toBe('Rechtliches')
+    expect(footer.text()).toContain(`© 2024 – ${new Date().getFullYear()} unividuell.org`)
+    expect(footer.text()).not.toContain('countdown.unividuell.org')
+  })
+
+  // Header and footer write straight onto the page: a band of their own clashed with the
+  // scrollbar gutter beside it.
+  it('gives header and footer no surface of their own', () => {
+    const w = mount(App, { global: { stubs } })
+    for (const el of [w.get('header'), w.get('footer')])
+      expect(el.classes().some((c) => c.startsWith('bg-'))).toBe(false)
   })
 
   it('shows the navigation progress bar only while a navigation is pending', () => {
@@ -159,8 +218,8 @@ describe('App main header', () => {
     const w = mount(App, { global: { stubs } })
     const segment = w.find('[data-test=navigation-progress-segment]')
     expect(segment.exists()).toBe(true)
-    expect(segment.classes()).toContain('animate-nav-shuttle')
-    expect(segment.classes()).toContain('motion-reduce:animate-none')
+    expect(segment.classes()).toContain('nav-shuttle')
+    expect(segment.classes()).toContain('motion-reduce:w-full')
   })
 
   it('clips horizontally at the unpadded root, not at <main>, so the member row fly-in cannot open a page scrollbar', () => {
@@ -235,19 +294,19 @@ describe('App main header', () => {
     }
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
-      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:h-[26px]')
+      expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:h-[34px]')
       expect(w.get(`[data-test="${cell}"]`).classes()).toContain('md:self-start')
     }
     expect(w.get('[data-test="countdown-row"]').classes()).toContain('md:self-start')
   })
 
   // Without a board there is nothing to align to, and the cells must keep their own 40px — otherwise
-  // a 26px override would shrink the header below the height it had before this feature existed.
+  // a 34px override would shrink the header below the height it had before this feature existed.
   it('leaves the row-1 cells at their own height where there is no board', () => {
     const w = mount(App, { global: { stubs } })
     for (const cell of ['title-row', 'account-cell']) {
       expect(w.get(`[data-test="${cell}"]`).classes()).toContain('h-10')
-      expect(w.get(`[data-test="${cell}"]`).classes()).not.toContain('md:h-[26px]')
+      expect(w.get(`[data-test="${cell}"]`).classes()).not.toContain('md:h-[34px]')
     }
   })
 
@@ -273,7 +332,7 @@ describe('App main header', () => {
 
   // A grid track is as tall as its tallest item, so BOTH cells of row 1 have to state the height.
   // With it on the title cell alone, the login page (no NavDrawer, whose toggle is 40px) would be
-  // 108px while every other page was 116px — the very variance the fixed height exists to remove.
+  // 116px while every other page was 124px — the very variance the fixed height exists to remove.
   // happy-dom computes no box heights, so the classes are all a test can see here; the measurement
   // itself belongs to the browser step.
   it('states row 1 height on both of its cells, so it cannot depend on being signed in', () => {

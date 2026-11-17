@@ -21,7 +21,9 @@ import IconRedo from '~icons/lucide/redo'
 import IconUndo from '~icons/lucide/undo'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
+import { useHoldLock } from '@/ui/useHoldLock'
 import { deviceStorage } from '../drafts'
 import { loadDraft, saveDraft } from './draft'
 import PaintCanvas from './PaintCanvas.vue'
@@ -60,8 +62,6 @@ const FALLBACK_COLOR = '#525252'
 const TOOL =
   'flex h-11 w-8 cursor-pointer items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40'
 
-const RING_MASK = 'radial-gradient(closest-side, transparent 86%, #000 87%)'
-
 const storage = deviceStorage()
 
 /** Shallow: a painting holds up to 100 000 points, and none of them needs to be reactive. */
@@ -70,10 +70,8 @@ const brush = ref(Math.min(1, props.payload.brushes.length - 1))
 const picked = ref<string | null>(null)
 const color = computed(() => picked.value ?? normalizeColor(props.myColorHex) ?? FALLBACK_COLOR)
 
-const holdProgress = ref(0)
+const { progress: holdProgress, locked, onProgress, unlock } = useHoldLock()
 const touching = ref(false)
-/** Only while the ring rises: the rewind after a release is no hold. */
-const locked = ref(false)
 
 const brushTools = computed(() => BRUSH_TOOLS.slice(0, props.payload.brushes.length))
 const canSign = computed(() => !props.disabled && state.value.strokes.length > 0)
@@ -106,30 +104,10 @@ function onRedo(): void {
   if (canRedo(state.value)) state.value = redo(state.value)
 }
 
-/** A completed hold reports a full ring after `confirm`; it is no hold in progress any more. */
-function onProgress(value: number): void {
-  const next = value < 1 ? value : 0
-
-  locked.value = next > holdProgress.value
-  holdProgress.value = next
-}
-
-/** The lock drops here: a guess that fails hands the board back, and it must not stay grey. */
 function sign(): void {
-  holdProgress.value = 0
-  locked.value = false
+  unlock()
   if (canSign.value) emit('guess', { strokes: [...state.value.strokes] })
 }
-
-const ringStyle = computed(() => {
-  const deg = holdProgress.value * 360
-
-  return {
-    backgroundImage: `conic-gradient(#fff ${deg}deg, rgb(255 255 255 / 0.3) ${deg}deg 360deg)`,
-    mask: RING_MASK,
-    WebkitMask: RING_MASK,
-  }
-})
 </script>
 
 <template>
@@ -150,20 +128,15 @@ const ringStyle = computed(() => {
           @commit="onCommit"
           @touch="touching = $event"
         />
-        <!-- Lets every touch through to the canvas: a touch there is what cancels the hold. -->
-        <div
+        <HoldLock
           v-if="locked"
           data-test="paint-ratio-lock"
-          class="pointer-events-none absolute inset-0 flex items-center justify-center bg-neutral-500/60"
-        >
-          <div class="relative flex size-40 items-center justify-center">
-            <span aria-hidden="true" class="absolute inset-0 rounded-full" :style="ringStyle" />
-            <span class="text-lg font-semibold text-white">Signieren …</span>
-          </div>
-        </div>
+          :progress="holdProgress"
+          label="Signieren …"
+        />
       </div>
 
-      <p v-if="props.pictureFailed" class="text-center text-sm text-red-700">
+      <p v-if="props.pictureFailed" class="text-center text-sm text-error">
         Das Bild ließ sich nicht laden.
       </p>
 
@@ -177,7 +150,7 @@ const ringStyle = computed(() => {
           type="color"
           aria-label="Farbe"
           :value="color"
-          class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-neutral-400 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-neutral-400 [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
+          class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-outline [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-outline [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
           @input="pickColor"
         />
         <div class="flex items-center">
@@ -195,7 +168,9 @@ const ringStyle = computed(() => {
               class="rounded-full"
               :class="[
                 tool.dot,
-                brush === index ? 'ring-2 ring-neutral-800 ring-offset-2' : 'ring-1 ring-black/15',
+                brush === index
+                  ? 'ring-2 ring-on-surface ring-offset-2 ring-offset-surface-container-lowest'
+                  : 'ring-1 ring-on-surface/15',
               ]"
               :style="{ backgroundColor: color }"
             />

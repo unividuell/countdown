@@ -4,6 +4,7 @@ import * as api from '@/api/countdown'
 import { _resetCountdownState } from '@/communities/useCountdown'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
+import { HEADER_PAD } from '@/ui/flipdot/board'
 
 // The countdown clock is a module-level singleton: a wrapper left mounted keeps reacting to it and
 // would fetch inside the *next* test case.
@@ -44,6 +45,12 @@ describe('CountdownDisplay', () => {
     // The button, not the board, must carry the accessible name: Chromium doesn't pull a child
     // img's aria-label up into its role="button" ancestor's name from content.
     expect(w.find('[data-test="countdown"]').attributes('aria-label')).toContain('10 Tage')
+    // No board under the header countdown: its dots and legend stand on the page.
+    expect(w.getComponent(FlipDotBoard).props('ground')).toBe('surface')
+    expect(w.getComponent(FlipDotLegend).props('ground')).toBe('surface')
+    // One free dot round the digits; the legend measures over the same field.
+    expect(w.getComponent(FlipDotBoard).props('pad')).toEqual(HEADER_PAD)
+    expect(w.getComponent(FlipDotLegend).props('pad')).toEqual(HEADER_PAD)
   })
 
   it('cycles the base unit on click', async () => {
@@ -340,7 +347,7 @@ describe('CountdownDisplay', () => {
     // happy-dom computes no CSS, so the classes are the observable proxy: a fixed height with an
     // automatic width is what keeps the dot size constant, and max-w-full is the net below 360px.
     const board = w.find('[data-test="countdown-board"]')
-    expect(board.classes()).toContain('h-[26px]')
+    expect(board.classes()).toContain('h-[34px]')
     expect(board.classes()).toContain('w-auto')
     expect(board.classes()).toContain('max-w-full')
     // The board's percentage cap needs a definite width to resolve against, and the legend takes

@@ -56,7 +56,7 @@ const hasRevealedLive = useRevealedLive(played)
 </script>
 
 <template>
-  <p v-if="payload === null && !props.sealed" class="text-sm text-neutral-600">
+  <p v-if="payload === null && !props.sealed" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <!-- `-m-4` cancels RoundSurface's own body padding on every side, so the term band and the map

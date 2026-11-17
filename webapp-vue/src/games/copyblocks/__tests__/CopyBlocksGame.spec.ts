@@ -7,7 +7,7 @@ import CopyBlocksReveal from '@/games/copyblocks/CopyBlocksReveal.vue'
 import { draftKey, saveDraft } from '@/games/copyblocks/draft'
 import type { CopyBlocksPayload } from '@/games/copyblocks/types'
 import type { GameProps } from '@/games/GameProps'
-import { gameProps } from '@/games/__tests__/gameFixtures'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import { gameComponents } from '@/games/registry'
 import { labGameList } from '@/gamelab/games'
 
@@ -45,6 +45,15 @@ describe('CopyBlocksGame', () => {
     const board = mountGame().getComponent(CopyBlocksBoard)
 
     expect(board.props('draftKey')).toBe(draftKey({ userId: 'me', payload: PAYLOAD, timed: false }))
+  })
+
+  it('hands the board my avatar colour for the submit button', () => {
+    const board = mountGame({
+      entries: [gameEntry({ userId: 'me', avatar: { bgColorHex: '#22c55e' } })],
+      mineUserId: 'me',
+    }).getComponent(CopyBlocksBoard)
+
+    expect(board.props('myColorHex')).toBe('#22c55e')
   })
 
   it('switches to the reveal once my tip is in, and forgets the draft', async () => {

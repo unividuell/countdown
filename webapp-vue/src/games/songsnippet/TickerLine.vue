@@ -5,7 +5,7 @@
  * Whether it travels at all is a measurement, not a guess — `scrollWidth` against `clientWidth`
  * after layout, repeated whenever the box resizes. A line that fits stays put, because a row of
  * four boxes where everything moves is unreadable. The distance is handed to CSS as
- * `--song-ticker-shift`; the timing lives with the animation in `main.css`.
+ * `--song-ticker-shift`; the timing lives with the animation below.
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { prefersReducedMotion } from '@/ui/motion'
@@ -40,7 +40,7 @@ watch(() => props.text, measure, { flush: 'post' })
   <span ref="box" class="block overflow-hidden whitespace-nowrap">
     <span
       class="inline-block"
-      :class="shift > 0 ? 'animate-song-ticker' : ''"
+      :class="shift > 0 ? 'song-ticker' : ''"
       :style="shift > 0 ? { '--song-ticker-shift': `-${shift}px` } : undefined"
       data-test="ticker-text"
     >
@@ -48,3 +48,28 @@ watch(() => props.text, measure, { flush: 'post' })
     </span>
   </span>
 </template>
+
+<!--
+  A search hit's title has about 85px on a phone, and most titles are longer. Rather than cut them,
+  the line travels: still at both ends so it can be read, then a slow pass leftwards by exactly its
+  own overflow — `--song-ticker-shift`, which the script measures per line and sets, because CSS
+  cannot know how far a given string overshoots its box. 9s for a full cycle of which two thirds is
+  standing still; a full band of hits runs two of these per cover, so anything faster turns the row
+  into a flicker.
+-->
+<style scoped>
+.song-ticker {
+  animation: song-ticker 9s ease-in-out infinite;
+}
+
+@keyframes song-ticker {
+  0%,
+  30% {
+    transform: translateX(0);
+  }
+  70%,
+  100% {
+    transform: translateX(var(--song-ticker-shift, 0));
+  }
+}
+</style>

@@ -54,7 +54,7 @@ const columns: ScoreboardColumn<ScoreRow>[] = [
       </template>
     </RevealScoreboard>
 
-    <p data-test="copy-blocks-kd-legend" class="text-end text-xs text-neutral-600">
+    <p data-test="copy-blocks-kd-legend" class="text-end text-xs text-on-surface-variant">
       * K korrekt · D daneben (fehlend, zu viel, falscher Typ)
     </p>
   </div>
