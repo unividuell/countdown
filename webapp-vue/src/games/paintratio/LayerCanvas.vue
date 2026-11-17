@@ -7,8 +7,8 @@
  * Without a 2D context (happy-dom) it draws nothing.
  */
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { useDarkScheme } from '@/ui/colorScheme'
-import { CANVAS_GROUND, drawSegment as paintSegment, drawStrokes } from './render'
+import { useSurfaceContainer } from '@/ui/surfaceTone'
+import { drawSegment as paintSegment, drawStrokes } from './render'
 import type { CanvasLayer } from './render'
 import type { Stroke } from './types'
 
@@ -24,7 +24,7 @@ const props = defineProps<{
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const picture = useTemplateRef<HTMLImageElement>('picture')
 const pictureReady = ref(false)
-const dark = useDarkScheme()
+const ground = useSurfaceContainer()
 let ctx: CanvasRenderingContext2D | null = null
 let observer: ResizeObserver | null = null
 
@@ -37,7 +37,7 @@ function redraw(): void {
   const el = canvas.value
   if (ctx === null || !el) return
 
-  ctx.fillStyle = dark.value ? CANVAS_GROUND.dark : CANVAS_GROUND.light
+  ctx.fillStyle = ground.value
   ctx.fillRect(0, 0, el.width, el.height)
 
   for (const layer of props.layers) {
@@ -91,7 +91,7 @@ watch(
     () => props.width,
     () => props.height,
     pictureReady,
-    dark,
+    ground,
   ],
   redraw,
 )
