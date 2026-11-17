@@ -42,6 +42,7 @@ import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import { isEditableTarget } from '@/ui/editableTarget'
 import { prefersReducedMotion } from '@/ui/motion'
 import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
@@ -205,17 +206,7 @@ async function skip(fromStage: number, input?: unknown): Promise<void> {
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
   if (busy.value) return
   const shortcut = labShortcut(event)
-  if (!shortcut) return
-
-  // `closest`, not `matches`: inside a rich-text host the event target is whichever inline element
-  // the caret sits in, and only its ancestor carries `contenteditable`.
-  const target = event.target
-  if (
-    target instanceof Element &&
-    target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
-  ) {
-    return
-  }
+  if (!shortcut || isEditableTarget(event.target)) return
 
   event.preventDefault()
   if (shortcut === 'forgetMine') {

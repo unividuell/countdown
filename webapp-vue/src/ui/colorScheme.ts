@@ -1,5 +1,6 @@
-import { useLocalStorage, usePreferredDark } from '@vueuse/core'
+import { useEventListener, useLocalStorage, usePreferredDark } from '@vueuse/core'
 import { computed, watchEffect, type ComputedRef, type WritableComputedRef } from 'vue'
+import { isEditableTarget } from '@/ui/editableTarget'
 
 export type ColorScheme = 'light' | 'dark' | 'system'
 
@@ -47,4 +48,20 @@ export function useDarkScheme(): ComputedRef<boolean> {
   const systemDark = usePreferredDark()
 
   return computed(() => scheme.value === 'dark' || (scheme.value === 'system' && systemDark.value))
+}
+
+/**
+ * `P` flips to the scheme not in force — „system“ on a dark OS goes light — and pins it, like a
+ * pick in the menu. A bare key, as the lab's (`gamelab/shortcuts.ts`): any modifier, a held key or
+ * typing in a field lets it pass. Mounted once, in `App.vue`.
+ */
+export function useColorSchemeShortcut(): void {
+  const scheme = useColorScheme()
+  const dark = useDarkScheme()
+
+  useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || event.repeat) return
+    if (event.key.toLowerCase() !== 'p' || isEditableTarget(event.target)) return
+    scheme.value = dark.value ? 'light' : 'dark'
+  })
 }

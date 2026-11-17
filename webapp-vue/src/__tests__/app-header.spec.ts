@@ -48,6 +48,18 @@ describe('App main header', () => {
     navigationPending.value = false
   })
 
+  // On every page, since the shell is: `P` flips light and dark.
+  it('flips the colour scheme on P', async () => {
+    const w = mount(App, { global: { stubs } })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }))
+    await w.vm.$nextTick()
+    expect(document.documentElement.dataset.colorScheme).toBe('dark')
+
+    w.unmount()
+    localStorage.clear()
+    delete document.documentElement.dataset.colorScheme
+  })
+
   it('shows the app name and no countdown when no community is active', () => {
     const w = mount(App, { global: { stubs } })
     expect(w.find('a[href="/"]').text()).toBe('countdown')

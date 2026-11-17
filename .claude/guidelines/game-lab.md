@@ -187,7 +187,9 @@ The browser owns every modifier combination, and some it never hands to the page
 window in Chrome, Safari and Firefox, ⌘⇧R reloads. So the lab's shortcuts are single letters with
 **no** modifier (`R` roll, `W` switch player, `X` reset, `Z` forget mine): any modifier, a held key
 (`repeat`) or focus in an editable field lets the event pass untouched. A game that wants letter keys
-on `document` collides with these — move the lab's, never the game's.
+on `document` collides with these — move the lab's, never the game's. `P` is the app shell's (flip
+light/dark, `ui/colorScheme.ts`, same bare-key rules, shared `isEditableTarget`): neither lab nor game
+takes it.
 
 ## Product components are fed, not adapted
 

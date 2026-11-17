@@ -8,8 +8,11 @@ import CountdownDisplay from '@/communities/CountdownDisplay.vue'
 import { useAuth } from '@/auth/useAuth'
 import NavDrawer from '@/nav/NavDrawer.vue'
 import { navigationPending } from '@/ui/navigationProgress'
+import { useColorSchemeShortcut } from '@/ui/colorScheme'
 
 const { user } = useAuth()
+
+useColorSchemeShortcut()
 
 // Tab title follows the community in context, else the app name.
 useTitle(computed(() => activeCommunity.value?.name ?? 'countdown'))
