@@ -250,6 +250,10 @@ it is the only proof available — no unit test can see them.
   from (`margin-inline: calc(var(--spacing) * -4)` is byte-for-byte what `-mx-4` emits), name it once
   as an `@utility`, and pin the ancestor's padding in a test — that assertion is the only mechanical
   guard there is. See `@utility round-bleed` and the `<main>` guard in `app-header.spec.ts`.
+- **`<main>` owns the side gutter; a page's column sets width and rhythm only.** `main`'s `p-4` is
+  the header's and footer's 16px, so a page root is `mx-auto max-w-* py-8` and nothing sideways. A
+  `px-4` of its own doubled the gutter on six pages (the pools, super-admin) and put their content
+  out of line with the header on a phone. `page-gutter.spec.ts` reads every page's source for it.
 
 - **Two screens that must not jump share one measurement, not two matching numbers.** Where a
   round's board and its reveal show the same thing in the same place (Song Snippet's cover: one of

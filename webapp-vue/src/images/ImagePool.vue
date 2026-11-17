@@ -73,7 +73,7 @@ defineExpose({ enqueue })
 </script>
 
 <template>
-  <section class="mx-auto max-w-2xl px-4 py-6">
+  <section class="mx-auto max-w-2xl py-6">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-semibold">Bilder</h1>
       <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-on-surface-variant"

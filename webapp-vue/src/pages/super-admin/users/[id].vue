@@ -46,7 +46,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="mx-auto max-w-2xl px-4 py-8">
+  <section class="mx-auto max-w-2xl py-8">
     <RouterLink
       to="/super-admin/users"
       class="mb-4 inline-block text-sm text-primary hover:underline"

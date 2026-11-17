@@ -32,7 +32,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="mx-auto max-w-3xl px-4 py-8">
+  <section class="mx-auto max-w-3xl py-8">
     <h1 class="mb-4 text-xl font-semibold">Super-Admin</h1>
 
     <ul class="mb-8 divide-y rounded border">
