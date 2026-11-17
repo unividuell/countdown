@@ -377,6 +377,14 @@ describe('NavDrawer mechanics', () => {
     Reflect.deleteProperty(Element.prototype, 'animate')
   })
 
+  // The scrim pulls the dark page onto a card's near-black (1.1:1). The menu wears the lighter
+  // raised surface instead, with the roles re-tuned for it (`raised` in main.css).
+  it('stands on the raised surface, with its roles', () => {
+    expect(render().get('[data-test=nav-drawer]').classes()).toEqual(
+      expect.arrayContaining(['bg-surface-container-high', 'raised']),
+    )
+  })
+
   it('keeps the toggle above the open drawer and its scrim', () => {
     // Drawer z-20, scrim z-10: the toggle is also the close button, so it must stay on top.
     expect(render().get('[data-test=nav-toggle]').classes()).toEqual(

@@ -422,7 +422,7 @@ onKeyStroke('Tab', (e) => {
       :inert="!open || undefined"
       :aria-hidden="!open || undefined"
       :style="frameStyle"
-      class="fixed z-20 flex flex-col bg-surface-container-lowest text-on-surface duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
+      class="raised fixed z-20 flex flex-col bg-surface-container-high text-on-surface duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
       :class="[asDialog ? dialogClasses : drawerClasses, switchingMode && 'transition-none!']"
     >
       <!-- Whose menu this is, on the toggle's row; a touch stronger than the rows below. -->
@@ -551,7 +551,7 @@ onKeyStroke('Tab', (e) => {
           v-if="scrollHintVisible"
           data-test="nav-scroll-cue"
           aria-hidden="true"
-          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/80 to-transparent pb-1 text-on-surface/40"
+          class="pointer-events-none absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-surface-container-high via-surface-container-high/80 to-transparent pb-1 text-on-surface/40"
         >
           <IconChevronDown
             class="size-4 animate-bounce [animation-iteration-count:2] motion-reduce:animate-none"

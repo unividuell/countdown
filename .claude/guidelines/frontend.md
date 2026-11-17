@@ -48,6 +48,10 @@ of the frontend conventions live beside it:
     are painted outside CSS — takes the fixed `board` roles (`bg-board`, `text-on-board`,
     `text-board-phase-two`). Colours painted from TS that must follow the mode read
     `useDarkScheme()`; flip dots straight on the page (header countdown) take `ground="surface"`.
+    A surface over the scrim (the menu) must be lighter than the page in the dark, not darker — the
+    scrim pulls the page onto a card's near-black. It wears `bg-surface-container-high raised`:
+    `raised` redefines the text and fill roles for its subtree, so its content keeps the plain role
+    names.
   - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
     meaning (`--color-live`, the phase colours), layout utilities several areas share
     (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a
