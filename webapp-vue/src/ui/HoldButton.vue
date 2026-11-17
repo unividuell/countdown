@@ -27,8 +27,7 @@ const props = withDefaults(
     label: string
     /**
      * The colour the button shows — the hue currently under the wheel's knob. Without one the
-     * button paints nothing of its own, for something lying on it: Platzierung's patch, whose
-     * true edge a coloured square would give away.
+     * button paints nothing of its own, for something lying on it.
      */
     color?: string
     /** Per-caller override; a caller with no opinion gets [DEFAULT_HOLD_MS]. */
@@ -40,10 +39,15 @@ const props = withDefaults(
     beats?: number
     /** One beat of the count-in. Entstauber counts in at its round's tempo. */
     beatMs?: number
-    /** `square` when something square lies on the button — Platzierung's patch — and must not be cut. */
+    /** `square` when something square lies on the button and must not be cut. */
     shape?: 'round' | 'square'
+    /**
+     * The coloured button's edge. `opposite` is the mode's ink, for a fill that may be as dark or
+     * as light as the card (a hue); `neutral` is one grey for a fill that is the same in both modes.
+     */
+    contour?: 'opposite' | 'neutral'
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round' },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round', contour: 'opposite' },
 )
 
 const emit = defineEmits<{ confirm: []; progress: [value: number] }>()
@@ -242,7 +246,7 @@ const ROUND_RIM = {
  * The same rim for a square: four edge strips, unioned — the default way mask layers combine, so
  * no browser has to support `mask-composite`. A phone that skipped an `exclude` composite painted
  * the whole box instead, a thick band. A fixed width rather than a share of the button: the
- * square grows with Platzierung's board, and its rim must not grow with it.
+ * square's size is the caller's, and its rim must not grow with it.
  */
 const SQUARE_RIM_PX = 2.5
 const SQUARE_FRAME = [
@@ -301,7 +305,7 @@ const popStyle = computed(() => ({
     <span
       data-test="hold-ring"
       aria-hidden="true"
-      class="pointer-events-none absolute -inset-[6.25%] text-neutral-900"
+      class="pointer-events-none absolute -inset-[6.25%] text-on-surface"
       :class="{ 'rounded-full': props.shape === 'round' }"
       :style="ringStyle"
     />
@@ -336,7 +340,9 @@ const popStyle = computed(() => ({
       class="absolute inset-0 cursor-pointer touch-none select-none disabled:cursor-not-allowed"
       :class="{
         'rounded-full': props.shape === 'round',
-        'shadow-inner ring-1 ring-black/10': props.color !== undefined,
+        'shadow-inner ring-1': props.color !== undefined,
+        'ring-on-surface': props.color !== undefined && props.contour === 'opposite',
+        'ring-neutral-500': props.color !== undefined && props.contour === 'neutral',
       }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"

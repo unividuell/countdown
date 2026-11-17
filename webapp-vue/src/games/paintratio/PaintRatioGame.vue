@@ -91,12 +91,12 @@ const animate = useRevealedLive(solved)
 </script>
 
 <template>
-  <p v-if="payload === null" class="text-sm text-neutral-600">
+  <p v-if="payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <div v-else-if="solution !== null" class="flex flex-col gap-6">
     <!-- Above the picture: the card's top edge is where the eye lands, the table can be far below. -->
-    <p v-if="pictureFailed" class="text-center text-sm text-red-700">
+    <p v-if="pictureFailed" class="text-center text-sm text-error">
       Das Bild ließ sich nicht laden.
     </p>
     <PaintRatioReveal

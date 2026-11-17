@@ -143,10 +143,10 @@ defineExpose({ enqueue })
 </script>
 
 <template>
-  <section class="mx-auto max-w-2xl px-4 py-6">
+  <section class="mx-auto max-w-2xl py-6">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-semibold">Audio</h1>
-      <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-neutral-500"
+      <span v-if="viewerIsAdmin" data-test="quota" class="text-sm text-on-surface-variant"
         >{{ used }} von {{ limit }}</span
       >
     </div>
@@ -172,9 +172,9 @@ defineExpose({ enqueue })
 
     <UploadQueueRows :rows="queue" />
 
-    <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
+    <p v-if="error" class="mb-3 text-sm text-error">{{ error }}</p>
 
-    <ul class="divide-y divide-neutral-200">
+    <ul class="divide-y divide-outline">
       <li
         v-for="clip in clips"
         :key="clip.id"
@@ -188,7 +188,7 @@ defineExpose({ enqueue })
           @click="toggle(clip.id)"
         >
           <span
-            class="grid size-9 place-items-center rounded-full border border-neutral-300 bg-white text-neutral-700"
+            class="grid size-9 place-items-center rounded-full border border-outline bg-surface-container-lowest text-on-surface-variant"
           >
             <IconSpinner
               v-if="playingId === clip.id && loading"
@@ -203,17 +203,17 @@ defineExpose({ enqueue })
 
         <div class="min-w-0 flex-1">
           <p class="truncate">{{ clip.fileName }}</p>
-          <p v-if="viewerIsAdmin" class="truncate text-xs text-neutral-500">
+          <p v-if="viewerIsAdmin" class="truncate text-xs text-on-surface-variant">
             {{ clip.uploadedBy }}
           </p>
         </div>
 
-        <span class="shrink-0 text-neutral-500">{{ seconds(clip.durationMs) }}</span>
+        <span class="shrink-0 text-on-surface-variant">{{ seconds(clip.durationMs) }}</span>
 
         <button
           data-test="delete"
           aria-label="Datei löschen"
-          class="grid size-11 shrink-0 cursor-pointer place-items-center text-neutral-500"
+          class="grid size-11 shrink-0 cursor-pointer place-items-center text-on-surface-variant"
           @click="remove(clip.id)"
         >
           <IconX class="size-4" aria-hidden="true" />
@@ -224,7 +224,7 @@ defineExpose({ enqueue })
           v-if="playingId === clip.id && !loading"
           data-test="progress"
           aria-hidden="true"
-          class="absolute bottom-0 left-0 h-0.5 bg-neutral-700"
+          class="absolute bottom-0 left-0 h-0.5 bg-on-surface-variant"
           :style="{ width: progress(clip) }"
         />
       </li>

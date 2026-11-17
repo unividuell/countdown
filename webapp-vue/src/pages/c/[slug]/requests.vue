@@ -31,8 +31,8 @@ onMounted(load)
 <template>
   <section class="mx-auto max-w-lg py-8">
     <h1 class="mb-4 text-xl font-semibold">Beitrittsanfragen</h1>
-    <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
-    <p v-if="!pending.length" class="text-sm text-neutral-500">Keine offenen Anfragen.</p>
+    <p v-if="error" class="mb-3 text-sm text-error">{{ error }}</p>
+    <p v-if="!pending.length" class="text-sm text-on-surface-variant">Keine offenen Anfragen.</p>
     <ul class="space-y-2">
       <li
         v-for="m in pending"
@@ -49,7 +49,7 @@ onMounted(load)
             Bestätigen
           </button>
           <button
-            class="rounded border px-2 py-0.5 text-red-600"
+            class="rounded border px-2 py-0.5 text-error"
             @click="run(() => removeMember(slug, m.userId))"
           >
             Ablehnen

@@ -152,6 +152,11 @@ withhold" still looked like a per-game decision instead of the one correct answe
 exactly the shape [game-rounds.md](game-rounds.md) now names as a bug: a switch whose right answer
 is the same for every case belongs in a shared rule, not a per-case review point.
 
+The gate covers guesses, not names. `players` (id, name, avatar of everyone else with an entry) goes
+out before the viewer's guess too, so the member row can seat them — the product's row shows every
+member before you have played, just without live points. Keep `LabPlayerDto` to identity: a field
+that hints at a tip (points, stage, time) belongs in `others` behind the gate.
+
 ## A second way out of the server, guarded separately
 
 `GameType.solution(params)` is the only way anything may leave the server *after* the guess — never
@@ -175,6 +180,29 @@ alone — it describes the *round*, not the player — so without this a reload 
 opening state in a round the viewer has already spent: Guess Hue's wheel would sit on the starting
 angle rather than on the angle that was submitted. Narrow it defensively; it is `unknown` by contract,
 and `typeof x === 'number'` alone lets `NaN` through all the way to the screen.
+
+## Keyboard shortcuts are bare keys
+
+The browser owns every modifier combination, and some it never hands to the page: ⌘⇧W closes the
+window in Chrome, Safari and Firefox, ⌘⇧R reloads. So the lab's shortcuts are single letters with
+**no** modifier (`R` roll, `W` switch player, `X` reset, `Z` forget mine): any modifier, a held key
+(`repeat`) or focus in an editable field lets the event pass untouched. A game that wants letter keys
+on `document` collides with these — move the lab's, never the game's. `P` is the app shell's (flip
+light/dark, `ui/colorScheme.ts`, same bare-key rules, shared `isEditableTarget`): neither lab nor game
+takes it.
+
+## Product components are fed, not adapted
+
+The lab shows the community page's `MemberRow` above the round, unchanged. It works because the row
+is props-only (`members`, `meId`); the lab maps its entries onto `RosterMemberResponse` in
+`gamelab/roster.ts` and replays the page's post-guess hold with the exported `SPOILER_HOLD_MS`. Before
+pulling another product component into the lab, check it takes everything as props — if it loads its
+own data or reads a route, the lab does without it rather than the component growing a lab seam.
+
+Where the lab has no endpoint for something the server computes, a one-line mirror in lab code is
+acceptable (`labRoster` copies the roster's rank and the „provisional“ rule) as long as drifting only
+makes the lab wrong, never the product. Name the server source in the comment so the drift is
+findable.
 
 ## What the lab deliberately cannot check
 

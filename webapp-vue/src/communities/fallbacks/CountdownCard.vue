@@ -33,7 +33,7 @@ const stripLive = ref(false)
 <template>
   <div
     data-test="countdown-card"
-    class="round-bleed flex aspect-square flex-col items-center justify-between bg-stone-900 py-4 sm:rounded-xl"
+    class="round-bleed flex aspect-square flex-col items-center justify-between bg-board py-4 sm:rounded-xl"
   >
     <!-- w-full, not shrink-to-fit: inside an items-center column this block would take its width
          from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS
@@ -48,7 +48,7 @@ const stripLive = ref(false)
       />
       <p
         data-test="countdown-label-days"
-        class="font-mono text-[11px] tracking-[0.14em] text-stone-400 transition-opacity duration-300"
+        class="font-mono text-[11px] tracking-[0.14em] text-on-board/70 transition-opacity duration-300"
         :class="heroLive ? 'opacity-100' : 'opacity-0'"
       >
         TAGE

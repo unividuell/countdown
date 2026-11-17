@@ -26,38 +26,38 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="mx-auto max-w-4xl px-4 py-8">
-    <RouterLink to="/super-admin" class="mb-4 inline-block text-sm text-blue-700 hover:underline">
+  <section class="mx-auto max-w-4xl py-8">
+    <RouterLink to="/super-admin" class="mb-4 inline-block text-sm text-primary hover:underline">
       ← Super-Admin
     </RouterLink>
     <h1 class="mb-4 text-xl font-semibold">Alle Spielgemeinschaften</h1>
-    <p v-if="state === 'loading'" class="text-sm text-neutral-500">Lade…</p>
-    <p v-else-if="state === 'error'" class="text-sm text-red-600">
+    <p v-if="state === 'loading'" class="text-sm text-on-surface-variant">Lade…</p>
+    <p v-else-if="state === 'error'" class="text-sm text-error">
       Die Spielgemeinschaften konnten nicht geladen werden.
     </p>
-    <p v-else-if="!communities.length" class="text-sm text-neutral-500">
+    <p v-else-if="!communities.length" class="text-sm text-on-surface-variant">
       Noch keine Spielgemeinschaften.
     </p>
     <template v-else>
       <article v-for="c in communities" :key="c.id" data-test="community" class="mb-8">
         <header class="mb-2 flex flex-wrap items-baseline gap-3 border-b pb-1">
           <h2 class="font-semibold">{{ c.name }}</h2>
-          <code class="text-xs text-neutral-500">{{ communityPath(c.slug) }}</code>
+          <code class="text-xs text-on-surface-variant">{{ communityPath(c.slug) }}</code>
           <span class="grow"></span>
-          <RouterLink :to="communityPath(c.slug)" class="text-sm text-blue-700 hover:underline">
+          <RouterLink :to="communityPath(c.slug)" class="text-sm text-primary hover:underline">
             Öffnen
           </RouterLink>
           <RouterLink
             :to="communityPath(c.slug, 'settings')"
-            class="text-sm text-blue-700 hover:underline"
+            class="text-sm text-primary hover:underline"
           >
             Einstellungen
           </RouterLink>
         </header>
-        <p v-if="!c.members.length" class="text-sm text-neutral-500">Keine Mitglieder.</p>
+        <p v-if="!c.members.length" class="text-sm text-on-surface-variant">Keine Mitglieder.</p>
         <table v-else class="w-full text-left text-sm">
           <thead>
-            <tr class="border-b text-neutral-500">
+            <tr class="border-b text-on-surface-variant">
               <th class="py-1 pr-4 font-medium">Name</th>
               <th class="py-1 pr-4 font-medium">GitHub</th>
               <th class="py-1 pr-4 font-medium">Status</th>
@@ -84,7 +84,7 @@ onMounted(async () => {
                 <span
                   v-if="m.isAdmin"
                   data-test="admin-badge"
-                  class="rounded bg-blue-600 px-1.5 text-xs text-white"
+                  class="rounded bg-primary px-1.5 text-xs text-on-primary"
                 >
                   Admin
                 </span>

@@ -24,7 +24,7 @@ const sizing = computed(() => (props.size === 'sm' ? 'size-8 text-[10px]' : 'siz
 
 <template>
   <div
-    class="flex place-content-around rounded-full ring-2 ring-white"
+    class="flex place-content-around rounded-full ring-2 ring-surface"
     :class="sizing"
     :style="{ background: bgColorHex, color: textColor }"
   >

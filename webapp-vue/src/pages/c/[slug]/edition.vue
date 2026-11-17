@@ -162,13 +162,13 @@ async function save(): Promise<void> {
 }
 
 const input =
-  'mt-1 w-full rounded border px-3 py-1.5 disabled:bg-neutral-100 disabled:text-neutral-500'
+  'mt-1 w-full rounded border px-3 py-1.5 disabled:bg-surface-container disabled:text-on-surface-variant'
 </script>
 
 <template>
   <section class="mx-auto max-w-md py-8">
     <h1 class="mb-1 text-xl font-semibold">Edition</h1>
-    <p data-test="preview" class="mb-4 text-sm text-neutral-600">{{ preview }}</p>
+    <p data-test="preview" class="mb-4 text-sm text-on-surface-variant">{{ preview }}</p>
 
     <form class="space-y-3" @submit.prevent="save">
       <label class="block text-sm"
@@ -200,7 +200,7 @@ const input =
             required
         /></label>
       </div>
-      <p class="text-xs text-neutral-500">Darauf läuft der Countdown zu.</p>
+      <p class="text-xs text-on-surface-variant">Darauf läuft der Countdown zu.</p>
 
       <label class="block text-sm"
         >Zeitzone<select
@@ -213,7 +213,7 @@ const input =
         </select></label
       >
 
-      <p v-if="existing?.frozen" data-test="frozen-note" class="text-xs text-neutral-500">
+      <p v-if="existing?.frozen" data-test="frozen-note" class="text-xs text-on-surface-variant">
         Ziel und Zeitzone sind seit {{ freezeAt }} fest – die Runde zum Spielstart kann schon
         angekündigt sein.
       </p>
@@ -248,7 +248,7 @@ const input =
               type="button"
               data-test="phase-two-clear"
               aria-label="Phase 2 leeren"
-              class="absolute top-1 right-0 bottom-0 flex w-8 items-center justify-center text-neutral-500 hover:text-neutral-900"
+              class="absolute top-1 right-0 bottom-0 flex w-8 items-center justify-center text-on-surface-variant hover:text-on-surface"
               @click="phaseTwo = ''"
             >
               <IconX aria-hidden="true" />
@@ -256,19 +256,19 @@ const input =
         ></label>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 text-xs text-neutral-500">
+      <div class="grid grid-cols-2 gap-3 text-xs text-on-surface-variant">
         <p data-test="first-round-date">{{ firstRoundDate ? `beginnt ${firstRoundDate}` : '' }}</p>
         <p data-test="phase-two-date">{{ phaseTwoDate ? `beginnt ${phaseTwoDate}` : '' }}</p>
       </div>
-      <p v-if="zeroPoint" class="text-xs text-neutral-500">
+      <p v-if="zeroPoint" class="text-xs text-on-surface-variant">
         Runde 1 beginnt mit dem Ziel ({{ zeroPoint }}), Runde 0 ist der letzte Tag davor.
       </p>
 
-      <p v-if="phaseTwoTooEarly" data-test="phase-two-warning" class="text-sm text-red-600">
+      <p v-if="phaseTwoTooEarly" data-test="phase-two-warning" class="text-sm text-error">
         Phase 2 kann nicht vor dem Spielstart beginnen.
       </p>
 
-      <p v-if="firstRoundOver" data-test="first-round-over" class="text-sm text-red-600">
+      <p v-if="firstRoundOver" data-test="first-round-over" class="text-sm text-error">
         Der Spielstart ist schon vorbei. Frühestens die laufende Runde geht.
       </p>
 
@@ -282,18 +282,18 @@ const input =
         <p
           v-if="!existing?.frozen && !startsNow && !firstRoundOver"
           data-test="frozen-since"
-          class="text-xs text-neutral-500"
+          class="text-xs text-on-surface-variant"
         >
           Ziel und Zeitzone sind ab {{ freezeAt }} fest.
         </p>
       </template>
-      <p v-else data-test="calendar-hint" class="text-sm text-neutral-500">
+      <p v-else data-test="calendar-hint" class="text-sm text-on-surface-variant">
         Ziel und Spielstart angeben, dann erscheint der Kalender.
       </p>
 
       <button
         data-test="submit"
-        class="rounded border px-3 py-1.5 hover:bg-neutral-200 disabled:opacity-50"
+        class="rounded border px-3 py-1.5 hover:bg-surface-container-highest disabled:opacity-50"
         :disabled="!canSubmit"
       >
         Speichern
@@ -301,12 +301,12 @@ const input =
       <button
         type="button"
         data-test="cancel"
-        class="ml-2 rounded border px-3 py-1.5 hover:bg-neutral-200"
+        class="ml-2 rounded border px-3 py-1.5 hover:bg-surface-container-highest"
         @click="router.push(communityPath(slug, 'settings'))"
       >
         Abbrechen
       </button>
-      <p v-if="error" data-test="error" class="text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" data-test="error" class="text-sm text-error">{{ error }}</p>
     </form>
   </section>
 </template>

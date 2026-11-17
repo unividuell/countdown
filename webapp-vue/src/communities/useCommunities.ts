@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { CommunitySummary } from '@/api/types'
 import { listCommunities, getSelection } from '@/api/communities'
 
@@ -16,6 +16,12 @@ export function resolveLanding(active: CommunitySummary[], lastSelectedId: strin
 }
 
 const active = ref<CommunitySummary[]>([])
+
+// Most users belong to one community. Only beyond that does a profile need an
+// „everywhere“ and a „here“ half. Until the list has loaded this is false: a
+// member of several sees the split late rather than a member of one ever seeing it.
+const severalCommunities = computed(() => active.value.length > 1)
+
 export function useCommunities() {
   async function refresh(): Promise<void> {
     active.value = await listCommunities()
@@ -25,7 +31,7 @@ export function useCommunities() {
     active.value = list
     return resolveLanding(list, sel.communityId)
   }
-  return { active, refresh, landing }
+  return { active, severalCommunities, refresh, landing }
 }
 
 /** Test-only: reset the module-level singleton between test cases. */

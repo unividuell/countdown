@@ -47,6 +47,13 @@ export interface LabEntryDto {
   steps: unknown[]
 }
 
+/** A tester with an entry, by name only — what the member row needs before the viewer's guess. */
+export interface LabPlayerDto {
+  userId: string
+  username: string
+  avatar: AvatarView
+}
+
 export interface LabRoundResponse<P = unknown> {
   seed: number
   game: string
@@ -67,6 +74,8 @@ export interface LabRoundResponse<P = unknown> {
   solution: unknown
   me: LabEntryDto | null
   others: LabEntryDto[]
+  /** Everyone but the viewer who has an entry, before the viewer's guess too. Absent from an older server. */
+  players?: LabPlayerDto[]
   /** True when this request displaced a round that was open on a different seed. */
   tookOverRound: boolean
   awardRule: LabAwardRule

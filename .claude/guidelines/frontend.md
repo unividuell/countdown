@@ -25,6 +25,45 @@ of the frontend conventions live beside it:
     `const body: Partial<{ name: string; targetAt: string }> = { name: name.value.trim() }`,
     then `if (targetAt.value) body.targetAt = targetAt.value`.
 - **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
+  - **Colours are Material 3 roles, defined once in `main.css`'s `@theme`** (`bg-surface`,
+    `text-on-surface-variant`, `border-outline`, `bg-inverse-surface`, `text-primary`, `text-error`,
+    …). App UI names a role, never a Tailwind shade, so a palette change touches one file. Only
+    roles the app wears exist; add an M3 role when something needs it, not ahead. No extra shades
+    for states: hover and pressed are the role at an opacity (`hover:bg-inverse-surface/80`),
+    disabled text is `text-on-surface/40`. Text on a role fill takes its `on-` role (`bg-primary
+    text-on-primary`). On `inverse-surface` the base colours fall to ~2:1 — use an `inverse-`
+    twin (M3's `inverse-primary`, added when needed). A meaning that may part from its
+    colour later gets its own name even while it borrows one (`--color-live` →
+    `--color-phase-two`, `--color-phase-one` → `--color-primary`). Game artwork (crosshairs,
+    glass over photos, chart fills) is not app UI and may keep literal colours.
+  - **Dark mode lives in the role values, not in components.** Each role is
+    `light-dark(light, dark)`; the browser picks by `color-scheme` — the system's, or the user's
+    pick pinned as `data-color-scheme` on `<html>` by `ui/colorScheme.ts` (and before first paint
+    by `index.html`). Never set `color-scheme` from JS: the build polyfills `light-dark()` with
+    Lightning CSS variables that only stylesheet `color-scheme` rules set — an inline style works
+    in dev and does nothing in the build. So no `dark:` classes, and a literal colour in app UI (`text-white`, `ring-white`) is a bug
+    that only shows in the dark: pair a fill with its `on-` role, ring with the ground's role
+    (`ring-surface`). `inverse-surface` flips with the mode (frame light in the dark). What must
+    look the same in both — the game band and the flip-dot board, one dark instrument whose dots
+    are painted outside CSS — takes the fixed `board` roles (`bg-board`, `text-on-board`,
+    `text-board-phase-two`). Colours painted from TS that must follow the mode read
+    `useDarkScheme()`; flip dots straight on the page (header countdown) take `ground="surface"`.
+    A surface over the scrim (the menu) must be lighter than the page in the dark, not darker — the
+    scrim pulls the page onto a card's near-black. It wears `bg-surface-container-high raised`:
+    `raised` redefines the text and fill roles for its subtree, so its content keeps the plain role
+    names.
+  - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
+    meaning (`--color-live`, the phase colours), layout utilities several areas share
+    (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a
+    measurement two components of one game share goes into a CSS file beside them, pulled in by
+    each as `<style scoped src="./x.css">` (`song-cover.css`, `hue-wheel.css`). Need a theme value
+    there (`theme(--breakpoint-sm)`)? Start the file with `@reference '…/assets/main.css'` —
+    it lends the theme and emits nothing.
+  - **A scoped rule beats every Tailwind utility on the same element**, because Tailwind's
+    output is layered and scoped CSS is not. So `motion-reduce:animate-none` cannot stop a scoped
+    animation: write the animation under `@media (prefers-reduced-motion: no-preference)` instead
+    (`App.vue`'s `nav-shuttle`, `PlayButton`'s `song-loading`). Name scoped classes without
+    Tailwind's prefixes (`animate-…`), or they read like utilities a variant could take.
 - **Date/time: Luxon** (`luxon` + `@types/luxon`) — the project's date-time lib (also used by the
   origin huettehuette app). Don't reach for native `Date` math. For a wall-clock UI field use
   `<input type="datetime-local">` (combined date+time picker, naive string, no tz) and convert

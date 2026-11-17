@@ -462,10 +462,12 @@ class LabService(
         // with. A payload the browser never receives cannot be read out of the network tab either.
         val visible = if (mine == null) emptyList() else snapshot.entries.filter { it.userId != me }
         val shown = visible + listOfNotNull(mine)
+        // Names only, gate or no gate: the member row seats whoever played, as the product's does.
+        val playing = snapshot.entries.map { it.userId }.filter { it != me }
         // Voters get names too — they may not be among the players this response otherwise shows.
         val byId = identities.of(
             communityId = communityId,
-            userIds = shown.map { it.userId } + shown.flatMap { it.votes.keys },
+            userIds = shown.map { it.userId } + shown.flatMap { it.votes.keys } + playing,
         )
         // A tester whose user row vanished mid-session drops out of the list rather than taking the
         // whole page down with them.
@@ -538,6 +540,9 @@ class LabService(
             solution = if (mine == null) null else handle.solution(snapshot.round.params),
             me = mine?.let(::dtoOf),
             others = visible.mapNotNull(::dtoOf),
+            players = playing.mapNotNull { id ->
+                byId[id]?.let { LabPlayerDto(userId = id, username = it.username, avatar = it.avatar) }
+            },
             tookOverRound = snapshot.tookOverRound,
             myStage = myStage,
             revealed = revealed,

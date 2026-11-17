@@ -664,6 +664,70 @@ describe('EchoLocateBoard', () => {
     expect(w.emitted('guess')).toEqual([[{ pins: [{ x: 7, y: 8 }], rings: [[1.5], [], [3]] }]])
   })
 
+  // As in Place Patch: the tip is the player's, so the button wears their colour, its label inked
+  // against it.
+  it('hands in from a button in my colour', () => {
+    const w = mountBoard({ myColorHex: '#fde047' })
+
+    expect(hold(w).props('color')).toBe('#fde047')
+    expect(w.get('[data-test="echo-locate-submit-label"]').attributes('style')).toContain(
+      'color: #111111',
+    )
+  })
+
+  describe('while the hand-in hold runs', () => {
+    const lock = (w: Board) => w.find('[data-test="echo-locate-lock"]')
+    const area = (w: Board) => w.get('[data-test="echo-locate-field"]')
+
+    async function progress(w: Board, value: number) {
+      hold(w).vm.$emit('progress', value)
+      await nextTick()
+    }
+
+    async function ready() {
+      saveDraft(storage.fake, KEY, { rings: [[], [], []], pins: [{ x: 3, y: 4 }] })
+      const w = mountBoard({ steps: [step(A), step(B), step(C)], draftKey: KEY })
+      await start(w)
+      return w
+    }
+
+    // The field greys under „Abgeben …“, so the pins cannot change under a hold about to send them.
+    it('greys the field and shows „Abgeben …“ while the ring rises', async () => {
+      const w = await ready()
+      expect(lock(w).exists()).toBe(false)
+
+      await progress(w, 0.4)
+      expect(lock(w).text()).toBe('Abgeben …')
+
+      await progress(w, 0.3)
+      expect(lock(w).exists()).toBe(false)
+    })
+
+    it('cancels the hold when a finger touches the field, and its tap does nothing', async () => {
+      const w = await ready()
+      await progress(w, 0.4)
+
+      await area(w).trigger('pointerdown', { pointerId: 2 })
+      expect(hold(w).props('disabled')).toBe(true)
+      await tapAt(w, { x: 9, y: 9 })
+      await area(w).trigger('pointerup', { pointerId: 2 })
+
+      expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
+      expect(hold(w).props('disabled')).toBe(false)
+    })
+
+    it('drops the lock once handed in', async () => {
+      const w = await ready()
+      await progress(w, 0.9)
+
+      await confirm(w)
+      await progress(w, 1)
+
+      expect(lock(w).exists()).toBe(false)
+      expect(w.emitted('guess')).toHaveLength(1)
+    })
+  })
+
   it('hands in nothing while disabled', async () => {
     saveDraft(storage.fake, KEY, { rings: [[], [], []], pins: [{ x: 3, y: 4 }] })
     const w = mountBoard({ steps: [step(A), step(B), step(C)], draftKey: KEY, disabled: true })

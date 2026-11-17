@@ -23,6 +23,9 @@ import { useEventListener } from '@vueuse/core'
 import type { AwardRule, StepView } from '@/api/types'
 import { audioGraph } from '@/ui/audio'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldLock from '@/ui/HoldLock.vue'
+import { readableTextColor } from '@/ui/readableTextColor'
+import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import { deviceStorage } from '../drafts'
 import { loadDraft, saveDraft } from './draft'
 import EchoLocateBriefing from './EchoLocateBriefing.vue'
@@ -63,9 +66,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ guess: [value: EchoLocateGuess]; skip: [stage: number, input: Point] }>()
 
-/** The field's own ground, so the button reads as part of it. */
-const BUTTON_COLOR = '#1e1b4b'
-
 interface Audio {
   engine: EchoEngine
   sounds: EchoSounds & { bed: AudioBuffer }
@@ -98,6 +98,11 @@ const flow = shallowRef<FlowState>(fresh())
 
 const status = computed(() => statusLine(flow.value))
 const canHandIn = computed(() => !props.disabled && guessOf(flow.value) !== null)
+
+// As in Place Patch: while the hand-in ring rises the field greys, a finger on it cancels the
+// hold, and its tap pings nothing — the pins cannot change under a hold about to send them.
+const { progress: holdProgress, locked: holdLocked, onProgress, unlock: unlockHold } = useHoldLock()
+const { touching, onDown: onFieldDown, onUp: onFieldUp, takeTap } = useFieldTouch(holdLocked)
 
 /** Cleared on unmount: a load or an answer that resolves later must start nothing. */
 let alive = true
@@ -179,7 +184,7 @@ function onStart(): void {
 
 /** Closed, the field's pointerdown is no gesture on iOS: only the cover unlocks. */
 function onTap(at: Point, tMs: number): void {
-  if (props.disabled || flow.value.phase === 'closed') return
+  if (takeTap() || props.disabled || flow.value.phase === 'closed') return
 
   const { state, effect } = tap(flow.value, at, tMs, props.payload.speed)
 
@@ -332,6 +337,7 @@ watch([() => flow.value.rings, () => flow.value.pins], ([rings, pins]) => {
 })
 
 function handIn(): void {
+  unlockHold()
   const guess = guessOf(flow.value)
   if (!props.disabled && guess !== null) emit('guess', guess)
 }
@@ -347,22 +353,37 @@ onBeforeUnmount(() => {
 <template>
   <div data-test="echo-locate-board" class="flex flex-col gap-6">
     <div class="flex flex-col items-center gap-3">
-      <SonarField
-        class="self-stretch"
-        :clips="props.payload.clips"
-        :grid="props.payload.grid"
-        :speed="props.payload.speed"
-        :reach="props.payload.reach"
-        :waves="flow.waves"
-        :rings="flow.rings"
-        :pins="flow.pins"
-        :pin-color-hex="props.myColorHex"
-        :pending="flow.pending"
-        :covered="flow.phase === 'closed'"
-        :disabled="props.disabled"
-        @tap="onTap"
-        @start="onStart"
-      />
+      <!-- Capture: the field pings on pointerdown, and the hold must hear every finger first. -->
+      <div
+        data-test="echo-locate-field"
+        class="relative self-stretch"
+        @pointerdown.capture="onFieldDown"
+        @pointerup.capture="onFieldUp"
+        @pointercancel.capture="onFieldUp"
+        @lostpointercapture.capture="onFieldUp"
+      >
+        <SonarField
+          :clips="props.payload.clips"
+          :grid="props.payload.grid"
+          :speed="props.payload.speed"
+          :reach="props.payload.reach"
+          :waves="flow.waves"
+          :rings="flow.rings"
+          :pins="flow.pins"
+          :pin-color-hex="props.myColorHex"
+          :pending="flow.pending"
+          :covered="flow.phase === 'closed'"
+          :disabled="props.disabled"
+          @tap="onTap"
+          @start="onStart"
+        />
+        <HoldLock
+          v-if="holdLocked"
+          data-test="echo-locate-lock"
+          class="rounded-lg"
+          :progress="holdProgress"
+        />
+      </div>
       <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
       <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
         {{ status }}
@@ -372,14 +393,17 @@ onBeforeUnmount(() => {
       <div class="relative size-24 shrink-0" :class="{ 'opacity-40': !canHandIn }">
         <HoldButton
           :ready="true"
-          :disabled="!canHandIn"
+          :disabled="!canHandIn || touching"
           label="Schätzung abgeben — gedrückt halten"
-          :color="BUTTON_COLOR"
+          :color="props.myColorHex"
           @confirm="handIn"
+          @progress="onProgress"
         />
         <span
+          data-test="echo-locate-submit-label"
           aria-hidden="true"
-          class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold text-white"
+          class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+          :style="{ color: readableTextColor(props.myColorHex) }"
         >
           Abgeben
         </span>

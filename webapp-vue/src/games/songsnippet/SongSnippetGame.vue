@@ -67,7 +67,7 @@ function onSkip(fromStage: number): void {
 </script>
 
 <template>
-  <p v-if="payload === null" class="text-sm text-neutral-600">
+  <p v-if="payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <!--

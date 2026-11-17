@@ -51,6 +51,12 @@ data class LabEntryDto(
     val steps: List<JsonNode> = emptyList(),
 )
 
+/**
+ * A tester who has an entry in this round, by name only — what the member row needs to seat them.
+ * No guess, outcome or points: those stay behind the gate that keeps [LabRoundResponse.others] empty.
+ */
+data class LabPlayerDto(val userId: UUID, val username: String, val avatar: Avatar)
+
 /** One step of the viewer's own: what they sent, and the game's answer to it, recomputed. */
 data class LabStepDto(val input: JsonNode?, val answer: GameStepAnswer?)
 
@@ -86,6 +92,8 @@ data class LabRoundResponse(
     val solution: GameSolution?,
     val me: LabEntryDto?,
     val others: List<LabEntryDto>,
+    /** Everyone but the viewer who has an entry, before the viewer's guess and after it alike. */
+    val players: List<LabPlayerDto> = emptyList(),
     val tookOverRound: Boolean,
     /** The viewer's own stage — `0` for a single-stage game, or a staged one not yet advanced. */
     val myStage: Int,

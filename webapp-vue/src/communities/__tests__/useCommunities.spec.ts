@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { resolveLanding } from '@/communities/useCommunities'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  _resetCommunitiesState,
+  resolveLanding,
+  useCommunities,
+} from '@/communities/useCommunities'
 
 describe('resolveLanding', () => {
   const a = { id: '1', name: 'A', slug: 'a' }
@@ -12,4 +16,16 @@ describe('resolveLanding', () => {
     expect(resolveLanding([a, b], '2')).toEqual({ kind: 'last', slug: 'b' }))
   it('choose when many and selection is stale/missing', () =>
     expect(resolveLanding([a, b], '999')).toEqual({ kind: 'choose' }))
+})
+
+describe('severalCommunities', () => {
+  afterEach(() => _resetCommunitiesState())
+
+  it('is false for one community and true from two on', () => {
+    const { active, severalCommunities } = useCommunities()
+    active.value = [{ id: '1', name: 'A', slug: 'a' }]
+    expect(severalCommunities.value).toBe(false)
+    active.value = [...active.value, { id: '2', name: 'B', slug: 'b' }]
+    expect(severalCommunities.value).toBe(true)
+  })
 })

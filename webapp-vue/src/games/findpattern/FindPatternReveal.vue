@@ -206,7 +206,7 @@ const paletteStyle = {
         :class="paletteOpacity"
         :style="paletteStyle"
       >
-        <span class="text-sm text-neutral-500"
+        <span class="text-sm text-on-surface-variant"
           >Palette (<span data-test="palette-delta">Δ {{ deltaLabel }}</span
           >)</span
         >
@@ -215,7 +215,7 @@ const paletteStyle = {
             v-for="tone in palette"
             :key="tone.value"
             data-test="palette-tone"
-            class="flex size-10 items-center justify-center rounded-full font-mono text-xs ring-1 ring-neutral-500"
+            class="flex size-10 items-center justify-center rounded-full font-mono text-xs ring-1 ring-on-surface-variant"
             :style="{ backgroundColor: tone.hex, color: tone.ink }"
           >
             {{ tone.value }}

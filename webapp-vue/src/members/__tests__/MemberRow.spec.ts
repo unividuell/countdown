@@ -92,6 +92,16 @@ describe('MemberRow', () => {
     vi.restoreAllMocks()
   })
 
+  // A display, not a control: no text cursor over names and points, nothing to select.
+  it('takes no selection and shows no text cursor', () => {
+    reduceMotion(true)
+    const row = mount(MemberRow, { props: { members: [member({ userId: 'a' })] } }).get(
+      '[data-test="row"]',
+    )
+
+    expect(row.classes()).toEqual(expect.arrayContaining(['select-none', 'cursor-default']))
+  })
+
   it('renders one circle per member, in the order the server sent', () => {
     reduceMotion(true)
     const w = mount(MemberRow, {
@@ -209,7 +219,7 @@ describe('MemberRow', () => {
     })
     const classes = settled.find('[data-test="live-points"]').classes()
     expect(classes).not.toContain('animate-pulse')
-    expect(classes).toContain('bg-neutral-900')
+    expect(classes).toContain('bg-inverse-surface')
     expect(classes).not.toContain('bg-yellow-400')
 
     // Scored or scoreless, a finished round is the same state and wears the same chip.
@@ -218,7 +228,7 @@ describe('MemberRow', () => {
         members: [member({ points: { stable: 3, live: { points: 0, provisional: false } } })],
       },
     })
-    expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-neutral-900')
+    expect(empty.find('[data-test="live-points"]').classes()).toContain('bg-inverse-surface')
   })
 
   it('paints a provisional chip in the shared live colour, not a local one', () => {

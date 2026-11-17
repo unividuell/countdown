@@ -182,4 +182,17 @@ describe('GlobalProfileBlock', () => {
     expect(w.get('[data-test="global-preview"]').text()).toBe('LL')
     vi.useRealTimers()
   })
+
+  // Most people belong to one community only. A split into „everywhere“ and „here“ would hint at a
+  // second one they do not have.
+  it('never hints at other communities for a member of one', () => {
+    const w = mount(GlobalProfileBlock)
+    expect(w.text()).not.toContain('Überall')
+    expect(w.text()).not.toContain('Spielgemeinschaft')
+  })
+
+  it('names itself the everywhere half once there are several communities', () => {
+    const w = mount(GlobalProfileBlock, { props: { severalCommunities: true } })
+    expect(w.get('h2').text()).toBe('Überall')
+  })
 })

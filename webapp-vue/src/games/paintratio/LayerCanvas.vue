@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /**
- * An off-white canvas that draws its layers in order, later over earlier: the template picture, or a
+ * A canvas on the card's container tone that draws its layers in order, later over earlier: the template picture, or a
  * set of strokes. Display only — nothing is ever read back from it; the strokes are the truth.
  *
  * The backing store follows the CSS size × `devicePixelRatio`, so strokes stay sharp on any phone.
  * Without a 2D context (happy-dom) it draws nothing.
  */
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { CANVAS_GROUND, drawSegment as paintSegment, drawStrokes } from './render'
+import { useSurfaceContainer } from '@/ui/surfaceTone'
+import { drawSegment as paintSegment, drawStrokes } from './render'
 import type { CanvasLayer } from './render'
 import type { Stroke } from './types'
 
@@ -23,6 +24,7 @@ const props = defineProps<{
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const picture = useTemplateRef<HTMLImageElement>('picture')
 const pictureReady = ref(false)
+const ground = useSurfaceContainer()
 let ctx: CanvasRenderingContext2D | null = null
 let observer: ResizeObserver | null = null
 
@@ -35,7 +37,7 @@ function redraw(): void {
   const el = canvas.value
   if (ctx === null || !el) return
 
-  ctx.fillStyle = CANVAS_GROUND
+  ctx.fillStyle = ground.value
   ctx.fillRect(0, 0, el.width, el.height)
 
   for (const layer of props.layers) {
@@ -83,7 +85,14 @@ watch(
 )
 
 watch(
-  [() => props.layers, () => props.brushes, () => props.width, () => props.height, pictureReady],
+  [
+    () => props.layers,
+    () => props.brushes,
+    () => props.width,
+    () => props.height,
+    pictureReady,
+    ground,
+  ],
   redraw,
 )
 </script>

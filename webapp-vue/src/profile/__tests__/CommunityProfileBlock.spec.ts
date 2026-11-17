@@ -201,4 +201,80 @@ describe('CommunityProfileBlock', () => {
       'displayName must be at most 32 characters',
     )
   })
+
+  // A member of one community edits how they appear right here — there is no „elsewhere“ to
+  // inherit from that they could see, so the block must not mention one.
+  describe('as the only community', () => {
+    const renderSole = () =>
+      mount(CommunityProfileBlock, { props: { slug: 'team', communityName: 'Team', sole: true } })
+
+    it('offers the fields directly, without switch, heading or community name', async () => {
+      const w = renderSole()
+      await flushPromises()
+
+      expect(w.find('[data-test="override-switch"]').exists()).toBe(false)
+      expect(w.find('h2').exists()).toBe(false)
+      expect(w.text()).not.toContain('Team')
+      expect(w.text()).not.toContain('global')
+      expect(w.find('[data-test="override-name"]').exists()).toBe(true)
+    })
+
+    it('leaves the name empty with what applies as its placeholder when nothing is stored', async () => {
+      const w = renderSole()
+      await flushPromises()
+      const input = w.get('[data-test="override-name"]').element as HTMLInputElement
+
+      expect(input.value).toBe('')
+      expect(input.placeholder).toBe('Amy Wong')
+    })
+
+    it('saving untouched fields stores nothing of its own', async () => {
+      const w = renderSole()
+      await flushPromises()
+      await w.get('[data-test="override-save"]').trigger('click')
+      await flushPromises()
+
+      expect(api.putMemberProfile).toHaveBeenCalledWith('team', {
+        displayName: null,
+        bgColorHex: null,
+      })
+      expect(api.deleteMemberProfile).not.toHaveBeenCalled()
+    })
+
+    it('saves a typed name into this community', async () => {
+      const w = renderSole()
+      await flushPromises()
+      await w.get('[data-test="override-name"]').setValue('Zwerg')
+      await w.get('[data-test="override-save"]').trigger('click')
+      await flushPromises()
+
+      expect(api.putMemberProfile).toHaveBeenCalledWith('team', {
+        displayName: 'Zwerg',
+        bgColorHex: null,
+      })
+      expect(w.emitted('saved')).toBeTruthy()
+    })
+
+    it('shows a stored name', async () => {
+      vi.mocked(api.getMemberProfile).mockResolvedValue({ ...overridden })
+      const w = renderSole()
+      await flushPromises()
+
+      expect((w.get('[data-test="override-name"]').element as HTMLInputElement).value).toBe('Zwerg')
+    })
+
+    it('hands a picked colour back to automatic', async () => {
+      vi.mocked(api.getMemberProfile).mockResolvedValue({ ...overridden })
+      const w = renderSole()
+      await flushPromises()
+      await w.get('[data-test="override-auto"]').trigger('click')
+      await w.get('[data-test="override-save"]').trigger('click')
+      await flushPromises()
+
+      expect(api.putMemberProfile).toHaveBeenCalledWith('team', {
+        displayName: 'Zwerg',
+        bgColorHex: null,
+      })
+    })
+  })
 })

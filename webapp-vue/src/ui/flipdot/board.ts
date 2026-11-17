@@ -6,19 +6,18 @@ export const DOT_ON = '#fafaf9'
 export const DOT_OFF = '#292524'
 
 /**
- * amber-500 — the reading of a play that is being timed. Only the reading changes colour; the
- * field stays as it is, so the board reads as the same instrument in a different mode rather than
- * as a warning lamp in the corner of the band.
+ * board-phase-two — the reading of a play that is being timed. Only the reading changes colour;
+ * the field stays as it is, so the board reads as the same instrument in a different mode rather
+ * than as a warning lamp in the corner of the band.
  *
- * Twin in CSS: `--color-phase-two` in `src/assets/main.css`. A hex here and a token there, because
- * the dots get their colour via `setAttribute` and in WAAPI keyframes — no class helps there.
- * Whoever changes the colour changes it in both places.
+ * Twin in CSS: `--color-board-phase-two` in `src/assets/main.css`. A hex here and a token there,
+ * because the dots get their colour via `setAttribute` and in WAAPI keyframes — no class helps
+ * there. Whoever changes the colour changes it in both places.
  *
- * `#fe9a00`, not Tailwind v3's `#f59e0b`: this project runs v4, where `--color-amber-500` is
- * `oklch(76.9% 0.188 70.08)`, which rasterises to `#fe9a00` (read out of the browser's colour
- * engine, not computed by hand). Re-derive this the same way if the palette ever moves.
+ * `#f4a8ff` is what `--color-fuchsia-300` (`oklch(83.3% 0.145 321.434)`) rasterises to, read out
+ * of the browser's colour engine. Re-derive it the same way if the palette ever moves.
  */
-export const DOT_ALARM_ON = '#fe9a00'
+export const DOT_ALARM_ON = '#f4a8ff'
 
 export type Tone = 'default' | 'alarm'
 
@@ -26,6 +25,19 @@ export const TONES: Record<Tone, { on: string; off: string }> = {
   default: { on: DOT_ON, off: DOT_OFF },
   alarm: { on: DOT_ALARM_ON, off: DOT_OFF },
 }
+
+/**
+ * What the dots stand on. `board`: the dark instrument of the card and the game band, the same in
+ * both schemes. `surface`: straight on the page (the header countdown), so they follow the scheme.
+ */
+export type Ground = 'board' | 'surface'
+
+/**
+ * Dots on the light page: on in on-surface (`#0d0d0d`), off barely off surface (`#f7f5f1`): a
+ * hint of the grid, not a grey field. On the dark page (stone-700) the board's own colours
+ * already read, so there is no dark twin. Only the plain tone: nothing on the page is timed yet.
+ */
+export const SURFACE_LIGHT = { on: '#0d0d0d', off: '#f0ede8' }
 
 /**
  * The game band's field: two blank rows above and below so the dots meet the band's edges, and
@@ -36,6 +48,9 @@ export const TONES: Record<Tone, { on: string; off: string }> = {
  * against one end of it.
  */
 export const BAND_PAD: Pad = { top: 2, right: 5, bottom: 2, left: 5 }
+
+/** The header countdown's field: one free dot round the digits, so they do not touch its edge. */
+export const HEADER_PAD: Pad = { top: 1, right: 1, bottom: 1, left: 1 }
 
 export const FLIP_MS = 170
 export const STAGGER_MS = 9
@@ -68,15 +83,13 @@ export const CREATE_LEAD_MS = 48
  * It lives here and not in font.ts because it needs PITCH and RADIUS: where a label sits is a
  * question about the rendered geometry, not about the glyph pattern.
  *
- * Measured over the UNPADDED text, so `groupCentres` and `pad` do not compose: a padded board's
- * labels would sit shifted against its digits. Today nothing brings the two together — the one
- * padded board carries no legend, and the one board with a legend takes no pad. Whoever changes
- * that has to pass the padding in here.
+ * A padded board passes its `pad`: the field is wider and the digits start `pad.left` columns in.
  */
-export function groupCentres(text: string): number[] {
-  const width = bitmap(text).cols * PITCH - (PITCH - 2 * RADIUS)
+export function groupCentres(text: string, pad?: Pad): number[] {
+  const cols = bitmap(text).cols + (pad?.left ?? 0) + (pad?.right ?? 0)
+  const width = cols * PITCH - (PITCH - 2 * RADIUS)
   const centres: number[] = []
-  let col = 0
+  let col = pad?.left ?? 0
   let start: number | null = null
 
   // The empty sentinel closes a group that runs to the end of the text.

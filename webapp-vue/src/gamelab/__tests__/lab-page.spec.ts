@@ -5,6 +5,8 @@ import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
+import MemberRow from '@/members/MemberRow.vue'
+import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import GameHeader from '@/ui/GameHeader.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import * as drawerControl from '@/nav/drawerControl'
@@ -252,6 +254,48 @@ describe('lab page', () => {
     expect(w.getComponent(StubGame).props('awardPoints')).toBe(round.awardPoints)
   })
 
+  // The product's row, fed by the lab: the tester is seated before guessing, without a chip.
+  it('seats the tester in the member row before their first guess', async () => {
+    const w = await mountPage()
+
+    const members = w.getComponent(MemberRow).props('members')
+    expect(members.map((m) => [m.userId, m.points])).toEqual([['auth-me', { stable: 0 }]])
+  })
+
+  // Same hold as the community page's `refreshAfterGuess`: the row moves after the reveal.
+  it('holds the member row back after a guess, then shows the new points', async () => {
+    const w = await mountPage()
+    const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+    vi.mocked(api.submitLabGuess).mockResolvedValueOnce({ ...round, me } as never)
+
+    vi.useFakeTimers()
+    await w.get('[data-test="stub-guess"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toEqual({
+      points: 1,
+      provisional: false,
+    })
+  })
+
+  // A failed guess brings no round, so nothing may be left waiting for one.
+  it('shows the next round at once after a failed guess', async () => {
+    const w = await mountPage()
+    const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+    vi.mocked(api.submitLabGuess).mockRejectedValueOnce(new ApiError(409, 'conflict'))
+    vi.mocked(api.resetLabRound).mockResolvedValueOnce({ ...round, me } as never)
+
+    vi.useFakeTimers()
+    await w.get('[data-test="stub-guess"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+    await tool('lab-reset').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live?.points).toBe(1)
+  })
+
   it('submits a guess from the game', async () => {
     const w = await mountPage()
     await w.get('[data-test="stub-guess"]').trigger('click')
@@ -318,6 +362,19 @@ describe('lab page', () => {
     expect(Number.isInteger(seed)).toBe(true)
   })
 
+  it('rolls a new seed into the URL on R', async () => {
+    await mountPage()
+    const event = new KeyboardEvent('keydown', {
+      key: 'r',
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+    const seed = Number((replace.mock.calls[0]![0] as { query: { seed: number } }).query.seed)
+    expect(Number.isInteger(seed)).toBe(true)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
   it('refreshes to pick up another window s guess', async () => {
     await mountPage()
     await tool('lab-refresh').trigger('click')
@@ -356,6 +413,24 @@ describe('lab page', () => {
     const redirect = new URL(href!, 'https://example.test').searchParams.get('redirect')
 
     expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=TWO')
+  })
+
+  it('switches player on W, back to the same seed and phase', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign } as unknown as Location)
+    setQuery({ seed: '42', phase: 'TWO' })
+    await mountPage()
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'w',
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+
+    expect(assign).toHaveBeenCalledWith(tool('lab-switch-player').attributes('href'))
+    expect(event.defaultPrevented).toBe(true)
+    vi.unstubAllGlobals()
   })
 
   it('reopens the round when only the phase changes', async () => {
@@ -631,11 +706,11 @@ describe('lab page', () => {
     const forget = w.get('[data-test="lab-entry-forget-mine"]')
     const reset = w.get('[data-test="lab-entries-reset"]')
 
-    // `labShortcut` listens for meta+shift+z and meta+shift+x — the hints must say exactly that.
-    expect(forget.get('[aria-hidden="true"]').text()).toBe('(⌘⇧Z)')
+    // `labShortcut` listens for the bare keys z and x — the hints must say exactly that.
+    expect(forget.get('[aria-hidden="true"]').text()).toBe('(Z)')
     expect(forget.attributes('aria-label')).toBe('Meinen Guess löschen')
 
-    expect(reset.get('[aria-hidden="true"]').text()).toBe('(⌘⇧X)')
+    expect(reset.get('[aria-hidden="true"]').text()).toBe('(X)')
     expect(reset.text()).toContain('Runde zurücksetzen')
   })
 
@@ -854,14 +929,12 @@ describe('lab page', () => {
     expect(spy).toHaveBeenCalledTimes(3)
   })
 
-  it('executes shortcuts ⌘⇧Z and ⌘⇧X when not in an editable target and not busy', async () => {
+  it('executes shortcuts Z and X when not in an editable target and not busy', async () => {
     const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
     await mountPage()
 
     const eventZ = new KeyboardEvent('keydown', {
       key: 'z',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -873,8 +946,6 @@ describe('lab page', () => {
 
     const eventX = new KeyboardEvent('keydown', {
       key: 'x',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -895,8 +966,6 @@ describe('lab page', () => {
     const seedInput = document.querySelector('[data-test="lab-seed"]') as HTMLInputElement
     const eventInInput = new KeyboardEvent('keydown', {
       key: 'x',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })
@@ -907,8 +976,6 @@ describe('lab page', () => {
     await tool('lab-reset').trigger('click')
     const eventBusy = new KeyboardEvent('keydown', {
       key: 'z',
-      metaKey: true,
-      shiftKey: true,
       bubbles: true,
       cancelable: true,
     })

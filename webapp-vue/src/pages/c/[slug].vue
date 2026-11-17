@@ -29,13 +29,13 @@ provide(communityKey, {
 <template>
   <div v-if="state?.kind === 'no-access'" class="mx-auto max-w-md py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Kein Zugriff</h1>
-    <p class="text-sm text-neutral-600">
+    <p class="text-sm text-on-surface-variant">
       Diese Spielgemeinschaft existiert nicht oder du bist kein Mitglied.
     </p>
   </div>
   <div v-else-if="state?.kind === 'error'" class="mx-auto max-w-md py-8 text-center">
     <h1 class="mb-2 text-lg font-semibold">Etwas ist schiefgelaufen</h1>
-    <p class="text-sm text-neutral-600">Bitte später erneut versuchen.</p>
+    <p class="text-sm text-on-surface-variant">Bitte später erneut versuchen.</p>
   </div>
   <div v-else-if="state?.kind === 'ready'" class="mx-auto max-w-xl">
     <!-- Fixed, single-valued width: a desktop player's member row must be no wider —

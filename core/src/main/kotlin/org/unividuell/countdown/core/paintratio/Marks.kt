@@ -2,6 +2,8 @@ package org.unividuell.countdown.core.paintratio
 
 data class Point(val x: Int, val y: Int)
 
+data class Vec(val x: Double, val y: Double)
+
 /** Something painted onto the canvas; [covers] decides which cells it paints. */
 sealed interface Mark
 

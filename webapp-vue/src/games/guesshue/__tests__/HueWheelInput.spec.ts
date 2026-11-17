@@ -474,7 +474,7 @@ describe('HueWheelInput', () => {
   })
 
   // The board and the reveal draw the same circle in the same place, so their width is one
-  // measurement with a name rather than two identical literals — see `@utility hue-wheel`.
+  // measurement with a name rather than two identical literals — see `hue-wheel.css`.
   it('takes its width from the shared wheel measurement', () => {
     const classes = mountWheel().get('[data-test="hue-wheel"]').classes()
 

@@ -43,14 +43,14 @@ async function submit(): Promise<void> {
         maxlength="50"
         required
       />
-      <p class="mt-2 text-sm text-neutral-500">
+      <p class="mt-2 text-sm text-on-surface-variant">
         URL: <code>{{ communityPath(slug || '…') }}</code>
-        <span v-if="name && tooShort" class="text-amber-600"> (mind. 3 Zeichen)</span>
+        <span v-if="name && tooShort" class="text-warning"> (mind. 3 Zeichen)</span>
       </p>
       <ActionButton type="submit" class="mt-4" :busy="busy" :disabled="tooShort">
         Erstellen
       </ActionButton>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-error">{{ error }}</p>
     </form>
   </section>
 </template>

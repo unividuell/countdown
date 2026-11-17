@@ -53,7 +53,7 @@ const marks = computed(() =>
   <div
     data-test="spot-compass"
     aria-hidden="true"
-    class="relative h-6 overflow-hidden bg-black/25 text-[10px] font-medium tracking-wide text-white backdrop-blur-sm select-none"
+    class="relative h-6 overflow-hidden bg-scrim/25 text-[10px] font-medium tracking-wide text-white backdrop-blur-sm select-none"
   >
     <span
       v-for="mark in marks"

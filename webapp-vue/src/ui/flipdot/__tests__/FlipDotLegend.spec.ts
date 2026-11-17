@@ -65,10 +65,30 @@ describe('FlipDotLegend', () => {
     expect(w.text()).toBe('STD')
   })
 
-  // This is a contrast floor, not a styling preference: text-stone-500 on bg-stone-900 measures
-  // 3.65:1, below the 4.5:1 WCAG AA asks for 11px text. text-stone-400 clears it at 6.94:1. Do not
-  // dim this back without checking contrast against whichever background it lands on.
+  // This is a contrast floor, not a styling preference: 11px text needs 4.5:1 (WCAG AA).
+  // on-board at 70% measures 6.0:1 on the game band (#3d3d3d) and 9.3:1 on the countdown
+  // card's solid board. Do not dim this without checking both backgrounds.
   it('meets the contrast floor against a dark background', () => {
-    expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain('text-stone-400')
+    expect(mountLegend('13:42:07', ['STD', 'MIN', 'SEK']).classes()).toContain('text-on-board/70')
+  })
+
+  // On the page (the header countdown) the labels take the page's secondary text, which follows
+  // the colour scheme; on-board's near-white would vanish on the light page.
+  it('takes the page text colour on the page surface', () => {
+    const w = mount(FlipDotLegend, {
+      props: { text: '13:42:07', labels: ['STD', 'MIN', 'SEK'], visible: true, ground: 'surface' },
+    })
+    expect(w.classes()).toContain('text-on-surface-variant')
+    expect(w.classes()).not.toContain('text-on-board/70')
+  })
+
+  // Under a padded board the labels must be measured over the same padded field.
+  it('places the labels over a padded field', () => {
+    const pad = { top: 1, right: 1, bottom: 1, left: 1 }
+    const w = mount(FlipDotLegend, {
+      props: { text: '13:42:07', labels: ['STD', 'MIN', 'SEK'], visible: true, pad },
+    })
+    const expected = groupCentres('13:42:07', pad)
+    lefts(w).forEach((left, i) => expect(left).toBeCloseTo(expected[i]!, 3))
   })
 })

@@ -30,6 +30,8 @@ defineProps<{
   waiting: boolean
   /** Anything else that makes pressing pointless — no audio to load at all, say. */
   disabled?: boolean
+  /** Sounding: the button is the pause. */
+  playing?: boolean
 }>()
 const emit = defineEmits<{ press: [] }>()
 </script>
@@ -42,16 +44,16 @@ const emit = defineEmits<{ press: [] }>()
     <button
       type="button"
       data-test="play"
-      class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-900 disabled:opacity-40"
+      class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-950 disabled:opacity-40"
       :disabled="waiting || disabled"
       :aria-label="label"
       @click="emit('press')"
     >
-      <PlayerIcon name="play" />
+      <PlayerIcon :name="playing ? 'pause' : 'play'" />
     </button>
     <span
       v-if="waiting"
-      class="animate-song-loading pointer-events-none absolute -inset-[6.25%] rounded-full text-amber-500 motion-reduce:animate-none"
+      class="song-loading pointer-events-none absolute -inset-[6.25%] rounded-full text-amber-500"
       data-test="play-loading"
       role="status"
       aria-label="Ausschnitt wird geladen"
@@ -59,3 +61,29 @@ const emit = defineEmits<{ press: [] }>()
     />
   </span>
 </template>
+
+<!--
+  The ring around the play button while a stage's clip is being cut and fetched — 600-900ms of song
+  pipeline that the greyed-out button alone does not explain. Built like `HoldButton`'s ring, because
+  that is what a ring around a round button already means here: a rim of the button's own colour, a
+  gap between the two, one arc travelling. Anticlockwise, which is the one thing that tells the two
+  apart at a glance: the hold button fills clockwise towards something, this one only waits. 1.1s
+  per turn — slow enough to read as waiting rather than urgency. Motion is opt-in, as on `App.vue`'s
+  navigation bar: reduced motion keeps the ring, standing still.
+-->
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .song-loading {
+    animation: song-loading 1.1s linear infinite;
+  }
+}
+
+@keyframes song-loading {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+</style>

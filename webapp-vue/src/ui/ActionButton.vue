@@ -14,7 +14,7 @@ withDefaults(defineProps<{ busy?: boolean; disabled?: boolean; type?: 'button' |
     :type="type"
     :disabled="busy || disabled"
     :aria-busy="busy"
-    class="inline-flex cursor-pointer items-center justify-center gap-2 rounded border px-3 py-1.5 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:hover:bg-transparent"
+    class="inline-flex cursor-pointer items-center justify-center gap-2 rounded border px-3 py-1.5 hover:bg-surface-container-highest disabled:cursor-not-allowed disabled:text-on-surface/40 disabled:hover:bg-transparent"
   >
     <!--
       An icon-sized slot is reserved on BOTH sides in every state, so the button width never

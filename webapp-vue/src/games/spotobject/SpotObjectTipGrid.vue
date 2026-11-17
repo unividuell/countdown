@@ -68,7 +68,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
       v-for="tile in props.tiles"
       :key="tile.userId"
       data-test="tip-tile"
-      class="flex h-full flex-col overflow-hidden rounded-lg bg-neutral-100 text-left"
+      class="flex h-full flex-col overflow-hidden rounded-lg bg-surface-container text-left"
     >
       <!--
         Portrait, and the still is *requested* in the ratio it is shown in: Google's watermark is
@@ -77,7 +77,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         in — a phone holding a panorama is tall, and a landscape crop of it throws away the half
         the player was actually looking at.
       -->
-      <div class="relative aspect-[3/4] bg-neutral-200">
+      <div class="relative aspect-[3/4] bg-surface-container-highest">
         <img
           v-if="tile.tip"
           :src="shotUrl(tile.tip, 480, 640)"
@@ -85,7 +85,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           alt=""
           class="h-full w-full object-cover"
         />
-        <p v-else class="flex h-full items-center justify-center text-xs text-neutral-500">
+        <p v-else class="flex h-full items-center justify-center text-xs text-on-surface-variant">
           aufgegeben
         </p>
 
@@ -108,7 +108,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           target="_blank"
           rel="noopener"
           :aria-label="`${tile.name}: in Google Maps ansehen`"
-          class="absolute bottom-[6%] left-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+          class="absolute bottom-[6%] left-2 flex h-9 w-9 items-center justify-center rounded-full bg-scrim/30 text-white backdrop-blur-sm"
         >
           <IconEye aria-hidden="true" class="h-4 w-4" />
         </a>
@@ -137,7 +137,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :aria-label="`${tile.name}: bestätigen`"
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.myVote === 'CONFIRM' ? 'bg-emerald-600 text-white' : 'bg-black/30 text-white'
+              tile.myVote === 'CONFIRM' ? 'bg-emerald-600 text-white' : 'bg-scrim/30 text-white'
             "
             :disabled="busy"
             @click="toggleVote(tile, 'CONFIRM')"
@@ -150,7 +150,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :aria-pressed="tile.myVote === 'FLAG'"
             :aria-label="`${tile.name}: flaggen`"
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
-            :class="tile.myVote === 'FLAG' ? 'bg-red-600 text-white' : 'bg-black/30 text-white'"
+            :class="tile.myVote === 'FLAG' ? 'bg-error text-on-error' : 'bg-scrim/30 text-white'"
             :disabled="busy"
             @click="toggleVote(tile, 'FLAG')"
           >
@@ -170,7 +170,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :aria-label="`${tile.name}: zählen lassen`"
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.adminOverride === true ? 'bg-neutral-900 text-white' : 'bg-black/30 text-white'
+              tile.adminOverride === true
+                ? 'bg-inverse-surface text-inverse-on-surface'
+                : 'bg-scrim/30 text-white'
             "
             :disabled="busy"
             @click="toggleOverride(tile, true)"
@@ -184,7 +186,9 @@ function toggleOverride(tile: TipTile, value: boolean): void {
             :aria-label="`${tile.name}: streichen`"
             class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-sm disabled:cursor-default disabled:opacity-40"
             :class="
-              tile.adminOverride === false ? 'bg-neutral-900 text-white' : 'bg-black/30 text-white'
+              tile.adminOverride === false
+                ? 'bg-inverse-surface text-inverse-on-surface'
+                : 'bg-scrim/30 text-white'
             "
             :disabled="busy"
             @click="toggleOverride(tile, false)"
@@ -201,7 +205,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
         <div
           v-else-if="tile.adminOverride !== null"
           data-test="tip-override-badge"
-          class="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+          class="absolute top-2 left-2 flex h-9 w-9 items-center justify-center rounded-full bg-scrim/30 text-white backdrop-blur-sm"
           :aria-label="
             tile.adminOverride ? 'vom Spielleiter aufgehoben' : 'vom Spielleiter gestrichen'
           "
@@ -233,7 +237,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
           <span
             v-if="tile.flag"
             data-test="tip-country"
-            class="justify-self-center rounded-sm bg-neutral-100 px-1 leading-5"
+            class="justify-self-center rounded-sm bg-surface-container px-1 leading-5"
             >{{ tile.flag }}</span
           >
           <span v-else />
@@ -255,7 +259,7 @@ function toggleOverride(tile: TipTile, value: boolean): void {
              the round decided stays readable beside the verdict that overruled it. -->
         <div
           data-test="tip-votes"
-          class="grid flex-1 grid-cols-[auto_1fr] content-start items-center gap-x-2 gap-y-0.5 bg-neutral-100 px-2 pt-2.5 pb-2 text-neutral-700"
+          class="grid flex-1 grid-cols-[auto_1fr] content-start items-center gap-x-2 gap-y-0.5 bg-surface-container px-2 pt-2.5 pb-2 text-on-surface-variant"
         >
           <template v-for="vote in tile.confirms" :key="`c-${vote.userId}`">
             <IconThumbsUp aria-hidden="true" class="size-3.5 justify-self-center" />

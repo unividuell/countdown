@@ -16,7 +16,7 @@ defineProps<{ term: string }>()
 <template>
   <p
     data-test="spot-term"
-    class="mx-auto w-fit max-w-full truncate rounded-full bg-neutral-100 px-4 py-1.5 text-base font-semibold text-neutral-900 shadow select-none"
+    class="mx-auto w-fit max-w-full truncate rounded-full bg-surface-container px-4 py-1.5 text-base font-semibold text-on-surface shadow select-none"
   >
     „{{ term }}“
   </p>

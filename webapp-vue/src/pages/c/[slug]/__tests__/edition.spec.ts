@@ -168,7 +168,7 @@ describe('edition page', () => {
 
     await w.get(sel('phase-two')).setValue('-31')
 
-    expect(w.get(sel('phase-two-warning')).classes()).toContain('text-red-600')
+    expect(w.get(sel('phase-two-warning')).classes()).toContain('text-error')
   })
 
   // Now is 2026-11-05 12:00 Berlin: with a start on 20 Dec 18:00, round -45 is running.
@@ -209,7 +209,7 @@ describe('edition page', () => {
     await fillNew(w)
     await w.get(sel('first-round')).setValue('-46')
 
-    expect(w.get(sel('first-round-over')).classes()).toContain('text-red-600')
+    expect(w.get(sel('first-round-over')).classes()).toContain('text-error')
     expect(w.find(sel('start-now')).exists()).toBe(false)
     expect(w.get(sel('submit')).attributes('disabled')).toBeDefined()
   })

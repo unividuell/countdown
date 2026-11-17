@@ -26,9 +26,9 @@ async function decode(context: AudioContext, url: string): Promise<AudioBuffer |
 }
 
 /**
- * One player, owned here. `restart()` is the play button's whole semantics: always from the start,
- * never a toggle — pausing is a separate, smaller control, and nothing anywhere resumes, which is
- * what lets the graph get away with knowing no offsets.
+ * One player, owned here. `restart()` plays from the start, `play(from)` from anywhere, `resume()`
+ * from where a pause left off — the graph has no pause, so the offset is kept here. `extend()`
+ * swaps a sounding clip for a longer one that begins with it, without a break.
  *
  * Position is sampled with requestAnimationFrame, from the graph's own clock while it plays: the
  * element's `timeupdate` (~4 Hz) is far too coarse for a bar over a 0.1s clip, and its
@@ -38,8 +38,12 @@ export function usePlayback(): {
   positionSeconds: Ref<number>
   playing: Ref<boolean>
   setSource: (url: string) => void
+  play: (fromSeconds: number) => void
   restart: () => void
+  resume: () => void
   pause: () => void
+  stop: () => void
+  extend: (url: string) => void
   dispose: () => void
 } {
   const positionSeconds = ref(0)
@@ -54,8 +58,13 @@ export function usePlayback(): {
 
   let decoded: Promise<AudioBuffer | null> | null = null
   let node: AudioBufferSourceNode | null = null
+  /** Graph time at which the clip's own zero would have sounded — a start mid-clip lies before the real one. */
   let startedAt = 0
+  /** The clip position the current start began at: the lookahead holds the bar here, not behind it. */
+  let startOffset = 0
   let duration = 0
+  /** Where a pause left off; `null` sends the next resume back to the start. */
+  let heldAt: number | null = null
   let raf = 0
   /**
    * Only the newest source and the newest start may act. Every path that ends a playback bumps it,
@@ -81,11 +90,11 @@ export function usePlayback(): {
     if (sounding === self) sounding = null
   }
 
-  /** What has been heard, by the graph's clock. Zero through the lookahead, capped at the clip. */
+  /** What has been heard, by the graph's clock. The start through the lookahead, capped at the clip. */
   function elapsed(): number {
     const context = audioGraph()
     if (context === null) return positionSeconds.value
-    return Math.min(Math.max(context.currentTime - startedAt, 0), duration)
+    return Math.min(Math.max(context.currentTime - startedAt, startOffset), duration)
   }
 
   const sample = (): void => {
@@ -114,7 +123,27 @@ export function usePlayback(): {
     positionSeconds.value = position
   }
 
-  async function playGraph(context: AudioContext, pending: Promise<AudioBuffer | null>) {
+  /** Played out by itself: the next resume starts over. */
+  function ended(mine: number): void {
+    if (mine !== generation) return
+    finish(duration)
+    heldAt = null
+  }
+
+  /** A node for `buffer`, wired to the speakers and to `ended`. */
+  function source(context: AudioContext, buffer: AudioBuffer, mine: number): AudioBufferSourceNode {
+    const next = context.createBufferSource()
+    next.buffer = buffer
+    next.connect(context.destination)
+    next.onended = (): void => ended(mine)
+    return next
+  }
+
+  async function playGraph(
+    context: AudioContext,
+    pending: Promise<AudioBuffer | null>,
+    fromSeconds: number,
+  ) {
     const mine = ++generation
     if (context.state === 'suspended') {
       // A gesture is what allows this; every path here comes from a tap, or from the answer to
@@ -126,24 +155,50 @@ export function usePlayback(): {
     const buffer = await pending
     if (mine !== generation) return
     if (buffer === null) {
-      playElement()
+      playElement(fromSeconds)
       return
     }
     silence()
     duration = buffer.duration
-    const next = context.createBufferSource()
-    next.buffer = buffer
-    next.connect(context.destination)
-    next.onended = (): void => {
-      if (mine === generation) finish(duration)
-    }
-    startedAt = context.currentTime + START_LOOKAHEAD_SECONDS
-    next.start(startedAt)
+    startOffset = Math.min(fromSeconds, duration)
+    const next = source(context, buffer, mine)
+    const at = context.currentTime + START_LOOKAHEAD_SECONDS
+    next.start(at, startOffset)
+    startedAt = at - startOffset
     node = next
     claim()
     playing.value = true
-    positionSeconds.value = 0
+    positionSeconds.value = startOffset
     raf = requestAnimationFrame(sample)
+  }
+
+  /**
+   * The graph half of `extend`: the old node is told to stop at the very instant the new one starts,
+   * at the spot the old one will have reached by then. One clock schedules both, so there is no gap
+   * and no overlap. An old node that ran out while the longer clip decoded hands over at its end.
+   */
+  async function extendGraph(context: AudioContext, pending: Promise<AudioBuffer | null>) {
+    const mine = ++generation
+    const buffer = await pending
+    if (mine !== generation) return
+    if (buffer === null) {
+      const from = elapsed()
+      silence()
+      playElement(from)
+      return
+    }
+    const old = node
+    const at = context.currentTime + START_LOOKAHEAD_SECONDS
+    const offset = Math.min(Math.max(at - startedAt, startOffset), duration)
+    if (old !== null) {
+      old.onended = (): void => old.disconnect()
+      old.stop(at)
+    }
+    duration = buffer.duration
+    const next = source(context, buffer, mine)
+    next.start(at, offset)
+    startedAt = at - offset
+    node = next
   }
 
   const sampleElement = (): void => {
@@ -166,17 +221,24 @@ export function usePlayback(): {
     positionSeconds.value = element.currentTime
   }
   element.addEventListener('pause', elementStopped)
-  element.addEventListener('ended', elementStopped)
+  element.addEventListener('ended', () => {
+    elementStopped()
+    heldAt = null
+  })
 
-  function playElement(): void {
-    // Only seek where there is something to seek away from: a finished play leaves the element at
-    // the end, every other path leaves it at zero, and a seek inside a clip this short is its own
-    // risk.
-    if (element.currentTime !== 0) element.currentTime = 0
+  function startElement(): void {
     void element.play().catch((err) => {
       // Loud, because this is exactly what „sometimes you hear nothing" looks like from here.
       console.warn('[playback] the browser refused to play the clip', err)
     })
+  }
+
+  function playElement(fromSeconds: number): void {
+    // Only seek where there is something to seek away from: a finished play leaves the element at
+    // the end, every other path leaves it at zero, and a seek inside a clip this short is its own
+    // risk.
+    if (element.currentTime !== fromSeconds) element.currentTime = fromSeconds
+    startElement()
   }
 
   function setSource(url: string): void {
@@ -189,18 +251,54 @@ export function usePlayback(): {
     playing.value = false
     positionSeconds.value = 0
     duration = 0
+    heldAt = null
     const context = audioGraph()
     decoded = context === null ? null : decode(context, url)
   }
 
-  function restart(): void {
+  function play(fromSeconds: number): void {
     if (disposed) return
+    heldAt = null
     const context = audioGraph()
     if (context === null || decoded === null) {
-      playElement()
+      playElement(fromSeconds)
       return
     }
-    void playGraph(context, decoded)
+    void playGraph(context, decoded, fromSeconds)
+  }
+
+  function restart(): void {
+    play(0)
+  }
+
+  function resume(): void {
+    play(heldAt ?? 0)
+  }
+
+  /**
+   * A longer clip that begins with the sounding one: playback runs on into it from the spot it
+   * reached. Nothing sounding, it is only the new source — what starts it is the caller's call.
+   */
+  function extend(url: string): void {
+    if (disposed) return
+    if (!playing.value) {
+      setSource(url)
+      return
+    }
+    const context = audioGraph()
+    decoded = context === null ? null : decode(context, url)
+    if (node === null || context === null || decoded === null) {
+      // The element is what sounds: reloading it drops the position, so it is carried over by hand.
+      const at = element.currentTime
+      element.src = url
+      element.load()
+      element.currentTime = at
+      startElement()
+      return
+    }
+    element.src = url
+    element.load()
+    void extendGraph(context, decoded)
   }
 
   function pause(): void {
@@ -209,11 +307,20 @@ export function usePlayback(): {
     // clip starting. That window is real — the reveal's first tap waits on a fetch too.
     generation++
     if (node !== null) {
-      finish(elapsed())
+      heldAt = elapsed()
+      finish(heldAt)
       return
     }
+    if (!element.paused) heldAt = element.currentTime
     playing.value = false
     element.pause()
+  }
+
+  /** Pause, and forget where: the bar empties and the next play starts over. */
+  function stop(): void {
+    pause()
+    heldAt = null
+    positionSeconds.value = 0
   }
 
   function dispose(): void {
@@ -227,5 +334,16 @@ export function usePlayback(): {
   }
   onUnmounted(dispose)
 
-  return { positionSeconds, playing, setSource, restart, pause, dispose }
+  return {
+    positionSeconds,
+    playing,
+    setSource,
+    play,
+    restart,
+    resume,
+    pause,
+    stop,
+    extend,
+    dispose,
+  }
 }

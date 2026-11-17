@@ -92,7 +92,11 @@ const settledMembers = computed(() => {
        what used to lift the ranking the moment the first live points arrived. -->
   <section class="flex min-h-[72px] items-center">
     <MemberRow v-if="state === 'ready'" :members="members" :me-id="user?.id" />
-    <p v-else-if="state === 'failed'" data-test="roster-error" class="text-sm text-neutral-500">
+    <p
+      v-else-if="state === 'failed'"
+      data-test="roster-error"
+      class="text-sm text-on-surface-variant"
+    >
       Die Mitglieder konnten nicht geladen werden.
     </p>
     <div v-else data-test="roster-placeholder" class="w-full" aria-hidden="true" />
@@ -120,7 +124,7 @@ const settledMembers = computed(() => {
   <p
     v-else-if="roundState === 'failed'"
     data-test="round-error"
-    class="mt-6 text-sm text-neutral-500"
+    class="mt-6 text-sm text-on-surface-variant"
   >
     Die Runde konnte nicht geladen werden.
   </p>

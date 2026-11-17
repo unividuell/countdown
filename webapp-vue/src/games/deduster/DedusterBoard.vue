@@ -268,7 +268,7 @@ function ripple(host: HTMLElement, x: number, y: number, hit: boolean): void {
       v-if="resendShown"
       type="button"
       data-test="deduster-resend"
-      class="h-11 cursor-pointer self-center rounded-md bg-neutral-900 px-6 text-sm font-medium text-white"
+      class="h-11 cursor-pointer self-center rounded-md bg-inverse-surface px-6 text-sm font-medium text-inverse-on-surface"
       @click="lastGuess && send(lastGuess)"
     >
       Nochmal senden

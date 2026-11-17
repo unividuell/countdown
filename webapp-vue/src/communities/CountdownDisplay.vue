@@ -3,6 +3,7 @@ import { computed, ref, toRef, useId } from 'vue'
 import { useCountdown } from '@/communities/useCountdown'
 import FlipDotBoard from '@/ui/flipdot/FlipDotBoard.vue'
 import FlipDotLegend from '@/ui/flipdot/FlipDotLegend.vue'
+import { HEADER_PAD } from '@/ui/flipdot/board'
 
 const props = defineProps<{ slug: string | null | undefined }>()
 const { view, cycleBaseUnit } = useCountdown(toRef(props, 'slug'))
@@ -79,8 +80,10 @@ const hintId = useId()
          The legend inherits that same width, so it needs no width of its own. -->
     <FlipDotBoard
       data-test="countdown-board"
-      class="h-[26px] w-auto max-w-full"
+      class="h-[34px] w-auto max-w-full"
       aria-hidden="true"
+      ground="surface"
+      :pad="HEADER_PAD"
       :text="text"
       :label="reading"
       @phase="legendVisible = $event === 'live'"
@@ -90,7 +93,14 @@ const hintId = useId()
          via aria-label and the board becomes decoration here. label is still passed — it's part of
          the component's contract and documents what the board depicts — but it goes unannounced in
          this consumer. In the card, nothing wraps the board, so it stays self-describing there. -->
-    <FlipDotLegend class="mt-0.5" :text="text" :labels="labels" :visible="legendVisible" />
+    <FlipDotLegend
+      class="mt-0.5"
+      ground="surface"
+      :pad="HEADER_PAD"
+      :text="text"
+      :labels="labels"
+      :visible="legendVisible"
+    />
     <span :id="hintId" class="sr-only">Drücken, um die Zeiteinheit umzuschalten</span>
   </button>
 </template>

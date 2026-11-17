@@ -43,7 +43,7 @@ const hasRevealedLive = useRevealedLive(done)
 <template>
   <p
     v-if="photoUrl === null || (payload === null && scene === null)"
-    class="text-sm text-neutral-600"
+    class="text-sm text-on-surface-variant"
   >
     Diese Runde lässt sich hier nicht anzeigen.
   </p>

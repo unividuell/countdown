@@ -1,16 +1,25 @@
 <script setup lang="ts">
-// Positioned from `groupCentres`, which measures the unpadded text — so this legend cannot sit
-// under a board that was given a `pad` without the padding reaching that function first.
+// Positioned from `groupCentres`; under a padded board it takes the same `pad`.
 import { computed } from 'vue'
-import { groupCentres } from './board'
+import { groupCentres, type Ground } from './board'
+import type { Pad } from './font'
 
-const props = defineProps<{ text: string; labels: readonly string[]; visible: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    text: string
+    labels: readonly string[]
+    visible: boolean
+    ground?: Ground
+    pad?: Pad
+  }>(),
+  { ground: 'board' },
+)
 
 // This row is aria-hidden because the value is spoken elsewhere: by the board itself in the card,
 // where nothing wraps it, and by the wrapping button in the header, where the board is aria-hidden
 // too. Either way, a second reading of the same numbers here would just be noise.
 const cells = computed(() =>
-  groupCentres(props.text).map((centre, i) => ({
+  groupCentres(props.text, props.pad).map((centre, i) => ({
     left: `${centre}%`,
     label: props.labels[i] ?? '',
   })),
@@ -20,8 +29,11 @@ const cells = computed(() =>
 <template>
   <span
     aria-hidden="true"
-    class="relative block h-4 font-mono text-[11px] tracking-[0.14em] text-stone-400 transition-opacity duration-300"
-    :class="visible ? 'opacity-100' : 'opacity-0'"
+    class="relative block h-4 font-mono text-[11px] tracking-[0.14em] transition-opacity duration-300"
+    :class="[
+      visible ? 'opacity-100' : 'opacity-0',
+      ground === 'surface' ? 'text-on-surface-variant' : 'text-on-board/70',
+    ]"
   >
     <!-- The row is a span and not a div so it stays valid inside the header's <button>, whose content
          model is phrasing only; `block` above makes it lay out exactly as a div would.

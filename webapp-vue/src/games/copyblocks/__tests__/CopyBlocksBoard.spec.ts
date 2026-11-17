@@ -8,7 +8,9 @@ import { playSound } from '@/games/copyblocks/sounds'
 import type { CopyBlocksPayload, GuessBlock } from '@/games/copyblocks/types'
 import type { Hit } from '@/games/copyblocks/view'
 import { START_CAMERA } from '@/games/copyblocks/view'
+import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 vi.mock('@/games/copyblocks/sounds', () => ({ preloadSounds: vi.fn(), playSound: vi.fn() }))
@@ -33,6 +35,7 @@ function mountBoard(over: Record<string, unknown> = {}) {
       draftKey: null,
       awardRule: null,
       awardPoints: null,
+      myColorHex: '#fde047',
       camera: START_CAMERA,
       ...over,
     },
@@ -53,12 +56,21 @@ async function choose(w: Board, label: string) {
   await w.get(`button[aria-label="${label}"]`).trigger('click')
 }
 
+/** A `matchMedia` answer the scenes can also subscribe to: their ground follows the mode. */
+function mediaQuery(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  } as unknown as MediaQueryList
+}
+
 describe('CopyBlocksBoard', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.mocked(playSound).mockClear()
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(true))
   })
 
   afterEach(() => {
@@ -76,6 +88,42 @@ describe('CopyBlocksBoard', () => {
     expect(
       wrapper.findAll('[data-test^="copy-blocks-slot-"]').map((s) => s.attributes('aria-label')),
     ).toEqual(['Erde', 'Ziegel', 'Laub', 'Spitzhacke'])
+  })
+
+  // One ground for both views, the card's container tone, following the mode: the two light
+  // blues read foreign in either mode. Painted by WebGL, so the scenes are handed the hex.
+  it('grounds both views in the container tone of the mode', () => {
+    for (const [mode, tone] of Object.entries(SURFACE_CONTAINER)) {
+      localStorage.setItem('color-scheme', mode)
+      const wrapper = mountBoard()
+
+      const scenes = wrapper.findAllComponents(BlockScene)
+      expect(scenes.map((s) => s.props('background'))).toEqual([tone, tone])
+      wrapper.unmount()
+    }
+  })
+
+  // One hotbar for both modes, solid near-black: `inverse-surface` turned light in the dark, and
+  // see-through glass went mid-grey over the light ground, where the unselected slots' grey
+  // frames vanished.
+  it('lays the hotbar on solid black in both modes', () => {
+    const bar = mountBoard().get('[data-test="copy-blocks-slot-PICKAXE"]').element.parentElement!
+
+    expect(bar.classList).toContain('bg-neutral-950')
+    expect(bar.classList).not.toContain('bg-scrim/75')
+  })
+
+  // As in Place Patch: the tip is the player's, so the button wears their colour. That colour
+  // may be dark or light, so its edge takes the mode's ink and its label reads against the fill.
+  it('submits from a button in the player’s colour', () => {
+    const w = mountBoard()
+    const button = w.getComponent(HoldButton)
+
+    expect(button.props('color')).toBe('#fde047')
+    expect(button.props('contour')).toBe('opposite')
+    expect(w.get('[data-test="copy-blocks-submit-label"]').attributes('style')).toContain(
+      'color: #111111',
+    )
   })
 
   it('shows the pickaxe as a pixel picture, like the blocks', () => {
@@ -174,6 +222,60 @@ describe('CopyBlocksBoard', () => {
     await tap(empty, { block: null, place: [65, 0, 0] })
     await tap(empty, { block: null, place: [0, -65, 0] })
     expect(built(empty)).toEqual([])
+  })
+
+  describe('while the submit hold runs', () => {
+    const holdOf = (w: Board) => w.getComponent(HoldButton)
+    const lock = (w: Board) => w.find('[data-test="copy-blocks-lock"]')
+    const field = (w: Board) => w.get('[data-test="copy-blocks-field"]')
+
+    async function progress(w: Board, value: number) {
+      holdOf(w).vm.$emit('progress', value)
+      await nextTick()
+    }
+
+    async function withABlock() {
+      const wrapper = mountBoard()
+      await tap(wrapper, { block: null, place: [0, 0, 0] })
+      return wrapper
+    }
+
+    // As in Place Patch: the field greys and says what is happening, so the build cannot
+    // change under a hold that is about to send it.
+    it('greys the field and shows „Abgeben …“ while the ring rises', async () => {
+      const wrapper = await withABlock()
+      expect(lock(wrapper).exists()).toBe(false)
+
+      await progress(wrapper, 0.4)
+      expect(lock(wrapper).text()).toBe('Abgeben …')
+
+      await progress(wrapper, 0.3)
+      expect(lock(wrapper).exists()).toBe(false)
+    })
+
+    it('cancels the hold when a finger touches the field, and builds nothing then', async () => {
+      const wrapper = await withABlock()
+      await progress(wrapper, 0.4)
+
+      await field(wrapper).trigger('pointerdown', { pointerId: 2 })
+      expect(holdOf(wrapper).props('disabled')).toBe(true)
+      await tap(wrapper, { block: null, place: [1, 0, 0] })
+      await field(wrapper).trigger('pointerup', { pointerId: 2 })
+
+      expect(built(wrapper)).toHaveLength(1)
+      expect(holdOf(wrapper).props('disabled')).toBe(false)
+    })
+
+    it('drops the lock once submitted, so a guess that failed leaves the field playable', async () => {
+      const wrapper = await withABlock()
+      await progress(wrapper, 0.9)
+
+      holdOf(wrapper).vm.$emit('confirm')
+      await progress(wrapper, 1)
+
+      expect(lock(wrapper).exists()).toBe(false)
+      expect(wrapper.emitted('guess')).toHaveLength(1)
+    })
   })
 
   it('submits the build on a full hold, never an empty one', async () => {

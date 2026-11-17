@@ -79,7 +79,16 @@ function useBeats() {
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
   })
-  vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+  vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
+}
+
+/** A `matchMedia` answer the canvas can also subscribe to: it follows the mode via VueUse. */
+function mediaQuery(matches: boolean): MediaQueryList {
+  return {
+    matches,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  } as unknown as MediaQueryList
 }
 
 describe('PaintRatioReveal', () => {
@@ -182,7 +191,7 @@ describe('PaintRatioReveal', () => {
 
     it('shows the picture at once under reduced motion', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
-      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(true))
 
       const wrapper = mountReveal({ animate: true })
 

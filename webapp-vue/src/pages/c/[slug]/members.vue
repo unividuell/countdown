@@ -33,14 +33,16 @@ onMounted(load)
 <template>
   <section class="mx-auto max-w-lg py-8">
     <h1 class="mb-4 text-xl font-semibold">Mitglieder</h1>
-    <p v-if="error" class="mb-3 text-sm text-red-600">{{ error }}</p>
+    <p v-if="error" class="mb-3 text-sm text-error">{{ error }}</p>
     <ul class="space-y-2">
       <li
         v-for="m in active"
         :key="m.userId"
         class="flex items-center justify-between gap-2 border-b py-2 text-sm"
       >
-        <span>{{ m.username }} <em v-if="m.isAdmin" class="text-neutral-500">(Admin)</em></span>
+        <span
+          >{{ m.username }} <em v-if="m.isAdmin" class="text-on-surface-variant">(Admin)</em></span
+        >
         <span class="flex gap-2">
           <button
             v-if="!m.isAdmin"
@@ -58,7 +60,7 @@ onMounted(load)
           </button>
           <button
             data-test="remove"
-            class="rounded border px-2 py-0.5 text-red-600"
+            class="rounded border px-2 py-0.5 text-error"
             @click="run(() => removeMember(slug, m.userId))"
           >
             Entfernen

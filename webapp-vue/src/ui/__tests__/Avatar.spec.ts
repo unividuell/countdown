@@ -24,7 +24,7 @@ describe('Avatar', () => {
   it('carries the outline that belongs to the avatar, not to its surroundings', () => {
     const w = mount(Avatar, { props: { shortName: 'A', bgColorHex: '#8e44ad' } })
     expect(w.classes()).toContain('ring-2')
-    expect(w.classes()).toContain('ring-white')
+    expect(w.classes()).toContain('ring-surface')
   })
 
   it('defaults to the roster size and shrinks on request', () => {
