@@ -92,6 +92,16 @@ describe('MemberRow', () => {
     vi.restoreAllMocks()
   })
 
+  // A display, not a control: no text cursor over names and points, nothing to select.
+  it('takes no selection and shows no text cursor', () => {
+    reduceMotion(true)
+    const row = mount(MemberRow, { props: { members: [member({ userId: 'a' })] } }).get(
+      '[data-test="row"]',
+    )
+
+    expect(row.classes()).toEqual(expect.arrayContaining(['select-none', 'cursor-default']))
+  })
+
   it('renders one circle per member, in the order the server sent', () => {
     reduceMotion(true)
     const w = mount(MemberRow, {

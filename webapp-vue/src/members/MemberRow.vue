@@ -328,7 +328,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
   <div
     ref="row"
     data-test="row"
-    class="flex w-full"
+    class="flex w-full cursor-default select-none"
     :class="settled && !rearranging ? 'overflow-x-auto' : 'overflow-visible'"
     style="visibility: hidden"
   >
