@@ -51,23 +51,23 @@ const viewer: MeResponse = {
   createdAt: null,
 }
 
-// Backs the host <header>'s stubbed getBoundingClientRect (see render() below). Reassigned on
-// every render() so each test starts from its own value; setHeaderBottom() then lets a test
-// change it after mount, to drive a re-measure.
-let headerBottom = ref(0)
+// Backs the toggle's stubbed getBoundingClientRect (see render() below). Reassigned on every
+// render() so each test starts from its own value; setToggleBottom() then lets a test change it
+// after mount, to drive a re-measure.
+let toggleBottom = ref(0)
 
-function setHeaderBottom(value: number): void {
-  headerBottom.value = value
+function setToggleBottom(value: number): void {
+  toggleBottom.value = value
 }
 
 /**
- * Mounts inside a real <header>, because the drawer reads its top edge from
- * `trigger.closest('header')`. `headerBottom` (the parameter) seeds the stubbed edge —
- * happy-dom's own getBoundingClientRect answers 0 for everything.
+ * Mounts inside a real <header>, where the app puts it. `toggleBottom` (the parameter) seeds the
+ * toggle's stubbed bottom edge, which the drawer starts its content under — happy-dom's own
+ * getBoundingClientRect answers 0 for everything.
  *
- * The stub reads the module-level `headerBottom` ref rather than closing over the parameter
- * value directly, so a test can change the header's reported bottom edge after mount via
- * setHeaderBottom() without remounting.
+ * The stub reads the module-level `toggleBottom` ref rather than closing over the parameter
+ * value directly, so a test can change the reported edge after mount via setToggleBottom()
+ * without remounting.
  *
  * teleport: true renders the drawer in place; teleported to <body> it would sit outside
  * wrapper.element, where wrapper.find() cannot reach it.
@@ -80,17 +80,37 @@ function setHeaderBottom(value: number): void {
  */
 const hosts: HTMLElement[] = []
 
-function render(user: MeResponse = viewer, initialHeaderBottom = 0) {
-  headerBottom = ref(initialHeaderBottom)
+/**
+ * The viewport width, for useWindowSize() and matchMedia() alike. Assigning `window.innerWidth`
+ * moves only the former; happy-dom answers media queries from its own viewport.
+ */
+function setViewportWidth(width: number): void {
+  ;(
+    window as unknown as { happyDOM: { setViewport(v: { width: number }): void } }
+  ).happyDOM.setViewport({ width })
+}
+
+function render(user: MeResponse = viewer, initialToggleBottom = 0) {
+  toggleBottom = ref(initialToggleBottom)
   const host = document.createElement('header')
-  host.getBoundingClientRect = () => ({ bottom: headerBottom.value }) as DOMRect
   document.body.appendChild(host)
   hosts.push(host)
-  return mount(NavDrawer, {
+  const w = mount(NavDrawer, {
     props: { user },
     attachTo: host,
     global: { stubs: { teleport: true } },
   })
+  // A 40px toggle, its right edge 16px inside the viewport — where the header puts it.
+  w.get('[data-test=nav-toggle]').element.getBoundingClientRect = () => {
+    const right = document.documentElement.clientWidth - 16
+    return {
+      top: toggleBottom.value - 40,
+      bottom: toggleBottom.value,
+      left: right - 40,
+      right,
+    } as DOMRect
+  }
+  return w
 }
 
 afterEach(() => {
@@ -111,7 +131,8 @@ beforeEach(() => {
   _resetCommunitiesState()
   activeCommunity.value = null
   route.fullPath = '/'
-  window.innerWidth = 375
+  // Mobile-first: the drawer is the phone's menu. happy-dom's own 1024px would be the dialog.
+  setViewportWidth(375)
 })
 
 describe('NavDrawer mechanics', () => {
@@ -258,7 +279,7 @@ describe('NavDrawer mechanics', () => {
   })
 
   it('spins the avatar by the drawer travel, and unwinds it exactly on close', async () => {
-    window.innerWidth = 375 // min(320, 0.85 * 375 = 318.75 -> 319)
+    setViewportWidth(375) // min(320, 0.85 * 375 = 318.75 -> 319)
     const w = render()
     const spinner = w.get('[data-test=nav-spinner]')
     expect(spinner.attributes('style')).toContain('rotate(0deg)')
@@ -269,7 +290,7 @@ describe('NavDrawer mechanics', () => {
   })
 
   it('caps the drawer at 320px on a wide viewport', async () => {
-    window.innerWidth = 1440
+    setViewportWidth(700) // still below md, where the drawer gives way to the dialog
     const w = render()
     await w.get('[data-test=nav-toggle]').trigger('click')
     expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('width: 320px')
@@ -303,47 +324,250 @@ describe('NavDrawer mechanics', () => {
     }
   })
 
-  it('hangs the drawer off the header bottom edge', async () => {
-    const w = render(viewer, 116)
+  // The header has no band to hang off any more: the drawer takes the full height and the toggle
+  // rides above it, so the first row starts under the toggle's bottom edge.
+  it('takes the full height and starts its content under the toggle', async () => {
+    const w = render(viewer, 52)
     await w.get('[data-test=nav-toggle]').trigger('click')
-    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 116px')
+    const drawer = w.get('[data-test=nav-drawer]')
+    expect(drawer.classes()).toEqual(expect.arrayContaining(['inset-y-0', 'right-0']))
+    expect(drawer.attributes('style')).toContain('padding-top: 52px')
   })
 
-  it('takes the full height once the header has scrolled away', async () => {
-    // A scrolled-past header has a negative bottom edge. Clamped to 0 the drawer covers
-    // everything — right, because there is no header left to stay below.
+  // The toggle's row would otherwise be empty space; the full name says whose menu this is.
+  it('names the viewer on the toggle row, a touch stronger than the rows', async () => {
+    const w = render(viewer, 52)
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    const name = w.get('[data-test=nav-viewer]')
+    expect(name.text()).toBe(viewer.username)
+    expect(name.classes()).toContain('font-medium')
+    expect(name.attributes('style')).toContain('top: 12px')
+  })
+
+  it('takes the name from the community identity inside a community', async () => {
+    activeCommunity.value = {
+      slug: 'huette',
+      name: 'Hütte',
+      targetAt: null,
+      targetTimezone: 'Europe/Berlin',
+      editionLabel: null,
+      viewerIsAdmin: false,
+      pendingCount: 0,
+      viewerIdentity: {
+        username: 'Hüttenwirt',
+        avatar: { shortName: 'HW', bgColorHex: '#123456' },
+      },
+    }
+    const w = render(viewer, 52)
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    expect(w.get('[data-test=nav-viewer]').text()).toBe('Hüttenwirt')
+  })
+
+  // The drawer has the spin; a boing on top would fight it.
+  it('gives the avatar no boing in drawer mode', async () => {
+    const animate = vi.fn()
+    Object.defineProperty(Element.prototype, 'animate', {
+      value: animate,
+      configurable: true,
+      writable: true,
+    })
+    const w = render()
+    await w.get('[data-test=nav-toggle]').trigger('click')
+    expect(animate).not.toHaveBeenCalled()
+    Reflect.deleteProperty(Element.prototype, 'animate')
+  })
+
+  it('keeps the toggle above the open drawer and its scrim', () => {
+    // Drawer z-20, scrim z-10: the toggle is also the close button, so it must stay on top.
+    expect(render().get('[data-test=nav-toggle]').classes()).toEqual(
+      expect.arrayContaining(['relative', 'z-30']),
+    )
+  })
+
+  // A filled square read as a box over the scrim; a ring round the round avatar does not.
+  it('marks the hovered toggle with a ring, not a filled square', () => {
+    const toggle = render().get('[data-test=nav-toggle]')
+    expect(toggle.classes()).toEqual(expect.arrayContaining(['rounded-full', 'hover:ring-2']))
+    expect(toggle.classes().some((c) => c.startsWith('hover:bg-'))).toBe(false)
+  })
+
+  it('starts its content at the top once the header has scrolled away', async () => {
+    // A scrolled-past toggle has a negative bottom edge. Clamped to 0 the content starts at the
+    // top — right, because there is no toggle left to stay below.
     const w = render(viewer, -40)
     await w.get('[data-test=nav-toggle]').trigger('click')
-    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 0px')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('padding-top: 0px')
   })
 
-  it('re-measures the drawer top when the viewport changes while open', async () => {
-    // Regression for drawerTop going stale on resize/orientation change: drawerWidth and spin
-    // already track useWindowSize()'s viewport, but drawerTop only used to be set at open time.
-    const w = render(viewer, 116)
+  it('re-measures the content inset when the viewport changes while open', async () => {
+    // Regression for the inset going stale on resize/orientation change: drawerWidth and spin
+    // already track useWindowSize()'s viewport, but the inset is only set at open time.
+    const w = render(viewer, 52)
     await w.get('[data-test=nav-toggle]').trigger('click')
-    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 116px')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('padding-top: 52px')
 
-    // A community header collapsing from two rows (116px) to one (68px) as the viewport
-    // crosses the `md` breakpoint on rotation.
-    setHeaderBottom(68)
-    window.innerWidth = 812
+    // The page under the toggle moved while the phone was rotated.
+    setToggleBottom(40)
+    setViewportWidth(700)
     window.dispatchEvent(new Event('resize'))
     await nextTick()
 
-    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 68px')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('padding-top: 40px')
   })
 
-  it('does not re-measure the drawer top while closed', async () => {
-    // drawerTop starts at its initial 0 and is never touched by setOpen(true) here, since the
-    // drawer is never opened. A resize while closed must leave it exactly as it was — the
-    // watcher stays gated on `open`.
-    const w = render(viewer, 116)
-    setHeaderBottom(68)
-    window.innerWidth = 812
+  it('does not re-measure the content inset while closed', async () => {
+    // The inset starts at 0 and is never touched by setOpen(true) here, since the drawer is never
+    // opened. A resize while closed must leave it exactly as it was — the watcher stays gated on
+    // `open`.
+    const w = render(viewer, 52)
+    setToggleBottom(40)
+    setViewportWidth(700)
     window.dispatchEvent(new Event('resize'))
     await nextTick()
-    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('top: 0px')
+    expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('padding-top: 0px')
+  })
+
+  // From md the header is one row and a drawer's full height is wasted: the same toggle opens a
+  // centred dialog instead. The avatar has no rail to roll along there, so it stays still.
+  describe('from md, as a dialog', () => {
+    beforeEach(() => {
+      setViewportWidth(1024)
+    })
+
+    afterEach(() => {
+      Reflect.deleteProperty(Element.prototype, 'animate')
+    })
+
+    /** happy-dom's own WAAPI records nothing, so a spy stands in; afterEach takes it out again. */
+    function spyAnimate(): ReturnType<typeof vi.fn> {
+      const animate = vi.fn()
+      Object.defineProperty(Element.prototype, 'animate', {
+        value: animate,
+        configurable: true,
+        writable: true,
+      })
+      return animate
+    }
+
+    // Without a rail to roll along, the avatar answers a press with a squash-and-stretch: scale
+    // dips, overshoots and settles at 1 — on opening and on closing alike.
+    it('gives the avatar a boing on open and on close', async () => {
+      const animate = spyAnimate()
+      const w = render()
+      const toggle = w.get('[data-test=nav-toggle]')
+
+      await toggle.trigger('click')
+      await toggle.trigger('click')
+
+      expect(animate).toHaveBeenCalledTimes(2)
+      expect(animate.mock.contexts[0]).toBe(w.get('[data-test=nav-spinner]').element)
+      const scales = (animate.mock.calls[0]![0] as Keyframe[]).map((k) => k.scale)
+      expect(scales[0]).toBe(1)
+      expect(scales.at(-1)).toBe(1)
+      expect(Math.min(...(scales as number[]))).toBeLessThan(1)
+      expect(Math.max(...(scales as number[]))).toBeGreaterThan(1)
+    })
+
+    // Crossing md swaps the closed frame's classes: a closed drawer (translated off) becomes a
+    // closed dialog (faded out). With transitions on, the browser animates between the two and the
+    // menu flashes up. So the switch itself runs without transitions, which return a frame later.
+    it('switches mode without a transition, so a closed menu does not flash up', async () => {
+      // happy-dom fires no `change` on a media query when its viewport moves, so a stand-in answers
+      // the width query and is flipped by hand. Every other query answers false, as happy-dom's do.
+      let wide = true
+      const widthListeners: ((e: { matches: boolean }) => void)[] = []
+      const spy = vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            get matches() {
+              return query.includes('min-width') ? wide : false
+            },
+            media: query,
+            addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => {
+              if (query.includes('min-width')) widthListeners.push(fn)
+            },
+            removeEventListener: () => {},
+          }) as unknown as MediaQueryList,
+      )
+      // The forced style read is the moment the browser commits the new classes; record what the
+      // frame carries then. Its class list must have switched mode with transitions off.
+      const committed: string[] = []
+      const read = vi
+        .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          if (this.dataset.test === 'nav-drawer') committed.push(this.className)
+          return 0
+        })
+      const w = render()
+      // VueUse attaches its listener after mount's flush.
+      await nextTick()
+
+      wide = false
+      widthListeners.forEach((fn) => fn({ matches: false }))
+      await flushPromises()
+
+      expect(committed.at(-1)).toContain('inset-y-0')
+      expect(committed.at(-1)).toContain('transition-none!')
+      const frame = w.get('[data-test=nav-drawer]').classes()
+      expect(frame).toContain('inset-y-0')
+      expect(frame).not.toContain('transition-none!')
+      read.mockRestore()
+      spy.mockRestore()
+    })
+
+    it('keeps the avatar still under prefers-reduced-motion', async () => {
+      const animate = spyAnimate()
+      const spy = vi.spyOn(window, 'matchMedia').mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      } as unknown as MediaQueryList)
+      const w = render()
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      expect(animate).not.toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    // Top right, like the drawer, with room round the toggle: the toggle (12–52px from the top,
+    // 16px from the right) sits 8px inside the dialog's top-right corner, so the dialog encloses it.
+    it('anchors the toggle in its top-right corner', async () => {
+      const w = render(viewer, 52)
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      const dialog = w.get('[data-test=nav-drawer]')
+      expect(dialog.classes()).toEqual(expect.arrayContaining(['origin-top-right', 'opacity-100']))
+      expect(dialog.classes()).not.toContain('inset-y-0')
+      const style = dialog.attributes('style') ?? ''
+      expect(style).toContain('top: 4px')
+      expect(style).toContain('right: 8px')
+      expect(style).toContain('padding-top: 48px')
+      expect(dialog.attributes('inert')).toBeUndefined()
+    })
+
+    it('names the viewer on the toggle row', async () => {
+      const w = render(viewer, 52)
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      const name = w.get('[data-test=nav-viewer]')
+      expect(name.text()).toBe(viewer.username)
+      const style = name.attributes('style') ?? ''
+      expect(style).toContain('top: 8px')
+      expect(style).toContain('height: 40px')
+      // From the dialog's right edge: 8px of frame, the 40px toggle, and 8px gap.
+      expect(style).toContain('right: 56px')
+    })
+
+    it('fades out on close, with the same toggle', async () => {
+      const w = render()
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      expect(w.get('[data-test=nav-drawer]').classes()).toContain('opacity-0')
+      expect(w.get('[data-test=nav-drawer]').attributes('inert')).toBeDefined()
+    })
+
+    it('keeps the avatar still', async () => {
+      const w = render()
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      expect(w.get('[data-test=nav-spinner]').attributes('style')).toContain('rotate(0deg)')
+    })
   })
 
   it('keeps the scrim out of the way while closed', async () => {

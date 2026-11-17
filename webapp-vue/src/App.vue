@@ -44,18 +44,20 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:se
          confining the animation to the content column. -->
     <div class="relative">
       <!-- The board needs its own row until there is width for it beside the title. Narrow: two rows,
-           24px padding + 40px + 8px + 52px = 124px. From md: one row, 24px + 52px = 76px, with the
+           24px padding + 40px + 8px + 52px = 124px. From md: one row, 36px + 52px = 88px, with the
            board and the account menu together on the right and the slack between them and the title.
            md and not sm, because the widest cycle state is 314px and a long community name plus that
            board plus the avatar needs 647px — more than sm's 608px of content, which would push the
            row past the viewport. Without a countdown there is no second row at all and the header is
-           back to its old 64px.
+           back to its old 64px (76px from md).
+           From md the top padding is 24px, not 12px: the menu opens as a dialog whose top-right
+           corner encloses the avatar by 8px, and 12px left it 1px short of the viewport's edge.
            Both cells of row 1 state their 40px: a grid track is as tall as its tallest item, and
            NavDrawer's toggle is 40px (a 32px avatar in a p-1 button). Stating it on the title cell
            alone would leave the login page, which has no NavDrawer, 8px shorter than every other
            page. -->
       <header
-        class="relative z-30 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 md:grid-cols-[1fr_auto_auto]"
+        class="relative mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-3 md:grid-cols-[1fr_auto_auto] md:pt-6"
       >
         <div
           data-test="title-row"
@@ -103,7 +105,9 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:se
     <main class="flex-1 p-4">
       <RouterView />
     </main>
-    <footer class="px-4 py-3 text-sm text-on-surface-variant">countdown.unividuell.org</footer>
+    <footer class="mx-auto w-full max-w-6xl px-4 py-3 text-sm text-on-surface-variant">
+      countdown.unividuell.org
+    </footer>
   </div>
 </template>
 

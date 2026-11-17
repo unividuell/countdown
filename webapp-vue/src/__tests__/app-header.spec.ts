@@ -129,11 +129,28 @@ describe('App main header', () => {
     expect(mount(App, { global: { stubs } }).find('[data-test=nav-toggle]').exists()).toBe(true)
   })
 
-  it('lifts the header above the drawer and its scrim', () => {
-    // The scrim (z-10) covers the whole page and the drawer (z-20) hangs off the header's bottom
-    // edge; z-30 keeps the avatar, the drawer's toggle, above both and clickable.
+  // Only the menu toggle stays above the open drawer and its scrim (NavDrawer gives it z-30). A
+  // z-index here would make the header a stacking context and lift title and countdown over the
+  // full-height drawer with it.
+  it('leaves the header out of the stacking order, so only the toggle rides above the drawer', () => {
     const header = mount(App, { global: { stubs } }).get('header')
-    expect(header.classes()).toEqual(expect.arrayContaining(['relative', 'z-30']))
+    expect(header.classes().some((c) => c.startsWith('z-'))).toBe(false)
+  })
+
+  // On a wide screen title and avatar would drift to the far edges; both stop at 6xl (1152px),
+  // Tailwind's nearest step to ~1100px, and centre.
+  it('caps header and footer at 6xl and centres them', () => {
+    const w = mount(App, { global: { stubs } })
+    for (const el of [w.get('header'), w.get('footer')])
+      expect(el.classes()).toEqual(expect.arrayContaining(['mx-auto', 'w-full', 'max-w-6xl']))
+  })
+
+  // From md the menu is a dialog enclosing the avatar by 8px; 12px of top padding left it 1px
+  // short of the viewport's edge, 24px leaves it a margin.
+  it('gives the header more room above from md, for the menu dialog', () => {
+    expect(mount(App, { global: { stubs } }).get('header').classes()).toEqual(
+      expect.arrayContaining(['py-3', 'md:pt-6']),
+    )
   })
 
   // Header and footer write straight onto the page: a band of their own clashed with the
