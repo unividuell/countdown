@@ -39,7 +39,8 @@
   --color-surface-container-high: light-dark(#ffffff, var(--color-stone-600));
   --color-surface-container: light-dark(var(--color-neutral-100), #2a2826);
   --color-surface-container-highest: light-dark(var(--color-neutral-200), #3a3734);
-  --color-outline: light-dark(var(--color-neutral-300), var(--color-stone-700));
+  /* Lines as faint on the dark page as on the light one (1.35:1); stone-700 was the page itself. */
+  --color-outline: light-dark(var(--color-neutral-300), var(--color-stone-600));
 
   --color-inverse-surface: light-dark(#0d0d0d, #f7f5f1);
   --color-inverse-on-surface: light-dark(var(--color-neutral-50), #0d0d0d);
@@ -72,7 +73,7 @@
 
 /* The roles re-tuned for content on surface-container-high. In the dark it is mid-grey, where
    the page's secondary text, error and outline drop below what they must reach (2.95:1, 2.6:1,
-   1.35:1); here they are lifted to 5.2:1, 5.3:1 and a visible line. Wells sink one step
+   1:1); here they are lifted to 5.2:1, 5.3:1 and a visible line. Wells sink one step
    (stone-700) and the selection sits at the menu's own tone. Light values are the page's own. */
 @utility raised {
   --color-on-surface-variant: light-dark(var(--color-neutral-600), var(--color-neutral-300));
