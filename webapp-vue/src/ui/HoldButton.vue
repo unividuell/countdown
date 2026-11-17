@@ -335,7 +335,7 @@ const popStyle = computed(() => ({
       class="absolute inset-0 cursor-pointer touch-none select-none disabled:cursor-not-allowed"
       :class="{
         'rounded-full': props.shape === 'round',
-        'shadow-inner ring-1 ring-black/10': props.color !== undefined,
+        'shadow-inner ring-1 ring-on-surface': props.color !== undefined,
       }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"

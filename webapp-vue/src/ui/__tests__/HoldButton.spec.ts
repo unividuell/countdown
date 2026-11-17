@@ -372,6 +372,14 @@ describe('HoldButton', () => {
     expect(w.emitted('confirm')).toHaveLength(1)
   })
 
+  // A dark fill on a dark card, or a light one on a light card, would lose its edge: the contour
+  // takes the ink opposite the mode, as the colour wheel's outline does.
+  it('outlines a filled button in the ink opposite the mode', () => {
+    const button = mountButton().get('[data-test="hold-button"]')
+
+    expect(button.classes()).toEqual(expect.arrayContaining(['ring-1', 'ring-on-surface']))
+  })
+
   it('paints nothing of its own without a colour — no fill, no shadow, no contour', () => {
     const w = mount(HoldButton, {
       props: { ready: true, disabled: false, label: 'Tipp bestätigen' },
