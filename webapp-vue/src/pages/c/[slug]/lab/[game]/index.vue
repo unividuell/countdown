@@ -170,6 +170,8 @@ async function guess(value: unknown): Promise<void> {
   if (current === null) return
   holdRoster = true
   await run((slug, game, s, p) => submitLabGuess(slug, game, s, p, value))
+  // A failed guess brings no round, so the watcher never clears the hold for it.
+  holdRoster = false
 }
 
 /**

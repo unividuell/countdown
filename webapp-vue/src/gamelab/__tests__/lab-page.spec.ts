@@ -280,6 +280,22 @@ describe('lab page', () => {
     })
   })
 
+  // A failed guess brings no round, so nothing may be left waiting for one.
+  it('shows the next round at once after a failed guess', async () => {
+    const w = await mountPage()
+    const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+    vi.mocked(api.submitLabGuess).mockRejectedValueOnce(new ApiError(409, 'conflict'))
+    vi.mocked(api.resetLabRound).mockResolvedValueOnce({ ...round, me } as never)
+
+    vi.useFakeTimers()
+    await w.get('[data-test="stub-guess"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+    await tool('lab-reset').trigger('click')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(w.getComponent(MemberRow).props('members')[0]!.points.live?.points).toBe(1)
+  })
+
   it('submits a guess from the game', async () => {
     const w = await mountPage()
     await w.get('[data-test="stub-guess"]').trigger('click')
