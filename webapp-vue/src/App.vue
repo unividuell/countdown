@@ -25,6 +25,8 @@ const yearSuffix = computed(() => {
   return ` '${String(year).slice(-2)}`
 })
 
+const thisYear = DateTime.now().year
+
 const hasCountdown = computed(() => Boolean(activeCommunity.value?.targetAt))
 
 // From md the board shares row 1, and the row is then as tall as the board plus its legend (52px).
@@ -105,8 +107,11 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:se
     <main class="flex-1 p-4">
       <RouterView />
     </main>
-    <footer class="mx-auto w-full max-w-6xl px-4 py-3 text-sm text-on-surface-variant">
-      countdown.unividuell.org
+    <footer
+      class="mx-auto flex w-full max-w-6xl flex-col items-end px-4 pt-8 pb-4 text-xs text-on-surface-variant"
+    >
+      <RouterLink to="/legal" class="hover:underline">Rechtliches</RouterLink>
+      <p>© 2024 – {{ thisYear }} unividuell.org</p>
     </footer>
   </div>
 </template>

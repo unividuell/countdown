@@ -153,6 +153,16 @@ describe('App main header', () => {
     )
   })
 
+  // The footer carries the legal link (moved out of the menu) and the copyright, both
+  // right-aligned; the bare domain line is gone.
+  it('carries the legal link and the copyright in the footer, right-aligned', () => {
+    const footer = mount(App, { global: { stubs } }).get('footer')
+    expect(footer.classes()).toEqual(expect.arrayContaining(['flex', 'flex-col', 'items-end']))
+    expect(footer.get('a[href="/legal"]').text()).toBe('Rechtliches')
+    expect(footer.text()).toContain(`© 2024 – ${new Date().getFullYear()} unividuell.org`)
+    expect(footer.text()).not.toContain('countdown.unividuell.org')
+  })
+
   // Header and footer write straight onto the page: a band of their own clashed with the
   // scrollbar gutter beside it.
   it('gives header and footer no surface of their own', () => {

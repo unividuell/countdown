@@ -55,6 +55,7 @@ const viewer: MeResponse = {
 // render() so each test starts from its own value; setToggleBottom() then lets a test change it
 // after mount, to drive a re-measure.
 let toggleBottom = ref(0)
+let scrimRight = ref(0)
 
 function setToggleBottom(value: number): void {
   toggleBottom.value = value
@@ -92,6 +93,7 @@ function setViewportWidth(width: number): void {
 
 function render(user: MeResponse = viewer, initialToggleBottom = 0) {
   toggleBottom = ref(initialToggleBottom)
+  scrimRight = ref(document.documentElement.clientWidth)
   const host = document.createElement('header')
   document.body.appendChild(host)
   hosts.push(host)
@@ -100,9 +102,12 @@ function render(user: MeResponse = viewer, initialToggleBottom = 0) {
     attachTo: host,
     global: { stubs: { teleport: true } },
   })
-  // A 40px toggle, its right edge 16px inside the viewport — where the header puts it.
+  // A 40px toggle, its right edge 16px inside the viewport — where the header puts it. The scrim
+  // (fixed, inset 0) spans the viewport; scrimRight lets a test move its edge off clientWidth.
+  w.get('[data-test=nav-scrim]').element.getBoundingClientRect = () =>
+    ({ right: scrimRight.value }) as DOMRect
   w.get('[data-test=nav-toggle]').element.getBoundingClientRect = () => {
-    const right = document.documentElement.clientWidth - 16
+    const right = scrimRight.value - 16
     return {
       top: toggleBottom.value - 40,
       bottom: toggleBottom.value,
@@ -551,6 +556,17 @@ describe('NavDrawer mechanics', () => {
       expect(dialog.attributes('inert')).toBeUndefined()
     })
 
+    // Regression: with a classic scrollbar, locking the page keeps the gutter reserved yet makes
+    // clientWidth report it as content (1025 → 1040 at a 1040px window). A re-measure while open
+    // then set `right` 15px too large and left the avatar sticking out. The scrim is fixed and
+    // inset 0, so its box is the frame `right` is measured from, lock or not.
+    it('measures its right edge against the scrim, not clientWidth', async () => {
+      const w = render(viewer, 52)
+      scrimRight.value = document.documentElement.clientWidth - 15
+      await w.get('[data-test=nav-toggle]').trigger('click')
+      expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('right: 8px')
+    })
+
     it('names the viewer on the toggle row', async () => {
       const w = render(viewer, 52)
       await w.get('[data-test=nav-toggle]').trigger('click')
@@ -870,6 +886,11 @@ describe('NavDrawer content', () => {
     const w = await opened()
     expect(w.find('[data-test=nav-mark]').exists()).toBe(true)
     expect(w.get('[data-test=nav-foot]').text()).toContain('Abmelden')
+  })
+
+  // The legal page is linked from the page footer, not from the menu.
+  it('leaves the legal link to the page footer', () => {
+    expect(render().find('[data-test=legal]').exists()).toBe(false)
   })
 
   it('offers the colour scheme switch in the foot', async () => {

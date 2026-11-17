@@ -47,6 +47,7 @@ const toggleBox = ref({ top: 0, bottom: 0, left: 0, right: 0, viewportRight: 0 }
 const trigger = useTemplateRef<HTMLButtonElement>('trigger')
 const drawer = useTemplateRef<HTMLElement>('drawer')
 const spinner = useTemplateRef<HTMLElement>('spinner')
+const scrim = useTemplateRef<HTMLElement>('scrim')
 const route = useRoute()
 const router = useRouter()
 const { logout } = useAuth()
@@ -262,8 +263,12 @@ onUnmounted(() => {
 /**
  * The toggle stays above the open frame, which is laid out round it. Read at open time, because
  * the header scrolls away with the page; the scroll lock keeps the value from going stale while
- * the frame is up. Fixed boxes are placed against the viewport without its scrollbar, hence
- * `clientWidth`.
+ * the frame is up.
+ *
+ * The right edge is the scrim's: it is fixed and inset 0, so its box is exactly the frame a fixed
+ * `right` counts from. Not `clientWidth`: with a classic scrollbar the lock keeps the gutter
+ * reserved yet `clientWidth` then counts it as content, so a re-measure while open (a resize) put
+ * the dialog 15px too far left.
  */
 function measureToggle(): void {
   const r = trigger.value?.getBoundingClientRect()
@@ -272,7 +277,7 @@ function measureToggle(): void {
     bottom: r?.bottom ?? 0,
     left: r?.left ?? 0,
     right: r?.right ?? 0,
-    viewportRight: document.documentElement.clientWidth,
+    viewportRight: scrim.value?.getBoundingClientRect().right ?? 0,
   }
 }
 
@@ -406,6 +411,7 @@ onKeyStroke('Tab', (e) => {
 
   <Teleport to="body">
     <div
+      ref="scrim"
       data-test="nav-scrim"
       aria-hidden="true"
       class="fixed inset-0 z-10 bg-scrim/45 transition-opacity duration-300 ease-[cubic-bezier(.4,0,.2,1)] motion-reduce:duration-150"
@@ -576,9 +582,6 @@ onKeyStroke('Tab', (e) => {
         <button type="button" data-test="logout" :class="LINK" @click="handleLogout">
           Abmelden
         </button>
-        <RouterLink to="/legal" data-test="legal" :class="`${LINK} text-on-surface-variant`">
-          Rechtliches
-        </RouterLink>
         <p v-if="logoutFailed" data-test="logout-error" class="px-5 py-1 text-xs text-error">
           Abmelden fehlgeschlagen
         </p>

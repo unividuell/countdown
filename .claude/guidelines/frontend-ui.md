@@ -21,6 +21,10 @@ desktop layout that was written first).
   `z-10` cover sat above the members' fly-in (z ≥ 1, in the page's stacking context) until the
   card was isolated. Raising the page's elements instead escalates — it lifts them over the
   drawer's backdrop too.
+- **Place a fixed box against a fixed `inset-0` box, never against `clientWidth`.** With a classic
+  scrollbar the scroll lock keeps the gutter (`scrollbar-gutter: stable`) yet `clientWidth` then
+  counts it as content: measured while locked, `NavDrawer`'s dialog sat 15px off its toggle. Its
+  scrim's box is the frame a fixed `right` counts from, lock or not.
 - **Only the element that must ride above an overlay gets the `z-index`, not its container.** A
   z-index makes the container a stacking context and lifts all of it: the header's `z-30` would
   put title and countdown over the full-height drawer. `NavDrawer`'s toggle carries `relative
