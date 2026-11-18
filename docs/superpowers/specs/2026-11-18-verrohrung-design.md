@@ -42,10 +42,10 @@ Entstanden aus einem Spike (2026-11-18). Was er gezeigt hat und was daraus folgt
 - **Kein Brett ohne Rand.** Ein Umlauf (rechts hinaus, links herein) nähme den Ecken den Halt, schoss
   aber über das Ziel hinaus.
 - **8×8 ist am Handy spielbar**, wenn das Brett kartenbreit liegt (siehe *Brett*).
-- **Genau eine Lösung, geprüft.** Ergibt sich jede Kachel allein aus den örtlichen Regeln, ist die Lösung
-  bewiesen eindeutig. Das galt für alle 6000 gemessenen Bretter (je 2000 in 6×6, 7×7, 8×8); der
-  Generator verwirft trotzdem jedes, bei dem es nicht gilt. So sieht die „Lösung“ der Auflösung nie anders
-  aus als das Brett eines Spielers, der richtig lag. Die Wertung nimmt weiter jede gültige Stellung.
+- **Genau eine Lösung, bewiesen.** Jedes Brett hat höchstens eine Stellung ohne Leck (siehe *Warum es
+  genau eine Lösung gibt*), also keine Prüfung im Generator. So sieht die „Lösung“ der Auflösung nie
+  anders aus als das Brett eines Spielers, der richtig lag — bis auf gerade Rohre, die um 180° gedreht
+  gleich aussehen.
 - **Ton.** Klacken beim Drehen, Rauschen, solange das Wasser läuft, danach Spritzer, Strahl oder Schlag —
   echte Aufnahmen, per Gehör im Spike gewählt. Ein Gurgeln als Erfolg passte nicht: das Wasser bleibt in
   den Rohren, es fließt nicht ab.
@@ -166,15 +166,22 @@ ein. **Verfügbar** ist das Spiel immer (`isAvailable` bleibt `true`).
 4. **Arten und Lösung:** jede Zelle öffnet zu Vorgänger und Nachfolger; gegenüberliegend → `STRAIGHT`,
    übers Eck → `ELBOW`, erste Zelle `INLET`, letzte `OUTLET`. `solution` ist die Stellung, die genau diese
    Öffnungen ergibt.
-5. **Eindeutig?** Jede Zelle beginnt mit allen sichtbar verschiedenen Stellungen ihrer Art. Wiederholt
-   streichen, was eine örtliche Regel bricht — eine Öffnung über den Rand, oder eine geteilte Kante, auf
-   der kein Nachbar-Kandidat dieselbe Antwort (offen/zu) gibt —, bis sich nichts mehr ändert. Bleibt eine
-   Zelle mit mehr als einer Stellung, von vorn ab Schritt 1. Unter 1 ms.
-6. **Start** würfeln (siehe oben); wäre das Brett damit gelöst, neu würfeln.
+5. **Start** würfeln (siehe oben); wäre das Brett damit gelöst, neu würfeln.
 
-Im Spike erreichte Schritt 2 sein Ziel immer, in unter 1 ms pro Brett, und Schritt 5 verwarf in 6000
-Brettern keins. Obergrenzen für Schritt 2 und für die Neuanfänge gehören trotzdem hinein; ihr Wert ist
-dem Bauenden überlassen.
+Im Spike erreichte Schritt 2 sein Ziel immer, in unter 1 ms pro Brett. Eine Obergrenze für Schritt 2
+(dann von vorn ab Schritt 1) gehört trotzdem hinein; ihr Wert ist dem Bauenden überlassen.
+
+### Warum es genau eine Lösung gibt
+
+Eine richtige Stellung hat kein Leck: jede Öffnung trifft eine Öffnung, keine zeigt über den Rand. Hätte
+ein Brett zwei solche Stellungen, bildeten die Kanten, an denen sie sich unterscheiden, geschlossene
+Linien — jede Zelle hätte 0, 2 oder 4 davon. Ein gerades Rohr unterscheidet sich zwischen zwei Stellungen
+an allen vier Kanten, ein Bogen an vier oder an zwei *gegenüberliegenden*; nur ein Endstück kann sich an
+zwei *benachbarten* Kanten unterscheiden. Jede geschlossene Linie im Raster biegt aber in mindestens
+vier Zellen ums Eck — oben links, oben rechts, unten links, unten rechts —, und dort sind die beiden
+Kanten benachbart. Dafür bräuchte es vier Endstücke; ein Brett hat zwei. Also gibt es höchstens eine
+Stellung ohne Leck. (Bestätigt durch Aufzählen aller Bretter mit 3×3 und 4×4 Feldern und in 6000
+gezogenen Brettern.)
 
 ### Der Wasserlauf
 
@@ -369,9 +376,7 @@ Fließtempo, Takte, Lautstärken.
   0,67 · 1,0); `timed` aus der Phase.
 - **Generator** (über viele Seeds und alle Größen): `path` besucht jede Zelle genau einmal, Nachbarn
   folgen aufeinander; genau ein `INLET` am Anfang und ein `OUTLET` am Ende, beide Randfelder, Abstand ≥ 3;
-  `kinds` passen zum Weg; mit `solution` gelegt ist das Brett gelöst; mit `start` nicht; die
-  Eindeutigkeitsprüfung bestimmt jede Zelle.
-- **Eindeutigkeitsprüfung:** ein Brett, auf dem eine Stelle zwei Stellungen zulässt, wird erkannt.
+  `kinds` passen zum Weg; mit `solution` gelegt ist das Brett gelöst; mit `start` nicht.
 - **Öffnungen:** jede Art in jeder Stellung gegen die Tabelle unter *Die Regeln*.
 - **Wasserlauf:** gelöstes Brett → angekommen, alle nass; Lauf über den Rand → Leck mit `at = null`; in
   eine Kachel ohne Öffnung zurück → Leck mit `at`; angekommen, aber Zellen trocken →
@@ -414,9 +419,7 @@ Fließtempo, Takte, Lautstärken.
 
 ## Dem Bauenden überlassen
 
-- Die Obergrenzen für Schritt 2 und die Neuanfänge des Generators.
-- Wie das Testbrett mit zwei möglichen Stellungen für die Eindeutigkeitsprüfung entsteht (von Hand oder
-  durch Suche über kleine Bretter).
+- Die Obergrenze für Schritt 2 des Generators.
 - Wo der Stummschalter in der Auflösung sitzt, solange er da ist.
 - Wie die PNGs aus dem Zeichencode des Spikes entstehen (etwa eine Wegwerf-Seite mit `canvas.toBlob`).
 - Ob das Raster den Wechsel vom Brett zur Auflösung überlebt oder neu entsteht — solange es nicht springt.
