@@ -8,7 +8,7 @@
  *
  * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
  */
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import SoundToggle from '@/ui/SoundToggle.vue'
 import { useGameSound } from '@/ui/useGameSound'
@@ -17,10 +17,10 @@ import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
 import type { ShownBoard } from './reveal'
 import type { ScoreRow } from './scoreboard'
-import { playSound, startFlow } from './sounds'
+import { playSound, preloadSounds, startFlow } from './sounds'
 import type { Playing } from './sounds'
 import TurnPipesScoreboard from './TurnPipesScoreboard.vue'
-import { turnTo } from './turns'
+import { TURN_MS, turnTo } from './turns'
 import type { Leak, TurnPipesOutcome, TurnPipesPayload, TurnPipesSolution } from './types'
 import { useWaterRun } from './water'
 
@@ -37,8 +37,6 @@ const props = defineProps<{
   animate: boolean
 }>()
 
-/** Matches the grid's pipe transition. */
-const TURN_MS = 150
 /** How far a flow fades out when the water ends. */
 const FLOW_FADE_S = 0.3
 
@@ -117,6 +115,16 @@ function present(board: ShownBoard | null): void {
   }, TURN_MS)
 }
 
+// The board may never have mounted (reload, history, onlooker): decode here, once per page.
+onMounted(preloadSounds)
+
+// Muting silences the water that is already running, not only the next run.
+watch(sound, (on) => {
+  if (on) return
+  flow?.stop(0)
+  flow = undefined
+})
+
 const still = isStill(props.animate)
 
 if (still && shown.value) showEnd(shown.value)
@@ -134,14 +142,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div data-test="turn-pipes-reveal" class="flex flex-col gap-6">
-    <PipeGrid
-      :size="props.payload.size"
-      :kinds="props.payload.kinds"
-      :turns="turns"
-      :wet="water.wet.value"
-      :leak-cell="leakCell"
-      :interactive="false"
-    />
+    <!-- Card-wide like the board's, so the grid stays put at submit. No `w-full`: it would
+         cancel the bleed. -->
+    <div class="-mx-4 -mt-4">
+      <PipeGrid
+        :size="props.payload.size"
+        :kinds="props.payload.kinds"
+        :turns="turns"
+        :wet="water.wet.value"
+        :leak-cell="leakCell"
+        :interactive="false"
+      />
+    </div>
 
     <div class="-mb-3 flex justify-end">
       <SoundToggle

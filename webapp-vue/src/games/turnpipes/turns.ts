@@ -1,5 +1,8 @@
 import type { PipeKindCode } from './types'
 
+/** How long a pipe takes to turn a quarter; the grid animates it, the reveal waits it. */
+export const TURN_MS = 150
+
 /**
  * A tile only ever turns clockwise, so its turn count grows without bound: the animation keeps
  * spinning the same way instead of unwinding. `rotationOf` folds it back to the 0..3 the server

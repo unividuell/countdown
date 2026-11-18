@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PipeGrid from '@/games/turnpipes/PipeGrid.vue'
 import { PLATE_URL, tileUrl } from '@/games/turnpipes/tiles'
+import { TURN_MS } from '@/games/turnpipes/turns'
 import type { PipeKindCode } from '@/games/turnpipes/types'
 
 function kindsOf(size: number): PipeKindCode[] {
@@ -62,6 +63,17 @@ describe('PipeGrid', () => {
     expect(pipe(3).attributes('src')).toBe(tileUrl('STRAIGHT', false))
     expect(wrapper.findAll('[data-test="pipe-leak"]')).toHaveLength(1)
     expect(wrapper.findAll('button')[4]!.find('[data-test="pipe-leak"]').exists()).toBe(true)
+  })
+
+  it('only an interactive grid takes focus', () => {
+    expect(mountGrid().attributes('inert')).toBeUndefined()
+    expect(mountGrid({ interactive: false }).attributes('inert')).toBe('')
+  })
+
+  it('the pipes turn for exactly TURN_MS', () => {
+    const pipe = mountGrid().findAll('button')[0]!.findAll('img')[1]!
+
+    expect(pipe.attributes('style')).toContain(`transition-duration: ${TURN_MS}ms`)
   })
 
   it('sealed shows plates only', () => {

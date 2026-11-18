@@ -42,6 +42,14 @@ const turnsOf = (w: Board) => w.getComponent(PipeGrid).props('turns') as number[
 const tile = (w: Board, cell: number) => w.findAll('button[aria-label^="Kachel"]')[cell]!
 
 describe('TurnPipesBoard', () => {
+  it('the grid bleeds card-wide, without w-full on the bleeding box', () => {
+    const box = mountBoard().getComponent(PipeGrid).element.closest('.-mx-4')!
+
+    expect(box).not.toBeNull()
+    expect(box.classList).toContain('-mt-4')
+    expect(box.classList).not.toContain('w-full')
+  })
+
   beforeEach(() => {
     localStorage.clear()
     vi.mocked(playSound).mockClear()

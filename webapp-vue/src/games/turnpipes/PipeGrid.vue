@@ -5,6 +5,7 @@
  */
 import { prefersReducedMotion } from '@/ui/motion'
 import { PLATE_URL, tileUrl } from './tiles'
+import { TURN_MS } from './turns'
 import type { PipeKindCode } from './types'
 
 const props = defineProps<{
@@ -33,6 +34,7 @@ function tap(cell: number): void {
     data-test="pipe-grid"
     class="mx-auto grid w-full max-w-[28rem] touch-manipulation select-none"
     :style="{ gridTemplateColumns: `repeat(${props.size}, 1fr)` }"
+    :inert="!props.interactive || undefined"
   >
     <button
       v-for="cell in props.size * props.size"
@@ -55,8 +57,11 @@ function tap(cell: number): void {
         alt=""
         draggable="false"
         class="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
-        :class="still ? '' : 'transition-transform duration-150 ease-out'"
-        :style="{ transform: `rotate(${(props.turns[cell - 1] ?? 0) * 90}deg)` }"
+        :class="still ? '' : 'transition-transform ease-out'"
+        :style="{
+          transform: `rotate(${(props.turns[cell - 1] ?? 0) * 90}deg)`,
+          transitionDuration: `${TURN_MS}ms`,
+        }"
       />
       <span
         v-if="props.leakCell === cell - 1"

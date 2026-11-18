@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import PipeGrid from '../PipeGrid.vue'
-import { playSound, startFlow } from '../sounds'
+import { playSound, preloadSounds, startFlow } from '../sounds'
 import TurnPipesReveal from '../TurnPipesReveal.vue'
 import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
@@ -93,6 +93,7 @@ describe('TurnPipesReveal', () => {
     localStorage.clear()
     vi.mocked(playSound).mockClear()
     vi.mocked(startFlow).mockClear()
+    vi.mocked(preloadSounds).mockClear()
     stopFlow.mockClear()
   })
 
@@ -155,6 +156,17 @@ describe('TurnPipesReveal', () => {
       expect(playSound).not.toHaveBeenCalled()
     })
 
+    it('muting stops the running water at once', async () => {
+      const wrapper = mountReveal({ animate: true })
+      await advance(SOLUTION_DELAY_MS + 100 + 150)
+      expect(startFlow).toHaveBeenCalledOnce()
+      expect(stopFlow).not.toHaveBeenCalled()
+
+      await wrapper.get('[aria-label="Ton"]').trigger('click')
+
+      expect(stopFlow).toHaveBeenCalledExactlyOnceWith(0)
+    })
+
     it('leaves no timer behind when it unmounts', () => {
       const wrapper = mountReveal({ animate: true })
       vi.advanceTimersByTime(SOLUTION_DELAY_MS + 100 + 150 + WATER_STEP_MS)
@@ -174,6 +186,20 @@ describe('TurnPipesReveal', () => {
     expect(playSound).not.toHaveBeenCalled()
   })
 
+  it('decodes its sounds itself — the board may not have mounted first', () => {
+    mountReveal()
+
+    expect(preloadSounds).toHaveBeenCalledOnce()
+  })
+
+  it('the grid bleeds card-wide like the board, without w-full on the bleeding box', () => {
+    const box = grid(mountReveal()).element.parentElement!
+
+    expect(box.classList).toContain('-mx-4')
+    expect(box.classList).toContain('-mt-4')
+    expect(box.classList).not.toContain('w-full')
+  })
+
   it('draws the grid inert', () => {
     expect(grid(mountReveal()).props('interactive')).toBe(false)
   })
@@ -187,11 +213,13 @@ describe('TurnPipesReveal', () => {
     await wrapper.get('[data-test="select-them"]').trigger('click')
     expect(wet(wrapper)).toEqual([])
     await advance(150 + WATER_STEP_MS)
+    expect(startFlow).toHaveBeenCalledOnce()
     expect(rotationsOf(wrapper)[5]).toBe(3)
     expect(wet(wrapper)).toEqual([0])
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
     await advance(150 + 3 * WATER_STEP_MS)
+    expect(startFlow).toHaveBeenCalledTimes(2)
     expect(rotationsOf(wrapper)[5]).toBe(1)
     expect(wet(wrapper)).toEqual([0, 1, 2])
     expect(grid(wrapper).props('leakCell')).toBeNull()
