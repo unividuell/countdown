@@ -5,17 +5,16 @@
  *
  * The build is saved as a draft after every change; undo, the chosen slot and the cameras are not.
  */
-import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, shallowReactive, shallowRef, watch } from 'vue'
 import IconUndo from '~icons/lucide/undo-2'
-import IconVolume from '~icons/lucide/volume-2'
-import IconMuted from '~icons/lucide/volume-x'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
+import SoundToggle from '@/ui/SoundToggle.vue'
 import { useSurfaceContainer } from '@/ui/surfaceTone'
+import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
@@ -76,7 +75,7 @@ const build = shallowRef<GuessBlock[]>([])
 const history = shallowReactive<GuessBlock[][]>([])
 const picked = ref<Slot | null>(null)
 const slot = computed<Slot>(() => picked.value ?? props.payload?.types[0] ?? PICKAXE)
-const sound = useLocalStorage('copy-blocks:sound', true)
+const sound = useGameSound()
 const canSubmit = computed(() => playable.value && build.value.length > 0)
 
 const storage = deviceStorage()
@@ -213,16 +212,7 @@ function submit(): void {
               >
                 <IconUndo class="size-5" aria-hidden="true" />
               </button>
-              <button
-                type="button"
-                aria-label="Ton"
-                :aria-pressed="sound"
-                :class="TOOL_BUTTON"
-                @click="sound = !sound"
-              >
-                <IconVolume v-if="sound" class="size-5" aria-hidden="true" />
-                <IconMuted v-else class="size-5" aria-hidden="true" />
-              </button>
+              <SoundToggle :class="TOOL_BUTTON" />
             </div>
 
             <!-- Minecraft-style hotbar over the foot of the field. It never scrolls: on a narrow
