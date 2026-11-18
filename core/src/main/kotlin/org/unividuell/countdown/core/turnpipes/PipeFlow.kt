@@ -14,7 +14,7 @@ object PipeFlow {
      */
     fun trace(size: Int, kinds: List<PipeKind>, rotations: List<Int>): Flow {
         var cell = kinds.indexOf(PipeKind.INLET)
-        var direction = Integer.numberOfTrailingZeros(Pipes.openings(kinds[cell], rotations[cell]))
+        var direction = Integer.numberOfTrailingZeros(Pipes.openings(kind = kinds[cell], rotation = rotations[cell]))
         val wet = mutableListOf(cell)
 
         // A path never revisits a cell, so size² steps bound it even on a malformed board.
@@ -23,7 +23,7 @@ object PipeFlow {
                 ?: return Flow(wet = wet, reached = false, leak = Leak(at = null, from = cell))
 
             val back = Pipes.opposite(direction)
-            val openings = Pipes.openings(kinds[next], rotations[next])
+            val openings = Pipes.openings(kind = kinds[next], rotation = rotations[next])
 
             if (openings and (1 shl back) == 0) {
                 return Flow(wet = wet, reached = false, leak = Leak(at = next, from = cell))

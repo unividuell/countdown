@@ -85,6 +85,21 @@ class TurnPipesGameTypeTest {
     }
 
     @Test
+    fun `a leak off the board keeps its at key as null`() {
+        val params = draw()
+        val leak = params.kinds.indexOf(PipeKind.INLET).let { inlet ->
+            // Every rotation of the inlet at a border cell: one of them points off the board.
+            (0..3).map { rotation ->
+                val rotations = params.start.toMutableList().also { it[inlet] = rotation }
+                tree(game.judge(params = params, guess = guessOf(rotations)).outcome).get("leak")
+            }
+        }.firstOrNull { it.has("at") && it.get("at").isNull }
+
+        leak.shouldNotBeNull()
+        leak.propertyNames().toSet() shouldBe setOf("at", "from")
+    }
+
+    @Test
     fun `the solution is a hit, and so is a straight turned half way`() {
         val params = draw()
         val turned = params.solution.mapIndexed { cell, rotation ->

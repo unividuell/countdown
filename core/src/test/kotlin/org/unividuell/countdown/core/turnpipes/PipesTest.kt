@@ -28,6 +28,22 @@ class PipesTest {
     }
 
     @Test
+    fun `every kind in every rotation matches the table`() {
+        val table = mapOf(
+            STRAIGHT to listOf(0b0101, 0b1010, 0b0101, 0b1010),
+            ELBOW to listOf(0b0011, 0b0110, 0b1100, 0b1001),
+            INLET to listOf(0b0001, 0b0010, 0b0100, 0b1000),
+            OUTLET to listOf(0b0001, 0b0010, 0b0100, 0b1000),
+        )
+
+        table.forEach { (kind, masks) ->
+            masks.forEachIndexed { rotation, mask ->
+                Pipes.openings(kind = kind, rotation = rotation) shouldBe mask
+            }
+        }
+    }
+
+    @Test
     fun `neighbours stop at the border`() {
         Pipes.neighbour(size = 3, cell = 0, direction = Pipes.NORTH) shouldBe null
         Pipes.neighbour(size = 3, cell = 0, direction = Pipes.WEST) shouldBe null
