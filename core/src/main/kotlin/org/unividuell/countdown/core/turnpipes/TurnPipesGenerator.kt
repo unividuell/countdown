@@ -34,8 +34,8 @@ object TurnPipesGenerator {
         val solution = MutableList(size * size) { 0 }
 
         path.forEachIndexed { i, cell ->
-            val back = if (i > 0) 1 shl directionBetween(size, cell, path[i - 1]) else 0
-            val ahead = if (i < path.lastIndex) 1 shl directionBetween(size, cell, path[i + 1]) else 0
+            val back = if (i > 0) 1 shl directionBetween(size = size, from = cell, to = path[i - 1]) else 0
+            val ahead = if (i < path.lastIndex) 1 shl directionBetween(size = size, from = cell, to = path[i + 1]) else 0
             val mask = back or ahead
 
             val kind = when {
@@ -46,7 +46,7 @@ object TurnPipesGenerator {
             }
 
             kinds[cell] = kind
-            solution[cell] = (0..3).first { Pipes.openings(kind, it) == mask }
+            solution[cell] = (0..3).first { Pipes.openings(kind = kind, rotation = it) == mask }
         }
 
         return PipeBoard(size = size, kinds = kinds, solution = solution, path = path)

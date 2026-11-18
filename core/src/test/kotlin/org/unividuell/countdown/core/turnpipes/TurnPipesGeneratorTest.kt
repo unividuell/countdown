@@ -46,9 +46,9 @@ class TurnPipesGeneratorTest {
             board.kinds.count { it == INLET } shouldBe 1
             board.kinds.count { it == OUTLET } shouldBe 1
 
-            onBorder(size, board.path.first()) shouldBe true
-            onBorder(size, board.path.last()) shouldBe true
-            distance(size, board.path.first(), board.path.last()) shouldBeGreaterThanOrEqual
+            onBorder(size = size, cell = board.path.first()) shouldBe true
+            onBorder(size = size, cell = board.path.last()) shouldBe true
+            distance(size = size, a = board.path.first(), b = board.path.last()) shouldBeGreaterThanOrEqual
                 TurnPipesGenerator.MIN_END_DISTANCE
         }
     }
