@@ -202,6 +202,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
   one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
   and no source is simply louder because of how it was made.
+- **One sound switch for all games:** `useGameSound()` and `SoundToggle` from `ui/`; no game stores it itself.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
