@@ -7,7 +7,7 @@ import { playSound, preloadSounds, startFlow } from '../sounds'
 import TurnPipesReveal from '../TurnPipesReveal.vue'
 import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
-import { WATER_STEP_MS } from '../water'
+import { waterStepMs } from '../water'
 
 const stopFlow = vi.fn()
 
@@ -20,6 +20,9 @@ vi.mock('../sounds', () => ({
 }))
 
 const SIZE = 6
+const STEP = waterStepMs(SIZE)
+/** useRevealArming's two animation frames, with room to spare but less than a step past them. */
+const ARMED_MS = 40
 const KINDS: PipeKindCode[] = Array.from({ length: SIZE * SIZE }, () => 'ELBOW')
 KINDS[0] = 'INLET'
 KINDS[1] = 'OUTLET'
@@ -122,25 +125,25 @@ describe('TurnPipesReveal', () => {
       expect(wet(wrapper)).toEqual([])
       expect(grid(wrapper).props('leakCell')).toBeNull()
 
-      await advance(SOLUTION_DELAY_MS + 100)
+      await advance(SOLUTION_DELAY_MS + ARMED_MS)
       expect(wet(wrapper)).toEqual([])
 
-      await advance(150 + WATER_STEP_MS)
+      await advance(150 + STEP)
       expect(wet(wrapper)).toEqual([0])
       expect(grid(wrapper).props('leakCell')).toBeNull()
 
-      await advance(WATER_STEP_MS)
+      await advance(STEP)
       expect(wet(wrapper)).toEqual([0, 1])
       expect(grid(wrapper).props('leakCell')).toBe(7)
     })
 
     it('the run sounds: flow while it runs, then the end sound', async () => {
       mountReveal({ animate: true })
-      await advance(SOLUTION_DELAY_MS + 100 + 150)
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150)
       expect(startFlow).toHaveBeenCalledOnce()
       expect(playSound).not.toHaveBeenCalled()
 
-      await advance(2 * WATER_STEP_MS)
+      await advance(2 * STEP)
 
       expect(stopFlow).toHaveBeenCalledWith(0.3)
       expect(playSound).toHaveBeenCalledExactlyOnceWith('leak')
@@ -158,7 +161,7 @@ describe('TurnPipesReveal', () => {
 
     it('muting stops the running water at once', async () => {
       const wrapper = mountReveal({ animate: true })
-      await advance(SOLUTION_DELAY_MS + 100 + 150)
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150)
       expect(startFlow).toHaveBeenCalledOnce()
       expect(stopFlow).not.toHaveBeenCalled()
 
@@ -169,7 +172,7 @@ describe('TurnPipesReveal', () => {
 
     it('leaves no timer behind when it unmounts', () => {
       const wrapper = mountReveal({ animate: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 100 + 150 + WATER_STEP_MS)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS + ARMED_MS + 150 + STEP)
 
       wrapper.unmount()
 
@@ -212,13 +215,13 @@ describe('TurnPipesReveal', () => {
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
     expect(wet(wrapper)).toEqual([])
-    await advance(150 + WATER_STEP_MS)
+    await advance(150 + STEP)
     expect(startFlow).toHaveBeenCalledOnce()
     expect(rotationsOf(wrapper)[5]).toBe(3)
     expect(wet(wrapper)).toEqual([0])
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
-    await advance(150 + 3 * WATER_STEP_MS)
+    await advance(150 + 3 * STEP)
     expect(startFlow).toHaveBeenCalledTimes(2)
     expect(rotationsOf(wrapper)[5]).toBe(1)
     expect(wet(wrapper)).toEqual([0, 1, 2])
@@ -233,7 +236,7 @@ describe('TurnPipesReveal', () => {
     })
 
     await wrapper.get('[data-test="select-them"]').trigger('click')
-    await advance(150 + 3 * WATER_STEP_MS)
+    await advance(150 + 3 * STEP)
 
     expect(rotationsOf(wrapper)[5]).toBe(1)
     expect(wet(wrapper)).toEqual([0, 1, 2])

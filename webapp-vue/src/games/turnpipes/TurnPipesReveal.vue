@@ -22,7 +22,7 @@ import type { Playing } from './sounds'
 import TurnPipesScoreboard from './TurnPipesScoreboard.vue'
 import { TURN_MS, turnTo } from './turns'
 import type { Leak, TurnPipesOutcome, TurnPipesPayload, TurnPipesSolution } from './types'
-import { useWaterRun } from './water'
+import { useWaterRun, waterStepMs } from './water'
 
 const props = defineProps<{
   payload: TurnPipesPayload
@@ -106,12 +106,16 @@ function present(board: ShownBoard | null): void {
   beat = setTimeout(() => {
     if (sound.value) flow = startFlow()
 
-    water.run(board.wet, () => {
-      flow?.stop(FLOW_FADE_S)
-      flow = undefined
-      if (sound.value) playSound(board.endSound)
-      leakCell.value = ringOf(board.leak)
-    })
+    water.run(
+      board.wet,
+      () => {
+        flow?.stop(FLOW_FADE_S)
+        flow = undefined
+        if (sound.value) playSound(board.endSound)
+        leakCell.value = ringOf(board.leak)
+      },
+      waterStepMs(props.payload.size),
+    )
   }, TURN_MS)
 }
 

@@ -306,7 +306,10 @@ Das Raster bleibt stehen, wie abgegeben. Im Takt von `revealChoreography.ts`:
 
 1. **Wechsel** — nichts bewegt sich.
 2. **`SOLUTION_DELAY_MS` (900 ms)** — das Wasser läuft: die Zellen aus `wet` werden der Reihe nach nass,
-   etwa 110 ms je Kachel (Startwert, im Labor zu stimmen). Danach, falls es ein Leck gibt, ein roter
+   so schnell, dass ein voller Lauf durch alle Rohre **2 s** dauert, gleich welche Größe (8×8 ≈ 31 ms je
+   Kachel, 6×6 ≈ 56 ms). So endet er gut vor der Mitgliederleiste über der Karte, die 3,8 s nach der
+   Abgabe Punkt oder Totenkopf zeigt (`SPOILER_HOLD_MS`); 110 ms je Kachel waren am Handy zu langsam
+   (2026-11-18). Danach, falls es ein Leck gibt, ein roter
    Ring: um `leak.at`, oder um `leak.from`, wenn das Wasser über den Rand lief. Ist der Abfluss erreicht,
    aber nicht jedes Rohr nass, braucht es keine Markierung — die trockenen Rohre sind zu sehen.
 3. **`RESULTS_DELAY_MS` (ab 1900 ms)** — die Rangliste baut sich auf.
