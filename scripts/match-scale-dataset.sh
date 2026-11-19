@@ -183,6 +183,12 @@ case "$SUBCOMMAND" in
         CIPHER="$CHECKOUT_ROOT/deploy/$PAIR/$(basename "$PLAIN" .yaml).sops.yaml"
         mkdir -p "$(dirname "$CIPHER")"
 
+        # sops output differs on every run; leave a cipher that already holds this plaintext.
+        if [ -f "$CIPHER" ] && sops -d "$CIPHER" 2>/dev/null | cmp -s - "$PLAIN"; then
+          echo "Unchanged: $CIPHER"
+          continue
+        fi
+
         TMP_FILE="$CIPHER.tmp"
         if ! sops -e --config "$CONFIG" "$PLAIN" > "$TMP_FILE"; then
           echo "sops could not encrypt $PLAIN (see message above)." >&2

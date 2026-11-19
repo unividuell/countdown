@@ -67,9 +67,9 @@ data class MatchScaleOutcome(
 data class MatchScaleSolution(val factor: Double, val toleranceFactor: Double?) : GameSolution
 
 /**
- * Augenmessung: drag silhouette A to the size it would have next to B, at real scale.
+ * Augenmessung: drag silhouette B to the size it would have next to the fixed A, at real scale.
  *
- * The guess is the factor the player sizes A by, judged on a log scale so that twice too large and
+ * The guess is the factor the player sizes B by, judged on a log scale so that twice too large and
  * half as large are equally far off.
  */
 @Component
