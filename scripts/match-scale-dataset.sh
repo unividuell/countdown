@@ -183,17 +183,25 @@ case "$SUBCOMMAND" in
         CIPHER="$CHECKOUT_ROOT/deploy/$PAIR/$(basename "$PLAIN" .yaml).sops.yaml"
         mkdir -p "$(dirname "$CIPHER")"
 
-        # sops output differs on every run; leave a cipher that already holds this plaintext.
-        if [ -f "$CIPHER" ] && sops -d "$CIPHER" 2>/dev/null | cmp -s - "$PLAIN"; then
-          echo "Unchanged: $CIPHER"
-          continue
-        fi
-
+        # sops output differs on every run and re-emits YAML in its own form, so the plaintext is
+        # never compared directly: encrypt once, then compare decrypted forms (new vs. existing
+        # cipher; decrypted text stays in shell variables, not on disk). Equal -> keep the committed cipher; else the fresh one replaces it.
         TMP_FILE="$CIPHER.tmp"
         if ! sops -e --config "$CONFIG" "$PLAIN" > "$TMP_FILE"; then
           echo "sops could not encrypt $PLAIN (see message above)." >&2
           exit 1
         fi
+
+        if [ -f "$CIPHER" ] \
+          && OLD_FORM="$(sops -d --config "$CONFIG" --input-type yaml --output-type yaml "$CIPHER" 2>/dev/null)" \
+          && NEW_FORM="$(sops -d --config "$CONFIG" --input-type yaml --output-type yaml "$TMP_FILE" 2>/dev/null)" \
+          && [ "$OLD_FORM" = "$NEW_FORM" ]; then
+          rm -f "$TMP_FILE"
+          TMP_FILE=""
+          echo "Unchanged: $CIPHER"
+          continue
+        fi
+
         mv "$TMP_FILE" "$CIPHER"
         TMP_FILE=""
 
