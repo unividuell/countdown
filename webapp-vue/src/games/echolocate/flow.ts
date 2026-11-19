@@ -71,9 +71,14 @@ export function initialFlow(input: {
   }
 }
 
-/** Where a tap leads once no wave is running: the next ping, or the pins on „Pin“ or after the last. */
-function idle(state: FlowState): FlowPhase {
-  return state.mode === 'ping' && pingsLeft(state) ? 'pinging' : 'pinning'
+/**
+ * At rest, no wave running: the next ping, or the pins on „Pin“. Without pings left the switch
+ * goes to „Pin“ too, so it never shows „Ping“ while taps set pins.
+ */
+function idle(state: FlowState): FlowState {
+  const mode = pingsLeft(state) ? state.mode : 'pin'
+
+  return { ...state, mode, phase: mode === 'ping' ? 'pinging' : 'pinning' }
 }
 
 /** Whether another ping is allowed; the board greys „Ping“ without. */
@@ -89,9 +94,7 @@ export function canSteer(state: FlowState): boolean {
 export function switchMode(state: FlowState, mode: Mode): FlowState {
   if (!canSteer(state)) return state
 
-  const next = { ...state, mode }
-
-  return { ...next, phase: idle(next) }
+  return idle({ ...state, mode })
 }
 
 /** Clears the rings and pins; the pings stay. A cleared ping keeps an empty list, so rings stay aligned. */
@@ -103,7 +106,7 @@ export function reset(state: FlowState): FlowState {
 
 /** The sound runs: the cover goes, and the round goes on where it stood. */
 export function unlocked(state: FlowState): FlowState {
-  return state.phase === 'closed' ? { ...state, phase: idle(state) } : state
+  return state.phase === 'closed' ? idle(state) : state
 }
 
 /** The sound stopped: back under the cover, pings, rings and pins kept. */
@@ -231,7 +234,7 @@ export function synced(state: FlowState, steps: readonly Point[]): FlowState {
     rings: [...state.rings, ...unknown.map(() => [])],
   }
 
-  return next.phase === 'pinging' ? { ...next, phase: idle(next) } : next
+  return next.phase === 'pinging' ? idle(next) : next
 }
 
 /** Ends the wave once its sound and sonar are over; the board calls it from a timer. */
@@ -240,7 +243,7 @@ export function settle(state: FlowState, nowMs: number): FlowState {
 
   const endMs = state.waves[state.waves.length - 1]?.endMs ?? null
 
-  return endMs !== null && nowMs >= endMs ? { ...state, phase: idle(state) } : state
+  return endMs !== null && nowMs >= endMs ? idle(state) : state
 }
 
 /** What a tap does right now, as the line under the field says it; closed, the cover says it. */

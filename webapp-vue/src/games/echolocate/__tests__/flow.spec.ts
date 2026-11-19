@@ -441,6 +441,22 @@ describe('switchMode', () => {
     const state = switchMode(spent(3), 'ping')
 
     expect(state.phase).toBe('pinning')
+    expect(state.mode).toBe('pin')
+  })
+
+  // A round frozen with three pings: the last wave ends with the switch on „Pin“, not „Ping“.
+  it('turns the switch to „Pin“ when the last allowed wave ends', () => {
+    const last = pinged(opened(fresh({ pings: 1 })), FIELD, 1000, 9000)
+
+    expect(settle(last, 9000).mode).toBe('pin')
+    expect(tap(last, { x: 2, y: 2 }, 9000, SPEED).state.mode).toBe('pin')
+  })
+
+  it('turns the switch to „Pin“ when the server brings the last ping', () => {
+    const state = synced(opened(fresh({ pings: 1 })), [FIELD])
+
+    expect(state.phase).toBe('pinning')
+    expect(state.mode).toBe('pin')
   })
 
   it('switches once the wave is over', () => {
