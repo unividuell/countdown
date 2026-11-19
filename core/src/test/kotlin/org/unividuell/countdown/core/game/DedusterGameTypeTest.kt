@@ -287,7 +287,7 @@ class DedusterGameTypeTest {
     }
 
     private fun implausibleOf(guess: JsonNode, sinceRevealMs: Long? = null) =
-        (game.judge(params = fixed(intervalMs = 1000), guess = guess, context = GuessContext(sinceRevealMs = sinceRevealMs, playId = roundGameId, stage = 0))
+        (game.judge(params = fixed(intervalMs = 1000), guess = guess, context = GuessContext(sinceRevealMs = sinceRevealMs, playId = roundGameId))
             .outcome as DedusterOutcome).implausible
 
     /** A run cannot be repeated, so a false alarm must never cost it: marked, stored, scored. */

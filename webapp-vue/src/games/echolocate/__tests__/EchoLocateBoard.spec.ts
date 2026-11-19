@@ -85,7 +85,6 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
-  pingCost: null,
 }
 const KEY = 'echo-locate:draft:u1:0000abcd'
 const SRC = 'blob:clip-0'
@@ -859,7 +858,9 @@ describe('EchoLocateBoard', () => {
       '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
       'Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
-    expect(w.text()).toContain('Der kleinste Abstand zum Spruch. Wenige Pings werden belohnt.')
+    expect(w.text()).toContain(
+      'Dein Pin im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',
+    )
   })
 
   it('speaks of two clips in the plural', () => {
@@ -879,9 +880,9 @@ describe('EchoLocateBoard', () => {
       'Ein Pin ist deine Schätzung: Setz je einen dorthin, wo du einen Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
-      'Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige Pings werden belohnt.',
+      'Beide Pins im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',
     )
-    expect(one.text()).not.toContain('Wenige Pings')
+    expect(one.text()).not.toContain('kürzeste Zeit')
     expect(one.text()).toContain('Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.')
     expect(w.text()).not.toContain('Später in der Edition')
   })

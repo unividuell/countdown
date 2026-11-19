@@ -145,7 +145,7 @@ class LabService(
             throw AlreadyGuessedException()
         }
         val judgement = handle.judge(
-            params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null, stage = stage),
+            params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
         )
         val stages = handle.stages(playing.params)
         val stagesScore = handle.stagesScore(playing.params)

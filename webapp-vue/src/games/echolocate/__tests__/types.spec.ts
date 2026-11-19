@@ -4,6 +4,7 @@ import {
   asEchoLocateGuess,
   asEchoLocateOutcome,
   asEchoLocatePayload,
+  asEchoLocateScene,
   asEchoLocateSolution,
   asPing,
   pinsOf,
@@ -20,9 +21,23 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
-  pingCost: null,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
+
+describe('asEchoLocateScene', () => {
+  it('reads the field and the clips the sealed cover names', () => {
+    expect(asEchoLocateScene({ grid: 20, clips: 2 })).toEqual({ grid: 20, clips: 2 })
+  })
+
+  it.each([
+    ['null', null],
+    ['three clips', { grid: 20, clips: 3 }],
+    ['no field', { grid: 0, clips: 1 }],
+    ['a missing count', { grid: 20 }],
+  ])('turns %s into null', (_label, scene) => {
+    expect(asEchoLocateScene(scene)).toBeNull()
+  })
+})
 
 describe('asEchoLocatePayload', () => {
   it('narrows a payload with one or two clips and keeps a null tolerance', () => {
@@ -32,12 +47,6 @@ describe('asEchoLocatePayload', () => {
       ...PAYLOAD,
       toleranceRadius: null,
     })
-  })
-
-  // Phase two's price per ping; a round frozen before it existed carries none.
-  it('keeps the ping cost, and reads a missing one as none', () => {
-    expect(asEchoLocatePayload({ ...PAYLOAD, pingCost: 0.1 })?.pingCost).toBe(0.1)
-    expect(asEchoLocatePayload({ ...PAYLOAD, pingCost: undefined })?.pingCost).toBeNull()
   })
 
   it('hands back a copy, not the raw object', () => {
@@ -60,8 +69,6 @@ describe('asEchoLocatePayload', () => {
     ['an infinite tolerance', { ...PAYLOAD, toleranceRadius: Infinity }],
     ['a tolerance as text', { ...PAYLOAD, toleranceRadius: '1.5' }],
     ['a missing tolerance', { ...PAYLOAD, toleranceRadius: undefined }],
-    ['a ping cost as text', { ...PAYLOAD, pingCost: '0.1' }],
-    ['a negative ping cost', { ...PAYLOAD, pingCost: -0.1 }],
     ['a NaN reach', { ...PAYLOAD, reach: NaN }],
     ['no reach', { ...PAYLOAD, reach: 0 }],
     ['an infinite speed', { ...PAYLOAD, speed: Infinity }],
@@ -211,20 +218,10 @@ describe('asEchoLocateOutcome', () => {
       distance: 2.3,
       withinTolerance: true,
       pinOf: [0],
-      score: null,
     })
     expect(asEchoLocateOutcome({ distance: 2.3, withinTolerance: null, pinOf: [1, 0] }, 2)).toEqual(
-      { distance: 2.3, withinTolerance: null, pinOf: [1, 0], score: null },
+      { distance: 2.3, withinTolerance: null, pinOf: [1, 0] },
     )
-  })
-
-  // Phase two's ranking; a round judged before it existed carries none.
-  it('keeps a score, and reads a missing or null one as none', () => {
-    const base = { distance: 0.8, withinTolerance: null, pinOf: [0] }
-
-    expect(asEchoLocateOutcome({ ...base, score: 1.25 }, 1)?.score).toBe(1.25)
-    expect(asEchoLocateOutcome({ ...base, score: null }, 1)?.score).toBeNull()
-    expect(asEchoLocateOutcome(base, 1)?.score).toBeNull()
   })
 
   it.each([
@@ -243,8 +240,6 @@ describe('asEchoLocateOutcome', () => {
     ['a pin beyond the clips', { distance: 2.3, withinTolerance: true, pinOf: [1] }],
     ['a negative pin', { distance: 2.3, withinTolerance: true, pinOf: [-1] }],
     ['a fractional pin', { distance: 2.3, withinTolerance: true, pinOf: [0.5] }],
-    ['a score that is no number', { distance: 2.3, withinTolerance: null, pinOf: [0], score: '1' }],
-    ['an infinite score', { distance: 2.3, withinTolerance: null, pinOf: [0], score: Infinity }],
   ])('turns %s into null', (_label, outcome) => {
     expect(asEchoLocateOutcome(outcome, 1)).toBeNull()
   })

@@ -95,8 +95,6 @@ data class GuessContext(
     val sinceRevealMs: Long?,
     /** The stored play, to find a log line from its row; `null` in the lab, which stores none. */
     val playId: UUID?,
-    /** Steps this player has taken before the guess, e.g. Peilung's pings. */
-    val stage: Int,
 )
 
 /**

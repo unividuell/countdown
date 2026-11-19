@@ -15,11 +15,11 @@ import org.unividuell.countdown.core.echolocate.pinOf
 import org.unividuell.countdown.core.game.AssetVisibility
 import org.unividuell.countdown.core.game.GameOutcome
 import org.unividuell.countdown.core.game.GamePayload
+import org.unividuell.countdown.core.game.GameScene
 import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.GameSolution
 import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.GameType
-import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.InvalidStepException
 import org.unividuell.countdown.core.game.Judgement
@@ -36,11 +36,9 @@ import kotlin.math.min
  * player's own guess; [clipIds] are soft references into the audio pool and, once the round is
  * announced, only provenance: the assets are the round's own copies.
  *
- * [targets] are one cell per clip, in [clipIds]' order. [toleranceRadius] is phase one's circle
- * around a target's centre, in cells; `null` in phase two, where there is no gate.
- *
- * [pingCost] is what each ping adds to the distance in phase two, e.g. 9 pings × 0.1 = 0.9 cells;
- * `null` in phase one, and in rounds frozen before it existed.
+ * [targets] are one cell per clip, in [clipIds]' order. [toleranceRadius] is the gate's circle
+ * around a target's centre, in cells, in both phases (`null` only in rounds frozen before phase two
+ * had a gate). [timed] is phase two: a sealed start and the clock as the score, as in Verrohrung.
  */
 data class EchoLocateParams(
     val clipIds: List<UUID>,
@@ -53,13 +51,13 @@ data class EchoLocateParams(
     val targets: List<Cell>,
     val noises: List<NoiseSource>,
     val toleranceRadius: Double?,
-    val pingCost: Double? = null,
+    val timed: Boolean = false,
 )
 
-/**
- * What the player needs to lay out the field and the sound; [clips] is how many to find.
- * [pingCost] lets the reveal write out its formula, e.g. `0,2 + 6 Pings × 0,1 = 0,8`.
- */
+/** What is with the client under the sealed cover: the field and how many clips hide in it. */
+data class EchoLocateScene(val grid: Int, val clips: Int) : GameScene
+
+/** What the player needs to lay out the field and the sound; [clips] is how many to find. */
 data class EchoLocatePayload(
     val grid: Int,
     val reach: Double,
@@ -69,7 +67,6 @@ data class EchoLocatePayload(
     val bedDb: Double,
     val noiseDb: Double,
     val toleranceRadius: Double?,
-    val pingCost: Double?,
 ) : GamePayload
 
 /** What one ping heard: delays only, never a position. */
@@ -85,14 +82,12 @@ data class EchoLocateSolution(
 /**
  * What the player learns about their pins. [distance] is the mean over all clips, [pinOf] the
  * pin the server assigned to each target, so the resolution draws the server's assignment instead
- * of working it out again. [withinTolerance] is `null` in phase two. [score] is phase two's ranking,
- * distance plus the pings' cost; `null` where pings cost nothing.
+ * of working it out again. [withinTolerance] is `null` in phase two.
  */
 data class EchoLocateOutcome(
     val distance: Double,
     val withinTolerance: Boolean?,
     val pinOf: List<Int>,
-    val score: Double?,
 ) : GameOutcome
 
 /**
@@ -148,14 +143,8 @@ class EchoLocateGameType(
             noiseDb = NOISE_DB,
             targets = layout.targets,
             noises = layout.noises,
-            toleranceRadius = when (context.phase) {
-                Phase.ONE -> TOLERANCE_RADIUS
-                Phase.TWO -> null
-            },
-            pingCost = when (context.phase) {
-                Phase.ONE -> null
-                Phase.TWO -> PING_COST
-            },
+            toleranceRadius = TOLERANCE_RADIUS,
+            timed = context.phase == Phase.TWO,
         )
     }
 
@@ -168,13 +157,15 @@ class EchoLocateGameType(
         bedDb = params.bedDb,
         noiseDb = params.noiseDb,
         toleranceRadius = params.toleranceRadius,
-        pingCost = params.pingCost,
     )
 
-    /** Never, in either phase: the field is there at once, and the clock is statistics. */
-    override fun requiresReveal(params: EchoLocateParams) = false
+    /** The count comes from the scene stream, so it may sit on the cover before the reveal. */
+    override fun scene(params: EchoLocateParams) = EchoLocateScene(grid = params.grid, clips = params.clipIds.size)
 
-    override fun scoresOnDuration(params: EchoLocateParams) = false
+    /** Phase two only: the cover opens the round and the clock with it, and the clock is the score. */
+    override fun requiresReveal(params: EchoLocateParams) = params.timed
+
+    override fun scoresOnDuration(params: EchoLocateParams) = params.timed
 
     /** One stage per ping, plus the one before the first. They count pings and score nothing. */
     override fun stages(params: EchoLocateParams) = params.pings + 1
@@ -200,11 +191,7 @@ class EchoLocateGameType(
         )
     }
 
-    /** Without the framework's stage: no ping is charged. */
-    override fun judge(params: EchoLocateParams, guess: JsonNode): Judgement =
-        judge(params = params, guess = guess, context = GuessContext(sinceRevealMs = null, playId = null, stage = 0))
-
-    override fun judge(params: EchoLocateParams, guess: JsonNode, context: GuessContext): Judgement {
+    override fun judge(params: EchoLocateParams, guess: JsonNode): Judgement {
         if (!guess.hasExactly("pins", "rings")) throw InvalidGuessException("guess must carry 'pins' and 'rings' only")
 
         val pins = pinsOf(node = guess.get("pins"), params = params)
@@ -218,15 +205,12 @@ class EchoLocateGameType(
         val mean = distances.average()
         val within = params.toleranceRadius?.let { radius -> distances.all { it <= radius } }
 
-        // Phase two charges every ping, those before a reset too: the stage counts them all.
-        val score = params.pingCost?.let { cost -> mean + cost * context.stage }
-
         return Judgement(
-            // No gate in phase two: everybody is a candidate, and CLOSEST_ONLY picks the winner.
+            // The gate in both phases; in phase two the framework then ranks the hits by time.
             qualifies = within ?: true,
-            deviation = score ?: mean,
+            deviation = mean,
             guess = mapper.valueToTree(mapOf("pins" to pins, "rings" to rings)),
-            outcome = EchoLocateOutcome(distance = mean, withinTolerance = within, pinOf = order, score = score),
+            outcome = EchoLocateOutcome(distance = mean, withinTolerance = within, pinOf = order),
         )
     }
 
@@ -323,6 +307,5 @@ class EchoLocateGameType(
         const val NOISE_DB = 0.0
         const val NOISES = 6
         const val TOLERANCE_RADIUS = 1.5
-        const val PING_COST = 0.1
     }
 }

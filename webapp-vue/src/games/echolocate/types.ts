@@ -36,8 +36,6 @@ export interface EchoLocatePayload {
   noiseDb: number
   /** Phase one's circle around a target's centre, in cells; `null` in phase two — no gate there. */
   toleranceRadius: number | null
-  /** Phase two's cells per ping, e.g. 0.1; `null` in phase one and in rounds frozen before it. */
-  pingCost: number | null
 }
 
 /** One source a ping reaches. `clip` is the clip's place for `CLIP`, otherwise `null`. */
@@ -61,8 +59,6 @@ export interface EchoLocateOutcome {
   withinTolerance: boolean | null
   /** `pinOf[i]` is the pin the server assigned to target `i`. */
   pinOf: number[]
-  /** Phase two's ranking: the distance plus the pings' cost. `null` where pings cost nothing. */
-  score: number | null
 }
 
 /** `rings[ping]` holds the radii the player marked around that ping, in cells. */
@@ -103,17 +99,29 @@ function hasExactly(record: Record<string, unknown>, fields: readonly string[]):
 
 export function asEchoLocatePayload(raw: unknown): EchoLocatePayload | null {
   if (!isRecord(raw)) return null
-  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost = null } = raw
+  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius } = raw
   if (!isWhole(grid) || grid < 1 || !isWhole(pings) || pings < 0) return null
   if (!isFiniteNumber(reach) || reach <= 0 || !isFiniteNumber(speed) || speed <= 0) return null
   if (clips !== 1 && clips !== 2) return null
   if (!isFiniteNumber(bedDb) || !isFiniteNumber(noiseDb) || !isNullOrRadius(toleranceRadius)) {
     return null
   }
-  // A price, positive like a radius.
-  if (!isNullOrRadius(pingCost)) return null
 
-  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost }
+  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius }
+}
+
+/** What the sealed cover may know: the field and how many clips hide in it. */
+export interface EchoLocateScene {
+  grid: number
+  clips: 1 | 2
+}
+
+export function asEchoLocateScene(raw: unknown): EchoLocateScene | null {
+  if (!isRecord(raw)) return null
+  const { grid, clips } = raw
+  if (!isWhole(grid) || grid < 1 || (clips !== 1 && clips !== 2)) return null
+
+  return { grid, clips }
 }
 
 function asHit(raw: unknown): EchoHit | null {
@@ -192,15 +200,13 @@ export function asEchoLocateSolution(raw: unknown): EchoLocateSolution | null {
 /** `clips` is the round's: `pinOf` names one pin per clip, so a stray index is no outcome. */
 export function asEchoLocateOutcome(raw: unknown, clips: number): EchoLocateOutcome | null {
   if (!isRecord(raw)) return null
-  const { distance, withinTolerance, pinOf, score } = raw
+  const { distance, withinTolerance, pinOf } = raw
   if (!isFiniteNumber(distance)) return null
-  // Missing in a round judged before pings cost anything.
-  if (score !== undefined && score !== null && !isFiniteNumber(score)) return null
   if (withinTolerance !== null && typeof withinTolerance !== 'boolean') return null
   if (!Array.isArray(pinOf) || pinOf.length !== clips) return null
   if (!pinOf.every((pin) => isWhole(pin) && pin >= 0 && pin < clips)) return null
 
-  return { distance, withinTolerance, pinOf: [...pinOf], score: score ?? null }
+  return { distance, withinTolerance, pinOf: [...pinOf] }
 }
 
 /**

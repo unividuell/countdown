@@ -29,7 +29,6 @@ import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.GameStepAnswer
 import org.unividuell.countdown.core.game.GameType
 import org.unividuell.countdown.core.game.InvalidStepException
-import org.unividuell.countdown.core.game.GuessContext
 import org.unividuell.countdown.core.game.Judgement
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
@@ -330,18 +329,6 @@ class LabStagedFlowTest(
     }
 
     @Test
-    fun `the lab guess tells the game how many steps were taken`() {
-        aCommunityOfTwo()
-        step(fromStage = 0, input = json("""{"n":1}"""))
-        step(fromStage = 1, input = json("""{"n":2}"""))
-
-        stepGuess(answer = "stage")
-
-        store.open(communityId = communityId, gameId = "step-fake", round = aRound())
-            .entries.single().deviation shouldBe 12.0
-    }
-
-    @Test
     fun `others' entries carry their inputs`() {
         val other = aCommunityOfTwo()
         step(fromStage = 0, input = json("""{"n":7}"""))
@@ -378,13 +365,6 @@ class LabStagedFlowTest(
                 val right = guess.get("answer")?.asString() == params.answer
                 return Judgement(qualifies = right, deviation = if (right) 0.0 else 2.5, outcome = null)
             }
-            /** The answer „stage“ reports what the lab says was spent: 10 + stage, never a stage itself. */
-            override fun judge(params: StepParams, guess: JsonNode, context: GuessContext): Judgement =
-                if (guess.get("answer")?.asString() == "stage") {
-                    Judgement(qualifies = true, deviation = 10.0 + context.stage, outcome = null)
-                } else {
-                    judge(params = params, guess = guess)
-                }
             override fun requiresReveal(params: StepParams) = false
             override fun scoresOnDuration(params: StepParams) = false
             override fun stages(params: StepParams) = 4

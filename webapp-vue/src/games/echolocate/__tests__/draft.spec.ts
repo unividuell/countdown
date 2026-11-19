@@ -16,7 +16,6 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
-  pingCost: null,
 }
 
 const DRAFT: EchoDraft = {

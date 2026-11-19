@@ -32,11 +32,11 @@ import org.unividuell.countdown.core.game.internal.EchoLocateEcho
 import org.unividuell.countdown.core.game.internal.EchoLocateGameType
 import org.unividuell.countdown.core.game.internal.EchoLocateOutcome
 import org.unividuell.countdown.core.game.internal.EchoLocateParams
+import org.unividuell.countdown.core.game.internal.EchoLocateScene
 import org.unividuell.countdown.core.game.internal.EchoLocateSolution
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
-import tools.jackson.databind.node.ObjectNode
 import java.util.UUID
 
 class EchoLocateGameTypeTest {
@@ -90,8 +90,8 @@ class EchoLocateGameTypeTest {
                 clipIds = all.take(targets.size),
                 targets = targets.toList(),
                 noises = emptyList(),
-                toleranceRadius = if (phase == Phase.ONE) 1.5 else null,
-                pingCost = if (phase == Phase.ONE) null else 0.1,
+                toleranceRadius = 1.5,
+                timed = phase == Phase.TWO,
             )
         }
 
@@ -213,63 +213,21 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `phase one freezes a tolerance radius of 1,5 cells, phase two none`() {
+    fun `both phases freeze a tolerance radius of 1,5 cells, only phase two is timed`() {
         draw(context = context(phase = Phase.ONE)).toleranceRadius shouldBe 1.5
-        draw(context = context(phase = Phase.TWO)).toleranceRadius.shouldBeNull()
+        draw(context = context(phase = Phase.TWO)).toleranceRadius shouldBe 1.5
+        draw(context = context(phase = Phase.ONE)).timed shouldBe false
+        draw(context = context(phase = Phase.TWO)).timed shouldBe true
     }
 
     @Test
-    fun `phase two freezes a ping cost of 0,1, phase one none`() {
-        draw(context = context(phase = Phase.TWO)).pingCost shouldBe 0.1
-        draw(context = context(phase = Phase.ONE)).pingCost.shouldBeNull()
-    }
+    fun `the scene tells the sealed cover the field and how many clips hide in it`() {
+        val one = draw(context = context(difficulty = 0.0))
+        val two = draw(context = context(difficulty = 1.0))
 
-    @Test
-    fun `phase two adds the ping cost per spent ping to the distance`() {
-        // The pin sits 0.8 cells right of the centre (5.5, 5.5); 9 pings at 0.1 add 0.9.
-        val judged = game.judge(
-            params = roundOf(Cell(col = 5, row = 5), phase = Phase.TWO),
-            guess = json(pins(6.3 to 5.5)),
-            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
-        )
-        val outcome = judged.outcome as EchoLocateOutcome
-
-        judged.deviation shouldBe (1.7 plusOrMinus 1e-9)
-        outcome.score.shouldNotBeNull() shouldBe (1.7 plusOrMinus 1e-9)
-        outcome.distance shouldBe (0.8 plusOrMinus 1e-9)
-    }
-
-    @Test
-    fun `the payload of phase two names the ping cost`() {
-        game.present(draw(context = context(phase = Phase.TWO))).pingCost shouldBe 0.1
-    }
-
-    @Test
-    fun `phase one ignores the pings`() {
-        val judged = game.judge(
-            params = roundOf(Cell(col = 5, row = 5)),
-            guess = json(pins(6.3 to 5.5)),
-            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
-        )
-
-        judged.deviation shouldBe (0.8 plusOrMinus 1e-9)
-        (judged.outcome as EchoLocateOutcome).score.shouldBeNull()
-    }
-
-    @Test
-    fun `a round frozen without a ping cost reads as none`() {
-        val frozen = mapper.valueToTree<ObjectNode>(roundOf(Cell(col = 5, row = 5), phase = Phase.TWO))
-        frozen.remove("pingCost")
-        val params = mapper.treeToValue(frozen, EchoLocateParams::class.java)
-
-        params.pingCost.shouldBeNull()
-        val judged = game.judge(
-            params = params,
-            guess = json(pins(6.3 to 5.5)),
-            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
-        )
-        judged.deviation shouldBe (0.8 plusOrMinus 1e-9)
-        (judged.outcome as EchoLocateOutcome).score.shouldBeNull()
+        game.scene(one) shouldBe EchoLocateScene(grid = 20, clips = 1)
+        game.scene(two) shouldBe EchoLocateScene(grid = 20, clips = 2)
+        fields(game.scene(two)) shouldBe setOf("grid", "clips")
     }
 
     @Test
@@ -282,12 +240,12 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `it never asks for a reveal or scores on time, and its stages only count pings`() {
-        listOf(Phase.ONE, Phase.TWO).forEach { phase ->
+    fun `phase two asks for a reveal and scores on time, and its stages only count pings`() {
+        listOf(Phase.ONE to false, Phase.TWO to true).forEach { (phase, timed) ->
             val params = draw(context = context(phase = phase))
 
-            game.requiresReveal(params) shouldBe false
-            game.scoresOnDuration(params) shouldBe false
+            game.requiresReveal(params) shouldBe timed
+            game.scoresOnDuration(params) shouldBe timed
             game.stages(params) shouldBe 1000
             game.stagesScore(params) shouldBe false
         }
@@ -304,7 +262,7 @@ class EchoLocateGameTypeTest {
         )
 
         fields(game.present(params)) shouldBe
-            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceRadius", "pingCost")
+            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceRadius")
 
         fields(ping) shouldBe setOf("hits")
         (ping as EchoLocateEcho).hits.map { it.sound } shouldContain Sound.CLIP
@@ -312,7 +270,7 @@ class EchoLocateGameTypeTest {
 
         fields(game.solution(params)) shouldBe setOf("targets", "noises", "toleranceRadius")
         fields(judge(params = params, guess = pins(1.0 to 1.0, 9.0 to 9.0)).outcome) shouldBe
-            setOf("distance", "withinTolerance", "pinOf", "score")
+            setOf("distance", "withinTolerance", "pinOf")
     }
 
     @Test
@@ -321,7 +279,7 @@ class EchoLocateGameTypeTest {
 
         mapper.valueToTree<JsonNode>(game.present(params)) shouldBe json(
             """
-            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5,"pingCost":null}
+            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
             """.trimIndent(),
         )
     }
@@ -475,19 +433,20 @@ class EchoLocateGameTypeTest {
         val params = roundOf(Cell(col = 5, row = 5))
 
         judge(params = params, guess = pins(5.5 to 5.5)).outcome shouldBe
-            EchoLocateOutcome(distance = 0.0, withinTolerance = true, pinOf = listOf(0), score = null)
+            EchoLocateOutcome(distance = 0.0, withinTolerance = true, pinOf = listOf(0))
         (judge(params = params, guess = pins(12.5 to 5.5)).outcome as EchoLocateOutcome).withinTolerance shouldBe false
     }
 
     @Test
-    fun `phase two has no gate`() {
+    fun `phase two keeps the gate - the fastest hit wins, a miss does not qualify`() {
         val params = roundOf(Cell(col = 5, row = 5), phase = Phase.TWO)
 
         val far = judge(params = params, guess = pins(18.0 to 18.0))
 
-        far.qualifies shouldBe true
+        far.qualifies shouldBe false
         far.deviation shouldBeGreaterThan 10.0
-        (far.outcome as EchoLocateOutcome).withinTolerance.shouldBeNull()
+        (far.outcome as EchoLocateOutcome).withinTolerance shouldBe false
+        judge(params = params, guess = pins(5.5 to 5.5)).qualifies shouldBe true
     }
 
     @Test

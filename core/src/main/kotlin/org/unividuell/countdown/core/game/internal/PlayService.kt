@@ -98,8 +98,7 @@ class PlayService(
         // Reading the play row unlocked is safe for the same reason it always was: the round's lock
         // never protected it. Every write below is a conditional statement that fails on a stale
         // read (`expectedStage`, `guessed_at IS NULL`), and `skip` already writes that row without
-        // taking the round at all. One exception, accepted: the stage handed to `judge` is not
-        // re-checked, so a step from a second tab racing this guess goes uncharged (Peilung: 0.1).
+        // taking the round at all.
         //
         // Params are safe to read from the unlocked row: they are written once, at announce time,
         // and no statement ever updates them.
@@ -109,7 +108,6 @@ class PlayService(
         val context = GuessContext(
             sinceRevealMs = durationMsBetween(revealedAt = play.revealedAt, guessedAt = clock.instant()),
             playId = play.id,
-            stage = play.stage,
         )
         val judgement = current.handle.judge(params = current.roundGame.params, guess = guess, context = context)
 

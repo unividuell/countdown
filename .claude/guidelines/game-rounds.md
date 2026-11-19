@@ -354,7 +354,6 @@ statement, both or neither. `MyPlayDto.steps` carries input and answer (`StepDto
 (Peilung: pings, then one guess `judge` scores as in a single-stage game). `guessActionFor`
 takes it as a parameter without a default — a caller that forgets it must not compile.
 
-**Steps that cost score are the game's to charge.** `GuessContext.stage` hands `judge` the steps
-spent (round and lab alike), e.g. Peilung's phase two: distance + 0.1 × pings. The framework never
-adds it; a ladder that is unlimited for the player is still finite for the row (`stages` = a hidden
-ceiling, Peilung 999 + 1).
+A ladder that is unlimited for the player is still finite for the row: `stages` is a hidden
+ceiling (Peilung: 999 pings + 1). Charging steps in the score was tried for Peilung and dropped:
+phase two on time rewards few steps by itself, with no formula to explain.

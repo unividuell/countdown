@@ -123,7 +123,7 @@ class GameCatalogTest {
 
         // A game that ignores the context is judged as without it.
         val judgement = handle.judge(
-            params = params, guess = mapper.readTree("""{"ok":true}"""), context = GuessContext(sinceRevealMs = 5, playId = null, stage = 0),
+            params = params, guess = mapper.readTree("""{"ok":true}"""), context = GuessContext(sinceRevealMs = 5, playId = null),
         )
 
         judgement.qualifies shouldBe true
