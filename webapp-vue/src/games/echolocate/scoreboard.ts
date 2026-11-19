@@ -21,7 +21,7 @@ export interface ScoreRow extends ScoreboardRow {
   pinOf: number[] | null
   /** Every ping the player sent, readable or not; `null` for a row without a readable play. */
   pingCount: number | null
-  /** Phase two: `0,8 + 9 Pings × 0,1 = 1,7`, the bar's caption; `null` in phase one and without a play. */
+  /** Phase two: `0,8 + 9 × 0,1 = 1,7`, the bar's caption; `null` in phase one and without a play. */
   scoreLabel: string | null
   /**
    * Phase two: the bar's two parts as fractions of the round's longest score, e.g. distance 0.4
@@ -52,7 +52,7 @@ export function formatPingCost(cost: number): string {
   return costFormat.format(cost)
 }
 
-/** The whole sum, `0,8 + 9 Pings × 0,1 = 1,7`; two clips `Ø 0,8 + 1 Ping × 0,1 = 0,9`. */
+/** The whole sum, `0,8 + 9 × 0,1 = 1,7`; two clips `Ø 0,8 + 1 × 0,1 = 0,9`. The column says „Pings“. */
 function scoreLabelOf(input: {
   distance: number
   clips: number
@@ -60,9 +60,7 @@ function scoreLabelOf(input: {
   cost: number
   score: number
 }): string {
-  const pings = `${input.pings} ${input.pings === 1 ? 'Ping' : 'Pings'}`
-
-  return `${formatDistance(input.distance, input.clips)} + ${pings} × ${formatPingCost(input.cost)} = ${oneDecimal.format(input.score)}`
+  return `${formatDistance(input.distance, input.clips)} + ${input.pings} × ${formatPingCost(input.cost)} = ${oneDecimal.format(input.score)}`
 }
 
 /** All pings or none: dropping one would shift the others off the rings that belong to them. */

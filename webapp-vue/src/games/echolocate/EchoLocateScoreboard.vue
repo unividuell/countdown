@@ -16,8 +16,8 @@
  * Phase two ranks by distance + 0.1 per ping, one column whose cell is its own bar:
  *
  *   Name     Abstand + Pings*                    Pkt
- *   bert     ████▒▒ 1,2 + 4 Pings × 0,1 = 1,6       3   ██ distance, ▒▒ the pings' cost,
- *   anna     █▒▒▒▒▒▒▒▒▒▒▒ 0,4 + 30 Pings × 0,1 = 3,4    both against the round's longest
+ *   bert     ████▒▒ 1,2 + 4 × 0,1 = 1,6       3   ██ distance, ▒▒ the pings' cost,
+ *   anna     █▒▒▒▒▒▒▒▒▒▒▒ 0,4 + 30 × 0,1 = 3,4    both against the round's longest
  *            * Abstand + Pings × 0,1 – die kleinste Summe gewinnt
  */
 import { computed } from 'vue'
@@ -57,9 +57,9 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() =>
           key: 'score',
           // The star points at the legend under the table.
           label: props.pingCost === null ? 'Abstand + Pings' : 'Abstand + Pings*',
-          // The longest sum, „Ø 0,4 + 30 Pings × 0,1 = 3,4“, is 180 px in text-sm; the name keeps
-          // what is left, 120 px on a 375 px phone.
-          width: '11.5rem',
+          // A far miss, „Ø 12,4 + 30 × 0,1 = 15,4“, is 157 px in text-sm; the name keeps what is
+          // left, 143 px on a 375 px phone.
+          width: '10rem',
           align: 'start',
           numeric: true,
           ground: () => null,

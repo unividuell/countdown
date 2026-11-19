@@ -94,8 +94,8 @@ describe('scoreRows', () => {
       const two = rowsOf([charged('eva', 0.8, 9)], { payload: { ...PHASE_TWO, clips: 2 } })
 
       expect(rows.map((row) => row.scoreLabel)).toEqual([
-        '1,2 + 1 Ping × 0,1 = 1,3',
-        '0,8 + 9 Pings × 0,1 = 1,7',
+        '1,2 + 1 × 0,1 = 1,3',
+        '0,8 + 9 × 0,1 = 1,7',
       ])
       expect(rows.map((row) => row.pingCount)).toEqual([1, 9])
       // Two clips: the guess above has one pin, so it is unreadable there — the label goes too.

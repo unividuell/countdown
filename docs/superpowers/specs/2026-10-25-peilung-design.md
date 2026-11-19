@@ -571,7 +571,7 @@ Labor Seed und Phase), wie dort beschrieben.
    ausschreibt. **Der Hintergrund der Zelle ist der
    Balken** (Clemens, 2026-11-19): zwei Abschnitte, Abstand und dahinter heller der Ping-Aufschlag,
    gemessen an der längsten Strecke der Runde; der Text der Zelle ist seine Beschriftung, die ganze
-   Formel: „0,2 + 6 Pings × 0,1 = 0,8“. Kein eigener Diagramm-Block, kein zusätzlicher Platz. Die
+   Formel ohne das Wort „Pings“, das die Spalte schon nennt: „0,2 + 6 × 0,1 = 0,8“ (Spalte 10rem, damit der Name Platz behält). Kein eigener Diagramm-Block, kein zusätzlicher Platz. Die
    Spalte heißt „Abstand + Pings*“, unter der Tabelle steht wie bei Blockierungs „K/D*“ klein:
    „* Abstand + Pings × 0,1 – die kleinste Summe gewinnt“.
 
