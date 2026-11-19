@@ -770,17 +770,26 @@ describe('EchoLocateBoard', () => {
       expect(status(w).text()).toContain('Markieren')
     })
 
-    it('puts the link right under the field, the status line after it', () => {
+    // As Anspielung's skip beside play: „Abgeben“ centred, the broom right next to it, one middle line.
+    it('puts the broom beside „Abgeben“, a round icon button without text', () => {
       const w = mountBoard()
-      const link = clear(w).element
-      const after = Node.DOCUMENT_POSITION_FOLLOWING
+      const row = w.get('[data-test="echo-locate-hand-in-row"]')
 
-      expect(
-        w.get('[data-test="echo-locate-field"]').element.compareDocumentPosition(link) & after,
-      ).toBe(after)
-      expect(link.compareDocumentPosition(status(w).element) & after).toBe(after)
-      expect(clear(w).classes()).toContain('self-end')
-      expect(clear(w).text()).toBe('Markierungen löschen')
+      expect(row.find('[data-test="echo-locate-clear-rings"]').exists()).toBe(true)
+      expect(row.findComponent(HoldButton).exists()).toBe(true)
+      expect(row.classes()).toEqual(
+        expect.arrayContaining([
+          'grid',
+          'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+          'items-center',
+        ]),
+      )
+      expect(clear(w).text()).toBe('')
+      expect(clear(w).attributes('aria-label')).toBe('Markierungen löschen')
+      expect(clear(w).classes()).toEqual(
+        expect.arrayContaining(['rounded-full', 'border-2', 'border-outline']),
+      )
+      expect(clear(w).element.parentElement!.className).toContain('justify-self-start')
     })
 
     it('clears the rings only, also in the draft; pins and pings stay', async () => {

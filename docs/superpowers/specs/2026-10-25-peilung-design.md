@@ -510,10 +510,9 @@ dessen Standardwerten. Was ein Klick tut, entscheiden Ablauf und Länge des Klic
 ┌──────── Feld ────────┐
 │      2 Sprüche       │   bis zum ersten Ping
 └──────────────────────┘
-          🧹 Markierungen löschen
  1. Klick: Ping, 2. Klick: Markieren
  Lang drücken: Pin setzen oder entfernen
-       ( Abgeben )
+       ( Abgeben ) (🧹)
 
 Klick ──▶ Ping ──Welle + Nachklang──▶ Klick ──▶ Ping …
            │  Klicks in der Welle: markieren (bis zu clips)
@@ -538,8 +537,10 @@ Kontextmenü und iOS-Callout sind auf dem Feld aus.
    dann 3 s lang „Du musst zuerst einen anderen Pin entfernen, um einen neuen zu setzen.“ (Clemens,
    2026-11-19). Die Pins stehen in der Farbe des eigenen Avatars (Clemens, 2026-10-31).
 
-**„Markierungen löschen“** (Clemens, 2026-11-19): ein Link rechtsbündig unter dem Feld, Besen-Icon
-(`lucide/brush-cleaning`), löscht nur die Ringe; Pins und Pings bleiben. Geht jederzeit, auch in einer
+**„Markierungen löschen“** (Clemens, 2026-11-19): ein runder Icon-Knopf ohne Text, Besen
+(`lucide/brush-cleaning`), rechts neben „Abgeben“ auf derselben Mittellinie; „Abgeben“ bleibt mittig —
+gebaut wie Anspielungs Skip neben Play. `aria-label` nennt ihn. Er löscht nur die Ringe; Pins und Pings
+bleiben. Geht jederzeit, auch in einer
 Welle; ein geleerter Ping trägt danach eine leere Ringliste, der Tipp behält seine Form. Ohne Ringe
 ausgegraut.
 

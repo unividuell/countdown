@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /**
- * Playing Peilung: the field, a link that clears the marks, a line saying what a click does now, the
- * hold that hands in.
+ * Playing Peilung: the field, a line saying what a click does now, the hold that hands in and beside
+ * it the broom that clears the marks.
  *
  *   ┌──────────────┐
  *   │  SonarField  │   open from the start; names the count until the first ping
  *   └──────────────┘
- *              🧹 Markierungen löschen    the rings only — pins and pings stay
  *   1. Klick: Ping, 2. Klick: Markieren
  *   Lang drücken: Pin setzen oder entfernen
- *        ( Abgeben )   once every clip has its pin
+ *        ( Abgeben )    (🧹)   hand-in once every clip has its pin; the broom clears the
+ *                               rings only — pins and pings stay
  *
  * A click goes through `flow.ts`; the board acts on its effect and on the host's answers:
  *
@@ -366,18 +366,6 @@ onBeforeUnmount(() => {
           :progress="holdProgress"
         />
       </div>
-      <!-- Under the field, at its right edge: a link, not a button — it only tidies up. -->
-      <button
-        type="button"
-        data-test="echo-locate-clear-rings"
-        :disabled="!hasRings"
-        class="inline-flex min-h-11 cursor-pointer items-center gap-1.5 self-end text-sm text-on-surface-variant underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:no-underline"
-        @click="onClearRings"
-      >
-        <IconBroom class="size-4" aria-hidden="true" />
-        Markierungen löschen
-      </button>
-
       <div class="text-center">
         <p data-test="echo-locate-status" aria-live="polite" class="text-lg">{{ status }}</p>
         <p
@@ -392,23 +380,44 @@ onBeforeUnmount(() => {
         </p>
       </div>
 
-      <!-- `HoldButton` fills its parent and has no size of its own. -->
-      <div class="relative size-24 shrink-0" :class="{ 'opacity-40': !canHandIn }">
-        <HoldButton
-          :ready="true"
-          :disabled="!canHandIn || touching"
-          label="Schätzung abgeben — gedrückt halten"
-          :color="props.myColorHex"
-          @confirm="handIn"
-          @progress="onProgress"
-        />
-        <span
-          data-test="echo-locate-submit-label"
-          aria-hidden="true"
-          class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
-          :style="{ color: readableTextColor(props.myColorHex) }"
-        >
-          Abgeben
+      <!-- As Anspielung's play and skip: „Abgeben“ stays centred, the broom right beside it, both on
+           one middle line. The side tracks are `minmax(0,1fr)`, so the broom cannot shift the middle. -->
+      <div
+        data-test="echo-locate-hand-in-row"
+        class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center self-stretch"
+      >
+        <!-- `HoldButton` fills its parent and has no size of its own. -->
+        <div class="relative col-start-2 size-24 shrink-0" :class="{ 'opacity-40': !canHandIn }">
+          <HoldButton
+            :ready="true"
+            :disabled="!canHandIn || touching"
+            label="Schätzung abgeben — gedrückt halten"
+            :color="props.myColorHex"
+            @confirm="handIn"
+            @progress="onProgress"
+          />
+          <span
+            data-test="echo-locate-submit-label"
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+            :style="{ color: readableTextColor(props.myColorHex) }"
+          >
+            Abgeben
+          </span>
+        </div>
+        <!-- Tidies up only, so it stays small and wordless; the label names it for screen readers. -->
+        <span class="min-w-0 justify-self-start pl-4">
+          <button
+            type="button"
+            data-test="echo-locate-clear-rings"
+            aria-label="Markierungen löschen"
+            title="Markierungen löschen"
+            :disabled="!hasRings"
+            class="flex size-11 cursor-pointer items-center justify-center rounded-full border-2 border-outline text-xl text-on-surface-variant disabled:cursor-not-allowed disabled:opacity-40"
+            @click="onClearRings"
+          >
+            <IconBroom class="size-5" aria-hidden="true" />
+          </button>
         </span>
       </div>
     </div>
