@@ -154,4 +154,58 @@ describe('MatchScaleReveal', () => {
 
     expect(mountReveal({ payload }).text()).toContain('Bild: Jemand, CC BY')
   })
+
+  it('names a credit shared by A and B once', () => {
+    const credit = 'Bild: Jemand, CC BY'
+    const payload = {
+      ...PAYLOAD,
+      a: { ...PAYLOAD.a, attribution: credit },
+      b: { ...PAYLOAD.b, attribution: credit },
+    }
+    const wrapper = mountReveal({ payload })
+
+    expect(wrapper.findAll('[data-test="match-scale-attribution"]')).toHaveLength(1)
+  })
+
+  it('after the growth B stops easing, so a refit moves it with the rest', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+    try {
+      const far = [
+        entries[0]!,
+        gameEntry({
+          userId: 'far',
+          guess: { scale: 5 },
+          outcome: { scale: 5, deviation: 1.1, withinTolerance: false },
+          points: 0,
+        }),
+      ]
+      const rows = scoreboardRows({
+        entries: far,
+        factor: 1.6,
+        awardRule: 'ALL_QUALIFYING',
+        mineUserId: 'me',
+      })
+      const wrapper = mountReveal({ animate: true, rows })
+      const b = () => wrapper.get('[data-test="match-scale-b"]')
+
+      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
+
+      expect(field(wrapper).props('grow')).toBe(true)
+      expect(b().classes()).toContain('transition-transform')
+
+      await vi.advanceTimersByTimeAsync(800)
+
+      expect(field(wrapper).props('grow')).toBe(false)
+      expect(b().classes()).not.toContain('transition-transform')
+
+      const before = b().attributes('transform')
+
+      await wrapper.get('[data-test="select-far"]').trigger('click')
+
+      expect(b().attributes('transform')).not.toBe(before)
+      expect(b().attributes('style') ?? '').not.toContain('transform')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

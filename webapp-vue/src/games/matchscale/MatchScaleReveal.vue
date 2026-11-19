@@ -38,17 +38,30 @@ const still = isStill(props.animate)
 /** Where B is drawn: at my tip until the beat, then at the truth. Without a tip there is no start. */
 const bScale = ref(still || props.myScale === null ? props.factor : props.myScale)
 
+/** Matches `duration-700` on B in ScaleField. */
+const GROW_MS = 700
+
+/** B eases only during its growth; afterwards a view refit moves B with everything else. */
+const growing = ref(!still)
+
 let beat: ReturnType<typeof setTimeout> | undefined
+let settle: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
   if (bScale.value === props.factor) return
 
   beat = setTimeout(() => {
     bScale.value = props.factor
+    settle = setTimeout(() => {
+      growing.value = false
+    }, GROW_MS)
   }, SOLUTION_DELAY_MS)
 })
 
-onBeforeUnmount(() => clearTimeout(beat))
+onBeforeUnmount(() => {
+  clearTimeout(beat)
+  clearTimeout(settle)
+})
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))
 
@@ -97,11 +110,14 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
   return { x: p.x, y: p.y, w, h }
 }
 
-const attributions = computed(() =>
-  [props.payload.a.attribution, props.payload.b.attribution].filter(
-    (text): text is string => text !== null,
+/** Both silhouettes of a category often share one credit; show it once. */
+const attributions = computed(() => [
+  ...new Set(
+    [props.payload.a.attribution, props.payload.b.attribution].filter(
+      (text): text is string => text !== null,
+    ),
   ),
-)
+])
 </script>
 
 <template>
@@ -124,7 +140,7 @@ const attributions = computed(() =>
         :placement-b="placementB"
         :outlines="outlines"
         :interactive="false"
-        :grow="!still"
+        :grow="growing"
       />
 
       <p
