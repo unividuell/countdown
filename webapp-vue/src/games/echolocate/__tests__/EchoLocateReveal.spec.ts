@@ -25,6 +25,7 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
+  pingCost: null,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
 const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceRadius: null }
@@ -445,29 +446,43 @@ describe('EchoLocateReveal', () => {
             distance,
             withinTolerance: null,
             pinOf: [0],
-            score: distance + 0.05 * PINGS[userId]!.length,
+            score: distance + 0.1 * PINGS[userId]!.length,
           },
         })
 
       const mountPhaseTwo = (entries: GameEntry[]) =>
-        mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION, entries })
+        mountReveal({
+          payload: { ...PHASE_TWO, pingCost: 0.1 },
+          solution: PHASE_TWO_SOLUTION,
+          entries,
+        })
 
       it('puts distance and pings in one column, the bar behind its label', () => {
-        const wrapper = mountPhaseTwo([charged('me', 0.8), charged('bert', 1.85)])
+        const wrapper = mountPhaseTwo([charged('me', 0.8), charged('bert', 1.7)])
         const bar = wrapper.get<HTMLElement>('[data-test="score-bar-me"]')
 
-        expect(wrapper.text()).toContain('Abstand + Pings')
+        expect(wrapper.text()).toContain('Abstand + Pings*')
         expect(wrapper.get('caption').text()).toBe(
           'Alle Peilungen der Runde, nach Abstand und Pings sortiert',
         )
         expect(wrapper.find('[data-test="cell-distance-me"]').exists()).toBe(false)
         expect(wrapper.find('[data-test="cell-pings-me"]').exists()).toBe(false)
-        expect(wrapper.get('[data-test="cell-score-me"]').text()).toBe('0,8 + 3 Pings')
-        // me: 0.8 + 0.15 = 0.95 of bert's 2.0
+        expect(wrapper.get('[data-test="cell-score-me"]').text()).toBe('0,8 + 3 Pings × 0,1 = 1,1')
+        // me: 0.8 + 0.3 = 1.1 of bert's 2.0
         expect(bar.element.style.getPropertyValue('--bar-distance')).toBe('40%')
-        expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('47.5%')
+        expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('55%')
         // As tall as every other cell of the table: no padding of its own above or below.
         expect(bar.classes().some((name) => /^(p|py|pt|pb)-/.test(name))).toBe(false)
+      })
+
+      it('explains the formula under the table, phase two only', () => {
+        const two = mountPhaseTwo([charged('me', 0.8)])
+        const one = mountReveal()
+
+        expect(two.get('[data-test="echo-locate-score-legend"]').text()).toBe(
+          '* Abstand + Pings × 0,1 – die kleinste Summe gewinnt',
+        )
+        expect(one.find('[data-test="echo-locate-score-legend"]').exists()).toBe(false)
       })
 
       it('shows the distance alone for a round judged before pings cost anything', () => {

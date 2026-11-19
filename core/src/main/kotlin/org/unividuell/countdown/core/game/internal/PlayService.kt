@@ -99,7 +99,7 @@ class PlayService(
         // never protected it. Every write below is a conditional statement that fails on a stale
         // read (`expectedStage`, `guessed_at IS NULL`), and `skip` already writes that row without
         // taking the round at all. One exception, accepted: the stage handed to `judge` is not
-        // re-checked, so a step from a second tab racing this guess goes uncharged (Peilung: 0.05).
+        // re-checked, so a step from a second tab racing this guess goes uncharged (Peilung: 0.1).
         //
         // Params are safe to read from the unlocked row: they are written once, at announce time,
         // and no statement ever updates them.

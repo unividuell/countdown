@@ -21,7 +21,7 @@ export interface ScoreRow extends ScoreboardRow {
   pinOf: number[] | null
   /** Every ping the player sent, readable or not; `null` for a row without a readable play. */
   pingCount: number | null
-  /** Phase two: `0,8 + 9 Pings`, the bar's caption; `null` in phase one and without a play. */
+  /** Phase two: `0,8 + 9 Pings × 0,1 = 1,7`, the bar's caption; `null` in phase one and without a play. */
   scoreLabel: string | null
   /**
    * Phase two: the bar's two parts as fractions of the round's longest score, e.g. distance 0.4
@@ -42,9 +42,27 @@ export function formatDistance(distance: number, clips: number): string {
   return clips > 1 ? `Ø ${label}` : label
 }
 
-/** `0,8 + 9 Pings`, `Ø 0,8 + 1 Ping`. */
-function scoreLabelOf(distance: number, clips: number, pings: number): string {
-  return `${formatDistance(distance, clips)} + ${pings} ${pings === 1 ? 'Ping' : 'Pings'}`
+const costFormat = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 2,
+})
+
+/** `0,1`, `0,05`: a ping's price as the legend and the bar write it. */
+export function formatPingCost(cost: number): string {
+  return costFormat.format(cost)
+}
+
+/** The whole sum, `0,8 + 9 Pings × 0,1 = 1,7`; two clips `Ø 0,8 + 1 Ping × 0,1 = 0,9`. */
+function scoreLabelOf(input: {
+  distance: number
+  clips: number
+  pings: number
+  cost: number
+  score: number
+}): string {
+  const pings = `${input.pings} ${input.pings === 1 ? 'Ping' : 'Pings'}`
+
+  return `${formatDistance(input.distance, input.clips)} + ${pings} × ${formatPingCost(input.cost)} = ${oneDecimal.format(input.score)}`
 }
 
 /** All pings or none: dropping one would shift the others off the rings that belong to them. */
@@ -97,8 +115,14 @@ export function scoreRows(input: {
         pinOf: shown ? outcome.pinOf : null,
         pingCount,
         scoreLabel:
-          shown && score !== null
-            ? scoreLabelOf(outcome.distance, payload.clips, pingCount ?? 0)
+          shown && score !== null && payload.pingCost !== null
+            ? scoreLabelOf({
+                distance: outcome.distance,
+                clips: payload.clips,
+                pings: pingCount ?? 0,
+                cost: payload.pingCost,
+                score,
+              })
             : null,
         bar: null as ScoreRow['bar'],
       },

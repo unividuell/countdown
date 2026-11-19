@@ -160,6 +160,7 @@ function select(userId: string): void {
       :animate="props.animate"
       :selected="selected"
       :tolerance-radius="props.solution.toleranceRadius"
+      :ping-cost="props.payload.pingCost"
       @select="select"
     />
   </div>

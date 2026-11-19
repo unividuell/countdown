@@ -39,7 +39,7 @@ import kotlin.math.min
  * [targets] are one cell per clip, in [clipIds]' order. [toleranceRadius] is phase one's circle
  * around a target's centre, in cells; `null` in phase two, where there is no gate.
  *
- * [pingCost] is what each ping adds to the distance in phase two, e.g. 9 pings × 0.05 = 0.45 cells;
+ * [pingCost] is what each ping adds to the distance in phase two, e.g. 9 pings × 0.1 = 0.9 cells;
  * `null` in phase one, and in rounds frozen before it existed.
  */
 data class EchoLocateParams(
@@ -56,7 +56,10 @@ data class EchoLocateParams(
     val pingCost: Double? = null,
 )
 
-/** What the player needs to lay out the field and the sound; [clips] is how many to find. */
+/**
+ * What the player needs to lay out the field and the sound; [clips] is how many to find.
+ * [pingCost] lets the reveal write out its formula, e.g. `0,2 + 6 Pings × 0,1 = 0,8`.
+ */
 data class EchoLocatePayload(
     val grid: Int,
     val reach: Double,
@@ -66,6 +69,7 @@ data class EchoLocatePayload(
     val bedDb: Double,
     val noiseDb: Double,
     val toleranceRadius: Double?,
+    val pingCost: Double?,
 ) : GamePayload
 
 /** What one ping heard: delays only, never a position. */
@@ -164,6 +168,7 @@ class EchoLocateGameType(
         bedDb = params.bedDb,
         noiseDb = params.noiseDb,
         toleranceRadius = params.toleranceRadius,
+        pingCost = params.pingCost,
     )
 
     /** Never, in either phase: the field is there at once, and the clock is statistics. */
@@ -318,6 +323,6 @@ class EchoLocateGameType(
         const val NOISE_DB = 0.0
         const val NOISES = 6
         const val TOLERANCE_RADIUS = 1.5
-        const val PING_COST = 0.05
+        const val PING_COST = 0.1
     }
 }

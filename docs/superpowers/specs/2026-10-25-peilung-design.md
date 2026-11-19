@@ -154,7 +154,7 @@ data class EchoLocateParams(
     val noises: List<NoiseSource>,  // Zelle und Art — ebenfalls geheim
     /** Kreis um die Mitte der Zielzelle in Phase eins (1.5); `null` in Phase zwei, wie `toleranceDeg`. */
     val toleranceRadius: Double?,
-    /** Zellen Aufschlag je Ping in Phase zwei (0.05); `null` in Phase eins. Seit 2026-11-19. */
+    /** Zellen Aufschlag je Ping in Phase zwei (0.1); `null` in Phase eins. Seit 2026-11-19. */
     val pingCost: Double?,
 )
 
@@ -384,7 +384,7 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt:
 
 | Ausgang | wann | Felder |
 |---|---|---|
-| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius` |
+| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost` |
 | Schritt-Antwort `EchoLocateEcho` | pro Ping, nur dem Spieler | `hits[].sound, hits[].clip, hits[].delayMs` |
 | Lösung `EchoLocateSolution` | nach dem eigenen Tipp | `targets, noises, toleranceRadius` |
 | Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf, score` |
@@ -564,12 +564,16 @@ Labor Seed und Phase), wie dort beschrieben.
    „Pings“ ist die Zahl aller Pings, in beiden Phasen, ohne Erklärung (Clemens, 2026-11-19: wer wenig
    braucht, wird als Experte wahrgenommen). Als pure `scoreboard.ts`.
 
-   **Phase zwei** (Clemens, 2026-11-19): Die Wertung ist eine Strecke, **Abstand + 0,05 × Pings**;
-   20 Pings wiegen ein Feld. Sortiert und vergeben wird nach ihr. **Der Hintergrund der Zelle ist der
+   **Phase zwei** (Clemens, 2026-11-19): Die Wertung ist eine Strecke, **Abstand + Pings × 0,1**;
+   10 Pings wiegen ein Feld. Erst 0,05: Eine Runde mit 0,2 + 6 Pings gegen 0,4 + 3 Pings ging an den
+   mit den doppelten Pings, für 0,2 Felder, die eher Reaktionszufall als Können sind — „unfair“.
+   Sortiert und vergeben wird nach ihr; der Payload trägt `pingCost`, damit die Auflösung die Formel
+   ausschreibt. **Der Hintergrund der Zelle ist der
    Balken** (Clemens, 2026-11-19): zwei Abschnitte, Abstand und dahinter heller der Ping-Aufschlag,
-   gemessen an der längsten Strecke der Runde; der Text der Zelle ist seine Beschriftung, etwa
-   „0,8 + 9 Pings“. Kein eigener Diagramm-Block, kein zusätzlicher Platz. Ob die Summe mit in die
-   Zelle passt, klärt die Umsetzung am Handy.
+   gemessen an der längsten Strecke der Runde; der Text der Zelle ist seine Beschriftung, die ganze
+   Formel: „0,2 + 6 Pings × 0,1 = 0,8“. Kein eigener Diagramm-Block, kein zusätzlicher Platz. Die
+   Spalte heißt „Abstand + Pings*“, unter der Tabelle steht wie bei Blockierungs „K/D*“ klein:
+   „* Abstand + Pings × 0,1 – die kleinste Summe gewinnt“.
 
    **Vorab** (nur Phase zwei) bekommt die `AwardBox` einen zweiten Satz: „Der kleinste Abstand zum
    Spruch. Wenige Pings werden belohnt.“ („Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige

@@ -36,6 +36,8 @@ export interface EchoLocatePayload {
   noiseDb: number
   /** Phase one's circle around a target's centre, in cells; `null` in phase two — no gate there. */
   toleranceRadius: number | null
+  /** Phase two's cells per ping, e.g. 0.1; `null` in phase one and in rounds frozen before it. */
+  pingCost: number | null
 }
 
 /** One source a ping reaches. `clip` is the clip's place for `CLIP`, otherwise `null`. */
@@ -101,15 +103,17 @@ function hasExactly(record: Record<string, unknown>, fields: readonly string[]):
 
 export function asEchoLocatePayload(raw: unknown): EchoLocatePayload | null {
   if (!isRecord(raw)) return null
-  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius } = raw
+  const { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost = null } = raw
   if (!isWhole(grid) || grid < 1 || !isWhole(pings) || pings < 0) return null
   if (!isFiniteNumber(reach) || reach <= 0 || !isFiniteNumber(speed) || speed <= 0) return null
   if (clips !== 1 && clips !== 2) return null
   if (!isFiniteNumber(bedDb) || !isFiniteNumber(noiseDb) || !isNullOrRadius(toleranceRadius)) {
     return null
   }
+  // A price, positive like a radius.
+  if (!isNullOrRadius(pingCost)) return null
 
-  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius }
+  return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost }
 }
 
 function asHit(raw: unknown): EchoHit | null {

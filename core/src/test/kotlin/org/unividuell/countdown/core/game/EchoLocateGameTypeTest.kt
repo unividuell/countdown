@@ -91,7 +91,7 @@ class EchoLocateGameTypeTest {
                 targets = targets.toList(),
                 noises = emptyList(),
                 toleranceRadius = if (phase == Phase.ONE) 1.5 else null,
-                pingCost = if (phase == Phase.ONE) null else 0.05,
+                pingCost = if (phase == Phase.ONE) null else 0.1,
             )
         }
 
@@ -219,14 +219,14 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `phase two freezes a ping cost of 0,05, phase one none`() {
-        draw(context = context(phase = Phase.TWO)).pingCost shouldBe 0.05
+    fun `phase two freezes a ping cost of 0,1, phase one none`() {
+        draw(context = context(phase = Phase.TWO)).pingCost shouldBe 0.1
         draw(context = context(phase = Phase.ONE)).pingCost.shouldBeNull()
     }
 
     @Test
     fun `phase two adds the ping cost per spent ping to the distance`() {
-        // The pin sits 0.8 cells right of the centre (5.5, 5.5); 9 pings at 0.05 add 0.45.
+        // The pin sits 0.8 cells right of the centre (5.5, 5.5); 9 pings at 0.1 add 0.9.
         val judged = game.judge(
             params = roundOf(Cell(col = 5, row = 5), phase = Phase.TWO),
             guess = json(pins(6.3 to 5.5)),
@@ -234,9 +234,14 @@ class EchoLocateGameTypeTest {
         )
         val outcome = judged.outcome as EchoLocateOutcome
 
-        judged.deviation shouldBe (1.25 plusOrMinus 1e-9)
-        outcome.score.shouldNotBeNull() shouldBe (1.25 plusOrMinus 1e-9)
+        judged.deviation shouldBe (1.7 plusOrMinus 1e-9)
+        outcome.score.shouldNotBeNull() shouldBe (1.7 plusOrMinus 1e-9)
         outcome.distance shouldBe (0.8 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `the payload of phase two names the ping cost`() {
+        game.present(draw(context = context(phase = Phase.TWO))).pingCost shouldBe 0.1
     }
 
     @Test
@@ -299,7 +304,7 @@ class EchoLocateGameTypeTest {
         )
 
         fields(game.present(params)) shouldBe
-            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceRadius")
+            setOf("grid", "reach", "speed", "pings", "clips", "bedDb", "noiseDb", "toleranceRadius", "pingCost")
 
         fields(ping) shouldBe setOf("hits")
         (ping as EchoLocateEcho).hits.map { it.sound } shouldContain Sound.CLIP
@@ -316,7 +321,7 @@ class EchoLocateGameTypeTest {
 
         mapper.valueToTree<JsonNode>(game.present(params)) shouldBe json(
             """
-            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
+            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5,"pingCost":null}
             """.trimIndent(),
         )
     }

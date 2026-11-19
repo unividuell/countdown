@@ -13,6 +13,7 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
+  pingCost: null,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
 
@@ -26,11 +27,11 @@ function outcome(distance: number): EchoLocateOutcome {
   return { distance, withinTolerance: true, pinOf: [0], score: null }
 }
 
-/** Phase two: `count` pings at 0.05 each on top of the distance. */
+/** Phase two: `count` pings at 0.1 each on top of the distance. */
 function charged(userId: string, distance: number, count: number): GameEntry {
   return entry({
     userId,
-    outcome: { distance, withinTolerance: null, pinOf: [0], score: distance + 0.05 * count },
+    outcome: { distance, withinTolerance: null, pinOf: [0], score: distance + 0.1 * count },
     steps: Array.from({ length: count }, (_, i) => ({ x: 1 + (i % 10), y: 2 })),
   })
 }
@@ -73,7 +74,7 @@ describe('formatDistance', () => {
 
 describe('scoreRows', () => {
   describe('phase two', () => {
-    const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceRadius: null }
+    const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceRadius: null, pingCost: 0.1 }
 
     it('ranks by distance plus the pings, not by distance', () => {
       const rows = rowsOf(
@@ -84,15 +85,19 @@ describe('scoreRows', () => {
         },
       )
 
-      expect(rows.map((row) => row.userId)).toEqual(['cem', 'bert', 'anna'])
+      // 0,4 + 3,0 · 1,2 + 0,4 · 0,8 + 0,9: Bert's four pings beat Cem's closer pin
+      expect(rows.map((row) => row.userId)).toEqual(['bert', 'cem', 'anna'])
     })
 
-    it('labels the bar with the distance and the pings', () => {
+    it('writes the formula out on the bar', () => {
       const rows = rowsOf([charged('cem', 0.8, 9), charged('dora', 1.2, 1)], { payload: PHASE_TWO })
       const two = rowsOf([charged('eva', 0.8, 9)], { payload: { ...PHASE_TWO, clips: 2 } })
 
-      expect(rows.map((row) => row.scoreLabel)).toEqual(['0,8 + 9 Pings', '1,2 + 1 Ping'])
-      expect(rows.map((row) => row.pingCount)).toEqual([9, 1])
+      expect(rows.map((row) => row.scoreLabel)).toEqual([
+        '1,2 + 1 Ping × 0,1 = 1,3',
+        '0,8 + 9 Pings × 0,1 = 1,7',
+      ])
+      expect(rows.map((row) => row.pingCount)).toEqual([1, 9])
       // Two clips: the guess above has one pin, so it is unreadable there — the label goes too.
       expect(two[0]!.scoreLabel).toBeNull()
     })
@@ -103,10 +108,10 @@ describe('scoreRows', () => {
       })
       const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
 
-      expect(byId.anna!.bar!.distance).toBeCloseTo(0.4 / 1.9)
-      expect(byId.anna!.bar!.pings).toBeCloseTo(1.5 / 1.9)
-      expect(byId.cem!.bar!.distance).toBeCloseTo(0.8 / 1.9)
-      expect(byId.cem!.bar!.pings).toBeCloseTo(0.45 / 1.9)
+      expect(byId.anna!.bar!.distance).toBeCloseTo(0.4 / 3.4)
+      expect(byId.anna!.bar!.pings).toBeCloseTo(3 / 3.4)
+      expect(byId.cem!.bar!.distance).toBeCloseTo(0.8 / 3.4)
+      expect(byId.cem!.bar!.pings).toBeCloseTo(0.9 / 3.4)
     })
 
     it('fills the bar of a lone row, and survives a score of zero', () => {

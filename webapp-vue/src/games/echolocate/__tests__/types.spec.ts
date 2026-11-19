@@ -20,6 +20,7 @@ const PAYLOAD: EchoLocatePayload = {
   bedDb: -24,
   noiseDb: 0,
   toleranceRadius: 1.5,
+  pingCost: null,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
 
@@ -31,6 +32,12 @@ describe('asEchoLocatePayload', () => {
       ...PAYLOAD,
       toleranceRadius: null,
     })
+  })
+
+  // Phase two's price per ping; a round frozen before it existed carries none.
+  it('keeps the ping cost, and reads a missing one as none', () => {
+    expect(asEchoLocatePayload({ ...PAYLOAD, pingCost: 0.1 })?.pingCost).toBe(0.1)
+    expect(asEchoLocatePayload({ ...PAYLOAD, pingCost: undefined })?.pingCost).toBeNull()
   })
 
   it('hands back a copy, not the raw object', () => {
@@ -53,6 +60,8 @@ describe('asEchoLocatePayload', () => {
     ['an infinite tolerance', { ...PAYLOAD, toleranceRadius: Infinity }],
     ['a tolerance as text', { ...PAYLOAD, toleranceRadius: '1.5' }],
     ['a missing tolerance', { ...PAYLOAD, toleranceRadius: undefined }],
+    ['a ping cost as text', { ...PAYLOAD, pingCost: '0.1' }],
+    ['a negative ping cost', { ...PAYLOAD, pingCost: -0.1 }],
     ['a NaN reach', { ...PAYLOAD, reach: NaN }],
     ['no reach', { ...PAYLOAD, reach: 0 }],
     ['an infinite speed', { ...PAYLOAD, speed: Infinity }],

@@ -355,6 +355,6 @@ statement, both or neither. `MyPlayDto.steps` carries input and answer (`StepDto
 takes it as a parameter without a default — a caller that forgets it must not compile.
 
 **Steps that cost score are the game's to charge.** `GuessContext.stage` hands `judge` the steps
-spent (round and lab alike), e.g. Peilung's phase two: distance + 0.05 × pings. The framework never
+spent (round and lab alike), e.g. Peilung's phase two: distance + 0.1 × pings. The framework never
 adds it; a ladder that is unlimited for the player is still finite for the row (`stages` = a hidden
 ceiling, Peilung 999 + 1).
