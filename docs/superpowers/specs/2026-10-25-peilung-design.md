@@ -601,12 +601,15 @@ ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
 
 - Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.
 - Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.
-- Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
+- Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
   Markierung für dich – er fließt nicht in die Bewertung ein. („Hörst du einen Spruch, … stehen,
   bis zu zwei pro Welle. Diese Ringe sind … – sie fließen nicht …“)
-- „Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin für den Spruch („pro Spruch“).
-  „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten. (Bis 2026-11-19:
+- „Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.
+- Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. („Setz je einen
+  dorthin, wo du einen Spruch vermutest.“) Zum Abgeben „Abgeben“ gedrückt halten. (Bis 2026-11-19:
   „Drei Pings, …“.)
+
+„Klick“, nicht „Tipp“: ein Tipp ist bei uns die Abgabe einer Runde (Clemens, 2026-11-19).
 
 Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`: „Dein Pin muss im Toleranzkreis
 um den Spruch liegen.“ („Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.“), „Der kleinste

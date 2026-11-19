@@ -17,17 +17,24 @@ const props = defineProps<{ clips: number }>()
       nicht.
     </li>
     <li v-if="props.clips === 1">
-      Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
+      Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
       Markierung für dich – er fließt nicht in die Bewertung ein.
     </li>
     <li v-else>
-      Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
+      Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
       Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.
     </li>
     <li>
-      „Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin
-      {{ props.clips === 1 ? 'für den Spruch' : 'pro Spruch' }}. „Zurücksetzen“ räumt Ringe und Pins
-      ab. Zum Abgeben „Abgeben“ gedrückt halten.
+      „Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins
+      ab.
+    </li>
+    <li v-if="props.clips === 1">
+      Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. Zum Abgeben
+      „Abgeben“ gedrückt halten.
+    </li>
+    <li v-else>
+      Ein Pin ist deine Schätzung: Setz je einen dorthin, wo du einen Spruch vermutest. Zum Abgeben
+      „Abgeben“ gedrückt halten.
     </li>
   </ul>
 </template>

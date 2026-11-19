@@ -854,8 +854,9 @@ describe('EchoLocateBoard', () => {
     expect(rules).toEqual([
       'Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.',
       'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
-      'Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
-      '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin für den Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
+      'Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
+      '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
+      'Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain('Der kleinste Abstand zum Spruch. Wenige Pings werden belohnt.')
   })
@@ -872,8 +873,9 @@ describe('EchoLocateBoard', () => {
 
     expect(w.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
     expect(rules.slice(2)).toEqual([
-      'Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
-      '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin pro Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
+      'Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
+      '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
+      'Ein Pin ist deine Schätzung: Setz je einen dorthin, wo du einen Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
       'Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige Pings werden belohnt.',

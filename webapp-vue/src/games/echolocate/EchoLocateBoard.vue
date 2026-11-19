@@ -412,7 +412,7 @@ onBeforeUnmount(() => {
         />
       </div>
       <div class="flex items-center gap-3">
-        <div class="flex" role="group" aria-label="Was ein Tipp tut">
+        <div class="flex" role="group" aria-label="Was ein Klick aufs Feld tut">
           <button
             v-for="choice in MODES"
             :key="choice.mode"
