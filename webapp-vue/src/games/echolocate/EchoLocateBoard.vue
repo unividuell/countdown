@@ -86,7 +86,14 @@ const MODES: { mode: Mode; label: string }[] = [
 ]
 
 const SWITCH =
-  'h-11 min-w-16 cursor-pointer border border-outline px-4 disabled:cursor-not-allowed disabled:opacity-40'
+  'h-11 cursor-pointer border border-outline px-1 disabled:cursor-not-allowed disabled:opacity-40'
+
+/**
+ * One width for the switch and the reset, centred in their halves: the reset's second line,
+ * „(Markierungen & Pins)“, needs 126 px plus padding and border, 136 in all — a 320 px phone's
+ * half is 138.
+ */
+const CONTROL_WIDTH = 'w-34'
 
 /** A step's input as a point; an unreadable one still counts, at the centre, so stages align. */
 const pings = computed(() =>
@@ -411,8 +418,14 @@ onBeforeUnmount(() => {
           :progress="holdProgress"
         />
       </div>
-      <div class="flex items-center gap-3">
-        <div class="flex" role="group" aria-label="Was ein Klick aufs Feld tut">
+      <!-- Two halves; in each, one control of the same width: the switch, then the reset. -->
+      <div class="grid grid-cols-2 items-center gap-3 self-stretch">
+        <div
+          class="mx-auto grid grid-cols-2"
+          :class="CONTROL_WIDTH"
+          role="group"
+          aria-label="Was ein Klick aufs Feld tut"
+        >
           <button
             v-for="choice in MODES"
             :key="choice.mode"
@@ -422,7 +435,8 @@ onBeforeUnmount(() => {
             :disabled="!steerable || (choice.mode === 'ping' && !canPing)"
             :class="[
               SWITCH,
-              choice.mode === 'ping' ? 'rounded-s-lg' : '-ms-px rounded-e-lg',
+              // One shared border between the halves, so both stay exactly as wide.
+              choice.mode === 'ping' ? 'rounded-s-lg' : 'rounded-e-lg border-s-0',
               flow.mode === choice.mode ? 'bg-on-surface text-surface' : '',
             ]"
             @click="onMode(choice.mode)"
@@ -434,11 +448,12 @@ onBeforeUnmount(() => {
           type="button"
           data-test="echo-locate-reset"
           :disabled="!steerable"
-          :class="SWITCH"
-          class="rounded-lg leading-tight"
+          :class="[SWITCH, CONTROL_WIDTH]"
+          class="mx-auto rounded-lg leading-tight"
           @click="onReset"
         >
-          Zurücksetzen <span class="block text-xs">(Markierungen &amp; Pins)</span>
+          Zurücksetzen
+          <span class="block text-xs whitespace-nowrap">(Markierungen &amp; Pins)</span>
         </button>
       </div>
 
