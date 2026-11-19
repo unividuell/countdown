@@ -3,6 +3,7 @@ package org.unividuell.countdown.core.matchscale.internal
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.unividuell.countdown.core.matchscale.MatchScaleCategory
 import org.unividuell.countdown.core.matchscale.MatchScaleDataset.Companion.MAX_FACTOR
+import org.unividuell.countdown.core.matchscale.MatchScaleDataset.Companion.withinFactor
 import java.io.File
 
 /** What was loaded, and from where — [isSample] decides the fail-fast in deployed environments. */
@@ -82,8 +83,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
         var pairs = 0
         for (i in entries.indices) {
             for (j in i + 1 until entries.size) {
-                val ratio = entries[j].metresPerUnit / entries[i].metresPerUnit
-                if (ratio in (1 / MAX_FACTOR)..MAX_FACTOR) pairs++
+                if (withinFactor(entries[i], entries[j])) pairs++
             }
         }
         return pairs
