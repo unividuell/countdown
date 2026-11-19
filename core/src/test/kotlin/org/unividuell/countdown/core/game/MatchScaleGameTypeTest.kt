@@ -104,13 +104,24 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
         val first = draw(phase = Phase.ONE)
         val previous = listOf(mapper.valueToTree<JsonNode>(first))
 
-        (1..30).forEach { seed ->
-            val next = draw(phase = Phase.ONE, presentationSeed = seed, previous = previous)
+        val sameCategory = (1..30)
+            .map { seed -> draw(phase = Phase.ONE, presentationSeed = seed, previous = previous) }
+            .filter { it.category == first.category }
 
-            if (next.category == first.category) {
-                setOf(next.a.name, next.b.name).intersect(setOf(first.a.name, first.b.name)) shouldBe emptySet()
-            }
+        sameCategory.isNotEmpty() shouldBe true
+        sameCategory.forEach {
+            setOf(it.a.name, it.b.name).intersect(setOf(first.a.name, first.b.name)) shouldBe emptySet()
         }
+    }
+
+    @Test
+    fun `a huge finite scale still yields a finite deviation`() {
+        val params = draw(phase = Phase.ONE)
+
+        val judgement = game.judge(params = params, guess = guess(1e308))
+
+        judgement.deviation.isFinite() shouldBe true
+        judgement.qualifies shouldBe false
     }
 
     @Test

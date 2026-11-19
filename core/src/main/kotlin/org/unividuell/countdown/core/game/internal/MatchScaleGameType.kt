@@ -118,7 +118,8 @@ class MatchScaleGameType(
             ?: throw InvalidGuessException("guess must carry a numeric 'scale'")
         if (!scale.isFinite() || scale <= 0.0) throw InvalidGuessException("scale must be positive, was $scale")
 
-        val deviation = abs(ln(scale / params.factor))
+        // Difference of logs, not log of a ratio: scale / factor overflows for a huge finite scale.
+        val deviation = abs(ln(scale) - ln(params.factor))
         val withinTolerance = params.toleranceFactor?.let { deviation <= ln(it) + EPSILON }
 
         return Judgement(
