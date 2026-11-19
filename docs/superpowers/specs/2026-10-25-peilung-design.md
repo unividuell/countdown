@@ -502,8 +502,8 @@ dessen Standardwerten. Bis 2026-11-19 gab es keine Modus-Knöpfe, der Ablauf ent
 ┌──────── Feld ────────┐
 │                      │
 └──────────────────────┘
- [ Ping | Pin ]  [Zurücksetzen]
  1. Klick: Ping, 2. Klick: Markieren
+ [ Ping | Pin ]  [Zurücksetzen]
  [===== Abgeben (halten) =====]
 
 zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping …        (Umschalter auf „Ping“)
@@ -534,7 +534,7 @@ ist „Ping“ gesperrt und das Feld auf „Pin“.
 peilen geht jederzeit. Gesperrt wie der Umschalter. Ein zurückgesetzter Ping trägt danach eine leere
 Ringliste, der Tipp behält seine Form.
 
-**Unter dem Feld** eine Zeile, die sagt, was ein Tipp gerade tut (Wortlaut meine Festlegung, der erste
+**Direkt unter dem Feld**, über dem Umschalter (Clemens, 2026-11-19), eine Zeile, die sagt, was ein Klick gerade tut (Wortlaut meine Festlegung, der erste
 von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren“, während einer Welle „Markieren“, auf
 „Pin“ „Pins 1/2“. Eine Zahl der übrigen Pings gibt es nicht mehr. Unter der Abdeckung bleibt sie leer
 und behält ihre Höhe. **Darunter** der `HoldButton` „Abgeben“, aktiv, sobald genau `clips` Pins stehen.

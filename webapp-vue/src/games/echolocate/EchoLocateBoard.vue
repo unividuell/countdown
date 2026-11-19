@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /**
- * Playing Peilung: the field, the switch „Ping | Pin“, a line saying what a tap does now, the hold
+ * Playing Peilung: the field, a line saying what a tap does now, the switch „Ping | Pin“, the hold
  * that hands in.
  *
  *   ┌──────────────┐
  *   │  SonarField  │   covered until its cover is clicked; the cover names the count
  *   └──────────────┘
+ *   1. Klick: Ping, 2. Klick: Markieren
  *   [ Ping | Pin ]  [Zurücksetzen     ]   greyed under the cover, with a ping out, during its wave
  *                   [(Markierungen & Pins)]
- *   1. Klick: Ping, 2. Klick: Markieren
  *        ( Abgeben )   once every clip has its pin
  *
  * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
@@ -418,6 +418,11 @@ onBeforeUnmount(() => {
           :progress="holdProgress"
         />
       </div>
+      <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
+      <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
+        {{ status }}
+      </p>
+
       <!-- Two halves; in each, one control of the same width: the switch, then the reset. -->
       <div class="grid grid-cols-2 items-center gap-3 self-stretch">
         <div
@@ -456,11 +461,6 @@ onBeforeUnmount(() => {
           <span class="block text-xs whitespace-nowrap">(Markierungen &amp; Pins)</span>
         </button>
       </div>
-
-      <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
-      <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
-        {{ status }}
-      </p>
 
       <!-- `HoldButton` fills its parent and has no size of its own. -->
       <div class="relative size-24 shrink-0" :class="{ 'opacity-40': !canHandIn }">

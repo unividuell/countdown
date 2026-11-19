@@ -911,6 +911,18 @@ describe('EchoLocateBoard', () => {
       expect(pinButton(w).attributes('aria-pressed')).toBe('false')
     })
 
+    it('puts the status line between the field and the switch', () => {
+      const w = mountBoard()
+      const line = status(w).element
+      const before = Node.DOCUMENT_POSITION_PRECEDING
+      const after = Node.DOCUMENT_POSITION_FOLLOWING
+
+      expect(line.compareDocumentPosition(w.get('[data-test="echo-locate-field"]').element)).toBe(
+        before,
+      )
+      expect(line.compareDocumentPosition(pingButton(w).element) & after).toBe(after)
+    })
+
     it('on „Pin“ a tap sets a pin and pings nothing', async () => {
       const w = mountBoard()
       await start(w)
