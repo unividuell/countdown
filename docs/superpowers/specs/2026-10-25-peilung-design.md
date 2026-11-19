@@ -1,7 +1,9 @@
 # Peilung („Echo Locate“) — einen Spruch im Nebel orten
 
-**Status:** umgesetzt (2026-10-29). Erweitert 2026-11-19: beliebig viele Pings, Umschalter
-„Ping | Pin“, „Zurücksetzen“, Spalte „Pings“, Ping-Kosten in Phase zwei; umgesetzt 2026-11-19.
+**Status:** umgesetzt (2026-10-29). Erweitert 2026-11-19: beliebig viele Pings, kurzer Klick pingt,
+langer Klick setzt Pins, „Markierungen löschen“, Spalte „Pings“, Phase zwei auf Zeit hinter der
+geteilten Versiegelung. Ping-Kosten in der Wertung waren ein Irrweg und sind zurückgenommen
+(Clemens, 2026-11-19).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md), den
 [Runden-Assets](2026-10-17-round-assets-design.md), dem [Spiel-Labor](2026-08-08-game-lab-design.md)
@@ -89,20 +91,22 @@ Werkzeug des Spielers und werden nicht gewertet. Sie reisen mit dem Tipp, damit 
 wie jeder geschätzt hat (siehe *Der Tipp*). Automatische Echo-Ringe und Nebel aus dem Spike gibt es im
 Spiel nicht.
 
-**Die Pins:** genau einer pro Clip, ohne Namen. Im Modus „Pin“ setzt ein Tipp einen Pin, ein Tipp
-auf einen Pin hebt ihn wieder ab. Abgegeben wird mit dem `HoldButton`, sobald alle Pins stehen. Was
-ein Tipp tut, sagt der Umschalter „Ping | Pin“ (siehe *Das Feld*).
+**Die Pins:** genau einer pro Clip, ohne Namen. Ein langer Klick (500 ms) setzt einen Pin, ein langer
+Klick auf einen Pin hebt ihn wieder ab — jederzeit, auch während einer Welle (Clemens, 2026-11-19).
+Abgegeben wird mit dem `HoldButton`, sobald alle Pins stehen (siehe *Das Feld*).
 
-**Die Phasen — wörtlich die von Anmaßung:**
+**Die Phasen** (Phase zwei seit 2026-11-19 auf Zeit, wie Verrohrung und Platzierung):
 
 | | Phase eins | Phase zwei |
 |---|---|---|
-| Aufdecken | nein, das Feld ist sofort da | nein |
-| Zeit | läuft nicht ins Ergebnis ein | läuft nicht ins Ergebnis ein |
-| Gate | **jeder** Pin im Toleranzkreis seines Clips | keins |
-| Award | `ALL_QUALIFYING`: jeder Treffer 1 Punkt | `CLOSEST_ONLY`: der kleinste Abstand nimmt alles |
+| Aufdecken | nein, das Feld ist sofort da | ja: die geteilte Versiegelung, mit der Anzahl der Sprüche |
+| Zeit | läuft nicht ins Ergebnis ein | ab dem Aufdecken; sie ist die Wertung |
+| Gate | **jeder** Pin im Toleranzkreis seines Clips | dasselbe |
+| Award | `ALL_QUALIFYING`: jeder Treffer 1 Punkt | `CLOSEST_ONLY`: der schnellste Treffer nimmt alles |
 
-Im Vertrag: `requiresReveal = scoresOnDuration = false`, unbedingt. **`deviation` ist der euklidische
+Wenige Pings lohnen sich in Phase zwei von selbst: jeder Ping samt Welle kostet Zeit.
+
+Im Vertrag: `requiresReveal = scoresOnDuration = timed` (Phase zwei). **`deviation` ist der euklidische
 Abstand vom Pin zur Mitte der Zielzelle, in Zellen; bei zwei Clips der Mittelwert der beiden.** Welcher
 Pin zu welchem Clip gehört, entscheidet die kleinste Summe der Abstände, wie im Spike. Das Gate ist
 ein Kreis mit Radius 1,5 um die Mitte der Zielzelle (Durchmesser 3; Clemens, 2026-10-31, statt des
@@ -132,9 +136,10 @@ besser geeignet“):
 
 - **Mono, kein Stereo.** Links und rechts würden die Richtung verraten.
 - **Ein Graph** (`audioGraph()` aus `ui/audio.ts`), wie `frontend-state.md` es für kurze Clips verlangt.
-- **Ton freischalten:** Das Feld startet unter „Antippen zum Starten“. Der Tipp setzt auf iOS
-  `navigator.audioSession.type = 'playback'` (sonst schweigt Web Audio am Stummschalter) und startet
-  den Graphen.
+- **Ton freischalten:** Es gibt keine eigene Abdeckung mehr (2026-11-19). Der erste kurze Klick aufs
+  Feld setzt auf iOS `navigator.audioSession.type = 'playback'` (sonst schweigt Web Audio am
+  Stummschalter), startet den Graphen und pingt zugleich. Er löst beim Loslassen aus: erst das ist für
+  iOS eine Geste, die Ton starten darf. Jeder weitere Klick holt einen angehaltenen Graphen zurück.
 - **Welle und Ton treffen sich:** Die Welle startet um den Vorlauf des Graphen plus die Ausgabelatenz
   des Geräts später (`START_LOOKAHEAD_SECONDS + outputLatency + baseLatency`), damit sie dort ist, wo es
   klingt. Bei Bluetooth bleibt ein Rest; das ist hingenommen.
@@ -152,11 +157,13 @@ data class EchoLocateParams(
     val noiseDb: Double,            // 0.0
     val targets: List<Cell>,        // Zielzelle je Clip, gleiche Reihenfolge — das Rundengeheimnis
     val noises: List<NoiseSource>,  // Zelle und Art — ebenfalls geheim
-    /** Kreis um die Mitte der Zielzelle in Phase eins (1.5); `null` in Phase zwei, wie `toleranceDeg`. */
+    /** Kreis um die Mitte der Zielzelle (1.5), in beiden Phasen; bis 2026-11-19 `null` in Phase zwei. */
     val toleranceRadius: Double?,
-    /** Zellen Aufschlag je Ping in Phase zwei (0.1); `null` in Phase eins. Seit 2026-11-19. */
-    val pingCost: Double?,
+    /** Phase zwei: versiegelter Start, Zeit als Wertung. */
+    val timed: Boolean = false,
 )
+
+data class EchoLocateScene(val grid: Int, val clips: Int)  // für die Versiegelung, aus dem Scene-Strom
 
 data class Cell(val col: Int, val row: Int)
 data class NoiseSource(val cell: Cell, val kind: NoiseKind)  // BIRDS, BROOK, COW, WIND, RAIN
@@ -178,7 +185,7 @@ liest nur dort. Andere Werte sind später eine Änderung der Konstanten; alte Ru
   auseinander, dann die Störquellen, jede mit Mindestabstand 2 zu allen vorigen; nach 200 Versuchen
   nimmt eine Quelle die letzte gezogene Zelle (wie im Spike, bei 8 Quellen auf 400 Zellen praktisch
   nie).
-- `toleranceRadius` = 1,5 in Phase eins, `null` in Phase zwei.
+- `toleranceRadius` = 1,5 in beiden Phasen, `timed` = Phase zwei.
 
 **Verfügbar** ist das Spiel, wenn `playableIds(communityId)` nicht leer ist.
 
@@ -384,13 +391,14 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt:
 
 | Ausgang | wann | Felder |
 |---|---|---|
-| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius, pingCost` |
+| Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius` |
 | Schritt-Antwort `EchoLocateEcho` | pro Ping, nur dem Spieler | `hits[].sound, hits[].clip, hits[].delayMs` |
+| Scene `EchoLocateScene` | versiegelt, vor dem Aufdecken | `grid, clips` |
 | Lösung `EchoLocateSolution` | nach dem eigenen Tipp | `targets, noises, toleranceRadius` |
-| Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf, score` |
+| Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf` |
 
 `clips` ist die Anzahl. `distance` ist der Mittelwert, `pinOf[i]` der Pin, der Ziel `i` zugeordnet
-wurde. `withinTolerance` ist `null` in Phase zwei. Die Lösung wird nach dem Tipp ohnehin gezeigt, also
+wurde. `withinTolerance` ist `null` nur in Runden von vor 2026-11-19 (Phase zwei ohne Gate). Die Lösung wird nach dem Tipp ohnehin gezeigt, also
 darf das Outcome Abstand und Zuordnung tragen. So zeichnet die Auflösung die Zuordnung des Servers,
 statt sie in TypeScript nachzurechnen.
 
@@ -421,10 +429,8 @@ Ping verrät und gewinnt nichts. Die Auflösung zeichnet einen Ring nur, wo es P
 
 - **Zuordnung:** die Permutation der Pins auf die Ziele mit der kleinsten Summe der Abstände
   `hypot(x − (col + 0.5), y − (row + 0.5))`; bei zwei Clips gibt es zwei Kandidaten. Sie ergibt `pinOf`.
-- `deviation` = Mittelwert der zugeordneten Abstände, in Phase zwei plus `pingCost × Pings`
-  (seit 2026-11-19). Die Zahl der Pings ist die Stufe des Spielers; `GuessContext` trägt sie dafür
-  neu als `stage` (Rahmen und Labor). `outcome.score` ist diese Wertung, `null` in Phase eins, damit
-  die Rangliste nach der Zahl des Servers sortiert, statt sie nachzurechnen;
+- `deviation` = Mittelwert der zugeordneten Abstände; in Phase zwei ersetzt der Rahmen ihn durch die
+  Zeit seit dem Aufdecken (`scoresOnDuration`);
 - `qualifies = toleranceRadius == null ||` jeder Pin liegt im Kreis seines Ziels: sein Abstand
   zur Zellmitte ist `≤ toleranceRadius`;
 - `guess` neu aufgebaut aus genau `pins` und `rings`.
@@ -487,57 +493,58 @@ Schritte der anderen über `entries` für die Auflösung.
 ### Das Feld
 
 **Das UI ist das des Spikes** (Clemens: „vom UI/UX reicht mir der Spike“), Stand `20db6a38`, mit
-dessen Standardwerten. Bis 2026-11-19 gab es keine Modus-Knöpfe, der Ablauf entschied (Clemens,
-2026-10-28). Ohne Ping-Grenze fehlt der Übergang zum Pin; seitdem entscheidet der Umschalter
-„Ping | Pin“.
+dessen Standardwerten. Was ein Klick tut, entscheiden Ablauf und Länge des Klicks — kein Umschalter
+(ein „Ping | Pin“-Umschalter war kurz da und „zu kompliziert/nervig“, Clemens, 2026-11-19).
 
 - Abstrakte, dunkle Fläche, Punkt-Raster an den Zellmitten, kaum sichtbar. Funken unter dem Finger
   ohne jede Information über den Ton.
-- Die Anzahl, „1 Spruch“ oder „2 Sprüche“, steht auf der Abdeckung über „Antippen zum Starten“
-  (Clemens, 2026-10-31).
+- **Keine eigene Abdeckung:** Das Feld ist sofort offen, der erste Klick ist der erste Ping. Bis dahin
+  steht blass „1 Spruch“ / „2 Sprüche“ mitten auf dem Feld (meine Festlegung). In Phase zwei liegt
+  davor die geteilte Versiegelung (`RevealCover`) über einem leeren Feld; ihr Hinweis nennt die Anzahl
+  aus der Scene (Clemens: schon beim Einzählen sichtbar). Nach dem Aufheben läuft das Spiel sofort.
 
 **Der Ablauf:**
 
 ```
 ┌──────── Feld ────────┐
-│                      │
+│      2 Sprüche       │   bis zum ersten Ping
 └──────────────────────┘
+          🧹 Markierungen löschen
  1. Klick: Ping, 2. Klick: Markieren
- [ Ping | Pin ]  [Zurücksetzen]
- [===== Abgeben (halten) =====]
+ Lang drücken: Pin setzen oder entfernen
+       ( Abgeben )
 
-zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping …        (Umschalter auf „Ping“)
-              │  Tipps in der Welle: markieren (bis zu clips)
-              └  danach: der nächste Tipp ist der nächste Ping
-             Pin: Tipps setzen und heben Pins          (Umschalter auf „Pin“)
+Klick ──▶ Ping ──Welle + Nachklang──▶ Klick ──▶ Ping …
+           │  Klicks in der Welle: markieren (bis zu clips)
+           └  danach: der nächste Klick ist der nächste Ping
+langer Klick, jederzeit: Pin setzen / abheben
 ```
 
-1. **Zu:** Das Feld ist abgedeckt, „Antippen zum Starten“. Der Tipp schaltet den Ton frei (siehe *Der
-   Klang*) und setzt noch keinen Ping. Die Runde startet auf „Ping“.
-2. **Ping:** Tipp → `skip` mit `{x, y}` → bis zur Antwort pulsiert ein Ring an der Stelle („Sonar lädt
-   …“), weitere Tipps werden ignoriert → mit der Antwort startet die Welle, die Treffer werden im
-   Graphen geplant. Der Ping zählt beim Tippen als verbraucht.
-3. **Markieren:** Ein Tipp, solange Welle und Nachklang laufen, setzt einen Ring um den Ping mit
-   `(event.timeStamp − Wellenstart) / 1000 × speed`, bis zu `clips` pro Welle, alle gleich gezeichnet;
-   weitere Tipps in dieser Welle werden ignoriert. Wer nicht markiert, verliert nichts: nach dem
-   Nachklang ist der nächste Tipp der nächste Ping.
-4. **Pin:** Auf „Pin“ setzt ein Tipp einen Pin, solange welche fehlen; ein Tipp auf einen Pin (näher
-   als 1,2 Zellen) hebt ihn ab. Mit allen Pins sind weitere Tipps daneben wirkungslos. Die Pins stehen
-   in der Farbe des eigenen Avatars (Clemens, 2026-10-31). Zurück auf „Ping“ bleiben sie stehen.
+**Kurz oder lang** (meine Festlegung): ab 500 ms gehalten ist ein Klick lang und meldet sich sofort;
+sein Loslassen sagt nichts. Ein kurzer meldet sich beim Loslassen, mit Ort und `timeStamp` vom
+Aufsetzen — der Ring bleibt so reaktionsgenau, und erst das Loslassen darf auf iOS den Ton starten.
+Kontextmenü und iOS-Callout sind auf dem Feld aus.
 
-**Der Umschalter „Ping | Pin“** (Clemens, 2026-11-19; die Namen wie die Spalte der Rangliste) ist
-gesperrt, solange das Feld zu ist, ein Ping lädt oder eine Welle läuft. Ist die Obergrenze erreicht,
-ist „Ping“ gesperrt und das Feld auf „Pin“.
+1. **Ping:** kurzer Klick → `skip` mit `{x, y}` → bis zur Antwort pulsiert ein Ring an der Stelle
+   („Sonar lädt …“), weitere kurze Klicks werden ignoriert → mit der Antwort startet die Welle, die
+   Treffer werden im Graphen geplant. Der Ping zählt beim Klick als verbraucht. An der Obergrenze tut
+   ein kurzer Klick nichts mehr.
+2. **Markieren:** Ein kurzer Klick, solange Welle und Nachklang laufen, setzt einen Ring um den Ping
+   mit `(Aufsetzen − Wellenstart) / 1000 × speed`, bis zu `clips` pro Welle, alle gleich gezeichnet;
+   weitere in dieser Welle werden ignoriert. Wer nicht markiert, verliert nichts.
+3. **Pin:** Ein langer Klick setzt einen Pin, solange welche fehlen; auf einem Pin (näher als 1,2
+   Zellen) hebt er ihn ab. Mit allen Pins ist ein langer Klick daneben wirkungslos. Die Pins stehen in
+   der Farbe des eigenen Avatars (Clemens, 2026-10-31).
 
-**„Zurücksetzen (Markierungen & Pins)“** (die Klammer kleiner, Clemens 2026-11-19) löscht alle Ringe und alle Pins; die Pings bleiben als Punkte stehen (Clemens,
-2026-11-19). Ein einfacher Knopf ohne Rückfrage (meine Festlegung): verloren gehen keine Pings, und neu
-peilen geht jederzeit. Gesperrt wie der Umschalter. Ein zurückgesetzter Ping trägt danach eine leere
-Ringliste, der Tipp behält seine Form.
+**„Markierungen löschen“** (Clemens, 2026-11-19): ein Link rechtsbündig unter dem Feld, Besen-Icon
+(`lucide/brush-cleaning`), löscht nur die Ringe; Pins und Pings bleiben. Geht jederzeit, auch in einer
+Welle; ein geleerter Ping trägt danach eine leere Ringliste, der Tipp behält seine Form. Ohne Ringe
+ausgegraut.
 
-**Direkt unter dem Feld**, über dem Umschalter (Clemens, 2026-11-19), eine Zeile, die sagt, was ein Klick gerade tut (Wortlaut meine Festlegung, der erste
-von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren“, während einer Welle „Markieren“, auf
-„Pin“ „Pins 1/2“. Eine Zahl der übrigen Pings gibt es nicht mehr. Unter der Abdeckung bleibt sie leer
-und behält ihre Höhe. **Darunter** der `HoldButton` „Abgeben“, aktiv, sobald genau `clips` Pins stehen.
+**Darunter** die Zeile, die sagt, was ein kurzer Klick gerade tut (der erste Teil von Clemens,
+2026-10-31): „1. Klick: Ping, 2. Klick: Markieren“, während einer Welle „Markieren“, beim Laden „Sonar
+lädt …“; darunter klein „Lang drücken: Pin setzen oder entfernen“. **Darunter** der `HoldButton`
+„Abgeben“, aktiv, sobald genau `clips` Pins stehen.
 - **Abgeben:** Halten schickt `{pins, rings}` — die Pins und die Radien der eigenen Ringe, je Ping.
 - **Neuladen:** Die Pings kommen vom Server (`steps`), ihre Mitten stehen wieder da; Ringe und Pin aus
   dem Entwurf. Wellen werden nicht wiederholt. Ein Ping, dessen Antwort nie ankam, ist auf dem Server
@@ -564,26 +571,20 @@ Labor Seed und Phase), wie dort beschrieben.
    „Pings“ ist die Zahl aller Pings, in beiden Phasen, ohne Erklärung (Clemens, 2026-11-19: wer wenig
    braucht, wird als Experte wahrgenommen). Als pure `scoreboard.ts`.
 
-   **Phase zwei** (Clemens, 2026-11-19): Die Wertung ist eine Strecke, **Abstand + Pings × 0,1**;
-   10 Pings wiegen ein Feld. Erst 0,05: Eine Runde mit 0,2 + 6 Pings gegen 0,4 + 3 Pings ging an den
-   mit den doppelten Pings, für 0,2 Felder, die eher Reaktionszufall als Können sind — „unfair“.
-   Sortiert und vergeben wird nach ihr; der Payload trägt `pingCost`, damit die Auflösung die Formel
-   ausschreibt. **Der Hintergrund der Zelle ist der
-   Balken** (Clemens, 2026-11-19): zwei Abschnitte, Abstand und dahinter heller der Ping-Aufschlag,
-   gemessen an der längsten Strecke der Runde; der Text der Zelle ist seine Beschriftung, die ganze
-   Formel ohne das Wort „Pings“, das die Spalte schon nennt: „0,2 + 6 × 0,1 = 0,8“ (Spalte 10rem, damit der Name Platz behält). Kein eigener Diagramm-Block, kein zusätzlicher Platz. Die
-   Spalte heißt „Abstand + Pings*“, unter der Tabelle steht wie bei Blockierungs „K/D*“ klein:
-   „* Abstand + Pings × 0,1 – die kleinste Summe gewinnt“.
+   **Phase zwei** läuft auf Zeit: Die Rangliste sortiert wie Verrohrung (`rankByClock`): Punkte, ein
+   Treffer vor einem Fehlgriff, die schnellere Zeit; die Zeitspalte bringt der Rahmen mit. Die
+   Beschriftung sagt „Treffer nach Zeit sortiert“. Die `AwardBox` sagt: „Dein Pin im Toleranzkreis —
+   und von allen, die das schaffen, die kürzeste Zeit.“ („Beide Pins …“).
 
-   **Vorab** (nur Phase zwei) bekommt die `AwardBox` einen zweiten Satz: „Der kleinste Abstand zum
-   Spruch. Wenige Pings werden belohnt.“ („Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige
-   Pings werden belohnt.“). Phase eins bleibt beim Toleranzkreis.
+   *Verworfen* (Clemens, 2026-11-19, „Irrweg“): Ping-Kosten in der Wertung — Abstand + Pings × 0,1,
+   als Balken in der Zelle mit ausgeschriebener Formel und *-Legende. Die Formel war nicht ohne
+   Erklärung zu lesen; auf Zeit belohnt Phase zwei wenige Pings von selbst.
 
    **Kein Ton-Schalter:** Der globale Schalter (`useGameSound`) gilt nur, wo Ton Dekoration ist; in
    Peilung ist er das Spiel (`frontend-state.md`). Peilung liest ihn nicht und bekommt keinen.
 
-Die Karte zeigt **alle** Pings des angetippten Spielers, auch die vor einem Zurücksetzen, aber nur die
-Ringe, die bei der Abgabe standen.
+Die Karte zeigt **alle** Pings des angetippten Spielers, auch die vor einem „Markierungen löschen“,
+aber nur die Ringe, die bei der Abgabe standen.
 
 Eine abgeschlossene Runde sieht in der Historie genauso aus. **Takt** aus `revealChoreography.ts`,
 Feinabstimmung im Labor.
@@ -608,10 +609,10 @@ ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
 - Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
   Markierung für dich – er fließt nicht in die Bewertung ein. („Hörst du einen Spruch, … stehen,
   bis zu zwei pro Welle. Diese Ringe sind … – sie fließen nicht …“)
-- „Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.
-- Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. („Setz je einen
-  dorthin, wo du einen Spruch vermutest.“) Zum Abgeben „Abgeben“ gedrückt halten. (Bis 2026-11-19:
-  „Drei Pings, …“.)
+- Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal lang
+  drücken nimmt ihn weg. („Drück lang auf jede Stelle, wo du einen Spruch vermutest. …“)
+- „Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.
+  (Bis 2026-11-19: „Drei Pings, …“.)
 
 „Klick“, nicht „Tipp“: ein Tipp ist bei uns die Abgabe einer Runde (Clemens, 2026-11-19).
 
@@ -663,13 +664,14 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
 - `noise.ts`: Wind, Regen und Vögel liefern hörbare Samples ohne NaN auf der Ziel-Lautheit. (Im Spike
   blieben die Vögel stumm: ein Startindex mit Nachkomma schreibt in ein `Float32Array` ins Leere.)
 - Bach und Kuh: jede Art in `NoiseKind` hat einen Klang, keine bleibt stumm.
-- Feld: der erste Tipp öffnet nur; „Sonar lädt“ ignoriert Tipps; in der Welle höchstens `clips`
-  Ringe, danach ist der nächste Tipp ein Ping; auf „Pin“ setzt ein Tipp einen Pin; Pins setzen und
-  abheben, kein Pin über `clips` hinaus; Umschalter und „Zurücksetzen“ gesperrt in Welle und Laden;
-  „Zurücksetzen“ leert Ringe und Pins, Pings bleiben; an der Obergrenze nur „Pin“; die Zustandszeile
-  folgt; Abgeben erst mit allen Pins; Neuladen zeigt die Pings vom Server; Halten ergibt einen Tipp mit
-  genau den Pins und den Ringen je Ping.
-- Rangliste: Spalte „Pings“ mit der Zahl der Pings je Zeile.
+- Feld: kurzer Klick beim Loslassen mit Zeit vom Aufsetzen, langer nach 500 ms, abgebrochener Finger
+  nichts; der erste kurze Klick startet den Ton und pingt; „Sonar lädt“ ignoriert kurze Klicks; in der
+  Welle höchstens `clips` Ringe, danach ist der nächste Klick ein Ping; langer Klick setzt und hebt
+  Pins jederzeit, kein Pin über `clips` hinaus; „Markierungen löschen“ leert nur Ringe; an der
+  Obergrenze pingt nichts mehr; die Zustandszeile folgt; Abgeben erst mit allen Pins; Neuladen zeigt die
+  Pings vom Server; Halten ergibt einen Tipp mit genau den Pins und den Ringen je Ping.
+- Versiegelt: `RevealCover` mit der Anzahl aus der Scene über leerem Feld, sein Start ist `reveal`.
+- Rangliste: Spalte „Pings“; Phase zwei nach Zeit (`rankByClock`), Treffer vor Fehlgriff.
 - `LabControls`: die Zeile „Schwierigkeit“ zeigt den Wert der geladenen Runde, keine Zeile ohne Runde.
 - `draft.ts`, `scoreboard.ts`, `types.ts` wie bei Anmaßung.
 
