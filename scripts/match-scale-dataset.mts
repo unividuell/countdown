@@ -34,7 +34,16 @@ const SIMPLIFY_UNITS = 1.5;
 
 const SIDE = 1000;
 const EARTH_RADIUS = 6_371_008.8;
-const COUNTRY_TYPES = new Set(["Sovereign country", "Country"]);
+/**
+ * Errs on inclusion: the input can only exclude. Natural Earth types some states "Sovereignty"
+ * or "Disputed"; odd entries are struck on the review page.
+ */
+const COUNTRY_TYPES = new Set([
+  "Sovereign country",
+  "Country",
+  "Sovereignty",
+  "Disputed",
+]);
 const MAX_FACTOR = 10;
 
 const SIZE_BUDGET = 500_000;
@@ -406,10 +415,18 @@ function countries(args: Record<string, string>) {
 
   entries.sort((a, b) => a.name.localeCompare(b.name, "de"));
 
-  const duplicate = entries.find(
-    (e, i) => entries.findIndex((o) => o.name === e.name) !== i,
+  // Names must be unique for the loader: every holder of a shared name gets its code appended,
+  // e.g. "Land (ABC)" and "Land (XYZ)" — deterministic, and no entry silently wins.
+  const shared = entries.filter((e) =>
+    entries.some((o) => o !== e && o.name === e.name),
   );
-  if (duplicate) fail(`duplicate name ${JSON.stringify(duplicate.name)}`);
+  for (const e of shared) e.name = `${e.name} (${e.code})`;
+  if (shared.length > 0) {
+    console.warn(
+      `warning: ${shared.length} entries share a name, code appended`,
+    );
+    entries.sort((a, b) => a.name.localeCompare(b.name, "de"));
+  }
 
   const yaml = categoryYaml(
     "countries",
