@@ -3,20 +3,30 @@
  */
 import type { ScoreRow } from './scoreboard'
 import { endSoundOf } from './sounds'
-import type { Leak, TurnPipesOutcome, TurnPipesSolution } from './types'
+import type { TurnPipesOutcome, TurnPipesSolution } from './types'
 
 export interface ShownBoard {
   rotations: number[]
   wet: number[]
-  leak: Leak | null
+  /** Cells under dirty water once the run ends: the burst, or every pipe the water missed. */
+  puddles: number[]
   endSound: 'leak' | 'success' | 'dry'
 }
 
-function ofTip(rotations: number[], outcome: TurnPipesOutcome): ShownBoard {
+/** A burst puddles where the water stopped (or left the board); a miss puddles every dry pipe. */
+function puddlesOf(outcome: TurnPipesOutcome, size: number): number[] {
+  if (outcome.leak) return [outcome.leak.at ?? outcome.leak.from]
+  if (outcome.correct) return []
+
+  const wet = new Set(outcome.wet)
+  return Array.from({ length: size * size }, (_, cell) => cell).filter((cell) => !wet.has(cell))
+}
+
+function ofTip(rotations: number[], outcome: TurnPipesOutcome, size: number): ShownBoard {
   return {
     rotations,
     wet: outcome.wet,
-    leak: outcome.leak,
+    puddles: puddlesOf(outcome, size),
     endSound: endSoundOf(outcome),
   }
 }
@@ -26,6 +36,7 @@ function ofTip(rotations: number[], outcome: TurnPipesOutcome): ShownBoard {
  * its pipes all wet, along its path. `null` when there is nothing to show.
  */
 export function shownBoard(input: {
+  size: number
   selectedUserId: string | null
   mineUserId: string | null
   myRotations: number[] | null
@@ -41,7 +52,7 @@ export function shownBoard(input: {
     const rotations = mine ? input.myRotations : (row?.rotations ?? null)
     const outcome = mine ? input.myOutcome : (row?.outcome ?? null)
 
-    if (rotations && outcome) return ofTip(rotations, outcome)
+    if (rotations && outcome) return ofTip(rotations, outcome, input.size)
   }
 
   if (!input.solution) return null
@@ -49,7 +60,7 @@ export function shownBoard(input: {
   return {
     rotations: input.solution.rotations,
     wet: input.solution.path,
-    leak: null,
+    puddles: [],
     endSound: 'success',
   }
 }

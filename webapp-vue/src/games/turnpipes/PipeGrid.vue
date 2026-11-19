@@ -4,7 +4,7 @@
  * by the playing board and the reveal, which differ only in what they hand in.
  */
 import { prefersReducedMotion } from '@/ui/motion'
-import { PLATE_URL, tileUrl } from './tiles'
+import { PLATE_URL, puddleUrl, tileUrl } from './tiles'
 import { TURN_MS } from './turns'
 import type { PipeKindCode } from './types'
 
@@ -15,7 +15,8 @@ const props = defineProps<{
   /** Quarter turns clockwise per cell; unbounded, so a pipe keeps spinning the same way. */
   turns: readonly number[]
   wet: ReadonlySet<number>
-  leakCell: number | null
+  /** Cells under dirty water: where it burst, or every pipe it missed. */
+  puddles: ReadonlySet<number>
   interactive: boolean
 }>()
 
@@ -63,10 +64,13 @@ function tap(cell: number): void {
           transitionDuration: `${TURN_MS}ms`,
         }"
       />
-      <span
-        v-if="props.leakCell === cell - 1"
-        data-test="pipe-leak"
-        class="pointer-events-none absolute inset-[6%] rounded-md ring-3 ring-red-500"
+      <img
+        v-if="props.puddles.has(cell - 1)"
+        data-test="pipe-puddle"
+        :src="puddleUrl(cell - 1)"
+        alt=""
+        draggable="false"
+        class="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
       />
     </button>
   </div>

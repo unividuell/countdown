@@ -12,6 +12,7 @@ function row(userId: string, outcome: TurnPipesOutcome | null, rotations: number
 }
 
 const input = {
+  size: 3,
   selectedUserId: null as string | null,
   mineUserId: 'me' as string | null,
   myRotations: [0, 0, 0] as number[] | null,
@@ -25,7 +26,7 @@ describe('shownBoard', () => {
     expect(shownBoard({ ...input, selectedUserId: 'me' })).toEqual({
       rotations: [0, 0, 0],
       wet: [0, 1],
-      leak: { at: 7, from: 1 },
+      puddles: [7],
       endSound: 'leak',
     })
   })
@@ -34,7 +35,7 @@ describe('shownBoard', () => {
     expect(shownBoard({ ...input, selectedUserId: 'them' })).toEqual({
       rotations: [2, 2, 2],
       wet: [0, 1, 2],
-      leak: null,
+      puddles: [],
       endSound: 'success',
     })
   })
@@ -43,8 +44,29 @@ describe('shownBoard', () => {
     expect(shownBoard(input)).toEqual({
       rotations: [1, 1, 1],
       wet: [0, 1, 2],
-      leak: null,
+      puddles: [],
       endSound: 'success',
+    })
+  })
+
+  it('water off the board puddles where it left', () => {
+    const offBoard: TurnPipesOutcome = {
+      correct: false,
+      wet: [0, 1, 2],
+      leak: { at: null, from: 2 },
+    }
+    const rows = [row('them', offBoard, [2, 2, 2])]
+
+    expect(shownBoard({ ...input, rows, selectedUserId: 'them' })?.puddles).toEqual([2])
+  })
+
+  it('the outlet reached past dry pipes puddles every pipe the water missed', () => {
+    const dry: TurnPipesOutcome = { correct: false, wet: [0, 1, 4, 5], leak: null }
+    const rows = [row('them', dry, [2, 2, 2])]
+
+    expect(shownBoard({ ...input, rows, selectedUserId: 'them' })).toMatchObject({
+      puddles: [2, 3, 6, 7, 8],
+      endSound: 'dry',
     })
   })
 

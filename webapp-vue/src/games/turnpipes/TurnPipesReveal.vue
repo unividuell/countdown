@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
  * The card after the round: the submitted board stays, and the water runs along what the selected
- * tip wets — then the ring sits where it leaked. A name in the table turns the grid to that tip
+ * tip wets — then dirty puddles lie where it burst, or on every pipe it missed. A name in the table
+ * turns the grid to that tip
  * and replays its water; the same name again lets go, and the solution fills every pipe.
  *
- *   selection ─▶ shownBoard ─▶ turn (TURN_MS) ─▶ water, one cell per step ─▶ end sound + ring
+ *   selection ─▶ shownBoard ─▶ turn (TURN_MS) ─▶ water, one cell per step ─▶ end sound + puddles
  *
  * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
  */
@@ -21,7 +22,7 @@ import { playSound, preloadSounds, startFlow } from './sounds'
 import type { Playing } from './sounds'
 import TurnPipesScoreboard from './TurnPipesScoreboard.vue'
 import { TURN_MS, turnTo } from './turns'
-import type { Leak, TurnPipesOutcome, TurnPipesPayload, TurnPipesSolution } from './types'
+import type { TurnPipesOutcome, TurnPipesPayload, TurnPipesSolution } from './types'
 import { useWaterRun, waterStepMs } from './water'
 
 const props = defineProps<{
@@ -55,6 +56,7 @@ function select(userId: string): void {
 
 const shown = computed(() =>
   shownBoard({
+    size: props.payload.size,
     selectedUserId: selectedUserId.value,
     mineUserId: props.mineUserId,
     myRotations: props.myRotations,
@@ -66,7 +68,8 @@ const shown = computed(() =>
 
 /** Unbounded quarter turns, so a pipe keeps turning the same way. */
 const turns = ref<number[]>([...(props.myRotations ?? props.payload.start)])
-const leakCell = ref<number | null>(null)
+const NO_PUDDLES: ReadonlySet<number> = new Set()
+const puddles = ref<ReadonlySet<number>>(NO_PUDDLES)
 
 function turnedTo(board: ShownBoard): number[] {
   return turns.value.map((t, cell) =>
@@ -74,15 +77,11 @@ function turnedTo(board: ShownBoard): number[] {
   )
 }
 
-function ringOf(leak: Leak | null): number | null {
-  return leak ? (leak.at ?? leak.from) : null
-}
-
 /** The picture at its end, nothing played. */
 function showEnd(board: ShownBoard): void {
   turns.value = turnedTo(board)
   water.fill(board.wet)
-  leakCell.value = ringOf(board.leak)
+  puddles.value = new Set(board.puddles)
 }
 
 let beat: ReturnType<typeof setTimeout> | undefined
@@ -99,7 +98,7 @@ function halt(): void {
 function present(board: ShownBoard | null): void {
   halt()
   water.fill([])
-  leakCell.value = null
+  puddles.value = NO_PUDDLES
   if (!board) return
 
   turns.value = turnedTo(board)
@@ -112,7 +111,7 @@ function present(board: ShownBoard | null): void {
         flow?.stop(FLOW_FADE_S)
         flow = undefined
         if (sound.value) playSound(board.endSound)
-        leakCell.value = ringOf(board.leak)
+        puddles.value = new Set(board.puddles)
       },
       waterStepMs(props.payload.size),
     )
@@ -154,7 +153,7 @@ onBeforeUnmount(() => {
         :kinds="props.payload.kinds"
         :turns="turns"
         :wet="water.wet.value"
-        :leak-cell="leakCell"
+        :puddles="puddles"
         :interactive="false"
       />
     </div>

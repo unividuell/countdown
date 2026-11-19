@@ -16,7 +16,7 @@ unter *Integrität*.
 
 **Berührt:** ein neues Modulith-Modul `turnpipes` (reine Logik, **kein Schema, keine Tabelle**), den
 Adapter `TurnPipesGameType` in `game.internal`, im Frontend ein neues Spielverzeichnis
-`games/turnpipes/` mit acht PNG-Kacheln und fünf Klängen, die Einträge in `games/registry.ts` und
+`games/turnpipes/` mit elf PNG-Kacheln und fünf Klängen, die Einträge in `games/registry.ts` und
 `gamelab/games.ts`, und Blockierungs Stummschalter, der zu einem gemeinsamen wird (`ui/`). Keine neue
 Abhängigkeit.
 
@@ -254,7 +254,7 @@ in `labGameList`.
 
 ### Bilder
 
-Acht PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
+Elf PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 
 | Datei | Inhalt |
 |---|---|
@@ -263,6 +263,7 @@ Acht PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 | `elbow-dry.png`, `elbow-wet.png` | Bogen, leer / mit Wasser |
 | `inlet.png` | Zulauf mit rotem Handrad — **immer mit Wasser**, er ist die Quelle |
 | `outlet-dry.png`, `outlet-wet.png` | Abfluss mit Abflussloch, leer / gefüllt |
+| `puddle-1.png` … `puddle-3.png` | Pfütze aus dreckigem Wasser, durchscheinend, drei Ausprägungen (siehe *Auflösung*) |
 
 Gezeichnet von `scripts/turn-pipes-tiles.mts` — dem Zeichencode des Spikes (`spike/pipes/art.ts`),
 unverändert in Form und Farbe; es erzeugt die committeten Dateien Byte für Byte, wie
@@ -311,9 +312,11 @@ Das Raster bleibt stehen, wie abgegeben. Im Takt von `revealChoreography.ts`:
    so schnell, dass ein voller Lauf durch alle Rohre **2 s** dauert, gleich welche Größe (8×8 ≈ 31 ms je
    Kachel, 6×6 ≈ 56 ms). So endet er gut vor der Mitgliederleiste über der Karte, die 3,8 s nach der
    Abgabe Punkt oder Totenkopf zeigt (`SPOILER_HOLD_MS`); 110 ms je Kachel waren am Handy zu langsam
-   (2026-11-18). Danach, falls es ein Leck gibt, ein roter
-   Ring: um `leak.at`, oder um `leak.from`, wenn das Wasser über den Rand lief. Ist der Abfluss erreicht,
-   aber nicht jedes Rohr nass, braucht es keine Markierung — die trockenen Rohre sind zu sehen.
+   (2026-11-18). Danach liegt eine **Pfütze aus dreckigem Wasser** — ein Rohrbruch: bei einem Leck auf
+   `leak.at`, oder auf `leak.from`, wenn das Wasser über den Rand lief; ist der Abfluss erreicht, aber
+   nicht jedes Rohr nass, auf **jedem Rohr, das das Wasser verpasst hat**. Die Pfütze dreht nicht mit dem
+   Rohr; eine von drei Ausprägungen je Zelle (`cell mod 3`), damit Nachbarn verschieden aussehen. Gewählt
+   am Kontaktbogen (2026-11-19) statt des roten Rings, gegen „Rohrbruch“-Spritzer und „Überflutet“.
 3. **`RESULTS_DELAY_MS` (ab 1900 ms)** — die Rangliste baut sich auf.
 
 **Der eigene Tipp ist vorausgewählt.** Ein anderer Name in der Rangliste ist ein Knopf (wie bei
@@ -402,7 +405,7 @@ Fließtempo, Takte, Lautstärken.
 - Brett: Tippen dreht genau diese Kachel; Halten → ein `guess` mit `size²` Stellungen.
 - Zwischenstand: gesichert nach Tippen, wiederhergestellt beim Öffnen, gelöscht nach angenommenem Tipp,
   fremde Runden weggeräumt, Unlesbares verworfen.
-- Auflösung: das Wasser folgt `wet`, der Ring sitzt am Leck; ein anderer Name dreht auf dessen Stellungen;
+- Auflösung: das Wasser folgt `wet`, danach Pfützen am Leck oder auf jedem verpassten Rohr; ein anderer Name dreht auf dessen Stellungen;
   abgewählt dreht es auf die Lösung.
 - Ton: Tippen spielt Drehen; ein Lauf spielt Fließen und danach Leck, Erfolg oder Trocken passend zum
   Outcome; der Stummschalter wirkt, wird gemerkt und gilt auch für Blockierung; ohne `AudioContext` still

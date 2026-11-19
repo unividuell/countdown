@@ -75,6 +75,7 @@ function mountReveal(over: Record<string, unknown> = {}) {
 type Reveal = ReturnType<typeof mountReveal>
 const grid = (w: Reveal) => w.getComponent(PipeGrid)
 const wet = (w: Reveal) => [...(grid(w).props('wet') as ReadonlySet<number>)]
+const puddles = (w: Reveal) => [...(grid(w).props('puddles') as ReadonlySet<number>)]
 const rotationsOf = (w: Reveal) => (grid(w).props('turns') as number[]).map((t) => t % 4)
 
 /** Lets the timers fire, then Vue render what they changed. */
@@ -120,21 +121,21 @@ describe('TurnPipesReveal', () => {
       vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
     })
 
-    it('the water runs after SOLUTION_DELAY_MS along my wet cells, then the ring sits at the leak', async () => {
+    it('the water runs after SOLUTION_DELAY_MS along my wet cells, then a puddle lies at the leak', async () => {
       const wrapper = mountReveal({ animate: true })
       expect(wet(wrapper)).toEqual([])
-      expect(grid(wrapper).props('leakCell')).toBeNull()
+      expect(puddles(wrapper)).toEqual([])
 
       await advance(SOLUTION_DELAY_MS + ARMED_MS)
       expect(wet(wrapper)).toEqual([])
 
       await advance(150 + STEP)
       expect(wet(wrapper)).toEqual([0])
-      expect(grid(wrapper).props('leakCell')).toBeNull()
+      expect(puddles(wrapper)).toEqual([])
 
       await advance(STEP)
       expect(wet(wrapper)).toEqual([0, 1])
-      expect(grid(wrapper).props('leakCell')).toBe(7)
+      expect(puddles(wrapper)).toEqual([7])
     })
 
     it('the run sounds: flow while it runs, then the end sound', async () => {
@@ -184,7 +185,7 @@ describe('TurnPipesReveal', () => {
     const wrapper = mountReveal({ animate: false })
 
     expect(wet(wrapper)).toEqual([0, 1])
-    expect(grid(wrapper).props('leakCell')).toBe(7)
+    expect(puddles(wrapper)).toEqual([7])
     expect(startFlow).not.toHaveBeenCalled()
     expect(playSound).not.toHaveBeenCalled()
   })
@@ -225,7 +226,7 @@ describe('TurnPipesReveal', () => {
     expect(startFlow).toHaveBeenCalledTimes(2)
     expect(rotationsOf(wrapper)[5]).toBe(1)
     expect(wet(wrapper)).toEqual([0, 1, 2])
-    expect(grid(wrapper).props('leakCell')).toBeNull()
+    expect(puddles(wrapper)).toEqual([])
     expect(wrapper.findAll('[data-test^="select-"][aria-pressed="true"]')).toHaveLength(0)
   })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PipeGrid from '@/games/turnpipes/PipeGrid.vue'
-import { PLATE_URL, tileUrl } from '@/games/turnpipes/tiles'
+import { PLATE_URL, puddleUrl, tileUrl } from '@/games/turnpipes/tiles'
 import { TURN_MS } from '@/games/turnpipes/turns'
 import type { PipeKindCode } from '@/games/turnpipes/types'
 
@@ -16,7 +16,7 @@ function mountGrid(over: Record<string, unknown> = {}) {
       kinds: kindsOf(6),
       turns: Array.from({ length: 36 }, () => 0),
       wet: new Set<number>(),
-      leakCell: null,
+      puddles: new Set<number>(),
       interactive: true,
       ...over,
     },
@@ -55,14 +55,23 @@ describe('PipeGrid', () => {
     expect(frozen.emitted('tap')).toBeUndefined()
   })
 
-  it('wet cells show the wet tile; the leak cell wears the ring', () => {
-    const wrapper = mountGrid({ wet: new Set([2]), leakCell: 4 })
+  it('wet cells show the wet tile; puddle cells lie under dirty water', () => {
+    const turns = Array.from({ length: 36 }, () => 0)
+    turns[4] = 1
+    const wrapper = mountGrid({ wet: new Set([2]), puddles: new Set([4, 9]), turns })
     const pipe = (cell: number) => wrapper.findAll('button')[cell]!.findAll('img')[1]!
+    const puddle = (cell: number) =>
+      wrapper.findAll('button')[cell]!.find('[data-test="pipe-puddle"]')
 
     expect(pipe(2).attributes('src')).toBe(tileUrl('STRAIGHT', true))
     expect(pipe(3).attributes('src')).toBe(tileUrl('STRAIGHT', false))
-    expect(wrapper.findAll('[data-test="pipe-leak"]')).toHaveLength(1)
-    expect(wrapper.findAll('button')[4]!.find('[data-test="pipe-leak"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="pipe-puddle"]')).toHaveLength(2)
+    expect(puddle(4).attributes('src')).toBe(puddleUrl(4))
+    expect(puddle(9).attributes('src')).toBe(puddleUrl(9))
+    // The puddle lies on the plate: it does not turn with the pipe.
+    expect(puddle(4).attributes('style') ?? '').not.toContain('rotate')
+    expect(puddle(4).attributes('draggable')).toBe('false')
+    expect(puddle(4).classes()).toContain('pointer-events-none')
   })
 
   it('only an interactive grid takes focus', () => {

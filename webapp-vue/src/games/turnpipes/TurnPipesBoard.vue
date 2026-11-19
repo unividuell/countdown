@@ -49,6 +49,7 @@ const storage = deviceStorage()
 
 const turns = ref<number[]>([])
 const NO_WATER: ReadonlySet<number> = new Set()
+const NO_PUDDLES: ReadonlySet<number> = new Set()
 
 // Opening a round starts from its draft, else from the scrambled start; the player's stale drafts
 // of other rounds go.
@@ -108,7 +109,7 @@ function submit(): void {
             :kinds="round?.kinds ?? null"
             :turns="turns"
             :wet="NO_WATER"
-            :leak-cell="null"
+            :puddles="NO_PUDDLES"
             :interactive="playable"
             @tap="onTap"
           />

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
- * Draws Verrohrung's eight pixel tiles: the plate and the pipes, each 32×32 RGBA PNG.
+ * Draws Verrohrung's pixel tiles, each 32×32 RGBA PNG: the plate, the pipes, and three puddles of
+ * dirty water that mark a burst pipe or a pipe the water never reached.
  *
  * Two layers per cell: the plate stands still, so it may carry light from the top left; the pipe
  * turns, so its shading is symmetric about the pipe's axis — it must look right in all four turns.
  * Every pipe is drawn at rotation 0 (straight N–S, elbow N–E, ends N), the convention the server and
- * the board share. As it stands, it reproduces the committed webapp-vue/src/games/turnpipes/tiles/*.png
+ * the board share. The puddles never turn; they come in three seeded variants so a field of them
+ * does not repeat. As it stands, it reproduces the committed webapp-vue/src/games/turnpipes/tiles/*.png
  * byte for byte.
  *
  * Usage: node scripts/turn-pipes-tiles.mts [outDir]   (default: webapp-vue/src/games/turnpipes/tiles)
@@ -153,6 +155,97 @@ const plate: Painter = (x, y) => {
   return PLATE
 }
 
+/** mulberry32: a few seeded numbers, the same on every run. */
+function rng(seed: number) {
+  let a = seed >>> 0
+  const next = () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  return { next, int: (max: number) => Math.floor(next() * max) }
+}
+
+/** Smooth value noise on a grid of [cell] px, 0..1, wrapping. */
+function noise(seed: number, cell: number) {
+  const r = rng(seed)
+  const n = Math.ceil(S / cell)
+  const g = Array.from({ length: n }, () => Array.from({ length: n }, () => r.next()))
+  const ease = (t: number) => t * t * (3 - 2 * t)
+  const at = (i: number, j: number) => g[((j % n) + n) % n]![((i % n) + n) % n]!
+  return (x: number, y: number) => {
+    const gx = x / cell
+    const gy = y / cell
+    const ix = Math.floor(gx)
+    const iy = Math.floor(gy)
+    const fx = ease(gx - ix)
+    const fy = ease(gy - iy)
+    const top = at(ix, iy) * (1 - fx) + at(ix + 1, iy) * fx
+    const bottom = at(ix, iy + 1) * (1 - fx) + at(ix + 1, iy + 1) * fx
+    return top * (1 - fy) + bottom * fy
+  }
+}
+
+// Dirty water, translucent (#rrggbbaa) so plate and pipe show through: murky brown-olive, a dark
+// edge, light ripples, a few opaque glints.
+const DIRTY = { edge: '#33291acc', deep: '#5c4b2bb8', mid: '#76653ea8', ripple: '#b0a074c8', glint: '#ece3c8' }
+
+/** Water inside f < 0: an edge one pixel in, ripples where the wave crests. */
+function water(f: (x: number, y: number) => number, wave: (x: number, y: number) => number, glints: [number, number][]): Painter {
+  return (x, y) => {
+    const v = f(x + 0.5, y + 0.5)
+    if (v >= 0) return null
+    if (glints.some(([gx, gy]) => gx === x && gy === y)) return DIRTY.glint
+    if (v > -1.1) return DIRTY.edge
+    const w = wave(x, y)
+    if (w > 0.82) return DIRTY.ripple
+    return w > 0.35 ? DIRTY.mid : DIRTY.deep
+  }
+}
+
+const over =
+  (...painters: Painter[]): Painter =>
+  (x, y) => {
+    for (const p of painters) {
+      const c = p(x, y)
+      if (c) return c
+    }
+    return null
+  }
+
+const drop = (dx: number, dy: number, rad: number): Painter =>
+  water(
+    (x, y) => Math.hypot(x - dx, y - dy) - rad,
+    () => 0.5,
+    [[Math.floor(dx - rad / 2), Math.floor(dy - rad / 2)]],
+  )
+
+/** A puddle of dirty water spreading over the plate, with ripples and four drops around it. */
+function puddle(seed: number): Painter {
+  const n = noise(seed, 8)
+  const m = noise(seed + 50, 5)
+  const r = rng(seed + 9)
+  const cx = 15 + r.int(3)
+  const cy = 16 + r.int(3)
+  const body = water(
+    (x, y) => Math.hypot(x - cx, (y - cy) * 1.1) - (10 + 5 * n(x, y)),
+    (x, y) => 0.5 + 0.5 * Math.sin(Math.hypot(x - cx, y - cy) * 1.4 + m(x, y) * 7),
+    [
+      [cx - 5, cy - 4],
+      [cx - 4, cy - 5],
+      [cx + 4, cy + 2],
+    ],
+  )
+  const drops = Array.from({ length: 4 }, () => {
+    const a = r.next() * Math.PI * 2
+    const d = 14.5 + r.next() * 1.5
+    return drop(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 1.4 + r.next() * 0.8)
+  })
+  return over(body, ...drops)
+}
+
 /** 8-bit RGBA, no filter; an unpainted pixel stays transparent. */
 function png(paint: Painter): Buffer {
   const row = 1 + S * 4
@@ -161,7 +254,8 @@ function png(paint: Painter): Buffer {
     for (let x = 0; x < S; x++) {
       const c = paint(x, y)
       if (c === null) continue
-      raw.set([1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)).concat(255), y * row + 1 + x * 4)
+      const alpha = c.length === 9 ? parseInt(c.slice(7, 9), 16) : 255
+      raw.set([1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)).concat(alpha), y * row + 1 + x * 4)
     }
   }
 
@@ -198,6 +292,10 @@ const TILES: Record<string, Painter> = {
   'inlet.png': end('inlet', true),
   'outlet-dry.png': end('outlet', false),
   'outlet-wet.png': end('outlet', true),
+  // Seeds picked on the contact sheet (2026-11-19).
+  'puddle-1.png': puddle(23),
+  'puddle-2.png': puddle(40),
+  'puddle-3.png': puddle(57),
 }
 
 const outDir = process.argv[2] ?? 'webapp-vue/src/games/turnpipes/tiles'
