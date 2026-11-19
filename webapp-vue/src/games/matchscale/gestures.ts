@@ -14,6 +14,8 @@ export const FIELD_CELLS = 9
 export const GROUND_OFFSET = 2
 /** Longest side of a silhouette at scale 1, in cells. */
 export const START_CELLS = 3
+/** The longest side of a silhouette's bbox, in the path's normalised units. */
+const PATH_UNITS = 1000
 export const SCALE_MIN = 0.05
 export const SCALE_MAX = 20
 /** Zoom relative to the start size. */
@@ -73,7 +75,10 @@ export function toWorld(view: View, p: Point): Point {
 }
 
 export function sizeAt(s: Silhouette, scale: number): { w: number; h: number } {
-  return { w: (START_CELLS * s.width * scale) / 1000, h: (START_CELLS * s.height * scale) / 1000 }
+  return {
+    w: (START_CELLS * s.width * scale) / PATH_UNITS,
+    h: (START_CELLS * s.height * scale) / PATH_UNITS,
+  }
 }
 
 export function initialPlacements(a: Silhouette): { a: Placement; b: Placement } {

@@ -82,10 +82,10 @@ function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null
 }
 
-function finite(value: unknown): value is number {
+export function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function positive(value: unknown): value is number {
+export function positive(value: unknown): value is number {
   return finite(value) && value > 0
 }

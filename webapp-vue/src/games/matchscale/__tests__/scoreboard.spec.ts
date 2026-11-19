@@ -27,10 +27,26 @@ describe('formatFactor', () => {
 describe('scoreboardRows', () => {
   it('ranks by points, then deviation, then user id', () => {
     const rows = rowsOf([
-      entry({ userId: 'd', points: 1, outcome: { scale: 1, deviation: 0.5 } }),
-      entry({ userId: 'c', points: 3, outcome: { scale: 1, deviation: 0.9 } }),
-      entry({ userId: 'b', points: 3, outcome: { scale: 1, deviation: 0.1 } }),
-      entry({ userId: 'a', points: 3, outcome: { scale: 1, deviation: 0.1 } }),
+      entry({
+        userId: 'd',
+        points: 1,
+        outcome: { scale: 1, deviation: 0.5, withinTolerance: null },
+      }),
+      entry({
+        userId: 'c',
+        points: 3,
+        outcome: { scale: 1, deviation: 0.9, withinTolerance: null },
+      }),
+      entry({
+        userId: 'b',
+        points: 3,
+        outcome: { scale: 1, deviation: 0.1, withinTolerance: null },
+      }),
+      entry({
+        userId: 'a',
+        points: 3,
+        outcome: { scale: 1, deviation: 0.1, withinTolerance: null },
+      }),
     ])
 
     expect(rows.map((row) => row.userId)).toEqual(['a', 'b', 'c', 'd'])
@@ -73,9 +89,30 @@ describe('scoreboardRows', () => {
     expect(byId.exact!.off).toBe('+0 %')
   })
 
-  it('stamps ticks by rank', () => {
-    const rows = rowsOf([entry({ userId: 'a' }), entry({ userId: 'b' })], 'b')
+  it('sorts outcome-less entries of equal points by user id', () => {
+    const rows = rowsOf([
+      entry({ userId: 'b', outcome: null }),
+      entry({ userId: 'a', outcome: null }),
+      entry({ userId: 'c', outcome: { scale: 1, deviation: 0.2, withinTolerance: null } }),
+    ])
 
-    expect(rows.map((row) => row.tick)).toHaveLength(2)
+    expect(rows.map((row) => row.userId)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('gives each row its rank as a tick, and holds mine back to the first foreign marker', () => {
+    const rows = rowsOf(
+      [
+        entry({ userId: 'far', outcome: { scale: 1, deviation: 0.9, withinTolerance: null } }),
+        entry({ userId: 'me', outcome: { scale: 1, deviation: 0.4, withinTolerance: null } }),
+        entry({ userId: 'near', outcome: { scale: 1, deviation: 0.1, withinTolerance: null } }),
+      ],
+      'me',
+    )
+
+    expect(rows.map((row) => [row.userId, row.tick])).toEqual([
+      ['near', 0],
+      ['me', 0],
+      ['far', 2],
+    ])
   })
 })

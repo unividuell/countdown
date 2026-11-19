@@ -1,6 +1,6 @@
 import { fingerprint } from '../drafts'
 import type { Placement, Point } from './gestures'
-import type { MatchScalePayload } from './types'
+import { finite, positive, type MatchScalePayload } from './types'
 
 export { clearDraft, deviceStorage } from '../drafts'
 
@@ -63,7 +63,7 @@ function readDraft(raw: string): Draft | null {
   const placement = readPoint(b)
   const scale = (b as { scale?: unknown } | null)?.scale
   if (v !== 1 || point === null || placement === null) return null
-  if (!isPositive(scale) || !isPositive(zoom)) return null
+  if (!positive(scale) || !positive(zoom)) return null
 
   return { v: 1, b: { ...placement, scale }, zoom, centre: point }
 }
@@ -73,15 +73,7 @@ function readPoint(value: unknown): Point | null {
 
   const { x, y } = value as { x?: unknown; y?: unknown }
 
-  return isFinite_(x) && isFinite_(y) ? { x, y } : null
-}
-
-function isFinite_(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function isPositive(value: unknown): value is number {
-  return isFinite_(value) && value > 0
+  return finite(x) && finite(y) ? { x, y } : null
 }
 
 export function saveDraft(storage: Storage | null, key: string, draft: Draft): void {

@@ -52,11 +52,18 @@ export function scoreboardRows(input: {
   ranked.sort(
     (a, b) =>
       (b.points ?? -1) - (a.points ?? -1) ||
-      (a.deviation ?? Infinity) - (b.deviation ?? Infinity) ||
+      byDeviation(a.deviation, b.deviation) ||
       a.userId.localeCompare(b.userId),
   )
 
   return withTicks(ranked, input.mineUserId)
+}
+
+/** Ascending, a missing deviation last; two missing ones tie. */
+function byDeviation(a: number | null, b: number | null): number {
+  if (a === null || b === null) return Number(a === null) - Number(b === null)
+
+  return a - b
 }
 
 function signedPercent(fraction: number): string {
