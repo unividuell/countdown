@@ -618,7 +618,7 @@ ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
   bis zu zwei pro Welle. Diese Ringe sind … – sie fließen nicht …“)
 - Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal lang
   drücken nimmt ihn weg. („Drück lang auf jede Stelle, wo du einen Spruch vermutest. …“)
-- „Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.
+- „Markierungen löschen“ räumt die Ringe ab. Zum Abgeben „Abgeben“ gedrückt halten.
   (Bis 2026-11-19: „Drei Pings, …“.)
 
 „Klick“, nicht „Tipp“: ein Tipp ist bei uns die Abgabe einer Runde (Clemens, 2026-11-19).

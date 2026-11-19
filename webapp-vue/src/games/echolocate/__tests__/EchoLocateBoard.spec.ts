@@ -693,7 +693,7 @@ describe('EchoLocateBoard', () => {
       'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
       'Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
       'Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal lang drücken nimmt ihn weg.',
-      '„Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.',
+      '„Markierungen löschen“ räumt die Ringe ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
       'Dein Pin im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',
@@ -714,7 +714,7 @@ describe('EchoLocateBoard', () => {
     expect(rules.slice(2)).toEqual([
       'Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
       'Ein Pin ist deine Schätzung: Drück lang auf jede Stelle, wo du einen Spruch vermutest. Noch mal lang drücken nimmt ihn weg.',
-      '„Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.',
+      '„Markierungen löschen“ räumt die Ringe ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
       'Beide Pins im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',

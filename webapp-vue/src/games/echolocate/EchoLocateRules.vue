@@ -32,9 +32,6 @@ const props = defineProps<{ clips: number }>()
       Ein Pin ist deine Schätzung: Drück lang auf jede Stelle, wo du einen Spruch vermutest. Noch
       mal lang drücken nimmt ihn weg.
     </li>
-    <li>
-      „Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt
-      halten.
-    </li>
+    <li>„Markierungen löschen“ räumt die Ringe ab. Zum Abgeben „Abgeben“ gedrückt halten.</li>
   </ul>
 </template>
