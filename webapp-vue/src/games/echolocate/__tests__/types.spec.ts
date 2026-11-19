@@ -4,6 +4,7 @@ import {
   asEchoLocateGuess,
   asEchoLocateOutcome,
   asEchoLocatePayload,
+  asEchoLocateScene,
   asEchoLocateSolution,
   asPing,
   pinsOf,
@@ -22,6 +23,21 @@ const PAYLOAD: EchoLocatePayload = {
   toleranceRadius: 1.5,
 }
 const TWO: EchoLocatePayload = { ...PAYLOAD, clips: 2 }
+
+describe('asEchoLocateScene', () => {
+  it('reads the field and the clips the sealed cover names', () => {
+    expect(asEchoLocateScene({ grid: 20, clips: 2 })).toEqual({ grid: 20, clips: 2 })
+  })
+
+  it.each([
+    ['null', null],
+    ['three clips', { grid: 20, clips: 3 }],
+    ['no field', { grid: 0, clips: 1 }],
+    ['a missing count', { grid: 20 }],
+  ])('turns %s into null', (_label, scene) => {
+    expect(asEchoLocateScene(scene)).toBeNull()
+  })
+})
 
 describe('asEchoLocatePayload', () => {
   it('narrows a payload with one or two clips and keeps a null tolerance', () => {

@@ -125,7 +125,6 @@ function select(userId: string): void {
         :pins="shown.pins"
         :pin-color-hex="shown.pinColorHex"
         :pending="null"
-        :covered="false"
         :solution="props.solution"
         :other-pins="otherPins"
         :links="links"
@@ -149,7 +148,6 @@ function select(userId: string): void {
           :pins="ownField.pins"
           :pin-color-hex="ownField.pinColorHex"
           :pending="null"
-          :covered="false"
         />
       </div>
     </div>

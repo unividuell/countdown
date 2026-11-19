@@ -39,8 +39,13 @@ const props = defineProps<{
         <template v-else>Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.</template>
       </template>
       <template #closest>
-        <template v-if="props.clips === 1">Der kleinste Abstand zum Spruch.</template>
-        <template v-else>Der kleinste mittlere Abstand zu beiden Sprüchen.</template>
+        <!-- Phase two, on the clock like Verrohrung's „heißer Zuber“. -->
+        <template v-if="props.clips === 1">
+          Dein Pin im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.
+        </template>
+        <template v-else>
+          Beide Pins im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.
+        </template>
       </template>
     </AwardBox>
   </div>

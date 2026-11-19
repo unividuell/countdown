@@ -110,6 +110,20 @@ export function asEchoLocatePayload(raw: unknown): EchoLocatePayload | null {
   return { grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius }
 }
 
+/** What the sealed cover may know: the field and how many clips hide in it. */
+export interface EchoLocateScene {
+  grid: number
+  clips: 1 | 2
+}
+
+export function asEchoLocateScene(raw: unknown): EchoLocateScene | null {
+  if (!isRecord(raw)) return null
+  const { grid, clips } = raw
+  if (!isWhole(grid) || grid < 1 || (clips !== 1 && clips !== 2)) return null
+
+  return { grid, clips }
+}
+
 function asHit(raw: unknown): EchoHit | null {
   if (!isRecord(raw)) return null
   const { sound, clip, delayMs } = raw

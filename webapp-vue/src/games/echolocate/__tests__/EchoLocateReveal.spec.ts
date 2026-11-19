@@ -144,7 +144,6 @@ describe('EchoLocateReveal', () => {
         reach: 12,
         solution: SOLUTION,
         pending: null,
-        covered: false,
         waves: [],
         rings: [],
         pins: [],
@@ -318,7 +317,6 @@ describe('EchoLocateReveal', () => {
         rings: GUESSES['me']!.rings,
         pins: GUESSES['me']!.pins,
         pinColorHex: COLORS['me'],
-        covered: false,
       })
       // Nothing of the solution, nobody else's pins: my field as the board left it.
       expect(fields(wrapper)[1]!.props('solution')).toBeUndefined()
@@ -420,13 +418,54 @@ describe('EchoLocateReveal', () => {
       const two = mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION })
 
       expect(one.get('#distance-fact').text()).toBe('Toleranz')
-      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('± 1,5')
+      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('≤ 1,5')
       expect(two.find('#distance-fact').exists()).toBe(false)
       expect(two.find('[data-test="distance-tolerance"]').exists()).toBe(false)
 
       for (const wrapper of [one, two]) {
         expect(wrapper.text()).not.toContain('Zelle')
       }
+    })
+
+    // What decides stands furthest right, next to the points: the distance, in phase two the clock.
+    it('orders the columns pings, distance, clock — the clock the frame’s, before „Pkt“', () => {
+      const band = (wrapper: ReturnType<typeof mountReveal>) =>
+        wrapper.findAll('thead tr:last-child th').map((cell) => cell.text())
+
+      expect(band(mountReveal())).toEqual(['Name', 'Pings', 'Abstand', 'Pkt'])
+      expect(
+        band(mountReveal({ entries: [entry('me', 0.8, { durationMs: 95_000, points: 0 })] })),
+      ).toEqual(['Name', 'Pings', 'Abstand', '[mm:ss]', 'Pkt'])
+    })
+
+    it('keeps pings and distance narrow', () => {
+      const widths = mountReveal()
+        .findAll('col')
+        .map((col) => col.attributes('style'))
+
+      expect(widths.slice(1, 3)).toEqual(['width: 3rem;', 'width: 3.5rem;'])
+    })
+
+    it('counts every player’s pings', () => {
+      const wrapper = mountReveal()
+
+      expect(wrapper.text()).toContain('Pings')
+      expect(wrapper.get('[data-test="cell-pings-me"]').text()).toBe('3')
+    })
+
+    // Phase two runs on the clock: the table adds the time, the caption says what ranks.
+    it('sorts a timed round by its clock', () => {
+      const wrapper = mountReveal({
+        entries: [
+          entry('me', 0.8, { durationMs: 95_000, points: 0 }),
+          entry('anna', 1.4, { durationMs: 41_000, points: 3 }),
+        ],
+      })
+
+      expect(wrapper.get('caption').text()).toBe(
+        'Alle Peilungen der Runde, Treffer nach Zeit sortiert',
+      )
+      expect(wrapper.findAll('th[scope="row"]').map((th) => th.text())).toEqual(['anna', 'me'])
     })
 
     it('offers no button for a row without a play, and says nothing of its distance', () => {
