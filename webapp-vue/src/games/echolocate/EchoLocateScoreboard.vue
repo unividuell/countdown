@@ -7,7 +7,7 @@
  * pins on the map above.
  *
  *                      Toleranz
- *                         ± 1,5            phase one only: the circle's radius
+ *                         ≤ 1,5            phase one only: the circle's radius; a distance is never negative
  *   Auswertung
  *   Name               Abstand  Pings  Pkt
  *   anna                 1,6      4     1
@@ -121,7 +121,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
 
     <template v-if="props.toleranceRadius !== null" #fact-distance>
       <span data-test="distance-tolerance" class="block text-end tabular-nums">
-        ±&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
+        ≤&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
       </span>
     </template>
     <template #cell-distance="{ row }">{{ row.distanceLabel ?? '—' }}</template>

@@ -420,7 +420,7 @@ describe('EchoLocateReveal', () => {
       const two = mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION })
 
       expect(one.get('#distance-fact').text()).toBe('Toleranz')
-      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('± 1,5')
+      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('≤ 1,5')
       expect(two.find('#distance-fact').exists()).toBe(false)
       expect(two.find('[data-test="distance-tolerance"]').exists()).toBe(false)
 

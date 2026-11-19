@@ -551,7 +551,7 @@ Labor Seed und Phase), wie dort beschrieben.
 
 ### Auflösung und Historie
 
-1. **Kopf:** in Phase eins über „Abstand“ die Angabe „Toleranz“ mit „± 1,5“, wie „Lösung“ bei Farbausmalung (Clemens, 2026-10-31).
+1. **Kopf:** in Phase eins über „Abstand“ die Angabe „Toleranz“ mit „≤ 1,5“ (Clemens, 2026-11-19: ein Abstand ist nie negativ, „±“ war falsch), wie „Lösung“ bei Farbausmalung (Clemens, 2026-10-31).
 2. **Die Karte:** dasselbe Feld, darauf die Clips (grün), in Phase eins ihre Toleranzkreise
    hervorgehoben, die Störquellen (V, B, K, W, R) und alle Pins, jeder in der Farbe seines Spielers
    (Clemens, 2026-10-31). **Wer einen Namen antippt, sieht dessen Pings** (Mitten), **dessen Ringe und
@@ -599,7 +599,7 @@ Feinabstimmung im Labor.
 (Clemens, 2026-10-31); hier Einzahl, in Klammern die Mehrzahl. Kurztext: „Irgendwo im Nebel steckt
 ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
 
-- Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.
+- Ein Ping schickt eine Welle los. Was sie erreicht (Spruch oder Ablenkung), erklingt in dem Moment, in dem sie dort ankommt.
 - Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.
 - Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
   Markierung für dich – er fließt nicht in die Bewertung ein. („Hörst du einen Spruch, … stehen,

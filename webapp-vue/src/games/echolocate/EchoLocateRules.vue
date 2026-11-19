@@ -9,8 +9,8 @@ const props = defineProps<{ clips: number }>()
 <template>
   <ul class="ms-4 list-disc space-y-1">
     <li>
-      Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort
-      ankommt.
+      Ein Ping schickt eine Welle los. Was sie erreicht (Spruch oder Ablenkung), erklingt in dem
+      Moment, in dem sie dort ankommt.
     </li>
     <li>
       Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping

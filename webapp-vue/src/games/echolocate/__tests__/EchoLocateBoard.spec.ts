@@ -852,7 +852,7 @@ describe('EchoLocateBoard', () => {
 
     expect(w.text()).toContain('Irgendwo im Nebel steckt ein Spruch. Peil ihn an.')
     expect(rules).toEqual([
-      'Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.',
+      'Ein Ping schickt eine Welle los. Was sie erreicht (Spruch oder Ablenkung), erklingt in dem Moment, in dem sie dort ankommt.',
       'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
       'Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
       '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
