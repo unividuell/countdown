@@ -264,8 +264,10 @@ Acht PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 | `inlet.png` | Zulauf mit rotem Handrad — **immer mit Wasser**, er ist die Quelle |
 | `outlet-dry.png`, `outlet-wet.png` | Abfluss mit Abflussloch, leer / gefüllt |
 
-Erzeugt **einmal** aus dem Zeichencode des Spikes (`spike/pipes/art.ts`), unverändert in Form und Farbe;
-dieser Code wird nicht ausgeliefert. Eigene Pixelkunst — die Vorlage aus einem anderen Spiel war nur
+Gezeichnet von `scripts/turn-pipes-tiles.mts` — dem Zeichencode des Spikes (`spike/pipes/art.ts`),
+unverändert in Form und Farbe; es erzeugt die committeten Dateien Byte für Byte, wie
+`scripts/deduster-dust.py` Entstaubers Textur. Wer den Look ändert, ändert ihn dort und lässt es neu
+laufen; ausgeliefert werden nur die PNGs. Eigene Pixelkunst — die Vorlage aus einem anderen Spiel war nur
 Stilrichtung. Jedes Rohr ist in Stellung 0 gezeichnet (siehe *Die Regeln*) und quer zu seiner Achse
 symmetrisch schattiert, damit es in jeder Drehung stimmt; die Platte dreht nie und darf Licht tragen.
 Dargestellt mit `image-rendering: pixelated`.
@@ -424,7 +426,6 @@ Fließtempo, Takte, Lautstärken.
 
 - Die Obergrenze für Schritt 2 des Generators.
 - Wo der Stummschalter in der Auflösung sitzt, solange er da ist.
-- Wie die PNGs aus dem Zeichencode des Spikes entstehen (etwa eine Wegwerf-Seite mit `canvas.toBlob`).
 - Ob das Raster den Wechsel vom Brett zur Auflösung überlebt oder neu entsteht — solange es nicht springt.
 - Ob `PipeGrid` die Wasser-Animation selbst führt oder sie als Prop bekommt.
 

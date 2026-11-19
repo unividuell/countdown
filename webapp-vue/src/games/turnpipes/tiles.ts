@@ -1,3 +1,4 @@
+// The PNGs are drawn by scripts/turn-pipes-tiles.mts: change the look there, then re-run it.
 import elbowDry from './tiles/elbow-dry.png?url'
 import elbowWet from './tiles/elbow-wet.png?url'
 import inlet from './tiles/inlet.png?url'
