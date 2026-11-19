@@ -125,7 +125,7 @@ function submit(): void {
               <HoldButton
                 :ready="true"
                 :disabled="!playable || touching"
-                label="Leitung abgeben — gedrückt halten"
+                label="Wasser marsch — gedrückt halten"
                 :color="props.myColorHex"
                 @confirm="submit"
                 @progress="onProgress"
@@ -133,10 +133,10 @@ function submit(): void {
               <span
                 data-test="turn-pipes-submit-label"
                 aria-hidden="true"
-                class="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold"
+                class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-sm leading-tight font-semibold"
                 :style="{ color: readableTextColor(props.myColorHex) }"
               >
-                Abgeben
+                Wasser marsch!
               </span>
             </template>
           </div>

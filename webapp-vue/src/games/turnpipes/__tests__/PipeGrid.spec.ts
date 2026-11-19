@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PipeGrid from '@/games/turnpipes/PipeGrid.vue'
-import { PLATE_URL, puddleUrl, tileUrl } from '@/games/turnpipes/tiles'
+import { motifUrl, plateUrl, puddleUrl, tileUrl } from '@/games/turnpipes/tiles'
 import { TURN_MS } from '@/games/turnpipes/turns'
 import type { PipeKindCode } from '@/games/turnpipes/types'
 
@@ -85,10 +85,40 @@ describe('PipeGrid', () => {
     expect(pipe.attributes('style')).toContain(`transition-duration: ${TURN_MS}ms`)
   })
 
+  it('wet cells glow: their plate turns fiery, the dry ones stay cool', () => {
+    const wrapper = mountGrid({ wet: new Set([2, 3]) })
+    const plate = (cell: number) => wrapper.findAll('button')[cell]!.findAll('img')[0]!
+
+    expect(plate(2).attributes('src')).toBe(plateUrl(true))
+    expect(plate(3).attributes('src')).toBe(plateUrl(true))
+    expect(plate(4).attributes('src')).toBe(plateUrl(false))
+  })
+
+  it('an end shows its picture upright while its stub turns beneath it', () => {
+    const kinds = kindsOf(6)
+    kinds[0] = 'INLET'
+    kinds[35] = 'OUTLET'
+    const turns = Array.from({ length: 36 }, () => 0)
+    turns[0] = 1
+    turns[35] = 3
+    const wrapper = mountGrid({ kinds, turns, wet: new Set([0]) })
+    const button = (cell: number) => wrapper.findAll('button')[cell]!
+
+    expect(button(0).get('img:nth-of-type(2)').attributes('src')).toBe(tileUrl('INLET', true))
+    expect(button(0).get('img:nth-of-type(2)').attributes('style')).toContain('rotate(90deg)')
+    const fountain = button(0).get('[data-test="pipe-motif"]')
+    expect(fountain.attributes('src')).toBe(motifUrl('INLET', true))
+    expect(fountain.attributes('style') ?? '').not.toContain('rotate')
+    expect(button(35).get('[data-test="pipe-motif"]').attributes('src')).toBe(
+      motifUrl('OUTLET', false),
+    )
+    expect(wrapper.findAll('[data-test="pipe-motif"]')).toHaveLength(2)
+  })
+
   it('sealed shows plates only', () => {
     const images = mountGrid({ kinds: null }).findAll('img')
 
     expect(images).toHaveLength(36)
-    expect(images.every((img) => img.attributes('src') === PLATE_URL)).toBe(true)
+    expect(images.every((img) => img.attributes('src') === plateUrl(false))).toBe(true)
   })
 })

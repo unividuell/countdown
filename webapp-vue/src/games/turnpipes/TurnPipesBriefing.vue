@@ -14,9 +14,7 @@ const props = defineProps<{
 <template>
   <div class="flex flex-col gap-3">
     <InfoBox storage-key="turn-pipes">
-      <template #abstract>
-        Dreh die Rohre, bis das Wasser vom Handrad zum Abfluss durch jedes Rohr läuft.
-      </template>
+      <template #abstract> Bring das Brunnenwasser durch alle Rohre in den Zuber. </template>
       <TurnPipesRules />
     </InfoBox>
     <AwardBox
@@ -25,9 +23,11 @@ const props = defineProps<{
       :award-points="props.awardPoints"
       game-id="turn-pipes"
     >
-      <template #qualifies>Deine Leitung muss durch jedes Rohr führen.</template>
+      <template #qualifies>
+        Der Zuber wird nur heiß, wenn das Wasser durch jedes Rohr fließt.
+      </template>
       <template #closest>
-        Die Leitung durch jedes Rohr — und von allen, die sie haben, die kürzeste Zeit.
+        Der heiße Zuber — und von allen, die ihn haben, die kürzeste Zeit.
       </template>
     </AwardBox>
   </div>

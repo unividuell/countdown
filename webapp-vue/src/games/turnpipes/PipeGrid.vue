@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
- * The pipe board: one plate per cell, the pipe lying on it. Plates stand still, pipes turn. Shared
- * by the playing board and the reveal, which differ only in what they hand in.
+ * The pipe board: one plate per cell, the pipe lying on it. Plates stand still and glow where the
+ * water ran; pipes turn. An end's picture stands upright on its turning stub. Shared by the playing
+ * board and the reveal, which differ only in what they hand in.
  */
 import { prefersReducedMotion } from '@/ui/motion'
-import { PLATE_URL, puddleUrl, tileUrl } from './tiles'
+import { motifUrl, plateUrl, puddleUrl, tileUrl } from './tiles'
 import { TURN_MS } from './turns'
 import type { PipeKindCode } from './types'
 
@@ -47,7 +48,7 @@ function tap(cell: number): void {
       @click="tap(cell - 1)"
     >
       <img
-        :src="PLATE_URL"
+        :src="plateUrl(props.wet.has(cell - 1))"
         alt=""
         draggable="false"
         class="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
@@ -63,6 +64,14 @@ function tap(cell: number): void {
           transform: `rotate(${(props.turns[cell - 1] ?? 0) * 90}deg)`,
           transitionDuration: `${TURN_MS}ms`,
         }"
+      />
+      <img
+        v-if="props.kinds && motifUrl(props.kinds[cell - 1]!, props.wet.has(cell - 1))"
+        data-test="pipe-motif"
+        :src="motifUrl(props.kinds[cell - 1]!, props.wet.has(cell - 1))!"
+        alt=""
+        draggable="false"
+        class="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
       />
       <img
         v-if="props.puddles.has(cell - 1)"

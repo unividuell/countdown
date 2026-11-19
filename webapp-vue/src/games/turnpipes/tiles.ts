@@ -1,26 +1,43 @@
 // The PNGs are drawn by scripts/turn-pipes-tiles.mts: change the look there, then re-run it.
 import elbowDry from './tiles/elbow-dry.png?url'
 import elbowWet from './tiles/elbow-wet.png?url'
-import inlet from './tiles/inlet.png?url'
-import outletDry from './tiles/outlet-dry.png?url'
-import outletWet from './tiles/outlet-wet.png?url'
+import fountain from './tiles/fountain.png?url'
+import plateHot from './tiles/plate-hot.png?url'
 import plate from './tiles/plate.png?url'
 import puddle1 from './tiles/puddle-1.png?url'
 import puddle2 from './tiles/puddle-2.png?url'
 import puddle3 from './tiles/puddle-3.png?url'
 import straightDry from './tiles/straight-dry.png?url'
 import straightWet from './tiles/straight-wet.png?url'
+import stubDry from './tiles/stub-dry.png?url'
+import stubWet from './tiles/stub-wet.png?url'
+import tubDry from './tiles/tub-dry.png?url'
+import tubWet from './tiles/tub-wet.png?url'
 import type { PipeKindCode } from './types'
 
-/** The empty plate under a closed board. */
-export const PLATE_URL = plate
+/** The plate under every cell; it glows where the water ran, because every tile heats the tub. */
+export function plateUrl(hot: boolean): string {
+  return hot ? plateHot : plate
+}
 
 const TILES: Record<PipeKindCode, { dry: string; wet: string }> = {
   STRAIGHT: { dry: straightDry, wet: straightWet },
   ELBOW: { dry: elbowDry, wet: elbowWet },
-  // The inlet is the tap: it carries water from the start, wet or not.
-  INLET: { dry: inlet, wet: inlet },
-  OUTLET: { dry: outletDry, wet: outletWet },
+  // An end turns only its stub; the fountain's carries water from the start.
+  INLET: { dry: stubWet, wet: stubWet },
+  OUTLET: { dry: stubDry, wet: stubWet },
+}
+
+/** The tile at rotation 0; the board turns it with CSS. */
+export function tileUrl(kind: PipeKindCode, wet: boolean): string {
+  return wet ? TILES[kind].wet : TILES[kind].dry
+}
+
+/** The upright picture on an end — the fountain, the tub filling up — and none on a pipe. */
+export function motifUrl(kind: PipeKindCode, wet: boolean): string | null {
+  if (kind === 'INLET') return fountain
+  if (kind === 'OUTLET') return wet ? tubWet : tubDry
+  return null
 }
 
 const PUDDLES = [puddle1, puddle2, puddle3]
@@ -28,9 +45,4 @@ const PUDDLES = [puddle1, puddle2, puddle3]
 /** The dirty puddle over a burst or a missed pipe; the cell picks one of three, so neighbours differ. */
 export function puddleUrl(cell: number): string {
   return PUDDLES[cell % PUDDLES.length]!
-}
-
-/** The tile at rotation 0; the board turns it with CSS. */
-export function tileUrl(kind: PipeKindCode, wet: boolean): string {
-  return wet ? TILES[kind].wet : TILES[kind].dry
 }

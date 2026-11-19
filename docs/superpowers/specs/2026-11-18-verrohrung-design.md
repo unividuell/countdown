@@ -16,16 +16,21 @@ unter *Integrität*.
 
 **Berührt:** ein neues Modulith-Modul `turnpipes` (reine Logik, **kein Schema, keine Tabelle**), den
 Adapter `TurnPipesGameType` in `game.internal`, im Frontend ein neues Spielverzeichnis
-`games/turnpipes/` mit elf PNG-Kacheln und fünf Klängen, die Einträge in `games/registry.ts` und
+`games/turnpipes/` mit vierzehn PNG-Kacheln und fünf Klängen, die Einträge in `games/registry.ts` und
 `gamelab/games.ts`, und Blockierungs Stummschalter, der zu einem gemeinsamen wird (`ui/`). Keine neue
 Abhängigkeit.
 
 ## Zweck & Spielidee
 
-Ein quadratisches Brett aus Rohrkacheln: gerade Rohre und Bögen, dazu ein **Zulauf** (Handrad) und ein
-**Abfluss**. Alle Kacheln liegen verdreht. Jedes Tippen dreht eine Kachel um 90° im Uhrzeigersinn. Ziel
-ist eine Leitung vom Zulauf zum Abfluss, in der **jedes Rohr Wasser führt**. Ob es stimmt, zeigt sich
-erst nach der Abgabe.
+Ein quadratisches Brett aus Rohrkacheln: gerade Rohre und Bögen, dazu ein **Zulauf** — ein Steinbrunnen
+— und ein **Abfluss** — der hölzerne Badezuber vor der Hütte, mit Ofenrohr. Alle Kacheln liegen verdreht.
+Jedes Tippen dreht eine Kachel um 90° im Uhrzeigersinn. Ziel ist eine Leitung vom Brunnen zum Zuber, in
+der **jedes Rohr Wasser führt**. Ob es stimmt, zeigt sich erst nach der Abgabe.
+
+**Die Geschichte dazu:** Unter jeder Kachel brennt ein Feuer. Je länger der Weg, desto heißer kommt das
+Wasser im Zuber an — darum nutzt man den ganzen Weg. In der Auflösung glüht jede Kachel, durch die das
+Wasser läuft, feuerrot. Die Bilder an den Enden ersetzen Handrad und Abflussloch, die nicht gebräuchlich
+bzw. nicht eindeutig waren; gewählt am Kontaktbogen (2026-11-19) unter Feuerwehr, Bauernhof und Berghütte.
 
 Entstanden aus einem Spike (2026-11-18). Was er gezeigt hat und was daraus folgt:
 
@@ -254,15 +259,17 @@ in `labGameList`.
 
 ### Bilder
 
-Elf PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
+Vierzehn PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 
 | Datei | Inhalt |
 |---|---|
 | `plate.png` | die Platte: grau, Nieten in den Ecken, Licht von oben links |
+| `plate-hot.png` | dieselbe Platte, feuerrot: glüht, wo das Wasser gelaufen ist |
 | `straight-dry.png`, `straight-wet.png` | gerades Rohr, leer / mit Wasser |
 | `elbow-dry.png`, `elbow-wet.png` | Bogen, leer / mit Wasser |
-| `inlet.png` | Zulauf mit rotem Handrad — **immer mit Wasser**, er ist die Quelle |
-| `outlet-dry.png`, `outlet-wet.png` | Abfluss mit Abflussloch, leer / gefüllt |
+| `stub-dry.png`, `stub-wet.png` | der Stutzen eines Endes: Rohr vom Rand bis zur Mitte; der des Brunnens immer mit Wasser |
+| `fountain.png` | Zulauf: Steinsäule mit Messingrohr, Strahl in ein gemauertes Becken |
+| `tub-dry.png`, `tub-wet.png` | Abfluss: runder Holzzuber mit Fassreifen und Ofenrohr; leer — gefüllt, dampfend, das Ofenrohr raucht |
 | `puddle-1.png` … `puddle-3.png` | Pfütze aus dreckigem Wasser, durchscheinend, drei Ausprägungen (siehe *Auflösung*) |
 
 Gezeichnet von `scripts/turn-pipes-tiles.mts` — dem Zeichencode des Spikes (`spike/pipes/art.ts`),
@@ -271,13 +278,16 @@ unverändert in Form und Farbe; es erzeugt die committeten Dateien Byte für Byt
 laufen; ausgeliefert werden nur die PNGs. Eigene Pixelkunst — die Vorlage aus einem anderen Spiel war nur
 Stilrichtung. Jedes Rohr ist in Stellung 0 gezeichnet (siehe *Die Regeln*) und quer zu seiner Achse
 symmetrisch schattiert, damit es in jeder Drehung stimmt; die Platte dreht nie und darf Licht tragen.
+**An den Enden** dreht nur der Stutzen; Brunnen und Zuber stehen aufrecht darüber — ein Bild mit oben
+und unten darf nicht kopfstehen. Die Richtung der Öffnung zeigt der Stutzen.
 Dargestellt mit `image-rendering: pixelated`.
 
 ### Brett
 
 1. **Das Raster**, kartenbreit und randlos — ohne Innenabstand der Karte, die am Handy selbst schon von
    Kante zu Kante reicht. Bei 8×8 auf 375 px sind das 46,9 px je Kachel, auf 360 px 45 px; mit dem
-   Innenabstand fiele 8×8 unter die 44-px-Grenze. Je Zelle zwei Ebenen: die Platte steht, das Rohr dreht.
+   Innenabstand fiele 8×8 unter die 44-px-Grenze. Je Zelle zwei Ebenen: die Platte steht, das Rohr dreht;
+   an den Enden kommt das aufrechte Bild als dritte Ebene dazu.
    Zwischen den Kacheln nur der durchsichtige Rand der Platten, kein Raster.
 2. **Darunter** der `HoldButton` „Abgeben“ und rechts daneben der **Stummschalter** (siehe *Ton*).
 
@@ -308,7 +318,8 @@ Wie bei Blockierung, dieselben Bausteine aus `games/drafts.ts`:
 Das Raster bleibt stehen, wie abgegeben. Im Takt von `revealChoreography.ts`:
 
 1. **Wechsel** — nichts bewegt sich.
-2. **`SOLUTION_DELAY_MS` (900 ms)** — das Wasser läuft: die Zellen aus `wet` werden der Reihe nach nass,
+2. **`SOLUTION_DELAY_MS` (900 ms)** — das Wasser läuft: die Zellen aus `wet` werden der Reihe nach nass
+   und ihre Platten glühen feuerrot (die Hitze, siehe *Zweck & Spielidee*),
    so schnell, dass ein voller Lauf durch alle Rohre **2 s** dauert, gleich welche Größe (8×8 ≈ 31 ms je
    Kachel, 6×6 ≈ 56 ms). So endet er gut vor der Mitgliederleiste über der Karte, die 3,8 s nach der
    Abgabe Punkt oder Totenkopf zeigt (`SPOILER_HOLD_MS`); 110 ms je Kachel waren am Handy zu langsam
@@ -363,10 +374,13 @@ zuletzt), richtig vor falsch, Dauer aufsteigend, `userId` als Tiebreak. Als pure
 
 ### Erklärung
 
-`InfoBox` mit Storage-Key `turn-pipes`. Kurztext: „Dreh die Rohre, bis das Wasser vom Handrad zum Abfluss
-durch jedes Rohr läuft.“ Darunter die Regeln: Tippen dreht eine Kachel; auch Zulauf und Abfluss drehen
-sich; es zählt nur eine Leitung durch alle Rohre. Den Ecken-Trick verrät sie nicht. Was die Runde zahlt
-und dass in Phase zwei die Zeit zählt, sagt die `AwardBox`.
+`InfoBox` mit Storage-Key `turn-pipes`. Kurztext: „Bring das Brunnenwasser durch alle Rohre in den
+Zuber.“ Darunter die Regeln: „Alle Rohre müssen durchströmt werden — nur so wird es wirklich heiß.“;
+„Tippen dreht eine Kachel um eine Vierteldrehung — auch die Anschlüsse von Brunnen und Zuber.“; Abgabe
+durch Halten. `AwardBox`: „Der Zuber wird nur heiß, wenn das Wasser durch jedes Rohr fließt.“ und „Der
+heiße Zuber — und von allen, die ihn haben, die kürzeste Zeit.“ Den Ecken-Trick verrät sie nicht. Was
+die Runde zahlt und dass in Phase zwei die Zeit zählt, sagt die `AwardBox`. Der Abgabeknopf trägt
+„Wasser marsch!“.
 
 ## Labor
 
@@ -398,7 +412,8 @@ Fließtempo, Takte, Lautstärken.
 
 - `turns.ts`: Tippen zählt weiter; Stellung `mod 4`; Drehen auf eine Zielstellung im Uhrzeigersinn,
   gerades Rohr auf die nähere der zwei.
-- `tiles.ts`: jede Art × nass/trocken hat ein Bild; der Zulauf ist immer nass.
+- `tiles.ts`: jede Art × nass/trocken hat ein Bild; der Stutzen des Brunnens ist immer nass; Bilder nur
+  an den Enden, der Zuber füllt sich; die Platte glüht nass.
 - `scoreboard.ts`: Sortierung in beiden Phasen, mm:ss, fehlende Werte.
 - `types.ts`: Einengen von Bühne, Payload, Lösung, Outcome (unbekannter Code, falsche Länge, `NaN` fallen
   raus).
