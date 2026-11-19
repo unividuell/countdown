@@ -1,5 +1,5 @@
-// Five CC0 recordings (see sounds/CREDITS.md). A sound not yet decoded stays silent. Whether sound
-// is on is the caller's business (`useGameSound`).
+// Five sounds from CC0 recordings (see sounds/CREDITS.md). A sound not yet decoded stays silent.
+// Whether sound is on is the caller's business (`useGameSound`).
 import dryUrl from './sounds/dry.mp3?url'
 import flowUrl from './sounds/flow.mp3?url'
 import leakUrl from './sounds/leak.mp3?url'

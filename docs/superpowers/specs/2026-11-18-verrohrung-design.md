@@ -342,15 +342,20 @@ Uhrzeigersinn; ein gerades Rohr nimmt von seinen zwei gleichwertigen Stellungen 
 
 Fünf Klänge, gewählt per Gehör im Spike (Stand `bd13ed45`, `webapp-vue/src/spike/pipes/sounds/`), alle von
 Freesound, **CC0 1.0** — auf der Seite jedes Klangs geprüft (2026-11-18). Übernommen werden die
-HQ-Vorschauen (MP3, 128 kbps), unverändert, als `games/turnpipes/sounds/<name>.mp3`:
+HQ-Vorschauen (MP3), als `games/turnpipes/sounds/<name>.mp3`; Erfolg und Kalt neu gewählt auf einer
+Anhörseite (2026-11-19), als der Zuber kam:
 
 | Ereignis | Datei | Aufnahme | Quelle |
 |---|---|---|---|
 | Drehen — jedes Tippen | `turn.mp3` | Metal Flick 4 (WasabiWielder) | freesound.org/s/323374 |
 | Wasser fließt — solange es läuft | `flow.mp3` | water flowing from a pipe into the sewer (FartMuffin) | freesound.org/s/571551 |
 | Leck — das Wasser stoppt am Bruch oder läuft über den Rand | `leak.mp3` | Splash-eau-goudron1 (rombart) | freesound.org/s/186748 |
-| Erfolg — angekommen, alle Rohre nass | `success.mp3` | Water gush; full (HonorHunter) | freesound.org/s/271668 |
-| Rohre trocken — angekommen, aber nicht alle nass | `dry.mp3` | ANI Big Pipe Hit (ani_music) | freesound.org/s/244983 |
+| Erfolg — angekommen, alle Rohre nass: der Zuber füllt sich, nach 1 s zischt es wie auf der Herdplatte | `success.mp3` | pouring bucket (13F_Panska_Koprivikova_Klara) + Sizzle.wav (CHEATSman115), gemischt | freesound.org/s/378317, freesound.org/s/234124 |
+| Kalter Zuber — angekommen, aber nicht alle Rohre nass: er friert schlagartig zu | `dry.mp3` | Freeze sound effect FX (antonsoederberg) | freesound.org/s/685253 |
+
+`success.mp3` ist gemischt (ffmpeg): das Gießen voll, das Zischen 1 s später auf 0,625, gekürzt auf
+3,2 s — das Ende des Ausblendens. Abgelöst, für später: Water gush; full (HonorHunter,
+freesound.org/s/271668) und ANI Big Pipe Hit (ani_music, freesound.org/s/244983).
 
 - **Abspielen** über den einen `AudioContext` aus `ui/audio.ts`, vorab dekodiert, wenn das Spiel erscheint;
   unter iOS mit `navigator.audioSession.type = 'playback'`, wie Peilung, sonst schweigt der Stummmodus des
