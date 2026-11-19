@@ -1,4 +1,4 @@
-import { fingerprint } from '../drafts'
+import { fingerprint, sweepDrafts as sweepSharedDrafts } from '../drafts'
 import type { Placement, Point } from './gestures'
 import { finite, positive, type MatchScalePayload } from './types'
 
@@ -12,6 +12,9 @@ export { clearDraft, deviceStorage } from '../drafts'
  * Every access is guarded — storage can be absent, full or denied, and the game plays on without.
  */
 const PREFIX = 'match-scale:draft:'
+
+/** The keys `draftKey` makes, split into the player's part and the rest. */
+const OWN_KEY = /^(match-scale:draft:.+:)[12]:[0-9a-f]{8}$/
 
 /** B's placement, and the view the player had on it. A is fixed, so it is not stored. */
 export interface Draft {
@@ -76,10 +79,23 @@ function readPoint(value: unknown): Point | null {
   return finite(x) && finite(y) ? { x, y } : null
 }
 
-export function saveDraft(storage: Storage | null, key: string, draft: Draft): void {
+export function saveDraft(
+  storage: Storage | null,
+  key: string,
+  draft: Draft,
+  now: number = Date.now(),
+): void {
   try {
-    storage?.setItem(key, JSON.stringify(draft))
+    storage?.setItem(key, JSON.stringify({ ...draft, at: now }))
   } catch {
     // Full or denied: the placement lives on in memory.
   }
+}
+
+/** Opening a round drops the same player's stale drafts of other rounds and phases. */
+export function sweepDrafts(storage: Storage | null, keep: string, now: number = Date.now()): void {
+  const prefix = OWN_KEY.exec(keep)?.[1]
+  if (prefix === undefined) return
+
+  sweepSharedDrafts(storage, prefix, keep, now)
 }

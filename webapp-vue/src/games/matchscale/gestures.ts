@@ -11,6 +11,11 @@
 import type { Silhouette } from './types'
 
 export const FIELD_CELLS = 9
+/**
+ * The field's side in SVG user units. The SVG scales to the card's width, so every "px" here is one
+ * of these — the view and the draft stay the same whatever the phone measures.
+ */
+export const FIELD_PX = 360
 export const GROUND_OFFSET = 2
 /** Longest side of a silhouette at scale 1, in cells. */
 export const START_CELLS = 3
@@ -86,6 +91,26 @@ export function initialPlacements(a: Silhouette): { a: Placement; b: Placement }
     a: { x: 1, y: 0, scale: 1 },
     b: { x: 2 + sizeAt(a, 1).w, y: 0, scale: 1 },
   }
+}
+
+/** What a draft keeps of a view: independent of the field's size. */
+export interface Framing {
+  zoom: number
+  centre: Point
+}
+
+export function framingOf(view: View, fieldPx: number): Framing {
+  return {
+    zoom: view.cellPx / baseCellPx(fieldPx),
+    centre: toWorld(view, { x: fieldPx / 2, y: fieldPx / 2 }),
+  }
+}
+
+export function viewAt(framing: Framing, fieldPx: number): View {
+  const cellPx = clampCellPx(baseCellPx(fieldPx) * framing.zoom, fieldPx)
+  const half = fieldPx / cellPx / 2
+
+  return { left: framing.centre.x - half, top: framing.centre.y + half, cellPx }
 }
 
 /** Drag by screen pixels: the content follows the finger. */

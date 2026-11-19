@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   baseCellPx,
+  FIELD_PX,
   fitView,
+  framingOf,
   gridLines,
   initialPlacements,
   initialView,
@@ -12,6 +14,7 @@ import {
   sizeAt,
   toScreen,
   toWorld,
+  viewAt,
   zoomAt,
   type Placement,
 } from '@/games/matchscale/gestures'
@@ -125,6 +128,34 @@ describe('view', () => {
       expect(topRight.x).toBeLessThanOrEqual(FIELD)
       expect(topRight.y).toBeGreaterThanOrEqual(0)
     }
+  })
+})
+
+describe('framing', () => {
+  it('draws the field 360 units wide', () => {
+    expect(FIELD_PX).toBe(360)
+  })
+
+  it('reads zoom and centre off a view, and builds the same view back', () => {
+    const view = { left: -1, top: 9, cellPx: BASE * 2 }
+
+    const framing = framingOf(view, FIELD)
+
+    expect(framing.zoom).toBeCloseTo(2)
+    expect(framing.centre.x).toBeCloseTo(-1 + 4.5 / 2)
+    expect(framing.centre.y).toBeCloseTo(9 - 4.5 / 2)
+    const back = viewAt(framing, FIELD)
+    expect(back.left).toBeCloseTo(view.left)
+    expect(back.top).toBeCloseTo(view.top)
+    expect(back.cellPx).toBeCloseTo(view.cellPx)
+  })
+
+  it('frames the start view at zoom 1 around its middle', () => {
+    expect(framingOf(initialView(FIELD), FIELD)).toEqual({ zoom: 1, centre: { x: 4.5, y: 2.5 } })
+  })
+
+  it('clamps a stored zoom to the zoom range', () => {
+    expect(viewAt({ zoom: 100, centre: { x: 0, y: 0 } }, FIELD).cellPx).toBeCloseTo(BASE * 8)
   })
 })
 
