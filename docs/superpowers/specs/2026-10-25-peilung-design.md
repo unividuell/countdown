@@ -154,6 +154,8 @@ data class EchoLocateParams(
     val noises: List<NoiseSource>,  // Zelle und Art — ebenfalls geheim
     /** Kreis um die Mitte der Zielzelle in Phase eins (1.5); `null` in Phase zwei, wie `toleranceDeg`. */
     val toleranceRadius: Double?,
+    /** Zellen Aufschlag je Ping in Phase zwei (0.05); `null` in Phase eins. Seit 2026-11-19. */
+    val pingCost: Double?,
 )
 
 data class Cell(val col: Int, val row: Int)
@@ -385,7 +387,7 @@ Jeder Ausgang ist durch einen Feldmengen-Test gepinnt:
 | Payload `EchoLocatePayload` | sofort | `grid, reach, speed, pings, clips, bedDb, noiseDb, toleranceRadius` |
 | Schritt-Antwort `EchoLocateEcho` | pro Ping, nur dem Spieler | `hits[].sound, hits[].clip, hits[].delayMs` |
 | Lösung `EchoLocateSolution` | nach dem eigenen Tipp | `targets, noises, toleranceRadius` |
-| Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf` |
+| Outcome `EchoLocateOutcome` | nach dem eigenen Tipp, für alle | `distance, withinTolerance, pinOf, score` |
 
 `clips` ist die Anzahl. `distance` ist der Mittelwert, `pinOf[i]` der Pin, der Ziel `i` zugeordnet
 wurde. `withinTolerance` ist `null` in Phase zwei. Die Lösung wird nach dem Tipp ohnehin gezeigt, also
@@ -419,7 +421,10 @@ Ping verrät und gewinnt nichts. Die Auflösung zeichnet einen Ring nur, wo es P
 
 - **Zuordnung:** die Permutation der Pins auf die Ziele mit der kleinsten Summe der Abstände
   `hypot(x − (col + 0.5), y − (row + 0.5))`; bei zwei Clips gibt es zwei Kandidaten. Sie ergibt `pinOf`.
-- `deviation` = Mittelwert der zugeordneten Abstände;
+- `deviation` = Mittelwert der zugeordneten Abstände, in Phase zwei plus `pingCost × Pings`
+  (seit 2026-11-19). Die Zahl der Pings ist die Stufe des Spielers; `GuessContext` trägt sie dafür
+  neu als `stage` (Rahmen und Labor). `outcome.score` ist diese Wertung, `null` in Phase eins, damit
+  die Rangliste nach der Zahl des Servers sortiert, statt sie nachzurechnen;
 - `qualifies = toleranceRadius == null ||` jeder Pin liegt im Kreis seines Ziels: sein Abstand
   zur Zellmitte ist `≤ toleranceRadius`;
 - `guess` neu aufgebaut aus genau `pins` und `rings`.
@@ -557,7 +562,21 @@ Labor Seed und Phase), wie dort beschrieben.
 3. **Die Rangliste:** **Name · Abstand · Pings · Pkt**, Abstand in Zellen mit einer Nachkommastelle,
    aufsteigend, bei zwei Clips der Mittelwert („Ø 2,3“); Aufgegebene zuletzt, `userId` als Tiebreak.
    „Pings“ ist die Zahl aller Pings, in beiden Phasen, ohne Erklärung (Clemens, 2026-11-19: wer wenig
-   braucht, wird als Experte wahrgenommen); sie zählt nicht in die Wertung. Als pure `scoreboard.ts`.
+   braucht, wird als Experte wahrgenommen). Als pure `scoreboard.ts`.
+
+   **Phase zwei** (Clemens, 2026-11-19): Die Wertung ist eine Strecke, **Abstand + 0,05 × Pings**;
+   20 Pings wiegen ein Feld. Sortiert und vergeben wird nach ihr. **Der Hintergrund der Zelle ist der
+   Balken** (Clemens, 2026-11-19): zwei Abschnitte, Abstand und dahinter heller der Ping-Aufschlag,
+   gemessen an der längsten Strecke der Runde; der Text der Zelle ist seine Beschriftung, etwa
+   „0,8 + 9 Pings“. Kein eigener Diagramm-Block, kein zusätzlicher Platz. Ob die Summe mit in die
+   Zelle passt, klärt die Umsetzung am Handy.
+
+   **Vorab** (nur Phase zwei) bekommt die `AwardBox` einen zweiten Satz: „Der kleinste Abstand zum
+   Spruch. Wenige Pings werden belohnt.“ („Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige
+   Pings werden belohnt.“). Phase eins bleibt beim Toleranzkreis.
+
+   **Kein Ton-Schalter:** Der globale Schalter (`useGameSound`) gilt nur, wo Ton Dekoration ist; in
+   Peilung ist er das Spiel (`frontend-state.md`). Peilung liest ihn nicht und bekommt keinen.
 
 Die Karte zeigt **alle** Pings des angetippten Spielers, auch die vor einem Zurücksetzen, aber nur die
 Ringe, die bei der Abgabe standen.
@@ -657,7 +676,7 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
 - **Mehrere Spieler zugleich auf der Karte** — braucht eine Farbe pro Spieler, siehe *Auflösung und Historie*.
 - **Schwierigkeit in anderen Spielen** — der Rahmen liefert sie allen, nur Peilung liest sie.
 - **Ein Schnitt-Werkzeug im Audio-Pool** — Ausbaustufe 2 des Pools.
-- **Die Zahl der Pings in der Wertung** — gewollt, gesondert zu besprechen (Clemens, 2026-11-19).
+- **Die Zahl der Pings in Phase eins** — dort bleibt es beim Toleranzkreis.
 
 ## Folgen für andere Dokumente
 
