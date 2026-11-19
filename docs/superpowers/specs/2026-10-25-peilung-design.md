@@ -1,6 +1,7 @@
 # Peilung („Echo Locate“) — einen Spruch im Nebel orten
 
-**Status:** umgesetzt (2026-10-29).
+**Status:** umgesetzt (2026-10-29). Erweitert 2026-11-19: beliebig viele Pings, Umschalter
+„Ping | Pin“, „Zurücksetzen“, Spalte „Pings“ (siehe *Beliebig viele Pings*).
 
 **Baut auf:** dem [Runden-Framework](2026-08-11-round-game-selection-design.md), den
 [Runden-Assets](2026-10-17-round-assets-design.md), dem [Spiel-Labor](2026-08-08-game-lab-design.md)
@@ -50,6 +51,7 @@ Entstanden aus einem Spike (2026-10-24). Was er gezeigt hat und was daraus folgt
 - **Selbst markieren ist das Spiel** (Clemens: „Gutes Spiel. Selbst markieren zu müssen ist es.“).
   Die eigene Reaktionszeit macht die Ringe ungenau genug, dass es schwer wird.
 - **Drei Pings sind das Minimum.** Mit zweien bleibt ein 50:50 zwischen zwei Schnittpunkten.
+  Seit 2026-11-19 gibt es beliebig viele (siehe *Beliebig viele Pings*).
 - **Zwei Sprüche gehen mit Selbst-Markieren.** Solange das Spiel zu jeder Antwort einen Kreis zeichnete,
   überforderten zwei: zu viele Kreise. Markiert man selbst, spielen sie sich „auch sehr gut“ und sind
   schwerer (Clemens, 2026-10-26). Aber nicht von Anfang an: eine Runde hat einen oder zwei, nach der
@@ -77,7 +79,8 @@ Bach, Kuh, Wind, Regen, Vögel. Wie viele Clips es sind, steht auf dem Feld.
 **Ein Ping** startet an der getippten Stelle eine Welle, die mit **3 Zellen pro Sekunde** wächst, bis
 zu einem Radius von **12 Zellen** (60 % der Feldbreite). Jede Quelle innerhalb dieses Radius erklingt
 einmal, und zwar `Abstand / Tempo` Sekunden nach dem Start der Welle. Der nächste Ping geht erst, wenn
-Welle und Nachklang vorbei sind. Es gibt **drei Pings**; weniger zu benutzen ist erlaubt.
+Welle und Nachklang vorbei sind. Pings gibt es **beliebig viele**, bis zu einer Obergrenze, die
+niemand sieht (999). Alle Pings sind nach dem Tipp für die Mitspieler sichtbar.
 
 **Selbst markieren:** Ein Tipp aufs Feld, während eine Welle läuft, lässt einen Ring stehen — um den
 Ping, mit dem Radius, den die Welle im Moment des Tipps hatte. So viele pro Welle, wie Clips auf dem
@@ -86,9 +89,9 @@ Werkzeug des Spielers und werden nicht gewertet. Sie reisen mit dem Tipp, damit 
 wie jeder geschätzt hat (siehe *Der Tipp*). Automatische Echo-Ringe und Nebel aus dem Spike gibt es im
 Spiel nicht.
 
-**Die Pins:** genau einer pro Clip, ohne Namen. Nach dem letzten Ping setzt ein Tipp einen Pin, ein
-Tipp auf einen Pin hebt ihn wieder ab. Abgegeben wird mit dem `HoldButton`, sobald alle Pins stehen.
-Modus-Knöpfe gibt es nicht; was ein Tipp tut, folgt aus dem Ablauf (siehe *Das Feld*).
+**Die Pins:** genau einer pro Clip, ohne Namen. Im Modus „Pin“ setzt ein Tipp einen Pin, ein Tipp
+auf einen Pin hebt ihn wieder ab. Abgegeben wird mit dem `HoldButton`, sobald alle Pins stehen. Was
+ein Tipp tut, sagt der Umschalter „Ping | Pin“ (siehe *Das Feld*).
 
 **Die Phasen — wörtlich die von Anmaßung:**
 
@@ -144,7 +147,7 @@ data class EchoLocateParams(
     val grid: Int,                  // 20
     val reach: Double,              // Radius der Welle in Zellen: 12.0
     val speed: Double,              // Zellen pro Sekunde: 3.0
-    val pings: Int,                 // 3
+    val pings: Int,                 // 999, Obergrenze (bis 2026-11-19: 3)
     val bedDb: Double,              // −24.0
     val noiseDb: Double,            // 0.0
     val targets: List<Cell>,        // Zielzelle je Clip, gleiche Reihenfolge — das Rundengeheimnis
@@ -479,24 +482,33 @@ Schritte der anderen über `entries` für die Auflösung.
 ### Das Feld
 
 **Das UI ist das des Spikes** (Clemens: „vom UI/UX reicht mir der Spike“), Stand `20db6a38`, mit
-dessen Standardwerten — bis auf die Modus-Knöpfe: die gibt es nicht. Was ein Tipp tut, ergibt sich
-aus dem Ablauf (Clemens, 2026-10-28).
+dessen Standardwerten. Bis 2026-11-19 gab es keine Modus-Knöpfe, der Ablauf entschied (Clemens,
+2026-10-28). Ohne Ping-Grenze fehlt der Übergang zum Pin; seitdem entscheidet der Umschalter
+„Ping | Pin“.
 
 - Abstrakte, dunkle Fläche, Punkt-Raster an den Zellmitten, kaum sichtbar. Funken unter dem Finger
   ohne jede Information über den Ton.
 - Die Anzahl, „1 Spruch“ oder „2 Sprüche“, steht auf der Abdeckung über „Antippen zum Starten“
   (Clemens, 2026-10-31).
 
-**Der Ablauf, alles per Tipp aufs Feld:**
+**Der Ablauf:**
 
 ```
-zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping … (bis alle Pings verbraucht) ──▶ Pin
+┌──────── Feld ────────┐
+│                      │
+└──────────────────────┘
+ [ Ping | Pin ]  [Zurücksetzen]
+ 1. Klick: Ping, 2. Klick: Markieren
+ [===== Abgeben (halten) =====]
+
+zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping …        (Umschalter auf „Ping“)
               │  Tipps in der Welle: markieren (bis zu clips)
               └  danach: der nächste Tipp ist der nächste Ping
+             Pin: Tipps setzen und heben Pins          (Umschalter auf „Pin“)
 ```
 
 1. **Zu:** Das Feld ist abgedeckt, „Antippen zum Starten“. Der Tipp schaltet den Ton frei (siehe *Der
-   Klang*) und setzt noch keinen Ping.
+   Klang*) und setzt noch keinen Ping. Die Runde startet auf „Ping“.
 2. **Ping:** Tipp → `skip` mit `{x, y}` → bis zur Antwort pulsiert ein Ring an der Stelle („Sonar lädt
    …“), weitere Tipps werden ignoriert → mit der Antwort startet die Welle, die Treffer werden im
    Graphen geplant. Der Ping zählt beim Tippen als verbraucht.
@@ -504,14 +516,23 @@ zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping … (bis alle 
    `(event.timeStamp − Wellenstart) / 1000 × speed`, bis zu `clips` pro Welle, alle gleich gezeichnet;
    weitere Tipps in dieser Welle werden ignoriert. Wer nicht markiert, verliert nichts: nach dem
    Nachklang ist der nächste Tipp der nächste Ping.
-4. **Pin:** Ist die Welle des letzten Pings verklungen, setzt ein Tipp einen Pin, solange welche
-   fehlen; ein Tipp auf einen Pin (näher als 1,2 Zellen) hebt ihn ab. Mit allen Pins sind weitere Tipps
-   daneben wirkungslos. Die Pins stehen in der Farbe des eigenen Avatars (Clemens, 2026-10-31).
+4. **Pin:** Auf „Pin“ setzt ein Tipp einen Pin, solange welche fehlen; ein Tipp auf einen Pin (näher
+   als 1,2 Zellen) hebt ihn ab. Mit allen Pins sind weitere Tipps daneben wirkungslos. Die Pins stehen
+   in der Farbe des eigenen Avatars (Clemens, 2026-10-31). Zurück auf „Ping“ bleiben sie stehen.
+
+**Der Umschalter „Ping | Pin“** (Clemens, 2026-11-19; die Namen wie die Spalte der Rangliste) ist
+gesperrt, solange das Feld zu ist, ein Ping lädt oder eine Welle läuft. Ist die Obergrenze erreicht,
+ist „Ping“ gesperrt und das Feld auf „Pin“.
+
+**„Zurücksetzen“** löscht alle Ringe und alle Pins; die Pings bleiben als Punkte stehen (Clemens,
+2026-11-19). Ein einfacher Knopf ohne Rückfrage (meine Festlegung): verloren gehen keine Pings, und neu
+peilen geht jederzeit. Gesperrt wie der Umschalter. Ein zurückgesetzter Ping trägt danach eine leere
+Ringliste, der Tipp behält seine Form.
 
 **Unter dem Feld** eine Zeile, die sagt, was ein Tipp gerade tut (Wortlaut meine Festlegung, der erste
-von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren – noch 2“, während einer Welle
-„Markieren“, danach „Schätzung · Pins 1/2“. Unter der Abdeckung bleibt sie leer und behält ihre Höhe.
-**Darunter** der `HoldButton` „Abgeben“, aktiv, sobald genau `clips` Pins stehen.
+von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren“, während einer Welle „Markieren“, auf
+„Pin“ „Pins 1/2“. Eine Zahl der übrigen Pings gibt es nicht mehr. Unter der Abdeckung bleibt sie leer
+und behält ihre Höhe. **Darunter** der `HoldButton` „Abgeben“, aktiv, sobald genau `clips` Pins stehen.
 - **Abgeben:** Halten schickt `{pins, rings}` — die Pins und die Radien der eigenen Ringe, je Ping.
 - **Neuladen:** Die Pings kommen vom Server (`steps`), ihre Mitten stehen wieder da; Ringe und Pin aus
   dem Entwurf. Wellen werden nicht wiederholt. Ein Ping, dessen Antwort nie ankam, ist auf dem Server
@@ -519,6 +540,7 @@ von Clemens, 2026-10-31): „1. Klick: Ping, 2. Klick: Markieren – noch 2“, 
   aber ohne Welle.
 
 **Entwurf** wie Anmaßung (`games/drafts.ts`): Ringe und Pin je Spieler, Runde und Phase auf dem Gerät.
+Pins im Entwurf gelten auch, wenn danach weiter gepingt wurde.
 Den Schlüssel nimmt der Umsetzer aus dem, was die Runde benennt (in der echten Runde `?round=`, im
 Labor Seed und Phase), wie dort beschrieben.
 
@@ -532,9 +554,13 @@ Labor Seed und Phase), wie dort beschrieben.
    (`pinOf`), wie die Ebenen bei Anmaßung; ein zweites Antippen nimmt sie wieder weg. Die Ping-Stellen
    kommen aus `steps`, die Radien aus dem Tipp. Unter der Karte eine kleine Legende: „V Vögel · B Bach ·
    K Kuh · W Wind · R Regen“, „Spruch“ und in Phase eins „Toleranzkreis“ (Clemens, 2026-10-31).
-3. **Die Rangliste:** **Name · Abstand · Pkt**, Abstand in Zellen mit einer Nachkommastelle, aufsteigend,
-   bei zwei Clips der Mittelwert („Ø 2,3“); Aufgegebene zuletzt, `userId` als Tiebreak. Als pure
-   `scoreboard.ts`.
+3. **Die Rangliste:** **Name · Abstand · Pings · Pkt**, Abstand in Zellen mit einer Nachkommastelle,
+   aufsteigend, bei zwei Clips der Mittelwert („Ø 2,3“); Aufgegebene zuletzt, `userId` als Tiebreak.
+   „Pings“ ist die Zahl aller Pings, in beiden Phasen, ohne Erklärung (Clemens, 2026-11-19: wer wenig
+   braucht, wird als Experte wahrgenommen); sie zählt nicht in die Wertung. Als pure `scoreboard.ts`.
+
+Die Karte zeigt **alle** Pings des angetippten Spielers, auch die vor einem Zurücksetzen, aber nur die
+Ringe, die bei der Abgabe standen.
 
 Eine abgeschlossene Runde sieht in der Historie genauso aus. **Takt** aus `revealChoreography.ts`,
 Feinabstimmung im Labor.
@@ -559,7 +585,9 @@ ein Spruch. Peil ihn an.“ („… stecken zwei Sprüche. Peil sie an.“)
 - Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
   Markierung für dich – er fließt nicht in die Bewertung ein. („Hörst du einen Spruch, … stehen,
   bis zu zwei pro Welle. Diese Ringe sind … – sie fließen nicht …“)
-- Drei Pings, ein Pin für den Spruch („pro Spruch“). Zum Abgeben „Abgeben“ gedrückt halten.
+- „Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin für den Spruch („pro Spruch“).
+  „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten. (Bis 2026-11-19:
+  „Drei Pings, …“.)
 
 Was die Runde zahlt und welche Toleranz gilt, sagt die `AwardBox`: „Dein Pin muss im Toleranzkreis
 um den Spruch liegen.“ („Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.“), „Der kleinste
@@ -591,7 +619,7 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
   bleibt.
 - **Schritt:** Treffer innerhalb der Reichweite, Verzögerungen, Sortierung, `clip` nur bei Clips,
   leere Antwort; ungültige
-  Eingabe → 400; ein vierter Ping → 409; nach dem Tipp → Ablehnung.
+  Eingabe → 400; ein Ping über der Obergrenze → 409; nach dem Tipp → Ablehnung.
 - **Framework:** `stagesScore = false` — ein falscher Tipp in Phase eins wird gewertet, die Abweichung
   kommt aus `judge`; ein Schritt mit Eingabe erhöht die Stufe und speichert die Eingabe atomar;
   `MyPlayDto.steps` trägt die neu berechnete Antwort; `OtherPlayDto.steps` nur die Eingaben;
@@ -610,10 +638,12 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
   blieben die Vögel stumm: ein Startindex mit Nachkomma schreibt in ein `Float32Array` ins Leere.)
 - Bach und Kuh: jede Art in `NoiseKind` hat einen Klang, keine bleibt stumm.
 - Feld: der erste Tipp öffnet nur; „Sonar lädt“ ignoriert Tipps; in der Welle höchstens `clips`
-  Ringe, danach ist der nächste Tipp ein Ping; nach der Welle des letzten Pings setzt ein Tipp einen
-  Pin; Pins setzen und abheben, kein Pin über `clips` hinaus; die Zustandszeile folgt; Abgeben erst mit allen
-  Pins; Neuladen zeigt die Pings vom Server; Halten ergibt einen Tipp mit genau den Pins und den Ringen
-  je Ping.
+  Ringe, danach ist der nächste Tipp ein Ping; auf „Pin“ setzt ein Tipp einen Pin; Pins setzen und
+  abheben, kein Pin über `clips` hinaus; Umschalter und „Zurücksetzen“ gesperrt in Welle und Laden;
+  „Zurücksetzen“ leert Ringe und Pins, Pings bleiben; an der Obergrenze nur „Pin“; die Zustandszeile
+  folgt; Abgeben erst mit allen Pins; Neuladen zeigt die Pings vom Server; Halten ergibt einen Tipp mit
+  genau den Pins und den Ringen je Ping.
+- Rangliste: Spalte „Pings“ mit der Zahl der Pings je Zeile.
 - `LabControls`: die Zeile „Schwierigkeit“ zeigt den Wert der geladenen Runde, keine Zeile ohne Runde.
 - `draft.ts`, `scoreboard.ts`, `types.ts` wie bei Anmaßung.
 
@@ -627,6 +657,7 @@ werden Tempo, Reichweite, Pegel und Takte nachgestimmt.
 - **Mehrere Spieler zugleich auf der Karte** — braucht eine Farbe pro Spieler, siehe *Auflösung und Historie*.
 - **Schwierigkeit in anderen Spielen** — der Rahmen liefert sie allen, nur Peilung liest sie.
 - **Ein Schnitt-Werkzeug im Audio-Pool** — Ausbaustufe 2 des Pools.
+- **Die Zahl der Pings in der Wertung** — gewollt, gesondert zu besprechen (Clemens, 2026-11-19).
 
 ## Folgen für andere Dokumente
 
