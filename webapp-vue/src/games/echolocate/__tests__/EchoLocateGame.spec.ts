@@ -119,6 +119,49 @@ describe('EchoLocateGame', () => {
     vi.unstubAllGlobals()
   })
 
+  // Phase two: the shared cover over an empty field, naming the count, until the hold opens it.
+  describe('sealed', () => {
+    const mountSealed = (clips: number) =>
+      mount(EchoLocateGame, {
+        props: gameProps({
+          payload: null,
+          sealed: true,
+          scene: { grid: 20, clips },
+          mineUserId: 'mine',
+          awardRule: 'CLOSEST_ONLY',
+          awardPoints: 3,
+        }),
+        global: { stubs: { RevealCover: false } },
+      })
+
+    it('names how many clips hide under the cover, on an empty field', () => {
+      expect(mountSealed(1).get('[data-test="reveal-cover-note"]').text()).toBe('1 Spruch')
+
+      const wrapper = mountSealed(2)
+      expect(wrapper.get('[data-test="reveal-cover-note"]').text()).toBe('2 Sprüche')
+      expect(wrapper.findComponent(EchoLocateBoard).exists()).toBe(false)
+      expect(wrapper.find('canvas').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
+    })
+
+    it('asks for the reveal once the hold opens the cover', async () => {
+      const wrapper = mountSealed(1)
+
+      wrapper.findComponent({ name: 'RevealCover' }).vm.$emit('start')
+
+      expect(wrapper.emitted('reveal')).toEqual([[]])
+    })
+
+    it('says nothing of a scene it cannot read', () => {
+      const wrapper = mount(EchoLocateGame, {
+        props: gameProps({ payload: null, sealed: true, scene: { grid: 20, clips: 7 } }),
+      })
+
+      expect(wrapper.find('[data-test="reveal-cover"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Diese Runde lässt sich hier nicht anzeigen.')
+    })
+  })
+
   describe('before the solution', () => {
     it('shows the board until the solution arrives', async () => {
       const wrapper = mountGame()

@@ -2,14 +2,15 @@
 /**
  * Peilung: which card the round is on, and the one place `unknown` becomes typed.
  *
- *   board ──(solution arrives)──▶ reveal
+ *   [sealed: empty field under the shared cover ──hold──▶ reveal] ──▶ board ──(solution)──▶ reveal
  *
- * The cover is the board's own: it waits for a click, because iOS starts audio only from one. A
- * closed round shows the reveal as soon as the server sends the solution, whether or not I played.
+ * Phase two is sealed: the cover names the count from the scene, and its hold asks for the
+ * reveal — the clock starts there. The board then opens straight away; its first click is the
+ * first ping, and that click starts the sound too, because iOS starts audio only from one. A closed
+ * round shows the reveal as soon as the server sends the solution, whether or not I played.
  *
- * `giveUp` and `reveal` are declared but never emitted — the exits are the framework's. `skip` is a
- * ping: the board emits it, and the answer comes back as a step. `scene` and `sealed` are never
- * read: there is no cover of the framework's.
+ * `giveUp` is declared but never emitted — that exit is the framework's. `skip` is a ping: the
+ * board emits it, and the answer comes back as a step.
  *
  * Clips are opened here, one asset per clip. A clip that is missing or fails to open leaves its
  * place `null`, and the board plays on without it.
@@ -21,12 +22,15 @@ import { clearDraft, deviceStorage, sweepDrafts } from '@/games/drafts'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import RevealCover from '@/ui/RevealCover.vue'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import { draftKey, draftPrefix } from './draft'
 import EchoLocateBoard from './EchoLocateBoard.vue'
+import EchoLocateBriefing from './EchoLocateBriefing.vue'
 import EchoLocateReveal from './EchoLocateReveal.vue'
 import { scoreRows } from './scoreboard'
-import { asEchoLocatePayload, asEchoLocateSolution } from './types'
+import SonarField from './SonarField.vue'
+import { asEchoLocatePayload, asEchoLocateScene, asEchoLocateSolution } from './types'
 
 const FIRST_CLIP = 'clip-0'
 const SECOND_CLIP = 'clip-1'
@@ -37,6 +41,9 @@ const emit = defineEmits<GameEmits>()
 
 const payload = computed(() => asEchoLocatePayload(props.payload))
 const solution = computed(() => asEchoLocateSolution(props.solution))
+
+/** Only while sealed: with the payload open, the board knows field and count itself. */
+const scene = computed(() => (props.sealed === true ? asEchoLocateScene(props.scene) : null))
 const solved = computed(() => solution.value !== null)
 
 /**
@@ -111,7 +118,34 @@ const animate = useRevealedLive(solved)
 </script>
 
 <template>
-  <p v-if="payload === null" class="text-sm text-on-surface-variant">
+  <div v-if="scene !== null" data-test="echo-locate-sealed" class="flex flex-col gap-6">
+    <!-- The field under the glass is empty: nothing of the round leaves the server before the hold. -->
+    <div class="relative">
+      <SonarField
+        :grid="scene.grid"
+        :speed="1"
+        :reach="1"
+        :waves="[]"
+        :rings="[]"
+        :pins="[]"
+        pin-color-hex="#525252"
+        :pending="null"
+      />
+      <RevealCover
+        state="ready"
+        :busy="props.disabled"
+        :note="scene.clips === 1 ? '1 Spruch' : `${scene.clips} Sprüche`"
+        @start="emit('reveal')"
+      />
+    </div>
+    <EchoLocateBriefing
+      :award-rule="props.awardRule"
+      :award-points="props.awardPoints"
+      :tolerance-radius="null"
+      :clips="scene.clips"
+    />
+  </div>
+  <p v-else-if="payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
   <EchoLocateReveal
