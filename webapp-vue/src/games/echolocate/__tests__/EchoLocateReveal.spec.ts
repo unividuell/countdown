@@ -471,6 +471,8 @@ describe('EchoLocateReveal', () => {
         // me: 0.8 + 0.3 = 1.1 of bert's 2.0
         expect(bar.element.style.getPropertyValue('--bar-distance')).toBe('40%')
         expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('55%')
+        // The whole sum fits a phone's column in the small size: „Ø 0,4 + 30 Pings × 0,1 = 3,4“.
+        expect(bar.classes()).toContain('text-sm')
         // As tall as every other cell of the table: no padding of its own above or below.
         expect(bar.classes().some((name) => /^(p|py|pt|pb)-/.test(name))).toBe(false)
       })

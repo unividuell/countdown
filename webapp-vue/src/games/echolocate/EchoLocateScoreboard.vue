@@ -57,6 +57,9 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() =>
           key: 'score',
           // The star points at the legend under the table.
           label: props.pingCost === null ? 'Abstand + Pings' : 'Abstand + Pings*',
+          // The longest sum, „Ø 0,4 + 30 Pings × 0,1 = 3,4“, is 180 px in text-sm; the name keeps
+          // what is left, 120 px on a 375 px phone.
+          width: '11.5rem',
           align: 'start',
           numeric: true,
           ground: () => null,
@@ -137,7 +140,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
         <div
           v-if="row.bar !== null"
           :data-test="`score-bar-${row.userId}`"
-          class="px-0.5 whitespace-nowrap"
+          class="px-0.5 text-sm whitespace-nowrap"
           :style="barStyle(row.bar, row.colorHex)"
           style="
             background: linear-gradient(
