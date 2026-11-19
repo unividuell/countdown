@@ -9,8 +9,10 @@
  *                                            its centre                              │
  *   YAML entry ◄─ path (integers, relative) ◄─ round ◄─ re-normalise to 1000 ◄───────┘
  *
- * Simplifying in normalised units keeps the point count independent of the real size: the path
- * travels with every round's payload and must not betray the factor, the round's secret.
+ * Simplifying in normalised units stops the point count from scaling with the real size: the path
+ * travels with every round's payload and must not betray the factor, the round's secret. A small
+ * country still stays coarse, because the source has a fixed ground resolution; accepted, since
+ * its name is public and gives away more than the coarseness.
  *
  * Usage:
  *   node scripts/match-scale-dataset.mts countries --source <ne_50m_admin_0_countries.geojson>
@@ -404,10 +406,16 @@ function countries(args: Record<string, string>) {
       feature.properties.NAME_DE || feature.properties.NAME,
     ).trim();
     const { kept, dropped } = selectParts(polygons);
+    let drawn: Shape;
+    try {
+      drawn = shape(kept);
+    } catch (error) {
+      fail(`${code}: ${(error as Error).message}`);
+    }
     entries.push({
       name,
       code,
-      ...shape(kept),
+      ...drawn,
       partsKept: kept.length,
       partsDropped: dropped,
     });
@@ -415,17 +423,14 @@ function countries(args: Record<string, string>) {
 
   entries.sort((a, b) => a.name.localeCompare(b.name, "de"));
 
-  // Names must be unique for the loader: every holder of a shared name gets its code appended,
-  // e.g. "Land (ABC)" and "Land (XYZ)" — deterministic, and no entry silently wins.
+  // The name is what players see, so a clash is resolved by hand, never by decorating it.
   const shared = entries.filter((e) =>
     entries.some((o) => o !== e && o.name === e.name),
   );
-  for (const e of shared) e.name = `${e.name} (${e.code})`;
   if (shared.length > 0) {
-    console.warn(
-      `warning: ${shared.length} entries share a name, code appended`,
+    fail(
+      `entries share a name: ${shared.map((e) => e.code).join(", ")} — add one code to "exclude"`,
     );
-    entries.sort((a, b) => a.name.localeCompare(b.name, "de"));
   }
 
   const yaml = categoryYaml(
