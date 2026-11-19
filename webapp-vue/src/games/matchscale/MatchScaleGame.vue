@@ -7,9 +7,11 @@ import { computed, watch } from 'vue'
 import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
+import { useRevealedLive } from '@/games/useRevealedLive'
 import { clearDraft, deviceStorage, draftKey } from './draft'
 import MatchScaleBoard from './MatchScaleBoard.vue'
-import { formatFactor } from './scoreboard'
+import MatchScaleReveal from './MatchScaleReveal.vue'
+import { scoreboardRows } from './scoreboard'
 import { asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
 
 const props = defineProps<GameProps>()
@@ -43,15 +45,39 @@ const myColorHex = useMyColorHex(
   () => props.entries,
   () => props.mineUserId,
 )
+
+const rows = computed(() =>
+  solution.value === null
+    ? []
+    : scoreboardRows({
+        entries: props.entries,
+        factor: solution.value.factor,
+        awardRule: props.awardRule,
+        mineUserId: props.mineUserId,
+      }),
+)
+
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
+
+const animate = useRevealedLive(() => solution.value !== null)
 </script>
 
 <template>
   <p v-if="payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <p v-else-if="solution" data-test="match-scale-solved" class="text-sm text-on-surface-variant">
-    Tatsächlich: {{ formatFactor(solution.factor) }}×
-  </p>
+  <MatchScaleReveal
+    v-else-if="solution"
+    :payload="payload"
+    :factor="solution.factor"
+    :my-scale="myScale"
+    :my-color-hex="myColorHex"
+    :mine-user-id="props.mineUserId"
+    :rows="rows"
+    :live="live"
+    :animate="animate"
+  />
   <MatchScaleBoard
     v-else
     :payload="payload"

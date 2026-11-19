@@ -9,6 +9,8 @@ import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardCol
 import { asMatchScaleOutcome, scaleOf } from './types'
 
 export interface ScoreboardRow extends SharedScoreboardRow {
+  /** The tip as sent. */
+  scale: number
   /** The tip, e.g. `1,3×`. */
   tip: string
   /** Signed distance from the true factor, e.g. `+23 %` or `−18 %`. */
@@ -42,6 +44,7 @@ export function scoreboardRows(input: {
     return [
       {
         ...rowHead(entry, input.awardRule),
+        scale,
         tip: `${formatFactor(scale)}×`,
         off: signedPercent(scale / input.factor - 1),
         deviation: asMatchScaleOutcome(entry.outcome)?.deviation ?? null,

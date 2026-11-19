@@ -7,6 +7,7 @@ import { labGameList } from '@/gamelab/games'
 import { draftKey } from '../draft'
 import MatchScaleBoard from '../MatchScaleBoard.vue'
 import MatchScaleGame from '../MatchScaleGame.vue'
+import MatchScaleReveal from '../MatchScaleReveal.vue'
 import type { MatchScalePayload } from '../types'
 
 vi.mock('@/auth/useAuth', async () => {
@@ -24,7 +25,7 @@ const PAYLOAD: MatchScalePayload = {
 function mountGame(over: Partial<GameProps> = {}) {
   return mount(MatchScaleGame, {
     props: gameProps({ payload: PAYLOAD, awardRule: 'ALL_QUALIFYING', awardPoints: 1, ...over }),
-    global: { stubs: { MatchScaleBoard: true } },
+    global: { stubs: { MatchScaleBoard: true, MatchScaleReveal: true } },
   })
 }
 
@@ -70,7 +71,7 @@ describe('MatchScaleGame', () => {
     })
 
     expect(wrapper.findComponent(MatchScaleBoard).exists()).toBe(false)
-    expect(wrapper.find('[data-test="match-scale-solved"]').exists()).toBe(true)
+    expect(wrapper.findComponent(MatchScaleReveal).props('factor')).toBe(1.6)
   })
 
   it('is in the registry and in the lab', () => {

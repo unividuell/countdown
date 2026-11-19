@@ -52,6 +52,8 @@ const props = defineProps<{
   interactive: boolean
   /** The submit hold is rising: the field still shows its handle, but takes no input. */
   locked?: boolean
+  /** B's size change eases instead of jumping: the reveal's growth from the tip to the factor. */
+  grow?: boolean
 }>()
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
@@ -77,12 +79,18 @@ const grid = computed(() => {
 const groundY = computed(() => toScreen(props.view, { x: 0, y: 0 }).y)
 
 /** Path units to field units: top left corner, then the factor. */
-function transformOf(s: Silhouette, p: Placement): string {
+function transformOf(s: Silhouette, p: Placement, css = false): string {
   const { w, h } = sizeAt(s, p.scale)
   const topLeft = toScreen(props.view, { x: p.x, y: p.y + h })
+  const move = css ? `${topLeft.x}px, ${topLeft.y}px` : `${topLeft.x} ${topLeft.y}`
 
-  return `translate(${topLeft.x} ${topLeft.y}) scale(${(w * props.view.cellPx) / s.width})`
+  return `translate(${move}) scale(${(w * props.view.cellPx) / s.width})`
 }
+
+/** An attribute cannot ease; the same transform as a CSS property can. */
+const bGrowth = computed(() =>
+  props.grow === true ? { transform: transformOf(props.b, props.placementB, true) } : undefined,
+)
 
 const handle = computed(() => {
   const { w, h } = sizeAt(props.b, props.placementB.scale)
@@ -278,8 +286,13 @@ useEventListener(document, 'visibilitychange', () => {
       <path
         data-test="match-scale-b"
         :d="props.b.path"
+        :class="
+          props.grow === true
+            ? 'transition-transform duration-700 ease-out motion-reduce:transition-none'
+            : ''
+        "
         :transform="transformOf(props.b, props.placementB)"
-        :style="{ fill: props.bColor }"
+        :style="{ fill: props.bColor, ...bGrowth }"
       />
       <path
         v-for="(outline, i) in props.outlines"
