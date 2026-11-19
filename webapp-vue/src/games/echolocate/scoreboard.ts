@@ -19,6 +19,15 @@ export interface ScoreRow extends ScoreboardRow {
   pings: Point[]
   /** `pinOf[i]` is the pin assigned to clip `i`; `null` for a row without a readable play. */
   pinOf: number[] | null
+  /** Every ping the player sent, readable or not; `null` for a row without a readable play. */
+  pingCount: number | null
+  /** Phase two: `0,8 + 9 Pings`, the bar's caption; `null` in phase one and without a play. */
+  scoreLabel: string | null
+  /**
+   * Phase two: the bar's two parts as fractions of the round's longest score, e.g. distance 0.4
+   * and pings 1.5 of 1.9 → `{ distance: 0.21, pings: 0.79 }`. `null` in phase one and without a play.
+   */
+  bar: { distance: number; pings: number } | null
 }
 
 const oneDecimal = new Intl.NumberFormat('de-DE', {
@@ -31,6 +40,11 @@ export function formatDistance(distance: number, clips: number): string {
   const label = oneDecimal.format(distance)
 
   return clips > 1 ? `Ø ${label}` : label
+}
+
+/** `0,8 + 9 Pings`, `Ø 0,8 + 1 Ping`. */
+function scoreLabelOf(distance: number, clips: number, pings: number): string {
+  return `${formatDistance(distance, clips)} + ${pings} ${pings === 1 ? 'Ping' : 'Pings'}`
 }
 
 /** All pings or none: dropping one would shift the others off the rings that belong to them. */
@@ -67,18 +81,40 @@ export function scoreRows(input: {
     const outcome = asEchoLocateOutcome(entry.outcome, payload.clips)
     const guess = asEchoLocateGuess(entry.guess, payload)
     const shown = outcome !== null && guess !== null
+    const pingCount = shown ? (entry.steps?.length ?? 0) : null
+    const score = shown ? outcome.score : null
 
     return {
-      distance: shown ? outcome.distance : null,
+      // Phase two ranks by the score, phase one by the distance.
+      distance: shown ? (score ?? outcome.distance) : null,
+      score,
+      outcomeDistance: shown ? outcome.distance : null,
       row: {
         ...rowHead(entry, input.awardRule),
         distanceLabel: shown ? formatDistance(outcome.distance, payload.clips) : null,
         guess: shown ? guess : null,
         pings: shown ? pingsOf(entry.steps, payload.grid) : [],
         pinOf: shown ? outcome.pinOf : null,
+        pingCount,
+        scoreLabel:
+          shown && score !== null
+            ? scoreLabelOf(outcome.distance, payload.clips, pingCount ?? 0)
+            : null,
+        bar: null as ScoreRow['bar'],
       },
     }
   })
+
+  // Every bar against the longest; a round where everybody scored 0 draws empty bars.
+  const longest = Math.max(0, ...ranked.map(({ score }) => score ?? 0))
+  for (const { score, outcomeDistance, row } of ranked) {
+    if (score === null || outcomeDistance === null) continue
+
+    row.bar =
+      longest === 0
+        ? { distance: 0, pings: 0 }
+        : { distance: outcomeDistance / longest, pings: (score - outcomeDistance) / longest }
+  }
 
   ranked.sort(
     (a, b) =>

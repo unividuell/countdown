@@ -59,6 +59,8 @@ export interface EchoLocateOutcome {
   withinTolerance: boolean | null
   /** `pinOf[i]` is the pin the server assigned to target `i`. */
   pinOf: number[]
+  /** Phase two's ranking: the distance plus the pings' cost. `null` where pings cost nothing. */
+  score: number | null
 }
 
 /** `rings[ping]` holds the radii the player marked around that ping, in cells. */
@@ -186,13 +188,15 @@ export function asEchoLocateSolution(raw: unknown): EchoLocateSolution | null {
 /** `clips` is the round's: `pinOf` names one pin per clip, so a stray index is no outcome. */
 export function asEchoLocateOutcome(raw: unknown, clips: number): EchoLocateOutcome | null {
   if (!isRecord(raw)) return null
-  const { distance, withinTolerance, pinOf } = raw
+  const { distance, withinTolerance, pinOf, score } = raw
   if (!isFiniteNumber(distance)) return null
+  // Missing in a round judged before pings cost anything.
+  if (score !== undefined && score !== null && !isFiniteNumber(score)) return null
   if (withinTolerance !== null && typeof withinTolerance !== 'boolean') return null
   if (!Array.isArray(pinOf) || pinOf.length !== clips) return null
   if (!pinOf.every((pin) => isWhole(pin) && pin >= 0 && pin < clips)) return null
 
-  return { distance, withinTolerance, pinOf: [...pinOf] }
+  return { distance, withinTolerance, pinOf: [...pinOf], score: score ?? null }
 }
 
 /**

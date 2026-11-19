@@ -41,6 +41,7 @@ const props = defineProps<{
       <template #closest>
         <template v-if="props.clips === 1">Der kleinste Abstand zum Spruch.</template>
         <template v-else>Der kleinste mittlere Abstand zu beiden Sprüchen.</template>
+        <template v-if="props.toleranceRadius === null"> Wenige Pings werden belohnt.</template>
       </template>
     </AwardBox>
   </div>

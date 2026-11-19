@@ -202,10 +202,20 @@ describe('asEchoLocateOutcome', () => {
       distance: 2.3,
       withinTolerance: true,
       pinOf: [0],
+      score: null,
     })
     expect(asEchoLocateOutcome({ distance: 2.3, withinTolerance: null, pinOf: [1, 0] }, 2)).toEqual(
-      { distance: 2.3, withinTolerance: null, pinOf: [1, 0] },
+      { distance: 2.3, withinTolerance: null, pinOf: [1, 0], score: null },
     )
+  })
+
+  // Phase two's ranking; a round judged before it existed carries none.
+  it('keeps a score, and reads a missing or null one as none', () => {
+    const base = { distance: 0.8, withinTolerance: null, pinOf: [0] }
+
+    expect(asEchoLocateOutcome({ ...base, score: 1.25 }, 1)?.score).toBe(1.25)
+    expect(asEchoLocateOutcome({ ...base, score: null }, 1)?.score).toBeNull()
+    expect(asEchoLocateOutcome(base, 1)?.score).toBeNull()
   })
 
   it.each([
@@ -224,6 +234,8 @@ describe('asEchoLocateOutcome', () => {
     ['a pin beyond the clips', { distance: 2.3, withinTolerance: true, pinOf: [1] }],
     ['a negative pin', { distance: 2.3, withinTolerance: true, pinOf: [-1] }],
     ['a fractional pin', { distance: 2.3, withinTolerance: true, pinOf: [0.5] }],
+    ['a score that is no number', { distance: 2.3, withinTolerance: null, pinOf: [0], score: '1' }],
+    ['an infinite score', { distance: 2.3, withinTolerance: null, pinOf: [0], score: Infinity }],
   ])('turns %s into null', (_label, outcome) => {
     expect(asEchoLocateOutcome(outcome, 1)).toBeNull()
   })

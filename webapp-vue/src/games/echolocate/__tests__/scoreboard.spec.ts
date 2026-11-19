@@ -23,7 +23,16 @@ const PINGS = [
 ]
 
 function outcome(distance: number): EchoLocateOutcome {
-  return { distance, withinTolerance: true, pinOf: [0] }
+  return { distance, withinTolerance: true, pinOf: [0], score: null }
+}
+
+/** Phase two: `count` pings at 0.05 each on top of the distance. */
+function charged(userId: string, distance: number, count: number): GameEntry {
+  return entry({
+    userId,
+    outcome: { distance, withinTolerance: null, pinOf: [0], score: distance + 0.05 * count },
+    steps: Array.from({ length: count }, (_, i) => ({ x: 1 + (i % 10), y: 2 })),
+  })
 }
 
 /** A judged entry with a guess and two pings of its own. */
@@ -63,6 +72,68 @@ describe('formatDistance', () => {
 })
 
 describe('scoreRows', () => {
+  describe('phase two', () => {
+    const PHASE_TWO: EchoLocatePayload = { ...PAYLOAD, toleranceRadius: null }
+
+    it('ranks by distance plus the pings, not by distance', () => {
+      const rows = rowsOf(
+        [charged('anna', 0.4, 30), charged('bert', 1.2, 4), charged('cem', 0.8, 9)],
+        {
+          awardRule: 'CLOSEST_ONLY',
+          payload: PHASE_TWO,
+        },
+      )
+
+      expect(rows.map((row) => row.userId)).toEqual(['cem', 'bert', 'anna'])
+    })
+
+    it('labels the bar with the distance and the pings', () => {
+      const rows = rowsOf([charged('cem', 0.8, 9), charged('dora', 1.2, 1)], { payload: PHASE_TWO })
+      const two = rowsOf([charged('eva', 0.8, 9)], { payload: { ...PHASE_TWO, clips: 2 } })
+
+      expect(rows.map((row) => row.scoreLabel)).toEqual(['0,8 + 9 Pings', '1,2 + 1 Ping'])
+      expect(rows.map((row) => row.pingCount)).toEqual([9, 1])
+      // Two clips: the guess above has one pin, so it is unreadable there — the label goes too.
+      expect(two[0]!.scoreLabel).toBeNull()
+    })
+
+    it('measures every bar against the longest score of the round', () => {
+      const rows = rowsOf([charged('anna', 0.4, 30), charged('cem', 0.8, 9)], {
+        payload: PHASE_TWO,
+      })
+      const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
+
+      expect(byId.anna!.bar!.distance).toBeCloseTo(0.4 / 1.9)
+      expect(byId.anna!.bar!.pings).toBeCloseTo(1.5 / 1.9)
+      expect(byId.cem!.bar!.distance).toBeCloseTo(0.8 / 1.9)
+      expect(byId.cem!.bar!.pings).toBeCloseTo(0.45 / 1.9)
+    })
+
+    it('fills the bar of a lone row, and survives a score of zero', () => {
+      const [lone] = rowsOf([charged('anna', 0.4, 2)], { payload: PHASE_TWO })
+      const [zero] = rowsOf([charged('bert', 0, 0)], { payload: PHASE_TWO })
+
+      expect(lone!.bar!.distance + lone!.bar!.pings).toBeCloseTo(1)
+      expect(zero!.bar).toEqual({ distance: 0, pings: 0 })
+    })
+
+    it('gives a give-up no bar, last', () => {
+      const rows = rowsOf(
+        [entry({ userId: 'gone', guess: null, outcome: null }), charged('anna', 0.4, 2)],
+        { payload: PHASE_TWO },
+      )
+
+      expect(rows.map((row) => row.userId)).toEqual(['anna', 'gone'])
+      expect(rows[1]).toMatchObject({ bar: null, scoreLabel: null, pingCount: null })
+    })
+  })
+
+  it('counts the pings in phase one, without a bar', () => {
+    const [row] = rowsOf([entry({ steps: PINGS })])
+
+    expect(row).toMatchObject({ pingCount: 2, bar: null, scoreLabel: null })
+  })
+
   it('ranks by distance, give-ups last, userId as tiebreak', () => {
     const rows = rowsOf([
       entry({ userId: 'e', outcome: { distance: 'x' } }),

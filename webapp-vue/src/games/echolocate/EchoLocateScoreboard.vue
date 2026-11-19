@@ -3,15 +3,21 @@
  * „Auswertung“ for Peilung: every pin of the round, nearest to the clips first.
  *
  * The table is `RevealScoreboard`; this file adds what stands between „Name“ and „Pkt“ — the
- * distance — and makes each name a button that lights that player's pings, rings and pins on
- * the map above.
+ * distance and the pings — and makes each name a button that lights that player's pings, rings and
+ * pins on the map above.
  *
  *                      Toleranz
  *                         ± 1,5            phase one only: the circle's radius
  *   Auswertung
- *   Name               Abstand     Pkt
- *   anna                 1,6        1
- *   bert               Ø 7,2        0      two clips: the mean
+ *   Name               Abstand  Pings  Pkt
+ *   anna                 1,6      4     1
+ *   bert               Ø 7,2     12     0  two clips: the mean
+ *
+ * Phase two ranks by distance + 0.05 per ping, one column whose cell is its own bar:
+ *
+ *   Name     Abstand + Pings          Pkt
+ *   cem      ██████▒▒▒ 0,8 + 9 Pings   3   ██ distance, ▒▒ the pings' cost,
+ *   anna     ██▒▒▒▒▒▒▒▒▒▒ 0,4 + 30 Pings    both against the round's longest
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -37,16 +43,46 @@ const oneDecimal = new Intl.NumberFormat('de-DE', {
   maximumFractionDigits: 1,
 })
 
-const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
-  {
-    key: 'distance',
-    label: 'Abstand',
-    ...(props.toleranceRadius === null ? {} : { fact: 'Toleranz' }),
-    width: '4rem',
-    align: 'end',
-    numeric: true,
-  },
-])
+const phaseTwo = computed(() => props.toleranceRadius === null)
+
+const columns = computed<ScoreboardColumn<ScoreRow>[]>(() =>
+  phaseTwo.value
+    ? [
+        // Bare: the cell paints its own bar.
+        {
+          key: 'score',
+          label: 'Abstand + Pings',
+          align: 'start',
+          numeric: true,
+          ground: () => null,
+        },
+      ]
+    : [
+        {
+          key: 'distance',
+          label: 'Abstand',
+          fact: 'Toleranz',
+          width: '4rem',
+          align: 'end',
+          numeric: true,
+        },
+        { key: 'pings', label: 'Pings', width: '3.5rem', align: 'end', numeric: true },
+      ],
+)
+
+/** `47.5%`: a bar's edge, rounded so a float's tail never reaches the style. */
+function percent(fraction: number): string {
+  return `${Math.round(fraction * 1000) / 10}%`
+}
+
+/** The bar's two edges; the gradient in the template paints between them. */
+function barStyle(bar: NonNullable<ScoreRow['bar']>, colorHex: string): Record<string, string> {
+  return {
+    '--bar-distance': percent(bar.distance),
+    '--bar-pings': percent(bar.distance + bar.pings),
+    '--bar-color': colorHex,
+  }
+}
 
 const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:-outline-offset-2'
 </script>
@@ -55,7 +91,11 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
   <RevealScoreboard
     :rows="props.rows"
     :columns="columns"
-    caption="Alle Peilungen der Runde, nach Abstand sortiert"
+    :caption="
+      phaseTwo
+        ? 'Alle Peilungen der Runde, nach Abstand und Pings sortiert'
+        : 'Alle Peilungen der Runde, nach Abstand sortiert'
+    "
     :live="props.live"
     :animate="props.animate"
   >
@@ -85,5 +125,27 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
       </span>
     </template>
     <template #cell-distance="{ row }">{{ row.distanceLabel ?? '—' }}</template>
+    <template #cell-pings="{ row }">{{ row.pingCount ?? '—' }}</template>
+    <!-- A round judged before pings cost anything has no bar: its distance stands alone. -->
+    <template #cell-score="{ row }">
+      <div
+        v-if="row.bar !== null"
+        :data-test="`score-bar-${row.userId}`"
+        class="px-2 py-1 whitespace-nowrap"
+        :style="barStyle(row.bar, row.colorHex)"
+        style="
+          background: linear-gradient(
+            to right,
+            color-mix(in srgb, var(--bar-color) 55%, transparent) 0 var(--bar-distance),
+            color-mix(in srgb, var(--bar-color) 22%, transparent) var(--bar-distance)
+              var(--bar-pings),
+            transparent var(--bar-pings)
+          );
+        "
+      >
+        {{ row.scoreLabel }}
+      </div>
+      <div v-else class="px-2 py-1">{{ row.distanceLabel ?? '—' }}</div>
+    </template>
   </RevealScoreboard>
 </template>

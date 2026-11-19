@@ -429,6 +429,53 @@ describe('EchoLocateReveal', () => {
       }
     })
 
+    it('counts every player’s pings in phase one', () => {
+      const wrapper = mountReveal()
+
+      expect(wrapper.text()).toContain('Pings')
+      expect(wrapper.get('[data-test="cell-pings-me"]').text()).toBe('3')
+      expect(wrapper.find('[data-test="cell-score-me"]').exists()).toBe(false)
+    })
+
+    describe('phase two', () => {
+      /** Distance plus 0.05 per ping, as the server sends it. */
+      const charged = (userId: string, distance: number) =>
+        entry(userId, distance, {
+          outcome: {
+            distance,
+            withinTolerance: null,
+            pinOf: [0],
+            score: distance + 0.05 * PINGS[userId]!.length,
+          },
+        })
+
+      const mountPhaseTwo = (entries: GameEntry[]) =>
+        mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION, entries })
+
+      it('puts distance and pings in one column, the bar behind its label', () => {
+        const wrapper = mountPhaseTwo([charged('me', 0.8), charged('bert', 1.85)])
+        const bar = wrapper.get<HTMLElement>('[data-test="score-bar-me"]')
+
+        expect(wrapper.text()).toContain('Abstand + Pings')
+        expect(wrapper.get('caption').text()).toBe(
+          'Alle Peilungen der Runde, nach Abstand und Pings sortiert',
+        )
+        expect(wrapper.find('[data-test="cell-distance-me"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="cell-pings-me"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="cell-score-me"]').text()).toBe('0,8 + 3 Pings')
+        // me: 0.8 + 0.15 = 0.95 of bert's 2.0
+        expect(bar.element.style.getPropertyValue('--bar-distance')).toBe('40%')
+        expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('47.5%')
+      })
+
+      it('shows the distance alone for a round judged before pings cost anything', () => {
+        const wrapper = mountPhaseTwo([entry('me', 0.8)])
+
+        expect(wrapper.get('[data-test="cell-score-me"]').text()).toBe('0,8')
+        expect(wrapper.find('[data-test="score-bar-me"]').exists()).toBe(false)
+      })
+    })
+
     it('offers no button for a row without a play, and says nothing of its distance', () => {
       const wrapper = mountReveal({
         entries: [

@@ -857,7 +857,7 @@ describe('EchoLocateBoard', () => {
       'Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
       '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin für den Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
-    expect(w.text()).toContain('Der kleinste Abstand zum Spruch.')
+    expect(w.text()).toContain('Der kleinste Abstand zum Spruch. Wenige Pings werden belohnt.')
   })
 
   it('speaks of two clips in the plural', () => {
@@ -875,7 +875,10 @@ describe('EchoLocateBoard', () => {
       'Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
       '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin pro Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
-    expect(w.text()).toContain('Der kleinste mittlere Abstand zu beiden Sprüchen.')
+    expect(w.text()).toContain(
+      'Der kleinste mittlere Abstand zu beiden Sprüchen. Wenige Pings werden belohnt.',
+    )
+    expect(one.text()).not.toContain('Wenige Pings')
     expect(one.text()).toContain('Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.')
     expect(w.text()).not.toContain('Später in der Edition')
   })
