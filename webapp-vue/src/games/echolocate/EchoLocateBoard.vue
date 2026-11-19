@@ -1,29 +1,30 @@
 <script setup lang="ts">
 /**
- * Playing Peilung: the field, a line saying what a tap does now, the switch „Ping | Pin“, the hold
- * that hands in.
+ * Playing Peilung: the field, a link that clears the marks, a line saying what a click does now, the
+ * hold that hands in.
  *
  *   ┌──────────────┐
- *   │  SonarField  │   covered until its cover is clicked; the cover names the count
+ *   │  SonarField  │   open from the start; names the count until the first ping
  *   └──────────────┘
+ *              🧹 Markierungen löschen    the rings only — pins and pings stay
  *   1. Klick: Ping, 2. Klick: Markieren
- *   [ Ping | Pin ]  [Zurücksetzen     ]   greyed under the cover, with a ping out, during its wave
- *                   [(Markierungen & Pins)]
+ *   Lang drücken: Pin setzen oder entfernen
  *        ( Abgeben )   once every clip has its pin
  *
- * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
+ * A click goes through `flow.ts`; the board acts on its effect and on the host's answers:
  *
- *   cover click ─▶ unlock: playback session, graph, sounds, bed ─▶ unlocked, once the graph runs
- *   field tap   ─▶ ping: skip(stage, at) ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
- *                                         └─ request over, no step ─▶ refused, synced
- *   graph stops, page hidden ─▶ locked: the cover again; hidden, the bed stops until its click,
- *                               or the sound's return if a ping out or its wave kept the cover off
+ *   short click ─▶ sound on if it is not (iOS: the release is a gesture) ─▶ ping: skip(stage, at)
+ *                  ─┬─ steps grows by it ─▶ engine.ping, wave, settle timer
+ *                   └─ request over, no step ─▶ refused, synced
+ *   long click  ─▶ a pin set or lifted, whatever runs
+ *   page hidden ─▶ the bed stops; the next click starts it again
  *
  * Rings and pins are saved as a draft on every change; the pings live on the server.
  */
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import type { AwardRule, StepView } from '@/api/types'
+import IconBroom from '~icons/lucide/brush-cleaning'
 import { audioGraph } from '@/ui/audio'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
@@ -35,22 +36,18 @@ import EchoLocateBriefing from './EchoLocateBriefing.vue'
 import { EchoEngine, loadSounds, shotsOf } from './engine'
 import type { EchoSounds } from './engine'
 import {
-  canSteer,
+  clearRings,
   guessOf,
+  hold,
   initialFlow,
   landed,
-  locked,
-  pingsLeft,
   refused,
-  reset,
   settle,
   statusLine,
-  switchMode,
   synced,
   tap,
-  unlocked,
 } from './flow'
-import type { FlowState, Mode } from './flow'
+import type { FlowState } from './flow'
 import { dbToGain } from './noise'
 import SonarField from './SonarField.vue'
 import { asEcho, asPing } from './types'
@@ -80,21 +77,6 @@ interface Audio {
 
 const storage = deviceStorage()
 
-const MODES: { mode: Mode; label: string }[] = [
-  { mode: 'ping', label: 'Ping' },
-  { mode: 'pin', label: 'Pin' },
-]
-
-const SWITCH =
-  'h-11 cursor-pointer border border-outline px-1 disabled:cursor-not-allowed disabled:opacity-40'
-
-/**
- * One width for the switch and the reset, centred in their halves: the reset's second line,
- * „(Markierungen & Pins)“, needs 126 px plus padding and border, 136 in all — a 320 px phone's
- * half is 138.
- */
-const CONTROL_WIDTH = 'w-34'
-
 /** A step's input as a point; an unreadable one still counts, at the centre, so stages align. */
 const pings = computed(() =>
   props.steps.map(
@@ -106,7 +88,7 @@ const pings = computed(() =>
   ),
 )
 
-/** The round as the server's pings and the draft under the current key have it, covered. */
+/** The round as the server's pings and the draft under the current key have it. */
 function fresh(): FlowState {
   return initialFlow({
     clips: props.payload.clips,
@@ -119,7 +101,7 @@ function fresh(): FlowState {
 const flow = shallowRef<FlowState>(fresh())
 
 const status = computed(() => statusLine(flow.value))
-const canPing = computed(() => pingsLeft(flow.value))
+const hasRings = computed(() => flow.value.rings.some((ring) => ring.length > 0))
 const canHandIn = computed(() => !props.disabled && guessOf(flow.value) !== null)
 
 // As in Place Patch: while the hand-in ring rises the field greys, a finger on it cancels the
@@ -143,16 +125,14 @@ function claimPlayback(): void {
 }
 
 /**
- * Runs inside the click, so the browser lets the graph start; the field opens once it runs. A
- * refused start leaves the cover on, for the next click to try again.
+ * Runs inside the release of a short click, a gesture the browser lets start the graph. Called on
+ * every one: the first loads the sounds, a later one brings back a bed the hidden page stopped or a
+ * graph iOS suspended. A refused start leaves it to the next click.
  */
-function unlock(): void {
+function ensureSound(): void {
   claimPlayback()
   const ctx = audioGraph()
-  if (ctx === null) {
-    flow.value = unlocked(flow.value)
-    return
-  }
+  if (ctx === null) return
 
   graph.value = ctx
   if (audio === null) {
@@ -161,20 +141,11 @@ function unlock(): void {
     restartBed()
   }
 
-  if (ctx.state === 'running') {
-    flow.value = unlocked(flow.value)
-    return
-  }
+  if (ctx.state === 'running') return
 
-  ctx
-    .resume()
-    .then(() => {
-      if (ctx.state !== 'running') throw new Error(`the graph is ${ctx.state}`)
-      if (alive) flow.value = unlocked(flow.value)
-    })
-    .catch((err: unknown) => {
-      console.warn('[echo-locate] the browser kept the audio graph suspended', err)
-    })
+  ctx.resume().catch((err: unknown) => {
+    console.warn('[echo-locate] the browser kept the audio graph suspended', err)
+  })
 }
 
 /** A bed stopped while the page was hidden starts again; a playing one plays on. */
@@ -197,80 +168,43 @@ function load(ctx: AudioContext): void {
   })
 }
 
-/** The cover's click, a gesture iOS accepts; closed, a tap only unlocks, wherever and whenever. */
-function onStart(): void {
-  if (props.disabled || flow.value.phase !== 'closed') return
-
-  const { effect } = tap(flow.value, { x: 0, y: 0 }, performance.now(), props.payload.speed)
-  if (effect?.kind === 'unlock') unlock()
-}
-
-/** Closed, the field's pointerdown is no gesture on iOS: only the cover unlocks. */
+/** The short click: a ping, or a mark during a wave. The first one is the first ping. */
 function onTap(at: Point, tMs: number): void {
-  if (takeTap() || props.disabled || flow.value.phase === 'closed') return
+  if (takeTap() || props.disabled) return
 
+  ensureSound()
   const { state, effect } = tap(flow.value, at, tMs, props.payload.speed)
-
-  // Pings are few and never repeat: one nobody would hear stays unspent, under the cover.
-  if (effect?.kind === 'ping' && !audible()) {
-    flow.value = locked(settle(flow.value, tMs))
-    return
-  }
-
   flow.value = state
   if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
 }
 
-/** Not under a rising hold either: the pins must not change under a hand-in about to send them. */
-const steerable = computed(() => !props.disabled && !holdLocked.value && canSteer(flow.value))
+/** The long click: a pin set or lifted, at any time — but not under a hand-in about to send them. */
+function onHold(at: Point): void {
+  if (takeTap() || props.disabled || holdLocked.value) return
 
-function onMode(mode: Mode): void {
-  if (steerable.value) flow.value = switchMode(flow.value, mode)
+  flow.value = hold(flow.value, at)
 }
 
-function onReset(): void {
-  if (steerable.value) flow.value = reset(flow.value)
+function onClearRings(): void {
+  flow.value = clearRings(flow.value)
 }
 
-/** Whether a ping would be heard now. Without Web Audio there is nothing to wait for. */
-function audible(): boolean {
-  if (document.visibilityState === 'hidden') return false
-
-  return graph.value === null || graph.value.state === 'running'
-}
-
-/** Back under the cover while nothing would be heard: only its click resumes the graph. */
-function guard(): void {
-  if (!audible()) flow.value = locked(flow.value)
-}
-
-/**
- * The sound went or came back: page shown or hidden, graph running or not. Back while a ping or its
- * wave runs, no cover came, so the bed comes back by itself.
- */
-function checkSound(): void {
-  if (audible() && flow.value.phase !== 'closed') restartBed()
-  guard()
-}
-
-// iOS suspends the graph for a call, an app switch or the lock screen; a tap cannot resume it.
-useEventListener(graph, 'statechange', checkSound)
+// iOS suspends the graph for a call, an app switch or the lock screen; the next click resumes it.
+useEventListener(graph, 'statechange', () => {
+  if (graph.value?.state === 'running' && document.visibilityState !== 'hidden') restartBed()
+})
 
 // A hidden page plays nothing on. The shared graph is not suspended: other games use it.
 useEventListener(document, 'visibilitychange', () => {
   if (document.visibilityState === 'hidden') engine?.stopBed()
-  checkSound()
+  else if (graph.value?.state === 'running') restartBed()
 })
 
-// Whatever moves the round on — a wave that ends, a refused ping, a start over — may find the
-// sound stopped meanwhile.
-watch(() => flow.value.phase, guard)
-
-/** Over again from the server's pings and the draft; an open field stays open. */
+/** Over again from the server's pings and the draft. */
 function restart(): void {
   clearTimeout(settleTimer)
   engine?.hush()
-  flow.value = flow.value.phase === 'closed' ? fresh() : unlocked(fresh())
+  flow.value = fresh()
 }
 
 /** The open ping's answer: schedule its sounds, then start its wave where they will be heard. */
@@ -387,7 +321,7 @@ onBeforeUnmount(() => {
 <template>
   <div data-test="echo-locate-board" class="flex flex-col gap-6">
     <div class="flex flex-col items-center gap-3">
-      <!-- Capture: the field pings on pointerdown, and the hold must hear every finger first. -->
+      <!-- Capture: the hand-in hold must hear every finger on the field first. -->
       <div
         data-test="echo-locate-field"
         class="relative self-stretch"
@@ -406,10 +340,8 @@ onBeforeUnmount(() => {
           :pins="flow.pins"
           :pin-color-hex="props.myColorHex"
           :pending="flow.pending"
-          :covered="flow.phase === 'closed'"
-          :disabled="props.disabled"
           @tap="onTap"
-          @start="onStart"
+          @hold="onHold"
         />
         <HoldLock
           v-if="holdLocked"
@@ -418,48 +350,23 @@ onBeforeUnmount(() => {
           :progress="holdProgress"
         />
       </div>
-      <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
-      <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
-        {{ status }}
-      </p>
+      <!-- Under the field, at its right edge: a link, not a button — it only tidies up. -->
+      <button
+        type="button"
+        data-test="echo-locate-clear-rings"
+        :disabled="!hasRings"
+        class="inline-flex min-h-11 cursor-pointer items-center gap-1.5 self-end text-sm text-on-surface-variant underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:no-underline"
+        @click="onClearRings"
+      >
+        <IconBroom class="size-4" aria-hidden="true" />
+        Markierungen löschen
+      </button>
 
-      <!-- Two halves; in each, one control of the same width: the switch, then the reset. -->
-      <div class="grid grid-cols-2 items-center gap-3 self-stretch">
-        <div
-          class="mx-auto grid grid-cols-2"
-          :class="CONTROL_WIDTH"
-          role="group"
-          aria-label="Was ein Klick aufs Feld tut"
-        >
-          <button
-            v-for="choice in MODES"
-            :key="choice.mode"
-            type="button"
-            :data-test="`echo-locate-mode-${choice.mode}`"
-            :aria-pressed="flow.mode === choice.mode"
-            :disabled="!steerable || (choice.mode === 'ping' && !canPing)"
-            :class="[
-              SWITCH,
-              // One shared border between the halves, so both stay exactly as wide.
-              choice.mode === 'ping' ? 'rounded-s-lg' : 'rounded-e-lg border-s-0',
-              flow.mode === choice.mode ? 'bg-on-surface text-surface' : '',
-            ]"
-            @click="onMode(choice.mode)"
-          >
-            {{ choice.label }}
-          </button>
-        </div>
-        <button
-          type="button"
-          data-test="echo-locate-reset"
-          :disabled="!steerable"
-          :class="[SWITCH, CONTROL_WIDTH]"
-          class="mx-auto rounded-lg leading-tight"
-          @click="onReset"
-        >
-          Zurücksetzen
-          <span class="block text-xs whitespace-nowrap">(Markierungen &amp; Pins)</span>
-        </button>
+      <div class="text-center">
+        <p data-test="echo-locate-status" aria-live="polite" class="text-lg">{{ status }}</p>
+        <p data-test="echo-locate-pin-hint" class="text-sm text-on-surface-variant">
+          Lang drücken: Pin setzen oder entfernen
+        </p>
       </div>
 
       <!-- `HoldButton` fills its parent and has no size of its own. -->

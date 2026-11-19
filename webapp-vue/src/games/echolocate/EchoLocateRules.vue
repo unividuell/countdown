@@ -24,17 +24,17 @@ const props = defineProps<{ clips: number }>()
       Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
       Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.
     </li>
-    <li>
-      „Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins
-      ab.
-    </li>
     <li v-if="props.clips === 1">
-      Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. Zum Abgeben
-      „Abgeben“ gedrückt halten.
+      Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal
+      lang drücken nimmt ihn weg.
     </li>
     <li v-else>
-      Ein Pin ist deine Schätzung: Setz je einen dorthin, wo du einen Spruch vermutest. Zum Abgeben
-      „Abgeben“ gedrückt halten.
+      Ein Pin ist deine Schätzung: Drück lang auf jede Stelle, wo du einen Spruch vermutest. Noch
+      mal lang drücken nimmt ihn weg.
+    </li>
+    <li>
+      „Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt
+      halten.
     </li>
   </ul>
 </template>

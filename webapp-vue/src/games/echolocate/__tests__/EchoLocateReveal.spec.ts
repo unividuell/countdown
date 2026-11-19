@@ -144,7 +144,6 @@ describe('EchoLocateReveal', () => {
         reach: 12,
         solution: SOLUTION,
         pending: null,
-        covered: false,
         waves: [],
         rings: [],
         pins: [],
@@ -318,7 +317,6 @@ describe('EchoLocateReveal', () => {
         rings: GUESSES['me']!.rings,
         pins: GUESSES['me']!.pins,
         pinColorHex: COLORS['me'],
-        covered: false,
       })
       // Nothing of the solution, nobody else's pins: my field as the board left it.
       expect(fields(wrapper)[1]!.props('solution')).toBeUndefined()

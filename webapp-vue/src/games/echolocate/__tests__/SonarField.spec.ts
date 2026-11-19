@@ -66,7 +66,6 @@ function mountField(over: Record<string, unknown> = {}) {
       pins: [],
       pinColorHex: '#7c3aed',
       pending: null,
-      covered: false,
       ...over,
     },
   })
@@ -83,11 +82,15 @@ function after(log: Call[], x: number, y: number, r: number, count: number): Cal
 
 /** The handler runs a little after the finger came down: the clock has moved on by then. */
 function pointerDown(field: ReturnType<typeof mountField>, clientX: number, clientY: number) {
-  const event = new PointerEvent('pointerdown', { clientX, clientY, bubbles: true })
+  const event = new PointerEvent('pointerdown', { clientX, clientY, bubbles: true, pointerId: 1 })
   vi.mocked(performance.now).mockReturnValue(event.timeStamp + 40)
   field.get('canvas').element.dispatchEvent(event)
 
   return event
+}
+
+function pointer(field: ReturnType<typeof mountField>, type: 'pointerup' | 'pointercancel') {
+  field.get('canvas').element.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1 }))
 }
 
 describe('SonarField', () => {
@@ -111,12 +114,53 @@ describe('SonarField', () => {
     vi.unstubAllGlobals()
   })
 
-  it('emits taps in cell units with the event time', () => {
+  // The click is told on the way up — iOS takes that as a gesture that may start the sound — but
+  // at the place and time of the way down, so a ring is as quick as the reaction.
+  it('emits a short click on release, in cell units with the time the finger came down', () => {
     const field = mountField()
 
     const event = pointerDown(field, 60, 170)
+    expect(field.emitted('tap')).toBeUndefined()
 
+    pointer(field, 'pointerup')
     expect(field.emitted('tap')).toEqual([[{ x: 5, y: 15 }, event.timeStamp]])
+    expect(field.emitted('hold')).toBeUndefined()
+  })
+
+  it('emits a long click after 500 ms held, and no short one on release', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const field = mountField()
+
+      pointerDown(field, 60, 170)
+      vi.advanceTimersByTime(499)
+      expect(field.emitted('hold')).toBeUndefined()
+
+      vi.advanceTimersByTime(1)
+      expect(field.emitted('hold')).toEqual([[{ x: 5, y: 15 }]])
+
+      pointer(field, 'pointerup')
+      expect(field.emitted('tap')).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('emits nothing for a finger the browser took back', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const field = mountField()
+
+      pointerDown(field, 60, 170)
+      pointer(field, 'pointercancel')
+      vi.advanceTimersByTime(1000)
+      pointer(field, 'pointerup')
+
+      expect(field.emitted('tap')).toBeUndefined()
+      expect(field.emitted('hold')).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('draws a wave only from its start, out to where it has come', () => {
@@ -225,48 +269,27 @@ describe('SonarField', () => {
     expect(mountField().get('canvas').classes()).toContain('touch-none')
   })
 
-  it('lies under a cover button until the sound is unlocked', () => {
-    expect(mountField({ covered: false }).find('button').exists()).toBe(false)
+  // No cover: the first click is the first ping. Until then the field says what hides in it.
+  it('names how many clips hide in the field until the first ping, and takes no click for it', () => {
+    const hint = (over: Record<string, unknown>) =>
+      mountField(over).find('[data-test="sonar-count"]')
 
-    const field = mountField({ covered: true })
-    const cover = field.get('button')
-    expect(cover.attributes('type')).toBe('button')
-    expect(cover.text()).toBe('Antippen zum Starten')
+    expect(hint({ clips: 1 }).text()).toBe('1 Spruch')
+    expect(hint({ clips: 2 }).text()).toBe('2 Sprüche')
+    expect(hint({ clips: 2 }).classes()).toContain('pointer-events-none')
+    expect(
+      hint({ clips: 2, waves: [{ at: { x: 1, y: 1 }, startMs: null, endMs: null }] }).exists(),
+    ).toBe(false)
+    expect(mountField({ clips: 2 }).find('button').exists()).toBe(false)
   })
 
-  it('names how many clips hide in the field, above „Antippen zum Starten“', () => {
-    const lines = (clips: number) =>
-      mountField({ covered: true, clips })
-        .get('button')
-        .findAll('span')
-        .map((line) => line.text())
+  it('keeps the long press to itself: no callout, no context menu', () => {
+    const canvas = mountField().get('canvas')
 
-    expect(lines(1)).toEqual(['1 Spruch', 'Antippen zum Starten'])
-    expect(lines(2)).toEqual(['2 Sprüche', 'Antippen zum Starten'])
-  })
-
-  // iOS counts a touch as a gesture from its end on: a pointerdown cannot start the graph.
-  it('asks to start on a click of the cover, never on a pointerdown', async () => {
-    const field = mountField({ covered: true })
-    const cover = field.get('button')
-
-    cover.element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-    expect(field.emitted('start')).toBeUndefined()
-    expect(field.emitted('tap')).toBeUndefined()
-
-    await cover.trigger('click')
-    expect(field.emitted('start')).toEqual([[]])
-    expect(field.emitted('tap')).toBeUndefined()
-  })
-
-  it('shows keyboard focus on the cover, and looks and is disabled with the field', () => {
-    const cover = mountField({ covered: true }).get('button')
-    expect(cover.classes()).toContain('focus-visible:outline-2')
-    expect(cover.attributes('disabled')).toBeUndefined()
-
-    const off = mountField({ covered: true, disabled: true }).get('button')
-    expect(off.attributes('disabled')).toBeDefined()
-    expect(off.classes()).toContain('disabled:opacity-40')
+    expect(canvas.classes()).toContain('[-webkit-touch-callout:none]')
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    canvas.element.dispatchEvent(menu)
+    expect(menu.defaultPrevented).toBe(true)
   })
 
   it('names the field for assistive technology', () => {

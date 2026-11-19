@@ -160,14 +160,15 @@ async function showPage(state: 'hidden' | 'visible') {
   await nextTick()
 }
 
-/** A click on the field's cover. */
-async function start(w: Board) {
-  field(w).vm.$emit('start')
+/** A short click, told on release with the time the finger came down. */
+async function tapAt(w: Board, at: Point, tMs = performance.now()) {
+  field(w).vm.$emit('tap', at, tMs)
   await flushPromises()
 }
 
-async function tapAt(w: Board, at: Point, tMs = performance.now()) {
-  field(w).vm.$emit('tap', at, tMs)
+/** A long click. */
+async function holdAt(w: Board, at: Point) {
+  field(w).vm.$emit('hold', at)
   await flushPromises()
 }
 
@@ -210,197 +211,96 @@ describe('EchoLocateBoard', () => {
     Reflect.deleteProperty(document, 'visibilityState')
   })
 
-  it('names how many clips hide in the field on its cover, not above it', () => {
-    const w = mountBoard()
-    expect(field(w).props('clips')).toBe(1)
-    expect(w.text()).not.toContain('1 Spruch')
-
-    expect(mountBoard({ payload: { ...PAYLOAD, clips: 2 } }).text()).not.toContain('2 Sprüche')
-    expect(mountBoard({}, { realField: true }).get('button').text()).toContain('1 Spruch')
+  it('hands the field the count to name until the first ping', () => {
+    expect(field(mountBoard()).props('clips')).toBe(1)
+    expect(field(mountBoard({ payload: { ...PAYLOAD, clips: 2 } })).props('clips')).toBe(2)
   })
 
   it('draws my pins in my colour', () => {
     expect(field(mountBoard({ myColorHex: '#0ea5e9' })).props('pinColorHex')).toBe('#0ea5e9')
   })
 
-  // The cover says it already; the line keeps its height, so nothing jumps when it fills.
-  it('leaves the status line empty under the cover, at its height', () => {
-    const line = status(mountBoard())
+  it('says from the start what a click does, and how a pin is set', () => {
+    const w = mountBoard()
 
-    expect(line.text()).toBe('')
-    expect(line.classes()).toContain('min-h-7')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
+    expect(w.get('[data-test="echo-locate-pin-hint"]').text()).toBe(
+      'Lang drücken: Pin setzen oder entfernen',
+    )
   })
 
-  // iOS takes a click as a gesture, a touch's pointerdown not: only then may the graph start.
-  it('unlocks the sound with a click on the cover, at once, and pings nothing', async () => {
+  // No cover: the release of the first click is the gesture iOS needs, and it pings at once.
+  it('starts the sound with the first click and pings in the same click', async () => {
     const session = { type: 'auto' }
     Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
 
     try {
-      const w = mountBoard({}, { realField: true })
-      expect(field(w).props('covered')).toBe(true)
-      expect(status(w).text()).toBe('')
+      const w = mountBoard()
 
-      w.get<HTMLButtonElement>('button').element.click()
+      await tapAt(w, A)
 
-      // Inside the click, before anything awaits.
       expect(session.type).toBe('playback')
       expect(sound.ctx.resume).toHaveBeenCalledOnce()
       expect(sound.loadSounds).toHaveBeenCalledWith(sound.ctx, [SRC])
-
-      await flushPromises()
+      expect(w.emitted('skip')).toEqual([[0, A]])
       expect(sound.engines).toHaveLength(1)
       expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
-      expect(w.emitted('skip')).toBeUndefined()
-      expect(field(w).props('covered')).toBe(false)
-      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
-
-      // A late second click, from before the cover went: opened already, it pings nothing.
-      await start(w)
-      expect(w.emitted('skip')).toBeUndefined()
-      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
-      expect(sound.loadSounds).toHaveBeenCalledOnce()
     } finally {
       Reflect.deleteProperty(navigator, 'audioSession')
     }
   })
 
-  it('does not unlock from a pointerdown on the closed field', async () => {
-    const w = mountBoard({}, { realField: true })
+  it('loads the sounds once, whatever clicks follow', async () => {
+    const w = mountBoard()
 
-    await w.get('button').trigger('pointerdown')
-    await w.get('canvas').trigger('pointerdown')
-    await flushPromises()
+    await tapAt(w, A)
+    await answer(w, [step(A)])
+    await tapAt(w, ANYWHERE, START + 1000)
 
-    expect(sound.ctx.resume).not.toHaveBeenCalled()
-    expect(sound.loadSounds).not.toHaveBeenCalled()
-    expect(w.emitted('skip')).toBeUndefined()
-    expect(status(w).text()).toBe('')
+    expect(sound.loadSounds).toHaveBeenCalledOnce()
+    expect(sound.engines).toHaveLength(1)
   })
 
-  it('stays covered when the browser keeps the sound locked, and says so', async () => {
+  it('pings even when the browser keeps the sound locked, and says so', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     sound.ctx.resume.mockImplementation(() => Promise.reject(new Error('not allowed')))
     const w = mountBoard()
 
-    await start(w)
+    await tapAt(w, A)
 
     expect(warn).toHaveBeenCalledOnce()
-    expect(field(w).props('covered')).toBe(true)
-    expect(status(w).text()).toBe('')
+    expect(w.emitted('skip')).toEqual([[0, A]])
   })
 
-  it('opens the field only once the graph runs', async () => {
-    let resumed: () => void = () => undefined
-    sound.ctx.resume.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resumed = () => {
-            sound.ctx.state = 'running'
-            resolve()
-          }
-        }),
-    )
-    const w = mountBoard()
-
-    await start(w)
-    expect(field(w).props('covered')).toBe(true)
-
-    resumed()
-    await flushPromises()
-    expect(field(w).props('covered')).toBe(false)
-  })
-
-  it('covers the field again when the graph stops, and its click resumes it', async () => {
+  it('resumes a graph iOS suspended with the next click', async () => {
     const w = mountBoard({ steps: [step(A)] })
-    await start(w)
+    await tapAt(w, B)
+    await answer(w, [step(A), step(B)])
 
     await interrupt()
+    await tapAt(w, ANYWHERE, START + 10_000)
 
-    expect(field(w).props('covered')).toBe(true)
-    expect(field(w).props('waves')).toEqual([{ at: A, startMs: null, endMs: null }])
-
-    await start(w)
     expect(sound.ctx.resume).toHaveBeenCalledTimes(2)
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
-  // Pings are few and never repeat: one the graph cannot play would be gone unheard.
-  it('sends no ping the graph would not play, and covers the field instead', async () => {
+  it('stops the bed while the page is hidden and starts it again when it shows', async () => {
     const w = mountBoard()
-    await start(w)
-    // No event: the tap itself must look.
-    sound.ctx.state = 'suspended'
-
     await tapAt(w, A)
-
-    expect(w.emitted('skip')).toBeUndefined()
-    expect(field(w).props('waves')).toEqual([])
-    expect(field(w).props('covered')).toBe(true)
-  })
-
-  it('lets a ping that is out finish before the cover comes', async () => {
-    const w = mountBoard()
-    await start(w)
-    await tapAt(w, A)
-
-    await interrupt()
-    expect(status(w).text()).toBe('Sonar lädt …')
-
-    // The request is over without a step: the ping is not spent, and the field is covered.
-    await w.setProps({ disabled: true })
-    await w.setProps({ disabled: false })
-    expect(field(w).props('covered')).toBe(true)
-  })
-
-  it('stops the bed while the page is hidden, and the cover starts it again', async () => {
-    const w = mountBoard()
-    await start(w)
 
     await showPage('hidden')
     expect(engine().stopBed).toHaveBeenCalledOnce()
-    expect(field(w).props('covered')).toBe(true)
 
     await showPage('visible')
-    expect(field(w).props('covered')).toBe(true)
-
-    await start(w)
+    await flushPromises()
     expect(engine().startBed).toHaveBeenCalledTimes(2)
-    expect(sound.loadSounds).toHaveBeenCalledOnce()
-    expect(field(w).props('covered')).toBe(false)
     // Other games share the graph: it is never suspended from here.
     expect(sound.ctx.suspend).not.toHaveBeenCalled()
   })
 
-  // The cover waits for a running wave; back before it ends, with the sound on, no cover comes.
-  it('starts the bed again when the page comes back during a wave, the sound running', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const w = mountBoard()
-    await start(w)
-    await tapAt(w, A)
-    await answer(w, [step(A, [CLIP_HIT])])
-
-    await showPage('hidden')
-    await showPage('visible')
-    await flushPromises()
-    expect(engine().stopBed).toHaveBeenCalledOnce()
-    expect(engine().startBed).toHaveBeenCalledTimes(2)
-
-    now.mockReturnValue(START + TRAVEL_MS)
-    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
-    await flushPromises()
-    expect(field(w).props('covered')).toBe(false)
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
-    expect(engine().startBed).toHaveBeenCalledTimes(2)
-  })
-
   // iOS may still read „interrupted“ when the page shows, and run again only later.
-  it('starts the bed again when the sound runs again after the page came back, mid-wave', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  it('starts the bed again when the sound runs again', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
-    await answer(w, [step(A, [CLIP_HIT])])
 
     await showPage('hidden')
     await interrupt()
@@ -412,43 +312,13 @@ describe('EchoLocateBoard', () => {
     sound.ctx.dispatchEvent(new Event('statechange'))
     await flushPromises()
     expect(engine().startBed).toHaveBeenCalledTimes(2)
-
-    now.mockReturnValue(START + TRAVEL_MS)
-    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
-    await flushPromises()
-    expect(field(w).props('covered')).toBe(false)
-    expect(engine().startBed).toHaveBeenCalledTimes(2)
-  })
-
-  it('covers the field after the wave when the page comes back without sound', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const w = mountBoard()
-    await start(w)
-    await tapAt(w, A)
-    await answer(w, [step(A, [CLIP_HIT])])
-
-    await showPage('hidden')
-    await interrupt()
-    await showPage('visible')
-    await flushPromises()
-    expect(engine().startBed).toHaveBeenCalledOnce()
-    expect(status(w).text()).toBe('Markieren')
-
-    now.mockReturnValue(START + TRAVEL_MS)
-    vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
-    await flushPromises()
-    expect(field(w).props('covered')).toBe(true)
-
-    await start(w)
-    expect(engine().startBed).toHaveBeenCalledTimes(2)
-    expect(field(w).props('covered')).toBe(false)
   })
 
   it('lets go of the graph and the page when it goes', async () => {
     const fromGraph = vi.spyOn(sound.ctx, 'removeEventListener')
     const fromPage = vi.spyOn(document, 'removeEventListener')
     const w = mountBoard()
-    await start(w)
+    await tapAt(w, A)
 
     w.unmount()
 
@@ -458,7 +328,6 @@ describe('EchoLocateBoard', () => {
 
   it('pings with a skip carrying the spot', async () => {
     const w = mountBoard()
-    await start(w)
 
     await tapAt(w, A)
 
@@ -469,9 +338,8 @@ describe('EchoLocateBoard', () => {
 
   it("starts the wave once the step's answer arrives", async () => {
     const w = mountBoard()
-    await start(w)
-    engine().ping.mockReturnValue(5000)
     await tapAt(w, A)
+    engine().ping.mockReturnValue(5000)
     const hits: EchoHit[] = [CLIP_HIT, { sound: 'COW', clip: null, delayMs: 2000 }]
 
     await answer(w, [step(A, hits)])
@@ -485,7 +353,6 @@ describe('EchoLocateBoard', () => {
 
   it('marks for as long as the wave runs when the sound ends sooner', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A)])
@@ -497,7 +364,6 @@ describe('EchoLocateBoard', () => {
     let loaded: (sounds: EchoSounds & { bed: AudioBuffer }) => void = () => undefined
     sound.loadSounds.mockImplementation(() => new Promise((resolve) => (loaded = resolve)))
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A, [CLIP_HIT])])
@@ -513,7 +379,6 @@ describe('EchoLocateBoard', () => {
   it('ends the wave on time without a tap', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
     await answer(w, [step(A)])
 
@@ -526,7 +391,6 @@ describe('EchoLocateBoard', () => {
 
   it('gives up a ping the server did not take', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
 
     await w.setProps({ disabled: true })
@@ -539,7 +403,6 @@ describe('EchoLocateBoard', () => {
 
   it('takes a ping the server counted in place of the open one, without a wave', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, B)
 
     // The answer to an earlier ping at A was lost; the reload after the 409 brings it.
@@ -560,23 +423,18 @@ describe('EchoLocateBoard', () => {
     )
     expect(field(w).props('rings')).toEqual([[2.5], [], [4]])
     expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
-
-    await start(w)
-    expect(status(w).text()).toBe('Pins 1/1')
-    expect(engine().ping).not.toHaveBeenCalled()
+    expect(sound.loadSounds).not.toHaveBeenCalled()
   })
 
   // The lab's reset and „forget mine“ keep the board and empty its steps; a real round never does.
   it('starts over, still open, when the server takes my pings back', async () => {
     saveDraft(storage.fake, KEY, { rings: [[2.5], []], pins: [] })
     const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
-    await start(w)
 
     await w.setProps({ steps: [] })
 
     expect(field(w).props('waves')).toEqual([])
     expect(field(w).props('rings')).toEqual([])
-    expect(field(w).props('covered')).toBe(false)
     expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
 
     await tapAt(w, C)
@@ -585,7 +443,6 @@ describe('EchoLocateBoard', () => {
 
   it('silences the answer of a ping taken back', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
     await answer(w, [step(A, [CLIP_HIT])])
 
@@ -593,15 +450,6 @@ describe('EchoLocateBoard', () => {
 
     expect(engine().hush).toHaveBeenCalledOnce()
     expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
-  })
-
-  it('starts over under the cover when it was never lifted', async () => {
-    const w = mountBoard({ steps: [step(A)] })
-
-    await w.setProps({ steps: [] })
-
-    expect(field(w).props('waves')).toEqual([])
-    expect(field(w).props('covered')).toBe(true)
   })
 
   // A lab phase switch keeps the board and changes its key.
@@ -637,7 +485,6 @@ describe('EchoLocateBoard', () => {
     const other = 'echo-locate:draft:u1:ffff0000'
     saveDraft(storage.fake, other, { rings: [[4]], pins: [] })
     const w = mountBoard({ steps: [step(A)], draftKey: KEY })
-    await start(w)
 
     await w.setProps({ draftKey: other, steps: [step(C)] })
 
@@ -649,7 +496,6 @@ describe('EchoLocateBoard', () => {
   it('holds to hand in exactly the pins and rings per ping', async () => {
     saveDraft(storage.fake, KEY, { rings: [[1.5], []], pins: [] })
     const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
-    await start(w)
     await tapAt(w, C)
     await answer(w, [step(A), step(B), step(C, [CLIP_HIT])])
 
@@ -657,7 +503,7 @@ describe('EchoLocateBoard', () => {
     await tapAt(w, ANYWHERE, START + 1000)
     expect(hold(w).props('disabled')).toBe(true)
 
-    await tapAt(w, { x: 7, y: 8 }, START + 10_000)
+    await holdAt(w, { x: 7, y: 8 })
     expect(hold(w).props('disabled')).toBe(false)
 
     await confirm(w)
@@ -687,7 +533,6 @@ describe('EchoLocateBoard', () => {
     async function ready() {
       saveDraft(storage.fake, KEY, { rings: [[], [], []], pins: [{ x: 3, y: 4 }] })
       const w = mountBoard({ steps: [step(A), step(B), step(C)], draftKey: KEY })
-      await start(w)
       return w
     }
 
@@ -709,7 +554,7 @@ describe('EchoLocateBoard', () => {
 
       await area(w).trigger('pointerdown', { pointerId: 2 })
       expect(hold(w).props('disabled')).toBe(true)
-      await tapAt(w, { x: 9, y: 9 })
+      await holdAt(w, { x: 9, y: 9 })
       await area(w).trigger('pointerup', { pointerId: 2 })
 
       expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
@@ -738,37 +583,31 @@ describe('EchoLocateBoard', () => {
     expect(w.emitted('guess')).toBeUndefined()
   })
 
-  it('ignores the cover and taps while disabled', async () => {
+  it('ignores clicks while disabled', async () => {
     const w = mountBoard({ disabled: true })
-    expect(field(w).props('disabled')).toBe(true)
 
-    await start(w)
-    expect(sound.loadSounds).not.toHaveBeenCalled()
-    expect(status(w).text()).toBe('')
-
-    await w.setProps({ disabled: false })
-    await start(w)
-    await w.setProps({ disabled: true })
     await tapAt(w, A)
+    await holdAt(w, B)
+
+    expect(sound.loadSounds).not.toHaveBeenCalled()
     expect(w.emitted('skip')).toBeUndefined()
+    expect(field(w).props('pins')).toEqual([])
   })
 
   it('saves rings and pins as a draft', async () => {
     const w = mountBoard({ payload: { ...PAYLOAD, pings: 1 }, draftKey: KEY })
-    await start(w)
     await tapAt(w, A)
     await answer(w, [step(A, [CLIP_HIT])])
 
     await tapAt(w, ANYWHERE, START + 2000)
     expect(loadDraft(storage.fake, KEY, PAYLOAD)).toEqual({ rings: [[6]], pins: [] })
 
-    await tapAt(w, B, START + 10_000)
+    await holdAt(w, B)
     expect(loadDraft(storage.fake, KEY, PAYLOAD)).toEqual({ rings: [[6]], pins: [B] })
   })
 
   it('keeps no draft without a key', async () => {
     const w = mountBoard()
-    await start(w)
     await tapAt(w, A)
 
     expect(storage.items.size).toBe(0)
@@ -776,7 +615,6 @@ describe('EchoLocateBoard', () => {
 
   it('stays silent at a missing clip', async () => {
     const w = mountBoard({ clipSrcs: [null] })
-    await start(w)
     await tapAt(w, A)
 
     await answer(w, [step(A, [CLIP_HIT])])
@@ -788,11 +626,10 @@ describe('EchoLocateBoard', () => {
 
   it('picks up a clip that arrives after the start', async () => {
     const w = mountBoard({ clipSrcs: [null] })
-    await start(w)
+    await tapAt(w, A)
 
     await w.setProps({ clipSrcs: [SRC] })
     await flushPromises()
-    await tapAt(w, A)
     await answer(w, [step(A, [CLIP_HIT])])
 
     expect(sound.engines).toHaveLength(1)
@@ -804,7 +641,7 @@ describe('EchoLocateBoard', () => {
 
   it('stops its sound when it goes', async () => {
     const w = mountBoard()
-    await start(w)
+    await tapAt(w, A)
 
     w.unmount()
 
@@ -815,7 +652,7 @@ describe('EchoLocateBoard', () => {
     let loaded: (sounds: EchoSounds & { bed: AudioBuffer }) => void = () => undefined
     sound.loadSounds.mockImplementation(() => new Promise((resolve) => (loaded = resolve)))
     const w = mountBoard()
-    await start(w)
+    await tapAt(w, A)
 
     w.unmount()
     loaded(soundsFor([SRC]))
@@ -855,8 +692,8 @@ describe('EchoLocateBoard', () => {
       'Ein Ping schickt eine Welle los. Was sie erreicht (Spruch oder Ablenkung), erklingt in dem Moment, in dem sie dort ankommt.',
       'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
       'Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
-      '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
-      'Ein Pin ist deine Schätzung: Setz ihn dorthin, wo du den Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
+      'Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal lang drücken nimmt ihn weg.',
+      '„Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
       'Dein Pin im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',
@@ -876,8 +713,8 @@ describe('EchoLocateBoard', () => {
     expect(w.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
     expect(rules.slice(2)).toEqual([
       'Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
-      '„Ping“ und „Pin“ schalten um, was ein Klick aufs Feld tut. „Zurücksetzen“ räumt Ringe und Pins ab.',
-      'Ein Pin ist deine Schätzung: Setz je einen dorthin, wo du einen Spruch vermutest. Zum Abgeben „Abgeben“ gedrückt halten.',
+      'Ein Pin ist deine Schätzung: Drück lang auf jede Stelle, wo du einen Spruch vermutest. Noch mal lang drücken nimmt ihn weg.',
+      '„Markierungen löschen“ räumt die Ringe ab, die Pins bleiben. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain(
       'Beide Pins im Toleranzkreis — und von allen, die das schaffen, die kürzeste Zeit.',
@@ -891,88 +728,59 @@ describe('EchoLocateBoard', () => {
     expect(status(mountBoard()).attributes('aria-live')).toBe('polite')
   })
 
-  describe('switch and reset', () => {
-    const pingButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-mode-ping"]')
-    const pinButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-mode-pin"]')
-    const resetButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-reset"]')
+  describe('long click and „Markierungen löschen“', () => {
+    const clear = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-clear-rings"]')
 
-    it('says „Ping“ and „Pin“, greyed under the cover, „Ping“ pressed once open', async () => {
+    it('sets a pin with a long click and pings nothing', async () => {
       const w = mountBoard()
-      expect(pingButton(w).text()).toBe('Ping')
-      expect(pinButton(w).text()).toBe('Pin')
-      expect(resetButton(w).text()).toBe('Zurücksetzen (Markierungen & Pins)')
-      expect(resetButton(w).get('span').text()).toBe('(Markierungen & Pins)')
-      expect(resetButton(w).get('span').classes()).toContain('text-xs')
-      expect(pingButton(w).element.disabled).toBe(true)
-      expect(resetButton(w).element.disabled).toBe(true)
 
-      await start(w)
-
-      expect(pingButton(w).element.disabled).toBe(false)
-      expect(pingButton(w).attributes('aria-pressed')).toBe('true')
-      expect(pinButton(w).attributes('aria-pressed')).toBe('false')
-    })
-
-    it('puts the status line between the field and the switch', () => {
-      const w = mountBoard()
-      const line = status(w).element
-      const before = Node.DOCUMENT_POSITION_PRECEDING
-      const after = Node.DOCUMENT_POSITION_FOLLOWING
-
-      expect(line.compareDocumentPosition(w.get('[data-test="echo-locate-field"]').element)).toBe(
-        before,
-      )
-      expect(line.compareDocumentPosition(pingButton(w).element) & after).toBe(after)
-    })
-
-    it('on „Pin“ a tap sets a pin and pings nothing', async () => {
-      const w = mountBoard()
-      await start(w)
-
-      await pinButton(w).trigger('click')
-      await tapAt(w, A)
+      await holdAt(w, A)
 
       expect(w.emitted('skip')).toBeUndefined()
       expect(field(w).props('pins')).toEqual([A])
-      expect(status(w).text()).toBe('Pins 1/1')
-      expect(pinButton(w).attributes('aria-pressed')).toBe('true')
     })
 
-    it('greys the switch and the reset while a ping is out and its wave runs', async () => {
+    it('sets a pin even while a wave runs, which goes on', async () => {
       const w = mountBoard()
-      await start(w)
       await tapAt(w, A)
-
-      expect(pinButton(w).element.disabled).toBe(true)
-      expect(resetButton(w).element.disabled).toBe(true)
-
       await answer(w, [step(A, [CLIP_HIT])])
 
-      expect(pinButton(w).element.disabled).toBe(true)
-      expect(resetButton(w).element.disabled).toBe(true)
+      await holdAt(w, B)
+
+      expect(field(w).props('pins')).toEqual([B])
+      expect(status(w).text()).toContain('Markieren')
     })
 
-    it('„Zurücksetzen“ clears rings and pins, also in the draft, and keeps the pings', async () => {
+    it('puts the link right under the field, the status line after it', () => {
+      const w = mountBoard()
+      const link = clear(w).element
+      const after = Node.DOCUMENT_POSITION_FOLLOWING
+
+      expect(
+        w.get('[data-test="echo-locate-field"]').element.compareDocumentPosition(link) & after,
+      ).toBe(after)
+      expect(link.compareDocumentPosition(status(w).element) & after).toBe(after)
+      expect(clear(w).classes()).toContain('self-end')
+      expect(clear(w).text()).toBe('Markierungen löschen')
+    })
+
+    it('clears the rings only, also in the draft; pins and pings stay', async () => {
       saveDraft(storage.fake, KEY, { rings: [[2.5], [4]], pins: [{ x: 3, y: 4 }] })
       const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
-      await start(w)
+      expect(clear(w).element.disabled).toBe(false)
 
-      await resetButton(w).trigger('click')
+      await clear(w).trigger('click')
 
       expect(field(w).props('waves')).toEqual(
         [A, B].map((at) => ({ at, startMs: null, endMs: null })),
       )
       expect(field(w).props('rings')).toEqual([[], []])
-      expect(field(w).props('pins')).toEqual([])
-      expect(loadDraft(storage.fake, KEY, PAYLOAD)).toEqual({ rings: [[], []], pins: [] })
-    })
-
-    it('greys „Ping“ once every ping is spent, and stays on „Pin“', async () => {
-      const w = mountBoard({ steps: [step(A), step(B), step(C)] })
-      await start(w)
-
-      expect(pingButton(w).element.disabled).toBe(true)
-      expect(pinButton(w).attributes('aria-pressed')).toBe('true')
+      expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
+      expect(loadDraft(storage.fake, KEY, PAYLOAD)).toEqual({
+        rings: [[], []],
+        pins: [{ x: 3, y: 4 }],
+      })
+      expect(clear(w).element.disabled).toBe(true)
     })
   })
 })
