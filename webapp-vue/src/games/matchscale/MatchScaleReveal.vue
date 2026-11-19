@@ -75,7 +75,7 @@ const outlines = computed<Outline[]>(() => {
   return result
 })
 
-/** The view holds A, the true B and my outline — and never moves while the others come and go. */
+/** The view holds A, the true B and every outline on show, so a tapped tip is never off-field. */
 const view = computed(() => {
   const boxes: Box[] = [
     boxOf(props.payload.a, start.value.a),
@@ -83,6 +83,9 @@ const view = computed(() => {
   ]
   if (props.myScale !== null) {
     boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: props.myScale }))
+  }
+  for (const outline of outlines.value.slice(props.myScale === null ? 0 : 1)) {
+    boxes.push(boxOf(props.payload.b, outline.placement))
   }
 
   return fitView(boxes, FIELD_PX)

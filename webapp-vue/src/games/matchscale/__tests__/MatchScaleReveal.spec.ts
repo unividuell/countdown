@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { initialPlacements } from '../gestures'
+import { FIELD_PX, initialPlacements, sizeAt } from '../gestures'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
 import ScaleField from '../ScaleField.vue'
 import { scoreboardRows } from '../scoreboard'
@@ -106,6 +106,36 @@ describe('MatchScaleReveal', () => {
     await wrapper.get('[data-test="select-you"]').trigger('click')
 
     expect(field(wrapper).props('outlines')).toHaveLength(1)
+  })
+
+  it('refits so a far-off selected tip lies inside the view', async () => {
+    const far = [
+      entries[0]!,
+      gameEntry({
+        userId: 'far',
+        guess: { scale: 5 },
+        outcome: { scale: 5, deviation: 1.1, withinTolerance: false },
+        points: 0,
+      }),
+    ]
+    const rows = scoreboardRows({
+      entries: far,
+      factor: 1.6,
+      awardRule: 'ALL_QUALIFYING',
+      mineUserId: 'me',
+    })
+    const wrapper = mountReveal({ rows })
+
+    await wrapper.get('[data-test="select-far"]').trigger('click')
+
+    const view = field(wrapper).props('view')
+    const corner = initialPlacements(PAYLOAD.a).b
+    const { w, h } = sizeAt(PAYLOAD.b, 5)
+    const extent = FIELD_PX / view.cellPx
+
+    expect(corner.x + w).toBeLessThanOrEqual(view.left + extent)
+    expect(corner.y + h).toBeLessThanOrEqual(view.top)
+    expect(corner.y).toBeGreaterThanOrEqual(view.top - extent)
   })
 
   it('without a tip of mine: B at the factor, no outline, no tip line', () => {

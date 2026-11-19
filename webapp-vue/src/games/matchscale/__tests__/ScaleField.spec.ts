@@ -67,6 +67,16 @@ async function pointer(field: Field, type: string, id: number, at: object) {
 }
 
 describe('ScaleField', () => {
+  it('eases B only with grow: CSS transform and transition class', () => {
+    const grown = mountField({ grow: true }).wrapper.get('[data-test="match-scale-b"]')
+    const plain = mountField().wrapper.get('[data-test="match-scale-b"]')
+
+    expect(grown.attributes('style')).toContain('transform: translate(')
+    expect(grown.classes()).toContain('transition-transform')
+    expect(plain.attributes('style') ?? '').not.toContain('transform')
+    expect(plain.classes()).not.toContain('transition-transform')
+  })
+
   it('draws the grid, the ground line and A under B', () => {
     const { wrapper } = mountField()
 
