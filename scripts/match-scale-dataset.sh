@@ -172,6 +172,13 @@ case "$SUBCOMMAND" in
     for PAIR in match-scale match-scale-input; do
       for PLAIN in "$MAIN_ROOT/.local/$PAIR"/*.yaml; do
         [ -f "$PLAIN" ] || continue
+        # The name ends up in the cipher path and in update.sh's key check.
+        case "$(basename "$PLAIN" .yaml)" in
+          ''|*[!a-z0-9-]*)
+            echo "Refusing $PLAIN: file name must match [a-z0-9-]+.yaml." >&2
+            exit 1
+            ;;
+        esac
         FOUND=1
         CIPHER="$CHECKOUT_ROOT/deploy/$PAIR/$(basename "$PLAIN" .yaml).sops.yaml"
         mkdir -p "$(dirname "$CIPHER")"
