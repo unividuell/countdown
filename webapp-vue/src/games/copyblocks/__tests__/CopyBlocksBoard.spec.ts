@@ -297,7 +297,7 @@ describe('CopyBlocksBoard', () => {
     await tap(wrapper, { block: null, place: [2, 0, 3] })
 
     expect(wrapper.get('button[aria-label="Ton"]').attributes('aria-pressed')).toBe('false')
-    expect(localStorage.getItem('copy-blocks:sound')).toBe('false')
+    expect(localStorage.getItem('games:sound')).toBe('false')
     expect(vi.mocked(playSound)).not.toHaveBeenCalled()
   })
 

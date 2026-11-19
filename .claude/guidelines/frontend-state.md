@@ -202,6 +202,11 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
   one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
   and no source is simply louder because of how it was made.
+- **One sound switch for games whose sound is decoration:** `useGameSound()` and `SoundToggle` from
+  `ui/`, so muting one silences all and no game stores it itself. Not for games whose sound is the
+  game (Anspielung, Peilung): muting there ends the round.
+- **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
+  first (reload, history, onlooker).
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
