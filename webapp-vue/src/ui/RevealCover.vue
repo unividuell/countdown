@@ -95,8 +95,11 @@ watch(
         @confirm="emit('start')"
       />
     </div>
-    <p v-if="props.note" data-test="reveal-cover-note" class="max-w-xs text-sm">
-      {{ props.note }}
-    </p>
+    <!-- A game may bring its own line here — Peilung names its count, large. -->
+    <slot name="note">
+      <p v-if="props.note" data-test="reveal-cover-note" class="max-w-xs text-sm">
+        {{ props.note }}
+      </p>
+    </slot>
   </div>
 </template>

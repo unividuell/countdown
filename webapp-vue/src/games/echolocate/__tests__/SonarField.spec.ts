@@ -127,6 +127,19 @@ describe('SonarField', () => {
     expect(field.emitted('hold')).toBeUndefined()
   })
 
+  // Sparks belong to the ping alone: not to a mark, not to a pin.
+  it('throws sparks where a ping goes out, never on a mere touch', async () => {
+    const field = mountField()
+    const frames = vi.mocked(requestAnimationFrame)
+
+    pointerDown(field, 60, 170)
+    pointer(field, 'pointerup')
+    expect(frames).not.toHaveBeenCalled()
+
+    await field.setProps({ pending: { x: 5, y: 15 } })
+    expect(frames).toHaveBeenCalled()
+  })
+
   it('emits a long click after 500 ms held, and no short one on release', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     try {

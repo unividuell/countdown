@@ -740,6 +740,25 @@ describe('EchoLocateBoard', () => {
       expect(field(w).props('pins')).toEqual([A])
     })
 
+    it('says to lift a pin first when every pin is set, for a while', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const hint = (w: Board) => w.get('[data-test="echo-locate-pin-hint"]')
+      const w = mountBoard()
+      await holdAt(w, A)
+
+      await holdAt(w, B)
+
+      expect(field(w).props('pins')).toEqual([A])
+      expect(hint(w).text()).toBe(
+        'Du musst zuerst einen anderen Pin entfernen, um einen neuen zu setzen.',
+      )
+      expect(hint(w).attributes('aria-live')).toBe('polite')
+
+      vi.advanceTimersByTime(3000)
+      await nextTick()
+      expect(hint(w).text()).toBe('Lang drücken: Pin setzen oder entfernen')
+    })
+
     it('sets a pin even while a wave runs, which goes on', async () => {
       const w = mountBoard()
       await tapAt(w, A)

@@ -131,12 +131,13 @@ const animate = useRevealedLive(solved)
         pin-color-hex="#525252"
         :pending="null"
       />
-      <RevealCover
-        state="ready"
-        :busy="props.disabled"
-        :note="scene.clips === 1 ? '1 Spruch' : `${scene.clips} Sprüche`"
-        @start="emit('reveal')"
-      />
+      <RevealCover state="ready" :busy="props.disabled" @start="emit('reveal')">
+        <template #note>
+          <p data-test="echo-locate-sealed-count" class="text-2xl font-bold">
+            {{ scene.clips === 1 ? '1 Spruch' : `${scene.clips} Sprüche` }}
+          </p>
+        </template>
+      </RevealCover>
     </div>
     <EchoLocateBriefing
       :award-rule="props.awardRule"

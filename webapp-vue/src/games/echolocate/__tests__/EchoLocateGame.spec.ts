@@ -135,10 +135,12 @@ describe('EchoLocateGame', () => {
       })
 
     it('names how many clips hide under the cover, on an empty field', () => {
-      expect(mountSealed(1).get('[data-test="reveal-cover-note"]').text()).toBe('1 Spruch')
+      const one = mountSealed(1).get('[data-test="echo-locate-sealed-count"]')
+      expect(one.text()).toBe('1 Spruch')
+      expect(one.classes()).toEqual(expect.arrayContaining(['text-2xl', 'font-bold']))
 
       const wrapper = mountSealed(2)
-      expect(wrapper.get('[data-test="reveal-cover-note"]').text()).toBe('2 Sprüche')
+      expect(wrapper.get('[data-test="echo-locate-sealed-count"]').text()).toBe('2 Sprüche')
       expect(wrapper.findComponent(EchoLocateBoard).exists()).toBe(false)
       expect(wrapper.find('canvas').exists()).toBe(true)
       expect(wrapper.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')

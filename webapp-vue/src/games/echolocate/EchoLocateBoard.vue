@@ -178,11 +178,26 @@ function onTap(at: Point, tMs: number): void {
   if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
 }
 
+const PIN_HINT = 'Lang drücken: Pin setzen oder entfernen'
+const PINS_FULL = 'Du musst zuerst einen anderen Pin entfernen, um einen neuen zu setzen.'
+/** How long the line says why a long click set nothing. */
+const NOTICE_MS = 3000
+
+const pinHint = shallowRef(PIN_HINT)
+let noticeTimer: ReturnType<typeof setTimeout> | undefined
+
 /** The long click: a pin set or lifted, at any time — but not under a hand-in about to send them. */
 function onHold(at: Point): void {
   if (takeTap() || props.disabled || holdLocked.value) return
 
-  flow.value = hold(flow.value, at)
+  const next = hold(flow.value, at)
+  // Unchanged with every pin set: the click missed them all and there is no pin left to set.
+  if (next === flow.value && next.pins.length >= next.clips) {
+    pinHint.value = PINS_FULL
+    clearTimeout(noticeTimer)
+    noticeTimer = setTimeout(() => (pinHint.value = PIN_HINT), NOTICE_MS)
+  }
+  flow.value = next
 }
 
 function onClearRings(): void {
@@ -313,6 +328,7 @@ function handIn(): void {
 onBeforeUnmount(() => {
   alive = false
   clearTimeout(settleTimer)
+  clearTimeout(noticeTimer)
   engine?.dispose()
   engine = null
 })
@@ -364,8 +380,15 @@ onBeforeUnmount(() => {
 
       <div class="text-center">
         <p data-test="echo-locate-status" aria-live="polite" class="text-lg">{{ status }}</p>
-        <p data-test="echo-locate-pin-hint" class="text-sm text-on-surface-variant">
-          Lang drücken: Pin setzen oder entfernen
+        <p
+          data-test="echo-locate-pin-hint"
+          aria-live="polite"
+          class="text-sm"
+          :class="
+            pinHint === PINS_FULL ? 'font-semibold text-on-surface' : 'text-on-surface-variant'
+          "
+        >
+          {{ pinHint }}
         </p>
       </div>
 

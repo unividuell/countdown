@@ -113,6 +113,18 @@ function throwSparks(x: number, y: number): void {
   animate()
 }
 
+// Sparks mark a ping going out — not a mark, not a pin: they fly where the open ping was clicked.
+watch(
+  () => props.pending,
+  (at) => {
+    const el = canvas.value
+    if (at === null || !el) return
+
+    const rect = el.getBoundingClientRect()
+    throwSparks((at.x / props.grid) * rect.width, (at.y / props.grid) * rect.height)
+  },
+)
+
 /** The finger that is down, until it is either released or held long enough. */
 let press: { id: number; at: Point; tMs: number; timer: ReturnType<typeof setTimeout> } | null =
   null
@@ -122,8 +134,6 @@ function onDown(event: PointerEvent): void {
   if (!el || !interactive.value || press !== null) return
 
   const rect = el.getBoundingClientRect()
-  throwSparks(event.clientX - rect.left, event.clientY - rect.top)
-
   const at = toCell(event.clientX, event.clientY, rect, props.grid)
   const timer = setTimeout(() => {
     press = null

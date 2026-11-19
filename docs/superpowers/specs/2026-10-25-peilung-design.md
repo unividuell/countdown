@@ -496,12 +496,13 @@ Schritte der anderen über `entries` für die Auflösung.
 dessen Standardwerten. Was ein Klick tut, entscheiden Ablauf und Länge des Klicks — kein Umschalter
 (ein „Ping | Pin“-Umschalter war kurz da und „zu kompliziert/nervig“, Clemens, 2026-11-19).
 
-- Abstrakte, dunkle Fläche, Punkt-Raster an den Zellmitten, kaum sichtbar. Funken unter dem Finger
-  ohne jede Information über den Ton.
+- Abstrakte, dunkle Fläche, Punkt-Raster an den Zellmitten, kaum sichtbar. Funken nur, wo ein Ping
+  losgeht — nicht beim Markieren, nicht beim Pin (Clemens, 2026-11-19); ohne Information über den Ton.
 - **Keine eigene Abdeckung:** Das Feld ist sofort offen, der erste Klick ist der erste Ping. Bis dahin
   steht blass „1 Spruch“ / „2 Sprüche“ mitten auf dem Feld (meine Festlegung). In Phase zwei liegt
   davor die geteilte Versiegelung (`RevealCover`) über einem leeren Feld; ihr Hinweis nennt die Anzahl
-  aus der Scene (Clemens: schon beim Einzählen sichtbar). Nach dem Aufheben läuft das Spiel sofort.
+  aus der Scene, groß und fett im Slot `note` des `RevealCover` (Clemens: schon beim Einzählen
+  sichtbar). Nach dem Aufheben läuft das Spiel sofort.
 
 **Der Ablauf:**
 
@@ -533,8 +534,9 @@ Kontextmenü und iOS-Callout sind auf dem Feld aus.
    mit `(Aufsetzen − Wellenstart) / 1000 × speed`, bis zu `clips` pro Welle, alle gleich gezeichnet;
    weitere in dieser Welle werden ignoriert. Wer nicht markiert, verliert nichts.
 3. **Pin:** Ein langer Klick setzt einen Pin, solange welche fehlen; auf einem Pin (näher als 1,2
-   Zellen) hebt er ihn ab. Mit allen Pins ist ein langer Klick daneben wirkungslos. Die Pins stehen in
-   der Farbe des eigenen Avatars (Clemens, 2026-10-31).
+   Zellen) hebt er ihn ab. Mit allen Pins setzt ein langer Klick daneben nichts; die kleine Zeile sagt
+   dann 3 s lang „Du musst zuerst einen anderen Pin entfernen, um einen neuen zu setzen.“ (Clemens,
+   2026-11-19). Die Pins stehen in der Farbe des eigenen Avatars (Clemens, 2026-10-31).
 
 **„Markierungen löschen“** (Clemens, 2026-11-19): ein Link rechtsbündig unter dem Feld, Besen-Icon
 (`lucide/brush-cleaning`), löscht nur die Ringe; Pins und Pings bleiben. Geht jederzeit, auch in einer
@@ -571,8 +573,12 @@ Labor Seed und Phase), wie dort beschrieben.
    „Pings“ ist die Zahl aller Pings, in beiden Phasen, ohne Erklärung (Clemens, 2026-11-19: wer wenig
    braucht, wird als Experte wahrgenommen). Als pure `scoreboard.ts`.
 
+   **Spalten:** Name · Pings · Abstand · (Zeit) · Pkt — was entscheidet, steht rechts bei den Punkten
+   (Clemens, 2026-11-19); die Zeit setzt der Rahmen wie in jeder Rangliste direkt vor „Pkt“. Pings
+   3rem, Abstand 3,5rem.
+
    **Phase zwei** läuft auf Zeit: Die Rangliste sortiert wie Verrohrung (`rankByClock`): Punkte, ein
-   Treffer vor einem Fehlgriff, die schnellere Zeit; die Zeitspalte bringt der Rahmen mit. Die
+   Treffer vor einem Fehlgriff, die schnellere Zeit. Die
    Beschriftung sagt „Treffer nach Zeit sortiert“. Die `AwardBox` sagt: „Dein Pin im Toleranzkreis —
    und von allen, die das schaffen, die kürzeste Zeit.“ („Beide Pins …“).
 

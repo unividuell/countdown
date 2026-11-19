@@ -10,9 +10,9 @@
  *                      Toleranz
  *                         ≤ 1,5            the circle's radius; a distance is never negative
  *   Auswertung
- *   Name               Abstand  Pings  Pkt
- *   anna                 1,6      4     1
- *   bert               Ø 7,2     12     0  two clips: the mean
+ *   Name              Pings  Abstand  Pkt   phase two: [mm:ss] between Abstand and Pkt
+ *   anna                 4      1,6     1
+ *   bert                12    Ø 7,2     0   two clips: the mean
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -38,16 +38,18 @@ const oneDecimal = new Intl.NumberFormat('de-DE', {
   maximumFractionDigits: 1,
 })
 
+// What decides stands furthest right, next to „Pkt“: the distance; in phase two the frame's clock
+// comes after it, as in every timed scoreboard.
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
+  { key: 'pings', label: 'Pings', width: '3rem', align: 'end', numeric: true },
   {
     key: 'distance',
     label: 'Abstand',
     ...(props.toleranceRadius === null ? {} : { fact: 'Toleranz' }),
-    width: '4rem',
+    width: '3.5rem',
     align: 'end',
     numeric: true,
   },
-  { key: 'pings', label: 'Pings', width: '3.5rem', align: 'end', numeric: true },
 ])
 
 /** Only a timed round's rows carry a clock. */
