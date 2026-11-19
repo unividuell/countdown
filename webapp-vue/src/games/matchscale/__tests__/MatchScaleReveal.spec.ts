@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { FIELD_PX, initialPlacements, sizeAt } from '../gestures'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
@@ -207,5 +208,22 @@ describe('MatchScaleReveal', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('without a tip of mine B never eases, so a refit moves it with the rest', async () => {
+    const wrapper = mountReveal({ animate: true, myScale: null, mine: null })
+    const b = () => wrapper.get('[data-test="match-scale-b"]')
+
+    await nextTick()
+
+    expect(field(wrapper).props('grow')).toBe(false)
+    expect(b().classes()).not.toContain('transition-transform')
+
+    const before = b().attributes('transform')
+
+    await wrapper.get('[data-test="select-you"]').trigger('click')
+
+    expect(b().attributes('transform')).not.toBe(before)
+    expect(b().attributes('style') ?? '').not.toContain('transform')
   })
 })

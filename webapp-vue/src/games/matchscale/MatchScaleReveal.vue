@@ -48,7 +48,12 @@ let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
-  if (bScale.value === props.factor) return
+  if (bScale.value === props.factor) {
+    // Nothing to grow: B must not ease on later refits either.
+    growing.value = false
+
+    return
+  }
 
   beat = setTimeout(() => {
     bScale.value = props.factor
