@@ -50,6 +50,8 @@ const props = defineProps<{
   /** B's outline at other placements: the reveal's tips. */
   outlines: readonly Outline[]
   interactive: boolean
+  /** The submit hold is rising: the field still shows its handle, but takes no input. */
+  locked?: boolean
 }>()
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
@@ -60,6 +62,8 @@ const WHEEL_PX_PER_DOUBLING = 300
 const LINE_PX = 16
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
+
+const takesInput = computed(() => props.interactive && props.locked !== true)
 
 const grid = computed(() => {
   const { xs, ys } = gridLines(props.view, FIELD_PX, GRID_MODE)
@@ -129,7 +133,7 @@ function startOne(id: number, p: Point, units: number): Gesture {
 }
 
 function onDown(event: PointerEvent): void {
-  if (!props.interactive || event.button !== 0) return
+  if (!takesInput.value || event.button !== 0) return
 
   const p = pointOf(event)
   const units = unitsPerPx()
@@ -158,11 +162,13 @@ function onDown(event: PointerEvent): void {
 }
 
 function onMove(event: PointerEvent): void {
-  if (!pointers.has(event.pointerId) || gesture === null) return
+  if (!pointers.has(event.pointerId)) return
 
+  // Tracked even without a gesture: a finger left behind by a pinch may start the next one.
   const p = pointOf(event)
   if (p === null) return
   pointers.set(event.pointerId, p)
+  if (gesture === null) return
 
   if (gesture.kind === 'pinch') {
     const to = gesture.ids.map((id) => pointers.get(id)!) as [Point, Point]
@@ -192,7 +198,7 @@ function onUp(event: PointerEvent): void {
 }
 
 function onWheel(event: WheelEvent): void {
-  if (!props.interactive) return
+  if (!takesInput.value) return
 
   const p = pointOf(event)
   if (p === null) return
@@ -208,12 +214,9 @@ function drop(): void {
   gesture = null
 }
 
-watch(
-  () => props.interactive,
-  (interactive) => {
-    if (!interactive) drop()
-  },
-)
+watch(takesInput, (takes) => {
+  if (!takes) drop()
+})
 
 // A finger lifted while the tab was away may never report it.
 useEventListener(document, 'visibilitychange', () => {
@@ -225,6 +228,8 @@ useEventListener(document, 'visibilitychange', () => {
   <div class="relative overflow-hidden bg-surface-container-lowest select-none">
     <svg
       ref="svg"
+      role="img"
+      :aria-label="`Spielfeld mit ${props.a.name} und ${props.b.name}`"
       :viewBox="`0 0 ${FIELD_PX} ${FIELD_PX}`"
       class="block aspect-square w-full touch-none"
       @pointerdown="onDown"
@@ -291,6 +296,7 @@ useEventListener(document, 'visibilitychange', () => {
     </svg>
     <span
       v-if="props.interactive"
+      :inert="props.locked || undefined"
       role="img"
       aria-label="Größe ändern"
       class="pointer-events-none absolute size-11 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md"

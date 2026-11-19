@@ -78,6 +78,13 @@ describe('ScaleField', () => {
     expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
+  it('names both silhouettes for a screen reader', () => {
+    const { svg } = mountField()
+
+    expect(svg.attributes('role')).toBe('img')
+    expect(svg.attributes('aria-label')).toBe('Spielfeld mit Alpha und Beta')
+  })
+
   it('takes every touch itself, so the page neither scrolls nor zooms', () => {
     expect(mountField().svg.classes()).toContain('touch-none')
   })
@@ -105,6 +112,20 @@ describe('ScaleField', () => {
     expect(outline.attributes('d')).toBe(B.path)
     expect(outline.attributes('stroke')).toBe('#ff0000')
     expect(outline.attributes('stroke-dasharray')).toBeDefined()
+  })
+
+  it('keeps the handle while locked, inert, and takes no input', async () => {
+    const field = mountField({ locked: true })
+
+    const handle = field.wrapper.get('[aria-label="Größe ändern"]')
+    expect(handle.attributes('inert')).toBeDefined()
+
+    await pointer(field, 'pointerdown', 1, ON_B)
+    await pointer(field, 'pointermove', 1, { clientX: 276, clientY: 180 })
+    await field.svg.trigger('wheel', { deltaY: -300, clientX: 180, clientY: 180 })
+
+    expect(field.wrapper.emitted('update:placementB')).toBeUndefined()
+    expect(field.wrapper.emitted('update:view')).toBeUndefined()
   })
 
   it('a finger on B moves it, keeping its scale', async () => {
@@ -169,6 +190,30 @@ describe('ScaleField', () => {
     await pointer(field, 'pointermove', 1, { clientX: 300, clientY: 220 })
     await pointer(field, 'pointerup', 2, EMPTY)
     await pointer(field, 'pointermove', 1, { clientX: 320, clientY: 220 })
+
+    expect(field.wrapper.emitted('update:placementB')).toEqual([[{ x: 6, y: 0, scale: 1 }]])
+  })
+
+  it('a pinch picks up where the finger left behind has slid to', async () => {
+    const field = mountField()
+
+    await pointer(field, 'pointerdown', 1, EMPTY)
+    await pointer(field, 'pointerdown', 2, { clientX: 300, clientY: 300 })
+    await pointer(field, 'pointerup', 2, { clientX: 300, clientY: 300 })
+    await pointer(field, 'pointermove', 1, { clientX: 150, clientY: 150 })
+    await pointer(field, 'pointerdown', 2, { clientX: 300, clientY: 300 })
+    await pointer(field, 'pointermove', 1, { clientX: 150, clientY: 150 })
+
+    expect(field.wrapper.emitted('update:view')!.at(-1)).toEqual([initialView(FIELD_PX)])
+  })
+
+  it('pointercancel ends a gesture', async () => {
+    const field = mountField()
+
+    await pointer(field, 'pointerdown', 1, ON_B)
+    await pointer(field, 'pointermove', 1, { clientX: 276, clientY: 220 })
+    await pointer(field, 'pointercancel', 1, { clientX: 276, clientY: 220 })
+    await pointer(field, 'pointermove', 1, { clientX: 316, clientY: 220 })
 
     expect(field.wrapper.emitted('update:placementB')).toEqual([[{ x: 6, y: 0, scale: 1 }]])
   })

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { loadDraft, saveDraft } from '@/games/matchscale/draft'
+import { draftKey, loadDraft, saveDraft } from '@/games/matchscale/draft'
 import { baseCellPx, FIELD_PX, type View } from '@/games/matchscale/gestures'
 import MatchScaleBoard from '@/games/matchscale/MatchScaleBoard.vue'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
@@ -72,7 +72,8 @@ describe('MatchScaleBoard', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="match-scale-lock"]').exists()).toBe(true)
-    expect(wrapper.getComponent(ScaleField).props('interactive')).toBe(false)
+    expect(wrapper.getComponent(ScaleField).props('interactive')).toBe(true)
+    expect(wrapper.getComponent(ScaleField).props('locked')).toBe(true)
   })
 
   it('a finger on the field keeps the hold off', async () => {
@@ -93,7 +94,7 @@ describe('MatchScaleBoard', () => {
     expect(wrapper.getComponent(HoldButton).props('disabled')).toBe(true)
   })
 
-  it('saves B and the view after a move, and starts from them on mount', async () => {
+  it('saves B and the view when the gesture ends, and starts from them on mount', async () => {
     const wrapper = mountBoard({ draftKey: 'k' })
     const field = wrapper.getComponent(ScaleField)
     const zoomed: View = { left: 2, top: 6, cellPx: baseCellPx(FIELD_PX) * 2 }
@@ -101,6 +102,9 @@ describe('MatchScaleBoard', () => {
     field.vm.$emit('update:placementB', { x: 3, y: 1, scale: 1.7 })
     field.vm.$emit('update:view', zoomed)
     await nextTick()
+    expect(loadDraft(localStorage, 'k')).toBeNull()
+
+    await wrapper.get('[data-test="match-scale-field"]').trigger('pointerup', { pointerId: 1 })
 
     const saved = loadDraft(localStorage, 'k')!
     expect(saved.b).toEqual({ x: 3, y: 1, scale: 1.7 })
@@ -111,6 +115,27 @@ describe('MatchScaleBoard', () => {
     expect(restored.props('view').cellPx).toBeCloseTo(zoomed.cellPx)
     expect(restored.props('view').left).toBeCloseTo(2)
     expect(restored.props('view').top).toBeCloseTo(6)
+  })
+
+  it.each(['pointercancel', 'wheel'])('saves on %s too', async (type) => {
+    const wrapper = mountBoard({ draftKey: 'k' })
+    wrapper.getComponent(ScaleField).vm.$emit('update:placementB', { x: 3, y: 1, scale: 1.7 })
+
+    await wrapper.get('[data-test="match-scale-field"]').trigger(type, { pointerId: 1 })
+
+    expect(loadDraft(localStorage, 'k')!.b).toEqual({ x: 3, y: 1, scale: 1.7 })
+  })
+
+  it("opening a round sweeps the player's stale drafts of other rounds", () => {
+    const key = draftKey({ userId: 'u1', payload: PAYLOAD, timed: false })
+    const other = { ...PAYLOAD, b: { ...PAYLOAD.b, path: 'M0 0H10V10Z' } }
+    const stale = draftKey({ userId: 'u1', payload: other, timed: false })
+    const draft = { v: 1, b: { x: 0, y: 0, scale: 3 }, zoom: 1, centre: { x: 0, y: 0 } } as const
+    saveDraft(localStorage, stale, draft, Date.now() - 49 * 60 * 60 * 1000)
+
+    mountBoard({ draftKey: key })
+
+    expect(localStorage.getItem(stale)).toBeNull()
   })
 
   it('starts from the start placements without a draft', () => {

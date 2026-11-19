@@ -5,6 +5,7 @@
  * B's placement and the view are saved as a draft after every change. While the hold's ring rises
  * the field is greyed and takes no input, and a finger on it cancels the hold.
  */
+import { useEventListener } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
@@ -46,6 +47,9 @@ const placementA = computed(() => initialPlacements(props.payload.a).a)
 const placementB = ref<Placement>(initialPlacements(props.payload.a).b)
 const view = ref<View>(initialView(FIELD_PX))
 
+/** Set by every change, written once the gesture ends: no synchronous storage write per frame. */
+let unsaved = false
+
 // Opening a round starts from its draft, else from the start; the player's stale drafts of other
 // rounds go.
 watch(
@@ -56,13 +60,15 @@ watch(
 
     placementB.value = saved?.b ?? initialPlacements(payload.a).b
     view.value = saved === null ? initialView(FIELD_PX) : viewAt(saved, FIELD_PX)
+    unsaved = false
   },
   { immediate: true },
 )
 
 function save(): void {
-  if (props.draftKey === null) return
+  if (!unsaved || props.draftKey === null) return
 
+  unsaved = false
   saveDraft(storage, props.draftKey, {
     v: 1,
     b: placementB.value,
@@ -72,13 +78,18 @@ function save(): void {
 
 function onPlacement(b: Placement): void {
   placementB.value = b
-  save()
+  unsaved = true
 }
 
 function onView(next: View): void {
   view.value = next
-  save()
+  unsaved = true
 }
+
+// A tab sent away mid-gesture may never report the finger's lift.
+useEventListener(document, 'visibilitychange', () => {
+  if (document.hidden) save()
+})
 
 const playable = computed(() => !props.disabled)
 
@@ -115,6 +126,10 @@ function submit(): void {
         @pointerup.capture="onFieldUp"
         @pointercancel.capture="onFieldUp"
         @lostpointercapture.capture="onFieldUp"
+        @pointerup="save"
+        @pointercancel="save"
+        @lostpointercapture="save"
+        @wheel="save"
       >
         <ScaleField
           :a="props.payload.a"
@@ -125,7 +140,8 @@ function submit(): void {
           :placement-a="placementA"
           :placement-b="placementB"
           :outlines="[]"
-          :interactive="playable && !locked"
+          :interactive="playable"
+          :locked="locked"
           @update:view="onView"
           @update:placement-b="onPlacement"
         />
