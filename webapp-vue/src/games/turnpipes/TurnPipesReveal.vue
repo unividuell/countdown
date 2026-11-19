@@ -154,6 +154,7 @@ onBeforeUnmount(() => {
         :turns="turns"
         :wet="water.wet.value"
         :puddles="puddles"
+        :cold="shown?.endSound === 'dry'"
         :interactive="false"
       />
     </div>

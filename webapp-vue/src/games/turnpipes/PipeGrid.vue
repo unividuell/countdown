@@ -18,6 +18,8 @@ const props = defineProps<{
   wet: ReadonlySet<number>
   /** Cells under dirty water: where it burst, or every pipe it missed. */
   puddles: ReadonlySet<number>
+  /** The water reached the tub but missed pipes: the tub fills ice-cold. */
+  cold: boolean
   interactive: boolean
 }>()
 
@@ -68,7 +70,7 @@ function tap(cell: number): void {
       <img
         v-if="props.kinds && motifUrl(props.kinds[cell - 1]!, props.wet.has(cell - 1))"
         data-test="pipe-motif"
-        :src="motifUrl(props.kinds[cell - 1]!, props.wet.has(cell - 1))!"
+        :src="motifUrl(props.kinds[cell - 1]!, props.wet.has(cell - 1), props.cold)!"
         alt=""
         draggable="false"
         class="pointer-events-none absolute inset-0 size-full [image-rendering:pixelated] [-webkit-touch-callout:none] [-webkit-user-drag:none]"

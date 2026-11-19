@@ -29,7 +29,8 @@ der **jedes Rohr Wasser führt**. Ob es stimmt, zeigt sich erst nach der Abgabe.
 
 **Die Geschichte dazu:** Unter jeder Kachel brennt ein Feuer. Je länger der Weg, desto heißer kommt das
 Wasser im Zuber an — darum nutzt man den ganzen Weg. In der Auflösung glüht jede Kachel, durch die das
-Wasser läuft, feuerrot. Die Bilder an den Enden ersetzen Handrad und Abflussloch, die nicht gebräuchlich
+Wasser läuft, feuerrot. Kommt das Wasser an, ohne alle Rohre zu nehmen, bleibt der Zuber eiskalt:
+zugefroren, Schnee auf Rand und Ofenrohr, Eiszapfen. Die Bilder an den Enden ersetzen Handrad und Abflussloch, die nicht gebräuchlich
 bzw. nicht eindeutig waren; gewählt am Kontaktbogen (2026-11-19) unter Feuerwehr, Bauernhof und Berghütte.
 
 Entstanden aus einem Spike (2026-11-18). Was er gezeigt hat und was daraus folgt:
@@ -259,7 +260,7 @@ in `labGameList`.
 
 ### Bilder
 
-Vierzehn PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
+Fünfzehn PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 
 | Datei | Inhalt |
 |---|---|
@@ -269,7 +270,7 @@ Vierzehn PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 | `elbow-dry.png`, `elbow-wet.png` | Bogen, leer / mit Wasser |
 | `stub-dry.png`, `stub-wet.png` | der Stutzen eines Endes: Rohr vom Rand bis zur Mitte; der des Brunnens immer mit Wasser |
 | `fountain.png` | Zulauf: Steinsäule mit Messingrohr, Strahl in ein gemauertes Becken |
-| `tub-dry.png`, `tub-wet.png` | Abfluss: runder Holzzuber mit Fassreifen und Ofenrohr; leer — gefüllt, dampfend, das Ofenrohr raucht |
+| `tub-dry.png`, `tub-wet.png`, `tub-cold.png` | Abfluss: runder Holzzuber mit Fassreifen und Ofenrohr; leer — gefüllt, dampfend, das Ofenrohr raucht — gefüllt, aber zugefroren (Lauf angekommen, Rohre fehlen) |
 | `puddle-1.png` … `puddle-3.png` | Pfütze aus dreckigem Wasser, durchscheinend, drei Ausprägungen (siehe *Auflösung*) |
 
 Gezeichnet von `scripts/turn-pipes-tiles.mts` — dem Zeichencode des Spikes (`spike/pipes/art.ts`),
@@ -413,7 +414,7 @@ Fließtempo, Takte, Lautstärken.
 - `turns.ts`: Tippen zählt weiter; Stellung `mod 4`; Drehen auf eine Zielstellung im Uhrzeigersinn,
   gerades Rohr auf die nähere der zwei.
 - `tiles.ts`: jede Art × nass/trocken hat ein Bild; der Stutzen des Brunnens ist immer nass; Bilder nur
-  an den Enden, der Zuber füllt sich; die Platte glüht nass.
+  an den Enden, der Zuber füllt sich, kalt nur, wenn Rohre fehlen; die Platte glüht nass.
 - `scoreboard.ts`: Sortierung in beiden Phasen, mm:ss, fehlende Werte.
 - `types.ts`: Einengen von Bühne, Payload, Lösung, Outcome (unbekannter Code, falsche Länge, `NaN` fallen
   raus).

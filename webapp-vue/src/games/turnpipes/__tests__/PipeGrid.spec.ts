@@ -17,6 +17,7 @@ function mountGrid(over: Record<string, unknown> = {}) {
       turns: Array.from({ length: 36 }, () => 0),
       wet: new Set<number>(),
       puddles: new Set<number>(),
+      cold: false,
       interactive: true,
       ...over,
     },
@@ -113,6 +114,19 @@ describe('PipeGrid', () => {
       motifUrl('OUTLET', false),
     )
     expect(wrapper.findAll('[data-test="pipe-motif"]')).toHaveLength(2)
+  })
+
+  it('a cold tub shows the cold picture once the water is in', () => {
+    const kinds = kindsOf(6)
+    kinds[35] = 'OUTLET'
+    const motif = (wet: number[]) =>
+      mountGrid({ kinds, wet: new Set(wet), cold: true })
+        .findAll('button')[35]!
+        .get('[data-test="pipe-motif"]')
+        .attributes('src')
+
+    expect(motif([35])).toBe(motifUrl('OUTLET', true, true))
+    expect(motif([])).toBe(motifUrl('OUTLET', false))
   })
 
   it('sealed shows plates only', () => {

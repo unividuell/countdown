@@ -11,6 +11,7 @@ import straightDry from './tiles/straight-dry.png?url'
 import straightWet from './tiles/straight-wet.png?url'
 import stubDry from './tiles/stub-dry.png?url'
 import stubWet from './tiles/stub-wet.png?url'
+import tubCold from './tiles/tub-cold.png?url'
 import tubDry from './tiles/tub-dry.png?url'
 import tubWet from './tiles/tub-wet.png?url'
 import type { PipeKindCode } from './types'
@@ -33,10 +34,13 @@ export function tileUrl(kind: PipeKindCode, wet: boolean): string {
   return wet ? TILES[kind].wet : TILES[kind].dry
 }
 
-/** The upright picture on an end — the fountain, the tub filling up — and none on a pipe. */
-export function motifUrl(kind: PipeKindCode, wet: boolean): string | null {
+/**
+ * The upright picture on an end — the fountain, the tub filling up — and none on a pipe. A [cold]
+ * tub is full but icy: the water reached it and missed pipes.
+ */
+export function motifUrl(kind: PipeKindCode, wet: boolean, cold = false): string | null {
   if (kind === 'INLET') return fountain
-  if (kind === 'OUTLET') return wet ? tubWet : tubDry
+  if (kind === 'OUTLET') return wet ? (cold ? tubCold : tubWet) : tubDry
   return null
 }
 

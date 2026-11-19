@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Draws Verrohrung's pixel tiles, each 32×32 RGBA PNG: the plate, cool and glowing; the pipes; the
- * stone fountain and the wooden hot tub at the ends; and three puddles of dirty water that mark a
- * burst pipe or a pipe the water never reached.
+ * stone fountain and the wooden hot tub, hot or cold, at the ends; and three puddles of dirty water
+ * that mark a burst pipe or a pipe the water never reached.
  *
  * Layers per cell: the plate stands still, so it may carry light from the top left; the pipe turns,
  * so its shading is symmetric about the pipe's axis — it must look right in all four turns. Every
@@ -329,16 +329,24 @@ const FLUE = "#2e2f36";
 const FLUE_HI = "#4a4c56";
 const EMPTY = "#3a2a1a";
 
+const ICE = "#e8f7ff";
+const ICE_LO = "#a9d3ee";
+
 /**
- * The outlet: a round wooden hot tub with its stove pipe. Full, it steams and the stove smokes —
- * drawn after the outline, so the wisps stay soft.
+ * The outlet: a round wooden hot tub with its stove pipe. Hot, it steams and the stove smokes —
+ * drawn after the outline, so the wisps stay soft. Cold — the water came but missed pipes — it is
+ * frozen over, snow lies on the rim and the stove's cap, icicles hang down; no steam, no smoke.
  */
-function tub(full: boolean): Painter {
+function tub(water: "none" | "hot" | "cold"): Painter {
   const c = new Canvas();
   c.rect(23, 7, 25, 17, FLUE);
   c.rect(23, 7, 23, 17, FLUE_HI);
   c.rect(22, 6, 26, 6, FLUE);
   c.rect(23, 5, 25, 5, FLUE);
+  if (water === "cold") {
+    c.rect(22, 5, 26, 5, ICE);
+    c.rect(23, 4, 25, 4, ICE);
+  }
   c.shape((x, y) =>
     y >= 15 && y <= 27 && x >= 5 && x <= 24
       ? Math.floor(x / 3) % 2
@@ -350,13 +358,42 @@ function tub(full: boolean): Painter {
   c.rect(5, 24, 24, 24, HOOP);
   c.shape((x, y) => {
     if (Math.hypot((x - 14.5) / 10, (y - 15) / 2.6) >= 1) return null;
-    if (Math.hypot((x - 14.5) / 8.4, (y - 15.2) / 1.7) >= 1) return WOOD_RIM;
-    return full ? WATER : EMPTY;
+    if (Math.hypot((x - 14.5) / 8.4, (y - 15.2) / 1.7) >= 1)
+      return water === "cold" ? ICE : WOOD_RIM;
+    return { none: EMPTY, hot: WATER, cold: ICE_LO }[water];
   });
-  if (full) c.rect(10, 15, 13, 15, WATER_HI);
+  if (water === "hot") c.rect(10, 15, 13, 15, WATER_HI);
+
+  if (water === "cold") {
+    // Cracks in the ice.
+    for (const [x, y] of [
+      [9, 15],
+      [10, 14],
+      [11, 15],
+      [12, 16],
+      [14, 15],
+      [16, 14],
+      [17, 15],
+      [18, 15],
+      [19, 16],
+    ] as const)
+      c.set(x, y, ICE);
+    // Icicles of different lengths under the rim: [x, length].
+    for (const [x, length] of [
+      [7, 3],
+      [10, 5],
+      [13, 2],
+      [17, 4],
+      [21, 3],
+    ] as const) {
+      c.rect(x, 18, x + 1, 18, ICE);
+      for (let y = 19; y < 18 + length; y++)
+        c.set(x, y, y === 17 + length ? ICE_LO : ICE);
+    }
+  }
   c.outline();
 
-  if (full) {
+  if (water === "hot") {
     for (const x0 of [10, 15, 19])
       for (let y = 6; y <= 12; y++) {
         const x = Math.round(x0 + Math.sin(y * 0.9) * 1.1);
@@ -422,8 +459,9 @@ const TILES: Record<string, Painter> = {
   "stub-dry.png": stub(false),
   "stub-wet.png": stub(true),
   "fountain.png": fountain(),
-  "tub-dry.png": tub(false),
-  "tub-wet.png": tub(true),
+  "tub-dry.png": tub("none"),
+  "tub-wet.png": tub("hot"),
+  "tub-cold.png": tub("cold"),
   // Seeds picked on the contact sheet (2026-11-19).
   "puddle-1.png": puddle(23),
   "puddle-2.png": puddle(40),

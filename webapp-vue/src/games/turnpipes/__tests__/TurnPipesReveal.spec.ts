@@ -230,6 +230,17 @@ describe('TurnPipesReveal', () => {
     expect(wrapper.findAll('[data-test^="select-"][aria-pressed="true"]')).toHaveLength(0)
   })
 
+  it('the tub stays cold under a tip that reached it but missed pipes', async () => {
+    const wrapper = mountReveal()
+    expect(grid(wrapper).props('cold')).toBe(false)
+
+    await wrapper.get('[data-test="select-them"]').trigger('click')
+    expect(grid(wrapper).props('cold')).toBe(true)
+
+    await wrapper.get('[data-test="select-them"]').trigger('click')
+    expect(grid(wrapper).props('cold')).toBe(false)
+  })
+
   it('an unreadable name can be tapped without error and shows the solution', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     const wrapper = mountReveal({

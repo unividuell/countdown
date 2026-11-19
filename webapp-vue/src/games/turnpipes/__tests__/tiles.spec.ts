@@ -48,4 +48,14 @@ describe('motifUrl', () => {
     expect(motifUrl('STRAIGHT', true)).toBeNull()
     expect(motifUrl('ELBOW', false)).toBeNull()
   })
+
+  it('a cold tub is full but its own picture; cold changes nothing else', () => {
+    const cold = motifUrl('OUTLET', true, true)
+
+    expect(cold).toBeTruthy()
+    expect(cold).not.toBe(motifUrl('OUTLET', true))
+    expect(cold).not.toBe(motifUrl('OUTLET', false))
+    expect(motifUrl('OUTLET', false, true)).toBe(motifUrl('OUTLET', false))
+    expect(motifUrl('INLET', true, true)).toBe(motifUrl('INLET', true))
+  })
 })

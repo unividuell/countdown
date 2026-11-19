@@ -111,6 +111,7 @@ function submit(): void {
             :turns="turns"
             :wet="NO_WATER"
             :puddles="NO_PUDDLES"
+            :cold="false"
             :interactive="playable"
             @tap="onTap"
           />
