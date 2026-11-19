@@ -105,6 +105,71 @@ prepare_spot_object_terms() {
   chmod 644 "$SPOT_OBJECT_TERMS_FILE"
 }
 
+# Downloads and decrypts the Augenmessung category files for $TARGET: one cipher per category
+# listed in match-scale/categories.txt, decrypted into a directory the container mounts.
+# Same reasoning as the two functions above; only the differences are commented.
+prepare_match_scale_dataset() {
+  # update.sh comes from main, compose.yaml from $REF: a branch without the list has no categories
+  # to deploy. Skip instead of abort, so the other branches stay deployable.
+  CATEGORIES_FILE="match-scale.$TARGET.categories.txt"
+  if ! curl -fsSL "$BASE/match-scale/categories.txt" -o "$CATEGORIES_FILE"; then
+    echo "no match-scale categories on '$REF', skipping"
+    rm -f "$CATEGORIES_FILE"
+    return 0
+  fi
+
+  MATCH_SCALE_DIR="./secrets/match-scale.$TARGET"
+  MATCH_SCALE_NEW="$MATCH_SCALE_DIR.new"
+  mkdir -p secrets
+  chmod 700 secrets
+  rm -rf "$MATCH_SCALE_NEW"
+  mkdir "$MATCH_SCALE_NEW"
+
+  # A directory is swapped as a whole, like the single files above: on any failure the old
+  # directory, which the running container has mounted, stays untouched.
+  OLD_UMASK="$(umask)"
+  umask 077
+  while IFS= read -r KEY || [ -n "$KEY" ]; do
+    case "$KEY" in ''|'#'*) continue ;; esac
+    # The key becomes a file name: nothing but [a-z0-9-] may reach the path.
+    case "$KEY" in
+      *[!a-z0-9-]*)
+        echo "Invalid match-scale category '$KEY' in categories.txt on '$REF'." >&2
+        rm -rf "$MATCH_SCALE_NEW" "$CATEGORIES_FILE"
+        umask "$OLD_UMASK"
+        exit 1
+        ;;
+    esac
+    CATEGORY_SOPS_FILE="match-scale.$TARGET.$KEY.sops.yaml"
+    if ! curl -fsSL "$BASE/match-scale/$KEY.sops.yaml" -o "$CATEGORY_SOPS_FILE"; then
+      echo "Could not download match-scale/$KEY.sops.yaml from branch '$REF' ($BASE)." >&2
+      rm -rf "$MATCH_SCALE_NEW" "$CATEGORIES_FILE" "$CATEGORY_SOPS_FILE"
+      umask "$OLD_UMASK"
+      exit 1
+    fi
+    if ! SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}" \
+         sops -d "$CATEGORY_SOPS_FILE" > "$MATCH_SCALE_NEW/$KEY.yaml"; then
+      echo "sops could not decrypt the Augenmessung category '$KEY'." >&2
+      echo "Install sops and put the age key at \${SOPS_AGE_KEY_FILE:-\$HOME/.config/sops/age/keys.txt}." >&2
+      rm -rf "$MATCH_SCALE_NEW" "$CATEGORIES_FILE"
+      umask "$OLD_UMASK"
+      exit 1
+    fi
+  done < "$CATEGORIES_FILE"
+  umask "$OLD_UMASK"
+  rm -f "$CATEGORIES_FILE"
+
+  # 755/644 for the same UID reason as the Guess Hue file: the container user is not the host
+  # user. Confidentiality sits on ./secrets (0700).
+  chmod 755 "$MATCH_SCALE_NEW"
+  chmod 644 "$MATCH_SCALE_NEW"/*.yaml
+  rm -rf "$MATCH_SCALE_DIR"
+  mv "$MATCH_SCALE_NEW" "$MATCH_SCALE_DIR"
+
+  MATCH_SCALE_DATASET_HOST_DIR="$MATCH_SCALE_DIR"
+  export MATCH_SCALE_DATASET_HOST_DIR
+}
+
 curl -fsSL "$STABLE/README.md"  -o README.md
 curl -fsSL "$STABLE/update.sh"  -o update.sh.new && chmod +x update.sh.new && mv update.sh.new update.sh
 
@@ -116,6 +181,7 @@ fi
 
 prepare_guess_hue_dataset
 prepare_spot_object_terms
+prepare_match_scale_dataset
 
 # Downloaded last, after every prerequisite held: a missing cipher file must not leave the deployed
 # compose file replaced by one the stack cannot be brought up with by hand afterwards. README.md and

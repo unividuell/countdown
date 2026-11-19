@@ -166,6 +166,21 @@ keys, and the signing secret") and [game-content.md](../.claude/guidelines/game-
 Also add the three `SPOT_OBJECT_*` variables to `.env.prod`/`.env.staging` by hand — see
 "Migrating an existing stack for Weltanschauung" below.
 
+## Prerequisite: the Augenmessung categories
+
+`deploy/match-scale/categories.txt` lists the category keys to deploy, one per line (`[a-z0-9-]+`,
+`#` comments allowed). Each key has a cipher `deploy/match-scale/<key>.sops.yaml`; `update.sh`
+decrypts all of them into `./secrets/match-scale.<target>/` and exports that directory as
+`MATCH_SCALE_DATASET_HOST_DIR` for compose, which mounts it read-only. The directory is swapped
+as a whole: any failure leaves the previous one in place.
+
+Plaintext lives in `.local/match-scale/` of the main checkout and is never committed;
+`./scripts/match-scale-dataset.sh encrypt` writes the ciphers. The generator's exclude list
+travels the same way in `deploy/match-scale-input/`, but is not deployed.
+
+A branch without `categories.txt` is skipped with a one-line notice. Calling `compose up` by
+hand without `update.sh` means exporting `MATCH_SCALE_DATASET_HOST_DIR` yourself.
+
 ## Bootstrap / Update
 
 `update.sh <target>` handles both stacks. On first run it writes `.env.<target>` from the example template,
@@ -229,11 +244,12 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
 docker compose --env-file .env.staging -f compose.staging.yaml down
-# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.staging
 docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
@@ -254,11 +270,12 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.prod, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.prod.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.prod.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.prod
 docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
@@ -275,11 +292,12 @@ docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pg
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.staging
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051
