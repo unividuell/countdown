@@ -131,7 +131,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
       <div
         v-if="row.bar !== null"
         :data-test="`score-bar-${row.userId}`"
-        class="px-2 py-1 whitespace-nowrap"
+        class="px-0.5 whitespace-nowrap"
         :style="barStyle(row.bar, row.colorHex)"
         style="
           background: linear-gradient(
@@ -145,7 +145,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
       >
         {{ row.scoreLabel }}
       </div>
-      <div v-else class="px-2 py-1">{{ row.distanceLabel ?? '—' }}</div>
+      <div v-else class="px-0.5">{{ row.distanceLabel ?? '—' }}</div>
     </template>
   </RevealScoreboard>
 </template>

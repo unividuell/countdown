@@ -6,7 +6,8 @@
  *   ┌──────────────┐
  *   │  SonarField  │   covered until its cover is clicked; the cover names the count
  *   └──────────────┘
- *   [ Ping | Pin ]  [Zurücksetzen]   greyed under the cover, with a ping out, during its wave
+ *   [ Ping | Pin ]  [Zurücksetzen     ]   greyed under the cover, with a ping out, during its wave
+ *                   [(Markierungen & Pins)]
  *   1. Klick: Ping, 2. Klick: Markieren
  *        ( Abgeben )   once every clip has its pin
  *
@@ -434,10 +435,10 @@ onBeforeUnmount(() => {
           data-test="echo-locate-reset"
           :disabled="!steerable"
           :class="SWITCH"
-          class="rounded-lg"
+          class="rounded-lg leading-tight"
           @click="onReset"
         >
-          Zurücksetzen
+          Zurücksetzen <span class="block text-xs">(Markierungen &amp; Pins)</span>
         </button>
       </div>
 

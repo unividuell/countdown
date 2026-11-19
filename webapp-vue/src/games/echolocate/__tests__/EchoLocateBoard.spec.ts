@@ -896,7 +896,9 @@ describe('EchoLocateBoard', () => {
       const w = mountBoard()
       expect(pingButton(w).text()).toBe('Ping')
       expect(pinButton(w).text()).toBe('Pin')
-      expect(resetButton(w).text()).toBe('Zurücksetzen')
+      expect(resetButton(w).text()).toBe('Zurücksetzen (Markierungen & Pins)')
+      expect(resetButton(w).get('span').text()).toBe('(Markierungen & Pins)')
+      expect(resetButton(w).get('span').classes()).toContain('text-xs')
       expect(pingButton(w).element.disabled).toBe(true)
       expect(resetButton(w).element.disabled).toBe(true)
 

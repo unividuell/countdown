@@ -529,7 +529,7 @@ zu ──Tipp──▶ Ping ──Welle + Nachklang──▶ Ping …        (Um
 gesperrt, solange das Feld zu ist, ein Ping lädt oder eine Welle läuft. Ist die Obergrenze erreicht,
 ist „Ping“ gesperrt und das Feld auf „Pin“.
 
-**„Zurücksetzen“** löscht alle Ringe und alle Pins; die Pings bleiben als Punkte stehen (Clemens,
+**„Zurücksetzen (Markierungen & Pins)“** (die Klammer kleiner, Clemens 2026-11-19) löscht alle Ringe und alle Pins; die Pings bleiben als Punkte stehen (Clemens,
 2026-11-19). Ein einfacher Knopf ohne Rückfrage (meine Festlegung): verloren gehen keine Pings, und neu
 peilen geht jederzeit. Gesperrt wie der Umschalter. Ein zurückgesetzter Ping trägt danach eine leere
 Ringliste, der Tipp behält seine Form.

@@ -466,6 +466,8 @@ describe('EchoLocateReveal', () => {
         // me: 0.8 + 0.15 = 0.95 of bert's 2.0
         expect(bar.element.style.getPropertyValue('--bar-distance')).toBe('40%')
         expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('47.5%')
+        // As tall as every other cell of the table: no padding of its own above or below.
+        expect(bar.classes().some((name) => /^(p|py|pt|pb)-/.test(name))).toBe(false)
       })
 
       it('shows the distance alone for a round judged before pings cost anything', () => {
