@@ -108,6 +108,7 @@ class PlayService(
         val context = GuessContext(
             sinceRevealMs = durationMsBetween(revealedAt = play.revealedAt, guessedAt = clock.instant()),
             playId = play.id,
+            stage = play.stage,
         )
         val judgement = current.handle.judge(params = current.roundGame.params, guess = guess, context = context)
 

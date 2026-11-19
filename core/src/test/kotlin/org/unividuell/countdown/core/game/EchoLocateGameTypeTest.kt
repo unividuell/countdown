@@ -36,6 +36,7 @@ import org.unividuell.countdown.core.game.internal.EchoLocateSolution
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import tools.jackson.databind.node.ObjectNode
 import java.util.UUID
 
 class EchoLocateGameTypeTest {
@@ -90,6 +91,7 @@ class EchoLocateGameTypeTest {
                 targets = targets.toList(),
                 noises = emptyList(),
                 toleranceRadius = if (phase == Phase.ONE) 1.5 else null,
+                pingCost = if (phase == Phase.ONE) null else 0.05,
             )
         }
 
@@ -202,7 +204,7 @@ class EchoLocateGameTypeTest {
         params.grid shouldBe 20
         params.reach shouldBe 12.0
         params.speed shouldBe 3.0
-        params.pings shouldBe 3
+        params.pings shouldBe 999
         params.bedDb shouldBe -24.0
         params.noiseDb shouldBe 0.0
         params.noises.map { it.kind } shouldContainExactly listOf(
@@ -214,6 +216,55 @@ class EchoLocateGameTypeTest {
     fun `phase one freezes a tolerance radius of 1,5 cells, phase two none`() {
         draw(context = context(phase = Phase.ONE)).toleranceRadius shouldBe 1.5
         draw(context = context(phase = Phase.TWO)).toleranceRadius.shouldBeNull()
+    }
+
+    @Test
+    fun `phase two freezes a ping cost of 0,05, phase one none`() {
+        draw(context = context(phase = Phase.TWO)).pingCost shouldBe 0.05
+        draw(context = context(phase = Phase.ONE)).pingCost.shouldBeNull()
+    }
+
+    @Test
+    fun `phase two adds the ping cost per spent ping to the distance`() {
+        // The pin sits 0.8 cells right of the centre (5.5, 5.5); 9 pings at 0.05 add 0.45.
+        val judged = game.judge(
+            params = roundOf(Cell(col = 5, row = 5), phase = Phase.TWO),
+            guess = json(pins(6.3 to 5.5)),
+            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
+        )
+        val outcome = judged.outcome as EchoLocateOutcome
+
+        judged.deviation shouldBe (1.25 plusOrMinus 1e-9)
+        outcome.score.shouldNotBeNull() shouldBe (1.25 plusOrMinus 1e-9)
+        outcome.distance shouldBe (0.8 plusOrMinus 1e-9)
+    }
+
+    @Test
+    fun `phase one ignores the pings`() {
+        val judged = game.judge(
+            params = roundOf(Cell(col = 5, row = 5)),
+            guess = json(pins(6.3 to 5.5)),
+            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
+        )
+
+        judged.deviation shouldBe (0.8 plusOrMinus 1e-9)
+        (judged.outcome as EchoLocateOutcome).score.shouldBeNull()
+    }
+
+    @Test
+    fun `a round frozen without a ping cost reads as none`() {
+        val frozen = mapper.valueToTree<ObjectNode>(roundOf(Cell(col = 5, row = 5), phase = Phase.TWO))
+        frozen.remove("pingCost")
+        val params = mapper.treeToValue(frozen, EchoLocateParams::class.java)
+
+        params.pingCost.shouldBeNull()
+        val judged = game.judge(
+            params = params,
+            guess = json(pins(6.3 to 5.5)),
+            context = GuessContext(sinceRevealMs = null, playId = null, stage = 9),
+        )
+        judged.deviation shouldBe (0.8 plusOrMinus 1e-9)
+        (judged.outcome as EchoLocateOutcome).score.shouldBeNull()
     }
 
     @Test
@@ -232,7 +283,7 @@ class EchoLocateGameTypeTest {
 
             game.requiresReveal(params) shouldBe false
             game.scoresOnDuration(params) shouldBe false
-            game.stages(params) shouldBe 4
+            game.stages(params) shouldBe 1000
             game.stagesScore(params) shouldBe false
         }
     }
@@ -256,7 +307,7 @@ class EchoLocateGameTypeTest {
 
         fields(game.solution(params)) shouldBe setOf("targets", "noises", "toleranceRadius")
         fields(judge(params = params, guess = pins(1.0 to 1.0, 9.0 to 9.0)).outcome) shouldBe
-            setOf("distance", "withinTolerance", "pinOf")
+            setOf("distance", "withinTolerance", "pinOf", "score")
     }
 
     @Test
@@ -265,7 +316,7 @@ class EchoLocateGameTypeTest {
 
         mapper.valueToTree<JsonNode>(game.present(params)) shouldBe json(
             """
-            {"grid":20,"reach":12.0,"speed":3.0,"pings":3,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
+            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
             """.trimIndent(),
         )
     }
@@ -419,7 +470,7 @@ class EchoLocateGameTypeTest {
         val params = roundOf(Cell(col = 5, row = 5))
 
         judge(params = params, guess = pins(5.5 to 5.5)).outcome shouldBe
-            EchoLocateOutcome(distance = 0.0, withinTolerance = true, pinOf = listOf(0))
+            EchoLocateOutcome(distance = 0.0, withinTolerance = true, pinOf = listOf(0), score = null)
         (judge(params = params, guess = pins(12.5 to 5.5)).outcome as EchoLocateOutcome).withinTolerance shouldBe false
     }
 
@@ -466,7 +517,7 @@ class EchoLocateGameTypeTest {
             """{"pins":[{"x":"1","y":1.0}],"rings":[]}""",
             """{"pins":[{"x":1.0}],"rings":[]}""",
             """{"pins":[{"x":1.0,"y":1.0,"z":0}],"rings":[]}""",
-            """{"pins":[$pin],"rings":[[],[],[],[]]}""",
+            """{"pins":[$pin],"rings":[${List(1000) { "[]" }.joinToString(",")}]}""",
             """{"pins":[$pin],"rings":[[1.0,2.0]]}""",
             """{"pins":[$pin],"rings":[[-0.1]]}""",
             """{"pins":[$pin],"rings":[[40.1]]}""",

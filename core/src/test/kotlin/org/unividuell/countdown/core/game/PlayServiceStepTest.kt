@@ -75,6 +75,13 @@ class PlayServiceStepTest(
                 // 2.5, not 0.0: a stored 2.5 can only have come from here, never from a stage.
                 return Judgement(qualifies = right, deviation = if (right) 0.0 else 2.5, outcome = null)
             }
+            /** The answer „stage“ reports what the framework says was spent: 10 + stage, never a stage itself. */
+            override fun judge(params: StepParams, guess: JsonNode, context: GuessContext): Judgement =
+                if (guess.get("answer")?.asString() == "stage") {
+                    Judgement(qualifies = true, deviation = 10.0 + context.stage, outcome = null)
+                } else {
+                    judge(params = params, guess = guess)
+                }
             override fun requiresReveal(params: StepParams) = false
             override fun scoresOnDuration(params: StepParams) = false
             override fun stages(params: StepParams) = 4
@@ -227,6 +234,19 @@ class PlayServiceStepTest(
         res.me.shouldNotBeNull().guessedAt.shouldNotBeNull()
         res.me.shouldNotBeNull().stage shouldBe 1
         rowOf(round = round, userId = viewer).deviation shouldBe 2.5
+    }
+
+    @Test
+    fun `the guess tells the game how many steps were taken`() {
+        val (community, viewer) = aCommunity("Step Stage To Judge")
+        val round = announceStep(community)
+        reveal(community = community, userId = viewer, round = round)
+        step(community = community, userId = viewer, round = round, fromStage = 0, input = json("""{"n":1}"""))
+        step(community = community, userId = viewer, round = round, fromStage = 1, input = json("""{"n":2}"""))
+
+        guess(community = community, userId = viewer, round = round, answer = "stage")
+
+        rowOf(round = round, userId = viewer).deviation shouldBe 12.0
     }
 
     @Test

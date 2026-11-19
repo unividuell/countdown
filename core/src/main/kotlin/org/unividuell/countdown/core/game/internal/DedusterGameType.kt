@@ -143,7 +143,7 @@ class DedusterGameType(
 
     /** Without the server's span: the reactions alone are checked. */
     override fun judge(params: DedusterParams, guess: JsonNode): Judgement =
-        judge(params = params, guess = guess, context = GuessContext(sinceRevealMs = null, playId = null))
+        judge(params = params, guess = guess, context = GuessContext(sinceRevealMs = null, playId = null, stage = 0))
 
     override fun judge(params: DedusterParams, guess: JsonNode, context: GuessContext): Judgement {
         val tiles = params.cols * params.rows
