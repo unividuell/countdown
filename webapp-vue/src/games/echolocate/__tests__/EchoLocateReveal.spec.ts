@@ -473,6 +473,8 @@ describe('EchoLocateReveal', () => {
         expect(bar.element.style.getPropertyValue('--bar-pings')).toBe('55%')
         // The whole sum fits a phone's column in the small size: „Ø 0,4 + 30 × 0,1 = 3,4“.
         expect(bar.classes()).toContain('text-sm')
+        // …at the line height of the base size, so the bar fills the row like name and points.
+        expect(bar.classes()).toContain('leading-6')
         // As tall as every other cell of the table: no padding of its own above or below.
         expect(bar.classes().some((name) => /^(p|py|pt|pb)-/.test(name))).toBe(false)
       })

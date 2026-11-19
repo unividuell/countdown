@@ -140,7 +140,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
         <div
           v-if="row.bar !== null"
           :data-test="`score-bar-${row.userId}`"
-          class="px-0.5 text-sm whitespace-nowrap"
+          class="px-0.5 text-sm leading-6 whitespace-nowrap"
           :style="barStyle(row.bar, row.colorHex)"
           style="
             background: linear-gradient(
