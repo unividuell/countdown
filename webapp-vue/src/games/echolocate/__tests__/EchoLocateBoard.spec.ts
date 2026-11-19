@@ -253,12 +253,12 @@ describe('EchoLocateBoard', () => {
       expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
       expect(w.emitted('skip')).toBeUndefined()
       expect(field(w).props('covered')).toBe(false)
-      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
 
       // A late second click, from before the cover went: opened already, it pings nothing.
       await start(w)
       expect(w.emitted('skip')).toBeUndefined()
-      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+      expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
       expect(sound.loadSounds).toHaveBeenCalledOnce()
     } finally {
       Reflect.deleteProperty(navigator, 'audioSession')
@@ -322,7 +322,7 @@ describe('EchoLocateBoard', () => {
 
     await start(w)
     expect(sound.ctx.resume).toHaveBeenCalledTimes(2)
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   // Pings are few and never repeat: one the graph cannot play would be gone unheard.
@@ -390,7 +390,7 @@ describe('EchoLocateBoard', () => {
     vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
     await flushPromises()
     expect(field(w).props('covered')).toBe(false)
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
     expect(engine().startBed).toHaveBeenCalledTimes(2)
   })
 
@@ -521,7 +521,7 @@ describe('EchoLocateBoard', () => {
     vi.advanceTimersByTime(START + TRAVEL_MS - NOW)
     await nextTick()
 
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   it('gives up a ping the server did not take', async () => {
@@ -532,7 +532,7 @@ describe('EchoLocateBoard', () => {
     await w.setProps({ disabled: true })
     await w.setProps({ disabled: false })
 
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
     expect(field(w).props('waves')).toEqual([])
     expect(field(w).props('pending')).toBeNull()
   })
@@ -547,7 +547,7 @@ describe('EchoLocateBoard', () => {
 
     expect(engine().ping).not.toHaveBeenCalled()
     expect(field(w).props('waves')).toEqual([{ at: A, startMs: null, endMs: null }])
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   it('restores pings from the server and rings and pins from the draft', async () => {
@@ -562,7 +562,7 @@ describe('EchoLocateBoard', () => {
     expect(field(w).props('pins')).toEqual([{ x: 3, y: 4 }])
 
     await start(w)
-    expect(status(w).text()).toBe('Schätzung · Pins 1/1')
+    expect(status(w).text()).toBe('Pins 1/1')
     expect(engine().ping).not.toHaveBeenCalled()
   })
 
@@ -577,7 +577,7 @@ describe('EchoLocateBoard', () => {
     expect(field(w).props('waves')).toEqual([])
     expect(field(w).props('rings')).toEqual([])
     expect(field(w).props('covered')).toBe(false)
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
 
     await tapAt(w, C)
     expect(w.emitted('skip')).toEqual([[0, C]])
@@ -592,7 +592,7 @@ describe('EchoLocateBoard', () => {
     await w.setProps({ steps: [] })
 
     expect(engine().hush).toHaveBeenCalledOnce()
-    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+    expect(status(w).text()).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   it('starts over under the cover when it was never lifted', async () => {
@@ -855,7 +855,7 @@ describe('EchoLocateBoard', () => {
       'Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort ankommt.',
       'Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping nicht.',
       'Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine Markierung für dich – er fließt nicht in die Bewertung ein.',
-      'Drei Pings, ein Pin für den Spruch. Zum Abgeben „Abgeben“ gedrückt halten.',
+      '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin für den Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain('Der kleinste Abstand zum Spruch.')
   })
@@ -873,7 +873,7 @@ describe('EchoLocateBoard', () => {
     expect(w.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
     expect(rules.slice(2)).toEqual([
       'Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle. Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.',
-      'Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.',
+      '„Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin pro Spruch. „Zurücksetzen“ räumt Ringe und Pins ab. Zum Abgeben „Abgeben“ gedrückt halten.',
     ])
     expect(w.text()).toContain('Der kleinste mittlere Abstand zu beiden Sprüchen.')
     expect(one.text()).toContain('Beide Pins müssen im Toleranzkreis um ihren Spruch liegen.')
@@ -882,5 +882,76 @@ describe('EchoLocateBoard', () => {
 
   it('keeps the status line live for screen readers', () => {
     expect(status(mountBoard()).attributes('aria-live')).toBe('polite')
+  })
+
+  describe('switch and reset', () => {
+    const pingButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-mode-ping"]')
+    const pinButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-mode-pin"]')
+    const resetButton = (w: Board) => w.get<HTMLButtonElement>('[data-test="echo-locate-reset"]')
+
+    it('says „Ping“ and „Pin“, greyed under the cover, „Ping“ pressed once open', async () => {
+      const w = mountBoard()
+      expect(pingButton(w).text()).toBe('Ping')
+      expect(pinButton(w).text()).toBe('Pin')
+      expect(resetButton(w).text()).toBe('Zurücksetzen')
+      expect(pingButton(w).element.disabled).toBe(true)
+      expect(resetButton(w).element.disabled).toBe(true)
+
+      await start(w)
+
+      expect(pingButton(w).element.disabled).toBe(false)
+      expect(pingButton(w).attributes('aria-pressed')).toBe('true')
+      expect(pinButton(w).attributes('aria-pressed')).toBe('false')
+    })
+
+    it('on „Pin“ a tap sets a pin and pings nothing', async () => {
+      const w = mountBoard()
+      await start(w)
+
+      await pinButton(w).trigger('click')
+      await tapAt(w, A)
+
+      expect(w.emitted('skip')).toBeUndefined()
+      expect(field(w).props('pins')).toEqual([A])
+      expect(status(w).text()).toBe('Pins 1/1')
+      expect(pinButton(w).attributes('aria-pressed')).toBe('true')
+    })
+
+    it('greys the switch and the reset while a ping is out and its wave runs', async () => {
+      const w = mountBoard()
+      await start(w)
+      await tapAt(w, A)
+
+      expect(pinButton(w).element.disabled).toBe(true)
+      expect(resetButton(w).element.disabled).toBe(true)
+
+      await answer(w, [step(A, [CLIP_HIT])])
+
+      expect(pinButton(w).element.disabled).toBe(true)
+      expect(resetButton(w).element.disabled).toBe(true)
+    })
+
+    it('„Zurücksetzen“ clears rings and pins, also in the draft, and keeps the pings', async () => {
+      saveDraft(storage.fake, KEY, { rings: [[2.5], [4]], pins: [{ x: 3, y: 4 }] })
+      const w = mountBoard({ steps: [step(A), step(B)], draftKey: KEY })
+      await start(w)
+
+      await resetButton(w).trigger('click')
+
+      expect(field(w).props('waves')).toEqual(
+        [A, B].map((at) => ({ at, startMs: null, endMs: null })),
+      )
+      expect(field(w).props('rings')).toEqual([[], []])
+      expect(field(w).props('pins')).toEqual([])
+      expect(loadDraft(storage.fake, KEY, PAYLOAD)).toEqual({ rings: [[], []], pins: [] })
+    })
+
+    it('greys „Ping“ once every ping is spent, and stays on „Pin“', async () => {
+      const w = mountBoard({ steps: [step(A), step(B), step(C)] })
+      await start(w)
+
+      expect(pingButton(w).element.disabled).toBe(true)
+      expect(pinButton(w).attributes('aria-pressed')).toBe('true')
+    })
   })
 })

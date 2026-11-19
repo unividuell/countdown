@@ -6,8 +6,10 @@ import {
   LIFT_RADIUS,
   locked,
   refused,
+  reset,
   settle,
   statusLine,
+  switchMode,
   synced,
   tap,
   unlocked,
@@ -251,7 +253,7 @@ describe('refused', () => {
     expect(after.pending).toBeNull()
     expect(after.waves).toEqual(before.waves)
     expect(after.rings).toEqual(before.rings)
-    expect(statusLine(after)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+    expect(statusLine(after)).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   it('keeps what is already pinged', () => {
@@ -313,7 +315,7 @@ describe('synced', () => {
     expect(state.waves).toEqual([{ at: lost, startMs: null, endMs: null }])
     expect(state.rings).toEqual([[]])
     expect(state.phase).toBe('pinging')
-    expect(statusLine(state)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(statusLine(state)).toBe('1. Klick: Ping, 2. Klick: Markieren')
   })
 
   it('moves on to the pins when that was the last ping', () => {
@@ -359,7 +361,7 @@ describe('initialFlow', () => {
 
     const reopened = unlocked(state)
     expect(reopened.phase).toBe('pinning')
-    expect(statusLine(reopened)).toBe('Schätzung · Pins 1/2')
+    expect(statusLine(reopened)).toBe('Pins 1/2')
   })
 
   it('gives a wave without marks an empty list, and drops rings of waves it lacks', () => {
@@ -371,10 +373,19 @@ describe('initialFlow', () => {
     expect(initialFlow({ clips: 1, pings: 3, steps, draft: null }).rings).toEqual([[], [], []])
   })
 
-  it('keeps no pins while pings are left', () => {
+  it('keeps the pins of the draft while pings are left', () => {
     const draft = { rings: [], pins: [{ x: 9, y: 9 }] }
 
-    expect(initialFlow({ clips: 1, pings: 3, steps: steps.slice(0, 1), draft }).pins).toEqual([])
+    expect(initialFlow({ clips: 1, pings: 3, steps: steps.slice(0, 1), draft }).pins).toEqual([
+      { x: 9, y: 9 },
+    ])
+  })
+
+  it('starts on „Ping“, and on „Pin“ once the pings are spent', () => {
+    expect(initialFlow({ clips: 1, pings: 3, steps: steps.slice(0, 1), draft: null }).mode).toBe(
+      'ping',
+    )
+    expect(initialFlow({ clips: 1, pings: 3, steps, draft: null }).mode).toBe('pin')
   })
 })
 
@@ -384,7 +395,7 @@ describe('statusLine', () => {
     expect(statusLine(closed)).toBe('')
 
     const pinging = opened()
-    expect(statusLine(pinging)).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 3')
+    expect(statusLine(pinging)).toBe('1. Klick: Ping, 2. Klick: Markieren')
 
     const loading = tap(pinging, FIELD, 500, SPEED).state
     expect(statusLine(loading)).toBe('Sonar lädt …')
@@ -392,11 +403,95 @@ describe('statusLine', () => {
     const wave = landed(loading, 1000, 9000)
     expect(statusLine(wave)).toBe('Markieren')
 
-    expect(statusLine(settle(wave, 9000))).toBe('1. Klick: Ping, 2. Klick: Markieren – noch 2')
+    expect(statusLine(settle(wave, 9000))).toBe('1. Klick: Ping, 2. Klick: Markieren')
 
     const pinning = spent(3, 2)
-    expect(statusLine(pinning)).toBe('Schätzung · Pins 0/2')
-    expect(statusLine(tap(pinning, FIELD, 200_000, SPEED).state)).toBe('Schätzung · Pins 1/2')
+    expect(statusLine(pinning)).toBe('Pins 0/2')
+    expect(statusLine(tap(pinning, FIELD, 200_000, SPEED).state)).toBe('Pins 1/2')
+  })
+})
+
+describe('switchMode', () => {
+  it('turns taps into pins and back, the pins kept', () => {
+    const pinning = switchMode(opened(), 'pin')
+    expect(pinning.phase).toBe('pinning')
+    expect(pinning.mode).toBe('pin')
+
+    const placed = tap(pinning, { x: 7, y: 8 }, 1000, SPEED)
+    expect(placed.effect).toBeNull()
+    expect(placed.state.pins).toEqual([{ x: 7, y: 8 }])
+
+    const back = switchMode(placed.state, 'ping')
+    expect(back.phase).toBe('pinging')
+    expect(back.pins).toEqual([{ x: 7, y: 8 }])
+    expect(tap(back, FIELD, 2000, SPEED).effect).toEqual({ kind: 'ping', stage: 0, at: FIELD })
+  })
+
+  it('does nothing under the cover, while loading or during a wave', () => {
+    const closed = fresh()
+    const loading = tap(opened(), FIELD, 500, SPEED).state
+    const wave = landed(loading, 1000, 9000)
+
+    expect(switchMode(closed, 'pin')).toBe(closed)
+    expect(switchMode(loading, 'pin')).toBe(loading)
+    expect(switchMode(wave, 'pin')).toBe(wave)
+  })
+
+  it('stays on the pins once every ping is spent', () => {
+    const state = switchMode(spent(3), 'ping')
+
+    expect(state.phase).toBe('pinning')
+  })
+
+  it('switches once the wave is over', () => {
+    const wave = pinged(opened(), FIELD, 1000, 9000)
+
+    expect(switchMode(settle(wave, 9000), 'pin').phase).toBe('pinning')
+  })
+})
+
+describe('reset', () => {
+  it('clears rings and pins, keeps the pings', () => {
+    let state = pinged(opened(fresh({ clips: 2 })), { x: 4, y: 4 }, 1000, 9000)
+    state = tap(state, FIELD, 2000, SPEED).state
+    state = switchMode(settle(state, 9000), 'pin')
+    state = tap(state, { x: 5, y: 5 }, 10_000, SPEED).state
+
+    const cleared = reset(state)
+
+    expect(cleared.waves).toEqual(state.waves)
+    expect(cleared.rings).toEqual([[]])
+    expect(cleared.pins).toEqual([])
+    expect(cleared.phase).toBe('pinning')
+  })
+
+  it('does nothing under the cover, while loading or during a wave', () => {
+    const closed = fresh()
+    const loading = tap(opened(), FIELD, 500, SPEED).state
+    const wave = landed(loading, 1000, 9000)
+
+    expect(reset(closed)).toBe(closed)
+    expect(reset(loading)).toBe(loading)
+    expect(reset(wave)).toBe(wave)
+  })
+
+  it('marks the next wave at its own ping', () => {
+    let state = pinged(opened(), { x: 4, y: 4 }, 1000, 9000)
+    state = tap(state, FIELD, 2000, SPEED).state
+    state = reset(settle(state, 9000))
+    state = pinged(state, { x: 12, y: 12 }, 11_000, 19_000)
+    state = tap(state, FIELD, 12_000, SPEED).state
+
+    expect(state.rings).toEqual([[], [3]])
+  })
+
+  it('hands in the cleared rings as empty lists', () => {
+    let state = pinged(opened(), { x: 4, y: 4 }, 1000, 9000)
+    state = tap(state, FIELD, 2000, SPEED).state
+    state = switchMode(reset(settle(state, 9000)), 'pin')
+    state = tap(state, { x: 5, y: 5 }, 10_000, SPEED).state
+
+    expect(guessOf(state)).toEqual({ pins: [{ x: 5, y: 5 }], rings: [[]] })
   })
 })
 

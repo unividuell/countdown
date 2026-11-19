@@ -1,13 +1,15 @@
 /**
- * What a tap on the field does follows from where the round stands — there are no mode buttons.
+ * What a tap on the field does follows from where the round stands and from the switch „Ping | Pin“.
  * Pure: the board passes the clock and the server's answers in, and acts on the effect it gets.
  *
  *   closed ─unlocked─▶ pinging ─tap─▶ loading ─landed─▶ wave ─settle─▶ pinging …
- *                         ▲  ping        │                taps mark       │ no pings left
- *                         └───refused────┘                rings          ▼
- *                                                                      pinning  taps set / lift pins
+ *                       ▲   ▲  ping      │                taps mark
+ *                       │   └─refused────┘                rings
+ *          switchMode   │   │ switchMode (also: no pings left)
+ *                       ▼   ▼
+ *                      pinning  taps set / lift pins
  *
- *   pinging, pinning ─locked─▶ closed
+ *   pinging, pinning ─locked─▶ closed        pinging, pinning ─reset─▶ rings and pins cleared
  *
  * A tap on `closed` only asks to unlock. The field opens once the sound runs and closes once it
  * stops — never while a ping is out or its wave runs.
@@ -27,10 +29,14 @@ export interface Wave {
 
 export type FlowPhase = 'closed' | 'pinging' | 'loading' | 'wave' | 'pinning'
 
+/** What the switch under the field says a tap does once no wave runs. */
+export type Mode = 'ping' | 'pin'
+
 export interface FlowState {
   phase: FlowPhase
+  mode: Mode
   clips: number
-  /** How many pings the round allows; `waves.length` of them are spent. */
+  /** How many pings the round allows, a ceiling nobody sees; `waves.length` of them are spent. */
   pings: number
   waves: Wave[]
   rings: number[][]
@@ -54,20 +60,45 @@ export function initialFlow(input: {
 
   return {
     phase: 'closed',
+    mode: waves.length < input.pings ? 'ping' : 'pin',
     clips: input.clips,
     pings: input.pings,
     waves,
     // Rings only for pings the server still has; a wave without marks has none.
     rings: waves.map((_, ping) => input.draft?.rings[ping] ?? []),
-    // Pins come after the last ping, so a draft with pins and pings left is stale.
-    pins: waves.length >= input.pings ? (input.draft?.pins ?? []) : [],
+    pins: input.draft?.pins ?? [],
     pending: null,
   }
 }
 
-/** Where a tap leads once no wave is running: the next ping, or the pins after the last. */
+/** Where a tap leads once no wave is running: the next ping, or the pins on „Pin“ or after the last. */
 function idle(state: FlowState): FlowPhase {
-  return state.waves.length < state.pings ? 'pinging' : 'pinning'
+  return state.mode === 'ping' && pingsLeft(state) ? 'pinging' : 'pinning'
+}
+
+/** Whether another ping is allowed; the board greys „Ping“ without. */
+export function pingsLeft(state: FlowState): boolean {
+  return state.waves.length < state.pings
+}
+
+/** Whether the switch and „Zurücksetzen“ act: never under the cover, with a ping out or a wave running. */
+export function canSteer(state: FlowState): boolean {
+  return state.phase === 'pinging' || state.phase === 'pinning'
+}
+
+export function switchMode(state: FlowState, mode: Mode): FlowState {
+  if (!canSteer(state)) return state
+
+  const next = { ...state, mode }
+
+  return { ...next, phase: idle(next) }
+}
+
+/** Clears the rings and pins; the pings stay. A cleared ping keeps an empty list, so rings stay aligned. */
+export function reset(state: FlowState): FlowState {
+  if (!canSteer(state)) return state
+
+  return { ...state, rings: state.rings.map(() => []), pins: [] }
 }
 
 /** The sound runs: the cover goes, and the round goes on where it stood. */
@@ -220,11 +251,11 @@ export function statusLine(state: FlowState): string {
     case 'loading':
       return 'Sonar lädt …'
     case 'pinging':
-      return `1. Klick: Ping, 2. Klick: Markieren – noch ${state.pings - state.waves.length}`
+      return '1. Klick: Ping, 2. Klick: Markieren'
     case 'wave':
       return 'Markieren'
     case 'pinning':
-      return `Schätzung · Pins ${state.pins.length}/${state.clips}`
+      return `Pins ${state.pins.length}/${state.clips}`
   }
 }
 

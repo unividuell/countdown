@@ -1,11 +1,13 @@
 <script setup lang="ts">
 /**
- * Playing Peilung: the field, a line saying what a tap does now, the hold that hands in.
+ * Playing Peilung: the field, the switch „Ping | Pin“, a line saying what a tap does now, the hold
+ * that hands in.
  *
  *   ┌──────────────┐
  *   │  SonarField  │   covered until its cover is clicked; the cover names the count
  *   └──────────────┘
- *   1. Klick: Ping, 2. Klick: Markieren – noch 3
+ *   [ Ping | Pin ]  [Zurücksetzen]   greyed under the cover, with a ping out, during its wave
+ *   1. Klick: Ping, 2. Klick: Markieren
  *        ( Abgeben )   once every clip has its pin
  *
  * A tap goes through `flow.ts`; the board acts on its effect and on the host's answers:
@@ -32,18 +34,22 @@ import EchoLocateBriefing from './EchoLocateBriefing.vue'
 import { EchoEngine, loadSounds, shotsOf } from './engine'
 import type { EchoSounds } from './engine'
 import {
+  canSteer,
   guessOf,
   initialFlow,
   landed,
   locked,
+  pingsLeft,
   refused,
+  reset,
   settle,
   statusLine,
+  switchMode,
   synced,
   tap,
   unlocked,
 } from './flow'
-import type { FlowState } from './flow'
+import type { FlowState, Mode } from './flow'
 import { dbToGain } from './noise'
 import SonarField from './SonarField.vue'
 import { asEcho, asPing } from './types'
@@ -73,6 +79,14 @@ interface Audio {
 
 const storage = deviceStorage()
 
+const MODES: { mode: Mode; label: string }[] = [
+  { mode: 'ping', label: 'Ping' },
+  { mode: 'pin', label: 'Pin' },
+]
+
+const SWITCH =
+  'h-11 min-w-16 cursor-pointer border border-outline px-4 disabled:cursor-not-allowed disabled:opacity-40'
+
 /** A step's input as a point; an unreadable one still counts, at the centre, so stages align. */
 const pings = computed(() =>
   props.steps.map(
@@ -97,6 +111,7 @@ function fresh(): FlowState {
 const flow = shallowRef<FlowState>(fresh())
 
 const status = computed(() => statusLine(flow.value))
+const canPing = computed(() => pingsLeft(flow.value))
 const canHandIn = computed(() => !props.disabled && guessOf(flow.value) !== null)
 
 // As in Place Patch: while the hand-in ring rises the field greys, a finger on it cancels the
@@ -196,6 +211,17 @@ function onTap(at: Point, tMs: number): void {
 
   flow.value = state
   if (effect?.kind === 'ping') emit('skip', effect.stage, effect.at)
+}
+
+/** Not under a rising hold either: the pins must not change under a hand-in about to send them. */
+const steerable = computed(() => !props.disabled && !holdLocked.value && canSteer(flow.value))
+
+function onMode(mode: Mode): void {
+  if (steerable.value) flow.value = switchMode(flow.value, mode)
+}
+
+function onReset(): void {
+  if (steerable.value) flow.value = reset(flow.value)
 }
 
 /** Whether a ping would be heard now. Without Web Audio there is nothing to wait for. */
@@ -384,6 +410,37 @@ onBeforeUnmount(() => {
           :progress="holdProgress"
         />
       </div>
+      <div class="flex items-center gap-3">
+        <div class="flex" role="group" aria-label="Was ein Tipp tut">
+          <button
+            v-for="choice in MODES"
+            :key="choice.mode"
+            type="button"
+            :data-test="`echo-locate-mode-${choice.mode}`"
+            :aria-pressed="flow.mode === choice.mode"
+            :disabled="!steerable || (choice.mode === 'ping' && !canPing)"
+            :class="[
+              SWITCH,
+              choice.mode === 'ping' ? 'rounded-s-lg' : '-ms-px rounded-e-lg',
+              flow.mode === choice.mode ? 'bg-on-surface text-surface' : '',
+            ]"
+            @click="onMode(choice.mode)"
+          >
+            {{ choice.label }}
+          </button>
+        </div>
+        <button
+          type="button"
+          data-test="echo-locate-reset"
+          :disabled="!steerable"
+          :class="SWITCH"
+          class="rounded-lg"
+          @click="onReset"
+        >
+          Zurücksetzen
+        </button>
+      </div>
+
       <!-- Empty under the cover, at its height: nothing jumps when it fills. -->
       <p data-test="echo-locate-status" aria-live="polite" class="min-h-7 text-center text-lg">
         {{ status }}

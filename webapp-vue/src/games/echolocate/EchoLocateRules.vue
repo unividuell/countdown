@@ -24,9 +24,10 @@ const props = defineProps<{ clips: number }>()
       Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
       Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.
     </li>
-    <li v-if="props.clips === 1">
-      Drei Pings, ein Pin für den Spruch. Zum Abgeben „Abgeben“ gedrückt halten.
+    <li>
+      „Ping“ und „Pin“ schalten um, was ein Tipp tut. Ein Pin
+      {{ props.clips === 1 ? 'für den Spruch' : 'pro Spruch' }}. „Zurücksetzen“ räumt Ringe und Pins
+      ab. Zum Abgeben „Abgeben“ gedrückt halten.
     </li>
-    <li v-else>Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.</li>
   </ul>
 </template>
