@@ -92,9 +92,10 @@ function submit(): void {
 
 <template>
   <div data-test="turn-pipes-board" class="flex flex-col gap-6">
-    <!-- Card-wide: the outer box cancels RoundSurface's padding, so the board and the cover run
-         edge to edge; the bottom padding, cancelled by `-mb-4`, keeps the rules' gap. -->
-    <div class="relative -mx-4 -mt-4 -mb-4 pb-4">
+    <!-- Card-wide: the outer box cancels RoundSurface's side padding, so the board and the cover run
+         edge to edge; half the top padding stays as air under the band; the bottom padding,
+         cancelled by `-mb-4`, keeps the rules' gap. -->
+    <div class="relative -mx-4 -mt-2 -mb-4 pb-4">
       <div class="flex flex-col gap-3" :inert="!round || undefined">
         <section
           data-test="turn-pipes-field"

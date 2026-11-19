@@ -200,7 +200,7 @@ describe('TurnPipesReveal', () => {
     const box = grid(mountReveal()).element.parentElement!
 
     expect(box.classList).toContain('-mx-4')
-    expect(box.classList).toContain('-mt-4')
+    expect(box.classList).toContain('-mt-2')
     expect(box.classList).not.toContain('w-full')
   })
 

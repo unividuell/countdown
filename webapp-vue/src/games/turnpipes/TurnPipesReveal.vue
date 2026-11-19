@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
   <div data-test="turn-pipes-reveal" class="flex flex-col gap-6">
     <!-- Card-wide like the board's, so the grid stays put at submit. No `w-full`: it would
          cancel the bleed. -->
-    <div class="-mx-4 -mt-4">
+    <div class="-mx-4 -mt-2">
       <PipeGrid
         :size="props.payload.size"
         :kinds="props.payload.kinds"

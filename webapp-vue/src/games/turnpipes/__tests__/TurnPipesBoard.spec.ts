@@ -46,7 +46,7 @@ describe('TurnPipesBoard', () => {
     const box = mountBoard().getComponent(PipeGrid).element.closest('.-mx-4')!
 
     expect(box).not.toBeNull()
-    expect(box.classList).toContain('-mt-4')
+    expect(box.classList).toContain('-mt-2')
     expect(box.classList).not.toContain('w-full')
   })
 
