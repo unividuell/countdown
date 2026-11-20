@@ -23,9 +23,11 @@ const B: Silhouette = {
 const START = initialPlacements(A)
 
 // At 360 px and zoom 1 a cell is 40 px, and the ground line lies at y = 280. B stands at x 5..6.8,
-// y 0..3 in the world: on screen x 200..272, y 160..280, its handle centred on (272, 160).
+// y 0..3 in the world: on screen x 200..272, y 160..280, its top right corner at (272, 160) and
+// the handle 14 px up and right of it, centred on (286, 146).
 const ON_B = { clientX: 236, clientY: 220 }
-const ON_HANDLE = { clientX: 272, clientY: 160 }
+const ON_CORNER = { clientX: 272, clientY: 160 }
+const ON_HANDLE = { clientX: 286, clientY: 146 }
 const EMPTY = { clientX: 60, clientY: 60 }
 
 function mountField(over: Record<string, unknown> = {}) {
@@ -99,13 +101,16 @@ describe('ScaleField', () => {
     expect(mountField().svg.classes()).toContain('touch-none')
   })
 
-  it('puts a 32 px handle on B’s top right corner', () => {
+  it('puts a 32 px handle just outside B’s top right corner', () => {
     const handle = mountField().wrapper.get<HTMLElement>('[aria-label="Größe ändern"]')
 
-    expect(handle.classes()).toEqual(expect.arrayContaining(['h-8', 'w-8', 'rounded-full']))
+    expect(handle.classes()).toEqual(
+      expect.arrayContaining(['h-8', 'w-8', 'rounded-full', 'bg-inverse-surface']),
+    )
     expect(handle.find('svg').exists()).toBe(true)
-    expect(handle.element.style.left).toBe(`${(272 / 360) * 100}%`)
-    expect(handle.element.style.top).toBe(`${(160 / 360) * 100}%`)
+    // 14·√2 ≈ 20 > 16: the circle ends beyond the corner and covers nothing of B's box.
+    expect(handle.element.style.left).toBe(`calc(${(272 / 360) * 100}% + 14px)`)
+    expect(handle.element.style.top).toBe(`calc(${(160 / 360) * 100}% - 14px)`)
   })
 
   it('draws no handle when it takes no input', () => {
@@ -210,9 +215,10 @@ describe('ScaleField', () => {
   it('a finger on the handle scales B, its bottom left corner fixed', async () => {
     const field = mountField()
 
+    // The corner follows the finger at the offset it was grabbed with: to (308, 100).
     await pointer(field, 'pointerdown', 1, ON_HANDLE)
-    await pointer(field, 'pointermove', 1, { clientX: 308, clientY: 100 })
-    await pointer(field, 'pointerup', 1, { clientX: 308, clientY: 100 })
+    await pointer(field, 'pointermove', 1, { clientX: 322, clientY: 86 })
+    await pointer(field, 'pointerup', 1, { clientX: 322, clientY: 86 })
 
     const [placement] = field.wrapper.emitted('update:placementB')!.at(-1) as [
       { x: number; y: number; scale: number },
@@ -222,14 +228,35 @@ describe('ScaleField', () => {
     expect(placement.y).toBe(START.b.y)
   })
 
+  it('grabbing the handle leaves B as it is until the finger moves', async () => {
+    const field = mountField()
+
+    await pointer(field, 'pointerdown', 1, ON_HANDLE)
+    await pointer(field, 'pointermove', 1, ON_HANDLE)
+
+    const [placement] = field.wrapper.emitted('update:placementB')!.at(-1) as [
+      { x: number; y: number; scale: number },
+    ]
+    expect(placement.scale).toBeCloseTo(1)
+  })
+
+  it('a finger on B’s corner moves B: the handle is not there', async () => {
+    const field = mountField()
+
+    await pointer(field, 'pointerdown', 1, ON_CORNER)
+    await pointer(field, 'pointermove', 1, { clientX: 312, clientY: 160 })
+
+    expect(field.wrapper.emitted('update:placementB')!.at(-1)).toEqual([{ x: 6, y: 0, scale: 1 }])
+  })
+
   it('the handle catches a finger within its 16 px radius only', async () => {
     const near = mountField()
-    await pointer(near, 'pointerdown', 1, { clientX: 284, clientY: 160 })
-    await pointer(near, 'pointermove', 1, { clientX: 300, clientY: 140 })
+    await pointer(near, 'pointerdown', 1, { clientX: 298, clientY: 146 })
+    await pointer(near, 'pointermove', 1, { clientX: 314, clientY: 126 })
 
     const far = mountField()
-    await pointer(far, 'pointerdown', 1, { clientX: 290, clientY: 160 })
-    await pointer(far, 'pointermove', 1, { clientX: 300, clientY: 140 })
+    await pointer(far, 'pointerdown', 1, { clientX: 304, clientY: 146 })
+    await pointer(far, 'pointermove', 1, { clientX: 314, clientY: 126 })
 
     expect(near.wrapper.emitted('update:placementB')).toBeDefined()
     expect(far.wrapper.emitted('update:placementB')).toBeUndefined()

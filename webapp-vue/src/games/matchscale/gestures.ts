@@ -164,7 +164,7 @@ export function moveBy(placement: Placement, dx: number, dy: number): Placement 
 }
 
 /**
- * The handle sits on the top right corner. Its projection onto the diagonal (bottom left to top
+ * The handle drags the top right corner. Its projection onto the diagonal (bottom left to top
  * right at scale 1) is the scale; the bottom left corner stays put, so the aspect ratio holds.
  */
 export function scaleToHandle(

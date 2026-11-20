@@ -5,7 +5,8 @@
  * props and go out as `update:` events.
  *
  *   ┌──────────────────────┐
- *   │        ▟▙       ▟▙ ⤢ │  ⤢ the handle: 32 px whatever the zoom, on B's top right corner
+ *   │                   ⤢  │  ⤢ the handle: 32 px whatever the zoom, just off B's top right
+ *   │        ▟▙       ▟▙   │    corner, so it never hides the corner of a shape reaching it
  *   │       ▐██▌     ▐██▌  │
  *   │═══════════════════════  ground, y = 0
  *   └──────────────────────┘
@@ -73,6 +74,8 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
 
 const HANDLE_RADIUS_PX = 16
+/** Up and right of the corner, per axis: the circle ends 4 px beyond it (14·√2 − 16 ≈ 4). */
+const HANDLE_OFFSET_PX = 14
 /** One wheel notch (100 px of `deltaY`) zooms by about a quarter. */
 const WHEEL_PX_PER_DOUBLING = 300
 const LINE_PX = 16
@@ -157,7 +160,7 @@ function outlineStyle(outline: Outline): Record<string, string | number> {
   }
 }
 
-const handle = computed(() => {
+const corner = computed(() => {
   const { w, h } = sizeAt(props.b, props.placementB.scale)
 
   return toScreen(props.view, { x: props.placementB.x + w, y: props.placementB.y + h })
@@ -189,9 +192,11 @@ function pointOf(event: PointerEvent | WheelEvent): Point | null {
 }
 
 function startOne(id: number, p: Point, units: number): Gesture {
-  const hx = handle.value.x - p.x
-  const hy = handle.value.y - p.y
-  if (Math.hypot(hx, hy) <= HANDLE_RADIUS_PX * units) {
+  // Caught around the drawn circle, but `grab` holds the way to the corner: B does not jump.
+  const offset = HANDLE_OFFSET_PX * units
+  const hx = corner.value.x - p.x
+  const hy = corner.value.y - p.y
+  if (Math.hypot(hx + offset, hy - offset) <= HANDLE_RADIUS_PX * units) {
     return { kind: 'scale', id, grab: { x: hx, y: hy }, start: props.placementB }
   }
 
@@ -424,8 +429,8 @@ useEventListener(document, 'visibilitychange', () => {
       aria-label="Größe ändern"
       class="pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-inverse-surface text-inverse-on-surface shadow"
       :style="{
-        left: `${(handle.x / FIELD_PX) * 100}%`,
-        top: `${(handle.y / FIELD_PX) * 100}%`,
+        left: `calc(${(corner.x / FIELD_PX) * 100}% + ${HANDLE_OFFSET_PX}px)`,
+        top: `calc(${(corner.y / FIELD_PX) * 100}% - ${HANDLE_OFFSET_PX}px)`,
       }"
     >
       <IconMaximize aria-hidden="true" class="h-4 w-4" />
