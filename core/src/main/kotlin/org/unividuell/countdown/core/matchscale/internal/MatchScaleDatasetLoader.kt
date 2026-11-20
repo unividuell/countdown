@@ -90,7 +90,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
     }
 
     companion object {
-        const val SAMPLE_DIR = "/match-scale-sample"
+        const val SAMPLE_DIR = "/games/match-scale/sample"
         private val SAMPLE_FILES = listOf("shapes.yaml", "blocks.yaml")
         private const val MIN_PAIRS = 2
     }

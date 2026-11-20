@@ -4,7 +4,7 @@
 
 **Goal:** Das Spiel „Augenmaß“ (`match-scale`) als elftes Rundenspiel, mit der Kategorie Länder: zwei Silhouetten, A fest, B zieht der Spieler auf das wahre Größenverhältnis.
 
-**Architecture:** Ein Offline-Skript erzeugt aus Natural Earth eine Kategorie-Datei (normierte SVG-Pfade + `metresPerUnit`), sops verschlüsselt sie ganz, `update.sh` entschlüsselt alle Kategorien aus `deploy/match-scale/categories.txt` in ein Verzeichnis, das Backend lädt es. Neues Modulith-Modul `matchscale` (Datensatz, Ziehung, kein Schema), Adapter `MatchScaleGameType` in `game.internal`. Frontend `games/matchscale/`: reine Module (Typen, Gesten/Ansicht, Zwischenstand, Rangliste) unter einer SVG-Spielfläche.
+**Architecture:** Ein Offline-Skript erzeugt aus Natural Earth eine Kategorie-Datei (normierte SVG-Pfade + `metresPerUnit`), sops verschlüsselt sie ganz, `update.sh` entschlüsselt alle Kategorien aus `deploy/games/match-scale/categories.txt` in ein Verzeichnis, das Backend lädt es. Neues Modulith-Modul `matchscale` (Datensatz, Ziehung, kein Schema), Adapter `MatchScaleGameType` in `game.internal`. Frontend `games/matchscale/`: reine Module (Typen, Gesten/Ansicht, Zwischenstand, Rangliste) unter einer SVG-Spielfläche.
 
 **Tech Stack:** Kotlin 2.4 / Spring Boot 4.1 / Spring Modulith 2.1 · JUnit 5 + kotest-Matcher + mockk · Jackson 3 · Node 24 (Skript, keine Abhängigkeiten) · sops/age · Vue 3 + TypeScript strict + Vitest + @vue/test-utils (happy-dom) · Tailwind v4.
 
@@ -18,8 +18,8 @@
 2. **Projektion** sphärisch (R = 6 371 008,8 m), Lambert azimutal flächentreu um den Mittelpunkt des größten Polygons — Mittelpunkt als Mittel der Einheitsvektoren seiner Punkte (antimeridian-fest).
 3. **Teile:** behalten wird ein Polygon, wenn sein projizierter Bbox-Mittelpunkt in der Bbox des größten Polygons liegt, erweitert um `PART_REACH = 0.5 ×` deren längste Seite, und seine Fläche `≥ MIN_PART_SHARE = 0.002 ×` die des größten. Beide Konstanten oben im Skript, gestimmt auf der Prüfseite.
 4. **Vereinfachen** Douglas-Peucker mit `SIMPLIFY_UNITS = 1.5` in normierten Einheiten; danach Bbox der vereinfachten Punkte **neu** auf 1000 normieren, dann runden — so ist `max(width, height) == 1000` exakt und `metresPerUnit` misst die gezeichnete Form. Pfad: je Ring `M x y` + relative `l`, `z`; ganze Zahlen; y nach unten (Norden oben).
-5. **Länder-Eingabe** `.local/match-scale-input/countries.yaml` enthält JSON (gültiges YAML, ohne Parser lesbar): `{"exclude": ["<ADM0_A3>", …]}`. Ausgabe-YAML schreibt das Skript selbst, Strings JSON-gequotet.
-6. **Sample** im Classpath: zwei feste Ressourcen `/match-scale-sample/shapes.yaml` und `/match-scale-sample/blocks.yaml` (ein Classpath-Verzeichnis lässt sich im JAR nicht auflisten).
+5. **Länder-Eingabe** `.local/games/match-scale/input/countries.yaml` enthält JSON (gültiges YAML, ohne Parser lesbar): `{"exclude": ["<ADM0_A3>", …]}`. Ausgabe-YAML schreibt das Skript selbst, Strings JSON-gequotet.
+6. **Sample** im Classpath: zwei feste Ressourcen `/games/match-scale/sample/shapes.yaml` und `/games/match-scale/sample/blocks.yaml` (ein Classpath-Verzeichnis lässt sich im JAR nicht auflisten).
 7. **Grenze für `scale`** im Server: endlich und `> 0`. Client klemmt auf `[0.05, 20]`.
 8. **Toleranzgrenze** inklusive: `deviation <= ln(1.1) + 1e-9`.
 9. **Gespeicherter Tipp** wird verengt auf `{"scale": <Double>}` (`Judgement.guess`), wie Weltanschauung: fremde Felder werden nie anderen Spielern gezeigt.
@@ -71,7 +71,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 **Files:**
 - Create: `core/src/main/kotlin/org/unividuell/countdown/core/matchscale/MatchScaleEntry.kt`, `MatchScaleCategory.kt`, `MatchScaleDataset.kt` (vorerst nur Halter, Ziehung in Task 2)
 - Create: `core/src/main/kotlin/org/unividuell/countdown/core/matchscale/internal/MatchScaleDatasetYamlReader.kt`, `MatchScaleDatasetLoader.kt`, `MatchScaleDatasetProperties.kt`, `MatchScaleDatasetConfiguration.kt`, `MatchScaleDatasetException.kt`
-- Create: `core/src/main/resources/match-scale-sample/shapes.yaml`, `blocks.yaml`
+- Create: `core/src/main/resources/games/match-scale/sample/shapes.yaml`, `blocks.yaml`
 - Modify: `core/src/main/resources/application.yaml` (Block `app.match-scale`)
 - Test: `core/src/test/kotlin/org/unividuell/countdown/core/matchscale/MatchScaleDatasetYamlReaderTest.kt`, `MatchScaleDatasetLoaderTest.kt`, `MatchScaleDatasetFailFastTest.kt`
 
@@ -169,7 +169,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 **Interfaces:**
 - Produces: `node scripts/match-scale-dataset.mts countries --source <geojson> --input <countries.yaml> --out <countries.yaml> --review <countries.html>` und `node scripts/match-scale-dataset.mts selftest`. Ausgabe im Format der Spec (`category: countries`, `displayName: Länder`, `attribution: "Umrisse: Natural Earth"`).
 
-- [ ] **Step 1: Fragen, dann laden.** Den Nutzer um OK bitten: `ne_50m_admin_0_countries.geojson` (einige MB) von `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/`. Nach OK in `<Hauptcheckout>/.local/match-scale-raw/natural-earth/` laden.
+- [ ] **Step 1: Fragen, dann laden.** Den Nutzer um OK bitten: `ne_50m_admin_0_countries.geojson` (einige MB) von `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/`. Nach OK in `<Hauptcheckout>/.local/games/match-scale/raw/natural-earth/` laden.
 - [ ] **Step 2: Write `selftest` first** — reine Prüfungen ohne Datei, Ausgabe `selftest ok` oder Abbruch mit Grund:
   - Projektion: ein Quadrat 1° × 1° am Äquator und eines bei 60° N haben, projiziert um ihren Mittelpunkt, Flächen im Verhältnis `cos 60°` (±1 %).
   - Antimeridian: ein Polygon mit Längen 179°…−179° projiziert zu einer Breite < 300 km.
@@ -184,17 +184,17 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 ### Task 5: sops, Deployment, lokaler Start
 
 **Files:**
-- Create: `scripts/match-scale-dataset.sh`, `deploy/match-scale/categories.txt` (eine Zeile `countries`), `deploy/match-scale/countries.sops.yaml`, `deploy/match-scale-input/countries.sops.yaml`
+- Create: `scripts/match-scale-dataset.sh`, `deploy/games/match-scale/categories.txt` (eine Zeile `countries`), `deploy/games/match-scale/categories/countries.sops.yaml`, `deploy/games/match-scale/input/countries.sops.yaml`
 - Modify: `deploy/update.sh`, `deploy/compose.yaml`, `deploy/README.md`, `.gitignore`, `.claude/launch.json`
 
 **Interfaces:**
-- Consumes: Ausgabe von Task 4 in `<Hauptcheckout>/.local/match-scale/` und `.local/match-scale-input/`.
-- Produces: `scripts/match-scale-dataset.sh decrypt [--force] | encrypt | dev-path` über beide Verzeichnispaare; `dev-path` druckt das Klartext-Verzeichnis `.local/match-scale` (entschlüsselt fehlende Dateien vorher) oder nichts.
+- Consumes: Ausgabe von Task 4 in `<Hauptcheckout>/.local/games/match-scale/categories/` und `.local/games/match-scale/input/`.
+- Produces: `scripts/match-scale-dataset.sh decrypt [--force] | encrypt | dev-path` über beide Verzeichnispaare; `dev-path` druckt das Klartext-Verzeichnis `.local/games/match-scale/categories` (entschlüsselt fehlende Dateien vorher) oder nichts.
 
-- [ ] **Step 1: Write `scripts/match-scale-dataset.sh`** nach `guess-hue-dataset.sh` (Hauptcheckout finden, `--force`-Regeln, `dev-path` still erfolgreich ohne sops/Schlüssel). `encrypt`: jede `.local/match-scale/*.yaml` → `deploy/match-scale/<name>.sops.yaml`, jede `.local/match-scale-input/*.yaml` → `deploy/match-scale-input/<name>.sops.yaml`. `.sops.yaml` bleibt unverändert — prüfen: `sops -e` auf beiden Pfaden greift die bestehende Regel.
-- [ ] **Step 2: Run** `./scripts/match-scale-dataset.sh encrypt`; dann `git diff --stat` zeigt nur die zwei Cipher-Dateien; `grep -c ENC\\[ deploy/match-scale/countries.sops.yaml` > 0 und kein Klartext-Pfad (`grep -c '"M' …` = 0). Dateigröße nennen.
+- [ ] **Step 1: Write `scripts/match-scale-dataset.sh`** nach `guess-hue-dataset.sh` (Hauptcheckout finden, `--force`-Regeln, `dev-path` still erfolgreich ohne sops/Schlüssel). `encrypt`: jede `.local/games/match-scale/categories/*.yaml` → `deploy/games/match-scale/categories/<name>.sops.yaml`, jede `.local/games/match-scale/input/*.yaml` → `deploy/games/match-scale/input/<name>.sops.yaml`. `.sops.yaml` bleibt unverändert — prüfen: `sops -e` auf beiden Pfaden greift die bestehende Regel.
+- [ ] **Step 2: Run** `./scripts/match-scale-dataset.sh encrypt`; dann `git diff --stat` zeigt nur die zwei Cipher-Dateien; `grep -c ENC\\[ deploy/games/match-scale/categories/countries.sops.yaml` > 0 und kein Klartext-Pfad (`grep -c '"M' …` = 0). Dateigröße nennen.
 - [ ] **Step 3: `update.sh`** — `prepare_match_scale_dataset` nach `prepare_spot_object_terms`:
-  - `curl -fsSL "$BASE/match-scale/categories.txt"`; schlägt das fehl → Hinweis „no match-scale categories on '$REF', skipping“, `return 0`, nichts exportiert.
+  - `curl -fsSL "$BASE/games/match-scale/categories.txt"`; schlägt das fehl → Hinweis „no match-scale categories on '$REF', skipping“, `return 0`, nichts exportiert.
   - Jede nicht-leere Zeile ohne `#` muss `[a-z0-9-]+` sein, sonst Abbruch. Je Schlüssel Cipher laden und mit `sops -d` nach `./secrets/match-scale.$TARGET.new/<key>.yaml` (umask 077); ein Fehler → `.new` löschen, Abbruch, altes Verzeichnis unberührt.
   - Erfolg: altes `./secrets/match-scale.$TARGET` löschen, `.new` dorthin `mv`; Verzeichnis `755`, Dateien `644` (Begründung wie beim Guess-Hue-File: Container-UID). `export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.$TARGET`.
   - `sh -n deploy/update.sh` — keine Ausgabe.

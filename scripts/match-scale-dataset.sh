@@ -2,8 +2,8 @@
 # Convenient paths to the local Augenmaß category files. Two directory pairs, one cipher per
 # plaintext file:
 #
-#   .local/match-scale/<key>.yaml        <-> deploy/match-scale/<key>.sops.yaml
-#   .local/match-scale-input/<key>.yaml  <-> deploy/match-scale-input/<key>.sops.yaml
+#   .local/games/match-scale/categories/<key>.yaml  <-> deploy/games/match-scale/categories/<key>.sops.yaml
+#   .local/games/match-scale/input/<key>.yaml       <-> deploy/games/match-scale/input/<key>.sops.yaml
 #
 # The first pair is what the backend loads; the second is the generator's exclude list. Same shape
 # as guess-hue-dataset.sh, see there for the reasoning behind each step.
@@ -12,10 +12,10 @@
 #        ./scripts/match-scale-dataset.sh encrypt
 #        ./scripts/match-scale-dataset.sh dev-path
 #
-# "dev-path" prints the plaintext directory .local/match-scale on stdout and nothing else,
-# decrypting missing files first. Where it cannot decrypt (no sops, no age key, no cipher on this
-# branch) it prints nothing and still succeeds -- the backend then falls back to its bundled
-# sample. See .claude/launch.json.
+# "dev-path" prints the plaintext directory .local/games/match-scale/categories on stdout and
+# nothing else, decrypting missing files first. Where it cannot decrypt (no sops, no age key, no
+# cipher on this branch) it prints nothing and still succeeds -- the backend then falls back to its
+# bundled sample. See .claude/launch.json.
 set -eu
 
 usage() {
@@ -67,11 +67,13 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 # main worktree's .local/, even when run from a linked worktree: worktrees are temporary.
 GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
 MAIN_ROOT="$(dirname "$GIT_COMMON_DIR")"
-PLAINTEXT_DIR="$MAIN_ROOT/.local/match-scale"
+LOCAL_GAME="$MAIN_ROOT/.local/games/match-scale"
+PLAINTEXT_DIR="$LOCAL_GAME/categories"
 
 # .sops.yaml and the ciphers come from the current checkout.
 CHECKOUT_ROOT="$(git rev-parse --show-toplevel)"
 CONFIG="$CHECKOUT_ROOT/.sops.yaml"
+DEPLOY_GAME="$CHECKOUT_ROOT/deploy/games/match-scale"
 [ -f "$CONFIG" ] || unavailable "No .sops.yaml found at $CONFIG."
 
 # macOS sops would otherwise look under ~/Library/Application Support.
@@ -96,7 +98,7 @@ decrypt_one() {
   PAIR="$1"
   CIPHER="$2"
   NAME="$(basename "$CIPHER" .sops.yaml)"
-  TARGET="$MAIN_ROOT/.local/$PAIR/$NAME.yaml"
+  TARGET="$LOCAL_GAME/$PAIR/$NAME.yaml"
 
   mkdir -p "$(dirname "$TARGET")"
   TMP_FILE="$TARGET.tmp"
@@ -116,11 +118,11 @@ decrypt_one() {
 # "missing" only where the plaintext file is absent.
 each_cipher() {
   FOUND=0
-  for PAIR in match-scale match-scale-input; do
-    for CIPHER in "$CHECKOUT_ROOT/deploy/$PAIR"/*.sops.yaml; do
+  for PAIR in categories input; do
+    for CIPHER in "$DEPLOY_GAME/$PAIR"/*.sops.yaml; do
       [ -f "$CIPHER" ] || continue
       FOUND=1
-      TARGET="$MAIN_ROOT/.local/$PAIR/$(basename "$CIPHER" .sops.yaml).yaml"
+      TARGET="$LOCAL_GAME/$PAIR/$(basename "$CIPHER" .sops.yaml).yaml"
       if [ "$1" = "missing" ] && [ -f "$TARGET" ]; then
         continue
       fi
@@ -128,16 +130,16 @@ each_cipher() {
       echo "Augenmaß: decrypted $PAIR/$(basename "$TARGET")" >&2
     done
   done
-  [ "$FOUND" -eq 1 ] || unavailable "No encrypted ciphers found under $CHECKOUT_ROOT/deploy/match-scale*."
+  [ "$FOUND" -eq 1 ] || unavailable "No encrypted ciphers found under $DEPLOY_GAME."
 }
 
 case "$SUBCOMMAND" in
   decrypt)
     if [ "$FORCE" -eq 0 ]; then
-      for PAIR in match-scale match-scale-input; do
-        for CIPHER in "$CHECKOUT_ROOT/deploy/$PAIR"/*.sops.yaml; do
+      for PAIR in categories input; do
+        for CIPHER in "$DEPLOY_GAME/$PAIR"/*.sops.yaml; do
           [ -f "$CIPHER" ] || continue
-          TARGET="$MAIN_ROOT/.local/$PAIR/$(basename "$CIPHER" .sops.yaml).yaml"
+          TARGET="$LOCAL_GAME/$PAIR/$(basename "$CIPHER" .sops.yaml).yaml"
           if [ -f "$TARGET" ]; then
             echo "Plaintext file already exists: $TARGET" >&2
             echo "Overwrite with --force, or unversioned changes there will be lost." >&2
@@ -169,8 +171,8 @@ case "$SUBCOMMAND" in
 
   encrypt)
     FOUND=0
-    for PAIR in match-scale match-scale-input; do
-      for PLAIN in "$MAIN_ROOT/.local/$PAIR"/*.yaml; do
+    for PAIR in categories input; do
+      for PLAIN in "$LOCAL_GAME/$PAIR"/*.yaml; do
         [ -f "$PLAIN" ] || continue
         # The name ends up in the cipher path and in update.sh's key check.
         case "$(basename "$PLAIN" .yaml)" in
@@ -180,7 +182,7 @@ case "$SUBCOMMAND" in
             ;;
         esac
         FOUND=1
-        CIPHER="$CHECKOUT_ROOT/deploy/$PAIR/$(basename "$PLAIN" .yaml).sops.yaml"
+        CIPHER="$DEPLOY_GAME/$PAIR/$(basename "$PLAIN" .yaml).sops.yaml"
         mkdir -p "$(dirname "$CIPHER")"
 
         # sops output differs on every run and re-emits YAML in its own form, so the plaintext is
@@ -209,7 +211,7 @@ case "$SUBCOMMAND" in
       done
     done
     [ "$FOUND" -eq 1 ] || {
-      echo "No plaintext files found under $MAIN_ROOT/.local/match-scale*." >&2
+      echo "No plaintext files found under $LOCAL_GAME." >&2
       exit 1
     }
     ;;

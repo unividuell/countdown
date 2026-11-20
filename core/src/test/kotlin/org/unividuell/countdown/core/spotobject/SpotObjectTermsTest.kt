@@ -42,7 +42,7 @@ class SpotObjectTermsTest {
     @Test
     fun `the bundled sample parses`() {
         val stream = requireNotNull(
-            javaClass.getResourceAsStream("/spot-object-terms.sample.yaml"),
+            javaClass.getResourceAsStream("/games/spot-object/terms.sample.yaml"),
         )
         stream.use { SpotObjectTermsYamlReader.read(it, "sample").size shouldBe 12 }
     }

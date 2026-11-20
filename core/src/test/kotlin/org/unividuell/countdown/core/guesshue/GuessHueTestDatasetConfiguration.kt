@@ -27,7 +27,7 @@ class GuessHueTestDatasetConfiguration {
 
     @Bean
     fun guessHueTestDatasetPropertyRegistrar() = DynamicPropertyRegistrar { registry ->
-        val path = ClassPathResource("guess-hue-dataset.test.yaml").file.absolutePath
+        val path = ClassPathResource("games/guess-hue/dataset.test.yaml").file.absolutePath
         registry.add("app.guess-hue.dataset-path") { path }
     }
 }

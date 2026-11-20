@@ -18,6 +18,9 @@ public, because the free GitHub Actions runners require it.
   gitignored and lives in the **main checkout, never in a worktree** — worktrees are temporary
   and would take the only plaintext copy with them. The buffer file is a stop on the way, not an
   original: `sops -d` reproduces it.
+- **One folder per game, mirrored across the three places:** `.local/games/<game>/X.yaml` ↔
+  `deploy/games/<game>/X.sops.yaml` ↔ `core/src/main/resources/games/<game>/` (sample). Each
+  game's `scripts/<game>-*.sh` maps the pair; `.sops.yaml` matches any depth.
 - **Examples come from a committed sample set, never from the real one.** Specs, tests and
   fixtures use obviously fake entries. The app **fails to start** if it loaded the sample while
   `production` or `staging` is active — the two profiles real players run under (this repo has no

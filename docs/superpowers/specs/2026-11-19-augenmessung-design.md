@@ -13,7 +13,7 @@ Startabbruch unter `production`/`staging`). Phasen und Wertung übernimmt es von
 **Berührt:** ein neues Modulith-Modul `matchscale` (Datenset, Ziehung; kein Schema), den Adapter
 `MatchScaleGameType` in `game.internal`, ein Offline-Skript `scripts/match-scale-dataset.mts`, ein
 sops-Skript `scripts/match-scale-dataset.sh`, ein Verzeichnis verschlüsselter Kategorien unter
-`deploy/match-scale/`, Mount und Download in `deploy/compose.yaml` und `deploy/update.sh`, und im
+`deploy/games/match-scale/categories/`, Mount und Download in `deploy/compose.yaml` und `deploy/update.sh`, und im
 Frontend `games/matchscale/` plus die Einträge in `games/registry.ts` und `gamelab/games.ts`.
 
 ## Zweck & Spielidee
@@ -107,8 +107,8 @@ entries:
     attribution: "Beispielkünstler, CC BY"   # pro Eintrag, optional, überschreibt die Kategorie
 ```
 
-**Klartext in `.local/match-scale/<category>.yaml` (Hauptcheckout), über sops nach
-`deploy/match-scale/<category>.sops.yaml` — alle Kategorien, auch die aus gemeinfreien Daten.** Einheitlich
+**Klartext in `.local/games/match-scale/categories/<category>.yaml` (Hauptcheckout), über sops nach
+`deploy/games/match-scale/categories/<category>.sops.yaml` — alle Kategorien, auch die aus gemeinfreien Daten.** Einheitlich
 ist wichtiger als die Ausnahme. `scripts/match-scale-dataset.sh` mit `decrypt`, `encrypt`, `dev-path`
 wie `guess-hue-dataset.sh`, nur über alle Dateien des Verzeichnisses.
 
@@ -124,7 +124,7 @@ Vereinfachungs-Toleranz und die Koordinaten-Schreibweise (ganze Zahlen, relative
 Größe zählt doppelt: der Pfad geht mit jedem Payload über die Leitung.
 
 **Backend.** `MATCH_SCALE_DATASET_DIR` zeigt auf ein Verzeichnis mit einfachem YAML; jede Datei ist eine
-Kategorie. Leer → der Beispieldatensatz aus dem Classpath (`match-scale-dataset.sample/`, zwei
+Kategorie. Leer → der Beispieldatensatz aus dem Classpath (`games/match-scale/sample/`, zwei
 offensichtlich erfundene Kategorien mit je ein paar Rechtecken und Dreiecken), und unter
 `production`/`staging` verweigert die App dann den Start — Bauform `SpotObjectConfiguration`. Eine
 Kategorie mit weniger als zwei ziehbaren Paaren wird mit Warnung ausgelassen; ist keine übrig, Startabbruch.
@@ -134,7 +134,7 @@ Kategorie mit weniger als zwei ziehbaren Paaren wird mit Warnung ausgelassen; is
 
 **Deployment.** `update.sh` kommt immer von `main`, `compose.yaml` vom deployten Branch
 (`deployment-server.md`). Darum steht die Liste der Kategorien **nicht in `update.sh`**, sondern in einer
-Datei auf dem Branch: `deploy/match-scale/categories.txt`, ein Schlüssel pro Zeile. `update.sh` holt sie
+Datei auf dem Branch: `deploy/games/match-scale/categories.txt`, ein Schlüssel pro Zeile. `update.sh` holt sie
 vom `$REF`, lädt jede genannte Datei und entschlüsselt sie in `./secrets/match-scale.<target>/`;
 `compose.yaml` hängt das Verzeichnis nach `/config/match-scale/` ein. **Fehlt die Liste auf dem `$REF`,
 überspringt `update.sh` den Schritt** — so kann die Änderung an `update.sh` zuerst und gefahrlos auf
@@ -149,9 +149,9 @@ nie im Build. **Drei Verzeichnisse, nie gemischt** *(Entscheidung des Entwurfs)*
 
 | Verzeichnis | Inhalt | sops |
 |---|---|---|
-| `.local/match-scale/` | Ausgabe: eine Datei pro Kategorie, die das Backend liest | ganz → `deploy/match-scale/` |
-| `.local/match-scale-input/` | Handlisten mit echten Maßen | ganz → `deploy/match-scale-input/` |
-| `.local/match-scale-raw/` | Downloads (Natural Earth, PhyloPic), Prüfseite | nie committet |
+| `.local/games/match-scale/categories/` | Ausgabe: eine Datei pro Kategorie, die das Backend liest | ganz → `deploy/games/match-scale/categories/` |
+| `.local/games/match-scale/input/` | Handlisten mit echten Maßen | ganz → `deploy/games/match-scale/input/` |
+| `.local/games/match-scale/raw/` | Downloads (Natural Earth, PhyloPic), Prüfseite | nie committet |
 
 Die Handlisten sind ein Original, kein Puffer — ohne sie lässt sich eine Kategorie nicht neu erzeugen.
 Darum werden sie verschlüsselt committet.
@@ -168,13 +168,13 @@ Pro Land:
    die Punktzahl verriete die Größe (*Rundengeheimnis*).
 4. `metresPerUnit` = projizierte Länge der längsten Seite / 1000.
 
-**Tiere.** Die Handliste in `.local/match-scale-input/animals.yaml` trägt je Tier Name, PhyloPic-UUID und
+**Tiere.** Die Handliste in `.local/games/match-scale/input/animals.yaml` trägt je Tier Name, PhyloPic-UUID und
 **ein Maß an der Silhouette** — welche Achse (`width` oder `height`) und wie viele Meter sie in
 Wirklichkeit ist. Das Skript holt das SVG, glättet Transformationen in einen Pfad, normiert, rechnet
 `metresPerUnit` aus dem Maß und übernimmt die Lizenzangabe als `attribution`. Ob dafür eine
 Abhängigkeit nötig ist (SVG-Pfad-Transformationen), entscheidet der Bauende.
 
-**Prüfseite.** Das Skript schreibt eine HTML-Seite nach `.local/match-scale-raw/` — jede Silhouette
+**Prüfseite.** Das Skript schreibt eine HTML-Seite nach `.local/games/match-scale/raw/` — jede Silhouette
 so, wie der Spieler sie sieht, mit Name und Maß, plus einige gezogene Paare im richtigen Verhältnis.
 Markiert werden: winzige Länder, Pfade mit sehr vielen Punkten, Tiere ohne Lizenzangabe. Das ist der
 Prüfschritt; gestrichen wird von Hand in der Eingabe.

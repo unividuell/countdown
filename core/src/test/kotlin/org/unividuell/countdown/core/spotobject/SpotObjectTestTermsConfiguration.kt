@@ -23,7 +23,7 @@ class SpotObjectTestTermsConfiguration {
 
     @Bean
     fun spotObjectTestTermsPropertyRegistrar() = DynamicPropertyRegistrar { registry ->
-        val path = ClassPathResource("spot-object-terms.test.yaml").file.absolutePath
+        val path = ClassPathResource("games/spot-object/terms.test.yaml").file.absolutePath
         registry.add("app.spot-object.terms-path") { path }
         // The deployed profiles read the signing secret from an environment variable that no test
         // sets, so the unresolved `${SPOT_OBJECT_SIGNING_SECRET}` reaches the binder verbatim — and

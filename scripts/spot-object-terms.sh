@@ -64,11 +64,11 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 
 GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
 MAIN_ROOT="$(dirname "$GIT_COMMON_DIR")"
-PLAINTEXT="$MAIN_ROOT/.local/spot-object-terms.yaml"
+PLAINTEXT="$MAIN_ROOT/.local/games/spot-object/terms.yaml"
 
 CHECKOUT_ROOT="$(git rev-parse --show-toplevel)"
 CONFIG="$CHECKOUT_ROOT/.sops.yaml"
-CIPHER="$CHECKOUT_ROOT/deploy/spot-object-terms.sops.yaml"
+CIPHER="$CHECKOUT_ROOT/deploy/games/spot-object/terms.sops.yaml"
 
 [ -f "$CONFIG" ] || unavailable "No .sops.yaml found at $CONFIG."
 

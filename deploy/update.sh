@@ -20,6 +20,17 @@ BASE="https://raw.githubusercontent.com/unividuell/countdown/$REF/deploy"
 # a staging run must not leave prod driving an unreleased script.
 STABLE="https://raw.githubusercontent.com/unividuell/countdown/main/deploy"
 
+# Downloads $BASE/$1 to $3; on a 404 retries the pre-move path $BASE/$2. update.sh runs from main
+# while the ciphers come from $REF, so this one script deploys both layouts.
+# TODO: drop the fallback once deploy/games/ has reached main.
+fetch_cipher() {
+  FETCH_CODE="$(curl -sS -w '%{http_code}' "$BASE/$1" -o "$3")" || FETCH_CODE="000"
+  if [ "$FETCH_CODE" = "404" ]; then
+    FETCH_CODE="$(curl -sS -w '%{http_code}' "$BASE/$2" -o "$3")" || FETCH_CODE="000"
+  fi
+  [ "$FETCH_CODE" = "200" ]
+}
+
 # Downloads the encrypted Guess Hue dataset for $TARGET and decrypts it into place, so the main
 # flow below just reads as "prepare the dataset, then bring the stack up".
 prepare_guess_hue_dataset() {
@@ -37,8 +48,8 @@ prepare_guess_hue_dataset() {
   GUESS_HUE_DATASET_FILE="./secrets/guess-hue-dataset.$TARGET.yaml"
   export GUESS_HUE_DATASET_FILE
   DATASET_SOPS_FILE="guess-hue-dataset.$TARGET.sops.yaml"
-  if ! curl -fsSL "$BASE/guess-hue-dataset.sops.yaml" -o "$DATASET_SOPS_FILE"; then
-    echo "Could not download guess-hue-dataset.sops.yaml from branch '$REF' ($BASE)." >&2
+  if ! fetch_cipher games/guess-hue/dataset.sops.yaml guess-hue-dataset.sops.yaml "$DATASET_SOPS_FILE"; then
+    echo "Could not download games/guess-hue/dataset.sops.yaml from branch '$REF' ($BASE): HTTP $FETCH_CODE." >&2
     echo "The encrypted Guess Hue dataset must exist on that branch before update.sh can run." >&2
     exit 1
   fi
@@ -79,12 +90,12 @@ prepare_spot_object_terms() {
   SPOT_OBJECT_TERMS_FILE="./secrets/spot-object-terms.$TARGET.yaml"
   export SPOT_OBJECT_TERMS_FILE
   TERMS_SOPS_FILE="spot-object-terms.$TARGET.sops.yaml"
-  if ! curl -fsSL "$BASE/spot-object-terms.sops.yaml" -o "$TERMS_SOPS_FILE"; then
-    echo "Missing prerequisite: deploy/spot-object-terms.sops.yaml is not on branch '$REF' ($BASE)." >&2
+  if ! fetch_cipher games/spot-object/terms.sops.yaml spot-object-terms.sops.yaml "$TERMS_SOPS_FILE"; then
+    echo "Missing prerequisite: deploy/games/spot-object/terms.sops.yaml is not on branch '$REF' ($BASE): HTTP $FETCH_CODE." >&2
     echo "Nothing was deployed and the running stack is untouched." >&2
     echo "The curated Weltanschauung term list has to be encrypted and committed to that branch first:" >&2
-    echo "  paste it into .local/spot-object-terms.yaml in the main checkout," >&2
-    echo "  run ./scripts/spot-object-terms.sh encrypt, and commit deploy/spot-object-terms.sops.yaml." >&2
+    echo "  paste it into .local/games/spot-object/terms.yaml in the main checkout," >&2
+    echo "  run ./scripts/spot-object-terms.sh encrypt, and commit deploy/games/spot-object/terms.sops.yaml." >&2
     echo "See deploy/README.md, 'Prerequisite: the Weltanschauung term list'." >&2
     exit 1
   fi
@@ -106,7 +117,7 @@ prepare_spot_object_terms() {
 }
 
 # Downloads and decrypts the Augenmaß category files for $TARGET: one cipher per category
-# listed in match-scale/categories.txt, decrypted into a directory the container mounts.
+# listed in games/match-scale/categories.txt, decrypted into a directory the container mounts.
 # Same reasoning as the two functions above; only the differences are commented.
 prepare_match_scale_dataset() {
   # update.sh comes from main, compose.yaml from $REF: a branch without the list (HTTP 404) has no
@@ -119,7 +130,7 @@ prepare_match_scale_dataset() {
 
   # Leftovers (list, half-decrypted directory, cipher copy) must not survive any exit path.
   trap 'rm -rf "$CATEGORIES_FILE" "$MATCH_SCALE_NEW" "$CATEGORY_SOPS_FILE"' EXIT
-  HTTP_CODE="$(curl -sS -w '%{http_code}' "$BASE/match-scale/categories.txt" -o "$CATEGORIES_FILE")" || HTTP_CODE="000"
+  HTTP_CODE="$(curl -sS -w '%{http_code}' "$BASE/games/match-scale/categories.txt" -o "$CATEGORIES_FILE")" || HTTP_CODE="000"
   case "$HTTP_CODE" in
     200) ;;
     404)
@@ -127,7 +138,7 @@ prepare_match_scale_dataset() {
       return 0
       ;;
     *)
-      echo "Could not download match-scale/categories.txt from branch '$REF' ($BASE): HTTP $HTTP_CODE." >&2
+      echo "Could not download games/match-scale/categories.txt from branch '$REF' ($BASE): HTTP $HTTP_CODE." >&2
       exit 1
       ;;
   esac
@@ -147,13 +158,13 @@ prepare_match_scale_dataset() {
     # The key becomes a file name: nothing but [a-z0-9-] may reach the path.
     case "$KEY" in
       *[!a-z0-9-]*)
-        echo "Invalid match-scale category '$KEY' in categories.txt on '$REF'." >&2
+        echo "Invalid match-scale category '$KEY' in games/match-scale/categories.txt on '$REF'." >&2
         umask "$OLD_UMASK"
         exit 1
         ;;
     esac
-    if ! curl -fsSL "$BASE/match-scale/$KEY.sops.yaml" -o "$CATEGORY_SOPS_FILE"; then
-      echo "Could not download match-scale/$KEY.sops.yaml from branch '$REF' ($BASE)." >&2
+    if ! curl -fsSL "$BASE/games/match-scale/categories/$KEY.sops.yaml" -o "$CATEGORY_SOPS_FILE"; then
+      echo "Could not download games/match-scale/categories/$KEY.sops.yaml from branch '$REF' ($BASE)." >&2
       umask "$OLD_UMASK"
       exit 1
     fi
@@ -169,7 +180,7 @@ prepare_match_scale_dataset() {
   umask "$OLD_UMASK"
 
   if [ "$KEY_COUNT" -eq 0 ]; then
-    echo "match-scale/categories.txt on '$REF' lists no categories." >&2
+    echo "games/match-scale/categories.txt on '$REF' lists no categories." >&2
     exit 1
   fi
 

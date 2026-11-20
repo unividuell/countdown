@@ -20,7 +20,8 @@
  *   node scripts/match-scale-dataset.mts selftest
  *
  * The input holds JSON (valid YAML): {"exclude": ["<ADM0_A3>", …]}. Input, output and review page
- * are plaintext game content: they live in the main checkout's .local/, never in the repo.
+ * are plaintext game content: they live in the main checkout's .local/games/match-scale/
+ * (input/, categories/, raw/), never in the repo.
  *
  * Node 24, no dependencies: types are stripped by Node, the YAML is written by hand.
  */

@@ -39,6 +39,6 @@ class SpotObjectTermsLoader(private val properties: SpotObjectProperties) {
     }
 
     companion object {
-        const val SAMPLE_RESOURCE = "/spot-object-terms.sample.yaml"
+        const val SAMPLE_RESOURCE = "/games/spot-object/terms.sample.yaml"
     }
 }
