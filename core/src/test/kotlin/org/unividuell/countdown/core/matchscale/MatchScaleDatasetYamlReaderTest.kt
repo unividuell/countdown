@@ -90,6 +90,42 @@ class MatchScaleDatasetYamlReaderTest {
     }
 
     @Test
+    fun `reads a measure's span`() {
+        val measure = read(
+            file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q, span: [120, 870.5] }")),
+        ).entries.single().measure
+
+        measure?.span shouldBe MatchScaleSpan(from = 120.0, to = 870.5)
+    }
+
+    @Test
+    fun `span is null when the measure has none`() {
+        read(file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q }")))
+            .entries.single().measure?.span shouldBe null
+    }
+
+    @Test
+    fun `rejects a malformed span`() {
+        listOf(
+            "[870, 120]",
+            "[500, 500]",
+            "[-1, 500]",
+            "[0, 1000.5]",
+            "[0, .nan]",
+            "[0]",
+            "[0, 500, 900]",
+            "[a, b]",
+            "500",
+        ).forEach { span ->
+            rejects(
+                file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q, span: $span }")),
+                "Beispielform Alpha",
+                "span",
+            )
+        }
+    }
+
+    @Test
     fun `measure is null when the entry has none`() {
         read(file()).entries.single().measure shouldBe null
     }

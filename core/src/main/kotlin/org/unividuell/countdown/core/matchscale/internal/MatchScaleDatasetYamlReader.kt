@@ -4,6 +4,7 @@ import org.unividuell.countdown.core.matchscale.MatchScaleAxis
 import org.unividuell.countdown.core.matchscale.MatchScaleCategory
 import org.unividuell.countdown.core.matchscale.MatchScaleEntry
 import org.unividuell.countdown.core.matchscale.MatchScaleMeasure
+import org.unividuell.countdown.core.matchscale.MatchScaleSpan
 import org.yaml.snakeyaml.Yaml
 import java.io.InputStream
 import kotlin.math.abs
@@ -85,7 +86,10 @@ object MatchScaleDatasetYamlReader {
         )
     }
 
-    /** Optional: `{ axis: length|height, metres: 2.3, source: "https://…" }`. Absent → null; present → complete. */
+    /**
+     * Optional: `{ axis: length|height, metres: 2.3, source: "https://…", span: [120, 870] }`.
+     * Absent → null; present → complete, except `span`, which is optional itself.
+     */
     private fun measure(item: Any, label: String): MatchScaleMeasure {
         val map = item as? Map<*, *>
             ?: throw MatchScaleDatasetException("$label: measure must be a mapping")
@@ -99,7 +103,28 @@ object MatchScaleDatasetYamlReader {
         val source = (map["source"] as? String)?.trim().orEmpty()
         if (source.isEmpty()) throw MatchScaleDatasetException("$label: measure.source is blank")
 
-        return MatchScaleMeasure(axis = axis, metres = metres, source = source)
+        return MatchScaleMeasure(
+            axis = axis,
+            metres = metres,
+            source = source,
+            span = map["span"]?.let { span(item = it, label = label) },
+        )
+    }
+
+    /** `[from, to]`: two finite numbers within the normalised side, from < to. */
+    private fun span(item: Any, label: String): MatchScaleSpan {
+        // Anything but two numbers becomes NaN, which fails every comparison below.
+        val (from, to) = (item as? List<*>)
+            ?.takeIf { it.size == 2 }
+            ?.map { (it as? Number)?.toDouble() ?: Double.NaN }
+            ?: listOf(Double.NaN, Double.NaN)
+
+        if (!(from >= 0.0 && to <= NORMALISED_SIDE && from < to)) {
+            throw MatchScaleDatasetException(
+                "$label: measure.span must be [from, to] with 0 <= from < to <= 1000, was $item",
+            )
+        }
+        return MatchScaleSpan(from = from, to = to)
     }
 
     private fun positive(map: Map<*, *>, field: String, label: String): Double {

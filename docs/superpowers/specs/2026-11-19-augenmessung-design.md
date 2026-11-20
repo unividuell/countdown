@@ -108,12 +108,24 @@ entries:
       axis: length             # length (Breite der Bounding-Box) | height
       metres: 412500
       source: "https://example.org/beispielding-alpha"
+      span: [0, 1000]          # optional: die Strecke des Maßes entlang der Achse, normiert
     attribution: "Beispielkünstler, CC BY"   # pro Eintrag, optional, überschreibt die Kategorie
 ```
 
 **`measure`** hält das Maß samt Quelle neben dem Eintrag, damit es beisammen und später nachprüfbar
 ist. Von Hand gemessene Kategorien (Tiere) tragen es, erzeugte (Länder) nicht. Es ist so geheim wie
 `metresPerUnit` (*Rundengeheimnis*).
+
+**Gleiche Maße, an der richtigen Stelle.** Tiere messen überall dasselbe: `length` ist die
+Kopf-Rumpf-Länge (Nasenspitze bis Schwanzansatz; ohne Schwanz im eigentlichen Sinn — Fisch, Vogel,
+Wal — die Gesamtlänge der Quelle), `height` die Schulterhöhe (Boden bis Widerrist; ohne Widerrist —
+Vogel, Giraffe — die Gesamthöhe). Wert ist die Mitte der Spanne Erwachsener, ein angegebener
+Mittelwert geht vor; zeigt die Silhouette eindeutig ein Geschlecht (Geweih, Mähne), gilt dessen
+Spanne. Ein Schwanz steht nicht gestreckt, ein Kopf überragt den Widerrist: darum hängt das Maß an
+`span: [from, to]`, der Strecke in normierten Einheiten (x bzw. y, y nach unten), die es abdeckt —
+Nasenspitze und Schwanzansatz, Boden und Widerrist. `metresPerUnit = metres / (to − from)`; ohne
+`span` die ganze Bounding-Box-Seite. Die Punkte werden auf einem Raster abgelesen und eingezeichnet
+geprüft. `span` bleibt auf dem Server: die Lösung trägt nur `axis`, `metres`, `source`.
 
 **Klartext in `.local/games/match-scale/categories/<category>.yaml` (Hauptcheckout), über sops nach
 `deploy/games/match-scale/categories/<category>.sops.yaml` — alle Kategorien, auch die aus gemeinfreien Daten.** Einheitlich
@@ -145,7 +157,8 @@ ungelistete Datei wird mit einer Infozeile ignoriert. Ohne Liste im Verzeichnis 
 
 **Der Loader prüft nur Mechanisches:** Pfad nicht leer, `width`/`height`/`metresPerUnit` endlich und
 > 0, `max(width, height) == 1000`, Schlüssel eindeutig; ein vorhandenes `measure` vollständig
-(`axis` `length` oder `height`, `metres` endlich und > 0, `source` nicht leer).
+(`axis` `length` oder `height`, `metres` endlich und > 0, `source` nicht leer, ein vorhandenes `span`
+zwei endliche Zahlen mit 0 ≤ `from` < `to` ≤ 1000).
 
 **Deployment.** `update.sh` kommt immer von `main`, `compose.yaml` vom deployten Branch
 (`deployment-server.md`). Darum steht die Liste der Kategorien **nicht in `update.sh`**, sondern in einer

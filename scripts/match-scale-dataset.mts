@@ -21,8 +21,14 @@
  *                                           curves flattened       and holes       round, path
  *
  *   metresPerUnit = metres / the drawn width (axis "length") or height, whichever the hand list
- *   measured. The measure itself (axis, metres, source) is written alongside, to be shown in the
- *   reveal and researched again.
+ *   measured — or, with a span, / the stretch of that axis the measure covers. The measure
+ *   itself (axis, metres, source, span) is written alongside, to be shown in the reveal and
+ *   researched again.
+ *
+ *         from              to        a length span: nose tip to tail base, in normalised x
+ *          ├────────────────┤          (a height span: ground to withers, in normalised y, y down)
+ *         ▄█▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█▄▄▄▄
+ *          █ █          █ █     tail outside the span
  *
  * Usage:
  *   node scripts/match-scale-dataset.mts countries --source <ne_50m_admin_0_countries.geojson>
@@ -33,9 +39,11 @@
  *
  * The countries input holds JSON (valid YAML): {"exclude": ["<ADM0_A3>", …]}. The animals input
  * too: {"category", "displayName", "entries": [{"name", "phylopic": "<image uuid>",
- * "axis": "length" | "height", "metres", "source"}]}. Input, output and review page are plaintext
- * game content: they live in the main checkout's .local/games/match-scale/ (input/, categories/,
- * raw/), never in the repo.
+ * "axis": "length" | "height", "metres", "source", "span"?: [from, to], "kind"?}]}; the span is in
+ * the generated path's units (0…1000, y down) along the measured axis, "kind" a note on what was
+ * measured (e.g. "Kopf-Rumpf-Länge", "Schulterhöhe") that the script ignores. Input, output and
+ * review page are plaintext game content: they live in the main checkout's
+ * .local/games/match-scale/ (input/, categories/, raw/), never in the repo.
  *
  * Node 24, no dependencies: types are stripped by Node, the YAML and SVG are handled by hand.
  */
@@ -80,8 +88,16 @@ type Shape = {
   points: number;
 };
 
-/** The real size one axis of the drawing stands for, and where that size was looked up. */
-type Measure = { axis: "length" | "height"; metres: number; source: string };
+/**
+ * The real size one axis of the drawing stands for, and where that size was looked up. [span]: the
+ * stretch of that axis it covers, in normalised units; absent, the whole bbox side.
+ */
+type Measure = {
+  axis: "length" | "height";
+  metres: number;
+  source: string;
+  span?: [number, number];
+};
 
 /** What every category writes and the review page pairs: a named, drawn silhouette. */
 type Drawn = Shape & { name: string; attribution?: string; measure?: Measure };
@@ -507,6 +523,9 @@ function categoryYaml(
         `      axis: ${e.measure.axis}`,
         `      metres: ${e.measure.metres}`,
         `      source: ${JSON.stringify(e.measure.source)}`,
+        ...(e.measure.span
+          ? [`      span: [${e.measure.span.join(", ")}]`]
+          : []),
       );
     if (e.attribution)
       lines.push(`    attribution: ${JSON.stringify(e.attribution)}`);
@@ -1069,6 +1088,7 @@ type AnimalInput = {
   axis: Measure["axis"];
   metres: number;
   source: string;
+  span?: [number, number];
 };
 
 type Animal = Drawn & {
@@ -1144,10 +1164,11 @@ function readAnimalInput(path: string) {
       Number.isFinite(e.metres) &&
       e.metres > 0 &&
       typeof e.source === "string" &&
-      e.source.startsWith("https://");
+      e.source.startsWith("https://") &&
+      (e.span === undefined || isSpan(e.span));
     if (!ok)
       fail(
-        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "length"|"height", "metres": > 0, "source": "https://…"}`,
+        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "length"|"height", "metres": > 0, "source": "https://…", "span"?: [from, to] with 0 <= from < to <= ${SIDE}}`,
       );
   });
 
@@ -1156,6 +1177,28 @@ function readAnimalInput(path: string) {
     displayName: string;
     entries: AnimalInput[];
   };
+}
+
+const isSpan = (span: unknown): span is [number, number] =>
+  Array.isArray(span) &&
+  span.length === 2 &&
+  span.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+  span[0] >= 0 &&
+  span[0] < span[1] &&
+  span[1] <= SIDE;
+
+/**
+ * Metres per normalised unit from one measure: its metres over the stretch it covers. A 2 m
+ * shoulder height spanning y 380…1000 of a 1000-high drawing → 2 / 620, not 2 / 1000.
+ */
+function metresPerUnitOf(drawn: Shape, measure: Measure): number {
+  const side = measure.axis === "length" ? drawn.width : drawn.height;
+  if (measure.span && measure.span[1] > side)
+    throw new Error(
+      `span ${measure.span.join("…")} reaches past the drawn ${measure.axis} ${side}`,
+    );
+  const extent = measure.span ? measure.span[1] - measure.span[0] : side;
+  return measure.metres / extent;
 }
 
 async function animals(args: Record<string, string>) {
@@ -1201,15 +1244,26 @@ async function animals(args: Record<string, string>) {
 
     // The hand list measured one axis of this drawing; the other follows from it.
     // Seen from the side, an animal's length is the drawing's width.
-    const extent = e.axis === "length" ? drawn.width : drawn.height;
+    const measure: Measure = {
+      axis: e.axis,
+      metres: e.metres,
+      source: e.source,
+      ...(e.span ? { span: e.span } : {}),
+    };
+    let metresPerUnit: number;
+    try {
+      metresPerUnit = metresPerUnitOf(drawn, measure);
+    } catch (error) {
+      fail(`entry #${index}: ${(error as Error).message}`);
+    }
     entries.push({
       ...drawn,
-      metresPerUnit: e.metres / extent,
+      metresPerUnit,
       name: e.name.trim(),
       attribution: licence.byline
         ? `Silhouette: ${who}, ${licence.label} (PhyloPic)`
         : `Silhouette: ${who} (PhyloPic)`,
-      measure: { axis: e.axis, metres: e.metres, source: e.source },
+      measure,
       licence: licence.label,
       contributor,
       uuid: e.phylopic,
@@ -1590,6 +1644,71 @@ function selftest() {
       '    measure:\n      axis: length\n      metres: 2.3\n      source: "https://example.org/beispieltier"\n',
     ),
     "the measure is missing from the category file",
+  );
+
+  // A span half the drawn width stands for the same metres: twice the metres per unit.
+  const spanned = { width: 1000, height: 400 } as Shape;
+  const whole = metresPerUnitOf(spanned, {
+    axis: "length",
+    metres: 2,
+    source: "https://example.org/beispieltier",
+  });
+  const half = metresPerUnitOf(spanned, {
+    axis: "length",
+    metres: 2,
+    source: "https://example.org/beispieltier",
+    span: [250, 750],
+  });
+  check(Math.abs(half / whole - 2) < 1e-12, `span halves to ${half / whole}`);
+
+  // A height span is read along y and may not reach past the drawn height.
+  check(
+    Math.abs(
+      metresPerUnitOf(spanned, {
+        axis: "height",
+        metres: 1,
+        source: "https://example.org/beispieltier",
+        span: [200, 400],
+      }) -
+        1 / 200,
+    ) < 1e-12,
+    "a height span is not read along y",
+  );
+  let overreach = false;
+  try {
+    metresPerUnitOf(spanned, {
+      axis: "height",
+      metres: 1,
+      source: "https://example.org/beispieltier",
+      span: [200, 500],
+    });
+  } catch {
+    overreach = true;
+  }
+  check(overreach, "a span past the drawn height was accepted");
+
+  // The span travels into the category file inside the measure.
+  const withSpan = categoryYaml("example", "Beispiel", "Quelle", [
+    {
+      ...holed,
+      name: "Beispieltier",
+      measure: {
+        axis: "length",
+        metres: 2.3,
+        source: "https://example.org/beispieltier",
+        span: [120, 870],
+      },
+    },
+  ]);
+  check(
+    withSpan.includes(
+      '      source: "https://example.org/beispieltier"\n      span: [120, 870]\n',
+    ),
+    "the span is missing from the category file",
+  );
+  check(
+    !isSpan([870, 120]) && !isSpan([0, 1001]) && !isSpan([0]),
+    "a bad span passed",
   );
 
   console.log("selftest ok");
