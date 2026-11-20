@@ -33,14 +33,18 @@ import {
   type Placement,
   type Submitted,
 } from './gestures'
+import MatchScaleLegend from './MatchScaleLegend.vue'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
 import ScaleField, { type Camera, type GrowTiming, type Outline } from './ScaleField.vue'
 import type { ScoreboardRow } from './scoreboard'
-import type { MatchScalePayload } from './types'
+import type { MatchScalePayload, Measure } from './types'
 
 const props = defineProps<{
   payload: MatchScalePayload
   factor: number
+  /** The real sizes behind the factor, named under the field; `null` where the dataset has none. */
+  measureA: Measure | null
+  measureB: Measure | null
   /** `null` without a tip of my own: history, onlookers. */
   myScale: number | null
   myColorHex: string
@@ -199,27 +203,11 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
 
   return { x: p.x, y: p.y, w, h }
 }
-
-/** Both silhouettes of a category often share one credit; show it once. */
-const attributions = computed(() => [
-  ...new Set(
-    [props.payload.a.attribution, props.payload.b.attribution].filter(
-      (text): text is string => text !== null,
-    ),
-  ),
-])
 </script>
 
 <template>
   <div data-test="match-scale-reveal" class="flex flex-col gap-6">
     <div class="flex flex-col gap-3">
-      <div class="flex justify-between gap-4 text-sm font-semibold">
-        <span class="truncate" :style="{ color: A_COLOR }">{{ props.payload.a.name }}</span>
-        <span class="truncate text-end" :style="{ color: B_COLOR }">
-          {{ props.payload.b.name }}
-        </span>
-      </div>
-
       <ScaleField
         :a="props.payload.a"
         :b="props.payload.b"
@@ -236,14 +224,14 @@ const attributions = computed(() => [
         :camera="camera"
       />
 
-      <p
-        v-for="text in attributions"
-        :key="text"
-        data-test="match-scale-attribution"
-        class="text-xs text-on-surface-variant"
-      >
-        {{ text }}
-      </p>
+      <MatchScaleLegend
+        :a="props.payload.a"
+        :b="props.payload.b"
+        :a-color="A_COLOR"
+        :b-color="B_COLOR"
+        :measure-a="props.measureA"
+        :measure-b="props.measureB"
+      />
     </div>
 
     <MatchScaleScoreboard

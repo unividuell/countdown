@@ -3,10 +3,11 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { FIELD_PX, initialPlacements, sizeAt } from '../gestures'
+import MatchScaleLegend from '../MatchScaleLegend.vue'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
 import ScaleField from '../ScaleField.vue'
 import { scoreboardRows } from '../scoreboard'
-import type { MatchScalePayload } from '../types'
+import type { MatchScalePayload, Measure } from '../types'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { playCount } from '../countSound'
 import { countTones, growMs } from '../countTones'
@@ -53,6 +54,8 @@ function mountReveal(over: Record<string, unknown> = {}) {
     props: {
       payload: PAYLOAD,
       factor: 1.6,
+      measureA: null,
+      measureB: null,
       myScale: 1.3,
       myColorHex: ME,
       mineUserId: mine,
@@ -350,25 +353,23 @@ describe('MatchScaleReveal', () => {
     expect(field(wrapper).props('outlines')).toEqual([])
   })
 
-  it('names the sources under the field', () => {
-    const payload = {
-      ...PAYLOAD,
-      b: { ...PAYLOAD.b, attribution: 'Bild: Jemand, CC BY' },
-    }
+  it('names A and B with their measures under the field', () => {
+    const measureA: Measure = { axis: 'length', metres: 2.3, source: 'https://example.org/a' }
+    const wrapper = mountReveal({ measureA })
+    const legend = wrapper.getComponent(MatchScaleLegend)
 
-    expect(mountReveal({ payload }).text()).toContain('Bild: Jemand, CC BY')
-  })
-
-  it('names a credit shared by A and B once', () => {
-    const credit = 'Bild: Jemand, CC BY'
-    const payload = {
-      ...PAYLOAD,
-      a: { ...PAYLOAD.a, attribution: credit },
-      b: { ...PAYLOAD.b, attribution: credit },
-    }
-    const wrapper = mountReveal({ payload })
-
-    expect(wrapper.findAll('[data-test="match-scale-attribution"]')).toHaveLength(1)
+    expect(
+      field(wrapper).element.compareDocumentPosition(legend.element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(legend.props()).toMatchObject({
+      a: PAYLOAD.a,
+      b: PAYLOAD.b,
+      aColor: 'var(--color-on-surface-variant)',
+      bColor: 'var(--color-match-scale-b)',
+      measureA,
+      measureB: null,
+    })
   })
 
   it('after the growth B stops easing, so a refit moves it with the rest', async () => {

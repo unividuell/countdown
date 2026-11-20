@@ -74,13 +74,16 @@ describe('MatchScaleGame', () => {
   })
 
   it('a solution replaces the board', () => {
+    const measure = { axis: 'height', metres: 0.45, source: 'https://example.org/b' }
     const wrapper = mountGame({
       myGuess: { scale: 1.3 },
-      solution: { factor: 1.6, toleranceFactor: 1.1 },
+      solution: { factor: 1.6, toleranceFactor: 1.1, a: null, b: measure },
     })
 
     expect(wrapper.findComponent(MatchScaleBoard).exists()).toBe(false)
     expect(wrapper.findComponent(MatchScaleReveal).props('factor')).toBe(1.6)
+    expect(wrapper.findComponent(MatchScaleReveal).props('measureA')).toBeNull()
+    expect(wrapper.findComponent(MatchScaleReveal).props('measureB')).toEqual(measure)
     expect(wrapper.findComponent(MatchScaleReveal).props('from')).toBeNull()
   })
 

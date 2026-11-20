@@ -46,13 +46,38 @@ describe('asMatchScalePayload', () => {
   })
 })
 
+const MEASURE = { axis: 'length', metres: 2.3, source: 'https://example.org/q' }
+
 describe('asMatchScaleSolution', () => {
-  it('accepts a factor with or without a tolerance', () => {
-    expect(asMatchScaleSolution({ factor: 2.5, toleranceFactor: 1.1 })).toEqual({
+  it('accepts a factor with or without a tolerance and measures', () => {
+    expect(
+      asMatchScaleSolution({ factor: 2.5, toleranceFactor: 1.1, a: MEASURE, b: null }),
+    ).toEqual({
       factor: 2.5,
       toleranceFactor: 1.1,
+      a: MEASURE,
+      b: null,
     })
     expect(asMatchScaleSolution({ factor: 2.5, toleranceFactor: null })?.toleranceFactor).toBeNull()
+  })
+
+  it.each([
+    ['missing', undefined],
+    ['not an object', 'x'],
+    ['unknown axis', { ...MEASURE, axis: 'width' }],
+    ['zero metres', { ...MEASURE, metres: 0 }],
+    ['NaN metres', { ...MEASURE, metres: NaN }],
+    ['numeric source', { ...MEASURE, source: 3 }],
+  ])('narrows a junk measure to null, keeps the round: %s', (_label, measure) => {
+    const solution = asMatchScaleSolution({
+      factor: 2,
+      toleranceFactor: null,
+      a: measure,
+      b: MEASURE,
+    })
+
+    expect(solution?.a).toBeNull()
+    expect(solution?.b).toEqual(MEASURE)
   })
 
   it.each([

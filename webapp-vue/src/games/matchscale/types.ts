@@ -20,9 +20,19 @@ export interface MatchScalePayload {
   toleranceFactor: number | null
 }
 
+/** The real size behind a silhouette: its `axis` is `metres` long, per `source`. Solution only. */
+export interface Measure {
+  axis: 'length' | 'height'
+  metres: number
+  source: string
+}
+
 export interface MatchScaleSolution {
   factor: number
   toleranceFactor: number | null
+  /** `null` where the dataset has no measure, or it arrived as junk. */
+  a: Measure | null
+  b: Measure | null
 }
 
 export interface MatchScaleOutcome {
@@ -48,7 +58,12 @@ export function asMatchScaleSolution(value: unknown): MatchScaleSolution | null 
   if (raw === null || !positive(raw.factor)) return null
   if (raw.toleranceFactor !== null && !positive(raw.toleranceFactor)) return null
 
-  return { factor: raw.factor, toleranceFactor: raw.toleranceFactor }
+  return {
+    factor: raw.factor,
+    toleranceFactor: raw.toleranceFactor,
+    a: asMeasure(raw.a),
+    b: asMeasure(raw.b),
+  }
 }
 
 export function asMatchScaleOutcome(value: unknown): MatchScaleOutcome | null {
@@ -76,6 +91,18 @@ function asSilhouette(value: unknown): Silhouette | null {
   if (attribution !== null && typeof attribution !== 'string') return null
 
   return { name, path, width, height, attribution }
+}
+
+/** A junk measure costs only its line in the legend, not the round. */
+function asMeasure(value: unknown): Measure | null {
+  const raw = record(value)
+  if (raw === null) return null
+
+  const { axis, metres, source } = raw
+  if (axis !== 'length' && axis !== 'height') return null
+  if (!positive(metres) || typeof source !== 'string') return null
+
+  return { axis, metres, source }
 }
 
 function record(value: unknown): Record<string, unknown> | null {

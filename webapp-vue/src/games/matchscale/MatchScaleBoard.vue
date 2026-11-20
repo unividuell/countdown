@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Playing: both names above the field, the field, and under it the hold that submits B's scale.
+ * Playing: the field, both names under it, and the hold that submits B's scale.
  *
  * B's placement and the view are saved as a draft after every change. While the hold's ring rises
  * the field is greyed and takes no input, and a finger on it cancels the hold.
@@ -26,6 +26,7 @@ import {
   type View,
 } from './gestures'
 import MatchScaleBriefing from './MatchScaleBriefing.vue'
+import MatchScaleLegend from './MatchScaleLegend.vue'
 import ScaleField from './ScaleField.vue'
 import type { MatchScalePayload } from './types'
 
@@ -121,15 +122,6 @@ function submit(): void {
 <template>
   <div data-test="match-scale-board" class="flex flex-col gap-6">
     <div class="flex flex-col gap-3">
-      <div class="flex justify-between gap-4 text-sm font-semibold">
-        <span data-test="match-scale-label-a" class="truncate" :style="{ color: A_COLOR }">
-          {{ props.payload.a.name }}
-        </span>
-        <span data-test="match-scale-label-b" class="truncate text-end" :style="{ color: B_COLOR }">
-          {{ props.payload.b.name }}
-        </span>
-      </div>
-
       <section
         data-test="match-scale-field"
         class="relative"
@@ -158,6 +150,15 @@ function submit(): void {
         />
         <HoldLock v-if="locked" data-test="match-scale-lock" :progress="holdProgress" />
       </section>
+
+      <MatchScaleLegend
+        :a="props.payload.a"
+        :b="props.payload.b"
+        :a-color="A_COLOR"
+        :b-color="B_COLOR"
+        :measure-a="null"
+        :measure-b="null"
+      />
 
       <!-- `HoldButton` fills its parent and has no size of its own. -->
       <div class="flex justify-center">

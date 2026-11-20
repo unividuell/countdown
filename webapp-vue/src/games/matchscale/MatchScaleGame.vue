@@ -92,6 +92,8 @@ function onGuess(value: { scale: number }, from: Submitted): void {
     v-else-if="solution"
     :payload="payload"
     :factor="solution.factor"
+    :measure-a="solution.a"
+    :measure-b="solution.b"
     :my-scale="myScale"
     :my-color-hex="myColorHex"
     :mine-user-id="props.mineUserId"

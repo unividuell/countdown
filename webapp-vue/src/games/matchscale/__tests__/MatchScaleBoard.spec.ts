@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import { draftKey, loadDraft, saveDraft } from '@/games/matchscale/draft'
 import { baseCellPx, FIELD_PX, type View } from '@/games/matchscale/gestures'
 import MatchScaleBoard from '@/games/matchscale/MatchScaleBoard.vue'
+import MatchScaleLegend from '@/games/matchscale/MatchScaleLegend.vue'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { MatchScalePayload } from '@/games/matchscale/types'
 import HoldButton from '@/ui/HoldButton.vue'
@@ -35,17 +36,22 @@ function mountBoard(over: Record<string, unknown> = {}) {
 describe('MatchScaleBoard', () => {
   beforeEach(() => localStorage.clear())
 
-  it('names A and B outside the field, each in its colour', () => {
+  it('names A and B under the field, each in its colour, with no measure', () => {
     const wrapper = mountBoard()
     const field = wrapper.get('[data-test="match-scale-field"]').element
+    const legend = wrapper.getComponent(MatchScaleLegend)
 
-    const a = wrapper.get<HTMLElement>('[data-test="match-scale-label-a"]')
-    const b = wrapper.get<HTMLElement>('[data-test="match-scale-label-b"]')
-    expect(a.text()).toBe('Alpha')
-    expect(b.text()).toBe('Beta')
-    expect(a.element.style.color).toBe('var(--color-on-surface-variant)')
-    expect(b.element.style.color).toBe('var(--color-match-scale-b)')
-    expect(field.contains(a.element) || field.contains(b.element)).toBe(false)
+    expect(
+      field.compareDocumentPosition(legend.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(legend.props()).toMatchObject({
+      a: PAYLOAD.a,
+      b: PAYLOAD.b,
+      aColor: 'var(--color-on-surface-variant)',
+      bColor: 'var(--color-match-scale-b)',
+      measureA: null,
+      measureB: null,
+    })
 
     const scale = wrapper.getComponent(ScaleField)
     expect(scale.props('aColor')).toBe('var(--color-on-surface-variant)')
