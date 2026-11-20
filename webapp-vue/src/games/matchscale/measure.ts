@@ -1,4 +1,5 @@
 import type { Measure, MeasureKind } from './types'
+import { formatLength, inUnit, type Unit } from './units'
 
 const AXIS: Record<Measure['axis'], string> = { length: 'Länge', height: 'Höhe' }
 
@@ -10,15 +11,9 @@ const KIND: Record<MeasureKind, string> = {
 }
 
 /**
- * A measure as the legend reads it: „2,3 m Länge“, „1,05 m Kopf-Rumpf“, „45 cm Höhe“; a measure without kind names its axis. Below a metre in whole
- * centimetres, below one centimetre with one decimal („0,4 cm“) rather than „0 cm“.
+ * A measure as the legend reads it, in the round's unit: „200 cm Kopf-Rumpf“, „45 cm Höhe“; a
+ * measure without kind names its axis.
  */
-export function formatMeasure({ axis, kind, metres }: Measure): string {
-  const cm = metres * 100
-  const size =
-    Math.round(cm) < 100
-      ? `${cm.toLocaleString('de-DE', { maximumFractionDigits: cm < 1 ? 1 : 0 })} cm`
-      : `${metres.toLocaleString('de-DE', { maximumFractionDigits: 2 })} m`
-
-  return `${size} ${kind ? KIND[kind] : AXIS[axis]}`
+export function formatMeasure({ axis, kind, metres }: Measure, unit: Unit): string {
+  return `${formatLength(inUnit(metres, unit))} ${unit} ${kind ? KIND[kind] : AXIS[axis]}`
 }

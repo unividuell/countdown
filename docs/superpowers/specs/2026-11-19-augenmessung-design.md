@@ -294,14 +294,19 @@ games/matchscale/
 ### Auflösung
 
 B wächst oder schrumpft von unten links aus auf den wahren Faktor; der eigene Tipp bleibt als
-gestrichelter Umriss stehen. Darunter „Dein Tipp: 1,3× · tatsächlich: 1,6×“. Takt nach
-`revealChoreography.ts`. Ein anderer Name in der Rangliste ist ein Knopf und zeigt dessen Umriss;
+gestrichelter Umriss stehen. Takt nach `revealChoreography.ts`. Ein anderer Name in der Rangliste ist ein Knopf und zeigt dessen Umriss;
 nochmal tippen hebt auf.
 
 Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus der Lösung („Beispieltier
-· 2,3 m Länge“, „1,05 m Kopf-Rumpf“; unter einem Meter in Zentimetern), die Attribution in Zeile zwei. Die Namenszeile bricht
-nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in der Auflösung gleich hoch,
-nichts springt.
+· 200 cm Kopf-Rumpf“), die Attribution in Zeile zwei. Vor dem Tipp kein Maß: gespielt wird nur das
+Verhältnis.
+
+**Eine Einheit je Runde.** Die größte aus mm, cm, m, km, in der das kleinere der beiden Maße noch
+≥ 10 ist (Tiere: cm, Länder: km); alle Werte ganzzahlig darin, nie ein Komma. A und B stehen in
+derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
+
+Die Namenszeile bricht nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in
+der Auflösung gleich hoch, nichts springt.
 
 **Zählton.** Während B wächst, zählt ein kurzer Sinus-Tick hoch (B schrumpft: runter), je Tick 0,7
 Halbtöne, so viel wie ein Schritt in B's Größe — B ×2 ≈ eine Oktave, höchstens 26 Ticks. Takt 58 ms,
@@ -315,10 +320,16 @@ Ohne eigenen Tipp kein Ton.
 Spalten **Name** (Knopf) **· Tipp · Abstand · Pkt**, Sortierung Punkte absteigend, dann
 Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 
-Alles als Faktor mit zwei Nachkommastellen, nie in Prozent: Prozent ist nach oben und unten
-verschieden lang (×1,25 = +25 %, ÷1,25 = −20 %), der Faktor nicht. Tipp „1,90×“; Abstand „1,46× ↓“
-(zu klein), „1,23× ↑“ (zu groß) oder „genau“; darüber die Kopfzeilen „Lösung“ und „Toleranz“
-(„1,25×“, nur Phase eins). Die Kommas einer Spalte stehen untereinander, Kopfzeile eingeschlossen.
+Alles als Länge von B in der Einheit der Runde. Linear skaliert ist der Tipp
+`b.metres × scale / factor`. Tipp „160“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40“, „+50“,
+„±0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“ („200“) und
+„Toleranz“ („160–250“, `round(b ÷ 1,25)` bis `round(b × 1,25)`, nur Phase eins). In den Zellen keine
+Einheit: „Tipp*“ und „Abstand*“ tragen einen Stern, unter der Tabelle „* in cm“. Ganzzahlen rechtsbündig
+in Tabellenziffern stehen von selbst untereinander.
+
+Fehlt B's Maß, bleibt es beim Faktor mit zwei Nachkommastellen („1,90×“, „1,46× ↓“, „1,25×“), Kommas
+untereinander, ohne Stern.
+
 Jede Zeile blendet ihren Umriss für sich ein und aus; der eigene ist zu Beginn an.
 
 ## Labor

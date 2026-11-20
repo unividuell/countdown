@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
-import { formatFactor, formatTolerance, myWin, scoreboardRows } from '@/games/matchscale/scoreboard'
+import {
+  formatFactor,
+  formatTolerance,
+  myWin,
+  scoreboardRows,
+  solutionText,
+  toleranceText,
+  truthOf,
+  type Truth,
+} from '@/games/matchscale/scoreboard'
 
 function entry(over: Partial<GameEntry>): GameEntry {
   return gameEntry({
@@ -12,9 +21,17 @@ function entry(over: Partial<GameEntry>): GameEntry {
   })
 }
 
-function rowsOf(entries: GameEntry[], mineUserId: string | null = null, factor = 2) {
-  return scoreboardRows({ entries, factor, awardRule: 'ALL_QUALIFYING', mineUserId })
+function rowsOf(
+  entries: GameEntry[],
+  mineUserId: string | null = null,
+  factor = 2,
+  truth: Truth | null = null,
+) {
+  return scoreboardRows({ entries, factor, truth, awardRule: 'ALL_QUALIFYING', mineUserId })
 }
+
+/** B is 2 m long, the round counts in cm. */
+const TWO_METRES: Truth = { metres: 2, unit: 'cm' }
 
 describe('formatFactor', () => {
   it('uses a decimal comma and always two decimals', () => {
@@ -28,6 +45,37 @@ describe('formatTolerance', () => {
   it('names the gate as a factor, the same either way', () => {
     expect(formatTolerance(1.25)).toBe('1,25×')
     expect(formatTolerance(1.1)).toBe('1,10×')
+  })
+})
+
+describe('truthOf', () => {
+  const measure = (metres: number) => ({ axis: 'length' as const, metres, source: 'x' })
+
+  it("is B's length in the pair's unit", () => {
+    expect(truthOf(measure(0.12), measure(2))).toEqual({ metres: 2, unit: 'cm' })
+    expect(truthOf(null, measure(2))).toEqual({ metres: 2, unit: 'cm' })
+  })
+
+  it("is null without B's measure", () => {
+    expect(truthOf(measure(2), null)).toBeNull()
+  })
+})
+
+describe('solutionText', () => {
+  it("is B's length, or the factor without one", () => {
+    expect(solutionText(1.6, TWO_METRES)).toBe('200')
+    expect(solutionText(1.6, null)).toBe('1,60×')
+  })
+})
+
+describe('toleranceText', () => {
+  it('is the range of lengths the gate lets through', () => {
+    expect(toleranceText(1.25, TWO_METRES)).toBe('160–250')
+  })
+
+  it('is the factor without a length, nothing in phase two', () => {
+    expect(toleranceText(1.25, null)).toBe('1,25×')
+    expect(toleranceText(null, TWO_METRES)).toBeNull()
   })
 })
 
@@ -78,7 +126,28 @@ describe('scoreboardRows', () => {
     expect(rows.map((row) => row.userId)).toEqual(['ok'])
   })
 
-  it('prints the tip and its distance as a factor with an arrow for the direction', () => {
+  it("prints the tip as B's length and its signed distance in the round's unit", () => {
+    const rows = rowsOf(
+      [
+        entry({ userId: 'under', guess: { scale: 1.6 } }),
+        entry({ userId: 'over', guess: { scale: 2.5 } }),
+        entry({ userId: 'exact', guess: { scale: 2.001 } }),
+      ],
+      null,
+      2,
+      TWO_METRES,
+    )
+    const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
+
+    expect(byId.under!.tip).toBe('160')
+    expect(byId.under!.off).toBe('−40')
+    expect(byId.over!.tip).toBe('250')
+    expect(byId.over!.off).toBe('+50')
+    expect(byId.exact!.tip).toBe('200')
+    expect(byId.exact!.off).toBe('±0')
+  })
+
+  it("without B's measure prints the tip and its distance as a factor with an arrow", () => {
     const rows = rowsOf(
       [
         entry({ userId: 'over', guess: { scale: 2.46 } }),

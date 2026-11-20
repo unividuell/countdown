@@ -2,7 +2,8 @@
 /**
  * A and B under the field, one line each, in the board and the reveal alike:
  *
- *   ● Alpha¹ · 2,3 m Länge         ← name and footnote marker; the measure only in the reveal
+ *   ● Alpha¹ · 230 cm Länge        ← name and footnote marker; the measure only in the reveal,
+ *                                     A and B in one unit
  *
  * The credits themselves stand in `MatchScaleFootnotes`, at the card's bottom edge.
  *
@@ -13,6 +14,7 @@ import { computed } from 'vue'
 import { footnotesOf } from './footnotes'
 import { formatMeasure } from './measure'
 import type { Measure, Silhouette } from './types'
+import { roundUnit } from './units'
 
 const props = defineProps<{
   a: Silhouette
@@ -27,19 +29,24 @@ const props = defineProps<{
 const items = computed(() => {
   const { markers } = footnotesOf(props.a, props.b)
 
+  // One unit for both, so the two lengths compare at a glance.
+  const unit = roundUnit(props.measureA, props.measureB)
+  const text = (measure: Measure | null) =>
+    measure === null || unit === null ? null : formatMeasure(measure, unit)
+
   return [
     {
       key: 'a',
       silhouette: props.a,
       color: props.aColor,
-      measure: props.measureA,
+      measure: text(props.measureA),
       marker: markers.a,
     },
     {
       key: 'b',
       silhouette: props.b,
       color: props.bColor,
-      measure: props.measureB,
+      measure: text(props.measureB),
       marker: markers.b,
     },
   ]
@@ -74,7 +81,7 @@ const items = computed(() => {
           data-test="match-scale-measure"
           class="shrink-0 text-sm font-normal whitespace-nowrap"
         >
-          · {{ formatMeasure(item.measure) }}
+          · {{ item.measure }}
         </span>
       </p>
     </li>

@@ -34,19 +34,16 @@ function shape(wrapper: ReturnType<typeof mountLegend>) {
 
 describe('formatMeasure', () => {
   it.each([
-    [{ axis: 'length', metres: 2.3 }, '2,3 m Länge'],
-    [{ axis: 'height', metres: 1 }, '1 m Höhe'],
-    [{ axis: 'length', metres: 12.345 }, '12,35 m Länge'],
-    [{ axis: 'height', metres: 0.45 }, '45 cm Höhe'],
-    [{ axis: 'length', metres: 0.084 }, '8 cm Länge'],
-    [{ axis: 'length', metres: 0.996 }, '1 m Länge'],
-    [{ axis: 'length', metres: 0.004 }, '0,4 cm Länge'],
-    [{ axis: 'length', kind: 'head-body', metres: 1.05 }, '1,05 m Kopf-Rumpf'],
-    [{ axis: 'length', kind: 'total-length', metres: 2.3 }, '2,3 m Länge'],
-    [{ axis: 'height', kind: 'shoulder', metres: 0.45 }, '45 cm Schulterhöhe'],
-    [{ axis: 'height', kind: 'total-height', metres: 1 }, '1 m Höhe'],
-  ] as const)('%o reads %s', (measure, text) => {
-    expect(formatMeasure({ ...measure, source: 'x' })).toBe(text)
+    [{ axis: 'length', metres: 2.3 }, 'cm', '230 cm Länge'],
+    [{ axis: 'height', metres: 1 }, 'm', '1 m Höhe'],
+    [{ axis: 'length', metres: 12_345 }, 'km', '12 km Länge'],
+    [{ axis: 'length', metres: 0.0036 }, 'mm', '4 mm Länge'],
+    [{ axis: 'length', kind: 'head-body', metres: 2 }, 'cm', '200 cm Kopf-Rumpf'],
+    [{ axis: 'length', kind: 'total-length', metres: 2.3 }, 'm', '2 m Länge'],
+    [{ axis: 'height', kind: 'shoulder', metres: 0.45 }, 'cm', '45 cm Schulterhöhe'],
+    [{ axis: 'height', kind: 'total-height', metres: 1 }, 'cm', '100 cm Höhe'],
+  ] as const)('%o in %s reads %s', (measure, unit, text) => {
+    expect(formatMeasure({ ...measure, source: 'x' }, unit)).toBe(text)
   })
 })
 
@@ -93,11 +90,20 @@ describe('MatchScaleLegend', () => {
     expect(mountLegend(null, null).find('[data-test="match-scale-measure"]').exists()).toBe(false)
   })
 
-  it('in the reveal appends each measure to its name', () => {
+  it('in the reveal appends each measure to its name, both in one unit', () => {
     const [a, b] = blocks(mountLegend(LENGTH, HEIGHT))
 
-    expect(a.get('p').text()).toBe('Alpha¹ · 2,3 m Länge')
+    expect(a.get('p').text()).toBe('Alpha¹ · 230 cm Länge')
     expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
+  })
+
+  it('picks the unit from the smaller measure: 15 m beside 300 m reads in m', () => {
+    const [a, b] = blocks(
+      mountLegend({ ...LENGTH, metres: 15 }, { ...HEIGHT, kind: 'total-height', metres: 300 }),
+    )
+
+    expect(a.get('p').text()).toBe('Alpha¹ · 15 m Länge')
+    expect(b.get('p').text()).toBe('Beta² · 300 m Höhe')
   })
 
   it('stands as tall in the reveal as while playing: same lines, the name never wraps', () => {

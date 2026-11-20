@@ -1,18 +1,22 @@
 <script setup lang="ts">
 /**
- * „Auswertung“ for Augenmaß: the shared table with the tip and its signed distance from the
- * truth. The name is a button — tapping it toggles that player's outline on the reveal's field.
+ * „Auswertung“ for Augenmaß: the shared table with the tip as B's length and its signed distance
+ * from the truth, whole numbers in the round's unit. The name is a button — tapping it toggles
+ * that player's outline on the reveal's field.
  *
  *                   Lösung  Toleranz
- *   Auswertung       2,77×    1,25×
- *   Name             Tipp    Abstand   Pkt
- *   anna             1,9 ×    1,46× ↓   0      ← commas aligned per column
+ *   Auswertung         200   160–250
+ *   Name             Tipp*  Abstand*   Pkt
+ *   anna               160       −40     1
+ *                                  * in cm
+ *
+ * Without B's measure it falls back to factors, commas aligned per column: `1,90×`, `1,46× ↓`.
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import DecimalAligned from './DecimalAligned.vue'
-import { formatFactor, formatTolerance, type ScoreboardRow } from './scoreboard'
+import { solutionText, toleranceText, type ScoreboardRow, type Truth } from './scoreboard'
 
 const props = defineProps<{
   rows: ScoreboardRow[]
@@ -26,36 +30,58 @@ const props = defineProps<{
   factor: number
   /** `null` in phase two — there is no gate there. */
   toleranceFactor: number | null
+  /** `null` without B's measure: then factors. */
+  truth: Truth | null
   /** When the rows start landing: after B's growth. */
   resultsDelayMs?: number
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
+const solution = computed(() => solutionText(props.factor, props.truth))
+const tolerance = computed(() => toleranceText(props.toleranceFactor, props.truth))
+
+/** The star points at the unit beneath the table. */
+const star = computed(() => (props.truth === null ? '' : '*'))
+
+/**
+ * Lengths widen their column as needed — `1600–2500` outgrows 4.5rem; factors keep theirs. One
+ * `ch` spare for the sign, the padding on top.
+ */
+function width(base: string, texts: readonly (string | null)[]): string {
+  if (props.truth === null) return base
+
+  const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
+
+  return `max(${base}, calc(${ch}ch + 0.25rem))`
+}
+
 const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
-  { key: 'tip', label: 'Tipp', fact: 'Lösung', width: '3.5rem', align: 'end', numeric: true },
+  {
+    key: 'tip',
+    label: `Tipp${star.value}`,
+    fact: 'Lösung',
+    width: width('3.5rem', [solution.value, ...props.rows.map((row) => row.tip)]),
+    align: 'end',
+    numeric: true,
+  },
   {
     key: 'off',
-    label: 'Abstand',
+    label: `Abstand${star.value}`,
     ...(props.toleranceFactor === null ? {} : { fact: 'Toleranz' }),
-    width: '4.5rem',
+    width: width('4.5rem', [tolerance.value, ...props.rows.map((row) => row.off)]),
     align: 'end',
     numeric: true,
   },
 ])
-
-const solutionText = computed(() => `${formatFactor(props.factor)}×`)
-const toleranceText = computed(() =>
-  props.toleranceFactor === null ? null : formatTolerance(props.toleranceFactor),
-)
 
 /** Digits before the comma of the widest number in a column, so every comma sits on one line. */
 function intCh(texts: readonly (string | null)[]): number {
   return Math.max(1, ...texts.map((text) => /^\d+/.exec(text ?? '')?.[0].length ?? 0))
 }
 
-const tipCh = computed(() => intCh([solutionText.value, ...props.rows.map((row) => row.tip)]))
-const offCh = computed(() => intCh([toleranceText.value, ...props.rows.map((row) => row.off)]))
+const tipCh = computed(() => intCh([solution.value, ...props.rows.map((row) => row.tip)]))
+const offCh = computed(() => intCh([tolerance.value, ...props.rows.map((row) => row.off)]))
 
 /** What follows the number: `×` in the tip column, `× ↑` in the distance column. */
 const TIP_REST_EM = 0.75
@@ -66,46 +92,61 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
 </script>
 
 <template>
-  <RevealScoreboard
-    :rows="props.rows"
-    :columns="columns"
-    caption="Alle Tipps der Runde, nach Punkten sortiert"
-    :live="props.live"
-    :animate="props.animate"
-    :results-delay-ms="props.resultsDelayMs"
-  >
-    <template #name="{ row }">
-      <button
-        type="button"
-        :data-test="`select-${row.userId}`"
-        class="flex w-full cursor-pointer items-baseline gap-1 text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
-        :aria-pressed="props.selected.includes(row.userId)"
-        @click="emit('select', row.userId)"
-      >
-        <span
-          class="min-w-0 truncate"
-          :class="props.selected.includes(row.userId) ? 'font-semibold underline' : ''"
-          >{{ row.name }}</span
+  <div class="flex flex-col gap-1">
+    <RevealScoreboard
+      :rows="props.rows"
+      :columns="columns"
+      caption="Alle Tipps der Runde, nach Punkten sortiert"
+      :live="props.live"
+      :animate="props.animate"
+      :results-delay-ms="props.resultsDelayMs"
+    >
+      <template #name="{ row }">
+        <button
+          type="button"
+          :data-test="`select-${row.userId}`"
+          class="flex w-full cursor-pointer items-baseline gap-1 text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
+          :aria-pressed="props.selected.includes(row.userId)"
+          @click="emit('select', row.userId)"
         >
-      </button>
-    </template>
+          <span
+            class="min-w-0 truncate"
+            :class="props.selected.includes(row.userId) ? 'font-semibold underline' : ''"
+            >{{ row.name }}</span
+          >
+        </button>
+      </template>
 
-    <template #fact-tip>
-      <span data-test="match-scale-solution" :class="FACT"
-        ><DecimalAligned :text="solutionText" :int-ch="tipCh" :rest-em="TIP_REST_EM"
-      /></span>
-    </template>
-    <template v-if="props.toleranceFactor !== null" #fact-off>
-      <span data-test="match-scale-tolerance" :class="FACT"
-        ><DecimalAligned :text="toleranceText ?? ''" :int-ch="offCh" :rest-em="OFF_REST_EM"
-      /></span>
-    </template>
+      <!-- Whole numbers right-aligned in tabular digits line up by themselves; factors need help. -->
+      <template #fact-tip>
+        <span data-test="match-scale-solution" :class="FACT"
+          ><template v-if="props.truth !== null">{{ solution }}</template
+          ><DecimalAligned v-else :text="solution" :int-ch="tipCh" :rest-em="TIP_REST_EM"
+        /></span>
+      </template>
+      <template v-if="tolerance !== null" #fact-off>
+        <span data-test="match-scale-tolerance" :class="FACT"
+          ><template v-if="props.truth !== null">{{ tolerance }}</template
+          ><DecimalAligned v-else :text="tolerance" :int-ch="offCh" :rest-em="OFF_REST_EM"
+        /></span>
+      </template>
 
-    <template #cell-tip="{ row }"
-      ><DecimalAligned :text="row.tip" :int-ch="tipCh" :rest-em="TIP_REST_EM"
-    /></template>
-    <template #cell-off="{ row }"
-      ><DecimalAligned :text="row.off" :int-ch="offCh" :rest-em="OFF_REST_EM"
-    /></template>
-  </RevealScoreboard>
+      <template #cell-tip="{ row }"
+        ><template v-if="props.truth !== null">{{ row.tip }}</template
+        ><DecimalAligned v-else :text="row.tip" :int-ch="tipCh" :rest-em="TIP_REST_EM"
+      /></template>
+      <template #cell-off="{ row }"
+        ><template v-if="props.truth !== null">{{ row.off }}</template
+        ><DecimalAligned v-else :text="row.off" :int-ch="offCh" :rest-em="OFF_REST_EM"
+      /></template>
+    </RevealScoreboard>
+
+    <p
+      v-if="props.truth !== null"
+      data-test="match-scale-unit-legend"
+      class="text-end text-xs text-on-surface-variant"
+    >
+      * in {{ props.truth.unit }}
+    </p>
+  </div>
 </template>

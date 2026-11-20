@@ -37,7 +37,7 @@ import MatchScaleFootnotes from './MatchScaleFootnotes.vue'
 import MatchScaleLegend from './MatchScaleLegend.vue'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
 import ScaleField, { type Camera, type GrowTiming, type Outline } from './ScaleField.vue'
-import type { ScoreboardRow } from './scoreboard'
+import { truthOf, type ScoreboardRow } from './scoreboard'
 import type { MatchScalePayload, Measure } from './types'
 
 const props = defineProps<{
@@ -63,6 +63,8 @@ const A_COLOR = 'var(--color-on-surface-variant)'
 const B_COLOR = 'var(--color-match-scale-b)'
 
 const start = computed(() => initialPlacements(props.payload.a))
+
+const truth = computed(() => truthOf(props.measureA, props.measureB))
 
 const still = isStill(props.animate)
 
@@ -245,6 +247,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
       :selected="selected"
       :factor="props.factor"
       :tolerance-factor="props.payload.toleranceFactor"
+      :truth="truth"
       :results-delay-ms="resultsDelayMs"
       @select="select"
     />

@@ -6,14 +6,15 @@ import type { GameEntry } from '@/games/GameEntry'
 import { withTicks } from '@/games/ranking'
 import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardColumns'
-import { asMatchScaleOutcome, scaleOf } from './types'
+import { asMatchScaleOutcome, scaleOf, type Measure } from './types'
+import { formatLength, formatSigned, inUnit, roundUnit, type Unit } from './units'
 
 export interface ScoreboardRow extends SharedScoreboardRow {
   /** The tip as sent. */
   scale: number
-  /** The tip, e.g. `1,3×`. */
+  /** The tip as B's length in the round's unit, e.g. `160`; without B's measure a factor, `1,30×`. */
   tip: string
-  /** Distance from the true factor as a factor with its direction, e.g. `1,3× ↑` (too large). */
+  /** Tip minus truth in the same unit, e.g. `−40`, `+50`, `±0`; without, `1,30× ↑` (too large). */
   off: string
   /** As the server judged it; `null` while the entry has no outcome. */
   deviation: number | null
@@ -30,6 +31,41 @@ export function formatTolerance(toleranceFactor: number): string {
   return `${nf.format(toleranceFactor)}×`
 }
 
+/** B's true length and the round's unit: what the table counts in. */
+export interface Truth {
+  metres: number
+  unit: Unit
+}
+
+/** `null` without B's measure: the table then speaks in factors. */
+export function truthOf(a: Measure | null, b: Measure | null): Truth | null {
+  const unit = roundUnit(a, b)
+
+  return b === null || unit === null ? null : { metres: b.metres, unit }
+}
+
+/** The head's „Lösung“: B's length, `200`, or the factor, `1,60×`. */
+export function solutionText(factor: number, truth: Truth | null): string {
+  return truth === null
+    ? `${formatFactor(factor)}×`
+    : formatLength(inUnit(truth.metres, truth.unit))
+}
+
+/**
+ * The head's „Toleranz“: the lengths the gate lets through, `160–250` for 200 cm at 1.25; without
+ * a length the factor, `1,25×`. `null` in phase two.
+ */
+export function toleranceText(toleranceFactor: number | null, truth: Truth | null): string | null {
+  if (toleranceFactor === null) return null
+  if (truth === null) return formatTolerance(toleranceFactor)
+
+  const { metres, unit } = truth
+  const low = formatLength(inUnit(metres / toleranceFactor, unit))
+  const high = formatLength(inUnit(metres * toleranceFactor, unit))
+
+  return `${low}–${high}`
+}
+
 /**
  * Every tip the table can print, best first: points descending (`null` last), then the server's
  * deviation (a missing one last), then user id so a reload shows the same picture. An entry without
@@ -39,6 +75,7 @@ export function scoreboardRows(input: {
   entries: readonly GameEntry[]
   /** The true factor between A and B. */
   factor: number
+  truth: Truth | null
   awardRule: AwardRule | null
   mineUserId: string | null
 }): ScoreboardRow[] {
@@ -50,8 +87,7 @@ export function scoreboardRows(input: {
       {
         ...rowHead(entry, input.awardRule),
         scale,
-        tip: `${formatFactor(scale)}×`,
-        off: formatOff(scale / input.factor),
+        ...cells(scale, input.factor, input.truth),
         deviation: asMatchScaleOutcome(entry.outcome)?.deviation ?? null,
       },
     ]
@@ -72,6 +108,18 @@ function byDeviation(a: number | null, b: number | null): number {
   if (a === null || b === null) return Number(a === null) - Number(b === null)
 
   return a - b
+}
+
+/**
+ * Scaling is linear, so the tip as B's length is `metres × scale / factor`. The distance is taken
+ * between the rounded values, so the row adds up: Lösung `200`, Tipp `160`, Abstand `−40`.
+ */
+function cells(scale: number, factor: number, truth: Truth | null): { tip: string; off: string } {
+  if (truth === null) return { tip: `${formatFactor(scale)}×`, off: formatOff(scale / factor) }
+
+  const tip = inUnit((truth.metres * scale) / factor, truth.unit)
+
+  return { tip: formatLength(tip), off: formatSigned(tip - inUnit(truth.metres, truth.unit)) }
 }
 
 /** `ratio` = tip / truth: `1.3` → `1,3× ↑`, `0.5` → `2× ↓`; equal within rounding → `genau`. */

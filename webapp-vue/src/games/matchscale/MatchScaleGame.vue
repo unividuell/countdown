@@ -11,7 +11,7 @@ import { useRevealedLive } from '@/games/useRevealedLive'
 import { clearDraft, deviceStorage, draftKey } from './draft'
 import MatchScaleBoard from './MatchScaleBoard.vue'
 import MatchScaleReveal from './MatchScaleReveal.vue'
-import { myWin, scoreboardRows } from './scoreboard'
+import { myWin, scoreboardRows, truthOf } from './scoreboard'
 import type { Submitted } from './gestures'
 import { asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
 
@@ -53,6 +53,7 @@ const rows = computed(() =>
     : scoreboardRows({
         entries: props.entries,
         factor: solution.value.factor,
+        truth: truthOf(solution.value.a, solution.value.b),
         awardRule: props.awardRule,
         mineUserId: props.mineUserId,
       }),

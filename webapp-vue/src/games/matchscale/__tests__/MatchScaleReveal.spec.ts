@@ -59,7 +59,13 @@ function mountReveal(over: Record<string, unknown> = {}) {
       myScale: 1.3,
       myColorHex: ME,
       mineUserId: mine,
-      rows: scoreboardRows({ entries, factor: 1.6, awardRule: 'ALL_QUALIFYING', mineUserId: mine }),
+      rows: scoreboardRows({
+        entries,
+        factor: 1.6,
+        truth: null,
+        awardRule: 'ALL_QUALIFYING',
+        mineUserId: mine,
+      }),
       won: false,
       live: false,
       animate: false,
@@ -125,6 +131,7 @@ describe('MatchScaleReveal', () => {
     const rows = scoreboardRows({
       entries: three,
       factor: 1.6,
+      truth: null,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'me',
     })
@@ -163,6 +170,7 @@ describe('MatchScaleReveal', () => {
     const rows = scoreboardRows({
       entries: [entries[0]!, far('far', 5), far('farther', 7)],
       factor: 1.6,
+      truth: null,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'me',
     })
@@ -190,6 +198,37 @@ describe('MatchScaleReveal', () => {
     expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('1,10×')
     expect(wrapper.text()).toContain('Lösung')
     expect(wrapper.text()).toContain('Toleranz')
+  })
+
+  it("with B's measure the table counts in the round's unit, named beneath it", () => {
+    const measureB: Measure = { axis: 'length', metres: 2, source: 'https://example.org/b' }
+    const rows = scoreboardRows({
+      entries,
+      factor: 1.6,
+      truth: { metres: 2, unit: 'cm' },
+      awardRule: 'ALL_QUALIFYING',
+      mineUserId: 'me',
+    })
+    const wrapper = mountReveal({ measureB, rows })
+    const band = wrapper.findAll('thead th').map((th) => th.text())
+
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('182–220')
+    expect(band).toContain('Tipp*')
+    expect(band).toContain('Abstand*')
+    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250')
+    expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50')
+    expect(wrapper.get('[data-test="match-scale-unit-legend"]').text()).toBe('* in cm')
+  })
+
+  it("without B's measure the table keeps factors and names no unit", () => {
+    const wrapper = mountReveal()
+    const band = wrapper.findAll('thead th').map((th) => th.text())
+
+    expect(band).toContain('Tipp')
+    expect(band).toContain('Abstand')
+    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('2,00×')
+    expect(wrapper.find('[data-test="match-scale-unit-legend"]').exists()).toBe(false)
   })
 
   it('in phase two the head names no tolerance', () => {
@@ -400,6 +439,7 @@ describe('MatchScaleReveal', () => {
     const rows = scoreboardRows({
       entries: far,
       factor: 1.6,
+      truth: null,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: 'me',
     })
@@ -458,6 +498,7 @@ describe('MatchScaleReveal', () => {
       const rows = scoreboardRows({
         entries: far,
         factor: 1.6,
+        truth: null,
         awardRule: 'ALL_QUALIFYING',
         mineUserId: 'me',
       })
