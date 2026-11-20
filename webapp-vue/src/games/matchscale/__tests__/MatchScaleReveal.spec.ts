@@ -67,7 +67,52 @@ describe('MatchScaleReveal', () => {
     expect(field(wrapper).props('outlines')).toEqual([
       { placement: { ...b, scale: 1.3 }, color: ME, dashed: true },
     ])
-    expect(wrapper.text()).toContain('Dein Tipp: 1,3× · tatsächlich: 1,6×')
+    expect(wrapper.find('[data-test="match-scale-line"]').exists()).toBe(false)
+  })
+
+  it('my name starts pressed and toggles my outline off and on', async () => {
+    const wrapper = mountReveal()
+    const mine = () => wrapper.get('[data-test="select-me"]')
+
+    expect(mine().attributes('aria-pressed')).toBe('true')
+
+    await mine().trigger('click')
+
+    expect(mine().attributes('aria-pressed')).toBe('false')
+    expect(field(wrapper).props('outlines')).toEqual([])
+
+    await mine().trigger('click')
+
+    expect(mine().attributes('aria-pressed')).toBe('true')
+    expect(field(wrapper).props('outlines')).toHaveLength(1)
+  })
+
+  it("with my outline off, another player's tip shows alone", async () => {
+    const wrapper = mountReveal()
+
+    await wrapper.get('[data-test="select-me"]').trigger('click')
+    await wrapper.get('[data-test="select-you"]').trigger('click')
+
+    expect(field(wrapper).props('outlines')).toEqual([
+      { placement: { ...initialPlacements(PAYLOAD.a).b, scale: 2 }, color: OTHER, dashed: true },
+    ])
+  })
+
+  it('heads the table with the solution over the tips and the tolerance over the distance', () => {
+    const wrapper = mountReveal()
+
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,6×')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('± 10 %')
+    expect(wrapper.text()).toContain('Lösung')
+    expect(wrapper.text()).toContain('Toleranz')
+  })
+
+  it('in phase two the head names no tolerance', () => {
+    const wrapper = mountReveal({ payload: { ...PAYLOAD, toleranceFactor: null } })
+
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,6×')
+    expect(wrapper.find('[data-test="match-scale-tolerance"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Toleranz')
   })
 
   it('without animation it stands finished and carries no transition', () => {
@@ -139,12 +184,11 @@ describe('MatchScaleReveal', () => {
     expect(corner.y).toBeGreaterThanOrEqual(view.top - extent)
   })
 
-  it('without a tip of mine: B at the factor, no outline, no tip line', () => {
+  it('without a tip of mine: B at the factor, no outline', () => {
     const wrapper = mountReveal({ myScale: null, mine: null })
 
     expect(field(wrapper).props('placementB').scale).toBe(1.6)
     expect(field(wrapper).props('outlines')).toEqual([])
-    expect(wrapper.text()).not.toContain('Dein Tipp')
   })
 
   it('names the sources under the field', () => {

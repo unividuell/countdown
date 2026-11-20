@@ -2,7 +2,8 @@
 /**
  * The card after the round: the board's field, now read-only. B grows from my tip to the true
  * factor, my tip stays as a dashed outline at B's corner, and the scoreboard sits under it. A name
- * in the table lays that player's outline over the same corner; the same name again lifts it.
+ * in the table lays that player's outline over the same corner; the same name again lifts it —
+ * mine too, which starts on show.
  *
  *   tip ──(SOLUTION_DELAY_MS)──▶ factor      B eases via CSS, no frame loop
  *
@@ -14,7 +15,7 @@ import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { FIELD_PX, fitView, initialPlacements, sizeAt, type Box, type Placement } from './gestures'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
 import ScaleField, { type Outline } from './ScaleField.vue'
-import { formatFactor, type ScoreboardRow } from './scoreboard'
+import type { ScoreboardRow } from './scoreboard'
 import type { MatchScalePayload } from './types'
 
 const props = defineProps<{
@@ -71,25 +72,35 @@ onBeforeUnmount(() => {
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))
 
-/** Another player's tip on show; mine always is. */
-const selectedUserId = ref<string | null>(null)
+/** Mine is on show until I tap my own name; one other player's at a time joins it. */
+const showMine = ref(true)
+const otherUserId = ref<string | null>(null)
 
 function select(userId: string): void {
-  selectedUserId.value = selectedUserId.value === userId ? null : userId
+  if (userId === props.mineUserId) showMine.value = !showMine.value
+  else otherUserId.value = otherUserId.value === userId ? null : userId
 }
+
+const selected = computed(() =>
+  [showMine.value && props.myScale !== null ? props.mineUserId : null, otherUserId.value].filter(
+    (id): id is string => id !== null,
+  ),
+)
 
 function outlineAt(scale: number, color: string): Outline {
   return { placement: { ...start.value.b, scale }, color, dashed: true }
 }
 
+const other = computed(() =>
+  props.rows.find((row) => row.userId === otherUserId.value && row.userId !== props.mineUserId),
+)
+
 const outlines = computed<Outline[]>(() => {
   const result: Outline[] = []
-  if (props.myScale !== null) result.push(outlineAt(props.myScale, props.myColorHex))
-
-  const other = props.rows.find(
-    (row) => row.userId === selectedUserId.value && row.userId !== props.mineUserId,
-  )
-  if (other !== undefined) result.push(outlineAt(other.scale, other.colorHex))
+  if (props.myScale !== null && showMine.value) {
+    result.push(outlineAt(props.myScale, props.myColorHex))
+  }
+  if (other.value !== undefined) result.push(outlineAt(other.value.scale, other.value.colorHex))
 
   return result
 })
@@ -103,8 +114,8 @@ const view = computed(() => {
   if (props.myScale !== null) {
     boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: props.myScale }))
   }
-  for (const outline of outlines.value.slice(props.myScale === null ? 0 : 1)) {
-    boxes.push(boxOf(props.payload.b, outline.placement))
+  if (other.value !== undefined) {
+    boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: other.value.scale }))
   }
 
   return fitView(boxes, FIELD_PX)
@@ -150,18 +161,6 @@ const attributions = computed(() => [
       />
 
       <p
-        v-if="props.myScale !== null"
-        data-test="match-scale-line"
-        class="text-center text-sm text-on-surface"
-      >
-        Dein Tipp: {{ formatFactor(props.myScale) }}× · tatsächlich:
-        {{ formatFactor(props.factor) }}×
-      </p>
-      <p v-else data-test="match-scale-line" class="text-center text-sm text-on-surface">
-        Tatsächlich: {{ formatFactor(props.factor) }}×
-      </p>
-
-      <p
         v-for="text in attributions"
         :key="text"
         data-test="match-scale-attribution"
@@ -175,7 +174,9 @@ const attributions = computed(() => [
       :rows="props.rows"
       :live="props.live"
       :animate="props.animate"
-      :selected-user-id="selectedUserId"
+      :selected="selected"
+      :factor="props.factor"
+      :tolerance-factor="props.payload.toleranceFactor"
       @select="select"
     />
   </div>

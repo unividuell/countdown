@@ -25,6 +25,11 @@ export function formatFactor(x: number): string {
   return nf.format(x)
 }
 
+/** The gate as the table names it: `1.1` → `± 10 %`. */
+export function formatTolerance(toleranceFactor: number): string {
+  return `± ${nf.format((toleranceFactor - 1) * 100)} %`
+}
+
 /**
  * Every tip the table can print, best first: points descending (`null` last), then the server's
  * deviation (a missing one last), then user id so a reload shows the same picture. An entry without

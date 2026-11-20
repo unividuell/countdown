@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
-import { formatFactor, scoreboardRows } from '@/games/matchscale/scoreboard'
+import { formatFactor, formatTolerance, scoreboardRows } from '@/games/matchscale/scoreboard'
 
 function entry(over: Partial<GameEntry>): GameEntry {
   return gameEntry({
@@ -21,6 +21,13 @@ describe('formatFactor', () => {
     expect(formatFactor(1.3)).toBe('1,3')
     expect(formatFactor(2)).toBe('2')
     expect(formatFactor(1.2345)).toBe('1,23')
+  })
+})
+
+describe('formatTolerance', () => {
+  it('names the gate in percent, without float noise', () => {
+    expect(formatTolerance(1.1)).toBe('± 10 %')
+    expect(formatTolerance(1.25)).toBe('± 25 %')
   })
 })
 
