@@ -33,6 +33,7 @@ import {
   type Placement,
   type Submitted,
 } from './gestures'
+import MatchScaleFootnotes from './MatchScaleFootnotes.vue'
 import MatchScaleLegend from './MatchScaleLegend.vue'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
 import ScaleField, { type Camera, type GrowTiming, type Outline } from './ScaleField.vue'
@@ -244,5 +245,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
       :results-delay-ms="resultsDelayMs"
       @select="select"
     />
+
+    <MatchScaleFootnotes :a="props.payload.a" :b="props.payload.b" />
   </div>
 </template>

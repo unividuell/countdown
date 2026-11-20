@@ -47,7 +47,7 @@ describe('formatMeasure', () => {
 })
 
 describe('MatchScaleLegend', () => {
-  it('stacks A over B, each name in its colour, with its credit on a second line', () => {
+  it('stacks A over B, each name in its colour, with its footnote marker', () => {
     const wrapper = mountLegend(null, null)
     const [a, b] = blocks(wrapper)
 
@@ -55,8 +55,34 @@ describe('MatchScaleLegend', () => {
     expect(b.get('[data-test="match-scale-label-b"]').text()).toBe('Beta')
     expect(a.get('p').attributes('style')).toContain('color: var(--a)')
     expect(b.get('p').attributes('style')).toContain('color: var(--b)')
-    expect(a.get('[data-test="match-scale-attribution"]').text()).toBe(A.attribution)
-    expect(b.get('[data-test="match-scale-attribution"]').text()).toBe(B.attribution)
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²')
+    expect(wrapper.find('[data-test="match-scale-attribution"]').exists()).toBe(false)
+  })
+
+  it('marks both names ¹ for one shared credit', () => {
+    const wrapper = mount(MatchScaleLegend, {
+      props: {
+        a: A,
+        b: { ...B, attribution: A.attribution },
+        aColor: 'x',
+        bColor: 'y',
+        measureA: null,
+        measureB: null,
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="match-scale-marker"]').map((m) => m.text())).toEqual([
+      '¹',
+      '¹',
+    ])
+  })
+
+  it('sets the names one step larger than the measure', () => {
+    const wrapper = mountLegend(LENGTH, HEIGHT)
+
+    expect(wrapper.get('p').classes()).toContain('text-base')
+    expect(wrapper.get('[data-test="match-scale-measure"]').classes()).toContain('text-sm')
   })
 
   it('while playing names no measure', () => {
@@ -66,8 +92,8 @@ describe('MatchScaleLegend', () => {
   it('in the reveal appends each measure to its name', () => {
     const [a, b] = blocks(mountLegend(LENGTH, HEIGHT))
 
-    expect(a.get('p').text()).toBe('Alpha · 2,3 m Länge')
-    expect(b.get('p').text()).toBe('Beta · 45 cm Höhe')
+    expect(a.get('p').text()).toBe('Alpha¹ · 2,3 m Länge')
+    expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
   })
 
   it('stands as tall in the reveal as while playing: same lines, the name never wraps', () => {
@@ -79,6 +105,13 @@ describe('MatchScaleLegend', () => {
     expect(revealed.get('[data-test="match-scale-measure"]').classes()).toContain(
       'whitespace-nowrap',
     )
+  })
+
+  it('keeps the markers as in the playing state when the reveal comes', () => {
+    const markers = (w: ReturnType<typeof mountLegend>) =>
+      w.findAll('[data-test="match-scale-marker"]').map((m) => m.html())
+
+    expect(markers(mountLegend(LENGTH, HEIGHT))).toEqual(markers(mountLegend(null, null)))
   })
 
   it('leaves out a missing measure and a missing credit', () => {
@@ -95,6 +128,6 @@ describe('MatchScaleLegend', () => {
     const [a] = blocks(wrapper)
 
     expect(a.get('p').text()).toBe('Alpha')
-    expect(a.find('[data-test="match-scale-attribution"]').exists()).toBe(false)
+    expect(a.find('[data-test="match-scale-marker"]').exists()).toBe(false)
   })
 })

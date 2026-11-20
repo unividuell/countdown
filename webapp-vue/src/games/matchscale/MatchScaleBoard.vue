@@ -26,6 +26,7 @@ import {
   type View,
 } from './gestures'
 import MatchScaleBriefing from './MatchScaleBriefing.vue'
+import MatchScaleFootnotes from './MatchScaleFootnotes.vue'
 import MatchScaleLegend from './MatchScaleLegend.vue'
 import ScaleField from './ScaleField.vue'
 import type { MatchScalePayload } from './types'
@@ -183,5 +184,7 @@ function submit(): void {
     </div>
 
     <MatchScaleBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
+
+    <MatchScaleFootnotes :a="props.payload.a" :b="props.payload.b" />
   </div>
 </template>
