@@ -21,9 +21,15 @@ export interface MatchScalePayload {
 }
 
 /** What was measured; the reveal names it. Each kind belongs to one axis. */
-export type MeasureKind = 'head-body' | 'total-length' | 'shoulder' | 'total-height'
+export type MeasureKind = 'head-body' | 'total-length' | 'shoulder' | 'total-height' | 'diameter'
 
-const MEASURE_KINDS: readonly unknown[] = ['head-body', 'total-length', 'shoulder', 'total-height']
+const MEASURE_KINDS: readonly unknown[] = [
+  'head-body',
+  'total-length',
+  'shoulder',
+  'total-height',
+  'diameter',
+]
 
 /** The real size behind a silhouette: its `axis` is `metres` long, per `source`. Solution only. */
 export interface Measure {
@@ -32,6 +38,8 @@ export interface Measure {
   kind?: MeasureKind
   metres: number
   source: string
+  /** The concrete thing behind a generic name („Alpha“ → „Alpha Mk II“); absent where the name is it. */
+  subject?: string
 }
 
 export interface MatchScaleSolution {
@@ -105,14 +113,18 @@ function asMeasure(value: unknown): Measure | null {
   const raw = record(value)
   if (raw === null) return null
 
-  const { axis, kind, metres, source } = raw
+  const { axis, kind, metres, source, subject } = raw
   if (axis !== 'length' && axis !== 'height') return null
   if (!positive(metres) || typeof source !== 'string') return null
 
-  // A kind the client does not know costs only the precise wording.
-  return MEASURE_KINDS.includes(kind)
-    ? { axis, kind: kind as MeasureKind, metres, source }
-    : { axis, metres, source }
+  // A kind the client does not know costs only the precise wording, a junk subject only its line.
+  return {
+    axis,
+    ...(MEASURE_KINDS.includes(kind) ? { kind: kind as MeasureKind } : {}),
+    metres,
+    source,
+    ...(typeof subject === 'string' && subject.trim() !== '' ? { subject } : {}),
+  }
 }
 
 function record(value: unknown): Record<string, unknown> | null {

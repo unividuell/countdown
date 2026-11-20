@@ -88,8 +88,9 @@ object MatchScaleDatasetYamlReader {
     }
 
     /**
-     * Optional: `{ axis: length|height, kind: head-body, metres: 2.3, source: "https://…", span: [120, 870] }`.
-     * Absent → null; present → complete, except `span` and `kind`, which are optional themselves.
+     * Optional: `{ axis: length|height, kind: head-body, metres: 2.3, source: "https://…", span: [120, 870],
+     * subject: "…" }`. Absent → null; present → complete, except `span`, `kind` and `subject`, which are
+     * optional themselves.
      */
     private fun measure(item: Any, label: String): MatchScaleMeasure {
         val map = item as? Map<*, *>
@@ -106,12 +107,18 @@ object MatchScaleDatasetYamlReader {
         val source = (map["source"] as? String)?.trim().orEmpty()
         if (source.isEmpty()) throw MatchScaleDatasetException("$label: measure.source is blank")
 
+        val subject = map["subject"]?.let {
+            (it as? String)?.trim()?.ifEmpty { null }
+                ?: throw MatchScaleDatasetException("$label: measure.subject must be a non-blank string")
+        }
+
         return MatchScaleMeasure(
             axis = axis,
             kind = kind,
             metres = metres,
             source = source,
             span = map["span"]?.let { span(item = it, label = label) },
+            subject = subject,
         )
     }
 

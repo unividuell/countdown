@@ -45,6 +45,13 @@ Skripts gehört in den zweiten PR.
 |---|---|---|---|
 | Länder | von oben, flächentreu | Natural Earth Admin-0 (gemeinfrei) | aus der Geometrie selbst |
 | Tiere | von der Seite | PhyloPic (meist CC0/CC BY) | von Hand, an der Silhouette gemessen |
+| Räder | von der Seite (Rotor, Roulette: von oben) | selbst gezeichnet, nach einer Bildvorlage je Rad | von Hand: Neumaß, Durchmesser |
+
+**Räder** mischen Fahrzeugklassen und „Räder im weitesten Sinne“ (Riesenrad, Steuerrad, Käselaib):
+zwei Pkw-Räder lägen nahe Faktor 1. Je Klasse ein konkretes, benanntes Stück mit Quelle; gespielt
+wird unter einem allgemeinen Namen ohne Marke und ohne metrisches Maß (Zoll ja, mm nein), das
+konkrete Stück nennt erst die Auflösung (`measure.subject`). Gemessen wird neu:
+Reifen samt Reifen außen, Bahnräder im Laufkreis (der Spurkranz ragt darüber, `span`).
 
 **Eine Kategorie taugt nur, wenn sich die Größe ihrer Dinge unterscheidet.** Enthält die Zeichnung einen
 gleich großen Bezug — eine Sitzreihe samt Vordersitz, ein Mensch daneben —, legt der Spieler Bezug auf
@@ -106,10 +113,11 @@ entries:
     metresPerUnit: 412.5       # 1000 Einheiten = 412,5 km
     measure:                   # optional: woraus metresPerUnit stammt
       axis: length             # length (Breite der Bounding-Box) | height
-      kind: head-body          # optional: head-body | total-length (length), shoulder | total-height (height)
+      kind: head-body          # optional: head-body | total-length (length), shoulder | total-height | diameter (height)
       metres: 412500
       source: "https://example.org/beispielding-alpha"
       span: [0, 1000]          # optional: die Strecke des Maßes entlang der Achse, normiert
+      subject: "Alpha Mk II"   # optional: das konkrete Stück hinter einem allgemeinen Namen
     attribution: "Beispielkünstler, CC BY"   # pro Eintrag, optional, überschreibt die Kategorie
 ```
 
@@ -118,7 +126,7 @@ ist. Von Hand gemessene Kategorien (Tiere) tragen es, erzeugte (Länder) nicht. 
 `metresPerUnit` (*Rundengeheimnis*).
 
 **`measure.kind`** benennt das Maß in der Auflösung: `head-body` „Kopf-Rumpf“, `total-length` „Länge“,
-`shoulder` „Schulterhöhe“, `total-height` „Höhe“. Der Leser prüft Wert und Passung zur Achse; fehlt `kind`,
+`shoulder` „Schulterhöhe“, `total-height` „Höhe“, `diameter` „Durchmesser“. Der Leser prüft Wert und Passung zur Achse; fehlt `kind`,
 steht die Achse da („Länge“/„Höhe“). `kind` reist nur in der Lösung.
 
 **Gleiche Maße, an der richtigen Stelle.** Tiere messen überall dasselbe: `length` ist die
@@ -130,7 +138,11 @@ Spanne. Ein Schwanz steht nicht gestreckt, ein Kopf überragt den Widerrist: dar
 `span: [from, to]`, der Strecke in normierten Einheiten (x bzw. y, y nach unten), die es abdeckt —
 Nasenspitze und Schwanzansatz, Boden und Widerrist. `metresPerUnit = metres / (to − from)`; ohne
 `span` die ganze Bounding-Box-Seite. Die Punkte werden auf einem Raster abgelesen und eingezeichnet
-geprüft. `span` bleibt auf dem Server: die Lösung trägt nur `axis`, `metres`, `source`.
+geprüft. `span` bleibt auf dem Server: die Lösung trägt nur `axis`, `kind`, `metres`, `source`,
+`subject`.
+
+**`measure.subject`** nennt das konkrete Stück, wo der Name allgemein ist (Räder). Eine Marke oder
+ein Modell kann die Größe verraten, darum reist es wie das Maß nur in der Lösung.
 
 **Klartext in `.local/games/match-scale/categories/<category>.yaml` (Hauptcheckout), über sops nach
 `deploy/games/match-scale/categories/<category>.sops.yaml` — alle Kategorien, auch die aus gemeinfreien Daten.** Einheitlich
@@ -207,6 +219,13 @@ Zeichnung, oder `height`), wie viele Meter sie in Wirklichkeit ist und die Quell
 das SVG, glättet Transformationen in einen Pfad, normiert, rechnet `metresPerUnit` aus dem Maß,
 schreibt das Maß als `measure` mit und übernimmt die Lizenzangabe als `attribution`. Ob dafür eine
 Abhängigkeit nötig ist (SVG-Pfad-Transformationen), entscheidet der Bauende.
+
+**Räder.** Die Handliste in `.local/games/match-scale/input/wheels.yaml` trägt je Rad Name (allgemein),
+`subject`, Durchmesser, Quelle, die Bildvorlage (`template`, nur zur Pflege) und eine Zeichenart samt
+Parametern (Reifen, Speichen, Bahnrad, Riesenrad, …). Das Skript zeichnet daraus einen Pfad mit
+exakten SVG-Kreisbögen, Füllregel nonzero: alle Teile addieren sich. Wo die Zeichnung über den
+gemessenen Kreis hinausreicht (Spurkranz, Gondeln), schreibt es `span`. Kein Abruf, keine Lizenz:
+die Silhouetten sind eigene Zeichnungen, ohne `attribution`.
 
 **Prüfseite.** Das Skript schreibt eine HTML-Seite nach `.local/games/match-scale/raw/` — jede Silhouette
 so, wie der Spieler sie sieht, mit Name und Maß, plus einige gezogene Paare im richtigen Verhältnis.
@@ -299,7 +318,8 @@ nochmal tippen hebt auf.
 
 Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus der Lösung („Beispieltier
 · 200 cm Kopf-Rumpf“), die Attribution in Zeile zwei. Vor dem Tipp kein Maß: gespielt wird nur das
-Verhältnis.
+Verhältnis. Steht hinter einem allgemeinen Namen ein konkretes Stück, nennt es die Auflösung als
+erste Fußzeile, ohne Marker („Alpha: Alpha Mk II“), vor den Credits.
 
 **Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
 cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); alle Werte

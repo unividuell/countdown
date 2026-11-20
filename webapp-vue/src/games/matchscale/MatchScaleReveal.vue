@@ -252,6 +252,11 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
       @select="select"
     />
 
-    <MatchScaleFootnotes :a="props.payload.a" :b="props.payload.b" />
+    <MatchScaleFootnotes
+      :a="props.payload.a"
+      :b="props.payload.b"
+      :measure-a="props.measureA"
+      :measure-b="props.measureB"
+    />
   </div>
 </template>

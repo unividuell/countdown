@@ -5,6 +5,8 @@ package org.unividuell.countdown.core.matchscale
  * shown and researched again: [axis] of the drawn silhouette is [metres] long, per [source].
  * [span] is where along that axis the measure sits; absent, it spans the whole bounding box.
  * [kind] names what was measured, for the reveal; absent, the reveal says just the axis.
+ * [subject] is the concrete thing measured where the entry's name is generic ("Alpha" → "Alpha Mk II
+ * of 1984"): named in the reveal only, as a model name may give the size away.
  */
 data class MatchScaleMeasure(
     val axis: MatchScaleAxis,
@@ -12,6 +14,7 @@ data class MatchScaleMeasure(
     val metres: Double,
     val source: String,
     val span: MatchScaleSpan? = null,
+    val subject: String? = null,
 )
 
 /**
@@ -47,6 +50,9 @@ enum class MatchScaleMeasureKind(val key: String, val axis: MatchScaleAxis) {
 
     /** Ground to the highest point. */
     TOTAL_HEIGHT("total-height", MatchScaleAxis.HEIGHT),
+
+    /** Across a wheel, top to bottom. */
+    DIAMETER("diameter", MatchScaleAxis.HEIGHT),
     ;
 
     companion object {

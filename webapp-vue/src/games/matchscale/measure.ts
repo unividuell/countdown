@@ -8,6 +8,7 @@ const KIND: Record<MeasureKind, string> = {
   'total-length': 'Länge',
   shoulder: 'Schulterhöhe',
   'total-height': 'Höhe',
+  diameter: 'Durchmesser',
 }
 
 /**

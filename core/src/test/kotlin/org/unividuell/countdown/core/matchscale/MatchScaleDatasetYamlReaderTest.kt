@@ -152,6 +152,28 @@ class MatchScaleDatasetYamlReaderTest {
     }
 
     @Test
+    fun `reads a wheel's diameter and the subject behind its generic name`() {
+        val measure = read(
+            file(entries = entry(measure = "{ axis: height, kind: diameter, metres: 0.5, source: q, subject: Alpha Mk II }")),
+        ).entries.single().measure
+
+        measure?.kind shouldBe MatchScaleMeasureKind.DIAMETER
+        measure?.subject shouldBe "Alpha Mk II"
+    }
+
+    @Test
+    fun `subject is null when the measure has none, and must not be blank`() {
+        read(file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q }")))
+            .entries.single().measure?.subject shouldBe null
+
+        rejects(
+            file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q, subject: \" \" }")),
+            "Beispielform Alpha",
+            "subject",
+        )
+    }
+
+    @Test
     fun `measure is null when the entry has none`() {
         read(file()).entries.single().measure shouldBe null
     }

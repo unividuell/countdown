@@ -81,6 +81,18 @@ describe('asMatchScaleSolution', () => {
     expect(nulled?.a).toEqual(MEASURE)
   })
 
+  it('keeps a subject, drops a blank or junk one, not the measure', () => {
+    const solution = asMatchScaleSolution({
+      factor: 2,
+      toleranceFactor: null,
+      a: { ...MEASURE, kind: 'diameter', subject: 'Alpha Mk II' },
+      b: { ...MEASURE, subject: 3 },
+    })
+
+    expect(solution?.a).toEqual({ ...MEASURE, kind: 'diameter', subject: 'Alpha Mk II' })
+    expect(solution?.b).toEqual(MEASURE)
+  })
+
   it.each([
     ['missing', undefined],
     ['not an object', 'x'],
