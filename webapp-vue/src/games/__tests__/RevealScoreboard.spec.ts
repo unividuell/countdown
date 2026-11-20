@@ -35,6 +35,7 @@ type Props = {
   live: boolean
   animate: boolean
   nameWidth?: string | undefined
+  resultsDelayMs?: number | undefined
 }
 
 function mountBoard(props: Partial<Props> = {}, slots: Record<string, string> = {}) {
@@ -323,6 +324,19 @@ describe('RevealScoreboard', () => {
 
     const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
     expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + 120}ms`)
+  })
+
+  it('lands the rows later when the game asks', async () => {
+    const wrapper = mountBoard({
+      animate: true,
+      resultsDelayMs: 2600,
+      rows: [row({ userId: 'a' })],
+    })
+
+    vi.advanceTimersByTime(50)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('2600ms')
   })
 
   it('writes the head on beat three, the solution a row later', () => {

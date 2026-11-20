@@ -25,6 +25,8 @@ const props = defineProps<{
   factor: number
   /** `null` in phase two — there is no gate there. */
   toleranceFactor: number | null
+  /** When the rows start landing: after B's growth. */
+  resultsDelayMs?: number
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
@@ -52,6 +54,7 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
     caption="Alle Tipps der Runde, nach Punkten sortiert"
     :live="props.live"
     :animate="props.animate"
+    :results-delay-ms="props.resultsDelayMs"
   >
     <template #name="{ row }">
       <button

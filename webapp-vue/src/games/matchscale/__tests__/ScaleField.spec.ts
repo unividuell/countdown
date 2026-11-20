@@ -79,6 +79,16 @@ describe('ScaleField', () => {
     expect(plain.classes()).not.toContain('transition-[transform,opacity]')
   })
 
+  it("times B's growth as told: the count's span and easing", () => {
+    const grown = mountField({
+      grow: true,
+      growTiming: { ms: 1213, easing: 'linear(0 0%, 0.5 25%, 1 100%)' },
+    }).wrapper.get<SVGElement>('[data-test="match-scale-b"]')
+
+    expect(grown.element.style.transitionDuration).toBe('1213ms')
+    expect(grown.element.style.transitionTimingFunction).toBe('linear(0 0%, 0.5 25%, 1 100%)')
+  })
+
   it('draws the grid, the ground line and A under B', () => {
     const { wrapper } = mountField()
 

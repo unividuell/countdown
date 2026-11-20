@@ -37,6 +37,8 @@ const props = defineProps<{
   animate: boolean
   /** Width of the name column. Omitted, it takes what the fixed columns leave over. */
   nameWidth?: string | undefined
+  /** When the rows start landing, where a game's own reveal runs past `RESULTS_DELAY_MS`. */
+  resultsDelayMs?: number | undefined
 }>()
 
 const clock: ScoreboardColumn<Row> = {
@@ -71,7 +73,7 @@ function head(row: number, column: number) {
 }
 
 function body(tick: number, column: number) {
-  return fade(cellDelayMs(tick, column, props.rows.length))
+  return fade(cellDelayMs(tick, column, props.rows.length, props.resultsDelayMs))
 }
 
 function rowGround(row: Row) {

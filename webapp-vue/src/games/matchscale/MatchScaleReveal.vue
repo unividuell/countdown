@@ -9,7 +9,8 @@
  *   board view ──▶ fitted view
  *   B as sent, amber, filled ──▶ my dashed outline at the corner
  *                                       true B fades in, grows tip ──▶ factor
- *                                       a count up (or down) in tones, as fast as B grows
+ *                                       tick by tick with a count up (or down), then my verdict
+ *                                       rows land once B has arrived (≥ RESULTS_DELAY_MS)
  *
  * Everything eases via CSS; frames only arm it. Live after my own submit in this tab only: a
  * reload, history or reduced motion shows the end state at once.
@@ -18,12 +19,12 @@
  * sizes compare there, positions do not exist.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import SoundToggle from '@/ui/SoundToggle.vue'
 import { useGameSound } from '@/ui/useGameSound'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, unlockSound, type Counting } from './countSound'
-import { countTones } from './countTones'
+import { countTones, growEasing, growMs } from './countTones'
 import {
   FIELD_PX,
   fitView,
@@ -34,7 +35,7 @@ import {
   type Submitted,
 } from './gestures'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
-import ScaleField, { type Camera, type Outline } from './ScaleField.vue'
+import ScaleField, { type Camera, type GrowTiming, type Outline } from './ScaleField.vue'
 import type { ScoreboardRow } from './scoreboard'
 import type { MatchScalePayload } from './types'
 
@@ -64,8 +65,21 @@ const still = isStill(props.animate)
 /** Where B is drawn: at my tip until the beat, then at the truth. Without a tip there is no start. */
 const bScale = ref(still || props.myScale === null ? props.factor : props.myScale)
 
-/** Matches `duration-700` on B in ScaleField. */
-const GROW_MS = 700
+/** The count B's growth rides: each tone sounds as B passes it. */
+const tones = countTones(bScale.value, props.factor)
+
+/** Without `linear()` B still eases, only not in step with the ticks. */
+const growTiming: GrowTiming = {
+  ms: growMs(tones),
+  easing: supportsLinear() ? growEasing(tones) : 'ease-out',
+}
+
+function supportsLinear(): boolean {
+  return typeof CSS !== 'undefined' && CSS.supports('transition-timing-function', 'linear(0, 1)')
+}
+
+/** A long count would run under the rows; they wait for B. */
+const resultsDelayMs = Math.max(RESULTS_DELAY_MS, SOLUTION_DELAY_MS + growTiming.ms)
 
 /** B eases only during its growth; afterwards a view refit moves B with everything else. */
 const growing = ref(!still)
@@ -95,12 +109,12 @@ onMounted(() => {
   }
 
   beat = setTimeout(() => {
-    if (sound.value) counting = playCount(countTones(bScale.value, props.factor), props.won)
+    if (sound.value) counting = playCount(tones, props.won)
     bScale.value = props.factor
     arrived.value = true
     settle = setTimeout(() => {
       growing.value = false
-    }, GROW_MS)
+    }, growTiming.ms)
   }, SOLUTION_DELAY_MS)
 })
 
@@ -218,6 +232,7 @@ const attributions = computed(() => [
         :outlines="outlines"
         :interactive="false"
         :grow="growing"
+        :grow-timing="growTiming"
         :b-hidden="!arrived"
         :camera="camera"
       />
@@ -246,6 +261,7 @@ const attributions = computed(() => [
       :selected="selected"
       :factor="props.factor"
       :tolerance-factor="props.payload.toleranceFactor"
+      :results-delay-ms="resultsDelayMs"
       @select="select"
     />
   </div>

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { FIELD_PX, initialPlacements, sizeAt } from '../gestures'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
 import ScaleField from '../ScaleField.vue'
@@ -9,7 +9,8 @@ import { scoreboardRows } from '../scoreboard'
 import type { MatchScalePayload } from '../types'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { playCount } from '../countSound'
-import { countTones } from '../countTones'
+import { countTones, growMs } from '../countTones'
+import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
 
 const stopCount = vi.fn()
 vi.mock('../countSound', () => ({
@@ -145,6 +146,34 @@ describe('MatchScaleReveal', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it("B's growth rides the count: its span, and a linear() easing where supported", () => {
+    try {
+      vi.stubGlobal('CSS', { supports: () => true })
+      const timing = field(mountReveal({ animate: true, myScale: 1, factor: 2 })).props(
+        'growTiming',
+      )
+
+      expect(timing?.ms).toBeCloseTo(growMs(countTones(1, 2)))
+      expect(timing?.easing).toMatch(/^linear\(0 0%, .*, 1 100%\)$/)
+
+      vi.stubGlobal('CSS', { supports: () => false })
+
+      expect(field(mountReveal({ animate: true })).props('growTiming')?.easing).toBe('ease-out')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('a long count holds the rows back until B has arrived; a short one does not', () => {
+    const delay = (w: ReturnType<typeof mountReveal>) =>
+      w.getComponent(MatchScaleScoreboard).props('resultsDelayMs')
+
+    expect(delay(mountReveal({ animate: true, myScale: 0.3, factor: 1.6 }))).toBeCloseTo(
+      SOLUTION_DELAY_MS + growMs(countTones(0.3, 1.6)),
+    )
+    expect(delay(mountReveal({ animate: true }))).toBe(RESULTS_DELAY_MS)
   })
 
   describe('the count while B grows', () => {
@@ -361,7 +390,7 @@ describe('MatchScaleReveal', () => {
       expect(field(wrapper).props('grow')).toBe(true)
       expect(b().classes()).toContain('transition-[transform,opacity]')
 
-      await vi.advanceTimersByTimeAsync(800)
+      await vi.advanceTimersByTimeAsync(growMs(countTones(1.3, 1.6)))
 
       expect(field(wrapper).props('grow')).toBe(false)
       expect(b().classes()).not.toContain('transition-[transform,opacity]')

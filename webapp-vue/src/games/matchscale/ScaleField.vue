@@ -45,6 +45,12 @@ export interface Outline {
   eased?: boolean
 }
 
+/** B's growth: how long, and a CSS timing function — the reveal's count as a `linear()`. */
+export interface GrowTiming {
+  ms: number
+  easing: string
+}
+
 /** A camera move into `view`: drawn as `from` showed it until `moved`, then eased into `view`. */
 export interface Camera {
   from: View
@@ -66,6 +72,8 @@ const props = defineProps<{
   locked?: boolean
   /** B's size change eases instead of jumping: the reveal's growth from the tip to the factor. */
   grow?: boolean
+  /** How the growth runs; without it, like everything else (`EASE`). */
+  growTiming?: GrowTiming
   /** B is not drawn yet; with `grow` it fades in. */
   bHidden?: boolean
   camera?: Camera | null
@@ -147,7 +155,15 @@ function transformOf(s: Silhouette, p: Placement, css = false): string {
 
 /** An attribute cannot ease; the same transform as a CSS property can. */
 const bGrowth = computed(() =>
-  props.grow === true ? { transform: transformOf(props.b, props.placementB, true) } : undefined,
+  props.grow === true
+    ? {
+        transform: transformOf(props.b, props.placementB, true),
+        ...(props.growTiming && {
+          transitionDuration: `${props.growTiming.ms}ms`,
+          transitionTimingFunction: props.growTiming.easing,
+        }),
+      }
+    : undefined,
 )
 
 function outlineStyle(outline: Outline): Record<string, string | number> {
