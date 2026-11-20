@@ -186,8 +186,8 @@ describe('MatchScaleReveal', () => {
   it('heads the table with the solution over the tips and the tolerance over the distance', () => {
     const wrapper = mountReveal()
 
-    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,6×')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('± 10 %')
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('1,10×')
     expect(wrapper.text()).toContain('Lösung')
     expect(wrapper.text()).toContain('Toleranz')
   })
@@ -195,7 +195,7 @@ describe('MatchScaleReveal', () => {
   it('in phase two the head names no tolerance', () => {
     const wrapper = mountReveal({ payload: { ...PAYLOAD, toleranceFactor: null } })
 
-    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,6×')
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
     expect(wrapper.find('[data-test="match-scale-tolerance"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Toleranz')
   })

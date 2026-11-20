@@ -13,21 +13,21 @@ export interface ScoreboardRow extends SharedScoreboardRow {
   scale: number
   /** The tip, e.g. `1,3×`. */
   tip: string
-  /** Signed distance from the true factor, e.g. `+23 %` or `−18 %`. */
+  /** Distance from the true factor as a factor with its direction, e.g. `1,3× ↑` (too large). */
   off: string
   /** As the server judged it; `null` while the entry has no outcome. */
   deviation: number | null
 }
 
-const nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 })
+const nf = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export function formatFactor(x: number): string {
   return nf.format(x)
 }
 
-/** The gate as the table names it: `1.1` → `± 10 %`. */
+/** The gate as the table names it: `1.25` → `1,25×`, the same either way. */
 export function formatTolerance(toleranceFactor: number): string {
-  return `± ${nf.format((toleranceFactor - 1) * 100)} %`
+  return `${nf.format(toleranceFactor)}×`
 }
 
 /**
@@ -51,7 +51,7 @@ export function scoreboardRows(input: {
         ...rowHead(entry, input.awardRule),
         scale,
         tip: `${formatFactor(scale)}×`,
-        off: signedPercent(scale / input.factor - 1),
+        off: formatOff(scale / input.factor),
         deviation: asMatchScaleOutcome(entry.outcome)?.deviation ?? null,
       },
     ]
@@ -74,10 +74,12 @@ function byDeviation(a: number | null, b: number | null): number {
   return a - b
 }
 
-function signedPercent(fraction: number): string {
-  const percent = Math.round(fraction * 100)
+/** `ratio` = tip / truth: `1.3` → `1,3× ↑`, `0.5` → `2× ↓`; equal within rounding → `genau`. */
+function formatOff(ratio: number): string {
+  const times = Math.max(ratio, 1 / ratio)
+  if (nf.format(times) === nf.format(1)) return 'genau'
 
-  return `${percent < 0 ? '−' : '+'}${Math.abs(percent)} %`
+  return `${nf.format(times)}× ${ratio > 1 ? '↑' : '↓'}`
 }
 
 /**

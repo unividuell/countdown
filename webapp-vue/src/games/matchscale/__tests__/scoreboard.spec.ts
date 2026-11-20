@@ -17,17 +17,17 @@ function rowsOf(entries: GameEntry[], mineUserId: string | null = null, factor =
 }
 
 describe('formatFactor', () => {
-  it('uses a decimal comma and at most two decimals', () => {
-    expect(formatFactor(1.3)).toBe('1,3')
-    expect(formatFactor(2)).toBe('2')
+  it('uses a decimal comma and always two decimals', () => {
+    expect(formatFactor(1.3)).toBe('1,30')
+    expect(formatFactor(2)).toBe('2,00')
     expect(formatFactor(1.2345)).toBe('1,23')
   })
 })
 
 describe('formatTolerance', () => {
-  it('names the gate in percent, without float noise', () => {
-    expect(formatTolerance(1.1)).toBe('± 10 %')
-    expect(formatTolerance(1.25)).toBe('± 25 %')
+  it('names the gate as a factor, the same either way', () => {
+    expect(formatTolerance(1.25)).toBe('1,25×')
+    expect(formatTolerance(1.1)).toBe('1,10×')
   })
 })
 
@@ -78,7 +78,7 @@ describe('scoreboardRows', () => {
     expect(rows.map((row) => row.userId)).toEqual(['ok'])
   })
 
-  it('prints the tip and the signed deviation from the factor', () => {
+  it('prints the tip and its distance as a factor with an arrow for the direction', () => {
     const rows = rowsOf(
       [
         entry({ userId: 'over', guess: { scale: 2.46 } }),
@@ -91,9 +91,9 @@ describe('scoreboardRows', () => {
     const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
 
     expect(byId.over!.tip).toBe('2,46×')
-    expect(byId.over!.off).toBe('+23 %')
-    expect(byId.under!.off).toBe('−18 %')
-    expect(byId.exact!.off).toBe('+0 %')
+    expect(byId.over!.off).toBe('1,23× ↑')
+    expect(byId.under!.off).toBe('1,22× ↓')
+    expect(byId.exact!.off).toBe('genau')
   })
 
   it('sorts outcome-less entries of equal points by user id', () => {

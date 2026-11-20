@@ -312,8 +312,14 @@ Ohne eigenen Tipp kein Ton.
 
 ### Rangliste
 
-Spalten **Name** (Knopf) **· Tipp (×) · Abweichung (%) · Pkt**, Sortierung Punkte absteigend, dann
+Spalten **Name** (Knopf) **· Tipp · Abstand · Pkt**, Sortierung Punkte absteigend, dann
 Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
+
+Alles als Faktor mit zwei Nachkommastellen, nie in Prozent: Prozent ist nach oben und unten
+verschieden lang (×1,25 = +25 %, ÷1,25 = −20 %), der Faktor nicht. Tipp „1,90×“; Abstand „1,46× ↓“
+(zu klein), „1,23× ↑“ (zu groß) oder „genau“; darüber die Kopfzeilen „Lösung“ und „Toleranz“
+(„1,25×“, nur Phase eins). Die Kommas einer Spalte stehen untereinander, Kopfzeile eingeschlossen.
+Jede Zeile blendet ihren Umriss für sich ein und aus; der eigene ist zu Beginn an.
 
 ## Labor
 
