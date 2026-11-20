@@ -17,14 +17,19 @@ import org.unividuell.countdown.core.game.internal.MatchScaleParams
 import org.unividuell.countdown.core.matchscale.MatchScaleDataset
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.node.DoubleNode
+import tools.jackson.databind.node.ObjectNode
 import java.util.UUID
 import kotlin.math.ln
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
-class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
+class MatchScaleGameTypeTest(
+    @Autowired val game: MatchScaleGameType,
+    @Autowired val springMapper: ObjectMapper,
+) {
     private val community = UUID.fromString("0190f1b2-0000-7000-8000-00000000c0de")
 
     private val mapper = JsonMapper.builder().build()
@@ -95,10 +100,11 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
         fun names(node: JsonNode): Set<String> =
             node.propertyNames().toSet() + node.properties().flatMap { names(it.value) }
 
-        names(fieldsOf(game.present(draw(phase = Phase.ONE)))).apply {
-            contains("factor") shouldBe false
-            contains("metresPerUnit") shouldBe false
-        }
+        val params = draw(phase = Phase.ONE)
+        params.measureA shouldNotBe null
+
+        names(fieldsOf(game.present(params))) intersect
+            setOf("factor", "metresPerUnit", "metres", "measure", "measureA", "measureB") shouldBe emptySet()
     }
 
     @Test
@@ -124,6 +130,17 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
     }
 
     @Test
+    fun `a round frozen before measures existed still reads`() {
+        val stored = mapper.valueToTree<ObjectNode>(draw(phase = Phase.ONE))
+            .apply { remove(listOf("measureA", "measureB")) }
+
+        val params = springMapper.treeToValue(stored, MatchScaleParams::class.java)
+
+        params.measureA.shouldBeNull()
+        game.solution(params).b.shouldBeNull()
+    }
+
+    @Test
     fun `a huge finite scale still yields a finite deviation`() {
         val params = draw(phase = Phase.ONE)
 
@@ -134,9 +151,13 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
     }
 
     @Test
-    fun `the solution carries exactly the factor and the tolerance`() {
-        fieldsOf(game.solution(draw(phase = Phase.ONE))).propertyNames().toSet() shouldBe
-            setOf("factor", "toleranceFactor")
+    fun `the solution carries exactly the factor, the tolerance and both measures`() {
+        val node = fieldsOf(game.solution(draw(phase = Phase.ONE)))
+
+        node.propertyNames().toSet() shouldBe setOf("factor", "toleranceFactor", "a", "b")
+        listOf("a", "b").forEach {
+            node.get(it).propertyNames().toSet() shouldBe setOf("axis", "metres", "source")
+        }
 
         val phaseTwo = fieldsOf(game.solution(draw(phase = Phase.TWO)))
         phaseTwo.get("toleranceFactor").isNull shouldBe true

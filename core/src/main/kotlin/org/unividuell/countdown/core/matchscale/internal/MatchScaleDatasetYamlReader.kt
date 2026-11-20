@@ -1,7 +1,9 @@
 package org.unividuell.countdown.core.matchscale.internal
 
+import org.unividuell.countdown.core.matchscale.MatchScaleAxis
 import org.unividuell.countdown.core.matchscale.MatchScaleCategory
 import org.unividuell.countdown.core.matchscale.MatchScaleEntry
+import org.unividuell.countdown.core.matchscale.MatchScaleMeasure
 import org.yaml.snakeyaml.Yaml
 import java.io.InputStream
 import kotlin.math.abs
@@ -79,7 +81,25 @@ object MatchScaleDatasetYamlReader {
             height = height,
             metresPerUnit = metresPerUnit,
             attribution = attribution,
+            measure = map["measure"]?.let { measure(item = it, label = label) },
         )
+    }
+
+    /** Optional: `{ axis: length|height, metres: 2.3, source: "https://…" }`. Absent → null; present → complete. */
+    private fun measure(item: Any, label: String): MatchScaleMeasure {
+        val map = item as? Map<*, *>
+            ?: throw MatchScaleDatasetException("$label: measure must be a mapping")
+
+        val axisKey = (map["axis"] as? String)?.trim().orEmpty()
+        val axis = MatchScaleAxis.ofKey(axisKey)
+            ?: throw MatchScaleDatasetException("$label: measure.axis must be length or height, was '$axisKey'")
+
+        val metres = positive(map = map, field = "metres", label = "$label, measure")
+
+        val source = (map["source"] as? String)?.trim().orEmpty()
+        if (source.isEmpty()) throw MatchScaleDatasetException("$label: measure.source is blank")
+
+        return MatchScaleMeasure(axis = axis, metres = metres, source = source)
     }
 
     private fun positive(map: Map<*, *>, field: String, label: String): Double {

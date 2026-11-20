@@ -32,6 +32,7 @@ class MatchScaleDatasetYamlReaderTest {
         height: String = "500",
         metresPerUnit: String = "2.5",
         attribution: String? = null,
+        measure: String? = null,
     ) = buildString {
         appendLine("  - name: \"$name\"")
         appendLine("    path: \"$path\"")
@@ -39,6 +40,7 @@ class MatchScaleDatasetYamlReaderTest {
         appendLine("    height: $height")
         appendLine("    metresPerUnit: $metresPerUnit")
         if (attribution != null) appendLine("    attribution: \"$attribution\"")
+        if (measure != null) appendLine("    measure: $measure")
     }
 
     private fun rejects(yaml: String, vararg fragments: String) {
@@ -76,6 +78,36 @@ class MatchScaleDatasetYamlReaderTest {
     @Test
     fun `attribution is null when neither entry nor category has one`() {
         read(file()).entries.single().attribution shouldBe null
+    }
+
+    @Test
+    fun `reads an entry's measure`() {
+        val measure = read(
+            file(entries = entry(measure = "{ axis: height, metres: 2.5, source: \"https://example.org/q\" }")),
+        ).entries.single().measure
+
+        measure shouldBe MatchScaleMeasure(axis = MatchScaleAxis.HEIGHT, metres = 2.5, source = "https://example.org/q")
+    }
+
+    @Test
+    fun `measure is null when the entry has none`() {
+        read(file()).entries.single().measure shouldBe null
+    }
+
+    @Test
+    fun `rejects an incomplete or malformed measure`() {
+        listOf(
+            "{ axis: width, metres: 2.5, source: q }" to "axis",
+            "{ metres: 2.5, source: q }" to "axis",
+            "{ axis: length, metres: 0, source: q }" to "metres",
+            "{ axis: length, metres: .nan, source: q }" to "metres",
+            "{ axis: length, source: q }" to "metres",
+            "{ axis: length, metres: 2.5, source: \" \" }" to "source",
+            "{ axis: length, metres: 2.5 }" to "source",
+            "2.5" to "measure",
+        ).forEach { (measure, field) ->
+            rejects(file(entries = entry(measure = measure)), "Beispielform Alpha", field)
+        }
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
 import org.unividuell.countdown.core.matchscale.MatchScaleDataset
 import org.unividuell.countdown.core.matchscale.MatchScaleEntry
+import org.unividuell.countdown.core.matchscale.MatchScaleMeasure
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.node.JsonNodeFactory
@@ -28,12 +29,21 @@ data class MatchScaleSilhouette(
 )
 
 /**
+ * The real size behind one silhouette: [axis] (`length` or `height`) is [metres] long, per [source].
+ * Solution only — the metres of A and B give the factor away.
+ */
+data class MatchScaleMeasureDto(val axis: String, val metres: Double, val source: String)
+
+/**
  * The frozen round. [factor] — how many times larger B really is than A — is the answer and never
  * leaves the server through the payload. It follows from the drawn pair, and the metres behind it
  * stay in the dataset: seeing the pair is not knowing the factor.
  *
  * [toleranceFactor] is the gate in phase one (a guess within `factor / 1.1 .. factor × 1.1`
  * qualifies) and `null` in phase two, where only the closest guess scores.
+ *
+ * [measureA] and [measureB] are as secret as [factor] and leave only through the solution. They
+ * default to `null` so rounds frozen before they existed still read.
  */
 data class MatchScaleParams(
     val category: String,
@@ -42,6 +52,8 @@ data class MatchScaleParams(
     val b: MatchScaleSilhouette,
     val factor: Double,
     val toleranceFactor: Double?,
+    val measureA: MatchScaleMeasureDto? = null,
+    val measureB: MatchScaleMeasureDto? = null,
 )
 
 /**
@@ -63,8 +75,16 @@ data class MatchScaleOutcome(
     val withinTolerance: Boolean?,
 ) : GameOutcome
 
-/** What the round looked like, once the player has guessed. [toleranceFactor] is `null` in phase two. */
-data class MatchScaleSolution(val factor: Double, val toleranceFactor: Double?) : GameSolution
+/**
+ * What the round looked like, once the player has guessed. [toleranceFactor] is `null` in phase two;
+ * [a] and [b] are the measures behind the factor, `null` where the dataset has none.
+ */
+data class MatchScaleSolution(
+    val factor: Double,
+    val toleranceFactor: Double?,
+    val a: MatchScaleMeasureDto?,
+    val b: MatchScaleMeasureDto?,
+) : GameSolution
 
 /**
  * Augenmaß: drag silhouette B to the size it would have next to the fixed A, at real scale.
@@ -103,6 +123,8 @@ class MatchScaleGameType(
                 Phase.ONE -> TOLERANCE_FACTOR
                 Phase.TWO -> null
             },
+            measureA = pair.a.measure?.toDto(),
+            measureB = pair.b.measure?.toDto(),
         )
     }
 
@@ -142,6 +164,8 @@ class MatchScaleGameType(
     override fun solution(params: MatchScaleParams) = MatchScaleSolution(
         factor = params.factor,
         toleranceFactor = params.toleranceFactor,
+        a = params.measureA,
+        b = params.measureB,
     )
 
     private fun MatchScaleEntry.toSilhouette() = MatchScaleSilhouette(
@@ -151,6 +175,8 @@ class MatchScaleGameType(
         height = height,
         attribution = attribution,
     )
+
+    private fun MatchScaleMeasure.toDto() = MatchScaleMeasureDto(axis = axis.key, metres = metres, source = source)
 
     companion object {
         /** Phase one: at most 10 % off on the log scale. */

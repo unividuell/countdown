@@ -20,7 +20,9 @@
  *   (input)       (cached, fetched once)    transforms applied,    into outers     normalise …
  *                                           curves flattened       and holes       round, path
  *
- *   metresPerUnit = metres / the drawn width or height, whichever axis the hand list measured.
+ *   metresPerUnit = metres / the drawn width (axis "length") or height, whichever the hand list
+ *   measured. The measure itself (axis, metres, source) is written alongside, to be shown in the
+ *   reveal and researched again.
  *
  * Usage:
  *   node scripts/match-scale-dataset.mts countries --source <ne_50m_admin_0_countries.geojson>
@@ -31,7 +33,7 @@
  *
  * The countries input holds JSON (valid YAML): {"exclude": ["<ADM0_A3>", …]}. The animals input
  * too: {"category", "displayName", "entries": [{"name", "phylopic": "<image uuid>",
- * "axis": "width" | "height", "metres", "source"}]}. Input, output and review page are plaintext
+ * "axis": "length" | "height", "metres", "source"}]}. Input, output and review page are plaintext
  * game content: they live in the main checkout's .local/games/match-scale/ (input/, categories/,
  * raw/), never in the repo.
  *
@@ -78,8 +80,11 @@ type Shape = {
   points: number;
 };
 
+/** The real size one axis of the drawing stands for, and where that size was looked up. */
+type Measure = { axis: "length" | "height"; metres: number; source: string };
+
 /** What every category writes and the review page pairs: a named, drawn silhouette. */
-type Drawn = Shape & { name: string; attribution?: string };
+type Drawn = Shape & { name: string; attribution?: string; measure?: Measure };
 
 type Entry = Drawn & {
   code: string;
@@ -496,6 +501,13 @@ function categoryYaml(
       `    height: ${e.height}`,
       `    metresPerUnit: ${Number(e.metresPerUnit.toPrecision(7))}`,
     );
+    if (e.measure)
+      lines.push(
+        "    measure:",
+        `      axis: ${e.measure.axis}`,
+        `      metres: ${e.measure.metres}`,
+        `      source: ${JSON.stringify(e.measure.source)}`,
+      );
     if (e.attribution)
       lines.push(`    attribution: ${JSON.stringify(e.attribution)}`);
   }
@@ -1054,16 +1066,14 @@ const THIN_ASPECT = 0.2;
 type AnimalInput = {
   name: string;
   phylopic: string;
-  axis: "width" | "height";
+  axis: Measure["axis"];
   metres: number;
   source: string;
 };
 
 type Animal = Drawn & {
   attribution: string;
-  axis: "width" | "height";
-  metres: number;
-  source: string;
+  measure: Measure;
   licence: string;
   contributor: string;
   uuid: string;
@@ -1129,7 +1139,7 @@ function readAnimalInput(path: string) {
       typeof e.name === "string" &&
       e.name.trim() !== "" &&
       UUID.test(e.phylopic ?? "") &&
-      (e.axis === "width" || e.axis === "height") &&
+      (e.axis === "length" || e.axis === "height") &&
       typeof e.metres === "number" &&
       Number.isFinite(e.metres) &&
       e.metres > 0 &&
@@ -1137,7 +1147,7 @@ function readAnimalInput(path: string) {
       e.source.startsWith("https://");
     if (!ok)
       fail(
-        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "width"|"height", "metres": > 0, "source": "https://…"}`,
+        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "length"|"height", "metres": > 0, "source": "https://…"}`,
       );
   });
 
@@ -1190,7 +1200,8 @@ async function animals(args: Record<string, string>) {
     }
 
     // The hand list measured one axis of this drawing; the other follows from it.
-    const extent = e.axis === "width" ? drawn.width : drawn.height;
+    // Seen from the side, an animal's length is the drawing's width.
+    const extent = e.axis === "length" ? drawn.width : drawn.height;
     entries.push({
       ...drawn,
       metresPerUnit: e.metres / extent,
@@ -1198,9 +1209,7 @@ async function animals(args: Record<string, string>) {
       attribution: licence.byline
         ? `Silhouette: ${who}, ${licence.label} (PhyloPic)`
         : `Silhouette: ${who} (PhyloPic)`,
-      axis: e.axis,
-      metres: e.metres,
-      source: e.source,
+      measure: { axis: e.axis, metres: e.metres, source: e.source },
       licence: licence.label,
       contributor,
       uuid: e.phylopic,
@@ -1283,12 +1292,14 @@ function animalCard(e: Animal): string {
     e.contributor === "" ? "ohne Urheber" : "",
     e.partners < 2 ? `${e.partners} Partner` : "",
   ].filter(Boolean);
-  const metres = e.metres.toLocaleString("de-DE", { maximumFractionDigits: 3 });
+  const metres = e.measure.metres.toLocaleString("de-DE", {
+    maximumFractionDigits: 3,
+  });
   return `<figure class="${flags.length > 0 ? "flag" : ""}">
   <svg viewBox="0 0 ${e.width} ${e.height}"><path d="${e.path}"/></svg>
   <figcaption><b>${escape(e.name)}</b><br>
-  ${e.axis === "width" ? "Breite" : "Höhe"} ${metres} m · ${e.points} Punkte · ${e.partners} Partner<br>
-  <a href="${escape(e.source)}">Quelle</a> · <a href="https://www.phylopic.org/images/${e.uuid}">Bild</a><br>
+  ${e.measure.axis === "length" ? "Länge" : "Höhe"} ${metres} m · ${e.points} Punkte · ${e.partners} Partner<br>
+  <a href="${escape(e.measure.source)}">Quelle</a> · <a href="https://www.phylopic.org/images/${e.uuid}">Bild</a><br>
   <small>${escape(e.attribution)}</small>
   ${flags.length > 0 ? `<br><mark>${flags.join(" · ")}</mark>` : ""}</figcaption>
 </figure>`;
@@ -1560,6 +1571,25 @@ function selftest() {
   check(
     Math.sign(signedArea(holedOuter)) === -Math.sign(signedArea(holedInner)),
     "an inner SVG ring is not a hole",
+  );
+
+  // The measure travels into the category file, under the entry it belongs to.
+  const measured = categoryYaml("example", "Beispiel", "Quelle", [
+    {
+      ...holed,
+      name: "Beispieltier",
+      measure: {
+        axis: "length",
+        metres: 2.3,
+        source: "https://example.org/beispieltier",
+      },
+    },
+  ]);
+  check(
+    measured.includes(
+      '    measure:\n      axis: length\n      metres: 2.3\n      source: "https://example.org/beispieltier"\n',
+    ),
+    "the measure is missing from the category file",
   );
 
   console.log("selftest ok");
