@@ -20,9 +20,16 @@ export interface MatchScalePayload {
   toleranceFactor: number | null
 }
 
+/** What was measured; the reveal names it. Each kind belongs to one axis. */
+export type MeasureKind = 'head-body' | 'total-length' | 'shoulder' | 'total-height'
+
+const MEASURE_KINDS: readonly unknown[] = ['head-body', 'total-length', 'shoulder', 'total-height']
+
 /** The real size behind a silhouette: its `axis` is `metres` long, per `source`. Solution only. */
 export interface Measure {
   axis: 'length' | 'height'
+  /** Absent where the dataset does not say; the reveal then names just the axis. */
+  kind?: MeasureKind
   metres: number
   source: string
 }
@@ -98,11 +105,14 @@ function asMeasure(value: unknown): Measure | null {
   const raw = record(value)
   if (raw === null) return null
 
-  const { axis, metres, source } = raw
+  const { axis, kind, metres, source } = raw
   if (axis !== 'length' && axis !== 'height') return null
   if (!positive(metres) || typeof source !== 'string') return null
 
-  return { axis, metres, source }
+  // A kind the client does not know costs only the precise wording.
+  return MEASURE_KINDS.includes(kind)
+    ? { axis, kind: kind as MeasureKind, metres, source }
+    : { axis, metres, source }
 }
 
 function record(value: unknown): Record<string, unknown> | null {

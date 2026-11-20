@@ -29,10 +29,11 @@ data class MatchScaleSilhouette(
 )
 
 /**
- * The real size behind one silhouette: [axis] (`length` or `height`) is [metres] long, per [source].
+ * The real size behind one silhouette: [axis] (`length` or `height`) is [metres] long, per [source];
+ * [kind] names what was measured, `null` where the dataset does not say.
  * Solution only — the metres of A and B give the factor away.
  */
-data class MatchScaleMeasureDto(val axis: String, val metres: Double, val source: String)
+data class MatchScaleMeasureDto(val axis: String, val kind: String?, val metres: Double, val source: String)
 
 /**
  * The frozen round. [factor] — how many times larger B really is than A — is the answer and never
@@ -176,7 +177,7 @@ class MatchScaleGameType(
         attribution = attribution,
     )
 
-    private fun MatchScaleMeasure.toDto() = MatchScaleMeasureDto(axis = axis.key, metres = metres, source = source)
+    private fun MatchScaleMeasure.toDto() = MatchScaleMeasureDto(axis = axis.key, kind = kind?.key, metres = metres, source = source)
 
     companion object {
         /** Phase one: at most 10 % off on the log scale. */

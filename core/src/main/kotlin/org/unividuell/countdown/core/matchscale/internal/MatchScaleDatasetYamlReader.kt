@@ -4,6 +4,7 @@ import org.unividuell.countdown.core.matchscale.MatchScaleAxis
 import org.unividuell.countdown.core.matchscale.MatchScaleCategory
 import org.unividuell.countdown.core.matchscale.MatchScaleEntry
 import org.unividuell.countdown.core.matchscale.MatchScaleMeasure
+import org.unividuell.countdown.core.matchscale.MatchScaleMeasureKind
 import org.unividuell.countdown.core.matchscale.MatchScaleSpan
 import org.yaml.snakeyaml.Yaml
 import java.io.InputStream
@@ -87,8 +88,8 @@ object MatchScaleDatasetYamlReader {
     }
 
     /**
-     * Optional: `{ axis: length|height, metres: 2.3, source: "https://…", span: [120, 870] }`.
-     * Absent → null; present → complete, except `span`, which is optional itself.
+     * Optional: `{ axis: length|height, kind: head-body, metres: 2.3, source: "https://…", span: [120, 870] }`.
+     * Absent → null; present → complete, except `span` and `kind`, which are optional themselves.
      */
     private fun measure(item: Any, label: String): MatchScaleMeasure {
         val map = item as? Map<*, *>
@@ -98,6 +99,8 @@ object MatchScaleDatasetYamlReader {
         val axis = MatchScaleAxis.ofKey(axisKey)
             ?: throw MatchScaleDatasetException("$label: measure.axis must be length or height, was '$axisKey'")
 
+        val kind = map["kind"]?.let { kind(item = it, axis = axis, label = label) }
+
         val metres = positive(map = map, field = "metres", label = "$label, measure")
 
         val source = (map["source"] as? String)?.trim().orEmpty()
@@ -105,11 +108,25 @@ object MatchScaleDatasetYamlReader {
 
         return MatchScaleMeasure(
             axis = axis,
+            kind = kind,
             metres = metres,
             source = source,
             span = map["span"]?.let { span(item = it, label = label) },
         )
     }
+
+    /** One of [MatchScaleMeasureKind], and one that fits the measure's [axis]. */
+    private fun kind(item: Any, axis: MatchScaleAxis, label: String): MatchScaleMeasureKind {
+        val kind = (item as? String)?.trim()?.let { MatchScaleMeasureKind.ofKey(it) }
+            ?: throw MatchScaleDatasetException("$label: measure.kind must be one of ${kinds()}, was '$item'")
+
+        if (kind.axis != axis) {
+            throw MatchScaleDatasetException("$label: measure.kind '${kind.key}' does not fit axis ${axis.key}")
+        }
+        return kind
+    }
+
+    private fun kinds() = MatchScaleMeasureKind.entries.joinToString { it.key }
 
     /** `[from, to]`: two finite numbers within the normalised side, from < to. */
     private fun span(item: Any, label: String): MatchScaleSpan {

@@ -106,6 +106,7 @@ entries:
     metresPerUnit: 412.5       # 1000 Einheiten = 412,5 km
     measure:                   # optional: woraus metresPerUnit stammt
       axis: length             # length (Breite der Bounding-Box) | height
+      kind: head-body          # optional: head-body | total-length (length), shoulder | total-height (height)
       metres: 412500
       source: "https://example.org/beispielding-alpha"
       span: [0, 1000]          # optional: die Strecke des Maßes entlang der Achse, normiert
@@ -115,6 +116,10 @@ entries:
 **`measure`** hält das Maß samt Quelle neben dem Eintrag, damit es beisammen und später nachprüfbar
 ist. Von Hand gemessene Kategorien (Tiere) tragen es, erzeugte (Länder) nicht. Es ist so geheim wie
 `metresPerUnit` (*Rundengeheimnis*).
+
+**`measure.kind`** benennt das Maß in der Auflösung: `head-body` „Kopf-Rumpf“, `total-length` „Länge“,
+`shoulder` „Schulterhöhe“, `total-height` „Höhe“. Der Leser prüft Wert und Passung zur Achse; fehlt `kind`,
+steht die Achse da („Länge“/„Höhe“). `kind` reist nur in der Lösung.
 
 **Gleiche Maße, an der richtigen Stelle.** Tiere messen überall dasselbe: `length` ist die
 Kopf-Rumpf-Länge (Nasenspitze bis Schwanzansatz; ohne Schwanz im eigentlichen Sinn — Fisch, Vogel,
@@ -294,7 +299,7 @@ gestrichelter Umriss stehen. Darunter „Dein Tipp: 1,3× · tatsächlich: 1,6×
 nochmal tippen hebt auf.
 
 Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus der Lösung („Beispieltier
-· 2,3 m Länge“; unter einem Meter in Zentimetern), die Attribution in Zeile zwei. Die Namenszeile bricht
+· 2,3 m Länge“, „1,05 m Kopf-Rumpf“; unter einem Meter in Zentimetern), die Attribution in Zeile zwei. Die Namenszeile bricht
 nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in der Auflösung gleich hoch,
 nichts springt.
 

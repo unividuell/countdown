@@ -40,8 +40,9 @@
  * The countries input holds JSON (valid YAML): {"exclude": ["<ADM0_A3>", …]}. The animals input
  * too: {"category", "displayName", "entries": [{"name", "phylopic": "<image uuid>",
  * "axis": "length" | "height", "metres", "source", "span"?: [from, to], "kind"?}]}; the span is in
- * the generated path's units (0…1000, y down) along the measured axis, "kind" a note on what was
- * measured (e.g. "Kopf-Rumpf-Länge", "Schulterhöhe") that the script ignores. Input, output and
+ * the generated path's units (0…1000, y down) along the measured axis, "kind" what was measured:
+ * "head-body" | "total-length" (axis length), "shoulder" | "total-height" (axis height), named
+ * in the reveal; absent, the reveal says just „Länge“ / „Höhe“. Input, output and
  * review page are plaintext game content: they live in the main checkout's
  * .local/games/match-scale/ (input/, categories/, raw/), never in the repo.
  *
@@ -88,12 +89,32 @@ type Shape = {
   points: number;
 };
 
+/** What a measure measured; each fits one axis. Named in the reveal. */
+const KINDS = {
+  "head-body": "length",
+  "total-length": "length",
+  shoulder: "height",
+  "total-height": "height",
+} as const;
+type Kind = keyof typeof KINDS;
+
+/** The reveal's wording; a measure without kind falls back to its axis. */
+const KIND_LABEL = {
+  "head-body": "Kopf-Rumpf",
+  "total-length": "Länge",
+  shoulder: "Schulterhöhe",
+  "total-height": "Höhe",
+  length: "Länge",
+  height: "Höhe",
+} as const;
+
 /**
  * The real size one axis of the drawing stands for, and where that size was looked up. [span]: the
  * stretch of that axis it covers, in normalised units; absent, the whole bbox side.
  */
 type Measure = {
   axis: "length" | "height";
+  kind?: Kind;
   metres: number;
   source: string;
   span?: [number, number];
@@ -521,6 +542,7 @@ function categoryYaml(
       lines.push(
         "    measure:",
         `      axis: ${e.measure.axis}`,
+        ...(e.measure.kind ? [`      kind: ${e.measure.kind}`] : []),
         `      metres: ${e.measure.metres}`,
         `      source: ${JSON.stringify(e.measure.source)}`,
         ...(e.measure.span
@@ -1086,6 +1108,7 @@ type AnimalInput = {
   name: string;
   phylopic: string;
   axis: Measure["axis"];
+  kind?: Kind;
   metres: number;
   source: string;
   span?: [number, number];
@@ -1160,6 +1183,7 @@ function readAnimalInput(path: string) {
       e.name.trim() !== "" &&
       UUID.test(e.phylopic ?? "") &&
       (e.axis === "length" || e.axis === "height") &&
+      (e.kind === undefined || KINDS[e.kind as Kind] === e.axis) &&
       typeof e.metres === "number" &&
       Number.isFinite(e.metres) &&
       e.metres > 0 &&
@@ -1168,7 +1192,7 @@ function readAnimalInput(path: string) {
       (e.span === undefined || isSpan(e.span));
     if (!ok)
       fail(
-        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "length"|"height", "metres": > 0, "source": "https://…", "span"?: [from, to] with 0 <= from < to <= ${SIDE}}`,
+        `${path} entry #${index}: expected {"name", "phylopic": "<uuid>", "axis": "length"|"height", "kind"?: head-body|total-length (length) or shoulder|total-height (height), "metres": > 0, "source": "https://…", "span"?: [from, to] with 0 <= from < to <= ${SIDE}}`,
       );
   });
 
@@ -1246,6 +1270,7 @@ async function animals(args: Record<string, string>) {
     // Seen from the side, an animal's length is the drawing's width.
     const measure: Measure = {
       axis: e.axis,
+      ...(e.kind ? { kind: e.kind } : {}),
       metres: e.metres,
       source: e.source,
       ...(e.span ? { span: e.span } : {}),
@@ -1352,7 +1377,7 @@ function animalCard(e: Animal): string {
   return `<figure class="${flags.length > 0 ? "flag" : ""}">
   <svg viewBox="0 0 ${e.width} ${e.height}"><path d="${e.path}"/></svg>
   <figcaption><b>${escape(e.name)}</b><br>
-  ${e.measure.axis === "length" ? "Länge" : "Höhe"} ${metres} m · ${e.points} Punkte · ${e.partners} Partner<br>
+  ${KIND_LABEL[e.measure.kind ?? e.measure.axis]} ${metres} m · ${e.points} Punkte · ${e.partners} Partner<br>
   <a href="${escape(e.measure.source)}">Quelle</a> · <a href="https://www.phylopic.org/images/${e.uuid}">Bild</a><br>
   <small>${escape(e.attribution)}</small>
   ${flags.length > 0 ? `<br><mark>${flags.join(" · ")}</mark>` : ""}</figcaption>
@@ -1644,6 +1669,24 @@ function selftest() {
       '    measure:\n      axis: length\n      metres: 2.3\n      source: "https://example.org/beispieltier"\n',
     ),
     "the measure is missing from the category file",
+  );
+
+  // The kind travels next to the axis it fits.
+  const kinded = categoryYaml("example", "Beispiel", "Quelle", [
+    {
+      ...holed,
+      name: "Beispieltier",
+      measure: {
+        axis: "height",
+        kind: "shoulder",
+        metres: 1.4,
+        source: "https://example.org/beispieltier",
+      },
+    },
+  ]);
+  check(
+    kinded.includes("      axis: height\n      kind: shoulder\n      metres: 1.4\n"),
+    "the kind is missing from the category file",
   );
 
   // A span half the drawn width stands for the same metres: twice the metres per unit.

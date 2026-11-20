@@ -61,6 +61,26 @@ describe('asMatchScaleSolution', () => {
     expect(asMatchScaleSolution({ factor: 2.5, toleranceFactor: null })?.toleranceFactor).toBeNull()
   })
 
+  it('keeps a known kind and drops an unknown or null one, not the measure', () => {
+    const kept = asMatchScaleSolution({
+      factor: 2,
+      toleranceFactor: null,
+      a: { ...MEASURE, kind: 'head-body' },
+      b: { ...MEASURE, kind: 'wingspan' },
+    })
+    const nulled = asMatchScaleSolution({
+      factor: 2,
+      toleranceFactor: null,
+      a: { ...MEASURE, kind: null },
+      b: null,
+    })
+
+    expect(kept?.a?.kind).toBe('head-body')
+    expect(kept?.b).toEqual(MEASURE)
+    expect(kept?.b?.kind).toBeUndefined()
+    expect(nulled?.a).toEqual(MEASURE)
+  })
+
   it.each([
     ['missing', undefined],
     ['not an object', 'x'],

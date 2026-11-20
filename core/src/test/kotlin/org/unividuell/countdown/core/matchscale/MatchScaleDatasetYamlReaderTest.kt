@@ -126,6 +126,32 @@ class MatchScaleDatasetYamlReaderTest {
     }
 
     @Test
+    fun `reads a measure's kind`() {
+        val measure = read(
+            file(entries = entry(measure = "{ axis: height, kind: shoulder, metres: 1.4, source: q }")),
+        ).entries.single().measure
+
+        measure?.kind shouldBe MatchScaleMeasureKind.SHOULDER
+    }
+
+    @Test
+    fun `kind is null when the measure has none`() {
+        read(file(entries = entry(measure = "{ axis: length, metres: 2.5, source: q }")))
+            .entries.single().measure?.kind shouldBe null
+    }
+
+    @Test
+    fun `rejects an unknown kind or one that does not fit the axis`() {
+        listOf(
+            "{ axis: length, kind: wingspan, metres: 2.5, source: q }",
+            "{ axis: length, kind: shoulder, metres: 2.5, source: q }",
+            "{ axis: height, kind: head-body, metres: 2.5, source: q }",
+        ).forEach { measure ->
+            rejects(file(entries = entry(measure = measure)), "Beispielform Alpha", "kind")
+        }
+    }
+
+    @Test
     fun `measure is null when the entry has none`() {
         read(file()).entries.single().measure shouldBe null
     }

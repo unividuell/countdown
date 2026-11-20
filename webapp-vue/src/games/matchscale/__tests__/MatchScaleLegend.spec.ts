@@ -41,6 +41,10 @@ describe('formatMeasure', () => {
     [{ axis: 'length', metres: 0.084 }, '8 cm Länge'],
     [{ axis: 'length', metres: 0.996 }, '1 m Länge'],
     [{ axis: 'length', metres: 0.004 }, '0,4 cm Länge'],
+    [{ axis: 'length', kind: 'head-body', metres: 1.05 }, '1,05 m Kopf-Rumpf'],
+    [{ axis: 'length', kind: 'total-length', metres: 2.3 }, '2,3 m Länge'],
+    [{ axis: 'height', kind: 'shoulder', metres: 0.45 }, '45 cm Schulterhöhe'],
+    [{ axis: 'height', kind: 'total-height', metres: 1 }, '1 m Höhe'],
   ] as const)('%o reads %s', (measure, text) => {
     expect(formatMeasure({ ...measure, source: 'x' })).toBe(text)
   })

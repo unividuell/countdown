@@ -156,7 +156,7 @@ class MatchScaleGameTypeTest(
 
         node.propertyNames().toSet() shouldBe setOf("factor", "toleranceFactor", "a", "b")
         listOf("a", "b").forEach {
-            node.get(it).propertyNames().toSet() shouldBe setOf("axis", "metres", "source")
+            node.get(it).propertyNames().toSet() shouldBe setOf("axis", "kind", "metres", "source")
         }
 
         val phaseTwo = fieldsOf(game.solution(draw(phase = Phase.TWO)))
