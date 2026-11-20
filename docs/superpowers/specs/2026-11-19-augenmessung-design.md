@@ -83,10 +83,10 @@ abgegeben per Halten (`HoldButton`).
 |---|---|---|
 | Aufdecken | nein | nein |
 | Zeit | zählt nicht | zählt nicht |
-| Qualifiziert | `deviation ≤ ln 1,1` (±10 %, symmetrisch im Log) | jeder Tipp |
+| Qualifiziert | `deviation ≤ ln 1,25` (Faktor 1,25 in beide Richtungen: 25 % zu groß oder 20 % zu klein) | jeder Tipp |
 | Award | `ALL_QUALIFYING` — 1 Punkt je Treffer | `CLOSEST_ONLY` — der nächste Tipp nimmt alles |
 
-Im Vertrag wie `GuessHueParams.toleranceDeg`: ein `toleranceFactor: Double?` in den Params, `1.1` in
+Im Vertrag wie `GuessHueParams.toleranceDeg`: ein `toleranceFactor: Double?` in den Params, `1.25` in
 Phase eins, `null` in Phase zwei, aus der Phase gesetzt. `requiresReveal = scoresOnDuration = false`.
 
 ## Der Datensatz

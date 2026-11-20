@@ -73,7 +73,7 @@ class MatchScaleGameTypeTest(
 
     @Test
     fun `phase one bakes in a tenth of tolerance, phase two has no gate at all`() {
-        draw(phase = Phase.ONE).toleranceFactor shouldBe 1.1
+        draw(phase = Phase.ONE).toleranceFactor shouldBe 1.25
         draw(phase = Phase.TWO).toleranceFactor.shouldBeNull()
     }
 
@@ -196,10 +196,10 @@ class MatchScaleGameTypeTest(
     fun `in phase one the tolerance is the gate`() {
         val params = draw(phase = Phase.ONE)
 
-        game.judge(params = params, guess = guess(params.factor * 1.1)).qualifies shouldBe true
-        game.judge(params = params, guess = guess(params.factor * 1.11)).qualifies shouldBe false
-        game.judge(params = params, guess = guess(params.factor / 1.1)).qualifies shouldBe true
-        game.judge(params = params, guess = guess(params.factor / 1.11)).qualifies shouldBe false
+        game.judge(params = params, guess = guess(params.factor * 1.25)).qualifies shouldBe true
+        game.judge(params = params, guess = guess(params.factor * 1.26)).qualifies shouldBe false
+        game.judge(params = params, guess = guess(params.factor / 1.25)).qualifies shouldBe true
+        game.judge(params = params, guess = guess(params.factor / 1.26)).qualifies shouldBe false
     }
 
     @Test

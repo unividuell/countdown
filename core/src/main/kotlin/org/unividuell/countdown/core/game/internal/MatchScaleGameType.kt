@@ -40,7 +40,7 @@ data class MatchScaleMeasureDto(val axis: String, val kind: String?, val metres:
  * leaves the server through the payload. It follows from the drawn pair, and the metres behind it
  * stay in the dataset: seeing the pair is not knowing the factor.
  *
- * [toleranceFactor] is the gate in phase one (a guess within `factor / 1.1 .. factor × 1.1`
+ * [toleranceFactor] is the gate in phase one (a guess within `factor / 1.25 .. factor × 1.25`
  * qualifies) and `null` in phase two, where only the closest guess scores.
  *
  * [measureA] and [measureB] are as secret as [factor] and leave only through the solution. They
@@ -180,10 +180,10 @@ class MatchScaleGameType(
     private fun MatchScaleMeasure.toDto() = MatchScaleMeasureDto(axis = axis.key, kind = kind?.key, metres = metres, source = source)
 
     companion object {
-        /** Phase one: at most 10 % off on the log scale. */
-        const val TOLERANCE_FACTOR = 1.1
+        /** Phase one: within a factor of 1.25 either way — 25 % too large or 20 % too small. */
+        const val TOLERANCE_FACTOR = 1.25
 
-        /** Floating-point slack: `factor × 1.1` must sit inside the gate it names. */
+        /** Floating-point slack: `factor × 1.25` must sit inside the gate it names. */
         private const val EPSILON = 1e-9
     }
 }
