@@ -33,13 +33,14 @@ const props = defineProps<{
   draftKey: string | null
   awardRule: AwardRule | null
   awardPoints: number | null
-  /** The viewer's avatar colour: B, its name and the submit button wear it. */
+  /** The viewer's avatar colour: the submit button wears it. */
   myColorHex: string
 }>()
 
 const emit = defineEmits<{ guess: [value: { scale: number }] }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
+const B_COLOR = 'var(--color-amber-200)'
 
 const storage = deviceStorage()
 
@@ -110,11 +111,7 @@ function submit(): void {
         <span data-test="match-scale-label-a" class="truncate" :style="{ color: A_COLOR }">
           {{ props.payload.a.name }}
         </span>
-        <span
-          data-test="match-scale-label-b"
-          class="truncate text-end"
-          :style="{ color: props.myColorHex }"
-        >
+        <span data-test="match-scale-label-b" class="truncate text-end" :style="{ color: B_COLOR }">
           {{ props.payload.b.name }}
         </span>
       </div>
@@ -135,7 +132,7 @@ function submit(): void {
           :a="props.payload.a"
           :b="props.payload.b"
           :a-color="A_COLOR"
-          :b-color="props.myColorHex"
+          :b-color="B_COLOR"
           :view="view"
           :placement-a="placementA"
           :placement-b="placementB"

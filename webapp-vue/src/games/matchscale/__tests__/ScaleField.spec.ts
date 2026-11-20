@@ -99,10 +99,11 @@ describe('ScaleField', () => {
     expect(mountField().svg.classes()).toContain('touch-none')
   })
 
-  it('puts a 44 px handle on B’s top right corner', () => {
+  it('puts a 32 px handle on B’s top right corner', () => {
     const handle = mountField().wrapper.get<HTMLElement>('[aria-label="Größe ändern"]')
 
-    expect(handle.classes()).toContain('size-11')
+    expect(handle.classes()).toEqual(expect.arrayContaining(['h-8', 'w-8', 'rounded-full']))
+    expect(handle.find('svg').exists()).toBe(true)
     expect(handle.element.style.left).toBe(`${(272 / 360) * 100}%`)
     expect(handle.element.style.top).toBe(`${(160 / 360) * 100}%`)
   })
@@ -163,6 +164,20 @@ describe('ScaleField', () => {
     expect(placement.scale).toBeCloseTo(1.5)
     expect(placement.x).toBe(START.b.x)
     expect(placement.y).toBe(START.b.y)
+  })
+
+  it('the handle catches a finger within its 16 px radius only', async () => {
+    const near = mountField()
+    await pointer(near, 'pointerdown', 1, { clientX: 284, clientY: 160 })
+    await pointer(near, 'pointermove', 1, { clientX: 300, clientY: 140 })
+
+    const far = mountField()
+    await pointer(far, 'pointerdown', 1, { clientX: 290, clientY: 160 })
+    await pointer(far, 'pointermove', 1, { clientX: 300, clientY: 140 })
+
+    expect(near.wrapper.emitted('update:placementB')).toBeDefined()
+    expect(far.wrapper.emitted('update:placementB')).toBeUndefined()
+    expect(far.wrapper.emitted('update:view')).toBeDefined()
   })
 
   it('a finger on the empty field pans the view', async () => {

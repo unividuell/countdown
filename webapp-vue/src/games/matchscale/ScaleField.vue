@@ -5,7 +5,7 @@
  * props and go out as `update:` events.
  *
  *   ┌──────────────────────┐
- *   │        ▟▙       ▟▙ ◯ │  ◯ the handle: 44 px whatever the zoom, on B's top right corner
+ *   │        ▟▙       ▟▙ ⤢ │  ⤢ the handle: 32 px whatever the zoom, on B's top right corner
  *   │       ▐██▌     ▐██▌  │
  *   │═══════════════════════  ground, y = 0
  *   └──────────────────────┘
@@ -15,6 +15,7 @@
  */
 import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef, watch } from 'vue'
+import IconMaximize from '~icons/lucide/maximize-2'
 import {
   FIELD_PX,
   GRID_MODE,
@@ -58,7 +59,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
 
-const HANDLE_RADIUS_PX = 22
+const HANDLE_RADIUS_PX = 16
 /** One wheel notch (100 px of `deltaY`) zooms by about a quarter. */
 const WHEEL_PX_PER_DOUBLING = 300
 const LINE_PX = 16
@@ -307,17 +308,19 @@ useEventListener(document, 'visibilitychange', () => {
         vector-effect="non-scaling-stroke"
       />
     </svg>
+    <!-- Looks like the minimap's expand button; the field's hit test does the work. -->
     <span
       v-if="props.interactive"
       :inert="props.locked || undefined"
       role="img"
       aria-label="Größe ändern"
-      class="pointer-events-none absolute size-11 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md"
+      class="pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-surface-container-lowest/90 text-on-surface shadow"
       :style="{
         left: `${(handle.x / FIELD_PX) * 100}%`,
         top: `${(handle.y / FIELD_PX) * 100}%`,
-        backgroundColor: props.bColor,
       }"
-    />
+    >
+      <IconMaximize aria-hidden="true" class="h-4 w-4" />
+    </span>
   </div>
 </template>

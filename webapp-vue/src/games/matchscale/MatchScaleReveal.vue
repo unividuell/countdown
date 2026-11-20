@@ -30,6 +30,7 @@ const props = defineProps<{
 }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
+const B_COLOR = 'var(--color-amber-200)'
 
 const start = computed(() => initialPlacements(props.payload.a))
 
@@ -130,7 +131,7 @@ const attributions = computed(() => [
     <div class="flex flex-col gap-3">
       <div class="flex justify-between gap-4 text-sm font-semibold">
         <span class="truncate" :style="{ color: A_COLOR }">{{ props.payload.a.name }}</span>
-        <span class="truncate text-end" :style="{ color: props.myColorHex }">
+        <span class="truncate text-end" :style="{ color: B_COLOR }">
           {{ props.payload.b.name }}
         </span>
       </div>
@@ -139,7 +140,7 @@ const attributions = computed(() => [
         :a="props.payload.a"
         :b="props.payload.b"
         :a-color="A_COLOR"
-        :b-color="props.myColorHex"
+        :b-color="B_COLOR"
         :view="view"
         :placement-a="start.a"
         :placement-b="placementB"
