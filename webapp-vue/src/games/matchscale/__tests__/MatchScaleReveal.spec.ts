@@ -214,11 +214,13 @@ describe('MatchScaleReveal', () => {
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200')
     expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('182–220')
-    expect(band).toContain('Tipp*')
-    expect(band).toContain('Abstand*')
+    expect(band).toContain('Tipp [cm]')
+    expect(band).toContain('Abstand [cm]')
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250')
     expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50')
-    expect(wrapper.get('[data-test="match-scale-unit-legend"]').text()).toBe('* in cm')
+    expect(wrapper.get('[data-test="match-scale-tolerance-legend"]').text()).toBe(
+      '* bis 10 % zu groß oder 9 % zu klein',
+    )
   })
 
   it("without B's measure the table keeps factors and names no unit", () => {
@@ -228,7 +230,7 @@ describe('MatchScaleReveal', () => {
     expect(band).toContain('Tipp')
     expect(band).toContain('Abstand')
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('2,00×')
-    expect(wrapper.find('[data-test="match-scale-unit-legend"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="match-scale-tolerance-legend"]').exists()).toBe(false)
   })
 
   it('in phase two the head names no tolerance', () => {

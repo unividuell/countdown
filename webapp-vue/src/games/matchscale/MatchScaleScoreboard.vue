@@ -4,16 +4,18 @@
  * from the truth, whole numbers in the round's unit. The name is a button — tapping it toggles
  * that player's outline on the reveal's field.
  *
- *                   Lösung  Toleranz
- *   Auswertung         200   160–250
- *   Name             Tipp*  Abstand*   Pkt
- *   anna               160       −40     1
- *                                  * in cm
+ *                     Lösung      Toleranz*
+ *   Auswertung             200        160–250
+ *   Name             Tipp [cm]   Abstand [cm]   Pkt
+ *   anna                   160            −40     1
+ *                  * bis 25 % zu groß oder 20 % zu klein
  *
  * Without B's measure it falls back to factors, commas aligned per column: `1,90×`, `1,46× ↓`.
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
+import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
+import { useRevealArming } from '@/ui/useRevealArming'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import DecimalAligned from './DecimalAligned.vue'
 import { solutionText, toleranceText, type ScoreboardRow, type Truth } from './scoreboard'
@@ -41,35 +43,68 @@ const emit = defineEmits<{ select: [userId: string] }>()
 const solution = computed(() => solutionText(props.factor, props.truth))
 const tolerance = computed(() => toleranceText(props.toleranceFactor, props.truth))
 
-/** The star points at the unit beneath the table. */
-const star = computed(() => (props.truth === null ? '' : '*'))
+/** The unit in the header, `Tipp [cm]`; factors carry their own `×`. */
+const unit = computed(() => (props.truth === null ? '' : ` [${props.truth.unit}]`))
+
+/**
+ * The gate in percent beneath the table: symmetric as a factor, not in percent — ×1,25 is 25 % too
+ * large, ÷1,25 is 20 % too small.
+ */
+const toleranceNote = computed(() => {
+  if (props.truth === null || props.toleranceFactor === null) return null
+
+  const up = Math.round((props.toleranceFactor - 1) * 100)
+  const down = Math.round((1 - 1 / props.toleranceFactor) * 100)
+
+  return `* bis ${up} % zu groß oder ${down} % zu klein`
+})
 
 /**
  * Lengths widen their column as needed — `1600–2500` outgrows 4.5rem; factors keep theirs. One
- * `ch` spare for the sign, the padding on top.
+ * `ch` spare for the sign, the padding on top. The header stays on one line: `Abstand [mm]` measures
+ * 84 px in the head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line.
  */
-function width(base: string, texts: readonly (string | null)[]): string {
+function width(base: string, label: string, texts: readonly (string | null)[]): string {
   if (props.truth === null) return base
 
   const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
+  const labelRem = label.length * 0.45 + 0.25
 
-  return `max(${base}, calc(${ch}ch + 0.25rem))`
+  return `max(${base}, calc(${ch}ch + 0.25rem), ${labelRem}rem)`
+}
+
+/**
+ * The note arrives with the cell it explains: the tolerance sits in the head block's first row, in
+ * the third grid column (name, tip, distance) — the same beat RevealScoreboard gives that cell.
+ */
+const { shown } = useRevealArming(isStill(props.animate))
+const noteFade = {
+  transitionDuration: `${FADE_MS}ms`,
+  transitionDelay: `${headCellDelayMs(1, 2)}ms`,
 }
 
 const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'tip',
-    label: `Tipp${star.value}`,
+    label: `Tipp${unit.value}`,
     fact: 'Lösung',
-    width: width('3.5rem', [solution.value, ...props.rows.map((row) => row.tip)]),
+    width: width('3.5rem', `Tipp${unit.value}`, [
+      solution.value,
+      ...props.rows.map((row) => row.tip),
+    ]),
     align: 'end',
     numeric: true,
   },
   {
     key: 'off',
-    label: `Abstand${star.value}`,
-    ...(props.toleranceFactor === null ? {} : { fact: 'Toleranz' }),
-    width: width('4.5rem', [tolerance.value, ...props.rows.map((row) => row.off)]),
+    label: `Abstand${unit.value}`,
+    ...(props.toleranceFactor === null
+      ? {}
+      : { fact: toleranceNote.value === null ? 'Toleranz' : 'Toleranz*' }),
+    width: width('4.5rem', `Abstand${unit.value}`, [
+      tolerance.value,
+      ...props.rows.map((row) => row.off),
+    ]),
     align: 'end',
     numeric: true,
   },
@@ -142,11 +177,13 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
     </RevealScoreboard>
 
     <p
-      v-if="props.truth !== null"
-      data-test="match-scale-unit-legend"
-      class="text-end text-xs text-on-surface-variant"
+      v-if="toleranceNote !== null"
+      data-test="match-scale-tolerance-legend"
+      class="text-end text-xs text-on-surface-variant transition-opacity"
+      :class="shown ? 'opacity-100' : 'opacity-0'"
+      :style="noteFade"
     >
-      * in {{ props.truth.unit }}
+      {{ toleranceNote }}
     </p>
   </div>
 </template>

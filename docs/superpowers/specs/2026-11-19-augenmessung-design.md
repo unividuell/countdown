@@ -324,12 +324,14 @@ Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 Alles als Länge von B in der Einheit der Runde. Linear skaliert ist der Tipp
 `b.metres × scale / factor`. Tipp „160“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40“, „+50“,
 „±0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“ („200“) und
-„Toleranz“ („160–250“, `round(b ÷ 1,25)` bis `round(b × 1,25)`, nur Phase eins). In den Zellen keine
-Einheit: „Tipp*“ und „Abstand*“ tragen einen Stern, unter der Tabelle „* in cm“. Ganzzahlen rechtsbündig
-in Tabellenziffern stehen von selbst untereinander.
+„Toleranz*“ („160–250“, `round(b ÷ 1,25)` bis `round(b × 1,25)`, nur Phase eins). In den Zellen keine
+Einheit, sie steht im Spaltenkopf: „Tipp [cm]“, „Abstand [cm]“, einzeilig — die Spalten wachsen dafür.
+Unter der Tabelle die Legende zum Stern, „* bis 25 % zu groß oder 20 % zu klein“ (ehrlich in Prozent:
+der Faktor 1,25 ist nach oben +25 %, nach unten −20 %); sie erscheint im Takt mit ihrer Zelle.
+Ganzzahlen rechtsbündig in Tabellenziffern stehen von selbst untereinander.
 
 Fehlt B's Maß, bleibt es beim Faktor mit zwei Nachkommastellen („1,90×“, „1,46× ↓“, „1,25×“), Kommas
-untereinander, ohne Stern.
+untereinander, ohne Einheit und ohne Legende.
 
 Jede Zeile blendet ihren Umriss für sich ein und aus; der eigene ist zu Beginn an.
 
