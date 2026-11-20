@@ -104,8 +104,16 @@ entries:
     width: 1000                # Bounding-Box des normierten Pfads
     height: 640
     metresPerUnit: 412.5       # 1000 Einheiten = 412,5 km
+    measure:                   # optional: woraus metresPerUnit stammt
+      axis: length             # length (Breite der Bounding-Box) | height
+      metres: 412500
+      source: "https://example.org/beispielding-alpha"
     attribution: "Beispielkünstler, CC BY"   # pro Eintrag, optional, überschreibt die Kategorie
 ```
+
+**`measure`** hält das Maß samt Quelle neben dem Eintrag, damit es beisammen und später nachprüfbar
+ist. Von Hand gemessene Kategorien (Tiere) tragen es, erzeugte (Länder) nicht. Es ist so geheim wie
+`metresPerUnit` (*Rundengeheimnis*).
 
 **Klartext in `.local/games/match-scale/categories/<category>.yaml` (Hauptcheckout), über sops nach
 `deploy/games/match-scale/categories/<category>.sops.yaml` — alle Kategorien, auch die aus gemeinfreien Daten.** Einheitlich
@@ -136,7 +144,8 @@ Ein gelisteter Schlüssel ohne Datei oder ein ungültiger Schlüssel ist ein Sta
 ungelistete Datei wird mit einer Infozeile ignoriert. Ohne Liste im Verzeichnis zählen alle Dateien.
 
 **Der Loader prüft nur Mechanisches:** Pfad nicht leer, `width`/`height`/`metresPerUnit` endlich und
-> 0, `max(width, height) == 1000`, Schlüssel eindeutig.
+> 0, `max(width, height) == 1000`, Schlüssel eindeutig; ein vorhandenes `measure` vollständig
+(`axis` `length` oder `height`, `metres` endlich und > 0, `source` nicht leer).
 
 **Deployment.** `update.sh` kommt immer von `main`, `compose.yaml` vom deployten Branch
 (`deployment-server.md`). Darum steht die Liste der Kategorien **nicht in `update.sh`**, sondern in einer
@@ -175,9 +184,10 @@ Pro Land:
 4. `metresPerUnit` = projizierte Länge der längsten Seite / 1000.
 
 **Tiere.** Die Handliste in `.local/games/match-scale/input/animals.yaml` trägt je Tier Name, PhyloPic-UUID und
-**ein Maß an der Silhouette** — welche Achse (`width` oder `height`) und wie viele Meter sie in
-Wirklichkeit ist. Das Skript holt das SVG, glättet Transformationen in einen Pfad, normiert, rechnet
-`metresPerUnit` aus dem Maß und übernimmt die Lizenzangabe als `attribution`. Ob dafür eine
+**ein Maß an der Silhouette** — welche Achse (`length`, die Länge des Tiers, also die Breite der
+Zeichnung, oder `height`), wie viele Meter sie in Wirklichkeit ist und die Quelle dafür. Das Skript holt
+das SVG, glättet Transformationen in einen Pfad, normiert, rechnet `metresPerUnit` aus dem Maß,
+schreibt das Maß als `measure` mit und übernimmt die Lizenzangabe als `attribution`. Ob dafür eine
 Abhängigkeit nötig ist (SVG-Pfad-Transformationen), entscheidet der Bauende.
 
 **Prüfseite.** Das Skript schreibt eine HTML-Seite nach `.local/games/match-scale/raw/` — jede Silhouette
@@ -187,18 +197,21 @@ Prüfschritt; gestrichen wird von Hand in der Eingabe.
 
 ## Rundengeheimnis
 
-**Geheim ist allein `factor`** (bzw. die beiden `metresPerUnit`). Name, Pfad, `width`/`height` der beiden
-Einträge gehen in den Payload.
+**Geheim ist allein `factor`** (bzw. die beiden `metresPerUnit` und die Maße dahinter). Name, Pfad,
+`width`/`height` und Attribution der beiden Einträge gehen in den Payload.
 
 - **Der Pfad darf die Größe nicht verraten.** Normiert auf 1000, vereinfacht in normierten Einheiten (siehe
   *Das Skript*). Der Payload trägt keine echten Koordinaten und kein `metresPerUnit`.
 - **Die Ziehung kommt aus `presentation`.** Das Paar ist öffentlich; der Faktor folgt deterministisch aus
   ihm und dem Datensatz, er ist kein gezogener Wert. `solution` bleibt ungenutzt.
+- **Die Maße gehen nur über die Lösung raus.** Meter von A und B ergeben den Faktor; im Payload
+  stünde er damit offen.
 - **Das Outcome trägt `deviation` und den eigenen `scale`.** Nach dem Tipp darf das den Faktor verraten —
   die Lösung geht dann ohnehin raus.
 
 Params: Kategorie-Schlüssel und -Anzeigename, A und B (Name, Pfad, `width`, `height`, Attribution),
-`factor`, `toleranceFactor`. Payload: alles außer `factor`. Lösung: `factor`, `toleranceFactor`. Outcome:
+`factor`, `toleranceFactor`, `measureA`, `measureB`. Payload: alles außer `factor` und den Maßen.
+Lösung: `factor`, `toleranceFactor`, `a` und `b` (je `axis`, `metres`, `source` oder `null`). Outcome:
 `scale`, `deviation`, `withinTolerance` (`null` in Phase zwei). Je ein Feldmengen-Test.
 
 ## Integrität — die Decke, benannt
@@ -214,7 +227,8 @@ Namen verstecken hieße ein anderes Spiel. Hingenommen, wie die Anti-Cheat-Spec 
 games/matchscale/
   MatchScaleGame.vue       Ablauf: Spielfläche → Auflösung
   MatchScaleBriefing.vue   InfoBox („match-scale“) + AwardBox
-  MatchScaleBoard.vue      Labels, Spielfläche, HoldButton
+  MatchScaleBoard.vue      Spielfläche, Namen, HoldButton
+  MatchScaleLegend.vue     Namen unter der Fläche — von Spielfläche und Auflösung geteilt
   ScaleField.vue           Raster, Bodenlinie, A, B, Zoom — von Spielfläche und Auflösung geteilt
   gestures.ts              Ziehen, Skalieren, Zoomen — rein, ohne DOM
   draft.ts                 Zwischenstand (Lage und Faktor von B, Zoom)
@@ -226,7 +240,6 @@ games/matchscale/
 ### Spielfläche
 
 ```
-   Beispiel A          Beispiel B        ← Labels außerhalb, in A- bzw. B-Farbe
 ┌──┬──┬──┬──┬──┬──┬──┐
 ├──┼──┼──┼──┼──┼──┼──┤
 ├──┼──┼──┼──┼──┼──┼──┤
@@ -236,6 +249,10 @@ games/matchscale/
 ══════════════════════                   ← Bodenlinie
 ├──┼──┼──┼──┼──┼──┼──┤
 └──┴──┴──┴──┴──┴──┴──┘                   ← 2 Kästchen bis zum Rand
+● Beispiel A                             ← Namen unter der Fläche, untereinander,
+  Silhouette: Beispielkünstler, CC BY       in A- bzw. B-Farbe; Credit in Zeile zwei
+● Beispiel B
+  Silhouette: …
 [ ███ halten zum Abgeben ]
 ```
 
@@ -243,8 +260,9 @@ games/matchscale/
   über dem unteren Rand.
 - **A und B starten nebeneinander auf der Bodenlinie, gleich groß** (längste Seite gleich); A links. Die
   Startgröße wählt der Bauende im Labor.
-- **Zwei Farben.** Die Silhouetten sind deckend, ohne Transparenz. Die Namen stehen **außerhalb** der
-  Fläche, jeweils in der Farbe ihres Objekts. Welche zwei Farben: Labor.
+- **Zwei Farben.** Die Silhouetten sind deckend, ohne Transparenz. Die Namen stehen **unter** der
+  Fläche, A über B, jeweils in der Farbe ihres Objekts; darunter klein die Attribution. Welche zwei
+  Farben: Labor.
 - **B verschieben:** Ziehen auf B bewegt B frei über die Fläche, auch **über A** — B liegt immer oben.
 - **B skalieren:** Ziehen am **Griff oben rechts**. **Unten links bleibt fest.** Der Griff ist ein sichtbarer
   Knopf von mindestens 44 px, der über die Ecke hinausragt — bei kleinem B ist er größer als B selbst.
@@ -260,7 +278,12 @@ games/matchscale/
 B wächst oder schrumpft von unten links aus auf den wahren Faktor; der eigene Tipp bleibt als
 gestrichelter Umriss stehen. Darunter „Dein Tipp: 1,3× · tatsächlich: 1,6×“. Takt nach
 `revealChoreography.ts`. Ein anderer Name in der Rangliste ist ein Knopf und zeigt dessen Umriss;
-nochmal tippen hebt auf. Die Attribution steht sichtbar unter der Fläche.
+nochmal tippen hebt auf.
+
+Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus der Lösung („Beispieltier
+· 2,3 m Länge“; unter einem Meter in Zentimetern), die Attribution in Zeile zwei. Die Namenszeile bricht
+nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in der Auflösung gleich hoch,
+nichts springt.
 
 **Zählton.** Während B wächst, zählt ein kurzer Sinus-Tick hoch (B schrumpft: runter), je Tick 0,7
 Halbtöne, so viel wie ein Schritt in B's Größe — B ×2 ≈ eine Oktave, höchstens 26 Ticks. Takt 58 ms,
@@ -290,8 +313,8 @@ Raster beim Zoomen.
   bewegt sie; `toleranceFactor` aus der Phase.
 - **Wertung:** `scale == factor` → 0; doppelt und halb gleich weit; Grenze ln 1,1 in Phase eins; Phase
   zwei qualifiziert alles; 0, negativ, `NaN`, unendlich, fehlendes Feld → `InvalidGuessException`.
-- **Ausgänge:** Feldmengen-Tests für Payload, Lösung, Outcome — `factor` und `metresPerUnit` nie im
-  Payload.
+- **Ausgänge:** Feldmengen-Tests für Payload, Lösung, Outcome — `factor`, `metresPerUnit` und
+  `measure`/`metres` nie im Payload.
 - `LabPointsParityTest` bleibt grün.
 
 **Vitest**
