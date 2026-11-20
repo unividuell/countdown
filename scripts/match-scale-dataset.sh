@@ -5,8 +5,9 @@
 #   .local/games/match-scale/categories/<key>.yaml  <-> deploy/games/match-scale/categories/<key>.sops.yaml
 #   .local/games/match-scale/input/<key>.yaml       <-> deploy/games/match-scale/input/<key>.sops.yaml
 #
-# The first pair is what the backend loads; the second is the generator's exclude list. Same shape
-# as guess-hue-dataset.sh, see there for the reasoning behind each step.
+# The first pair is what the backend loads; the second is the generator's input (the countries'
+# exclude list, the animals' hand list). Same shape as guess-hue-dataset.sh, see there for the
+# reasoning behind each step.
 #
 # Usage: ./scripts/match-scale-dataset.sh decrypt [--force]
 #        ./scripts/match-scale-dataset.sh encrypt
