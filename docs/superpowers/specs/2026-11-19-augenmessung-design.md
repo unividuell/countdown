@@ -256,6 +256,13 @@ gestrichelter Umriss stehen. Darunter „Dein Tipp: 1,3× · tatsächlich: 1,6×
 `revealChoreography.ts`. Ein anderer Name in der Rangliste ist ein Knopf und zeigt dessen Umriss;
 nochmal tippen hebt auf. Die Attribution steht sichtbar unter der Fläche.
 
+**Zählton.** Während B wächst, zählt ein kurzer Sinus-Tick hoch (B schrumpft: runter), je Tick 0,7
+Halbtöne, so viel wie ein Schritt in B's Größe — B ×2 ≈ eine Oktave, höchstens 26 Ticks. Takt 58 ms,
+gegen Ende bremsend. B's Wachstum folgt den Ticks (CSS `linear()`); die Zeilen der Rangliste warten,
+bis B angekommen ist. 70 ms nach dem letzten Tick der Abschluss: Dur-Arpeggio bei Treffer, tiefer
+Schnarrton daneben. Phase eins: Toleranz; Phase zwei: ich halte gerade die Punkte (vorläufig vorn).
+Ohne eigenen Tipp kein Ton.
+
 ### Rangliste
 
 Spalten **Name** (Knopf) **· Tipp (×) · Abweichung (%) · Pkt**, Sortierung Punkte absteigend, dann
