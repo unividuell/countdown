@@ -59,7 +59,10 @@ const items = computed(() => {
         class="size-2.5 self-center rounded-full"
         :style="{ backgroundColor: item.color }"
       />
-      <p class="flex min-w-0 gap-1 text-base font-semibold" :style="{ color: item.color }">
+      <p
+        class="flex min-w-0 items-baseline gap-1 text-base font-semibold"
+        :style="{ color: item.color }"
+      >
         <span :data-test="`match-scale-label-${item.key}`" class="truncate">
           {{ item.silhouette.name }}
         </span>

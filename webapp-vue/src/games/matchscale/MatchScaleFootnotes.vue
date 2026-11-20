@@ -13,14 +13,18 @@ const notes = computed(() => footnotesOf(props.a, props.b).notes)
 </script>
 
 <template>
-  <ul v-if="notes.length > 0" data-test="match-scale-footnotes" class="flex flex-col gap-0.5">
-    <li
-      v-for="note in notes"
-      :key="note.marker"
-      data-test="match-scale-footnote"
-      class="text-xs text-on-surface-variant"
-    >
-      {{ note.marker }} {{ note.text }}
-    </li>
-  </ul>
+  <div v-if="notes.length > 0" class="flex flex-col gap-1.5">
+    <!-- The classic footnote rule: short, so it reads as a separator, not a section border. -->
+    <hr class="w-12 border-outline" />
+    <ul data-test="match-scale-footnotes" class="flex flex-col gap-0.5">
+      <li
+        v-for="note in notes"
+        :key="note.marker"
+        data-test="match-scale-footnote"
+        class="text-xs text-on-surface-variant"
+      >
+        {{ note.marker }} {{ note.text }}
+      </li>
+    </ul>
+  </div>
 </template>
