@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
-import { formatFactor, formatTolerance, scoreboardRows } from '@/games/matchscale/scoreboard'
+import { formatFactor, formatTolerance, myWin, scoreboardRows } from '@/games/matchscale/scoreboard'
 
 function entry(over: Partial<GameEntry>): GameEntry {
   return gameEntry({
@@ -121,5 +121,27 @@ describe('scoreboardRows', () => {
       ['me', 0],
       ['far', 2],
     ])
+  })
+})
+
+describe('myWin', () => {
+  const inside = { scale: 1, deviation: 0.05, withinTolerance: true }
+  const outside = { scale: 1, deviation: 0.5, withinTolerance: false }
+
+  it('phase one: my tip inside the gate', () => {
+    const rows = rowsOf([entry({ userId: 'me', points: 0 })], 'me')
+
+    expect(myWin({ toleranceFactor: 1.1, outcome: inside, rows, mineUserId: 'me' })).toBe(true)
+    expect(myWin({ toleranceFactor: 1.1, outcome: outside, rows, mineUserId: 'me' })).toBe(false)
+    expect(myWin({ toleranceFactor: 1.1, outcome: null, rows, mineUserId: 'me' })).toBeNull()
+  })
+
+  it('phase two: my row holds the points now', () => {
+    const rows = rowsOf([entry({ userId: 'me', points: 3 }), entry({ userId: 'you', points: 0 })])
+    const phaseTwo = { toleranceFactor: null, outcome: outside, rows }
+
+    expect(myWin({ ...phaseTwo, mineUserId: 'me' })).toBe(true)
+    expect(myWin({ ...phaseTwo, mineUserId: 'you' })).toBe(false)
+    expect(myWin({ ...phaseTwo, mineUserId: 'nobody' })).toBeNull()
   })
 })

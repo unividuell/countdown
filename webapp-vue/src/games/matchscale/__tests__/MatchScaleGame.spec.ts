@@ -84,6 +84,16 @@ describe('MatchScaleGame', () => {
     expect(wrapper.findComponent(MatchScaleReveal).props('from')).toBeNull()
   })
 
+  it('hands the reveal my verdict: inside the gate wins', () => {
+    const wrapper = mountGame({
+      myGuess: { scale: 1.55 },
+      outcome: { scale: 1.55, deviation: 0.03, withinTolerance: true },
+      solution: { factor: 1.6, toleranceFactor: 1.1 },
+    })
+
+    expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(true)
+  })
+
   it('is in the registry and in the lab', () => {
     expect(gameComponents['match-scale']).toBe(MatchScaleGame)
     expect(labGameList).toContainEqual({ id: 'match-scale', title: 'Augenmaß' })

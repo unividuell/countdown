@@ -46,6 +46,8 @@ const props = defineProps<{
   myColorHex: string
   mineUserId: string | null
   rows: ScoreboardRow[]
+  /** Which verdict closes the count: `null` plays none. */
+  won: boolean | null
   live: boolean
   animate: boolean
   /** The board as my tip left it, if it did so in this tab. */
@@ -93,7 +95,7 @@ onMounted(() => {
   }
 
   beat = setTimeout(() => {
-    if (sound.value) counting = playCount(countTones(bScale.value, props.factor, GROW_MS / 1000))
+    if (sound.value) counting = playCount(countTones(bScale.value, props.factor), props.won)
     bScale.value = props.factor
     arrived.value = true
     settle = setTimeout(() => {

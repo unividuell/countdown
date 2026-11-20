@@ -1,33 +1,27 @@
 /**
  * The count the reveal plays while the true B grows from my tip to the factor: one short tone per
- * equal step of B's size, each a step up a major pentatonic scale when B grows, down when it
- * shrinks. The steps follow B's easing, so the tones come quickly and slow down as B settles; the
- * last one lands when B arrives.
+ * fine pitch step, each step as large as one step of B's size, so the pitch climbs as far as B
+ * grows (B ×2 ≈ an octave). Rising when B grows, falling when it shrinks. An even 58 ms tick that
+ * brakes towards the end; B's growth rides the same ticks (`growEasing`).
  *
- *   B ×2:   ♪♪ ♪  ♪   ♪        ♪     6 tones, rising
- *           0 ───────────────────▶ GROW_MS
+ *   B ×2:   ♪♪♪♪♪♪♪♪♪♪♪♪♪ ♪ ♪  ♪   ♪     17 tones, rising, ≈ 1.2 s
+ *           0 ─────────────────────────▶ last tick = B arrives
  *
- * Pure: the graph plays it (`countSound.ts`).
+ * Tuned by ear on a throwaway page. Pure: the graph plays it (`countSound.ts`).
  */
 
-/** A CSS `cubic-bezier(x1, y1, x2, y2)`: x is time, y is progress. */
-export type Bezier = readonly [number, number, number, number]
+/** Semitones per tick. */
+export const STEP_SEMITONES = 0.7
+/** Frequency ratio per tick, and the size ratio of B it stands for. */
+export const STEP = 2 ** (STEP_SEMITONES / 12)
+export const MAX_TICKS = 26
+export const TICK_S = 0.058
+/** How much longer the last gap is than the first: `1 + BRAKE`. */
+export const BRAKE = 1.4
+export const BASE_HZ = 400
 
-/** Tailwind's `ease-out` (`--ease-out`): B's growth in ScaleField (`EASE`). */
-export const GROW_EASE: Bezier = [0, 0, 0.2, 1]
-
-export const MIN_TICKS = 4
-/** 11 pentatonic steps above G4 end on A6: higher gets shrill on a phone speaker. */
-export const MAX_TICKS = 12
-/** Ticks per unit of |ln(factor / tip)|: a tip off by ×2 counts 6. */
-export const TICKS_PER_LN = 8
-/** Below this |ln(factor / tip)| the tip is the size: one tone. */
-const SAME_SIZE_LN = 0.01
-
-/** G4: low enough to leave room for the climb, high enough for a phone speaker. */
-export const BASE_HZ = 392
-/** Major pentatonic, in semitones above the root. */
-const PENTATONIC = [0, 2, 4, 7, 9] as const
+/** A lone tick has no span to ride; B still eases in briefly. */
+export const SINGLE_TICK_GROW_MS = 150
 
 export interface Tone {
   /** Seconds after the growth starts. */
@@ -35,62 +29,61 @@ export interface Tone {
   hz: number
 }
 
+/** One tick per `STEP` of B's size, 1..`MAX_TICKS`. */
 export function tickCount(tip: number, factor: number): number {
-  const distance = Math.abs(Math.log(factor / tip))
-  if (distance < SAME_SIZE_LN) return 1
+  const ticks = Math.round(Math.abs(Math.log(factor / tip)) / Math.log(STEP))
 
-  return Math.min(Math.max(Math.round(distance * TICKS_PER_LN), MIN_TICKS), MAX_TICKS)
+  return Math.min(Math.max(ticks, 1), MAX_TICKS)
 }
 
-/** One coordinate of a cubic Bézier from (0, 0) to (1, 1) at parameter `s`. */
-function bezierAt(p1: number, p2: number, s: number): number {
-  const r = 1 - s
-
-  return 3 * r * r * s * p1 + 3 * r * s * s * p2 + s * s * s
-}
-
-/**
- * The time fraction at which `ease` reaches `progress`. Bisects the curve's parameter: progress
- * rises monotonically with it as long as y1 and y2 lie in 0..1, which every ease without
- * overshoot does.
- */
-export function timeAt(progress: number, ease: Bezier): number {
-  const [x1, y1, x2, y2] = ease
-  let lo = 0
-  let hi = 1
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2
-    if (bezierAt(y1, y2, mid) < progress) lo = mid
-    else hi = mid
+/** The first at 0, then `TICK_S` gaps that stretch by up to `BRAKE` towards the end (u³). */
+export function tickTimes(count: number): number[] {
+  const times: number[] = []
+  let at = 0
+  for (let i = 0; i < count; i++) {
+    times.push(at)
+    const u = count > 1 ? i / (count - 1) : 1
+    at += TICK_S * (1 + BRAKE * u ** 3)
   }
 
-  return bezierAt(x1, x2, (lo + hi) / 2)
+  return times
 }
 
-/** Tick `i` of `count` sounds when B has covered `i / count` of its way; the last at the end. */
-export function tickTimes(count: number, durationS: number, ease: Bezier): number[] {
-  return Array.from({ length: count }, (_, i) =>
-    i === count - 1 ? durationS : timeAt((i + 1) / count, ease) * durationS,
-  )
-}
-
-/** `count` steps up the scale from G4, or the same steps down to it. */
+/** `count` steps up from `BASE_HZ`, or the same steps down to it. */
 export function pitches(count: number, rising: boolean): number[] {
-  const up = Array.from({ length: count }, (_, degree) => {
-    const semitones =
-      12 * Math.floor(degree / PENTATONIC.length) + PENTATONIC[degree % PENTATONIC.length]!
-
-    return BASE_HZ * 2 ** (semitones / 12)
-  })
+  const up = Array.from({ length: count }, (_, i) => BASE_HZ * STEP ** i)
 
   return rising ? up : up.reverse()
 }
 
-/** The whole count for B growing from `tip` to `factor` in `durationS`. */
-export function countTones(tip: number, factor: number, durationS: number): Tone[] {
+/** The whole count for B growing from `tip` to `factor`. */
+export function countTones(tip: number, factor: number): Tone[] {
   const count = tickCount(tip, factor)
-  const times = tickTimes(count, durationS, GROW_EASE)
   const hzs = pitches(count, factor >= tip)
 
-  return times.map((atS, i) => ({ atS, hz: hzs[i]! }))
+  return tickTimes(count).map((atS, i) => ({ atS, hz: hzs[i]! }))
+}
+
+/** How long B grows: until the last tick. */
+export function growMs(tones: readonly Tone[]): number {
+  return tones.length > 1 ? tones.at(-1)!.atS * 1000 : SINGLE_TICK_GROW_MS
+}
+
+/**
+ * B's growth as a CSS easing: tick `i` of `n` at `i / (n − 1)` of the way, so each tone sounds as
+ * B passes it. B ×2: `linear(0 0%, 0.0625 4.78%, …, 1 100%)`.
+ */
+export function growEasing(tones: readonly Tone[]): string {
+  if (tones.length < 2) return 'ease-out'
+
+  const total = tones.at(-1)!.atS
+  const stops = tones.map(
+    (tone, i) => `${round(i / (tones.length - 1))} ${round((tone.atS / total) * 100)}%`,
+  )
+
+  return `linear(${stops.join(', ')})`
+}
+
+function round(x: number): number {
+  return Math.round(x * 1e4) / 1e4
 }

@@ -79,3 +79,25 @@ function signedPercent(fraction: number): string {
 
   return `${percent < 0 ? '−' : '+'}${Math.abs(percent)} %`
 }
+
+/**
+ * Whether my tip earns the reveal's success sound. Phase one: inside the gate. Phase two: my row
+ * holds the points now — under „closest only“ that is being ahead, vorläufig. `null` without a
+ * tip of mine or a verdict on it: no sound.
+ */
+export function myWin(input: {
+  /** `null` in phase two. */
+  toleranceFactor: number | null
+  /** My own outcome. */
+  outcome: unknown
+  rows: readonly ScoreboardRow[]
+  mineUserId: string | null
+}): boolean | null {
+  if (input.toleranceFactor !== null) {
+    return asMatchScaleOutcome(input.outcome)?.withinTolerance ?? null
+  }
+
+  const points = input.rows.find((row) => row.userId === input.mineUserId)?.points ?? null
+
+  return points === null ? null : points > 0
+}

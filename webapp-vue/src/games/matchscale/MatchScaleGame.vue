@@ -11,7 +11,7 @@ import { useRevealedLive } from '@/games/useRevealedLive'
 import { clearDraft, deviceStorage, draftKey } from './draft'
 import MatchScaleBoard from './MatchScaleBoard.vue'
 import MatchScaleReveal from './MatchScaleReveal.vue'
-import { scoreboardRows } from './scoreboard'
+import { myWin, scoreboardRows } from './scoreboard'
 import type { Submitted } from './gestures'
 import { asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
 
@@ -58,6 +58,18 @@ const rows = computed(() =>
       }),
 )
 
+/** The reveal's verdict sound: my tip in the gate, or (phase two) my row holding the points. */
+const won = computed(() =>
+  payload.value === null
+    ? null
+    : myWin({
+        toleranceFactor: payload.value.toleranceFactor,
+        outcome: props.outcome,
+        rows: rows.value,
+        mineUserId: props.mineUserId,
+      }),
+)
+
 /** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
@@ -84,6 +96,7 @@ function onGuess(value: { scale: number }, from: Submitted): void {
     :my-color-hex="myColorHex"
     :mine-user-id="props.mineUserId"
     :rows="rows"
+    :won="won"
     :live="live"
     :animate="animate"
     :from="submitted"

@@ -56,6 +56,7 @@ function mountReveal(over: Record<string, unknown> = {}) {
       myColorHex: ME,
       mineUserId: mine,
       rows: scoreboardRows({ entries, factor: 1.6, awardRule: 'ALL_QUALIFYING', mineUserId: mine }),
+      won: false,
       live: false,
       animate: false,
       from: null,
@@ -157,15 +158,15 @@ describe('MatchScaleReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays from my tip to the factor at the beat, and stops on unmount', async () => {
+    it('plays from my tip to the factor at the beat, then my verdict, and stops on unmount', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
-      const wrapper = mountReveal({ animate: true })
+      const wrapper = mountReveal({ animate: true, won: true })
 
       await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS - 10)
       expect(playCount).not.toHaveBeenCalled()
 
       await vi.advanceTimersByTimeAsync(20)
-      expect(playCount).toHaveBeenCalledExactlyOnceWith(countTones(1.3, 1.6, 0.7))
+      expect(playCount).toHaveBeenCalledExactlyOnceWith(countTones(1.3, 1.6), true)
 
       wrapper.unmount()
       expect(stopCount).toHaveBeenCalled()
