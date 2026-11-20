@@ -112,6 +112,77 @@ describe('MatchScaleReveal', () => {
     ])
   })
 
+  it('every row toggles on its own, any number at once', async () => {
+    const three = [
+      ...entries,
+      gameEntry({
+        userId: 'third',
+        guess: { scale: 3 },
+        outcome: { scale: 3, deviation: 0.3, withinTolerance: false },
+        points: 0,
+      }),
+    ]
+    const rows = scoreboardRows({
+      entries: three,
+      factor: 1.6,
+      awardRule: 'ALL_QUALIFYING',
+      mineUserId: 'me',
+    })
+    const wrapper = mountReveal({ rows })
+    const click = (id: string) => wrapper.get(`[data-test="select-${id}"]`).trigger('click')
+    const pressed = (id: string) =>
+      wrapper.get(`[data-test="select-${id}"]`).attributes('aria-pressed')
+
+    expect(field(wrapper).props('outlines')).toHaveLength(1)
+
+    await click('you')
+    await click('third')
+
+    expect(field(wrapper).props('outlines')).toHaveLength(3)
+    expect([pressed('me'), pressed('you'), pressed('third')]).toEqual(['true', 'true', 'true'])
+
+    await click('me')
+
+    expect(field(wrapper).props('outlines')).toHaveLength(2)
+    expect([pressed('me'), pressed('you'), pressed('third')]).toEqual(['false', 'true', 'true'])
+
+    await click('me')
+
+    expect(field(wrapper).props('outlines')).toHaveLength(3)
+    expect(pressed('me')).toBe('true')
+  })
+
+  it('the view covers every shown outline', async () => {
+    const far = (userId: string, scale: number) =>
+      gameEntry({
+        userId,
+        guess: { scale },
+        outcome: { scale, deviation: 1, withinTolerance: false },
+        points: 0,
+      })
+    const rows = scoreboardRows({
+      entries: [entries[0]!, far('far', 5), far('farther', 7)],
+      factor: 1.6,
+      awardRule: 'ALL_QUALIFYING',
+      mineUserId: 'me',
+    })
+    const wrapper = mountReveal({ rows })
+
+    await wrapper.get('[data-test="select-far"]').trigger('click')
+    await wrapper.get('[data-test="select-farther"]').trigger('click')
+
+    const view = field(wrapper).props('view')
+    const corner = initialPlacements(PAYLOAD.a).b
+    const extent = FIELD_PX / view.cellPx
+
+    for (const scale of [5, 7]) {
+      const { w, h } = sizeAt(PAYLOAD.b, scale)
+
+      expect(corner.x + w).toBeLessThanOrEqual(view.left + extent)
+      expect(corner.y + h).toBeLessThanOrEqual(view.top)
+    }
+  })
+
   it('heads the table with the solution over the tips and the tolerance over the distance', () => {
     const wrapper = mountReveal()
 

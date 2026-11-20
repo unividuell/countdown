@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * The card after the round: the board's field, now read-only. B grows from my tip to the true
- * factor, my tip stays as a dashed outline at B's corner, and the scoreboard sits under it. A name
- * in the table lays that player's outline over the same corner; the same name again lifts it —
- * mine too, which starts on show.
+ * factor, my tip stays as a dashed outline at B's corner, and the scoreboard sits under it. Each
+ * name in the table toggles that player's outline over the same corner, any number at once — mine
+ * too, which starts on show.
  *
  *   0 ─────────────────────── SOLUTION_DELAY_MS ──────────▶
  *   board view ──▶ fitted view
@@ -135,20 +135,18 @@ onBeforeUnmount(() => {
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))
 
-/** Mine is on show until I tap my own name; one other player's at a time joins it. */
-const showMine = ref(true)
-const otherUserId = ref<string | null>(null)
+/** Each row toggles on its own; mine starts on show. */
+const shown = ref<ReadonlySet<string>>(
+  new Set(props.mineUserId !== null && props.myScale !== null ? [props.mineUserId] : []),
+)
 
 function select(userId: string): void {
-  if (userId === props.mineUserId) showMine.value = !showMine.value
-  else otherUserId.value = otherUserId.value === userId ? null : userId
+  const next = new Set(shown.value)
+  if (!next.delete(userId)) next.add(userId)
+  shown.value = next
 }
 
-const selected = computed(() =>
-  [showMine.value && props.myScale !== null ? props.mineUserId : null, otherUserId.value].filter(
-    (id): id is string => id !== null,
-  ),
-)
+const selected = computed(() => [...shown.value])
 
 function outlineAt(scale: number, color: string): Outline {
   return { placement: { ...start.value.b, scale }, color, dashed: true }
@@ -169,8 +167,13 @@ const camera = computed<Camera | null>(() =>
   handoff === null || arrived.value ? null : { from: handoff.view, moved: moved.value },
 )
 
-const other = computed(() =>
-  props.rows.find((row) => row.userId === otherUserId.value && row.userId !== props.mineUserId),
+const showMine = computed(
+  () => props.myScale !== null && props.mineUserId !== null && shown.value.has(props.mineUserId),
+)
+
+/** Other players on show, in table order. */
+const others = computed(() =>
+  props.rows.filter((row) => row.userId !== props.mineUserId && shown.value.has(row.userId)),
 )
 
 const outlines = computed<Outline[]>(() => {
@@ -178,7 +181,7 @@ const outlines = computed<Outline[]>(() => {
   if (props.myScale !== null && showMine.value) {
     result.push(myOutline(props.myScale))
   }
-  if (other.value !== undefined) result.push(outlineAt(other.value.scale, other.value.colorHex))
+  for (const row of others.value) result.push(outlineAt(row.scale, row.colorHex))
 
   return result
 })
@@ -189,11 +192,11 @@ const view = computed(() => {
     boxOf(props.payload.a, start.value.a),
     boxOf(props.payload.b, { ...start.value.b, scale: props.factor }),
   ]
-  if (props.myScale !== null) {
+  if (props.myScale !== null && showMine.value) {
     boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: props.myScale }))
   }
-  if (other.value !== undefined) {
-    boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: other.value.scale }))
+  for (const row of others.value) {
+    boxes.push(boxOf(props.payload.b, { ...start.value.b, scale: row.scale }))
   }
 
   return fitView(boxes, FIELD_PX)

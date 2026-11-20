@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * „Auswertung“ for Augenmaß: the shared table with the tip and its signed distance from the
- * truth. The name is a button — tapping it lays that player's outline over the reveal's field.
+ * truth. The name is a button — tapping it toggles that player's outline on the reveal's field.
  *
  *                   Lösung  Toleranz
  *   Auswertung       2,77×    ± 10 %
