@@ -38,6 +38,16 @@ export interface Outline {
   placement: Placement
   color: string
   dashed: boolean
+  /** A solid shape in its colour instead of a line: the tip as it left the board. */
+  filled?: boolean
+  /** Placement, colour and fill ease instead of jumping: the tip's way into the reveal. */
+  eased?: boolean
+}
+
+/** A camera move into `view`: drawn as `from` showed it until `moved`, then eased into `view`. */
+export interface Camera {
+  from: View
+  moved: boolean
 }
 
 const props = defineProps<{
@@ -55,6 +65,9 @@ const props = defineProps<{
   locked?: boolean
   /** B's size change eases instead of jumping: the reveal's growth from the tip to the factor. */
   grow?: boolean
+  /** B is not drawn yet; with `grow` it fades in. */
+  bHidden?: boolean
+  camera?: Camera | null
 }>()
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
@@ -77,7 +90,48 @@ const grid = computed(() => {
   }
 })
 
+/** The grid `camera.from` showed, in this view's pixels: it fades out as the camera moves. */
+const fromGrid = computed(() => {
+  if (props.camera == null) return null
+
+  const from = props.camera.from
+  const { xs, ys } = gridLines(from, FIELD_PX, GRID_MODE)
+  const topLeft = toScreen(props.view, toWorld(from, { x: 0, y: 0 }))
+  const bottomRight = toScreen(props.view, toWorld(from, { x: FIELD_PX, y: FIELD_PX }))
+
+  return {
+    xs: xs.map((x) => toScreen(props.view, { x, y: 0 }).x),
+    ys: ys.map((y) => toScreen(props.view, { x: 0, y }).y),
+    left: topLeft.x,
+    top: topLeft.y,
+    right: bottomRight.x,
+    bottom: bottomRight.y,
+  }
+})
+
 const groundY = computed(() => toScreen(props.view, { x: 0, y: 0 }).y)
+
+/** Long enough for both views, so the ground never ends inside the field mid-move. */
+const groundX = computed(() => ({
+  x1: Math.min(0, fromGrid.value?.left ?? 0),
+  x2: Math.max(FIELD_PX, fromGrid.value?.right ?? FIELD_PX),
+}))
+
+/**
+ * Maps this view's pixels onto `camera.from`'s: a world point drawn at `p` lands at `k·p + t`, with
+ * `k` the zoom ratio and `t` where `from` shows this view's top left world point.
+ */
+const cameraStyle = computed(() => {
+  if (props.camera == null) return undefined
+  if (props.camera.moved) return { transform: 'translate(0px, 0px) scale(1)' }
+
+  const from = props.camera.from
+  const t = toScreen(from, toWorld(props.view, { x: 0, y: 0 }))
+
+  return { transform: `translate(${t.x}px, ${t.y}px) scale(${from.cellPx / props.view.cellPx})` }
+})
+
+const EASE = 'duration-700 ease-out motion-reduce:transition-none'
 
 /** Path units to field units: top left corner, then the factor. */
 function transformOf(s: Silhouette, p: Placement, css = false): string {
@@ -92,6 +146,16 @@ function transformOf(s: Silhouette, p: Placement, css = false): string {
 const bGrowth = computed(() =>
   props.grow === true ? { transform: transformOf(props.b, props.placementB, true) } : undefined,
 )
+
+function outlineStyle(outline: Outline): Record<string, string | number> {
+  return {
+    fill: outline.color,
+    fillOpacity: outline.filled === true ? 1 : 0,
+    stroke: outline.color,
+    strokeOpacity: outline.filled === true ? 0 : 1,
+    ...(outline.eased === true ? { transform: transformOf(props.b, outline.placement, true) } : {}),
+  }
+}
 
 const handle = computed(() => {
   const { w, h } = sizeAt(props.b, props.placementB.scale)
@@ -248,65 +312,108 @@ useEventListener(document, 'visibilitychange', () => {
       @lostpointercapture="onUp"
       @wheel="onWheel"
     >
-      <g data-test="match-scale-grid" class="stroke-outline" stroke-width="1">
+      <g
+        data-test="match-scale-camera"
+        :class="props.camera ? `transition-transform ${EASE}` : ''"
+        :style="cameraStyle"
+      >
+        <g
+          v-if="fromGrid"
+          data-test="match-scale-grid-from"
+          class="stroke-outline transition-opacity"
+          :class="EASE"
+          :style="{ opacity: props.camera?.moved ? 0 : 1 }"
+          stroke-width="1"
+        >
+          <line
+            v-for="x in fromGrid.xs"
+            :key="`x${x}`"
+            :x1="x"
+            :x2="x"
+            :y1="fromGrid.top"
+            :y2="fromGrid.bottom"
+            vector-effect="non-scaling-stroke"
+          />
+          <line
+            v-for="y in fromGrid.ys"
+            :key="`y${y}`"
+            :x1="fromGrid.left"
+            :x2="fromGrid.right"
+            :y1="y"
+            :y2="y"
+            vector-effect="non-scaling-stroke"
+          />
+        </g>
+        <g
+          data-test="match-scale-grid"
+          class="stroke-outline"
+          :class="props.camera ? `transition-opacity ${EASE}` : ''"
+          :style="props.camera ? { opacity: props.camera.moved ? 1 : 0 } : undefined"
+          stroke-width="1"
+        >
+          <line
+            v-for="x in grid.xs"
+            :key="`x${x}`"
+            :x1="x"
+            :x2="x"
+            y1="0"
+            :y2="FIELD_PX"
+            vector-effect="non-scaling-stroke"
+          />
+          <line
+            v-for="y in grid.ys"
+            :key="`y${y}`"
+            x1="0"
+            :x2="FIELD_PX"
+            :y1="y"
+            :y2="y"
+            vector-effect="non-scaling-stroke"
+          />
+        </g>
         <line
-          v-for="x in grid.xs"
-          :key="`x${x}`"
-          :x1="x"
-          :x2="x"
-          y1="0"
-          :y2="FIELD_PX"
+          data-test="match-scale-ground"
+          class="stroke-on-surface"
+          stroke-width="2"
+          :x1="groundX.x1"
+          :x2="groundX.x2"
+          :y1="groundY"
+          :y2="groundY"
           vector-effect="non-scaling-stroke"
         />
-        <line
-          v-for="y in grid.ys"
-          :key="`y${y}`"
-          x1="0"
-          :x2="FIELD_PX"
-          :y1="y"
-          :y2="y"
+        <path
+          data-test="match-scale-a"
+          :d="props.a.path"
+          :transform="transformOf(props.a, props.placementA)"
+          :style="{ fill: props.aColor }"
+        />
+        <path
+          data-test="match-scale-b"
+          :d="props.b.path"
+          :class="props.grow === true ? `transition-[transform,opacity] ${EASE}` : ''"
+          :transform="transformOf(props.b, props.placementB)"
+          :style="{
+            fill: props.bColor,
+            ...bGrowth,
+            ...(props.bHidden === true ? { opacity: 0 } : {}),
+          }"
+        />
+        <path
+          v-for="(outline, i) in props.outlines"
+          :key="i"
+          data-test="match-scale-outline"
+          :d="props.b.path"
+          :class="
+            outline.eased === true
+              ? `transition-[transform,fill,fill-opacity,stroke,stroke-opacity] ${EASE}`
+              : ''
+          "
+          :transform="transformOf(props.b, outline.placement)"
+          :style="outlineStyle(outline)"
+          stroke-width="2"
+          :stroke-dasharray="outline.dashed ? '6 4' : undefined"
           vector-effect="non-scaling-stroke"
         />
       </g>
-      <line
-        data-test="match-scale-ground"
-        class="stroke-on-surface"
-        stroke-width="2"
-        x1="0"
-        :x2="FIELD_PX"
-        :y1="groundY"
-        :y2="groundY"
-        vector-effect="non-scaling-stroke"
-      />
-      <path
-        data-test="match-scale-a"
-        :d="props.a.path"
-        :transform="transformOf(props.a, props.placementA)"
-        :style="{ fill: props.aColor }"
-      />
-      <path
-        data-test="match-scale-b"
-        :d="props.b.path"
-        :class="
-          props.grow === true
-            ? 'transition-transform duration-700 ease-out motion-reduce:transition-none'
-            : ''
-        "
-        :transform="transformOf(props.b, props.placementB)"
-        :style="{ fill: props.bColor, ...bGrowth }"
-      />
-      <path
-        v-for="(outline, i) in props.outlines"
-        :key="i"
-        data-test="match-scale-outline"
-        :d="props.b.path"
-        :transform="transformOf(props.b, outline.placement)"
-        fill="none"
-        :stroke="outline.color"
-        stroke-width="2"
-        :stroke-dasharray="outline.dashed ? '6 4' : undefined"
-        vector-effect="non-scaling-stroke"
-      />
     </svg>
     <!-- Looks like the minimap's expand button; the field's hit test does the work. -->
     <span

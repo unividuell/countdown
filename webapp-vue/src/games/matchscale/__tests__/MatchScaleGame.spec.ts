@@ -46,12 +46,21 @@ describe('MatchScaleGame', () => {
     expect(board.props('draftKey')).toBe(draftKey({ userId: 'me', payload: PAYLOAD, timed: true }))
   })
 
-  it("the board's guess is passed up", () => {
+  it("the board's guess is passed up, and the board's state on to the reveal", async () => {
     const wrapper = mountGame()
+    const from = { view: { left: 0, top: 7, cellPx: 40 }, b: { x: 4, y: 0, scale: 1.3 } }
 
-    wrapper.getComponent(MatchScaleBoard).vm.$emit('guess', { scale: 1.3 })
+    wrapper.getComponent(MatchScaleBoard).vm.$emit('guess', { scale: 1.3 }, from)
 
     expect(wrapper.emitted('guess')).toEqual([[{ scale: 1.3 }]])
+
+    await wrapper.setProps({
+      myGuess: { scale: 1.3 },
+      solution: { factor: 1.6, toleranceFactor: 1.1 },
+    })
+
+    expect(wrapper.getComponent(MatchScaleReveal).props('from')).toEqual(from)
+    expect(wrapper.getComponent(MatchScaleReveal).props('animate')).toBe(true)
   })
 
   it('a guess of mine clears my draft', async () => {
@@ -72,6 +81,7 @@ describe('MatchScaleGame', () => {
 
     expect(wrapper.findComponent(MatchScaleBoard).exists()).toBe(false)
     expect(wrapper.findComponent(MatchScaleReveal).props('factor')).toBe(1.6)
+    expect(wrapper.findComponent(MatchScaleReveal).props('from')).toBeNull()
   })
 
   it('is in the registry and in the lab', () => {

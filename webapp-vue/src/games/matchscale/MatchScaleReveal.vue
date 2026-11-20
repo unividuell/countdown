@@ -5,16 +5,31 @@
  * in the table lays that player's outline over the same corner; the same name again lifts it —
  * mine too, which starts on show.
  *
- *   tip ──(SOLUTION_DELAY_MS)──▶ factor      B eases via CSS, no frame loop
+ *   0 ─────────────────────── SOLUTION_DELAY_MS ──────────▶
+ *   board view ──▶ fitted view
+ *   B as sent, amber, filled ──▶ my dashed outline at the corner
+ *                                       true B fades in, grows tip ──▶ factor
  *
- * Nothing saved says where B stood when the tip went in, so every tip is drawn at B's starting
- * corner: sizes compare there, positions do not exist.
+ * Everything eases via CSS; frames only arm it. Live after my own submit in this tab only: a
+ * reload, history or reduced motion shows the end state at once.
+ *
+ * Nothing saved says where B stood when the tip went in, so every tip ends at B's starting corner:
+ * sizes compare there, positions do not exist.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { FIELD_PX, fitView, initialPlacements, sizeAt, type Box, type Placement } from './gestures'
+import { useRevealArming } from '@/ui/useRevealArming'
+import {
+  FIELD_PX,
+  fitView,
+  initialPlacements,
+  sizeAt,
+  type Box,
+  type Placement,
+  type Submitted,
+} from './gestures'
 import MatchScaleScoreboard from './MatchScaleScoreboard.vue'
-import ScaleField, { type Outline } from './ScaleField.vue'
+import ScaleField, { type Camera, type Outline } from './ScaleField.vue'
 import type { ScoreboardRow } from './scoreboard'
 import type { MatchScalePayload } from './types'
 
@@ -28,6 +43,8 @@ const props = defineProps<{
   rows: ScoreboardRow[]
   live: boolean
   animate: boolean
+  /** The board as my tip left it, if it did so in this tab. */
+  from: Submitted | null
 }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
@@ -46,11 +63,21 @@ const GROW_MS = 700
 /** B eases only during its growth; afterwards a view refit moves B with everything else. */
 const growing = ref(!still)
 
+/** The tip travels only from the board it was sent from, and only as that tip. */
+const handoff =
+  still || props.from === null || props.from.b.scale !== props.myScale ? null : props.from
+
+/** Two frames after mount, so the board's state is painted before it eases away. */
+const { shown: moved } = useRevealArming(handoff === null)
+
+/** The beat: the tip has arrived, B is there, camera and tip ease no more. */
+const arrived = ref(handoff === null)
+
 let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
-  if (bScale.value === props.factor) {
+  if (bScale.value === props.factor && handoff === null) {
     // Nothing to grow: B must not ease on later refits either.
     growing.value = false
 
@@ -59,6 +86,7 @@ onMounted(() => {
 
   beat = setTimeout(() => {
     bScale.value = props.factor
+    arrived.value = true
     settle = setTimeout(() => {
       growing.value = false
     }, GROW_MS)
@@ -91,6 +119,21 @@ function outlineAt(scale: number, color: string): Outline {
   return { placement: { ...start.value.b, scale }, color, dashed: true }
 }
 
+/** Mine starts as B left the board — there, filled, amber — and eases into its outline. */
+function myOutline(scale: number): Outline {
+  if (handoff !== null && !moved.value) {
+    return { placement: handoff.b, color: B_COLOR, dashed: true, filled: true, eased: true }
+  }
+
+  const outline = outlineAt(scale, props.myColorHex)
+
+  return arrived.value ? outline : { ...outline, eased: true }
+}
+
+const camera = computed<Camera | null>(() =>
+  handoff === null || arrived.value ? null : { from: handoff.view, moved: moved.value },
+)
+
 const other = computed(() =>
   props.rows.find((row) => row.userId === otherUserId.value && row.userId !== props.mineUserId),
 )
@@ -98,7 +141,7 @@ const other = computed(() =>
 const outlines = computed<Outline[]>(() => {
   const result: Outline[] = []
   if (props.myScale !== null && showMine.value) {
-    result.push(outlineAt(props.myScale, props.myColorHex))
+    result.push(myOutline(props.myScale))
   }
   if (other.value !== undefined) result.push(outlineAt(other.value.scale, other.value.colorHex))
 
@@ -158,6 +201,8 @@ const attributions = computed(() => [
         :outlines="outlines"
         :interactive="false"
         :grow="growing"
+        :b-hidden="!arrived"
+        :camera="camera"
       />
 
       <p

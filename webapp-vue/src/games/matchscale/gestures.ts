@@ -55,6 +55,12 @@ export interface Placement {
   scale: number
 }
 
+/** What the board showed as the tip went in: the reveal's tip travels from there. */
+export interface Submitted {
+  view: View
+  b: Placement
+}
+
 /** World rectangle, `x`/`y` bottom left. */
 export interface Box {
   x: number

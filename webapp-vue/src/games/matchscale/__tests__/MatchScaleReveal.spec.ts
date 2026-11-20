@@ -50,6 +50,7 @@ function mountReveal(over: Record<string, unknown> = {}) {
       rows: scoreboardRows({ entries, factor: 1.6, awardRule: 'ALL_QUALIFYING', mineUserId: mine }),
       live: false,
       animate: false,
+      from: null,
       ...over,
     },
   })
@@ -135,6 +136,72 @@ describe('MatchScaleReveal', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  describe('after my own submit', () => {
+    const AMBER = 'var(--color-amber-200)'
+    const BOARD_VIEW = { left: -1, top: 9, cellPx: 30 }
+    const SENT = { x: 4, y: 1, scale: 1.3 }
+    const FROM = { view: BOARD_VIEW, b: SENT }
+
+    it('the tip starts as B left the board and eases into my dashed outline', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+      try {
+        const wrapper = mountReveal({ animate: true, from: FROM })
+        const corner = initialPlacements(PAYLOAD.a).b
+
+        expect(field(wrapper).props('outlines')).toEqual([
+          { placement: SENT, color: AMBER, dashed: true, filled: true, eased: true },
+        ])
+        expect(field(wrapper).props('camera')).toEqual({ from: BOARD_VIEW, moved: false })
+        expect(field(wrapper).props('bHidden')).toBe(true)
+
+        // Two frames: the board's state is painted before it eases away.
+        await vi.advanceTimersByTimeAsync(50)
+
+        expect(field(wrapper).props('outlines')).toEqual([
+          { placement: { ...corner, scale: 1.3 }, color: ME, dashed: true, eased: true },
+        ])
+        expect(field(wrapper).props('camera')).toEqual({ from: BOARD_VIEW, moved: true })
+        expect(field(wrapper).props('placementB').scale).toBe(1.3)
+
+        await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS)
+
+        expect(field(wrapper).props('outlines')).toEqual([
+          { placement: { ...corner, scale: 1.3 }, color: ME, dashed: true },
+        ])
+        expect(field(wrapper).props('camera')).toBeNull()
+        expect(field(wrapper).props('bHidden')).toBe(false)
+        expect(field(wrapper).props('placementB').scale).toBe(1.6)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('without animation it shows the end state at once', () => {
+      const wrapper = mountReveal({ animate: false, from: FROM })
+      const corner = initialPlacements(PAYLOAD.a).b
+
+      expect(field(wrapper).props('outlines')).toEqual([
+        { placement: { ...corner, scale: 1.3 }, color: ME, dashed: true },
+      ])
+      expect(field(wrapper).props('camera')).toBeNull()
+      expect(field(wrapper).props('bHidden')).toBe(false)
+      expect(field(wrapper).props('placementB').scale).toBe(1.6)
+    })
+
+    it('a board state of another tip does not travel', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+      try {
+        const wrapper = mountReveal({ animate: true, from: { ...FROM, b: { ...SENT, scale: 2 } } })
+
+        expect(field(wrapper).props('camera')).toBeNull()
+        expect(field(wrapper).props('bHidden')).toBe(false)
+        expect(field(wrapper).props('outlines')[0]?.filled).toBeUndefined()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it("a name toggles that player's outline in their colour", async () => {
@@ -236,12 +303,12 @@ describe('MatchScaleReveal', () => {
       await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
 
       expect(field(wrapper).props('grow')).toBe(true)
-      expect(b().classes()).toContain('transition-transform')
+      expect(b().classes()).toContain('transition-[transform,opacity]')
 
       await vi.advanceTimersByTimeAsync(800)
 
       expect(field(wrapper).props('grow')).toBe(false)
-      expect(b().classes()).not.toContain('transition-transform')
+      expect(b().classes()).not.toContain('transition-[transform,opacity]')
 
       const before = b().attributes('transform')
 
@@ -261,7 +328,7 @@ describe('MatchScaleReveal', () => {
     await nextTick()
 
     expect(field(wrapper).props('grow')).toBe(false)
-    expect(b().classes()).not.toContain('transition-transform')
+    expect(b().classes()).not.toContain('transition-[transform,opacity]')
 
     const before = b().attributes('transform')
 

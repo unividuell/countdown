@@ -60,7 +60,9 @@ describe('MatchScaleBoard', () => {
 
     wrapper.getComponent(HoldButton).vm.$emit('confirm')
 
-    expect(wrapper.emitted('guess')).toEqual([[{ scale: 1.7 }]])
+    expect(wrapper.emitted('guess')).toEqual([
+      [{ scale: 1.7 }, { view: expect.any(Object), b: { x: 3, y: 1, scale: 1.7 } }],
+    ])
     expect(wrapper.getComponent(HoldButton).props('label')).toBe('Größe abgeben — gedrückt halten')
   })
 

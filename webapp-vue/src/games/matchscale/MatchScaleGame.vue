@@ -3,7 +3,7 @@
  * Augenmaß: which card the round is on, and the one place `unknown` becomes typed. The board
  * until the server reveals the factor, then the reveal.
  */
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
@@ -12,6 +12,7 @@ import { clearDraft, deviceStorage, draftKey } from './draft'
 import MatchScaleBoard from './MatchScaleBoard.vue'
 import MatchScaleReveal from './MatchScaleReveal.vue'
 import { scoreboardRows } from './scoreboard'
+import type { Submitted } from './gestures'
 import { asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
 
 const props = defineProps<GameProps>()
@@ -61,6 +62,14 @@ const rows = computed(() =>
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 const animate = useRevealedLive(() => solution.value !== null)
+
+/** The board as the tip left it: the board is gone by the reveal, and the draft with it. */
+const submitted = ref<Submitted | null>(null)
+
+function onGuess(value: { scale: number }, from: Submitted): void {
+  submitted.value = from
+  emit('guess', value)
+}
 </script>
 
 <template>
@@ -77,6 +86,7 @@ const animate = useRevealedLive(() => solution.value !== null)
     :rows="rows"
     :live="live"
     :animate="animate"
+    :from="submitted"
   />
   <MatchScaleBoard
     v-else
@@ -86,6 +96,6 @@ const animate = useRevealedLive(() => solution.value !== null)
     :award-rule="props.awardRule"
     :award-points="props.awardPoints"
     :my-color-hex="myColorHex"
-    @guess="(value) => emit('guess', value)"
+    @guess="onGuess"
   />
 </template>

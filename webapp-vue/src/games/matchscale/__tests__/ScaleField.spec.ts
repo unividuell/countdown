@@ -72,9 +72,9 @@ describe('ScaleField', () => {
     const plain = mountField().wrapper.get('[data-test="match-scale-b"]')
 
     expect(grown.attributes('style')).toContain('transform: translate(')
-    expect(grown.classes()).toContain('transition-transform')
+    expect(grown.classes()).toContain('transition-[transform,opacity]')
     expect(plain.attributes('style') ?? '').not.toContain('transform')
-    expect(plain.classes()).not.toContain('transition-transform')
+    expect(plain.classes()).not.toContain('transition-[transform,opacity]')
   })
 
   it('draws the grid, the ground line and A under B', () => {
@@ -119,10 +119,66 @@ describe('ScaleField', () => {
       outlines: [{ placement: { x: 1, y: 0, scale: 2 }, color: '#ff0000', dashed: true }],
     })
 
-    const outline = wrapper.get('[data-test="match-scale-outline"]')
+    const outline = wrapper.get<SVGPathElement>('[data-test="match-scale-outline"]')
     expect(outline.attributes('d')).toBe(B.path)
-    expect(outline.attributes('stroke')).toBe('#ff0000')
+    expect(outline.element.style.stroke).toBe('#ff0000')
+    expect(outline.element.style.strokeOpacity).toBe('1')
+    expect(outline.element.style.fillOpacity).toBe('0')
     expect(outline.attributes('stroke-dasharray')).toBeDefined()
+  })
+
+  it('draws a filled outline as a solid shape, and eases one that asks', () => {
+    const { wrapper } = mountField({
+      outlines: [
+        { placement: { x: 1, y: 0, scale: 2 }, color: '#ff0000', dashed: true, filled: true },
+        { placement: { x: 1, y: 0, scale: 2 }, color: '#ff0000', dashed: true, eased: true },
+      ],
+    })
+    const [filled, eased] = wrapper.findAll<SVGPathElement>('[data-test="match-scale-outline"]')
+
+    expect(filled!.element.style.fill).toBe('#ff0000')
+    expect(filled!.element.style.fillOpacity).toBe('1')
+    expect(filled!.element.style.strokeOpacity).toBe('0')
+    expect(filled!.classes()).toHaveLength(0)
+    expect(eased!.element.style.transform).toContain('translate(')
+    expect(eased!.classes()).toContain(
+      'transition-[transform,fill,fill-opacity,stroke,stroke-opacity]',
+    )
+  })
+
+  it('hides B on request', () => {
+    const b = mountField({ bHidden: true }).wrapper.get<SVGPathElement>(
+      '[data-test="match-scale-b"]',
+    )
+
+    expect(b.element.style.opacity).toBe('0')
+  })
+
+  it('a camera draws the field as `from` showed it, then eases into the view', async () => {
+    const view = initialView(FIELD_PX)
+    // Zoomed in twice around the field's centre: the world point at the old (180, 180) stays.
+    const from: View = { left: view.left + 2.25, top: view.top - 2.25, cellPx: 80 }
+    const field = mountField({ view, camera: { from, moved: false } })
+    const camera = () => field.wrapper.get<SVGGElement>('[data-test="match-scale-camera"]')
+    const grid = () => field.wrapper.get<SVGGElement>('[data-test="match-scale-grid"]')
+    const fromGrid = () => field.wrapper.find<SVGGElement>('[data-test="match-scale-grid-from"]')
+
+    expect(camera().element.style.transform).toBe('translate(-180px, -180px) scale(2)')
+    expect(camera().classes()).toContain('transition-transform')
+    expect(grid().element.style.opacity).toBe('0')
+    expect(fromGrid().element.style.opacity).toBe('1')
+
+    await field.wrapper.setProps({ camera: { from, moved: true } })
+
+    expect(camera().element.style.transform).toBe('translate(0px, 0px) scale(1)')
+    expect(grid().element.style.opacity).toBe('1')
+    expect(fromGrid().element.style.opacity).toBe('0')
+
+    await field.wrapper.setProps({ camera: null })
+
+    expect(camera().attributes('style') ?? '').not.toContain('transform')
+    expect(camera().classes()).toHaveLength(0)
+    expect(fromGrid().exists()).toBe(false)
   })
 
   it('keeps the handle while locked, inert, and takes no input', async () => {

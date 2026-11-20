@@ -20,6 +20,7 @@ import {
   initialView,
   viewAt,
   type Placement,
+  type Submitted,
   type View,
 } from './gestures'
 import MatchScaleBriefing from './MatchScaleBriefing.vue'
@@ -37,7 +38,8 @@ const props = defineProps<{
   myColorHex: string
 }>()
 
-const emit = defineEmits<{ guess: [value: { scale: number }] }>()
+/** `from` stays in the tab: the reveal's tip travels from there. */
+const emit = defineEmits<{ guess: [value: { scale: number }, from: Submitted] }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
 const B_COLOR = 'var(--color-amber-200)'
@@ -100,7 +102,9 @@ const { touching, onDown: onFieldDown, onUp: onFieldUp } = useFieldTouch(locked)
 
 function submit(): void {
   unlock()
-  if (playable.value) emit('guess', { scale: placementB.value.scale })
+  if (!playable.value) return
+
+  emit('guess', { scale: placementB.value.scale }, { view: view.value, b: placementB.value })
 }
 </script>
 
