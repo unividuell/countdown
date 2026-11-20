@@ -44,12 +44,12 @@ describe('MatchScaleBoard', () => {
     expect(a.text()).toBe('Alpha')
     expect(b.text()).toBe('Beta')
     expect(a.element.style.color).toBe('var(--color-on-surface-variant)')
-    expect(b.element.style.color).toBe('var(--color-amber-200)')
+    expect(b.element.style.color).toBe('var(--color-match-scale-b)')
     expect(field.contains(a.element) || field.contains(b.element)).toBe(false)
 
     const scale = wrapper.getComponent(ScaleField)
     expect(scale.props('aColor')).toBe('var(--color-on-surface-variant)')
-    expect(scale.props('bColor')).toBe('var(--color-amber-200)')
+    expect(scale.props('bColor')).toBe('var(--color-match-scale-b)')
   })
 
   it('holding submits the scale B has now', async () => {

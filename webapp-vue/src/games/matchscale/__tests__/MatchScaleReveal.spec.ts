@@ -139,7 +139,7 @@ describe('MatchScaleReveal', () => {
   })
 
   describe('after my own submit', () => {
-    const AMBER = 'var(--color-amber-200)'
+    const AMBER = 'var(--color-match-scale-b)'
     const BOARD_VIEW = { left: -1, top: 9, cellPx: 30 }
     const SENT = { x: 4, y: 1, scale: 1.3 }
     const FROM = { view: BOARD_VIEW, b: SENT }

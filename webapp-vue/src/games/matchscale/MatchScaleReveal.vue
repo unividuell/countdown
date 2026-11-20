@@ -48,7 +48,7 @@ const props = defineProps<{
 }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
-const B_COLOR = 'var(--color-amber-200)'
+const B_COLOR = 'var(--color-match-scale-b)'
 
 const start = computed(() => initialPlacements(props.payload.a))
 

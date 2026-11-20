@@ -42,7 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{ guess: [value: { scale: number }, from: Submitted] }>()
 
 const A_COLOR = 'var(--color-on-surface-variant)'
-const B_COLOR = 'var(--color-amber-200)'
+const B_COLOR = 'var(--color-match-scale-b)'
 
 const storage = deviceStorage()
 

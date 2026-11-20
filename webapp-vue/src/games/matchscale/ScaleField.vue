@@ -415,13 +415,14 @@ useEventListener(document, 'visibilitychange', () => {
         />
       </g>
     </svg>
-    <!-- Looks like the minimap's expand button; the field's hit test does the work. -->
+    <!-- The minimap's expand icon, dark in light and light in dark; the field's hit test does the
+         work. -->
     <span
       v-if="props.interactive"
       :inert="props.locked || undefined"
       role="img"
       aria-label="Größe ändern"
-      class="pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-surface-container-lowest/90 text-on-surface shadow"
+      class="pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-inverse-surface text-inverse-on-surface shadow"
       :style="{
         left: `${(handle.x / FIELD_PX) * 100}%`,
         top: `${(handle.y / FIELD_PX) * 100}%`,
