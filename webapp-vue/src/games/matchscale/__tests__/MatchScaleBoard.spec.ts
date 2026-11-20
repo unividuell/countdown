@@ -78,6 +78,12 @@ describe('MatchScaleBoard', () => {
     expect(wrapper.getComponent(ScaleField).props('locked')).toBe(true)
   })
 
+  it('has the sound toggle in the field', () => {
+    const wrapper = mountBoard()
+
+    expect(wrapper.getComponent(ScaleField).find('button[aria-label="Ton"]').exists()).toBe(true)
+  })
+
   it('a finger on the field keeps the hold off', async () => {
     const wrapper = mountBoard()
     const hold = wrapper.getComponent(HoldButton)

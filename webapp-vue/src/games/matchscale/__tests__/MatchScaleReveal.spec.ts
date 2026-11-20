@@ -211,6 +211,13 @@ describe('MatchScaleReveal', () => {
       expect(stopCount).toHaveBeenCalled()
     })
 
+    it('keeps the toggle in the field, where the board has it', () => {
+      const wrapper = mountReveal({ animate: false })
+
+      expect(wrapper.getComponent(ScaleField).find('button[aria-label="Ton"]').exists()).toBe(true)
+      expect(wrapper.findAll('button[aria-label="Ton"]')).toHaveLength(1)
+    })
+
     it('stays silent when muted, and without animation', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
       mountReveal({ animate: false })

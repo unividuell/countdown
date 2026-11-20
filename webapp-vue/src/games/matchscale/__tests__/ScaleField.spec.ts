@@ -3,6 +3,9 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { FIELD_PX, initialPlacements, initialView, type View } from '@/games/matchscale/gestures'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { Silhouette } from '@/games/matchscale/types'
+import { unlockSound } from '@/games/matchscale/countSound'
+
+vi.mock('@/games/matchscale/countSound', () => ({ unlockSound: vi.fn() }))
 
 enableAutoUnmount(afterEach)
 
@@ -69,6 +72,42 @@ async function pointer(field: Field, type: string, id: number, at: object) {
 }
 
 describe('ScaleField', () => {
+  describe('sound toggle', () => {
+    afterEach(() => {
+      localStorage.clear()
+      vi.mocked(unlockSound).mockClear()
+    })
+
+    it('sits in the top right corner, interactive or not', () => {
+      for (const interactive of [true, false]) {
+        const toggle = mountField({ interactive }).wrapper.get('button[aria-label="Ton"]')
+
+        expect(toggle.classes()).toEqual(expect.arrayContaining(['absolute', 'top-2', 'right-2']))
+      }
+    })
+
+    it('a tap flips the shared mute, wakes the audio and starts no gesture', async () => {
+      const { wrapper } = mountField()
+      const toggle = wrapper.get('button[aria-label="Ton"]')
+
+      await toggle.trigger('pointerdown', { pointerId: 1, button: 0, clientX: 340, clientY: 20 })
+      await toggle.trigger('pointermove', { pointerId: 1, clientX: 100, clientY: 100 })
+      await toggle.trigger('pointerup', { pointerId: 1, clientX: 100, clientY: 100 })
+      await toggle.trigger('click')
+
+      expect(localStorage.getItem('games:sound')).toBe('false')
+      expect(unlockSound).toHaveBeenCalledOnce()
+      expect(wrapper.emitted('update:view')).toBeUndefined()
+      expect(wrapper.emitted('update:placementB')).toBeUndefined()
+    })
+
+    it('is inert while the hold lock runs', () => {
+      const toggle = mountField({ locked: true }).wrapper.get('button[aria-label="Ton"]')
+
+      expect(toggle.attributes('inert')).toBeDefined()
+    })
+  })
+
   it('eases B only with grow: CSS transform and transition class', () => {
     const grown = mountField({ grow: true }).wrapper.get('[data-test="match-scale-b"]')
     const plain = mountField().wrapper.get('[data-test="match-scale-b"]')

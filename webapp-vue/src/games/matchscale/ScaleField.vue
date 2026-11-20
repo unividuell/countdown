@@ -17,6 +17,8 @@
 import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef, watch } from 'vue'
 import IconMaximize from '~icons/lucide/maximize-2'
+import SoundToggle from '@/ui/SoundToggle.vue'
+import { unlockSound } from './countSound'
 import {
   FIELD_PX,
   GRID_MODE,
@@ -436,6 +438,18 @@ useEventListener(document, 'visibilitychange', () => {
         />
       </g>
     </svg>
+    <!-- Top right, in play and in the reveal alike, so it does not jump at the switch. Its pointer
+         events stop here: a tap is no pan, and the board's lift handler never sees it. A tap is
+         also a user gesture, so it wakes the audio graph for the reveal's count. Inert while the
+         hold lock runs, like the handle. -->
+    <SoundToggle
+      :inert="props.locked || undefined"
+      class="absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-full bg-inverse-surface text-inverse-on-surface shadow"
+      @pointerdown.stop
+      @pointerup.stop
+      @pointercancel.stop
+      @click="unlockSound"
+    />
     <!-- The minimap's expand icon, dark in light and light in dark; the field's hit test does the
          work. -->
     <span

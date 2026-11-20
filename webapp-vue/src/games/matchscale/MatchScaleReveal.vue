@@ -20,10 +20,9 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import SoundToggle from '@/ui/SoundToggle.vue'
 import { useGameSound } from '@/ui/useGameSound'
 import { useRevealArming } from '@/ui/useRevealArming'
-import { playCount, unlockSound, type Counting } from './countSound'
+import { playCount, type Counting } from './countSound'
 import { countTones, growEasing, growMs } from './countTones'
 import {
   FIELD_PX,
@@ -245,13 +244,6 @@ const attributions = computed(() => [
       >
         {{ text }}
       </p>
-    </div>
-
-    <div class="-mb-3 flex justify-end">
-      <SoundToggle
-        class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
-        @click="unlockSound"
-      />
     </div>
 
     <MatchScaleScoreboard
