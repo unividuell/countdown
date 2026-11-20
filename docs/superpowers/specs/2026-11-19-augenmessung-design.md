@@ -301,8 +301,9 @@ Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus d
 · 200 cm Kopf-Rumpf“), die Attribution in Zeile zwei. Vor dem Tipp kein Maß: gespielt wird nur das
 Verhältnis.
 
-**Eine Einheit je Runde.** Die größte aus mm, cm, m, km, in der das kleinere der beiden Maße noch
-≥ 10 ist (Tiere: cm, Länder: km); alle Werte ganzzahlig darin, nie ein Komma. A und B stehen in
+**Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
+cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); alle Werte
+ganzzahlig darin, nie ein Komma. A und B stehen in
 derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
 
 Die Namenszeile bricht nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in

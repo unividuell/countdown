@@ -9,6 +9,8 @@ function m(metres: number): Measure {
 describe('roundUnit', () => {
   it.each([
     ['mouse vs. rat', 0.12, 0.24, 'cm'],
+    ['a mouse under ten centimetres stays in cm', 0.08, 0.22, 'cm'],
+    ['exactly one centimetre', 0.01, 0.05, 'cm'],
     ['elephant vs. giraffe', 3.2, 5.5, 'cm'],
     ['two countries', 12_000, 850_000, 'km'],
     ['two buildings', 15, 300, 'm'],
