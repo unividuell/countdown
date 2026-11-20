@@ -105,7 +105,7 @@ prepare_spot_object_terms() {
   chmod 644 "$SPOT_OBJECT_TERMS_FILE"
 }
 
-# Downloads and decrypts the Augenmessung category files for $TARGET: one cipher per category
+# Downloads and decrypts the Augenmaß category files for $TARGET: one cipher per category
 # listed in match-scale/categories.txt, decrypted into a directory the container mounts.
 # Same reasoning as the two functions above; only the differences are commented.
 prepare_match_scale_dataset() {
@@ -159,7 +159,7 @@ prepare_match_scale_dataset() {
     fi
     if ! SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}" \
          sops -d "$CATEGORY_SOPS_FILE" > "$MATCH_SCALE_NEW/$KEY.yaml"; then
-      echo "sops could not decrypt the Augenmessung category '$KEY'." >&2
+      echo "sops could not decrypt the Augenmaß category '$KEY'." >&2
       echo "Install sops and put the age key at \${SOPS_AGE_KEY_FILE:-\$HOME/.config/sops/age/keys.txt}." >&2
       umask "$OLD_UMASK"
       exit 1

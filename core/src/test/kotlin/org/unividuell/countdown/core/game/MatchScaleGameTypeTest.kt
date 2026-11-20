@@ -49,7 +49,7 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
     @Test
     fun `it is registered under a stable id and a German display name`() {
         game.id shouldBe "match-scale"
-        game.displayName shouldBe "Augenmessung"
+        game.displayName shouldBe "Augenmaß"
     }
 
     @Test

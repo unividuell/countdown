@@ -165,7 +165,7 @@ services:
       # Same shape as the Guess Hue mount above: update.sh decrypts the Weltanschauung term list
       # to here via SPOT_OBJECT_TERMS_FILE.
       - ${SPOT_OBJECT_TERMS_FILE:?SPOT_OBJECT_TERMS_FILE is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/spot-object-terms.yaml:ro
-      # Directory with one decrypted YAML per Augenmessung category; update.sh exports the host
+      # Directory with one decrypted YAML per Augenmaß category; update.sh exports the host
       # path as MATCH_SCALE_DATASET_HOST_DIR.
       - ${MATCH_SCALE_DATASET_HOST_DIR:?MATCH_SCALE_DATASET_HOST_DIR is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/match-scale:ro
     depends_on:

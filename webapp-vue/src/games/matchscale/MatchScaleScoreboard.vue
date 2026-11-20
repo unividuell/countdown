@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * „Auswertung“ for Augenmessung: the shared table with the tip and its signed distance from the
+ * „Auswertung“ for Augenmaß: the shared table with the tip and its signed distance from the
  * truth. The name is a button — tapping it lays that player's outline over the reveal's field.
  */
 import RevealScoreboard from '@/games/RevealScoreboard.vue'

@@ -1,5 +1,5 @@
 /**
- * Augenmessung's wire shapes. Narrowed from `unknown`, like every game's: a stale round of another
+ * Augenmaß's wire shapes. Narrowed from `unknown`, like every game's: a stale round of another
  * game may be junk, and a non-finite number would end up as `NaN` in a transform.
  */
 

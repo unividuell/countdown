@@ -68,7 +68,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
         val kept = categories.filter { category ->
             val pairs = pairCount(category)
             if (pairs < MIN_PAIRS) {
-                logger.warn { "Augenmessung leaves out category '${category.key}': $pairs pair(s) within factor $MAX_FACTOR, need $MIN_PAIRS" }
+                logger.warn { "Augenmaß leaves out category '${category.key}': $pairs pair(s) within factor $MAX_FACTOR, need $MIN_PAIRS" }
             }
             pairs >= MIN_PAIRS
         }

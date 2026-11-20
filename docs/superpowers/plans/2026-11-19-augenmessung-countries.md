@@ -1,8 +1,8 @@
-# Augenmessung (Länder) — Implementation Plan
+# Augenmaß (Länder) — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Das Spiel „Augenmessung“ (`match-scale`) als elftes Rundenspiel, mit der Kategorie Länder: zwei Silhouetten, A fest, B zieht der Spieler auf das wahre Größenverhältnis.
+**Goal:** Das Spiel „Augenmaß“ (`match-scale`) als elftes Rundenspiel, mit der Kategorie Länder: zwei Silhouetten, A fest, B zieht der Spieler auf das wahre Größenverhältnis.
 
 **Architecture:** Ein Offline-Skript erzeugt aus Natural Earth eine Kategorie-Datei (normierte SVG-Pfade + `metresPerUnit`), sops verschlüsselt sie ganz, `update.sh` entschlüsselt alle Kategorien aus `deploy/match-scale/categories.txt` in ein Verzeichnis, das Backend lädt es. Neues Modulith-Modul `matchscale` (Datensatz, Ziehung, kein Schema), Adapter `MatchScaleGameType` in `game.internal`. Frontend `games/matchscale/`: reine Module (Typen, Gesten/Ansicht, Zwischenstand, Rangliste) unter einer SVG-Spielfläche.
 
@@ -40,7 +40,7 @@
 - **Kotlin:** named arguments ab zwei Argumenten (Ausnahmen laut `.claude/guidelines/kotlin.md`). Logger per `KotlinLogging.logger {}` in der Klasse, Lambda-Nachrichten.
 - **Testing:** kotest-Matcher, mockk; Frontend Vitest + `vi`. **TDD:** erst der fallende Test.
 - **Keine redundanten Inline-Kommentare.** Nur wo die Zeile sonst falsch gelesen wird.
-- **Namen:** Spiel-Id `match-scale`, Anzeigename `Augenmessung`, Modul `matchscale`, Klassen `MatchScale*`, Frontend `games/matchscale/`, Storage-Key `match-scale`.
+- **Namen:** Spiel-Id `match-scale`, Anzeigename `Augenmaß`, Modul `matchscale`, Klassen `MatchScale*`, Frontend `games/matchscale/`, Storage-Key `match-scale`.
 - **Feste Zahlen (Spec):** Faktor zwischen A und B in `[1/10, 10]`; Toleranz Phase eins `1.1` (±10 % im Log), Phase zwei `null`; `deviation = |ln(scale / factor)|`; normierte längste Seite `1000`; Raster 9 Kästchen hoch, Bodenlinie 2 Kästchen über dem Rand; Griff ≥ 44 px; Richtwert Länder-Datei `< 500 KB` Klartext.
 - **Ströme:** die Ziehung nur aus `random.presentation`; `scene` und `solution` bleiben unberührt.
 - **Wörtliche Texte** (Entscheidung dieses Plans, deutsch):
@@ -96,7 +96,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
   - `MatchScaleDatasetLoaderTest`: leeres `datasetDir` → beide Sample-Kategorien, `isSample = true`; Verzeichnis mit zwei `.yaml` (in `@TempDir`) → beide, `isSample = false`, Dateien ohne `.yaml`-Endung ignoriert; doppelter Kategorie-Schlüssel über Dateien → Exception; Pfad ist keine lesbares Verzeichnis → Exception mit `datasetDir`; eine Kategorie mit weniger als zwei Paaren im Faktor `[1/10, 10]` wird ausgelassen (Paar = ungeordnet, verschiedene Einträge); bleibt keine Kategorie → Exception.
   - `MatchScaleDatasetFailFastTest` (Bauform `SpotObjectTermsFailFastTest`, `MockEnvironment`): Sample unter `production` → Exception mit `production` und `MATCH_SCALE_DATASET_DIR`; unter `staging` → Exception; ohne Profil → zwei Kategorien.
 - [ ] **Step 6: Run** — FAIL.
-- [ ] **Step 7: Implement** Loader, Properties, Configuration (`DEPLOYED_PROFILES = setOf("production", "staging")`, Warnung bei Sample, bei echter Quelle `logger.info { "Augenmessung loaded ${n} categories (${keys}) from ${origin}" }`, Warnung je ausgelassener Kategorie). Sample-Dateien: je drei bis vier erfundene Einträge (Rechtecke/Dreiecke als Pfad, z. B. `M0 0 l1000 0 l0 500 l-1000 0 z`, Namen „Beispielform Alpha“ …), so dass jede Kategorie ≥ 2 Paare hat. `application.yaml`:
+- [ ] **Step 7: Implement** Loader, Properties, Configuration (`DEPLOYED_PROFILES = setOf("production", "staging")`, Warnung bei Sample, bei echter Quelle `logger.info { "Augenmaß loaded ${n} categories (${keys}) from ${origin}" }`, Warnung je ausgelassener Kategorie). Sample-Dateien: je drei bis vier erfundene Einträge (Rechtecke/Dreiecke als Pfad, z. B. `M0 0 l1000 0 l0 500 l-1000 0 z`, Namen „Beispielform Alpha“ …), so dass jede Kategorie ≥ 2 Paare hat. `application.yaml`:
   ```yaml
   app:
     match-scale:
@@ -144,7 +144,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
   - `data class MatchScaleSilhouette(val name: String, val path: String, val width: Double, val height: Double, val attribution: String?)`
   - `data class MatchScaleParams(val category: String, val categoryName: String, val a: MatchScaleSilhouette, val b: MatchScaleSilhouette, val factor: Double, val toleranceFactor: Double?)`
   - Payload `{categoryName, a, b, toleranceFactor}` · Solution `{factor, toleranceFactor}` · Outcome `{scale, deviation, withinTolerance}` (`withinTolerance` `null` in Phase zwei) · Tipp `{scale}`.
-  - `id = "match-scale"`, `displayName = "Augenmessung"`, `requiresReveal = scoresOnDuration = false`, `TOLERANCE_FACTOR = 1.1`.
+  - `id = "match-scale"`, `displayName = "Augenmaß"`, `requiresReveal = scoresOnDuration = false`, `TOLERANCE_FACTOR = 1.1`.
 
 - [ ] **Step 1: Write the failing tests** (`MatchScaleGameTypeTest`, `@SpringBootTest` + Testcontainers wie `GuessHueGameTypeTest`, läuft aufs Sample):
   - Id und Anzeigename.
@@ -159,7 +159,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 - [ ] **Step 2: Run** `./mvnw test -Dtest=MatchScaleGameTypeTest` — FAIL.
 - [ ] **Step 3: Implement** nach `GuessHueGameType`. `used` aus `context.previousParams` wie `PlacePatchGameType` (Kategorie → Namen von `a` und `b`). KDocs: Payload-Felder kommen nur aus `presentation`, Faktor folgt aus dem Paar und bleibt im Server.
 - [ ] **Step 4: Run** `MatchScaleGameTypeTest`, `SongSnippetBootTest`, `LabServiceTest`, `LabPointsParityTest`, `ModularityTests` — PASS.
-- [ ] **Step 5: Commit** — `Add Augenmessung as a round game`.
+- [ ] **Step 5: Commit** — `Add Augenmaß as a round game`.
 
 ### Task 4: Offline-Skript (Länder)
 
@@ -199,10 +199,10 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
   - Erfolg: altes `./secrets/match-scale.$TARGET` löschen, `.new` dorthin `mv`; Verzeichnis `755`, Dateien `644` (Begründung wie beim Guess-Hue-File: Container-UID). `export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.$TARGET`.
   - `sh -n deploy/update.sh` — keine Ausgabe.
 - [ ] **Step 4: `compose.yaml`** — Umgebung `MATCH_SCALE_DATASET_DIR=/config/match-scale`, Volume `${MATCH_SCALE_DATASET_HOST_DIR:?MATCH_SCALE_DATASET_HOST_DIR is not set -- export it yourself, or run this via deploy/update.sh, see deploy/README.md}:/config/match-scale:ro`. `docker compose -f deploy/compose.yaml config` mit gesetzten Pflichtvariablen läuft durch.
-- [ ] **Step 5: `deploy/README.md`** — Abschnitt „Prerequisite: the Augenmessung categories“ (Dauerwissen: `categories.txt`, eine Datei pro Kategorie, `encrypt`, `update.sh` überspringt ohne Liste). Die Reihenfolge des ersten Rollouts **nicht** hier, sondern in die PR-Beschreibung (`update.sh` zuerst auf `main`).
+- [ ] **Step 5: `deploy/README.md`** — Abschnitt „Prerequisite: the Augenmaß categories“ (Dauerwissen: `categories.txt`, eine Datei pro Kategorie, `encrypt`, `update.sh` überspringt ohne Liste). Die Reihenfolge des ersten Rollouts **nicht** hier, sondern in die PR-Beschreibung (`update.sh` zuerst auf `main`).
 - [ ] **Step 6: `.gitignore`** — `deploy/match-scale.*.sops.yaml` (Download-Kopien beim lokalen Test von `update.sh`); `.claude/launch.json` — `MATCH_SCALE_DATASET_DIR="$(../scripts/match-scale-dataset.sh dev-path)"` neben den anderen beiden.
-- [ ] **Step 7: Boot mit echten Daten:** Backend über die launch-Konfiguration starten; Log meldet „Augenmessung loaded … categories“ mit `countries`, keine Sample-Warnung. Stoppen.
-- [ ] **Step 8: Commit** — `Deploy Augenmessung's categories via sops` (Body: nur Cipher, kein Inhalt).
+- [ ] **Step 7: Boot mit echten Daten:** Backend über die launch-Konfiguration starten; Log meldet „Augenmaß loaded … categories“ mit `countries`, keine Sample-Warnung. Stoppen.
+- [ ] **Step 8: Commit** — `Deploy Augenmaß's categories via sops` (Body: nur Cipher, kein Inhalt).
 
 ### Task 6: Frontend — reine Module
 
@@ -226,13 +226,13 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 - [ ] **Step 2: Run** `pnpm test src/games/matchscale` — FAIL.
 - [ ] **Step 3: Implement.** `draft.ts` nach `turnpipes/draft.ts` (Prefix `match-scale:draft:`, Fingerprint über `[a.path, b.path]`). `scoreboard.ts` nach `guesshue/scoreboard.ts` (shared `rowHead`, Ticks).
 - [ ] **Step 4: Run** — PASS. `pnpm exec vue-tsc -b` — keine Fehler.
-- [ ] **Step 5: Commit** — `Add Augenmessung's view, gesture and draft logic`.
+- [ ] **Step 5: Commit** — `Add Augenmaß's view, gesture and draft logic`.
 
 ### Task 7: Frontend — Spielfläche und Abgabe
 
 **Files:**
 - Create: `webapp-vue/src/games/matchscale/ScaleField.vue`, `MatchScaleBoard.vue`, `MatchScaleBriefing.vue`, `MatchScaleRules.vue`, `MatchScaleGame.vue`
-- Modify: `webapp-vue/src/games/registry.ts` (`'match-scale': MatchScaleGame`), `webapp-vue/src/gamelab/games.ts` (`{ id: 'match-scale', title: 'Augenmessung' }`)
+- Modify: `webapp-vue/src/games/registry.ts` (`'match-scale': MatchScaleGame`), `webapp-vue/src/gamelab/games.ts` (`{ id: 'match-scale', title: 'Augenmaß' }`)
 - Test: `webapp-vue/src/games/matchscale/__tests__/ScaleField.spec.ts`, `MatchScaleBoard.spec.ts`, `MatchScaleGame.spec.ts`
 
 **Interfaces:**
@@ -246,7 +246,7 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 - [ ] **Step 2: Run** `pnpm test src/games/matchscale` — FAIL.
 - [ ] **Step 3: Implement.** SVG mit `touch-action: none`; Pfade per `transform` (`translate` + `scale` aus Placement und View), A deckend, B deckend obenauf; Griff als eigener Kreis außerhalb der Pfad-Transformation (bleibt 44 px bei jedem Zoom). Pointer-Zustand lokal in `ScaleField` (Map aktiver Pointer); Mathematik nur über `gestures.ts`. Halten sperrt die Fläche wie in `TurnPipesBoard` (`useHoldLock`). Briefing nach `TurnPipesBriefing` mit den wörtlichen Texten.
 - [ ] **Step 4: Run** — PASS; `pnpm exec vue-tsc -b`; Prettier + `pnpm lint` ohne `warning`.
-- [ ] **Step 5: Commit** — `Add Augenmessung's board`.
+- [ ] **Step 5: Commit** — `Add Augenmaß's board`.
 
 ### Task 8: Frontend — Auflösung und Rangliste
 
@@ -267,12 +267,12 @@ Was die Spec impliziert, aber kein Task von sich aus testet — jede Zeile ist e
 - [ ] **Step 2: Run** — FAIL.
 - [ ] **Step 3: Implement.** Takt: Wechsel → ab `SOLUTION_DELAY_MS` wächst B per CSS-Transition (kein `requestAnimationFrame`) von Tipp zu Faktor → ab `RESULTS_DELAY_MS` Rangliste. Ansicht über `fitView` aus A, wahrem B und eigenem Umriss.
 - [ ] **Step 4: Run** — PASS; `vue-tsc -b`; Prettier + `pnpm lint` ohne `warning`.
-- [ ] **Step 5: Commit** — `Add Augenmessung's reveal and scoreboard`.
+- [ ] **Step 5: Commit** — `Add Augenmaß's reveal and scoreboard`.
 
 ### Task 9: Handprobe und Abschluss
 
 - [ ] **Step 1:** Backend (echte Daten) und Frontend über `.claude/launch.json` starten; Labor-Seite von `match-scale` im Browser-Pane: beide Phasen, mehrere Seeds, Screenshot. Konsole ohne Fehler.
-- [ ] **Step 2: Handprobe am Handy** (LAN-HTTP, Zug offen halten): Nutzer prüft Verschieben, Griff, Pinch, Halten, Auflösung. Er entscheidet `GRID_MODE`, Startgröße, Farben, Zoomgrenzen. Die verworfenen Raster-Modi aus `gestures.ts` und Tests entfernen; Werte setzen; Commit `Settle Augenmessung's grid and sizes`.
+- [ ] **Step 2: Handprobe am Handy** (LAN-HTTP, Zug offen halten): Nutzer prüft Verschieben, Griff, Pinch, Halten, Auflösung. Er entscheidet `GRID_MODE`, Startgröße, Farben, Zoomgrenzen. Die verworfenen Raster-Modi aus `gestures.ts` und Tests entfernen; Werte setzen; Commit `Settle Augenmaß's grid and sizes`.
 - [ ] **Step 3:** Spec nachziehen: unter *Spielfläche* die entschiedenen Werte, unter *Dem Bauenden überlassen* Erledigtes streichen. Erkenntnisse nach `.claude/guidelines/` (feeding-knowledge-back). Commit.
 - [ ] **Step 4: Volle Läufe:** `./mvnw clean test` — grün; `pnpm test`, `pnpm exec vue-tsc -b`, `pnpm lint` — grün, ohne `warning`.
 - [ ] **Step 5:** PR-Beschreibung vorbereiten (nicht anlegen, nicht pushen): Rollout-Reihenfolge — erst `update.sh` auf `main` (ohne Liste harmlos), dann der Branch nach `develop`.

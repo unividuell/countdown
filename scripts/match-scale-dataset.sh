@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Convenient paths to the local Augenmessung category files. Two directory pairs, one cipher per
+# Convenient paths to the local Augenmaß category files. Two directory pairs, one cipher per
 # plaintext file:
 #
 #   .local/match-scale/<key>.yaml        <-> deploy/match-scale/<key>.sops.yaml
@@ -49,7 +49,7 @@ esac
 unavailable() {
   echo "$1" >&2
   if [ "$SUBCOMMAND" = "dev-path" ]; then
-    echo "Augenmessung: staying on the bundled sample dataset." >&2
+    echo "Augenmaß: staying on the bundled sample dataset." >&2
     exit 0
   fi
   exit 1
@@ -125,7 +125,7 @@ each_cipher() {
         continue
       fi
       decrypt_one "$PAIR" "$CIPHER"
-      echo "Augenmessung: decrypted $PAIR/$(basename "$TARGET")" >&2
+      echo "Augenmaß: decrypted $PAIR/$(basename "$TARGET")" >&2
     done
   done
   [ "$FOUND" -eq 1 ] || unavailable "No encrypted ciphers found under $CHECKOUT_ROOT/deploy/match-scale*."

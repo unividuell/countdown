@@ -1,4 +1,4 @@
-# Augenmessung („Match Scale“) — eine Silhouette auf die richtige Größe ziehen
+# Augenmaß („Match Scale“) — eine Silhouette auf die richtige Größe ziehen
 
 **Status:** beschlossenes Design (2026-11-19).
 
@@ -30,7 +30,7 @@ ist.
 
 - **Codename:** `match-scale` (Game-ID), `matchscale` (Modul), `MatchScale*` (Klassen) — der Spieler
   bringt B auf den Maßstab von A.
-- **Anzeigename:** „Augenmessung“ — Augenmaß und Messung: messen mit den Augen.
+- **Anzeigename:** „Augenmaß“ — schätzen mit dem bloßen Auge.
 
 ## Kategorien
 
@@ -263,7 +263,7 @@ Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 
 ## Labor
 
-`match-scale` / „Augenmessung“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide Gesichter, der
+`match-scale` / „Augenmaß“ in `labGameList` und `registry`. Der Phasenschalter zeigt beide Gesichter, der
 Seed macht Paar und Kategorie reproduzierbar. Gestimmt werden hier: Startgröße, Farben, Zoomgrenzen,
 Raster beim Zoomen.
 

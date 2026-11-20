@@ -34,10 +34,10 @@ class MatchScaleDatasetConfiguration {
         }
 
         if (loaded.isSample) {
-            logger.warn { "Augenmessung is running on the bundled sample dataset (${loaded.origin}) — local development only" }
+            logger.warn { "Augenmaß is running on the bundled sample dataset (${loaded.origin}) — local development only" }
         } else {
             logger.info {
-                "Augenmessung loaded ${loaded.categories.size} categories (${loaded.categories.joinToString { it.key }}) from ${loaded.origin}"
+                "Augenmaß loaded ${loaded.categories.size} categories (${loaded.categories.joinToString { it.key }}) from ${loaded.origin}"
             }
         }
 

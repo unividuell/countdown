@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** How Augenmessung is played. Text only — the folding lives in `ui/InfoBox`. */
+/** How Augenmaß is played. Text only — the folding lives in `ui/InfoBox`. */
 </script>
 
 <template>

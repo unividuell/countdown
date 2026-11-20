@@ -42,6 +42,6 @@ deploy/secrets/
 deploy/guess-hue-dataset.*.sops.yaml
 # Same as above, for the Weltanschauung term list.
 deploy/spot-object-terms.*.sops.yaml
-# Same as above, for the Augenmessung category files.
+# Same as above, for the Augenmaß category files.
 deploy/match-scale.*.sops.yaml
 deploy/match-scale.*.categories.txt

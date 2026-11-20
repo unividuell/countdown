@@ -166,7 +166,7 @@ keys, and the signing secret") and [game-content.md](../.claude/guidelines/game-
 Also add the three `SPOT_OBJECT_*` variables to `.env.prod`/`.env.staging` by hand — see
 "Migrating an existing stack for Weltanschauung" below.
 
-## Prerequisite: the Augenmessung categories
+## Prerequisite: the Augenmaß categories
 
 `deploy/match-scale/categories.txt` lists the category keys to deploy, one per line (`[a-z0-9-]+`,
 `#` comments allowed). Each key has a cipher `deploy/match-scale/<key>.sops.yaml`; `update.sh`

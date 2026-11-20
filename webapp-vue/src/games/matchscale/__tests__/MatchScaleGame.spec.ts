@@ -76,6 +76,6 @@ describe('MatchScaleGame', () => {
 
   it('is in the registry and in the lab', () => {
     expect(gameComponents['match-scale']).toBe(MatchScaleGame)
-    expect(labGameList).toContainEqual({ id: 'match-scale', title: 'Augenmessung' })
+    expect(labGameList).toContainEqual({ id: 'match-scale', title: 'Augenmaß' })
   })
 })

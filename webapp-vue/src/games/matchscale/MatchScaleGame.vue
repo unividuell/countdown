@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Augenmessung: which card the round is on, and the one place `unknown` becomes typed. The board
+ * Augenmaß: which card the round is on, and the one place `unknown` becomes typed. The board
  * until the server reveals the factor, then the reveal.
  */
 import { computed, watch } from 'vue'

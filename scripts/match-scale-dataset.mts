@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds Augenmessung's (match-scale) category files offline, while curating — never in the build.
+ * Builds Augenmaß's (match-scale) category files offline, while curating — never in the build.
  *
  * Countries, from Natural Earth admin-0 (1:50m):
  *
@@ -578,7 +578,7 @@ function reviewPage(title: string, entries: Entry[]): string {
 <html lang="de">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Augenmessung – ${escape(title)}</title>
+<title>Augenmaß – ${escape(title)}</title>
 <style>
   body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fafafa; color: #222; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -590,7 +590,7 @@ function reviewPage(title: string, entries: Entry[]): string {
   path.a { fill: #999; }
   mark { background: #fdd; }
 </style>
-<h1>Augenmessung – ${escape(title)}</h1>
+<h1>Augenmaß – ${escape(title)}</h1>
 <p>${entries.length} Einträge · winzig (längste Seite &lt; ${TINY_METRES / 1000} km): ${entries.filter(isTiny).length}
 · mehr als ${MANY_POINTS} Punkte: ${entries.filter(hasManyPoints).length}
 · Konstanten: PART_REACH ${PART_REACH}, MIN_PART_SHARE ${MIN_PART_SHARE}, SIMPLIFY_UNITS ${SIMPLIFY_UNITS}</p>
