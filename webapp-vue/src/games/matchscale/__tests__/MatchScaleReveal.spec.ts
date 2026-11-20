@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
@@ -8,6 +8,14 @@ import ScaleField from '../ScaleField.vue'
 import { scoreboardRows } from '../scoreboard'
 import type { MatchScalePayload } from '../types'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
+import { playCount } from '../countSound'
+import { countTones } from '../countTones'
+
+const stopCount = vi.fn()
+vi.mock('../countSound', () => ({
+  playCount: vi.fn(() => ({ stop: stopCount })),
+  unlockSound: vi.fn(),
+}))
 
 enableAutoUnmount(afterEach)
 
@@ -136,6 +144,53 @@ describe('MatchScaleReveal', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  describe('the count while B grows', () => {
+    beforeEach(() => {
+      vi.mocked(playCount).mockClear()
+      stopCount.mockClear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+      vi.useRealTimers()
+    })
+
+    it('plays from my tip to the factor at the beat, and stops on unmount', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+      const wrapper = mountReveal({ animate: true })
+
+      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS - 10)
+      expect(playCount).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(20)
+      expect(playCount).toHaveBeenCalledExactlyOnceWith(countTones(1.3, 1.6, 0.7))
+
+      wrapper.unmount()
+      expect(stopCount).toHaveBeenCalled()
+    })
+
+    it('muting stops it', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+      const wrapper = mountReveal({ animate: true })
+      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
+
+      await wrapper.get('button[aria-label="Ton"]').trigger('click')
+
+      expect(stopCount).toHaveBeenCalled()
+    })
+
+    it('stays silent when muted, and without animation', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+      mountReveal({ animate: false })
+      localStorage.setItem('games:sound', 'false')
+      mountReveal({ animate: true })
+
+      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
+
+      expect(playCount).not.toHaveBeenCalled()
+    })
   })
 
   describe('after my own submit', () => {

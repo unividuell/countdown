@@ -9,6 +9,7 @@
  *   board view ──▶ fitted view
  *   B as sent, amber, filled ──▶ my dashed outline at the corner
  *                                       true B fades in, grows tip ──▶ factor
+ *                                       a count up (or down) in tones, as fast as B grows
  *
  * Everything eases via CSS; frames only arm it. Live after my own submit in this tab only: a
  * reload, history or reduced motion shows the end state at once.
@@ -16,9 +17,13 @@
  * Nothing saved says where B stood when the tip went in, so every tip ends at B's starting corner:
  * sizes compare there, positions do not exist.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import SoundToggle from '@/ui/SoundToggle.vue'
+import { useGameSound } from '@/ui/useGameSound'
 import { useRevealArming } from '@/ui/useRevealArming'
+import { playCount, unlockSound, type Counting } from './countSound'
+import { countTones } from './countTones'
 import {
   FIELD_PX,
   fitView,
@@ -76,6 +81,9 @@ const arrived = ref(handoff === null)
 let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
 
+const sound = useGameSound()
+let counting: Counting | null = null
+
 onMounted(() => {
   if (bScale.value === props.factor && handoff === null) {
     // Nothing to grow: B must not ease on later refits either.
@@ -85,6 +93,7 @@ onMounted(() => {
   }
 
   beat = setTimeout(() => {
+    if (sound.value) counting = playCount(countTones(bScale.value, props.factor, GROW_MS / 1000))
     bScale.value = props.factor
     arrived.value = true
     settle = setTimeout(() => {
@@ -93,9 +102,15 @@ onMounted(() => {
   }, SOLUTION_DELAY_MS)
 })
 
+// Muting silences the count that is already running, not only the next one.
+watch(sound, (on) => {
+  if (!on) counting?.stop()
+})
+
 onBeforeUnmount(() => {
   clearTimeout(beat)
   clearTimeout(settle)
+  counting?.stop()
 })
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))
@@ -213,6 +228,13 @@ const attributions = computed(() => [
       >
         {{ text }}
       </p>
+    </div>
+
+    <div class="-mb-3 flex justify-end">
+      <SoundToggle
+        class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
+        @click="unlockSound"
+      />
     </div>
 
     <MatchScaleScoreboard
