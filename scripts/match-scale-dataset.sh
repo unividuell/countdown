@@ -13,7 +13,8 @@
 #        ./scripts/match-scale-dataset.sh dev-path
 #
 # "dev-path" prints the plaintext directory .local/games/match-scale/categories on stdout and
-# nothing else, decrypting missing files first. Where it cannot decrypt (no sops, no age key, no
+# nothing else, decrypting missing files first and copying the committed categories.txt (the
+# on/off switch, not content) beside them. Where it cannot decrypt (no sops, no age key, no
 # cipher on this branch) it prints nothing and still succeeds -- the backend then falls back to its
 # bundled sample. See .claude/launch.json.
 set -eu
@@ -164,6 +165,11 @@ case "$SUBCOMMAND" in
       "No age key found at $SOPS_AGE_KEY_FILE."
     if [ -f "$SOPS_AGE_KEY_FILE" ]; then
       each_cipher missing
+    fi
+
+    # Overwritten on every call so a local run honours the committed switch.
+    if [ -f "$DEPLOY_GAME/categories.txt" ] && [ -d "$PLAINTEXT_DIR" ]; then
+      cp "$DEPLOY_GAME/categories.txt" "$PLAINTEXT_DIR/categories.txt"
     fi
 
     echo "$PLAINTEXT_DIR"

@@ -82,6 +82,8 @@ class MatchScaleGameType(
     override val displayName = "Augenmaß"
     override val paramsType = MatchScaleParams::class.java
 
+    override fun isAvailable(context: RoundContext) = dataset.isPlayable
+
     override fun draw(random: GameRandom, context: RoundContext): MatchScaleParams {
         // Category key -> names shown in this edition, as A or B.
         val used = context.previousParams

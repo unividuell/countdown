@@ -39,4 +39,17 @@ class MatchScaleDatasetFailFastTest {
     fun `allows the sample when no deployed profile is active`() {
         configuration.matchScaleDataset(samplingLoader, environment()).categories.size shouldBe 2
     }
+
+    @Test
+    fun `starts without any active category`() {
+        val dir = java.nio.file.Files.createTempDirectory("match-scale").toFile()
+        try {
+            java.io.File(dir, "categories.txt").writeText("# countries\n")
+            val loader = MatchScaleDatasetLoader(MatchScaleDatasetProperties(datasetDir = dir.path))
+
+            configuration.matchScaleDataset(loader, environment("production")).isPlayable shouldBe false
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 }

@@ -11,6 +11,9 @@ import kotlin.math.abs
  */
 open class MatchScaleDataset(open val categories: List<MatchScaleCategory>) {
 
+    /** Whether any category is switched on; without one there is nothing to draw. */
+    open val isPlayable: Boolean get() = categories.isNotEmpty()
+
     /**
      * **The draw order is a contract.** [presentation] draws the category, then A, then B. Reorder
      * and every round derived from the same seed changes.

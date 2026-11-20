@@ -14,6 +14,7 @@ import org.unividuell.countdown.core.TestcontainersConfiguration
 import org.unividuell.countdown.core.game.internal.MatchScaleGameType
 import org.unividuell.countdown.core.game.internal.MatchScaleOutcome
 import org.unividuell.countdown.core.game.internal.MatchScaleParams
+import org.unividuell.countdown.core.matchscale.MatchScaleDataset
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
@@ -50,6 +51,14 @@ class MatchScaleGameTypeTest(@Autowired val game: MatchScaleGameType) {
     fun `it is registered under a stable id and a German display name`() {
         game.id shouldBe "match-scale"
         game.displayName shouldBe "Augenmaß"
+    }
+
+    @Test
+    fun `it is available while a category is active and unavailable without one`() {
+        val context = RoundContext(communityId = community, roundNumber = 1, phase = Phase.ONE, previousParams = emptyList())
+
+        game.isAvailable(context) shouldBe true
+        MatchScaleGameType(dataset = MatchScaleDataset(emptyList()), mapper = mapper).isAvailable(context) shouldBe false
     }
 
     @Test

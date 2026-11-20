@@ -34,15 +34,52 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
             )
         }
 
-        val files = directory.listFiles { file -> file.isFile && file.name.endsWith(".yaml") }
-            .orEmpty()
-            .sortedBy { it.name }
+        val files = selectFiles(directory)
         val categories = files.map { file ->
             file.inputStream().use { MatchScaleDatasetYamlReader.read(it, file.path) }
         }
 
         return LoadedMatchScaleDataset(categories = playable(categories), origin = path, isSample = false)
     }
+
+    /**
+     * The category files to load. A `categories.txt` beside them is the on/off switch (the same list
+     * update.sh deploys): only the keys on a line are loaded.
+     *
+     *     categories.txt      countries      -> countries.yaml loaded
+     *                         # animals      -> animals.yaml ignored
+     *
+     * Without the list every file counts, which keeps the sample and plain directories working.
+     */
+    private fun selectFiles(directory: File): List<File> {
+        val files = directory.listFiles { file -> file.isFile && file.name.endsWith(".yaml") }
+            .orEmpty()
+            .sortedBy { it.name }
+        val list = File(directory, LIST_FILE)
+        if (!list.isFile) return files
+
+        val keys = parseKeys(list)
+        val byKey = files.associateBy { it.name.removeSuffix(".yaml") }
+
+        val missing = keys.firstOrNull { it !in byKey }
+        if (missing != null) {
+            throw MatchScaleDatasetException("$LIST_FILE lists '$missing', but ${directory.path} has no $missing.yaml")
+        }
+
+        val ignored = byKey.keys - keys.toSet()
+        if (ignored.isNotEmpty()) {
+            logger.info { "Augenmaß leaves out switched-off categories: ${ignored.sorted().joinToString()}" }
+        }
+
+        return keys.map { byKey.getValue(it) }
+    }
+
+    private fun parseKeys(list: File): List<String> =
+        list.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.onEach { key ->
+            if (!KEY_PATTERN.matches(key)) {
+                throw MatchScaleDatasetException("$LIST_FILE holds the invalid category key '$key', expected [a-z0-9-]+")
+            }
+        }.distinct()
 
     private fun sample(): LoadedMatchScaleDataset {
         val categories = SAMPLE_FILES.map { name ->
@@ -73,7 +110,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
             pairs >= MIN_PAIRS
         }
 
-        if (kept.isEmpty()) throw MatchScaleDatasetException("no playable category left — nothing to draw a round from")
+        if (categories.isNotEmpty() && kept.isEmpty()) throw MatchScaleDatasetException("no playable category left — nothing to draw a round from")
 
         return kept
     }
@@ -90,6 +127,8 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
     }
 
     companion object {
+        const val LIST_FILE = "categories.txt"
+        private val KEY_PATTERN = Regex("[a-z0-9-]+")
         const val SAMPLE_DIR = "/games/match-scale/sample"
         private val SAMPLE_FILES = listOf("shapes.yaml", "blocks.yaml")
         private const val MIN_PAIRS = 2

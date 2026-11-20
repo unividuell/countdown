@@ -118,6 +118,8 @@ prepare_spot_object_terms() {
 
 # Downloads and decrypts the Augenmaß category files for $TARGET: one cipher per category
 # listed in games/match-scale/categories.txt, decrypted into a directory the container mounts.
+# The list itself is copied next to them: it is the on/off switch the backend reads too, and a
+# list with every line commented out is valid -- the directory then holds only the list.
 # Same reasoning as the two functions above; only the differences are commented.
 prepare_match_scale_dataset() {
   # update.sh comes from main, compose.yaml from $REF: a branch without the list (HTTP 404) has no
@@ -152,7 +154,6 @@ prepare_match_scale_dataset() {
   # directory, which the running container has mounted, stays untouched.
   OLD_UMASK="$(umask)"
   umask 077
-  KEY_COUNT=0
   while IFS= read -r KEY || [ -n "$KEY" ]; do
     case "$KEY" in ''|'#'*) continue ;; esac
     # The key becomes a file name: nothing but [a-z0-9-] may reach the path.
@@ -175,19 +176,15 @@ prepare_match_scale_dataset() {
       umask "$OLD_UMASK"
       exit 1
     fi
-    KEY_COUNT=$((KEY_COUNT + 1))
   done < "$CATEGORIES_FILE"
   umask "$OLD_UMASK"
 
-  if [ "$KEY_COUNT" -eq 0 ]; then
-    echo "games/match-scale/categories.txt on '$REF' lists no categories." >&2
-    exit 1
-  fi
+  cp "$CATEGORIES_FILE" "$MATCH_SCALE_NEW/categories.txt"
 
   # 755/644 for the same UID reason as the Guess Hue file: the container user is not the host
   # user. Confidentiality sits on ./secrets (0700).
   chmod 755 "$MATCH_SCALE_NEW"
-  chmod 644 "$MATCH_SCALE_NEW"/*.yaml
+  chmod 644 "$MATCH_SCALE_NEW"/*
 
   # Move the old directory aside instead of deleting it first: a running container that is not
   # recreated keeps its mount on the old inode, and an empty window would break its next restart.

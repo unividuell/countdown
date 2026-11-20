@@ -95,4 +95,47 @@ class MatchScaleDatasetLoaderTest {
 
         shouldThrow<MatchScaleDatasetException> { loader().load() }
     }
+
+    @Test
+    fun `categories txt switches categories on, comments and blank lines are skipped`() {
+        write("alpha.yaml", category("alpha", 1.0, 2.0, 3.0))
+        write("beta.yaml", category("beta", 1.0, 3.0, 4.0))
+        write("gamma.yaml", category("gamma", 1.0, 3.0, 4.0))
+        write("categories.txt", "# header\n\n  alpha  \n# beta\ngamma")
+
+        loader().load().categories.map { it.key } shouldContainExactlyInAnyOrder listOf("alpha", "gamma")
+    }
+
+    @Test
+    fun `a category file that is not listed is ignored`() {
+        write("alpha.yaml", category("alpha", 1.0, 2.0, 3.0))
+        write("beta.yaml", category("beta", 1.0, 3.0, 4.0))
+        write("categories.txt", "alpha")
+
+        loader().load().categories.map { it.key } shouldBe listOf("alpha")
+    }
+
+    @Test
+    fun `a listed key without a file fails the start`() {
+        write("alpha.yaml", category("alpha", 1.0, 2.0, 3.0))
+        write("categories.txt", "alpha\nbeta")
+
+        shouldThrow<MatchScaleDatasetException> { loader().load() }.message!! shouldContain "beta"
+    }
+
+    @Test
+    fun `an invalid key in the list fails the start`() {
+        write("alpha.yaml", category("alpha", 1.0, 2.0, 3.0))
+        write("categories.txt", "alpha\nBad_Key")
+
+        shouldThrow<MatchScaleDatasetException> { loader().load() }.message!! shouldContain "Bad_Key"
+    }
+
+    @Test
+    fun `a list with nothing switched on loads no category`() {
+        write("alpha.yaml", category("alpha", 1.0, 2.0, 3.0))
+        write("categories.txt", "# alpha\n")
+
+        loader().load().categories shouldBe emptyList()
+    }
 }

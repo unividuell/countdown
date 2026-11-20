@@ -33,7 +33,9 @@ class MatchScaleDatasetConfiguration {
             )
         }
 
-        if (loaded.isSample) {
+        if (loaded.categories.isEmpty()) {
+            logger.warn { "Augenmaß has no active category in ${loaded.origin} — the game is unavailable" }
+        } else if (loaded.isSample) {
             logger.warn { "Augenmaß is running on the bundled sample dataset (${loaded.origin}) — local development only" }
         } else {
             logger.info {

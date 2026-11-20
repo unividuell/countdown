@@ -28,6 +28,10 @@ public, because the free GitHub Actions runners require it.
 - **Keep the decryption out of the application.** The backend reads plain YAML from a path; the
   deployment decrypts into it. No crypto library and no key handling in Kotlin, and CI never
   needs the key because the tests run against the sample.
+- **On/off switches stay unencrypted, beside the ciphers.** A plain list (`categories.txt`) decides
+  which encrypted files are active; toggling one is a one-line, reviewable diff and needs no key.
+  The deployment copies the list next to the decrypted files so the backend and `update.sh` read
+  the same one. Switching everything off must not stop the start: the game is just unavailable.
 - **A checker can only check what is mechanically wrong.** Field types, ranges, a parseable
   date, a non-blank string: those belong in the loader and run on every start. Sentence counts,
   word lists, quotas per category do not. Guess Hue had all three, and what they actually

@@ -127,7 +127,13 @@ Größe zählt doppelt: der Pfad geht mit jedem Payload über die Leitung.
 Kategorie. Leer → der Beispieldatensatz aus dem Classpath (`games/match-scale/sample/`, zwei
 offensichtlich erfundene Kategorien mit je ein paar Rechtecken und Dreiecken), und unter
 `production`/`staging` verweigert die App dann den Start — Bauform `SpotObjectConfiguration`. Eine
-Kategorie mit weniger als zwei ziehbaren Paaren wird mit Warnung ausgelassen; ist keine übrig, Startabbruch.
+Kategorie mit weniger als zwei ziehbaren Paaren wird mit Warnung ausgelassen; ist keine übrig, ist das Spiel nicht verfügbar (`isAvailable` = false, eine Warnung beim Start).
+
+**Schalter je Kategorie.** `deploy/games/match-scale/categories.txt` (unverschlüsselt) listet die aktiven
+Schlüssel; Zeile auskommentieren (`# countries`) schaltet die Kategorie aus. `update.sh` und
+`dev-path` legen die Liste neben die Klartextdateien; der Loader lädt nur die gelisteten Schlüssel.
+Ein gelisteter Schlüssel ohne Datei oder ein ungültiger Schlüssel ist ein Startfehler, eine
+ungelistete Datei wird mit einer Infozeile ignoriert. Ohne Liste im Verzeichnis zählen alle Dateien.
 
 **Der Loader prüft nur Mechanisches:** Pfad nicht leer, `width`/`height`/`metresPerUnit` endlich und
 > 0, `max(width, height) == 1000`, Schlüssel eindeutig.

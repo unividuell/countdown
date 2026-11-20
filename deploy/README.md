@@ -180,6 +180,12 @@ Plaintext lives in `.local/games/match-scale/categories/` of the main checkout a
 committed; `./scripts/match-scale-dataset.sh encrypt` writes the ciphers. The generator's exclude
 list travels the same way in `deploy/games/match-scale/input/`, but is not deployed.
 
+`categories.txt` is also the on/off switch for a category: comment its line (`# countries`), commit,
+deploy. `update.sh` copies the list next to the decrypted files and the backend loads only the keys
+listed. With every line commented out the game is unavailable (one warning at startup) and the
+app still starts. Locally, `match-scale-dataset.sh dev-path` copies the list into the plaintext
+directory on each call.
+
 A branch without `categories.txt` is skipped with a one-line notice. Calling `compose up` by
 hand without `update.sh` means exporting `MATCH_SCALE_DATASET_HOST_DIR` yourself.
 
