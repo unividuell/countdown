@@ -23,7 +23,7 @@ const KNOCK_RATIO = 3.9
  * Every knock of every game passes this. Sound is a side note, not a signal: quieter here, never
  * louder in a game.
  */
-export const VOLUME = 0.25
+export const VOLUME = 0.35
 
 const STOP_FADE_S = 0.02
 /** Exponential ramps cannot reach 0; this is inaudible, the line to 0 after it removes the rest. */
