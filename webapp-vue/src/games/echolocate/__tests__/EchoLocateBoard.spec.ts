@@ -10,6 +10,7 @@ import type { EchoSounds } from '@/games/echolocate/engine'
 import { dbToGain } from '@/games/echolocate/noise'
 import type { EchoHit, EchoLocatePayload, Point } from '@/games/echolocate/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import { playWhoosh } from '@/ui/whooshSound'
 
 /** A `Storage` over a map, handed to the board through `deviceStorage`. */
 const storage = vi.hoisted(() => {
@@ -57,6 +58,8 @@ const sound = vi.hoisted(() => {
     }),
   }
 })
+
+vi.mock('@/ui/whooshSound', () => ({ playWhoosh: vi.fn() }))
 
 vi.mock('@/games/drafts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/games/drafts')>()),
@@ -813,6 +816,16 @@ describe('EchoLocateBoard', () => {
         pins: [{ x: 3, y: 4 }],
       })
       expect(clear(w).element.disabled).toBe(true)
+    })
+
+    it('sweeps the rings off with a „wruusch“', async () => {
+      vi.mocked(playWhoosh).mockClear()
+      saveDraft(storage.fake, KEY, { rings: [[2.5]], pins: [] })
+      const w = mountBoard({ steps: [step(A)], draftKey: KEY })
+
+      await clear(w).trigger('click')
+
+      expect(playWhoosh).toHaveBeenCalledOnce()
     })
   })
 })
