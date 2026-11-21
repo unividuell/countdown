@@ -46,10 +46,10 @@ curl -fsSL -o /usr/local/bin/sops https://github.com/getsops/sops/releases/downl
 
 `releases/latest/download/<name>` doesn't work for sops — asset names carry the version
 (`sops-v3.13.3.linux.arm64`, not `sops-linux-arm64`), hence the pinned tag above. Version
-3.13.3 is pinned deliberately: the checked-in `deploy/guess-hue-dataset.sops.yaml` carries
+3.13.3 is pinned deliberately: the checked-in `deploy/games/guess-hue/dataset.sops.yaml` carries
 `version: 3.13.3`, and matching the server's sops to it avoids format surprises between
 encryption and decryption. If sops gets updated locally, update the server promptly too.
-The same applies to `deploy/spot-object-terms.sops.yaml` (the Weltanschauung term list) —
+The same applies to `deploy/games/spot-object/terms.sops.yaml` (the Weltanschauung term list) —
 one sops install and one age key pair serve both games.
 
 Check the architecture **on the server** first (`dpkg --print-architecture`) — don't assume.
@@ -96,8 +96,8 @@ cipher — so this has to happen **before the first deploy**:
 1. Get the public key on the server as above.
 2. Add it locally to `.sops.yaml` as a second recipient (see that file's comment header for
    the multi-recipient format).
-3. Run `sops updatekeys deploy/guess-hue-dataset.sops.yaml` (and, once it exists,
-   `deploy/spot-object-terms.sops.yaml`). This only re-wraps the data key — the content is
+3. Run `sops updatekeys` on every cipher under `deploy/games/` (one per game, e.g.
+   `deploy/games/guess-hue/dataset.sops.yaml`). This only re-wraps the data key — the content is
    untouched — and needs the author's **private** key to do it (to unwrap the data key once);
    the server key is only needed as a public key here.
 4. Commit `.sops.yaml` **and** the re-wrapped cipher file(s).
@@ -118,12 +118,13 @@ would be misleading. Calling `compose up` by hand without `update.sh` means expo
 `GUESS_HUE_DATASET_FILE` yourself; without it, `compose up` fails with a clear error instead
 of binding an empty path.
 
-`update.sh` fetches `guess-hue-dataset.sops.yaml` from the same branch it otherwise uses for
+`update.sh` fetches `games/guess-hue/dataset.sops.yaml` from the same branch it otherwise uses for
 `compose.yaml` (`$REF` — `main` for prod, `develop` for staging). The encrypted file must
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
-nothing to do with Guess Hue.
+nothing to do with Guess Hue. Until the per-game folders reach `main`, it falls back to the
+pre-move path `guess-hue-dataset.sops.yaml` on a 404, so one `update.sh` deploys both layouts.
 
-Same shape for `SPOT_OBJECT_TERMS_FILE` and `spot-object-terms.sops.yaml`.
+Same shape for `SPOT_OBJECT_TERMS_FILE` and `games/spot-object/terms.sops.yaml`.
 
 **Merge window develop → main.** `update.sh` and `README.md` always come from `main`
 (`$STABLE`), `compose.yaml` from the deployed branch (`$BASE` — `develop` for staging). A
@@ -153,7 +154,7 @@ chmod +x update.sh && ./update.sh prod
 
 ## Prerequisite: the Weltanschauung term list
 
-`update.sh` fetches `deploy/spot-object-terms.sops.yaml` from the branch it deploys and aborts
+`update.sh` fetches `deploy/games/spot-object/terms.sops.yaml` from the branch it deploys and aborts
 when it is missing — then **every** `./update.sh <target>` fails, including deploys that have
 nothing to do with Weltanschauung. It is committed on `main` and `develop` (released
 2026-09-03); a branch without it needs the list encrypted and committed first. Only the owner
@@ -165,6 +166,28 @@ keys, and the signing secret") and [game-content.md](../.claude/guidelines/game-
 
 Also add the three `SPOT_OBJECT_*` variables to `.env.prod`/`.env.staging` by hand — see
 "Migrating an existing stack for Weltanschauung" below.
+
+## Prerequisite: the Augenmaß categories
+
+`deploy/games/match-scale/categories.txt` lists the category keys to deploy, one per line
+(`[a-z0-9-]+`, `#` comments allowed). Each key has a cipher
+`deploy/games/match-scale/categories/<key>.sops.yaml`; `update.sh`
+decrypts all of them into `./secrets/match-scale.<target>/` and exports that directory as
+`MATCH_SCALE_DATASET_HOST_DIR` for compose, which mounts it read-only. The directory is swapped
+as a whole: any failure leaves the previous one in place.
+
+Plaintext lives in `.local/games/match-scale/categories/` of the main checkout and is never
+committed; `./scripts/match-scale-dataset.sh encrypt` writes the ciphers. The generator's exclude
+list travels the same way in `deploy/games/match-scale/input/`, but is not deployed.
+
+`categories.txt` is also the on/off switch for a category: comment its line (`# countries`), commit,
+deploy. `update.sh` copies the list next to the decrypted files and the backend loads only the keys
+listed. With every line commented out the game is unavailable (one warning at startup) and the
+app still starts. Locally, `match-scale-dataset.sh dev-path` copies the list into the plaintext
+directory on each call.
+
+A branch without `categories.txt` is skipped with a one-line notice. Calling `compose up` by
+hand without `update.sh` means exporting `MATCH_SCALE_DATASET_HOST_DIR` yourself.
 
 ## Bootstrap / Update
 
@@ -229,11 +252,12 @@ curl -fsSL https://raw.githubusercontent.com/unividuell/countdown/main/deploy/up
 Both stacks run independently. To restart or stop one without touching the other:
 ```bash
 docker compose --env-file .env.staging -f compose.staging.yaml down
-# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.staging
 docker compose --env-file .env.staging -f compose.staging.yaml up -d
 ```
 
@@ -254,11 +278,12 @@ security, only friction). Each pgAdmin connects only to its own DB.
 **Prod pgAdmin (port 5050):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.prod, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.prod.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.prod.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.prod
 docker compose --env-file .env.prod -f compose.prod.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5050 -> server loopback:5050
@@ -275,11 +300,12 @@ docker compose --env-file .env.prod -f compose.prod.yaml --profile debug stop pg
 **Staging pgAdmin (port 5051):**
 ```bash
 # 1) start it on the server
-# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE and
-# SPOT_OBJECT_TERMS_FILE in the shell environment (update.sh sets both for you; neither is in
+# up -d resolves the core service's volumes too, which needs GUESS_HUE_DATASET_FILE,
+# SPOT_OBJECT_TERMS_FILE and MATCH_SCALE_DATASET_HOST_DIR in the shell environment (update.sh sets all for you; none is in
 # .env.staging, see above)
 export GUESS_HUE_DATASET_FILE=./secrets/guess-hue-dataset.staging.yaml
 export SPOT_OBJECT_TERMS_FILE=./secrets/spot-object-terms.staging.yaml
+export MATCH_SCALE_DATASET_HOST_DIR=./secrets/match-scale.staging
 docker compose --env-file .env.staging -f compose.staging.yaml --profile debug up -d pgadmin
 
 # 2) from your workstation, open an SSH tunnel: laptop:5051 -> server loopback:5051

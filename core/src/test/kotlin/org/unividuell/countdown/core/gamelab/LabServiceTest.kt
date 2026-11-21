@@ -125,6 +125,7 @@ class LabServiceTest(
         "place-patch" -> mapper.readTree("""{"x":0,"y":0}""")
         "copy-blocks" -> mapper.readTree("""{"blocks":[{"x":0,"y":0,"z":0,"type":"DIRT"}]}""")
         "paint-ratio" -> mapper.readTree("""{"strokes":[{"brush":0,"color":"#000000","points":[600,450]}]}""")
+        "match-scale" -> mapper.readTree("""{"scale":1.0}""")
         "echo-locate" -> mapper.readTree("""{"pins":[{"x":1.5,"y":1.5}],"rings":[]}""")
         // Seed 42 → labDifficulty 0.9 → an 8×8 board.
         "turn-pipes" -> mapper.readTree("""{"rotations":[${List(64) { 0 }.joinToString(",")}]}""")

@@ -239,7 +239,7 @@ describe('PaintRatioReveal', () => {
       ],
     })
 
-    const names = wrapper.findAll('th[scope="row"]').map((th) => th.text())
+    const names = wrapper.findAll('tbody th[scope="row"]').map((th) => th.text())
     expect(names).toEqual(['me', 'anna', 'bert', 'junk-strokes', 'gave-up', 'junk-outcome'])
     expect(wrapper.find('[data-test="select-anna"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="select-gave-up"]').exists()).toBe(false)

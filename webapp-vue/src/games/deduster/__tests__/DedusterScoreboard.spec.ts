@@ -97,7 +97,7 @@ describe('DedusterScoreboard', () => {
     expect(w.html()).not.toContain('↻')
   })
 
-  it('heads the table with the round’s tempo and size, units in brackets on the header', () => {
+  it('heads the table with the round’s tempo and size, units beneath the table', () => {
     const w = mount(DedusterScoreboard, {
       props: {
         rows: [ROW],
@@ -110,7 +110,8 @@ describe('DedusterScoreboard', () => {
     })
     const heads = w.findAll('thead th').map((th) => th.text())
 
-    expect(heads).toEqual(['Max [ms]', 'Levels', 'Name', '⌀ [ms]', 'Level %', 'raus', 'Pkt'])
+    expect(heads).toEqual(['Max', 'Levels', 'Name', '⌀', 'Level', 'raus', 'Pkt'])
+    expect(w.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual(['[ms]'])
     expect(w.get('[data-test="fact-max"]').text()).toBe('1.500')
     expect(w.get('[data-test="fact-levels"]').text()).toBe('48')
   })

@@ -35,6 +35,7 @@ type Props = {
   live: boolean
   animate: boolean
   nameWidth?: string | undefined
+  resultsDelayMs?: number | undefined
 }
 
 function mountBoard(props: Partial<Props> = {}, slots: Record<string, string> = {}) {
@@ -91,12 +92,39 @@ describe('RevealScoreboard', () => {
     vi.useRealTimers()
   })
 
+  it('prints a unit beneath its column only, right-aligned in a band row under the table', () => {
+    const wrapper = mountBoard({
+      columns: [
+        { ...TIP, unit: 'cm' },
+        { key: 'other', label: 'X' },
+      ],
+    })
+    const units = wrapper.get('tfoot [data-test="scoreboard-units"]')
+
+    expect(units.findAll('th').map((cell) => cell.text())).toEqual(['[cm]'])
+    expect(units.findAll('th, td')).toHaveLength(4)
+    expect(units.findAll('th, td')[1]!.element.tagName).toBe('TH')
+    expect(units.get('th').classes()).toContain('text-end')
+  })
+
+  it("puts a unit's name before its bracket where the sign alone is unclear", () => {
+    const wrapper = mountBoard({
+      columns: [{ key: 'tip', label: 'Tipp', unit: '×', unitName: 'Faktor' }],
+    })
+
+    expect(wrapper.get('[data-test="scoreboard-units"] th').text()).toBe('Faktor[×]')
+  })
+
+  it('has no unit row when no column names one', () => {
+    expect(mountBoard().find('[data-test="scoreboard-units"]').exists()).toBe(false)
+  })
+
   it('frames the columns the game hands it with Name and Pkt, in that order', () => {
     const wrapper = mountBoard({
       columns: [TIP, { key: 'clock', label: '[mm:ss]', width: '3.5rem' }],
     })
 
-    const band = wrapper.findAll('thead tr:last-child th')
+    const band = wrapper.findAll('[data-test="scoreboard-band"] th')
 
     expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', '[mm:ss]', 'Pkt'])
     expect(band.every((cell) => cell.attributes('scope') === 'col')).toBe(true)
@@ -111,10 +139,13 @@ describe('RevealScoreboard', () => {
       ],
     })
 
-    const band = wrapper.findAll('thead tr:last-child th')
+    const band = wrapper.findAll('[data-test="scoreboard-band"] th')
     const clock = wrapper.get('[data-test="cell-clock-a"]')
 
-    expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', '[mm:ss]', 'Pkt'])
+    expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', 'Zeit', 'Pkt'])
+    expect(wrapper.findAll('[data-test="scoreboard-units"] th').map((c) => c.text())).toEqual([
+      '[mm:ss]',
+    ])
     expect(wrapper.findAll('col')[2]!.attributes('style')).toBe('width: 3.5rem;')
     expect(clock.classes()).toContain('text-end')
     expect(clock.get('span').classes()).toEqual(['font-mono', 'text-xs'])
@@ -137,7 +168,7 @@ describe('RevealScoreboard', () => {
       rows: [row({ userId: 'a', durationLabel: null }), row({ userId: 'b' })],
     })
 
-    const band = wrapper.findAll('thead tr:last-child th')
+    const band = wrapper.findAll('[data-test="scoreboard-band"] th')
 
     expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', 'Pkt'])
   })
@@ -171,7 +202,7 @@ describe('RevealScoreboard', () => {
     const grid = headGrid(wrapper)
 
     const tipColumn = wrapper
-      .findAll('thead tr:last-child th')
+      .findAll('[data-test="scoreboard-band"] th')
       .findIndex((th) => th.text() === 'Tipp')
     const label = wrapper
       .get('thead')
@@ -205,7 +236,7 @@ describe('RevealScoreboard', () => {
     const grid = headGrid(wrapper)
 
     const levelColumn = wrapper
-      .findAll('thead tr:last-child th')
+      .findAll('[data-test="scoreboard-band"] th')
       .findIndex((th) => th.text() === 'Level')
     const label = wrapper
       .get('thead')
@@ -233,7 +264,7 @@ describe('RevealScoreboard', () => {
   it('keeps every head row as wide as the column band, with or without a solution', () => {
     for (const props of [{}, { columns: [SOLVED_TIP] }]) {
       const wrapper = mountBoard(props, { 'fact-tip': '<span>262,0</span>' })
-      const columnCount = wrapper.get('thead tr:last-child').findAll('th').length
+      const columnCount = wrapper.get('[data-test="scoreboard-band"]').findAll('th').length
 
       for (const gridRow of headGrid(wrapper)) {
         expect(gridRow.filter((cell) => cell !== undefined)).toHaveLength(columnCount)
@@ -323,6 +354,19 @@ describe('RevealScoreboard', () => {
 
     const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
     expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + 120}ms`)
+  })
+
+  it('lands the rows later when the game asks', async () => {
+    const wrapper = mountBoard({
+      animate: true,
+      resultsDelayMs: 2600,
+      rows: [row({ userId: 'a' })],
+    })
+
+    vi.advanceTimersByTime(50)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('2600ms')
   })
 
   it('writes the head on beat three, the solution a row later', () => {

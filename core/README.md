@@ -98,7 +98,7 @@ It either names the dataset and how it is composed —
 refuses to start and names the entry index and the field that is wrong. That line is also
 the only place the current entry counts live; no document repeats them.
 
-Locally, without a mounted dataset, the app runs on `guess-hue-dataset.sample.yaml`; under
+Locally, without a mounted dataset, the app runs on `games/guess-hue/dataset.sample.yaml`; under
 `production` and `staging` it refuses to start instead.
 
 ### Using the real dataset locally
@@ -123,7 +123,7 @@ may hold entries the cipher doesn't have yet.
 
 This needs an age key (see [game-content.md](../.claude/guidelines/game-content.md)).
 Without one, everything else keeps working — only this one convenience doesn't. The
-decrypted file lands gitignored in the main checkout under `.local/guess-hue-dataset.yaml`
+decrypted file lands gitignored in the main checkout under `.local/games/guess-hue/dataset.yaml`
 and is never committed.
 
 ## Weltanschauung: term list, the two Maps keys, and the signing secret
@@ -133,9 +133,9 @@ Four environment variables, same "fails fast rather than looking healthy" rule a
 - `SPOT_OBJECT_TERMS_PATH` — path to the decrypted term list. Empty means the bundled sample;
   under `production`/`staging` that refuses to start (see `SpotObjectConfiguration`). Handed
   over exactly like the Guess Hue dataset: paste the real terms into
-  `.local/spot-object-terms.yaml` in the **main checkout** (never a worktree), run
+  `.local/games/spot-object/terms.yaml` in the **main checkout** (never a worktree), run
   `./scripts/spot-object-terms.sh encrypt`, then commit the resulting
-  `deploy/spot-object-terms.sops.yaml`. **Never commit a real term in plaintext** — see
+  `deploy/games/spot-object/terms.sops.yaml`. **Never commit a real term in plaintext** — see
   [game-content.md](../.claude/guidelines/game-content.md). Locally,
   `./scripts/spot-object-terms.sh dev-path` (wired into `.claude/launch.json`) decrypts on
   demand and answers empty on a machine without the age key, same as Guess Hue's script.

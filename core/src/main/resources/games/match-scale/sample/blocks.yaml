@@ -1,0 +1,41 @@
+# Not game content: invented shapes so tests and a local start work without the encrypted dataset.
+# The app refuses to boot with it under production or staging — see MatchScaleDatasetConfiguration.
+category: blocks
+displayName: Beispielblöcke
+entries:
+  - name: Beispielblock Alpha
+    path: "M0 0 l1000 0 l0 250 l-1000 0 z"
+    width: 1000
+    height: 250
+    metresPerUnit: 0.5
+    measure:
+      axis: length
+      metres: 500
+      source: "https://example.org/beispielquelle"
+  - name: Beispielblock Beta
+    path: "M0 0 l1000 0 l0 1000 l-1000 0 z"
+    width: 1000
+    height: 1000
+    metresPerUnit: 1.0
+    measure:
+      axis: length
+      metres: 1000
+      source: "https://example.org/beispielquelle"
+  - name: Beispielblock Gamma
+    path: "M0 0 l1000 0 l-1000 700 z"
+    width: 1000
+    height: 700
+    metresPerUnit: 2.0
+    measure:
+      axis: length
+      metres: 2000
+      source: "https://example.org/beispielquelle"
+  - name: Beispielblock Delta
+    path: "M0 0 l800 0 l200 1000 l-1000 0 z"
+    width: 1000
+    height: 1000
+    metresPerUnit: 4.0
+    measure:
+      axis: length
+      metres: 4000
+      source: "https://example.org/beispielquelle"

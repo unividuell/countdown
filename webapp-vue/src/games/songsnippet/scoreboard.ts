@@ -18,7 +18,7 @@ export interface ScoreRow extends ScoreboardRow {
   correct: boolean
   /**
    * How much audio this player needed, e.g. „2,0“ — always one decimal, see [oneDecimal]. Bare:
-   * the unit stands in the column head („Zeit [s]“) rather than after every number.
+   * the unit stands beneath the column head („[s]“) rather than after every number.
    */
   timeLabel: string
   /** The stage behind [timeLabel] — the tie-breaker: less audio ranks higher. */

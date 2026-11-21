@@ -78,13 +78,13 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 # runs from a linked worktree -- worktrees are temporary, .local/ in the main worktree isn't.
 GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
 MAIN_ROOT="$(dirname "$GIT_COMMON_DIR")"
-PLAINTEXT="$MAIN_ROOT/.local/guess-hue-dataset.yaml"
+PLAINTEXT="$MAIN_ROOT/.local/games/guess-hue/dataset.yaml"
 
 # .sops.yaml and the committed cipher, on the other hand, come from the current checkout: until
 # this branch is merged into the main worktree, only the worktree has a .sops.yaml.
 CHECKOUT_ROOT="$(git rev-parse --show-toplevel)"
 CONFIG="$CHECKOUT_ROOT/.sops.yaml"
-CIPHER="$CHECKOUT_ROOT/deploy/guess-hue-dataset.sops.yaml"
+CIPHER="$CHECKOUT_ROOT/deploy/games/guess-hue/dataset.sops.yaml"
 
 # Without --config, sops would otherwise search for .sops.yaml upward from the input file's
 # directory, not from the current checkout -- it would find none in the main worktree as long
