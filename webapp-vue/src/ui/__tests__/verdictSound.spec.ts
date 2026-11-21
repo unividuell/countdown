@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { bodies, graph, resetGraph, started } from './fakeGraph'
+import { bodies, graph, resetGraph, sound, started } from './fakeGraph'
 import { playVerdict } from '../verdictSound'
 
 vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
+vi.mock('@/ui/soundOutput', async () => (await import('@/ui/__tests__/fakeGraph')).soundOutputMock)
 
 describe('playVerdict', () => {
   beforeEach(resetGraph)
@@ -31,6 +32,13 @@ describe('playVerdict', () => {
 
   it('stays silent while the graph sleeps', () => {
     graph.state = 'suspended'
+    playVerdict(true).stop()
+
+    expect(started).toEqual([])
+  })
+
+  it('stays silent while muted', () => {
+    sound.on = false
     playVerdict(true).stop()
 
     expect(started).toEqual([])

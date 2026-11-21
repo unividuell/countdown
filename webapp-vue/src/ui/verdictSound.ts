@@ -1,6 +1,7 @@
 // The reveal's verdict on my tip, in wooden knocks: a rising arpeggio for a win, two falling
-// knocks for a loss. Whether sound is on is the caller's business (`useGameSound`).
-import { runningGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+// knocks for a loss.
+import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { soundGraph } from './soundOutput'
 import { knocks } from './woodKnock'
 
 /** A win: C5 E5 G5 C6 E6, 40 ms apart. */
@@ -30,11 +31,11 @@ export function scheduleVerdict(
 }
 
 /**
- * The verdict alone. A sleeping graph stays silent: a verdict that sounds with the next tap says
- * nothing about the tip any more.
+ * The verdict alone. Muted or on a sleeping graph it stays silent: a verdict that sounds with the
+ * next tap says nothing about the tip any more.
  */
 export function playVerdict(won: boolean): Verdict {
-  const graph = runningGraph()
+  const graph = soundGraph()
   if (!graph) return SILENT
 
   const { knock, counting } = knocks(graph)

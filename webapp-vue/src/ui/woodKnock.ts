@@ -1,5 +1,6 @@
 // The wooden knock, the games' shared voice on the app's graph: synthesised, so nothing to load.
-// Whether sound is on is the caller's business (`useGameSound`).
+// It plays into `soundOutput`, which is where the sound switch is honoured.
+import { soundOutput } from './soundOutput'
 
 /** One sine: attack, then an exponential decay. */
 interface Voice {
@@ -35,7 +36,7 @@ export function knocks(graph: AudioContext): {
 } {
   const bus = graph.createGain()
   bus.gain.value = VOLUME
-  bus.connect(graph.destination)
+  bus.connect(soundOutput(graph))
   const oscillators: OscillatorNode[] = []
 
   const voice = (start: number, hz: number, v: Voice): void => {

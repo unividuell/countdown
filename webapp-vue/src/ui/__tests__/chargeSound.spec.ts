@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { bodies, graph, resetGraph, started } from './fakeGraph'
+import { bodies, graph, resetGraph, sound, started } from './fakeGraph'
 import { CHARGE_HZ, chargeKnocks } from '../charge'
 import { playCharge } from '../chargeSound'
 
 vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
+vi.mock('@/ui/soundOutput', async () => (await import('@/ui/__tests__/fakeGraph')).soundOutputMock)
 
 describe('playCharge', () => {
   beforeEach(resetGraph)
@@ -32,6 +33,13 @@ describe('playCharge', () => {
 
   it('stays silent while the graph sleeps', () => {
     graph.state = 'suspended'
+    playCharge(0, 2000).stop()
+
+    expect(started).toEqual([])
+  })
+
+  it('stays silent while muted', () => {
+    sound.on = false
     playCharge(0, 2000).stop()
 
     expect(started).toEqual([])

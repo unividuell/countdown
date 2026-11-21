@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TURN_HZ, playMarker, playTurn, stepOf } from '../turnSound'
-import { graph, resetGraph, started } from '@/ui/__tests__/fakeGraph'
+import { graph, resetGraph, sound, started } from '@/ui/__tests__/fakeGraph'
 
 vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
+vi.mock('@/ui/soundOutput', async () => (await import('@/ui/__tests__/fakeGraph')).soundOutputMock)
 
 describe('stepOf', () => {
   it('is the whole degree the knob stands in', () => {
@@ -64,6 +65,18 @@ describe('playMarker', () => {
 
   it('stays silent while the graph sleeps', () => {
     graph.state = 'suspended'
+    playMarker()
+
+    expect(started).toEqual([])
+  })
+})
+
+describe('muted', () => {
+  beforeEach(resetGraph)
+
+  it('neither the ratchet nor a landing marker knocks', () => {
+    sound.on = false
+    playTurn()
     playMarker()
 
     expect(started).toEqual([])

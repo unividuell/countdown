@@ -20,7 +20,6 @@ import { chargeCurve } from '@/ui/charge'
 import { playCharge, type Charging } from '@/ui/chargeSound'
 import HoldSparks from '@/ui/HoldSparks.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
-import { useGameSound } from '@/ui/useGameSound'
 import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
@@ -55,8 +54,8 @@ const props = withDefaults(
      */
     contour?: 'opposite' | 'neutral'
     /**
-     * Plays the charge's knocks, under the shared sound switch. Only for a board that shows a
-     * `SoundToggle`: sound nobody can switch off where they hear it is none.
+     * Plays the charge's knocks. Only for a board that shows a `SoundToggle`: sound nobody can
+     * switch off where they hear it is none.
      */
     sound?: boolean
   }>(),
@@ -111,7 +110,6 @@ const shown = computed(() => (counting ? progress.value : chargeCurve(progress.v
 
 watch(shown, (value) => emit('progress', value))
 
-const soundOn = useGameSound()
 let charging: Charging | null = null
 
 watch(
@@ -120,7 +118,7 @@ watch(
     if (counting || !props.sound) return
 
     if (isHolding) {
-      if (soundOn.value) charging = playCharge(progress.value, props.holdMs)
+      charging = playCharge(progress.value, props.holdMs)
       return
     }
 

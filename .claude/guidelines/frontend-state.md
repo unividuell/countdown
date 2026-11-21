@@ -218,10 +218,17 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
   schedules knocks, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
-- **One rule for a sleeping graph: a one-shot stays silent.** Ask `runningGraph()` (`ui/audio.ts`)
-  rather than `audioGraph()`: a sound scheduled on a suspended graph lands on its wake-up, with
-  the next tap, long after what it belonged to. Waking (`unlockSound`, `claimPlayback`) lives in
-  `ui/audio.ts` too — no game carries its own copy.
+- **One rule for a sleeping graph: a one-shot stays silent.** A sound scheduled on a suspended
+  graph lands on its wake-up, with the next tap, long after what it belonged to — so a one-shot
+  asks for the graph only while it runs (`runningGraph()` in `ui/audio.ts`; decoration sound asks
+  `soundGraph()`, see below). Waking (`unlockSound`, `claimPlayback`) lives in `ui/audio.ts` too —
+  no game carries its own copy.
+- **The sound switch is honoured in one place, `ui/soundOutput.ts`.** A play function asks
+  `soundGraph()` — or `gameSoundOn()` first, where it wakes the graph itself — and connects to
+  `soundOutput(graph)`, never to `graph.destination`. A board calls its play function and nothing
+  else: no `if (sound.value)`, no watcher that cuts a sound on mute. The output's gain is the
+  mute, so what is already sounding falls silent too. Muted asks for no graph at all: a muted game
+  must not claim the device's audio session (on iOS that stops the player's music).
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).

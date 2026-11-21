@@ -11,7 +11,7 @@ function param() {
 }
 
 describe('knocks', () => {
-  it('sends every knock through one bus at the shared volume', () => {
+  it('sends every knock through one bus at the shared volume, into the sound output', () => {
     const gains: { gain: ReturnType<typeof param>; connect: ReturnType<typeof vi.fn> }[] = []
     const destination = {}
     const graph = {
@@ -31,10 +31,12 @@ describe('knocks', () => {
     }
 
     knocks(graph as unknown as AudioContext).knock(0, 700)
-    const [bus, ...voices] = gains
+    const [bus, output, ...voices] = gains
 
     expect(bus!.gain.value).toBe(VOLUME)
-    expect(bus!.connect).toHaveBeenCalledWith(destination)
+    // Not straight out: through the output, where the sound switch is honoured.
+    expect(bus!.connect).toHaveBeenCalledWith(output)
+    expect(output!.connect).toHaveBeenCalledWith(destination)
     // Body and overtone, each into the bus rather than straight out.
     expect(voices.map((voice) => voice.connect.mock.calls[0]![0])).toEqual([bus, bus])
   })

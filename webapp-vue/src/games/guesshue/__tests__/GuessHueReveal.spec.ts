@@ -4,7 +4,6 @@ import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 import { playVerdict } from '@/ui/verdictSound'
 
 const stopVerdict = vi.fn()
@@ -57,7 +56,6 @@ describe('GuessHueReveal', () => {
     vi.mocked(playVerdict).mockClear()
     vi.mocked(playMarker).mockClear()
     stopVerdict.mockClear()
-    localStorage.removeItem(GAME_SOUND_KEY)
     setHidden(false)
   })
 
@@ -106,19 +104,14 @@ describe('GuessHueReveal', () => {
     expect(playVerdict).not.toHaveBeenCalled()
   })
 
-  it('honours the shared mute', () => {
-    localStorage.setItem(GAME_SOUND_KEY, 'false')
-    mountReveal()
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
-
-    expect(playVerdict).not.toHaveBeenCalled()
+  it('has the sound toggle where the board has it', () => {
+    expect(mountReveal().find('button[aria-label="Ton"]').exists()).toBe(true)
   })
 
-  it('muting cuts a verdict that is sounding', async () => {
+  it('leaving cuts a verdict that is sounding', () => {
     const w = mountReveal()
     vi.advanceTimersByTime(SOLUTION_DELAY_MS)
-
-    await w.get('button[aria-label="Ton"]').trigger('click')
+    w.unmount()
 
     expect(stopVerdict).toHaveBeenCalledOnce()
   })
@@ -163,15 +156,6 @@ describe('GuessHueReveal', () => {
       vi.advanceTimersByTime(3000)
 
       expect(playMarker).not.toHaveBeenCalled()
-    })
-
-    it('honours the shared mute, also when muted mid-reveal', async () => {
-      const w = mountReveal({ guesses: GUESSES })
-      vi.advanceTimersByTime(1945)
-      await w.get('button[aria-label="Ton"]').trigger('click')
-      vi.advanceTimersByTime(120)
-
-      expect(playMarker).toHaveBeenCalledOnce()
     })
 
     it('leaving the reveal drops the knocks still to come', () => {

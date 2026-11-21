@@ -1,5 +1,5 @@
-// Five sounds from CC0 recordings (see sounds/CREDITS.md). A sound not yet decoded stays silent.
-// Whether sound is on is the caller's business (`useGameSound`).
+// Five sounds from CC0 recordings (see sounds/CREDITS.md). A sound not yet decoded stays silent,
+// and so does everything while the sound switch is off (`soundOutput`).
 import dryUrl from './sounds/dry.mp3?url'
 import flowUrl from './sounds/flow.mp3?url'
 import leakUrl from './sounds/leak.mp3?url'
@@ -7,6 +7,7 @@ import successUrl from './sounds/success.mp3?url'
 import turnUrl from './sounds/turn.mp3?url'
 
 import { audioGraph, claimPlayback, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
 import type { Leak } from './types'
 
 export type SoundName = 'turn' | 'flow' | 'leak' | 'success' | 'dry'
@@ -69,6 +70,8 @@ export function preloadSounds(): void {
 const SILENT: Playing = { stop: () => {} }
 
 function play(name: SoundName, loop: boolean): Playing {
+  if (!gameSoundOn()) return SILENT
+
   claimPlayback()
   const graph = audioGraph()
   if (!graph) return SILENT
@@ -92,7 +95,7 @@ function play(name: SoundName, loop: boolean): Playing {
 
   const level = graph.createGain()
   level.gain.value = GAIN[name]
-  source.connect(level).connect(graph.destination)
+  source.connect(level).connect(soundOutput(graph))
   source.start(at)
 
   if (name === 'success') {

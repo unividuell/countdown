@@ -4,7 +4,6 @@ import { chargeCurve } from '@/ui/charge'
 import { playCharge } from '@/ui/chargeSound'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldSparks from '@/ui/HoldSparks.vue'
-import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 const stopCharge = vi.fn()
@@ -602,7 +601,6 @@ describe('HoldButton', () => {
     beforeEach(() => {
       vi.mocked(playCharge).mockClear()
       stopCharge.mockClear()
-      localStorage.removeItem(GAME_SOUND_KEY)
     })
 
     /** Holds for `ms`: the first frame only sets the clock, so it gets a frame of its own. */
@@ -679,13 +677,6 @@ describe('HoldButton', () => {
 
       expect(w.emitted('confirm')).toHaveLength(1)
       expect(stopCharge).not.toHaveBeenCalled()
-    })
-
-    it('honours the shared mute', async () => {
-      localStorage.setItem(GAME_SOUND_KEY, 'false')
-      await hold(mountButton({ sound: true }), 200)
-
-      expect(playCharge).not.toHaveBeenCalled()
     })
 
     it('never knocks for a count-in', async () => {

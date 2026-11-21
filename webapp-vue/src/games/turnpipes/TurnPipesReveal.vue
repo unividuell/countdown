@@ -12,7 +12,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { useGameSound } from '@/ui/useGameSound'
 import { useRevealArming } from '@/ui/useRevealArming'
 import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
@@ -41,7 +40,6 @@ const props = defineProps<{
 /** How far a flow fades out when the water ends. */
 const FLOW_FADE_S = 0.3
 
-const sound = useGameSound()
 const water = useWaterRun()
 
 /** Own tip preselected, as long as there is one to show. */
@@ -94,7 +92,7 @@ function halt(): void {
   flow = undefined
 }
 
-/** Turn to [board], then let the water run, with sound while sound is on. */
+/** Turn to [board], then let the water run, with its sound. */
 function present(board: ShownBoard | null): void {
   halt()
   water.fill([])
@@ -103,14 +101,14 @@ function present(board: ShownBoard | null): void {
 
   turns.value = turnedTo(board)
   beat = setTimeout(() => {
-    if (sound.value) flow = startFlow()
+    flow = startFlow()
 
     water.run(
       board.wet,
       () => {
         flow?.stop(FLOW_FADE_S)
         flow = undefined
-        if (sound.value) playSound(board.endSound)
+        playSound(board.endSound)
         puddles.value = new Set(board.puddles)
       },
       waterStepMs(props.payload.size),
@@ -120,13 +118,6 @@ function present(board: ShownBoard | null): void {
 
 // The board may never have mounted (reload, history, onlooker): decode here, once per page.
 onMounted(preloadSounds)
-
-// Muting silences the water that is already running, not only the next run.
-watch(sound, (on) => {
-  if (on) return
-  flow?.stop(0)
-  flow = undefined
-})
 
 const still = isStill(props.animate)
 

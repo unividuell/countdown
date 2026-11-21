@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
 import { playTurn } from '@/games/guesshue/turnSound'
 import HoldButton from '@/ui/HoldButton.vue'
-import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 
 vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/games/guesshue/turnSound')>()),
@@ -62,10 +61,6 @@ describe('GuessHueBoard', () => {
       vi.mocked(playTurn).mockClear()
     })
 
-    afterEach(() => {
-      localStorage.removeItem(GAME_SOUND_KEY)
-    })
-
     it('knocks once per degree the knob enters', async () => {
       const w = mountBoard({ initHue: 108 })
       const wheel = w.get('[data-test="hue-wheel"]')
@@ -77,26 +72,12 @@ describe('GuessHueBoard', () => {
       expect(playTurn).toHaveBeenCalledTimes(2)
     })
 
-    it('mutes from the toggle in the wheel’s corner', async () => {
-      const w = mountBoard({ initHue: 100 })
-
-      await w.get('button[aria-label="Ton"]').trigger('click')
-      await w.get('[data-test="hue-wheel"]').trigger('keydown', { key: 'PageUp' })
-
-      expect(playTurn).not.toHaveBeenCalled()
+    it('has the sound toggle beside the wheel', () => {
+      expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(true)
     })
 
     it('lets the confirm button knock as it charges', () => {
       expect(mountBoard().getComponent(HoldButton).props('sound')).toBe(true)
-    })
-
-    it('stays silent when sound is off', async () => {
-      localStorage.setItem(GAME_SOUND_KEY, 'false')
-      const w = mountBoard({ initHue: 100 })
-
-      await w.get('[data-test="hue-wheel"]').trigger('keydown', { key: 'PageUp' })
-
-      expect(playTurn).not.toHaveBeenCalled()
     })
   })
 

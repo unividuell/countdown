@@ -13,7 +13,7 @@
  *   0 ─── 900 ms ─────────── 1945 ms ── +120 ── +120 ──▶
  *         solution, verdict   marker     marker  marker
  */
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
@@ -22,7 +22,6 @@ import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { inBackground } from '@/ui/motion'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { useGameSound } from '@/ui/useGameSound'
 import { playVerdict, type Verdict } from '@/ui/verdictSound'
 
 const props = defineProps<{
@@ -41,7 +40,6 @@ const props = defineProps<{
   live: boolean
 }>()
 
-const sound = useGameSound()
 let beat: ReturnType<typeof setTimeout> | undefined
 let landings: ReturnType<typeof setTimeout>[] = []
 let verdict: Verdict | null = null
@@ -53,7 +51,7 @@ onMounted(() => {
   const still = isStill(props.animate)
   beat = setTimeout(
     () => {
-      if (sound.value && props.won !== null) verdict = playVerdict(props.won)
+      if (props.won !== null) verdict = playVerdict(props.won)
     },
     still ? 0 : SOLUTION_DELAY_MS,
   )
@@ -64,16 +62,7 @@ onMounted(() => {
   // Mine is the knob, already there: it does not land.
   landings = props.guesses
     .filter((guess) => guess.userId !== props.mineUserId)
-    .map((guess) =>
-      setTimeout(() => {
-        if (sound.value) playMarker()
-      }, guess.revealDelayMs),
-    )
-})
-
-// Muting silences the verdict that is already sounding, not only the next one.
-watch(sound, (on) => {
-  if (!on) verdict?.stop()
+    .map((guess) => setTimeout(playMarker, guess.revealDelayMs))
 })
 
 onBeforeUnmount(() => {

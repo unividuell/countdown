@@ -14,7 +14,6 @@ import HoldButton from '@/ui/HoldButton.vue'
 import HueWheelInput from './HueWheelInput.vue'
 import { playTurn, stepOf } from './turnSound'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { useGameSound } from '@/ui/useGameSound'
 
 const props = defineProps<{
   description: string
@@ -37,15 +36,13 @@ watch(
   },
 )
 
-const sound = useGameSound()
-
 /** The wheel turned: a knock when the knob enters another degree. */
 function onTurn(next: number): void {
   const from = stepOf(hue.value)
   hue.value = next
 
   const to = stepOf(next)
-  if (sound.value && to !== from) playTurn()
+  if (to !== from) playTurn()
 }
 
 /** False until the ring has finished drawing itself; the confirm button stays away until then. */

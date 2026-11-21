@@ -9,7 +9,6 @@ import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { MatchScalePayload } from '@/games/matchscale/types'
 import { playPop } from '@/games/matchscale/countSound'
 import HoldButton from '@/ui/HoldButton.vue'
-import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 
 const stopPop = vi.fn()
 vi.mock('@/games/matchscale/countSound', async (importOriginal) => ({
@@ -109,18 +108,11 @@ describe('MatchScaleBoard', () => {
 
     expect(wrapper.getComponent(ScaleField).props('popIn')).toBe(true)
     expect(playPop).toHaveBeenCalledOnce()
-
-    await wrapper.get('button[aria-label="Ton"]').trigger('click')
-    expect(stopPop).toHaveBeenCalledOnce()
   })
 
-  it('opens silent when muted, and cuts the knocks on leaving', () => {
-    localStorage.setItem(GAME_SOUND_KEY, 'false')
+  it('cuts the knocks on leaving', () => {
     mountBoard().unmount()
-    expect(playPop).not.toHaveBeenCalled()
 
-    localStorage.clear()
-    mountBoard().unmount()
     expect(stopPop).toHaveBeenCalledOnce()
   })
 

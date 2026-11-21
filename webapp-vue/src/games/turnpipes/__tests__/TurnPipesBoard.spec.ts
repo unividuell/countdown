@@ -70,15 +70,12 @@ describe('TurnPipesBoard', () => {
     expect(turnsOf(wrapper)[5]).toBe(1)
   })
 
-  it('a tap clicks when sound is on, and is silent when muted', async () => {
+  it('a tap clicks', async () => {
     const wrapper = mountBoard()
 
     await tile(wrapper, 2).trigger('click')
-    expect(vi.mocked(playSound).mock.calls).toEqual([['turn']])
 
-    await wrapper.get('button[aria-label="Ton"]').trigger('click')
-    await tile(wrapper, 2).trigger('click')
-    expect(vi.mocked(playSound)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(playSound).mock.calls).toEqual([['turn']])
   })
 
   it('holding submits every rotation', async () => {

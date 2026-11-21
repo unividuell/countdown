@@ -4,12 +4,6 @@ import { FIELD_PX, initialPlacements, initialView, type View } from '@/games/mat
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { Silhouette } from '@/games/matchscale/types'
 import { POP_GAP_MS, POP_MS } from '@/games/matchscale/countSound'
-import { unlockSound } from '@/ui/audio'
-
-vi.mock('@/ui/audio', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/ui/audio')>()),
-  unlockSound: vi.fn(),
-}))
 
 enableAutoUnmount(afterEach)
 
@@ -79,7 +73,6 @@ describe('ScaleField', () => {
   describe('sound toggle', () => {
     afterEach(() => {
       localStorage.clear()
-      vi.mocked(unlockSound).mockClear()
     })
 
     it('sits in the top right corner, interactive or not', () => {
@@ -90,7 +83,7 @@ describe('ScaleField', () => {
       }
     })
 
-    it('a tap flips the shared mute, wakes the audio and starts no gesture', async () => {
+    it('a tap flips the shared mute and starts no gesture', async () => {
       const { wrapper } = mountField()
       const toggle = wrapper.get('button[aria-label="Ton"]')
 
@@ -100,7 +93,6 @@ describe('ScaleField', () => {
       await toggle.trigger('click')
 
       expect(localStorage.getItem('games:sound')).toBe('false')
-      expect(unlockSound).toHaveBeenCalledOnce()
       expect(wrapper.emitted('update:view')).toBeUndefined()
       expect(wrapper.emitted('update:placementB')).toBeUndefined()
     })

@@ -5,6 +5,7 @@ import { vi } from 'vitest'
  * sounding. One per spec file — module state, like the graph it stands in for.
  *
  *   vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
+ *   vi.mock('@/ui/soundOutput', async () => (await import('@/ui/__tests__/fakeGraph')).soundOutputMock)
  */
 
 /** Every oscillator started: its first pitch, its start, its `stop`. */
@@ -50,13 +51,24 @@ export const audioMock = {
   START_LOOKAHEAD_SECONDS: 0,
 }
 
+/** The sound switch as the play functions see it. */
+export const sound = { on: true }
+
+/** What `@/ui/soundOutput` exports, on the fake graph and this switch. */
+export const soundOutputMock = {
+  gameSoundOn: () => sound.on,
+  soundGraph: () => (sound.on && graph.state === 'running' ? graph : null),
+  soundOutput: () => graph.destination,
+}
+
 /** A knock is a body and a quiet overtone at 3.9× its pitch: the bodies, in order. */
 export function bodies(): { hz: number; at: number }[] {
   return started.filter((_, i) => i % 2 === 0).map(({ hz, at }) => ({ hz, at }))
 }
 
-/** Nothing started, graph running: call it in `beforeEach`. */
+/** Nothing started, graph running, sound on: call it in `beforeEach`. */
 export function resetGraph(): void {
   started.length = 0
   graph.state = 'running'
+  sound.on = true
 }
