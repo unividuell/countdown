@@ -18,7 +18,7 @@ import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef, watch } from 'vue'
 import IconMaximize from '~icons/lucide/maximize-2'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { unlockSound } from './countSound'
+import { POP_GAP_MS, POP_MS, unlockSound } from './countSound'
 import {
   FIELD_PX,
   GRID_MODE,
@@ -79,6 +79,8 @@ const props = defineProps<{
   /** B is not drawn yet; with `grow` it fades in. */
   bHidden?: boolean
   camera?: Camera | null
+  /** A, then B and its handle, pop up from their feet once: the board's opening. */
+  popIn?: boolean
 }>()
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
@@ -89,6 +91,13 @@ const HANDLE_OFFSET_PX = 14
 /** One wheel notch (100 px of `deltaY`) zooms by about a quarter. */
 const WHEEL_PX_PER_DOUBLING = 300
 const LINE_PX = 16
+
+/** Each one's pop-in, with its delay: B and its handle `POP_GAP_MS` after A. */
+function popStyle(delayMs: number) {
+  return props.popIn === true
+    ? { animationDuration: `${POP_MS}ms`, animationDelay: `${delayMs}ms` }
+    : undefined
+}
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
 
@@ -403,23 +412,28 @@ useEventListener(document, 'visibilitychange', () => {
           :y2="groundY"
           vector-effect="non-scaling-stroke"
         />
-        <path
-          data-test="match-scale-a"
-          :d="props.a.path"
-          :transform="transformOf(props.a, props.placementA)"
-          :style="{ fill: props.aColor }"
-        />
-        <path
-          data-test="match-scale-b"
-          :d="props.b.path"
-          :class="props.grow === true ? `transition-[transform,opacity] ${EASE}` : ''"
-          :transform="transformOf(props.b, props.placementB)"
-          :style="{
-            fill: props.bColor,
-            ...bGrowth,
-            ...(props.bHidden === true ? { opacity: 0 } : {}),
-          }"
-        />
+        <!-- The pop-in scales a group: a CSS transform on the path would replace its own. -->
+        <g :class="{ 'pop-in': props.popIn }" :style="popStyle(0)">
+          <path
+            data-test="match-scale-a"
+            :d="props.a.path"
+            :transform="transformOf(props.a, props.placementA)"
+            :style="{ fill: props.aColor }"
+          />
+        </g>
+        <g :class="{ 'pop-in': props.popIn }" :style="popStyle(POP_GAP_MS)">
+          <path
+            data-test="match-scale-b"
+            :d="props.b.path"
+            :class="props.grow === true ? `transition-[transform,opacity] ${EASE}` : ''"
+            :transform="transformOf(props.b, props.placementB)"
+            :style="{
+              fill: props.bColor,
+              ...bGrowth,
+              ...(props.bHidden === true ? { opacity: 0 } : {}),
+            }"
+          />
+        </g>
         <path
           v-for="(outline, i) in props.outlines"
           :key="i"
@@ -458,12 +472,41 @@ useEventListener(document, 'visibilitychange', () => {
       role="img"
       aria-label="Größe ändern"
       class="pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-inverse-surface text-inverse-on-surface shadow"
+      :class="{ 'pop-in-handle': props.popIn }"
       :style="{
         left: `calc(${(corner.x / FIELD_PX) * 100}% + ${HANDLE_OFFSET_PX}px)`,
         top: `calc(${(corner.y / FIELD_PX) * 100}% - ${HANDLE_OFFSET_PX}px)`,
+        ...popStyle(POP_GAP_MS),
       }"
     >
       <IconMaximize aria-hidden="true" class="h-4 w-4" />
     </span>
   </div>
 </template>
+
+<!--
+  The board's opening: scale 0 → 1 with a slight overshoot, from the feet (a shape) or the centre
+  (the handle); `both` keeps B invisible through its delay. Reduced motion shows them at once.
+  Tailwind v4's `-translate-*` sets `translate`, not `transform`, so the handle keeps its offset.
+-->
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .pop-in,
+  .pop-in-handle {
+    animation-name: pop-in;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-fill-mode: both;
+  }
+
+  .pop-in {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(0);
+  }
+}
+</style>

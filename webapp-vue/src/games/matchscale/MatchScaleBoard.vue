@@ -6,14 +6,14 @@
  * the field is greyed and takes no input, and a finger on it cancels the hold.
  */
 import { useEventListener } from '@vueuse/core'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
-import { unlockSound } from './countSound'
+import { playPop, unlockSound, type Counting } from './countSound'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import {
   FIELD_PX,
@@ -95,6 +95,19 @@ function onView(next: View): void {
 
 const sound = useGameSound()
 
+// The opening knocks with the pop-in; muting or leaving cuts it.
+let popping: Counting | null = null
+
+onMounted(() => {
+  if (sound.value) popping = playPop()
+})
+
+watch(sound, (on) => {
+  if (!on) popping?.stop()
+})
+
+onBeforeUnmount(() => popping?.stop())
+
 /** A lift also wakes the graph for the reveal's count, which iOS allows inside a `pointerup` only. */
 function onLift(): void {
   save()
@@ -146,6 +159,7 @@ function submit(): void {
           :outlines="[]"
           :interactive="playable"
           :locked="locked"
+          pop-in
           @update:view="onView"
           @update:placement-b="onPlacement"
         />

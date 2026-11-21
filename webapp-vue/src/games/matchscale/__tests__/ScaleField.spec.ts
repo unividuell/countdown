@@ -3,9 +3,12 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { FIELD_PX, initialPlacements, initialView, type View } from '@/games/matchscale/gestures'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { Silhouette } from '@/games/matchscale/types'
-import { unlockSound } from '@/games/matchscale/countSound'
+import { POP_GAP_MS, POP_MS, unlockSound } from '@/games/matchscale/countSound'
 
-vi.mock('@/games/matchscale/countSound', () => ({ unlockSound: vi.fn() }))
+vi.mock('@/games/matchscale/countSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/matchscale/countSound')>()),
+  unlockSound: vi.fn(),
+}))
 
 enableAutoUnmount(afterEach)
 
@@ -198,6 +201,21 @@ describe('ScaleField', () => {
     expect(eased!.classes()).toContain(
       'transition-[transform,fill,fill-opacity,stroke,stroke-opacity]',
     )
+  })
+
+  it('pops A, then B and its handle `POP_GAP_MS` later, only when asked', () => {
+    const popping = mountField({ popIn: true }).wrapper
+    const groupOf = (id: string) => popping.get(`[data-test="${id}"]`).element.parentElement!
+
+    expect(groupOf('match-scale-a').classList).toContain('pop-in')
+    expect(groupOf('match-scale-a').style.animationDelay).toBe('0ms')
+    expect(groupOf('match-scale-b').style.animationDelay).toBe(`${POP_GAP_MS}ms`)
+    expect(groupOf('match-scale-b').style.animationDuration).toBe(`${POP_MS}ms`)
+    expect(popping.get('[aria-label="Größe ändern"]').classes()).toContain('pop-in-handle')
+
+    const still = mountField().wrapper
+    expect(still.find('.pop-in').exists()).toBe(false)
+    expect(still.find('.pop-in-handle').exists()).toBe(false)
   })
 
   it('hides B on request', () => {

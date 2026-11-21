@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { draftKey, loadDraft, saveDraft } from '@/games/matchscale/draft'
@@ -7,7 +7,15 @@ import MatchScaleBoard from '@/games/matchscale/MatchScaleBoard.vue'
 import MatchScaleLegend from '@/games/matchscale/MatchScaleLegend.vue'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { MatchScalePayload } from '@/games/matchscale/types'
+import { playPop } from '@/games/matchscale/countSound'
 import HoldButton from '@/ui/HoldButton.vue'
+import { GAME_SOUND_KEY } from '@/ui/useGameSound'
+
+const stopPop = vi.fn()
+vi.mock('@/games/matchscale/countSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/matchscale/countSound')>()),
+  playPop: vi.fn(() => ({ stop: stopPop })),
+}))
 
 enableAutoUnmount(afterEach)
 
@@ -35,7 +43,10 @@ function mountBoard(over: Record<string, unknown> = {}) {
 }
 
 describe('MatchScaleBoard', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
 
   it("marks both names with the category's legend, one footnote", () => {
     const wrapper = mountBoard({ payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' } })
@@ -91,6 +102,26 @@ describe('MatchScaleBoard', () => {
     expect(wrapper.find('[data-test="match-scale-lock"]').exists()).toBe(true)
     expect(wrapper.getComponent(ScaleField).props('interactive')).toBe(true)
     expect(wrapper.getComponent(ScaleField).props('locked')).toBe(true)
+  })
+
+  it('opens with A and B popping up, knocking', async () => {
+    const wrapper = mountBoard()
+
+    expect(wrapper.getComponent(ScaleField).props('popIn')).toBe(true)
+    expect(playPop).toHaveBeenCalledOnce()
+
+    await wrapper.get('button[aria-label="Ton"]').trigger('click')
+    expect(stopPop).toHaveBeenCalledOnce()
+  })
+
+  it('opens silent when muted, and cuts the knocks on leaving', () => {
+    localStorage.setItem(GAME_SOUND_KEY, 'false')
+    mountBoard().unmount()
+    expect(playPop).not.toHaveBeenCalled()
+
+    localStorage.clear()
+    mountBoard().unmount()
+    expect(stopPop).toHaveBeenCalledOnce()
   })
 
   it('has the sound toggle in the field', () => {

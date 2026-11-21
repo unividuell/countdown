@@ -346,11 +346,19 @@ derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
 Die Namenszeile bricht nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in
 der Auflösung gleich hoch, nichts springt.
 
-**Zählton.** Während B wächst, zählt ein kurzer Sinus-Tick hoch (B schrumpft: runter), je Tick 0,7
+**Klang.** Alles klingt nach einem Holzschlag: Sinus mit kurzem, leisem Oberton bei 3,9× (Marimba),
+der letzte einer Folge klingt nach. Ausgesucht nach Gehör aus Kandidaten.
+
+**Aufpoppen.** Beim Öffnen des Spielbretts poppen A und B nacheinander aus ihrem Fuß auf (260 ms,
+leichtes Überschwingen, B samt Griff 220 ms nach A), je mit einem Holzschlag, B eine Quarte höher.
+Reduzierte Bewegung: sofort da, der Klang bleibt. Schläft der Audio-Graph noch (kein Tipp auf der
+Seite), bleibt es stumm.
+
+**Zählton.** Während B wächst, zählt ein kurzer Holzschlag hoch (B schrumpft: runter), je Tick 0,7
 Halbtöne, so viel wie ein Schritt in B's Größe — B ×2 ≈ eine Oktave, höchstens 26 Ticks. Takt 58 ms,
 gegen Ende bremsend. B's Wachstum folgt den Ticks (CSS `linear()`); die Zeilen der Rangliste warten,
-bis B angekommen ist. 70 ms nach dem letzten Tick der Abschluss: Dur-Arpeggio bei Treffer, tiefer
-Schnarrton daneben. Phase eins: Toleranz; Phase zwei: ich halte gerade die Punkte (vorläufig vorn).
+bis B angekommen ist. 70 ms nach dem letzten Tick der Abschluss: Dur-Arpeggio bei Treffer, zwei
+fallende Schläge daneben. Phase eins: Toleranz; Phase zwei: ich halte gerade die Punkte (vorläufig vorn).
 Ohne eigenen Tipp kein Ton.
 
 ### Rangliste

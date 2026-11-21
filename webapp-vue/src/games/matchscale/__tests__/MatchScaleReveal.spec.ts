@@ -14,7 +14,8 @@ import { countTones, growMs } from '../countTones'
 import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
 
 const stopCount = vi.fn()
-vi.mock('../countSound', () => ({
+vi.mock('../countSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../countSound')>()),
   playCount: vi.fn(() => ({ stop: stopCount })),
   unlockSound: vi.fn(),
 }))
