@@ -15,9 +15,12 @@ import { useEventListener, useScrollLock } from '@vueuse/core'
 import type { AwardRule } from '@/api/types'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
-import { prefersReducedMotion } from '@/ui/motion'
+import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useSoundStage } from '@/ui/useSoundAwake'
+import { playVerdict } from '@/ui/verdictSound'
 import DedusterBriefing from './DedusterBriefing.vue'
 import { loadPhoto } from './photo'
+import { playHit } from './tileSound'
 import dustUrl from './dust.jpg'
 import type { DedusterGuessWire, DedusterPayload, DedusterScene } from './types'
 import { browserClock, useDedusterRun, type RunResult } from './useDedusterRun'
@@ -42,6 +45,9 @@ const props = defineProps<{
 const emit = defineEmits<{ guess: [value: DedusterGuessWire]; reveal: [] }>()
 
 const layout = computed(() => props.payload ?? props.scene)
+
+// Its knocks are governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 
 const sceneState = ref<SceneState>('preparing')
 async function preparePhoto(): Promise<void> {
@@ -89,7 +95,11 @@ function begin(): void {
       useDedusterRun({
         order: payload.order,
         intervalMs: payload.intervalMs,
-        onEnd: (result: RunResult) => send({ ...result, restarted }),
+        onEnd: (result: RunResult) => {
+          // The verdict the moment the run ends; none for a tab that went away.
+          if (!inBackground()) playVerdict(result.endedBy === 'COMPLETE')
+          send({ ...result, restarted })
+        },
       }),
     ) ?? null
   // One beat of whole, dusted grid after the full ring; a payload later than that falls at once.
@@ -168,6 +178,8 @@ function onPointerDown(event: PointerEvent): void {
   const row = Math.min(grid.rows - 1, Math.max(0, Math.floor((y / box.height) * grid.rows)))
   const result = current.tap(row * grid.cols + col)
   if (result !== 'ignored') ripple(el, x, y, result === 'hit')
+  // A hit that ended the run was the last tile: its verdict already sounds.
+  if (result === 'hit' && current.running.value) playHit()
 }
 
 /**
