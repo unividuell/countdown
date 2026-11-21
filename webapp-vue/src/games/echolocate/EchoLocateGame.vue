@@ -22,6 +22,7 @@ import { clearDraft, deviceStorage, sweepDrafts } from '@/games/drafts'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import RevealCover from '@/ui/RevealCover.vue'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import { draftKey, draftPrefix } from './draft'
@@ -30,7 +31,12 @@ import EchoLocateBriefing from './EchoLocateBriefing.vue'
 import EchoLocateReveal from './EchoLocateReveal.vue'
 import { scoreRows } from './scoreboard'
 import SonarField from './SonarField.vue'
-import { asEchoLocatePayload, asEchoLocateScene, asEchoLocateSolution } from './types'
+import {
+  asEchoLocateOutcome,
+  asEchoLocatePayload,
+  asEchoLocateScene,
+  asEchoLocateSolution,
+} from './types'
 
 const FIRST_CLIP = 'clip-0'
 const SECOND_CLIP = 'clip-1'
@@ -109,6 +115,19 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
+/** The gate is the tolerance circle around every clip. */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate:
+      payload.value === null
+        ? null
+        : (asEchoLocateOutcome(props.outcome, payload.value.clips)?.withinTolerance ?? null),
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
+
 const myColorHex = useMyColorHex(
   () => props.entries,
   () => props.mineUserId,
@@ -157,6 +176,7 @@ const animate = useRevealedLive(solved)
     :live="live"
     :animate="animate"
     :mine-user-id="props.mineUserId"
+    :won="won"
   />
   <EchoLocateBoard
     v-else

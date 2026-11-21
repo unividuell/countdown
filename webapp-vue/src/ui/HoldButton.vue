@@ -55,10 +55,7 @@ const props = withDefaults(
      * as light as the card (a hue); `neutral` is one grey for a fill that is the same in both modes.
      */
     contour?: 'opposite' | 'neutral'
-    /**
-     * Plays the charge's knocks, or the count-in's, wherever it throws sparks. False only in a game
-     * whose sound is the game (Peilung).
-     */
+    /** Plays the charge's knocks, or the count-in's, wherever it throws sparks. */
     sound?: boolean
     /** False for a hold that must not celebrate: giving up charges nothing, neither seen nor heard. */
     sparks?: boolean

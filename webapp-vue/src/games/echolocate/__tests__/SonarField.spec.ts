@@ -89,6 +89,14 @@ function pointerDown(field: ReturnType<typeof mountField>, clientX: number, clie
   return event
 }
 
+function pointerMove(field: ReturnType<typeof mountField>, clientX: number, clientY: number) {
+  field
+    .get('canvas')
+    .element.dispatchEvent(
+      new PointerEvent('pointermove', { clientX, clientY, bubbles: true, pointerId: 1 }),
+    )
+}
+
 function pointer(field: ReturnType<typeof mountField>, type: 'pointerup' | 'pointercancel') {
   field.get('canvas').element.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1 }))
 }
@@ -154,6 +162,42 @@ describe('SonarField', () => {
 
       pointer(field, 'pointerup')
       expect(field.emitted('tap')).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('emits nothing for a finger that drags: neither a ping nor, held long, a pin', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const quick = mountField()
+      pointerDown(quick, 60, 170)
+      pointerMove(quick, 60, 182)
+      pointer(quick, 'pointerup')
+      expect(quick.emitted('tap')).toBeUndefined()
+
+      const slow = mountField()
+      pointerDown(slow, 60, 170)
+      pointerMove(slow, 72, 170)
+      vi.advanceTimersByTime(1000)
+      pointer(slow, 'pointerup')
+      expect(slow.emitted('hold')).toBeUndefined()
+      expect(slow.emitted('tap')).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('forgives a finger that wobbles a few pixels while it holds', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const field = mountField()
+
+      pointerDown(field, 60, 170)
+      pointerMove(field, 64, 173)
+      vi.advanceTimersByTime(500)
+
+      expect(field.emitted('hold')).toEqual([[{ x: 5, y: 15 }]])
     } finally {
       vi.useRealTimers()
     }

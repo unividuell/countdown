@@ -16,6 +16,10 @@
  *
  *   down ──< 500 ms──▶ up      tap(at, tDown)
  *   down ──500 ms──▶ hold(at) ──▶ up   (nothing)
+ *   down ──moved > DRAG_SLOP_PX──▶ …   (nothing: a drag is no click, held or not)
+ *
+ * The field keeps every gesture (`touch-none`), so it does not scroll the page: with `touch-pan-y`
+ * iOS cancels a finger held still for the long press, and scrolling by hand never feels native.
  *
  * There is no cover: until the first ping the field names how many clips hide in it.
  *
@@ -57,6 +61,8 @@ const emit = defineEmits<{ tap: [at: Point, tMs: number]; hold: [at: Point] }>()
 
 /** Held this long, a click is a long one: iOS's own long press waits about as long. */
 const LONG_PRESS_MS = 500
+/** A finger wobbles while it holds; past this it drags, and a drag is no click. */
+const DRAG_SLOP_PX = 10
 
 const NOISE_LETTER: Record<NoiseKind, string> = {
   BIRDS: 'V',
@@ -129,6 +135,9 @@ watch(
 let press: { id: number; at: Point; tMs: number; timer: ReturnType<typeof setTimeout> } | null =
   null
 
+/** Where the finger went down, while it may still become a click. */
+let drag: { id: number; x: number; y: number } | null = null
+
 function onDown(event: PointerEvent): void {
   const el = canvas.value
   if (!el || !interactive.value || press !== null) return
@@ -140,6 +149,7 @@ function onDown(event: PointerEvent): void {
     emit('hold', at)
   }, LONG_PRESS_MS)
   press = { id: event.pointerId, at, tMs: event.timeStamp, timer }
+  drag = { id: event.pointerId, x: event.clientX, y: event.clientY }
 
   // A mouse released beside the field still ends the click; a touch is captured anyway.
   try {
@@ -149,7 +159,18 @@ function onDown(event: PointerEvent): void {
   }
 }
 
+function onMove(event: PointerEvent): void {
+  if (drag === null || event.pointerId !== drag.id) return
+
+  if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) <= DRAG_SLOP_PX) return
+
+  if (press !== null) clearTimeout(press.timer)
+  press = null
+  drag = null
+}
+
 function onUp(event: PointerEvent): void {
+  if (event.pointerId === drag?.id) drag = null
   if (press === null || event.pointerId !== press.id) return
 
   clearTimeout(press.timer)
@@ -160,6 +181,7 @@ function onUp(event: PointerEvent): void {
 
 /** The browser took the finger back — a scroll, a system gesture: no click at all. */
 function onCancel(event: PointerEvent): void {
+  if (event.pointerId === drag?.id) drag = null
   if (press === null || event.pointerId !== press.id) return
 
   clearTimeout(press.timer)
@@ -420,6 +442,7 @@ watch(
       class="block aspect-square w-full rounded-lg select-none [-webkit-touch-callout:none]"
       :class="{ 'touch-none': interactive }"
       @pointerdown="onDown"
+      @pointermove="onMove"
       @pointerup="onUp"
       @pointercancel="onCancel"
       @contextmenu.prevent

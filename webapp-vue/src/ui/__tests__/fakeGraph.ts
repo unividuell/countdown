@@ -11,6 +11,12 @@ import { vi } from 'vitest'
 /** Every oscillator started: its first pitch, its start, its `stop`. */
 export const started: { hz: number; at: number; stop: ReturnType<typeof vi.fn> }[] = []
 
+/** Every buffer source started — noise — with its start and the filters' calls made so far. */
+export const noises: { at: number; length: number; stop: ReturnType<typeof vi.fn> }[] = []
+
+/** Every biquad filter made, for its type and its frequency's automation. */
+export const filters: { type: string; frequency: ReturnType<typeof param> }[] = []
+
 function param() {
   return {
     value: 1,
@@ -22,10 +28,29 @@ function param() {
 
 export const graph = {
   currentTime: 0,
+  sampleRate: 48000,
   state: 'running' as AudioContextState,
   resume: vi.fn(() => Promise.resolve()),
   destination: {},
   createGain: () => ({ gain: param(), connect: (to: unknown) => to }),
+  createBuffer: (_channels: number, length: number) => {
+    const data = new Float32Array(length)
+    return { length, getChannelData: () => data }
+  },
+  createBufferSource: () => {
+    const node = {
+      buffer: null as { length: number } | null,
+      connect: (to: unknown) => to,
+      start: (at: number) => noises.push({ at, length: node.buffer?.length ?? 0, stop: node.stop }),
+      stop: vi.fn(),
+    }
+    return node
+  },
+  createBiquadFilter: () => {
+    const filter = { type: 'lowpass', frequency: param(), Q: param(), connect: (to: unknown) => to }
+    filters.push(filter)
+    return filter
+  },
   createOscillator: () => {
     const node = {
       frequency: param(),
@@ -69,6 +94,8 @@ export function bodies(): { hz: number; at: number }[] {
 /** Nothing started, graph running, sound on: call it in `beforeEach`. */
 export function resetGraph(): void {
   started.length = 0
+  noises.length = 0
+  filters.length = 0
   graph.state = 'running'
   sound.on = true
 }

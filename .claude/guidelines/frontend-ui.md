@@ -99,6 +99,11 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **`touch-action` is the intersection over the hit element and every ancestor:** a descendant can
   only remove panning, never restore it. Put `none` on the element that claims the gesture and
   leave the ancestors alone.
+- **A long press and native scrolling do not mix on iOS.** With `touch-pan-y` Safari cancels a
+  finger held still at about 500 ms (simulator, iOS 18), so no long press arrives. A field with a
+  long press keeps `touch-none` and does not scroll; a drag past a small slop is no click
+  (`echolocate/SonarField.vue`). Never scroll by hand (`window.scrollBy` on a drag): scrolling is
+  the browser's, and a fake one never feels native.
 - **`mask` does not affect hit-testing; `clip-path` does.** Where the shape decides who gets the
   event, the shape is a clip.
 - **Sibling shapes in one `<clipPath>` are unioned;** `clip-rule="evenodd"` works within a single

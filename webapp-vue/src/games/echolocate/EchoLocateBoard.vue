@@ -30,6 +30,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
+import { playWhoosh } from '@/ui/whooshSound'
 import { deviceStorage } from '../drafts'
 import { loadDraft, saveDraft } from './draft'
 import EchoLocateBriefing from './EchoLocateBriefing.vue'
@@ -196,6 +197,7 @@ function onHold(at: Point): void {
 
 function onClearRings(): void {
   flow.value = clearRings(flow.value)
+  playWhoosh()
 }
 
 // iOS suspends the graph for a call, an app switch or the lock screen; the next click resumes it.
@@ -387,7 +389,6 @@ onBeforeUnmount(() => {
             :disabled="!canHandIn || touching"
             label="Schätzung abgeben — gedrückt halten"
             :color="props.myColorHex"
-            :sound="false"
             @confirm="handIn"
             @progress="onProgress"
           />

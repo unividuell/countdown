@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
@@ -13,6 +13,11 @@ import type {
 } from '@/games/echolocate/types'
 import type { GameEntry } from '@/games/GameEntry'
 import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
 enableAutoUnmount(afterEach)
 
@@ -104,6 +109,7 @@ function mountReveal(over: { entries?: GameEntry[] } & Record<string, unknown> =
       live: false,
       animate: false,
       mineUserId,
+      won: null,
       ...props,
     },
     global: { stubs: { SonarField: true } },
@@ -490,6 +496,49 @@ describe('EchoLocateReveal', () => {
     it('carries the live chip when the round can still be overtaken', () => {
       expect(mountReveal().find('[data-test="scoreboard-live"]').exists()).toBe(false)
       expect(mountReveal({ live: true }).find('[data-test="scoreboard-live"]').exists()).toBe(true)
+    })
+  })
+
+  describe('verdict', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(playVerdict).mockClear()
+      stopVerdict.mockClear()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('plays mine when the map appears', () => {
+      mountReveal({ animate: true, won: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal({ animate: false, won: false })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('leaving cuts a verdict that is sounding', () => {
+      const wrapper = mountReveal({ animate: true, won: false })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      wrapper.unmount()
+
+      expect(stopVerdict).toHaveBeenCalled()
+    })
+
+    it('asks the header to wake the graph while here', () => {
+      mountReveal()
+
+      expect(soundOnStage.value).toBe(true)
     })
   })
 })
