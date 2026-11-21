@@ -64,7 +64,7 @@ const won = computed(() =>
   payload.value === null
     ? null
     : myWin({
-        toleranceFactor: payload.value.toleranceFactor,
+        tolerance: payload.value.tolerance,
         outcome: props.outcome,
         rows: rows.value,
         mineUserId: props.mineUserId,

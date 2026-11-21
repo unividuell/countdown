@@ -84,16 +84,19 @@ Silhouetten gleich groß gezeichnet sind.
 A) vergrößert hat. Endlich und > 0, sonst `InvalidGuessException`. Ein Tipp pro Spieler und Runde,
 abgegeben per Halten (`HoldButton`).
 
-**Abweichung.** `deviation = |ln(scale / factor)|`. Doppelt so groß zählt wie halb so groß.
+**Abweichung.** `deviation = |scale − factor| ÷ factor`, ein Anteil am wahren Maß: 25 % zu groß
+zählt wie 25 % zu klein, so wie die Spalte „Abstand“ es liest. (Erst war es `|ln(scale / factor)|`,
+fair für Verhältnisse, aber in Metern schief — „25 % zu groß oder 20 % zu klein“ war nicht zu
+erklären; bei dieser Toleranz ist der Unterschied winzig.)
 
 | | Phase eins | Phase zwei |
 |---|---|---|
 | Aufdecken | nein | nein |
 | Zeit | zählt nicht | zählt nicht |
-| Qualifiziert | `deviation ≤ ln 1,25` (Faktor 1,25 in beide Richtungen: 25 % zu groß oder 20 % zu klein) | jeder Tipp |
+| Qualifiziert | `deviation ≤ 0,25` (25 % zu groß oder zu klein) | jeder Tipp |
 | Award | `ALL_QUALIFYING` — 1 Punkt je Treffer | `CLOSEST_ONLY` — der nächste Tipp nimmt alles |
 
-Im Vertrag wie `GuessHueParams.toleranceDeg`: ein `toleranceFactor: Double?` in den Params, `1.25` in
+Im Vertrag wie `GuessHueParams.toleranceDeg`: ein `tolerance: Double?` in den Params, `0.25` in
 Phase eins, `null` in Phase zwei, aus der Phase gesetzt. `requiresReveal = scoresOnDuration = false`.
 
 ## Der Datensatz
@@ -247,8 +250,8 @@ Prüfschritt; gestrichen wird von Hand in der Eingabe.
   die Lösung geht dann ohnehin raus.
 
 Params: Kategorie-Schlüssel und -Anzeigename, A und B (Name, Pfad, `width`, `height`, Attribution),
-`factor`, `toleranceFactor`, `measureA`, `measureB`. Payload: alles außer `factor` und den Maßen.
-Lösung: `factor`, `toleranceFactor`, `a` und `b` (je `axis`, `metres`, `source` oder `null`). Outcome:
+`factor`, `tolerance`, `measureA`, `measureB`. Payload: alles außer `factor` und den Maßen.
+Lösung: `factor`, `tolerance`, `a` und `b` (je `axis`, `metres`, `source` oder `null`). Outcome:
 `scale`, `deviation`, `withinTolerance` (`null` in Phase zwei). Je ein Feldmengen-Test.
 
 ## Integrität — die Decke, benannt
@@ -345,15 +348,16 @@ Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 Alles als Länge von B in der Einheit der Runde. Linear skaliert ist der Tipp
 `b.metres × scale / factor`. Tipp „160“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40“, „+50“,
 „±0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“ („200“) und
-„Toleranz*“ („[−40,50]“: wie weit ein Tipp von der Lösung liegen darf, gerechnet wie „Abstand“ —
-`b ÷ 1,25 − b` bis `b × 1,25 − b`, gerundet; nur Phase eins). In den Zellen keine
+„Toleranz*“ („±50“: wie weit ein Tipp von der Lösung liegen darf, in der Einheit von „Abstand“ —
+`round(b × 0,25)`; nur Phase eins). In den Zellen keine
 Einheit, sie steht im Spaltenkopf: „Tipp [cm]“, „Abstand [cm]“, einzeilig — die Spalten wachsen dafür.
-Unter der Tabelle die Legende zum Stern, „* bis 25 % zu groß oder 20 % zu klein“ (ehrlich in Prozent:
-der Faktor 1,25 ist nach oben +25 %, nach unten −20 %); sie erscheint im Takt mit ihrer Zelle.
+Unter der Tabelle die Legende zum Stern, „* bis 25 % zu groß oder zu klein“; sie erscheint im Takt
+mit ihrer Zelle. Die Spalten sind so breit wie ihr breitester Text und ihr einzeiliger Kopf, nicht
+breiter.
 Ganzzahlen rechtsbündig in Tabellenziffern stehen von selbst untereinander.
 
-Fehlt B's Maß, bleibt es beim Faktor mit zwei Nachkommastellen („1,90×“, „1,46× ↓“, „1,25×“), Kommas
-untereinander, ohne Einheit und ohne Legende.
+Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90×“, Kommas untereinander),
+der Abstand und die Toleranz in Prozent („−23 %“, „±25 %“), ohne Einheit und ohne Legende.
 
 Jede Zeile blendet ihren Umriss für sich ein und aus; der eigene ist zu Beginn an.
 
@@ -370,8 +374,8 @@ Raster beim Zoomen.
 - **Loader:** gültige Datei; je ein Fehlerfall pro mechanischer Prüfung; Kategorie ohne ziehbares Paar
   ausgelassen; Beispieldatensatz unter `production`/`staging` → Startabbruch.
 - **Ziehung:** Faktor immer in [1/10, 10]; A ≠ B; beide aus derselben Kategorie; nur `presentation`
-  bewegt sie; `toleranceFactor` aus der Phase.
-- **Wertung:** `scale == factor` → 0; doppelt und halb gleich weit; Grenze ln 1,1 in Phase eins; Phase
+  bewegt sie; `tolerance` aus der Phase.
+- **Wertung:** `scale == factor` → 0; +50 % und −50 % gleich weit; Grenze 25 % in Phase eins; Phase
   zwei qualifiziert alles; 0, negativ, `NaN`, unendlich, fehlendes Feld → `InvalidGuessException`.
 - **Ausgänge:** Feldmengen-Tests für Payload, Lösung, Outcome — `factor`, `metresPerUnit` und
   `measure`/`metres` nie im Payload.

@@ -246,7 +246,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
       :animate="props.animate"
       :selected="selected"
       :factor="props.factor"
-      :tolerance-factor="props.payload.toleranceFactor"
+      :tolerance="props.payload.tolerance"
       :truth="truth"
       :results-delay-ms="resultsDelayMs"
       @select="select"

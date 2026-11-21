@@ -16,8 +16,8 @@ export interface MatchScalePayload {
   categoryName: string
   a: Silhouette
   b: Silhouette
-  /** Factor of the gate (`1.1` = ±10 % in the log), or `null` in phase two. */
-  toleranceFactor: number | null
+  /** The gate as a share of the true size either way (`0.25` = ±25 %), or `null` in phase two. */
+  tolerance: number | null
 }
 
 /** What was measured; the reveal names it. Each kind belongs to one axis. */
@@ -44,7 +44,7 @@ export interface Measure {
 
 export interface MatchScaleSolution {
   factor: number
-  toleranceFactor: number | null
+  tolerance: number | null
   /** `null` where the dataset has no measure, or it arrived as junk. */
   a: Measure | null
   b: Measure | null
@@ -63,19 +63,19 @@ export function asMatchScalePayload(value: unknown): MatchScalePayload | null {
   const a = asSilhouette(raw.a)
   const b = asSilhouette(raw.b)
   if (typeof raw.categoryName !== 'string' || a === null || b === null) return null
-  if (raw.toleranceFactor !== null && !positive(raw.toleranceFactor)) return null
+  if (raw.tolerance !== null && !positive(raw.tolerance)) return null
 
-  return { categoryName: raw.categoryName, a, b, toleranceFactor: raw.toleranceFactor }
+  return { categoryName: raw.categoryName, a, b, tolerance: raw.tolerance }
 }
 
 export function asMatchScaleSolution(value: unknown): MatchScaleSolution | null {
   const raw = record(value)
   if (raw === null || !positive(raw.factor)) return null
-  if (raw.toleranceFactor !== null && !positive(raw.toleranceFactor)) return null
+  if (raw.tolerance !== null && !positive(raw.tolerance)) return null
 
   return {
     factor: raw.factor,
-    toleranceFactor: raw.toleranceFactor,
+    tolerance: raw.tolerance,
     a: asMeasure(raw.a),
     b: asMeasure(raw.b),
   }

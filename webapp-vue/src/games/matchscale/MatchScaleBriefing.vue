@@ -25,7 +25,7 @@ const props = defineProps<{
       :award-points="props.awardPoints"
       game-id="match-scale"
     >
-      <template #qualifies>Höchstens 25 % zu groß oder 20 % zu klein.</template>
+      <template #qualifies>Höchstens 25 % zu groß oder zu klein.</template>
       <template #closest>Der Tipp, der am nächsten dran ist.</template>
     </AwardBox>
   </div>

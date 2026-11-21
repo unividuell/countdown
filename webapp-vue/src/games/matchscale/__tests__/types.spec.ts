@@ -13,14 +13,14 @@ const SILHOUETTE = {
   height: 600,
   attribution: null,
 }
-const PAYLOAD = { categoryName: 'Flächen', a: SILHOUETTE, b: SILHOUETTE, toleranceFactor: 1.1 }
+const PAYLOAD = { categoryName: 'Flächen', a: SILHOUETTE, b: SILHOUETTE, tolerance: 0.1 }
 
 describe('asMatchScalePayload', () => {
   it('accepts a valid payload, with or without a tolerance and attribution', () => {
     expect(asMatchScalePayload(PAYLOAD)).toEqual(PAYLOAD)
-    expect(asMatchScalePayload({ ...PAYLOAD, toleranceFactor: null })).toEqual({
+    expect(asMatchScalePayload({ ...PAYLOAD, tolerance: null })).toEqual({
       ...PAYLOAD,
-      toleranceFactor: null,
+      tolerance: null,
     })
 
     const credited = { ...SILHOUETTE, attribution: 'Someone, CC BY' }
@@ -30,9 +30,9 @@ describe('asMatchScalePayload', () => {
   it.each([
     ['not an object', 7],
     ['null', null],
-    ['no tolerance key', { ...PAYLOAD, toleranceFactor: undefined }],
-    ['NaN tolerance', { ...PAYLOAD, toleranceFactor: NaN }],
-    ['string tolerance', { ...PAYLOAD, toleranceFactor: '1.1' }],
+    ['no tolerance key', { ...PAYLOAD, tolerance: undefined }],
+    ['NaN tolerance', { ...PAYLOAD, tolerance: NaN }],
+    ['string tolerance', { ...PAYLOAD, tolerance: '0.1' }],
     ['no category', { ...PAYLOAD, categoryName: undefined }],
     ['no path', { ...PAYLOAD, a: { ...SILHOUETTE, path: undefined } }],
     ['empty path', { ...PAYLOAD, a: { ...SILHOUETTE, path: '' } }],
@@ -50,27 +50,25 @@ const MEASURE = { axis: 'length', metres: 2.3, source: 'https://example.org/q' }
 
 describe('asMatchScaleSolution', () => {
   it('accepts a factor with or without a tolerance and measures', () => {
-    expect(
-      asMatchScaleSolution({ factor: 2.5, toleranceFactor: 1.1, a: MEASURE, b: null }),
-    ).toEqual({
+    expect(asMatchScaleSolution({ factor: 2.5, tolerance: 0.1, a: MEASURE, b: null })).toEqual({
       factor: 2.5,
-      toleranceFactor: 1.1,
+      tolerance: 0.1,
       a: MEASURE,
       b: null,
     })
-    expect(asMatchScaleSolution({ factor: 2.5, toleranceFactor: null })?.toleranceFactor).toBeNull()
+    expect(asMatchScaleSolution({ factor: 2.5, tolerance: null })?.tolerance).toBeNull()
   })
 
   it('keeps a known kind and drops an unknown or null one, not the measure', () => {
     const kept = asMatchScaleSolution({
       factor: 2,
-      toleranceFactor: null,
+      tolerance: null,
       a: { ...MEASURE, kind: 'head-body' },
       b: { ...MEASURE, kind: 'wingspan' },
     })
     const nulled = asMatchScaleSolution({
       factor: 2,
-      toleranceFactor: null,
+      tolerance: null,
       a: { ...MEASURE, kind: null },
       b: null,
     })
@@ -84,7 +82,7 @@ describe('asMatchScaleSolution', () => {
   it('keeps a subject, drops a blank or junk one, not the measure', () => {
     const solution = asMatchScaleSolution({
       factor: 2,
-      toleranceFactor: null,
+      tolerance: null,
       a: { ...MEASURE, kind: 'diameter', subject: 'Alpha Mk II' },
       b: { ...MEASURE, subject: 3 },
     })
@@ -103,7 +101,7 @@ describe('asMatchScaleSolution', () => {
   ])('narrows a junk measure to null, keeps the round: %s', (_label, measure) => {
     const solution = asMatchScaleSolution({
       factor: 2,
-      toleranceFactor: null,
+      tolerance: null,
       a: measure,
       b: MEASURE,
     })
@@ -115,9 +113,9 @@ describe('asMatchScaleSolution', () => {
   it.each([
     ['null', null],
     ['no tolerance key', { factor: 2 }],
-    ['zero factor', { factor: 0, toleranceFactor: null }],
-    ['NaN factor', { factor: NaN, toleranceFactor: null }],
-    ['string factor', { factor: '2', toleranceFactor: null }],
+    ['zero factor', { factor: 0, tolerance: null }],
+    ['NaN factor', { factor: NaN, tolerance: null }],
+    ['string factor', { factor: '2', tolerance: null }],
   ])('drops junk: %s', (_label, value) => {
     expect(asMatchScaleSolution(value)).toBeNull()
   })

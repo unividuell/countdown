@@ -25,7 +25,7 @@ const PAYLOAD: MatchScalePayload = {
   categoryName: 'Formen',
   a: { name: 'Alpha', path: 'M0 0H1000V500H0Z', width: 1000, height: 500, attribution: null },
   b: { name: 'Beta', path: 'M0 0H600V1000H0Z', width: 600, height: 1000, attribution: null },
-  toleranceFactor: 1.1,
+  tolerance: 0.1,
 }
 
 const ME = '#7c3aed'
@@ -195,7 +195,7 @@ describe('MatchScaleReveal', () => {
     const wrapper = mountReveal()
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('1,10×')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±10 %')
     expect(wrapper.text()).toContain('Lösung')
     expect(wrapper.text()).toContain('Toleranz')
   })
@@ -213,13 +213,13 @@ describe('MatchScaleReveal', () => {
     const band = wrapper.findAll('thead th').map((th) => th.text())
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('[−18,20]')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±20')
     expect(band).toContain('Tipp [cm]')
     expect(band).toContain('Abstand [cm]')
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250')
     expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50')
     expect(wrapper.get('[data-test="match-scale-tolerance-legend"]').text()).toBe(
-      '* bis 10 % zu groß oder 9 % zu klein',
+      '* bis 10 % zu groß oder zu klein',
     )
   })
 
@@ -234,7 +234,7 @@ describe('MatchScaleReveal', () => {
   })
 
   it('in phase two the head names no tolerance', () => {
-    const wrapper = mountReveal({ payload: { ...PAYLOAD, toleranceFactor: null } })
+    const wrapper = mountReveal({ payload: { ...PAYLOAD, tolerance: null } })
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
     expect(wrapper.find('[data-test="match-scale-tolerance"]').exists()).toBe(false)

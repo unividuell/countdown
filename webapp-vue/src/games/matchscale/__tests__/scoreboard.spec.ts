@@ -42,9 +42,9 @@ describe('formatFactor', () => {
 })
 
 describe('formatTolerance', () => {
-  it('names the gate as a factor, the same either way', () => {
-    expect(formatTolerance(1.25)).toBe('1,25×')
-    expect(formatTolerance(1.1)).toBe('1,10×')
+  it('names the gate in whole percent, the same either way', () => {
+    expect(formatTolerance(0.25)).toBe('±25 %')
+    expect(formatTolerance(0.1)).toBe('±10 %')
   })
 })
 
@@ -69,13 +69,13 @@ describe('solutionText', () => {
 })
 
 describe('toleranceText', () => {
-  it('is how far a tip may sit from the solution, signed like the distance column', () => {
-    expect(toleranceText(1.25, TWO_METRES)).toBe('[−40,50]')
-    expect(toleranceText(1.25, { metres: 61, unit: 'm' })).toBe('[−12,15]')
+  it('is how far a tip may sit from the solution either way, in the distance column unit', () => {
+    expect(toleranceText(0.25, TWO_METRES)).toBe('±50')
+    expect(toleranceText(0.25, { metres: 61, unit: 'm' })).toBe('±15')
   })
 
-  it('is the factor without a length, nothing in phase two', () => {
-    expect(toleranceText(1.25, null)).toBe('1,25×')
+  it('is the percent without a length, nothing in phase two', () => {
+    expect(toleranceText(0.25, null)).toBe('±25 %')
     expect(toleranceText(null, TWO_METRES)).toBeNull()
   })
 })
@@ -148,7 +148,7 @@ describe('scoreboardRows', () => {
     expect(byId.exact!.off).toBe('±0')
   })
 
-  it("without B's measure prints the tip and its distance as a factor with an arrow", () => {
+  it("without B's measure prints the tip as a factor and its distance in percent", () => {
     const rows = rowsOf(
       [
         entry({ userId: 'over', guess: { scale: 2.46 } }),
@@ -161,9 +161,9 @@ describe('scoreboardRows', () => {
     const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
 
     expect(byId.over!.tip).toBe('2,46×')
-    expect(byId.over!.off).toBe('1,23× ↑')
-    expect(byId.under!.off).toBe('1,22× ↓')
-    expect(byId.exact!.off).toBe('genau')
+    expect(byId.over!.off).toBe('+23 %')
+    expect(byId.under!.off).toBe('−18 %')
+    expect(byId.exact!.off).toBe('±0 %')
   })
 
   it('sorts outcome-less entries of equal points by user id', () => {
@@ -201,14 +201,14 @@ describe('myWin', () => {
   it('phase one: my tip inside the gate', () => {
     const rows = rowsOf([entry({ userId: 'me', points: 0 })], 'me')
 
-    expect(myWin({ toleranceFactor: 1.1, outcome: inside, rows, mineUserId: 'me' })).toBe(true)
-    expect(myWin({ toleranceFactor: 1.1, outcome: outside, rows, mineUserId: 'me' })).toBe(false)
-    expect(myWin({ toleranceFactor: 1.1, outcome: null, rows, mineUserId: 'me' })).toBeNull()
+    expect(myWin({ tolerance: 0.1, outcome: inside, rows, mineUserId: 'me' })).toBe(true)
+    expect(myWin({ tolerance: 0.1, outcome: outside, rows, mineUserId: 'me' })).toBe(false)
+    expect(myWin({ tolerance: 0.1, outcome: null, rows, mineUserId: 'me' })).toBeNull()
   })
 
   it('phase two: my row holds the points now', () => {
     const rows = rowsOf([entry({ userId: 'me', points: 3 }), entry({ userId: 'you', points: 0 })])
-    const phaseTwo = { toleranceFactor: null, outcome: outside, rows }
+    const phaseTwo = { tolerance: null, outcome: outside, rows }
 
     expect(myWin({ ...phaseTwo, mineUserId: 'me' })).toBe(true)
     expect(myWin({ ...phaseTwo, mineUserId: 'you' })).toBe(false)

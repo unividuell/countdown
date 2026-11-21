@@ -4,13 +4,14 @@
  * from the truth, whole numbers in the round's unit. The name is a button — tapping it toggles
  * that player's outline on the reveal's field.
  *
- *                     Lösung      Toleranz*
- *   Auswertung             200        160–250
- *   Name             Tipp [cm]   Abstand [cm]   Pkt
- *   anna                   160            −40     1
- *                  * bis 25 % zu groß oder 20 % zu klein
+ *                     Lösung    Toleranz*
+ *   Auswertung             200          ±50
+ *   Name             Tipp [cm] Abstand [cm]   Pkt
+ *   anna                   160          −40     1
+ *                     * bis 25 % zu groß oder zu klein
  *
- * Without B's measure it falls back to factors, commas aligned per column: `1,90×`, `1,46× ↓`.
+ * Without B's measure the tip falls back to a factor, commas aligned (`1,90×`), the distance to
+ * percent (`−23 %`).
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -31,7 +32,7 @@ const props = defineProps<{
   /** The true factor between A and B. */
   factor: number
   /** `null` in phase two — there is no gate there. */
-  toleranceFactor: number | null
+  tolerance: number | null
   /** `null` without B's measure: then factors. */
   truth: Truth | null
   /** When the rows start landing: after B's growth. */
@@ -41,36 +42,31 @@ const props = defineProps<{
 const emit = defineEmits<{ select: [userId: string] }>()
 
 const solution = computed(() => solutionText(props.factor, props.truth))
-const tolerance = computed(() => toleranceText(props.toleranceFactor, props.truth))
+const tolerance = computed(() => toleranceText(props.tolerance, props.truth))
 
 /** The unit in the header, `Tipp [cm]`; factors carry their own `×`. */
 const unit = computed(() => (props.truth === null ? '' : ` [${props.truth.unit}]`))
 
-/**
- * The gate in percent beneath the table: symmetric as a factor, not in percent — ×1,25 is 25 % too
- * large, ÷1,25 is 20 % too small.
- */
+/** The gate in percent beneath the table, explaining the head's `±50`. */
 const toleranceNote = computed(() => {
-  if (props.truth === null || props.toleranceFactor === null) return null
+  if (props.truth === null || props.tolerance === null) return null
 
-  const up = Math.round((props.toleranceFactor - 1) * 100)
-  const down = Math.round((1 - 1 / props.toleranceFactor) * 100)
-
-  return `* bis ${up} % zu groß oder ${down} % zu klein`
+  return `* bis ${Math.round(props.tolerance * 100)} % zu groß oder zu klein`
 })
 
 /**
- * Lengths widen their column as needed — `1600–2500` outgrows 4.5rem; factors keep theirs. One
- * `ch` spare for the sign, the padding on top. The header stays on one line: `Abstand [mm]` measures
- * 84 px in the head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line.
+ * Lengths take what their widest text and the header need, nothing more: one `ch` spare for the
+ * sign, the padding on top. The header stays on one line: `Abstand [mm]` measures 84 px in the
+ * head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line. Factors keep
+ * `factorWidth`.
  */
-function width(base: string, label: string, texts: readonly (string | null)[]): string {
-  if (props.truth === null) return base
+function width(factorWidth: string, label: string, texts: readonly (string | null)[]): string {
+  if (props.truth === null) return factorWidth
 
   const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
   const labelRem = label.length * 0.45 + 0.25
 
-  return `max(${base}, calc(${ch}ch + 0.25rem), ${labelRem}rem)`
+  return `max(calc(${ch}ch + 0.25rem), ${labelRem}rem)`
 }
 
 /**
@@ -98,10 +94,10 @@ const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'off',
     label: `Abstand${unit.value}`,
-    ...(props.toleranceFactor === null
+    ...(props.tolerance === null
       ? {}
       : { fact: toleranceNote.value === null ? 'Toleranz' : 'Toleranz*' }),
-    width: width('4.5rem', `Abstand${unit.value}`, [
+    width: width('3.5rem', `Abstand${unit.value}`, [
       tolerance.value,
       ...props.rows.map((row) => row.off),
     ]),
@@ -116,11 +112,9 @@ function intCh(texts: readonly (string | null)[]): number {
 }
 
 const tipCh = computed(() => intCh([solution.value, ...props.rows.map((row) => row.tip)]))
-const offCh = computed(() => intCh([tolerance.value, ...props.rows.map((row) => row.off)]))
 
-/** What follows the number: `×` in the tip column, `× ↑` in the distance column. */
+/** What follows the factor: `×`. */
 const TIP_REST_EM = 0.75
-const OFF_REST_EM = 1.75
 
 /** Like PaintRatio's head values: the solution row's ground, right-aligned like the column. */
 const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface tabular-nums'
@@ -160,20 +154,14 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
         /></span>
       </template>
       <template v-if="tolerance !== null" #fact-off>
-        <span data-test="match-scale-tolerance" :class="FACT"
-          ><template v-if="props.truth !== null">{{ tolerance }}</template
-          ><DecimalAligned v-else :text="tolerance" :int-ch="offCh" :rest-em="OFF_REST_EM"
-        /></span>
+        <span data-test="match-scale-tolerance" :class="FACT">{{ tolerance }}</span>
       </template>
 
       <template #cell-tip="{ row }"
         ><template v-if="props.truth !== null">{{ row.tip }}</template
         ><DecimalAligned v-else :text="row.tip" :int-ch="tipCh" :rest-em="TIP_REST_EM"
       /></template>
-      <template #cell-off="{ row }"
-        ><template v-if="props.truth !== null">{{ row.off }}</template
-        ><DecimalAligned v-else :text="row.off" :int-ch="offCh" :rest-em="OFF_REST_EM"
-      /></template>
+      <template #cell-off="{ row }">{{ row.off }}</template>
     </RevealScoreboard>
 
     <p

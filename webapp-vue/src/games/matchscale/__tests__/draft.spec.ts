@@ -20,7 +20,7 @@ const PAYLOAD: MatchScalePayload = {
   categoryName: 'Flächen',
   a: SILHOUETTE,
   b: { ...SILHOUETTE, path: 'M0 0L20 20Z' },
-  toleranceFactor: 1.1,
+  tolerance: 0.1,
 }
 const KEY = draftKey({ userId: 'u1', payload: PAYLOAD, timed: false })
 const DRAFT: Draft = { v: 1, b: { x: 5, y: 0.5, scale: 1.3 }, zoom: 1.5, centre: { x: 4, y: 2 } }

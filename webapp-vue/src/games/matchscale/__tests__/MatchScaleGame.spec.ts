@@ -19,7 +19,7 @@ const PAYLOAD: MatchScalePayload = {
   categoryName: 'Formen',
   a: { name: 'Alpha', path: 'M0 0H1000V500H0Z', width: 1000, height: 500, attribution: null },
   b: { name: 'Beta', path: 'M0 0H600V1000H0Z', width: 600, height: 1000, attribution: null },
-  toleranceFactor: 1.1,
+  tolerance: 0.1,
 }
 
 function mountGame(over: Partial<GameProps> = {}) {
@@ -56,7 +56,7 @@ describe('MatchScaleGame', () => {
 
     await wrapper.setProps({
       myGuess: { scale: 1.3 },
-      solution: { factor: 1.6, toleranceFactor: 1.1 },
+      solution: { factor: 1.6, tolerance: 0.1 },
     })
 
     expect(wrapper.getComponent(MatchScaleReveal).props('from')).toEqual(from)
@@ -77,7 +77,7 @@ describe('MatchScaleGame', () => {
     const measure = { axis: 'height', metres: 0.45, source: 'https://example.org/b' }
     const wrapper = mountGame({
       myGuess: { scale: 1.3 },
-      solution: { factor: 1.6, toleranceFactor: 1.1, a: null, b: measure },
+      solution: { factor: 1.6, tolerance: 0.1, a: null, b: measure },
     })
 
     expect(wrapper.findComponent(MatchScaleBoard).exists()).toBe(false)
@@ -91,7 +91,7 @@ describe('MatchScaleGame', () => {
     const wrapper = mountGame({
       myGuess: { scale: 1.55 },
       outcome: { scale: 1.55, deviation: 0.03, withinTolerance: true },
-      solution: { factor: 1.6, toleranceFactor: 1.1 },
+      solution: { factor: 1.6, tolerance: 0.1 },
     })
 
     expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(true)

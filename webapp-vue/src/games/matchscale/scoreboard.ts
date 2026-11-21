@@ -14,7 +14,7 @@ export interface ScoreboardRow extends SharedScoreboardRow {
   scale: number
   /** The tip as B's length in the round's unit, e.g. `160`; without B's measure a factor, `1,30×`. */
   tip: string
-  /** Tip minus truth in the same unit, e.g. `−40`, `+50`, `±0`; without, `1,30× ↑` (too large). */
+  /** Tip minus truth in the same unit, e.g. `−40`, `+50`, `±0`; without, in percent: `+30 %`. */
   off: string
   /** As the server judged it; `null` while the entry has no outcome. */
   deviation: number | null
@@ -26,9 +26,14 @@ export function formatFactor(x: number): string {
   return nf.format(x)
 }
 
-/** The gate as the table names it: `1.25` → `1,25×`, the same either way. */
-export function formatTolerance(toleranceFactor: number): string {
-  return `${nf.format(toleranceFactor)}×`
+/** A share in whole percent, signed like the distance column: `0.3` → `+30 %`, `0` → `±0 %`. */
+export function formatPercent(share: number): string {
+  return `${formatSigned(Math.round(share * 100))} %`
+}
+
+/** The gate in whole percent, the same either way: `0.25` → `±25 %`. */
+export function formatTolerance(tolerance: number): string {
+  return `±${Math.round(tolerance * 100)} %`
 }
 
 /** B's true length and the round's unit: what the table counts in. */
@@ -52,20 +57,15 @@ export function solutionText(factor: number, truth: Truth | null): string {
 }
 
 /**
- * The head's „Toleranz“: how far a tip may sit from the solution, in the „Abstand“ column's terms —
- * `[−40,50]` for 200 cm at 1.25, narrow as a head cell must be; without a length the factor,
- * `1,25×`. `null` in phase two.
+ * The head's „Toleranz“: how far a tip may sit from the solution either way, in the „Abstand“
+ * column's terms — `±50` for 200 cm at 0.25; without a length in percent, `±25 %`. `null` in
+ * phase two.
  */
-export function toleranceText(toleranceFactor: number | null, truth: Truth | null): string | null {
-  if (toleranceFactor === null) return null
-  if (truth === null) return formatTolerance(toleranceFactor)
+export function toleranceText(tolerance: number | null, truth: Truth | null): string | null {
+  if (tolerance === null) return null
+  if (truth === null) return formatTolerance(tolerance)
 
-  const { metres, unit } = truth
-  const solution = inUnit(metres, unit)
-  const low = formatLength(inUnit(metres / toleranceFactor, unit) - solution)
-  const high = formatLength(inUnit(metres * toleranceFactor, unit) - solution)
-
-  return `[${low},${high}]`
+  return `±${formatLength(inUnit(truth.metres * tolerance, truth.unit))}`
 }
 
 /**
@@ -117,19 +117,12 @@ function byDeviation(a: number | null, b: number | null): number {
  * between the rounded values, so the row adds up: Lösung `200`, Tipp `160`, Abstand `−40`.
  */
 function cells(scale: number, factor: number, truth: Truth | null): { tip: string; off: string } {
-  if (truth === null) return { tip: `${formatFactor(scale)}×`, off: formatOff(scale / factor) }
+  if (truth === null)
+    return { tip: `${formatFactor(scale)}×`, off: formatPercent(scale / factor - 1) }
 
   const tip = inUnit((truth.metres * scale) / factor, truth.unit)
 
   return { tip: formatLength(tip), off: formatSigned(tip - inUnit(truth.metres, truth.unit)) }
-}
-
-/** `ratio` = tip / truth: `1.3` → `1,3× ↑`, `0.5` → `2× ↓`; equal within rounding → `genau`. */
-function formatOff(ratio: number): string {
-  const times = Math.max(ratio, 1 / ratio)
-  if (nf.format(times) === nf.format(1)) return 'genau'
-
-  return `${nf.format(times)}× ${ratio > 1 ? '↑' : '↓'}`
 }
 
 /**
@@ -139,13 +132,13 @@ function formatOff(ratio: number): string {
  */
 export function myWin(input: {
   /** `null` in phase two. */
-  toleranceFactor: number | null
+  tolerance: number | null
   /** My own outcome. */
   outcome: unknown
   rows: readonly ScoreboardRow[]
   mineUserId: string | null
 }): boolean | null {
-  if (input.toleranceFactor !== null) {
+  if (input.tolerance !== null) {
     return asMatchScaleOutcome(input.outcome)?.withinTolerance ?? null
   }
 

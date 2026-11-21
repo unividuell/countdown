@@ -22,7 +22,6 @@ import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.node.DoubleNode
 import tools.jackson.databind.node.ObjectNode
 import java.util.UUID
-import kotlin.math.ln
 
 @Import(TestcontainersConfiguration::class)
 @SpringBootTest
@@ -73,26 +72,26 @@ class MatchScaleGameTypeTest(
 
     @Test
     fun `phase one bakes in a tenth of tolerance, phase two has no gate at all`() {
-        draw(phase = Phase.ONE).toleranceFactor shouldBe 1.25
-        draw(phase = Phase.TWO).toleranceFactor.shouldBeNull()
+        draw(phase = Phase.ONE).tolerance shouldBe 0.25
+        draw(phase = Phase.TWO).tolerance.shouldBeNull()
     }
 
     @Test
     fun `the payload carries exactly what the player needs and nothing else`() {
         val node = fieldsOf(game.present(draw(phase = Phase.ONE)))
 
-        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "toleranceFactor")
+        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "tolerance")
         listOf("a", "b").forEach {
             node.get(it).propertyNames().toSet() shouldBe setOf("name", "path", "width", "height", "attribution")
         }
     }
 
     @Test
-    fun `phase two's payload still carries toleranceFactor, as an explicit null`() {
+    fun `phase two's payload still carries tolerance, as an explicit null`() {
         val node = fieldsOf(game.present(draw(phase = Phase.TWO)))
 
-        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "toleranceFactor")
-        node.get("toleranceFactor").isNull shouldBe true
+        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "tolerance")
+        node.get("tolerance").isNull shouldBe true
     }
 
     @Test
@@ -154,13 +153,13 @@ class MatchScaleGameTypeTest(
     fun `the solution carries exactly the factor, the tolerance and both measures`() {
         val node = fieldsOf(game.solution(draw(phase = Phase.ONE)))
 
-        node.propertyNames().toSet() shouldBe setOf("factor", "toleranceFactor", "a", "b")
+        node.propertyNames().toSet() shouldBe setOf("factor", "tolerance", "a", "b")
         listOf("a", "b").forEach {
             node.get(it).propertyNames().toSet() shouldBe setOf("axis", "kind", "metres", "source", "subject")
         }
 
         val phaseTwo = fieldsOf(game.solution(draw(phase = Phase.TWO)))
-        phaseTwo.get("toleranceFactor").isNull shouldBe true
+        phaseTwo.get("tolerance").isNull shouldBe true
     }
 
     @Test
@@ -182,13 +181,13 @@ class MatchScaleGameTypeTest(
     }
 
     @Test
-    fun `too large and too small by the same ratio are equally far off`() {
+    fun `too large and too small by the same share are equally far off`() {
         val params = draw(phase = Phase.ONE)
 
-        val large = game.judge(params = params, guess = guess(params.factor * 2)).deviation
-        val small = game.judge(params = params, guess = guess(params.factor / 2)).deviation
+        val large = game.judge(params = params, guess = guess(params.factor * 1.5)).deviation
+        val small = game.judge(params = params, guess = guess(params.factor * 0.5)).deviation
 
-        large shouldBe (ln(2.0) plusOrMinus 1e-9)
+        large shouldBe (0.5 plusOrMinus 1e-9)
         small shouldBe (large plusOrMinus 1e-9)
     }
 
@@ -198,8 +197,8 @@ class MatchScaleGameTypeTest(
 
         game.judge(params = params, guess = guess(params.factor * 1.25)).qualifies shouldBe true
         game.judge(params = params, guess = guess(params.factor * 1.26)).qualifies shouldBe false
-        game.judge(params = params, guess = guess(params.factor / 1.25)).qualifies shouldBe true
-        game.judge(params = params, guess = guess(params.factor / 1.26)).qualifies shouldBe false
+        game.judge(params = params, guess = guess(params.factor * 0.75)).qualifies shouldBe true
+        game.judge(params = params, guess = guess(params.factor * 0.74)).qualifies shouldBe false
     }
 
     @Test
