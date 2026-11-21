@@ -8,6 +8,7 @@ import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
+import HoldButton from '@/ui/HoldButton.vue'
 import { usePlayback } from '@/ui/usePlayback'
 import { clipAsset } from './types'
 import type { SongSuggestion } from './api'
@@ -167,6 +168,9 @@ function onStop(): void {
   playback.stop()
 }
 
+/** The ring's value: „Aufgeben“ shows under the button while it is above 0. */
+const giveUpProgress = ref(0)
+
 const playLabel = computed(() => {
   if (stageError.value) return 'Ausschnitt erneut laden'
   return playback.playing.value ? 'Pause' : 'Abspielen'
@@ -216,7 +220,7 @@ onUnmounted(() => {
         :playing="playback.playing.value"
         @press="onPlay()"
       />
-      <span class="min-w-0 justify-self-start pl-4">
+      <span class="flex min-w-0 items-center justify-between pl-4">
         <button
           type="button"
           data-test="skip"
@@ -228,23 +232,36 @@ onUnmounted(() => {
         >
           <PlayerIcon name="skip" />
         </button>
+        <!-- Giving up ends the round, so it takes a hold. `HoldButton` paints nothing without a
+             colour: the outline and the × are ours, the name shows above it only while held. -->
+        <span data-test="give-up" class="relative size-9 shrink-0">
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full border-2 border-outline text-base text-on-surface-variant"
+            :class="{ 'opacity-40': disabled }"
+          >
+            <PlayerIcon name="close" />
+          </span>
+          <HoldButton
+            :ready="true"
+            :disabled="disabled"
+            label="Aufgeben — gedrückt halten"
+            :sparks="false"
+            @confirm="emit('giveUp')"
+            @progress="giveUpProgress = $event"
+          />
+          <span
+            data-test="give-up-label"
+            aria-hidden="true"
+            class="pointer-events-none absolute right-1/2 bottom-full mb-1.5 translate-x-1/2 text-xs font-medium whitespace-nowrap text-on-surface transition-opacity duration-150 motion-reduce:transition-none"
+            :class="giveUpProgress > 0 ? 'opacity-100' : 'opacity-0'"
+          >
+            Aufgeben
+          </span>
+        </span>
       </span>
     </div>
 
     <SongSnippetBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
-
-    <!-- Last and to the side: giving up is the one thing here nobody should reach for by accident,
-         so it sits below everything the round is actually played with. -->
-    <div class="flex justify-end">
-      <button
-        type="button"
-        data-test="give-up"
-        class="cursor-pointer rounded-lg border border-outline px-2.5 py-1 text-xs whitespace-nowrap text-on-surface-variant hover:bg-surface-container disabled:opacity-40"
-        :disabled="disabled"
-        @click="emit('giveUp')"
-      >
-        Aufgeben
-      </button>
-    </div>
   </div>
 </template>

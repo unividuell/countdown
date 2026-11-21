@@ -123,7 +123,9 @@ function isResolving(row: ScoreRow): boolean {
         >
           <PlayerIcon :name="isPlaying(row) ? 'pause' : 'play'" />
         </button>
-        <span class="truncate" data-test="guess-label">{{ row.guessLabel }}</span>
+        <span class="truncate" data-test="guess-label" :title="row.guessLabel">{{
+          row.guessLabel
+        }}</span>
       </span>
     </template>
 

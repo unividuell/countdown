@@ -22,7 +22,8 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **44px is the tap floor.** Named exceptions: a strip that must stay whole beats it — Blockierung's
   hotbar never scrolls, so its slots shrink on a narrow phone (`CopyBlocksBoard`); Anmaßung's tools
   are 32px wide (44 tall) and the row never wraps, the colour picker gives way (`PaintRatioBoard`);
-  the drawer's pool links are packed likewise (`NavDrawer`).
+  the drawer's pool links are packed likewise (`NavDrawer`); Anspielung's give-up × is 36px, small
+  on purpose next to the transport it must not be mistaken for (`SongSnippetBoard`).
 - **What changes round to round goes in a box's headline.** `InfoBox` and `AwardBox` fold, and
   folded is their usual state, so a figure only in the body goes unread: the stake, a tolerance
   (`AwardBox`'s `detail`).
@@ -32,6 +33,8 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
   image menu and fires `pointercancel` mid-gesture. Give the image
   `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
   `DedusterMark`, `PlacePatchBoard`.
+- **A text field's font is at least 16px (`text-base`).** Below that, iOS Safari zooms the page
+  in on focus. Never `maximum-scale=1` instead: it also kills pinch zoom. `SongSearchBox`.
 
 ### Stacking
 
@@ -115,6 +118,8 @@ the ancestor chain answers all three. `HueWheel`.
   then even from half the hold on. Anything new that should move with the hold takes that curve
   rather than a timing of its own. `progress` reports the ring as shown, so a board's `HoldLock`
   follows it. The count-in (`beats`) is exempt from all of it: its ring is a metronome.
+- **A hold that ends something does not celebrate.** Giving up (Anspielung) is a plain hold:
+  `sparks: false`, no knocks, its name only while held.
 - **A surface where play starts drags at its rim stays off the screen's side edges.** The OS owns a
   touch that starts there (Android: both edges are „back“, iOS Safari: the left), and no web API
   excludes the zone. Keep such a surface inside the page gutter; a drag begun inside may still

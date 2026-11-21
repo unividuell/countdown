@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import SongSnippetBoard from './SongSnippetBoard.vue'
 import SongSnippetReveal from './SongSnippetReveal.vue'
 import { scoreRows } from './scoreboard'
@@ -33,6 +34,21 @@ const rows = computed(() =>
 )
 /** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
+
+/**
+ * The gate is the right song; a give-up leaves an entry without an outcome, and fails it. No entry
+ * of mine: no verdict.
+ */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate: props.entries.some((entry) => entry.userId === props.mineUserId)
+      ? (props.outcome as { correct?: boolean } | null)?.correct === true
+      : null,
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
 
 const hasRevealedLive = useRevealedLive(revealed)
 
@@ -91,6 +107,7 @@ function onSkip(fromStage: number): void {
         :rows="rows"
         :live="live"
         :animate="hasRevealedLive"
+        :won="won"
         :assets="assets"
       />
       <SongSnippetBoard

@@ -1,7 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import SongSnippetReveal from '@/games/songsnippet/SongSnippetReveal.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
+import { playVerdict } from '@/ui/verdictSound'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
+
+enableAutoUnmount(afterEach)
 
 const SOLUTION: SongSnippetSolution = {
   artist: 'Element of Crime',
@@ -14,7 +21,7 @@ const SOLUTION: SongSnippetSolution = {
  * Both children bring their own audio and asset machinery and are tested where they live; this
  * spec is about the reveal's own root and nothing else.
  */
-function mountReveal(animate = false) {
+function mountReveal(animate = false, won: boolean | null = null) {
   return mount(SongSnippetReveal, {
     props: {
       solution: SOLUTION,
@@ -22,6 +29,7 @@ function mountReveal(animate = false) {
       rows: [],
       live: false,
       animate,
+      won,
     },
     global: { stubs: { SongPlayerReveal: true, SongSnippetScoreboard: true } },
   })
@@ -46,5 +54,72 @@ describe('SongSnippetReveal', () => {
   it('hands a live reveal on to the player, whose bar morphs on it', () => {
     expect(mountReveal(true).getComponent({ name: 'SongPlayerReveal' }).props('animate')).toBe(true)
     expect(mountReveal().getComponent({ name: 'SongPlayerReveal' }).props('animate')).toBe(false)
+  })
+
+  describe('verdict', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(playVerdict).mockClear()
+      stopVerdict.mockClear()
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    it('plays mine when the solution appears', () => {
+      mountReveal(true, false)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
+    it('plays it at once where nothing moves', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+      mountReveal(true, true)
+      vi.advanceTimersByTime(0)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal(false, true)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('stays silent without a verdict on a tip of mine', () => {
+      mountReveal(true, null)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('stays silent in a background tab', () => {
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+      mountReveal(true, true)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('leaving cuts a verdict that is sounding', () => {
+      const w = mountReveal(true, true)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      w.unmount()
+
+      expect(stopVerdict).toHaveBeenCalledOnce()
+    })
+
+    // A speaker by the song would read as muting the song.
+    it('has no sound toggle', () => {
+      expect(mountReveal(true, true).find('button[aria-label="Ton"]').exists()).toBe(false)
+    })
   })
 })

@@ -189,7 +189,7 @@ const hits = computed(() => suggestions.value)
           v-model="query"
           type="text"
           data-test="song-search"
-          class="h-11 w-full rounded-full border border-outline bg-surface-container-lowest pr-11 pl-4 text-sm"
+          class="h-11 w-full rounded-full border border-outline bg-surface-container-lowest pr-11 pl-4 text-base"
           placeholder="Song suchen und tippen…"
           :disabled="disabled"
         />

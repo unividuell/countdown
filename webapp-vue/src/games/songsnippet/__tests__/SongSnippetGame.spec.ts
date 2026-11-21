@@ -16,7 +16,7 @@ vi.mock('@/games/songsnippet/SongSnippetBoard.vue', () => ({
 vi.mock('@/games/songsnippet/SongSnippetReveal.vue', () => ({
   default: {
     name: 'SongSnippetReveal',
-    props: ['solution', 'durations', 'rows', 'live', 'assets'],
+    props: ['solution', 'durations', 'rows', 'live', 'won', 'assets'],
     template: '<div data-test="reveal-stub" />',
   },
 }))
@@ -170,5 +170,55 @@ describe('SongSnippetGame', () => {
     })
 
     expect(w.findComponent({ name: 'SongSnippetReveal' }).props('live')).toBe(true)
+  })
+
+  describe('my verdict', () => {
+    const won = (overrides: Partial<GameProps>) =>
+      mountGame(4, { solution: SOLUTION, mineUserId: 'me', ...overrides })
+        .findComponent({ name: 'SongSnippetReveal' })
+        .props('won')
+
+    it('wins with the right song while every right tip scores', () => {
+      expect(
+        won({
+          awardRule: 'ALL_QUALIFYING',
+          entries: [entry('me', 1, 2)],
+          outcome: { correct: true },
+        }),
+      ).toBe(true)
+    })
+
+    it('fails with a wrong song', () => {
+      expect(
+        won({
+          awardRule: 'ALL_QUALIFYING',
+          entries: [entry('me', 0, 4)],
+          outcome: { correct: false },
+        }),
+      ).toBe(false)
+    })
+
+    it('fails a give-up: an entry without an outcome', () => {
+      expect(
+        won({ awardRule: 'ALL_QUALIFYING', entries: [entry('me', 0, 4)], outcome: null }),
+      ).toBe(false)
+    })
+
+    it('says nothing without an entry of mine', () => {
+      expect(won({ awardRule: 'ALL_QUALIFYING', entries: [entry('fry', 1, 0)] })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', () => {
+      const entries = [entry('fry', 5, 1), entry('me', 0, 3)]
+
+      expect(won({ awardRule: 'CLOSEST_ONLY', entries, outcome: { correct: true } })).toBe(false)
+      expect(
+        won({
+          awardRule: 'CLOSEST_ONLY',
+          entries: [entry('me', 5, 1)],
+          outcome: { correct: true },
+        }),
+      ).toBe(true)
+    })
   })
 })
