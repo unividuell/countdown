@@ -6,6 +6,7 @@
 import { readableTextColor } from '@/ui/readableTextColor'
 import { hslToHex } from './color'
 import { wrap360 } from './geometry'
+import { OUTLINE_FRACTION } from './ring'
 import { BAND_INNER_FRACTION, KNOB_TRACK_FRACTION } from './wheel'
 
 /** One guess to place, already narrowed to numbers by whoever read it off the wire. */
@@ -136,9 +137,9 @@ export function layoutGuesses(guesses: RevealGuess[], mineUserId: string | null)
 
 export interface SectorPaths {
   /**
-   * The dashed window: two boundary lines and the two arcs that close them. `null` at zero
-   * tolerance, and `null` again once the half-window reaches 180° — a window that wide has no
-   * boundary left to draw, the whole circle counts.
+   * The dashed window: its two boundary lines. `null` at zero tolerance, and `null` again once the
+   * half-window reaches 180° — a window that wide has no boundary left to draw, the whole circle
+   * counts.
    */
   window: string | null
   /** The solid line at the solution itself. */
@@ -160,8 +161,13 @@ export function unitPoint(angleDeg: number, radiusFraction: number): { x: number
  * The window and the solution as two separate paths, because the whole key to reading the picture
  * is that dashed means boundary and solid means solution.
  *
- * Both reach only across the band, from [innerFraction] to the wheel's edge: the hole stays empty.
- * The original drew its boundary lines all the way into the centre.
+ * Every line runs between the ring's two outlines and stops at them: the outlines close the window,
+ * and ink that differs from theirs never cuts them. The hole stays empty.
+ *
+ *   outline ──┬╌╌╌╌╌┬──────┬╌╌╌╌╌┬──   1 − OUTLINE_FRACTION
+ *             ╎     ╎      │     ╎
+ *   outline ──┴╌╌╌╌╌┴──────┴╌╌╌╌╌┴──   innerFraction
+ *           from        target     to
  */
 export function sectorPaths(
   targetHue: number,
@@ -170,45 +176,20 @@ export function sectorPaths(
 ): SectorPaths {
   const radial = (angle: number): string => {
     const inner = unitPoint(angle, innerFraction)
-    const outer = unitPoint(angle, 1)
+    const outer = unitPoint(angle, 1 - OUTLINE_FRACTION)
     return `M ${fmt(inner.x)},${fmt(inner.y)} L ${fmt(outer.x)},${fmt(outer.y)}`
-  }
-  const arc = (radiusFraction: number, from: number, to: number, spanDeg: number): string => {
-    const a = unitPoint(from, radiusFraction)
-    const b = unitPoint(to, radiusFraction)
-    const r = fmt(radiusFraction / 2)
-    // Sweep 1 is SVG's positive angle direction, which with y growing downwards is clockwise on
-    // screen — the same direction the angles above run in.
-    return `M ${fmt(a.x)},${fmt(a.y)} A ${r},${r} 0 ${spanDeg > 180 ? 1 : 0},1 ${fmt(b.x)},${fmt(b.y)}`
   }
 
   const solution = radial(targetHue)
-  if (toleranceDeg <= 0) return { window: null, solution }
 
   // A half-window of 180° or more covers the whole circle: there is no boundary left to draw, the
-  // same picture as zero tolerance. Below 180° the window's actual clockwise sweep from
-  // `target − toleranceDeg` to `target + toleranceDeg` is `2 · toleranceDeg`, but clamping that
-  // span to 360° (as the code used to) keeps the large-arc-flag's `1` past 90° while the arc
-  // endpoints keep moving with the true, unclamped span — so the two boundary points end up
-  // closer together than 180° apart while the flag says "go the long way", and the arc is drawn
-  // the wrong way round: it closes the small gap between the endpoints instead of sweeping the
-  // large window between them. At exactly 180° the two endpoints coincide and SVG drops the
-  // zero-length arc entirely, leaving two radial lines and no closed window at all. `toleranceDeg`
-  // is a number `GuessHueTolerance.DEGREES` documents the backend as free to change without a
-  // frontend release, so this has to be correct for any finite value, not just the values in use
-  // today.
-  if (toleranceDeg >= 180) return { window: null, solution }
+  // same picture as zero tolerance. `toleranceDeg` is a number `GuessHueTolerance.DEGREES`
+  // documents the backend as free to change without a frontend release, so this has to hold for
+  // any finite value, not just the values in use today.
+  if (toleranceDeg <= 0 || toleranceDeg >= 180) return { window: null, solution }
 
-  const from = targetHue - toleranceDeg
-  const to = targetHue + toleranceDeg
-  const span = toleranceDeg * 2
   return {
-    window: [
-      radial(from),
-      radial(to),
-      arc(innerFraction, from, to, span),
-      arc(1, from, to, span),
-    ].join(' '),
+    window: `${radial(targetHue - toleranceDeg)} ${radial(targetHue + toleranceDeg)}`,
     solution,
   }
 }
