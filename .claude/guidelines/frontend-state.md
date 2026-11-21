@@ -182,7 +182,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`. It
   plays with the solution's beat, only on a reveal that just happened here (`animate`) — a reload
   is silent — and at once where nothing moves. The reveal shows the `SoundToggle` where the board
-  had it.
+  had it — except in a game whose sound is the game (Anspielung): a speaker by the song reads as
+  muting the song, so the verdict there follows the switch set elsewhere, no toggle of its own.
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
   neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and

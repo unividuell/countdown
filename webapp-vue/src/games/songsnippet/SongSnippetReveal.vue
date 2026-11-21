@@ -3,9 +3,14 @@
  * The card after the round: the song as something to look at and play, and the scoreboard under it.
  *
  * Composition only — every number it hands down was worked out in `SongSnippetGame` from the pure
- * `scoreboard` module, so this file has nothing to get wrong and nothing to test.
+ * `scoreboard` module. Its one job of its own: the verdict, with the solution's beat, only on a
+ * reveal that just happened here. No `SoundToggle`: a speaker by the song would read as muting it.
  */
+import { onBeforeUnmount, onMounted } from 'vue'
 import type { RoundAssets } from '@/api/assets'
+import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { inBackground } from '@/ui/motion'
+import { playVerdict, type Verdict } from '@/ui/verdictSound'
 import SongPlayerReveal from './SongPlayerReveal.vue'
 import SongSnippetScoreboard from './SongSnippetScoreboard.vue'
 import type { ScoreRow } from './scoreboard'
@@ -18,9 +23,31 @@ const props = defineProps<{
   live: boolean
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
+  /** Which verdict the solution's beat plays: `null` plays none. */
+  won: boolean | null
   // `| undefined` (not a bare `?`): see the note in `SongPlayerReveal`.
   assets?: RoundAssets | undefined
 }>()
+
+let beat: ReturnType<typeof setTimeout> | undefined
+let verdict: Verdict | null = null
+
+onMounted(() => {
+  if (!props.animate || inBackground() || props.won === null) return
+
+  const won = props.won
+  beat = setTimeout(
+    () => {
+      verdict = playVerdict(won)
+    },
+    isStill(props.animate) ? 0 : SOLUTION_DELAY_MS,
+  )
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(beat)
+  verdict?.stop()
+})
 </script>
 
 <template>
