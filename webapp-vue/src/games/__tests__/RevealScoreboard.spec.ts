@@ -107,6 +107,14 @@ describe('RevealScoreboard', () => {
     expect(units.get('th').classes()).toContain('text-end')
   })
 
+  it("puts a unit's name before its bracket where the sign alone is unclear", () => {
+    const wrapper = mountBoard({
+      columns: [{ key: 'tip', label: 'Tipp', unit: '×', unitName: 'Faktor' }],
+    })
+
+    expect(wrapper.get('[data-test="scoreboard-units"] th').text()).toBe('Faktor[×]')
+  })
+
   it('has no unit row when no column names one', () => {
     expect(mountBoard().find('[data-test="scoreboard-units"]').exists()).toBe(false)
   })

@@ -238,6 +238,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
         :measure-a="props.measureA"
         :measure-b="props.measureB"
         :factor="props.factor"
+        :legend="props.payload.categoryLegend"
       />
     </div>
 

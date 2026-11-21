@@ -29,11 +29,17 @@ const props = defineProps<{
   measureB: Measure | null
   /** The reveal's factor; absent while playing. */
   factor?: number
+  /** The category's legend, for its footnote marker on both names. */
+  legend?: string | null
 }>()
 
 const items = computed(() => {
   // In the reveal a subject adds its marker after the credits'; the credits' stay as they were.
-  const { markers } = footnotesOf(props.a, props.b, props.measureA, props.measureB)
+  const { markers } = footnotesOf(props.a, props.b, {
+    legend: props.legend ?? null,
+    measureA: props.measureA,
+    measureB: props.measureB,
+  })
 
   // One unit for both, so the two lengths compare at a glance.
   const unit = roundUnit(props.measureA, props.measureB)

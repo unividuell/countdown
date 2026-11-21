@@ -59,6 +59,8 @@ export interface ScoreboardColumn<Row extends ScoreboardRow> {
    * whole table, so neither the label nor every cell has to carry it. Omitted, no unit cell.
    */
   unit?: string
+  /** A word before the bracket, where the sign alone is unclear: `Faktor[×]`. Needs [unit]. */
+  unitName?: string
   /** CSS width for the `<col>`. Omitted, the column takes what the fixed ones leave over. */
   width?: string
   align?: 'start' | 'end'

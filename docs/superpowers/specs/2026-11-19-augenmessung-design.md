@@ -114,7 +114,7 @@ fertige Kategorie im Diff unberührt, wenn eine andere wächst.
 ```yaml
 category: example            # Schlüssel, [a-z0-9-]+, eindeutig
 displayName: Beispielkategorie   # Überschrift über Spielfläche und Auflösung
-legend: "Wie die Silhouetten gezeichnet sind."   # optional, letzte Fußnote, ohne Nummer (Projektion)
+legend: "Wie die Silhouetten gezeichnet sind."   # optional, Fußnote an beiden Namen (Projektion)
 attribution: "Silhouetten: Beispielquelle"   # sichtbar in der Auflösung, optional
 entries:
   - name: Beispielding Alpha
@@ -286,8 +286,8 @@ games/matchscale/
 ```
 
 Über Spielfläche und Auflösung steht der Name der Kategorie als Überschrift. Ihre `legend`, wo sie
-eine hat (bei Natural-Earth-Kategorien die Projektion), schließt die Fußnoten ab, ohne Nummer: kein
-Name verweist auf sie.
+eine hat (bei Natural-Earth-Kategorien die Projektion), ist eine Fußnote an beiden Namen, mit einer
+Nummer für beide, gezählt nach den Credits und vor den Maß-Fußnoten.
 
 ### Spielfläche
 
@@ -371,7 +371,7 @@ mit ihrer Zelle. Die Spalten sind so breit wie ihr breitester Text und ihr einze
 breiter.
 Zehntel rechtsbündig in Tabellenziffern stehen von selbst untereinander.
 
-Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90“, Einheit `[×]`), der
+Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90“, Einheit `Faktor[×]`), der
 Abstand und die Toleranz in ganzen Prozent („−23“, „±25“, Einheit `[%]`), ohne Legende. Zahl und
 Zeichen trennen sich wie bei Längen: die Einheit steht in der Zeile unter der Tabelle.
 

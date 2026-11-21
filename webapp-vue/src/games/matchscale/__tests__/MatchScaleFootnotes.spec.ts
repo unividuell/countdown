@@ -54,24 +54,22 @@ describe('MatchScaleFootnotes', () => {
     ])
   })
 
-  it('closes with the category legend, unnumbered', () => {
+  it('numbers the category legend once for both, after the credits, before a subject', () => {
+    const measure = { axis: 'height' as const, metres: 0.5, source: 'q' }
     const wrapper = mount(MatchScaleFootnotes, {
-      props: { a: A, b: { ...A, attribution: null }, legend: 'Wie gezeichnet.' },
-    })
-    const bare = mount(MatchScaleFootnotes, {
       props: {
-        a: { ...A, attribution: null },
-        b: { ...A, attribution: null },
+        a: A,
+        b: { ...A, name: 'Beta', attribution: null },
+        measureA: measure,
+        measureB: { ...measure, subject: 'Beta Mk II' },
         legend: 'Wie gezeichnet.',
       },
     })
 
     expect(wrapper.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
       `¹ ${A.attribution}`,
-      'Wie gezeichnet.',
-    ])
-    expect(bare.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
-      'Wie gezeichnet.',
+      '² Wie gezeichnet.',
+      '³ Maß: Beta Mk II',
     ])
   })
 

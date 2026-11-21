@@ -11,7 +11,7 @@
  *   anna                 160,0      −40,0     1
  *                     * bis 25 % zu groß oder zu klein
  *
- * Without B's measure the tip falls back to a factor (`1,90`, beneath `[×]`), the distance to
+ * Without B's measure the tip falls back to a factor (`1,90`, beneath `Faktor[×]`), the distance to
  * percent (`−23`, beneath `[%]`).
  */
 import { computed } from 'vue'
@@ -44,9 +44,11 @@ const emit = defineEmits<{ select: [userId: string] }>()
 const solution = computed(() => solutionText(props.factor, props.truth))
 const tolerance = computed(() => toleranceText(props.tolerance, props.truth))
 
-/** Each column's unit beneath the table: the round's `cm` for both, else `×` and `%`. */
+/** Each column's unit beneath the table: the round's `cm` for both, else `Faktor[×]` and `%`. */
 const units = computed(() =>
-  props.truth === null ? { tip: '×', off: '%' } : { tip: props.truth.unit, off: props.truth.unit },
+  props.truth === null
+    ? { tip: { unit: '×', unitName: 'Faktor' }, off: { unit: '%' } }
+    : { tip: { unit: props.truth.unit }, off: { unit: props.truth.unit } },
 )
 
 /** The gate in percent beneath the table, explaining the head's `±50,0`. */
@@ -61,9 +63,13 @@ const toleranceNote = computed(() => {
  * sign, the padding on top. Label and unit stay on one line each: `Abstand` measures 49 px in the
  * head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line.
  */
-function width(label: string, unit: string, texts: readonly (string | null)[]): string {
+function width(
+  label: string,
+  { unit, unitName = '' }: { unit: string; unitName?: string },
+  texts: readonly (string | null)[],
+): string {
   const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
-  const head = Math.max(label.length, `[${unit}]`.length)
+  const head = Math.max(label.length, `${unitName}[${unit}]`.length)
 
   return `max(calc(${ch}ch + 0.25rem), ${head * 0.45 + 0.25}rem)`
 }
@@ -82,7 +88,7 @@ const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'tip',
     label: 'Tipp',
-    unit: units.value.tip,
+    ...units.value.tip,
     fact: 'Lösung',
     width: width('Tipp', units.value.tip, [solution.value, ...props.rows.map((row) => row.tip)]),
     align: 'end',
@@ -91,7 +97,7 @@ const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'off',
     label: 'Abstand',
-    unit: units.value.off,
+    ...units.value.off,
     ...(props.tolerance === null
       ? {}
       : { fact: toleranceNote.value === null ? 'Toleranz' : 'Toleranz*' }),

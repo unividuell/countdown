@@ -69,6 +69,24 @@ describe('MatchScaleLegend', () => {
     expect(wrapper.find('[data-test="match-scale-attribution"]').exists()).toBe(false)
   })
 
+  it("adds the category legend's marker to both names, after their credits", () => {
+    const wrapper = mount(MatchScaleLegend, {
+      props: {
+        a: A,
+        b: B,
+        aColor: 'var(--a)',
+        bColor: 'var(--b)',
+        measureA: null,
+        measureB: null,
+        legend: 'Wie gezeichnet.',
+      },
+    })
+    const [a, b] = blocks(wrapper)
+
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹,³')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²,³')
+  })
+
   it('marks both names ¹ for one shared credit', () => {
     const wrapper = mount(MatchScaleLegend, {
       props: {

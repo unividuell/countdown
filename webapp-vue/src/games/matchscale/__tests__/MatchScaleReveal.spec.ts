@@ -235,7 +235,7 @@ describe('MatchScaleReveal', () => {
     expect(band).toContain('Tipp')
     expect(band).toContain('Abstand')
     expect(wrapper.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual([
-      '[×]',
+      'Faktor[×]',
       '[%]',
     ])
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('2,00')
@@ -475,10 +475,12 @@ describe('MatchScaleReveal', () => {
     expect(field(wrapper).props('outlines')).toEqual([])
   })
 
-  it("closes with the category's legend among the footnotes", () => {
+  it("marks both names with the category's legend, one footnote", () => {
     const wrapper = mountReveal({ payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' } })
+    const markers = wrapper.findAll('[data-test="match-scale-marker"]').map((sup) => sup.text())
 
-    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('Wie gezeichnet.')
+    expect(markers).toEqual(['¹', '¹'])
+    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('¹ Wie gezeichnet.')
   })
 
   it('names A and B with their measures under the field', () => {

@@ -37,10 +37,12 @@ function mountBoard(over: Record<string, unknown> = {}) {
 describe('MatchScaleBoard', () => {
   beforeEach(() => localStorage.clear())
 
-  it("closes with the category's legend among the footnotes", () => {
+  it("marks both names with the category's legend, one footnote", () => {
     const wrapper = mountBoard({ payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' } })
+    const markers = wrapper.findAll('[data-test="match-scale-marker"]').map((sup) => sup.text())
 
-    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('Wie gezeichnet.')
+    expect(markers).toEqual(['¹', '¹'])
+    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('¹ Wie gezeichnet.')
   })
 
   it('names A and B under the field, each in its colour, with no measure', () => {

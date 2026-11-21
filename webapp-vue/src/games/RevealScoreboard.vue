@@ -315,7 +315,7 @@ function pointsLabel(points: number | null): string {
               :class="opacity"
               :style="head(bandRow + 1, at + 1)"
             >
-              [{{ column.unit }}]
+              {{ column.unitName }}[{{ column.unit }}]
             </th>
             <td v-else aria-hidden="true"></td>
           </template>

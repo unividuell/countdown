@@ -159,6 +159,7 @@ function submit(): void {
         :b-color="B_COLOR"
         :measure-a="null"
         :measure-b="null"
+        :legend="props.payload.categoryLegend"
       />
 
       <!-- `HoldButton` fills its parent and has no size of its own. -->
