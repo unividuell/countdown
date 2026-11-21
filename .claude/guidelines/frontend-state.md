@@ -200,7 +200,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   beat fails (`deduster/DedusterBoard.vue`). A reveal whose own animation ends in a sound of
   its own plays the verdict after that sound has fallen silent, once, for my first run only —
   Verrohrung's water, its end sound to the last, then the verdict. The sound says how long it still
-  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`).
+  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`). Augenmaß closes its
+  count with it on the same bus (`matchscale/countSound.ts`). Every such reveal keeps the rest of
+  the rule: silent on a reload or in a background tab, at once where nothing moves (reduced
+  motion), cut when leaving.
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
   neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and

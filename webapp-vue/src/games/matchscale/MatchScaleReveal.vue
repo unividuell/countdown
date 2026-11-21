@@ -20,6 +20,8 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { inBackground } from '@/ui/motion'
+import { playVerdict, type Verdict } from '@/ui/verdictSound'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, type Counting } from './countSound'
 import { countTones, growEasing, growMs } from './countTones'
@@ -103,11 +105,14 @@ let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
 
 let counting: Counting | null = null
+let verdict: Verdict | null = null
 
 onMounted(() => {
   if (bScale.value === props.factor && handoff === null) {
     // Nothing to grow: B must not ease on later refits either.
     growing.value = false
+    // No count to close (reduced motion): the verdict at once, as `useRevealVerdict` plays it.
+    if (props.animate && !inBackground() && props.won !== null) verdict = playVerdict(props.won)
 
     return
   }
@@ -126,6 +131,7 @@ onBeforeUnmount(() => {
   clearTimeout(beat)
   clearTimeout(settle)
   counting?.stop()
+  verdict?.stop()
 })
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))

@@ -13,11 +13,17 @@ import { playCount } from '../countSound'
 import { countTones, growMs } from '../countTones'
 import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { playVerdict } from '@/ui/verdictSound'
 
 const stopCount = vi.fn()
 vi.mock('../countSound', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../countSound')>()),
   playCount: vi.fn(() => ({ stop: stopCount })),
+}))
+
+vi.mock('@/ui/verdictSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/ui/verdictSound')>()),
+  playVerdict: vi.fn(() => ({ stop: vi.fn() })),
 }))
 
 enableAutoUnmount(afterEach)
@@ -304,6 +310,7 @@ describe('MatchScaleReveal', () => {
   describe('the count while B grows', () => {
     beforeEach(() => {
       vi.mocked(playCount).mockClear()
+      vi.mocked(playVerdict).mockClear()
       stopCount.mockClear()
     })
 
@@ -333,11 +340,29 @@ describe('MatchScaleReveal', () => {
 
     it('stays silent without animation', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
-      mountReveal({ animate: false })
+      mountReveal({ animate: false, won: true })
 
       await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
 
       expect(playCount).not.toHaveBeenCalled()
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    // As `useRevealVerdict` does everywhere: where nothing moves, the verdict comes at once.
+    it('with reduced motion plays no count but my verdict at once', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({
+        matches: true,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      } as unknown as MediaQueryList)
+      try {
+        mountReveal({ animate: true, won: false })
+
+        expect(playCount).not.toHaveBeenCalled()
+        expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
+      } finally {
+        vi.restoreAllMocks()
+      }
     })
   })
 

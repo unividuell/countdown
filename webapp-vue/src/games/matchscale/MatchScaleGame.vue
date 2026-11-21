@@ -60,20 +60,20 @@ const rows = computed(() =>
       }),
 )
 
+/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
+const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
+
 /** The reveal's verdict sound: my tip in the gate, or (phase two) my row holding the points. */
 const won = computed(() =>
   payload.value === null
     ? null
     : myWin({
-        gated: payload.value.tolerance !== null,
+        gated: !live.value,
         withinGate: asMatchScaleOutcome(props.outcome)?.withinTolerance ?? null,
         rows: rows.value,
         mineUserId: props.mineUserId,
       }),
 )
-
-/** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
-const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
 const animate = useRevealedLive(() => solution.value !== null)
 
