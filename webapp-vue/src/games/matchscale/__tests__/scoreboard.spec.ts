@@ -63,15 +63,15 @@ describe('truthOf', () => {
 
 describe('solutionText', () => {
   it("is B's length, or the factor without one", () => {
-    expect(solutionText(1.6, TWO_METRES)).toBe('200')
+    expect(solutionText(1.6, TWO_METRES)).toBe('200,0')
     expect(solutionText(1.6, null)).toBe('1,60×')
   })
 })
 
 describe('toleranceText', () => {
   it('is how far a tip may sit from the solution either way, in the distance column unit', () => {
-    expect(toleranceText(0.25, TWO_METRES)).toBe('±50')
-    expect(toleranceText(0.25, { metres: 61, unit: 'm' })).toBe('±15')
+    expect(toleranceText(0.25, TWO_METRES)).toBe('±50,0')
+    expect(toleranceText(0.25, { metres: 61, unit: 'm' })).toBe('±15,3')
   })
 
   it('is the percent without a length, nothing in phase two', () => {
@@ -132,7 +132,7 @@ describe('scoreboardRows', () => {
       [
         entry({ userId: 'under', guess: { scale: 1.6 } }),
         entry({ userId: 'over', guess: { scale: 2.5 } }),
-        entry({ userId: 'exact', guess: { scale: 2.001 } }),
+        entry({ userId: 'exact', guess: { scale: 2.0001 } }),
       ],
       null,
       2,
@@ -140,12 +140,23 @@ describe('scoreboardRows', () => {
     )
     const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
 
-    expect(byId.under!.tip).toBe('160')
-    expect(byId.under!.off).toBe('−40')
-    expect(byId.over!.tip).toBe('250')
-    expect(byId.over!.off).toBe('+50')
-    expect(byId.exact!.tip).toBe('200')
-    expect(byId.exact!.off).toBe('±0')
+    expect(byId.under!.tip).toBe('160,0')
+    expect(byId.under!.off).toBe('−40,0')
+    expect(byId.over!.tip).toBe('250,0')
+    expect(byId.over!.off).toBe('+50,0')
+    expect(byId.exact!.tip).toBe('200,0')
+    expect(byId.exact!.off).toBe('±0,0')
+  })
+
+  it('shows a tip just outside the gate as outside: tenths, not whole numbers', () => {
+    // B 42 cm, gate 25 %: 10.5 cm. The tip 31.42 cm misses by 10.58 cm (25.2 %); in whole
+    // numbers both would read 11.
+    const truth: Truth = { metres: 0.42, unit: 'cm' }
+    const [row] = rowsOf([entry({ userId: 'edge', guess: { scale: 0.7481 } })], null, 1, truth)
+
+    expect(toleranceText(0.25, truth)).toBe('±10,5')
+    expect(row!.tip).toBe('31,4')
+    expect(row!.off).toBe('−10,6')
   })
 
   it("without B's measure prints the tip as a factor and its distance in percent", () => {

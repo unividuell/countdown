@@ -44,3 +44,30 @@ export function formatSigned(value: number): string {
 
   return value > 0 ? `+${nf.format(value)}` : formatLength(value)
 }
+
+/**
+ * The table's precision: tenths, so a tip just outside the gate shows it — `−11,0` against
+ * `±10,9`, where whole numbers read `−11` against `±11`. `0.4358` m in `cm` → `43.6`.
+ */
+export function inUnitTenths(metres: number, unit: Unit): number {
+  return Math.round(metres * PER_METRE[unit] * 10) / 10
+}
+
+const nf1 = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  useGrouping: 'min2',
+})
+
+/** Tenths, a negative with U+2212: `43,6`, `−11,0`. */
+export function formatTenths(value: number): string {
+  return value < 0 ? `−${nf1.format(-value)}` : nf1.format(Math.abs(value))
+}
+
+/** A difference in tenths, always signed: `+0,4`, `−11,0`, `±0,0`. */
+export function formatSignedTenths(value: number): string {
+  const tenths = Math.round(value * 10) / 10
+  if (tenths === 0) return '±0,0'
+
+  return tenths > 0 ? `+${nf1.format(tenths)}` : formatTenths(tenths)
+}

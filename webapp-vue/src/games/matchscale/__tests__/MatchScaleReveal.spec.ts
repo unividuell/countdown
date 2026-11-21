@@ -212,12 +212,12 @@ describe('MatchScaleReveal', () => {
     const wrapper = mountReveal({ measureB, rows })
     const band = wrapper.findAll('thead th').map((th) => th.text())
 
-    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±20')
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200,0')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±20,0')
     expect(band).toContain('Tipp [cm]')
     expect(band).toContain('Abstand [cm]')
-    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250')
-    expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50')
+    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250,0')
+    expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50,0')
     expect(wrapper.get('[data-test="match-scale-tolerance-legend"]').text()).toBe(
       '* bis 10 % zu groß oder zu klein',
     )

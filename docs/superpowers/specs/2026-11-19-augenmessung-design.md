@@ -326,8 +326,8 @@ Fußnote, nummeriert nach den Credits („Alpha²“ · „² Maß: Alpha Mk II�
 bleiben, wie sie beim Spielen standen.
 
 **Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
-cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); alle Werte
-ganzzahlig darin, nie ein Komma. A und B stehen in
+cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); unter der
+Fläche ganzzahlig darin, in der Rangliste auf Zehntel (siehe dort). A und B stehen in
 derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
 
 Die Namenszeile bricht nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in
@@ -346,15 +346,17 @@ Spalten **Name** (Knopf) **· Tipp · Abstand · Pkt**, Sortierung Punkte abstei
 Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 
 Alles als Länge von B in der Einheit der Runde. Linear skaliert ist der Tipp
-`b.metres × scale / factor`. Tipp „160“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40“, „+50“,
-„±0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“ („200“) und
-„Toleranz*“ („±50“: wie weit ein Tipp von der Lösung liegen darf, in der Einheit von „Abstand“ —
-`round(b × 0,25)`; nur Phase eins). In den Zellen keine
+`b.metres × scale / factor`. Tipp „160,0“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40,0“,
+„+50,0“, „±0,0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“
+(„200,0“) und „Toleranz*“ („±50,0“: wie weit ein Tipp von der Lösung liegen darf, in der Einheit von
+„Abstand“ — `b × 0,25`; nur Phase eins). **Auf Zehntel**, weil geurteilt wird exakt: in ganzen
+Zahlen las ein Tipp mit 25,3 % daneben „−11“ gegen „±11“ und bekam doch keinen Punkt; auf Zehntel
+steht da „−11,0“ gegen „±10,9“. In den Zellen keine
 Einheit, sie steht im Spaltenkopf: „Tipp [cm]“, „Abstand [cm]“, einzeilig — die Spalten wachsen dafür.
 Unter der Tabelle die Legende zum Stern, „* bis 25 % zu groß oder zu klein“; sie erscheint im Takt
 mit ihrer Zelle. Die Spalten sind so breit wie ihr breitester Text und ihr einzeiliger Kopf, nicht
 breiter.
-Ganzzahlen rechtsbündig in Tabellenziffern stehen von selbst untereinander.
+Zehntel rechtsbündig in Tabellenziffern stehen von selbst untereinander.
 
 Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90×“, Kommas untereinander),
 der Abstand und die Toleranz in Prozent („−23 %“, „±25 %“), ohne Einheit und ohne Legende.

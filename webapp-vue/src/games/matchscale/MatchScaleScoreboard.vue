@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
  * „Auswertung“ for Augenmaß: the shared table with the tip as B's length and its signed distance
- * from the truth, whole numbers in the round's unit. The name is a button — tapping it toggles
+ * from the truth, in tenths of the round's unit. The name is a button — tapping it toggles
  * that player's outline on the reveal's field.
  *
  *                     Lösung    Toleranz*
- *   Auswertung             200          ±50
+ *   Auswertung           200,0        ±50,0
  *   Name             Tipp [cm] Abstand [cm]   Pkt
- *   anna                   160          −40     1
+ *   anna                 160,0        −40,0     1
  *                     * bis 25 % zu groß oder zu klein
  *
  * Without B's measure the tip falls back to a factor, commas aligned (`1,90×`), the distance to
@@ -47,7 +47,7 @@ const tolerance = computed(() => toleranceText(props.tolerance, props.truth))
 /** The unit in the header, `Tipp [cm]`; factors carry their own `×`. */
 const unit = computed(() => (props.truth === null ? '' : ` [${props.truth.unit}]`))
 
-/** The gate in percent beneath the table, explaining the head's `±50`. */
+/** The gate in percent beneath the table, explaining the head's `±50,0`. */
 const toleranceNote = computed(() => {
   if (props.truth === null || props.tolerance === null) return null
 
@@ -146,7 +146,7 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
         </button>
       </template>
 
-      <!-- Whole numbers right-aligned in tabular digits line up by themselves; factors need help. -->
+      <!-- Tenths right-aligned in tabular digits line up by themselves; factors need help. -->
       <template #fact-tip>
         <span data-test="match-scale-solution" :class="FACT"
           ><template v-if="props.truth !== null">{{ solution }}</template
