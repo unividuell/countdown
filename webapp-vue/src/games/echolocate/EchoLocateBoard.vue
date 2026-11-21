@@ -387,7 +387,6 @@ onBeforeUnmount(() => {
             :disabled="!canHandIn || touching"
             label="Schätzung abgeben — gedrückt halten"
             :color="props.myColorHex"
-            :sound="false"
             @confirm="handIn"
             @progress="onProgress"
           />

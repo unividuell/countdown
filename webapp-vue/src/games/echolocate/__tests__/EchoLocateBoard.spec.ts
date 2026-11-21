@@ -216,8 +216,8 @@ describe('EchoLocateBoard', () => {
     expect(field(mountBoard({ payload: { ...PAYLOAD, clips: 2 } })).props('clips')).toBe(2)
   })
 
-  it('keeps its hand-in hold silent: here the sound is the game', () => {
-    expect(hold(mountBoard()).props('sound')).toBe(false)
+  it('lets its hand-in hold knock like every other: sparks and sound', () => {
+    expect(hold(mountBoard()).props('sound')).not.toBe(false)
   })
 
   it('draws my pins in my colour', () => {
