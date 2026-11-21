@@ -123,9 +123,7 @@ class MatchScaleGameTypeTest(
             .filter { it.category == first.category }
 
         sameCategory.isNotEmpty() shouldBe true
-        sameCategory.forEach {
-            setOf(it.a.name, it.b.name).intersect(setOf(first.a.name, first.b.name)) shouldBe emptySet()
-        }
+        sameCategory.forEach { setOf(it.a.name, it.b.name) shouldNotBe setOf(first.a.name, first.b.name) }
     }
 
     @Test

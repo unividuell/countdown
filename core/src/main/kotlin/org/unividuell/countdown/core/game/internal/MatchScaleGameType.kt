@@ -113,11 +113,11 @@ class MatchScaleGameType(
     override fun isAvailable(context: RoundContext) = dataset.isPlayable
 
     override fun draw(random: GameRandom, context: RoundContext): MatchScaleParams {
-        // Category key -> names shown in this edition, as A or B.
+        // Category key -> pairs shown in this edition, unordered.
         val used = context.previousParams
             .map { mapper.treeToValue(it, MatchScaleParams::class.java) }
-            .groupBy({ it.category }, { listOf(it.a.name, it.b.name) })
-            .mapValues { (_, names) -> names.flatten().toSet() }
+            .groupBy({ it.category }, { setOf(it.a.name, it.b.name) })
+            .mapValues { (_, pairs) -> pairs.toSet() }
 
         val pair = dataset.draw(presentation = random.presentation, used = used)
 

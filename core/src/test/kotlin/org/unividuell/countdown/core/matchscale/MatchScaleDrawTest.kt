@@ -1,6 +1,5 @@
 package org.unividuell.countdown.core.matchscale
 
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.doubles.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
@@ -35,7 +34,7 @@ class MatchScaleDrawTest {
 
     private val dataset = MatchScaleDataset(listOf(alpha, beta))
 
-    private fun draw(seed: Int, used: Map<String, Set<String>> = emptyMap()) =
+    private fun draw(seed: Int, used: Map<String, Set<Set<String>>> = emptyMap()) =
         dataset.draw(presentation = SeededRandom.fromSeed(seed), used = used)
 
     @Test
@@ -64,28 +63,38 @@ class MatchScaleDrawTest {
         repeat(50) { seed -> draw(seed) shouldBe draw(seed) }
     }
 
+    /** Every pair of [category] within the factor, unordered. */
+    private fun pairsOf(category: MatchScaleCategory) = category.entries.flatMapIndexed { i, a ->
+        category.entries.drop(i + 1).filter { withinFactor(a = a, b = it) }.map { setOf(a.name, it.name) }
+    }.toSet()
+
     @Test
-    fun `an entry used earlier in the edition is not drawn again`() {
+    fun `a pair drawn earlier in the edition is not drawn again, its entries may be`() {
         val used = mapOf(
-            "alpha" to setOf("a1", "a2", "a-far"),
-            "beta" to setOf("b1"),
+            "alpha" to pairsOf(alpha) - setOf(setOf("a1", "a2")),
+            "beta" to setOf(setOf("b1", "b2"), setOf("b1", "b3")),
         )
 
         repeat(200) { seed ->
             val pair = draw(seed, used)
 
-            // a3/a4 (factor 2) and b2/b3 (factor 3) remain.
-            listOf(pair.a.name, pair.b.name) shouldContainExactlyInAnyOrder
-                if (pair.category.key == "alpha") listOf("a3", "a4") else listOf("b2", "b3")
+            setOf(pair.a.name, pair.b.name) shouldBe
+                if (pair.category.key == "alpha") setOf("a1", "a2") else setOf("b2", "b3")
         }
     }
 
     @Test
-    fun `once a category has no unused pair, its block is lifted`() {
-        val used = mapOf(
-            "alpha" to alpha.entries.map { it.name }.toSet(),
-            "beta" to beta.entries.map { it.name }.toSet(),
-        )
+    fun `either entry of a pair may stand on the left`() {
+        val used = mapOf("alpha" to pairsOf(alpha) - setOf(setOf("a1", "a2")), "beta" to pairsOf(beta))
+
+        val lefts = (0 until 200).map { draw(it, used) }.filter { it.category.key == "alpha" }.map { it.a.name }
+
+        lefts.toSet() shouldBe setOf("a1", "a2")
+    }
+
+    @Test
+    fun `once a category has no undrawn pair, its block is lifted`() {
+        val used = mapOf("alpha" to pairsOf(alpha), "beta" to pairsOf(beta))
 
         repeat(200) { seed ->
             val pair = draw(seed, used)

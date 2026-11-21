@@ -15,28 +15,27 @@ open class MatchScaleDataset(open val categories: List<MatchScaleCategory>) {
     open val isPlayable: Boolean get() = categories.isNotEmpty()
 
     /**
-     * **The draw order is a contract.** [presentation] draws the category, then A, then B. Reorder
-     * and every round derived from the same seed changes.
+     * **The draw order is a contract.** [presentation] draws the category, then the pair, then which
+     * of its two entries is A. Reorder and every round derived from the same seed changes.
      *
-     * [used] maps a category key to the names already drawn in this edition (A and B alike). The
-     * pool is the unused entries that still have an unused partner; when none is left, the block is
-     * lifted and every entry with a partner is eligible again, so a draw never gives up.
+     * [used] maps a category key to the pairs already drawn in this edition, unordered: `{x, y}`
+     * blocks x–y and y–x, while x and y may each come back with another partner. Once every pair
+     * of the category is drawn, the block is lifted, so a draw never gives up.
      *
      * Only the presentation stream is used: the pair is shown to everybody, and the round's secret
      * lies elsewhere.
      */
-    open fun draw(presentation: SeededRandom, used: Map<String, Set<String>>): MatchScalePair {
+    open fun draw(presentation: SeededRandom, used: Map<String, Set<Set<String>>>): MatchScalePair {
         val category = presentation.pick(categories)
-        val taken = used[category.key].orEmpty()
+        val drawn = used[category.key].orEmpty()
 
-        val unused = category.entries.filter { it.name !in taken }
-        var pool = unused.filter { entry -> unused.any { it != entry && withinFactor(entry, it) } }
-        if (pool.isEmpty()) {
-            pool = category.entries.filter { entry -> category.entries.any { it != entry && withinFactor(entry, it) } }
+        val pairs = category.entries.flatMapIndexed { i, a ->
+            category.entries.drop(i + 1).filter { withinFactor(a = a, b = it) }.map { a to it }
         }
+        val fresh = pairs.filter { (a, b) -> setOf(a.name, b.name) !in drawn }
 
-        val a = presentation.pick(pool)
-        val b = presentation.pick(pool.filter { it != a && withinFactor(a, it) })
+        val (first, second) = presentation.pick(fresh.ifEmpty { pairs })
+        val (a, b) = if (presentation.nextBoolean()) first to second else second to first
 
         return MatchScalePair(category = category, a = a, b = b)
     }
