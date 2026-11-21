@@ -18,7 +18,7 @@ enum class Shape(val tolerance: Double) {
     ROSE(0.01),
     SPIROGRAPH(0.01),
     LISSAJOUS(0.03),
-    PHYLLOTAXIS(0.01),
+    PHYLLOTAXIS(0.05),
     TRUCHET(0.05),
     SPIRAL(0.03),
 }
