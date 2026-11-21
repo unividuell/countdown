@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { gameProps } from '@/games/__tests__/gameFixtures'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
 import { labGameList } from '@/gamelab/games'
@@ -96,6 +96,23 @@ describe('MatchScaleGame', () => {
     })
 
     expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(true)
+  })
+
+  // The gate is the round's rule, as in every game — not whether the payload carries a tolerance.
+  it('under „closest only“ wins only while my row holds the points, a tolerance or not', () => {
+    const wrapper = mountGame({
+      awardRule: 'CLOSEST_ONLY',
+      mineUserId: 'me',
+      entries: [
+        gameEntry({ userId: 'me', guess: { scale: 1.55 }, points: 0 }),
+        gameEntry({ userId: 'other', guess: { scale: 1.6 }, points: 1 }),
+      ],
+      myGuess: { scale: 1.55 },
+      outcome: { scale: 1.55, deviation: 0.03, withinTolerance: true },
+      solution: { factor: 1.6, tolerance: 0.1 },
+    })
+
+    expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(false)
   })
 
   it('heads the board and the reveal with the category', () => {
