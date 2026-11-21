@@ -3,32 +3,20 @@
  * the angle would read as „the target is where it gets higher“.
  */
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { RATCHET_HZ, playRatchet } from '@/ui/ratchetSound'
 import { soundGraph } from '@/ui/soundOutput'
 import { knocks } from '@/ui/woodKnock'
 import { wrap360 } from './geometry'
 
-export const TURN_HZ = 700
-/** Knocks closer than this pile up and clip: a quick turn drops the ones in between. */
-const MIN_GAP_S = 0.03
+export const TURN_HZ = RATCHET_HZ
 
 /** The whole degree the knob stands in, 0 … 359. */
 export function stepOf(hue: number): number {
   return Math.floor(wrap360(hue))
 }
 
-let lastAt = -Infinity
-
 /** One knock. A sleeping graph stays silent: its knocks would all land on the wake-up. */
-export function playTurn(): void {
-  const graph = soundGraph()
-  if (!graph) return
-
-  const at = graph.currentTime + START_LOOKAHEAD_SECONDS
-  if (at - lastAt < MIN_GAP_S) return
-  lastAt = at
-
-  knocks(graph).knock(at, TURN_HZ)
-}
+export const playTurn = playRatchet
 
 /**
  * Another player's marker lands on the wheel: the wheel's own knock, once, saying nothing about
