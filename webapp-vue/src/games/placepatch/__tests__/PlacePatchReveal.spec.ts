@@ -3,6 +3,11 @@ import { mount } from '@vue/test-utils'
 import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
 import type { ScoreRow } from '@/games/placepatch/scoreboard'
+import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
 const PAYLOAD = { cols: 40, rows: 30, size: 10 }
 
@@ -21,7 +26,7 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
   }
 }
 
-function mountReveal(rows: ScoreRow[], animate = false) {
+function mountReveal(rows: ScoreRow[], animate = false, won: boolean | null = null) {
   return mount(PlacePatchReveal, {
     props: {
       payload: PAYLOAD,
@@ -32,6 +37,7 @@ function mountReveal(rows: ScoreRow[], animate = false) {
       animate,
       boardSrc: '/assets/0',
       patchSrc: '/assets/1',
+      won,
     },
   })
 }
@@ -134,6 +140,40 @@ describe('PlacePatchReveal', () => {
 
       expect(solution.classes()).toContain('opacity-100')
       expect(fry.attributes('style')).toContain('opacity: 1')
+    })
+  })
+
+  describe('verdict', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(playVerdict).mockClear()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('plays mine when the solution appears', () => {
+      mountReveal([row({ userId: 'mine' })], true, false)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal([row({ userId: 'mine' })], false, true)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('asks the header to wake the graph while here', () => {
+      mountReveal([])
+
+      expect(soundOnStage.value).toBe(true)
     })
   })
 })

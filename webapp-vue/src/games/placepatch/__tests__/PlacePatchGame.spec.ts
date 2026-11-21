@@ -260,4 +260,40 @@ describe('PlacePatchGame', () => {
     expect(gameComponents['place-patch']).toBe(PlacePatchGame)
     expect(labGameList).toContainEqual({ id: 'place-patch', title: 'Platzierung' })
   })
+
+  describe('verdict', () => {
+    const OTHER = gameEntry({ userId: 'other', username: 'Fry', guess: { x: 1, y: 1 }, points: 1 })
+
+    async function won(over: Partial<GameProps>) {
+      const wrapper = mountGame({
+        solution: { x: 7, y: 4 },
+        assets: assetsWith({ board: OPEN, patch: OPEN }),
+        ...over,
+      })
+      await flushPromises()
+      return wrapper.getComponent(PlacePatchReveal).props('won')
+    }
+
+    it('wins with the right cell while every right tip scores', async () => {
+      expect(await won({ entries: [MINE], outcome: { correct: true } })).toBe(true)
+    })
+
+    it('fails with a wrong cell', async () => {
+      expect(await won({ entries: [{ ...MINE, points: 0 }], outcome: { correct: false } })).toBe(
+        false,
+      )
+    })
+
+    it('says nothing without a tip of mine', async () => {
+      expect(await won({ entries: [OTHER], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', async () => {
+      const entries = [{ ...MINE, points: 0 }, OTHER]
+
+      expect(await won({ awardRule: 'CLOSEST_ONLY', entries, outcome: { correct: true } })).toBe(
+        false,
+      )
+    })
+  })
 })

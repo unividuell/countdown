@@ -5,13 +5,15 @@
  * somebody wrongly tapped at that level: that is how one sees one lay a tile too far right. Each
  * outlined tile holds a mini bar chart — a slot per player in table order, a bar per time there.
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import IconWarning from '~icons/lucide/triangle-alert'
 import DedusterChart from './DedusterChart.vue'
 import DedusterScoreboard from './DedusterScoreboard.vue'
 import { ceilingMs, correctBars, wrongBars, wrongTilesAt, type TileBar } from './chart'
 import type { DedusterRow } from './scoreboard'
 import type { DedusterPayload } from './types'
+import { playRatchet } from '@/ui/ratchetSound'
+import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = defineProps<{
   payload: DedusterPayload
@@ -29,6 +31,12 @@ function select(userId: string): void {
   selectedUserId.value = selectedUserId.value === userId ? null : userId
 }
 const level = ref<number | null>(null)
+
+// The hue wheel's ratchet, once per level the scrub lands on; letting go is silent.
+useSoundStage()
+watch(level, (to) => {
+  if (to !== null) playRatchet()
+})
 
 const correctTile = computed(() =>
   level.value === null ? null : (props.payload.order[level.value] ?? null),

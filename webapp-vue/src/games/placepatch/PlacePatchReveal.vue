@@ -14,7 +14,9 @@ import {
   cellDelayMs,
   isStill,
 } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { useRevealArming } from '@/ui/useRevealArming'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import PlacePatchScoreboard from './PlacePatchScoreboard.vue'
 import { stackedOutlines } from './outlines'
 import type { Outline } from './outlines'
@@ -30,9 +32,16 @@ const props = defineProps<{
   animate: boolean
   boardSrc: string
   patchSrc: string
+  /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
+  won: boolean | null
 }>()
 
 const still = isStill(props.animate)
+
+useRevealVerdict(() => props.won, props.animate)
+
+// The verdict is governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 
 const { shown } = useRevealArming(still)
 

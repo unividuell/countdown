@@ -15,10 +15,12 @@ import { computed, ref, useTemplateRef } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
+import { playRatchet } from '@/ui/ratchetSound'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useHoldLock } from '@/ui/useHoldLock'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { SceneState } from '@/ui/sceneState'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import PlacePatchBriefing from './PlacePatchBriefing.vue'
 import { drag, press, release } from './stamp'
 import type { Board, Gesture, Point } from './stamp'
@@ -49,6 +51,9 @@ const props = withDefaults(
 const emit = defineEmits<{ guess: [value: Cell]; reveal: []; retry: [] }>()
 
 const layout = computed(() => props.payload ?? props.scene)
+
+// Its knocks are governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 const field = useTemplateRef<HTMLDivElement>('field')
 
 const stamp = ref<Cell | null>(null)
@@ -107,7 +112,10 @@ function onMove(event: PointerEvent): void {
   if (gesture === null || board === null) return
   const next = drag(board, gesture, pointOf(event))
   gesture = next.gesture
-  if (next.stamp !== null) stamp.value = next.stamp
+  if (next.stamp === null) return
+  // The hue wheel's ratchet, once per cell the stamp moves on to.
+  if (next.stamp.x !== stamp.value?.x || next.stamp.y !== stamp.value?.y) playRatchet()
+  stamp.value = next.stamp
 }
 
 function onUp(event: PointerEvent): void {
@@ -115,6 +123,8 @@ function onUp(event: PointerEvent): void {
   const board = boardNow()
   if (gesture === null || board === null) return
   stamp.value = release(board, gesture, pointOf(event), stamp.value)
+  // A tap ticks even on the cell the stamp already stood on: it answers the tap, not the move.
+  if (!gesture.dragging) playRatchet()
   gesture = null
 }
 

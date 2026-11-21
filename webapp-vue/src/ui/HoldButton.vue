@@ -21,6 +21,7 @@ import { playCharge, type Charging } from '@/ui/chargeSound'
 import { playCountIn } from '@/ui/countInSound'
 import HoldSparks from '@/ui/HoldSparks.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
@@ -55,11 +56,11 @@ const props = withDefaults(
      */
     contour?: 'opposite' | 'neutral'
     /**
-     * Plays the charge's knocks, or the count-in's. Only for a board on stage (`useSoundStage`),
-     * whose knocks the header's sound switch governs.
+     * Plays the charge's knocks, or the count-in's, wherever it throws sparks. False only in a game
+     * whose sound is the game (Peilung).
      */
     sound?: boolean
-    /** False for a hold that must not celebrate: giving up charges nothing. */
+    /** False for a hold that must not celebrate: giving up charges nothing, neither seen nor heard. */
     sparks?: boolean
   }>(),
   {
@@ -67,7 +68,7 @@ const props = withDefaults(
     beatMs: BEAT_MS,
     shape: 'round',
     contour: 'opposite',
-    sound: false,
+    sound: true,
     sparks: true,
   },
 )
@@ -122,10 +123,15 @@ watch(shown, (value) => emit('progress', value))
 
 let charging: Charging | null = null
 
+/** Read once: no caller switches it while mounted. */
+const knocking = props.sound && props.sparks
+// A hold that knocks is on stage itself: the header's switch governs it and wakes the graph for it.
+if (knocking) useSoundStage()
+
 watch(
   holding,
   (isHolding) => {
-    if (!props.sound) return
+    if (!knocking) return
 
     if (isHolding) {
       charging = counting

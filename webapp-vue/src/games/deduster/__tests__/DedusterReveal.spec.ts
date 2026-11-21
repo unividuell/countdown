@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DedusterChart from '../DedusterChart.vue'
 import DedusterReveal from '../DedusterReveal.vue'
 import DedusterScoreboard from '../DedusterScoreboard.vue'
 import type { DedusterRow } from '../scoreboard'
+import { playRatchet } from '@/ui/ratchetSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
+
+vi.mock('@/ui/ratchetSound', () => ({ playRatchet: vi.fn() }))
 
 const PAYLOAD = { cols: 2, rows: 2, intervalMs: 1000, order: [3, 1, 0, 2] }
 
@@ -151,5 +155,18 @@ describe('DedusterReveal', () => {
     await w.vm.$nextTick()
 
     expect(w.findAll('[data-test="reveal-correct"]')).toHaveLength(0)
+  })
+
+  it('ticks like the hue wheel for every level the scrub lands on, and asks the header to wake the graph', async () => {
+    vi.mocked(playRatchet).mockClear()
+    const w = mountReveal()
+    expect(soundOnStage.value).toBe(true)
+
+    for (const level of [1, 1, 2, null, 2]) {
+      w.getComponent(DedusterChart).vm.$emit('scrub', level)
+      await w.vm.$nextTick()
+    }
+
+    expect(playRatchet).toHaveBeenCalledTimes(3)
   })
 })

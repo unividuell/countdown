@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import { chargeCurve } from '@/ui/charge'
 import { playCharge } from '@/ui/chargeSound'
 import { playCountIn } from '@/ui/countInSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldSparks from '@/ui/HoldSparks.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
+
+enableAutoUnmount(afterEach)
 
 const stopCharge = vi.fn()
 vi.mock('@/ui/chargeSound', () => ({ playCharge: vi.fn(() => ({ stop: stopCharge })) }))
@@ -658,10 +661,29 @@ describe('HoldButton', () => {
       expect(mountButton({ sparks: false }).findComponent(HoldSparks).exists()).toBe(false)
     })
 
-    it('stays silent unless the board asks for the knocks', async () => {
-      await hold(mountButton(), 200)
+    it('knocks wherever it throws sparks', async () => {
+      await hold(mountButton({ holdMs: 1000 }), 200)
+
+      expect(playCharge).toHaveBeenCalledExactlyOnceWith(0, 1000)
+    })
+
+    it('stays silent without sparks, or where the board turns the knocks off', async () => {
+      await hold(mountButton({ sparks: false }), 200)
+      await hold(mountButton({ sound: false }), 200)
 
       expect(playCharge).not.toHaveBeenCalled()
+    })
+
+    it('asks the header to wake the graph while it knocks, and only then', () => {
+      const silent = mountButton({ sound: false })
+      expect(soundOnStage.value).toBe(false)
+
+      const knocking = mountButton()
+      expect(soundOnStage.value).toBe(true)
+
+      knocking.unmount()
+      silent.unmount()
+      expect(soundOnStage.value).toBe(false)
     })
 
     it('knocks from the press on, over the whole hold', async () => {
@@ -705,8 +727,8 @@ describe('HoldButton', () => {
       expect(stopCharge).not.toHaveBeenCalled()
     })
 
-    it('counts in silently unless the board asks for the knocks', async () => {
-      await hold(mountButton({ beats: 3 }), 200)
+    it('counts in silently where the board turns the knocks off', async () => {
+      await hold(mountButton({ beats: 3, sound: false }), 200)
 
       expect(playCountIn).not.toHaveBeenCalled()
     })
