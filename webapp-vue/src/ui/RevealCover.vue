@@ -13,6 +13,7 @@ import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import type { SceneState } from '@/ui/sceneState'
 import { BEAT_MS } from '@/ui/useHoldProgress'
+import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = withDefaults(
   defineProps<{
@@ -32,6 +33,9 @@ const props = withDefaults(
 const emit = defineEmits<{ start: []; retry: [] }>()
 
 const cover = useTemplateRef<HTMLDivElement>('cover')
+
+// The count-in knocks on every game, so the cover itself is on stage: the header's switch governs it.
+useSoundStage()
 
 /**
  * A completed hold leaves the ring full. When the reveal behind it fails, a full ring would claim
@@ -92,6 +96,7 @@ watch(
         contour="neutral"
         :beats="3"
         :beat-ms="props.beatMs"
+        sound
         @confirm="emit('start')"
       />
     </div>

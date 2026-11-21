@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 enableAutoUnmount(afterEach)
 
@@ -67,6 +68,11 @@ describe('RevealCover', () => {
 
     expect(cover.get('[data-test="own-note"]').text()).toBe('2 Sprüche')
     expect(cover.find('[data-test="reveal-cover-note"]').exists()).toBe(false)
+  })
+
+  it('counts in out loud, on every game, and asks the header to wake the graph while here', () => {
+    expect(mountCover().getComponent(HoldButton).props('sound')).toBe(true)
+    expect(soundOnStage.value).toBe(true)
   })
 
   it('counts in at the beat the game gives it', () => {

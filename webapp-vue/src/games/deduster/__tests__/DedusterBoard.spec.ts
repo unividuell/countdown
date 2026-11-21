@@ -3,8 +3,13 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import DedusterBoard from '../DedusterBoard.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import type { DedusterPayload } from '../types'
+import { playHit } from '../tileSound'
+import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 vi.mock('../photo', () => ({ loadPhoto: vi.fn(() => Promise.resolve()) }))
+vi.mock('../tileSound', () => ({ playHit: vi.fn() }))
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn() }))
 
 enableAutoUnmount(afterEach)
 
@@ -82,6 +87,8 @@ describe('DedusterBoard', () => {
         'performance',
       ],
     })
+    vi.mocked(playHit).mockClear()
+    vi.mocked(playVerdict).mockClear()
   })
   afterEach(() => vi.useRealTimers())
 
@@ -290,5 +297,62 @@ describe('DedusterBoard', () => {
     stubField(w)
     await tapCell(w, 3)
     expect(w.emitted('guess')).toBeUndefined()
+  })
+
+  it('asks the header to wake the graph while here', () => {
+    mountBoard()
+
+    expect(soundOnStage.value).toBe(true)
+  })
+
+  it('knocks for every hit, and plays the success verdict on the last tile instead', async () => {
+    const w = mountBoard()
+    await flushPromises()
+    w.getComponent(RevealCover).vm.$emit('start')
+    await w.setProps({ sealed: false, payload: PAYLOAD })
+    stubField(w)
+
+    for (const [i, tile] of PAYLOAD.order.entries()) {
+      vi.advanceTimersByTime(i === 0 ? 1250 : 1000)
+      await w.vm.$nextTick()
+      await tapCell(w, tile)
+      if (i === 0) await tapCell(w, tile)
+    }
+
+    expect(playHit).toHaveBeenCalledTimes(4)
+    expect(vi.mocked(playVerdict).mock.calls).toEqual([[true]])
+  })
+
+  it('plays the fail verdict at once on a wrong tile, without a knock', async () => {
+    const w = mountBoard()
+    await endRun(w)
+
+    expect(playHit).not.toHaveBeenCalled()
+    expect(vi.mocked(playVerdict).mock.calls).toEqual([[false]])
+  })
+
+  it('plays the fail verdict when a beat passes unhit', async () => {
+    const w = mountBoard()
+    await flushPromises()
+    w.getComponent(RevealCover).vm.$emit('start')
+    await w.setProps({ sealed: false, payload: PAYLOAD })
+
+    vi.advanceTimersByTime(2000)
+
+    expect(vi.mocked(playVerdict).mock.calls).toEqual([[false]])
+  })
+
+  it('stays silent when the tab going away ends the run', async () => {
+    const w = mountBoard()
+    await flushPromises()
+    w.getComponent(RevealCover).vm.$emit('start')
+    await w.setProps({ sealed: false, payload: PAYLOAD })
+    vi.advanceTimersByTime(1000)
+
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+
+    expect(playVerdict).not.toHaveBeenCalled()
   })
 })

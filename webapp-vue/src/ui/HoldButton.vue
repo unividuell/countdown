@@ -12,12 +12,13 @@
  * be covered — a palm resting on it — and which therefore draws the progress itself, large.
  *
  * A plain hold charges the button: the ring gathers pace, sparks fly off it and, where the board
- * asks, knocks climb a scale — all on one curve (`charge.ts`). A count-in keeps its even beat and
- * none of that.
+ * asks, knocks climb a scale — all on one curve (`charge.ts`). A count-in keeps its even beat, no
+ * sparks, and where asked one knock per beat (`countInSound.ts`).
  */
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { chargeCurve } from '@/ui/charge'
 import { playCharge, type Charging } from '@/ui/chargeSound'
+import { playCountIn } from '@/ui/countInSound'
 import HoldSparks from '@/ui/HoldSparks.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
@@ -54,8 +55,8 @@ const props = withDefaults(
      */
     contour?: 'opposite' | 'neutral'
     /**
-     * Plays the charge's knocks. Only for a board on stage (`useSoundStage`), whose knocks the
-     * header's sound switch governs.
+     * Plays the charge's knocks, or the count-in's. Only for a board on stage (`useSoundStage`),
+     * whose knocks the header's sound switch governs.
      */
     sound?: boolean
     /** False for a hold that must not celebrate: giving up charges nothing. */
@@ -124,10 +125,12 @@ let charging: Charging | null = null
 watch(
   holding,
   (isHolding) => {
-    if (counting || !props.sound) return
+    if (!props.sound) return
 
     if (isHolding) {
-      charging = playCharge(progress.value, props.holdMs)
+      charging = counting
+        ? playCountIn(props.beats ?? 0, props.beatMs)
+        : playCharge(progress.value, props.holdMs)
       return
     }
 

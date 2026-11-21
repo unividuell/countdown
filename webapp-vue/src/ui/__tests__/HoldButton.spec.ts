@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { chargeCurve } from '@/ui/charge'
 import { playCharge } from '@/ui/chargeSound'
+import { playCountIn } from '@/ui/countInSound'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldSparks from '@/ui/HoldSparks.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
 
 const stopCharge = vi.fn()
 vi.mock('@/ui/chargeSound', () => ({ playCharge: vi.fn(() => ({ stop: stopCharge })) }))
+vi.mock('@/ui/countInSound', () => ({ playCountIn: vi.fn(() => ({ stop: stopCharge })) }))
 
 function mountButton(props: Partial<InstanceType<typeof HoldButton>['$props']> = {}) {
   return mount(HoldButton, {
@@ -600,6 +602,7 @@ describe('HoldButton', () => {
   describe('charging', () => {
     beforeEach(() => {
       vi.mocked(playCharge).mockClear()
+      vi.mocked(playCountIn).mockClear()
       stopCharge.mockClear()
     })
 
@@ -683,10 +686,29 @@ describe('HoldButton', () => {
       expect(stopCharge).not.toHaveBeenCalled()
     })
 
-    it('never knocks for a count-in', async () => {
-      await hold(mountButton({ sound: true, beats: 3 }), 200)
+    it('counts in by knocks instead of charging', async () => {
+      await hold(mountButton({ sound: true, beats: 3, beatMs: 500 }), 200)
 
       expect(playCharge).not.toHaveBeenCalled()
+      expect(playCountIn).toHaveBeenCalledExactlyOnceWith(3, 500)
+    })
+
+    it('stops the count-in when released, and lets GO ring when it completes', async () => {
+      const w = mountButton({ sound: true, beats: 3, beatMs: 500 })
+      await hold(w, 200)
+      await w.get('[data-test="hold-button"]').trigger('pointerup')
+      expect(stopCharge).toHaveBeenCalledOnce()
+
+      stopCharge.mockClear()
+      await hold(w, 1600)
+      expect(w.emitted('confirm')).toHaveLength(1)
+      expect(stopCharge).not.toHaveBeenCalled()
+    })
+
+    it('counts in silently unless the board asks for the knocks', async () => {
+      await hold(mountButton({ beats: 3 }), 200)
+
+      expect(playCountIn).not.toHaveBeenCalled()
     })
   })
 })
