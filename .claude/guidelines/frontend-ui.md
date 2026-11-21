@@ -35,6 +35,8 @@ desktop layout that was written first).
   folded — remembered per game — is their usual state, so a figure only in the body goes unread:
   the stake, a tolerance. The body may say it again in a sentence. See `AwardBox`'s `detail`
   (Anmaßung: „Toleranz 5,0%“).
+- **A tolerance's sign follows its deviation.** „± 1,0“ only where a guess can miss on both
+  sides (Anmaßung's share); a distance is never negative, so its bound is „≤ 1,5“ (Peilung).
 - **Watch the tap target.** 44px is the floor for anything interactive; the 48px avatar
   circle is deliberately at that scale.
   One named exception: a strip that must stay whole beats the floor. Blockierung's hotbar

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Peilung's field on a canvas. It draws and reports taps, nothing else: what a tap means is the
+ * Peilung's field on a canvas. It draws and reports clicks, nothing else: what a click means is the
  * board's business (`flow.ts`). Layers, bottom up:
  *
  *   ground · dot grid · [tolerance circles] · rings · waves · loading pulse · ping centres
@@ -9,8 +9,15 @@
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
  * a finger there scrolls the page — and a legend under it names what the map shows.
  *
- * `covered` lays a button over the field, and only its click asks to `start`: iOS counts a touch
- * as a gesture from its end on, so a `pointerdown` could not start the audio graph.
+ * A click comes in two lengths. Released within `LONG_PRESS_MS` it is a `tap`, told on the way up —
+ * iOS counts a touch as a gesture from its end on, so only then may the board start the sound — but
+ * with the place and `timeStamp` of the way down, so a ring is as quick as the reaction. Held that
+ * long it is a `hold`, told at once, and its release says nothing.
+ *
+ *   down ──< 500 ms──▶ up      tap(at, tDown)
+ *   down ──500 ms──▶ hold(at) ──▶ up   (nothing)
+ *
+ * There is no cover: until the first ping the field names how many clips hide in it.
  *
  * A wave is drawn from its `startMs`, on the clock of `performance.now()` and of a tap's
  * `event.timeStamp`. The canvas animates by `requestAnimationFrame` only while something moves.
@@ -23,7 +30,7 @@ import { toCell, waveRadius } from './sonar'
 import type { Cell, EchoLocateSolution, NoiseKind, Point } from './types'
 
 const props = defineProps<{
-  /** How many sayings hide in the field; the cover names them. */
+  /** How many sayings hide in the field; named on it until the first ping. */
   clips?: number
   grid: number
   /** Cells per second. */
@@ -38,10 +45,6 @@ const props = defineProps<{
   pinColorHex: string
   /** A ping whose answer is out: it pulses until its wave starts. */
   pending: Point | null
-  /** Before the first tap, while the sound is locked. */
-  covered: boolean
-  /** The cover takes no click. */
-  disabled?: boolean
   solution?: EchoLocateSolution | null
   /** Everyone else's pins on the map, smaller, each in its player's colour. */
   otherPins?: { at: Point; colorHex: string }[]
@@ -50,7 +53,10 @@ const props = defineProps<{
 }>()
 
 /** `tMs` is the event's `timeStamp`: when the finger came down, not when the handler ran. */
-const emit = defineEmits<{ tap: [at: Point, tMs: number]; start: [] }>()
+const emit = defineEmits<{ tap: [at: Point, tMs: number]; hold: [at: Point] }>()
+
+/** Held this long, a click is a long one: iOS's own long press waits about as long. */
+const LONG_PRESS_MS = 500
 
 const NOISE_LETTER: Record<NoiseKind, string> = {
   BIRDS: 'V',
@@ -107,13 +113,57 @@ function throwSparks(x: number, y: number): void {
   animate()
 }
 
+// Sparks mark a ping going out — not a mark, not a pin: they fly where the open ping was clicked.
+watch(
+  () => props.pending,
+  (at) => {
+    const el = canvas.value
+    if (at === null || !el) return
+
+    const rect = el.getBoundingClientRect()
+    throwSparks((at.x / props.grid) * rect.width, (at.y / props.grid) * rect.height)
+  },
+)
+
+/** The finger that is down, until it is either released or held long enough. */
+let press: { id: number; at: Point; tMs: number; timer: ReturnType<typeof setTimeout> } | null =
+  null
+
 function onDown(event: PointerEvent): void {
   const el = canvas.value
-  if (!el || !interactive.value) return
+  if (!el || !interactive.value || press !== null) return
 
   const rect = el.getBoundingClientRect()
-  throwSparks(event.clientX - rect.left, event.clientY - rect.top)
-  emit('tap', toCell(event.clientX, event.clientY, rect, props.grid), event.timeStamp)
+  const at = toCell(event.clientX, event.clientY, rect, props.grid)
+  const timer = setTimeout(() => {
+    press = null
+    emit('hold', at)
+  }, LONG_PRESS_MS)
+  press = { id: event.pointerId, at, tMs: event.timeStamp, timer }
+
+  // A mouse released beside the field still ends the click; a touch is captured anyway.
+  try {
+    el.setPointerCapture(event.pointerId)
+  } catch {
+    // A pointer the browser no longer knows: its `pointercancel` follows.
+  }
+}
+
+function onUp(event: PointerEvent): void {
+  if (press === null || event.pointerId !== press.id) return
+
+  clearTimeout(press.timer)
+  const { at, tMs } = press
+  press = null
+  emit('tap', at, tMs)
+}
+
+/** The browser took the finger back — a scroll, a system gesture: no click at all. */
+function onCancel(event: PointerEvent): void {
+  if (press === null || event.pointerId !== press.id) return
+
+  clearTimeout(press.timer)
+  press = null
 }
 
 function moving(now: number): boolean {
@@ -339,6 +389,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (press !== null) clearTimeout(press.timer)
   observer?.disconnect()
   if (frame !== 0) cancelAnimationFrame(frame)
 })
@@ -366,22 +417,20 @@ watch(
       ref="canvas"
       role="img"
       aria-label="Sonarfeld"
-      class="block aspect-square w-full rounded-lg select-none"
+      class="block aspect-square w-full rounded-lg select-none [-webkit-touch-callout:none]"
       :class="{ 'touch-none': interactive }"
       @pointerdown="onDown"
+      @pointerup="onUp"
+      @pointercancel="onCancel"
+      @contextmenu.prevent
     />
-    <button
-      v-if="props.covered"
-      type="button"
-      :disabled="props.disabled"
-      class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg bg-scrim/40 text-lg font-semibold text-white focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-      @click="emit('start')"
+    <p
+      v-if="props.clips && props.waves.length === 0 && interactive"
+      data-test="sonar-count"
+      class="pointer-events-none absolute inset-0 flex items-center justify-center text-base text-white/70"
     >
-      <span v-if="props.clips" class="text-base font-normal text-white/80">
-        {{ props.clips === 1 ? '1 Spruch' : `${props.clips} Sprüche` }}
-      </span>
-      <span>Antippen zum Starten</span>
-    </button>
+      {{ props.clips === 1 ? '1 Spruch' : `${props.clips} Sprüche` }}
+    </p>
     <ul
       v-if="props.solution"
       data-test="sonar-legend"

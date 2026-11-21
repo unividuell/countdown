@@ -18,6 +18,9 @@ public, because the free GitHub Actions runners require it.
   gitignored and lives in the **main checkout, never in a worktree** — worktrees are temporary
   and would take the only plaintext copy with them. The buffer file is a stop on the way, not an
   original: `sops -d` reproduces it.
+- **One folder per game, mirrored across the three places:** `.local/games/<game>/X.yaml` ↔
+  `deploy/games/<game>/X.sops.yaml` ↔ `core/src/main/resources/games/<game>/` (sample). Each
+  game's `scripts/<game>-*.sh` maps the pair; `.sops.yaml` matches any depth.
 - **Examples come from a committed sample set, never from the real one.** Specs, tests and
   fixtures use obviously fake entries. The app **fails to start** if it loaded the sample while
   `production` or `staging` is active — the two profiles real players run under (this repo has no
@@ -25,6 +28,10 @@ public, because the free GitHub Actions runners require it.
 - **Keep the decryption out of the application.** The backend reads plain YAML from a path; the
   deployment decrypts into it. No crypto library and no key handling in Kotlin, and CI never
   needs the key because the tests run against the sample.
+- **On/off switches stay unencrypted, beside the ciphers.** A plain list (`categories.txt`) decides
+  which encrypted files are active; toggling one is a one-line, reviewable diff and needs no key.
+  The deployment copies the list next to the decrypted files so the backend and `update.sh` read
+  the same one. Switching everything off must not stop the start: the game is just unavailable.
 - **A checker can only check what is mechanically wrong.** Field types, ranges, a parseable
   date, a non-blank string: those belong in the loader and run on every start. Sentence counts,
   word lists, quotas per category do not. Guess Hue had all three, and what they actually

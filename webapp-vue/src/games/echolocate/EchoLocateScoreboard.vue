@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /**
- * „Auswertung“ for Peilung: every pin of the round, nearest to the clips first.
+ * „Auswertung“ for Peilung: every pin of the round, nearest to the clips first; in phase two on
+ * the clock, which the table adds itself.
  *
  * The table is `RevealScoreboard`; this file adds what stands between „Name“ and „Pkt“ — the
- * distance — and makes each name a button that lights that player's pings, rings and pins on
- * the map above.
+ * distance and the pings — and makes each name a button that lights that player's pings, rings and
+ * pins on the map above.
  *
  *                      Toleranz
- *                         ± 1,5            phase one only: the circle's radius
+ *                         ≤ 1,5            the circle's radius; a distance is never negative
  *   Auswertung
- *   Name               Abstand     Pkt
- *   anna                 1,6        1
- *   bert               Ø 7,2        0      two clips: the mean
+ *   Name              Pings  Abstand  Pkt   phase two: Zeit [mm:ss] between Abstand and Pkt
+ *   anna                 4      1,6     1
+ *   bert                12    Ø 7,2     0   two clips: the mean
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -37,16 +38,22 @@ const oneDecimal = new Intl.NumberFormat('de-DE', {
   maximumFractionDigits: 1,
 })
 
+// What decides stands furthest right, next to „Pkt“: the distance; in phase two the frame's clock
+// comes after it, as in every timed scoreboard.
 const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
+  { key: 'pings', label: 'Pings', width: '3rem', align: 'end', numeric: true },
   {
     key: 'distance',
     label: 'Abstand',
     ...(props.toleranceRadius === null ? {} : { fact: 'Toleranz' }),
-    width: '4rem',
+    width: '3.5rem',
     align: 'end',
     numeric: true,
   },
 ])
+
+/** Only a timed round's rows carry a clock. */
+const timed = computed(() => props.rows.some((row) => row.durationLabel != null))
 
 const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:-outline-offset-2'
 </script>
@@ -55,7 +62,11 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
   <RevealScoreboard
     :rows="props.rows"
     :columns="columns"
-    caption="Alle Peilungen der Runde, nach Abstand sortiert"
+    :caption="
+      timed
+        ? 'Alle Peilungen der Runde, Treffer nach Zeit sortiert'
+        : 'Alle Peilungen der Runde, nach Abstand sortiert'
+    "
     :live="props.live"
     :animate="props.animate"
   >
@@ -81,9 +92,10 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
 
     <template v-if="props.toleranceRadius !== null" #fact-distance>
       <span data-test="distance-tolerance" class="block text-end tabular-nums">
-        ±&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
+        ≤&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
       </span>
     </template>
     <template #cell-distance="{ row }">{{ row.distanceLabel ?? '—' }}</template>
+    <template #cell-pings="{ row }">{{ row.pingCount ?? '—' }}</template>
   </RevealScoreboard>
 </template>

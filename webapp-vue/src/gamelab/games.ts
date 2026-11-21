@@ -30,6 +30,8 @@ export const labGameList: readonly LabGameEntry[] = [
   { id: 'copy-blocks', title: 'Blockierung' },
   { id: 'paint-ratio', title: 'Anmaßung' },
   { id: 'echo-locate', title: 'Peilung' },
+  { id: 'turn-pipes', title: 'Verrohrung' },
+  { id: 'match-scale', title: 'Augenmaß' },
 ]
 
 /** Lookup by URL segment, for the game page. */

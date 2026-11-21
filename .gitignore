@@ -36,9 +36,11 @@
 # locally from a repo checkout -- on the server it's not a git checkout at all).
 deploy/secrets/
 # Copy of the encrypted dataset that update.sh downloads (named per target, see update.sh) --
-# still encrypted, so no leak, but it makes `git status` dirty. The glob requires a target
-# infix, so it doesn't match deploy/guess-hue-dataset.sops.yaml itself (that committed file,
-# without an infix, stays tracked).
+# still encrypted, so no leak, but it makes `git status` dirty. The committed ciphers live under
+# deploy/games/ and stay tracked.
 deploy/guess-hue-dataset.*.sops.yaml
 # Same as above, for the Weltanschauung term list.
 deploy/spot-object-terms.*.sops.yaml
+# Same as above, for the Augenmaß category files.
+deploy/match-scale.*.sops.yaml
+deploy/match-scale.*.categories.txt

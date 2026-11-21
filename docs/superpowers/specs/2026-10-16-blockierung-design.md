@@ -380,7 +380,7 @@ den Schlägen); holt es einen abgebauten zurück, dessen Setz-Klang. Stumm gesch
 - **Der eine `AudioContext`** wandert aus `usePlayback` nach `ui/audio.ts` — die
   [Audio-Regel](../../../.claude/guidelines/frontend-state.md) verlangt einen für die ganze App, und
   Anspielung behält ihr Verhalten. Abspielen mit 50 ms Vorlauf.
-- **Ton an/aus** merkt sich das Gerät (`localStorage`, `useStorage`), Vorgabe an.
+- **Ton an/aus** merkt sich das Gerät (`localStorage`, `useStorage`), Vorgabe an — seit Verrohrung ein gemeinsamer Schalter für alle Spiele (`ui/useGameSound.ts`).
 - **Quellenangaben:** `sounds/CREDITS.md` neben den Dateien (Quelle, Autor, Lizenz, Umwandlung) und ein
   Abschnitt „Klänge in Blockierung“ auf der Rechtliches-Seite, neben Google Maps. Kies steht unter
   CC BY-NC 4.0 — countdown ist nicht-kommerziell; ändert sich das, müssen diese Dateien raus.

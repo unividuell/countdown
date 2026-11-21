@@ -1,0 +1,42 @@
+# Not game content: invented shapes so tests and a local start work without the encrypted dataset.
+# The app refuses to boot with it under production or staging — see MatchScaleDatasetConfiguration.
+category: shapes
+displayName: Beispielformen
+attribution: "Beispieldatensatz, kein Spielinhalt"
+entries:
+  - name: Beispielform Alpha
+    path: "M0 0 l1000 0 l0 500 l-1000 0 z"
+    width: 1000
+    height: 500
+    metresPerUnit: 1.0
+    measure:
+      axis: length
+      metres: 1000
+      source: "https://example.org/beispielquelle"
+  - name: Beispielform Beta
+    path: "M0 0 l1000 0 l-500 800 z"
+    width: 1000
+    height: 800
+    metresPerUnit: 2.0
+    measure:
+      axis: length
+      metres: 2000
+      source: "https://example.org/beispielquelle"
+  - name: Beispielform Gamma
+    path: "M0 0 l600 0 l0 1000 l-600 0 z"
+    width: 600
+    height: 1000
+    metresPerUnit: 3.0
+    measure:
+      axis: height
+      metres: 3000
+      source: "https://example.org/beispielquelle"
+  - name: Beispielform Delta
+    path: "M0 500 l500 -500 l500 500 l-500 500 z"
+    width: 1000
+    height: 1000
+    metresPerUnit: 4.0
+    measure:
+      axis: length
+      metres: 4000
+      source: "https://example.org/beispielquelle"

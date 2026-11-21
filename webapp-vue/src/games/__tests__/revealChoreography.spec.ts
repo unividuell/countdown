@@ -19,6 +19,10 @@ describe('the reveal schedule', () => {
     expect(cellDelayMs(2, 0, 3)).toBe(RESULTS_DELAY_MS + 2 * ROW_STAGGER_MS)
   })
 
+  it('a later results beat moves the whole cascade', () => {
+    expect(cellDelayMs(2, 3, 3, 2500)).toBe(2500 + 2 * ROW_STAGGER_MS + 3 * CELL_STAGGER_MS)
+  })
+
   it('overlaps the cascades: a row starts before the row above it has finished', () => {
     // 120 < 3 * 45 — that is what makes it flow instead of stutter.
     expect(ROW_STAGGER_MS).toBeLessThan(3 * CELL_STAGGER_MS)

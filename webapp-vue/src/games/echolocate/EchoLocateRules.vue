@@ -9,24 +9,29 @@ const props = defineProps<{ clips: number }>()
 <template>
   <ul class="ms-4 list-disc space-y-1">
     <li>
-      Ein Ping schickt eine Welle los. Was sie erreicht, erklingt in dem Moment, in dem sie dort
-      ankommt.
+      Ein Ping schickt eine Welle los. Was sie erreicht (Spruch oder Ablenkung), erklingt in dem
+      Moment, in dem sie dort ankommt.
     </li>
     <li>
       Eine Welle reicht nicht übers ganze Feld: Was zu weit weg liegt, hörst du bei diesem Ping
       nicht.
     </li>
     <li v-if="props.clips === 1">
-      Hörst du den Spruch, tipp aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
+      Hörst du den Spruch, klick aufs Feld: dort bleibt ein Ring stehen. Dieser Ring ist eine reine
       Markierung für dich – er fließt nicht in die Bewertung ein.
     </li>
     <li v-else>
-      Hörst du einen Spruch, tipp aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
+      Hörst du einen Spruch, klick aufs Feld: dort bleibt ein Ring stehen, bis zu zwei pro Welle.
       Diese Ringe sind eine reine Markierung für dich – sie fließen nicht in die Bewertung ein.
     </li>
     <li v-if="props.clips === 1">
-      Drei Pings, ein Pin für den Spruch. Zum Abgeben „Abgeben“ gedrückt halten.
+      Ein Pin ist deine Schätzung: Drück lang auf die Stelle, wo du den Spruch vermutest. Noch mal
+      lang drücken nimmt ihn weg.
     </li>
-    <li v-else>Drei Pings, ein Pin pro Spruch. Zum Abgeben „Abgeben“ gedrückt halten.</li>
+    <li v-else>
+      Ein Pin ist deine Schätzung: Drück lang auf jede Stelle, wo du einen Spruch vermutest. Noch
+      mal lang drücken nimmt ihn weg.
+    </li>
+    <li>„Markierungen löschen“ räumt die Ringe ab. Zum Abgeben „Abgeben“ gedrückt halten.</li>
   </ul>
 </template>

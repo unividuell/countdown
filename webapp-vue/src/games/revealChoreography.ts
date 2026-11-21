@@ -67,9 +67,15 @@ export function headCellDelayMs(row: number, column: number): number {
 /**
  * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the picture. One
  * function for both is the whole point of the coupling: there is no second timetable to drift.
+ * `resultsDelayMs` moves the whole cascade, for a picture that runs past beat 4 (Augenmaß's count).
  */
-export function cellDelayMs(tick: number, column: number, rowCount: number): number {
-  return RESULTS_DELAY_MS + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
+export function cellDelayMs(
+  tick: number,
+  column: number,
+  rowCount: number,
+  resultsDelayMs = RESULTS_DELAY_MS,
+): number {
+  return resultsDelayMs + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
 }
 
 /**

@@ -95,6 +95,10 @@ app:
     # Locally it stays empty only on a machine without the age key: `.claude/launch.json` fills it
     # from `scripts/guess-hue-dataset.sh dev-path`, which answers empty when it cannot decrypt.
     dataset-path: ${GUESS_HUE_DATASET_PATH:}
+  match-scale:
+    # Empty means: the sample dataset from the classpath — a boot failure in production/staging,
+    # where update.sh decrypts every category with sops into one directory and compose mounts it.
+    dataset-dir: ${MATCH_SCALE_DATASET_DIR:}
   song-snippet:
     # Finding an id — the API needs no key:
     #   A) search:  curl -s --get https://api.deezer.com/search/playlist --data-urlencode 'q=deine Hits'

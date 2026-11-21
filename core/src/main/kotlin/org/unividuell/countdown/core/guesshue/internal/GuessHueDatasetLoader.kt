@@ -44,6 +44,6 @@ class GuessHueDatasetLoader(private val properties: GuessHueDatasetProperties) {
     }
 
     companion object {
-        const val SAMPLE_RESOURCE = "/guess-hue-dataset.sample.yaml"
+        const val SAMPLE_RESOURCE = "/games/guess-hue/dataset.sample.yaml"
     }
 }

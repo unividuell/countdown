@@ -4,10 +4,12 @@ import DedusterGame from './deduster/DedusterGame.vue'
 import EchoLocateGame from './echolocate/EchoLocateGame.vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
+import MatchScaleGame from './matchscale/MatchScaleGame.vue'
 import PaintRatioGame from './paintratio/PaintRatioGame.vue'
 import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
 import SpotObjectGame from './spotobject/SpotObjectGame.vue'
+import TurnPipesGame from './turnpipes/TurnPipesGame.vue'
 
 const NOTE = 'text-sm text-on-surface-variant'
 
@@ -49,4 +51,6 @@ export const gameComponents: Record<string, Component> = {
   'copy-blocks': asyncGame(() => import('./copyblocks/CopyBlocksGame.vue')),
   'paint-ratio': PaintRatioGame,
   'echo-locate': EchoLocateGame,
+  'turn-pipes': TurnPipesGame,
+  'match-scale': MatchScaleGame,
 }

@@ -86,12 +86,13 @@ describe('SongSnippetScoreboard', () => {
     const w = mountBoard([row({ userId: 'a' })])
 
     // The unit stands here, once, instead of after every number below.
-    expect(w.findAll('thead tr:last-child th').map((th) => th.text())).toEqual([
+    expect(w.findAll('[data-test="scoreboard-band"] th').map((th) => th.text())).toEqual([
       'Name',
       'Tipp',
-      'Zeit [s]',
+      'Zeit',
       'Pkt',
     ])
+    expect(w.get('[data-test="scoreboard-units"]').text()).toBe('[s]')
   })
 
   it('keeps the order it was handed and paints every row in its player colour', () => {

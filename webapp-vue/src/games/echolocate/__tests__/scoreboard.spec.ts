@@ -63,6 +63,29 @@ describe('formatDistance', () => {
 })
 
 describe('scoreRows', () => {
+  it('counts every ping a row sent', () => {
+    const [row] = rowsOf([entry({ steps: PINGS })])
+
+    expect(row!.pingCount).toBe(2)
+  })
+
+  // Phase two: points, then a hit before a miss, then the faster clock — as in Verrohrung.
+  it('ranks a timed round by its clock, hits before misses', () => {
+    const miss = { distance: 0.4, withinTolerance: false, pinOf: [0] }
+    const hit = { distance: 1.2, withinTolerance: true, pinOf: [0] }
+    const rows = rowsOf(
+      [
+        entry({ userId: 'near-miss', outcome: miss, durationMs: 20_000, points: 0 }),
+        entry({ userId: 'slow-hit', outcome: hit, durationMs: 90_000, points: 0 }),
+        entry({ userId: 'fast-hit', outcome: hit, durationMs: 40_000, points: 3 }),
+      ],
+      { awardRule: 'CLOSEST_ONLY' },
+    )
+
+    expect(rows.map((row) => row.userId)).toEqual(['fast-hit', 'slow-hit', 'near-miss'])
+    expect(rows.map((row) => row.correct)).toEqual([true, true, false])
+  })
+
   it('ranks by distance, give-ups last, userId as tiebreak', () => {
     const rows = rowsOf([
       entry({ userId: 'e', outcome: { distance: 'x' } }),

@@ -4,7 +4,7 @@
  */
 import type { AwardRule } from '@/api/types'
 import type { GameEntry } from '@/games/GameEntry'
-import { withTicks } from '@/games/ranking'
+import { rankByClock, withTicks } from '@/games/ranking'
 import { rowHead } from '@/games/scoreboardColumns'
 import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import { asEchoLocateGuess, asEchoLocateOutcome, asPing } from './types'
@@ -19,6 +19,10 @@ export interface ScoreRow extends ScoreboardRow {
   pings: Point[]
   /** `pinOf[i]` is the pin assigned to clip `i`; `null` for a row without a readable play. */
   pinOf: number[] | null
+  /** Every ping the player sent, readable or not; `null` for a row without a readable play. */
+  pingCount: number | null
+  /** Every pin within its clip's circle: what ranks a hit before a miss on the clock. */
+  correct: boolean
 }
 
 const oneDecimal = new Intl.NumberFormat('de-DE', {
@@ -47,8 +51,9 @@ function pingsOf(steps: readonly unknown[] | undefined, grid: number): Point[] {
 }
 
 /**
- * Every entry of the round as a row, the nearest to the clips first. A row that cannot be shown
- * goes last and ties go by user id, so a reload shows the same picture.
+ * Every entry of the round as a row. Phase one: the nearest to the clips first. Phase two runs on
+ * the clock: points, a hit before a miss, the faster time — as in Verrohrung. A row that cannot be
+ * shown goes last and ties go by user id, so a reload shows the same picture.
  *
  * Such a row — a give-up, or a guess or outcome that cannot be read — stays, but says nothing
  * about distance and brings no pins, rings or pings: half a play is not drawn.
@@ -63,7 +68,7 @@ export function scoreRows(input: {
 }): ScoreRow[] {
   const { payload } = input
 
-  const ranked = input.entries.map((entry) => {
+  function rowOf(entry: GameEntry): { distance: number | null; row: Omit<ScoreRow, 'tick'> } {
     const outcome = asEchoLocateOutcome(entry.outcome, payload.clips)
     const guess = asEchoLocateGuess(entry.guess, payload)
     const shown = outcome !== null && guess !== null
@@ -76,9 +81,18 @@ export function scoreRows(input: {
         guess: shown ? guess : null,
         pings: shown ? pingsOf(entry.steps, payload.grid) : [],
         pinOf: shown ? outcome.pinOf : null,
+        pingCount: shown ? (entry.steps?.length ?? 0) : null,
+        correct: shown && outcome.withinTolerance === true,
       },
     }
-  })
+  }
+
+  // Only a timed round's entries carry a clock.
+  if (input.entries.some((entry) => entry.durationMs != null)) {
+    return rankByClock(input.entries, input.mineUserId, (entry) => rowOf(entry).row)
+  }
+
+  const ranked = input.entries.map(rowOf)
 
   ranked.sort(
     (a, b) =>

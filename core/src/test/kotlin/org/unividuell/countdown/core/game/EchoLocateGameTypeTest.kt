@@ -32,6 +32,7 @@ import org.unividuell.countdown.core.game.internal.EchoLocateEcho
 import org.unividuell.countdown.core.game.internal.EchoLocateGameType
 import org.unividuell.countdown.core.game.internal.EchoLocateOutcome
 import org.unividuell.countdown.core.game.internal.EchoLocateParams
+import org.unividuell.countdown.core.game.internal.EchoLocateScene
 import org.unividuell.countdown.core.game.internal.EchoLocateSolution
 import org.unividuell.countdown.core.rng.SeededRandom
 import tools.jackson.databind.JsonNode
@@ -89,7 +90,8 @@ class EchoLocateGameTypeTest {
                 clipIds = all.take(targets.size),
                 targets = targets.toList(),
                 noises = emptyList(),
-                toleranceRadius = if (phase == Phase.ONE) 1.5 else null,
+                toleranceRadius = 1.5,
+                timed = phase == Phase.TWO,
             )
         }
 
@@ -202,7 +204,7 @@ class EchoLocateGameTypeTest {
         params.grid shouldBe 20
         params.reach shouldBe 12.0
         params.speed shouldBe 3.0
-        params.pings shouldBe 3
+        params.pings shouldBe 999
         params.bedDb shouldBe -24.0
         params.noiseDb shouldBe 0.0
         params.noises.map { it.kind } shouldContainExactly listOf(
@@ -211,9 +213,21 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `phase one freezes a tolerance radius of 1,5 cells, phase two none`() {
+    fun `both phases freeze a tolerance radius of 1,5 cells, only phase two is timed`() {
         draw(context = context(phase = Phase.ONE)).toleranceRadius shouldBe 1.5
-        draw(context = context(phase = Phase.TWO)).toleranceRadius.shouldBeNull()
+        draw(context = context(phase = Phase.TWO)).toleranceRadius shouldBe 1.5
+        draw(context = context(phase = Phase.ONE)).timed shouldBe false
+        draw(context = context(phase = Phase.TWO)).timed shouldBe true
+    }
+
+    @Test
+    fun `the scene tells the sealed cover the field and how many clips hide in it`() {
+        val one = draw(context = context(difficulty = 0.0))
+        val two = draw(context = context(difficulty = 1.0))
+
+        game.scene(one) shouldBe EchoLocateScene(grid = 20, clips = 1)
+        game.scene(two) shouldBe EchoLocateScene(grid = 20, clips = 2)
+        fields(game.scene(two)) shouldBe setOf("grid", "clips")
     }
 
     @Test
@@ -226,13 +240,13 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `it never asks for a reveal or scores on time, and its stages only count pings`() {
-        listOf(Phase.ONE, Phase.TWO).forEach { phase ->
+    fun `phase two asks for a reveal and scores on time, and its stages only count pings`() {
+        listOf(Phase.ONE to false, Phase.TWO to true).forEach { (phase, timed) ->
             val params = draw(context = context(phase = phase))
 
-            game.requiresReveal(params) shouldBe false
-            game.scoresOnDuration(params) shouldBe false
-            game.stages(params) shouldBe 4
+            game.requiresReveal(params) shouldBe timed
+            game.scoresOnDuration(params) shouldBe timed
+            game.stages(params) shouldBe 1000
             game.stagesScore(params) shouldBe false
         }
     }
@@ -265,7 +279,7 @@ class EchoLocateGameTypeTest {
 
         mapper.valueToTree<JsonNode>(game.present(params)) shouldBe json(
             """
-            {"grid":20,"reach":12.0,"speed":3.0,"pings":3,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
+            {"grid":20,"reach":12.0,"speed":3.0,"pings":999,"clips":2,"bedDb":-24.0,"noiseDb":0.0,"toleranceRadius":1.5}
             """.trimIndent(),
         )
     }
@@ -424,14 +438,15 @@ class EchoLocateGameTypeTest {
     }
 
     @Test
-    fun `phase two has no gate`() {
+    fun `phase two keeps the gate - the fastest hit wins, a miss does not qualify`() {
         val params = roundOf(Cell(col = 5, row = 5), phase = Phase.TWO)
 
         val far = judge(params = params, guess = pins(18.0 to 18.0))
 
-        far.qualifies shouldBe true
+        far.qualifies shouldBe false
         far.deviation shouldBeGreaterThan 10.0
-        (far.outcome as EchoLocateOutcome).withinTolerance.shouldBeNull()
+        (far.outcome as EchoLocateOutcome).withinTolerance shouldBe false
+        judge(params = params, guess = pins(5.5 to 5.5)).qualifies shouldBe true
     }
 
     @Test
@@ -466,7 +481,7 @@ class EchoLocateGameTypeTest {
             """{"pins":[{"x":"1","y":1.0}],"rings":[]}""",
             """{"pins":[{"x":1.0}],"rings":[]}""",
             """{"pins":[{"x":1.0,"y":1.0,"z":0}],"rings":[]}""",
-            """{"pins":[$pin],"rings":[[],[],[],[]]}""",
+            """{"pins":[$pin],"rings":[${List(1000) { "[]" }.joinToString(",")}]}""",
             """{"pins":[$pin],"rings":[[1.0,2.0]]}""",
             """{"pins":[$pin],"rings":[[-0.1]]}""",
             """{"pins":[$pin],"rings":[[40.1]]}""",

@@ -36,7 +36,6 @@ describe('deduster scoreRows', () => {
         played('fast', [300, 300, 300, 300], 'COMPLETE', 1),
         played('further', [250, 250], 'WRONG_TILE', 0),
       ],
-      tiles: 4,
       awardRule: 'ALL_QUALIFYING',
       mineUserId: null,
     })
@@ -47,20 +46,18 @@ describe('deduster scoreRows', () => {
   it('reads the original’s columns', () => {
     const [row] = scoreRows({
       entries: [played('a', [300, 401], 'WRONG_TILE', 0)],
-      tiles: 4,
       awardRule: null,
       mineUserId: null,
     })
 
     expect(row!.averageLabel).toBe('351')
-    expect(row!.levelLabel).toBe('50')
+    expect(row!.levelLabel).toBe('2')
     expect(row!.out).toBe('verklickt')
   })
 
   it('says „—“ for a run without a single hit, and names every way out', () => {
     const rows = scoreRows({
       entries: [played('none', [], 'TOO_LATE', 0), played('all', [300, 300], 'COMPLETE', 1)],
-      tiles: 2,
       awardRule: null,
       mineUserId: null,
     })
@@ -79,7 +76,6 @@ describe('deduster scoreRows', () => {
           restarted: true,
         }),
       ],
-      tiles: 4,
       awardRule: null,
       mineUserId: null,
     })

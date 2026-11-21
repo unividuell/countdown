@@ -58,6 +58,17 @@ describe('RevealCover', () => {
     expect(mountCover().find('[data-test="reveal-cover-note"]').exists()).toBe(false)
   })
 
+  // Peilung names its count there, large: a game may bring its own line in the note's place.
+  it('lets a game bring its own note line', () => {
+    const cover = mount(RevealCover, {
+      props: { state: 'ready', busy: false },
+      slots: { note: '<p data-test="own-note" class="text-2xl">2 Sprüche</p>' },
+    })
+
+    expect(cover.get('[data-test="own-note"]').text()).toBe('2 Sprüche')
+    expect(cover.find('[data-test="reveal-cover-note"]').exists()).toBe(false)
+  })
+
   it('counts in at the beat the game gives it', () => {
     expect(mountCover({ beatMs: 1300 }).getComponent(HoldButton).props('beatMs')).toBe(1300)
   })

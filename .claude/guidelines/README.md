@@ -65,6 +65,8 @@ new team members (and AI assistants) stay consistent.
   on screen; that mistake was in the codebase for months and got mistaken for
   house style. When in doubt, grep: `grep -rn '„[^“]*"' webapp-vue/src` finds
   every half-converted pair.
+- **„Tipp“ is a round's hand-in, nothing else.** A touch on a game's field is a „Klick“
+  („klick aufs Feld“), never „tipp“ — Peilung's rules said both and read as one.
 
 ## Worked examples
 

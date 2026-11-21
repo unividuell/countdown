@@ -1,16 +1,16 @@
 /**
- * What a tap on the field does follows from where the round stands — there are no mode buttons.
- * Pure: the board passes the clock and the server's answers in, and acts on the effect it gets.
+ * What a click on the field does follows from where the round stands. A short click pings, or
+ * marks during a wave; a long one sets or lifts a pin, at any time. Pure: the board passes the clock
+ * and the server's answers in, and acts on the effect it gets.
  *
- *   closed ─unlocked─▶ pinging ─tap─▶ loading ─landed─▶ wave ─settle─▶ pinging …
- *                         ▲  ping        │                taps mark       │ no pings left
- *                         └───refused────┘                rings          ▼
- *                                                                      pinning  taps set / lift pins
+ *   idle ─tap─▶ loading ─landed─▶ wave ─settle─▶ idle …
+ *    ▲  ping      │               taps mark
+ *    └──refused───┘               rings
  *
- *   pinging, pinning ─locked─▶ closed
+ *   any phase ─hold─▶ a pin set or lifted        any phase ─clearRings─▶ rings cleared
  *
- * A tap on `closed` only asks to unlock. The field opens once the sound runs and closes once it
- * stops — never while a ping is out or its wave runs.
+ * There is no cover: the first click is the first ping. Whether the sound runs is the board's
+ * business — the same click starts it.
  *
  * `waves[i]` is the i-th ping; `rings[i]` the radii marked around it, so the two stay aligned.
  */
@@ -25,23 +25,23 @@ export interface Wave {
   endMs: number | null
 }
 
-export type FlowPhase = 'closed' | 'pinging' | 'loading' | 'wave' | 'pinning'
+export type FlowPhase = 'idle' | 'loading' | 'wave'
 
 export interface FlowState {
   phase: FlowPhase
   clips: number
-  /** How many pings the round allows; `waves.length` of them are spent. */
+  /** How many pings the round allows, a ceiling nobody sees; `waves.length` of them are spent. */
   pings: number
   waves: Wave[]
   rings: number[][]
   pins: Point[]
-  /** Where the open ping was tapped, while its answer is out. */
+  /** Where the open ping was clicked, while its answer is out. */
   pending: Point | null
 }
 
-export type Effect = { kind: 'unlock' } | { kind: 'ping'; stage: number; at: Point } | null
+export type Effect = { kind: 'ping'; stage: number; at: Point } | null
 
-/** A tap nearer than this to a pin lifts it, in cells. */
+/** A long click nearer than this to a pin lifts it, in cells. */
 export const LIFT_RADIUS = 1.2
 
 export function initialFlow(input: {
@@ -53,38 +53,26 @@ export function initialFlow(input: {
   const waves = input.steps.map((at) => ({ at, startMs: null, endMs: null }))
 
   return {
-    phase: 'closed',
+    phase: 'idle',
     clips: input.clips,
     pings: input.pings,
     waves,
     // Rings only for pings the server still has; a wave without marks has none.
     rings: waves.map((_, ping) => input.draft?.rings[ping] ?? []),
-    // Pins come after the last ping, so a draft with pins and pings left is stale.
-    pins: waves.length >= input.pings ? (input.draft?.pins ?? []) : [],
+    pins: input.draft?.pins ?? [],
     pending: null,
   }
 }
 
-/** Where a tap leads once no wave is running: the next ping, or the pins after the last. */
-function idle(state: FlowState): FlowPhase {
-  return state.waves.length < state.pings ? 'pinging' : 'pinning'
-}
-
-/** The sound runs: the cover goes, and the round goes on where it stood. */
-export function unlocked(state: FlowState): FlowState {
-  return state.phase === 'closed' ? { ...state, phase: idle(state) } : state
-}
-
-/** The sound stopped: back under the cover, pings, rings and pins kept. */
-export function locked(state: FlowState): FlowState {
-  return state.phase === 'pinging' || state.phase === 'pinning'
-    ? { ...state, phase: 'closed' }
-    : state
+/** Whether another ping is allowed. */
+export function pingsLeft(state: FlowState): boolean {
+  return state.waves.length < state.pings
 }
 
 /**
- * `tMs` is the tap's `event.timeStamp`, the same timeline as the wave's start. The wave is
- * settled first: a tap after its end is the next ping or pin, never a ring.
+ * The short click. `tMs` is the finger's `event.timeStamp` on the way down, the same timeline as
+ * the wave's start, so a ring is as quick as the reaction. The wave is settled first: a click
+ * after its end is the next ping, never a ring.
  */
 export function tap(
   state: FlowState,
@@ -95,14 +83,10 @@ export function tap(
   const now = settle(state, tMs)
 
   switch (now.phase) {
-    case 'closed':
-      return { state: now, effect: { kind: 'unlock' } }
-    case 'pinging':
-      return ping(now, at)
+    case 'idle':
+      return pingsLeft(now) ? ping(now, at) : { state: now, effect: null }
     case 'wave':
       return { state: mark(now, tMs, speed), effect: null }
-    case 'pinning':
-      return { state: pin(now, at), effect: null }
     case 'loading':
       return { state: now, effect: null }
   }
@@ -142,8 +126,8 @@ function mark(state: FlowState, tMs: number, speed: number): FlowState {
   }
 }
 
-/** Tapping near pins lifts the nearest; elsewhere a new one goes down, up to one per clip. */
-function pin(state: FlowState, at: Point): FlowState {
+/** The long click: near pins it lifts the nearest; elsewhere a new one goes down, one per clip. */
+export function hold(state: FlowState, at: Point): FlowState {
   let near = -1
   let nearest = LIFT_RADIUS
   state.pins.forEach((p, i) => {
@@ -156,6 +140,11 @@ function pin(state: FlowState, at: Point): FlowState {
   if (near >= 0) return { ...state, pins: state.pins.filter((_, i) => i !== near) }
 
   return state.pins.length < state.clips ? { ...state, pins: [...state.pins, at] } : state
+}
+
+/** „Markierungen löschen“: the rings go, pins and pings stay. A ping keeps an empty list. */
+export function clearRings(state: FlowState): FlowState {
+  return { ...state, rings: state.rings.map(() => []) }
 }
 
 /** The answer to the open ping is in: its wave starts, `startMs` already after audio latency. */
@@ -178,7 +167,7 @@ export function refused(state: FlowState): FlowState {
 
   return {
     ...state,
-    phase: 'pinging',
+    phase: 'idle',
     waves: state.waves.slice(0, -1),
     rings: state.rings.slice(0, -1),
     pending: null,
@@ -190,17 +179,16 @@ export function refused(state: FlowState): FlowState {
  * join without a wave. Not while a ping is open or a wave runs: that wave is the last one.
  */
 export function synced(state: FlowState, steps: readonly Point[]): FlowState {
-  if (state.phase === 'loading' || state.phase === 'wave') return state
+  if (state.phase !== 'idle') return state
   if (steps.length <= state.waves.length) return state
 
   const unknown = steps.slice(state.waves.length)
-  const next = {
+
+  return {
     ...state,
     waves: [...state.waves, ...unknown.map((at) => ({ at, startMs: null, endMs: null }))],
     rings: [...state.rings, ...unknown.map(() => [])],
   }
-
-  return next.phase === 'pinging' ? { ...next, phase: idle(next) } : next
 }
 
 /** Ends the wave once its sound and sonar are over; the board calls it from a timer. */
@@ -209,22 +197,18 @@ export function settle(state: FlowState, nowMs: number): FlowState {
 
   const endMs = state.waves[state.waves.length - 1]?.endMs ?? null
 
-  return endMs !== null && nowMs >= endMs ? { ...state, phase: idle(state) } : state
+  return endMs !== null && nowMs >= endMs ? { ...state, phase: 'idle' } : state
 }
 
-/** What a tap does right now, as the line under the field says it; closed, the cover says it. */
+/** What a short click does right now, as the line under the field says it. */
 export function statusLine(state: FlowState): string {
   switch (state.phase) {
-    case 'closed':
-      return ''
     case 'loading':
       return 'Sonar lädt …'
-    case 'pinging':
-      return `1. Klick: Ping, 2. Klick: Markieren – noch ${state.pings - state.waves.length}`
+    case 'idle':
+      return '1. Klick: Ping, 2. Klick: Markieren'
     case 'wave':
       return 'Markieren'
-    case 'pinning':
-      return `Schätzung · Pins ${state.pins.length}/${state.clips}`
   }
 }
 
