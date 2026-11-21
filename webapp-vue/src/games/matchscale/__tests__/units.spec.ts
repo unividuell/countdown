@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Measure } from '../types'
-import { formatLength, formatSigned, inUnit, roundUnit } from '../units'
+import { formatLength, formatSigned, roundUnit } from '../units'
 
 function m(metres: number): Measure {
   return { axis: 'length', metres, source: 'x' }
@@ -25,14 +25,6 @@ describe('roundUnit', () => {
   it('takes what measures there are, none gives no unit', () => {
     expect(roundUnit(null, m(2))).toBe('cm')
     expect(roundUnit(null, null)).toBeNull()
-  })
-})
-
-describe('inUnit', () => {
-  it('rounds to a whole number in the unit', () => {
-    expect(inUnit(2.004, 'cm')).toBe(200)
-    expect(inUnit(0.0036, 'mm')).toBe(4)
-    expect(inUnit(12_345, 'km')).toBe(12)
   })
 })
 

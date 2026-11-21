@@ -1,5 +1,5 @@
 import type { Measure, MeasureKind } from './types'
-import { formatLength, inUnit, type Unit } from './units'
+import { formatTenths, inUnitTenths, type Unit } from './units'
 
 const AXIS: Record<Measure['axis'], string> = { length: 'Länge', height: 'Höhe' }
 
@@ -12,9 +12,10 @@ const KIND: Record<MeasureKind, string> = {
 }
 
 /**
- * A measure as the legend reads it, in the round's unit: „200 cm Kopf-Rumpf“, „45 cm Höhe“; a
- * measure without kind names its axis.
+ * A measure as the legend reads it, in the round's unit and the table's tenths: „200,0 cm
+ * Kopf-Rumpf“, „43,6 cm Durchmesser“ — the same number as the table's „Lösung“. A measure without
+ * kind names its axis.
  */
 export function formatMeasure({ axis, kind, metres }: Measure, unit: Unit): string {
-  return `${formatLength(inUnit(metres, unit))} ${unit} ${kind ? KIND[kind] : AXIS[axis]}`
+  return `${formatTenths(inUnitTenths(metres, unit))} ${unit} ${kind ? KIND[kind] : AXIS[axis]}`
 }

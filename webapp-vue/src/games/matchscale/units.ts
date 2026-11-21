@@ -1,5 +1,5 @@
 /**
- * The reveal's lengths: one unit per round, every value a whole number in it. The unit is the
+ * The reveal's lengths: one unit per round, every value in tenths of it. The unit is the
  * largest in which the smaller of A and B still counts ten — countries in km, buildings in m — but
  * never below cm unless something is smaller than a centimetre: a mouse is „8 cm“, not „80 mm“.
  */
@@ -23,11 +23,6 @@ export function roundUnit(...measures: readonly (Measure | null)[]): Unit | null
     COARSE_FIRST.find((unit) => smaller * PER_METRE[unit] >= 10) ??
     (smaller * PER_METRE.cm >= 1 ? 'cm' : 'mm')
   )
-}
-
-/** `2.004` m in `cm` → `200`. */
-export function inUnit(metres: number, unit: Unit): number {
-  return Math.round(metres * PER_METRE[unit])
 }
 
 /** German grouping only from five digits: `2500`, `12.500`. */

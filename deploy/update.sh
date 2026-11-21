@@ -20,6 +20,19 @@ BASE="https://raw.githubusercontent.com/unividuell/countdown/$REF/deploy"
 # a staging run must not leave prod driving an unreleased script.
 STABLE="https://raw.githubusercontent.com/unividuell/countdown/main/deploy"
 
+# Set to 1 when a decrypted dataset differs from the one deployed before. core reads its datasets
+# only at startup, and `up -d` recreates it only for a new image or config: a content-only commit
+# (a redrawn silhouette, a category switched off) would otherwise never reach the running game.
+DATASETS_CHANGED=0
+
+# Marks DATASETS_CHANGED unless $1 (new) and $2 (deployed, file or directory) are equal. A first
+# deploy has nothing to compare against: `up -d` creates core with it anyway.
+mark_if_changed() {
+  if [ -e "$2" ] && ! diff -r "$1" "$2" >/dev/null 2>&1; then
+    DATASETS_CHANGED=1
+  fi
+}
+
 # Downloads $BASE/$1 to $3; on a 404 retries the pre-move path $BASE/$2. update.sh runs from main
 # while the ciphers come from $REF, so this one script deploys both layouts.
 # TODO: drop the fallback once deploy/games/ has reached main.
@@ -76,6 +89,7 @@ prepare_guess_hue_dataset() {
     exit 1
   fi
   umask "$OLD_UMASK"
+  mark_if_changed "$GUESS_HUE_DATASET_FILE.tmp" "$GUESS_HUE_DATASET_FILE"
   mv "$GUESS_HUE_DATASET_FILE.tmp" "$GUESS_HUE_DATASET_FILE"
   # 644, not 600: core runs in the container as the Paketo Buildpacks user (UID 1002, GID 1001 per
   # `docker inspect ghcr.io/unividuell/countdown-core --format '{{.Config.User}}'`), bind mounts
@@ -112,6 +126,7 @@ prepare_spot_object_terms() {
     exit 1
   fi
   umask "$OLD_UMASK"
+  mark_if_changed "$SPOT_OBJECT_TERMS_FILE.tmp" "$SPOT_OBJECT_TERMS_FILE"
   mv "$SPOT_OBJECT_TERMS_FILE.tmp" "$SPOT_OBJECT_TERMS_FILE"
   chmod 644 "$SPOT_OBJECT_TERMS_FILE"
 }
@@ -130,8 +145,12 @@ prepare_match_scale_dataset() {
   MATCH_SCALE_NEW="$MATCH_SCALE_DIR.new"
   CATEGORY_SOPS_FILE="match-scale.$TARGET.current.sops.yaml"
 
-  # Leftovers (list, half-decrypted directory, cipher copy) must not survive any exit path.
-  trap 'rm -rf "$CATEGORIES_FILE" "$MATCH_SCALE_NEW" "$CATEGORY_SOPS_FILE"' EXIT
+  # Leftovers (list, half-decrypted directory, cipher copy) must not survive any exit path; INT
+  # and TERM separately, since dash runs no EXIT trap on a signal.
+  match_scale_cleanup() { rm -rf "$CATEGORIES_FILE" "$MATCH_SCALE_NEW" "$CATEGORY_SOPS_FILE"; }
+  trap match_scale_cleanup EXIT
+  trap 'match_scale_cleanup; exit 130' INT
+  trap 'match_scale_cleanup; exit 143' TERM
   HTTP_CODE="$(curl -sS -w '%{http_code}' "$BASE/games/match-scale/categories.txt" -o "$CATEGORIES_FILE")" || HTTP_CODE="000"
   case "$HTTP_CODE" in
     200) ;;
@@ -188,6 +207,7 @@ prepare_match_scale_dataset() {
 
   # Move the old directory aside instead of deleting it first: a running container that is not
   # recreated keeps its mount on the old inode, and an empty window would break its next restart.
+  mark_if_changed "$MATCH_SCALE_NEW" "$MATCH_SCALE_DIR"
   rm -rf "$MATCH_SCALE_DIR.old"
   if [ -d "$MATCH_SCALE_DIR" ]; then
     mv "$MATCH_SCALE_DIR" "$MATCH_SCALE_DIR.old"
@@ -198,7 +218,7 @@ prepare_match_scale_dataset() {
   MATCH_SCALE_DATASET_HOST_DIR="$MATCH_SCALE_DIR"
   export MATCH_SCALE_DATASET_HOST_DIR
   rm -f "$CATEGORIES_FILE" "$CATEGORY_SOPS_FILE"
-  trap - EXIT
+  trap - EXIT INT TERM
 }
 
 curl -fsSL "$STABLE/README.md"  -o README.md
@@ -223,5 +243,9 @@ docker network create edge 2>/dev/null || true
 docker network create monitoring 2>/dev/null || true
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
+# New content under an unchanged image: start core again so it reads it (see DATASETS_CHANGED).
+if [ "$DATASETS_CHANGED" -eq 1 ]; then
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate --no-deps core
+fi
 docker image prune -f
 echo "Update complete ($TARGET, infra from $REF)."

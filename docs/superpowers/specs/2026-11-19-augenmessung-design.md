@@ -340,8 +340,8 @@ hinter den Namen der Faktor: A „1×“, B „0,71×“.
 
 **Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
 cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); unter der
-Fläche ganzzahlig darin, in der Rangliste auf Zehntel (siehe dort). A und B stehen in
-derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
+Fläche und in der Rangliste auf Zehntel, damit beide dieselbe Zahl zeigen (siehe dort). A und B
+stehen in derselben Einheit, im Fließtext direkt an der Zahl. Pure `units.ts`.
 
 Die Namenszeile bricht nie um, der Name wird notfalls gekürzt: so ist der Block beim Spielen und in
 der Auflösung gleich hoch, nichts springt.

@@ -36,7 +36,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
 
         val files = selectFiles(directory)
         val categories = files.map { file ->
-            file.inputStream().use { MatchScaleDatasetYamlReader.read(it, file.path) }
+            file.inputStream().use { MatchScaleDatasetYamlReader.read(input = it, origin = file.path) }
         }
 
         return LoadedMatchScaleDataset(categories = playable(categories), origin = path, isSample = false)
@@ -86,7 +86,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
             val resource = "$SAMPLE_DIR/$name"
             val stream = javaClass.getResourceAsStream(resource)
                 ?: throw MatchScaleDatasetException("the bundled $resource is missing from the classpath")
-            stream.use { MatchScaleDatasetYamlReader.read(it, resource) }
+            stream.use { MatchScaleDatasetYamlReader.read(input = it, origin = resource) }
         }
 
         return LoadedMatchScaleDataset(categories = playable(categories), origin = SAMPLE_DIR, isSample = true)
@@ -120,7 +120,7 @@ class MatchScaleDatasetLoader(private val properties: MatchScaleDatasetPropertie
         var pairs = 0
         for (i in entries.indices) {
             for (j in i + 1 until entries.size) {
-                if (withinFactor(entries[i], entries[j])) pairs++
+                if (withinFactor(a = entries[i], b = entries[j])) pairs++
             }
         }
         return pairs
