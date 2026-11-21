@@ -121,8 +121,7 @@ of binding an empty path.
 `update.sh` fetches `games/guess-hue/dataset.sops.yaml` from the same branch it otherwise uses for
 `compose.yaml` (`$REF` — `main` for prod, `develop` for staging). The encrypted file must
 exist on that branch, or **every** `./update.sh <target>` fails, even for changes that have
-nothing to do with Guess Hue. Until the per-game folders reach `main`, it falls back to the
-pre-move path `guess-hue-dataset.sops.yaml` on a 404, so one `update.sh` deploys both layouts.
+nothing to do with Guess Hue.
 
 Same shape for `SPOT_OBJECT_TERMS_FILE` and `games/spot-object/terms.sops.yaml`.
 
