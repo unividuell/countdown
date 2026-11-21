@@ -1,86 +1,48 @@
 # Game integrity — validated at the first game
 
 `docs/superpowers/specs/2026-08-02-anti-cheat-design.md` is the brainstorm; this file is what
-survived contact with Musterung (`find-pattern`), the game it names as the hard case — its secret
-sits in what the player can see, not in a fact only the server knows. Every rule below has code
-behind it. What is still intent, not yet validated anywhere, stays in the spec.
+survived Musterung (`find-pattern`), whose secret sits in what the player can see. Every rule has
+code behind it; what is still intent stays in the spec. The exits, streams and assets themselves
+are [game-rounds.md](game-rounds.md)'s.
 
 ## From parseable to perceptual
 
-What carries the answer leaves the server as a picture, not a value. `FindPatternPayload` is exactly
-three fields — `cols`, `rows`, `patternLength` — pinned by a field-set test, and the two pictures are
-sealed assets (`board`, `pattern`), rendered PNGs (`FindPatternImages`), never a colour or an index.
-Had the four tones travelled as data, a three-line script could read them out of the payload and
-locate the pattern without looking at anything. Rendering moves the attack from
-"parse the payload" to "extract pixels" — the documented ceiling for a game whose secret lives in the
-visible, not a gap to close later. The rule this generalises to: **a module exposes no helper that
-hands out a cell's colour** — nothing a caller could use to reconstruct the image's content without
-rendering it.
-
-## Two streams, split by publication, not by value
-
-`FindPatternGameType.draw` draws `blocks`, `delta` and the palette reference from
-`random.presentation`, and only `patternStartIndex` from `random.solution` — the comment on that one
-line reads "the only draw from the solution stream". The rule this proves is `game-rounds.md`'s
-two-streams rule applied to a game whose published values are *images*, not scalars: an image
-*derived from* a solution-stream draw is exactly as unsafe as publishing the draw itself, because a
-determined-enough script still extracts the value the image encodes. What is safe is a stream
-boundary — nothing presented was ever touched by the solution generator, so there is nothing to
-invert. `FindPatternGameTypeTest` carries both proofs as tests: one holds the presentation seed fixed
-across different solution seeds and asserts the board is unchanged; the other holds the solution seed
-fixed across different presentation seeds and asserts the start index is unchanged. Either one failing
-would mean a stream crossed a boundary it must not.
-
-## A field-set test per payload *and* per solution
-
-Not "the answer is absent" — the exact set, both directions. `FindPatternGameTypeTest` pins
-`present()` to `{cols, rows, patternLength}` and `solution()` separately to
-`{blocks, pattern, palette, delta, startIndices}`. Pinning the solution matters as much as pinning the
-payload: `game-rounds.md`'s two-exits rule says a game that withholds part of its answer must also
-make sure the other exit does not hand it back — a solution field-set test is what makes "the other
-exit carries nothing more" checkable instead of asserted.
+- **What carries the answer leaves the server as a picture, not a value.** `FindPatternPayload` is
+  three numbers; board and pattern are rendered PNGs (`FindPatternImages`). Data would let a
+  three-line script locate the pattern; a picture moves the attack to pixel extraction — the
+  documented ceiling for a secret that lives in the visible.
+- **A module exposes no helper that hands out a cell's colour** — nothing a caller could rebuild
+  the image's content from without rendering it.
+- **An image derived from a solution-stream draw is as unsafe as the draw.** Only the stream
+  boundary is safe. `FindPatternGameTypeTest` proves it both ways: presentation seed fixed, board
+  unchanged across solution seeds — and the reverse.
+- **A picture is an asset, never a payload field.** In the payload it would arrive on the scored
+  clock; as a `FromStage(0)` asset it is preloaded sealed under the cover. Its size is public
+  before the reveal — for Musterung that is the palette's compressibility, which helps no search.
 
 ## The client never materialises the solution, not even derived
 
-`FindPatternBoard.vue` holds a single `ref<number[]>` of tapped cell indices and nothing else — no
-computed "where the pattern actually is" for a hint overlay, no local variable that would hold it even
-transiently. A value the browser never receives cannot be read out of the network tab; a value the
-component state never computes cannot be read out of the Vue devtools either — payload hygiene alone
-does not cover the second one.
+`FindPatternBoard.vue` holds the tapped cell indices and nothing else — no computed "where the
+pattern is", not for a hint overlay, not transiently. What the browser never receives is not in the
+network tab; what component state never computes is not in the Vue devtools either. No test covers
+this: it is a review point per game.
 
-## Time scoring is server-authoritative — no client stamps, no drift reconciliation, no ban
+## Time scoring is server-authoritative
 
-The clock is `revealed_at → guessed_at`, both server `Instant`s, and `PlayService.guess` reads the
-guess instant once and uses that same reading both to record `guessed_at` and to compute the duration
-— there is no second clock read for either value to drift against the other. A refresh does not reset
-the clock: revealing is state (`revealOnce`'s `INSERT … ON CONFLICT (round_game_id, user_id) DO
-NOTHING`, see `game-rounds.md`), so "start, look, refresh, replay with a head start" pays for the look
-regardless of how many times the client reloads. There is no client-submitted duration, nothing to
-reconcile against a server value, and no rule that flags or bans an outlier — the spec's "detection,
-not hardening" stance for this class of signal stays a spec-side open question, not something this
-build answers.
-
-## A picture is an asset, never a payload field
-
-Musterung's two PNGs are `FromStage(0)` assets (`game-rounds.md`, „Round assets“): sealed, preloaded
-under the cover, opened by the reveal's key. The payload stays three numbers, and a test pins that it
-carries no picture. A picture inside the payload would arrive on the scored clock and put its transfer
-there, with no way to load it earlier.
-
-Before the reveal the sealed bytes still give away their **size** (the size rule in `game-rounds.md`).
-For Musterung that is the compressibility of the colour distribution, which does not help the search.
+- **The clock is `revealed_at → guessed_at`, both server `Instant`s.** `PlayService.guess` reads
+  the guess instant once, for the stamp and the duration.
+- **Revealing is state, so a refresh does not reset the clock** (`revealOnce`).
+- No client-submitted duration, nothing to reconcile, no rule that flags or bans an outlier.
 
 ## The ceiling, named — Entstauber
 
-The first game that cannot keep two of the rules above — "From parseable to perceptual" and "Time
-scoring is server-authoritative" — by necessity, not by omission.
+The first game that cannot keep two of these rules, by necessity:
 
-- **The tile order leaves the server as a list.** A round trip per tile is out at 900–2000 ms a beat.
-  Before the reveal it stays sealed (the scene is drawn from its own `scene` stream, the order from
-  `presentation`); after it, it never reaches the DOM — the network tab stays open.
-- **The ⌀ reaction time is a client stamp.** Without round trips there is no server-side substitute
+- **The tile order leaves the server as a list:** a round trip per tile is out at 900–2000 ms a
+  beat. Sealed before the reveal, never in the DOM after it — the network tab stays open.
+- **The ⌀ reaction time is a client stamp:** without round trips there is no server-side
   measurement.
 
-What stands in for both: a plausibility floor (`< 120 ms` or `> intervalMs` marks the run), the mark
-shown in the evaluation, the raw reaction times stored. **Mark, never reject** — for every run that
-cannot be repeated: a false alarm must never cost the player their only attempt.
+What stands in: a plausibility floor (`< 120 ms` or `> intervalMs` marks the run), the mark shown
+in the evaluation, the raw times stored. **Mark, never reject** — a false alarm must never cost a
+player their only attempt.

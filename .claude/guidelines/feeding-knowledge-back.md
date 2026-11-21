@@ -48,8 +48,9 @@ obvious from the code, task-local detail — and anything secret.
   `-routing.md`, `-state.md`, `-testing.md`) and leave an index table in the
   original. Neither signal is ever answered by appending.
 - Prefer **adding to the relevant existing file**; only create a new topic file
-  for a genuinely new area, and then link it from [`README.md`](README.md) (and
-  from the root `CLAUDE.md` if it's a new area).
+  for a genuinely new area. Then give it its one-line summary in the root
+  `CLAUDE.md` — the only place summaries live — and add it to
+  [`README.md`](README.md)'s table.
 - If new knowledge contradicts an existing guideline, **update the guideline**
   (don't leave both) and adjust the code if needed.
 

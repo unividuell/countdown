@@ -7,94 +7,84 @@ role-gated areas. Siblings: [frontend.md](frontend.md) (stack, HTTP, tooling),
 
 ## Routing — Vue Router 5 built-in file-based routing
 
-`unplugin-vue-router` is **archived/absorbed into Vue Router 5 core** — use the built-in:
-- `import VueRouter from 'vue-router/vite'` as a Vite plugin, placed **before** `vue()`.
-- `import { routes } from 'vue-router/auto-routes'`; pages live in `src/pages/` (`index.vue`, `[id].vue`, …).
-- The plugin generates `typed-router.d.ts` (committed; the plugin recommends committing it). Add it to `tsconfig`.
-- Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time; the call vanishes in the build).
-- The plugin must be registered in `vitest.config.ts` too — see [frontend-testing.md](frontend-testing.md) § Setup; without it no test
-  can exercise the real generated route table, so no test can catch a route-ranking regression
-  (e.g. a catch-all shadowing a real page). Such a ranking test belongs in `src/__tests__/`, since
-  it is a whole-router concern rather than one page's.
-- **Typed route params (strict TS):** Use the typed `useRoute('/c/[slug]')` overload (the route name string from `typed-router.d.ts`) rather than plain `useRoute()`. Plain `useRoute()` returns a union of all routes; accessing `.params.slug` on it fails under `strict` + vue-tsc. Dynamic-segment pages (`c/[slug].vue`, `c/[slug]/members.vue`, etc.) all need the specific route name — though in practice no community page needs this any more, since they read `useCommunityContext()` instead. See also [multi-tenancy.md](multi-tenancy.md).
-- **`router.push()` / `.replace()` return a Promise**; a bare, unawaited call at the end of an async
-  handler leaves its rejection on a chain nothing observes. `NavDrawer.vue` attaches
-  `.catch((e) => console.error('navigation failed', e))` to every post-action navigation.
-- **Put a control that must exist on every protected route above the router, not on the routes.**
-  Logout lives in exactly one place, `src/nav/NavDrawer.vue`, mounted by `App.vue` under
-  `v-if="user"` — and `user` is non-null exactly when `status === 'authenticated'`, the same
-  condition `src/auth/guard.ts` checks to admit a protected route. Since `App.vue` sits above every
-  route, logout is reachable by construction rather than by convention: no second copy to keep in
-  sync, and no future page can be added without it.
+`unplugin-vue-router` is absorbed into Vue Router 5 core — use the built-in:
+
+- `import VueRouter from 'vue-router/vite'` as a Vite plugin, **before** `vue()` — and in
+  `vitest.config.ts` too ([frontend-testing.md](frontend-testing.md)).
+- `import { routes } from 'vue-router/auto-routes'`; pages live in `src/pages/`.
+- The generated `typed-router.d.ts` is committed and listed in `tsconfig`.
+- Per-route meta via the **`definePage({ meta: { ... } })`** macro (compile-time).
+- **A route-ranking test belongs in `src/__tests__/`** — a catch-all shadowing a real page is a
+  whole-router concern, and only a test over the generated table sees it.
+- **Typed route params:** `useRoute('/c/[slug]')`, not plain `useRoute()` — the latter is a union
+  of all routes, and `.params.slug` on it fails under strict TS. Community pages read
+  `useCommunityContext()` instead.
+- **`router.push()` / `.replace()` return a Promise.** A bare call at the end of an async handler
+  leaves its rejection unobserved: attach `.catch((e) => console.error('navigation failed', e))`
+  (`NavDrawer.vue`).
+- **A control that must exist on every protected route sits above the router, not on the
+  routes.** Logout lives once, in `nav/NavDrawer.vue`, mounted by `App.vue` under `v-if="user"` —
+  the condition `auth/guard.ts` admits a protected route on. Reachable by construction.
 
 ### Navigation data: resolve in `beforeResolve`, publish in `afterEach`
 
 Route-derived app state (the active community, the `/` landing target) is owned by router guards,
-not component lifecycle hooks — `src/communities/routeData.ts` and
-`src/communities/landingGuard.ts` are the reference implementation.
+not component lifecycle hooks — `communities/routeData.ts` and `communities/landingGuard.ts`.
 
-- **Fetch in `beforeResolve`, write in `afterEach`.** Writing during `beforeResolve` lets an aborted
-  navigation leave state describing a route the user never reached; writing in `afterEach` makes
-  the header match the committed route by construction.
-- **`afterEach` fires for failed navigations too, and receives the `failure` argument — check it.**
-  Skipping failures is what turns a redirect back to the route we're already on into a true no-op.
-- **A direct duplicate push and a guard-produced one are not distinguished by their failure.** Both
-  reach `afterEach` with a `duplicated` `NavigationFailure` (type 16). The difference is upstream:
-  `router.push('/x')` while already on `/x` fires *no* guards at all, whereas a guard-produced
-  redirect to the route already in effect does run `beforeResolve` — so only the latter exercises
-  the landing guard. A test that covers only the direct push proves nothing about it.
-- **`push()` / `.replace()` resolve with a `NavigationFailure` for aborted/cancelled navigations —
-  they only reject when a guard throws.** A `.catch()` therefore does not tell you the navigation
-  succeeded; inspect the resolved value. Code that flips UI state only in a `.catch` path will
-  silently mishandle an aborted navigation.
-- **Never clear app-global route state from `onUnmounted`.** A component teardown hook fires on the
-  way out of a route, with no knowledge of what the destination needs — so it clears state the
-  incoming route may already depend on, a full round-trip before that route can restore it.
-  Ownership belongs to the router, which sees both ends of the transition.
-- **`router.isReady()` only settles once the initial navigation has run, and `router.install()` is
-  what starts that navigation.** Awaiting `isReady()` before `app.use(router)` deadlocks. Order:
-  `createApp(App).use(router)` → `await router.isReady()` → `app.mount()`.
-- **Guard async loads with a generation counter** so a superseded navigation cannot publish its
-  result — the same technique `useCountdown` uses for stale responses.
-- **A pending indicator needs a delay (~150 ms, `PENDING_DELAY_MS`).** An indicator that flashes on
-  a fast transition is itself the flicker it was added to explain.
+- **Fetch in `beforeResolve`, write in `afterEach`.** A write during `beforeResolve` lets an
+  aborted navigation leave state describing a route the user never reached.
+- **`afterEach` fires for failed navigations too — check its `failure` argument.** Skipping
+  failures is what makes a redirect back to the current route a no-op.
+- **A direct duplicate push and a guard-produced one fail alike** (`duplicated`, type 16), but
+  `router.push('/x')` on `/x` fires no guards, while a guard-produced redirect runs
+  `beforeResolve`. A test covering only the direct push proves nothing about the landing guard.
+- **`push()` / `.replace()` resolve with a `NavigationFailure` for aborted navigations; they only
+  reject when a guard throws.** Inspect the resolved value — UI state flipped only in a `.catch`
+  mishandles an abort.
+- **Never clear app-global route state from `onUnmounted`.** A teardown hook knows nothing of the
+  destination and clears what the incoming route already depends on. The router sees both ends.
+- **`router.isReady()` settles only after the initial navigation, which `router.install()`
+  starts.** Order: `createApp(App).use(router)` → `await router.isReady()` → `app.mount()`.
+- **Guard async loads with a generation counter,** so a superseded navigation cannot publish.
+- **A pending indicator needs a delay** (~150 ms, `PENDING_DELAY_MS`), or it is the flicker it was
+  added to explain.
 - **A failed lazy-route import means a stale build: reload, once.** A tab open across a deploy
-  requests chunk hashes that no longer exist; the router aborts silently and clicks do nothing.
-  `staleBuildReload.ts` turns that error into a full load of the target, guarded per path in
-  `sessionStorage` against a loop. Engines word the error differently — match all three.
+  requests chunk hashes that are gone, and the router aborts silently. `staleBuildReload.ts` turns
+  the error into a full load of the target, guarded per path in `sessionStorage` against a loop.
+  Engines word the error differently — match all three.
 
 ## Community context + admin gating
 
-Pages nested under `c/[slug]/` receive the loaded community via Vue's `provide`/`inject`, keyed on `communityKey` from `src/communities/context.ts`.
+Pages under `c/[slug]/` receive the loaded community via `provide`/`inject`, keyed on
+`communityKey` (`communities/context.ts`).
 
-- The shell (`src/pages/c/[slug].vue`) renders `communityRoute` from `src/communities/routeData.ts` — a module-level ref that the `registerCommunityDataGuard` router guard **resolves in `beforeResolve`, before the route commits, and publishes in `afterEach`, once it has committed** — so the shell does no fetching of its own to decide what to render. It provides `{ community: Readonly<Ref<CommunityResponse>>, refresh }` and renders `<RouterView />` only in the `state?.kind === 'ready'` branch — so children can safely read `community.value` as non-null. `refresh()` is a separate, explicitly-triggered fetch (see below) — the guard only owns the *initial* resolve.
-- The type mismatch (`Ref<CommunityResponse | null>` vs `Readonly<Ref<CommunityResponse>>`) is bridged with `community as unknown as Readonly<Ref<CommunityResponse>>`. This is intentional: the null case is excluded structurally (children only mount after ready), and `unknown` is necessary because TypeScript cannot widen through a `Readonly` wrapper.
-- Child pages call `useCommunityContext()` (throws if context is missing) instead of `useRoute()` — they never need to re-fetch the slug from the router.
-- `useAdminGuard()` (in `src/communities/useAdminGuard.ts`) redirects to `communityPath(slug)` on `onMounted` if `viewerIsAdmin` is false. This is a UX guard only — the backend `@RequireAdmin` annotation is the real gate.
-- Admin-only pages (`members.vue`, `settings.vue`, `requests.vue`) all call `useAdminGuard()` at the top of `<script setup>`.
-- In tests, mock the entire context module: `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`. This avoids the `inject` dependency on a real Vue app wrapping.
-- `CommunityResponse` includes `viewerIsAdmin: boolean` and `pendingCount: number` returned by the backend; both are republished into `activeCommunity` for the header's community menu (see "App-level header state" in [frontend-state.md](frontend-state.md)) rather than consumed inside the shell itself.
-- **A page that changes guard-owned data must call `refresh()` — navigating away and back will
-  not.** `beforeResolve` returns early when the destination slug is the one already loaded, so
-  `activeCommunity` (viewer identity, `viewerIsAdmin`, `pendingCount`) survives a round trip
-  through its own community untouched, and a header reading it keeps showing the pre-save state.
-  Where the writing component must also work outside a community, give it a `saved` emit and let
-  the page own the `refresh()` — the component then needs no community context to exist.
-- `refresh()` deliberately keeps no internal `try`/`catch` — a rejection is the caller's to handle, not something it swallows. It is handed to every `[slug]` child through `provide(communityKey, …)`, so this contract binds every child, not just the shell: wrap the call in your own `try`/`catch`, and don't treat the action as having succeeded until `refresh()` itself has resolved. `requests.vue` and `settings.vue` both fold their `await refresh()` into the same `try` as the mutating call, so a rejection there still lands in the `catch` instead of being reported as a silent success.
+- **The shell (`pages/c/[slug].vue`) fetches nothing to decide what to render:** it renders
+  `communityRoute` (`communities/routeData.ts`), which `registerCommunityDataGuard` resolves and
+  publishes. It renders `<RouterView />` only in the `ready` branch, so children read
+  `community.value` as non-null; the cast `as unknown as Readonly<Ref<CommunityResponse>>` bridges
+  that on purpose.
+- **Child pages call `useCommunityContext()`** (throws without context), never `useRoute()`.
+- **`useAdminGuard()` at the top of every admin-only page** (`members.vue`, `settings.vue`, …)
+  redirects a non-admin on mount. A UX guard only — the backend's `CommunityAccess.requireAdmin`
+  is the gate.
+- **In tests, mock the whole context module:**
+  `vi.mock('@/communities/context', () => ({ useCommunityContext: () => ({ community: { value: { ...fields } }, refresh: vi.fn() }) }))`.
+- **A page that changes guard-owned data calls `refresh()` — navigating away and back will not.**
+  `beforeResolve` returns early for the slug already loaded, so `activeCommunity` (viewer identity,
+  `viewerIsAdmin`, `pendingCount`) survives a round trip untouched. Where the writing component
+  must also work outside a community, give it a `saved` emit and let the page own the `refresh()`.
+- **`refresh()` has no `try`/`catch` of its own — a rejection is the caller's.** Fold
+  `await refresh()` into the same `try` as the mutating call, and don't treat the action as done
+  before it resolves (`requests.vue`, `settings.vue`).
 
 ## Role-gated areas + shell-owned access checks
 
-The super-admin area (`/super-admin`) is undiscoverable rather than unlinked: the only entry
-point is an entry in the drawer's foot block, rendered under `v-if="user.isSuperAdmin"`, so a
-viewer without the role sees no trace of it. Gate any such entry point on the role itself — never on
-a plain link that a non-holder can see and bounce off.
-Pattern, mirroring the `c/[slug].vue` shell:
-
-- `src/pages/super-admin.vue` is a **layout** for `src/pages/super-admin/*.vue`. No router config is
-  needed, and no slug needs reserving: communities live under `/c/`, so the root namespace is free
-  for pages (see [multi-tenancy.md](multi-tenancy.md)).
-- The shell does the role check **once** and keeps `<RouterView/>` inside the authorised branch.
-  Children then contain no access logic and, more importantly, never mount for an unauthorised
-  viewer — so they never fire a request that would 403. The backend rule is the real gate.
-- No `meta` flag and no change to `guard.ts` is needed for this; adding one would only duplicate
-  what the shell already enforces.
+- **A role-gated area is undiscoverable, not merely unlinked.** `/super-admin`'s only entry is in
+  the drawer's foot block under `v-if="user.isSuperAdmin"`. Gate the entry point on the role —
+  never a link a non-holder can see and bounce off.
+- **`pages/super-admin.vue` is a layout for `pages/super-admin/*.vue`.** No router config, and no
+  slug to reserve: communities live under `/c/` ([multi-tenancy.md](multi-tenancy.md)).
+- **The shell checks the role once and keeps `<RouterView/>` inside the authorised branch.**
+  Children hold no access logic and never mount for an unauthorised viewer, so they never fire a
+  request that would 403. The backend rule is the real gate.
+- No `meta` flag and no change to `guard.ts`: it would duplicate what the shell enforces.

@@ -1,9 +1,7 @@
 # Dependency updates (Maven · npm · Docker)
 
-How to run a "update all libs" pass across the three ecosystems, and — more
-importantly — **which newest versions we deliberately do NOT take, and why**.
-Re-read the holdback table before bumping anything: every entry is a trap we
-already stepped in once.
+How to run an "update all libs" pass, and **which newest versions we deliberately do NOT
+take**. Re-read the holdback table before bumping anything.
 
 ## Holdbacks — newest is NOT the target
 
@@ -11,7 +9,7 @@ already stepped in once.
 |---|---|---|---|
 | `typescript` | `~6.0.x` | `7.x` | **TS 7 breaks `vue-tsc`.** TS 7 is the native Go port and its `package.json` `exports` no longer expose `./lib/tsc`, which `vue-tsc` resolves at startup → `ERR_PACKAGE_PATH_NOT_EXPORTED`, failing both `pnpm typecheck` and `pnpm build`. Revisit only when `vue-tsc`/Volar ship TS 7 support. |
 | `@types/node` | `^24.x` | `26.x` | The types major must match the **runtime** major, not the newest published. We run Node 24 (`deploy/web.Dockerfile`, `setup-node` in CI). Types ahead of the runtime type-check against APIs that don't exist at run time. |
-| `node` (image + CI) | `24` | `26` | 24 is **Active LTS**; 26 is *Current*. Production tracks Active LTS only. Node 26 becomes LTS in Oct 2026 — bump `@types/node` in the same commit. |
+| `node` (image + CI) | `24` | `26` | Production tracks **Active LTS** only. When the image moves to the next LTS, bump `@types/node` in the same commit. |
 | `kotlin` | latest **stable** | `-Beta` builds | `versions:display-property-updates` happily suggests `2.4.20-Beta2`. Take stable only; filter pre-release tags yourself. |
 
 ## Dependabot alerts — triage before you bump
@@ -33,13 +31,8 @@ ls -d node_modules/.pnpm/postcss@*   # what is physically installed
   reaches us via `vue` → `@vue/compiler-sfc` (and via `vite`), both build-time only. The
   check that settles it is `grep -r postcss dist/` after `pnpm build` — empty means nothing
   shipped, whatever the alert says.
-- **Precedent — GHSA-r28c-9q8g-f849** (postcss path traversal via `sourceMappingURL`
-  auto-loading, high, `<= 8.5.17`, patched `8.5.18`): opened against
-  `webapp-vue/pnpm-lock.yaml` on 2026-08-02, *after* `fbd60b8` had already moved the
-  lockfile from `8.5.15` to `8.5.25`. Not reachable on two independent counts — the
-  installed version is past the fix, and the vulnerable path needs PostCSS to parse
-  **untrusted** CSS, whereas ours is one first-party `@import 'tailwindcss'` with no
-  `<style>` block anywhere in `src/`. Dismissed as *inaccurate*, no code change.
+- **An alert can be opened against a version the lockfile has already left.** Then dismiss it as
+  *inaccurate*, no code change (precedent: GHSA-r28c-9q8g-f849, postcss).
 
 If an alert **is** real, take the smallest fix: `pnpm update <pkg>` (lands a patched
 transitive version inside the existing ranges) before `pnpm.overrides` (only when the
@@ -58,16 +51,14 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
   are ours: the parent, `kotlin.version`, `spring-modulith.version`, `kotlin-logging.version`,
   `metadata-extractor.version`, `twelvemonkeys.version`, `unividuell-auth.version` (below), and the
   four test deps (`kotest`, `mockk`, `springmockk`).
-- **The plugin reports the next *minor*, not the newest *stable* — so it hides the patch you want.**
-  On the 2026-09 pass it offered the parent as `4.1.0 -> 4.2.0-M1` and Modulith as `2.1.0 -> 2.2.0-M1`
-  while `4.1.1` and `2.1.1` were both out and are what we took. Read the metadata yourself and pick
-  the highest tag with no `-M`/`-RC`/`-Beta` suffix:
+- **The plugin reports the next *minor*, not the newest *stable* — so it hides the patch you want**
+  (it offers `4.2.0-M1` while `4.1.1` is out). Read the metadata yourself and pick the highest tag
+  with no `-M`/`-RC`/`-Beta` suffix:
   ```bash
   curl -s https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-parent/maven-metadata.xml \
     | grep -oE '<version>[^<]+</version>' | tail -12
   ```
-- `search.maven.org`'s solr index **lags badly** (it reported Boot 3.5.3 as latest while 4.1.0
-  was long out). Trust `versions-maven-plugin` or
+- `search.maven.org`'s index **lags by whole majors.** Trust `versions-maven-plugin` or
   `repo.maven.apache.org/maven2/<path>/maven-metadata.xml`, never the search API.
 - Gate: **`./mvnw -B clean verify`** (full suite incl. Testcontainers + `ModularityTests`).
 - **`unividuell-auth.version` is the auth lib, which is not on Maven Central.** Bump it by
@@ -80,16 +71,8 @@ cd core && ./mvnw -B versions:display-parent-updates versions:display-property-u
   redeployed under the same version — Maven keeps the first copy it resolved in `~/.m2` and in CI's
   cache; a `-SNAPSHOT` may be, as `updatePolicy=always` makes every build pick it up.
 
-### Kotlin 2.4: drop `-Xannotation-default-target`
-
-`param-property` is the **default** from Kotlin 2.4, so the explicit
-`-Xannotation-default-target=param-property` arg now only earns
-`The argument '…' is redundant for the current language version 2.4.` It was removed from the
-`kotlin-maven-plugin` `<args>`; `-Xjsr305=strict` stays.
-
-> The ~58 `Unnecessary non-null assertion (!!) on a non-null receiver of type 'UUID'` warnings
-> are **pre-existing** (identical count on 2.3.21) — not caused by a Kotlin bump. Don't
-> "fix" them as part of a dependency pass; that's a separate source change.
+- **Compiler warnings that predate the bump are not the pass's business** (the `Unnecessary
+  non-null assertion (!!)` ones on `UUID`). Fixing them is a separate source change.
 
 ### Jackson 3, not 2 — `tools.jackson.*` and immutable mappers
 
@@ -118,9 +101,9 @@ pnpm update --latest "!typescript" "!@types/node"   # honour the holdbacks above
   from `package.json` fails there and nowhere else.
 - After a **Prettier minor** bump, run `pnpm exec prettier --check src`. Minors can change
   formatting defaults and silently turn the next `pnpm format` into a repo-wide diff.
-- A **happy-dom minor** can add a DOM API, and a capability check that used to be false in tests is
-  then true — the spec silently changes which code path it exercises. 20.12 shipped the Web
-  Animations API this way; see [frontend-testing.md](frontend-testing.md#happy-dom-limits).
+- A **happy-dom minor** can add a DOM API, and a capability check that was false in tests is then
+  true — the spec silently changes which code path it exercises
+  ([frontend-testing.md](frontend-testing.md#happy-dom-limits)).
 
 ## Docker
 
@@ -153,12 +136,9 @@ done
 
 Pin to the **major** tag (`@v7`), matching the existing style. Two things to know:
 
-- Most "breaking changes" in these majors are just a newer **Node runtime → minimum Actions
-  Runner version**. GitHub-hosted runners (`ubuntu-24.04-arm`) are always current, so these
-  are non-events for us; they would matter on a self-hosted runner.
-- **`setup-node` v5+ auto-caches** when it finds a `packageManager` field / root
-  `package.json`, and v6 narrowed that to npm. We're unaffected — there is no root
-  `package.json` and pnpm comes from `corepack enable` — but if auto-caching ever misfires,
-  the escape hatch is `with: { package-manager-cache: false }`.
+- Most "breaking changes" in these majors are a newer **Node runtime → minimum Actions Runner
+  version** — a non-event on GitHub-hosted runners (`ubuntu-24.04-arm`).
+- If `setup-node`'s auto-caching ever misfires: `with: { package-manager-cache: false }`. Today it
+  finds nothing — no root `package.json`, pnpm comes from `corepack enable`.
 - These can only be verified by **pushing** — there is no local run. Bump them in their own
   commit so a CI break is trivial to bisect and revert.

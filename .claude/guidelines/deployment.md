@@ -12,16 +12,13 @@ backups, `update.sh`, secret-handling scripts, pgAdmin — lives in
 
 - **Tests gate the image (both apps).** A red test must fail the job *before* anything is
   built or published:
-  - `build-core`: an explicit **`./mvnw -B clean verify`** step (full suite incl. Testcontainers
-    + `ModularityTests`) runs first; the image step then uses `spring-boot:build-image -DskipTests`
-    (suite already ran — don't run it twice). Do **not** rely on `build-image`'s implicit fork to
-    the `package` phase; make the gate explicit.
-  - `build-web`: the **Docker build only runs `pnpm build`** (vue-tsc type-check + vite build) —
-    it does **NOT** run eslint or Vitest. So the workflow adds an explicit
-    **`pnpm install && pnpm lint && pnpm typecheck && pnpm test`** step (setup-node +
-    `corepack enable`) before the `docker build`. The `typecheck` is not redundant with the
-    image build: on a **pull request the image steps are skipped**, so `pnpm build` never runs
-    and vue-tsc would otherwise only see the code after merge. **The gate must stand alone.**
+  - `build-core`: an explicit **`./mvnw -B clean verify`** step runs first; the image step then
+    uses `spring-boot:build-image -DskipTests`. Do **not** rely on `build-image`'s implicit fork
+    to the `package` phase.
+  - `build-web`: the Docker build runs only `pnpm build` — no eslint, no Vitest. So the workflow
+    runs **`pnpm install && pnpm lint && pnpm typecheck && pnpm test`** before it. `typecheck` is
+    not redundant: on a pull request the image steps are skipped and `pnpm build` never runs.
+    **The gate must stand alone.**
 - **Backend** `ghcr.io/unividuell/countdown-core` — built with **Cloud Native Buildpacks** via
   `spring-boot:build-image`. Image name + `<docker><publishRegistry>` (`${env.GHCR_USERNAME}`/
   `${env.GHCR_TOKEN}`) live in the `spring-boot-maven-plugin` config.
@@ -40,8 +37,8 @@ backups, `update.sh`, secret-handling scripts, pgAdmin — lives in
   packages: write }`, ghcr auth via `GITHUB_TOKEN`. Both declare **`workflow_dispatch`** for manual
   runs — needed because a path-filtered workflow does **not** trigger on the initial
   branch-creation push (no diff base), nor on a push changing **more than 300 files**: GitHub
-  then skips the path filter's run silently. A large release merge into `main` hits this (378
-  files, 2026-10-08) — check the Actions tab after merging, and start both builds by hand:
+  then skips the run silently. A large release merge into `main` hits this — check the Actions
+  tab after merging, and start both builds by hand:
   `gh workflow run build-core.yml --ref main` and `gh workflow run build-web.yml --ref main`.
 - **ghcr package visibility:** the `countdown-core`/`countdown-web` packages are kept **private**.
   The server therefore authenticates before pulling: `docker login ghcr.io -u <user>` with a
@@ -58,7 +55,7 @@ backups, `update.sh`, secret-handling scripts, pgAdmin — lives in
 ## Prod + staging on one host (one compose, per-env files)
 
 Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrized
-`deploy/compose.yaml`** (renamed from `compose.prod.yaml`). They differ only by an env file:
+`deploy/compose.yaml`**. They differ only by an env file:
 
 - `.env.prod` / `.env.staging`, each carrying **`COMPOSE_PROJECT_NAME`** (`countdown` /
   `countdown-staging`), `IMAGE_TAG` (`latest` / `staging`), `SPRING_PROFILES_ACTIVE`
@@ -75,21 +72,17 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   file prod is deployed from. Containers are matched by `COMPOSE_PROJECT_NAME`, not by filename, so
   the on-disk name is free to change and renaming recreates nothing on its own.
 - **A new required var doesn't reach existing deployments on its own:** `update.sh` writes
-  `.env.<target>` from the template **only when the file doesn't exist yet** — a stack bootstrapped
-  before a new `${VAR}` was added keeps its old env file forever, silently missing it (e.g.
-  `SUPER_ADMINS`). When adding one, document a one-line manual-migration note in
-  `deploy/README.md` right where an upgrading operator will read it — a first-run checklist alone
-  isn't enough, since existing stacks skip the whole "first run" path.
-- **A var Compose must interpolate has exactly one source of truth.** `--env-file` only feeds
-  `${VAR}` interpolation *inside* `compose.yaml`; it does not inject into the container process, so
-  every var also needs the service's `environment:` line (or an `env_file:`) or it binds empty with
-  no error. And a value `update.sh` itself computes (a path derived from `$TARGET`, say) must be
-  `export`ed by the script, never round-tripped by re-reading it back out of the `.env.*` file with
-  `grep`/`cut`: a hand-rolled parser and Compose's own `--env-file` parser diverge silently on
-  quotes, trailing comments, `${VAR}` references, duplicate keys and CRLF, so the script can decrypt
-  or write to one path while Compose mounts another. Docker Compose gives the shell environment
-  precedence over `--env-file`, so `export` alone is enough — don't also put the value in the
-  `.env.*.example` template, where it would be silently overridden and only mislead.
+  `.env.<target>` from the template **only when the file doesn't exist yet**, so an existing stack
+  silently misses the new `${VAR}`. Put a one-line manual-migration note in `deploy/README.md`
+  where an upgrading operator reads it — existing stacks skip the "first run" path.
+- **`--env-file` only feeds `${VAR}` interpolation inside `compose.yaml`;** it injects nothing
+  into the container. Every var also needs the service's `environment:` line (or an `env_file:`),
+  or it binds empty with no error.
+- **A value `update.sh` computes (a path derived from `$TARGET`) is `export`ed by the script,**
+  never re-read out of the `.env.*` file with `grep`/`cut` — a hand-rolled parser and Compose's
+  diverge on quotes, comments, `${VAR}` references and CRLF, and the script then writes one path
+  while Compose mounts another. The shell environment takes precedence over `--env-file`, so don't
+  also put the value in the `.env.*.example` template.
 
 ## Backend production profile
 
@@ -97,10 +90,9 @@ Both stacks live in **`/opt/unividuell/countdown/`** and share **one parametrize
   (public), **client-secret via env**; explicit datasource to the compose `postgres` service;
   `server.forward-headers-strategy=framework` (see [deployment-edge.md](deployment-edge.md) for the
   hop chain that makes it necessary); `Secure`/`SameSite=Lax` session cookies.
-- **`spring-boot-docker-compose` is excluded from the prod image** automatically — it's
-  `optional`/`runtime` in the pom and the Maven plugin's `repackage`/`build-image` defaults to
-  `excludeDockerCompose=true`. So **no `spring.docker.compose.enabled=false` needed** (the support
-  isn't on the prod classpath; the in-tests skip-check is irrelevant there).
+- **`spring-boot-docker-compose` is excluded from the prod image automatically**
+  (`optional`/`runtime` in the pom; `build-image` defaults to `excludeDockerCompose=true`). No
+  `spring.docker.compose.enabled=false` needed.
 
 ## Docker Desktop gotcha (local, macOS)
 

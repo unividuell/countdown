@@ -1,8 +1,7 @@
 # Frontend (webapp-vue)
 
 Conventions for the `webapp-vue/` Vue SPA. **Deliberate goal: keep the set of
-moving runtime npm libraries small** (Firebase was the worst offender in the
-source app and is gone). The auth/session foundation is the reference
+moving runtime npm libraries small.** The auth/session foundation is the reference
 implementation.
 
 This file holds the stack, the HTTP/auth contract and the tooling gates. The rest
@@ -12,19 +11,23 @@ of the frontend conventions live beside it:
 |---|---|
 | [frontend-ui.md](frontend-ui.md) | Mobile-first, sizing traps, accessibility |
 | [frontend-routing.md](frontend-routing.md) | Routes, guard-owned navigation data, the `[slug]` shell, role gating |
-| [frontend-state.md](frontend-state.md) | Composables (no Pinia), the shared clock, server-authoritative ticking |
+| [frontend-state.md](frontend-state.md) | Composables (no Pinia), the shared clock, server-authoritative ticking, sound |
 | [frontend-testing.md](frontend-testing.md) | Vitest, @vue/test-utils, happy-dom limits, doubles |
 
 ## Stack
 
-- **Vite 8** (Rolldown-based). Note: build options are `build.rolldownOptions`, not `rollupOptions`.
+- **Vite 8** (Rolldown-based): build options are `build.rolldownOptions`, not `rollupOptions`.
 - **Vue 3**, Composition API, `<script setup lang="ts">`. **pnpm**.
-- **TypeScript, very strict**: `strict` + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`; `moduleResolution: "bundler"`. (TypeScript 6 deprecated `baseUrl` used only for path mapping — we keep the `@/*`→`src/*` alias with `"ignoreDeprecations": "6.0"` until a paths-only migration.) **Stay on the `~6.0.x` line — TypeScript 7 breaks `vue-tsc`**; see [dependency-updates.md](dependency-updates.md).
+- **TypeScript, very strict**: `strict` + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
+  `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`,
+  `verbatimModuleSyntax`; `moduleResolution: "bundler"`. The `@/*`→`src/*` alias keeps `baseUrl`
+  under `"ignoreDeprecations": "6.0"`. **Stay on `~6.0.x`** — see
+  [dependency-updates.md](dependency-updates.md).
   - **`exactOptionalPropertyTypes` + optional body fields:** never pass `prop: x || undefined`.
     Build a partial request body with explicit conditional assignment instead —
     `const body: Partial<{ name: string; targetAt: string }> = { name: name.value.trim() }`,
     then `if (targetAt.value) body.targetAt = targetAt.value`.
-- **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`). No dark-mode lib unless needed.
+- **Tailwind CSS v4** via `@tailwindcss/vite` (CSS-first: `@import 'tailwindcss';`).
   - **Colours are Material 3 roles, defined once in `main.css`'s `@theme`** (`bg-surface`,
     `text-on-surface-variant`, `border-outline`, `bg-inverse-surface`, `text-primary`, `text-error`,
     …). App UI names a role, never a Tailwind shade, so a palette change touches one file. Only
@@ -41,17 +44,15 @@ of the frontend conventions live beside it:
     pick pinned as `data-color-scheme` on `<html>` by `ui/colorScheme.ts` (and before first paint
     by `index.html`). Never set `color-scheme` from JS: the build polyfills `light-dark()` with
     Lightning CSS variables that only stylesheet `color-scheme` rules set — an inline style works
-    in dev and does nothing in the build. So no `dark:` classes, and a literal colour in app UI (`text-white`, `ring-white`) is a bug
-    that only shows in the dark: pair a fill with its `on-` role, ring with the ground's role
-    (`ring-surface`). `inverse-surface` flips with the mode (frame light in the dark). What must
-    look the same in both — the game band and the flip-dot board, one dark instrument whose dots
-    are painted outside CSS — takes the fixed `board` roles (`bg-board`, `text-on-board`,
-    `text-board-phase-two`). Colours painted from TS that must follow the mode read
-    `useDarkScheme()`; flip dots straight on the page (header countdown) take `ground="surface"`.
-    A surface over the scrim (the menu) must be lighter than the page in the dark, not darker — the
-    scrim pulls the page onto a card's near-black. It wears `bg-surface-container-high raised`:
-    `raised` redefines the text and fill roles for its subtree, so its content keeps the plain role
-    names.
+    in dev and does nothing in the build. So no `dark:` classes, and a literal colour in app UI
+    (`text-white`, `ring-white`) is a bug that only shows in the dark: pair a fill with its `on-`
+    role, ring with the ground's role (`ring-surface`). `inverse-surface` flips with the mode.
+    What must look the same in both — the game band and the flip-dot board — takes the fixed
+    `board` roles (`bg-board`, `text-on-board`, `text-board-phase-two`). Colours painted from TS
+    that must follow the mode read `useDarkScheme()`; flip dots straight on the page (header
+    countdown) take `ground="surface"`. A surface over the scrim (the menu) must be lighter than
+    the page in the dark: it wears `bg-surface-container-high raised`, and `raised` redefines the
+    text and fill roles for its subtree, so its content keeps the plain role names.
   - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting
     meaning (`--color-live`, the phase colours), layout utilities several areas share
     (`round-bleed`), base rules. A style one component needs goes into its `<style scoped>`; a
@@ -64,115 +65,111 @@ of the frontend conventions live beside it:
     animation: write the animation under `@media (prefers-reduced-motion: no-preference)` instead
     (`App.vue`'s `nav-shuttle`, `PlayButton`'s `song-loading`). Name scoped classes without
     Tailwind's prefixes (`animate-…`), or they read like utilities a variant could take.
-- **Date/time: Luxon** (`luxon` + `@types/luxon`) — the project's date-time lib (also used by the
-  origin huettehuette app). Don't reach for native `Date` math. For a wall-clock UI field use
-  `<input type="datetime-local">` (combined date+time picker, naive string, no tz) and convert
-  with Luxon **in the relevant IANA zone** (pass `{ zone }`, do NOT rely on the browser zone):
-  instant→input `DateTime.fromISO(iso, { zone }).toFormat("yyyy-MM-dd'T'HH:mm")`,
-  input→instant `DateTime.fromISO(local, { zone }).toUTC().toISO()` (returns `string | null` under
-  strict TS — guard it). See the **Zone-relative time entry** note in [frontend-state.md](frontend-state.md).
+  - **Tailwind scans source text, so a class name must appear literally.** A computed
+    `` `w-[${pct}%]` `` is never generated. Map a varying value to literal class strings
+    (`if (n <= 2) return 'w-[72%]'`, `CountdownCard.vue`).
+- **Date/time: Luxon**, no native `Date` math. A wall-clock field is
+  `<input type="datetime-local">`, converted **in the relevant IANA zone** — see *Zone-relative
+  time entry* in [frontend-state.md](frontend-state.md). `toISO()` returns `string | null` under
+  strict TS: guard it.
 - **Icons: Lucide, bundled at build time** — `unplugin-icons` + `@iconify-json/lucide`, both
-  **devDependencies**; import as `~icons/lucide/<name>`. Deliberately *not* `@iconify/vue` (the
-  origin huettehuette app's choice): its `<Icon>` resolves icon data at runtime from
-  `api.iconify.design`, i.e. an external request from every user's browser plus visible pop-in.
-  Register as `Icons({ compiler: 'vue3', scale: 1 })` — the explicit `scale: 1` matters, since the
-  plugin defaults to `1.2` and would silently break the "1em, inherits from the surrounding text"
-  contract; size icons purely with Tailwind (`class="size-5"`). `vue-tsc` needs
-  `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`.
+  devDependencies; import as `~icons/lucide/<name>`. Not `@iconify/vue`: its `<Icon>` fetches icon
+  data at runtime from `api.iconify.design`. Register as `Icons({ compiler: 'vue3', scale: 1 })` —
+  the plugin's default `1.2` breaks "1em, inherits from the text"; size icons with Tailwind
+  (`size-5`). `vue-tsc` needs `/// <reference types="unplugin-icons/types/vue" />` in `env.d.ts`.
 - **A game with a heavy dependency (three.js) registers in `games/registry.ts` through
-  `asyncGame`** — `defineAsyncComponent` with a loading and an error component. The dependency stays
-  out of everyone else's bundle, and a tab left open across a deploy asks for a chunk that is gone:
-  without the error component the card stays empty instead of saying „Lade die Seite neu.“.
-  Blockierung is the example.
+  `asyncGame`** — `defineAsyncComponent` with a loading and an error component. The dependency
+  stays out of everyone else's bundle, and a tab open across a deploy that asks for a vanished
+  chunk says „Lade die Seite neu.“ instead of showing an empty card. Blockierung.
 - **Never measure from a canvas — it only displays.** Whatever is counted or stored is model data
-  (Anmaßung: strokes in fixed canvas units, counted on the server). Edge pixels are
-  anti-aliased per `devicePixelRatio` and anti-fingerprinting can add noise to `getImageData`, so
-  the same painting scores differently per device.
+  (Anmaßung: strokes in fixed canvas units, counted on the server). Edge pixels are anti-aliased
+  per `devicePixelRatio` and anti-fingerprinting adds noise to `getImageData`, so the same
+  painting scores differently per device.
 
 ## HTTP + auth (the same-origin SPA contract)
 
-The backend (`iam`) serves a same-origin SPA contract: session cookie, `401` (not redirect) for unauthenticated API, cookie CSRF (`XSRF-TOKEN` → `X-XSRF-TOKEN`).
+The backend serves a same-origin SPA contract: session cookie, `401` (not a redirect) for an
+unauthenticated API call, cookie CSRF (`XSRF-TOKEN` → `X-XSRF-TOKEN`).
 
-- **`apiFetch`** (`src/api/client.ts`) wraps native **fetch**: `credentials: 'include'`; adds `X-XSRF-TOKEN` from the `XSRF-TOKEN` cookie on **mutating** methods only; JSON-only (body typed `string | null`); throws a typed `ApiError(status, message, body?)` on non-2xx **and on a non-JSON 200** (catches proxy/error pages); on `401` invokes a globally-registered handler then throws. The 401 handler is injected via `setUnauthorizedHandler(...)` to decouple the client from the router/auth (avoids a circular import).
-- **`apiFetch` request timeout:** every call gets a 10s `AbortSignal.timeout(...)` so a *hung*
-  request (vs. a failed one) can't hang a caller forever — 10s tolerates normal latency and a cold
-  single-instance backend while still bounding a stuck navigation guard or `bootstrap()` to a
-  UX-relevant time. A caller-supplied `signal` is composed in via `AbortSignal.any([...])` rather
-  than replaced; both `.timeout` and `.any` are Baseline-widely-available, which is safe here since
-  the project targets only evergreen browsers. A timeout surfaces as `ApiError(0, ...)` —
-  status `0` = no HTTP response was ever received, the convention `XMLHttpRequest.status` uses for
-  network-level failures, whereas `504` would wrongly imply a server responded. A caller's own
-  abort is deliberately **not** wrapped: it rethrows the native `AbortError` as-is (checked via
-  `options.signal?.aborted` before the timeout check), so a deliberate cancel is never misreported
-  as a server timeout.
-- **`useAuth`** (`src/auth/useAuth.ts`): eager `bootstrap()` (`GET /api/me`) resolves the session **before the app mounts** (so the guard never sees `'unknown'`); `loginWithGitHub()` does a **full-page navigation** `window.location.assign('/login/start')` (the auth lib shows the test-user picker or redirects on to `/oauth2/authorization/github`, by profile — see [security-and-auth.md](security-and-auth.md); OAuth needs a real navigation, not fetch); `logout()` POSTs `/logout` then resets — it intentionally does NOT reset local state if the server call fails (session may still be alive).
-- **Route guard** (`src/auth/guard.ts`): **fail-closed** — only `status === 'authenticated'` may enter a non-public route; everything else redirects to `/login`. Routes are auth-required unless they set `meta.public = true`. The redirect target `/login` **must** be `meta.public` or anonymous users loop.
-- **Dev proxy:** Vite `server.proxy` forwards `/api`, `/oauth2`, `/login/`, `/logout` to the backend (prefixes live in `webapp-vue/dev-proxy.ts`, target `VITE_API_PROXY_TARGET`, default `http://localhost:8080`) so same-origin holds locally.
-  - **A string proxy key is a plain prefix** (`url.startsWith(key)`) — so **`/login/` needs its trailing slash**: `/login` itself is the SPA's sign-in *page*, only its sub-paths (`/login/start`, `/login/test/*`, `/login/oauth2/code/*`) are backend. Without the slash, a direct load of `http://localhost:5173/login` is proxied away and never reaches the router (prod is unaffected — the edge already scopes it to `path /login/*`, see `deploy/Caddyfile`). Keep dev and the edge in sync; `src/__tests__/dev-proxy.spec.ts` guards the split.
-  - **Use `changeOrigin: false`** (transparent proxy): the backend must see the browser's `Host` (`localhost:5173`) so it builds OAuth2 `redirect_uri` + post-login redirects on the SPA origin. With `changeOrigin: true` the backend sees `:8080`, GitHub redirects the browser to `:8080`, and the user lands on the backend (raw JSON / `/error`) instead of the SPA after login. The **GitHub App lists the SPA origin's callback** for dev: `http://localhost:5173/login/oauth2/code/github`.
-- **UX:** surface API failures to the user; never leave a promise rejection unhandled in a click handler; log bootstrap failures rather than swallowing them.
-- **`ApiError.body` carries a ProblemDetail — use its `detail` where the user can act on it.** 4xx
-  responses raised by the app's `@RestControllerAdvice` handlers are Spring `ProblemDetail`,
-  served as `application/problem+json`; `apiFetch` parses any `application/…+json`, so
-  `error.body.detail` is the server's own sentence about *this* request. A validation failure the
-  user can fix (a rejected colour, a name over the limit) must show it; keep the constant
-  „… fehlgeschlagen.“ for everything that has no explanation.
-- **`apiFetch` stays JSON-only — binary responses are the asset helpers' business.** Round assets are
-  bytes, not JSON, so they bypass the shared client: `src/api/assets.ts` does a credentialed `fetch`
-  (a GET, no CSRF). A game receives `assets: RoundAssets` (`url(name)`, `key(name)`) and never builds
-  a URL or reads a key itself. A plain asset (`Scene`, `AfterGuess`) is a URL, usable directly as
-  `<img src>`, or `fetchAssetBlob` where the bytes are needed; a sealed one is `useSealedAsset`
-  (fetched under the cover, opened once its key arrives, `retry()`) or, on demand, `loadSealed`.
-  Object URLs are not garbage collected by the DOM — revoke the previous one whenever it is replaced or
-  the component unmounts. Where responses for the same slot can race (rapid stage advances), guard the
-  assignment with a generation counter so a slow, stale response can't clobber a newer one that already
-  landed.
+- **`apiFetch`** (`src/api/client.ts`) wraps native `fetch`: `credentials: 'include'`, the CSRF
+  header on mutating methods only, JSON-only. It throws a typed `ApiError(status, message, body?)`
+  on non-2xx **and on a non-JSON 200** (proxy and error pages). On `401` it invokes the handler
+  registered through `setUnauthorizedHandler(...)` — injected, so the client imports neither router
+  nor auth.
+- **Every call has a 10 s timeout, surfaced as `ApiError(0, …)`** — status `0` means no HTTP
+  response was received. A caller's `signal` is composed in, and a caller's own abort rethrows the
+  native `AbortError`: a deliberate cancel is never reported as a timeout. The project targets
+  evergreen browsers only, so Baseline-widely-available APIs (`AbortSignal.any`) are fine.
+- **`useAuth`** (`src/auth/useAuth.ts`): eager `bootstrap()` (`GET /api/me`) resolves the session
+  **before the app mounts**, so the guard never sees `'unknown'`. `loginWithGitHub()` is a
+  **full-page navigation** to `/login/start` ([security-and-auth.md](security-and-auth.md)) —
+  OAuth needs a real navigation. `logout()` POSTs `/logout` and does **not** reset local state if
+  that call fails: the session may still be alive.
+- **Route guard** (`src/auth/guard.ts`) is **fail-closed:** only `status === 'authenticated'`
+  enters a route without `meta.public = true`; everything else redirects to `/login`, which
+  **must** be `meta.public` or anonymous users loop.
+- **Dev proxy:** Vite forwards `/api`, `/oauth2`, `/login/`, `/logout` to the backend
+  (`webapp-vue/dev-proxy.ts`, target `VITE_API_PROXY_TARGET`), so same-origin holds locally.
+  - **A string proxy key is a plain prefix, so `/login/` needs its trailing slash:** `/login`
+    itself is the SPA's sign-in *page*, only its sub-paths are backend. Keep dev and the edge
+    ([deployment-edge.md](deployment-edge.md)) in sync; `src/__tests__/dev-proxy.spec.ts` guards
+    the split.
+  - **`changeOrigin: false`:** the backend must see the browser's `Host` (`localhost:5173`) to
+    build the OAuth2 `redirect_uri` and post-login redirects on the SPA origin. The GitHub App
+    lists `http://localhost:5173/login/oauth2/code/github` for dev.
+- **UX:** surface API failures to the user; never leave a promise rejection unhandled in a click
+  handler; log bootstrap failures rather than swallowing them.
+- **`ApiError.body` carries a ProblemDetail — show its `detail` where the user can act on it.**
+  The app's `@RestControllerAdvice` handlers answer 4xx as `application/problem+json`, and
+  `apiFetch` parses any `application/…+json`. A validation failure the user can fix (a rejected
+  colour, a name over the limit) shows the server's sentence; everything else keeps the constant
+  „… fehlgeschlagen.“.
+- **`apiFetch` stays JSON-only — binary responses are the asset helpers' business.**
+  `src/api/assets.ts` does a credentialed `fetch`. A game receives `assets: RoundAssets`
+  (`url(name)`, `key(name)`) and never builds a URL or reads a key itself. A plain asset (`Scene`,
+  `AfterGuess`) is a URL, usable as `<img src>`, or `fetchAssetBlob` for the bytes; a sealed one
+  is `useSealedAsset` (fetched under the cover, opened once its key arrives, `retry()`) or, on
+  demand, `loadSealed`.
+- **Revoke an object URL whenever it is replaced or the component unmounts,** and where responses
+  for one slot can race (rapid stage advances), guard the assignment with a generation counter.
 - **The first sealed opening on a page runs cold — warm it up before it lands on a scored clock.**
-  `warmUpOpening` (`src/api/assets.ts`) belongs where time is free, under the cover. `useSealedAsset`
-  calls it when bytes arrive before their key; `loadSealed` does not, so a game that opens through it
-  on a clock warms up itself.
+  `warmUpOpening` (`src/api/assets.ts`) belongs where time is free, under the cover.
+  `useSealedAsset` calls it when bytes arrive before their key; `loadSealed` does not, so a game
+  that opens through it on a clock warms up itself.
 - **Binary uploads go through `uploadFile(base, blob, fileName, onProgress)`** (`src/api/upload.ts`):
   XHR, because fetch has no upload progress; bounded by a 4 min timeout, not `apiFetch`'s 10 s.
 - **A file picker's `accept` is a platform filter, not just a hint.** iOS Safari maps a bare
   `audio/*` to video and greys out every audio file in Files; list the extensions beside it
   (`AudioPool.vue`). Android's picker filters by the MIME type Android assigns, so `.webm` and
   `.3gp` (filed as video) and `.caf` (no type) stay unpickable whatever the list says; iOS in
-  turn greys out `.ogg`, `.opus`, `.caf` and `.wma` despite the list. For images, the list decides whether HEIC arrives converted (`ImagePool.vue`).
-- **No API that needs a secure context without a way around it.** The app is also opened on a phone over
-  plain HTTP on the LAN IP, where `crypto.subtle` (and `navigator.clipboard`, service workers) do not
-  exist. Decrypting is `@noble/ciphers` (pure JS) — one path for prod, staging, `localhost`, LAN and
-  Vitest. WebCrypto may only sit *beside* it as an upgrade where available (unividuell/countdown#106),
-  never instead of it.
+  turn greys out `.ogg`, `.opus`, `.caf` and `.wma` despite the list. For images, the list decides
+  whether HEIC arrives converted (`ImagePool.vue`).
+- **No API that needs a secure context without a way around it.** The app is also opened on a
+  phone over plain HTTP on the LAN IP, where `crypto.subtle`, `navigator.clipboard` and service
+  workers do not exist. Decrypting is `@noble/ciphers` (pure JS) — one path everywhere. WebCrypto
+  may only sit *beside* it as an upgrade (unividuell/countdown#106), never instead of it.
 - **A reload after a phone's file picker is Vite, not the app.** Android Chrome closes the HMR
-  WebSocket once the tab has sat in the background for ~20 s (an open picker counts); back in front,
-  Vite's client pings the dev server and calls `location.reload()`, wiping e.g. the upload queue.
-  Dev only — the production build has no Vite client. Seen over CDP
-  (`adb forward tcp:9222 localabstract:chrome_devtools_remote`). For phone tests that leave the
-  tab, start the `frontend-build` launch config: a production build behind `vite preview` on
-  :4173, which inherits the dev proxy.
+  WebSocket once the tab sits in the background (an open picker counts), and Vite's client reloads
+  on return — wiping e.g. an upload queue. Dev only. For phone tests that leave the tab, start the
+  `frontend-build` launch config: a production build behind `vite preview` on :4173, with the dev
+  proxy.
 - **An optional number renders on presence, never on truthiness.** `v-if="points.live"` swallows a
-  `0` that the server sent on purpose, and no strict-TS setting catches it — the attribute reads
-  correctly. Test on `=== undefined`, and where the value carries a qualifier („may still change“),
-  give it a **nested object** rather than a sibling field: `live?: { points, provisional }` makes
-  presence structural and the illegal pair unbuildable on both sides of the wire.
+  `0` the server sent on purpose. Test on `=== undefined`, and where the value carries a qualifier
+  („may still change“), give it a **nested object** rather than a sibling field:
+  `live?: { points, provisional }` makes presence structural and the illegal pair unbuildable.
 
 ## Lint / format
 
-- **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts` config, so use `.mjs`) + **Prettier**.
-- Disable `vue/multi-word-component-names` for `src/pages/**` — file-based route components are idiomatically single-word (`index.vue`, `login.vue`).
-- **Tailwind v4 scans source text, so a class name must appear literally.** A computed
-  `` `w-[${pct}%]` `` is never generated — no rule ends up in the CSS and the element simply has no
-  width. Where a value varies, map it to literal class strings
-  (`if (n <= 2) return 'w-[72%]'`), as `communities/fallbacks/CountdownCard.vue` does for the
-  hero width.
+- **ESLint flat config** in `eslint.config.mjs` (ESLint 10 needs an extra flag to load a `.ts`
+  config) + **Prettier**.
+- `vue/multi-word-component-names` is off for `src/pages/**` — file-based route components are
+  single-word (`index.vue`, `login.vue`).
 
 ## Typecheck must be `vue-tsc -b` — `--noEmit` checks nothing here
 
-`tsconfig.json` is a **solution file**: `"files": []` plus project references. `vue-tsc --noEmit` on
-it therefore type-checks **zero files** and always exits 0 — which is how the CI gate in
-`build-web.yml` once passed vacuously while the image build failed. Use **`vue-tsc -b`** (build mode
-walks the references; ~1000 files). If you ever change the script, verify it with a deliberate type
-error rather than trusting a green run.
+`tsconfig.json` is a **solution file**: `"files": []` plus project references. `vue-tsc --noEmit`
+on it type-checks **zero files** and exits 0. Use **`vue-tsc -b`**. If you change the script,
+verify it with a deliberate type error rather than trusting a green run.
 
 Three projects, deliberately:
 
@@ -181,4 +178,3 @@ Three projects, deliberately:
 | `tsconfig.app.json` | `src/**` **minus** tests | App code must NOT get `@types/node` — `process.env` would typecheck and then fail in the browser |
 | `tsconfig.vitest.json` | `src/**/__tests__/**` | Tests run in Node and legitimately use `node:fs` (e.g. reading `shared/rng/golden-vectors.json`) |
 | `tsconfig.node.json` | `vite.config.ts`, `vitest.config.ts`, `eslint.config.mjs` | Config files are Node, not browser |
-

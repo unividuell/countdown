@@ -29,23 +29,21 @@ ships through the committed file repository `core/maven-repo/` — see
 
 Never inject `HttpSession` or call `getSession()`/`getSession(true)` in code that runs for an
 anonymous request — a filter, an interceptor, a `@ModelAttribute`, a public endpoint. With Spring
-Session JDBC each session is a row: a sibling app grew ~88k empty sessions from one cookie-less
-healthcheck. The lib's own pages create no session; starting a provider sign-in does (it keeps
-the authorization request). countdown's code is countdown's job.
+Session JDBC each session is a row, and a cookie-less client (a healthcheck) creates one per
+request. The lib's own pages create no session; starting a provider sign-in does (it keeps the
+authorization request).
 
 ## SPA contract — countdown's side
 
-- `unividuell.auth.frontend: spa` — required since the lib's 0.3.0, which refuses to start without
-  it. The test classpath's `application.yaml` repeats it, since it replaces the main file.
+- `unividuell.auth.frontend: spa` — the lib refuses to start without it.
 - The SPA's one sign-in button navigates to **`/login/start`**; the lab's „Spieler wechseln“ adds
   `?redirect=<path>`. The bare `/login` is the SPA's sign-in page — the lib maps nothing there, and
   edge and dev proxy forward only the paths below it ([deployment-edge.md](deployment-edge.md),
   [frontend.md](frontend.md)).
 - `unividuell.auth.csrf-cookie.excluded-paths: /api/preview/**` — the link-preview endpoint answers
-  crawlers publicly cacheable, and a `Set-Cookie` there defeats every shared cache. The test
-  classpath's `application.yaml` repeats it, since it replaces the main file.
-- **Dev behind the Vite proxy:** transparent (`changeOrigin: false`), so OAuth2 `redirect_uri` and
-  redirects land on the SPA origin. See [frontend.md](frontend.md).
+  crawlers publicly cacheable, and a `Set-Cookie` there defeats every shared cache.
+- The test classpath's `application.yaml` repeats both keys: it replaces the main file
+  ([configuration.md](configuration.md)).
 
 ## Authorization rules
 
@@ -69,17 +67,13 @@ the authorization request). countdown's code is countdown's job.
 per-client-IP, 20/minute, `429` above it). **GET only**: the matching `POST` (accepting an invite)
 already requires a session, so it is simply not counted here — there is no second budget.
 
-- **The `X-Forwarded-For` trap.** Caddy *appends* to that header rather than replacing it, and
-  Spring's `ForwardedHeaderFilter` (`forward-headers-strategy=framework`) reads its **first**
-  entry — a value the client can set itself. That makes raw XFF unusable for anything that treats
-  a client address as an *identity* (rate limits, bans): an attacker resets the counter by sending
-  a fresh `X-Forwarded-For: 1.2.3.4` on every request. `countdown-web` sets `X-Client-IP` from
-  Caddy's own `{client_ip}` (`header_up` overwrites anything the client sent under that name) —
-  that header, not XFF, is the one a filter may trust as identity.
-- **The invite code's six characters are part of the security calculation, not a UI nicety.**
-  Six-character Crockford Base32 is 32⁶ ≈ 1.07 billion combinations; the rate limit is what turns
-  that into years of brute force instead of days. The name lookup answers a hit with the community
-  name, so an unbraked version of either endpoint makes the code space walkable.
+- **Never treat `X-Forwarded-For` as a client's identity** (rate limits, bans). Caddy *appends* to
+  it and Spring's `ForwardedHeaderFilter` reads the **first** entry — one the client sets itself.
+  `countdown-web` sets `X-Client-IP` from Caddy's own `{client_ip}` (`header_up` overwrites what
+  the client sent): that header is the one a filter may trust.
+- **The invite code's length and the rate limit are one calculation.** Six Crockford Base32
+  characters are 32⁶ ≈ 1.07 billion combinations; only the limit keeps that space from being
+  walked, and the name lookup answers a hit with the community name.
 
 ## Roles
 
@@ -94,21 +88,18 @@ already requires a session, so it is simply not counted here — there is no sec
 - **`/api/super-admin/**` is gated once, centrally.** Controllers under that path carry **no**
   authorization check and no `AuthenticatedUser` parameter — the `SecurityConfig` rule already
   guarantees the caller. Each module contributes its own controller for its own data
-  (`community.internal.SuperAdminController` for communities; in `iam`,
-  `SuperAdminRosterController` serves the *roster* of super-admins and
-  `SuperAdminUserController` the *user administration* — list, detail, and the
-  community-creation clearance); there is no aggregating `superadmin` module, because that would
-  force "give me everything" ports into the shared module API for the benefit of one UI.
+  (`community.internal.SuperAdminController`; in `iam`, `SuperAdminRosterController` and
+  `SuperAdminUserController`). There is no aggregating `superadmin` module: it would force "give
+  me everything" ports into the module APIs for one UI.
 - **The flag and the allowlist drift on purpose.** `is_super_admin` is re-derived at every sign-in,
   so a newly listed person has no flag until they sign in and a removed one keeps it until their
   next. Anything reporting on super-admins reads both sources and says which one a row came from —
   `GET /api/super-admin/super-admins` is the reference, reading the list through
   `RoleAllowlist.members("SUPER_ADMIN")`. Key rows by **provider plus lowercased login**:
   `github:prof` and `test:prof` are two people, and the lib matches logins case-insensitively.
-- **Never write the glob form of that path inside a KDoc.** Kotlin block comments *nest*, unlike
-  Java's: the slash before a `**` glob opens a second comment, so the doc comment's real `*/` closes
-  only the inner one and the compiler swallows the rest of the file, reporting `Unclosed comment`
-  nowhere near the actual text. Write "the `/api/super-admin` tree" in prose instead.
+- **Never write the glob form of that path inside a KDoc.** Kotlin block comments nest: the slash
+  before a `**` glob opens a second comment, and the compiler reports `Unclosed comment` far from
+  the text. Write "the `/api/super-admin` tree".
 
 ## Per-user permissions — read them live from the row, never from the principal
 
@@ -116,26 +107,21 @@ Finer-grained permissions than the super-admin role live in a column on `iam.use
 **read live on every request**. The first one is `community_creation_allowed`, gating
 `POST /api/communities`.
 
-- **The principal is deliberately not extended with them.** `AuthPrincipal` is **JDK-serialized
-  into the Spring Session JDBC table at sign-in and never refreshed** — a clearance granted after
-  sign-in would stay invisible in it until the next login. So a permission read from `me` would
-  silently be a permission read from a snapshot. Only roles from configuration belong in it.
+- **The principal is not extended with them.** `AuthPrincipal` is serialized into the session at
+  sign-in and never refreshed, so a permission read from `me` is read from a snapshot. Only roles
+  from configuration belong in it.
 - **Cross-module reads go through a port on the `iam` public API**, not through the principal and
   not by reaching into `iam.internal`: `UserQuery.mayCreateCommunities(id)` loads the row and
   returns `false` for an unknown id. `CommunityController.create` calls exactly that and throws
   `CommunityCreationNotAllowedException` (→ 403) — it must **not** re-combine `me.isSuperAdmin`,
   because the port already folds it in (see the two-names rule below).
-- **Two names, two facts — don't conflate them.** `User.communityCreationAllowed` is the *raw
-  column*; `User.mayCreateCommunities` is the *computed effective permission*
-  (`isSuperAdmin || communityCreationAllowed`) and the only place that rule lives. Super-admin DTOs
-  (`SuperAdminUserListEntry`, `SuperAdminUserDetail`) carry the **raw** value, so an admin toggle
-  shows what is actually stored; `GET /api/me` carries the **effective** one, because that is what
-  the SPA gates its UI on. A super-admin therefore shows `communityCreationAllowed: false` and
-  `mayCreateCommunities: true` at the same time, and that is correct.
-- **`SUPER_ADMIN` is the deliberate exception.** It comes from configuration and is re-evaluated at
-  *every* sign-in, so carrying it in the principal is safe and its staleness window (until the next
-  sign-in) is by design — see the drift note above. Do not generalise that exception to
-  permissions nobody re-derives at sign-in.
+- **Two names, two facts.** `User.communityCreationAllowed` is the *raw column*;
+  `User.mayCreateCommunities` is the *effective permission*
+  (`isSuperAdmin || communityCreationAllowed`) and the only place that rule lives. Super-admin
+  DTOs carry the raw value, so a toggle shows what is stored; `GET /api/me` carries the effective
+  one, which the SPA gates on. A super-admin shows `false` and `true` at once, correctly.
+- **`SUPER_ADMIN` in the principal is the one exception:** it is re-derived at every sign-in (the
+  drift note above). Do not extend it to permissions nobody re-derives.
 
 ## Test login (the lib's; never in production)
 

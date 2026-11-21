@@ -28,9 +28,9 @@ CountdownResponse(
 It pays most where the argument is a **literal**: a bare `false`, `null` or `0` says nothing
 about which parameter it lands on, and no type checks it.
 
-It also pays where the call site's variable name differs from the parameter's — passing a
-community's `name` as an edition's `rawLabel` is a deliberate decision, and
-`editions.create(communityId = id, rawLabel = name)` is where it gets stated.
+It also pays where the call site's variable name differs from the parameter's — handing a
+request's `name` to `rawName` is a decision, and `create(creatorUserId = me.id, rawName = body.name)`
+is where it gets stated.
 
 ## Where it does not apply
 

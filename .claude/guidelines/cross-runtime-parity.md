@@ -1,99 +1,71 @@
 # Cross-runtime parity (JVM ↔ Browser)
 
-Some logic has to run **identically** in Kotlin and in TypeScript — slug derivation today, seeded
-RNG for the mini-games next. This file holds the rules that make such a pair safe. The general
-project preference still stands: **keep logic in one place** (the countdown engine lives only in
-Kotlin and ships absolute instants). Duplicate a function across runtimes **only when both sides
-genuinely must compute it locally**, and then treat parity as a contract, not a hope.
+Rules for logic that has to compute **identically** in Kotlin and TypeScript. The project
+preference stands: **keep logic in one place** (the countdown engine lives only in Kotlin and ships
+absolute instants). Duplicate a function across runtimes **only when both sides must compute it
+locally**, and then treat parity as a contract.
 
-Worked examples: `Slugs.slugify` ↔ `slugify.ts` (string parity, both in production),
-`CountdownEngine` round dates ↔ `editionGrid.ts` (live form preview; vectors in
-`shared/edition-grid/vectors.json`, rewritten with `-Dedition.vectors.write=true`), and
-`SeededRandom.kt` ↔ `seededRandom.reference.ts` (bit-exact numeric parity — see
-[`docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md`](../../docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md)).
+Worked examples: `Slugs.slugify` ↔ `slugify.ts` (strings), `CountdownEngine` round dates ↔
+`editionGrid.ts` (live form preview; vectors in `shared/edition-grid/vectors.json`, rewritten with
+`-Dedition.vectors.write=true`), and `SeededRandom.kt` ↔ `seededRandom.reference.ts` (bit-exact
+numerics — see
+[the RNG spec](../../docs/superpowers/specs/2026-08-02-cross-runtime-rng-design.md)).
 
-The RNG is the cautionary case for that "only when both sides must compute it locally" clause. The
-parity is real and proven, but it turned out **not to be needed**: rounds are server-authoritative,
-because a seed the client can derive from is a seed that hands the client every future draw. So the
-TypeScript side lives in **test scope**
-(`webapp-vue/src/lib/rng/__tests__/seededRandom.reference.ts`), where it keeps the property
-verified without inviting anyone to build on it. Establish *whether* both sides must compute
-locally before you build the second implementation — a shared-stream RNG is an anti-feature for
-anything a player could gain from knowing.
+**Establish *whether* both sides must compute locally before building the second implementation.**
+The RNG's parity is proven and unused: rounds are server-authoritative, because a seed the client
+can derive from hands it every future draw. Its TypeScript side therefore lives in test scope
+(`webapp-vue/src/lib/rng/__tests__/`), where nobody builds on it.
 
 ## Kotlin is the source of truth
 
-Change Kotlin first, mirror TypeScript **in the same commit**, and keep the parity test green.
-Add a header comment to the TS mirror naming its Kotlin counterpart.
+Change Kotlin first, mirror TypeScript **in the same commit**, keep the parity test green. The TS
+mirror names its Kotlin counterpart in a header comment.
 
 ## Pin the contract in one shared file, not in two test files
 
 For a handful of cases, restating literals in both test files is acceptable (`SlugsTest.kt` /
 `slugify.spec.ts`). For anything larger — and for **all numeric** parity — generate golden vectors
-into a single file under `shared/` (from the Kotlin side; for a published standard from a third
-implementation, below) and have both suites read **that file**. Duplicated literals let one side drift
-without turning red.
+into one file under `shared/` and have both suites read **that file**: duplicated literals let one
+side drift without turning red.
 
 ```
-shared/rng/golden-vectors.json     # written by Kotlin, asserted by Kotlin AND Vitest
+shared/rng/golden-vectors.json         # written by Kotlin, asserted by Kotlin AND Vitest
 shared/round-assets/seal-vectors.json  # written by Node's crypto, asserted by Kotlin AND Vitest
 ```
 
-Such a file keeps earning its keep even with only one consumer: it pins the Kotlin side against
-accidental behaviour change, and it *is* the ready-made specification if the second implementation is
-ever needed. That is why dropping a mirror costs no verification.
-
-Give the file a `version` field: changing the values is a breaking change for anything persisted
-against it (e.g. a stored RNG seed). Vectors that pin a published standard's output need none: the
-seal vectors are RFC 8439 ChaCha20-Poly1305, so a change there is a different algorithm, not a new
-version.
-
-Where both sides implement a **published standard** (`AssetSeal` on the JDK, `@noble/ciphers` in the
-browser), write the vectors with a third implementation — Node's built-in crypto, recipe in
-`shared/README.md` — so neither side vouches for itself.
+- **The file earns its keep with one consumer too:** it pins the Kotlin side and is the ready
+  specification for a second implementation. Dropping a mirror costs no verification.
+- **Give it a `version` field** — changing the values breaks anything persisted against it (a
+  stored seed). Vectors of a published standard need none (the seal vectors are RFC 8439).
+- **Where both sides implement a published standard** (`AssetSeal` on the JDK, `@noble/ciphers` in
+  the browser), write the vectors with a third implementation — Node's crypto, recipe in
+  `shared/README.md` — so neither side vouches for itself.
 
 ## Only bit-exactly specified operations
 
-Both platforms leave some math **implementation-defined**. Measured on 200k inputs, V8 vs.
-JavaScriptCore (i.e. Chrome vs. Safari — no JVM needed to break):
+Both platforms leave some math implementation-defined — V8 and JavaScriptCore already disagree, no
+JVM needed:
 
 | Safe — identical everywhere | Unsafe — diverges between engines |
 |---|---|
 | `& \| ^ ~ << >> >>>` (both mask shift ≤ 31) | `sin` `cos` `tan` `log` `exp` `pow` `atan` `cbrt` |
-| `Math.imul` ≡ Kotlin `Int * Int` | `Math.random` (obviously) |
+| `Math.imul` ≡ Kotlin `Int * Int` | `Math.random` |
 | `+` `-` on ≤ 32-bit values | `Intl` / `localeCompare` / `for-in` order |
 | IEEE754 `+ - * /`, division by powers of two | multi-byte TypedArray bit reinterpretation |
 | `sqrt` (IEEE 754 correctly rounded) | |
 
-A useful corollary: sticking to this list also makes the **JRE vendor/version and the CPU
-architecture irrelevant**. Both specs describe results, not registers: the JLS fixes integer
-two's-complement wraparound and shift masking, ECMAScript defines `Math.imul` as exact modular 32-bit
-multiplication, and since Java 17 `strictfp` is always on (JEP 306), so no platform-dependent
-floating-point precision is left. Verified for the RNG across Temurin, Liberica (what Paketo ships),
-Corretto, Zulu and OpenJ9, and — on both runtimes — across amd64, arm64, ppc64le, 32-bit armv7 and
-big-endian s390x: identical output throughout. That is precisely what an unspecified JDK internal
-like `RandomGeneratorFactory` cannot promise.
-
-The one place architecture *can* leak in is byte order, so never reinterpret bytes to get at a
-value's bits: use `DataView` with an explicit endianness flag, never a multi-byte TypedArray view.
-Note also that the banned transcendentals are architecture-sensitive too — JSC and SpiderMonkey may
-delegate to the platform `libm`, so the last bit can depend on libm version *and* ISA.
-
-Consequences:
+Sticking to the left column also makes JRE vendor, JRE version and CPU architecture irrelevant.
 
 - **No Gaussian / Box-Muller in shared code.** Draw it server-side and send the value, or use an
-  integer-only approximation. On the JVM `StrictMath` is bit-exact — but JS has no `StrictMath`, so
-  that escape hatch does not exist for the browser.
-- **Never `a * b` on two 32-bit ints in JS** — a binary64 product above 2⁵³ silently loses low bits.
-  Use `Math.imul`.
-- Use `DataView` with an **explicit** endianness flag; a `Uint32Array` view's byte order is
-  implementation-defined.
+  integer-only approximation. JS has no `StrictMath`.
+- **Never `a * b` on two 32-bit ints in JS** — a product above 2⁵³ loses low bits. `Math.imul`.
+- **Never reinterpret bytes through a multi-byte TypedArray view;** its byte order is
+  implementation-defined. `DataView` with an explicit endianness flag.
 
 ## Hash strings over UTF-8 bytes, never UTF-16 code units
 
-`charCodeAt` iterates UTF-16 code units; Kotlin's `toByteArray(UTF_8)` iterates bytes. They agree
-only for ASCII — and this project's slugs are German. Measured FNV-1a-32 over `hütte-2026`:
-`3145535092` (UTF-8) vs. `3329605845` (UTF-16).
+`charCodeAt` iterates UTF-16 code units, Kotlin's `toByteArray(UTF_8)` bytes. They agree only for
+ASCII — and this project's slugs are German.
 
 ```ts
 for (const byte of new TextEncoder().encode(seed)) { /* … */ }
@@ -104,31 +76,22 @@ for (byte in seed.toByteArray(Charsets.UTF_8)) { /* … */ }
 
 ## A uint32 is signed in Kotlin and unsigned in JS
 
-`x >>> 0` in JS yields a positive `number`; the same bits as a Kotlin `Int` are **negative** above
-2³¹. Any comparison (`while (r < threshold)`) then behaves differently on the two sides. Remove the
-trap structurally: widen to `Long` in Kotlin (`Int.toUInt().toLong()`) rather than remembering to
-compare unsigned.
+`x >>> 0` in JS is a positive `number`; the same bits as a Kotlin `Int` are **negative** above 2³¹,
+so a comparison behaves differently. Widen to `Long` in Kotlin (`Int.toUInt().toLong()`) rather
+than remembering to compare unsigned.
 
 ## Never send a `Long` above 2⁵³ as a JSON number
 
-A JS `Number` is a binary64, so `JSON.parse` silently rounds. The JVM writes
-`7205759403792793601`; the SPA reads `7205759403792794000` — no exception, just wrong data. Send
-such values as **strings** (or keep them ≤ 32 bit). Applies to any future numeric ID, not just RNG
-seeds.
+`JSON.parse` rounds silently: the JVM writes `7205759403792793601`, the SPA reads
+`7205759403792794000`. Send such values as **strings** (or keep them ≤ 32 bit). Applies to any
+numeric id.
 
 ## Do not trust a platform RNG for reproducibility
 
-`kotlin.random.Random` disclaims cross-version stability in its own KDoc, and the JDK's named
-`RandomGeneratorFactory` algorithms are unspecified — `L32X64MixRandom`'s per-seed stream actually
-changed in an OpenJDK 17.0.x patch release
-([JDK-8282551](https://bugs.openjdk.org/browse/JDK-8282551)). Only `java.util.Random` carries a
-portability guarantee, and only for the methods it specifies itself. For reproducible game RNG we
-therefore ship our own generator on both sides.
-
-Third-party libraries do not solve it either — they add a version-pinning problem without giving a
-cross-language guarantee. Two measured examples: Apache Commons RNG 1.6's `XoShiRo128StarStar`
-implements the **superseded v1.0** of the algorithm (scrambler on `s[0]`, not `s[1]`) and does not
-match the author's reference; npm's `pure-rand` returns only the low 32 bits of xoroshiro128+ and
-emits player-visible patterns for small integer seeds. **Pin the algorithm against its canonical
-reference** (for us: [prng.di.unimi.it](https://prng.di.unimi.it/xoshiro128starstar.c)) and cite the
-variant in a code comment, so nobody later "fixes" it into the wrong one.
+- **`kotlin.random.Random` and the JDK's named `RandomGeneratorFactory` algorithms promise no
+  stable stream** — one changed in an OpenJDK patch release
+  ([JDK-8282551](https://bugs.openjdk.org/browse/JDK-8282551)). We ship our own generator.
+- **A third-party library adds a version-pinning problem and no cross-language guarantee.**
+- **Pin the algorithm against its canonical reference**
+  ([prng.di.unimi.it](https://prng.di.unimi.it/xoshiro128starstar.c)) and cite the variant in a
+  code comment, so nobody "fixes" it into the wrong one.
