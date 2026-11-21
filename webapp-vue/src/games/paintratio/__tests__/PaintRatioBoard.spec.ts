@@ -9,6 +9,16 @@ import { MAX_POINTS, MAX_STROKES } from '@/games/paintratio/types'
 import type { PaintRatioPayload, Stroke } from '@/games/paintratio/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
+import { playBrush, playRedo, playUndo } from '@/games/paintratio/toolSound'
+import { playRatchet } from '@/ui/ratchetSound'
+
+vi.mock('@/games/paintratio/toolSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/paintratio/toolSound')>()),
+  playBrush: vi.fn(),
+  playUndo: vi.fn(),
+  playRedo: vi.fn(),
+}))
+vi.mock('@/ui/ratchetSound', () => ({ playRatchet: vi.fn() }))
 
 /** A `Storage` over a map, handed to the board through `deviceStorage`. */
 const storage = vi.hoisted(() => {
@@ -132,6 +142,10 @@ describe('PaintRatioBoard', () => {
 
   beforeEach(() => {
     storage.items.clear()
+    vi.mocked(playBrush).mockClear()
+    vi.mocked(playUndo).mockClear()
+    vi.mocked(playRedo).mockClear()
+    vi.mocked(playRatchet).mockClear()
     rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect(300, 225))
   })
 
@@ -530,5 +544,38 @@ describe('PaintRatioBoard', () => {
     expect(wrapper.text()).toContain(
       'Dein Anteil darf um höchstens 5,0 Prozentpunkte vom Ziel abweichen.',
     )
+  })
+
+  describe('sound', () => {
+    it('knocks the brush’s pitch on every pick, the brush in hand included', async () => {
+      const wrapper = mountBoard()
+
+      await button(wrapper, 'Pinsel groß').trigger('click')
+      await button(wrapper, 'Pinsel klein').trigger('click')
+      await button(wrapper, 'Pinsel klein').trigger('click')
+
+      expect(vi.mocked(playBrush).mock.calls).toEqual([[2], [0], [0]])
+    })
+
+    it('ticks the neutral knock when the colour picker opens, not while a colour is picked', async () => {
+      const wrapper = mountBoard()
+      const picker = wrapper.get('input[aria-label="Farbe"]')
+
+      await picker.trigger('click')
+      await picker.setValue('#22c55e')
+
+      expect(playRatchet).toHaveBeenCalledOnce()
+    })
+
+    it('knocks undo below and redo above', async () => {
+      const wrapper = mountBoard()
+      await paint(wrapper, 1, [30, 30])
+
+      await button(wrapper, 'Rückgängig').trigger('click')
+      await button(wrapper, 'Wiederholen').trigger('click')
+
+      expect(playUndo).toHaveBeenCalledOnce()
+      expect(playRedo).toHaveBeenCalledOnce()
+    })
   })
 })

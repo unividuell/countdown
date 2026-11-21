@@ -22,6 +22,7 @@ import IconUndo from '~icons/lucide/undo'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
+import { playRatchet } from '@/ui/ratchetSound'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useHoldLock } from '@/ui/useHoldLock'
 import { deviceStorage } from '../drafts'
@@ -30,6 +31,7 @@ import PaintCanvas from './PaintCanvas.vue'
 import { addStroke, canRedo, EMPTY_PAINT, redo, undo } from './paintHistory'
 import type { PaintState } from './paintHistory'
 import PaintRatioBriefing from './PaintRatioBriefing.vue'
+import { playBrush, playRedo, playUndo } from './toolSound'
 import { normalizeColor } from './types'
 import type { PaintRatioGuess, PaintRatioPayload, Stroke } from './types'
 
@@ -100,8 +102,21 @@ function onCommit(stroke: Stroke): void {
   state.value = addStroke(state.value, stroke)
 }
 
+/** Every pick knocks, the brush in hand included: it answers the tap. */
+function pickBrush(index: number): void {
+  brush.value = index
+  playBrush(index)
+}
+
+function onUndo(): void {
+  state.value = undo(state.value)
+  playUndo()
+}
+
 function onRedo(): void {
-  if (canRedo(state.value)) state.value = redo(state.value)
+  if (!canRedo(state.value)) return
+  state.value = redo(state.value)
+  playRedo()
 }
 
 function sign(): void {
@@ -151,6 +166,7 @@ function sign(): void {
           aria-label="Farbe"
           :value="color"
           class="h-11 w-16 min-w-11 cursor-pointer border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-outline [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-outline [&::-webkit-color-swatch-wrapper]:px-0 [&::-webkit-color-swatch-wrapper]:py-1.5"
+          @click="playRatchet"
           @input="pickColor"
         />
         <div class="flex items-center">
@@ -161,7 +177,7 @@ function sign(): void {
             :aria-label="tool.label"
             :aria-pressed="brush === index"
             :class="TOOL"
-            @click="brush = index"
+            @click="pickBrush(index)"
           >
             <span
               aria-hidden="true"
@@ -182,7 +198,7 @@ function sign(): void {
             aria-label="Rückgängig"
             :class="TOOL"
             :disabled="props.disabled || state.strokes.length === 0"
-            @click="state = undo(state)"
+            @click="onUndo"
           >
             <IconUndo class="size-5" aria-hidden="true" />
           </button>
