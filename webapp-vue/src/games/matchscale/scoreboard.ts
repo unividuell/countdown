@@ -52,18 +52,19 @@ export function solutionText(factor: number, truth: Truth | null): string {
 }
 
 /**
- * The head's „Toleranz“: the lengths the gate lets through, `160–250` for 200 cm at 1.25; without
- * a length the factor, `1,25×`. `null` in phase two.
+ * The head's „Toleranz“: how far a tip may sit from the solution, in the „Abstand“ column's terms —
+ * `−40 – +50` for 200 cm at 1.25; without a length the factor, `1,25×`. `null` in phase two.
  */
 export function toleranceText(toleranceFactor: number | null, truth: Truth | null): string | null {
   if (toleranceFactor === null) return null
   if (truth === null) return formatTolerance(toleranceFactor)
 
   const { metres, unit } = truth
-  const low = formatLength(inUnit(metres / toleranceFactor, unit))
-  const high = formatLength(inUnit(metres * toleranceFactor, unit))
+  const solution = inUnit(metres, unit)
+  const low = formatSigned(inUnit(metres / toleranceFactor, unit) - solution)
+  const high = formatSigned(inUnit(metres * toleranceFactor, unit) - solution)
 
-  return `${low}–${high}`
+  return `${low} – ${high}`
 }
 
 /**

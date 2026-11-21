@@ -69,8 +69,9 @@ describe('solutionText', () => {
 })
 
 describe('toleranceText', () => {
-  it('is the range of lengths the gate lets through', () => {
-    expect(toleranceText(1.25, TWO_METRES)).toBe('160–250')
+  it('is how far a tip may sit from the solution, signed like the distance column', () => {
+    expect(toleranceText(1.25, TWO_METRES)).toBe('−40 – +50')
+    expect(toleranceText(1.25, { metres: 61, unit: 'm' })).toBe('−12 – +15')
   })
 
   it('is the factor without a length, nothing in phase two', () => {

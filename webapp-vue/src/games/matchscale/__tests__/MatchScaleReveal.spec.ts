@@ -213,7 +213,7 @@ describe('MatchScaleReveal', () => {
     const band = wrapper.findAll('thead th').map((th) => th.text())
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('182–220')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('−18 – +20')
     expect(band).toContain('Tipp [cm]')
     expect(band).toContain('Abstand [cm]')
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250')
