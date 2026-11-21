@@ -175,7 +175,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   must not claim the device's audio session (on iOS that stops the player's music).
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
-  too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
+  too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`). A pitch may follow
+  the player's own progress, which says nothing about the target: Musterung climbs a scale per
+  marked block (`findpattern/markSound.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the

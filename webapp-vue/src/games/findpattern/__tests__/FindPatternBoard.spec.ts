@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { AwardRule } from '@/api/types'
 import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
+import { playClear, playMark } from '@/games/findpattern/markSound'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+
+vi.mock('@/games/findpattern/markSound', () => ({ playMark: vi.fn(), playClear: vi.fn() }))
 
 const PAYLOAD = {
   cols: 8,
@@ -63,6 +66,52 @@ async function tap(wrapper: ReturnType<typeof mountBoard>, ...indices: number[])
 }
 
 describe('FindPatternBoard', () => {
+  beforeEach(() => {
+    vi.mocked(playMark).mockClear()
+    vi.mocked(playClear).mockClear()
+  })
+
+  it('knocks for every marked block, one step higher each, the completing one ringing', async () => {
+    const wrapper = mountBoard()
+    await tap(wrapper, 10, 11, 12, 13)
+
+    expect(vi.mocked(playMark).mock.calls).toEqual([
+      [1, false],
+      [2, false],
+      [3, false],
+      [4, true],
+    ])
+  })
+
+  it('starts the scale over with a fresh selection', async () => {
+    const wrapper = mountBoard()
+    await tap(wrapper, 10, 11, 40)
+
+    expect(vi.mocked(playMark).mock.calls).toEqual([
+      [1, false],
+      [2, false],
+      [1, false],
+    ])
+  })
+
+  it('says „ba-dum“ when a tap on a marked block drops the selection', async () => {
+    const wrapper = mountBoard()
+    await tap(wrapper, 10, 11, 11)
+
+    expect(playMark).toHaveBeenCalledTimes(2)
+    expect(playClear).toHaveBeenCalledOnce()
+  })
+
+  it('knocks for no tap the board does not take', async () => {
+    await tap(mountBoard(true), 10)
+
+    expect(playMark).not.toHaveBeenCalled()
+  })
+
+  it('has the sound toggle beside the instruction', () => {
+    expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(true)
+  })
+
   it('shows both pictures from its props and the rules text inside the info box', () => {
     const wrapper = mountBoard()
 
