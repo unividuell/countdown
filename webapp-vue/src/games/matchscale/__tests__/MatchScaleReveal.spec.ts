@@ -479,8 +479,8 @@ describe('MatchScaleReveal', () => {
     const wrapper = mountReveal({ payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' } })
     const markers = wrapper.findAll('[data-test="match-scale-marker"]').map((sup) => sup.text())
 
-    expect(markers).toEqual(['¹', '¹'])
-    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('¹ Wie gezeichnet.')
+    expect(markers).toEqual(['1', '1'])
+    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('1 Wie gezeichnet.')
   })
 
   it('names A and B with their measures under the field', () => {

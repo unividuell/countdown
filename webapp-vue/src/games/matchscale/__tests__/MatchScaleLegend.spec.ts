@@ -64,8 +64,8 @@ describe('MatchScaleLegend', () => {
     expect(b.get('[data-test="match-scale-label-b"]').text()).toBe('Beta')
     expect(a.get('p').attributes('style')).toContain('color: var(--a)')
     expect(b.get('p').attributes('style')).toContain('color: var(--b)')
-    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹')
-    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²')
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('1')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('2')
     expect(wrapper.find('[data-test="match-scale-attribution"]').exists()).toBe(false)
   })
 
@@ -83,11 +83,11 @@ describe('MatchScaleLegend', () => {
     })
     const [a, b] = blocks(wrapper)
 
-    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹,³')
-    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²,³')
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('1,3')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('2,3')
   })
 
-  it('marks both names ¹ for one shared credit', () => {
+  it('marks both names 1 for one shared credit', () => {
     const wrapper = mount(MatchScaleLegend, {
       props: {
         a: A,
@@ -100,8 +100,8 @@ describe('MatchScaleLegend', () => {
     })
 
     expect(wrapper.findAll('[data-test="match-scale-marker"]').map((m) => m.text())).toEqual([
-      '¹',
-      '¹',
+      '1',
+      '1',
     ])
   })
 
@@ -119,22 +119,22 @@ describe('MatchScaleLegend', () => {
   it('in the reveal appends each measure to its name, both in one unit', () => {
     const [a, b] = blocks(mountLegend(LENGTH, HEIGHT))
 
-    expect(a.get('p').text()).toBe('Alpha¹ · 230 cm Länge')
-    expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
+    expect(a.get('p').text()).toBe('Alpha1 · 230 cm Länge')
+    expect(b.get('p').text()).toBe('Beta2 · 45 cm Höhe')
   })
 
   it('in the reveal of a category without measures appends the factor: A once, B n times', () => {
     const [a, b] = blocks(mountLegend(null, null, 2.654))
 
-    expect(a.get('p').text()).toBe('Alpha¹ · 1×')
-    expect(b.get('p').text()).toBe('Beta² · 2,65×')
+    expect(a.get('p').text()).toBe('Alpha1 · 1×')
+    expect(b.get('p').text()).toBe('Beta2 · 2,65×')
   })
 
   it('names lengths, not factors, where a measure is missing on one side only', () => {
     const [a, b] = blocks(mountLegend(null, HEIGHT, 2))
 
-    expect(a.get('p').text()).toBe('Alpha¹')
-    expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
+    expect(a.get('p').text()).toBe('Alpha1')
+    expect(b.get('p').text()).toBe('Beta2 · 45 cm Höhe')
   })
 
   it('picks the unit from the smaller measure: 15 m beside 300 m reads in m', () => {
@@ -142,8 +142,8 @@ describe('MatchScaleLegend', () => {
       mountLegend({ ...LENGTH, metres: 15 }, { ...HEIGHT, kind: 'total-height', metres: 300 }),
     )
 
-    expect(a.get('p').text()).toBe('Alpha¹ · 15 m Länge')
-    expect(b.get('p').text()).toBe('Beta² · 300 m Höhe')
+    expect(a.get('p').text()).toBe('Alpha1 · 15 m Länge')
+    expect(b.get('p').text()).toBe('Beta2 · 300 m Höhe')
   })
 
   it('stands as tall in the reveal as while playing: same lines, the name never wraps', () => {
@@ -168,8 +168,8 @@ describe('MatchScaleLegend', () => {
     const wrapper = mountLegend(LENGTH, { ...HEIGHT, subject: 'Beta Mk II' })
     const [a, b] = blocks(wrapper)
 
-    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹')
-    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²,³')
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('1')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('2,3')
   })
 
   it('leaves out a missing measure and a missing credit', () => {

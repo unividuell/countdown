@@ -1,12 +1,10 @@
 import type { Measure, Silhouette } from './types'
 
 export interface Footnotes {
-  /** The marker(s) each name carries; `null` without a note. */
+  /** The marker(s) each name carries, `1,2`; `null` without a note. Set in `<sup>`. */
   markers: { a: string | null; b: string | null }
   notes: { marker: string; text: string }[]
 }
-
-const SUPERSCRIPTS = ['¹', '²', '³', '⁴']
 
 /**
  * Numbers the notes of A and B: credits first, then the category's legend (both names, one
@@ -35,7 +33,8 @@ export function footnotesOf(
 
   const note = (key: 'a' | 'b', text: string) => {
     const known = notes.find((n) => n.text === text)
-    const marker = known?.marker ?? SUPERSCRIPTS[notes.length]!
+    // Plain digits, raised by `<sup>`: there is no superscript comma to join `¹` and `²`.
+    const marker = known?.marker ?? String(notes.length + 1)
     if (known === undefined) notes.push({ marker, text })
     marks[key].push(marker)
   }

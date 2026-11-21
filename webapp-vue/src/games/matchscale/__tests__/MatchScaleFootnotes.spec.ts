@@ -19,13 +19,13 @@ function notes(a: Silhouette, b: Silhouette) {
 
 describe('MatchScaleFootnotes', () => {
   it('writes one note for a credit both share', () => {
-    expect(notes(A, { ...A, name: 'Beta' })).toEqual([`¹ ${A.attribution}`])
+    expect(notes(A, { ...A, name: 'Beta' })).toEqual([`1 ${A.attribution}`])
   })
 
-  it('numbers different credits ¹ and ²', () => {
+  it('numbers different credits 1 and 2', () => {
     expect(notes(A, { ...A, attribution: 'Silhouette: Niemand' })).toEqual([
-      `¹ ${A.attribution}`,
-      '² Silhouette: Niemand',
+      `1 ${A.attribution}`,
+      '2 Silhouette: Niemand',
     ])
   })
 
@@ -49,8 +49,8 @@ describe('MatchScaleFootnotes', () => {
     })
 
     expect(wrapper.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
-      `¹ ${A.attribution}`,
-      '² Maß: Beta Mk II',
+      `1 ${A.attribution}`,
+      '2 Maß: Beta Mk II',
     ])
   })
 
@@ -67,13 +67,13 @@ describe('MatchScaleFootnotes', () => {
     })
 
     expect(wrapper.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
-      `¹ ${A.attribution}`,
-      '² Wie gezeichnet.',
-      '³ Maß: Beta Mk II',
+      `1 ${A.attribution}`,
+      '2 Wie gezeichnet.',
+      '3 Maß: Beta Mk II',
     ])
   })
 
-  it('numbers a lone credit of B ¹', () => {
-    expect(notes({ ...A, attribution: null }, A)).toEqual([`¹ ${A.attribution}`])
+  it('numbers a lone credit of B 1', () => {
+    expect(notes({ ...A, attribution: null }, A)).toEqual([`1 ${A.attribution}`])
   })
 })

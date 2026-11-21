@@ -22,12 +22,13 @@ const props = withDefaults(
   { measureA: null, measureB: null, legend: null },
 )
 
-const notes = computed(() =>
-  footnotesOf(props.a, props.b, {
-    legend: props.legend,
-    measureA: props.measureA,
-    measureB: props.measureB,
-  }).notes.map((note) => `${note.marker} ${note.text}`),
+const notes = computed(
+  () =>
+    footnotesOf(props.a, props.b, {
+      legend: props.legend,
+      measureA: props.measureA,
+      measureB: props.measureB,
+    }).notes,
 )
 </script>
 
@@ -38,11 +39,11 @@ const notes = computed(() =>
     <ul data-test="match-scale-footnotes" class="flex flex-col gap-0.5">
       <li
         v-for="note in notes"
-        :key="note"
+        :key="note.marker"
         data-test="match-scale-footnote"
         class="text-xs text-on-surface-variant"
       >
-        {{ note }}
+        <sup>{{ note.marker }}</sup> {{ note.text }}
       </li>
     </ul>
   </div>
