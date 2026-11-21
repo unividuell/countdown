@@ -13,11 +13,12 @@ import { computed } from 'vue'
 import GuessHueBoard from './GuessHueBoard.vue'
 import GuessHueReveal from './GuessHueReveal.vue'
 import type { RevealGuess } from './reveal'
-import { scoreboardRows, solutionCell } from './scoreboard'
+import { scoreboardRows, solutionCell, withinToleranceOf } from './scoreboard'
 import type { ScoreboardRow } from './scoreboard'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import { asGuessHuePayload, hueOf } from './types'
 import type { GuessHueSolution } from './types'
 
@@ -95,6 +96,18 @@ const guesses = computed<RevealGuess[]>(() => {
   })
 })
 
+/** The reveal's verdict sound: my hue in the window, or (phase two) my row holding the points. */
+const won = computed(() =>
+  solution.value === null
+    ? null
+    : myWin({
+        gated: solution.value.toleranceDeg !== null,
+        withinGate: withinToleranceOf(props.outcome),
+        rows: rows.value,
+        mineUserId: props.mineUserId,
+      }),
+)
+
 /** „Live“ is the round's rule, not a per-row question — the rows carry their own `provisional`. */
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
@@ -132,6 +145,7 @@ const animate = useRevealedLive(() => solution.value !== null)
         :animate="animate"
         :rows="rows"
         :solution-cell="solutionCellValue"
+        :won="won"
         :live="live"
       />
       <GuessHueBoard

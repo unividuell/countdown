@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
+import { playTurn } from '@/games/guesshue/turnSound'
+import HoldButton from '@/ui/HoldButton.vue'
+
+vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/guesshue/turnSound')>()),
+  playTurn: vi.fn(),
+}))
 
 function mountBoard(props: Partial<InstanceType<typeof GuessHueBoard>['$props']> = {}) {
   return mount(GuessHueBoard, {
@@ -49,12 +56,37 @@ describe('GuessHueBoard', () => {
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('110')
   })
 
+  describe('turn sound', () => {
+    beforeEach(() => {
+      vi.mocked(playTurn).mockClear()
+    })
+
+    it('knocks once per degree the knob enters', async () => {
+      const w = mountBoard({ initHue: 108 })
+      const wheel = w.get('[data-test="hue-wheel"]')
+
+      await wheel.trigger('keydown', { key: 'ArrowUp' })
+      expect(playTurn).toHaveBeenCalledOnce()
+
+      await wheel.trigger('keydown', { key: 'PageUp' })
+      expect(playTurn).toHaveBeenCalledTimes(2)
+    })
+
+    it('has the sound toggle beside the wheel', () => {
+      expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(true)
+    })
+
+    it('lets the confirm button knock as it charges', () => {
+      expect(mountBoard().getComponent(HoldButton).props('sound')).toBe(true)
+    })
+  })
+
   it('emits the angle the wheel stands on, unrounded', async () => {
     const w = mountBoard({ initHue: 210.4 })
     await w.vm.$nextTick()
 
     await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
-    vi.advanceTimersByTime(2000)
+    vi.advanceTimersByTime(3000)
 
     expect(w.emitted('guess')).toEqual([[210.4]])
   })

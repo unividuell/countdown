@@ -11,9 +11,8 @@ import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
-import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
-import { playPop, unlockSound, type Counting } from './countSound'
+import { playPop, type Counting } from './countSound'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import {
   FIELD_PX,
@@ -93,26 +92,14 @@ function onView(next: View): void {
   unsaved = true
 }
 
-const sound = useGameSound()
-
-// The opening knocks with the pop-in; muting or leaving cuts it.
+// The opening knocks with the pop-in; leaving cuts it.
 let popping: Counting | null = null
 
 onMounted(() => {
-  if (sound.value) popping = playPop()
-})
-
-watch(sound, (on) => {
-  if (!on) popping?.stop()
+  popping = playPop()
 })
 
 onBeforeUnmount(() => popping?.stop())
-
-/** A lift also wakes the graph for the reveal's count, which iOS allows inside a `pointerup` only. */
-function onLift(): void {
-  save()
-  if (sound.value) unlockSound()
-}
 
 // A tab sent away mid-gesture may never report the finger's lift.
 useEventListener(document, 'visibilitychange', () => {
@@ -143,7 +130,7 @@ function submit(): void {
         @pointerup.capture="onFieldUp"
         @pointercancel.capture="onFieldUp"
         @lostpointercapture.capture="onFieldUp"
-        @pointerup="onLift"
+        @pointerup="save"
         @pointercancel="save"
         @lostpointercapture="save"
         @wheel="save"

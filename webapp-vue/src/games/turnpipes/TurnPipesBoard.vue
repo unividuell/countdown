@@ -12,7 +12,6 @@ import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import PipeGrid from './PipeGrid.vue'
@@ -44,7 +43,6 @@ const round = computed(() => (props.sealed ? null : props.payload))
 const playable = computed(() => round.value !== null && !props.disabled)
 const size = computed(() => props.payload?.size ?? props.scene?.size ?? MIN_SIZE)
 
-const sound = useGameSound()
 const storage = deviceStorage()
 
 const turns = ref<number[]>([])
@@ -81,7 +79,7 @@ function onTap(cell: number): void {
 
   turns.value = turns.value.map((turn, i) => (i === cell ? turn + 1 : turn))
   if (props.draftKey !== null) saveDraft(storage, props.draftKey, rotationsOf(turns.value))
-  if (sound.value) playSound('turn')
+  playSound('turn')
 }
 
 function submit(): void {

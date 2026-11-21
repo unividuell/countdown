@@ -4,7 +4,6 @@ import { gameEntry } from '@/games/__tests__/gameFixtures'
 import {
   formatFactor,
   formatTolerance,
-  myWin,
   scoreboardRows,
   solutionText,
   toleranceText,
@@ -202,27 +201,5 @@ describe('scoreboardRows', () => {
       ['me', 0],
       ['far', 2],
     ])
-  })
-})
-
-describe('myWin', () => {
-  const inside = { scale: 1, deviation: 0.05, withinTolerance: true }
-  const outside = { scale: 1, deviation: 0.5, withinTolerance: false }
-
-  it('phase one: my tip inside the gate', () => {
-    const rows = rowsOf([entry({ userId: 'me', points: 0 })], 'me')
-
-    expect(myWin({ tolerance: 0.1, outcome: inside, rows, mineUserId: 'me' })).toBe(true)
-    expect(myWin({ tolerance: 0.1, outcome: outside, rows, mineUserId: 'me' })).toBe(false)
-    expect(myWin({ tolerance: 0.1, outcome: null, rows, mineUserId: 'me' })).toBeNull()
-  })
-
-  it('phase two: my row holds the points now', () => {
-    const rows = rowsOf([entry({ userId: 'me', points: 3 }), entry({ userId: 'you', points: 0 })])
-    const phaseTwo = { tolerance: null, outcome: outside, rows }
-
-    expect(myWin({ ...phaseTwo, mineUserId: 'me' })).toBe(true)
-    expect(myWin({ ...phaseTwo, mineUserId: 'you' })).toBe(false)
-    expect(myWin({ ...phaseTwo, mineUserId: 'nobody' })).toBeNull()
   })
 })

@@ -7,10 +7,11 @@ const REWIND_FACTOR = 2
 /**
  * How long a hold-to-confirm gesture takes by default, absent an opinion from the caller.
  *
- * The original held for 2000 ms, which reads long on the second attempt. This is the number to
- * turn while playing in the lab — it is the whole reason the lab exists.
+ * 1200 ms while the hold was a bare ring: 2000 read long on the second attempt. Back at 2000 now
+ * that the hold charges (`charge.ts`) — the build-up needs the room. This is the number to turn
+ * while playing in the lab — it is the whole reason the lab exists.
  */
-export const DEFAULT_HOLD_MS = 1200
+export const DEFAULT_HOLD_MS = 2000
 
 /** One beat of a count-in held on a `HoldButton` with `beats`. */
 export const BEAT_MS = 1000

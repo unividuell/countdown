@@ -25,6 +25,7 @@ const COLUMNS: ScoreboardColumn<ScoreboardRow>[] = [
   {
     key: 'tip',
     label: 'Tipp',
+    unit: '°',
     fact: 'Lösung',
     width: '3.5rem',
     align: 'end',

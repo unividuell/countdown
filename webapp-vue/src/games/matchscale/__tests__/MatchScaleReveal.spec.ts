@@ -17,7 +17,6 @@ const stopCount = vi.fn()
 vi.mock('../countSound', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../countSound')>()),
   playCount: vi.fn(() => ({ stop: stopCount })),
-  unlockSound: vi.fn(),
 }))
 
 enableAutoUnmount(afterEach)
@@ -326,16 +325,6 @@ describe('MatchScaleReveal', () => {
       expect(stopCount).toHaveBeenCalled()
     })
 
-    it('muting stops it', async () => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
-      const wrapper = mountReveal({ animate: true })
-      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
-
-      await wrapper.get('button[aria-label="Ton"]').trigger('click')
-
-      expect(stopCount).toHaveBeenCalled()
-    })
-
     it('keeps the toggle in the field, where the board has it', () => {
       const wrapper = mountReveal({ animate: false })
 
@@ -343,11 +332,9 @@ describe('MatchScaleReveal', () => {
       expect(wrapper.findAll('button[aria-label="Ton"]')).toHaveLength(1)
     })
 
-    it('stays silent when muted, and without animation', async () => {
+    it('stays silent without animation', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
       mountReveal({ animate: false })
-      localStorage.setItem('games:sound', 'false')
-      mountReveal({ animate: true })
 
       await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
 

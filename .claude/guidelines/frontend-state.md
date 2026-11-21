@@ -205,8 +205,46 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **One sound switch for games whose sound is decoration:** `useGameSound()` and `SoundToggle` from
   `ui/`, so muting one silences all and no game stores it itself. Not for games whose sound is the
   game (Anspielung, Peilung): muting there ends the round.
+- **The switch shows what is heard, not only what is set.** After a fresh load the graph sleeps
+  until a user activation, and a finger setting down is none — the first drag is silent on every
+  phone. On iOS the release of a drag is none either, only a tap is (simulator, iOS 18.1); Firefox
+  for Android wakes on that release. So `SoundToggle` has three faces: muted, on, and „on but
+  asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
+  `useSoundAwake` asks the graph to wake on every activation anywhere on the page. A game adds no
+  wake handlers of its own.
+- **Shared UI is silent unless the board asks.** `HoldButton`'s charge knocks need its `sound`
+  prop, and only a board with a `SoundToggle` sets it: sound nobody can switch off where they hear
+  it is none. Never in a game whose sound is the game.
+- **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
+  schedules knocks, it does not build its own oscillators. Sound is a side note, not a
+  signal: one master level for all of it (`VOLUME`), which a game does not raise.
+- **One rule for a sleeping graph: a one-shot stays silent.** A sound scheduled on a suspended
+  graph lands on its wake-up, with the next tap, long after what it belonged to — so a one-shot
+  asks for the graph only while it runs (`runningGraph()` in `ui/audio.ts`; decoration sound asks
+  `soundGraph()`, see below). Waking (`unlockSound`, `claimPlayback`) lives in `ui/audio.ts` too —
+  no game carries its own copy.
+- **The sound switch is honoured in one place, `ui/soundOutput.ts`.** A play function asks
+  `soundGraph()` — or `gameSoundOn()` first, where it wakes the graph itself — and connects to
+  `soundOutput(graph)`, never to `graph.destination`. A board calls its play function and nothing
+  else: no `if (sound.value)`, no watcher that cuts a sound on mute. The output's gain is the
+  mute, so what is already sounding falls silent too. Muted asks for no graph at all: a muted game
+  must not claim the device's audio session (on iOS that stops the player's music).
+- **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
+  target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
+  too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
+- **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
+  gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`. It
+  plays with the solution's beat, only on a reveal that just happened here (`animate`) — a reload
+  is silent — and at once where nothing moves. The reveal shows the `SoundToggle` where the board
+  had it.
+- **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
+  neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
+  One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and
+  none where nothing moves: every marker at once is one loud knock that says nothing.
+- **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every
+  oscillator's pitch and start. Mock `@/ui/audio` with its `audioMock`; do not copy the fake.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`

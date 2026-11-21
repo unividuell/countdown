@@ -18,9 +18,8 @@
  * Nothing saved says where B stood when the tip went in, so every tip ends at B's starting corner:
  * sizes compare there, positions do not exist.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { useGameSound } from '@/ui/useGameSound'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, type Counting } from './countSound'
 import { countTones, growEasing, growMs } from './countTones'
@@ -103,7 +102,6 @@ const arrived = ref(handoff === null)
 let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
 
-const sound = useGameSound()
 let counting: Counting | null = null
 
 onMounted(() => {
@@ -115,18 +113,13 @@ onMounted(() => {
   }
 
   beat = setTimeout(() => {
-    if (sound.value) counting = playCount(tones, props.won)
+    counting = playCount(tones, props.won)
     bScale.value = props.factor
     arrived.value = true
     settle = setTimeout(() => {
       growing.value = false
     }, growTiming.ms)
   }, SOLUTION_DELAY_MS)
-})
-
-// Muting silences the count that is already running, not only the next one.
-watch(sound, (on) => {
-  if (!on) counting?.stop()
 })
 
 onBeforeUnmount(() => {

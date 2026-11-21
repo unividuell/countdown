@@ -17,6 +17,36 @@ export function audioGraph(): AudioContext | null {
 }
 
 /**
+ * The graph, only while it runs. A sound scheduled on a sleeping graph lands on its wake-up, long
+ * after what it belonged to: a one-shot asks here and stays silent on `null`.
+ */
+export function runningGraph(): AudioContext | null {
+  const graph = audioGraph()
+
+  return graph?.state === 'running' ? graph : null
+}
+
+/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
+export function claimPlayback(): void {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+  if (session) session.type = 'playback'
+}
+
+/**
+ * Wakes the graph. Call it synchronously inside a `click` or `pointerup`: iOS refuses a resume
+ * anywhere else.
+ */
+export function unlockSound(): void {
+  claimPlayback()
+  const graph = audioGraph()
+  if (graph?.state !== 'suspended') return
+
+  graph.resume().catch((err: unknown) => {
+    console.warn('[sound] the browser kept the audio graph suspended', err)
+  })
+}
+
+/**
  * Clips are scheduled this far ahead rather than at „now": `start()` with a past-or-present time
  * asks the graph to render samples it may already be mid-way through, and the first ones can be
  * dropped. A twentieth of a second is inaudible as a delay and puts the clip safely in the future.

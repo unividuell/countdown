@@ -14,7 +14,6 @@ import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
 import SoundToggle from '@/ui/SoundToggle.vue'
 import { useSurfaceContainer } from '@/ui/surfaceTone'
-import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
 import { BLOCK_TYPES } from './blockTypes'
@@ -75,7 +74,6 @@ const build = shallowRef<GuessBlock[]>([])
 const history = shallowReactive<GuessBlock[][]>([])
 const picked = ref<Slot | null>(null)
 const slot = computed<Slot>(() => picked.value ?? props.payload?.types[0] ?? PICKAXE)
-const sound = useGameSound()
 const canSubmit = computed(() => playable.value && build.value.length > 0)
 
 const storage = deviceStorage()
@@ -127,7 +125,7 @@ function place(cell: Cell | null, type: BlockCode): void {
   if (build.value.some((b) => at(b, cell))) return
 
   commit([...build.value, { x: cell[0], y: cell[1], z: cell[2], type }])
-  if (sound.value) playSound('place', type)
+  playSound('place', type)
 }
 
 function remove(cell: Cell | null): void {
@@ -135,7 +133,7 @@ function remove(cell: Cell | null): void {
   if (!gone) return
 
   commit(build.value.filter((b) => b !== gone))
-  if (sound.value) playSound('break', gone.type)
+  playSound('break', gone.type)
 }
 
 // As in Place Patch: while the submit ring rises the field is greyed, a finger on it cancels the
@@ -162,7 +160,6 @@ function undo(): void {
   const back = previous.find((b) => !has(build.value, b))
   build.value = previous
 
-  if (!sound.value) return
   if (gone) playSound('break', gone.type)
   else if (back) playSound('place', back.type)
 }

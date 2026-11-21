@@ -18,6 +18,7 @@ import stone3 from './sounds/stone3.m4a?url'
 import stone4 from './sounds/stone4.m4a?url'
 
 import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
 import { BLOCK_TYPES } from './blockTypes'
 import type { BlockCode, SoundSet } from './blockTypes'
 
@@ -106,7 +107,7 @@ function busOf(graph: AudioContext): GainNode {
   bus = graph.createGain()
   bus.gain.value = 0.6
   // Knock and break overlap; the compressor keeps their sum unclipped.
-  bus.connect(graph.createDynamicsCompressor()).connect(graph.destination)
+  bus.connect(graph.createDynamicsCompressor()).connect(soundOutput(graph))
   return bus
 }
 
@@ -117,6 +118,8 @@ function variantOf(set: SoundSet): AudioBuffer | undefined {
 }
 
 export function playSound(action: 'place' | 'break', code: BlockCode): void {
+  if (!gameSoundOn()) return
+
   const graph = audioGraph()
   if (!graph) return
 

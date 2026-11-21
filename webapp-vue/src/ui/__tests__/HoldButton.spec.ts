@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
+import { chargeCurve } from '@/ui/charge'
+import { playCharge } from '@/ui/chargeSound'
 import HoldButton from '@/ui/HoldButton.vue'
+import HoldSparks from '@/ui/HoldSparks.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
+
+const stopCharge = vi.fn()
+vi.mock('@/ui/chargeSound', () => ({ playCharge: vi.fn(() => ({ stop: stopCharge })) }))
 
 function mountButton(props: Partial<InstanceType<typeof HoldButton>['$props']> = {}) {
   return mount(HoldButton, {
@@ -589,5 +595,94 @@ describe('HoldButton', () => {
 
   it('shows no face without beats — the confirm button stays a plain disc', () => {
     expect(mountButton().find('[data-test="hold-face"]').exists()).toBe(false)
+  })
+
+  describe('charging', () => {
+    beforeEach(() => {
+      vi.mocked(playCharge).mockClear()
+      stopCharge.mockClear()
+    })
+
+    /** Holds for `ms`: the first frame only sets the clock, so it gets a frame of its own. */
+    async function hold(w: VueWrapper, ms: number): Promise<void> {
+      await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
+      vi.advanceTimersToNextFrame()
+      vi.advanceTimersByTime(ms)
+      await w.vm.$nextTick()
+    }
+
+    const ringDeg = (w: VueWrapper): number =>
+      Number(
+        /currentColor ([\d.]+)deg/.exec(w.get('[data-test="hold-ring"]').attributes('style')!)![1],
+      )
+
+    it('fills the ring slowly at first: a third of it after half the hold', async () => {
+      const w = mountButton({ holdMs: 1000 })
+      await hold(w, 500)
+
+      const time = ringDeg(w) / 360
+      expect(time).toBeGreaterThan(0.3)
+      expect(time).toBeLessThan(0.4)
+    })
+
+    it('reports the ring it shows, not the time held', async () => {
+      const w = mountButton({ holdMs: 1000 })
+      await hold(w, 500)
+
+      const reported = (w.emitted('progress') ?? []).at(-1)![0] as number
+      expect(reported).toBeCloseTo(ringDeg(w) / 360)
+      expect(reported).toBeLessThan(chargeCurve(0.6))
+    })
+
+    it('keeps a count-in at an even pace: half the ring after half the beats', async () => {
+      const w = mountButton({ beats: 2, beatMs: 500 })
+      await hold(w, 500)
+
+      expect(ringDeg(w) / 360).toBeGreaterThan(0.45)
+    })
+
+    it('throws sparks off the ring while held, none for a count-in', async () => {
+      const w = mountButton()
+      expect(w.getComponent(HoldSparks).props('active')).toBe(false)
+
+      await hold(w, 200)
+      expect(w.getComponent(HoldSparks).props('active')).toBe(true)
+
+      expect(mountButton({ beats: 3 }).findComponent(HoldSparks).exists()).toBe(false)
+    })
+
+    it('stays silent unless the board asks for the knocks', async () => {
+      await hold(mountButton(), 200)
+
+      expect(playCharge).not.toHaveBeenCalled()
+    })
+
+    it('knocks from the press on, over the whole hold', async () => {
+      await hold(mountButton({ sound: true, holdMs: 1000 }), 200)
+
+      expect(playCharge).toHaveBeenCalledExactlyOnceWith(0, 1000)
+    })
+
+    it('falls silent when the hold is released', async () => {
+      const w = mountButton({ sound: true })
+      await hold(w, 200)
+      await w.get('[data-test="hold-button"]').trigger('pointerup')
+
+      expect(stopCharge).toHaveBeenCalledOnce()
+    })
+
+    it('lets the last knock ring out when the hold completes', async () => {
+      const w = mountButton({ sound: true, holdMs: 1000 })
+      await hold(w, 1100)
+
+      expect(w.emitted('confirm')).toHaveLength(1)
+      expect(stopCharge).not.toHaveBeenCalled()
+    })
+
+    it('never knocks for a count-in', async () => {
+      await hold(mountButton({ sound: true, beats: 3 }), 200)
+
+      expect(playCharge).not.toHaveBeenCalled()
+    })
   })
 })

@@ -21,6 +21,14 @@ interface FakeSource {
 const gains: FakeGain[] = []
 const sources: FakeSource[] = []
 
+/** The sound switch; the output itself adds no gain of its own to count. */
+const sound = vi.hoisted(() => ({ on: true }))
+
+vi.mock('@/ui/soundOutput', () => ({
+  gameSoundOn: () => sound.on,
+  soundOutput: (graph: { destination: unknown }) => graph.destination,
+}))
+
 class FakeAudioContext {
   state = 'running'
   currentTime = 10
@@ -64,6 +72,7 @@ async function settle() {
 beforeEach(() => {
   gains.length = 0
   sources.length = 0
+  sound.on = true
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })),
@@ -150,6 +159,22 @@ describe('with Web Audio', () => {
     const start = 10 + 0.05
     expect(gains[2]!.gain.setValueAtTime).toHaveBeenCalledWith(0.8, start + 2.5)
     expect(gains[2]!.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, start + 2.5 + 0.6)
+  })
+
+  it('stays silent while muted, and leaves the device’s audio alone', async () => {
+    const session = { type: 'auto' }
+    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+    const { preloadSounds, playSound, startFlow } = await load()
+    preloadSounds()
+    await settle()
+
+    sound.on = false
+    playSound('turn')
+    startFlow().stop()
+
+    expect(sources).toHaveLength(0)
+    expect(session.type).toBe('auto')
+    Reflect.deleteProperty(navigator, 'audioSession')
   })
 
   it('stays silent until the sound is decoded', async () => {

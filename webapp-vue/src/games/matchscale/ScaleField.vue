@@ -18,7 +18,7 @@ import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef, watch } from 'vue'
 import IconMaximize from '~icons/lucide/maximize-2'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { POP_GAP_MS, POP_MS, unlockSound } from './countSound'
+import { POP_GAP_MS, POP_MS } from './countSound'
 import {
   FIELD_PX,
   GRID_MODE,
@@ -462,7 +462,6 @@ useEventListener(document, 'visibilitychange', () => {
       @pointerdown.stop
       @pointerup.stop
       @pointercancel.stop
-      @click="unlockSound"
     />
     <!-- The minimap's expand icon, dark in light and light in dark; the field's hit test does the
          work. -->

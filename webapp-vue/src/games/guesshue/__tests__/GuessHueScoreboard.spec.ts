@@ -117,4 +117,10 @@ describe('GuessHueScoreboard', () => {
 
     expect(w.find('table').exists()).toBe(false)
   })
+
+  it('names degrees under both angle columns: the tip is an angle as much as its distance', () => {
+    const units = mountBoard().get('[data-test="scoreboard-units"]').text()
+
+    expect(units.match(/\[°\]/g)).toHaveLength(2)
+  })
 })

@@ -189,17 +189,6 @@ describe('CopyBlocksBoard', () => {
     ])
   })
 
-  it('keeps an undo silent while muted', async () => {
-    const wrapper = mountBoard()
-    await tap(wrapper, { block: null, place: [0, 0, 0] })
-    await choose(wrapper, 'Ton')
-    vi.mocked(playSound).mockClear()
-
-    await choose(wrapper, 'Rückgängig')
-
-    expect(vi.mocked(playSound)).not.toHaveBeenCalled()
-  })
-
   it('has no button that clears everything at once', () => {
     expect(mountBoard().find('button[aria-label="Alles abreißen"]').exists()).toBe(false)
   })
@@ -294,11 +283,9 @@ describe('CopyBlocksBoard', () => {
     const wrapper = mountBoard()
 
     await choose(wrapper, 'Ton')
-    await tap(wrapper, { block: null, place: [2, 0, 3] })
 
     expect(wrapper.get('button[aria-label="Ton"]').attributes('aria-pressed')).toBe('false')
     expect(localStorage.getItem('games:sound')).toBe('false')
-    expect(vi.mocked(playSound)).not.toHaveBeenCalled()
   })
 
   it('restores a draft and saves every change', async () => {

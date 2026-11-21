@@ -69,7 +69,7 @@ describe('GuessHueGame', () => {
     await w.vm.$nextTick()
 
     await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
-    vi.advanceTimersByTime(2000)
+    vi.advanceTimersByTime(3000)
 
     expect(w.emitted('guess')).toEqual([[{ hue: 210.4 }]])
   })

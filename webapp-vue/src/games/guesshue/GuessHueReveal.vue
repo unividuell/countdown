@@ -5,11 +5,24 @@
  * The table's box is complete from the moment this card mounts — nothing under the wheel moves
  * afterwards, only its ink appears. That is why the card grows exactly once, during the crossfade
  * both cards share a grid cell for, and never again.
+ *
+ * When the solution appears, a knocked verdict says whether my hue made it, and every other
+ * player's marker lands with a knock of its own — only on a reveal that just happened here, never
+ * on a reload.
+ *
+ *   0 ─── 900 ms ─────────── 1945 ms ── +120 ── +120 ──▶
+ *         solution, verdict   marker     marker  marker
  */
+import { onBeforeUnmount, onMounted } from 'vue'
 import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
+import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
+import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { inBackground } from '@/ui/motion'
+import SoundToggle from '@/ui/SoundToggle.vue'
+import { playVerdict, type Verdict } from '@/ui/verdictSound'
 
 const props = defineProps<{
   description: string
@@ -22,8 +35,41 @@ const props = defineProps<{
   animate: boolean
   rows: ScoreboardRow[]
   solutionCell: ScoreboardSolution
+  /** Which verdict the solution's beat plays: `null` plays none. */
+  won: boolean | null
   live: boolean
 }>()
+
+let beat: ReturnType<typeof setTimeout> | undefined
+let landings: ReturnType<typeof setTimeout>[] = []
+let verdict: Verdict | null = null
+
+onMounted(() => {
+  if (!props.animate || inBackground()) return
+
+  // Where nothing moves the solution is there from the start, and so is its verdict.
+  const still = isStill(props.animate)
+  beat = setTimeout(
+    () => {
+      if (props.won !== null) verdict = playVerdict(props.won)
+    },
+    still ? 0 : SOLUTION_DELAY_MS,
+  )
+
+  // All markers at once would be one loud knock that says nothing.
+  if (still) return
+
+  // Mine is the knob, already there: it does not land.
+  landings = props.guesses
+    .filter((guess) => guess.userId !== props.mineUserId)
+    .map((guess) => setTimeout(playMarker, guess.revealDelayMs))
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(beat)
+  landings.forEach(clearTimeout)
+  verdict?.stop()
+})
 </script>
 
 <template>
@@ -37,7 +83,7 @@ const props = defineProps<{
       </p>
     </blockquote>
 
-    <div class="mt-6">
+    <div class="relative mt-6">
       <HueWheelReveal
         :saturation="props.saturation"
         :lightness="props.lightness"
@@ -46,6 +92,10 @@ const props = defineProps<{
         :guesses="props.guesses"
         :mine-user-id="props.mineUserId"
         :animate="props.animate"
+      />
+      <!-- Where the board has it, so it does not jump at the switch. -->
+      <SoundToggle
+        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
       />
     </div>
 

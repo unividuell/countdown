@@ -150,27 +150,6 @@ describe('TurnPipesReveal', () => {
       expect(playSound).toHaveBeenCalledExactlyOnceWith('leak')
     })
 
-    it('stays silent when sound is off', () => {
-      localStorage.setItem('games:sound', 'false')
-      mountReveal({ animate: true })
-
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 1000)
-
-      expect(startFlow).not.toHaveBeenCalled()
-      expect(playSound).not.toHaveBeenCalled()
-    })
-
-    it('muting stops the running water at once', async () => {
-      const wrapper = mountReveal({ animate: true })
-      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150)
-      expect(startFlow).toHaveBeenCalledOnce()
-      expect(stopFlow).not.toHaveBeenCalled()
-
-      await wrapper.get('[aria-label="Ton"]').trigger('click')
-
-      expect(stopFlow).toHaveBeenCalledExactlyOnceWith(0)
-    })
-
     it('leaves no timer behind when it unmounts', () => {
       const wrapper = mountReveal({ animate: true })
       vi.advanceTimersByTime(SOLUTION_DELAY_MS + ARMED_MS + 150 + STEP)

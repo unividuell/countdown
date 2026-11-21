@@ -25,7 +25,7 @@ import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import type { AwardRule, StepView } from '@/api/types'
 import IconBroom from '~icons/lucide/brush-cleaning'
-import { audioGraph } from '@/ui/audio'
+import { audioGraph, claimPlayback } from '@/ui/audio'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -117,12 +117,6 @@ let audio: Promise<Audio | null> | null = null
 let settleTimer: ReturnType<typeof setTimeout> | undefined
 /** The shared graph from the first unlock on; `null` before, and without Web Audio. */
 const graph = shallowRef<AudioContext | null>(null)
-
-/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
-function claimPlayback(): void {
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
-}
 
 /**
  * Runs inside the release of a short click, a gesture the browser lets start the graph. Called on

@@ -26,3 +26,74 @@ describe('audioGraph', () => {
     expect(created).toHaveLength(1)
   })
 })
+
+/** A graph in `state`, as the one the app opens. */
+function stubGraph(state: AudioContextState) {
+  const resume = vi.fn(() => Promise.resolve())
+  vi.stubGlobal(
+    'AudioContext',
+    class {
+      state = state
+      resume = resume
+    },
+  )
+
+  return resume
+}
+
+describe('runningGraph', () => {
+  beforeEach(() => vi.resetModules())
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('is the graph while it runs', async () => {
+    stubGraph('running')
+    const { audioGraph, runningGraph } = await import('@/ui/audio')
+
+    expect(runningGraph()).toBe(audioGraph())
+  })
+
+  it('is null while the graph sleeps, and without Web Audio', async () => {
+    const { runningGraph: none } = await import('@/ui/audio')
+    expect(none()).toBeNull()
+
+    vi.resetModules()
+    stubGraph('suspended')
+    const { runningGraph } = await import('@/ui/audio')
+
+    expect(runningGraph()).toBeNull()
+  })
+})
+
+describe('unlockSound', () => {
+  beforeEach(() => vi.resetModules())
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'audioSession')
+  })
+
+  it('asks a sleeping graph to wake', async () => {
+    const resume = stubGraph('suspended')
+    const { unlockSound } = await import('@/ui/audio')
+    unlockSound()
+
+    expect(resume).toHaveBeenCalledOnce()
+  })
+
+  it('leaves a running graph alone', async () => {
+    const resume = stubGraph('running')
+    const { unlockSound } = await import('@/ui/audio')
+    unlockSound()
+
+    expect(resume).not.toHaveBeenCalled()
+  })
+
+  it('claims playback on iOS, so the silent switch does not mute it', async () => {
+    const session = { type: 'auto' }
+    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+    const { unlockSound } = await import('@/ui/audio')
+    unlockSound()
+
+    expect(session.type).toBe('playback')
+  })
+})
