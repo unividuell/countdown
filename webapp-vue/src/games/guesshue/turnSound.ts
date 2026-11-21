@@ -2,7 +2,7 @@
  * The knob's ratchet: one wooden knock per degree, always the same pitch. A pitch that moved with
  * the angle would read as „the target is where it gets higher“.
  */
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { runningGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { knocks } from '@/ui/woodKnock'
 import { wrap360 } from './geometry'
 
@@ -19,8 +19,8 @@ let lastAt = -Infinity
 
 /** One knock. A sleeping graph stays silent: its knocks would all land on the wake-up. */
 export function playTurn(): void {
-  const graph = audioGraph()
-  if (graph?.state !== 'running') return
+  const graph = runningGraph()
+  if (!graph) return
 
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS
   if (at - lastAt < MIN_GAP_S) return
@@ -34,8 +34,8 @@ export function playTurn(): void {
  * how good the tip was. Not throttled — two markers are two knocks.
  */
 export function playMarker(): void {
-  const graph = audioGraph()
-  if (graph?.state !== 'running') return
+  const graph = runningGraph()
+  if (!graph) return
 
   knocks(graph).knock(graph.currentTime + START_LOOKAHEAD_SECONDS, TURN_HZ)
 }

@@ -1,6 +1,6 @@
 // The reveal's verdict on my tip, in wooden knocks: a rising arpeggio for a win, two falling
 // knocks for a loss. Whether sound is on is the caller's business (`useGameSound`).
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { runningGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { knocks } from './woodKnock'
 
 /** A win: C5 E5 G5 C6 E6, 40 ms apart. */
@@ -34,8 +34,8 @@ export function scheduleVerdict(
  * nothing about the tip any more.
  */
 export function playVerdict(won: boolean): Verdict {
-  const graph = audioGraph()
-  if (graph?.state !== 'running') return SILENT
+  const graph = runningGraph()
+  if (!graph) return SILENT
 
   const { knock, counting } = knocks(graph)
   scheduleVerdict(knock, graph.currentTime + START_LOOKAHEAD_SECONDS, won)

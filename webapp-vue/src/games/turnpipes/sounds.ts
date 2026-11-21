@@ -6,7 +6,7 @@ import leakUrl from './sounds/leak.mp3?url'
 import successUrl from './sounds/success.mp3?url'
 import turnUrl from './sounds/turn.mp3?url'
 
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { audioGraph, claimPlayback, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import type { Leak } from './types'
 
 export type SoundName = 'turn' | 'flow' | 'leak' | 'success' | 'dry'
@@ -64,12 +64,6 @@ export function preloadSounds(): void {
         (err: unknown) => console.warn('[turn-pipes] a sound did not decode', name, err),
       )
   }
-}
-
-/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
-function claimPlayback(): void {
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
 }
 
 const SILENT: Playing = { stop: () => {} }

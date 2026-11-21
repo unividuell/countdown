@@ -13,7 +13,7 @@ import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useGameSound } from '@/ui/useGameSound'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
-import { unlockSound } from '@/ui/woodKnock'
+import { unlockSound } from '@/ui/audio'
 import { playPop, type Counting } from './countSound'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import {

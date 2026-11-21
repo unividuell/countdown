@@ -1,55 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { playCount, playPop, POP_GAP_MS } from '../countSound'
 import type { Tone } from '../countTones'
+import { bodies, graph, resetGraph, started } from '@/ui/__tests__/fakeGraph'
 
-/** Records what is scheduled: every oscillator with its first pitch and start. */
-const started: { hz: number; at: number; stop: ReturnType<typeof vi.fn> }[] = []
-
-function param() {
-  return {
-    value: 1,
-    setValueAtTime: vi.fn(),
-    linearRampToValueAtTime: vi.fn(),
-    exponentialRampToValueAtTime: vi.fn(),
-  }
-}
-
-const graph = {
-  currentTime: 0,
-  state: 'running' as AudioContextState,
-  resume: vi.fn(() => Promise.resolve()),
-  destination: {},
-  createGain: () => ({ gain: param(), connect: (to: unknown) => to }),
-  createOscillator: () => {
-    const node = {
-      frequency: param(),
-      connect: (to: unknown) => to,
-      start: (at: number) =>
-        started.push({
-          hz: node.frequency.setValueAtTime.mock.calls[0]![0] as number,
-          at,
-          stop: node.stop,
-        }),
-      stop: vi.fn(),
-    }
-    return node
-  },
-}
-
-vi.mock('@/ui/audio', () => ({ audioGraph: () => graph, START_LOOKAHEAD_SECONDS: 0 }))
+vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
 
 const TONES: Tone[] = [
   { atS: 0, hz: 400 },
   { atS: 0.058, hz: 416 },
 ]
 
-/** Each knock is a body and a quiet knock at 3.9× its pitch: the bodies' pitches and starts. */
-const bodies = () => started.filter((_, i) => i % 2 === 0).map(({ hz, at }) => [hz, at])
-
 describe('playCount', () => {
-  beforeEach(() => {
-    started.length = 0
-  })
+  beforeEach(resetGraph)
 
   it('knocks each tick, body and overtone, and no verdict without one', () => {
     playCount(TONES, null)
@@ -66,9 +28,9 @@ describe('playCount', () => {
     playCount(TONES, true)
     const roots = bodies().slice(2)
 
-    expect(roots.map(([hz]) => hz)).toEqual([523.25, 659.25, 783.99, 1046.5, 1318.5])
-    expect(roots[0]![1]).toBeCloseTo(0.128)
-    expect(roots[4]![1]).toBeCloseTo(0.128 + 4 * 0.04)
+    expect(roots.map(({ hz }) => hz)).toEqual([523.25, 659.25, 783.99, 1046.5, 1318.5])
+    expect(roots[0]!.at).toBeCloseTo(0.128)
+    expect(roots[4]!.at).toBeCloseTo(0.128 + 4 * 0.04)
   })
 
   it('a loss ends in two falling knocks', () => {
@@ -77,7 +39,7 @@ describe('playCount', () => {
     expect(
       bodies()
         .slice(2)
-        .map(([hz]) => hz),
+        .map(({ hz }) => hz),
     ).toEqual([311, 220])
   })
 
@@ -86,12 +48,18 @@ describe('playCount', () => {
 
     for (const oscillator of started) expect(oscillator.stop).toHaveBeenCalledTimes(2)
   })
+
+  it('stays silent while the graph sleeps: the count would land on the next tap', () => {
+    graph.state = 'suspended'
+    playCount(TONES, true)
+
+    expect(started).toEqual([])
+  })
 })
 
 describe('playPop', () => {
   beforeEach(() => {
-    started.length = 0
-    graph.state = 'running'
+    resetGraph()
     vi.restoreAllMocks()
   })
 
@@ -99,8 +67,8 @@ describe('playPop', () => {
     playPop()
 
     expect(bodies()).toEqual([
-      [700, 0],
-      [700 * 2 ** (5 / 12), POP_GAP_MS / 1000],
+      { hz: 700, at: 0 },
+      { hz: 700 * 2 ** (5 / 12), at: POP_GAP_MS / 1000 },
     ])
   })
 

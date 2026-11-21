@@ -4,10 +4,10 @@ import { FIELD_PX, initialPlacements, initialView, type View } from '@/games/mat
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { Silhouette } from '@/games/matchscale/types'
 import { POP_GAP_MS, POP_MS } from '@/games/matchscale/countSound'
-import { unlockSound } from '@/ui/woodKnock'
+import { unlockSound } from '@/ui/audio'
 
-vi.mock('@/ui/woodKnock', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/ui/woodKnock')>()),
+vi.mock('@/ui/audio', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/ui/audio')>()),
   unlockSound: vi.fn(),
 }))
 

@@ -215,9 +215,13 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **Shared UI is silent unless the board asks.** `HoldButton`'s charge knocks need its `sound`
   prop, and only a board with a `SoundToggle` sets it: sound nobody can switch off where they hear
   it is none. Never in a game whose sound is the game.
-- **The synthesised voice is shared:** the wooden knock and `unlockSound` live in `ui/woodKnock.ts`;
-  a game schedules knocks, it does not build its own oscillators. Sound is a side note, not a
+- **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
+  schedules knocks, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
+- **One rule for a sleeping graph: a one-shot stays silent.** Ask `runningGraph()` (`ui/audio.ts`)
+  rather than `audioGraph()`: a sound scheduled on a suspended graph lands on its wake-up, with
+  the next tap, long after what it belonged to. Waking (`unlockSound`, `claimPlayback`) lives in
+  `ui/audio.ts` too — no game carries its own copy.
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
@@ -232,6 +236,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and
   none where nothing moves: every marker at once is one loud knock that says nothing.
+- **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every
+  oscillator's pitch and start. Mock `@/ui/audio` with its `audioMock`; do not copy the fake.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`

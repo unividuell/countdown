@@ -1,36 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TURN_HZ, playMarker, playTurn, stepOf } from '../turnSound'
+import { graph, resetGraph, started } from '@/ui/__tests__/fakeGraph'
 
-/** Records what is scheduled: every oscillator with its first pitch and start. */
-const started: { hz: number; at: number }[] = []
-
-function param() {
-  return {
-    value: 1,
-    setValueAtTime: vi.fn(),
-    linearRampToValueAtTime: vi.fn(),
-    exponentialRampToValueAtTime: vi.fn(),
-  }
-}
-
-const graph = {
-  currentTime: 0,
-  state: 'running' as AudioContextState,
-  destination: {},
-  createGain: () => ({ gain: param(), connect: (to: unknown) => to }),
-  createOscillator: () => {
-    const node = {
-      frequency: param(),
-      connect: (to: unknown) => to,
-      start: (at: number) =>
-        started.push({ hz: node.frequency.setValueAtTime.mock.calls[0]![0] as number, at }),
-      stop: vi.fn(),
-    }
-    return node
-  },
-}
-
-vi.mock('@/ui/audio', () => ({ audioGraph: () => graph, START_LOOKAHEAD_SECONDS: 0 }))
+vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
 
 describe('stepOf', () => {
   it('is the whole degree the knob stands in', () => {
@@ -44,8 +16,7 @@ describe('stepOf', () => {
 
 describe('playTurn', () => {
   beforeEach(() => {
-    started.length = 0
-    graph.state = 'running'
+    resetGraph()
     // Far past the previous case's last knock.
     graph.currentTime += 10
   })
@@ -76,10 +47,7 @@ describe('playTurn', () => {
 })
 
 describe('playMarker', () => {
-  beforeEach(() => {
-    started.length = 0
-    graph.state = 'running'
-  })
+  beforeEach(resetGraph)
 
   it('is the wheel’s own knock, once', () => {
     playMarker()

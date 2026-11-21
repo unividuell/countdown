@@ -1,6 +1,6 @@
 // The charge of a `HoldButton`, heard: wooden knocks up a scale, on the beat of the ring
 // (`charge.ts`). Whether sound is on is the caller's business (`useGameSound`).
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { runningGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { chargeKnocks } from './charge'
 import { knocks } from './woodKnock'
 
@@ -17,8 +17,8 @@ const SILENT: Charging = { stop: () => {} }
  * wake-up.
  */
 export function playCharge(from: number, holdMs: number): Charging {
-  const graph = audioGraph()
-  if (graph?.state !== 'running') return SILENT
+  const graph = runningGraph()
+  if (!graph) return SILENT
 
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS
   const { knock, counting } = knocks(graph)

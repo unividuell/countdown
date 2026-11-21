@@ -3,9 +3,9 @@ import { computed } from 'vue'
 import IconAsleep from '~icons/lucide/volume'
 import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
+import { unlockSound } from './audio'
 import { useGameSound } from './useGameSound'
 import { useSoundAwake } from './useSoundAwake'
-import { unlockSound } from './woodKnock'
 
 const sound = useGameSound()
 const awake = useSoundAwake()

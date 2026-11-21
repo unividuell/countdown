@@ -1,8 +1,7 @@
 import { useEventListener } from '@vueuse/core'
 import { ref, type Ref } from 'vue'
-import { audioGraph } from './audio'
+import { audioGraph, unlockSound } from './audio'
 import { useGameSound } from './useGameSound'
-import { unlockSound } from './woodKnock'
 
 /**
  * Whether the app's graph is running. A browser lets it start only after a user activation, and a

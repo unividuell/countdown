@@ -1,6 +1,5 @@
 // The wooden knock, the games' shared voice on the app's graph: synthesised, so nothing to load.
 // Whether sound is on is the caller's business (`useGameSound`).
-import { audioGraph } from '@/ui/audio'
 
 /** One sine: attack, then an exponential decay. */
 interface Voice {
@@ -28,26 +27,6 @@ export const VOLUME = 0.35
 const STOP_FADE_S = 0.02
 /** Exponential ramps cannot reach 0; this is inaudible, the line to 0 after it removes the rest. */
 const QUIET = 0.0008
-
-/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
-function claimPlayback(): void {
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
-}
-
-/**
- * Wakes the graph. Call it synchronously inside a `click` or `pointerup`: iOS refuses a resume
- * anywhere else.
- */
-export function unlockSound(): void {
-  claimPlayback()
-  const graph = audioGraph()
-  if (graph?.state !== 'suspended') return
-
-  graph.resume().catch((err: unknown) => {
-    console.warn('[sound] the browser kept the audio graph suspended', err)
-  })
-}
 
 /** One bus of knocks: `stop` fades the bus and ends every oscillator still to come. */
 export function knocks(graph: AudioContext): {

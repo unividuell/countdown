@@ -1,8 +1,8 @@
 // Augenmaß's sounds on the app's graph — the board's opening, the reveal's count and verdict:
 // synthesised, so nothing to load. Without an `AudioContext` it stays silent. Whether sound is on is the caller's business (`useGameSound`).
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { audioGraph, runningGraph, START_LOOKAHEAD_SECONDS, unlockSound } from '@/ui/audio'
 import { scheduleVerdict } from '@/ui/verdictSound'
-import { knocks, unlockSound } from '@/ui/woodKnock'
+import { knocks } from '@/ui/woodKnock'
 import type { Tone } from './countTones'
 
 export interface Counting {
@@ -24,11 +24,12 @@ const SILENT: Counting = { stop: () => {} }
 
 /**
  * Schedules every tone at once, on the graph's clock, then the verdict: `won` `null` plays none.
- * `stop` silences what has not sounded.
+ * `stop` silences what has not sounded. A sleeping graph stays silent: the count would sound with
+ * the next tap, after B has long arrived.
  */
 export function playCount(tones: readonly Tone[], won: boolean | null): Counting {
   unlockSound()
-  const graph = audioGraph()
+  const graph = runningGraph()
   if (!graph || tones.length === 0) return SILENT
 
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS

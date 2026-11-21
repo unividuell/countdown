@@ -1,16 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { unlockSound } from '@/ui/audio'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { unlockSound } from '@/ui/woodKnock'
 
 /** The app's graph as the toggle sees it: `null` is a browser without Web Audio. */
 const audio = vi.hoisted(() => ({
   graph: null as (EventTarget & { state: AudioContextState }) | null,
 }))
 
-vi.mock('@/ui/audio', () => ({ audioGraph: () => audio.graph }))
-vi.mock('@/ui/woodKnock', () => ({ unlockSound: vi.fn() }))
+vi.mock('@/ui/audio', () => ({ audioGraph: () => audio.graph, unlockSound: vi.fn() }))
 
 enableAutoUnmount(afterEach)
 
