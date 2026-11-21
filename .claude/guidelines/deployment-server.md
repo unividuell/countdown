@@ -9,12 +9,10 @@ Sibling: [deployment.md](deployment.md) (images, CI, the compose topology, backe
 - **No service publishes a host port except pgAdmin** (loopback only). `postgres` and `core` are
   reachable on the `internal` network only; `countdown-web` is reached by the shared edge over the
   `edge` network. Secrets come from the server-side `.env.<target>` files, never committed.
-- **`postgres:18` volume mount gotcha:** Postgres 18's Docker image moved `PGDATA` into a
-  version subdir and the recommended mount point to **`/var/lib/postgresql`** (not the old
-  `/var/lib/postgresql/data`). Mounting the named volume at `.../data` makes 18 **refuse to
-  start** — it logs "PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)" and
-  crash-loops, which cascades (`UnknownHostException: postgres` in `core`, 502 at the edge).
-  Mount the **parent**: `pgdata:/var/lib/postgresql`.
+- **`postgres:18` mounts its volume at the parent: `pgdata:/var/lib/postgresql`.** The image
+  moved `PGDATA` into a version subdir; a volume at the old `.../data` makes 18 refuse to start
+  ("unused mount/volume") and crash-loop — `UnknownHostException: postgres` in `core`, 502 at the
+  edge.
 - **Backup:** a `db-backup` sidecar reusing `postgres:18` runs `pg_dump | gzip` to the host
   `BACKUP_DIR` (7-day retention). Harden it: `entrypoint: ["/bin/bash","-c"]` + `set -eo pipefail` +
   `until pg_isready ...; do sleep 2; done` before each dump — otherwise a not-yet-ready Postgres makes
@@ -35,15 +33,13 @@ Sibling: [deployment.md](deployment.md) (images, CI, the compose topology, backe
   would end the loop.
 
 - **A JVM container without `mem_limit` sizes its heap from the HOST.** The Buildpacks memory
-  calculator reads the cgroup limit, and with none it reads the machine: on this shared box both
-  stacks were handed `-Xmx20688742K`, each believing it owned ~20 GB of 23 GB — while running with
-  `-XX:+ExitOnOutOfMemoryError`. Nothing fails until something finally allocates. Set `mem_limit` on
-  every JVM service and verify the result rather than computing it:
-  `docker run --rm -m 2g <image>` prints the calculator's line. Budget ~610 MB of the limit for
-  metaspace, code cache, direct memory and 250 thread stacks before anything becomes heap — set it
-  below that and the container fails to start instead of running small. Give the variable a
-  **default** in compose (`${CORE_MEM_LIMIT:-2g}`): a new *required* compose variable cannot be
-  staging-deployed until `update.sh` reaches `main` (see below).
+  calculator reads the cgroup limit, and with none the machine — on a shared box every stack
+  believes it owns nearly all of it, and nothing fails until something allocates. Set `mem_limit`
+  on every JVM service and verify rather than compute: `docker run --rm -m 2g <image>` prints the
+  calculator's line. About 610 MB of the limit go to metaspace, code cache, direct memory and
+  thread stacks before anything becomes heap — below that the container fails to start. Give the
+  variable a **default** in compose (`${CORE_MEM_LIMIT:-2g}`): a new *required* compose variable
+  cannot be staging-deployed until `update.sh` reaches `main` (see below).
 
 ### `update.sh <prod|staging>`
 
@@ -69,7 +65,7 @@ server; the Caddyfile is image-baked.
   different filename (the self-update rewrites `update.sh`, not the file being run). Treat a new
   *required* compose variable as exactly this kind of change. **Moving a file `update.sh`
   downloads** is one too: `main`'s `update.sh` first learns the new path with a fallback to the old
-  one on a 404 (`fetch_cipher`), then the move ships, then the fallback goes after the release.
+  one on a 404, then the move ships, then the fallback goes after the release.
 - **A dataset the app reads at startup needs a restart to change.** A content-only commit builds no
   image (CI builds on `core/**`), so `up -d` leaves core running on the old data. `update.sh` marks
   every decrypted dataset that differs from the deployed one (`mark_if_changed`) and then recreates

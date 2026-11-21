@@ -54,13 +54,11 @@ browsers into the preview endpoint too.
 
 ## Cache headers are the Caddyfile's job
 
-`file_server` sets **no `Cache-Control` at all** — it sends `ETag`/`Last-Modified` but no freshness,
-which is exactly the case RFC 9111 §4.2.2 hands to the browser's *heuristic* freshness. The cached
-`index.html` is then reused **without revalidating**, and since it names the old content-hashed
-assets, a tab open across a deploy keeps the entire old app until a hard reload (issue #15; a
-full-page OAuth navigation does not help — navigations come from the HTTP cache like anything else).
-Vite cannot fix this: it hashes `/assets/*` but cannot set HTTP headers, and
-`<meta http-equiv="Cache-Control">` is ignored for HTTP caching.
+`file_server` sets **no `Cache-Control`** — only `ETag`/`Last-Modified`, which leaves freshness
+to the browser's heuristic (RFC 9111 §4.2.2). The cached `index.html` is then reused **without
+revalidating**, and since it names the old content-hashed assets, a tab open across a deploy keeps
+the entire old app until a hard reload. Vite cannot fix this: it hashes `/assets/*` but sets no
+HTTP headers, and `<meta http-equiv="Cache-Control">` is ignored for HTTP caching.
 
 So, same two-block idiom as `@backend`:
 `handle /assets/* { header Cache-Control "public, max-age=31536000, immutable"; file_server }`,
