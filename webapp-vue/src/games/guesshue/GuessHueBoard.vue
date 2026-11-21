@@ -15,7 +15,6 @@ import HueWheelInput from './HueWheelInput.vue'
 import { playTurn, stepOf } from './turnSound'
 import SoundToggle from '@/ui/SoundToggle.vue'
 import { useGameSound } from '@/ui/useGameSound'
-import { unlockSound } from '@/ui/woodKnock'
 
 const props = defineProps<{
   description: string
@@ -39,14 +38,6 @@ watch(
 )
 
 const sound = useGameSound()
-
-/**
- * Captured, so the graph is asked before the wheel turns. A touch `pointerdown` is no user
- * activation on iOS: there the release wakes it, and the first turn stays silent.
- */
-function wake(): void {
-  if (sound.value) unlockSound()
-}
 
 /** The wheel turned: a knock when the knob enters another degree. */
 function onTurn(next: number): void {
@@ -85,12 +76,7 @@ const color = computed(
       </p>
     </blockquote>
 
-    <div
-      class="relative mt-6"
-      @pointerdown.capture="wake"
-      @pointerup="wake"
-      @keydown.capture="wake"
-    >
+    <div class="relative mt-6">
       <HueWheelInput
         :hue="hue"
         :saturation="props.saturation"
@@ -114,11 +100,9 @@ const color = computed(
           </div>
         </template>
       </HueWheelInput>
-      <!-- In the corner the round wheel leaves free. Its click is a user gesture: unmuting wakes
-           the graph. -->
+      <!-- In the corner the round wheel leaves free. It also wakes the graph (`useSoundAwake`). -->
       <SoundToggle
         class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
-        @click="unlockSound"
       />
     </div>
 

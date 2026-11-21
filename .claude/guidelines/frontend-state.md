@@ -205,6 +205,13 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **One sound switch for games whose sound is decoration:** `useGameSound()` and `SoundToggle` from
   `ui/`, so muting one silences all and no game stores it itself. Not for games whose sound is the
   game (Anspielung, Peilung): muting there ends the round.
+- **The switch shows what is heard, not only what is set.** After a fresh load the graph sleeps
+  until a user activation, and a finger setting down is none — the first drag is silent on every
+  phone. On iOS the release of a drag is none either, only a tap is (simulator, iOS 18.1); Firefox
+  for Android wakes on that release. So `SoundToggle` has three faces: muted, on, and „on but
+  asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
+  `useSoundAwake` asks the graph to wake on every activation anywhere on the page. A game adds no
+  wake handlers of its own.
 - **The synthesised voice is shared:** the wooden knock and `unlockSound` live in `ui/woodKnock.ts`;
   a game schedules knocks, it does not build its own oscillators.
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
