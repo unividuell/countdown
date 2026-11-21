@@ -213,7 +213,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   `useSoundAwake` asks the graph to wake on every activation anywhere on the page. A game adds no
   wake handlers of its own.
 - **The synthesised voice is shared:** the wooden knock and `unlockSound` live in `ui/woodKnock.ts`;
-  a game schedules knocks, it does not build its own oscillators.
+  a game schedules knocks, it does not build its own oscillators. Sound is a side note, not a
+  signal: one master level for all of it (`VOLUME`), which a game does not raise.
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
