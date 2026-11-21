@@ -8,19 +8,13 @@
  * Tapping a marked block drops the whole selection: „ba-dum“, two knocks down.
  */
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { scaleHz } from '@/ui/scale'
 import { soundGraph } from '@/ui/soundOutput'
 import { knocks } from '@/ui/woodKnock'
 
-const C5_HZ = 523.25
-/** Semitones above C of the major scale's steps. */
-const MAJOR = [0, 2, 4, 5, 7, 9, 11]
-
 /** The pitch of the `count`-th marked block, from 1: C5, D5, E5, … on into the next octave. */
 export function markHz(count: number): number {
-  const step = Math.max(0, count - 1)
-  const semitones = 12 * Math.floor(step / MAJOR.length) + MAJOR[step % MAJOR.length]!
-
-  return C5_HZ * 2 ** (semitones / 12)
+  return scaleHz(count - 1)
 }
 
 /** One knock for a selection now `count` blocks long; the completing one rings out. */

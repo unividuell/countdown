@@ -160,9 +160,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
   `useSoundAwake` asks the graph to wake on every activation anywhere on the page while a board is
   on stage. A game adds no wake handlers of its own.
-- **Shared UI is silent unless the board asks.** `HoldButton`'s charge knocks need its `sound`
-  prop, and only a board on stage (`useSoundStage`) sets it. Never in a game whose sound is the
-  game.
+- **Shared UI is silent unless the board asks.** `HoldButton`'s knocks (charge or count-in) need
+  its `sound` prop, and only a board on stage (`useSoundStage`) sets it. Never in a game whose
+  sound is the game — except `RevealCover`: its START counts in out loud on every game and puts
+  itself on stage, Peilung included, because the count-in ends before the round's own sound begins.
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
   schedules knocks, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
@@ -181,7 +182,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`). A pitch may follow
   the player's own progress, which says nothing about the target: Musterung climbs a scale per
-  marked block (`findpattern/markSound.ts`).
+  marked block, a cover's count-in the same scale per beat (`ui/scale.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
