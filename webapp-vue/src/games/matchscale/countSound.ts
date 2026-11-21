@@ -1,6 +1,7 @@
 // Augenmaß's sounds on the app's graph — the board's opening, the reveal's count and verdict:
 // synthesised, so nothing to load. Without an `AudioContext` it stays silent. Whether sound is on is the caller's business (`useGameSound`).
 import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { scheduleVerdict } from '@/ui/verdictSound'
 import { knocks, unlockSound } from '@/ui/woodKnock'
 import type { Tone } from './countTones'
 
@@ -10,14 +11,6 @@ export interface Counting {
 
 /** After the last tick, the verdict. */
 const FINALE_GAP_S = 0.07
-
-/** A win: C5 E5 G5 C6 E6, 40 ms apart. */
-const SUCCESS_HZ = [523.25, 659.25, 783.99, 1046.5, 1318.5]
-const SUCCESS_STAGGER_S = 0.04
-
-/** A loss: two knocks falling, „wah-wah“. */
-const FAIL_HZ = [311, 220] as const
-const FAIL_STAGGER_S = 0.15
 
 /** The board's opening: A knocks, B a fourth higher once it pops in. */
 export const POP_GAP_MS = 220
@@ -44,14 +37,7 @@ export function playCount(tones: readonly Tone[], won: boolean | null): Counting
   tones.forEach((tone, i) => knock(at + tone.atS, tone.hz, i === tones.length - 1))
 
   const finale = at + tones.at(-1)!.atS + FINALE_GAP_S
-  if (won === true) {
-    SUCCESS_HZ.forEach((hz, i) =>
-      knock(finale + i * SUCCESS_STAGGER_S, hz, i === SUCCESS_HZ.length - 1),
-    )
-  }
-  if (won === false) {
-    FAIL_HZ.forEach((hz, i) => knock(finale + i * FAIL_STAGGER_S, hz, i === FAIL_HZ.length - 1))
-  }
+  if (won !== null) scheduleVerdict(knock, finale, won)
 
   return counting
 }

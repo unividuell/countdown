@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameEntry } from '@/games/GameEntry'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { hslToHex } from '@/games/guesshue/color'
-import { scoreboardRows, solutionCell } from '@/games/guesshue/scoreboard'
+import { scoreboardRows, solutionCell, withinToleranceOf } from '@/games/guesshue/scoreboard'
 
 const SATURATION = 0.6
 const LIGHTNESS = 0.45
@@ -124,5 +124,18 @@ describe('solutionCell', () => {
     expect(cell.hue).toBe(123.4)
     expect(cell.hex).toBe(hslToHex(123.4, SATURATION, LIGHTNESS))
     expect(cell.ink).toMatch(/^#(111111|ffffff)$/)
+  })
+})
+
+describe('withinToleranceOf', () => {
+  it('reads the server’s verdict on the window', () => {
+    expect(withinToleranceOf({ deviationDeg: 3, withinTolerance: true })).toBe(true)
+    expect(withinToleranceOf({ deviationDeg: 75.7, withinTolerance: false })).toBe(false)
+  })
+
+  it('says nothing for an outcome it cannot read', () => {
+    expect(withinToleranceOf(null)).toBeNull()
+    expect(withinToleranceOf({ deviationDeg: 3 })).toBeNull()
+    expect(withinToleranceOf({ withinTolerance: 'yes' })).toBeNull()
   })
 })

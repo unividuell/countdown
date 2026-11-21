@@ -133,25 +133,3 @@ function cells(scale: number, factor: number, truth: Truth | null): { tip: strin
     off: formatSignedTenths(tip - inUnitTenths(truth.metres, truth.unit)),
   }
 }
-
-/**
- * Whether my tip earns the reveal's success sound. Phase one: inside the gate. Phase two: my row
- * holds the points now — under „closest only“ that is being ahead, vorläufig. `null` without a
- * tip of mine or a verdict on it: no sound.
- */
-export function myWin(input: {
-  /** `null` in phase two. */
-  tolerance: number | null
-  /** My own outcome. */
-  outcome: unknown
-  rows: readonly ScoreboardRow[]
-  mineUserId: string | null
-}): boolean | null {
-  if (input.tolerance !== null) {
-    return asMatchScaleOutcome(input.outcome)?.withinTolerance ?? null
-  }
-
-  const points = input.rows.find((row) => row.userId === input.mineUserId)?.points ?? null
-
-  return points === null ? null : points > 0
-}

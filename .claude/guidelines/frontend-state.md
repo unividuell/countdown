@@ -223,6 +223,11 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
+- **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
+  gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`. It
+  plays with the solution's beat, only on a reveal that just happened here (`animate`) — a reload
+  is silent — and at once where nothing moves. The reveal shows the `SoundToggle` where the board
+  had it.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`

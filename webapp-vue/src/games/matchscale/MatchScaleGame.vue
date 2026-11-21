@@ -8,12 +8,13 @@ import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import { clearDraft, deviceStorage, draftKey } from './draft'
 import MatchScaleBoard from './MatchScaleBoard.vue'
 import MatchScaleReveal from './MatchScaleReveal.vue'
-import { myWin, scoreboardRows, truthOf } from './scoreboard'
+import { scoreboardRows, truthOf } from './scoreboard'
 import type { Submitted } from './gestures'
-import { asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
+import { asMatchScaleOutcome, asMatchScalePayload, asMatchScaleSolution, scaleOf } from './types'
 
 const props = defineProps<GameProps>()
 
@@ -64,8 +65,8 @@ const won = computed(() =>
   payload.value === null
     ? null
     : myWin({
-        tolerance: payload.value.tolerance,
-        outcome: props.outcome,
+        gated: payload.value.tolerance !== null,
+        withinGate: asMatchScaleOutcome(props.outcome)?.withinTolerance ?? null,
         rows: rows.value,
         mineUserId: props.mineUserId,
       }),

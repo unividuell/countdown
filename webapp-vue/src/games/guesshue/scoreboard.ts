@@ -73,6 +73,13 @@ export function scoreboardRows(input: {
   return withTicks(ranked, input.mineUserId)
 }
 
+/** What an outcome says about the tolerance window; `null` where it says nothing usable. */
+export function withinToleranceOf(outcome: unknown): boolean | null {
+  if (typeof outcome !== 'object' || outcome === null) return null
+  const value = (outcome as { withinTolerance?: unknown }).withinTolerance
+  return typeof value === 'boolean' ? value : null
+}
+
 /** Narrowed, not cast: `outcome` is `unknown` by contract, and a stale round may be junk. */
 function deviationOf(outcome: unknown): number | null {
   if (typeof outcome !== 'object' || outcome === null) return null
