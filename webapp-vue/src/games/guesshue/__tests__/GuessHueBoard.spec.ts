@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
+import { playTurn } from '@/games/guesshue/turnSound'
+import { GAME_SOUND_KEY } from '@/ui/useGameSound'
+
+vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/guesshue/turnSound')>()),
+  playTurn: vi.fn(),
+}))
 
 function mountBoard(props: Partial<InstanceType<typeof GuessHueBoard>['$props']> = {}) {
   return mount(GuessHueBoard, {
@@ -47,6 +54,45 @@ describe('GuessHueBoard', () => {
     await w.get('[data-test="hue-wheel"]').trigger('keydown', { key: 'PageUp' })
 
     expect(w.get('[data-test="hue-wheel"]').attributes('aria-valuenow')).toBe('110')
+  })
+
+  describe('turn sound', () => {
+    beforeEach(() => {
+      vi.mocked(playTurn).mockClear()
+    })
+
+    afterEach(() => {
+      localStorage.removeItem(GAME_SOUND_KEY)
+    })
+
+    it('knocks once per degree the knob enters', async () => {
+      const w = mountBoard({ initHue: 108 })
+      const wheel = w.get('[data-test="hue-wheel"]')
+
+      await wheel.trigger('keydown', { key: 'ArrowUp' })
+      expect(playTurn).toHaveBeenCalledOnce()
+
+      await wheel.trigger('keydown', { key: 'PageUp' })
+      expect(playTurn).toHaveBeenCalledTimes(2)
+    })
+
+    it('mutes from the toggle in the wheel’s corner', async () => {
+      const w = mountBoard({ initHue: 100 })
+
+      await w.get('button[aria-label="Ton"]').trigger('click')
+      await w.get('[data-test="hue-wheel"]').trigger('keydown', { key: 'PageUp' })
+
+      expect(playTurn).not.toHaveBeenCalled()
+    })
+
+    it('stays silent when sound is off', async () => {
+      localStorage.setItem(GAME_SOUND_KEY, 'false')
+      const w = mountBoard({ initHue: 100 })
+
+      await w.get('[data-test="hue-wheel"]').trigger('keydown', { key: 'PageUp' })
+
+      expect(playTurn).not.toHaveBeenCalled()
+    })
   })
 
   it('emits the angle the wheel stands on, unrounded', async () => {

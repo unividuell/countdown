@@ -205,6 +205,11 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **One sound switch for games whose sound is decoration:** `useGameSound()` and `SoundToggle` from
   `ui/`, so muting one silences all and no game stores it itself. Not for games whose sound is the
   game (Anspielung, Peilung): muting there ends the round.
+- **The synthesised voice is shared:** the wooden knock and `unlockSound` live in `ui/woodKnock.ts`;
+  a game schedules knocks, it does not build its own oscillators.
+- **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
+  target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
+  too — knocks under ~30 ms apart overlap and clip (`guesshue/turnSound.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the

@@ -12,6 +12,10 @@ import type { AwardRule } from '@/api/types'
 import GuessHueBriefing from './GuessHueBriefing.vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import HueWheelInput from './HueWheelInput.vue'
+import { playTurn, stepOf } from './turnSound'
+import SoundToggle from '@/ui/SoundToggle.vue'
+import { useGameSound } from '@/ui/useGameSound'
+import { unlockSound } from '@/ui/woodKnock'
 
 const props = defineProps<{
   description: string
@@ -33,6 +37,25 @@ watch(
     hue.value = next
   },
 )
+
+const sound = useGameSound()
+
+/**
+ * Captured, so the graph is asked before the wheel turns. A touch `pointerdown` is no user
+ * activation on iOS: there the release wakes it, and the first turn stays silent.
+ */
+function wake(): void {
+  if (sound.value) unlockSound()
+}
+
+/** The wheel turned: a knock when the knob enters another degree. */
+function onTurn(next: number): void {
+  const from = stepOf(hue.value)
+  hue.value = next
+
+  const to = stepOf(next)
+  if (sound.value && to !== from) playTurn()
+}
 
 /** False until the ring has finished drawing itself; the confirm button stays away until then. */
 const ready = ref(false)
@@ -62,12 +85,18 @@ const color = computed(
       </p>
     </blockquote>
 
-    <div class="mt-6">
+    <div
+      class="relative mt-6"
+      @pointerdown.capture="wake"
+      @pointerup="wake"
+      @keydown.capture="wake"
+    >
       <HueWheelInput
-        v-model:hue="hue"
+        :hue="hue"
         :saturation="props.saturation"
         :lightness="props.lightness"
         :disabled="props.disabled"
+        @update:hue="onTurn"
         @boot-done="ready = true"
       >
         <template #center>
@@ -85,6 +114,12 @@ const color = computed(
           </div>
         </template>
       </HueWheelInput>
+      <!-- In the corner the round wheel leaves free. Its click is a user gesture: unmuting wakes
+           the graph. -->
+      <SoundToggle
+        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
+        @click="unlockSound"
+      />
     </div>
 
     <GuessHueBriefing
