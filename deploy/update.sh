@@ -33,14 +33,9 @@ mark_if_changed() {
   fi
 }
 
-# Downloads $BASE/$1 to $3; on a 404 retries the pre-move path $BASE/$2. update.sh runs from main
-# while the ciphers come from $REF, so this one script deploys both layouts.
-# TODO: drop the fallback once deploy/games/ has reached main.
+# Downloads $BASE/$1 to $2; FETCH_CODE keeps the HTTP status for the error message.
 fetch_cipher() {
-  FETCH_CODE="$(curl -sS -w '%{http_code}' "$BASE/$1" -o "$3")" || FETCH_CODE="000"
-  if [ "$FETCH_CODE" = "404" ]; then
-    FETCH_CODE="$(curl -sS -w '%{http_code}' "$BASE/$2" -o "$3")" || FETCH_CODE="000"
-  fi
+  FETCH_CODE="$(curl -sS -w '%{http_code}' "$BASE/$1" -o "$2")" || FETCH_CODE="000"
   [ "$FETCH_CODE" = "200" ]
 }
 
@@ -61,7 +56,7 @@ prepare_guess_hue_dataset() {
   GUESS_HUE_DATASET_FILE="./secrets/guess-hue-dataset.$TARGET.yaml"
   export GUESS_HUE_DATASET_FILE
   DATASET_SOPS_FILE="guess-hue-dataset.$TARGET.sops.yaml"
-  if ! fetch_cipher games/guess-hue/dataset.sops.yaml guess-hue-dataset.sops.yaml "$DATASET_SOPS_FILE"; then
+  if ! fetch_cipher games/guess-hue/dataset.sops.yaml "$DATASET_SOPS_FILE"; then
     echo "Could not download games/guess-hue/dataset.sops.yaml from branch '$REF' ($BASE): HTTP $FETCH_CODE." >&2
     echo "The encrypted Guess Hue dataset must exist on that branch before update.sh can run." >&2
     exit 1
@@ -104,7 +99,7 @@ prepare_spot_object_terms() {
   SPOT_OBJECT_TERMS_FILE="./secrets/spot-object-terms.$TARGET.yaml"
   export SPOT_OBJECT_TERMS_FILE
   TERMS_SOPS_FILE="spot-object-terms.$TARGET.sops.yaml"
-  if ! fetch_cipher games/spot-object/terms.sops.yaml spot-object-terms.sops.yaml "$TERMS_SOPS_FILE"; then
+  if ! fetch_cipher games/spot-object/terms.sops.yaml "$TERMS_SOPS_FILE"; then
     echo "Missing prerequisite: deploy/games/spot-object/terms.sops.yaml is not on branch '$REF' ($BASE): HTTP $FETCH_CODE." >&2
     echo "Nothing was deployed and the running stack is untouched." >&2
     echo "The curated Weltanschauung term list has to be encrypted and committed to that branch first:" >&2
