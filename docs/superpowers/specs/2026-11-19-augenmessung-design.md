@@ -319,7 +319,8 @@ nochmal tippen hebt auf.
 Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus der Lösung („Beispieltier
 · 200 cm Kopf-Rumpf“), die Attribution in Zeile zwei. Vor dem Tipp kein Maß: gespielt wird nur das
 Verhältnis. Steht hinter einem allgemeinen Namen ein konkretes Stück, nennt es die Auflösung als
-erste Fußzeile, ohne Marker („Alpha: Alpha Mk II“), vor den Credits.
+Fußnote, nummeriert nach den Credits („Alpha²“ · „² Maß: Alpha Mk II“): die Hochzahlen der Credits
+bleiben, wie sie beim Spielen standen.
 
 **Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
 cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); alle Werte

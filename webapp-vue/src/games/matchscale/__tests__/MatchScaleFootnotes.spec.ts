@@ -37,20 +37,20 @@ describe('MatchScaleFootnotes', () => {
     expect(wrapper.find('[data-test="match-scale-footnotes"]').exists()).toBe(false)
   })
 
-  it('names, unmarked and first, what a generic name stood for', () => {
+  it('numbers what a generic name stood for after the credits', () => {
     const measure = { axis: 'height' as const, metres: 0.5, source: 'q' }
     const wrapper = mount(MatchScaleFootnotes, {
       props: {
         a: A,
         b: { ...A, name: 'Beta', attribution: null },
-        measureA: { ...measure, subject: 'Alpha Mk II' },
-        measureB: measure,
+        measureA: measure,
+        measureB: { ...measure, subject: 'Beta Mk II' },
       },
     })
 
     expect(wrapper.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
-      'Alpha: Alpha Mk II',
       `¹ ${A.attribution}`,
+      '² Maß: Beta Mk II',
     ])
   })
 

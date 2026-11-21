@@ -27,7 +27,8 @@ const props = defineProps<{
 }>()
 
 const items = computed(() => {
-  const { markers } = footnotesOf(props.a, props.b)
+  // In the reveal a subject adds its marker after the credits'; the credits' stay as they were.
+  const { markers } = footnotesOf(props.a, props.b, props.measureA, props.measureB)
 
   // One unit for both, so the two lengths compare at a glance.
   const unit = roundUnit(props.measureA, props.measureB)

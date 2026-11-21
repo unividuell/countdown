@@ -124,6 +124,14 @@ describe('MatchScaleLegend', () => {
     expect(markers(mountLegend(LENGTH, HEIGHT))).toEqual(markers(mountLegend(null, null)))
   })
 
+  it('marks a subject in the reveal after the credits, leaving their markers be', () => {
+    const wrapper = mountLegend(LENGTH, { ...HEIGHT, subject: 'Beta Mk II' })
+    const [a, b] = blocks(wrapper)
+
+    expect(a.get('[data-test="match-scale-marker"]').text()).toBe('¹')
+    expect(b.get('[data-test="match-scale-marker"]').text()).toBe('²,³')
+  })
+
   it('leaves out a missing measure and a missing credit', () => {
     const wrapper = mount(MatchScaleLegend, {
       props: {
