@@ -160,10 +160,11 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
   `useSoundAwake` asks the graph to wake on every activation anywhere on the page while a board is
   on stage. A game adds no wake handlers of its own.
-- **Shared UI is silent unless the board asks.** `HoldButton`'s knocks (charge or count-in) need
-  its `sound` prop, and only a board on stage (`useSoundStage`) sets it. Never in a game whose
-  sound is the game — except `RevealCover`: its START counts in out loud on every game and puts
-  itself on stage, Peilung included, because the count-in ends before the round's own sound begins.
+- **A hold that sparks also knocks.** `HoldButton` knocks (charge or count-in) wherever it throws
+  sparks, and is then on stage itself (`useSoundStage`). `sparks: false` silences both — giving up
+  celebrates nothing. A game whose sound is the game sets `sound: false` on its own hold
+  (Peilung's hand-in); `RevealCover`'s count-in sounds there too, because it ends before the
+  round's own sound begins.
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
   schedules knocks, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
