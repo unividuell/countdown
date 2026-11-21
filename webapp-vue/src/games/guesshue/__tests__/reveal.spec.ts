@@ -126,69 +126,55 @@ describe('the sector', () => {
     expect(unitPoint(90, 0.78).x).toBeCloseTo(0.89, 10)
   })
 
-  it('draws the window as two boundary lines closed by two arcs, over the band only', () => {
-    // Chosen so every coordinate is exact: the window runs from 0° to 180°, the band from 0.78.
+  it("draws the window as two boundary lines between the ring's outlines, which close it", () => {
+    // Chosen so every coordinate is exact: the window runs from 0° to 180°, the band from 0.78 to
+    // the outer outline's inner side at 0.994.
     const { window } = sectorPaths(90, 90, 0.78)
 
-    expect(window).toBe(
-      'M 0.5,0.11 L 0.5,0 M 0.5,0.89 L 0.5,1 ' +
-        'M 0.5,0.11 A 0.39,0.39 0 0,1 0.5,0.89 M 0.5,0 A 0.5,0.5 0 0,1 0.5,1',
-    )
+    expect(window).toBe('M 0.5,0.11 L 0.5,0.003 M 0.5,0.89 L 0.5,0.997')
   })
 
-  it('draws the solution as a single line, over the band only', () => {
-    expect(sectorPaths(90, 90, 0.78).solution).toBe('M 0.89,0.5 L 1,0.5')
+  it('draws the solution as a single line, between the outlines only', () => {
+    expect(sectorPaths(90, 90, 0.78).solution).toBe('M 0.89,0.5 L 0.997,0.5')
   })
 
   it('needs no special case for a window that runs across 0°', () => {
     expect(sectorPaths(355, 10, 0.78)).toEqual(sectorPaths(-5, 10, 0.78))
-    expect(sectorPaths(355, 10, 0.78).window).toContain('0 0,1')
   })
 
   it('draws only the solution line at zero tolerance', () => {
     const { window, solution } = sectorPaths(90, 0, 0.78)
 
     expect(window).toBeNull()
-    expect(solution).toBe('M 0.89,0.5 L 1,0.5')
+    expect(solution).toBe('M 0.89,0.5 L 0.997,0.5')
   })
 
   it('draws only the solution line once the half-window covers the whole circle', () => {
     // GuessHueTolerance.DEGREES is documented on the backend as free to change without a
     // frontend release, so a half-window at or above 180° has to fall back to the same shape as
-    // zero tolerance, not to the clamped-span arithmetic that used to draw the window's
-    // complement.
+    // zero tolerance: the whole circle counts, and two lines would fence off a part of it.
     const { window, solution } = sectorPaths(90, 200, 0.78)
 
     expect(window).toBeNull()
-    expect(solution).toBe('M 0.89,0.5 L 1,0.5')
+    expect(solution).toBe('M 0.89,0.5 L 0.997,0.5')
   })
 
   it('draws only the solution line at exactly a 180° half-window', () => {
-    // The boundary case: the two endpoints of a 180° window coincide, so SVG would drop the
-    // zero-length arc and leave two bare radial lines with no closed window — drawing nothing at
-    // all is the honest picture instead.
+    // The boundary case: the two boundaries of a 180° window coincide opposite the solution, one
+    // line that bounds nothing — drawing nothing at all is the honest picture instead.
     const { window, solution } = sectorPaths(90, 180, 0.78)
 
     expect(window).toBeNull()
-    expect(solution).toBe('M 0.89,0.5 L 1,0.5')
+    expect(solution).toBe('M 0.89,0.5 L 0.997,0.5')
   })
 
   it('follows the band inward as it grows', () => {
-    expect(sectorPaths(90, 90, 0.5).solution).toBe('M 0.75,0.5 L 1,0.5')
+    expect(sectorPaths(90, 90, 0.5).solution).toBe('M 0.75,0.5 L 0.997,0.5')
   })
 
-  it('spans the intended window rather than its complement when the tolerance exceeds 90°', () => {
-    // Every other case here keeps the span at or under 180°, so the large-arc-flag's `1` branch
-    // never ran. Boundaries at 0° and 270° keep every coordinate exact even past that: target 135°
-    // with a 135° tolerance is a plausible "very easy" round, and the arc must sweep the 270°
-    // window through 135° — not the 90° gap on the other side of the circle.
-    const { window } = sectorPaths(135, 135, 0.78)
-
-    expect(window).toContain('1,1') // large-arc-flag set — the ≤180° cases above carry `0,1`
-    expect(window).toBe(
-      'M 0.5,0.11 L 0.5,0 M 0.11,0.5 L 0,0.5 ' +
-        'M 0.5,0.11 A 0.39,0.39 0 1,1 0.11,0.5 M 0.5,0 A 0.5,0.5 0 1,1 0,0.5',
-    )
+  it('draws a window wider than half the circle like any other', () => {
+    // Boundaries at 0° and 270° keep every coordinate exact.
+    expect(sectorPaths(135, 135, 0.78).window).toBe('M 0.5,0.11 L 0.5,0.003 M 0.11,0.5 L 0.003,0.5')
   })
 })
 
