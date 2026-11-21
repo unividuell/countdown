@@ -15,9 +15,17 @@ const B: Silhouette = { ...A, name: 'Beta', attribution: 'Silhouette: Niemand' }
 const LENGTH: Measure = { axis: 'length', metres: 2.3, source: 'https://example.org/a' }
 const HEIGHT: Measure = { axis: 'height', metres: 0.45, source: 'https://example.org/b' }
 
-function mountLegend(measureA: Measure | null, measureB: Measure | null) {
+function mountLegend(measureA: Measure | null, measureB: Measure | null, factor?: number) {
   return mount(MatchScaleLegend, {
-    props: { a: A, b: B, aColor: 'var(--a)', bColor: 'var(--b)', measureA, measureB },
+    props: {
+      a: A,
+      b: B,
+      aColor: 'var(--a)',
+      bColor: 'var(--b)',
+      measureA,
+      measureB,
+      ...(factor === undefined ? {} : { factor }),
+    },
   })
 }
 
@@ -94,6 +102,20 @@ describe('MatchScaleLegend', () => {
     const [a, b] = blocks(mountLegend(LENGTH, HEIGHT))
 
     expect(a.get('p').text()).toBe('Alpha¹ · 230 cm Länge')
+    expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
+  })
+
+  it('in the reveal of a category without measures appends the factor: A once, B n times', () => {
+    const [a, b] = blocks(mountLegend(null, null, 2.654))
+
+    expect(a.get('p').text()).toBe('Alpha¹ · 1×')
+    expect(b.get('p').text()).toBe('Beta² · 2,65×')
+  })
+
+  it('names lengths, not factors, where a measure is missing on one side only', () => {
+    const [a, b] = blocks(mountLegend(null, HEIGHT, 2))
+
+    expect(a.get('p').text()).toBe('Alpha¹')
     expect(b.get('p').text()).toBe('Beta² · 45 cm Höhe')
   })
 

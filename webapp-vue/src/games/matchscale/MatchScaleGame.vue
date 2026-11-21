@@ -91,16 +91,7 @@ function onGuess(value: { scale: number }, from: Submitted): void {
   </p>
   <div v-else class="flex flex-col gap-3">
     <!-- The category, board and reveal alike: what the two silhouettes are. -->
-    <header class="flex flex-col gap-1">
-      <h2 class="text-2xl">{{ payload.categoryName }}</h2>
-      <p
-        v-if="payload.categoryLegend !== null"
-        data-test="match-scale-category-legend"
-        class="text-xs text-on-surface-variant"
-      >
-        {{ payload.categoryLegend }}
-      </p>
-    </header>
+    <h2 class="text-2xl">{{ payload.categoryName }}</h2>
     <MatchScaleReveal
       v-if="solution"
       :payload="payload"

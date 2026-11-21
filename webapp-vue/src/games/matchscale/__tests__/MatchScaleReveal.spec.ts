@@ -195,8 +195,8 @@ describe('MatchScaleReveal', () => {
   it('heads the table with the solution over the tips and the tolerance over the distance', () => {
     const wrapper = mountReveal()
 
-    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
-    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±10 %')
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60')
+    expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±10')
     expect(wrapper.text()).toContain('Lösung')
     expect(wrapper.text()).toContain('Toleranz')
   })
@@ -228,20 +228,24 @@ describe('MatchScaleReveal', () => {
     )
   })
 
-  it("without B's measure the table keeps factors and names no unit", () => {
+  it("without B's measure the table counts the tip as a factor, the distance in percent", () => {
     const wrapper = mountReveal()
     const band = wrapper.findAll('thead th').map((th) => th.text())
 
     expect(band).toContain('Tipp')
     expect(band).toContain('Abstand')
-    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('2,00×')
+    expect(wrapper.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual([
+      '[×]',
+      '[%]',
+    ])
+    expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('2,00')
     expect(wrapper.find('[data-test="match-scale-tolerance-legend"]').exists()).toBe(false)
   })
 
   it('in phase two the head names no tolerance', () => {
     const wrapper = mountReveal({ payload: { ...PAYLOAD, tolerance: null } })
 
-    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60×')
+    expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('1,60')
     expect(wrapper.find('[data-test="match-scale-tolerance"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Toleranz')
   })
@@ -471,6 +475,12 @@ describe('MatchScaleReveal', () => {
     expect(field(wrapper).props('outlines')).toEqual([])
   })
 
+  it("closes with the category's legend among the footnotes", () => {
+    const wrapper = mountReveal({ payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' } })
+
+    expect(wrapper.get('[data-test="match-scale-footnotes"]').text()).toBe('Wie gezeichnet.')
+  })
+
   it('names A and B with their measures under the field', () => {
     const measureA: Measure = { axis: 'length', metres: 2.3, source: 'https://example.org/a' }
     const wrapper = mountReveal({ measureA })
@@ -487,6 +497,7 @@ describe('MatchScaleReveal', () => {
       bColor: 'var(--color-match-scale-b)',
       measureA,
       measureB: null,
+      factor: 1.6,
     })
   })
 

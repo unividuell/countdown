@@ -4,6 +4,8 @@
  *
  *   ● Alpha¹ · 230 cm Länge        ← name and footnote marker; the measure only in the reveal,
  *                                     A and B in one unit
+ *   ● Beta · 2,65×                 ← a category without measures (outlines from a map): the
+ *                                     factor, A at `1×`
  *
  * The credits themselves stand in `MatchScaleFootnotes`, at the card's bottom edge.
  *
@@ -13,6 +15,7 @@
 import { computed } from 'vue'
 import { footnotesOf } from './footnotes'
 import { formatMeasure } from './measure'
+import { formatFactor } from './scoreboard'
 import type { Measure, Silhouette } from './types'
 import { roundUnit } from './units'
 
@@ -24,6 +27,8 @@ const props = defineProps<{
   /** `null` while playing: the metres give the factor away. */
   measureA: Measure | null
   measureB: Measure | null
+  /** The reveal's factor; absent while playing. */
+  factor?: number
 }>()
 
 const items = computed(() => {
@@ -35,19 +40,25 @@ const items = computed(() => {
   const text = (measure: Measure | null) =>
     measure === null || unit === null ? null : formatMeasure(measure, unit)
 
+  // No measure on either side: the factor is all there is to name.
+  const factors =
+    props.factor !== undefined && props.measureA === null && props.measureB === null
+      ? { a: '1×', b: `${formatFactor(props.factor)}×` }
+      : null
+
   return [
     {
       key: 'a',
       silhouette: props.a,
       color: props.aColor,
-      measure: text(props.measureA),
+      measure: factors?.a ?? text(props.measureA),
       marker: markers.a,
     },
     {
       key: 'b',
       silhouette: props.b,
       color: props.bColor,
-      measure: text(props.measureB),
+      measure: factors?.b ?? text(props.measureB),
       marker: markers.b,
     },
   ]

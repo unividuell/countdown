@@ -98,18 +98,12 @@ describe('MatchScaleGame', () => {
     expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(true)
   })
 
-  it('heads the board and the reveal with the category, its legend beneath', () => {
+  it('heads the board and the reveal with the category', () => {
     const board = mountGame()
-    const reveal = mountGame({
-      payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' },
-      solution: { factor: 1.6, tolerance: 0.1 },
-    })
+    const reveal = mountGame({ solution: { factor: 1.6, tolerance: 0.1 } })
 
     expect(board.get('h2').text()).toBe('Formen')
-    expect(board.find('[data-test="match-scale-category-legend"]').exists()).toBe(false)
-
     expect(reveal.get('h2').text()).toBe('Formen')
-    expect(reveal.get('[data-test="match-scale-category-legend"]').text()).toBe('Wie gezeichnet.')
   })
 
   it('is in the registry and in the lab', () => {

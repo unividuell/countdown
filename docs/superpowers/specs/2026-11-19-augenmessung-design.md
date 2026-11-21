@@ -114,7 +114,7 @@ fertige Kategorie im Diff unberührt, wenn eine andere wächst.
 ```yaml
 category: example            # Schlüssel, [a-z0-9-]+, eindeutig
 displayName: Beispielkategorie   # Überschrift über Spielfläche und Auflösung
-legend: "Wie die Silhouetten gezeichnet sind."   # optional, unter der Überschrift (Projektion)
+legend: "Wie die Silhouetten gezeichnet sind."   # optional, letzte Fußnote, ohne Nummer (Projektion)
 attribution: "Silhouetten: Beispielquelle"   # sichtbar in der Auflösung, optional
 entries:
   - name: Beispielding Alpha
@@ -285,8 +285,9 @@ games/matchscale/
   types.ts                 Payload, Lösung, Outcome, Tipp — defensiv eingeengt
 ```
 
-Über Spielfläche und Auflösung steht der Name der Kategorie als Überschrift, darunter klein ihre
-`legend`, wo sie eine hat: bei Natural-Earth-Kategorien die Projektion.
+Über Spielfläche und Auflösung steht der Name der Kategorie als Überschrift. Ihre `legend`, wo sie
+eine hat (bei Natural-Earth-Kategorien die Projektion), schließt die Fußnoten ab, ohne Nummer: kein
+Name verweist auf sie.
 
 ### Spielfläche
 
@@ -334,7 +335,8 @@ Unter der Fläche dieselben Namen wie beim Spielen, hinter jedem sein Maß aus d
 · 200 cm Kopf-Rumpf“), die Attribution in Zeile zwei. Vor dem Tipp kein Maß: gespielt wird nur das
 Verhältnis. Steht hinter einem allgemeinen Namen ein konkretes Stück, nennt es die Auflösung als
 Fußnote, nummeriert nach den Credits („Alpha²“ · „² Maß: Alpha Mk II“): die Hochzahlen der Credits
-bleiben, wie sie beim Spielen standen.
+bleiben, wie sie beim Spielen standen. Hat die Kategorie keine Maße (Länder, Landmassen), steht
+hinter den Namen der Faktor: A „1×“, B „0,71×“.
 
 **Eine Einheit je Runde.** km oder m, wenn das kleinere der beiden Maße darin noch ≥ 10 ist; sonst
 cm, und mm erst unter einem Zentimeter (Tiere: cm, auch die Maus mit 8 cm; Länder: km); unter der
@@ -369,8 +371,9 @@ mit ihrer Zelle. Die Spalten sind so breit wie ihr breitester Text und ihr einze
 breiter.
 Zehntel rechtsbündig in Tabellenziffern stehen von selbst untereinander.
 
-Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90×“, Kommas untereinander),
-der Abstand und die Toleranz in Prozent („−23 %“, „±25 %“), ohne Einheit und ohne Legende.
+Fehlt B's Maß, steht der Tipp als Faktor mit zwei Nachkommastellen („1,90“, Einheit `[×]`), der
+Abstand und die Toleranz in ganzen Prozent („−23“, „±25“, Einheit `[%]`), ohne Legende. Zahl und
+Zeichen trennen sich wie bei Längen: die Einheit steht in der Zeile unter der Tabelle.
 
 Jede Zeile blendet ihren Umriss für sich ein und aus; der eigene ist zu Beginn an.
 

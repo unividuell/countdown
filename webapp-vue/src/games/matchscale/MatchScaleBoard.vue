@@ -185,6 +185,10 @@ function submit(): void {
 
     <MatchScaleBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
 
-    <MatchScaleFootnotes :a="props.payload.a" :b="props.payload.b" />
+    <MatchScaleFootnotes
+      :a="props.payload.a"
+      :b="props.payload.b"
+      :legend="props.payload.categoryLegend"
+    />
   </div>
 </template>

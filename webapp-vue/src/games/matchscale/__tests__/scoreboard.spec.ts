@@ -43,8 +43,8 @@ describe('formatFactor', () => {
 
 describe('formatTolerance', () => {
   it('names the gate in whole percent, the same either way', () => {
-    expect(formatTolerance(0.25)).toBe('±25 %')
-    expect(formatTolerance(0.1)).toBe('±10 %')
+    expect(formatTolerance(0.25)).toBe('±25')
+    expect(formatTolerance(0.1)).toBe('±10')
   })
 })
 
@@ -64,7 +64,7 @@ describe('truthOf', () => {
 describe('solutionText', () => {
   it("is B's length, or the factor without one", () => {
     expect(solutionText(1.6, TWO_METRES)).toBe('200,0')
-    expect(solutionText(1.6, null)).toBe('1,60×')
+    expect(solutionText(1.6, null)).toBe('1,60')
   })
 })
 
@@ -75,7 +75,7 @@ describe('toleranceText', () => {
   })
 
   it('is the percent without a length, nothing in phase two', () => {
-    expect(toleranceText(0.25, null)).toBe('±25 %')
+    expect(toleranceText(0.25, null)).toBe('±25')
     expect(toleranceText(null, TWO_METRES)).toBeNull()
   })
 })
@@ -171,10 +171,10 @@ describe('scoreboardRows', () => {
     )
     const byId = Object.fromEntries(rows.map((row) => [row.userId, row]))
 
-    expect(byId.over!.tip).toBe('2,46×')
-    expect(byId.over!.off).toBe('+23 %')
-    expect(byId.under!.off).toBe('−18 %')
-    expect(byId.exact!.off).toBe('±0 %')
+    expect(byId.over!.tip).toBe('2,46')
+    expect(byId.over!.off).toBe('+23')
+    expect(byId.under!.off).toBe('−18')
+    expect(byId.exact!.off).toBe('±0')
   })
 
   it('sorts outcome-less entries of equal points by user id', () => {

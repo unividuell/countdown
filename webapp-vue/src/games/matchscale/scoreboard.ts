@@ -19,9 +19,9 @@ import {
 export interface ScoreboardRow extends SharedScoreboardRow {
   /** The tip as sent. */
   scale: number
-  /** The tip as B's length in the round's unit, e.g. `160,0`; without B's measure a factor, `1,30×`. */
+  /** The tip as B's length in the round's unit, e.g. `160,0`; without B's measure a factor, `1,30`. */
   tip: string
-  /** Tip minus truth in the same unit, e.g. `−40,0`, `+50,0`, `±0,0`; without, in percent: `+30 %`. */
+  /** Tip minus truth in the same unit, e.g. `−40,0`, `+50,0`, `±0,0`; without, in percent: `+30`. */
   off: string
   /** As the server judged it; `null` while the entry has no outcome. */
   deviation: number | null
@@ -33,14 +33,14 @@ export function formatFactor(x: number): string {
   return nf.format(x)
 }
 
-/** A share in whole percent, signed like the distance column: `0.3` → `+30 %`, `0` → `±0 %`. */
+/** A share in whole percent, signed like the distance column: `0.3` → `+30`, `0` → `±0`; `%` stands beneath the table. */
 export function formatPercent(share: number): string {
-  return `${formatSigned(Math.round(share * 100))} %`
+  return formatSigned(Math.round(share * 100))
 }
 
-/** The gate in whole percent, the same either way: `0.25` → `±25 %`. */
+/** The gate in whole percent, the same either way: `0.25` → `±25`. */
 export function formatTolerance(tolerance: number): string {
-  return `±${Math.round(tolerance * 100)} %`
+  return `±${Math.round(tolerance * 100)}`
 }
 
 /** B's true length and the round's unit: what the table counts in. */
@@ -56,16 +56,16 @@ export function truthOf(a: Measure | null, b: Measure | null): Truth | null {
   return b === null || unit === null ? null : { metres: b.metres, unit }
 }
 
-/** The head's „Lösung“: B's length, `200`, or the factor, `1,60×`. */
+/** The head's „Lösung“: B's length, `200,0`, or the factor, `1,60`. */
 export function solutionText(factor: number, truth: Truth | null): string {
   return truth === null
-    ? `${formatFactor(factor)}×`
+    ? formatFactor(factor)
     : formatTenths(inUnitTenths(truth.metres, truth.unit))
 }
 
 /**
  * The head's „Toleranz“: how far a tip may sit from the solution either way, in the „Abstand“
- * column's terms — `±50,0` for 200 cm at 0.25; without a length in percent, `±25 %`. `null` in
+ * column's terms — `±50,0` for 200 cm at 0.25; without a length in percent, `±25`. `null` in
  * phase two.
  */
 export function toleranceText(tolerance: number | null, truth: Truth | null): string | null {
@@ -124,8 +124,7 @@ function byDeviation(a: number | null, b: number | null): number {
  * between the rounded values, so the row adds up: Lösung `200,0`, Tipp `160,0`, Abstand `−40,0`.
  */
 function cells(scale: number, factor: number, truth: Truth | null): { tip: string; off: string } {
-  if (truth === null)
-    return { tip: `${formatFactor(scale)}×`, off: formatPercent(scale / factor - 1) }
+  if (truth === null) return { tip: formatFactor(scale), off: formatPercent(scale / factor - 1) }
 
   const tip = inUnitTenths((truth.metres * scale) / factor, truth.unit)
 

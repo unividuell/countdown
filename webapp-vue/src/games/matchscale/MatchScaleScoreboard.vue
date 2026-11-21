@@ -11,15 +11,14 @@
  *   anna                 160,0      −40,0     1
  *                     * bis 25 % zu groß oder zu klein
  *
- * Without B's measure the tip falls back to a factor, commas aligned (`1,90×`), the distance to
- * percent (`−23 %`).
+ * Without B's measure the tip falls back to a factor (`1,90`, beneath `[×]`), the distance to
+ * percent (`−23`, beneath `[%]`).
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
 import { useRevealArming } from '@/ui/useRevealArming'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import DecimalAligned from './DecimalAligned.vue'
 import { solutionText, toleranceText, type ScoreboardRow, type Truth } from './scoreboard'
 
 const props = defineProps<{
@@ -45,8 +44,10 @@ const emit = defineEmits<{ select: [userId: string] }>()
 const solution = computed(() => solutionText(props.factor, props.truth))
 const tolerance = computed(() => toleranceText(props.tolerance, props.truth))
 
-/** The unit beneath the labels, `[cm]`; factors carry their own `×`, percent its `%`. */
-const unit = computed(() => props.truth?.unit)
+/** Each column's unit beneath the table: the round's `cm` for both, else `×` and `%`. */
+const units = computed(() =>
+  props.truth === null ? { tip: '×', off: '%' } : { tip: props.truth.unit, off: props.truth.unit },
+)
 
 /** The gate in percent beneath the table, explaining the head's `±50,0`. */
 const toleranceNote = computed(() => {
@@ -56,16 +57,13 @@ const toleranceNote = computed(() => {
 })
 
 /**
- * Lengths take what their widest text and the head need, nothing more: one `ch` spare for the
+ * A column takes what its widest text and the head need, nothing more: one `ch` spare for the
  * sign, the padding on top. Label and unit stay on one line each: `Abstand` measures 49 px in the
- * head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line. Factors keep
- * `factorWidth`.
+ * head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line.
  */
-function width(factorWidth: string, label: string, texts: readonly (string | null)[]): string {
-  if (props.truth === null) return factorWidth
-
+function width(label: string, unit: string, texts: readonly (string | null)[]): string {
   const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
-  const head = Math.max(label.length, `[${props.truth.unit}]`.length)
+  const head = Math.max(label.length, `[${unit}]`.length)
 
   return `max(calc(${ch}ch + 0.25rem), ${head * 0.45 + 0.25}rem)`
 }
@@ -84,34 +82,27 @@ const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'tip',
     label: 'Tipp',
-    ...(unit.value === undefined ? {} : { unit: unit.value }),
+    unit: units.value.tip,
     fact: 'Lösung',
-    width: width('3.5rem', 'Tipp', [solution.value, ...props.rows.map((row) => row.tip)]),
+    width: width('Tipp', units.value.tip, [solution.value, ...props.rows.map((row) => row.tip)]),
     align: 'end',
     numeric: true,
   },
   {
     key: 'off',
     label: 'Abstand',
-    ...(unit.value === undefined ? {} : { unit: unit.value }),
+    unit: units.value.off,
     ...(props.tolerance === null
       ? {}
       : { fact: toleranceNote.value === null ? 'Toleranz' : 'Toleranz*' }),
-    width: width('3.5rem', 'Abstand', [tolerance.value, ...props.rows.map((row) => row.off)]),
+    width: width('Abstand', units.value.off, [
+      tolerance.value,
+      ...props.rows.map((row) => row.off),
+    ]),
     align: 'end',
     numeric: true,
   },
 ])
-
-/** Digits before the comma of the widest number in a column, so every comma sits on one line. */
-function intCh(texts: readonly (string | null)[]): number {
-  return Math.max(1, ...texts.map((text) => /^\d+/.exec(text ?? '')?.[0].length ?? 0))
-}
-
-const tipCh = computed(() => intCh([solution.value, ...props.rows.map((row) => row.tip)]))
-
-/** What follows the factor: `×`. */
-const TIP_REST_EM = 0.75
 
 /** Like PaintRatio's head values: the solution row's ground, right-aligned like the column. */
 const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface tabular-nums'
@@ -143,21 +134,15 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
         </button>
       </template>
 
-      <!-- Tenths right-aligned in tabular digits line up by themselves; factors need help. -->
+      <!-- Fixed decimals right-aligned in tabular digits: the commas line up by themselves. -->
       <template #fact-tip>
-        <span data-test="match-scale-solution" :class="FACT"
-          ><template v-if="props.truth !== null">{{ solution }}</template
-          ><DecimalAligned v-else :text="solution" :int-ch="tipCh" :rest-em="TIP_REST_EM"
-        /></span>
+        <span data-test="match-scale-solution" :class="FACT">{{ solution }}</span>
       </template>
       <template v-if="tolerance !== null" #fact-off>
         <span data-test="match-scale-tolerance" :class="FACT">{{ tolerance }}</span>
       </template>
 
-      <template #cell-tip="{ row }"
-        ><template v-if="props.truth !== null">{{ row.tip }}</template
-        ><DecimalAligned v-else :text="row.tip" :int-ch="tipCh" :rest-em="TIP_REST_EM"
-      /></template>
+      <template #cell-tip="{ row }">{{ row.tip }}</template>
       <template #cell-off="{ row }">{{ row.off }}</template>
     </RevealScoreboard>
 

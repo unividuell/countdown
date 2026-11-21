@@ -237,6 +237,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
         :b-color="B_COLOR"
         :measure-a="props.measureA"
         :measure-b="props.measureB"
+        :factor="props.factor"
       />
     </div>
 
@@ -257,6 +258,7 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
       :b="props.payload.b"
       :measure-a="props.measureA"
       :measure-b="props.measureB"
+      :legend="props.payload.categoryLegend"
     />
   </div>
 </template>

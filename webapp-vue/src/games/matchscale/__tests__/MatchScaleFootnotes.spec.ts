@@ -54,6 +54,27 @@ describe('MatchScaleFootnotes', () => {
     ])
   })
 
+  it('closes with the category legend, unnumbered', () => {
+    const wrapper = mount(MatchScaleFootnotes, {
+      props: { a: A, b: { ...A, attribution: null }, legend: 'Wie gezeichnet.' },
+    })
+    const bare = mount(MatchScaleFootnotes, {
+      props: {
+        a: { ...A, attribution: null },
+        b: { ...A, attribution: null },
+        legend: 'Wie gezeichnet.',
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
+      `¹ ${A.attribution}`,
+      'Wie gezeichnet.',
+    ])
+    expect(bare.findAll('[data-test="match-scale-footnote"]').map((li) => li.text())).toEqual([
+      'Wie gezeichnet.',
+    ])
+  })
+
   it('numbers a lone credit of B ¹', () => {
     expect(notes({ ...A, attribution: null }, A)).toEqual([`¹ ${A.attribution}`])
   })
