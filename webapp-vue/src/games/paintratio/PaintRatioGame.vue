@@ -17,12 +17,13 @@ import { clearDraft, deviceStorage, sweepDrafts } from '@/games/drafts'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import { draftKey, draftPrefix } from './draft'
 import PaintRatioBoard from './PaintRatioBoard.vue'
 import PaintRatioReveal from './PaintRatioReveal.vue'
 import { scoreRows } from './scoreboard'
-import { asPaintRatioPayload, asPaintRatioSolution } from './types'
+import { asPaintRatioOutcome, asPaintRatioPayload, asPaintRatioSolution } from './types'
 
 const TARGET_ASSET = 'target'
 
@@ -87,6 +88,16 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
+/** The gate is the tolerance around the picture's share. */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate: asPaintRatioOutcome(props.outcome)?.withinTolerance ?? null,
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
+
 const animate = useRevealedLive(solved)
 </script>
 
@@ -107,6 +118,7 @@ const animate = useRevealedLive(solved)
       :live="live"
       :animate="animate"
       :mine-user-id="props.mineUserId"
+      :won="won"
     />
   </div>
   <PaintRatioBoard

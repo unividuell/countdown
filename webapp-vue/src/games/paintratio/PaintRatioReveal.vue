@@ -17,7 +17,9 @@
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { useRevealArming } from '@/ui/useRevealArming'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import LayerCanvas from './LayerCanvas.vue'
 import { KOLLEKTIV, openingLayers, toggleLayer } from './layers'
 import PaintRatioScoreboard from './PaintRatioScoreboard.vue'
@@ -35,7 +37,14 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
   mineUserId: string | null
+  /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
+  won: boolean | null
 }>()
+
+useRevealVerdict(() => props.won, props.animate)
+
+// The verdict is governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 
 /** The paintings that can be laid on the canvas, by user id. */
 const paintings = computed(() => {

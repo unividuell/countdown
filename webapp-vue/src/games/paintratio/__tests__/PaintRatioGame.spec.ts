@@ -372,4 +372,41 @@ describe('PaintRatioGame', () => {
     expect(labGameList).toContainEqual({ id: 'paint-ratio', title: 'Anmaßung' })
     expect(ids.indexOf('paint-ratio')).toBe(ids.indexOf('copy-blocks') + 1)
   })
+
+  describe('verdict', () => {
+    const won = (over: Partial<GameProps>) =>
+      mountGame({ solution: SOLUTION, ...over })
+        .getComponent(PaintRatioReveal)
+        .props('won')
+
+    it('wins inside the tolerance while every tip inside scores', () => {
+      expect(won({ entries: [MINE], outcome: MINE.outcome })).toBe(true)
+    })
+
+    it('fails outside the tolerance', () => {
+      expect(
+        won({
+          entries: [{ ...MINE, points: 0 }],
+          outcome: { ratio: 0.5, difference: 0.0766, withinTolerance: false },
+        }),
+      ).toBe(false)
+    })
+
+    it('says nothing without a tip of mine', () => {
+      expect(won({ entries: [FRY], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', () => {
+      expect(
+        won({
+          awardRule: 'CLOSEST_ONLY',
+          entries: [
+            { ...MINE, points: 0 },
+            { ...FRY, points: 1 },
+          ],
+          outcome: { ratio: 0.43, difference: 0.0066, withinTolerance: null },
+        }),
+      ).toBe(false)
+    })
+  })
 })
