@@ -59,7 +59,7 @@ describe('PaintRatioScoreboard', () => {
     const wrapper = mountBoard([row({ userId: 'a' })])
 
     expect(wrapper.get('[data-test="paint-ratio-legend"]').text()).toBe(
-      '* Anteil Farbe auf Leinwand [%]',
+      '* Anteil Farbe auf Leinwand',
     )
   })
 
@@ -146,16 +146,22 @@ describe('PaintRatioScoreboard', () => {
       const shape = (w: ReturnType<typeof mountBoard>) => {
         const footer = w.get<HTMLElement>('[data-test="paint-ratio-kollektiv"]')
 
-        return [
-          w.findAll('[data-test="scoreboard"] col').length,
-          footer.element.children.length,
-          footer.element.style.gridTemplateColumns,
-        ]
+        return [w.findAll('[data-test="scoreboard"] col').length, footer.element.children.length]
       }
 
       // The table's `<col>`s are „Name“, the game's two, the clock if any, „Pkt“ — one cell each.
-      expect(shape(untimed)).toEqual([4, 4, 'minmax(0, 1fr) 3.5rem 4rem 2rem'])
-      expect(shape(timed)).toEqual([5, 5, 'minmax(0, 1fr) 3.5rem 4rem 3.5rem 2rem'])
+      expect(shape(untimed)).toEqual([4, 4])
+      expect(shape(timed)).toEqual([5, 5])
+    })
+
+    it('is a row of the table, the units beneath it', () => {
+      const rows = mountBoard([row({ userId: 'a' })]).findAll('[data-test="scoreboard"] tfoot tr')
+
+      expect(rows.map((tr) => tr.attributes('data-test') ?? '')).toEqual([
+        '',
+        'paint-ratio-kollektiv',
+        'scoreboard-units',
+      ])
     })
 
     it('appears with the head, when the solution does', async () => {

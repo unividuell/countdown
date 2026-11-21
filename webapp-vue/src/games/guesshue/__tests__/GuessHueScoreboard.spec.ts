@@ -48,7 +48,7 @@ describe('GuessHueScoreboard', () => {
   })
 
   it('asks for a guess column and a distance column, in that order', () => {
-    const band = mountBoard().findAll('thead tr:last-child th')
+    const band = mountBoard().findAll('[data-test="scoreboard-band"] th')
 
     expect(band.map((cell) => cell.text())).toEqual(['Name', 'Tipp', 'Differenz', 'Pkt'])
   })

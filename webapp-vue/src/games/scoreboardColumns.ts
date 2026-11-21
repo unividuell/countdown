@@ -54,6 +54,11 @@ export interface ScoreboardColumn<Row extends ScoreboardRow> {
   /** Names the slot that fills this column's body cells: `cell-<key>`. */
   key: string
   label: string
+  /**
+   * The unit of the column's numbers, `cm` — the table prints `[cm]` in a band row beneath the
+   * whole table, so neither the label nor every cell has to carry it. Omitted, no unit cell.
+   */
+  unit?: string
   /** CSS width for the `<col>`. Omitted, the column takes what the fixed ones leave over. */
   width?: string
   align?: 'start' | 'end'
@@ -61,7 +66,7 @@ export interface ScoreboardColumn<Row extends ScoreboardRow> {
   numeric?: boolean
   /**
    * Label of a fact about the round, shown in the head block over this column — „Lösung“ over the
-   * tips, Entstauber's „Max [ms]“ over „⌀ [ms]“. Its value comes from the `fact-<key>` slot, into a
+   * tips, Entstauber's „Max“ over „⌀“. Its value comes from the `fact-<key>` slot, into a
    * bare cell: the value brings its own surface and alignment.
    */
   fact?: string

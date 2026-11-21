@@ -214,8 +214,12 @@ describe('MatchScaleReveal', () => {
 
     expect(wrapper.get('[data-test="match-scale-solution"]').text()).toBe('200,0')
     expect(wrapper.get('[data-test="match-scale-tolerance"]').text()).toBe('±20,0')
-    expect(band).toContain('Tipp [cm]')
-    expect(band).toContain('Abstand [cm]')
+    expect(band).toContain('Tipp')
+    expect(band).toContain('Abstand')
+    expect(wrapper.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual([
+      '[cm]',
+      '[cm]',
+    ])
     expect(wrapper.get('[data-test="cell-tip-you"]').text()).toBe('250,0')
     expect(wrapper.get('[data-test="cell-off-you"]').text()).toBe('+50,0')
     expect(wrapper.get('[data-test="match-scale-tolerance-legend"]').text()).toBe(

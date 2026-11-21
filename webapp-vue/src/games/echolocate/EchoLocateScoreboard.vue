@@ -10,7 +10,7 @@
  *                      Toleranz
  *                         ≤ 1,5            the circle's radius; a distance is never negative
  *   Auswertung
- *   Name              Pings  Abstand  Pkt   phase two: [mm:ss] between Abstand and Pkt
+ *   Name              Pings  Abstand  Pkt   phase two: Zeit [mm:ss] between Abstand and Pkt
  *   anna                 4      1,6     1
  *   bert                12    Ø 7,2     0   two clips: the mean
  */

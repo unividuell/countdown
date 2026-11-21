@@ -43,7 +43,7 @@ describe('SpotObjectScoreboard', () => {
   it('narrows to Name and Pkt in an untimed round — there is no tip to show', () => {
     const wrapper = mountBoard({ rows: [row({ userId: 'a' })] })
 
-    expect(wrapper.findAll('thead tr:last-child th').map((th) => th.text())).toEqual([
+    expect(wrapper.findAll('[data-test="scoreboard-band"] th').map((th) => th.text())).toEqual([
       'Name',
       'Pkt',
     ])
@@ -52,9 +52,9 @@ describe('SpotObjectScoreboard', () => {
   it('shows the clock column as soon as a row has a duration', () => {
     const wrapper = mountBoard({ rows: [row({ userId: 'a', durationLabel: '00:42' })] })
 
-    expect(wrapper.findAll('thead tr:last-child th').map((th) => th.text())).toEqual([
+    expect(wrapper.findAll('[data-test="scoreboard-band"] th').map((th) => th.text())).toEqual([
       'Name',
-      '[mm:ss]',
+      'Zeit',
       'Pkt',
     ])
     expect(wrapper.text()).toContain('00:42')

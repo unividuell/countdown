@@ -4,10 +4,11 @@
  * from the truth, in tenths of the round's unit. The name is a button — tapping it toggles
  * that player's outline on the reveal's field.
  *
- *                     Lösung    Toleranz*
- *   Auswertung           200,0        ±50,0
- *   Name             Tipp [cm] Abstand [cm]   Pkt
- *   anna                 160,0        −40,0     1
+ *                     Lösung  Toleranz*
+ *   Auswertung           200,0      ±50,0
+ *   Name                  Tipp    Abstand   Pkt
+ *                         [cm]       [cm]
+ *   anna                 160,0      −40,0     1
  *                     * bis 25 % zu groß oder zu klein
  *
  * Without B's measure the tip falls back to a factor, commas aligned (`1,90×`), the distance to
@@ -44,8 +45,8 @@ const emit = defineEmits<{ select: [userId: string] }>()
 const solution = computed(() => solutionText(props.factor, props.truth))
 const tolerance = computed(() => toleranceText(props.tolerance, props.truth))
 
-/** The unit in the header, `Tipp [cm]`; factors carry their own `×`. */
-const unit = computed(() => (props.truth === null ? '' : ` [${props.truth.unit}]`))
+/** The unit beneath the labels, `[cm]`; factors carry their own `×`, percent its `%`. */
+const unit = computed(() => props.truth?.unit)
 
 /** The gate in percent beneath the table, explaining the head's `±50,0`. */
 const toleranceNote = computed(() => {
@@ -55,8 +56,8 @@ const toleranceNote = computed(() => {
 })
 
 /**
- * Lengths take what their widest text and the header need, nothing more: one `ch` spare for the
- * sign, the padding on top. The header stays on one line: `Abstand [mm]` measures 84 px in the
+ * Lengths take what their widest text and the head need, nothing more: one `ch` spare for the
+ * sign, the padding on top. Label and unit stay on one line each: `Abstand` measures 49 px in the
  * head's `text-xs`, about 0.44rem a character — 0.45rem keeps it single-line. Factors keep
  * `factorWidth`.
  */
@@ -64,9 +65,9 @@ function width(factorWidth: string, label: string, texts: readonly (string | nul
   if (props.truth === null) return factorWidth
 
   const ch = Math.max(...texts.map((text) => text?.length ?? 0)) + 1
-  const labelRem = label.length * 0.45 + 0.25
+  const head = Math.max(label.length, `[${props.truth.unit}]`.length)
 
-  return `max(calc(${ch}ch + 0.25rem), ${labelRem}rem)`
+  return `max(calc(${ch}ch + 0.25rem), ${head * 0.45 + 0.25}rem)`
 }
 
 /**
@@ -82,25 +83,21 @@ const noteFade = {
 const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
   {
     key: 'tip',
-    label: `Tipp${unit.value}`,
+    label: 'Tipp',
+    ...(unit.value === undefined ? {} : { unit: unit.value }),
     fact: 'Lösung',
-    width: width('3.5rem', `Tipp${unit.value}`, [
-      solution.value,
-      ...props.rows.map((row) => row.tip),
-    ]),
+    width: width('3.5rem', 'Tipp', [solution.value, ...props.rows.map((row) => row.tip)]),
     align: 'end',
     numeric: true,
   },
   {
     key: 'off',
-    label: `Abstand${unit.value}`,
+    label: 'Abstand',
+    ...(unit.value === undefined ? {} : { unit: unit.value }),
     ...(props.tolerance === null
       ? {}
       : { fact: toleranceNote.value === null ? 'Toleranz' : 'Toleranz*' }),
-    width: width('3.5rem', `Abstand${unit.value}`, [
-      tolerance.value,
-      ...props.rows.map((row) => row.off),
-    ]),
+    width: width('3.5rem', 'Abstand', [tolerance.value, ...props.rows.map((row) => row.off)]),
     align: 'end',
     numeric: true,
   },

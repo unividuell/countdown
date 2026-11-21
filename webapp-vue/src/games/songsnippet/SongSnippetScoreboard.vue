@@ -26,7 +26,7 @@ import type { ScoreRow } from './scoreboard'
  */
 const COLUMNS: ScoreboardColumn<ScoreRow>[] = [
   { key: 'tip', label: 'Tipp', align: 'start' },
-  { key: 'time', label: 'Zeit [s]', width: '3rem', align: 'end', numeric: true },
+  { key: 'time', label: 'Zeit', unit: 's', width: '3rem', align: 'end', numeric: true },
 ]
 
 const props = defineProps<{

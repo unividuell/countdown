@@ -10,13 +10,13 @@
  *                        Lösung*  Toleranz
  *   Auswertung             43,3     ± 1,0
  *   Name                 Anteil*  Differenz   Pkt
+ *                           [%]        [%]
  *   anna                   41,0      -2,3      1
  *   ─────────────────────────────────────────────
  *   Kollektiv Kommune      43,3       0,0      —
- *                  * Anteil Farbe auf Leinwand [%]
+ *                  * Anteil Farbe auf Leinwand
  */
 import { computed } from 'vue'
-import { hasDurations } from '@/games/durations'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
@@ -45,6 +45,7 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'ratio',
     label: 'Anteil*',
+    unit: '%',
     fact: 'Lösung*',
     width: '3.5rem',
     align: 'end',
@@ -53,6 +54,7 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   {
     key: 'difference',
     label: 'Differenz',
+    unit: '%',
     ...(props.tolerance === null ? {} : { fact: 'Toleranz' }),
     width: '4rem',
     align: 'end',
@@ -60,18 +62,12 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
   },
 ])
 
-/**
- * The Kollektiv row lines up with the table above by the same widths, gutters and — when any row
- * has one — the clock column. „Name“ takes what the others leave over; „Pkt“ is 2rem as there.
- */
-const kollektivColumns = computed(() =>
-  [
-    'minmax(0, 1fr)',
-    ...columns.value.map((column) => column.width),
-    ...(hasDurations(props.rows) ? ['3.5rem'] : []),
-    '2rem',
-  ].join(' '),
-)
+/** The Kollektiv's cells: it painted the target itself, so it is off by nothing. */
+function kollektivCell(key: string): string {
+  if (key === 'ratio') return formatShare(props.targetRatio)
+  if (key === 'difference') return formatDifference(0)
+  return '—'
+}
 
 const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:-outline-offset-2'
 
@@ -123,54 +119,52 @@ const { shown } = useRevealArming(still)
 
       <template #cell-ratio="{ row }">{{ row.ratioLabel ?? '—' }}</template>
       <template #cell-difference="{ row }">{{ row.differenceLabel ?? '—' }}</template>
+
+      <!-- The Kollektiv: a row of the table, set apart by a rule, above the units. It appears with
+           the head, when the solution does: it names the target. -->
+      <template #foot="{ columns: footColumns }">
+        <tr aria-hidden="true">
+          <td :colspan="footColumns.length + 2" class="py-1"><hr class="border-outline" /></td>
+        </tr>
+        <tr
+          data-test="paint-ratio-kollektiv"
+          class="text-on-surface transition-opacity"
+          :class="shown ? 'opacity-100' : 'opacity-0'"
+          :style="{
+            transitionDuration: `${FADE_MS}ms`,
+            transitionDelay: `${headCellDelayMs(0, 0)}ms`,
+          }"
+        >
+          <!-- The label wraps rather than truncates: it is no player's name, and it is always there. -->
+          <th scope="row" class="bg-surface-container-highest px-0.5 text-start font-normal">
+            <button
+              type="button"
+              data-test="select-kollektiv"
+              :class="BUTTON"
+              class="w-full"
+              :aria-pressed="props.selected.includes(KOLLEKTIV)"
+              @click="emit('select', KOLLEKTIV)"
+            >
+              <span :class="props.selected.includes(KOLLEKTIV) ? 'font-semibold underline' : ''"
+                >Kollektiv Kommune</span
+              >
+            </button>
+          </th>
+          <td
+            v-for="column in footColumns"
+            :key="column.key"
+            class="bg-surface-container-highest px-0.5 text-end"
+            :class="column.key === 'clock' ? 'font-mono text-xs' : 'tabular-nums'"
+          >
+            {{ kollektivCell(column.key) }}
+          </td>
+          <td class="bg-surface-container-highest px-px text-end tabular-nums">—</td>
+        </tr>
+      </template>
     </RevealScoreboard>
 
-    <hr class="border-outline" />
-
-    <!-- Appears with the head, when the solution does: it names the target. -->
-    <div
-      data-test="paint-ratio-kollektiv"
-      class="grid gap-x-1 text-on-surface transition-opacity"
-      :class="shown ? 'opacity-100' : 'opacity-0'"
-      :style="{
-        gridTemplateColumns: kollektivColumns,
-        transitionDuration: `${FADE_MS}ms`,
-        transitionDelay: `${headCellDelayMs(0, 0)}ms`,
-      }"
-    >
-      <!-- The label wraps rather than truncates: it is no player's name, and it is always there. -->
-      <button
-        type="button"
-        data-test="select-kollektiv"
-        :class="BUTTON"
-        class="min-w-0 bg-surface-container-highest px-0.5"
-        :aria-pressed="props.selected.includes(KOLLEKTIV)"
-        @click="emit('select', KOLLEKTIV)"
-      >
-        <span :class="props.selected.includes(KOLLEKTIV) ? 'font-semibold underline' : ''"
-          >Kollektiv Kommune</span
-        >
-      </button>
-      <span
-        class="flex items-center justify-end bg-surface-container-highest px-0.5 tabular-nums"
-        >{{ formatShare(props.targetRatio) }}</span
-      >
-      <span
-        class="flex items-center justify-end bg-surface-container-highest px-0.5 tabular-nums"
-        >{{ formatDifference(0) }}</span
-      >
-      <span
-        v-if="hasDurations(props.rows)"
-        class="flex items-center justify-end bg-surface-container-highest px-0.5 font-mono text-xs"
-        >—</span
-      >
-      <span class="flex items-center justify-end bg-surface-container-highest px-px tabular-nums"
-        >—</span
-      >
-    </div>
-
     <p data-test="paint-ratio-legend" class="text-end text-xs text-on-surface-variant">
-      * Anteil Farbe auf Leinwand [%]
+      * Anteil Farbe auf Leinwand
     </p>
   </div>
 </template>

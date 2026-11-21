@@ -430,12 +430,12 @@ describe('EchoLocateReveal', () => {
     // What decides stands furthest right, next to the points: the distance, in phase two the clock.
     it('orders the columns pings, distance, clock — the clock the frame’s, before „Pkt“', () => {
       const band = (wrapper: ReturnType<typeof mountReveal>) =>
-        wrapper.findAll('thead tr:last-child th').map((cell) => cell.text())
+        wrapper.findAll('[data-test="scoreboard-band"] th').map((cell) => cell.text())
 
       expect(band(mountReveal())).toEqual(['Name', 'Pings', 'Abstand', 'Pkt'])
       expect(
         band(mountReveal({ entries: [entry('me', 0.8, { durationMs: 95_000, points: 0 })] })),
-      ).toEqual(['Name', 'Pings', 'Abstand', '[mm:ss]', 'Pkt'])
+      ).toEqual(['Name', 'Pings', 'Abstand', 'Zeit', 'Pkt'])
     })
 
     it('keeps pings and distance narrow', () => {

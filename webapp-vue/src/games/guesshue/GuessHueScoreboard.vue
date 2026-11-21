@@ -31,7 +31,14 @@ const COLUMNS: ScoreboardColumn<ScoreboardRow>[] = [
     numeric: true,
     ground: (row) => ({ backgroundColor: row.guessHex, color: row.guessInk }),
   },
-  { key: 'deviation', label: 'Differenz', width: '3.5rem', align: 'end', numeric: true },
+  {
+    key: 'deviation',
+    label: 'Differenz',
+    unit: '°',
+    width: '3.5rem',
+    align: 'end',
+    numeric: true,
+  },
 ]
 
 const oneDecimal = new Intl.NumberFormat('de-DE', {

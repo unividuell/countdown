@@ -16,6 +16,16 @@
  * is complete from the moment it mounts and only its ink appears, so nothing here ever moves — see
  * the design doc.
  *
+ * A column may name its unit (`unit: 'cm'`): a band row beneath the whole table prints `[cm]`
+ * under that column only, so a label stays short and its column narrow.
+ *
+ *   Name           Tipp  Abstand   Zeit   Pkt
+ *   anna            160      −40  01:05     1
+ *                  [cm]     [cm]  [mm:ss]
+ *
+ * Rows that are no player's — Anmaßung's Kollektiv Kommune — come through the `foot` slot, which
+ * gets the table's columns (the clock included) and stands above the units.
+ *
  * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
  * the player's line in its curve.
  */
@@ -43,7 +53,8 @@ const props = defineProps<{
 
 const clock: ScoreboardColumn<Row> = {
   key: 'clock',
-  label: '[mm:ss]',
+  label: 'Zeit',
+  unit: 'mm:ss',
   width: '3.5rem',
   align: 'end',
 }
@@ -58,6 +69,8 @@ const pointsColumnIndex = computed(() => tableColumns.value.length + 1)
 /** Two head rows when any column carries a fact — a solution, a round's tempo. */
 const hasHeadBlock = computed(() => tableColumns.value.some((column) => column.fact !== undefined))
 const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
+/** A band row beneath the table whenever a column names its unit. */
+const hasUnits = computed(() => tableColumns.value.some((column) => column.unit !== undefined))
 
 const still = isStill(props.animate)
 
@@ -215,7 +228,7 @@ function pointsLabel(points: number | null): string {
           </td>
         </tr>
         <!-- The band. The anchor that makes the colour below read as a table. -->
-        <tr>
+        <tr data-test="scoreboard-band">
           <th
             scope="col"
             class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
@@ -288,6 +301,27 @@ function pointsLabel(points: number | null): string {
           </td>
         </tr>
       </tbody>
+      <tfoot v-if="hasUnits || $slots.foot !== undefined">
+        <slot name="foot" :columns="tableColumns" />
+        <!-- The units, in the band's dress, under the whole table and only beneath the columns that
+             have one: the labels above stay short, the columns narrow. -->
+        <tr v-if="hasUnits" data-test="scoreboard-units">
+          <td aria-hidden="true"></td>
+          <template v-for="(column, at) in tableColumns" :key="column.key">
+            <th
+              v-if="column.unit !== undefined"
+              scope="col"
+              class="bg-inverse-surface px-0.5 text-end text-xs font-normal whitespace-nowrap text-inverse-on-surface transition-opacity"
+              :class="opacity"
+              :style="head(bandRow + 1, at + 1)"
+            >
+              [{{ column.unit }}]
+            </th>
+            <td v-else aria-hidden="true"></td>
+          </template>
+          <td aria-hidden="true"></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </template>
