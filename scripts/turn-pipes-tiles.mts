@@ -41,12 +41,13 @@ const COOL = {
   out: "#6c6979",
   rivet: "#ecebf1",
 };
+/** Amber, not red: red reads as an error on a tile that is right. */
 const HOT = {
-  plate: "#c8402a",
-  hi: "#ef7650",
-  lo: "#8c2a1a",
-  out: "#5c1a12",
-  rivet: "#ffd8a8",
+  plate: "#e9a12a",
+  hi: "#ffd067",
+  lo: "#b07316",
+  out: "#704508",
+  rivet: "#fff6d6",
 };
 
 /** Half-widths: pipe 7 (14 of 32 px), flange 8; water channel 4.5. */
