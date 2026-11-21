@@ -30,10 +30,7 @@ The repo follows **git flow**: two long-lived branches, feature branches in betw
 - **Hotfix (rare):** branch from `main`, PR into `main`, then merge `main` back into
   `develop` so the fix isn't lost on the next release.
 - **Commit messages, PR titles and descriptions are English** — see
-  [README.md](README.md#language) for the full rule and the one exception. The
-  git-specific reason: GitHub seeds the merge commit's message from the PR title
-  and body, so a German PR puts German into `develop`'s history while every
-  commit around it is English.
+  [README.md](README.md#language).
 - **Merged branches are deleted.** The repo has *Automatically delete head branches*
   enabled, so GitHub removes the source branch on merge — locally follow up with
   `git fetch --prune` (and `git worktree remove` for Claude Code worktrees).

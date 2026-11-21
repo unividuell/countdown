@@ -31,28 +31,36 @@ Rule 7: Use the body to explain what and why vs. how. Assume the code explains t
 Binding project conventions live in [`.claude/guidelines/`](.claude/guidelines/README.md):
 
 - **[Feeding knowledge back](.claude/guidelines/feeding-knowledge-back.md)** — every task ends by capturing the transferable rules here; post-mortems and measurements stay in the commit.
-- **[Language](.claude/guidelines/README.md#language)** — source code, config/script comments and operator READMEs are English regardless of conversation language; commit messages and PR text too; design docs under `docs/superpowers/` and German data stay German. **User-facing German text uses `„…“`** (low opening, high closing) — never a straight `"`.
+- **[Language](.claude/guidelines/README.md#language)** — code, comments, commits and PR text are English; design docs under `docs/superpowers/` and German data stay German. **User-facing German text uses `„…“`** — never a straight `"`.
 - **[Git workflow](.claude/guidelines/git-workflow.md)** — git flow: branch off `develop`, PRs target `develop`; `main` = prod, `develop` = staging.
-- **[Kotlin call sites](.claude/guidelines/kotlin.md)** — named arguments from two arguments on; the exceptions (single arg, varargs, Java-declared functions, trailing lambdas, infix).
-- **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD.
-- **[Configuration](.claude/guidelines/configuration.md)** — no `application*.yaml` key is under test, so boot the app after touching one; a suffixed size binds only onto `DataSize`. *(backend)*
-- **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`.
-- **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway.
-- **[Security & auth](.claude/guidelines/security-and-auth.md)** — sign-in via the auth lib (`org.unividuell:auth-spring-boot-starter`), one account per provider, no session for anonymous requests, super-admin role, browser vs. server API keys. *(backend)*
-- **[Logging](.claude/guidelines/logging.md)** — kotlin-logging, `logger {}` inside the class (never top-level), always lambda messages, log where behaviour degrades silently, never log what storage must not have. *(backend)*
-- **[Frontend](.claude/guidelines/frontend.md)** — Vue 3 + Vite 8 + Tailwind v4; `apiFetch`/`useAuth` (CSRF, 401, full-page OAuth); no secure-context-only APIs (phones use LAN HTTP); lint + `vue-tsc -b`. *(webapp-vue)*
-  - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, sizing traps, accessibility.
+- **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker/Actions, and the versions held back (TypeScript 6.x, `@types/node` = Node LTS).
+- **Backend (`core/`)**
+  - **[Kotlin call sites](.claude/guidelines/kotlin.md)** — named arguments from two arguments on, and the exceptions.
+  - **[Testing](.claude/guidelines/testing.md)** — mockk + kotest + MockMvc Kotlin DSL + Testcontainers; TDD; test isolation.
+  - **[Configuration](.claude/guidelines/configuration.md)** — no `application*.yaml` key is under test, so boot the app after touching one.
+  - **[Persistence](.claude/guidelines/persistence.md)** — Spring Data JDBC, Postgres-generated UUID v7, auditing, no `@Column`, expand/switch/contract, query traps.
+  - **[Modules & migrations](.claude/guidelines/modules-and-migrations.md)** — Spring Modulith, schema-per-module, module-based Flyway, the plugin pattern.
+  - **[Security & auth](.claude/guidelines/security-and-auth.md)** — the auth lib, one account per provider, no session for anonymous requests, super-admin, live per-user permissions.
+  - **[Logging](.claude/guidelines/logging.md)** — kotlin-logging inside the class, lambda messages, log silent degradation, never log what storage must not have.
+- **Frontend (`webapp-vue/`)**
+  - **[Frontend](.claude/guidelines/frontend.md)** — stack, colour roles and dark mode, `apiFetch`/`useAuth`, round assets, no secure-context-only APIs, `vue-tsc -b`.
+  - **[UI & layout](.claude/guidelines/frontend-ui.md)** — mobile-first, animation, pointer controls, sizing traps, accessibility, the reveal cover.
   - **[Routing & shells](.claude/guidelines/frontend-routing.md)** — Vue Router 5 file-based, guard-owned nav data, `[slug]` shell, role gating.
-  - **[State](.claude/guidelines/frontend-state.md)** — composables/VueUse (no Pinia), shared clock, server-authoritative ticking, short-clip audio.
-  - **[Testing](.claude/guidelines/frontend-testing.md)** — Vitest + `vi` (not mockk), happy-dom limits, doubles, `<component :is>` props aren't type-checked.
-- **[Deployment](.claude/guidelines/deployment.md)** — ghcr images (Buildpacks/multi-stage), arm64 GitHub Actions, prod+staging compose topology, backend production profile.
-  - **[Edge](.claude/guidelines/deployment-edge.md)** — the two Caddys, TLS, SPA/API routing, cache headers, the `X-Forwarded-*` chain.
-  - **[Server ops](.claude/guidelines/deployment-server.md)** — `update.sh`, secret-handling scripts, pg_dump backup, SSH-tunnel pgAdmin.
-- **[Dependency updates](.claude/guidelines/dependency-updates.md)** — how to bump Maven/npm/Docker, and the versions we deliberately hold back (TypeScript 6.x for `vue-tsc`, `@types/node` matching the Node LTS runtime).
-- **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic that must compute identically in Kotlin and TS: golden vectors in `shared/`, only bit-exactly specified ops (no `sin/cos/log/exp/pow`), UTF-8 string hashing, never a `Long` > 2⁵³ as a JSON number.
-- **[Game content](.claude/guidelines/game-content.md)** — hand-curated puzzle data is a secret in a public repo: never in plaintext (spec, plan, commit, fixture), handed over via gitignored `.local/` → `sops -e`, sample set for tests, fail-fast under `production`/`staging`.
-- **[Game rounds](.claude/guidelines/game-rounds.md)** — the run as the round coordinate, materialised a day ahead by a daily schedule (the GET as fallback), one round secret with two exits (the rule per *stream*), the game judges / the framework awards, `points` as a cache, a row lock when writing other players' rows, round assets named, frozen once and sealed until their stage.
-- **[Game lab](.claude/guidelines/game-lab.md)** — non-prod harness for manual mini-game review: two-gate (`!production` + own switch), 404 not 403, self-limiting in-memory round store, payload-hygiene test; the lab adapts to the game, never the reverse.
+  - **[State](.claude/guidelines/frontend-state.md)** — composables (no Pinia), shared clock, shared reveal plumbing, sound, server-authoritative ticking.
+  - **[Testing](.claude/guidelines/frontend-testing.md)** — Vitest + `vi` (not mockk), what happy-dom and the browser pane cannot see, doubles.
+- **Deployment**
+  - **[Deployment](.claude/guidelines/deployment.md)** — ghcr images, arm64 GitHub Actions, prod+staging compose topology, production profile.
+  - **[Edge](.claude/guidelines/deployment-edge.md)** — the two Caddys, SPA/API routing, cache headers, the `X-Forwarded-*` chain.
+  - **[Server ops](.claude/guidelines/deployment-server.md)** — `update.sh`, secret-handling scripts, backups, pgAdmin.
+- **Domain**
+  - **[Countdown & rounds](.claude/guidelines/countdown.md)** — `targetAt` + `targetTimezone`, round numbers on a number line, DST, the frozen grid, editions.
+  - **[Multi-tenancy](.claude/guidelines/multi-tenancy.md)** — `community_id` scoping, `CommunityAccess`, communities under `/c/`.
+  - **[Cross-runtime parity](.claude/guidelines/cross-runtime-parity.md)** — logic computed identically in Kotlin and TS: golden vectors in `shared/`, bit-exact ops only, no `Long` > 2⁵³ in JSON.
+- **Games**
+  - **[Game rounds](.claude/guidelines/game-rounds.md)** — how a round gets a game and a guess becomes points: materialisation, the secret's two exits, round assets, judging vs. awarding, stages.
+  - **[Game integrity](.claude/guidelines/game-integrity.md)** — anti-cheat as built: pictures not values, nothing derived in the client, server-authoritative time, the named ceiling.
+  - **[Game content](.claude/guidelines/game-content.md)** — curated puzzle data is a secret in a public repo: never in plaintext, `.local/` → `sops -e`, sample set for tests.
+  - **[Game lab](.claude/guidelines/game-lab.md)** — non-prod harness for mini-game review: two-gate, 404 not 403, in-memory round store; the lab adapts to the game, never the reverse.
 
 Design docs (specs + plans) are in `docs/superpowers/`. Reference implementations:
 the **`iam` module** (backend) and **`webapp-vue`** (frontend).
