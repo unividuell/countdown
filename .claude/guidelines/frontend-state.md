@@ -197,7 +197,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   beat, only on a reveal that just happened here (`animate`) — a reload is silent — and at once
   where nothing moves. Exception: a run that ends itself plays the verdict the moment it ends, in
   the board, and its reveal stays silent — Entstauber's last tile wins, a wrong tile or a missed
-  beat fails (`deduster/DedusterBoard.vue`).
+  beat fails (`deduster/DedusterBoard.vue`). A reveal whose own animation ends in a sound of
+  its own plays the verdict after that sound has fallen silent, once, for my first run only —
+  Verrohrung's water, its end sound to the last, then the verdict. The sound says how long it still
+  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`).
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
   neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and

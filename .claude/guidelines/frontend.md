@@ -38,7 +38,9 @@ of the frontend conventions live beside it:
     twin (M3's `inverse-primary`, added when needed). A meaning that may part from its
     colour later gets its own name even while it borrows one (`--color-live` →
     `--color-phase-two`, `--color-phase-one` → `--color-primary`). Game artwork (crosshairs,
-    glass over photos, chart fills) is not app UI and may keep literal colours.
+    glass over photos, chart fills) is not app UI and may keep literal colours. It still keeps red for
+    wrong: a red on a right state reads as an error (Verrohrung's hot plates glow amber, not red;
+    `scripts/turn-pipes-tiles.mts`).
   - **Dark mode lives in the role values, not in components.** Each role is
     `light-dark(light, dark)`; the browser picks by `color-scheme` — the system's, or the user's
     pick pinned as `data-color-scheme` on `<html>` by `ui/colorScheme.ts` (and before first paint

@@ -10,6 +10,7 @@ import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import { clearDraft, deviceStorage, draftKey } from './draft'
 import { scoreRows } from './scoreboard'
 import TurnPipesBoard from './TurnPipesBoard.vue'
@@ -45,6 +46,16 @@ const rows = computed(() =>
 )
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
+
+/** The gate is every pipe wet. */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate: myOutcome.value?.correct ?? null,
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
 
 /** Without a player or a payload (sealed) there is nothing to key a draft by. */
 const key = computed(() => {
@@ -85,6 +96,7 @@ const myColorHex = useMyColorHex(
     :my-outcome="myOutcome"
     :live="live"
     :animate="hasRevealedLive"
+    :won="won"
   />
   <TurnPipesBoard
     v-else

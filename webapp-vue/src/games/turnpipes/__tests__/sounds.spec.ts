@@ -34,7 +34,7 @@ class FakeAudioContext {
   currentTime = 10
   destination = {}
   resume = vi.fn(() => Promise.resolve())
-  decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true }))
+  decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true, duration: 3.7 }))
 
   createGain(): FakeGain {
     const gain: FakeGain = {
@@ -159,6 +159,21 @@ describe('with Web Audio', () => {
     const start = 10 + 0.05
     expect(gains[2]!.gain.setValueAtTime).toHaveBeenCalledWith(0.8, start + 2.5)
     expect(gains[2]!.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, start + 2.5 + 0.6)
+  })
+
+  it('says when an end sound falls silent: its length, success at the end of its fade', async () => {
+    const { preloadSounds, playSound } = await load()
+    preloadSounds()
+    await settle()
+
+    expect(playSound('dry').endsInS).toBeCloseTo(0.05 + 3.7)
+    expect(playSound('success').endsInS).toBeCloseTo(0.05 + 2.5 + 0.6)
+  })
+
+  it('says a silent sound is over at once', async () => {
+    const { playSound } = await load()
+
+    expect(playSound('leak').endsInS).toBe(0)
   })
 
   it('stays silent while muted, and leaves the device’s audio alone', async () => {

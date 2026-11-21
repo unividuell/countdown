@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { gameProps } from '@/games/__tests__/gameFixtures'
+import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
 import { labGameList } from '@/gamelab/games'
@@ -90,5 +90,48 @@ describe('TurnPipesGame', () => {
   it('is in the registry and in the lab', () => {
     expect(gameComponents['turn-pipes']).toBeDefined()
     expect(labGameList).toContainEqual({ id: 'turn-pipes', title: 'Verrohrung' })
+  })
+
+  describe('verdict', () => {
+    const GUESS_OF_MINE = { rotations: PAYLOAD.start }
+    const OUTCOME = { wet: [0], leak: null }
+    const MINE = gameEntry({ userId: 'me', guess: GUESS_OF_MINE, points: 1 })
+    const OTHER = gameEntry({ userId: 'other', guess: GUESS_OF_MINE, points: 1 })
+
+    const won = (over: Partial<GameProps>) =>
+      mountGame({ closed: true, mineUserId: 'me', ...over })
+        .getComponent(TurnPipesReveal)
+        .props('won')
+
+    it('wins with the right pipes while every right tip scores', () => {
+      expect(
+        won({ entries: [MINE], myGuess: GUESS_OF_MINE, outcome: { ...OUTCOME, correct: true } }),
+      ).toBe(true)
+    })
+
+    it('fails with wrong pipes', () => {
+      expect(
+        won({
+          entries: [{ ...MINE, points: 0 }],
+          myGuess: GUESS_OF_MINE,
+          outcome: { ...OUTCOME, correct: false },
+        }),
+      ).toBe(false)
+    })
+
+    it('says nothing without a tip of mine', () => {
+      expect(won({ entries: [OTHER], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', () => {
+      expect(
+        won({
+          awardRule: 'CLOSEST_ONLY',
+          entries: [{ ...MINE, points: 0 }, OTHER],
+          myGuess: GUESS_OF_MINE,
+          outcome: { ...OUTCOME, correct: true },
+        }),
+      ).toBe(false)
+    })
   })
 })

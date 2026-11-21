@@ -8,17 +8,27 @@ import TurnPipesReveal from '../TurnPipesReveal.vue'
 import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
 import { waterStepMs } from '../water'
+import { playVerdict } from '@/ui/verdictSound'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
 const stopFlow = vi.fn()
 
+/** How long the mocked end sound rings, in seconds. */
+const END_S = 3.1
+
 vi.mock('../sounds', () => ({
-  playSound: vi.fn(),
+  playSound: vi.fn(() => ({ stop: vi.fn(), endsInS: END_S })),
   startFlow: vi.fn(() => ({ stop: stopFlow })),
   endSoundOf: ({ leak, correct }: { leak: unknown; correct: boolean }) =>
     leak ? 'leak' : correct ? 'success' : 'dry',
   preloadSounds: vi.fn(),
 }))
 
+/** The reveal's breath between the end sound falling silent and the verdict. */
+const VERDICT_GAP_MS = 200
+const VERDICT_AFTER_MS = END_S * 1000 + VERDICT_GAP_MS
 const SIZE = 6
 const STEP = waterStepMs(SIZE)
 /** useRevealArming's two animation frames, with room to spare but less than a step past them. */
@@ -67,6 +77,7 @@ function mountReveal(over: Record<string, unknown> = {}) {
       myOutcome: MINE,
       live: false,
       animate: false,
+      won: null,
       ...over,
     },
   })
@@ -98,7 +109,9 @@ describe('TurnPipesReveal', () => {
     vi.mocked(playSound).mockClear()
     vi.mocked(startFlow).mockClear()
     vi.mocked(preloadSounds).mockClear()
+    vi.mocked(playVerdict).mockClear()
     stopFlow.mockClear()
+    stopVerdict.mockClear()
   })
 
   afterEach(() => {
@@ -148,6 +161,43 @@ describe('TurnPipesReveal', () => {
 
       expect(stopFlow).toHaveBeenCalledWith(0.3)
       expect(playSound).toHaveBeenCalledExactlyOnceWith('leak')
+    })
+
+    it('plays the shared verdict once my run’s end sound has fallen silent', async () => {
+      mountReveal({ animate: true, won: false })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP)
+      expect(playSound).toHaveBeenCalledExactlyOnceWith('leak')
+
+      // The run's last step lands inside the advance above, up to ARMED_MS before its end.
+      await advance(VERDICT_AFTER_MS - 100)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      await advance(100)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
+    it('plays no verdict for a tip replayed by its name, nor without a tip of mine', async () => {
+      const wrapper = mountReveal({ animate: true, won: true })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP + VERDICT_AFTER_MS)
+      vi.mocked(playVerdict).mockClear()
+
+      await wrapper.get('[data-test="select-them"]').trigger('click')
+      await advance(150 + 2 * STEP + VERDICT_AFTER_MS)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      mountReveal({ animate: true, won: null })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP + VERDICT_AFTER_MS)
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('leaving cuts a verdict that is due or sounding', async () => {
+      const wrapper = mountReveal({ animate: true, won: true })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP + VERDICT_AFTER_MS)
+
+      wrapper.unmount()
+
+      expect(stopVerdict).toHaveBeenCalled()
     })
 
     it('leaves no timer behind when it unmounts', () => {

@@ -29,7 +29,7 @@ der **jedes Rohr Wasser führt**. Ob es stimmt, zeigt sich erst nach der Abgabe.
 
 **Die Geschichte dazu:** Unter jeder Kachel brennt ein Feuer. Je länger der Weg, desto heißer kommt das
 Wasser im Zuber an — darum nutzt man den ganzen Weg. In der Auflösung glüht jede Kachel, durch die das
-Wasser läuft, feuerrot. Kommt das Wasser an, ohne alle Rohre zu nehmen, bleibt der Zuber eiskalt:
+Wasser läuft, bernsteinfarben (nicht rot: Rot läse sich als Fehler). Kommt das Wasser an, ohne alle Rohre zu nehmen, bleibt der Zuber eiskalt:
 zugefroren, Schnee auf Rand und Ofenrohr, Eiszapfen. Die Bilder an den Enden ersetzen Handrad und Abflussloch, die nicht gebräuchlich
 bzw. nicht eindeutig waren; gewählt am Kontaktbogen (2026-11-19) unter Feuerwehr, Bauernhof und Berghütte.
 
@@ -265,7 +265,7 @@ Fünfzehn PNGs, je 32 × 32 px, unter `games/turnpipes/tiles/`:
 | Datei | Inhalt |
 |---|---|
 | `plate.png` | die Platte: grau, Nieten in den Ecken, Licht von oben links |
-| `plate-hot.png` | dieselbe Platte, feuerrot: glüht, wo das Wasser gelaufen ist |
+| `plate-hot.png` | dieselbe Platte, bernsteinfarben: glüht, wo das Wasser gelaufen ist |
 | `straight-dry.png`, `straight-wet.png` | gerades Rohr, leer / mit Wasser |
 | `elbow-dry.png`, `elbow-wet.png` | Bogen, leer / mit Wasser |
 | `stub-dry.png`, `stub-wet.png` | der Stutzen eines Endes: Rohr vom Rand bis zur Mitte; der des Brunnens immer mit Wasser |
@@ -320,7 +320,7 @@ Das Raster bleibt stehen, wie abgegeben. Im Takt von `revealChoreography.ts`:
 
 1. **Wechsel** — nichts bewegt sich.
 2. **`SOLUTION_DELAY_MS` (900 ms)** — das Wasser läuft: die Zellen aus `wet` werden der Reihe nach nass
-   und ihre Platten glühen feuerrot (die Hitze, siehe *Zweck & Spielidee*),
+   und ihre Platten glühen bernsteinfarben (die Hitze, siehe *Zweck & Spielidee*),
    so schnell, dass ein voller Lauf durch alle Rohre **2 s** dauert, gleich welche Größe (8×8 ≈ 31 ms je
    Kachel, 6×6 ≈ 56 ms). So endet er gut vor der Mitgliederleiste über der Karte, die 3,8 s nach der
    Abgabe Punkt oder Totenkopf zeigt (`SPOILER_HOLD_MS`); 110 ms je Kachel waren am Handy zu langsam
