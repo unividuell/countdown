@@ -11,6 +11,7 @@ import { useAuth } from '@/auth/useAuth'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import CopyBlocksBoard from './CopyBlocksBoard.vue'
 import CopyBlocksReveal from './CopyBlocksReveal.vue'
 import { clearDraft, deviceStorage, draftKey } from './draft'
@@ -40,6 +41,16 @@ const rows = computed(() =>
 )
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
+
+/** The gate is the right build. */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate: myOutcome.value?.correct ?? null,
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
 
 /** Kept here, not in the board: the reveal opens at the angle of the submission. */
 const camera = ref<Camera>({ ...START_CAMERA })
@@ -83,6 +94,7 @@ const myColorHex = useMyColorHex(
     :my-outcome="myOutcome"
     :live="live"
     :animate="hasRevealedLive"
+    :won="won"
   />
   <CopyBlocksBoard
     v-else

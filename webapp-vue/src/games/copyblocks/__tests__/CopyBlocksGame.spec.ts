@@ -117,4 +117,51 @@ describe('CopyBlocksGame', () => {
     expect(gameComponents['copy-blocks']).toBeDefined()
     expect(labGameList).toContainEqual({ id: 'copy-blocks', title: 'Blockierung' })
   })
+
+  describe('verdict', () => {
+    const OUTCOME = {
+      fit: { turns: 0, dx: 0, dy: 0, dz: 0 },
+      missing: [],
+      extra: [],
+      wrongType: [],
+    }
+    const MINE = gameEntry({ userId: 'me', guess: GUESS, points: 1 })
+    const OTHER = gameEntry({ userId: 'other', guess: GUESS, points: 1 })
+
+    const won = (over: Partial<GameProps>) =>
+      mountGame({ closed: true, mineUserId: 'me', ...over })
+        .getComponent(CopyBlocksReveal)
+        .props('won')
+
+    it('wins with the right build while every right tip scores', () => {
+      expect(won({ entries: [MINE], myGuess: GUESS, outcome: { ...OUTCOME, correct: true } })).toBe(
+        true,
+      )
+    })
+
+    it('fails with a wrong build', () => {
+      expect(
+        won({
+          entries: [{ ...MINE, points: 0 }],
+          myGuess: GUESS,
+          outcome: { ...OUTCOME, correct: false },
+        }),
+      ).toBe(false)
+    })
+
+    it('says nothing without a tip of mine', () => {
+      expect(won({ entries: [OTHER], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', () => {
+      expect(
+        won({
+          awardRule: 'CLOSEST_ONLY',
+          entries: [{ ...MINE, points: 0 }, OTHER],
+          myGuess: GUESS,
+          outcome: { ...OUTCOME, correct: true },
+        }),
+      ).toBe(false)
+    })
+  })
 })

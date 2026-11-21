@@ -12,6 +12,11 @@ import { SPIN_MS, START_CAMERA } from '@/games/copyblocks/view'
 import type { Camera } from '@/games/copyblocks/view'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
+import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
 const PAYLOAD: CopyBlocksPayload = {
   grid: 6,
@@ -65,6 +70,7 @@ function mountReveal(over: Record<string, unknown> = {}) {
       live: false,
       animate: false,
       camera: START_CAMERA,
+      won: null,
       ...over,
     },
     global: { stubs: { BlockScene: true } },
@@ -351,5 +357,52 @@ describe('CopyBlocksReveal', () => {
     expect(scene(wrapper).props('blocks')).toEqual(PAYLOAD.blocks)
     expect(scene(wrapper).props('marks')).toEqual([])
     expect(wrapper.findAll('[aria-pressed="true"]')).toHaveLength(0)
+  })
+
+  describe('verdict', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({
+        toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+      })
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
+      vi.mocked(playVerdict).mockClear()
+      stopVerdict.mockClear()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    it('plays mine when the solution appears', () => {
+      mountReveal({ animate: true, won: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal({ animate: false, won: false })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('leaving cuts a verdict that is sounding', () => {
+      const wrapper = mountReveal({ animate: true, won: false })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      wrapper.unmount()
+
+      expect(stopVerdict).toHaveBeenCalled()
+    })
+
+    it('asks the header to wake the graph while here', () => {
+      mountReveal()
+
+      expect(soundOnStage.value).toBe(true)
+    })
   })
 })
