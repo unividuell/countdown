@@ -3,10 +3,11 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { FIELD_PX, initialPlacements, initialView, type View } from '@/games/matchscale/gestures'
 import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { Silhouette } from '@/games/matchscale/types'
-import { POP_GAP_MS, POP_MS, unlockSound } from '@/games/matchscale/countSound'
+import { POP_GAP_MS, POP_MS } from '@/games/matchscale/countSound'
+import { unlockSound } from '@/ui/woodKnock'
 
-vi.mock('@/games/matchscale/countSound', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/games/matchscale/countSound')>()),
+vi.mock('@/ui/woodKnock', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/ui/woodKnock')>()),
   unlockSound: vi.fn(),
 }))
 

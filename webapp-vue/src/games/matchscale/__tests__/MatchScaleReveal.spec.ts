@@ -17,7 +17,6 @@ const stopCount = vi.fn()
 vi.mock('../countSound', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../countSound')>()),
   playCount: vi.fn(() => ({ stop: stopCount })),
-  unlockSound: vi.fn(),
 }))
 
 enableAutoUnmount(afterEach)
