@@ -181,9 +181,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
-  gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`. It
-  plays with the solution's beat, only on a reveal that just happened here (`animate`) — a reload
-  is silent — and at once where nothing moves. The reveal shows the `SoundToggle` where the board
+  gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
+  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: with the solution's
+  beat, only on a reveal that just happened here (`animate`) — a reload is silent — and at once
+  where nothing moves. The reveal shows the `SoundToggle` where the board
   had it — except in a game whose sound is the game (Anspielung): a speaker by the song reads as
   muting the song, so the verdict there follows the switch set elsewhere, no toggle of its own.
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one

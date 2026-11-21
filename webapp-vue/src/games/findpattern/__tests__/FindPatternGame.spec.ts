@@ -422,4 +422,37 @@ describe('sealed', () => {
       'Diese Runde lässt sich hier nicht anzeigen.',
     )
   })
+
+  describe('my verdict', () => {
+    async function won(over: Partial<GameProps>) {
+      const wrapper = mountGame({ solution: SOLUTION, mineUserId: 'mine', ...over })
+      await flushPromises()
+      return wrapper.getComponent(FindPatternReveal).props('won')
+    }
+
+    it('wins with the right run while every right tip scores', async () => {
+      expect(await won({ entries: [MINE], outcome: { correct: true } })).toBe(true)
+    })
+
+    it('fails with a wrong run', async () => {
+      expect(await won({ entries: [{ ...MINE, points: 0 }], outcome: { correct: false } })).toBe(
+        false,
+      )
+    })
+
+    it('says nothing without a tip of mine', async () => {
+      expect(await won({ entries: [OTHER], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', async () => {
+      const entries = [
+        { ...MINE, points: 0 },
+        { ...OTHER, points: 1 },
+      ]
+
+      expect(await won({ awardRule: 'CLOSEST_ONLY', entries, outcome: { correct: true } })).toBe(
+        false,
+      )
+    })
+  })
 })

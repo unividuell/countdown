@@ -6,11 +6,8 @@
  * `scoreboard` module. Its one job of its own: the verdict, with the solution's beat, only on a
  * reveal that just happened here. No `SoundToggle`: a speaker by the song would read as muting it.
  */
-import { onBeforeUnmount, onMounted } from 'vue'
 import type { RoundAssets } from '@/api/assets'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { inBackground } from '@/ui/motion'
-import { playVerdict, type Verdict } from '@/ui/verdictSound'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import SongPlayerReveal from './SongPlayerReveal.vue'
 import SongSnippetScoreboard from './SongSnippetScoreboard.vue'
 import type { ScoreRow } from './scoreboard'
@@ -29,25 +26,7 @@ const props = defineProps<{
   assets?: RoundAssets | undefined
 }>()
 
-let beat: ReturnType<typeof setTimeout> | undefined
-let verdict: Verdict | null = null
-
-onMounted(() => {
-  if (!props.animate || inBackground() || props.won === null) return
-
-  const won = props.won
-  beat = setTimeout(
-    () => {
-      verdict = playVerdict(won)
-    },
-    isStill(props.animate) ? 0 : SOLUTION_DELAY_MS,
-  )
-})
-
-onBeforeUnmount(() => {
-  clearTimeout(beat)
-  verdict?.stop()
-})
+useRevealVerdict(() => props.won, props.animate)
 </script>
 
 <template>
