@@ -157,6 +157,10 @@ actually play.
   the list either, so a before/after count around one action says whether that action cancelled
   anything. That is how the flip-dot relight was checked: 56 live animations before `releaseWaves()`
   and 56 after, so it cancels none of them. Ask the pane what *is*, never how long.
+- **To see an animation play, film the iOS simulator.** `xcrun simctl io booted recordVideo x.mp4`
+  as a background job, the gesture through the simulator tool, `pkill -INT -f recordVideo`, then
+  `ffmpeg -i x.mp4 -vf "fps=10,crop=…,scale=…,tile=8x5" -frames:v 1 sheet.png`: one contact sheet,
+  a frame per 100 ms. That shows what moved and when — how the hold's charge was checked.
 - **The upshot: animation *feel* is always a human's call**, never something this pane — or a unit
   test — can verify. It's a second, independent reason (besides reduced motion and a hidden tab)
   why a component's resting state must be correct with the animation simply absent, per

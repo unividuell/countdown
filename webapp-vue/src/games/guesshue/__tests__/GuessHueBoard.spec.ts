@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
 import { playTurn } from '@/games/guesshue/turnSound'
+import HoldButton from '@/ui/HoldButton.vue'
 import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 
 vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
@@ -85,6 +86,10 @@ describe('GuessHueBoard', () => {
       expect(playTurn).not.toHaveBeenCalled()
     })
 
+    it('lets the confirm button knock as it charges', () => {
+      expect(mountBoard().getComponent(HoldButton).props('sound')).toBe(true)
+    })
+
     it('stays silent when sound is off', async () => {
       localStorage.setItem(GAME_SOUND_KEY, 'false')
       const w = mountBoard({ initHue: 100 })
@@ -100,7 +105,7 @@ describe('GuessHueBoard', () => {
     await w.vm.$nextTick()
 
     await w.get('[data-test="hold-button"]').trigger('pointerdown', { isPrimary: true })
-    vi.advanceTimersByTime(2000)
+    vi.advanceTimersByTime(3000)
 
     expect(w.emitted('guess')).toEqual([[210.4]])
   })

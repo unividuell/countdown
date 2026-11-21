@@ -94,6 +94,7 @@ const color = computed(
               :ready="ready"
               :disabled="props.disabled"
               :color="color"
+              sound
               label="Tipp bestätigen — gedrückt halten"
               @confirm="emit('guess', hue)"
             />

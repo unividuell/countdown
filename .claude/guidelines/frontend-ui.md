@@ -149,6 +149,10 @@ it is the only proof available — no unit test can see them.
   a touch there cancels it.** A palm resting on the button while painting would submit unseen.
   `HoldButton` emits `progress` for the board to draw; its `disabled` watch cancels a running hold,
   so the board disables it while the play area is touched. `PaintRatioBoard` is the worked example.
+- **A hold charges, on one curve.** Ring, sparks and knocks all read `ui/charge.ts`: slow, faster,
+  then even from half the hold on. Anything new that should move with the hold takes that curve
+  rather than a timing of its own. `progress` reports the ring as shown, so a board's `HoldLock`
+  follows it. The count-in (`beats`) is exempt from all of it: its ring is a metronome.
 - **A surface where play starts drags at its rim stays off the screen's side edges.** On a phone
   the OS owns a touch that starts there: Android's gesture navigation reads both edges as „back“,
   iOS Safari the left one, and no web API excludes a zone or reports its width (a user setting).

@@ -10,9 +10,17 @@
  *
  * `progress` reports the ring's value (0 … 1, also while it runs back) for a board whose button can
  * be covered — a palm resting on it — and which therefore draws the progress itself, large.
+ *
+ * A plain hold charges the button: the ring gathers pace, sparks fly off it and, where the board
+ * asks, knocks climb a scale — all on one curve (`charge.ts`). A count-in keeps its even beat and
+ * none of that.
  */
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { chargeCurve } from '@/ui/charge'
+import { playCharge, type Charging } from '@/ui/chargeSound'
+import HoldSparks from '@/ui/HoldSparks.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { useGameSound } from '@/ui/useGameSound'
 import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
 
 /** The button's own timings. They stay here so `ui/` never has to reach into a game. */
@@ -46,8 +54,13 @@ const props = withDefaults(
      * as light as the card (a hue); `neutral` is one grey for a fill that is the same in both modes.
      */
     contour?: 'opposite' | 'neutral'
+    /**
+     * Plays the charge's knocks, under the shared sound switch. Only for a board that shows a
+     * `SoundToggle`: sound nobody can switch off where they hear it is none.
+     */
+    sound?: boolean
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round', contour: 'opposite' },
+  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round', contour: 'opposite', sound: false },
 )
 
 const emit = defineEmits<{ confirm: []; progress: [value: number] }>()
@@ -93,7 +106,33 @@ watch(progress, (value) => {
   beat.value = Math.min(beats, Math.max(1, beats - Math.floor(value * beats)))
 })
 
-watch(progress, (value) => emit('progress', value))
+/** What the ring shows. `progress` is the time held; only a count-in fills at that even pace. */
+const shown = computed(() => (counting ? progress.value : chargeCurve(progress.value)))
+
+watch(shown, (value) => emit('progress', value))
+
+const soundOn = useGameSound()
+let charging: Charging | null = null
+
+watch(
+  holding,
+  (isHolding) => {
+    if (counting || !props.sound) return
+
+    if (isHolding) {
+      if (soundOn.value) charging = playCharge(progress.value, props.holdMs)
+      return
+    }
+
+    // A full ring lets its last knock ring out; a released one falls silent.
+    if (progress.value < 1) charging?.stop()
+    charging = null
+  },
+  // Sync: the knocks are scheduled with the press, and `progress` is read before it moves on.
+  { flush: 'sync' },
+)
+
+onBeforeUnmount(() => charging?.stop())
 
 const face = computed<{ text: string; shown: boolean } | null>(() => {
   if (!counting) return null
@@ -264,7 +303,7 @@ const SQUARE_RIM = { mask: SQUARE_FRAME, WebkitMask: SQUARE_FRAME }
  * `requestAnimationFrame` loop.
  */
 const ringStyle = computed(() => ({
-  backgroundImage: `conic-gradient(currentColor ${progress.value * 360}deg, transparent ${progress.value * 360}deg 360deg)`,
+  backgroundImage: `conic-gradient(currentColor ${shown.value * 360}deg, transparent ${shown.value * 360}deg 360deg)`,
   ...(props.shape === 'square' ? SQUARE_RIM : ROUND_RIM),
 }))
 
@@ -295,6 +334,7 @@ const popStyle = computed(() => ({
     animates.
   -->
   <div ref="pop" data-test="hold-pop" class="relative size-full" :style="popStyle">
+    <HoldSparks v-if="!counting" :ring="shown" :active="holding" :shape="props.shape" />
     <!--
       `-inset-[6.25%]` inflates this box by 6.25% of the button's own size on every side — 1.125×
       the button underneath. The wheel hands this component a slot 40% of its own width; at 1.125×
