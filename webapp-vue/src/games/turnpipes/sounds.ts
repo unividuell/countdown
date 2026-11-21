@@ -14,6 +14,8 @@ export type SoundName = 'turn' | 'flow' | 'leak' | 'success' | 'dry'
 
 export interface Playing {
   stop(fadeS?: number): void
+  /** Seconds from now until it falls silent; 0 for a sound that never started, Infinity looping. */
+  endsInS: number
 }
 
 const URLS: Record<SoundName, string> = {
@@ -67,7 +69,7 @@ export function preloadSounds(): void {
   }
 }
 
-const SILENT: Playing = { stop: () => {} }
+const SILENT: Playing = { stop: () => {}, endsInS: 0 }
 
 function play(name: SoundName, loop: boolean): Playing {
   if (!gameSoundOn()) return SILENT
@@ -104,7 +106,13 @@ function play(name: SoundName, loop: boolean): Playing {
     level.gain.linearRampToValueAtTime(0, fadeAt + SUCCESS_FADE_S)
   }
 
+  const rings =
+    name === 'success'
+      ? SUCCESS_FADE_AFTER_S + SUCCESS_FADE_S
+      : buffer.duration / source.playbackRate.value
+
   return {
+    endsInS: loop ? Infinity : START_LOOKAHEAD_SECONDS + rings,
     stop(fadeS = FLOW_FADE_S) {
       const now = graph.currentTime
       level.gain.setValueAtTime(level.gain.value, now)

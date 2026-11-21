@@ -6,6 +6,7 @@
  * and replays its water; the same name again lets go, and the solution fills every pipe.
  *
  *   selection ─▶ shownBoard ─▶ turn (TURN_MS) ─▶ water, one cell per step ─▶ end sound + puddles
+ *                                    my first run only: end sound silent ─▶ VERDICT_GAP_MS ─▶ verdict
  *
  * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
  */
@@ -13,6 +14,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import { useRevealArming } from '@/ui/useRevealArming'
+import { playVerdict, type Verdict } from '@/ui/verdictSound'
+import { inBackground } from '@/ui/motion'
 import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
 import type { ShownBoard } from './reveal'
@@ -35,6 +38,8 @@ const props = defineProps<{
   myOutcome: TurnPipesOutcome | null
   live: boolean
   animate: boolean
+  /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
+  won: boolean | null
 }>()
 
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
@@ -42,6 +47,11 @@ useSoundStage()
 
 /** How far a flow fades out when the water ends. */
 const FLOW_FADE_S = 0.3
+/**
+ * The shared verdict follows the game's own end sound, not the solution's beat: the water runs,
+ * the end sound rings out, then a breath, then the verdict — one after the other, never on top.
+ */
+const VERDICT_GAP_MS = 200
 
 const water = useWaterRun()
 
@@ -87,9 +97,14 @@ function showEnd(board: ShownBoard): void {
 
 let beat: ReturnType<typeof setTimeout> | undefined
 let flow: Playing | undefined
+/** Set by the reveal's own first run; a tip replayed by its name plays no verdict. */
+let verdictDue = false
+let verdictBeat: ReturnType<typeof setTimeout> | undefined
+let verdict: Verdict | null = null
 
 function halt(): void {
   clearTimeout(beat)
+  clearTimeout(verdictBeat)
   water.stop()
   flow?.stop(FLOW_FADE_S)
   flow = undefined
@@ -111,12 +126,27 @@ function present(board: ShownBoard | null): void {
       () => {
         flow?.stop(FLOW_FADE_S)
         flow = undefined
-        playSound(board.endSound)
+        const end = playSound(board.endSound)
         puddles.value = new Set(board.puddles)
+        if (verdictDue) verdictAfter(end.endsInS)
       },
       waterStepMs(props.payload.size),
     )
   }, TURN_MS)
+}
+
+/** The verdict once the end sound, ringing for [endsInS] more, has fallen silent. */
+function verdictAfter(endsInS: number): void {
+  verdictDue = false
+  const won = props.won
+  if (won === null || inBackground()) return
+
+  verdictBeat = setTimeout(
+    () => {
+      verdict = playVerdict(won)
+    },
+    endsInS * 1000 + VERDICT_GAP_MS,
+  )
 }
 
 // The board may never have mounted (reload, history, onlooker): decode here, once per page.
@@ -127,13 +157,20 @@ const still = isStill(props.animate)
 if (still && shown.value) showEnd(shown.value)
 
 useRevealArming(still, () => {
-  beat = setTimeout(() => present(shown.value), SOLUTION_DELAY_MS)
+  beat = setTimeout(() => {
+    verdictDue = true
+    present(shown.value)
+  }, SOLUTION_DELAY_MS)
 })
 
-watch(selectedUserId, () => present(shown.value))
+watch(selectedUserId, () => {
+  verdictDue = false
+  present(shown.value)
+})
 
 onBeforeUnmount(() => {
   halt()
+  verdict?.stop()
 })
 </script>
 
