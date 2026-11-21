@@ -10,6 +10,7 @@
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { useRevealArming } from '@/ui/useRevealArming'
 import BlockScene from './BlockScene.vue'
 import CentreButton from './CentreButton.vue'
@@ -22,6 +23,7 @@ import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from './types'
 import { SPIN_MS, spunYaw } from './view'
 import type { Camera } from './view'
 import { useSurfaceContainer } from '@/ui/surfaceTone'
+import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = defineProps<{
   payload: CopyBlocksPayload
@@ -32,6 +34,8 @@ const props = defineProps<{
   myOutcome: CopyBlocksOutcome | null
   live: boolean
   animate: boolean
+  /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
+  won: boolean | null
 }>()
 
 /** The board's camera, so the reveal opens at the angle of the submission. */
@@ -42,6 +46,11 @@ const ground = useSurfaceContainer()
 const NO_MARKS: Mark[] = []
 
 const still = isStill(props.animate)
+
+useRevealVerdict(() => props.won, props.animate)
+
+// The verdict is governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 
 const solved = ref(still)
 let solutionTimer: ReturnType<typeof setTimeout> | undefined
