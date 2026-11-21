@@ -337,7 +337,9 @@ const buttonStyle = computed(() => (props.color ? { backgroundColor: props.color
  * hidden and shown along with it, not just during the animated transition between the two.
  */
 const popStyle = computed(() => ({
-  transform: props.ready ? 'scale(1)' : 'scale(0)',
+  // `none`, not `scale(1)`: under a greyed caller's `opacity`, Safari clips a transformed control
+  // to its box, and the rim's outer pixel flattens at 12, 3, 6 and 9 o'clock.
+  transform: props.ready ? 'none' : 'scale(0)',
   opacity: props.ready ? 1 : 0,
 }))
 </script>

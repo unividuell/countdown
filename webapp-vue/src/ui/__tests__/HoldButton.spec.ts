@@ -103,11 +103,11 @@ describe('HoldButton', () => {
     expect(style).toContain('opacity: 0')
   })
 
-  it('rests visible once it is ready', () => {
+  it('rests visible once it is ready, with no transform left on it', () => {
     const w = mountButton({ ready: true })
 
     const style = w.get('[data-test="hold-pop"]').attributes('style')
-    expect(style).not.toContain('scale(0)')
+    expect(style).toContain('transform: none')
     expect(style).toContain('opacity: 1')
   })
 

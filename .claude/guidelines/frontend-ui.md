@@ -143,6 +143,9 @@ the ancestor chain answers all three. `HueWheel`.
 
 - **`HoldButton` has no size of its own** (`size-full`): in an auto-height flex column it renders
   0 × 0. Wrap it in a sized box (`size-24 shrink-0`; `RevealCover`, `PlacePatchBoard`).
+- **A resting transform is `none`, never `scale(1)`.** Under a parent's `opacity` (a greyed
+  hold), Safari clips a transformed element to its box: the 1px ring outside a round button
+  flattens at 12, 3, 6 and 9 o'clock (iOS simulator, Anmaßung's „Signieren“).
 - **A percentage width needs a parent that has a width.** In a flex column with `items-center` a
   child is shrink-to-fit, so a `w-[72%]` grandchild resolves against max-content — and a widthless
   inline `<svg viewBox>` contributes 300px. Give the wrapper `w-full`, and drop the container's
