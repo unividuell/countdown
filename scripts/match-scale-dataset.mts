@@ -1517,6 +1517,81 @@ class Sketch {
     return this;
   }
 
+  /** A hole: counts −1, so it cuts the one layer under it (a disc, a ring). */
+  cut(points: Point[]) {
+    this.parts.push({ poly: points, sign: -1 });
+    return this;
+  }
+
+  /** A straight bar from p to q, w wide: a spoke laced off the radial, a leg. */
+  bar(p: Point, q: Point, w: number) {
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    const len = Math.hypot(dx, dy);
+    const [nx, ny] = [(-dy / len) * (w / 2), (dx / len) * (w / 2)];
+    return this.poly([
+      [p[0] + nx, p[1] + ny],
+      [q[0] + nx, q[1] + ny],
+      [q[0] - nx, q[1] - ny],
+      [p[0] - nx, p[1] - ny],
+    ]);
+  }
+
+  /**
+   * A curved bar from radius r1 at angle a out to r2 at a + sweep, bending more towards the
+   * outside (angle ∝ t²): a rover's spoke, leaving the hub radially and meeting the rim aslant.
+   */
+  curve(a: number, r1: number, r2: number, sweep: number, w1: number, w2 = w1) {
+    const k = 16;
+    const at = (t: number): Point => {
+      const [r, b] = [r1 + (r2 - r1) * t, a + sweep * t * t];
+      return [r * Math.cos(b), r * Math.sin(b)];
+    };
+    const left: Point[] = [];
+    const right: Point[] = [];
+    for (let j = 0; j <= k; j++) {
+      const t = j / k;
+      const [p, q] = [at(Math.max(0, t - 0.01)), at(Math.min(1, t + 0.01))];
+      const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+      const w = (w1 + (w2 - w1) * t) / 2;
+      const [nx, ny] = [(-(q[1] - p[1]) / len) * w, ((q[0] - p[0]) / len) * w];
+      const [x, y] = at(t);
+      left.push([x + nx, y + ny]);
+      right.push([x - nx, y - ny]);
+    }
+    return this.poly([...left, ...right.reverse()]);
+  }
+
+  /** n triangles from r1 out to a point at r2, the base `frac` of the pitch: cleats. */
+  spikes(n: number, r1: number, r2: number, frac: number, phase = 0) {
+    for (let i = 0; i < n; i++) {
+      const a = phase + (i * 2 * Math.PI) / n;
+      const h = (Math.PI / n) * frac;
+      this.poly([
+        [r1 * Math.cos(a - h), r1 * Math.sin(a - h)],
+        [r2 * Math.cos(a), r2 * Math.sin(a)],
+        [r1 * Math.cos(a + h), r1 * Math.sin(a + h)],
+      ]);
+    }
+    return this;
+  }
+
+  /** A slot cut at radius r on angle a: `len` along the circle, `w` across, round ends. */
+  slot(a: number, r: number, len: number, w: number) {
+    const k = 8;
+    const [c, s] = [Math.cos(a), Math.sin(a)];
+    const half = Math.max(0, len - w) / 2;
+    const points: Point[] = [];
+    // Two half circles at ±half along the tangent (−s, c), joined by their ends.
+    for (const [side, from] of [[1, -Math.PI / 2], [-1, Math.PI / 2]] as const) {
+      for (let j = 0; j <= k; j++) {
+        const b = from + (Math.PI * j) / k;
+        const [u, v] = [side * half + (Math.cos(b) * w) / 2, (Math.sin(b) * w) / 2];
+        points.push([r * c + u * -s + v * c, r * s + u * c + v * s]);
+      }
+    }
+    return this.cut(points);
+  }
+
   /** The path, normalised; [measured] = [cy, r] of the circle the measure belongs to. */
   emit(measured: [number, number] = [0, 1]) {
     let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
@@ -1578,34 +1653,89 @@ const UP = -Math.PI / 2;
  * are a plausible wheel of that kind, the hand list tunes each to its template.
  */
 const WHEEL_KINDS: Record<string, (p: Params) => ReturnType<Sketch["emit"]>> = {
-  /** Car, truck, tractor: tyre (with lugs), a gap, a rim with spokes or a disc, hub. */
-  tyre({ tyre = 0.3, gap = 0.025, rimBand = 0.06, spokes = 5, spokeW = 0.16, spokeTaper = 0.6, hub = 0.16, lugs = null, rimDisc = false }) {
+  /**
+   * Car, truck, tractor: tyre (with lugs), a gap, a rim with spokes or a disc, hub. Options:
+   * `lugs.pointed` cleats instead of blocks; `holes` slots cut in the disc; `fins` blocks
+   * between a hubcap and the rim; `cap` a hubcap with a nut in the middle.
+   */
+  tyre({ tyre = 0.3, gap = 0.025, rimBand = 0.06, spokes = 5, spokeW = 0.16, spokeTaper = 0.6, hub = 0.16, lugs = null, rimDisc = false, holes = null, fins = null, cap = null }) {
     const k = new Sketch();
     const rimOut = 1 - tyre - gap;
+    const top = lugs ? 1 - lugs.depth : 1;
+    k.ring(0, 0, 1 - tyre, top);
     if (lugs) {
-      k.ring(0, 0, 1 - tyre, 1 - lugs.depth);
-      k.teeth(lugs.count, 1 - lugs.depth - 0.01, 1, lugs.frac ?? 0.5);
-    } else {
-      k.ring(0, 0, 1 - tyre, 1);
+      if (lugs.pointed) k.spikes(lugs.count, top - 0.01, 1, lugs.frac ?? 0.5);
+      else k.teeth(lugs.count, top - 0.01, 1, lugs.frac ?? 0.5);
     }
     if (rimDisc) {
       k.ring(0, 0, hub + gap, rimOut);
+      if (holes)
+        for (let i = 0; i < holes.count; i++)
+          k.slot(UP + (i + 0.5) * (TAU / holes.count), holes.r, holes.len, holes.w);
     } else {
       k.ring(0, 0, rimOut - rimBand, rimOut);
       if (spokes) k.spokes(spokes, hub * 0.8, rimOut - rimBand / 2, spokeW, spokeW * spokeTaper, UP);
     }
-    k.circle(0, 0, hub);
+    if (fins) k.teeth(fins.count, (cap?.r ?? hub) - 0.01, rimOut - rimBand + 0.01, fins.frac);
+    if (cap) {
+      k.ring(0, 0, cap.nut + gap, cap.r);
+      k.circle(0, 0, cap.nut);
+    } else {
+      k.circle(0, 0, hub);
+    }
     return k.emit();
   },
 
-  /** Bicycle, wheelchair, penny-farthing: band, many spokes, hub, a push rim. */
-  spoked({ band = 0.08, spokes = 32, spokeW = 0.012, spokeW2, hub = 0.06, hubRing = 0, pushRim = null }) {
+  /**
+   * Bicycle, wheelchair, penny-farthing: band, many spokes, hub, a push rim. Options: `cross`
+   * laces the spokes off the radial, alternately ±cross at the rim (a motorbike's, a rover's
+   * wire wheel); `tyre` a tyre outside the band (then the band is the rim); `lugs` cleats on the
+   * outermost ring; `hubHoles` holes in the hub, the spokes then start at its edge.
+   */
+  spoked({ band = 0.08, spokes = 32, spokeW = 0.012, spokeW2, hub = 0.06, hubRing = 0, pushRim = null, cross = 0, tyre = null, lugs = null, hubHoles = null }) {
     const k = new Sketch();
-    k.ring(0, 0, 1 - band, 1);
-    k.spokes(spokes, hub * 0.6, 1 - band / 2, spokeW, spokeW2 ?? spokeW, UP);
+    const top = lugs ? 1 - lugs.depth : 1;
+    const rimOut = tyre ? 1 - tyre.w - tyre.gap : top;
+    if (tyre) k.ring(0, 0, 1 - tyre.w, top);
+    if (lugs) k.teeth(lugs.count, top - 0.01, 1, lugs.frac ?? 0.5);
+    k.ring(0, 0, rimOut - band, rimOut);
+    const from = hubHoles ? hub * 0.95 : hub * 0.6;
+    if (cross)
+      for (let i = 0; i < spokes; i++) {
+        const a = UP + (i * TAU) / spokes;
+        const b = a + (i % 2 === 0 ? cross : -cross);
+        const [r1, r2] = [from, rimOut - band / 2];
+        k.bar([r1 * Math.cos(a), r1 * Math.sin(a)], [r2 * Math.cos(b), r2 * Math.sin(b)], spokeW);
+      }
+    else k.spokes(spokes, from, rimOut - band / 2, spokeW, spokeW2 ?? spokeW, UP);
     k.circle(0, 0, hub);
+    if (hubHoles)
+      for (let i = 0; i < hubHoles.count; i++) {
+        const a = UP + (i * TAU) / hubHoles.count;
+        k.circle(Math.cos(a) * hubHoles.r, Math.sin(a) * hubHoles.r, hubHoles.size, -1);
+      }
     if (hubRing) k.ring(0, 0, hub + hubRing * 0.5, hub + hubRing);
     if (pushRim) k.ring(0, 0, pushRim - 0.015, pushRim);
+    return k.emit();
+  },
+
+  /**
+   * Mars rover wheel: a thin skin with grousers, curved spokes, a hub with bolt holes. The skin
+   * is seen edge-on, so it is a narrow band; the spokes bend `sweep` radians on their way out.
+   */
+  rover({ skin = 0.06, lugs = { count: 24, depth: 0.04, frac: 0.3 }, spokes = 6, spokeW = 0.05, spokeW2, sweep = 0.9, hub = 0.22, bore = 0.08, bolts = null }) {
+    const k = new Sketch();
+    const top = 1 - lugs.depth;
+    k.ring(0, 0, top - skin, top);
+    k.teeth(lugs.count, top - 0.01, 1, lugs.frac);
+    for (let i = 0; i < spokes; i++)
+      k.curve(UP + (i * TAU) / spokes, hub * 0.9, top - skin / 2, sweep, spokeW, spokeW2 ?? spokeW);
+    k.ring(0, 0, bore, hub);
+    if (bolts)
+      for (let i = 0; i < bolts.count; i++) {
+        const a = UP + ((i + 0.5) * TAU) / bolts.count;
+        k.circle(Math.cos(a) * bolts.r, Math.sin(a) * bolts.r, bolts.size, -1);
+      }
     return k.emit();
   },
 
@@ -1706,17 +1836,28 @@ const WHEEL_KINDS: Record<string, (p: Params) => ReturnType<Sketch["emit"]>> = {
     return k.emit([0, measure]);
   },
 
-  /** Rotor from above: n blades; tip to tip is the measure. */
-  rotor({ blades = 4, rootW = 0.05, midW = 0.11, tipW = 0.06, hub = 0.09, phase = Math.PI / 4 }) {
+  /**
+   * Rotor from above: n blades; tip to tip is the measure. Options: `at` the blades' angles
+   * instead of n even ones; `profile` the blade as [r, width] stations; `body` a box in the
+   * middle {w, h}; `legs` {at, r, w, foot}: bars out to feet.
+   */
+  rotor({ blades = 4, rootW = 0.05, midW = 0.11, tipW = 0.06, hub = 0.09, phase = Math.PI / 4, at = null, profile = null, body = null, legs = null }) {
     const k = new Sketch();
-    for (let i = 0; i < blades; i++) {
-      const a = phase + (i * TAU) / blades;
+    const angles: number[] = at ?? Array.from({ length: blades }, (_, i) => phase + (i * TAU) / blades);
+    const along: number[][] = profile ?? [[0, rootW], [0.35, midW], [0.85, tipW * 1.1], [1, tipW * 0.6]];
+    for (const a of angles) {
       const [c, s] = [Math.cos(a), Math.sin(a)];
-      const along = [[0, rootW], [0.35, midW], [0.85, tipW * 1.1], [1, tipW * 0.6]];
       const left = along.map(([r, w]): Point => [c * r - (s * w) / 2, s * r + (c * w) / 2]);
       const right = along.map(([r, w]): Point => [c * r + (s * w) / 2, s * r - (c * w) / 2]);
       k.poly([...left, ...right.reverse()]);
     }
+    if (body) k.poly([[-body.w / 2, -body.h / 2], [body.w / 2, -body.h / 2], [body.w / 2, body.h / 2], [-body.w / 2, body.h / 2]]);
+    if (legs)
+      for (const a of legs.at) {
+        const foot: Point = [Math.cos(a) * legs.r, Math.sin(a) * legs.r];
+        k.bar([0, 0], foot, legs.w);
+        k.circle(foot[0], foot[1], legs.foot);
+      }
     k.circle(0, 0, hub);
     k.circle(0, 0, 1, 0);
     return k.emit();
