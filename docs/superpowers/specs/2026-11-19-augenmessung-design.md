@@ -46,6 +46,12 @@ Skripts gehört in den zweiten PR.
 | Länder | von oben, flächentreu | Natural Earth Admin-0 (gemeinfrei) | aus der Geometrie selbst |
 | Tiere | von der Seite | PhyloPic (meist CC0/CC BY) | von Hand, an der Silhouette gemessen |
 | Räder | von der Seite (Rotor, Roulette: von oben) | selbst gezeichnet, nach einer Bildvorlage je Rad | von Hand: Neumaß, Durchmesser |
+| Landmassen | von oben, flächentreu | Natural Earth Admin-0, Länder je Kontinent verschmolzen | aus der Geometrie selbst |
+
+**Landmassen** sind die sechs Kontinente, je die zusammenhängende Festlandfläche: Eurasien als eine
+(Natural Earth zählt Russland ganz zu Europa, eine Ural-Linie wäre Handarbeit), vorgelagerte Inseln
+fallen weg. Inseln als eigene Einträge sind auf dem Kontaktbogen verworfen. Die Mercator-Karte im Kopf
+ist der Reiz: flächentreu sehen die Kontinente anders aus als gewohnt.
 
 **Räder** mischen Fahrzeugklassen und „Räder im weitesten Sinne“ (Riesenrad, Steuerrad, Käselaib):
 zwei Pkw-Räder lägen nahe Faktor 1. Je Klasse ein konkretes, benanntes Stück mit Quelle; gespielt
@@ -66,14 +72,15 @@ Bauwerke: der Grundriss reicht nicht.
 **Ziehung.**
 
 1. Kategorie gleichverteilt aus den geladenen Kategorien.
-2. A gleichverteilt aus der Kategorie.
-3. B gleichverteilt aus den übrigen Einträgen, deren Faktor zu A in **[1/10, 10]** liegt (Länge, nicht
-   Fläche). Hat A keinen solchen Partner, wird A neu gezogen.
+2. Ein Paar gleichverteilt aus allen Paaren der Kategorie, deren Faktor in **[1/10, 10]** liegt (Länge,
+   nicht Fläche).
+3. Welcher der beiden A ist, entscheidet ein Münzwurf.
 
-**Keine Wiederholung pro Edition, solange es geht** — wie die Pool-Spiele über
-`context.previousParams`: ein Eintrag, der in einer früheren Runde der Edition als A oder B dran war,
-wird nicht wieder gezogen. Bleibt in der Kategorie kein Paar übrig, gilt die Sperre für diese Kategorie
-nicht mehr. *(Entscheidung des Entwurfs.)*
+**Kein Paar zweimal pro Edition, solange es geht** — über `context.previousParams`: ein Paar, das in
+einer früheren Runde der Edition dran war, wird nicht wieder gezogen, in keiner Reihenfolge. Seine
+Einträge dürfen mit anderen Partnern wiederkommen; so trägt auch eine kleine Kategorie (sechs
+Kontinente, 15 Paare) eine Edition. Ist jedes Paar der Kategorie gezogen, gilt die Sperre für diese
+Kategorie nicht mehr.
 
 `RoundContext.difficulty` bleibt ungenutzt, wie bei der Farbausmalung. *(Entscheidung des Entwurfs.)*
 
@@ -106,7 +113,8 @@ fertige Kategorie im Diff unberührt, wenn eine andere wächst.
 
 ```yaml
 category: example            # Schlüssel, [a-z0-9-]+, eindeutig
-displayName: Beispielkategorie
+displayName: Beispielkategorie   # Überschrift über Spielfläche und Auflösung
+legend: "Wie die Silhouetten gezeichnet sind."   # optional, unter der Überschrift (Projektion)
 attribution: "Silhouetten: Beispielquelle"   # sichtbar in der Auflösung, optional
 entries:
   - name: Beispielding Alpha
@@ -276,6 +284,9 @@ games/matchscale/
   MatchScaleScoreboard.vue + scoreboard.ts
   types.ts                 Payload, Lösung, Outcome, Tipp — defensiv eingeengt
 ```
+
+Über Spielfläche und Auflösung steht der Name der Kategorie als Überschrift, darunter klein ihre
+`legend`, wo sie eine hat: bei Natural-Earth-Kategorien die Projektion.
 
 ### Spielfläche
 
