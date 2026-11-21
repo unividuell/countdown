@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.unividuell</groupId>
 	<artifactId>auth-spring-boot-starter-parent</artifactId>
-	<version>0.3.0</version>
+	<version>0.4.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>auth-spring-boot-starter-parent</name>
 	<description>Sign-in for Spring Boot apps, a single-page app's or a server-rendered one's: GitHub sign-in in production, a locked test-user picker everywhere else.</description>
