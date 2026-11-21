@@ -53,7 +53,8 @@ export function solutionText(factor: number, truth: Truth | null): string {
 
 /**
  * The head's „Toleranz“: how far a tip may sit from the solution, in the „Abstand“ column's terms —
- * `−40 – +50` for 200 cm at 1.25; without a length the factor, `1,25×`. `null` in phase two.
+ * `[−40,50]` for 200 cm at 1.25, narrow as a head cell must be; without a length the factor,
+ * `1,25×`. `null` in phase two.
  */
 export function toleranceText(toleranceFactor: number | null, truth: Truth | null): string | null {
   if (toleranceFactor === null) return null
@@ -61,10 +62,10 @@ export function toleranceText(toleranceFactor: number | null, truth: Truth | nul
 
   const { metres, unit } = truth
   const solution = inUnit(metres, unit)
-  const low = formatSigned(inUnit(metres / toleranceFactor, unit) - solution)
-  const high = formatSigned(inUnit(metres * toleranceFactor, unit) - solution)
+  const low = formatLength(inUnit(metres / toleranceFactor, unit) - solution)
+  const high = formatLength(inUnit(metres * toleranceFactor, unit) - solution)
 
-  return `${low} – ${high}`
+  return `[${low},${high}]`
 }
 
 /**

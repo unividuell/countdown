@@ -345,7 +345,7 @@ Abweichung aufsteigend, `userId` als Tiebreak. Pure `scoreboard.ts`.
 Alles als Länge von B in der Einheit der Runde. Linear skaliert ist der Tipp
 `b.metres × scale / factor`. Tipp „160“; Abstand = Tipp − Lösung, mit Vorzeichen: „−40“, „+50“,
 „±0“ (aus den gerundeten Werten, so geht die Zeile auf). Darüber die Kopfzeilen „Lösung“ („200“) und
-„Toleranz*“ („−40 – +50“: wie weit ein Tipp von der Lösung liegen darf, gerechnet wie „Abstand“ —
+„Toleranz*“ („[−40,50]“: wie weit ein Tipp von der Lösung liegen darf, gerechnet wie „Abstand“ —
 `b ÷ 1,25 − b` bis `b × 1,25 − b`, gerundet; nur Phase eins). In den Zellen keine
 Einheit, sie steht im Spaltenkopf: „Tipp [cm]“, „Abstand [cm]“, einzeilig — die Spalten wachsen dafür.
 Unter der Tabelle die Legende zum Stern, „* bis 25 % zu groß oder 20 % zu klein“ (ehrlich in Prozent:
