@@ -68,14 +68,14 @@ const face = computed<{ text: string; label: string; tone: Tone } | null>(() => 
     <span
       v-if="roundNumber !== null"
       data-test="game-header-round"
-      class="shrink-0 text-sm tabular-nums"
+      class="shrink-0 text-base tabular-nums"
       :class="phaseTwo ? 'text-board-phase-two' : 'text-board-phase-one'"
     >
       <!-- Visible: the bare number. Spoken: what it is a number of — the band is the only place
            the round is named. -->
       <span class="sr-only">Runde </span>{{ roundNumber }}
     </span>
-    <h1 data-test="game-header-title" class="min-w-0 flex-1 truncate text-sm font-semibold">
+    <h1 data-test="game-header-title" class="min-w-0 flex-1 truncate text-base font-semibold">
       {{ title }}
     </h1>
     <!-- `shrink-0`, so a long game name loses characters before the clock loses digits: the name

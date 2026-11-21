@@ -22,6 +22,13 @@ const clockOf = (w: ReturnType<typeof mountHeader>) => w.getComponent(FlipDotBoa
 enableAutoUnmount(afterEach)
 
 describe('GameHeader', () => {
+  it('sets number and title at the base size, both alike', () => {
+    const w = mount(GameHeader, { props: { roundNumber: 3, title: 'Anmaßung', endsAt: null } })
+
+    expect(w.get('[data-test="game-header-round"]').classes()).toContain('text-base')
+    expect(w.get('[data-test="game-header-title"]').classes()).toContain('text-base')
+  })
+
   beforeEach(() => {
     vi.useFakeTimers({ now: NOW })
     _resetSharedClock()
