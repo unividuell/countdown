@@ -51,11 +51,12 @@ data class MatchScaleMeasureDto(
  * closest guess scores.
  *
  * [measureA] and [measureB] are as secret as [factor] and leave only through the solution. They
- * default to `null` so rounds frozen before they existed still read.
+ * default to `null` so rounds frozen before they existed still read, as does [categoryLegend].
  */
 data class MatchScaleParams(
     val category: String,
     val categoryName: String,
+    val categoryLegend: String? = null,
     val a: MatchScaleSilhouette,
     val b: MatchScaleSilhouette,
     val factor: Double,
@@ -71,6 +72,7 @@ data class MatchScaleParams(
  */
 data class MatchScalePayload(
     val categoryName: String,
+    val categoryLegend: String?,
     val a: MatchScaleSilhouette,
     val b: MatchScaleSilhouette,
     val tolerance: Double?,
@@ -124,6 +126,7 @@ class MatchScaleGameType(
         return MatchScaleParams(
             category = pair.category.key,
             categoryName = pair.category.displayName,
+            categoryLegend = pair.category.legend,
             a = pair.a.toSilhouette(),
             b = pair.b.toSilhouette(),
             factor = pair.factor,
@@ -138,6 +141,7 @@ class MatchScaleGameType(
 
     override fun present(params: MatchScaleParams) = MatchScalePayload(
         categoryName = params.categoryName,
+        categoryLegend = params.categoryLegend,
         a = params.a,
         b = params.b,
         tolerance = params.tolerance,

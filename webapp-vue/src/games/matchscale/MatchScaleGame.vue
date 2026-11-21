@@ -89,29 +89,42 @@ function onGuess(value: { scale: number }, from: Submitted): void {
   <p v-if="payload === null" class="text-sm text-on-surface-variant">
     Diese Runde lässt sich hier nicht anzeigen.
   </p>
-  <MatchScaleReveal
-    v-else-if="solution"
-    :payload="payload"
-    :factor="solution.factor"
-    :measure-a="solution.a"
-    :measure-b="solution.b"
-    :my-scale="myScale"
-    :my-color-hex="myColorHex"
-    :mine-user-id="props.mineUserId"
-    :rows="rows"
-    :won="won"
-    :live="live"
-    :animate="animate"
-    :from="submitted"
-  />
-  <MatchScaleBoard
-    v-else
-    :payload="payload"
-    :disabled="props.disabled"
-    :draft-key="key"
-    :award-rule="props.awardRule"
-    :award-points="props.awardPoints"
-    :my-color-hex="myColorHex"
-    @guess="onGuess"
-  />
+  <div v-else class="flex flex-col gap-3">
+    <!-- The category, board and reveal alike: what the two silhouettes are. -->
+    <header class="flex flex-col gap-1">
+      <h2 class="text-2xl">{{ payload.categoryName }}</h2>
+      <p
+        v-if="payload.categoryLegend !== null"
+        data-test="match-scale-category-legend"
+        class="text-xs text-on-surface-variant"
+      >
+        {{ payload.categoryLegend }}
+      </p>
+    </header>
+    <MatchScaleReveal
+      v-if="solution"
+      :payload="payload"
+      :factor="solution.factor"
+      :measure-a="solution.a"
+      :measure-b="solution.b"
+      :my-scale="myScale"
+      :my-color-hex="myColorHex"
+      :mine-user-id="props.mineUserId"
+      :rows="rows"
+      :won="won"
+      :live="live"
+      :animate="animate"
+      :from="submitted"
+    />
+    <MatchScaleBoard
+      v-else
+      :payload="payload"
+      :disabled="props.disabled"
+      :draft-key="key"
+      :award-rule="props.awardRule"
+      :award-points="props.awardPoints"
+      :my-color-hex="myColorHex"
+      @guess="onGuess"
+    />
+  </div>
 </template>

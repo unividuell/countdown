@@ -80,17 +80,33 @@ class MatchScaleGameTypeTest(
     fun `the payload carries exactly what the player needs and nothing else`() {
         val node = fieldsOf(game.present(draw(phase = Phase.ONE)))
 
-        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "tolerance")
+        node.propertyNames().toSet() shouldBe setOf("categoryName", "categoryLegend", "a", "b", "tolerance")
         listOf("a", "b").forEach {
             node.get(it).propertyNames().toSet() shouldBe setOf("name", "path", "width", "height", "attribution")
         }
     }
 
     @Test
+    fun `the payload names the category's legend, null for a category without one`() {
+        val params = draw(phase = Phase.ONE)
+        val legend = game.present(params.copy(categoryLegend = "Wie gezeichnet.")).categoryLegend
+
+        legend shouldBe "Wie gezeichnet."
+        fieldsOf(game.present(params.copy(categoryLegend = null))).get("categoryLegend").isNull shouldBe true
+    }
+
+    @Test
+    fun `a round frozen before legends existed still reads`() {
+        val stored = mapper.valueToTree<ObjectNode>(draw(phase = Phase.ONE)).apply { remove("categoryLegend") }
+
+        springMapper.treeToValue(stored, MatchScaleParams::class.java).categoryLegend.shouldBeNull()
+    }
+
+    @Test
     fun `phase two's payload still carries tolerance, as an explicit null`() {
         val node = fieldsOf(game.present(draw(phase = Phase.TWO)))
 
-        node.propertyNames().toSet() shouldBe setOf("categoryName", "a", "b", "tolerance")
+        node.propertyNames().toSet() shouldBe setOf("categoryName", "categoryLegend", "a", "b", "tolerance")
         node.get("tolerance").isNull shouldBe true
     }
 

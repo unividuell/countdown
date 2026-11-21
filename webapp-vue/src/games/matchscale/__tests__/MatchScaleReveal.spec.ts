@@ -23,6 +23,7 @@ enableAutoUnmount(afterEach)
 
 const PAYLOAD: MatchScalePayload = {
   categoryName: 'Formen',
+  categoryLegend: null,
   a: { name: 'Alpha', path: 'M0 0H1000V500H0Z', width: 1000, height: 500, attribution: null },
   b: { name: 'Beta', path: 'M0 0H600V1000H0Z', width: 600, height: 1000, attribution: null },
   tolerance: 0.1,

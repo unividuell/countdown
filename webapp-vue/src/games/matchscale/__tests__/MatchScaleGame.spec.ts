@@ -17,6 +17,7 @@ vi.mock('@/auth/useAuth', async () => {
 
 const PAYLOAD: MatchScalePayload = {
   categoryName: 'Formen',
+  categoryLegend: null,
   a: { name: 'Alpha', path: 'M0 0H1000V500H0Z', width: 1000, height: 500, attribution: null },
   b: { name: 'Beta', path: 'M0 0H600V1000H0Z', width: 600, height: 1000, attribution: null },
   tolerance: 0.1,
@@ -95,6 +96,20 @@ describe('MatchScaleGame', () => {
     })
 
     expect(wrapper.getComponent(MatchScaleReveal).props('won')).toBe(true)
+  })
+
+  it('heads the board and the reveal with the category, its legend beneath', () => {
+    const board = mountGame()
+    const reveal = mountGame({
+      payload: { ...PAYLOAD, categoryLegend: 'Wie gezeichnet.' },
+      solution: { factor: 1.6, tolerance: 0.1 },
+    })
+
+    expect(board.get('h2').text()).toBe('Formen')
+    expect(board.find('[data-test="match-scale-category-legend"]').exists()).toBe(false)
+
+    expect(reveal.get('h2').text()).toBe('Formen')
+    expect(reveal.get('[data-test="match-scale-category-legend"]').text()).toBe('Wie gezeichnet.')
   })
 
   it('is in the registry and in the lab', () => {

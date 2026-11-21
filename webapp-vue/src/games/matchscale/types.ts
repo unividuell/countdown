@@ -14,6 +14,8 @@ export interface Silhouette {
 
 export interface MatchScalePayload {
   categoryName: string
+  /** How the category's silhouettes were drawn (a map projection), or `null`. */
+  categoryLegend: string | null
   a: Silhouette
   b: Silhouette
   /** The gate as a share of the true size either way (`0.25` = ±25 %), or `null` in phase two. */
@@ -65,7 +67,16 @@ export function asMatchScalePayload(value: unknown): MatchScalePayload | null {
   if (typeof raw.categoryName !== 'string' || a === null || b === null) return null
   if (raw.tolerance !== null && !positive(raw.tolerance)) return null
 
-  return { categoryName: raw.categoryName, a, b, tolerance: raw.tolerance }
+  // Decoration only: junk or a round frozen before legends reads as none, not as a broken round.
+  const legend = typeof raw.categoryLegend === 'string' ? raw.categoryLegend.trim() : ''
+
+  return {
+    categoryName: raw.categoryName,
+    categoryLegend: legend === '' ? null : legend,
+    a,
+    b,
+    tolerance: raw.tolerance,
+  }
 }
 
 export function asMatchScaleSolution(value: unknown): MatchScaleSolution | null {

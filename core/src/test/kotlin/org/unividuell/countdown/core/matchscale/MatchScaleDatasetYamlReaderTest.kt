@@ -17,9 +17,11 @@ class MatchScaleDatasetYamlReaderTest {
         displayName: String = "Beispielkategorie",
         entries: String = entry(),
         categoryAttribution: String? = null,
+        legend: String? = null,
     ) = buildString {
         appendLine("category: $category")
         appendLine("displayName: \"$displayName\"")
+        if (legend != null) appendLine("legend: \"$legend\"")
         if (categoryAttribution != null) appendLine("attribution: \"$categoryAttribution\"")
         appendLine("entries:")
         append(entries)
@@ -78,6 +80,13 @@ class MatchScaleDatasetYamlReaderTest {
     @Test
     fun `attribution is null when neither entry nor category has one`() {
         read(file()).entries.single().attribution shouldBe null
+    }
+
+    @Test
+    fun `reads the category's legend, null when absent or blank`() {
+        read(file(legend = "Wie die Umrisse gezeichnet sind.")).legend shouldBe "Wie die Umrisse gezeichnet sind."
+        read(file()).legend shouldBe null
+        read(file(legend = " ")).legend shouldBe null
     }
 
     @Test

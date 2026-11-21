@@ -37,6 +37,7 @@ object MatchScaleDatasetYamlReader {
         if (displayName.isEmpty()) throw MatchScaleDatasetException("$origin: displayName is blank")
 
         val categoryAttribution = (root["attribution"] as? String)?.trim()?.ifEmpty { null }
+        val legend = (root["legend"] as? String)?.trim()?.ifEmpty { null }
 
         val raw = root["entries"] as? List<*>
         if (raw.isNullOrEmpty()) throw MatchScaleDatasetException("$origin: entries is missing or empty")
@@ -50,7 +51,7 @@ object MatchScaleDatasetYamlReader {
             throw MatchScaleDatasetException("$origin: duplicate entry name '${duplicate.key}'")
         }
 
-        return MatchScaleCategory(key = key, displayName = displayName, entries = entries)
+        return MatchScaleCategory(key = key, displayName = displayName, entries = entries, legend = legend)
     }
 
     private fun entry(item: Any?, index: Int, origin: String, categoryAttribution: String?): MatchScaleEntry {

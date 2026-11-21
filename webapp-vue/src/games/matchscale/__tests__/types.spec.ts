@@ -13,7 +13,13 @@ const SILHOUETTE = {
   height: 600,
   attribution: null,
 }
-const PAYLOAD = { categoryName: 'Flächen', a: SILHOUETTE, b: SILHOUETTE, tolerance: 0.1 }
+const PAYLOAD = {
+  categoryName: 'Flächen',
+  categoryLegend: null,
+  a: SILHOUETTE,
+  b: SILHOUETTE,
+  tolerance: 0.1,
+}
 
 describe('asMatchScalePayload', () => {
   it('accepts a valid payload, with or without a tolerance and attribution', () => {
@@ -25,6 +31,17 @@ describe('asMatchScalePayload', () => {
 
     const credited = { ...SILHOUETTE, attribution: 'Someone, CC BY' }
     expect(asMatchScalePayload({ ...PAYLOAD, a: credited })?.a.attribution).toBe('Someone, CC BY')
+  })
+
+  it('keeps a legend, reads a missing or junk one as none', () => {
+    const legend = 'Wie gezeichnet.'
+
+    expect(asMatchScalePayload({ ...PAYLOAD, categoryLegend: legend })?.categoryLegend).toBe(legend)
+    expect(
+      asMatchScalePayload({ ...PAYLOAD, categoryLegend: undefined })?.categoryLegend,
+    ).toBeNull()
+    expect(asMatchScalePayload({ ...PAYLOAD, categoryLegend: 3 })?.categoryLegend).toBeNull()
+    expect(asMatchScalePayload({ ...PAYLOAD, categoryLegend: ' ' })?.categoryLegend).toBeNull()
   })
 
   it.each([

@@ -18,6 +18,7 @@ const SILHOUETTE = {
 }
 const PAYLOAD: MatchScalePayload = {
   categoryName: 'Flächen',
+  categoryLegend: null,
   a: SILHOUETTE,
   b: { ...SILHOUETTE, path: 'M0 0L20 20Z' },
   tolerance: 0.1,
