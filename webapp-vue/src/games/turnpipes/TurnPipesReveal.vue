@@ -11,7 +11,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import { useRevealArming } from '@/ui/useRevealArming'
 import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
@@ -36,6 +36,9 @@ const props = defineProps<{
   live: boolean
   animate: boolean
 }>()
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 /** How far a flow fades out when the water ends. */
 const FLOW_FADE_S = 0.3
@@ -147,12 +150,6 @@ onBeforeUnmount(() => {
         :puddles="puddles"
         :cold="shown?.endSound === 'dry'"
         :interactive="false"
-      />
-    </div>
-
-    <div class="-mb-3 flex justify-end">
-      <SoundToggle
-        class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
       />
     </div>
 

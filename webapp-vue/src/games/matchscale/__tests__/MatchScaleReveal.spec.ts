@@ -12,6 +12,7 @@ import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { playCount } from '../countSound'
 import { countTones, growMs } from '../countTones'
 import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 const stopCount = vi.fn()
 vi.mock('../countSound', async (importOriginal) => ({
@@ -325,11 +326,9 @@ describe('MatchScaleReveal', () => {
       expect(stopCount).toHaveBeenCalled()
     })
 
-    it('keeps the toggle in the field, where the board has it', () => {
-      const wrapper = mountReveal({ animate: false })
-
-      expect(wrapper.getComponent(ScaleField).find('button[aria-label="Ton"]').exists()).toBe(true)
-      expect(wrapper.findAll('button[aria-label="Ton"]')).toHaveLength(1)
+    it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+      expect(mountReveal({ animate: false }).find('button[aria-label="Ton"]').exists()).toBe(false)
+      expect(soundOnStage.value).toBe(true)
     })
 
     it('stays silent without animation', async () => {

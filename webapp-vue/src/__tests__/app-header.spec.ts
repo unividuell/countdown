@@ -173,8 +173,16 @@ describe('App main header', () => {
   // short of the viewport's edge, 24px leaves it a margin.
   it('gives the header more room above from md, for the menu dialog', () => {
     expect(mount(App, { global: { stubs } }).get('header').classes()).toEqual(
-      expect.arrayContaining(['py-3', 'md:pt-6']),
+      expect.arrayContaining(['pt-3', 'md:pt-6']),
     )
+  })
+
+  // `main`'s own top padding is the gap to the content; a second one under the header doubled it.
+  it('leaves the header no padding below', () => {
+    const classes = mount(App, { global: { stubs } }).get('header').classes()
+
+    expect(classes).not.toContain('py-3')
+    expect(classes.some((c) => /^(md:)?pb-/.test(c))).toBe(false)
   })
 
   // The footer carries the legal link (moved out of the menu) and the copyright, both

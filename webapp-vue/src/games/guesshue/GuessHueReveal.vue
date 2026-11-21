@@ -22,7 +22,7 @@ import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { isStill } from '@/games/revealChoreography'
 import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { inBackground } from '@/ui/motion'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = defineProps<{
   description: string
@@ -41,6 +41,9 @@ const props = defineProps<{
 }>()
 
 useRevealVerdict(() => props.won, props.animate)
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 let landings: ReturnType<typeof setTimeout>[] = []
 
@@ -79,10 +82,6 @@ onBeforeUnmount(() => {
         :guesses="props.guesses"
         :mine-user-id="props.mineUserId"
         :animate="props.animate"
-      />
-      <!-- Where the board has it, so it does not jump at the switch. -->
-      <SoundToggle
-        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
       />
     </div>
 

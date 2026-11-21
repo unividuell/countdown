@@ -11,7 +11,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import { deviceStorage, loadDraft, saveDraft, sweepDrafts } from './draft'
 import PipeGrid from './PipeGrid.vue'
@@ -37,6 +37,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ guess: [value: TurnPipesGuess]; reveal: [] }>()
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 /** The round on show; `null` under the cover. */
 const round = computed(() => (props.sealed ? null : props.payload))
@@ -139,10 +142,6 @@ function submit(): void {
               </span>
             </template>
           </div>
-          <SoundToggle
-            v-if="round"
-            class="col-start-3 ms-4 flex size-11 cursor-pointer items-center justify-center justify-self-start rounded-full bg-surface-container text-on-surface"
-          />
         </div>
       </div>
       <RevealCover v-if="!round" state="ready" :busy="props.disabled" @start="emit('reveal')" />

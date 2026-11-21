@@ -9,6 +9,7 @@ import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { MatchScalePayload } from '@/games/matchscale/types'
 import { playPop } from '@/games/matchscale/countSound'
 import HoldButton from '@/ui/HoldButton.vue'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 const stopPop = vi.fn()
 vi.mock('@/games/matchscale/countSound', async (importOriginal) => ({
@@ -116,10 +117,9 @@ describe('MatchScaleBoard', () => {
     expect(stopPop).toHaveBeenCalledOnce()
   })
 
-  it('has the sound toggle in the field', () => {
-    const wrapper = mountBoard()
-
-    expect(wrapper.getComponent(ScaleField).find('button[aria-label="Ton"]').exists()).toBe(true)
+  it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+    expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(false)
+    expect(soundOnStage.value).toBe(true)
   })
 
   it('a finger on the field keeps the hold off', async () => {
