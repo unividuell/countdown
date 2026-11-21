@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
+import type { RevealGuess } from '@/games/guesshue/reveal'
+import { playMarker } from '@/games/guesshue/turnSound'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { GAME_SOUND_KEY } from '@/ui/useGameSound'
 import { playVerdict } from '@/ui/verdictSound'
@@ -8,7 +10,22 @@ import { playVerdict } from '@/ui/verdictSound'
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
+vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/games/guesshue/turnSound')>()),
+  playMarker: vi.fn(),
+}))
+
 enableAutoUnmount(afterEach)
+
+const guess = (userId: string, revealDelayMs: number): RevealGuess => ({
+  userId,
+  hue: 100,
+  colorHex: '#9fb0c8',
+  revealDelayMs,
+})
+
+/** Mine is on the wheel from the start; the other two land 120 ms apart. */
+const GUESSES = [guess('me', 1945), guess('fry', 1945), guess('leela', 2065)]
 
 function mountReveal(props: Partial<InstanceType<typeof GuessHueReveal>['$props']> = {}) {
   return mount(GuessHueReveal, {
@@ -38,6 +55,7 @@ describe('GuessHueReveal', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.mocked(playVerdict).mockClear()
+    vi.mocked(playMarker).mockClear()
     stopVerdict.mockClear()
     localStorage.removeItem(GAME_SOUND_KEY)
     setHidden(false)
@@ -110,5 +128,57 @@ describe('GuessHueReveal', () => {
     vi.advanceTimersByTime(SOLUTION_DELAY_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
+  })
+
+  describe('markers', () => {
+    it('knocks once for every other player, as their marker lands', () => {
+      mountReveal({ guesses: GUESSES })
+      vi.advanceTimersByTime(1944)
+      expect(playMarker).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+      expect(playMarker).toHaveBeenCalledOnce()
+
+      vi.advanceTimersByTime(120)
+      expect(playMarker).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not knock for mine: it is the knob, already there', () => {
+      mountReveal({ guesses: [guess('me', 1945)] })
+      vi.advanceTimersByTime(3000)
+
+      expect(playMarker).not.toHaveBeenCalled()
+    })
+
+    it('stays silent where nothing moves: all markers are there at once', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+      mountReveal({ guesses: GUESSES })
+      vi.advanceTimersByTime(3000)
+
+      expect(playMarker).not.toHaveBeenCalled()
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal({ guesses: GUESSES, animate: false })
+      vi.advanceTimersByTime(3000)
+
+      expect(playMarker).not.toHaveBeenCalled()
+    })
+
+    it('honours the shared mute, also when muted mid-reveal', async () => {
+      const w = mountReveal({ guesses: GUESSES })
+      vi.advanceTimersByTime(1945)
+      await w.get('button[aria-label="Ton"]').trigger('click')
+      vi.advanceTimersByTime(120)
+
+      expect(playMarker).toHaveBeenCalledOnce()
+    })
+
+    it('leaving the reveal drops the knocks still to come', () => {
+      mountReveal({ guesses: GUESSES }).unmount()
+      vi.advanceTimersByTime(3000)
+
+      expect(playMarker).not.toHaveBeenCalled()
+    })
   })
 })

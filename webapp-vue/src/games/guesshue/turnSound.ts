@@ -28,3 +28,14 @@ export function playTurn(): void {
 
   knocks(graph).knock(at, TURN_HZ)
 }
+
+/**
+ * Another player's marker lands on the wheel: the wheel's own knock, once, saying nothing about
+ * how good the tip was. Not throttled — two markers are two knocks.
+ */
+export function playMarker(): void {
+  const graph = audioGraph()
+  if (graph?.state !== 'running') return
+
+  knocks(graph).knock(graph.currentTime + START_LOOKAHEAD_SECONDS, TURN_HZ)
+}

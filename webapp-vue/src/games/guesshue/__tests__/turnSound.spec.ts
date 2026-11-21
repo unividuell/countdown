@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TURN_HZ, playTurn, stepOf } from '../turnSound'
+import { TURN_HZ, playMarker, playTurn, stepOf } from '../turnSound'
 
 /** Records what is scheduled: every oscillator with its first pitch and start. */
 const started: { hz: number; at: number }[] = []
@@ -70,6 +70,33 @@ describe('playTurn', () => {
   it('stays silent while the graph sleeps', () => {
     graph.state = 'suspended'
     playTurn()
+
+    expect(started).toEqual([])
+  })
+})
+
+describe('playMarker', () => {
+  beforeEach(() => {
+    started.length = 0
+    graph.state = 'running'
+  })
+
+  it('is the wheel’s own knock, once', () => {
+    playMarker()
+
+    expect(started.map(({ hz }) => hz)).toEqual([TURN_HZ, TURN_HZ * 3.9])
+  })
+
+  it('knocks for each of two markers landing close together', () => {
+    playMarker()
+    playMarker()
+
+    expect(started).toHaveLength(4)
+  })
+
+  it('stays silent while the graph sleeps', () => {
+    graph.state = 'suspended'
+    playMarker()
 
     expect(started).toEqual([])
   })

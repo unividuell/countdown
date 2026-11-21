@@ -6,13 +6,18 @@
  * afterwards, only its ink appears. That is why the card grows exactly once, during the crossfade
  * both cards share a grid cell for, and never again.
  *
- * When the solution appears, a knocked verdict says whether my hue made it — only on a reveal that
- * just happened here, never on a reload.
+ * When the solution appears, a knocked verdict says whether my hue made it, and every other
+ * player's marker lands with a knock of its own — only on a reveal that just happened here, never
+ * on a reload.
+ *
+ *   0 ─── 900 ms ─────────── 1945 ms ── +120 ── +120 ──▶
+ *         solution, verdict   marker     marker  marker
  */
 import { onBeforeUnmount, onMounted, watch } from 'vue'
 import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
+import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { inBackground } from '@/ui/motion'
@@ -38,16 +43,32 @@ const props = defineProps<{
 
 const sound = useGameSound()
 let beat: ReturnType<typeof setTimeout> | undefined
+let landings: ReturnType<typeof setTimeout>[] = []
 let verdict: Verdict | null = null
 
 onMounted(() => {
   if (!props.animate || inBackground()) return
 
   // Where nothing moves the solution is there from the start, and so is its verdict.
-  const delayMs = isStill(props.animate) ? 0 : SOLUTION_DELAY_MS
-  beat = setTimeout(() => {
-    if (sound.value && props.won !== null) verdict = playVerdict(props.won)
-  }, delayMs)
+  const still = isStill(props.animate)
+  beat = setTimeout(
+    () => {
+      if (sound.value && props.won !== null) verdict = playVerdict(props.won)
+    },
+    still ? 0 : SOLUTION_DELAY_MS,
+  )
+
+  // All markers at once would be one loud knock that says nothing.
+  if (still) return
+
+  // Mine is the knob, already there: it does not land.
+  landings = props.guesses
+    .filter((guess) => guess.userId !== props.mineUserId)
+    .map((guess) =>
+      setTimeout(() => {
+        if (sound.value) playMarker()
+      }, guess.revealDelayMs),
+    )
 })
 
 // Muting silences the verdict that is already sounding, not only the next one.
@@ -57,6 +78,7 @@ watch(sound, (on) => {
 
 onBeforeUnmount(() => {
   clearTimeout(beat)
+  landings.forEach(clearTimeout)
   verdict?.stop()
 })
 </script>

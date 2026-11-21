@@ -228,6 +228,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   plays with the solution's beat, only on a reveal that just happened here (`animate`) — a reload
   is silent — and at once where nothing moves. The reveal shows the `SoundToggle` where the board
   had it.
+- **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
+  neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
+  One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and
+  none where nothing moves: every marker at once is one loud knock that says nothing.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
