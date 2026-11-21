@@ -13,7 +13,7 @@ import GuessHueBriefing from './GuessHueBriefing.vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import HueWheelInput from './HueWheelInput.vue'
 import { playTurn, stepOf } from './turnSound'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = defineProps<{
   description: string
@@ -26,6 +26,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ guess: [hue: number] }>()
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 const hue = ref(props.initHue)
 // A reload hands down a new starting angle — the lab feeds back the angle already guessed.
@@ -98,10 +101,6 @@ const color = computed(
           </div>
         </template>
       </HueWheelInput>
-      <!-- In the corner the round wheel leaves free. It also wakes the graph (`useSoundAwake`). -->
-      <SoundToggle
-        class="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
-      />
     </div>
 
     <GuessHueBriefing

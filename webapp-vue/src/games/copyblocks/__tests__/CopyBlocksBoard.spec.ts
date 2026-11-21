@@ -12,6 +12,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 vi.mock('@/games/copyblocks/sounds', () => ({ preloadSounds: vi.fn(), playSound: vi.fn() }))
 vi.mock('@/games/copyblocks/textures', () => ({
@@ -279,13 +280,11 @@ describe('CopyBlocksBoard', () => {
     expect(wrapper.emitted('guess')).toEqual([[{ blocks: [{ x: 2, y: 0, z: 3, type: 'DIRT' }] }]])
   })
 
-  it('mutes, and the device remembers it', async () => {
+  it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
     const wrapper = mountBoard()
 
-    await choose(wrapper, 'Ton')
-
-    expect(wrapper.get('button[aria-label="Ton"]').attributes('aria-pressed')).toBe('false')
-    expect(localStorage.getItem('games:sound')).toBe('false')
+    expect(wrapper.find('button[aria-label="Ton"]').exists()).toBe(false)
+    expect(soundOnStage.value).toBe(true)
   })
 
   it('restores a draft and saves every change', async () => {

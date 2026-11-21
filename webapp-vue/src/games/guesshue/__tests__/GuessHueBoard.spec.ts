@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import GuessHueBoard from '@/games/guesshue/GuessHueBoard.vue'
 import { playTurn } from '@/games/guesshue/turnSound'
 import HoldButton from '@/ui/HoldButton.vue'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 vi.mock('@/games/guesshue/turnSound', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/games/guesshue/turnSound')>()),
@@ -72,8 +73,9 @@ describe('GuessHueBoard', () => {
       expect(playTurn).toHaveBeenCalledTimes(2)
     })
 
-    it('has the sound toggle beside the wheel', () => {
-      expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(true)
+    it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+      expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(false)
+      expect(soundOnStage.value).toBe(true)
     })
 
     it('lets the confirm button knock as it charges', () => {

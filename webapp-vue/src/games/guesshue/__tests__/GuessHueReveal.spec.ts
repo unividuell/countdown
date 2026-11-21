@@ -5,6 +5,7 @@ import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -104,8 +105,9 @@ describe('GuessHueReveal', () => {
     expect(playVerdict).not.toHaveBeenCalled()
   })
 
-  it('has the sound toggle where the board has it', () => {
-    expect(mountReveal().find('button[aria-label="Ton"]').exists()).toBe(true)
+  it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+    expect(mountReveal().find('button[aria-label="Ton"]').exists()).toBe(false)
+    expect(soundOnStage.value).toBe(true)
   })
 
   it('leaving cuts a verdict that is sounding', () => {

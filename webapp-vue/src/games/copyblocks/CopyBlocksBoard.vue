@@ -12,7 +12,7 @@ import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import RevealCover from '@/ui/RevealCover.vue'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import { useSurfaceContainer } from '@/ui/surfaceTone'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import BlockScene from './BlockScene.vue'
@@ -48,6 +48,9 @@ const props = defineProps<{
 const camera = defineModel<Camera>('camera', { required: true })
 
 const emit = defineEmits<{ guess: [value: CopyBlocksGuess]; reveal: [] }>()
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 const PICKAXE = 'PICKAXE'
 type Slot = BlockCode | typeof PICKAXE
@@ -209,7 +212,6 @@ function submit(): void {
               >
                 <IconUndo class="size-5" aria-hidden="true" />
               </button>
-              <SoundToggle :class="TOOL_BUTTON" />
             </div>
 
             <!-- Minecraft-style hotbar over the foot of the field. It never scrolls: on a narrow

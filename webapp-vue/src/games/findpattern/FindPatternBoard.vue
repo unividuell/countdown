@@ -14,7 +14,7 @@
 import { computed, ref } from 'vue'
 import type { AwardRule } from '@/api/types'
 import RevealCover from '@/ui/RevealCover.vue'
-import SoundToggle from '@/ui/SoundToggle.vue'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import type { SceneState } from '@/ui/sceneState'
 import FindPatternBriefing from './FindPatternBriefing.vue'
 import PatternGrid from './PatternGrid.vue'
@@ -50,6 +50,9 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ guess: [value: { startIndex: number }]; reveal: []; retry: [] }>()
+
+/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+useSoundStage()
 
 /** What the board is laid out for: the real payload once it arrives, the scene while sealed. */
 const layout = computed(() => props.payload ?? props.scene)
@@ -147,14 +150,7 @@ function onCell(index: number): void {
         >
           Das Bild ließ sich nicht laden.
         </p>
-        <!-- An empty column left of the text as wide as the toggle right of it: the text stays
-             centred under the board. -->
-        <div class="grid w-full grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2">
-          <p class="col-start-2 text-center text-lg">Finde das folgende Muster im Spielfeld</p>
-          <SoundToggle
-            class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
-          />
-        </div>
+        <p class="text-center text-lg">Finde das folgende Muster im Spielfeld</p>
         <!-- Same width as the board, larger blocks: the run is what has to be memorised, and four
            near-identical tones separate better on area. The server renders it that way. -->
         <img

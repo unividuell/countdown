@@ -5,6 +5,7 @@ import FindPatternBoard from '@/games/findpattern/FindPatternBoard.vue'
 import { playClear, playMark } from '@/games/findpattern/markSound'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
 import RevealCover from '@/ui/RevealCover.vue'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 vi.mock('@/games/findpattern/markSound', () => ({ playMark: vi.fn(), playClear: vi.fn() }))
 
@@ -108,8 +109,9 @@ describe('FindPatternBoard', () => {
     expect(playMark).not.toHaveBeenCalled()
   })
 
-  it('has the sound toggle beside the instruction', () => {
-    expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(true)
+  it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+    expect(mountBoard().find('button[aria-label="Ton"]').exists()).toBe(false)
+    expect(soundOnStage.value).toBe(true)
   })
 
   it('shows both pictures from its props and the rules text inside the info box', () => {

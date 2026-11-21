@@ -6,8 +6,20 @@
  * Together in one component on purpose: the avatar drives the drawer like a wheel on a rail,
  * and travel and spin have to share one duration, one curve and one width. Split across two
  * components that agreement would have to be maintained by hand across a seam.
+ *
+ * The sound switch stands left of the avatar and, like it, stays where it is when the menu opens:
+ * one place in every game, in the header rather than on any card.
  */
-import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  useTemplateRef,
+  watch,
+  type ComponentPublicInstance,
+} from 'vue'
 import {
   onKeyStroke,
   useEventListener,
@@ -24,6 +36,7 @@ import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
 import BrandMark from '@/ui/BrandMark.vue'
+import SoundToggle from '@/ui/SoundToggle.vue'
 import ColorSchemeSwitch from './ColorSchemeSwitch.vue'
 import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
@@ -43,8 +56,11 @@ const AVATAR_PX = 32
 
 const open = ref(false)
 /** The toggle's box, read at open time: both the drawer and the dialog are laid out round it. */
-const toggleBox = ref({ top: 0, bottom: 0, left: 0, right: 0, viewportRight: 0 })
+const toggleBox = ref({ top: 0, bottom: 0, left: 0, right: 0, viewportRight: 0, rowLeft: 0 })
 const trigger = useTemplateRef<HTMLButtonElement>('trigger')
+const sound = useTemplateRef<ComponentPublicInstance>('sound')
+/** The sound switch's button; it sits on the toggle's row, outside the frame like the toggle. */
+const soundButton = (): HTMLElement | null => (sound.value?.$el as HTMLElement | undefined) ?? null
 const drawer = useTemplateRef<HTMLElement>('drawer')
 const spinner = useTemplateRef<HTMLElement>('spinner')
 const scrim = useTemplateRef<HTMLElement>('scrim')
@@ -104,13 +120,13 @@ const frameStyle = computed(() => {
     : { width: `${drawerWidth.value}px`, paddingTop }
 })
 
-/** The viewer's name, on the toggle's row: from the frame's left edge up to the toggle. */
+/** The viewer's name, on the toggle's row: from the frame's left edge up to the sound switch. */
 const nameStyle = computed(() => {
   const t = toggleBox.value
   return {
     top: `${t.top - frame.value.top}px`,
     height: `${t.bottom - t.top}px`,
-    right: `${frame.value.right - t.left + ENCLOSE_PX}px`,
+    right: `${frame.value.right - t.rowLeft + ENCLOSE_PX}px`,
   }
 })
 
@@ -278,6 +294,7 @@ function measureToggle(): void {
     left: r?.left ?? 0,
     right: r?.right ?? 0,
     viewportRight: scrim.value?.getBoundingClientRect().right ?? 0,
+    rowLeft: soundButton()?.getBoundingClientRect().left ?? r?.left ?? 0,
   }
 }
 
@@ -343,15 +360,23 @@ onKeyStroke('Escape', () => {
 
 // onClickOutside is not used: happy-dom's event shim does not satisfy it, so a test written
 // against it cannot pass. This listens directly and checks containment itself.
-useEventListener(document, 'click', (e: Event) => {
-  if (!open.value) return
-  const target = e.target as Node
-  if (drawer.value?.contains(target) || trigger.value?.contains(target)) return
-  void setOpen(false)
-})
+// Captured, before the target's own listener: the sound switch's click swaps its icon, and a
+// browser renders that in a microtask before the click bubbles up here — a target already
+// detached is inside nothing, and the menu closed under the finger.
+useEventListener(
+  document,
+  'click',
+  (e: Event) => {
+    if (!open.value) return
+    const target = e.target as Node
+    if ([drawer.value, trigger.value, soundButton()].some((el) => el?.contains(target))) return
+    void setOpen(false)
+  },
+  { capture: true },
+)
 
 // A minimal focus cycle rather than a focus-trap dependency. The toggle is part of the cycle
-// because it is also the close button.
+// because it is also the close button; the sound switch beside it stays reachable too.
 onKeyStroke('Tab', (e) => {
   if (!open.value) return
   // Contract: this selector must list every focusable element the drawer can contain. Since the
@@ -365,7 +390,9 @@ onKeyStroke('Tab', (e) => {
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ) ?? [],
   )
-  const items = [trigger.value, ...inDrawer].filter((el): el is HTMLElement => Boolean(el))
+  const items = [soundButton(), trigger.value, ...inDrawer].filter((el): el is HTMLElement =>
+    Boolean(el),
+  )
   const first = items[0]
   const last = items[items.length - 1]
   if (!first || !last) return
@@ -380,6 +407,12 @@ onKeyStroke('Tab', (e) => {
 </script>
 
 <template>
+  <!-- Above scrim and frame like the toggle, so the open menu shows it where it was. -->
+  <SoundToggle
+    ref="sound"
+    data-test="nav-sound"
+    class="relative z-30 flex size-10 cursor-pointer items-center justify-center rounded-full hover:ring-2 hover:ring-on-surface/20"
+  />
   <button
     ref="trigger"
     data-test="nav-toggle"

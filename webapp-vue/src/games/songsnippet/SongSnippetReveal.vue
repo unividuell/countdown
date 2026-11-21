@@ -4,7 +4,7 @@
  *
  * Composition only — every number it hands down was worked out in `SongSnippetGame` from the pure
  * `scoreboard` module. Its one job of its own: the verdict, with the solution's beat, only on a
- * reveal that just happened here. No `SoundToggle`: a speaker by the song would read as muting it.
+ * reveal that just happened here.
  */
 import type { RoundAssets } from '@/api/assets'
 import { useRevealVerdict } from '@/games/useRevealVerdict'

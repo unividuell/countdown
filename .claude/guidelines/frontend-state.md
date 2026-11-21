@@ -146,19 +146,23 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
   one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
   and no source is simply louder because of how it was made.
-- **One sound switch for games whose sound is decoration:** `useGameSound()` and `SoundToggle` from
-  `ui/`, so muting one silences all and no game stores it itself. Not for games whose sound is the
-  game (Anspielung, Peilung): muting there ends the round.
+- **One sound switch, in the header:** `SoundToggle` stands left of the avatar (`NavDrawer`), in
+  the same place on every page and still there with the menu open; no game card carries one.
+  `useGameSound()` is the setting, so no game stores it itself. It governs decoration sound only:
+  a game whose sound is the game (Anspielung, Peilung) plays on, muting there would end the round.
+- **A board that knocks says so: `useSoundStage()`.** Only while one is on screen does an
+  activation wake the graph — waking claims the device's audio session, and on iOS that stops the
+  player's music on every other page. Off stage the switch shows the setting and wakes nothing.
 - **The switch shows what is heard, not only what is set.** After a fresh load the graph sleeps
   until a user activation, and a finger setting down is none — the first drag is silent on every
   phone. On iOS the release of a drag is none either, only a tap is (simulator, iOS 18.1); Firefox
   for Android wakes on that release. So `SoundToggle` has three faces: muted, on, and „on but
   asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
-  `useSoundAwake` asks the graph to wake on every activation anywhere on the page. A game adds no
-  wake handlers of its own.
+  `useSoundAwake` asks the graph to wake on every activation anywhere on the page while a board is
+  on stage. A game adds no wake handlers of its own.
 - **Shared UI is silent unless the board asks.** `HoldButton`'s charge knocks need its `sound`
-  prop, and only a board with a `SoundToggle` sets it: sound nobody can switch off where they hear
-  it is none. Never in a game whose sound is the game.
+  prop, and only a board on stage (`useSoundStage`) sets it. Never in a game whose sound is the
+  game.
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`; a game
   schedules knocks, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
@@ -184,9 +188,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
   reveal plays it with `useRevealVerdict` (`games/`), never its own timer: with the solution's
   beat, only on a reveal that just happened here (`animate`) — a reload is silent — and at once
-  where nothing moves. The reveal shows the `SoundToggle` where the board
-  had it — except in a game whose sound is the game (Anspielung): a speaker by the song reads as
-  muting the song, so the verdict there follows the switch set elsewhere, no toggle of its own.
+  where nothing moves.
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
   neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and

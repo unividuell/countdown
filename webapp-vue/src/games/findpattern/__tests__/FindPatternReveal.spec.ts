@@ -14,6 +14,7 @@ import {
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
 import { playVerdict } from '@/ui/verdictSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -401,8 +402,9 @@ describe('FindPatternReveal', () => {
       expect(stopVerdict).toHaveBeenCalled()
     })
 
-    it('has the sound toggle where the board has it', () => {
-      expect(mountReveal([]).find('button[aria-label="Ton"]').exists()).toBe(true)
+    it('leaves the sound switch to the header, and asks it to wake the graph while here', () => {
+      expect(mountReveal([]).find('button[aria-label="Ton"]').exists()).toBe(false)
+      expect(soundOnStage.value).toBe(true)
     })
   })
 })

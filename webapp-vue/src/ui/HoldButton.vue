@@ -54,8 +54,8 @@ const props = withDefaults(
      */
     contour?: 'opposite' | 'neutral'
     /**
-     * Plays the charge's knocks. Only for a board that shows a `SoundToggle`: sound nobody can
-     * switch off where they hear it is none.
+     * Plays the charge's knocks. Only for a board on stage (`useSoundStage`), whose knocks the
+     * header's sound switch governs.
      */
     sound?: boolean
     /** False for a hold that must not celebrate: giving up charges nothing. */

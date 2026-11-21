@@ -42,7 +42,12 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
   root, so its layers never stack against the page (the round card's cover against the members'
   fly-in). Raising the page's elements instead escalates.
 - **Only the element that must ride above an overlay gets the `z-index`, not its container** — a
-  z-index lifts everything inside. `NavDrawer`'s toggle carries `relative z-30`; the header none.
+  z-index lifts everything inside. `NavDrawer`'s toggle and the sound switch beside it carry
+  `relative z-30`; the header none.
+- **An outside-click check listens in the capture phase.** A click that changes state re-renders
+  in a microtask before it bubbles to `document`; a swapped icon is then detached, inside nothing,
+  and the menu closes under the finger. happy-dom runs no microtask between listeners, so only a
+  spec that detaches the target itself catches it (`NavDrawer`).
 - **Place a fixed box against a fixed `inset-0` box, never against `clientWidth`.** Under a scroll
   lock with a classic scrollbar, `clientWidth` counts the kept gutter as content. `NavDrawer`'s
   scrim is the frame its dialog's `right` counts from.

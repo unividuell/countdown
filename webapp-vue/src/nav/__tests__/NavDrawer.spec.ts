@@ -115,6 +115,16 @@ function render(user: MeResponse = viewer, initialToggleBottom = 0) {
       right,
     } as DOMRect
   }
+  // The 40px sound switch, 4px left of the toggle (the header cell's `gap-1`).
+  w.get('[data-test=nav-sound]').element.getBoundingClientRect = () => {
+    const right = scrimRight.value - 16 - 40 - 4
+    return {
+      top: toggleBottom.value - 40,
+      bottom: toggleBottom.value,
+      left: right - 40,
+      right,
+    } as DOMRect
+  }
   return w
 }
 
@@ -575,8 +585,9 @@ describe('NavDrawer mechanics', () => {
       const style = name.attributes('style') ?? ''
       expect(style).toContain('top: 8px')
       expect(style).toContain('height: 40px')
-      // From the dialog's right edge: 8px of frame, the 40px toggle, and 8px gap.
-      expect(style).toContain('right: 56px')
+      // From the dialog's right edge: 8px of frame, the 40px toggle, 4px, the 40px sound switch,
+      // and 8px gap.
+      expect(style).toContain('right: 100px')
     })
 
     it('fades out on close, with the same toggle', async () => {
@@ -993,11 +1004,11 @@ describe('NavDrawer content', () => {
     expect(w.get('[data-test="edit-profile"]').attributes('href')).toBe('/profile')
   })
 
-  it('cycles Tab focus between the toggle and the drawer content, wrapping both ways', async () => {
+  it('cycles Tab focus between the sound switch, the toggle and the drawer content, wrapping both ways', async () => {
     // Written after the drawer has real content (the logout button in the foot) so the cycle
     // has more than a hypothetical element to move focus to and from.
     const w = await opened()
-    const toggle = w.get('[data-test=nav-toggle]').element as HTMLElement
+    const first = w.get('[data-test=nav-sound]').element as HTMLElement
     const focusables = Array.from(
       w
         .get('[data-test=nav-drawer]')
@@ -1009,9 +1020,9 @@ describe('NavDrawer content', () => {
     const forward = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
     document.dispatchEvent(forward)
     expect(forward.defaultPrevented).toBe(true)
-    expect(document.activeElement).toBe(toggle)
+    expect(document.activeElement).toBe(first)
 
-    toggle.focus()
+    first.focus()
     const backward = new KeyboardEvent('keydown', {
       key: 'Tab',
       shiftKey: true,
@@ -1021,6 +1032,29 @@ describe('NavDrawer content', () => {
     document.dispatchEvent(backward)
     expect(backward.defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(last)
+  })
+
+  it('keeps the menu open when the sound switch beside the toggle is pressed', async () => {
+    const w = await opened()
+
+    await w.get('[data-test=nav-sound]').trigger('click')
+
+    expect(w.get('[data-test=nav-drawer]').attributes('inert')).toBeUndefined()
+  })
+
+  // A browser runs Vue's re-render between the switch's listener and the document's, so the icon
+  // that was clicked is gone from the DOM by the time the click arrives there.
+  it('keeps it open even when the icon clicked is swapped out on the way', async () => {
+    const w = await opened()
+    const button = w.get('[data-test=nav-sound]').element
+    // Our own node, not Vue's: removing one of Vue's would break its next patch.
+    const icon = button.appendChild(document.createElement('span'))
+    button.addEventListener('click', () => icon.remove(), { once: true })
+
+    icon.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+
+    expect(w.get('[data-test=nav-drawer]').attributes('inert')).toBeUndefined()
   })
 
   it('draws the community identity in the header while inside a community', async () => {

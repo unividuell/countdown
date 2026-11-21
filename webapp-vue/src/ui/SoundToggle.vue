@@ -5,13 +5,19 @@ import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
 import { unlockSound } from './audio'
 import { useGameSound } from './useGameSound'
-import { useSoundAwake } from './useSoundAwake'
+import { soundOnStage, useSoundAwake } from './useSoundAwake'
 
 const sound = useGameSound()
 const awake = useSoundAwake()
 
-/** `asleep`: sound is on, but the browser has not let the graph start yet. */
-const state = computed(() => (!sound.value ? 'off' : awake.value ? 'on' : 'asleep'))
+/**
+ * `asleep`: sound is on and a board knocks, but the browser has not let the graph start yet. With
+ * no board on screen there is nothing to hear: the switch shows the setting.
+ */
+const state = computed(() => {
+  if (!sound.value) return 'off'
+  return awake.value || !soundOnStage.value ? 'on' : 'asleep'
+})
 
 /**
  * Read when the press begins: the press itself wakes the graph, which may run by the time the
@@ -28,7 +34,8 @@ function onClick(): void {
   if (!pressedAsleep) sound.value = !sound.value
   pressedAsleep = false
 
-  if (sound.value) unlockSound()
+  // Off stage nothing would sound, and waking would claim the device's audio session.
+  if (sound.value && soundOnStage.value) unlockSound()
 }
 </script>
 

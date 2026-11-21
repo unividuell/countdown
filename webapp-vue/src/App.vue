@@ -81,7 +81,7 @@ const alignToBoardBand = computed(() => (hasCountdown.value ? 'md:h-[34px] md:se
              placement moves the board between them from md up without reordering the markup. -->
         <div
           data-test="account-cell"
-          class="col-start-2 row-start-1 flex h-10 items-center md:col-start-3"
+          class="col-start-2 row-start-1 flex h-10 items-center gap-1 md:col-start-3"
           :class="alignToBoardBand"
         >
           <NavDrawer v-if="user" :user="user" />
