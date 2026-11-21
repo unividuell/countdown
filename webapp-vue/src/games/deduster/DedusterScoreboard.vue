@@ -63,7 +63,6 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
   {
     key: 'level',
     label: 'Level',
-    unit: '%',
     fact: 'Levels',
     width: '3.125rem',
     align: 'end',

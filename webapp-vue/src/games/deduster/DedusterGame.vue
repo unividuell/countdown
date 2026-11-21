@@ -29,7 +29,6 @@ const rows = computed(() =>
     ? []
     : scoreRows({
         entries: props.entries,
-        tiles: payload.value.cols * payload.value.rows,
         awardRule: props.awardRule,
         mineUserId: props.mineUserId,
       }),

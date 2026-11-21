@@ -27,6 +27,7 @@ export interface DedusterRow extends ScoreboardRow {
   tilesCleared: number
   /** Whole milliseconds, or „—“ for a run without a single hit — as the original showed it. */
   averageLabel: string
+  /** The level reached: tiles cleared, out of the head's „Levels“. */
   levelLabel: string
   /** `null` for a row without a readable run, a give-up among them. */
   out: OutLabel | null
@@ -41,7 +42,6 @@ export interface DedusterRow extends ScoreboardRow {
 
 export function scoreRows(input: {
   entries: readonly GameEntry[]
-  tiles: number
   awardRule: AwardRule | null
   mineUserId: string | null
 }): DedusterRow[] {
@@ -56,7 +56,7 @@ export function scoreRows(input: {
       reactionsMs,
       tilesCleared: reactionsMs.length,
       averageLabel: average === null ? '—' : String(Math.round(average)),
-      levelLabel: String(Math.round((reactionsMs.length / input.tiles) * 100)),
+      levelLabel: String(reactionsMs.length),
       out: outcome === null ? null : OUT[outcome.endedBy],
       endedBy: outcome?.endedBy ?? null,
       wrongTileIndex: outcome?.wrongTileIndex ?? null,

@@ -111,10 +111,7 @@ describe('DedusterScoreboard', () => {
     const heads = w.findAll('thead th').map((th) => th.text())
 
     expect(heads).toEqual(['Max', 'Levels', 'Name', '⌀', 'Level', 'raus', 'Pkt'])
-    expect(w.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual([
-      '[ms]',
-      '[%]',
-    ])
+    expect(w.findAll('[data-test="scoreboard-units"] th').map((th) => th.text())).toEqual(['[ms]'])
     expect(w.get('[data-test="fact-max"]').text()).toBe('1.500')
     expect(w.get('[data-test="fact-levels"]').text()).toBe('48')
   })
