@@ -25,17 +25,11 @@ class CountdownService(/* … */) {
 }
 ```
 
-- `KotlinLogging.logger {}` names the logger after the lambda's **enclosing** declaration. Inside a
-  class that is the class. At file top level it is the file's facade class instead — which is only
-  the right name by coincidence, when the file happens to hold exactly one class named after it. A
-  file with two top-level declarations (`MeResponse` + `UserController` in `UserController.kt`) would
-  log both under the file's name, so the line no longer tells you where it came from. Keep it in the
-  class and the name is right by construction.
-- No class literal is needed either way — a rename carries the logger name with it.
-- **Always pass the message as a lambda** (`logger.warn { "…" }`), never as a string
-  (`logger.warn("…")`). The lambda is only evaluated if the level is enabled, so string
-  interpolation costs nothing when the statement is switched off. This is the whole reason we took
-  the dependency — a `logger.warn("… $x …")` call throws that away and should be flagged in review.
+- `KotlinLogging.logger {}` names the logger after the lambda's **enclosing** declaration: inside
+  a class, the class; at file top level, the file's facade class — the right name only while the
+  file holds exactly one class named after it.
+- **Always pass the message as a lambda** (`logger.warn { "…" }`), never as a string. The lambda is
+  evaluated only if the level is enabled — the reason we took the dependency.
 
 ## What to log
 
@@ -50,10 +44,9 @@ and the test is what shows the branch is reachable and does not blow up.
 ## What not to log
 
 Never log a value the design keeps out of storage on purpose — a log line often outlives the
-database row it was kept out of. If a doc-comment claims a value never reaches persistence, that
-guarantee covers the logs too: `GoogleCountryLookup` resolves a Street View coordinate to a
-country precisely so the coordinate never reaches the database (see `CountryLookup`'s doc-comment)
-— a log line printing it on the error path would have quietly broken that promise.
+database row. A doc-comment's "never reaches persistence" covers the logs too: `GoogleCountryLookup`
+resolves a Street View coordinate to a country so the coordinate is never stored, error path
+included.
 
 ## Where logs go
 
@@ -66,7 +59,7 @@ exported. Metrics and traces, unlike logs, go out via OTLP, tagged
 Micrometer meter named `countdown.*` (`observability/internal/ActivePlayers.kt`).
 
 Every SQL query and every pooled connection is a trace span (`datasource-micrometer`), with
-the SQL text but no parameter values. Above them, `spring-modulith-observability` adds a span
+the SQL text but no parameter values. Above them, `spring-modulith-observability-core` adds a span
 per call into a module. It wraps each controller, cross-module listener and **API-package
 bean** in a CGLIB subclass, so such a bean must be `open` with `open` members (the Kotlin
 spring plugin does that only for annotated classes; a `@Bean`-built one like `GuessHueDataset`
