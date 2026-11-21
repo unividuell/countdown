@@ -10,6 +10,7 @@ import { computed } from 'vue'
 import type { GameEmits, GameProps } from '@/games/GameProps'
 import { useMyColorHex } from '@/games/useMyColorHex'
 import { useRevealedLive } from '@/games/useRevealedLive'
+import { myWin } from '@/games/verdict'
 import type { SceneState } from '@/ui/sceneState'
 import { useSealedAsset } from '@/ui/useSealedAsset'
 import FindPatternBoard from './FindPatternBoard.vue'
@@ -75,6 +76,16 @@ const rows = computed(() =>
 
 const live = computed(() => props.awardRule === 'CLOSEST_ONLY')
 
+/** The gate is the right run. */
+const won = computed(() =>
+  myWin({
+    gated: !live.value,
+    withinGate: (props.outcome as { correct?: boolean } | null)?.correct ?? null,
+    rows: rows.value,
+    mineUserId: props.mineUserId,
+  }),
+)
+
 const hasRevealedLive = useRevealedLive(() => solution.value !== null)
 </script>
 
@@ -113,6 +124,7 @@ const hasRevealedLive = useRevealedLive(() => solution.value !== null)
         :mine-user-id="props.mineUserId"
         :live="live"
         :animate="hasRevealedLive"
+        :won="won"
       />
       <FindPatternBoard
         v-else

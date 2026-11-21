@@ -13,6 +13,10 @@ import {
 } from '@/games/findpattern/preview'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
+import { playVerdict } from '@/ui/verdictSound'
+
+const stopVerdict = vi.fn()
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
 const PAYLOAD: FindPatternPayload = {
   cols: 8,
@@ -60,6 +64,7 @@ function mountReveal(
       mineUserId: 'mine',
       live: false,
       animate: false,
+      won: null,
       ...overrides,
     },
   })
@@ -358,6 +363,46 @@ describe('FindPatternReveal', () => {
       const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true })
 
       expect(wrapper.get('[data-test="pattern-palette"]').classes()).toContain('opacity-100')
+    })
+  })
+
+  describe('verdict', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(playVerdict).mockClear()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('plays mine when the solution appears', () => {
+      mountReveal([row({ userId: 'mine' })], { animate: true, won: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
+    })
+
+    it('stays silent on a reload into a round already revealed', () => {
+      mountReveal([row({ userId: 'mine' })], { animate: false, won: true })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('leaving cuts a verdict that is sounding', () => {
+      const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true, won: false })
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      wrapper.unmount()
+
+      expect(stopVerdict).toHaveBeenCalled()
+    })
+
+    it('has the sound toggle where the board has it', () => {
+      expect(mountReveal([]).find('button[aria-label="Ton"]').exists()).toBe(true)
     })
   })
 })

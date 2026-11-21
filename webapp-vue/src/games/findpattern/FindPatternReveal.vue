@@ -9,6 +9,9 @@
  *
  * My own outline sits outermost, at inset 0: it is the box drawn while playing, and the board under
  * it has not moved, so the switch from playing to reveal leaves it exactly where it was.
+ *
+ * My verdict sounds with the solution's beat; the sound toggle stands where the board had it,
+ * right of the line under the board.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import {
@@ -18,7 +21,9 @@ import {
   cellDelayMs,
   isStill,
 } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { readableTextColor } from '@/ui/readableTextColor'
+import SoundToggle from '@/ui/SoundToggle.vue'
 import { useRevealArming } from '@/ui/useRevealArming'
 import FindPatternScoreboard from './FindPatternScoreboard.vue'
 import PatternGrid from './PatternGrid.vue'
@@ -46,7 +51,11 @@ const props = defineProps<{
   mineUserId: string | null
   live: boolean
   animate: boolean
+  /** Which verdict the solution's beat plays: `null` plays none. */
+  won: boolean | null
 }>()
+
+useRevealVerdict(() => props.won, props.animate)
 
 const still = isStill(props.animate)
 
@@ -199,28 +208,34 @@ const paletteStyle = {
            glance than a phone player's. Circles overlap and ring, as in the original. The delta
            rides in the heading, not the circle row: `-space-x-3` only skips the *last* child's
            end-margin, so a trailing delta span used to eat one circle's worth of overlap and
-           leave the row off-centre by exactly that much. -->
-      <div
-        data-test="pattern-palette"
-        class="flex flex-col items-center gap-2 transition-opacity"
-        :class="paletteOpacity"
-        :style="paletteStyle"
-      >
-        <span class="text-sm text-on-surface-variant"
-          >Palette (<span data-test="palette-delta">Δ {{ deltaLabel }}</span
-          >)</span
+           leave the row off-centre by exactly that much. The board's line under the board: an
+           empty column left, the sound toggle right, so it stands where the board had it. -->
+      <div class="grid w-full grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2">
+        <div
+          data-test="pattern-palette"
+          class="col-start-2 flex flex-col items-center gap-2 transition-opacity"
+          :class="paletteOpacity"
+          :style="paletteStyle"
         >
-        <div class="inline-flex flex-row -space-x-3">
-          <span
-            v-for="tone in palette"
-            :key="tone.value"
-            data-test="palette-tone"
-            class="flex size-10 items-center justify-center rounded-full font-mono text-xs ring-1 ring-on-surface-variant"
-            :style="{ backgroundColor: tone.hex, color: tone.ink }"
+          <span class="text-sm text-on-surface-variant"
+            >Palette (<span data-test="palette-delta">Δ {{ deltaLabel }}</span
+            >)</span
           >
-            {{ tone.value }}
-          </span>
+          <div class="inline-flex flex-row -space-x-3">
+            <span
+              v-for="tone in palette"
+              :key="tone.value"
+              data-test="palette-tone"
+              class="flex size-10 items-center justify-center rounded-full font-mono text-xs ring-1 ring-on-surface-variant"
+              :style="{ backgroundColor: tone.hex, color: tone.ink }"
+            >
+              {{ tone.value }}
+            </span>
+          </div>
         </div>
+        <SoundToggle
+          class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
+        />
       </div>
     </div>
 

@@ -19,10 +19,10 @@ import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
 import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { isStill } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { inBackground } from '@/ui/motion'
 import SoundToggle from '@/ui/SoundToggle.vue'
-import { playVerdict, type Verdict } from '@/ui/verdictSound'
 
 const props = defineProps<{
   description: string
@@ -40,24 +40,13 @@ const props = defineProps<{
   live: boolean
 }>()
 
-let beat: ReturnType<typeof setTimeout> | undefined
+useRevealVerdict(() => props.won, props.animate)
+
 let landings: ReturnType<typeof setTimeout>[] = []
-let verdict: Verdict | null = null
 
 onMounted(() => {
-  if (!props.animate || inBackground()) return
-
-  // Where nothing moves the solution is there from the start, and so is its verdict.
-  const still = isStill(props.animate)
-  beat = setTimeout(
-    () => {
-      if (props.won !== null) verdict = playVerdict(props.won)
-    },
-    still ? 0 : SOLUTION_DELAY_MS,
-  )
-
   // All markers at once would be one loud knock that says nothing.
-  if (still) return
+  if (!props.animate || inBackground() || isStill(props.animate)) return
 
   // Mine is the knob, already there: it does not land.
   landings = props.guesses
@@ -66,9 +55,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  clearTimeout(beat)
   landings.forEach(clearTimeout)
-  verdict?.stop()
 })
 </script>
 

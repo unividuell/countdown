@@ -14,9 +14,11 @@
 import { computed, ref } from 'vue'
 import type { AwardRule } from '@/api/types'
 import RevealCover from '@/ui/RevealCover.vue'
+import SoundToggle from '@/ui/SoundToggle.vue'
 import type { SceneState } from '@/ui/sceneState'
 import FindPatternBriefing from './FindPatternBriefing.vue'
 import PatternGrid from './PatternGrid.vue'
+import { playClear, playMark } from './markSound'
 import { stackedOutlines } from './marks'
 import { isComplete, nextSelection, startIndexOfSelection } from './selection'
 import type { FindPatternPayload, FindPatternScene } from './types'
@@ -103,7 +105,11 @@ function onCell(index: number): void {
   if (!playable.value) return
   const patternLength = layout.value?.patternLength ?? 0
   const next = nextSelection(selected.value, index, patternLength)
+  const dropped = next.length === 0 && selected.value.length > 0
   selected.value = next
+  // Tapping a marked block empties the selection.
+  if (dropped) playClear()
+  else playMark(next.length, isComplete(next, patternLength))
   if (!isComplete(next, patternLength)) return
   const startIndex = startIndexOfSelection(next, patternLength)
   // `null` cannot happen under `nextSelection`; leaving the selection standing is the honest
@@ -141,7 +147,14 @@ function onCell(index: number): void {
         >
           Das Bild ließ sich nicht laden.
         </p>
-        <p class="text-center text-lg">Finde das folgende Muster im Spielfeld</p>
+        <!-- An empty column left of the text as wide as the toggle right of it: the text stays
+             centred under the board. -->
+        <div class="grid w-full grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2">
+          <p class="col-start-2 text-center text-lg">Finde das folgende Muster im Spielfeld</p>
+          <SoundToggle
+            class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-surface-container text-on-surface"
+          />
+        </div>
         <!-- Same width as the board, larger blocks: the run is what has to be memorised, and four
            near-identical tones separate better on area. The server renders it that way. -->
         <img
