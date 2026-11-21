@@ -58,8 +58,17 @@ const props = withDefaults(
      * switch off where they hear it is none.
      */
     sound?: boolean
+    /** False for a hold that must not celebrate: giving up charges nothing. */
+    sparks?: boolean
   }>(),
-  { holdMs: DEFAULT_HOLD_MS, beatMs: BEAT_MS, shape: 'round', contour: 'opposite', sound: false },
+  {
+    holdMs: DEFAULT_HOLD_MS,
+    beatMs: BEAT_MS,
+    shape: 'round',
+    contour: 'opposite',
+    sound: false,
+    sparks: true,
+  },
 )
 
 const emit = defineEmits<{ confirm: []; progress: [value: number] }>()
@@ -332,7 +341,12 @@ const popStyle = computed(() => ({
     animates.
   -->
   <div ref="pop" data-test="hold-pop" class="relative size-full" :style="popStyle">
-    <HoldSparks v-if="!counting" :ring="shown" :active="holding" :shape="props.shape" />
+    <HoldSparks
+      v-if="!counting && props.sparks"
+      :ring="shown"
+      :active="holding"
+      :shape="props.shape"
+    />
     <!--
       `-inset-[6.25%]` inflates this box by 6.25% of the button's own size on every side — 1.125×
       the button underneath. The wheel hands this component a slot 40% of its own width; at 1.125×

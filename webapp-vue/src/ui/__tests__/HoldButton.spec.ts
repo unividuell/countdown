@@ -651,6 +651,10 @@ describe('HoldButton', () => {
       expect(mountButton({ beats: 3 }).findComponent(HoldSparks).exists()).toBe(false)
     })
 
+    it('throws none where the board turns them off', () => {
+      expect(mountButton({ sparks: false }).findComponent(HoldSparks).exists()).toBe(false)
+    })
+
     it('stays silent unless the board asks for the knocks', async () => {
       await hold(mountButton(), 200)
 

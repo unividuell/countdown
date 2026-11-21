@@ -117,6 +117,12 @@ describe('SongSnippetScoreboard', () => {
     expect(cells[2]!.text()).toBe('3')
   })
 
+  it('keeps the whole guess in a tooltip, since the cell cuts a long one', () => {
+    const w = mountBoard([row({ userId: 'a' })])
+
+    expect(w.get('[data-test="guess-label"]').attributes('title')).toBe('ABC · Jackson 5')
+  })
+
   it('writes an em dash where a round left the score unset', () => {
     const w = mountBoard([row({ userId: 'a', points: null })])
 

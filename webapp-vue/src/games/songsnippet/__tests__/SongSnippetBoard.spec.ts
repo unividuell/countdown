@@ -5,6 +5,7 @@ import type { Mock } from 'vitest'
 import type { Ref } from 'vue'
 import type { AssetKey, RoundAssets } from '@/api/assets'
 import SongSnippetBoard from '@/games/songsnippet/SongSnippetBoard.vue'
+import HoldButton from '@/ui/HoldButton.vue'
 import type { SongSuggestion } from '@/games/songsnippet/api'
 
 interface PlaybackStub {
@@ -151,12 +152,34 @@ describe('SongSnippetBoard', () => {
     expect(dear.classes()).toContain('border-outline')
   })
 
-  it('gives up on a single press of an ordinary button', async () => {
+  it('gives up only on a completed hold, not on a click', async () => {
     const w = mountBoard({})
 
-    await w.get('[data-test="give-up"]').trigger('click')
+    await w.get('[data-test="give-up"] button').trigger('click')
+    expect(w.emitted('giveUp')).toBeUndefined()
+
+    w.getComponent(HoldButton).vm.$emit('confirm')
 
     expect(w.emitted('giveUp')).toHaveLength(1)
+  })
+
+  it('names the give-up above its × only while it is held', async () => {
+    const w = mountBoard({})
+    const label = () => w.get('[data-test="give-up-label"]').classes()
+    expect(label()).toContain('opacity-0')
+
+    w.getComponent(HoldButton).vm.$emit('progress', 0.2)
+    await w.vm.$nextTick()
+
+    expect(label()).toContain('opacity-100')
+  })
+
+  it('throws no sparks: giving up charges nothing', () => {
+    expect(mountBoard({}).getComponent(HoldButton).props('sparks')).toBe(false)
+  })
+
+  it('cannot give up while the board is disabled', () => {
+    expect(mountBoard({ disabled: true }).getComponent(HoldButton).props('disabled')).toBe(true)
   })
 
   it('loads the stage clip on arrival without sounding it', async () => {
@@ -406,7 +429,7 @@ describe('SongSnippetBoard', () => {
     }
   })
 
-  it("lays the card out in the reveal's own order, with give-up last of all", () => {
+  it("lays the card out in the reveal's own order", () => {
     const w = mountBoard({})
 
     const rows = [...w.element.children].map(
@@ -417,7 +440,7 @@ describe('SongSnippetBoard', () => {
     // Hits and field first (both the search box's), then the bar, then the transport, then the
     // explanation box — the reveal fills the same rows with the cover and the title, so nothing
     // moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'stop', 'info-box', 'give-up'])
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'stop', 'info-box'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
