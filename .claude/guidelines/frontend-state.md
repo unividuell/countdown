@@ -181,7 +181,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):
-  Farbausmalung's knob per degree, Entstauber's scrubbed curve per level. A pitch may follow
+  Farbausmalung's knob per degree, Entstauber's scrubbed curve per level, Platzierung's stamp per
+  cell it moves on to and per tap — a tap ticks even where nothing moved, it answers the finger. A pitch may follow
   the player's own progress, which says nothing about the target: Musterung climbs a scale per
   marked block, a cover's count-in the same scale per beat (`ui/scale.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted

@@ -5,6 +5,10 @@ import PlacePatchBoard from '@/games/placepatch/PlacePatchBoard.vue'
 import HoldButton from '@/ui/HoldButton.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import { DEFAULT_HOLD_MS } from '@/ui/useHoldProgress'
+import { playRatchet } from '@/ui/ratchetSound'
+import { soundOnStage } from '@/ui/useSoundAwake'
+
+vi.mock('@/ui/ratchetSound', () => ({ playRatchet: vi.fn() }))
 
 const PAYLOAD = { cols: 40, rows: 30, size: 10 }
 
@@ -69,6 +73,7 @@ describe('PlacePatchBoard', () => {
     vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
     // Reduced motion, so the hold button skips its entrance — as in GuessHueBoard.spec.
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    vi.mocked(playRatchet).mockClear()
   })
 
   afterEach(() => {
@@ -309,5 +314,42 @@ describe('PlacePatchBoard', () => {
     const wrapper = mountBoard({ sceneState: 'preparing', boardSrc: null, patchSrc: null })
 
     expect(wrapper.find('[data-test="place-patch-image-error"]').exists()).toBe(false)
+  })
+
+  describe('sound', () => {
+    it('asks the header to wake the graph while here', () => {
+      mountBoard()
+
+      expect(soundOnStage.value).toBe(true)
+    })
+
+    it('ticks on every tap, the same cell again included', async () => {
+      const { field } = await stamped()
+      await field.trigger('pointerdown', { clientX: 123, clientY: 87, pointerId: 2 })
+      await field.trigger('pointerup', { clientX: 123, clientY: 87, pointerId: 2 })
+
+      expect(playRatchet).toHaveBeenCalledTimes(2)
+    })
+
+    it('ticks while dragging whenever the stamp lands on another cell, and not on its release', async () => {
+      const { field } = await stamped()
+      vi.mocked(playRatchet).mockClear()
+
+      await field.trigger('pointerdown', { clientX: 300, clientY: 250, pointerId: 2 })
+      for (const x of [304, 312, 313, 334])
+        await field.trigger('pointermove', { clientX: x, clientY: 250, pointerId: 2 })
+      await field.trigger('pointerup', { clientX: 334, clientY: 250, pointerId: 2 })
+
+      // 304 is still a tap; 312 → one cell, 313 stays on it, 334 → three cells.
+      expect(playRatchet).toHaveBeenCalledTimes(2)
+    })
+
+    it('stays silent on a field that takes no stamp', async () => {
+      const field = sized(mountBoard({ disabled: true }))
+      await field.trigger('pointerdown', { clientX: 123, clientY: 87, pointerId: 1 })
+      await field.trigger('pointerup', { clientX: 123, clientY: 87, pointerId: 1 })
+
+      expect(playRatchet).not.toHaveBeenCalled()
+    })
   })
 })
