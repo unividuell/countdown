@@ -548,4 +548,41 @@ describe('EchoLocateGame', () => {
     expect(labGameList).toContainEqual({ id: 'echo-locate', title: 'Peilung' })
     expect(ids.indexOf('echo-locate')).toBe(ids.indexOf('paint-ratio') + 1)
   })
+
+  describe('verdict', () => {
+    const won = (over: Partial<GameProps>) =>
+      mountGame({ solution: SOLUTION, ...over })
+        .getComponent(EchoLocateReveal)
+        .props('won')
+
+    it('wins inside the tolerance while every tip inside scores', () => {
+      expect(won({ entries: [MINE], outcome: MINE.outcome })).toBe(true)
+    })
+
+    it('fails outside the tolerance', () => {
+      expect(
+        won({
+          entries: [{ ...MINE, points: 0 }],
+          outcome: { distance: 4.2, withinTolerance: false, pinOf: [0] },
+        }),
+      ).toBe(false)
+    })
+
+    it('says nothing without a tip of mine', () => {
+      expect(won({ entries: [FRY], outcome: null })).toBeNull()
+    })
+
+    it('under „closest only“ wins only while my row holds the points', () => {
+      expect(
+        won({
+          awardRule: 'CLOSEST_ONLY',
+          entries: [
+            { ...MINE, points: 0 },
+            { ...FRY, points: 1 },
+          ],
+          outcome: { distance: 0.8, withinTolerance: null, pinOf: [0] },
+        }),
+      ).toBe(false)
+    })
+  })
 })

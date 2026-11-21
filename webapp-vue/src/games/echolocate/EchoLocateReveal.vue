@@ -19,7 +19,9 @@
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { useRevealArming } from '@/ui/useRevealArming'
+import { useSoundStage } from '@/ui/useSoundAwake'
 import EchoLocateScoreboard from './EchoLocateScoreboard.vue'
 import type { Wave } from './flow'
 import type { ScoreRow } from './scoreboard'
@@ -35,7 +37,14 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: a reload shows the finished map. */
   animate: boolean
   mineUserId: string | null
+  /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
+  won: boolean | null
 }>()
+
+useRevealVerdict(() => props.won, props.animate)
+
+// The verdict is governed by the header's sound switch, which wakes the graph while it is here.
+useSoundStage()
 
 /** What one player's play puts on the field. Pings are centres only: no wave is running. */
 function fieldOf(row: ScoreRow | undefined): {
