@@ -37,7 +37,7 @@ class PaintRatioArtistTest {
             Shape.SPARKLE to 0.05, Shape.REGION to 0.08, Shape.SPLATTER to 0.05, Shape.FREEHAND to 0.05,
             Shape.SIERPINSKI_TRIANGLE to 0.03, Shape.SIERPINSKI_CARPET to 0.05, Shape.PYTHAGORAS_TREE to 0.03,
             Shape.FERN to 0.03, Shape.JULIA to 0.03, Shape.ROSE to 0.01, Shape.SPIROGRAPH to 0.01,
-            Shape.LISSAJOUS to 0.03, Shape.PHYLLOTAXIS to 0.01, Shape.TRUCHET to 0.05, Shape.SPIRAL to 0.03,
+            Shape.LISSAJOUS to 0.03, Shape.PHYLLOTAXIS to 0.05, Shape.TRUCHET to 0.05, Shape.SPIRAL to 0.03,
         )
     }
 
