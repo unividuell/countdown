@@ -94,9 +94,12 @@ async function open(): Promise<void> {
   if (top.value) strips.push({ el: top.value, right: false, rank: 0 })
   if (bottom.value) strips.push({ el: bottom.value, right: true, rank: 0 })
 
-  await runOut(strips)
-
-  emit('gone')
+  // Gone even if the run-out fails: the round must not stay under the poster.
+  try {
+    await runOut(strips)
+  } finally {
+    emit('gone')
+  }
 }
 </script>
 

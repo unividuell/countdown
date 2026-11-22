@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BandPoster from '@/ui/ramp/BandPoster.vue'
 import SheetPoster from '@/ui/ramp/SheetPoster.vue'
 
@@ -57,6 +57,23 @@ describe.each([
 
     expect(w.emitted('open')).toHaveLength(1)
     expect(w.emitted('gone')).toHaveLength(1)
+  })
+
+  it('is still gone when an animation fails for another reason than a cancel', async () => {
+    // `finished` rejecting with a plain error: the round must not stay under the poster.
+    Object.defineProperty(Element.prototype, 'animate', {
+      value: () => ({ finished: Promise.reject(new Error('no finished')) }),
+      configurable: true,
+      writable: true,
+    })
+    const errorHandler = vi.fn()
+    const w = mount(Poster, { props, global: { config: { errorHandler } } })
+
+    await w.get('[data-test="ramp-poster"]').trigger('click')
+    await flushPromises()
+
+    expect(w.emitted('gone')).toHaveLength(1)
+    expect(errorHandler).toHaveBeenCalled()
   })
 
   it('opens once however often it is tapped', async () => {

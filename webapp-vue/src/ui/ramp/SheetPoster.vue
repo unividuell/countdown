@@ -97,15 +97,18 @@ async function open(): Promise<void> {
 
   const blocks = [print.value, number.value, title.value, stakeEl.value].filter((el) => el !== null)
 
-  await runOut(
-    blocks.map((el, index) => ({
-      el,
-      right: index % 2 === 1,
-      rank: index * 2,
-    })),
-  )
-
-  emit('gone')
+  // Gone even if the run-out fails: the round must not stay under the poster.
+  try {
+    await runOut(
+      blocks.map((el, index) => ({
+        el,
+        right: index % 2 === 1,
+        rank: index * 2,
+      })),
+    )
+  } finally {
+    emit('gone')
+  }
 }
 </script>
 
