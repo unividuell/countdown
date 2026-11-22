@@ -12,8 +12,9 @@ Audio-Graph, ein Schalter im Header, `useSoundStage()` für Bretter mit Deko-Ton
 Handy und im iOS-Simulator abgenommen. Wo dieses Dokument keine Zahl nennt, gilt der Spike.
 
 **Berührt:** nur das Frontend. Neu `src/ui/ramp/`; geändert `rounds/RoundCard.vue`, die Lab-Seite
-`pages/c/[slug]/lab/[game]/index.vue` mit `gamelab/LabControls.vue`, und die vier Stellen mit einem
-Auftritt beim Laden (siehe *Bühne frei*). Kein Backend, keine Migration, kein neues API-Feld.
+`pages/c/[slug]/lab/[game]/index.vue` mit `gamelab/LabControls.vue`, die vier Stellen mit einem
+Auftritt beim Laden (siehe *Bühne frei*) und zwei Schriftpakete in `package.json`. Kein Backend,
+keine Migration, kein neues API-Feld.
 
 ## Zweck
 
@@ -29,6 +30,7 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Vor jeder Runde, die der Spieler noch spielen darf, steht ein Plakat. Ein Tipp öffnet sie.
 - Derselbe Tipp weckt den Ton, wenn der Spieler ihn nicht stummgeschaltet hat.
 - Das Plakat sieht nicht jeden Tag gleich aus: Stil, Ausrichtung und Ziffernschrift wechseln.
+- Das Plakat sieht auf jedem Gerät gleich aus: seine Schriften liefert die App selbst aus.
 - Im Lab lässt sich die Rampe vor jedes Spiel schalten.
 
 ## Nicht-Ziele
@@ -37,7 +39,7 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Keine Rampe vor gespielten oder geschlossenen Runden, nicht in der Historie.
 - Kein Merken, ob jemand die Rampe schon gesehen hat.
 - Keine Spielerfarbe: der Grund ist immer die Phasenfarbe.
-- Der Tropfen aus dem Spike wird nicht gebaut.
+- Der Tropfen und das Laufband aus dem Spike werden nicht gebaut.
 
 ## Anti-Ziele
 
@@ -45,6 +47,7 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Eine Rampe, die in einem laufenden Spiel auf Zeit Sekunden kostet.
 - Spiele, die für die Rampe umgebaut werden müssen. Erlaubt ist genau eine Rücksicht: ein Auftritt
   wartet, bis die Bühne frei ist (siehe *Bühne frei*).
+- Eine Schrift, die der Browser des Spielers bei einem Dritten holt.
 
 ## Wann die Rampe steht
 
@@ -94,22 +97,22 @@ zugehörigen `on-phase`-Rolle. Mehr Farben gibt es nicht.
 3. Die Rundennummer.
 4. In Phase zwei: „{n} Punkte zum Abstauben“, klein. Fehlt die Punktzahl, entfällt die Zeile.
 
-**Drei Stile:**
+**Zwei Stile:**
 
 | Stil | Bild |
 |---|---|
-| Laufband | Der Name steht voll in der Mitte. Darüber und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Nummer als „№ −98“ im Kleingedruckten. |
-| Balken | Wie Laufband, der Name steht ausgespart in einem vollen Balken. |
+| Balken | Der Name steht ausgespart in einem vollen Balken in der Mitte. Darüber und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Nummer als „№ −98“ im Kleingedruckten. |
 | Kalenderblatt | Die Rundennummer ist der Held, dahinter wandert ein versetzter Umrissdruck. Der Name steht darunter. |
 
-**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Laufband und Balken kippen das ganze
-Schriftfeld. Das Kalenderblatt bleibt gerade und setzt Zahl und Name stattdessen links, mittig
-oder rechts.
+Das Laufband des Spikes (wie Balken, der Name ohne Balken) entfällt: es ist dem Balken zu ähnlich,
+um ein eigener Stil zu sein.
 
-**Schrift:** Alle Buchstaben stehen in der Systemschrift, Schnitt 900. Die App liefert keine eigene
-Schrift aus, das Bild unterscheidet sich also leicht je Gerät (Roboto auf Android, San Francisco
-auf Apple). Das ist hingenommen. Die große Zahl des Kalenderblatts steht wahlweise in der
-Systemschrift oder in **Fraunces** (nur Ziffern; die Buchstaben von Fraunces sind verworfen).
+**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld. Das
+Kalenderblatt bleibt gerade und setzt Zahl und Name stattdessen links, mittig oder rechts.
+
+**Schrift:** Alle Buchstaben stehen in **Roboto**, Schnitt 900. Die große Zahl des Kalenderblatts
+steht wahlweise in Roboto oder in **Fraunces** (nur Ziffern; die Buchstaben von Fraunces sind
+verworfen). Beide liefert die App selbst aus, siehe *Schriften*.
 
 **Vorzeichen:** Runden zählen im Normalfall negativ. Das Kalenderblatt setzt nur die Ziffern. Bei
 einer negativen Runde liegt ein Balken darüber, so breit wie die Zahl. Ein Minus neben den Ziffern
@@ -121,12 +124,12 @@ große „ẞ“.
 
 **Variation:** Welches Plakat eine Runde bekommt, ergibt sich allein aus ihrer Nummer, im Frontend
 gerechnet. Es ist für alle Spieler gleich und braucht den Server nicht. Der Stil wechselt mit
-jeder Runde (Betrag der Nummer modulo 3), damit zwei Tage nacheinander nie gleich aussehen.
+jeder Runde (Betrag der Nummer modulo 2), damit zwei Tage nacheinander nie gleich aussehen.
 Ausrichtung und Ziffernschrift kommen aus einer 32-Bit-Mischung der Nummer (`posterOf` im Spike).
 
 ## Auflösung
 
-Ein Tipp auf das Plakat, oder Enter/Leertaste. Jede Zeile ist ein Streifen mit eigenem Grund und
+Ein Tipp auf das Plakat. Jede Zeile ist ein Streifen mit eigenem Grund und
 läuft seitlich raus, in die Richtung, in die sie vorher lief; ungerade und gerade Zeilen also
 entgegengesetzt. Die Ränder gehen zuerst, der Name zuletzt. Bei geneigten Plakaten laufen die
 Streifen die Schräge entlang. Das Kalenderblatt geht genauso auf, mit Kleingedrucktem, Zahl und
@@ -138,9 +141,10 @@ der letzte Streifen weg ist.
 ## Ton
 
 Der Tipp ruft `unlockSound()` synchron im Klick, wenn der Schalter an ist **und** ein Brett mit
-Deko-Ton auf der Seite steht (`soundOnStage`). Das ist dieselbe Regel wie beim Schalter im Header:
-Wecken beansprucht die Audio-Sitzung des Geräts und beendet auf iOS die Musik des Spielers. Für
-ein stummes Spiel wäre das ein Schaden ohne Nutzen.
+Deko-Ton auf der Seite steht (`soundOnStage`). Das ist dieselbe Regel wie beim Schalter im Header;
+`frontend-state.md` begründet sie damit, dass das Wecken die Audio-Sitzung des Geräts beansprucht
+und auf iOS die Musik des Spielers beendet. Die Rampe übernimmt die Regel, sie prüft sie nicht neu.
+Praktisch steht fast immer ein solches Brett: jeder Halte-Knopf, der Funken wirft, klopft auch.
 
 Die Rampe selbst macht keinen Ton *(Setzung)*. Der Plopp des Spikes war nur ein Beleg.
 
@@ -151,24 +155,35 @@ Was beim Laden auftritt, träte unter der Rampe ungesehen auf. Heute sind das vi
 | Stelle | Auftritt | Ton |
 |---|---|---|
 | Augenmaß (`matchscale`) | Formen poppen auf | klopft dazu |
-| START-Knopf (`ui/HoldButton`), jede versiegelte Runde | federt herein, sobald die Szene steht | stumm |
-| Farbausmalung (`guesshue/HueWheelInput`) | Kometenschweif läuft einmal ums Rad | stumm |
+| Halte-Knopf (`ui/HoldButton`), in jedem Spiel und auf jeder Abdeckung | federt herein, sobald er bereit ist | stumm |
+| Farbausmalung (`guesshue/HueWheelInput`) | das Rad fährt beim Einhängen einmal an | stumm |
 | Anspielung (`songsnippet/StageBar`) | Balken wächst | stumm |
 
 Die Rampe sagt deshalb, wann die Bühne frei ist: ein Signal, das die Karte bereitstellt
 (`provide`/`inject`, wie `communities/context.ts`), mit einem kleinen Helfer in `ui/`. Es ist
 **wahr**, wo keine Rampe steht (Historie, gespielte Runde, Lab ohne Rampe), und wird wahr, wenn
-der letzte Streifen weg ist. Dann ist auch der Ton sicher wach.
+der letzte Streifen weg ist *(Setzung)*. Dann ist auch der Ton sicher wach.
 
-**Alle vier warten auf dieses Signal** *(Empfehlung, offen — siehe unten)*. Bis dahin ist vom
-Auftritt nichts zu sehen und nichts zu hören; ist die Bühne frei, läuft er wie bisher. Der
-START-Knopf ist geteilte UI: eine Stelle deckt alle versiegelten Spiele ab. Sonst wird an keinem
-Spiel etwas geändert. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
+**Alle vier warten auf dieses Signal.** Bis dahin ist vom Auftritt nichts zu sehen und nichts zu
+hören; ist die Bühne frei, läuft er wie bisher. Der Halte-Knopf ist geteilte UI: eine Stelle deckt
+alle Spiele ab. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
 
-**Offen:** Die drei stummen Auftritte brechen das Ton-Ziel nicht. Man könnte sie unter der Rampe
-verpuffen lassen und nur Augenmaß anfassen. Dagegen spricht: Sie sind gewollte Auftritte, und der
-des START-Knopfs trägt als einziger die Aussage „hier spielst du“. Sie gingen dann in jeder
-aktuellen Runde verloren.
+## Schriften
+
+Die App setzt bisher keine eigene Schrift; jedes Gerät nimmt seine Systemschrift (Roboto auf
+Android, San Francisco auf Apple). Ein Plakat, dessen Schrift das Bild ist, sähe damit je Gerät
+anders aus.
+
+- **Roboto** (variabel) und **Fraunces** (variabel) kommen als npm-Pakete
+  (`@fontsource-variable/…`) in den Build. Vite legt die Dateien zu den übrigen Assets; der Browser
+  holt sie vom eigenen Ursprung.
+- **Keine Anfrage an Dritte.** Kein Google-Fonts-Link, kein `@import` einer fremden Adresse, weder
+  im Code noch im `index.html`. Die IP-Adresse des Spielers geht für eine Schrift nirgendwohin.
+- Fraunces wird erst geholt, wenn ein Kalenderblatt es braucht.
+- Beide stehen unter der SIL Open Font License; der Umsetzer prüft die Lizenzdatei im Paket.
+
+**Offen:** ob Roboto nur das Plakat setzt oder die Schrift der ganzen App wird — siehe die Frage
+zur Abnahme. Dieses Dokument beschreibt bis dahin den kleineren Schnitt: nur das Plakat.
 
 ## Lab
 
@@ -185,9 +200,13 @@ füttert sie, es passt sie nicht an.
 Unter `prefers-reduced-motion`, im Hintergrund-Tab und ohne `Element.animate` steht das Plakat
 still, und der Tipp nimmt es ohne Übergang weg. Die Bühne ist dann sofort frei.
 
-Das Plakat ist ein Button mit einem lesbaren Namen (Runde, Spiel, in Phase zwei die Punkte). Die
+Das Plakat ist ein `<button>` mit einem lesbaren Namen (Runde, Spiel, in Phase zwei die Punkte). Die
 Echos sind dekorativ und für Vorleser ausgeblendet. Solange die Rampe steht, ist die Karte
 darunter `inert`. Nach dem Auflösen geht der Fokus auf die Karte *(Setzung)*.
+
+Ein Button öffnet auch auf Enter und Leertaste, von selbst. Das ist kein Bedienweg, den jemand
+entdecken soll, sondern der einzige für jemanden ohne Zeiger: die Karte darunter ist `inert`, ohne
+das Plakat käme er nicht ins Spiel. Wer mit Tab darauf landet, sieht den Fokusring.
 
 ## Ansätze
 
@@ -210,18 +229,18 @@ dem Plakat.
   RoundCard / Lab-Seite
     └─ RoundRamp  (ui/ramp)        hält: steht | läuft raus | weg; stellt „Bühne frei“ bereit
          ├─ Slot: RoundSurface + GameHeader + Spiel      (darunter, im selben Rasterfeld)
-         └─ Plakat: EchoPoster | SheetPoster             (darüber, solange nicht weg)
+         └─ Plakat: Balken | Kalenderblatt               (darüber, solange nicht weg)
 ```
 
-- **`ui/ramp/`** — aus dem Spike übernommen und aufgeräumt: `EchoPoster` (Laufband, Balken),
+- **`ui/ramp/`** — aus dem Spike übernommen und aufgeräumt: `EchoPoster` (nur noch der Balken),
   `SheetPoster` (Kalenderblatt), `PosterPrint`, `poster.ts` (Farben, Schrift, Einpassen, Rauslaufen,
   `posterOf`), `poster.css`. Neu: `RoundRamp` und das Signal „Bühne frei“.
 - **`RoundCard`** entscheidet aus dem, was es schon weiß (`face`, `closed`, `play`, Renderer), ob
   die Rampe steht, und reicht Nummer, Name, Phase und Punkte hinein.
 - **Lab-Seite** tut dasselbe mit ihren Werten und dem URL-Schalter.
-- **Fraunces** kommt als `@fontsource-variable/fraunces` (im Spike noch Dev-Abhängigkeit, im
-  Produkt eine echte). Der Browser lädt die Datei erst, wenn ein Kalenderblatt sie braucht.
-- **Nicht übernommen:** `GooFlood`, `RampTile` mit seinem Plopp, die Bogen-Seite. `src/spike/ramp/`
+- **Schriften:** `@fontsource-variable/roboto` neu, `@fontsource-variable/fraunces` aus dem Spike
+  (dort Dev-Abhängigkeit, im Produkt eine echte).
+- **Nicht übernommen:** das Laufband, `GooFlood`, `RampTile` mit seinem Plopp, die Bogen-Seite. `src/spike/ramp/`
   und `pages/spike/rampe.vue` kommen nicht in den Merge.
 
 Drei Fallen, die der Spike schon gefunden hat und die mitkommen müssen:
@@ -239,6 +258,7 @@ Vitest, was happy-dom sehen kann:
 
 - `posterOf`: feste Vektoren (Nummer → Stil, Ausrichtung, Ziffernschrift); benachbarte Runden haben
   nie denselben Stil; negative Nummern.
+- Schriften: im gebauten Bundle und im `index.html` steht keine fremde Schrift-Adresse.
 - `RoundRamp`: steht, wenn aktiv; Karte darunter `inert`; Tipp weckt den Ton genau dann, wenn
   Schalter an und Brett mit Ton; „Bühne frei“ wird wahr, wenn die Rampe weg ist; ohne Bewegung
   sofort weg.
@@ -254,13 +274,13 @@ Phasen.
 ## Im Lab herauszufinden
 
 - Wie das Plakat vor einem Spiel wirkt, das viel höher ist als ein Quadrat.
-- Ob Fraunces beim ersten Laden sichtbar nachspringt, und ob das stört.
+- Ob Roboto oder Fraunces beim ersten Laden sichtbar nachspringen, und ob das stört.
 - Ob das Zusammenspiel Rampe, dann Abdeckung mit START, in Phase zwei zu viel ist.
 
 ## Dem Umsetzer überlassen
 
 - Wie jeder der vier Auftritte anhält (angehaltene Animation, späteres Einhängen der Klasse).
 - Der Wortlaut des Button-Namens für Vorleser.
-- Ob Fraunces vorab angefragt wird, sobald feststeht, dass ein Kalenderblatt es braucht.
+- Ob eine Schrift vorab angefragt wird, sobald feststeht, dass das Plakat sie braucht.
 - Was vom Gefundenen am Ende in die Guidelines gehört
   ([Feeding knowledge back](../../../.claude/guidelines/feeding-knowledge-back.md)).
