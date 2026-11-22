@@ -13,7 +13,7 @@ Handy und im iOS-Simulator abgenommen. Wo dieses Dokument keine Zahl nennt, gilt
 
 **Berührt:** nur das Frontend. Neu `src/ui/ramp/`; geändert `rounds/RoundCard.vue`, die Lab-Seite
 `pages/c/[slug]/lab/[game]/index.vue` mit `gamelab/LabControls.vue`, die vier Stellen mit einem
-Auftritt beim Laden (siehe *Bühne frei*) und zwei Schriftpakete in `package.json`. Kein Backend,
+Auftritt beim Laden (siehe *Bühne frei*) und ein Schriftpaket in `package.json`. Kein Backend,
 keine Migration, kein neues API-Feld.
 
 ## Zweck
@@ -30,7 +30,6 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Vor jeder Runde, die der Spieler noch spielen darf, steht ein Plakat. Ein Tipp öffnet sie.
 - Derselbe Tipp weckt den Ton, wenn der Spieler ihn nicht stummgeschaltet hat.
 - Das Plakat sieht nicht jeden Tag gleich aus: Stil, Ausrichtung und Ziffernschrift wechseln.
-- Das Plakat sieht auf jedem Gerät gleich aus: seine Schriften liefert die App selbst aus.
 - Im Lab lässt sich die Rampe vor jedes Spiel schalten.
 
 ## Nicht-Ziele
@@ -40,6 +39,8 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Kein Merken, ob jemand die Rampe schon gesehen hat.
 - Keine Spielerfarbe: der Grund ist immer die Phasenfarbe.
 - Der Tropfen und das Laufband aus dem Spike werden nicht gebaut.
+- Keine eigene Schrift für die App. Die Buchstaben des Plakats stehen in der Systemschrift wie der
+  Rest der App; eine App-Schrift ist ein eigenes Thema.
 
 ## Anti-Ziele
 
@@ -110,9 +111,11 @@ um ein eigener Stil zu sein.
 **Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld. Das
 Kalenderblatt bleibt gerade und setzt Zahl und Name stattdessen links, mittig oder rechts.
 
-**Schrift:** Alle Buchstaben stehen in **Roboto**, Schnitt 900. Die große Zahl des Kalenderblatts
-steht wahlweise in Roboto oder in **Fraunces** (nur Ziffern; die Buchstaben von Fraunces sind
-verworfen). Beide liefert die App selbst aus, siehe *Schriften*.
+**Schrift:** Alle Buchstaben stehen in der Systemschrift, Schnitt 900. Das Bild unterscheidet sich
+damit leicht je Gerät (Roboto auf Android, San Francisco auf Apple); das ist hingenommen. Die große
+Zahl des Kalenderblatts steht wahlweise in der Systemschrift oder in **Fraunces** (nur Ziffern; die
+Buchstaben von Fraunces sind verworfen). Fraunces liefert die App selbst aus, siehe *Schrift
+ausliefern*.
 
 **Vorzeichen:** Runden zählen im Normalfall negativ. Das Kalenderblatt setzt nur die Ziffern. Bei
 einer negativen Runde liegt ein Balken darüber, so breit wie die Zahl. Ein Minus neben den Ziffern
@@ -168,22 +171,14 @@ der letzte Streifen weg ist *(Setzung)*. Dann ist auch der Ton sicher wach.
 hören; ist die Bühne frei, läuft er wie bisher. Der Halte-Knopf ist geteilte UI: eine Stelle deckt
 alle Spiele ab. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
 
-## Schriften
+## Schrift ausliefern
 
-Die App setzt bisher keine eigene Schrift; jedes Gerät nimmt seine Systemschrift (Roboto auf
-Android, San Francisco auf Apple). Ein Plakat, dessen Schrift das Bild ist, sähe damit je Gerät
-anders aus.
-
-- **Roboto** (variabel) und **Fraunces** (variabel) kommen als npm-Pakete
-  (`@fontsource-variable/…`) in den Build. Vite legt die Dateien zu den übrigen Assets; der Browser
-  holt sie vom eigenen Ursprung.
+- **Fraunces** (variabel) kommt als npm-Paket `@fontsource-variable/fraunces` in den Build. Vite
+  legt die Datei zu den übrigen Assets; der Browser holt sie vom eigenen Ursprung, und erst dann,
+  wenn ein Kalenderblatt sie braucht.
 - **Keine Anfrage an Dritte.** Kein Google-Fonts-Link, kein `@import` einer fremden Adresse, weder
   im Code noch im `index.html`. Die IP-Adresse des Spielers geht für eine Schrift nirgendwohin.
-- Fraunces wird erst geholt, wenn ein Kalenderblatt es braucht.
-- Beide stehen unter der SIL Open Font License; der Umsetzer prüft die Lizenzdatei im Paket.
-
-**Offen:** ob Roboto nur das Plakat setzt oder die Schrift der ganzen App wird — siehe die Frage
-zur Abnahme. Dieses Dokument beschreibt bis dahin den kleineren Schnitt: nur das Plakat.
+- Fraunces steht unter der SIL Open Font License; der Umsetzer prüft die Lizenzdatei im Paket.
 
 ## Lab
 
@@ -238,8 +233,8 @@ dem Plakat.
 - **`RoundCard`** entscheidet aus dem, was es schon weiß (`face`, `closed`, `play`, Renderer), ob
   die Rampe steht, und reicht Nummer, Name, Phase und Punkte hinein.
 - **Lab-Seite** tut dasselbe mit ihren Werten und dem URL-Schalter.
-- **Schriften:** `@fontsource-variable/roboto` neu, `@fontsource-variable/fraunces` aus dem Spike
-  (dort Dev-Abhängigkeit, im Produkt eine echte).
+- **Schrift:** `@fontsource-variable/fraunces` aus dem Spike (dort Dev-Abhängigkeit, im Produkt
+  eine echte).
 - **Nicht übernommen:** das Laufband, `GooFlood`, `RampTile` mit seinem Plopp, die Bogen-Seite. `src/spike/ramp/`
   und `pages/spike/rampe.vue` kommen nicht in den Merge.
 
@@ -258,7 +253,7 @@ Vitest, was happy-dom sehen kann:
 
 - `posterOf`: feste Vektoren (Nummer → Stil, Ausrichtung, Ziffernschrift); benachbarte Runden haben
   nie denselben Stil; negative Nummern.
-- Schriften: im gebauten Bundle und im `index.html` steht keine fremde Schrift-Adresse.
+- Schrift: im gebauten Bundle und im `index.html` steht keine fremde Schrift-Adresse.
 - `RoundRamp`: steht, wenn aktiv; Karte darunter `inert`; Tipp weckt den Ton genau dann, wenn
   Schalter an und Brett mit Ton; „Bühne frei“ wird wahr, wenn die Rampe weg ist; ohne Bewegung
   sofort weg.
@@ -274,13 +269,13 @@ Phasen.
 ## Im Lab herauszufinden
 
 - Wie das Plakat vor einem Spiel wirkt, das viel höher ist als ein Quadrat.
-- Ob Roboto oder Fraunces beim ersten Laden sichtbar nachspringen, und ob das stört.
+- Ob Fraunces beim ersten Laden sichtbar nachspringt, und ob das stört.
 - Ob das Zusammenspiel Rampe, dann Abdeckung mit START, in Phase zwei zu viel ist.
 
 ## Dem Umsetzer überlassen
 
 - Wie jeder der vier Auftritte anhält (angehaltene Animation, späteres Einhängen der Klasse).
 - Der Wortlaut des Button-Namens für Vorleser.
-- Ob eine Schrift vorab angefragt wird, sobald feststeht, dass das Plakat sie braucht.
+- Ob Fraunces vorab angefragt wird, sobald feststeht, dass ein Kalenderblatt es braucht.
 - Was vom Gefundenen am Ende in die Guidelines gehört
   ([Feeding knowledge back](../../../.claude/guidelines/feeding-knowledge-back.md)).
