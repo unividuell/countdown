@@ -10,6 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AwardRule } from '@/api/types'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
+import { useCurtainOpen } from '@/ui/curtain'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useFieldTouch, useHoldLock } from '@/ui/useHoldLock'
 import { playPop, type Counting } from './countSound'
@@ -92,11 +93,25 @@ function onView(next: View): void {
   unsaved = true
 }
 
-// The opening knocks with the pop-in; leaving cuts it.
+// The opening knocks with the pop-in; leaving cuts it. Both wait for the ramp's curtain, and the
+// knocks play once however often it flips.
+const curtainOpen = useCurtainOpen()
 let popping: Counting | null = null
+let knocked = false
+
+function knock(): void {
+  if (knocked) return
+
+  knocked = true
+  popping = playPop()
+}
 
 onMounted(() => {
-  popping = playPop()
+  if (curtainOpen.value) knock()
+})
+
+watch(curtainOpen, (open) => {
+  if (open) knock()
 })
 
 onBeforeUnmount(() => popping?.stop())
@@ -147,6 +162,7 @@ function submit(): void {
           :interactive="playable"
           :locked="locked"
           pop-in
+          :pop-held="!curtainOpen"
           @update:view="onView"
           @update:placement-b="onPlacement"
         />

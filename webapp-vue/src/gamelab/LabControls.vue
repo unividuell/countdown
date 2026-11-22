@@ -33,11 +33,14 @@ const props = defineProps<{
   awardPoints?: number | undefined
   /** Round-bound like the rule above: the loaded round's, not one worked out from the seed here. */
   difficulty?: number | undefined
+  /** URL-bound like `phase`: the switch must reflect a click before any response comes back. */
+  ramp: boolean
 }>()
 const emit = defineEmits<{
   apply: [seed: number]
   roll: []
   phaseChange: [phase: LabPhase]
+  rampChange: [on: boolean]
   reset: []
   forgetMine: []
   refresh: []
@@ -167,6 +170,17 @@ const ruleText = computed(() => {
   <p v-if="ruleText" data-test="lab-award-rule" class="px-5 pb-1.5 text-xs text-on-surface-variant">
     {{ ruleText }}
   </p>
+
+  <!-- A checkbox in the drawer row's geometry: the ramp is an on/off view option, not an action. -->
+  <label :class="`${ROW} cursor-pointer gap-3 hover:bg-surface-container`">
+    <input
+      type="checkbox"
+      data-test="lab-ramp"
+      :checked="props.ramp"
+      @change="emit('rampChange', ($event.target as HTMLInputElement).checked)"
+    />
+    Rampe
+  </label>
 
   <button
     type="button"

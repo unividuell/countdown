@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
+import { nextTick, ref } from 'vue'
 import { chargeCurve } from '@/ui/charge'
+import { CURTAIN_KEY } from '@/ui/curtain'
 import { playCharge } from '@/ui/chargeSound'
 import { playCountIn } from '@/ui/countInSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
@@ -301,6 +303,77 @@ describe('HoldButton', () => {
     const style = w.get('[data-test="hold-pop"]').attributes('style')
     expect(style).not.toContain('scale(0)')
     expect(style).toContain('opacity: 1')
+  })
+
+  describe('behind a curtain', () => {
+    const base = { disabled: false, label: 'Tipp bestätigen' }
+
+    it('owes its pop while the curtain is closed, and pays when it opens', async () => {
+      const animate = installAnimate()
+      const open = ref(false)
+      const w = mount(HoldButton, {
+        props: { ...base, ready: false },
+        global: { provide: { [CURTAIN_KEY as symbol]: open } },
+      })
+
+      await w.setProps({ ready: true })
+
+      expect(animate).not.toHaveBeenCalled()
+      expect(w.get('[data-test="hold-pop"]').classes()).toContain('invisible')
+
+      open.value = true
+      await nextTick()
+
+      expect(animate).toHaveBeenCalledTimes(1)
+      expect(w.get('[data-test="hold-pop"]').classes()).not.toContain('invisible')
+    })
+
+    it('pays no pop to a control that fell back to not ready', async () => {
+      const animate = installAnimate()
+      const open = ref(false)
+      const w = mount(HoldButton, {
+        props: { ...base, ready: false },
+        global: { provide: { [CURTAIN_KEY as symbol]: open } },
+      })
+
+      await w.setProps({ ready: true })
+      await w.setProps({ ready: false })
+      open.value = true
+      await nextTick()
+
+      expect(animate).not.toHaveBeenCalled()
+    })
+
+    it('shows itself without a pop where nothing may animate', async () => {
+      // happy-dom ships an `animate` of its own; take it away.
+      Object.defineProperty(Element.prototype, 'animate', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      })
+      const open = ref(false)
+      const w = mount(HoldButton, {
+        props: { ...base, ready: false },
+        global: { provide: { [CURTAIN_KEY as symbol]: open } },
+      })
+
+      await w.setProps({ ready: true })
+      expect(w.get('[data-test="hold-pop"]').classes()).toContain('invisible')
+
+      open.value = true
+      await nextTick()
+
+      expect(w.get('[data-test="hold-pop"]').classes()).not.toContain('invisible')
+    })
+
+    it('hides nothing when it was ready from the start', () => {
+      const w = mount(HoldButton, {
+        props: { ...base, ready: true },
+        global: { provide: { [CURTAIN_KEY as symbol]: ref(false) } },
+      })
+
+      expect(w.get('[data-test="hold-pop"]').classes()).not.toContain('invisible')
+    })
   })
 
   it('suppresses the context menu, so a long press cannot pop it mid-hold', () => {

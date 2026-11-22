@@ -15,6 +15,8 @@ import type { GameEntry } from '@/games/GameEntry'
 import { gameComponents } from '@/games/registry'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import RoundRamp from '@/ui/ramp/RoundRamp.vue'
+import type { RampScene } from '@/ui/ramp/posterText'
 import type { PlayClock } from '@/ui/playClock'
 
 const props = withDefaults(
@@ -96,6 +98,27 @@ const play = computed<PlayClock | null>(() => {
     : null
 })
 
+/**
+ * The poster stands only before a round the player may still play and has not begun: a running
+ * timed play is a reload mid-run, and a poster there would hide the clock. Round `0` is a round,
+ * hence `== null`.
+ */
+const rampScene = computed<RampScene | null>(() => {
+  const number = props.round?.round?.number
+  const game = props.round?.game?.displayName
+  const standing = face.value === 'sealed' || face.value === 'playing'
+  if (props.closed || component.value === null || !standing || play.value !== null) return null
+  if (number == null || game == null) return null
+
+  const phaseTwo = props.round?.awardRule === 'CLOSEST_ONLY'
+  return {
+    game,
+    roundNumber: number,
+    phaseTwo,
+    points: phaseTwo ? (props.round?.awardPoints ?? null) : null,
+  }
+})
+
 async function onReveal(): Promise<void> {
   await props.reveal?.()
 }
@@ -138,64 +161,66 @@ async function onGiveUp(): Promise<void> {
          about the round on the board, and inside the frame it would push the board down. -->
     <p v-if="notice" data-test="round-notice" class="mb-4 text-sm text-warning">{{ notice }}</p>
 
-    <RoundSurface>
-      <!-- The band belongs to the card, not to any one face: every face below is the same round of
+    <RoundRamp :scene="rampScene">
+      <RoundSurface>
+        <!-- The band belongs to the card, not to any one face: every face below is the same round of
            the same game for the same stretch of time, and a band per face would be four places for
            that to disagree. It also means each face says the game's name exactly zero times.
            A closed round loses the clock, not the band: which round and which game stays exactly
            where the running round puts it. -->
-      <template #header>
-        <GameHeader
-          :round-number="round?.round?.number ?? null"
-          :title="round?.game?.displayName ?? null"
-          :ends-at="endsAt"
-          :play="play"
-          :phase-two="round?.awardRule === 'CLOSEST_ONLY'"
-        />
-      </template>
+        <template #header>
+          <GameHeader
+            :round-number="round?.round?.number ?? null"
+            :title="round?.game?.displayName ?? null"
+            :ends-at="endsAt"
+            :play="play"
+            :phase-two="round?.awardRule === 'CLOSEST_ONLY'"
+          />
+        </template>
 
-      <!-- A sealed round for a game this build cannot render is just as unrenderable as a playing
+        <!-- A sealed round for a game this build cannot render is just as unrenderable as a playing
            one. -->
-      <p
-        v-if="component === null"
-        data-test="round-unrenderable"
-        class="text-sm text-on-surface-variant"
-      >
-        In dieser Version gibt es dafür noch keine Ansicht.
-      </p>
+        <p
+          v-if="component === null"
+          data-test="round-unrenderable"
+          class="text-sm text-on-surface-variant"
+        >
+          In dieser Version gibt es dafür noch keine Ansicht.
+        </p>
 
-      <!--
+        <!--
         Keyed on the round's own number: a 409 on `submit`/`reveal` sends `useRound` back to
         `reload()`, which can land a *different* round in place (the day boundary passed underneath
         the click) without this `RoundCard` ever unmounting. Without the key the component instance
         would survive that change carrying the previous round's local state — a half-turned wheel
         angle, in Guess Hue's case — the same reasoning the lab applies keyed on `round.seed`.
       -->
-      <component
-        :is="component"
-        v-else-if="face === 'sealed' || face === 'playing' || face === 'done'"
-        :key="round?.round?.number"
-        :sealed="face === 'sealed'"
-        :scene="round?.scene ?? null"
-        :payload="round?.payload"
-        :outcome="round?.me?.outcome ?? null"
-        :my-guess="round?.me?.guess ?? null"
-        :solution="round?.solution"
-        :entries="entries"
-        :mine-user-id="round?.me?.userId ?? null"
-        :award-rule="round?.awardRule ?? null"
-        :award-points="round?.awardPoints ?? null"
-        :disabled="disabled"
-        :stage="round?.me?.stage ?? 0"
-        :steps="round?.me?.steps ?? []"
-        :assets="assets"
-        :closed="props.closed"
-        :review="props.review"
-        @reveal="onReveal"
-        @guess="onGuess"
-        @skip="onSkip"
-        @give-up="onGiveUp"
-      />
-    </RoundSurface>
+        <component
+          :is="component"
+          v-else-if="face === 'sealed' || face === 'playing' || face === 'done'"
+          :key="round?.round?.number"
+          :sealed="face === 'sealed'"
+          :scene="round?.scene ?? null"
+          :payload="round?.payload"
+          :outcome="round?.me?.outcome ?? null"
+          :my-guess="round?.me?.guess ?? null"
+          :solution="round?.solution"
+          :entries="entries"
+          :mine-user-id="round?.me?.userId ?? null"
+          :award-rule="round?.awardRule ?? null"
+          :award-points="round?.awardPoints ?? null"
+          :disabled="disabled"
+          :stage="round?.me?.stage ?? 0"
+          :steps="round?.me?.steps ?? []"
+          :assets="assets"
+          :closed="props.closed"
+          :review="props.review"
+          @reveal="onReveal"
+          @guess="onGuess"
+          @skip="onSkip"
+          @give-up="onGiveUp"
+        />
+      </RoundSurface>
+    </RoundRamp>
   </div>
 </template>

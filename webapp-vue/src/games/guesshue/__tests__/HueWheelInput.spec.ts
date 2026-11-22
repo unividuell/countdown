@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
+import { CURTAIN_KEY } from '@/ui/curtain'
 import HueWheelInput from '@/games/guesshue/HueWheelInput.vue'
 
 function mountWheel(props: Partial<InstanceType<typeof HueWheelInput>['$props']> = {}) {
@@ -236,6 +238,41 @@ describe('HueWheelInput', () => {
   it('reports the ring finished once the sweep has run', async () => {
     const w = mountWheel()
     vi.advanceTimersByTime(2000)
+    await w.vm.$nextTick()
+
+    expect(w.emitted('boot-done')).toHaveLength(1)
+  })
+
+  it('waits for the curtain before sweeping, then runs the sweep to its end', async () => {
+    const rAF = vi.spyOn(window, 'requestAnimationFrame')
+    const curtain = ref(false)
+    const w = mount(HueWheelInput, {
+      props: { hue: 210, saturation: 0.6, lightness: 0.45, disabled: false },
+      global: { provide: { [CURTAIN_KEY as symbol]: curtain } },
+    })
+
+    vi.advanceTimersByTime(2000)
+    await w.vm.$nextTick()
+
+    expect(rAF).not.toHaveBeenCalled()
+    expect(w.emitted('boot-done')).toBeUndefined()
+
+    curtain.value = true
+    await w.vm.$nextTick()
+    vi.advanceTimersByTime(2000)
+    await w.vm.$nextTick()
+
+    expect(rAF).toHaveBeenCalled()
+    expect(w.emitted('boot-done')).toHaveLength(1)
+  })
+
+  it('finishes at mount under reduced motion even behind a closed curtain', async () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+
+    const w = mount(HueWheelInput, {
+      props: { hue: 210, saturation: 0.6, lightness: 0.45, disabled: false },
+      global: { provide: { [CURTAIN_KEY as symbol]: ref(false) } },
+    })
     await w.vm.$nextTick()
 
     expect(w.emitted('boot-done')).toHaveLength(1)

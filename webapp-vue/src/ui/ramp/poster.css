@@ -1,0 +1,21 @@
+/* What every face of the posters' type shares; the face itself is inline. */
+.poster-type {
+  line-height: 0.86;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Stroke under a fill in the ground's colour: only the outer half of the line shows, and with it
+   none of the overlapping inner contours a variable font is drawn from. */
+.poster-outline {
+  -webkit-text-stroke: 3px currentColor;
+  -webkit-text-fill-color: var(--ground);
+  paint-order: stroke fill;
+}
+
+/* A line of the poster with its share of the ground: what runs out on a tap. The shadow closes
+   the hairline a fractional height leaves between two of them. */
+.poster-strip {
+  background-color: var(--ground);
+  box-shadow: 0 1px 0 var(--ground);
+}

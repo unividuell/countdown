@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 import { draftKey, loadDraft, saveDraft } from '@/games/matchscale/draft'
 import { baseCellPx, FIELD_PX, type View } from '@/games/matchscale/gestures'
 import MatchScaleBoard from '@/games/matchscale/MatchScaleBoard.vue'
@@ -9,6 +9,7 @@ import ScaleField from '@/games/matchscale/ScaleField.vue'
 import type { MatchScalePayload } from '@/games/matchscale/types'
 import { playPop } from '@/games/matchscale/countSound'
 import HoldButton from '@/ui/HoldButton.vue'
+import { CURTAIN_KEY } from '@/ui/curtain'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
 const stopPop = vi.fn()
@@ -28,8 +29,9 @@ const PAYLOAD: MatchScalePayload = {
 }
 const MINE = '#7c3aed'
 
-function mountBoard(over: Record<string, unknown> = {}) {
+function mountBoard(over: Record<string, unknown> = {}, curtain?: { value: boolean }) {
   return mount(MatchScaleBoard, {
+    global: curtain ? { provide: { [CURTAIN_KEY as symbol]: curtain } } : {},
     props: {
       payload: PAYLOAD,
       disabled: false,
@@ -46,6 +48,34 @@ describe('MatchScaleBoard', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  it('holds the pop and its knocks while the curtain is closed, then plays them once', async () => {
+    const curtain = ref(false)
+    const wrapper = mountBoard({}, curtain)
+
+    expect(playPop).not.toHaveBeenCalled()
+    expect(wrapper.getComponent(ScaleField).props('popHeld')).toBe(true)
+
+    curtain.value = true
+    await nextTick()
+
+    expect(playPop).toHaveBeenCalledTimes(1)
+    expect(wrapper.getComponent(ScaleField).props('popHeld')).toBe(false)
+
+    curtain.value = false
+    await nextTick()
+    curtain.value = true
+    await nextTick()
+
+    expect(playPop).toHaveBeenCalledTimes(1)
+  })
+
+  it('knocks at mount when the curtain is already open', () => {
+    const wrapper = mountBoard({}, ref(true))
+
+    expect(playPop).toHaveBeenCalledTimes(1)
+    expect(wrapper.getComponent(ScaleField).props('popHeld')).toBe(false)
   })
 
   it("marks both names with the category's legend, one footnote", () => {

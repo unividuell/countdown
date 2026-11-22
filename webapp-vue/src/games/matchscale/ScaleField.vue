@@ -81,6 +81,8 @@ const props = defineProps<{
   camera?: Camera | null
   /** A, then B and its handle, pop up from their feet once: the board's opening. */
   popIn?: boolean
+  /** The pop-in waits, its shapes at rest scaled to nothing, until the ramp lifts. */
+  popHeld?: boolean
 }>()
 
 const emit = defineEmits<{ 'update:view': [view: View]; 'update:placementB': [b: Placement] }>()
@@ -98,7 +100,11 @@ const LINE_PX = 16
 /** Each one's pop-in, with its delay: B and its handle `POP_GAP_MS` after A. */
 function popStyle(delayMs: number) {
   return props.popIn === true
-    ? { animationDuration: `${POP_MS}ms`, animationDelay: `${delayMs}ms` }
+    ? {
+        animationDuration: `${POP_MS}ms`,
+        animationDelay: `${delayMs}ms`,
+        ...(props.popHeld ? { animationPlayState: 'paused' } : {}),
+      }
     : undefined
 }
 

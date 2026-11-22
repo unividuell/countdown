@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import type { RoundAssets } from '@/api/assets'
 import type { MyPlayDto, OtherPlayDto, RoundResponse } from '@/api/types'
@@ -6,6 +6,7 @@ import type { RoundStage } from '@/rounds/useRound'
 import type { RoundReview } from '@/rounds/review'
 import RoundCard from '@/rounds/RoundCard.vue'
 import GameHeader from '@/ui/GameHeader.vue'
+import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 
 /**
@@ -141,6 +142,24 @@ function mountCard(props: {
       ...props,
     },
   })
+}
+
+/**
+ * Nothing may animate, so a tapped poster is gone in the same tick. happy-dom ships an
+ * `Element.animate`; the ramp then waits for it. Returns the undo.
+ */
+function withoutAnimation(): () => void {
+  const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')
+  Object.defineProperty(Element.prototype, 'animate', {
+    value: undefined,
+    configurable: true,
+    writable: true,
+  })
+
+  return () => {
+    if (descriptor) Object.defineProperty(Element.prototype, 'animate', descriptor)
+    else delete (Element.prototype as { animate?: unknown }).animate
+  }
 }
 
 // The header band subscribes to the shared clock for as long as it is mounted, so every card this
@@ -564,10 +583,18 @@ describe('RoundCard', () => {
 
   // The band names the game now, so the sealed face saying it again is one name too many — and two
   // places to fix when a display name changes.
-  it('names the game exactly once while sealed', () => {
-    const w = mountCard({ round: aRound(), stage: 'sealed' })
+  it('names the game exactly once while sealed', async () => {
+    const restore = withoutAnimation()
+    try {
+      const w = mountCard({ round: aRound(), stage: 'sealed' })
 
-    expect(w.text().match(/Farbausmalung/g)).toHaveLength(1)
+      // The poster says it too: open it first, so only the card is left.
+      await w.get('[data-test="ramp-poster"]').trigger('click')
+
+      expect(w.text().match(/Farbausmalung/g)).toHaveLength(1)
+    } finally {
+      restore()
+    }
   })
 
   it('names the game exactly once where there is no renderer for it', () => {
@@ -692,5 +719,131 @@ describe('RoundCard', () => {
     const w = mountCard({ round: aRound({ me: aPlay() }), closed: true })
 
     expect(playOf(w)).toBeNull()
+  })
+})
+
+describe('RoundCard ramp', () => {
+  const sceneOf = (w: VueWrapper) => w.getComponent(RoundRamp).props('scene')
+
+  it('stands a sealed round behind a poster with its number and name', () => {
+    const w = mountCard({ round: aRound({ payload: null }), stage: 'sealed' })
+
+    expect(sceneOf(w)).toEqual({
+      game: 'Farbausmalung',
+      roundNumber: 12,
+      phaseTwo: false,
+      points: null,
+    })
+  })
+
+  it('stands a playable round without a running clock behind a poster', () => {
+    const w = mountCard({
+      round: aRound({
+        game: {
+          id: 'guess-hue',
+          displayName: 'Farbausmalung',
+          requiresReveal: false,
+          scoresOnDuration: false,
+        },
+      }),
+      stage: 'playing',
+    })
+
+    expect(sceneOf(w)).not.toBeNull()
+  })
+
+  it('stands no poster in front of a timed play that is already running', () => {
+    const w = mountCard({ round: aRound({ me: aPlay() }), stage: 'playing' })
+
+    expect(sceneOf(w)).toBeNull()
+  })
+
+  it('stands no poster in front of a played round', () => {
+    expect(sceneOf(mountCard({ round: aRound(), stage: 'done' }))).toBeNull()
+  })
+
+  it('stands no poster in front of a closed round', () => {
+    const w = mountCard({ round: aRound(), stage: 'playing', closed: true })
+
+    expect(sceneOf(w)).toBeNull()
+  })
+
+  it('stands no poster in front of a game this build cannot render', () => {
+    const round = aRound({
+      game: {
+        id: 'unknown-game',
+        displayName: 'Neu',
+        requiresReveal: true,
+        scoresOnDuration: true,
+      },
+    })
+
+    expect(sceneOf(mountCard({ round, stage: 'playing' }))).toBeNull()
+  })
+
+  it('stands no poster without a round number', () => {
+    const w = mountCard({ round: aRound({ round: null }), stage: 'playing' })
+
+    expect(sceneOf(w)).toBeNull()
+  })
+
+  it('stands no poster without a game name', () => {
+    const round = aRound({
+      game: {
+        id: 'guess-hue',
+        displayName: null as never,
+        requiresReveal: true,
+        scoresOnDuration: true,
+      },
+    })
+
+    expect(sceneOf(mountCard({ round, stage: 'playing' }))).toBeNull()
+  })
+
+  it('counts round 0 as a round', () => {
+    const round = aRound({
+      round: { number: 0, start: '2026-08-14T10:00:00Z', end: '2026-08-15T10:00:00Z' },
+    })
+
+    expect(sceneOf(mountCard({ round, stage: 'playing' }))?.roundNumber).toBe(0)
+  })
+
+  it('names the stake in phase two', () => {
+    const round = aRound({ awardRule: 'CLOSEST_ONLY', awardPoints: 12 })
+    const scene = sceneOf(mountCard({ round, stage: 'playing' }))
+
+    expect(scene).toMatchObject({ phaseTwo: true, points: 12 })
+  })
+
+  it('names no stake in phase one', () => {
+    const round = aRound({ awardPoints: 12 })
+    const scene = sceneOf(mountCard({ round, stage: 'playing' }))
+
+    expect(scene).toMatchObject({ phaseTwo: false, points: null })
+  })
+
+  describe('once it has gone', () => {
+    let restore: () => void
+
+    beforeEach(() => {
+      restore = withoutAnimation()
+    })
+
+    afterEach(() => restore())
+
+    it('does not come back for the round a 409 reload lands in its place', async () => {
+      const w = mountCard({ round: aRound(), stage: 'playing' })
+
+      await w.get('[data-test="ramp-poster"]').trigger('click')
+      expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+
+      await w.setProps({
+        round: aRound({
+          round: { number: 13, start: '2026-08-15T10:00:00Z', end: '2026-08-16T10:00:00Z' },
+        }),
+      })
+
+      expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+    })
   })
 })

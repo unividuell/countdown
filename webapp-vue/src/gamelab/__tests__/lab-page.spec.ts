@@ -8,6 +8,7 @@ import { initialSeed } from '@/gamelab/seed'
 import MemberRow from '@/members/MemberRow.vue'
 import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import GameHeader from '@/ui/GameHeader.vue'
+import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import * as drawerControl from '@/nav/drawerControl'
 import type { RoundAssets } from '@/api/assets'
@@ -1283,5 +1284,166 @@ describe('lab page', () => {
     await flushPromises()
 
     expect(w.getComponent(GameHeader).props('play')).toBeNull()
+  })
+
+  describe('ramp switch', () => {
+    const unplayed = { ...round, revealed: false, payload: null }
+    const played = {
+      userId: 'auth-me',
+      username: 'Auth Me',
+      avatar: { shortName: 'AM', bgColorHex: '#123456' },
+      guess: { value: 150 },
+      outcome: null,
+      at: '2026-08-08T12:00:00Z',
+      points: 0,
+    }
+
+    it('stands no ramp without ?ramp=1', async () => {
+      vi.spyOn(api, 'openLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+
+      expect(w.getComponent(RoundRamp).props('scene')).toBeNull()
+      expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+    })
+
+    it('stands the ramp in front of an unplayed round with ?ramp=1', async () => {
+      setQuery({ seed: '42', ramp: '1' })
+      vi.spyOn(api, 'openLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+
+      expect(w.getComponent(RoundRamp).props('scene')).toEqual({
+        game: 'Stub',
+        roundNumber: labRoundNumber(42),
+        phaseTwo: false,
+        points: null,
+      })
+      expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+    })
+
+    it('names the points on a phase-two round', async () => {
+      setQuery({ seed: '42', ramp: '1', phase: 'TWO' })
+      vi.spyOn(api, 'openLabRound').mockResolvedValue({
+        ...unplayed,
+        phase: 'TWO',
+        awardRule: 'CLOSEST_ONLY',
+        awardPoints: 12,
+      } as never)
+
+      const w = await mountPage()
+
+      expect(w.getComponent(RoundRamp).props('scene')).toMatchObject({
+        phaseTwo: true,
+        points: 12,
+      })
+    })
+
+    it('stands no ramp in front of a round the tester already played', async () => {
+      setQuery({ seed: '42', ramp: '1' })
+      vi.spyOn(api, 'openLabRound').mockResolvedValue({
+        ...round,
+        me: played,
+      } as never)
+
+      const w = await mountPage()
+
+      expect(w.getComponent(RoundRamp).props('scene')).toBeNull()
+      expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+    })
+
+    it('stands the ramp again once a reset clears the tester s entry', async () => {
+      setQuery({ seed: '42', ramp: '1' })
+      vi.spyOn(api, 'openLabRound').mockResolvedValue({
+        ...round,
+        me: played,
+      } as never)
+      vi.spyOn(api, 'resetLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+      expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+
+      await tool('lab-reset').trigger('click')
+      await flushPromises()
+
+      expect(w.getComponent(RoundRamp).props('scene')).not.toBeNull()
+      expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+    })
+
+    it('keeps the game mounted through a reset while the switch is off', async () => {
+      vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, me: played } as never)
+      vi.spyOn(api, 'resetLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+      const before = w.getComponent(StubGame).element
+
+      await tool('lab-reset').trigger('click')
+      await flushPromises()
+
+      expect(w.getComponent(StubGame).element).toBe(before)
+    })
+
+    it('stands the ramp again after a tap took it away and a reset resealed the round', async () => {
+      setQuery({ seed: '42', ramp: '1' })
+      vi.spyOn(api, 'openLabRound').mockResolvedValue(unplayed as never)
+      vi.spyOn(api, 'revealLabRound').mockResolvedValue({ ...round, revealed: true } as never)
+      vi.spyOn(api, 'resetLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+      await revealFromGame(w)
+      await tool('lab-reset').trigger('click')
+      await flushPromises()
+
+      expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+    })
+
+    it('stands the ramp again after a roll, and after the switch', async () => {
+      vi.spyOn(api, 'openLabRound').mockResolvedValue(unplayed as never)
+      setQuery({ seed: '42', ramp: '1' })
+
+      const w = await mountPage()
+      const saved = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')
+      Object.defineProperty(Element.prototype, 'animate', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      })
+      try {
+        await w.get('[data-test="ramp-poster"]').trigger('click')
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+
+        setQuery({ seed: '43', ramp: '1' })
+        vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...unplayed, seed: 43 } as never)
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+
+        // Off and on again: the switch alone stands the ramp again on an unplayed round.
+        await w.get('[data-test="ramp-poster"]').trigger('click')
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+
+        setQuery({ seed: '43' })
+        await flushPromises()
+        setQuery({ seed: '43', ramp: '1' })
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+      } finally {
+        if (saved) Object.defineProperty(Element.prototype, 'animate', saved)
+        else delete (Element.prototype as { animate?: unknown }).animate
+      }
+    })
+
+    it('writes ramp=1 into the route, and removes it again', async () => {
+      await mountPage()
+
+      await tool('lab-ramp').setValue(true)
+      expect(replace).toHaveBeenLastCalledWith({ query: { seed: '42', ramp: '1' } })
+
+      setQuery({ seed: '42', ramp: '1' })
+      await flushPromises()
+      await tool('lab-ramp').setValue(false)
+      expect(replace).toHaveBeenLastCalledWith({ query: { seed: '42' } })
+    })
   })
 })

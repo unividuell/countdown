@@ -57,8 +57,8 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **A horizontally scrolling strip must genuinely scroll:** a flex child needs `shrink-0`, or
   `scrollWidth` equals `clientWidth`. Hiding the scrollbar costs mouse users their only
   affordance: only once touch swipe covers them.
-- **A strip that becomes scrollable *late* resets its own `scrollLeft`.** Firefox restores the
-  session's offset when the element *becomes* a scroll container. On **every** settle path,
+- **A strip that becomes scrollable _late_ resets its own `scrollLeft`.** Firefox restores the
+  session's offset when the element _becomes_ a scroll container. On **every** settle path,
   `prefers-reduced-motion` included:
   `void nextTick(() => { el.scrollLeft = 0; requestAnimationFrame(() => { el.scrollLeft = 0 }) })`.
   Same wherever the scroll position derives from data (a ranking opens on the leader). `MemberRow`.
@@ -116,7 +116,7 @@ the ancestor chain answers all three. `HueWheel`.
 ### Controls inside controls
 
 - **A gesture that commits something must not be reachable by a single key.** A synthetic click
-  from assistive tech fires `Enter`, never a hold. Give the keyboard the *same* gesture — `keydown`
+  from assistive tech fires `Enter`, never a hold. Give the keyboard the _same_ gesture — `keydown`
   starts the hold, `keyup` abandons it, `event.repeat` is ignored, the default is prevented. The
   residual limit (someone who cannot hold a key) belongs in the spec, not in a cheaper fallback.
   `ui/HoldButton.vue`.
@@ -195,7 +195,7 @@ the ancestor chain answers all three. `HueWheel`.
   board and its reveal show the same thing in the same place, the size is one named class both
   spell out (`song-cover.css`, `hue-wheel.css`); a slot one fills with a control and the other with
   text gets one named height. A spec asserts both ends carry the class. Where they show the same
-  *control*, make it one component (`PlayButton`). A sideways scroller is not that measurement — a
+  _control_, make it one component (`PlayButton`). A sideways scroller is not that measurement — a
   desktop scrollbar adds height: lay it over a sizer of the shared size (`SongSearchBox`).
 - **Write a component's comments as `//` in `<script setup>`, never beside the template's root.**
   A comment there makes the component multi-root in dev and in tests (not in the build), and a
@@ -203,6 +203,15 @@ the ancestor chain answers all three. `HueWheel`.
   renders. `ui/RoundSurface.vue`.
 - **A flip-dot board never stands on `DOT_OFF`'s own colour** (`#292524`): the unlit dots vanish
   and it reads as floating digits. Use the `board` roles and assert the class.
+- **A `<button class="flex flex-col">` needs `items-stretch` where its children fill the width.**
+  WebKit's UA sheet gives buttons `align-items: flex-start`, so the children start at the left,
+  shrunk to their content; Chromium stretches them.
+- **A hidden measuring element goes in a zero-size `overflow: hidden` host, never straight on
+  `body`.** Text set at measuring size is wider than a phone, and the whole page scrolls
+  sideways. `useTypeWidth` in `ui/ramp/poster.ts`.
+- **Content sized from its box's measured height stays out of the flow** (`absolute inset-0`).
+  In the flow it adds to the box it measures, and every resize buys one more row: endless.
+  `ui/ramp/RasterPoster.vue`.
 
 ### Accessible by construction
 
@@ -219,7 +228,7 @@ the ancestor chain answers all three. `HueWheel`.
   nothing else, and sets `inert` on that area — glass stops a finger, not a keyboard. Its rules and
   stake stay outside both: the sealed round is when they are read at leisure.
 - **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
-  failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
+failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
 - **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
   under the cover — a picture's sealed bytes included (`useSealedAsset`: `ready` means the bytes are
   here, the key's arrival only opens them). The cover leaves in the same render, with no transition:

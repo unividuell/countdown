@@ -14,7 +14,7 @@
  * name and overrode its internals in CSS. Its ideas are kept — one `role="slider"` for the whole
  * wheel, the key map, grab-anywhere, the rotating layer — its code is not.
  */
-import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { angleFromPoint, hueName, radiusFraction, wrap360 } from './geometry'
 import HueRing from './HueRing.vue'
 import type { RingSweep } from './ring'
@@ -27,6 +27,7 @@ import {
   easeOutCubic,
   trackBoxStyle,
 } from './wheel'
+import { useCurtainOpen } from '@/ui/curtain'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{
@@ -104,13 +105,25 @@ function runSweep(): void {
   frame = requestAnimationFrame(step)
 }
 
+const curtainOpen = useCurtainOpen()
+
+// The sweep is the entrance: it starts once the ramp's curtain is open. Where nothing may animate
+// there is no entrance to wait for, so the wheel is live at mount.
 onMounted(() => {
   sweepFrom.value = props.hue
   if (prefersReducedMotion() || inBackground() || typeof requestAnimationFrame !== 'function') {
     finishSweep()
     return
   }
-  runSweep()
+  if (curtainOpen.value) {
+    runSweep()
+    return
+  }
+  const stop = watch(curtainOpen, (open) => {
+    if (!open) return
+    stop()
+    runSweep()
+  })
 })
 
 onBeforeUnmount(() => {

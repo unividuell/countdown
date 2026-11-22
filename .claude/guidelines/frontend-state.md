@@ -214,6 +214,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   constructor. Both the context and the „only one clip sounds" registry are module state, so a
   stubbing test needs `vi.resetModules()` + a dynamic import per case, and `requestAnimationFrame`
   stubbed into a queue you step by hand (the sampler re-requests itself).
+- **Whatever performs on load waits for `useCurtainOpen()`** (`ui/curtain.ts`). A round's card may
+  lie mounted under the ramp, unseen and unheard; an entrance (pop-in, sweep, growing bar,
+  opening knock) starts once the curtain is open — `true` wherever no ramp stands. `HoldButton`,
+  `MatchScaleBoard`, `HueWheelInput`, `StageBar`.
 
 ## Server-authoritative ticking values (countdown pattern)
 
