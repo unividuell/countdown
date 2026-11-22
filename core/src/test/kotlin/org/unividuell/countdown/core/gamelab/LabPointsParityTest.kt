@@ -32,7 +32,10 @@ import org.unividuell.countdown.core.game.internal.ResolvedRound
 import org.unividuell.countdown.core.game.internal.ReviewService
 import org.unividuell.countdown.core.game.internal.RoundGameStore
 import org.unividuell.countdown.core.game.internal.RoundPlayRepository
+import org.unividuell.countdown.core.gamelab.internal.LAB_ROUND_NUMBER
 import org.unividuell.countdown.core.gamelab.internal.LabService
+import org.unividuell.countdown.core.gamelab.internal.labPhaseTwoStart
+import org.unividuell.countdown.core.gamelab.internal.labStake
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
 import org.unividuell.countdown.core.spotobject.CountryLookup
@@ -201,9 +204,9 @@ class LabPointsParityTest(
 
     @Test
     fun `a lab round in phase two awards what a real round in phase two awards`() {
-        // The number both halves must land on, pinned independently of either side's own machinery:
-        // the first round of phase two pays 2, straight out of the function both sides call.
-        awardFor(roundNumber = -12, phaseTwoStartRound = -12).points shouldBe 2
+        // The lab's stake, straight out of the function both sides call: seed 42 puts phase two's
+        // start where `awardFor` pays 4.
+        awardFor(roundNumber = LAB_ROUND_NUMBER, phaseTwoStartRound = labPhaseTwoStart(42)).points shouldBe 4
 
         // --- the lab half: two testers, phase two, the second guessing exactly the target ---------
         val labEarlyId = aUser("lab-early")
@@ -259,7 +262,7 @@ class LabPointsParityTest(
         labSecondGuess.awardRule shouldBe AwardRule.CLOSEST_ONLY
         resolved.roundGame.awardRule shouldBe AwardRule.CLOSEST_ONLY
 
-        labWinnerPoints shouldBe 2
+        labWinnerPoints shouldBe 4
         labLoserPoints shouldBe 0
         // Derived from the round the real half actually resolved to, not the literal 2: a day
         // boundary between pinning `realThreshold` and this `resolve()` call would move the current
@@ -322,7 +325,7 @@ class LabPointsParityTest(
         lab.open(
             slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,
             userId = labTargetId, isSuperAdmin = false,
-        ).me.shouldNotBeNull().points shouldBe 2
+        ).me.shouldNotBeNull().points shouldBe labStake(42)
 
         lab.vote(
             slug = labCommunity.slug, gameId = "spot-object", seed = 42, phase = Phase.TWO,

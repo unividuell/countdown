@@ -29,13 +29,17 @@ import org.unividuell.countdown.core.game.GameRandom
 import org.unividuell.countdown.core.game.InvalidGuessException
 import org.unividuell.countdown.core.game.Phase
 import org.unividuell.countdown.core.game.RoundContext
+import org.unividuell.countdown.core.game.awardFor
 import org.unividuell.countdown.core.game.internal.FindPatternScene
 import org.unividuell.countdown.core.gamelab.internal.AlreadyGuessedException
 import org.unividuell.countdown.core.gamelab.internal.LabAssetNotFoundException
 import org.unividuell.countdown.core.gamelab.internal.LabAccessDeniedException
 import org.unividuell.countdown.core.gamelab.internal.LabNotRevealedException
 import org.unividuell.countdown.core.gamelab.internal.LabService
+import org.unividuell.countdown.core.gamelab.internal.LAB_ROUND_NUMBER
 import org.unividuell.countdown.core.gamelab.internal.labDifficulty
+import org.unividuell.countdown.core.gamelab.internal.labPhaseTwoStart
+import org.unividuell.countdown.core.gamelab.internal.labStake
 import org.unividuell.countdown.core.gamelab.internal.UnknownLabGameException
 import org.unividuell.countdown.core.iam.Avatar
 import org.unividuell.countdown.core.iam.User
@@ -613,10 +617,34 @@ class LabServiceTest(
         one.awardRule shouldBe AwardRule.ALL_QUALIFYING
         one.awardPoints shouldBe 1
         two.awardRule shouldBe AwardRule.CLOSEST_ONLY
-        // The one number the lab invents (via the synthetic LAB_ROUND_NUMBER) rather than reads off a
-        // real grid — worth pinning on its own.
-        two.awardPoints shouldBe 2
+        // The one number the lab invents (via the synthetic threshold) rather than reads off a real
+        // grid — worth pinning on its own. Seed 42: 42 mod 3 = 0 → 2 + 42 mod 8.
+        two.awardPoints shouldBe 4
         two.tookOverRound shouldBe true
+    }
+
+    @Test
+    fun `the phase-two stake rolls through every digit count`() {
+        labStake(0) shouldBe 2
+        labStake(1) shouldBe 11
+        labStake(2) shouldBe 102
+        labStake(-1) shouldBe 999
+        (-3000..3000).map(::labStake).all { it in 2..999 } shouldBe true
+    }
+
+    @Test
+    fun `a lab round in phase two pays the stake its seed rolls`() {
+        val (community, mine) = aCommunityWithTwoMembers()
+
+        val stakes = (0..2).map { seed ->
+            service.open(
+                slug = community.slug, gameId = "guess-hue", seed = seed, phase = Phase.TWO,
+                userId = mine.me, isSuperAdmin = false,
+            ).awardPoints
+        }
+
+        stakes shouldBe listOf(2, 11, 102)
+        awardFor(roundNumber = LAB_ROUND_NUMBER, phaseTwoStartRound = labPhaseTwoStart(2)).points shouldBe 102
     }
 
     @Test

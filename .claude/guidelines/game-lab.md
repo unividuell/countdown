@@ -52,6 +52,8 @@ Every bean of a non-prod tool carries **both**:
 - **Difficulty follows from the seed** (`labDifficulty`, `seed.mod(11) / 10.0`), not from a control
   or from `GameRandom` — one more draw would shift every draw after it. `mod`, not `%`: never
   negative.
+- **So does phase two's stake** (`labStake`): the seed sets where phase two starts, and `awardFor`
+  pays from there — 2–9, 10–99, 100–999 in turn, so every digit count shows up while rolling.
 
 ## The lab's gates are the framework's rules
 

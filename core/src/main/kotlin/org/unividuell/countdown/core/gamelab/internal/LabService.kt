@@ -416,14 +416,14 @@ class LabService(
     /**
      * The lab's substitute for a round grid. `awardFor` decides the rule and the stake — the lab picks
      * the phase, never the points — and it needs a round number to do that, so the lab pretends every
-     * round is [LAB_ROUND_NUMBER]. In phase two the threshold sits on that same number, which is the
-     * first round of phase two and therefore its lowest stake; the number is arbitrary, the fact that
-     * it comes out of the real function is not.
+     * round is [LAB_ROUND_NUMBER]. In phase two the threshold sits as far before it as the seed says
+     * ([labPhaseTwoStart]); the numbers are invented, the fact that the stake comes out of the real
+     * function is not.
      */
     private fun chooseRound(communityId: UUID, handle: GameTypeHandle<*>, seed: Int, phase: Phase): LabRound {
         val award: Award = awardFor(
             roundNumber = LAB_ROUND_NUMBER,
-            phaseTwoStartRound = if (phase == Phase.TWO) LAB_ROUND_NUMBER else null,
+            phaseTwoStartRound = if (phase == Phase.TWO) labPhaseTwoStart(seed) else null,
         )
         val context = RoundContext(
             communityId = communityId, roundNumber = LAB_ROUND_NUMBER, phase = phase,
@@ -560,15 +560,30 @@ class LabService(
             communityId = communityId, gameId = handle.id, round = round,
             produce = { handle.produceAssets(round.params).map { it.sealed() } },
         )
-
-    private companion object {
-        /**
-         * The round every lab round pretends to be. The lab has no grid, and `awardFor` needs a
-         * number; which number it is only shifts phase two's stake, and the lab is about the rule.
-         */
-        const val LAB_ROUND_NUMBER = -12
-    }
 }
+
+/**
+ * The round every lab round pretends to be. The lab has no grid, and `awardFor` needs a number;
+ * which number it is only shifts phase two's stake, and [labPhaseTwoStart] sets that.
+ */
+internal const val LAB_ROUND_NUMBER = -12
+
+/**
+ * Phase two's stake in a lab round, from the seed: 2–9, 10–99 and 100–999 in turn, so every digit
+ * count a stake can have shows up while rolling. `mod` is never negative.
+ */
+internal fun labStake(seed: Int): Int =
+    when (seed.mod(3)) {
+        0 -> 2 + seed.mod(8)
+        1 -> 10 + seed.mod(90)
+        else -> 100 + seed.mod(900)
+    }
+
+/**
+ * Where phase two starts for a lab round: as far before [LAB_ROUND_NUMBER] as [labStake] needs —
+ * `awardFor` pays 2 on the first round of phase two and one more each round after it.
+ */
+internal fun labPhaseTwoStart(seed: Int): Int = LAB_ROUND_NUMBER - (labStake(seed) - 2)
 
 /**
  * The lab round's difficulty: `0.0` to `1.0` in tenths, from the seed — a new seed rolls it too.
