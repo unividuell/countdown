@@ -8,6 +8,7 @@ import {
   initialPlacements,
   initialView,
   moveBy,
+  revealPlacements,
   pan,
   pinch,
   scaleToHandle,
@@ -204,6 +205,22 @@ describe('placements', () => {
 
     expect(a).toEqual({ x: 1, y: 0, scale: 1 })
     expect(b).toEqual({ x: 2 + 3, y: 0, scale: 1 })
+  })
+
+  it('closes the reveal gap to a tenth of the larger shape', () => {
+    // A 3 wide, true B 2.4 × 6: the gap is 0.6.
+    const { a, b } = revealPlacements(WIDE, TALL, 2)
+
+    expect(a).toEqual({ x: 1, y: 0, scale: 1 })
+    expect(b.x).toBeCloseTo(1 + 3 + 0.6)
+    expect(b).toMatchObject({ y: 0, scale: 1 })
+  })
+
+  it('keeps the reveal gap in step with a tiny B', () => {
+    // True B 0.3 × 0.15 beside A 3 wide: the gap follows A, not B.
+    const { b } = revealPlacements(WIDE, WIDE, 0.1)
+
+    expect(b.x).toBeCloseTo(1 + 3 + 0.3)
   })
 
   it('moves without touching the scale', () => {

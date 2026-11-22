@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { FIELD_PX, initialPlacements, sizeAt } from '../gestures'
+import { FIELD_PX, revealPlacements, sizeAt } from '../gestures'
 import MatchScaleLegend from '../MatchScaleLegend.vue'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
 import ScaleField from '../ScaleField.vue'
@@ -88,7 +88,7 @@ const field = (w: ReturnType<typeof mountReveal>) => w.getComponent(ScaleField)
 describe('MatchScaleReveal', () => {
   it('shows B at the true factor and my tip as a dashed outline at the same corner', () => {
     const wrapper = mountReveal()
-    const b = initialPlacements(PAYLOAD.a).b
+    const b = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
 
     expect(field(wrapper).props('placementB')).toEqual({ ...b, scale: 1.6 })
     expect(field(wrapper).props('interactive')).toBe(false)
@@ -122,7 +122,11 @@ describe('MatchScaleReveal', () => {
     await wrapper.get('[data-test="select-you"]').trigger('click')
 
     expect(field(wrapper).props('outlines')).toEqual([
-      { placement: { ...initialPlacements(PAYLOAD.a).b, scale: 2 }, color: OTHER, dashed: true },
+      {
+        placement: { ...revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b, scale: 2 },
+        color: OTHER,
+        dashed: true,
+      },
     ])
   })
 
@@ -188,7 +192,7 @@ describe('MatchScaleReveal', () => {
     await wrapper.get('[data-test="select-farther"]').trigger('click')
 
     const view = field(wrapper).props('view')
-    const corner = initialPlacements(PAYLOAD.a).b
+    const corner = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
     const extent = FIELD_PX / view.cellPx
 
     for (const scale of [5, 7]) {
@@ -376,7 +380,7 @@ describe('MatchScaleReveal', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
       try {
         const wrapper = mountReveal({ animate: true, from: FROM })
-        const corner = initialPlacements(PAYLOAD.a).b
+        const corner = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
 
         expect(field(wrapper).props('outlines')).toEqual([
           { placement: SENT, color: AMBER, dashed: true, filled: true, eased: true },
@@ -408,7 +412,7 @@ describe('MatchScaleReveal', () => {
 
     it('without animation it shows the end state at once', () => {
       const wrapper = mountReveal({ animate: false, from: FROM })
-      const corner = initialPlacements(PAYLOAD.a).b
+      const corner = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
 
       expect(field(wrapper).props('outlines')).toEqual([
         { placement: { ...corner, scale: 1.3 }, color: ME, dashed: true },
@@ -434,7 +438,7 @@ describe('MatchScaleReveal', () => {
 
   it("a name toggles that player's outline in their colour", async () => {
     const wrapper = mountReveal()
-    const b = initialPlacements(PAYLOAD.a).b
+    const b = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
 
     await wrapper.get('[data-test="select-you"]').trigger('click')
 
@@ -471,7 +475,7 @@ describe('MatchScaleReveal', () => {
     await wrapper.get('[data-test="select-far"]').trigger('click')
 
     const view = field(wrapper).props('view')
-    const corner = initialPlacements(PAYLOAD.a).b
+    const corner = revealPlacements(PAYLOAD.a, PAYLOAD.b, 1.6).b
     const { w, h } = sizeAt(PAYLOAD.b, 5)
     const extent = FIELD_PX / view.cellPx
 

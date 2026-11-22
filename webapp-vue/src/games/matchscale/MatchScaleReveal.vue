@@ -28,7 +28,7 @@ import { countTones, growEasing, growMs } from './countTones'
 import {
   FIELD_PX,
   fitView,
-  initialPlacements,
+  revealPlacements,
   sizeAt,
   type Box,
   type Placement,
@@ -63,7 +63,7 @@ const props = defineProps<{
 const A_COLOR = 'var(--color-on-surface-variant)'
 const B_COLOR = 'var(--color-match-scale-b)'
 
-const start = computed(() => initialPlacements(props.payload.a))
+const start = computed(() => revealPlacements(props.payload.a, props.payload.b, props.factor))
 
 const truth = computed(() => truthOf(props.measureA, props.measureB))
 
