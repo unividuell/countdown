@@ -13,7 +13,7 @@ Handy und im iOS-Simulator abgenommen. Wo dieses Dokument keine Zahl nennt, gilt
 
 **Berührt:** nur das Frontend. Neu `src/ui/ramp/`; geändert `rounds/RoundCard.vue`, die Lab-Seite
 `pages/c/[slug]/lab/[game]/index.vue` mit `gamelab/LabControls.vue`, die vier Stellen mit einem
-Auftritt beim Laden (siehe *Bühne frei*) und ein Schriftpaket in `package.json`. Kein Backend,
+Auftritt beim Laden (siehe *Bühne frei*). Kein Backend,
 keine Migration, kein neues API-Feld.
 
 ## Zweck
@@ -29,7 +29,7 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 
 - Vor jeder Runde, die der Spieler noch spielen darf, steht ein Plakat. Ein Tipp öffnet sie.
 - Derselbe Tipp weckt den Ton, wenn der Spieler ihn nicht stummgeschaltet hat.
-- Das Plakat sieht nicht jeden Tag gleich aus: Stil, Ausrichtung und Ziffernschrift wechseln.
+- Das Plakat sieht nicht jeden Tag gleich aus: die Ausrichtung wechselt.
 - Im Lab lässt sich die Rampe vor jedes Spiel schalten.
 
 ## Nicht-Ziele
@@ -38,7 +38,7 @@ auf, zeigt das Spiel und weckt dabei den Ton.
 - Keine Rampe vor gespielten oder geschlossenen Runden, nicht in der Historie.
 - Kein Merken, ob jemand die Rampe schon gesehen hat.
 - Keine Spielerfarbe: der Grund ist immer die Phasenfarbe.
-- Der Tropfen und das Laufband aus dem Spike werden nicht gebaut.
+- Der Tropfen, das Laufband und das Kalenderblatt aus dem Spike werden nicht gebaut.
 - Keine eigene Schrift für die App. Die Buchstaben des Plakats stehen in der Systemschrift wie der
   Rest der App; eine App-Schrift ist ein eigenes Thema.
 
@@ -96,47 +96,42 @@ zugehörigen `on-phase`-Rolle. Mehr Farben gibt es nicht.
 1. „Aktuelle Runde“, klein.
 2. Der Spielname, groß, in Versalien, auf die volle Breite eingepasst.
 3. Die Rundennummer.
-4. In Phase zwei: „{n} Punkte zum Abstauben“, klein. Fehlt die Punktzahl, entfällt die Zeile.
+4. In Phase zwei die Punkte: oben rechts in einem Kreis über den Zeilen, gekleidet wie der Balken
+   des Namens; die Zahl groß, darunter klein „Punkte“ („Punkt“ bei einem). Ohne Punktzahl kein Kreis.
 
-**Zwei Stile:**
+**Ein Stil, der Balken:** Der Name steht ausgespart in einem vollen Balken in der Mitte. Darüber
+und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Nummer als „№ −98“ im
+Kleingedruckten. Jedes Echo läuft um genau eine Namensbreite, wie sie gesetzt ist, nicht um eine
+geschätzte: sonst springt es einmal je Umlauf.
 
-| Stil | Bild |
-|---|---|
-| Balken | Der Name steht ausgespart in einem vollen Balken in der Mitte. Darüber und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Nummer als „№ −98“ im Kleingedruckten. |
-| Kalenderblatt | Die Rundennummer ist der Held, dahinter wandert ein versetzter Umrissdruck. Der Name steht darunter. |
+Verworfen nach der Handprobe: das Laufband (dem Balken zu ähnlich) und das Kalenderblatt mit der
+Rundennummer als Held. Die Karte dahinter ist oft viel höher als der Bildschirm; die Nummer stand
+dann in der Mitte, oben nur ein farbiger Block, man hätte scrollen müssen. Mit dem Kalenderblatt
+entfällt Fraunces und das Vorzeichen als Balken über der Zahl. Aus demselben Grund stehen die
+Punkte oben im Kreis statt in einer Zeile am Fuß.
 
-Das Laufband des Spikes (wie Balken, der Name ohne Balken) entfällt: es ist dem Balken zu ähnlich,
-um ein eigener Stil zu sein.
-
-**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld. Das
-Kalenderblatt bleibt gerade und setzt Zahl und Name stattdessen links, mittig oder rechts.
+**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld.
 
 **Schrift:** Alle Buchstaben stehen in der Systemschrift, Schnitt 900. Das Bild unterscheidet sich
-damit leicht je Gerät (Roboto auf Android, San Francisco auf Apple); das ist hingenommen. Die große
-Zahl des Kalenderblatts steht wahlweise in der Systemschrift oder in **Fraunces** (nur Ziffern; die
-Buchstaben von Fraunces sind verworfen). Fraunces liefert die App selbst aus, siehe *Schrift
-ausliefern*.
+damit leicht je Gerät (Roboto auf Android, San Francisco auf Apple); das ist hingenommen.
 
-**Vorzeichen:** Runden zählen im Normalfall negativ. Das Kalenderblatt setzt nur die Ziffern. Bei
-einer negativen Runde liegt ein Balken darüber, so breit wie die Zahl. Ein Minus neben den Ziffern
-kostet zu viel Breite, und den Betrag ohne Zeichen zu zeigen wäre gelogen. Das Kleingedruckte
-schreibt die Nummer mit echtem Minuszeichen („−“, U+2212).
+**Vorzeichen:** Runden zählen im Normalfall negativ. Das Kleingedruckte schreibt die Nummer mit
+echtem Minuszeichen („−“, U+2212).
 
 **ß:** Versalien machen aus „ß“ ein „SS“ und nähmen „Anmaßung“ sein „Maß“. Das Plakat setzt das
 große „ẞ“.
 
 **Variation:** Welches Plakat eine Runde bekommt, ergibt sich allein aus ihrer Nummer, im Frontend
-gerechnet. Es ist für alle Spieler gleich und braucht den Server nicht. Der Stil wechselt mit
-jeder Runde (Betrag der Nummer modulo 2), damit zwei Tage nacheinander nie gleich aussehen.
-Ausrichtung und Ziffernschrift kommen aus einer 32-Bit-Mischung der Nummer (`posterOf` im Spike).
+gerechnet. Es ist für alle Spieler gleich und braucht den Server nicht. Die Ausrichtung kommt aus
+einer 32-Bit-Mischung der Nummer (`posterOf`).
 
 ## Auflösung
 
 Ein Tipp auf das Plakat. Jede Zeile ist ein Streifen mit eigenem Grund und
 läuft seitlich raus, in die Richtung, in die sie vorher lief; ungerade und gerade Zeilen also
 entgegengesetzt. Die Ränder gehen zuerst, der Name zuletzt. Bei geneigten Plakaten laufen die
-Streifen die Schräge entlang. Das Kalenderblatt geht genauso auf, mit Kleingedrucktem, Zahl und
-Name als Blöcken. Dauer rund 0,55 s.
+Streifen die Schräge entlang. Der Punkte-Kreis läuft mit dem Kleingedruckten nach rechts. Dauer
+rund 0,55 s.
 
 Mit Beginn des Rauslaufens ist die Karte sichtbar; die Lücken zeigen sie. Bedienbar wird sie, wenn
 der letzte Streifen weg ist.
@@ -171,14 +166,11 @@ der letzte Streifen weg ist *(Setzung)*. Dann ist auch der Ton sicher wach.
 hören; ist die Bühne frei, läuft er wie bisher. Der Halte-Knopf ist geteilte UI: eine Stelle deckt
 alle Abdeckungen ab. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
 
-## Schrift ausliefern
+## Schrift
 
-- **Fraunces** (variabel) kommt als npm-Paket `@fontsource-variable/fraunces` in den Build. Vite
-  legt die Datei zu den übrigen Assets; der Browser holt sie vom eigenen Ursprung, und erst dann,
-  wenn ein Kalenderblatt sie braucht.
-- **Keine Anfrage an Dritte.** Kein Google-Fonts-Link, kein `@import` einer fremden Adresse, weder
-  im Code noch im `index.html`. Die IP-Adresse des Spielers geht für eine Schrift nirgendwohin.
-- Fraunces steht unter der SIL Open Font License; der Umsetzer prüft die Lizenzdatei im Paket.
+Die App liefert keine Schrift aus. Kommt je eine hinzu, dann vom eigenen Ursprung: kein
+Google-Fonts-Link, kein `@import` einer fremden Adresse. Die IP-Adresse des Spielers geht für eine
+Schrift nirgendwohin (`src/__tests__/ownFonts.spec.ts`).
 
 ## Lab
 
@@ -224,36 +216,31 @@ dem Plakat.
   RoundCard / Lab-Seite
     └─ RoundRamp  (ui/ramp)        hält: steht | läuft raus | weg; stellt „Bühne frei“ bereit
          ├─ Slot: RoundSurface + GameHeader + Spiel      (darunter, im selben Rasterfeld)
-         └─ Plakat: Balken | Kalenderblatt               (darüber, solange nicht weg)
+         └─ Plakat: Balken                               (darüber, solange nicht weg)
 ```
 
-- **`ui/ramp/`** — aus dem Spike übernommen und aufgeräumt: `EchoPoster` (nur noch der Balken),
-  `SheetPoster` (Kalenderblatt), `PosterPrint`, `poster.ts` (Farben, Schrift, Einpassen, Rauslaufen,
-  `posterOf`), `poster.css`. Neu: `RoundRamp` und das Signal „Bühne frei“.
+- **`ui/ramp/`** — aus dem Spike übernommen und aufgeräumt: `BandPoster`, `PosterPrint`,
+  `poster.ts` (Farben, Schrift, Einpassen, Rauslaufen), `variation.ts` (`posterOf`), `poster.css`.
+  Neu: `RoundRamp` und das Signal „Bühne frei“.
 - **`RoundCard`** entscheidet aus dem, was es schon weiß (`face`, `closed`, `play`, Renderer), ob
   die Rampe steht, und reicht Nummer, Name, Phase und Punkte hinein.
 - **Lab-Seite** tut dasselbe mit ihren Werten und dem URL-Schalter.
-- **Schrift:** `@fontsource-variable/fraunces` aus dem Spike (dort Dev-Abhängigkeit, im Produkt
-  eine echte).
-- **Nicht übernommen:** das Laufband, `GooFlood`, `RampTile` mit seinem Plopp, die Bogen-Seite. `src/spike/ramp/`
+- **Nicht übernommen:** das Laufband, das Kalenderblatt, `GooFlood`, `RampTile` mit seinem Plopp, die Bogen-Seite. `src/spike/ramp/`
   und `pages/spike/rampe.vue` kommen nicht in den Merge.
 
-Drei Fallen, die der Spike schon gefunden hat und die mitkommen müssen:
+Zwei Fallen, die der Spike schon gefunden hat:
 
-- WebKit richtet Flex-Kinder eines `<button>` links aus, auf Inhaltsbreite geschrumpft. Das Plakat
-  braucht `items-stretch`.
+- WebKit richtet Flex-Kinder eines `<button>` links aus, auf Inhaltsbreite geschrumpft
+  (`items-stretch`; betraf das Kalenderblatt).
 - Die unsichtbaren Mess-Elemente fürs Einpassen dürfen nicht nackt am `body` hängen: ein Name in
   Messgröße ist breiter als ein Handy und macht die Seite seitlich scrollbar.
-- Fraunces' optische Größe muss festgenagelt sein (`'opsz' 144`), sonst skaliert eine gemessene
-  Breite nicht auf eine andere Schriftgröße.
 
 ## Tests
 
 Vitest, was happy-dom sehen kann:
 
-- `posterOf`: feste Vektoren (Nummer → Stil, Ausrichtung, Ziffernschrift); benachbarte Runden haben
-  nie denselben Stil; negative Nummern.
-- Schrift: im gebauten Bundle und im `index.html` steht keine fremde Schrift-Adresse.
+- `posterOf`: feste Vektoren (Nummer → Ausrichtung), negative Nummern.
+- Schrift: in den Quellen und im `index.html` steht keine fremde Schrift-Adresse.
 - `RoundRamp`: steht, wenn aktiv; Karte darunter `inert`; Tipp weckt den Ton genau dann, wenn
   Schalter an und Brett mit Ton; „Bühne frei“ wird wahr, wenn die Rampe weg ist; ohne Bewegung
   sofort weg.
@@ -263,19 +250,18 @@ Vitest, was happy-dom sehen kann:
 - Vorzeichen und „ẞ“ als reine Funktionen.
 
 Einpassen, Laufen und Rauslaufen sieht happy-dom nicht. Das wird von Hand geprüft: Android-Firefox
-und iOS-Simulator, je Stil, mit kurzem und langem Namen, ein- bis dreistelliger Nummer, beiden
+und iOS-Simulator, je Ausrichtung, mit kurzem und langem Namen, ein- bis dreistelliger Nummer, beiden
 Phasen.
 
 ## Im Lab herauszufinden
 
-- Wie das Plakat vor einem Spiel wirkt, das viel höher ist als ein Quadrat.
-- Ob Fraunces beim ersten Laden sichtbar nachspringt, und ob das stört.
+- Wie das Plakat vor einem Spiel wirkt, das viel höher ist als ein Quadrat (Kalenderblatt deshalb
+  verworfen).
 - Ob das Zusammenspiel Rampe, dann Abdeckung mit START, in Phase zwei zu viel ist.
 
 ## Dem Umsetzer überlassen
 
 - Wie jeder der vier Auftritte anhält (angehaltene Animation, späteres Einhängen der Klasse).
 - Der Wortlaut des Button-Namens für Vorleser.
-- Ob Fraunces vorab angefragt wird, sobald feststeht, dass ein Kalenderblatt es braucht.
 - Was vom Gefundenen am Ende in die Guidelines gehört
   ([Feeding knowledge back](../../../.claude/guidelines/feeding-knowledge-back.md)).

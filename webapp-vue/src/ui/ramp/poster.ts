@@ -1,8 +1,7 @@
-// What the posters share: colours, faces, the fitting of their type and the way out.
+// What the poster needs: colours, its type, the fitting of the type and the way out.
 import { onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import type { RampScene } from './posterText'
-import type { FaceName } from './variation'
 import './poster.css'
 
 /** What a poster is handed: the scene, and how it looks and moves. */
@@ -11,7 +10,6 @@ export interface PosterProps extends RampScene {
   running: boolean
   /** In degrees: the lines rise to the right, lie level, or fall. */
   tilt: -9 | 0 | 9
-  face: FaceName
 }
 
 /**
@@ -28,33 +26,11 @@ export function mayAnimate(el: { animate?: unknown }): boolean {
   return !prefersReducedMotion() && !inBackground() && typeof el.animate === 'function'
 }
 
-/** A typeface as the posters set it. */
-export interface Type {
-  /** The type's CSS. */
-  css: Record<string, string>
-  /** A capital's height, as a share of the font size. */
-  cap: number
-}
+/** A typeface as the poster sets it: its CSS. */
+export type Type = Record<string, string>
 
-// No font of the app's own: San Francisco on Apple, Roboto on Android.
-const SYSTEM: Type = { css: { fontWeight: '900', letterSpacing: '-0.04em' }, cap: 0.72 }
-
-const FRAUNCES_DIGITS: Type = {
-  css: {
-    fontFamily: "'Fraunces Variable', serif",
-    fontWeight: '900',
-    // The optical size pinned: left to follow the font size, a width measured at one size
-    // would not scale to another.
-    fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-    letterSpacing: '-0.03em',
-  },
-  cap: 0.7,
-}
-
-/** Letters are always the system type; a face may set the digits of a large number apart. */
-export function typesOf(face: FaceName): { letters: Type; digits: Type } {
-  return { letters: SYSTEM, digits: face === 'fraunces-digits' ? FRAUNCES_DIGITS : SYSTEM }
-}
+/** No font of the app's own: San Francisco on Apple, Roboto on Android. */
+export const LETTERS: Type = { fontWeight: '900', letterSpacing: '-0.04em' }
 
 /** A line's height, as a share of the font size: the capitals nearly touch. */
 export const LINE = 0.86
@@ -97,7 +73,7 @@ export function useTypeWidth(text: () => string, type: () => Type): Ref<number> 
   function measure(): void {
     if (!probe) return
     probe.style.cssText = `font-size:${PROBE_PX}px`
-    Object.assign(probe.style, type().css)
+    Object.assign(probe.style, type())
     probe.textContent = text()
     width.value = probe.getBoundingClientRect().width
   }
@@ -108,8 +84,7 @@ export function useTypeWidth(text: () => string, type: () => Type): Ref<number> 
     probeHost().append(probe)
 
     measure()
-    // A web font is fetched on first use and changes every width when it arrives. Absent in old
-    // browsers and in happy-dom.
+    // A late font changes every width when it arrives. Absent in old browsers and in happy-dom.
     document.fonts?.addEventListener('loadingdone', measure)
   })
   watch([text, type], measure)
@@ -127,6 +102,8 @@ export interface Strip {
   right: boolean
   /** Steps from the poster's edge: the edges go first, the name last. */
   rank: number
+  /** How far it runs; a strip as wide as the poster clears it at `100%`. */
+  travel?: string
 }
 
 const RUN_MS = 360
@@ -146,14 +123,17 @@ export async function runOut(strips: Strip[]): Promise<void> {
   if (!mayAnimate(document.body)) return
 
   await Promise.all(
-    strips.map(({ el, right, rank }) =>
+    strips.map(({ el, right, rank, travel = '100%' }) =>
       el
-        .animate([{ transform: 'none' }, { transform: `translateX(${right ? '' : '-'}100%)` }], {
-          duration: RUN_MS,
-          delay: rank * RANK_GAP_MS,
-          easing: 'cubic-bezier(0.5, 0, 0.9, 0.5)',
-          fill: 'forwards',
-        })
+        .animate(
+          [{ transform: 'none' }, { transform: `translateX(${right ? '' : '-'}${travel})` }],
+          {
+            duration: RUN_MS,
+            delay: rank * RANK_GAP_MS,
+            easing: 'cubic-bezier(0.5, 0, 0.9, 0.5)',
+            fill: 'forwards',
+          },
+        )
         .finished.catch(ignoreCancel),
     ),
   )

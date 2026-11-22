@@ -11,7 +11,6 @@ import { provideCurtain } from '@/ui/curtain'
 import { gameSoundOn } from '@/ui/soundOutput'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import BandPoster from './BandPoster.vue'
-import SheetPoster from './SheetPoster.vue'
 import type { RampScene } from './posterText'
 import { posterOf } from './variation'
 
@@ -84,12 +83,10 @@ async function gone(): Promise<void> {
       data-test="ramp"
       class="round-bleed relative col-start-1 row-start-1 overflow-hidden sm:rounded-xl"
     >
-      <component
-        :is="poster.style === 'band' ? BandPoster : SheetPoster"
+      <BandPoster
         v-bind="scene"
         :running="inView && state === 'up'"
         :tilt="poster.tilt"
-        :face="poster.face"
         @open="open"
         @gone="gone"
       />
