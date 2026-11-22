@@ -59,11 +59,12 @@ async function gone(): Promise<void> {
 
 <template>
   <div class="grid grid-cols-1">
+    <!-- `isolate`: the card's own z-index layers (cover, grid lines) must stay under the poster. -->
     <div
       ref="card"
       data-test="ramp-card"
       tabindex="-1"
-      class="col-start-1 row-start-1 min-w-0"
+      class="col-start-1 row-start-1 min-w-0 isolate"
       :class="{ invisible: state === 'up' }"
       :inert="state !== 'gone' || undefined"
     >

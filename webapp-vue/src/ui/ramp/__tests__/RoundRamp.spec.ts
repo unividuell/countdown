@@ -64,6 +64,13 @@ describe('RoundRamp', () => {
     expect(curtain(w)).toBe('false')
   })
 
+  it('isolates the card, so its z-index layers stay under the poster', () => {
+    // happy-dom computes no paint order: only the class can be checked here.
+    const w = mountRamp(scene)
+
+    expect(w.get('[data-test="ramp-card"]').classes()).toContain('isolate')
+  })
+
   it('is not there without a scene', () => {
     const w = mountRamp(null)
 
