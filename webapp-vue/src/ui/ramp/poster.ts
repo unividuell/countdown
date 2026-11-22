@@ -132,6 +132,11 @@ export interface Strip {
 const RUN_MS = 360
 const RANK_GAP_MS = 24
 
+/** A cancelled animation (the poster unmounted mid-run) is over, not failed. */
+function ignoreCancel(error: unknown): void {
+  if (!(error instanceof DOMException && error.name === 'AbortError')) throw error
+}
+
 /**
  * The posters' one way out: every strip runs off sideways, as a block with its ground, and what
  * it covered is the card — so the caller's own ground has to go the moment this starts. Resolves
@@ -141,14 +146,15 @@ export async function runOut(strips: Strip[]): Promise<void> {
   if (!mayAnimate(document.body)) return
 
   await Promise.all(
-    strips.map(
-      ({ el, right, rank }) =>
-        el.animate([{ transform: 'none' }, { transform: `translateX(${right ? '' : '-'}100%)` }], {
+    strips.map(({ el, right, rank }) =>
+      el
+        .animate([{ transform: 'none' }, { transform: `translateX(${right ? '' : '-'}100%)` }], {
           duration: RUN_MS,
           delay: rank * RANK_GAP_MS,
           easing: 'cubic-bezier(0.5, 0, 0.9, 0.5)',
           fill: 'forwards',
-        }).finished,
+        })
+        .finished.catch(ignoreCancel),
     ),
   )
 }
