@@ -171,6 +171,16 @@ watch(
   { flush: 'sync' },
 )
 
+/** Closed while a ramp stands in front of the card. */
+const curtainOpen = useCurtainOpen()
+
+/**
+ * True once `ready` flipped behind a closed curtain: the pop is owed, and the control stays
+ * invisible until it is paid — the card shows through a ramp's gaps, and the button must not
+ * stand there before it springs in.
+ */
+const popOwed = ref(false)
+
 /**
  * Absent, then a spring: too large, then under, then over, then under, settling. The amplitude
  * sequence is the whole effect, which is why it is written as keyframes and not as spring
@@ -181,15 +191,6 @@ watch(
  * leave the outline sitting there from the first frame while the button springs in in front of
  * it. One wrapper, one animation, and the whole control pops in as a single object.
  */
-const curtainOpen = useCurtainOpen()
-
-/**
- * True once `ready` flipped behind a closed curtain: the pop is owed, and the control stays
- * invisible until it is paid — the card shows through a ramp's gaps, and the button must not
- * stand there before it springs in.
- */
-const popOwed = ref(false)
-
 function playPop(): void {
   if (!canAnimate(pop.value)) return
   pop.value.animate(
