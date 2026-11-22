@@ -87,6 +87,11 @@ of the frontend conventions live beside it:
   (Anmaßung: strokes in fixed canvas units, counted on the server). Edge pixels are anti-aliased
   per `devicePixelRatio` and anti-fingerprinting adds noise to `getImageData`, so the same
   painting scores differently per device.
+- **Fonts ship from the app's own origin.** Take one as an npm package
+  (`@fontsource-variable/…`) and import it where it is used; never a Google Fonts link or any
+  third-party font URL — the player's IP must not go to a third party for a font
+  (`src/__tests__/ownFonts.spec.ts`). The app sets no font itself; the system face is deliberate,
+  a font of its own is a separate decision.
 
 ## HTTP + auth (the same-origin SPA contract)
 

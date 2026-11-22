@@ -203,6 +203,12 @@ the ancestor chain answers all three. `HueWheel`.
   renders. `ui/RoundSurface.vue`.
 - **A flip-dot board never stands on `DOT_OFF`'s own colour** (`#292524`): the unlit dots vanish
   and it reads as floating digits. Use the `board` roles and assert the class.
+- **A `<button class="flex flex-col">` needs `items-stretch` where its children fill the width.**
+  WebKit's UA sheet gives buttons `align-items: flex-start`, so the children start at the left,
+  shrunk to their content; Chromium stretches them. `ui/ramp/SheetPoster.vue`.
+- **A hidden measuring element goes in a zero-size `overflow: hidden` host, never straight on
+  `body`.** Text set at measuring size is wider than a phone, and the whole page scrolls
+  sideways. `useTypeWidth` in `ui/ramp/poster.ts`.
 
 ### Accessible by construction
 
