@@ -17,7 +17,7 @@
 - All commands run in `webapp-vue/`. After every task: `pnpm test`, `pnpm exec vue-tsc -b`, `pnpm lint` — and read the lint output: Prettier warnings exit 0 and still count.
 - Code, comments and commit messages in English. User-facing German uses `„…“`, never a straight `"`.
 - Comments say what a block does and why, briefly. No comment that only narrates a change. Do not touch code unrelated to the task.
-- Commit messages follow the seven rules in `CLAUDE.md` (imperative subject ≤ 50 chars, body wrapped at 72, what and why). End each with `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
+- Commit messages follow the seven rules in `CLAUDE.md` (imperative subject ≤ 50 chars, body wrapped at 72, what and why). End each with this fixed project line, copied character for character (it is not a statement about which model wrote the commit): `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never `git commit --amend`: always a new commit.
 - No push, no PR without the user's word.
 - Exact copy: „Aktuelle Runde“; `№ −98` (true minus U+2212, never a hyphen); „12 Punkte zum Abstauben“, „1 Punkt zum Abstauben“; lab switch label „Rampe“.
 - Colours: ground `var(--color-phase-one)` / `var(--color-phase-two)`, ink `var(--color-on-phase-one)` / `var(--color-on-phase-two)`. Nothing else.
