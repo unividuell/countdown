@@ -3,7 +3,7 @@
 // drifting past above and below — level or tilted. In phase two the stake sits in a disc at the
 // top. A tap lets every line run out the way it was drifting.
 import { useElementSize } from '@vueuse/core'
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, ref, useId, useTemplateRef } from 'vue'
 import {
   LETTERS,
   LINE,
@@ -29,6 +29,8 @@ const RANKS = 5
 const DISC_SHARE = 0.3
 const DISC_MIN = 96
 const DISC_MAX = 140
+/** The disc's small print under the number, in px. */
+const UNIT_PX = 9.6
 
 const root = useTemplateRef<HTMLElement>('root')
 const lines = useTemplateRef<HTMLElement[]>('lines')
@@ -85,13 +87,30 @@ const centre = computed(() => (count.value - 1) / 2)
 const repeats = computed(() => Math.ceil(field.value.width / period.value) + 2)
 
 const discSize = computed(() => Math.min(DISC_MAX, Math.max(DISC_MIN, width.value * DISC_SHARE)))
-// As large as the disc allows: at most 70 % of its width, its capitals at most 42 % of its height.
+// As large as the disc allows: at most 62 % of its width — it sits above the centre, where the
+// circle is narrower — and its capitals at most 42 % of its height.
 const stakeSize = computed(() => {
   const byHeight = (discSize.value * 0.42) / 0.72
   if (stakeWidth.value === 0) return byHeight
 
-  return Math.min(byHeight, (PROBE_PX * discSize.value * 0.7) / stakeWidth.value)
+  return Math.min(byHeight, (PROBE_PX * discSize.value * 0.62) / stakeWidth.value)
 })
+
+// Number and unit as one block, centred in the disc: baselines from the capitals' heights.
+const discLayout = computed(() => {
+  const size = discSize.value
+  const numberCap = stakeSize.value * 0.72
+  const unitCap = UNIT_PX * 0.72
+  const gap = size * 0.08
+  const top = (size - numberCap - gap - unitCap) / 2
+
+  return {
+    size,
+    numberBaseline: top + numberCap,
+    unitBaseline: top + numberCap + gap + unitCap,
+  }
+})
+const maskId = useId()
 
 // Reactive: the ground is bound, a style set by hand would not survive the next render.
 const leaving = ref(false)
@@ -188,26 +207,56 @@ async function open(): Promise<void> {
       <PosterPrint left="Aktuelle Runde" :right="`№ ${roundLabel(roundNumber)}`" />
     </span>
 
-    <!-- The stake on top of the lines, dressed like the name's band. -->
+    <!-- The stake on top of the lines, dressed like the name's band — its number cut out of the
+         disc, so the echoes show through it. -->
     <span
       v-if="stake !== null"
       ref="disc"
       data-test="ramp-stake"
-      class="absolute top-12 right-4 flex flex-col items-center justify-center rounded-full"
-      :style="{
-        width: `${discSize}px`,
-        height: `${discSize}px`,
-        backgroundColor: colors.ink,
-        color: colors.ground,
-      }"
+      class="absolute top-12 right-4 block"
+      :style="{ width: `${discLayout.size}px`, height: `${discLayout.size}px` }"
       aria-hidden="true"
     >
-      <span class="poster-type tabular-nums" :style="{ fontSize: `${stakeSize}px`, ...LETTERS }">
-        {{ stake }}
-      </span>
-      <span class="mt-1 text-[0.6rem] font-medium tracking-[0.2em] uppercase">
-        {{ stake === 1 ? 'Punkt' : 'Punkte' }}
-      </span>
+      <svg
+        :viewBox="`0 0 ${discLayout.size} ${discLayout.size}`"
+        class="block size-full overflow-visible"
+      >
+        <mask :id="maskId">
+          <rect :width="discLayout.size" :height="discLayout.size" fill="white" />
+          <text
+            data-test="ramp-stake-number"
+            :x="discLayout.size / 2"
+            :y="discLayout.numberBaseline"
+            text-anchor="middle"
+            fill="black"
+            :style="{ fontSize: `${stakeSize}px`, ...LETTERS }"
+          >
+            {{ stake }}
+          </text>
+        </mask>
+        <circle
+          :cx="discLayout.size / 2"
+          :cy="discLayout.size / 2"
+          :r="discLayout.size / 2"
+          :mask="`url(#${maskId})`"
+          :style="{ fill: colors.ink }"
+        />
+        <!-- Shifted by half the tracking: it trails after the last letter too. -->
+        <text
+          data-test="ramp-stake-unit"
+          :x="discLayout.size / 2 + UNIT_PX * 0.1"
+          :y="discLayout.unitBaseline"
+          text-anchor="middle"
+          :style="{
+            fill: colors.ground,
+            fontSize: `${UNIT_PX}px`,
+            fontWeight: 500,
+            letterSpacing: '0.2em',
+          }"
+        >
+          {{ stake === 1 ? 'PUNKT' : 'PUNKTE' }}
+        </text>
+      </svg>
     </span>
   </button>
 </template>

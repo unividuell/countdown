@@ -34,18 +34,18 @@ describe('BandPoster', () => {
     expect(w.text()).toContain('Anmaẞung')
   })
 
-  it('puts the stake in a disc', () => {
+  it('cuts the stake out of a disc', () => {
     const stake = mount(Poster, { props }).get('[data-test="ramp-stake"]')
 
-    expect(stake.findAll('span').map((line) => line.text())).toEqual(['12', 'Punkte'])
+    // Inside the mask: drawn as a hole, not as ink.
+    expect(stake.get('mask [data-test="ramp-stake-number"]').text()).toBe('12')
+    expect(stake.get('[data-test="ramp-stake-unit"]').text()).toBe('PUNKTE')
   })
 
   it('says „Punkt“ for one', () => {
     const w = mount(Poster, { props: { ...props, points: 1 } })
 
-    const lines = w.get('[data-test="ramp-stake"]').findAll('span')
-
-    expect(lines.map((line) => line.text())).toEqual(['1', 'Punkt'])
+    expect(w.get('[data-test="ramp-stake-unit"]').text()).toBe('PUNKT')
   })
 
   it.each([
