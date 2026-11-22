@@ -1370,6 +1370,19 @@ describe('lab page', () => {
       expect(w.find('[data-test="ramp"]').exists()).toBe(true)
     })
 
+    it('keeps the game mounted through a reset while the switch is off', async () => {
+      vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...round, me: played } as never)
+      vi.spyOn(api, 'resetLabRound').mockResolvedValue(unplayed as never)
+
+      const w = await mountPage()
+      const before = w.getComponent(StubGame).element
+
+      await tool('lab-reset').trigger('click')
+      await flushPromises()
+
+      expect(w.getComponent(StubGame).element).toBe(before)
+    })
+
     it('stands the ramp again after a tap took it away and a reset resealed the round', async () => {
       setQuery({ seed: '42', ramp: '1' })
       vi.spyOn(api, 'openLabRound').mockResolvedValue(unplayed as never)
@@ -1402,6 +1415,17 @@ describe('lab page', () => {
 
         setQuery({ seed: '43', ramp: '1' })
         vi.spyOn(api, 'openLabRound').mockResolvedValue({ ...unplayed, seed: 43 } as never)
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(true)
+
+        // Off and on again: the switch alone stands the ramp again on an unplayed round.
+        await w.get('[data-test="ramp-poster"]').trigger('click')
+        await flushPromises()
+        expect(w.find('[data-test="ramp"]').exists()).toBe(false)
+
+        setQuery({ seed: '43' })
+        await flushPromises()
+        setQuery({ seed: '43', ramp: '1' })
         await flushPromises()
         expect(w.find('[data-test="ramp"]').exists()).toBe(true)
       } finally {

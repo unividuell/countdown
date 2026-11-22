@@ -211,7 +211,10 @@ function playPop(): void {
 watch(
   () => props.ready,
   (ready) => {
-    if (!ready) return
+    if (!ready) {
+      popOwed.value = false
+      return
+    }
     if (curtainOpen.value) playPop()
     else popOwed.value = true
   },
@@ -220,7 +223,7 @@ watch(
 watch(curtainOpen, (open) => {
   if (!open || !popOwed.value) return
   popOwed.value = false
-  playPop()
+  if (props.ready) playPop()
 })
 
 /**

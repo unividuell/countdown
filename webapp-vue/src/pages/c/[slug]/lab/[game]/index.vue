@@ -142,7 +142,10 @@ async function run(
     const hadEntry = round.value?.me != null
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
     if (wasRevealed && !round.value.revealed) resealCount.value++
-    if ((hadEntry && round.value.me == null) || (wasRevealed && !round.value.revealed)) {
+    if (
+      ramp.value &&
+      ((hadEntry && round.value.me == null) || (wasRevealed && !round.value.revealed))
+    ) {
       rampRaise.value++
     }
     roundEndsAt.value = labRoundEnd(current, Date.now())

@@ -115,6 +115,19 @@ describe('RoundRamp', () => {
 
     expect(w.find('[data-test="ramp"]').exists()).toBe(false)
     expect(w.get('[data-test="ramp-card"]').attributes('inert')).toBeUndefined()
+    expect(curtain(w)).toBe('true')
+  })
+
+  it('keeps the focus when its scene goes while the poster has it', async () => {
+    const w = mountRamp(scene, { attachTo: document.body })
+    w.get<HTMLElement>('[data-test="ramp-poster"]').element.focus()
+
+    await w.setProps({ scene: null })
+    await flushPromises()
+
+    expect(document.activeElement).toBe(w.get('[data-test="ramp-card"]').element)
+
+    w.unmount()
   })
 
   it('does not come back for a scene that arrives later', async () => {

@@ -23,7 +23,12 @@ const state = ref<'up' | 'leaving' | 'gone'>(props.scene === null ? 'gone' : 'up
 watch(
   () => props.scene,
   (scene) => {
-    if (scene === null) state.value = 'gone'
+    if (scene !== null) return
+
+    // Focus on the poster would fall to `body` once it is gone.
+    const hadFocus = ramp.value?.contains(document.activeElement) ?? false
+    state.value = 'gone'
+    if (hadFocus) void nextTick(() => card.value?.focus({ preventScroll: true }))
   },
 )
 

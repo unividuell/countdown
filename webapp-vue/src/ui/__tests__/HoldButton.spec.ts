@@ -328,6 +328,22 @@ describe('HoldButton', () => {
       expect(w.get('[data-test="hold-pop"]').classes()).not.toContain('invisible')
     })
 
+    it('pays no pop to a control that fell back to not ready', async () => {
+      const animate = installAnimate()
+      const open = ref(false)
+      const w = mount(HoldButton, {
+        props: { ...base, ready: false },
+        global: { provide: { [CURTAIN_KEY as symbol]: open } },
+      })
+
+      await w.setProps({ ready: true })
+      await w.setProps({ ready: false })
+      open.value = true
+      await nextTick()
+
+      expect(animate).not.toHaveBeenCalled()
+    })
+
     it('shows itself without a pop where nothing may animate', async () => {
       // happy-dom ships an `animate` of its own; take it away.
       Object.defineProperty(Element.prototype, 'animate', {
