@@ -158,7 +158,7 @@ Was beim Laden auftritt, träte unter der Rampe ungesehen auf. Heute sind das vi
 | Stelle | Auftritt | Ton |
 |---|---|---|
 | Augenmaß (`matchscale`) | Formen poppen auf | klopft dazu |
-| Halte-Knopf (`ui/HoldButton`), in jedem Spiel und auf jeder Abdeckung | federt herein, sobald er bereit ist | stumm |
+| Halte-Knopf (`ui/HoldButton`), wo er erst nach dem Laden bereit wird: START auf jeder Abdeckung, Farbausmalung | federt herein, sobald er bereit ist | stumm |
 | Farbausmalung (`guesshue/HueWheelInput`) | das Rad fährt beim Einhängen einmal an | stumm |
 | Anspielung (`songsnippet/StageBar`) | Balken wächst | stumm |
 
@@ -169,7 +169,7 @@ der letzte Streifen weg ist *(Setzung)*. Dann ist auch der Ton sicher wach.
 
 **Alle vier warten auf dieses Signal.** Bis dahin ist vom Auftritt nichts zu sehen und nichts zu
 hören; ist die Bühne frei, läuft er wie bisher. Der Halte-Knopf ist geteilte UI: eine Stelle deckt
-alle Spiele ab. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
+alle Abdeckungen ab. Ein künftiges Spiel mit Auftritt fragt dasselbe Signal.
 
 ## Schrift ausliefern
 
