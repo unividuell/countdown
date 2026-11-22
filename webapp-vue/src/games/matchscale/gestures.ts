@@ -99,6 +99,28 @@ export function initialPlacements(a: Silhouette): { a: Placement; b: Placement }
   }
 }
 
+/** The reveal's gap between A and B, as a share of the larger shape's longest side. */
+const REVEAL_GAP_SHARE = 0.1
+
+/**
+ * The reveal's start: B closer to A than on the board, the gap sized to the shapes the view will
+ * fit, not to a cell. Only A and the true B count, so toggling a tip never moves B.
+ */
+export function revealPlacements(
+  a: Silhouette,
+  b: Silhouette,
+  factor: number,
+): { a: Placement; b: Placement } {
+  const sizeA = sizeAt(a, 1)
+  const sizeB = sizeAt(b, factor)
+  const gap = REVEAL_GAP_SHARE * Math.max(sizeA.w, sizeA.h, sizeB.w, sizeB.h)
+
+  return {
+    a: { x: 1, y: 0, scale: 1 },
+    b: { x: 1 + sizeA.w + gap, y: 0, scale: 1 },
+  }
+}
+
 /** What a draft keeps of a view: independent of the field's size. */
 export interface Framing {
   zoom: number

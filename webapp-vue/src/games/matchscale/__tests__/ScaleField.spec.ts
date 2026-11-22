@@ -122,6 +122,10 @@ describe('ScaleField', () => {
     expect(mountField().svg.classes()).toContain('touch-none')
   })
 
+  it('leaves touches to the page when it takes no input, so a swipe on it scrolls', () => {
+    expect(mountField({ interactive: false }).svg.classes()).not.toContain('touch-none')
+  })
+
   it('puts a 32 px handle just outside B’s top right corner', () => {
     const handle = mountField().wrapper.get<HTMLElement>('[aria-label="Größe ändern"]')
 
