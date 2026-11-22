@@ -187,6 +187,21 @@ describe('ScaleField', () => {
     expect(still.find('.pop-in-handle').exists()).toBe(false)
   })
 
+  it('pauses the pop-in while it is held, and sets no play state otherwise', () => {
+    const held = mountField({ popIn: true, popHeld: true }).wrapper
+    const groupOf = (w: typeof held, id: string) =>
+      w.get(`[data-test="${id}"]`).element.parentElement!
+
+    expect(groupOf(held, 'match-scale-a').style.animationPlayState).toBe('paused')
+    expect(groupOf(held, 'match-scale-b').style.animationPlayState).toBe('paused')
+    expect(
+      held.get<HTMLElement>('[aria-label="Größe ändern"]').element.style.animationPlayState,
+    ).toBe('paused')
+
+    const running = mountField({ popIn: true }).wrapper
+    expect(groupOf(running, 'match-scale-a').style.animationPlayState).toBe('')
+  })
+
   it('hides B on request', () => {
     const b = mountField({ bHidden: true }).wrapper.get<SVGPathElement>(
       '[data-test="match-scale-b"]',

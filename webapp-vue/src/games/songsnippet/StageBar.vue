@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { barFraction, ladderShare, scaleEndLabel, stageSteps, tailFraction } from './stagebar'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { useCurtainOpen } from '@/ui/curtain'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { useRevealArming } from '@/ui/useRevealArming'
 
@@ -95,6 +96,16 @@ const tailPlayheadWidth = computed(() => {
  */
 const grown = ref(hasTail.value)
 let frame = 0
+const curtainOpen = useCurtainOpen()
+
+/** The two frames count from the open curtain: under the ramp nobody would see the growth. */
+function grow(): void {
+  frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(() => {
+      grown.value = true
+    })
+  })
+}
 
 onMounted(() => {
   // The reveal unlocks nothing: its fill is there from the start.
@@ -103,10 +114,14 @@ onMounted(() => {
     grown.value = true
     return
   }
-  frame = requestAnimationFrame(() => {
-    frame = requestAnimationFrame(() => {
-      grown.value = true
-    })
+  if (curtainOpen.value) {
+    grow()
+    return
+  }
+  const stop = watch(curtainOpen, (open) => {
+    if (!open) return
+    stop()
+    grow()
   })
 })
 onBeforeUnmount(() => {

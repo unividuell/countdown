@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick, ref } from 'vue'
+import { CURTAIN_KEY } from '@/ui/curtain'
 import StageBar from '@/games/songsnippet/StageBar.vue'
 import { tailFraction } from '@/games/songsnippet/stagebar'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
@@ -113,6 +115,30 @@ describe('StageBar', () => {
       expect(reveal.get('[data-test="stage-unlocked"]').attributes('style')).toContain(
         'width: 100%',
       )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('grows the unlocked fill two frames after the curtain opens, not after mount', async () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    try {
+      const curtain = ref(false)
+      const bar = mount(StageBar, {
+        props: { durations: DURATIONS, totalSeconds: 15, unlockedSeconds: 15, positionSeconds: 0 },
+        global: { provide: { [CURTAIN_KEY as symbol]: curtain } },
+      })
+      const fill = () => bar.get('[data-test="stage-unlocked"]').attributes('style')
+
+      vi.advanceTimersByTime(200)
+      await nextTick()
+      expect(fill()).toContain('width: 0%')
+
+      curtain.value = true
+      await nextTick()
+      vi.advanceTimersByTime(200)
+      await nextTick()
+      expect(fill()).toContain('width: 100%')
     } finally {
       vi.useRealTimers()
     }
