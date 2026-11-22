@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, type Ref } from 'vue'
 import { unlockSound } from '@/ui/audio'
+import BandPoster from '@/ui/ramp/BandPoster.vue'
+import RasterPoster from '@/ui/ramp/RasterPoster.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import type { RampScene } from '@/ui/ramp/posterText'
 import { gameSoundOn } from '@/ui/soundOutput'
@@ -69,6 +71,15 @@ describe('RoundRamp', () => {
     const w = mountRamp(scene)
 
     expect(w.get('[data-test="ramp-card"]').classes()).toContain('isolate')
+  })
+
+  it.each([
+    [-101, BandPoster],
+    [-98, RasterPoster],
+  ])('gives round %i the style its number picks', (roundNumber, Poster) => {
+    const w = mountRamp({ ...scene, roundNumber })
+
+    expect(w.findComponent(Poster).exists()).toBe(true)
   })
 
   it('is not there without a scene', () => {

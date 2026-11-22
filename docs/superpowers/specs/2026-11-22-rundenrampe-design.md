@@ -99,10 +99,20 @@ zugehörigen `on-phase`-Rolle. Mehr Farben gibt es nicht.
 4. In Phase zwei die Punkte: oben rechts in einem Kreis über den Zeilen, gekleidet wie der Balken
    des Namens; die Zahl groß, darunter klein „Punkte“ („Punkt“ bei einem). Ohne Punktzahl kein Kreis.
 
-**Ein Stil, der Balken:** Der Name steht ausgespart in einem vollen Balken in der Mitte. Darüber
-und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Nummer als „№ −98“ im
-Kleingedruckten. Jedes Echo läuft um genau eine Namensbreite, wie sie gesetzt ist, nicht um eine
-geschätzte: sonst springt es einmal je Umlauf.
+**Zwei Stile.** Beide setzen die Nummer als „№ −98“ ins Kleingedruckte oben.
+
+**Balken:** Der Name steht ausgespart in einem vollen Balken in der Mitte. Darüber
+und darunter ziehen seine Umriss-Echos zeilenweise gegenläufig vorbei. Jedes Echo läuft um genau
+eine Namensbreite, wie sie gesetzt ist, nicht um eine geschätzte: sonst springt es einmal je
+Umlauf.
+
+**Raster:** Der Name läuft Buchstabe für Buchstabe durch ein Schachbrett quadratischer Felder,
+Zeile für Zeile, ein Name direkt nach dem anderen, ohne Leerfeld; Leerzeichen im Namen fallen weg.
+Die Buchstaben stehen fest. Eine höhere Karte bekommt einfach mehr Zeilen. In Phase zwei deckt die
+Punkte-Kachel in jedem Namen einen Buchstaben ab (welchen, bestimmt die Rundennummer) und zieht
+alle 1,4 s ein Feld weiter; in Phase eins bewegt sich nichts. Statt Kreis also die Kachel.
+Verworfen in der Handprobe: wandernde Buchstaben („zu stressig“) und ein Leerfeld zwischen den
+Namen.
 
 Verworfen nach der Handprobe: das Laufband (dem Balken zu ähnlich) und das Kalenderblatt mit der
 Rundennummer als Held. Die Karte dahinter ist oft viel höher als der Bildschirm; die Nummer stand
@@ -110,7 +120,11 @@ dann in der Mitte, oben nur ein farbiger Block, man hätte scrollen müssen. Mit
 entfällt Fraunces und das Vorzeichen als Balken über der Zahl. Aus demselben Grund stehen die
 Punkte oben im Kreis statt in einer Zeile am Fuß.
 
-**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld.
+**Ausrichtung:** steigt (−9°), gerade, fällt (+9°). Der Balken kippt das ganze Schriftfeld. Das
+Raster deutet dieselbe Variation als Spaltenzahl: 3, 4 oder 5.
+
+Ebenfalls verworfen: „Japanese Minimal“ (ein Kreis, dünne senkrechte Schrift, viel leerer Grund).
+Zu wenig Inhalt für hohe Karten, die Punkte ohne Wucht, Stilbruch zum fetten Schnitt.
 
 **Schrift:** Alle Buchstaben stehen in der Systemschrift, Schnitt 900. Das Bild unterscheidet sich
 damit leicht je Gerät (Roboto auf Android, San Francisco auf Apple); das ist hingenommen.
@@ -122,8 +136,9 @@ echtem Minuszeichen („−“, U+2212).
 große „ẞ“.
 
 **Variation:** Welches Plakat eine Runde bekommt, ergibt sich allein aus ihrer Nummer, im Frontend
-gerechnet. Es ist für alle Spieler gleich und braucht den Server nicht. Die Ausrichtung kommt aus
-einer 32-Bit-Mischung der Nummer (`posterOf`).
+gerechnet. Es ist für alle Spieler gleich und braucht den Server nicht. Stil und Ausrichtung kommen
+aus einer 32-Bit-Mischung der Nummer (`posterOf`): die Ausrichtung aus dem Rest durch 3, der Stil
+aus dem Quotienten, beide Stile etwa gleich oft.
 
 ## Auflösung
 
@@ -216,12 +231,12 @@ dem Plakat.
   RoundCard / Lab-Seite
     └─ RoundRamp  (ui/ramp)        hält: steht | läuft raus | weg; stellt „Bühne frei“ bereit
          ├─ Slot: RoundSurface + GameHeader + Spiel      (darunter, im selben Rasterfeld)
-         └─ Plakat: Balken                               (darüber, solange nicht weg)
+         └─ Plakat: Balken | Raster, je nach Nummer      (darüber, solange nicht weg)
 ```
 
 - **`ui/ramp/`** — aus dem Spike übernommen und aufgeräumt: `BandPoster`, `PosterPrint`,
   `poster.ts` (Farben, Schrift, Einpassen, Rauslaufen), `variation.ts` (`posterOf`), `poster.css`.
-  Neu: `RoundRamp` und das Signal „Bühne frei“.
+  Neu: `RoundRamp` und das Signal „Bühne frei“. Später dazu: `RasterPoster`.
 - **`RoundCard`** entscheidet aus dem, was es schon weiß (`face`, `closed`, `play`, Renderer), ob
   die Rampe steht, und reicht Nummer, Name, Phase und Punkte hinein.
 - **Lab-Seite** tut dasselbe mit ihren Werten und dem URL-Schalter.

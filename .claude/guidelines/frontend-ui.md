@@ -209,6 +209,9 @@ the ancestor chain answers all three. `HueWheel`.
 - **A hidden measuring element goes in a zero-size `overflow: hidden` host, never straight on
   `body`.** Text set at measuring size is wider than a phone, and the whole page scrolls
   sideways. `useTypeWidth` in `ui/ramp/poster.ts`.
+- **Content sized from its box's measured height stays out of the flow** (`absolute inset-0`).
+  In the flow it adds to the box it measures, and every resize buys one more row: endless.
+  `ui/ramp/RasterPoster.vue`.
 
 ### Accessible by construction
 

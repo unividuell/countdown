@@ -12,9 +12,15 @@ import { gameSoundOn } from '@/ui/soundOutput'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import BandPoster from './BandPoster.vue'
 import type { RampScene } from './posterText'
-import { posterOf } from './variation'
+import RasterPoster from './RasterPoster.vue'
+import { posterOf, type PosterStyle } from './variation'
 
 const props = defineProps<{ scene: RampScene | null }>()
+
+const POSTERS: Record<PosterStyle, typeof BandPoster | typeof RasterPoster> = {
+  band: BandPoster,
+  raster: RasterPoster,
+}
 
 // Decided once: a scene that arrives later finds the card already in use.
 const state = ref<'up' | 'leaving' | 'gone'>(props.scene === null ? 'gone' : 'up')
@@ -83,7 +89,8 @@ async function gone(): Promise<void> {
       data-test="ramp"
       class="round-bleed relative col-start-1 row-start-1 overflow-hidden sm:rounded-xl"
     >
-      <BandPoster
+      <component
+        :is="POSTERS[poster.style]"
         v-bind="scene"
         :running="inView && state === 'up'"
         :tilt="poster.tilt"
