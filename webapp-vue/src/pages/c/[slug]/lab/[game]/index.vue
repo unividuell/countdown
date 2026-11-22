@@ -42,10 +42,12 @@ import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
+import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { isEditableTarget } from '@/ui/editableTarget'
 import { prefersReducedMotion } from '@/ui/motion'
 import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
+import type { RampScene } from '@/ui/ramp/posterText'
 import type { RosterMemberResponse } from '@/api/types'
 import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
 
@@ -61,6 +63,8 @@ const seed = computed(() => parseSeed(route.query.seed))
 // value is visible at a glance rather than an error state, and every link that predates this
 // selector keeps opening phase one.
 const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
+// Like the phase, in the URL: a reload and a shared link stand the same ramp.
+const ramp = computed(() => route.query.ramp === '1')
 
 // Where a player switch comes back to: phase included, or the other tester's phase-two round is lost.
 const returnPath = computed(() => `${route.path}?seed=${seed.value}&phase=${phase.value}`)
@@ -77,6 +81,12 @@ const assets = computed(() =>
  * way the old reveal screen unmounting the game used to guarantee for free.
  */
 const resealCount = ref(0)
+/**
+ * Bumped when a response puts the round back in front of the tester: their entry is gone, or a
+ * revealed round is sealed again. The `RoundRamp` is keyed on it, because it decides once at mount
+ * and a spent ramp never returns on its own.
+ */
+const rampRaise = ref(0)
 /**
  * When this test round closes. Stamped once per open rather than derived per render: an end that
  * moved along with the clock would hold the band's readout at one reading forever, and a band that
@@ -112,6 +122,13 @@ function writePhase(next: LabPhase): void {
   router.replace({ query: { ...route.query, phase: next } })
 }
 
+function writeRamp(on: boolean): void {
+  const query = { ...route.query }
+  if (on) query.ramp = '1'
+  else delete query.ramp
+  router.replace({ query })
+}
+
 async function run(
   action: (slug: string, game: string, seed: number, phase: LabPhase) => Promise<LabRoundResponse>,
   closeDrawer = false,
@@ -122,8 +139,12 @@ async function run(
   error.value = null
   try {
     const wasRevealed = round.value?.revealed === true
+    const hadEntry = round.value?.me != null
     round.value = await action(community.value.slug, gameId.value, current, phase.value)
     if (wasRevealed && !round.value.revealed) resealCount.value++
+    if ((hadEntry && round.value.me == null) || (wasRevealed && !round.value.revealed)) {
+      rampRaise.value++
+    }
     roundEndsAt.value = labRoundEnd(current, Date.now())
     // Every path that reopens a round — reset, „forget mine“, a new seed — comes back
     // `revealed: false` for a gated game, because the server clears its own `openedAt` on all of
@@ -139,6 +160,23 @@ async function run(
     busy.value = false
   }
 }
+
+/**
+ * The poster stands only for a round the tester has not started: no entry, no running clock. The
+ * same rule as a real card's, so the lab shows what a player would meet.
+ */
+const rampScene = computed<RampScene | null>(() => {
+  const current = round.value
+  if (!ramp.value || !current || current.me != null || labPlay.value !== null) return null
+
+  const phaseTwo = current.awardRule === 'CLOSEST_ONLY'
+  return {
+    game: current.displayName,
+    roundNumber: labRoundNumber(current.seed),
+    phaseTwo,
+    points: phaseTwo ? current.awardPoints : null,
+  }
+})
 
 /**
  * The lab's own review. `canOverride` comes back `true` from the server — in the lab everybody is
@@ -308,10 +346,12 @@ watch(
         :award-rule="round?.awardRule"
         :award-points="round?.awardPoints"
         :difficulty="round?.difficulty"
+        :ramp="ramp"
         :return-path="returnPath"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
         @phase-change="writePhase"
+        @ramp-change="writeRamp"
         @refresh="run(openLabRound, true)"
         @reset="run(resetLabRound, true)"
         @forget-mine="run(forgetMyLabEntry, true)"
@@ -333,20 +373,29 @@ watch(
       <MemberRow v-if="rosterMembers.length" :members="rosterMembers" :me-id="user?.id" />
     </section>
 
-    <RoundSurface v-if="round" class="mt-6">
-      <!-- The game's name lives in the band now, exactly as it does in a real round — that is the
+    <!-- The ramp decides once at mount, so a fresh instance is the only way to stand it again: after
+         a roll (`round.seed`), after the round went back to unplayed (`rampRaise`) and after the
+         switch (`ramp`). -->
+    <RoundRamp
+      v-if="round"
+      :key="`${round.seed}-${rampRaise}-${ramp}`"
+      :scene="rampScene"
+      class="mt-6"
+    >
+      <RoundSurface>
+        <!-- The game's name lives in the band now, exactly as it does in a real round — that is the
            whole point of the lab wearing the product's header rather than a heading of its own.
            Its round number and its end are the lab's two inventions; both follow the seed. -->
-      <template #header>
-        <GameHeader
-          :round-number="labRoundNumber(round.seed)"
-          :title="round.displayName"
-          :ends-at="roundEndsAt"
-          :play="labPlay"
-          :phase-two="round.awardRule === 'CLOSEST_ONLY'"
-        />
-      </template>
-      <!--
+        <template #header>
+          <GameHeader
+            :round-number="labRoundNumber(round.seed)"
+            :title="round.displayName"
+            :ends-at="roundEndsAt"
+            :play="labPlay"
+            :phase-two="round.awardRule === 'CLOSEST_ONLY'"
+          />
+        </template>
+        <!--
         Keyed on `round.seed`, the seed the *response* carries, not the URL's — the two go out of
         step for one tick whenever rolling writes the new seed to the URL before the matching round
         has come back. Keying on the URL seed would remount right then, capturing the previous
@@ -364,31 +413,32 @@ watch(
         `closed` is bound rather than left out: a lab round is never over — it is rolled again, not
         closed — and the answer „false“ is the lab's, not an omission for the game to guess at.
       -->
-      <component
-        :is="gameComponent"
-        :key="`${round.seed}-${resealCount}`"
-        :sealed="!round.revealed"
-        :scene="round.scene"
-        :payload="round.payload"
-        :outcome="round.me?.outcome ?? null"
-        :my-guess="round.me?.guess ?? null"
-        :solution="round.solution"
-        :entries="gameEntries"
-        :mine-user-id="gameMineUserId"
-        :award-rule="round.awardRule"
-        :award-points="round.awardPoints"
-        :disabled="busy || round.me !== null"
-        :stage="round.myStage"
-        :steps="round.mySteps ?? []"
-        :assets="assets"
-        :review="review"
-        :closed="false"
-        @reveal="reveal"
-        @guess="guess"
-        @skip="skip"
-        @give-up="run(giveUpLabRound)"
-      />
-    </RoundSurface>
+        <component
+          :is="gameComponent"
+          :key="`${round.seed}-${resealCount}`"
+          :sealed="!round.revealed"
+          :scene="round.scene"
+          :payload="round.payload"
+          :outcome="round.me?.outcome ?? null"
+          :my-guess="round.me?.guess ?? null"
+          :solution="round.solution"
+          :entries="gameEntries"
+          :mine-user-id="gameMineUserId"
+          :award-rule="round.awardRule"
+          :award-points="round.awardPoints"
+          :disabled="busy || round.me !== null"
+          :stage="round.myStage"
+          :steps="round.mySteps ?? []"
+          :assets="assets"
+          :review="review"
+          :closed="false"
+          @reveal="reveal"
+          @guess="guess"
+          @skip="skip"
+          @give-up="run(giveUpLabRound)"
+        />
+      </RoundSurface>
+    </RoundRamp>
 
     <!-- No drawer close on these two: they are triggered from the column, where nothing is in
          the way of the result. -->
