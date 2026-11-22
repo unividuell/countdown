@@ -20,6 +20,7 @@ import { chargeCurve } from '@/ui/charge'
 import { playCharge, type Charging } from '@/ui/chargeSound'
 import { playCountIn } from '@/ui/countInSound'
 import HoldSparks from '@/ui/HoldSparks.vue'
+import { useCurtainOpen } from '@/ui/curtain'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import { BEAT_MS, DEFAULT_HOLD_MS, useHoldProgress } from '@/ui/useHoldProgress'
@@ -180,24 +181,46 @@ watch(
  * leave the outline sitting there from the first frame while the button springs in in front of
  * it. One wrapper, one animation, and the whole control pops in as a single object.
  */
+const curtainOpen = useCurtainOpen()
+
+/**
+ * True once `ready` flipped behind a closed curtain: the pop is owed, and the control stays
+ * invisible until it is paid — the card shows through a ramp's gaps, and the button must not
+ * stand there before it springs in.
+ */
+const popOwed = ref(false)
+
+function playPop(): void {
+  if (!canAnimate(pop.value)) return
+  pop.value.animate(
+    [
+      { transform: 'scale(0)', opacity: 0, offset: 0 },
+      { transform: 'scale(0.6)', opacity: 1, offset: 0.15 },
+      { transform: 'scale(1.18)', offset: 0.22 },
+      { transform: 'scale(0.94)', offset: 0.42 },
+      { transform: 'scale(1.06)', offset: 0.62 },
+      { transform: 'scale(0.98)', offset: 0.8 },
+      { transform: 'scale(1)', offset: 1 },
+    ],
+    { duration: POP_MS, easing: 'ease-out' },
+  )
+}
+
+// Pops when `ready` flips; behind a closed curtain it waits for the curtain to open instead.
 watch(
   () => props.ready,
   (ready) => {
-    if (!ready || !canAnimate(pop.value)) return
-    pop.value.animate(
-      [
-        { transform: 'scale(0)', opacity: 0, offset: 0 },
-        { transform: 'scale(0.6)', opacity: 1, offset: 0.15 },
-        { transform: 'scale(1.18)', offset: 0.22 },
-        { transform: 'scale(0.94)', offset: 0.42 },
-        { transform: 'scale(1.06)', offset: 0.62 },
-        { transform: 'scale(0.98)', offset: 0.8 },
-        { transform: 'scale(1)', offset: 1 },
-      ],
-      { duration: POP_MS, easing: 'ease-out' },
-    )
+    if (!ready) return
+    if (curtainOpen.value) playPop()
+    else popOwed.value = true
   },
 )
+
+watch(curtainOpen, (open) => {
+  if (!open || !popOwed.value) return
+  popOwed.value = false
+  playPop()
+})
 
 /**
  * A `disabled` element stops dispatching pointer events, so if `disabled` turns on mid-hold,
@@ -348,7 +371,13 @@ const popStyle = computed(() => ({
     together because it, not the button alone, is what [popStyle] rests and the ready-watch above
     animates.
   -->
-  <div ref="pop" data-test="hold-pop" class="relative size-full" :style="popStyle">
+  <div
+    ref="pop"
+    data-test="hold-pop"
+    class="relative size-full"
+    :class="{ invisible: popOwed }"
+    :style="popStyle"
+  >
     <HoldSparks
       v-if="!counting && props.sparks"
       :ring="shown"
