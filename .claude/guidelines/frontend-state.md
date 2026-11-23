@@ -70,11 +70,13 @@ per instance and reacts via `watch(nowMs, tick)`.
   mount cannot be re-aimed, so data changing mid-flight *ends* it; the rearrangement asks
   `prefers-reduced-motion` and `document.hidden` again at its own moment. Under contact physics a
   single line cannot reorder: whoever overtakes leaves the line and is back in it on arrival.
-- **A surface beside a game must not pre-empt that game's reveal — hold the fetch, not the
-  widget.** `useRoster.refreshAfterGuess` waits `SPOILER_HOLD_MS`, then does what `refresh` does;
-  holding only the chip would leak the new order. The constant is the roster's own budget, never a
-  copy of a game's timetable: a new game fits inside it or raises it. Skip the hold under
-  `prefers-reduced-motion`.
+- **A surface beside a game must not pre-empt that game's reveal — hold the answer, not the
+  widget.** `useRoster.refreshAfterGuess` fetches at once and shows the answer when the reveal's
+  results land: an animating `RevealScoreboard` announces its first row (`ui/resultsLanding.ts`),
+  no game calls it. Holding only the chip would leak the new order. `SPOILER_HOLD_MS` is the
+  ceiling for a hold nobody ends (background tab); a reveal that runs longer raises it. Only a
+  reveal that just happened here (`animate`) announces — a history card mounting mid-hold must not
+  release it. Skip the hold under `prefers-reduced-motion`.
 - **Every call the server answers with a re-scored round refreshes the roster** — guess, ballot,
   override, give-up all run `RoundScoring.reevaluate`. Guess and give-up go through
   `refreshAfterGuess`, a ballot through `refresh`. Ballots happen in the running round and in the
@@ -193,14 +195,17 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
-  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: with the solution's
-  beat, only on a reveal that just happened here (`animate`) — a reload is silent — and at once
+  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: as the results start
+  landing (`RESULTS_DELAY_MS`) — it is their signal, so no row and no roster says it first — only
+  on a reveal that just happened here (`animate`) — a reload is silent — and at once
   where nothing moves. Exception: a run that ends itself plays the verdict the moment it ends, in
   the board, and its reveal stays silent — Entstauber's last tile wins, a wrong tile or a missed
   beat fails (`deduster/DedusterBoard.vue`). A reveal whose own animation ends in a sound of
   its own plays the verdict after that sound has fallen silent, once, for my first run only —
   Verrohrung's water, its end sound to the last, then the verdict. The sound says how long it still
-  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`). Augenmaß closes its
+  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`). Such a reveal holds
+  the table's rows until then (`RevealScoreboard`'s `resultsHeld`) and releases them on every exit:
+  the verdict, no tip of mine, a name tapped first. Augenmaß closes its
   count with it on the same bus (`matchscale/countSound.ts`). Every such reveal keeps the rest of
   the rule: silent on a reload or in a background tab, at once where nothing moves (reduced
   motion), cut when leaving.
