@@ -295,13 +295,14 @@ watch(
  *
  *   refresh (verdict) ──── VERDICT_MS ──── shown = new  → StreakMark flares, triangle if me
  *
- * Anything else — a fall, a rise short of a badge, a new member, reduced motion, a background
- * tab — shows at once, silently.
+ * A refresh inside the hold only updates the value; the deadline stays. Anything else — a fall, a
+ * rise short of a badge, a new member, reduced motion, a background tab, also one the tab went to
+ * during the hold — shows at once, silently.
  */
 const shownStreaks = ref<Record<string, number>>(
   Object.fromEntries(props.members.map((m) => [m.userId, m.streak])),
 )
-const heldStreaks = new Map<string, ReturnType<typeof setTimeout>>()
+const heldStreaks = new Map<string, { timer: ReturnType<typeof setTimeout>; streak: number }>()
 
 function streakOf(m: RosterMemberResponse): number {
   return shownStreaks.value[m.userId] ?? m.streak
@@ -315,7 +316,7 @@ watch(
     // Whoever left takes their badge and its pending flare along; a return mounts afresh.
     for (const id of Object.keys(shownStreaks.value)) {
       if (present.has(id)) continue
-      clearTimeout(heldStreaks.get(id))
+      clearTimeout(heldStreaks.get(id)?.timer)
       heldStreaks.delete(id)
       Reflect.deleteProperty(shownStreaks.value, id)
     }
@@ -323,28 +324,34 @@ watch(
     for (const m of members) {
       const id = m.userId
       const shown = shownStreaks.value[id]
-      // A second refresh inside the hold replaces it: the newest value lands, once.
-      clearTimeout(heldStreaks.get(id))
-      heldStreaks.delete(id)
+      const held = heldStreaks.get(id)
       if (shown === undefined || m.streak <= shown || !bandOf(m.streak) || !animated) {
+        clearTimeout(held?.timer)
+        heldStreaks.delete(id)
         shownStreaks.value[id] = m.streak
         continue
       }
 
-      heldStreaks.set(
-        id,
-        setTimeout(() => {
-          heldStreaks.delete(id)
-          shownStreaks.value[id] = m.streak
-          if (id === props.meId) playTriangle()
-        }, VERDICT_MS),
-      )
+      // A second refresh inside the hold: the newest value lands, once, on the first deadline.
+      if (held) {
+        held.streak = m.streak
+        continue
+      }
+
+      const timer = setTimeout(() => {
+        const streak = heldStreaks.get(id)?.streak ?? m.streak
+        heldStreaks.delete(id)
+        shownStreaks.value[id] = streak
+        // StreakMark asks the same at its flare; the triangle has to keep in step.
+        if (id === props.meId && !prefersReducedMotion() && !inBackground()) playTriangle()
+      }, VERDICT_MS)
+      heldStreaks.set(id, { timer, streak: m.streak })
     }
   },
 )
 
 onBeforeUnmount(() => {
-  for (const timer of heldStreaks.values()) clearTimeout(timer)
+  for (const { timer } of heldStreaks.values()) clearTimeout(timer)
 })
 
 onMounted(() => {

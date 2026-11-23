@@ -724,6 +724,40 @@ describe('MemberRow', () => {
       w.unmount()
     })
 
+    // The flare belongs to the moment the others' rows land; a repeat refresh must not push it.
+    it('keeps the first deadline when a refresh lands inside the hold', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(200)
+      await w.setProps({ members: [withStreak('me', 11)] })
+      vi.advanceTimersByTime(VERDICT_MS - 200 - 1)
+      await nextTick()
+      expect(bandOf(w, 'me')).toBe('flame-orange')
+
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      const mark = w.get<HTMLElement>('[data-test="streak-mark"]')
+      expect(parseFloat(mark.element.style.width)).toBeCloseTo(20.81, 2)
+      vi.advanceTimersByTime(VERDICT_MS)
+      expect(playTriangle).toHaveBeenCalledTimes(1)
+      w.unmount()
+    })
+
+    it('applies a held rise silently when the tab went to the background meanwhile', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(bandOf(w, 'me')).toBe('flame-blue')
+      expect(playTriangle).not.toHaveBeenCalled()
+      expect(animate).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
     it('names the icon to a screen reader', async () => {
       const w = await mountWith([withStreak('me', 10)])
 
