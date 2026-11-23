@@ -93,6 +93,15 @@ mine); a modifier, a held key (`repeat`) or focus in an editable field lets the 
 that wants letter keys on `document` collides — move the lab's, never the game's. `P` is the app
 shell's (light/dark, `ui/colorScheme.ts`, shared `isEditableTarget`): neither lab nor game takes it.
 
+## Where the controls live
+
+- **Under the game card, never above it.** The card sits where a real round's does; the controls
+  follow in their own section.
+- **Settings that hold for any game (phase, ramp) are chosen on the index too** and travel in the
+  URL. `gamelab/options.ts` is the one reader and writer for both pages; a round-bound control
+  (seed, reset, „forget mine“) stays on the game page.
+- **No raw guess list.** What a guess did is the game's own result view to show.
+
 ## Product components are fed, not adapted
 
 - **The lab shows the page's `MemberRow` unchanged,** because the row is props-only; the lab maps

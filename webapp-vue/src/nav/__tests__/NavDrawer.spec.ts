@@ -7,7 +7,6 @@ import { _resetCommunitiesState } from '@/communities/useCommunities'
 import { useAuth } from '@/auth/useAuth'
 import * as api from '@/api/communities'
 import { communityPath } from '@/communities/routes'
-import { requestDrawerClose } from '@/nav/drawerControl'
 import type { CommunitySummary, MeResponse } from '@/api/types'
 
 enableAutoUnmount(afterEach)
@@ -168,18 +167,6 @@ describe('NavDrawer mechanics', () => {
     expect(drawer.attributes('aria-hidden')).toBeUndefined()
   })
 
-  it('closes an open drawer when a page requests it', async () => {
-    // Catches a missing or disconnected drawer-close command channel: a page action must be
-    // able to close the real, currently-open global drawer without knowing its internals.
-    const w = render()
-    await w.get('[data-test=nav-toggle]').trigger('click')
-
-    requestDrawerClose()
-    await nextTick()
-
-    expect(w.get('[data-test=nav-toggle]').attributes('aria-expanded')).toBe('false')
-  })
-
   it('shows a scroll cue only until the logo container comes into view', async () => {
     // Catches a missing or stale overflow affordance: the visual cue must disappear as soon as
     // the logo container enters the viewport, where content ends.
@@ -204,8 +191,8 @@ describe('NavDrawer mechanics', () => {
   })
 
   it('re-reads the overflow when rows arrive after the drawer is already open', async () => {
-    // Catches a cue decided once against a list still in flight: the community list and a page's
-    // teleported tools both land after open, and a drawer that overflows only then would show no
+    // Catches a cue decided once against a list still in flight: the community list lands after
+    // open, and a drawer that overflows only then would show no
     // hint at all — on exactly the drawer the hint exists for.
     //
     // The dimensions are stubbed AFTER opening on purpose: the drawer sits in a <Teleport>, and
@@ -234,18 +221,6 @@ describe('NavDrawer mechanics', () => {
     await nextTick()
 
     expect(w.find('[data-test=nav-scroll-cue]').exists()).toBe(true)
-  })
-
-  it('leaves no close listener behind that a later request could trip over', async () => {
-    // The channel is module-level, so a subscription that outlives its component would be called
-    // for the rest of the session. That the set is emptied is `drawerControl`'s own test; this
-    // one covers the other half — unmounting mid-open must not leave a request throwing.
-    const w = render()
-    await w.get('[data-test=nav-toggle]').trigger('click')
-    w.unmount()
-
-    expect(() => requestDrawerClose()).not.toThrow()
-    expect(document.querySelector('[data-test=nav-drawer]')).toBeNull()
   })
 
   it('names the toggle for its current action', async () => {

@@ -1,16 +1,10 @@
 <script setup lang="ts">
 /**
- * The lab's controls, shaped to live inside the nav drawer rather than in the content column.
- *
- * That placement is the point: during a game review the *look* of the page is under review too,
- * so the content column must hold nothing a real player would not see. The drawer already exists,
- * already sits outside the column, and already opens and closes — so the controls move there
- * instead of growing a second overlay of their own.
- *
- * The geometry copies NavDrawer's own row (h-11, px-5, text-sm) on purpose: these rows sit among
- * the drawer's rows and would read as a foreign object at any other height or inset.
+ * The lab's controls, under the game card. Below rather than above, so the card sits where a real
+ * round's does and its look is reviewed undisturbed.
  */
 import { computed, ref, watch } from 'vue'
+import LabOptions from './LabOptions.vue'
 import { parseSeed } from './seed'
 import { switchPlayerHref } from './switchPlayer'
 import type { LabAwardRule, LabPhase } from './types'
@@ -61,10 +55,10 @@ function apply(): void {
   if (parsed !== null) emit('apply', parsed)
 }
 
-const ROW = 'flex h-11 w-full shrink-0 items-center px-5 text-left text-sm'
-const ACTION = `${ROW} cursor-pointer hover:bg-surface-container disabled:cursor-default disabled:opacity-40`
+const ACTION =
+  'flex h-11 cursor-pointer items-center gap-2 rounded-md border border-outline px-3 text-sm hover:bg-surface-container disabled:cursor-default disabled:opacity-40'
 
-const PHASES = ['ONE', 'TWO'] as const
+const KEYCAP = 'rounded border border-outline px-1 py-0.5 font-sans text-[10px] text-on-surface/40'
 
 const DIFFICULTY_FORMAT = new Intl.NumberFormat('de-DE', {
   minimumFractionDigits: 1,
@@ -98,142 +92,100 @@ const ruleText = computed(() => {
 </script>
 
 <template>
-  <div class="mt-1.5 border-t border-outline" />
-  <div
-    data-test="lab-heading"
-    class="px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
-  >
-    Spiel-Labor
-  </div>
+  <div class="space-y-2">
+    <h2
+      data-test="lab-heading"
+      class="text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
+    >
+      Spiel-Labor
+    </h2>
 
-  <form class="flex items-center gap-2 px-5 py-1.5" @submit.prevent="apply">
-    <label class="sr-only" for="lab-seed">Seed</label>
-    <input
-      id="lab-seed"
-      v-model="draft"
-      data-test="lab-seed"
-      inputmode="numeric"
-      :aria-invalid="invalid || undefined"
-      class="h-11 w-full min-w-0 rounded-md border px-2 font-mono text-sm"
-      :class="invalid ? 'border-error' : 'border-outline'"
-      @input="invalid = false"
+    <form class="flex items-center gap-2" @submit.prevent="apply">
+      <label class="sr-only" for="lab-seed">Seed</label>
+      <input
+        id="lab-seed"
+        v-model="draft"
+        data-test="lab-seed"
+        inputmode="numeric"
+        :aria-invalid="invalid || undefined"
+        class="h-11 w-full min-w-0 rounded-md border px-2 font-mono text-sm"
+        :class="invalid ? 'border-error' : 'border-outline'"
+        @input="invalid = false"
+      />
+      <button type="submit" class="h-11 shrink-0 cursor-pointer rounded-md border px-2 text-sm">
+        Setzen
+      </button>
+      <button
+        type="button"
+        data-test="lab-roll"
+        title="R"
+        aria-keyshortcuts="R"
+        class="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border px-2 text-sm"
+        @click="emit('roll')"
+      >
+        Würfeln
+        <kbd aria-hidden="true" :class="KEYCAP">R</kbd>
+      </button>
+    </form>
+    <p v-if="invalid" data-test="lab-seed-invalid" class="text-xs text-error">
+      Kein gültiger Seed — eine ganze Zahl von −2147483648 bis 2147483647.
+    </p>
+    <p
+      v-if="props.difficulty !== undefined"
+      data-test="lab-difficulty"
+      class="text-xs text-on-surface-variant"
+    >
+      Schwierigkeit {{ DIFFICULTY_FORMAT.format(props.difficulty) }}
+    </p>
+
+    <LabOptions
+      :phase="props.phase"
+      :ramp="props.ramp"
+      :busy="props.busy"
+      @phase-change="emit('phaseChange', $event)"
+      @ramp-change="emit('rampChange', $event)"
     />
-    <button type="submit" class="h-11 shrink-0 cursor-pointer rounded-md border px-2 text-sm">
-      Setzen
-    </button>
-    <button
-      type="button"
-      data-test="lab-roll"
-      title="R"
-      aria-keyshortcuts="R"
-      class="h-11 shrink-0 cursor-pointer rounded-md border px-2 text-sm"
-      @click="emit('roll')"
-    >
-      Würfeln
-    </button>
-  </form>
-  <p v-if="invalid" data-test="lab-seed-invalid" class="px-5 pb-1 text-xs text-error">
-    Kein gültiger Seed — eine ganze Zahl von −2147483648 bis 2147483647.
-  </p>
-  <p
-    v-if="props.difficulty !== undefined"
-    data-test="lab-difficulty"
-    class="px-5 pb-1.5 text-xs text-on-surface-variant"
-  >
-    Schwierigkeit {{ DIFFICULTY_FORMAT.format(props.difficulty) }}
-  </p>
+    <p v-if="ruleText" data-test="lab-award-rule" class="text-xs text-on-surface-variant">
+      {{ ruleText }}
+    </p>
 
-  <!--
-    Two buttons, not a `<select>`: there are exactly two states, and both must be reachable with a
-    thumb. `aria-pressed` carries the selected state to a screen reader — colour marks it for
-    sighted users, but is never the only signal.
-  -->
-  <div data-test="lab-phase" class="flex gap-2 px-5 py-1.5">
-    <button
-      v-for="option in PHASES"
-      :key="option"
-      type="button"
-      :data-test="`lab-phase-${option}`"
-      :aria-pressed="props.phase === option"
-      :disabled="props.busy"
-      class="h-11 flex-1 cursor-pointer rounded-md border text-sm disabled:cursor-default disabled:opacity-40"
-      :class="
-        props.phase === option
-          ? 'border-inverse-surface bg-inverse-surface font-semibold text-inverse-on-surface'
-          : 'border-outline hover:bg-surface-container'
-      "
-      @click="emit('phaseChange', option)"
-    >
-      {{ option === 'ONE' ? 'Phase 1' : 'Phase 2' }}
-    </button>
+    <!-- Wraps rather than scrolls: on a phone the four actions take two lines. -->
+    <div class="flex flex-wrap gap-2 pt-2">
+      <button
+        type="button"
+        data-test="lab-refresh"
+        :disabled="props.busy"
+        :class="ACTION"
+        @click="emit('refresh')"
+      >
+        Aktualisieren
+      </button>
+      <button
+        type="button"
+        data-test="lab-reset"
+        :disabled="props.busy"
+        :class="ACTION"
+        @click="emit('reset')"
+      >
+        Runde zurücksetzen
+        <kbd aria-hidden="true" :class="KEYCAP">X</kbd>
+      </button>
+      <button
+        type="button"
+        data-test="lab-forget-mine"
+        :disabled="props.busy"
+        :class="ACTION"
+        @click="emit('forgetMine')"
+      >
+        Meinen Guess löschen
+        <kbd aria-hidden="true" :class="KEYCAP">Z</kbd>
+      </button>
+      <!-- Full page load, not router navigation: the picker is server-rendered HTML, and the
+           redirect brings us back to this exact seed so a player switch does not cost the round. -->
+      <a data-test="lab-switch-player" :href="switchPlayerHref(props.returnPath)" :class="ACTION">
+        Spieler wechseln
+        <kbd aria-hidden="true" :class="KEYCAP">W</kbd>
+      </a>
+    </div>
   </div>
-  <p v-if="ruleText" data-test="lab-award-rule" class="px-5 pb-1.5 text-xs text-on-surface-variant">
-    {{ ruleText }}
-  </p>
-
-  <!-- A checkbox in the drawer row's geometry: the ramp is an on/off view option, not an action. -->
-  <label :class="`${ROW} cursor-pointer gap-3 hover:bg-surface-container`">
-    <input
-      type="checkbox"
-      data-test="lab-ramp"
-      :checked="props.ramp"
-      @change="emit('rampChange', ($event.target as HTMLInputElement).checked)"
-    />
-    Rampe
-  </label>
-
-  <button
-    type="button"
-    data-test="lab-refresh"
-    :disabled="props.busy"
-    :class="ACTION"
-    @click="emit('refresh')"
-  >
-    Aktualisieren
-  </button>
-  <button
-    type="button"
-    data-test="lab-reset"
-    :disabled="props.busy"
-    :class="ACTION"
-    @click="emit('reset')"
-  >
-    Runde zurücksetzen
-    <span
-      aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
-    >
-      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">X</kbd>
-    </span>
-  </button>
-  <button
-    type="button"
-    data-test="lab-forget-mine"
-    :disabled="props.busy"
-    :class="ACTION"
-    @click="emit('forgetMine')"
-  >
-    Meinen Guess löschen
-    <span
-      aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
-    >
-      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">Z</kbd>
-    </span>
-  </button>
-  <!-- Full page load, not router navigation: the picker is server-rendered HTML, and the redirect
-       brings us back to this exact seed so a player switch does not cost the round. -->
-  <a
-    data-test="lab-switch-player"
-    :href="switchPlayerHref(props.returnPath)"
-    :class="`${ROW} cursor-pointer hover:bg-surface-container`"
-  >
-    Spieler wechseln
-    <span
-      aria-hidden="true"
-      class="ml-auto flex items-center gap-0.5 font-mono text-xs text-on-surface/40"
-    >
-      <kbd class="rounded border border-outline px-1 py-0.5 font-sans text-[10px]">W</kbd>
-    </span>
-  </a>
 </template>

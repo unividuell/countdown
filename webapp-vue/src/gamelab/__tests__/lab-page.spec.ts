@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
 import { ApiError } from '@/api/client'
 import * as api from '@/gamelab/api'
@@ -10,7 +10,6 @@ import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
-import * as drawerControl from '@/nav/drawerControl'
 import type { RoundAssets } from '@/api/assets'
 import type { LabRoundResponse } from '@/gamelab/types'
 
@@ -144,22 +143,16 @@ const mountedPages: VueWrapper[] = []
 
 async function mountPage() {
   const Page = (await import('@/pages/c/[slug]/lab/[game]/index.vue')).default
-  const wrapper = mount(Page)
+  // Attached, so the document-level shortcuts reach an input inside the page.
+  const wrapper = mount(Page, { attachTo: document.body })
   mountedPages.push(wrapper)
   await flushPromises()
   return wrapper
 }
 
-/**
- * The controls are teleported into the nav drawer, so they are NOT in the wrapper's tree — the
- * page under test renders only what a player would see. This reaches them where they actually
- * land. Mounting without the target is not merely unfindable but fatal: Vue's deferred teleport
- * throws on a missing target and the throw eats the pending render, so the page stays empty.
- */
-function tool(testId: string): DOMWrapper<Element> {
-  const el = document.querySelector(`[data-test="${testId}"]`)
-  if (!el) throw new Error(`no teleported control [data-test="${testId}"] in the drawer container`)
-  return new DOMWrapper(el)
+/** A lab control, from the section under the game card. */
+function tool(testId: string) {
+  return mountedPages.at(-1)!.get(`[data-test="lab-controls"] [data-test="${testId}"]`)
 }
 
 /** The game asks for the reveal the way a real one does once its cover's hold completes. */
@@ -170,9 +163,7 @@ async function revealFromGame(w: VueWrapper): Promise<void> {
 
 describe('lab page', () => {
   beforeEach(() => {
-    // NavDrawer owns this container in the running app; here it stands in for it, because the
-    // page teleports its controls into it and a missing target aborts the render (see `tool`).
-    document.body.innerHTML = '<div id="drawer-page-tools"></div>'
+    document.body.innerHTML = ''
     replace.mockReset()
     setQuery({ seed: '42' })
     currentParams = { slug: 'team', game: 'stub' }
@@ -196,7 +187,6 @@ describe('lab page', () => {
     vi.spyOn(api, 'castLabVote')
       .mockReset()
       .mockResolvedValue({ ...round } as never)
-    vi.spyOn(drawerControl, 'requestDrawerClose').mockReset()
   })
 
   afterEach(() => {
@@ -336,7 +326,7 @@ describe('lab page', () => {
     expect((stub.props('entries') as { steps: unknown[] }[])[0]?.steps).toEqual([])
   })
 
-  it("shows the loaded round's difficulty in the drawer", async () => {
+  it("shows the loaded round's difficulty", async () => {
     await mountPage()
 
     expect(tool('lab-difficulty').text()).toBe('Schwierigkeit 0,7')
@@ -416,6 +406,16 @@ describe('lab page', () => {
     expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=TWO')
   })
 
+  it('carries the ramp into the switch-player return path', async () => {
+    setQuery({ seed: '42', phase: 'ONE', ramp: '1' })
+    await mountPage()
+
+    const href = tool('lab-switch-player').attributes('href')
+    const redirect = new URL(href!, 'https://example.test').searchParams.get('redirect')
+
+    expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=ONE&ramp=1')
+  })
+
   it('switches player on W, back to the same seed and phase', async () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { assign } as unknown as Location)
@@ -490,57 +490,12 @@ describe('lab page', () => {
     expect(document.querySelector('[data-test="lab-takeover"]')).not.toBeNull()
   })
 
-  it('lists the other testers', async () => {
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { value: 150 },
-          outcome: { correct: false, distance: 5, direction: 'LOWER' },
-          at: '2026-08-08T12:00:00Z',
-          points: 0,
-        },
-      ],
-    } as never)
+  it('puts the lab controls under the game card', async () => {
     const w = await mountPage()
-    expect(w.get('[data-test="lab-entries"]').text()).toContain('Bender')
-  })
+    const card = w.findComponent(RoundRamp).element
+    const controls = w.get('[data-test="lab-controls"]').element
 
-  it('shows the points each entry scored', async () => {
-    // The number is the whole reason to watch phase two: the closest guess scores, the rest do
-    // not, and the list is where that becomes visible.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { hue: 214.3 },
-          outcome: null,
-          at: '2026-08-08T12:00:00Z',
-          points: 2,
-        },
-      ],
-    } as never)
-
-    const w = await mountPage()
-
-    expect(w.get('[data-test="lab-entry-points"]').text()).toBe('2')
-  })
-
-  it('keeps every lab control out of the content column', async () => {
-    // The reason the controls are teleported at all: a game review judges the look of the page,
-    // so the column must hold nothing a real player would not see. Asserting their absence here
-    // is what stops someone re-adding one inline later.
-    const w = await mountPage()
-    for (const id of ['lab-seed', 'lab-roll', 'lab-refresh', 'lab-reset', 'lab-forget-mine']) {
-      expect(w.find(`[data-test="${id}"]`).exists()).toBe(false)
-      expect(document.querySelector(`[data-test="${id}"]`)).not.toBeNull()
-    }
+    expect(card.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('keys the game component by seed, so a new round remounts it instead of patching props', async () => {
@@ -586,147 +541,9 @@ describe('lab page', () => {
     expect(w.findComponent(StubGame).props('myGuess')).toEqual({ value: 150 })
   })
 
-  it('prints no arrow for an entry the game did not score', async () => {
-    // Guess Hue stores guesses without judging them, so `outcome` is legitimately null and the
-    // debug line must not read "→ null".
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { hue: 214.3 },
-          outcome: null,
-          at: '2026-08-08T12:00:00Z',
-          points: 0,
-        },
-      ],
-    } as never)
-
-    const w = await mountPage()
-
-    expect(w.get('[data-test="lab-entries"]').text()).toContain('214.3')
-    expect(w.get('[data-test="lab-entries"]').text()).not.toContain('→')
-  })
-
-  it('cuts the wire values to one decimal, and keeps them valid JSON', async () => {
-    // A hue comes off the wheel carrying seventeen digits of float noise. The reviewer reads this
-    // line against the game's own result view, which shows one decimal — two roundings of one
-    // number on one screen would be worse than either.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { hue: 319.70451294028976 },
-          outcome: { deviationDeg: 4.7888176227384065, withinTolerance: null },
-          at: '2026-08-08T12:00:00Z',
-          points: 2,
-        },
-      ],
-    } as never)
-
-    const text = (await mountPage()).get('[data-test="lab-entries"]').text()
-
-    expect(text).toContain('{"hue":319.7}')
-    expect(text).toContain('{"deviationDeg":4.8,"withinTolerance":null}')
-    expect(text).not.toContain('319.70451294028976')
-  })
-
-  it('leaves the name to the avatar, and keeps the full one for assistive tech', async () => {
-    // The four characters in the circle are the name here; a second column repeating it cost the
-    // debug line the width it actually needs. `title` and `sr-only` keep the full one reachable —
-    // `Avatar` is a bare div with no accessible name of its own.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { hue: 214.3 },
-          outcome: null,
-          at: '2026-08-08T12:00:00Z',
-          points: 0,
-        },
-      ],
-    } as never)
-
-    const row = (await mountPage()).get('[data-test="lab-entries"]').get('li')
-
-    expect(row.get('.sr-only').text()).toBe('Bender')
-    expect(row.get('[title]').attributes('title')).toBe('Bender')
-    // The only non-sr-only rendering of the name is the avatar's short form.
-    expect(row.get('.rounded-full').text()).toBe('BEND')
-  })
-
-  it('hangs the delete action on the row corner, out of the flow', async () => {
-    // One row carries it and the others do not, so in the flow it made that row lay out
-    // differently from its neighbours. Absolute positioning is what keeps every row identical.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      me: {
-        userId: 'u1',
-        username: 'Fry',
-        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
-        guess: { hue: 100 },
-        outcome: null,
-        at: '2026-08-08T12:00:00Z',
-        points: 0,
-      },
-    } as never)
-
-    const w = await mountPage()
-    const button = w.get('[data-test="lab-entry-forget-mine"]')
-
-    expect(button.classes()).toEqual(expect.arrayContaining(['absolute', '-top-3.5', '-right-3.5']))
-    expect(button.element.closest('li')!.className).toContain('relative')
-  })
-
-  it('names both actions with their keyboard shortcut, without renaming them for a screen reader', async () => {
-    // The badge and the reset line are the only places these two actions are visible without
-    // opening the drawer, so the shortcut belongs on them. It stays `aria-hidden`, as the
-    // drawer's own hints are: „Klammer auf Befehl Umschalt Z“ is not the name of an action.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      me: {
-        userId: 'u1',
-        username: 'Fry',
-        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
-        guess: { hue: 100 },
-        outcome: null,
-        at: '2026-08-08T12:00:00Z',
-        points: 0,
-      },
-    } as never)
-
-    const w = await mountPage()
-    const forget = w.get('[data-test="lab-entry-forget-mine"]')
-    const reset = w.get('[data-test="lab-entries-reset"]')
-
-    // `labShortcut` listens for the bare keys z and x — the hints must say exactly that.
-    expect(forget.get('[aria-hidden="true"]').text()).toBe('(Z)')
-    expect(forget.attributes('aria-label')).toBe('Meinen Guess löschen')
-
-    expect(reset.get('[aria-hidden="true"]').text()).toBe('(X)')
-    expect(reset.text()).toContain('Runde zurücksetzen')
-  })
-
-  it('renders no entries list at all before the viewer has guessed', async () => {
-    // The backend withholds `others` until the viewer has guessed, and `me` is null until then
-    // too — so the combined list is legitimately empty, and that must not show as an empty box.
-    const w = await mountPage()
-
-    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
-  })
-
   it("gives the game component the viewer's own row before any guess exists, in their own colour", async () => {
-    // The raw wire list stays empty here (nothing was actually stored yet, see the test above) —
-    // this is specifically about what the *game* sees, which is what a real reveal would have
-    // produced: the viewer, revealed and not yet guessed.
+    // Nothing was actually stored yet — this is about what the *game* sees, which is what a real
+    // reveal would have produced: the viewer, revealed and not yet guessed.
     const w = await mountPage()
     const stub = w.findComponent(StubGame)
 
@@ -747,40 +564,6 @@ describe('lab page', () => {
         steps: [],
       },
     ])
-    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
-  })
-
-  it("puts the viewer's own guess into the entries list, first", async () => {
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      me: {
-        userId: 'u1',
-        username: 'Fry',
-        avatar: { shortName: 'FRY', bgColorHex: '#abcdef' },
-        guess: { value: 150 },
-        outcome: null,
-        at: '2026-08-08T12:00:00Z',
-        points: 0,
-      },
-      others: [
-        {
-          userId: 'u2',
-          username: 'Bender',
-          avatar: { shortName: 'BEND', bgColorHex: '#123456' },
-          guess: { value: 160 },
-          outcome: null,
-          at: '2026-08-08T12:00:00Z',
-          points: 0,
-        },
-      ],
-    } as never)
-
-    const w = await mountPage()
-    const rows = w.get('[data-test="lab-entries"]').findAll('li')
-
-    expect(rows).toHaveLength(2)
-    expect(rows[0]!.text()).toContain('Fry')
-    expect(rows[1]!.text()).toContain('Bender')
   })
 
   it('keys the game component on the round the response carries, not the seed in the URL', async () => {
@@ -836,7 +619,7 @@ describe('lab page', () => {
     points: 0,
   }
 
-  it('renders a row delete button only on the row the viewer owns, and a reset below the list', async () => {
+  it('shows no raw guess list, not even once others have guessed', async () => {
     vi.spyOn(api, 'openLabRound').mockResolvedValue({
       ...round,
       me: mine,
@@ -844,94 +627,25 @@ describe('lab page', () => {
     } as never)
 
     const w = await mountPage()
-    const rows = w.get('[data-test="lab-entries"]').findAll('li')
-    expect(rows[0]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(true)
-    expect(rows[1]!.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(false)
-    expect(w.find('[data-test="lab-entries-reset"]').exists()).toBe(true)
+
+    expect(w.text()).not.toContain('"value"')
+    expect(w.find('[data-test="lab-entries"]').exists()).toBe(false)
   })
 
-  it('offers no row delete button when the viewer has not guessed but others are revealed', async () => {
-    // Catches a delete action keyed on the row's position instead of on `entry.userId`: if
-    // `others` were ever non-empty while `me` is null, the first row would be a stranger's — and
-    // the button would sit on it offering to delete „meinen Guess“.
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      me: null,
-      others: [theirs],
-    } as never)
-
-    const w = await mountPage()
-    expect(w.get('[data-test="lab-entries"]').findAll('li')).toHaveLength(1)
-    expect(w.find('[data-test="lab-entry-forget-mine"]').exists()).toBe(false)
-    expect(w.find('[data-test="lab-entries-reset"]').exists()).toBe(true)
-  })
-
-  it('runs the list actions without asking the drawer to close', async () => {
-    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
-    vi.spyOn(api, 'openLabRound').mockResolvedValue({
-      ...round,
-      me: mine,
-      others: [theirs],
-    } as never)
-    // Deleting my guess leaves the other tester's row standing, so the list — and the reset
-    // button under it — survives for the second half of this test.
-    vi.spyOn(api, 'forgetMyLabEntry').mockResolvedValue({
-      ...round,
-      me: null,
-      others: [theirs],
-    } as never)
-    const w = await mountPage()
-
-    await w.get('[data-test="lab-entry-forget-mine"]').trigger('click')
-    await flushPromises()
-    expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
-
-    await w.get('[data-test="lab-entries-reset"]').trigger('click')
-    await flushPromises()
-    expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
-
-    expect(spy).not.toHaveBeenCalled()
-  })
-
-  it('renders decorative keycaps on drawer round action buttons', async () => {
+  it('renders decorative keycaps on the round action buttons', async () => {
     await mountPage()
     const resetBtn = tool('lab-reset')
     const forgetBtn = tool('lab-forget-mine')
 
+    expect(tool('lab-roll').find('kbd').text()).toBe('R')
+    expect(tool('lab-switch-player').find('kbd').text()).toBe('W')
     expect(resetBtn.find('kbd').text()).toBe('X')
     expect(forgetBtn.find('kbd').text()).toBe('Z')
     expect(resetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
     expect(forgetBtn.find('[aria-hidden="true"]').exists()).toBe(true)
   })
 
-  it('requests drawer close on successful drawer actions, but not on failure or list actions', async () => {
-    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
-    await mountPage()
-
-    // Successful drawer refresh
-    await tool('lab-refresh').trigger('click')
-    await flushPromises()
-    expect(spy).toHaveBeenCalledTimes(1)
-
-    // Successful drawer reset
-    await tool('lab-reset').trigger('click')
-    await flushPromises()
-    expect(spy).toHaveBeenCalledTimes(2)
-
-    // Successful drawer forgetMine
-    await tool('lab-forget-mine').trigger('click')
-    await flushPromises()
-    expect(spy).toHaveBeenCalledTimes(3)
-
-    // Failed drawer action does not close drawer
-    vi.spyOn(api, 'resetLabRound').mockRejectedValueOnce(new ApiError(500, 'error'))
-    await tool('lab-reset').trigger('click')
-    await flushPromises()
-    expect(spy).toHaveBeenCalledTimes(3)
-  })
-
   it('executes shortcuts Z and X when not in an editable target and not busy', async () => {
-    const spy = vi.spyOn(drawerControl, 'requestDrawerClose')
     await mountPage()
 
     const eventZ = new KeyboardEvent('keydown', {
@@ -943,7 +657,6 @@ describe('lab page', () => {
     await flushPromises()
     expect(api.forgetMyLabEntry).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(eventZ.defaultPrevented).toBe(true)
-    expect(spy).toHaveBeenCalledTimes(1)
 
     const eventX = new KeyboardEvent('keydown', {
       key: 'x',
@@ -954,7 +667,6 @@ describe('lab page', () => {
     await flushPromises()
     expect(api.resetLabRound).toHaveBeenCalledWith('team', 'stub', 42, 'ONE')
     expect(eventX.defaultPrevented).toBe(true)
-    expect(spy).toHaveBeenCalledTimes(2)
   })
 
   it('ignores shortcuts in input fields or when busy', async () => {

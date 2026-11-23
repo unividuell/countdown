@@ -1,7 +1,28 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterLinkStub, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { labGameList } from '@/gamelab/games'
+
+const replace = vi.fn()
+const currentQuery = reactive<Record<string, string>>({})
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ replace }),
+  useRoute: () => ({
+    get query() {
+      return currentQuery
+    },
+    get fullPath() {
+      const query = new URLSearchParams(currentQuery).toString()
+      return query ? `/c/team/lab?${query}` : '/c/team/lab'
+    },
+  }),
+}))
+
+function setQuery(next: Record<string, string>): void {
+  for (const key of Object.keys(currentQuery)) delete currentQuery[key]
+  Object.assign(currentQuery, next)
+}
 
 // A real `ref`, not a `{ value }` lookalike: the page reads the community in its TEMPLATE, where
 // Vue unwraps refs returned from setup. A plain object skips that unwrapping and silently yields
@@ -19,6 +40,11 @@ async function mountIndex() {
 }
 
 describe('lab index', () => {
+  beforeEach(() => {
+    replace.mockReset()
+    setQuery({})
+  })
+
   it('lists every registered game', async () => {
     const w = await mountIndex()
     const list = w.get('[data-test="lab-game-list"]')
@@ -48,5 +74,32 @@ describe('lab index', () => {
   it('names the community so a mistyped slug is obvious before you play', async () => {
     const w = await mountIndex()
     expect(w.text()).toContain('Team')
+  })
+
+  it('carries phase two and the ramp into every link', async () => {
+    setQuery({ phase: 'TWO', ramp: '1' })
+    const w = await mountIndex()
+    const links = w.findAllComponents(RouterLinkStub).map((l) => String(l.props().to))
+    expect(links).toEqual(labGameList.map((g) => `/c/team/lab/${g.id}?phase=TWO&ramp=1`))
+  })
+
+  it('writes the chosen phase and ramp into its own URL', async () => {
+    const w = await mountIndex()
+
+    await w.get('[data-test="lab-phase-TWO"]').trigger('click')
+    expect(replace).toHaveBeenLastCalledWith({ query: { phase: 'TWO' } })
+
+    await w.get('[data-test="lab-ramp"]').setValue(true)
+    expect(replace).toHaveBeenLastCalledWith({ query: { ramp: '1' } })
+  })
+
+  it('switches player back to the index, settings included', async () => {
+    setQuery({ phase: 'TWO' })
+    const w = await mountIndex()
+
+    const href = w.get('[data-test="lab-switch-player"]').attributes('href')!
+    expect(new URL(href, 'https://example.test').searchParams.get('redirect')).toBe(
+      '/c/team/lab?phase=TWO',
+    )
   })
 })
