@@ -61,6 +61,7 @@ data class RosterMemberResponse(
     val fullName: String,
     val bgColorHex: String,
     val points: RosterPointsResponse,
+    val streak: Int,
 )
 
 fun CommunityEdition.toResponse(frozen: Boolean) = EditionResponse(

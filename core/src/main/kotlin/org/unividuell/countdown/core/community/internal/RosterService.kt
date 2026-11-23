@@ -48,6 +48,7 @@ class RosterService(
                             LivePointsResponse(points = it.points, provisional = it.provisional)
                         },
                     ),
+                    streak = p.streak,
                 )
             }
     }
