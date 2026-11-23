@@ -17,8 +17,9 @@ import stone2 from './sounds/stone2.m4a?url'
 import stone3 from './sounds/stone3.m4a?url'
 import stone4 from './sounds/stone4.m4a?url'
 
-import { audioGraph, decodingGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
-import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
+import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { recordedSounds } from '@/ui/recordedSounds'
+import { soundGraph, soundOutput } from '@/ui/soundOutput'
 import { BLOCK_TYPES } from './blockTypes'
 import type { BlockCode, SoundSet } from './blockTypes'
 
@@ -78,28 +79,11 @@ export function soundPlan(
   return [...knocks, { set: type.break, rate, gain: 1, offsetS: crack }]
 }
 
-/** Decoded samples by URL; null while decoding or when it failed. */
-const buffers = new Map<string, AudioBuffer | null>()
+const clips = recordedSounds(Object.values(SAMPLES).flat(), 'copy-blocks')
 
-/**
- * Decodes every sample once, ahead of the first tap, muted or not: off the app's graph, so a
- * muted game leaves the device's audio alone (`decodingGraph`).
- */
+/** Decodes every sample once, ahead of the first tap. */
 export function preloadSounds(): void {
-  const decoder = decodingGraph()
-  if (!decoder) return
-
-  for (const url of Object.values(SAMPLES).flat()) {
-    if (buffers.has(url)) continue
-    buffers.set(url, null)
-    void fetch(url)
-      .then((response) => response.arrayBuffer())
-      .then((data) => decoder.decodeAudioData(data))
-      .then(
-        (buffer) => buffers.set(url, buffer),
-        (err: unknown) => console.warn('[copy-blocks] a block sound did not decode', url, err),
-      )
-  }
+  clips.preload()
 }
 
 let bus: GainNode | null = null
@@ -115,23 +99,14 @@ function busOf(graph: AudioContext): GainNode {
 }
 
 function variantOf(set: SoundSet): AudioBuffer | undefined {
-  const ready = SAMPLES[set].map((url) => buffers.get(url)).filter((b) => !!b)
+  const ready = SAMPLES[set].map((url) => clips.buffer(url)).filter((b) => !!b)
 
   return ready[Math.floor(Math.random() * ready.length)]
 }
 
 export function playSound(action: 'place' | 'break', code: BlockCode): void {
-  if (!gameSoundOn()) return
-
-  const graph = audioGraph()
+  const graph = soundGraph()
   if (!graph) return
-
-  // Browsers start the graph suspended; the first tap is the gesture that may wake it.
-  if (graph.state === 'suspended') {
-    graph.resume().catch((err: unknown) => {
-      console.warn('[copy-blocks] the browser kept the audio graph suspended', err)
-    })
-  }
 
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS
   for (const { set, rate, gain, offsetS } of soundPlan(action, code, Math.random)) {

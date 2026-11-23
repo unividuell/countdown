@@ -191,6 +191,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   „wruusch“ for tidying up in `ui/whooshSound.ts` (Peilung's „Markierungen löschen“); a game
   schedules them, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
+- **Recorded clips go through `ui/recordedSounds.ts`** (Verrohrung, Blockierung): `preload()` on
+  mount, `buffer(url)` in the play function, the graph from `soundGraph()` like every synthesised
+  voice. A game keeps no decode cache and wakes nothing of its own.
 - **One rule for a sleeping graph: a one-shot stays silent.** A sound scheduled on a suspended
   graph lands on its wake-up, with the next tap, long after what it belonged to — so a one-shot
   asks for the graph only while it runs (`runningGraph()` in `ui/audio.ts`; decoration sound asks
@@ -204,7 +207,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   autoplay policies Chrome and Firefox start a context built after a tap as `running`, no
   `resume()` needed, and on iOS that stops the player's music. A preload decodes on
   `decodingGraph()` instead — an `OfflineAudioContext` has no output — muted or not, so the first
-  sound after unmuting is ready (`turnpipes/sounds.ts`).
+  sound after unmuting is ready (`ui/recordedSounds.ts`).
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):

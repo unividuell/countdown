@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { audioGraph } from '@/ui/audio'
+import { soundGraph } from '@/ui/soundOutput'
 import {
   HIT_COUNT,
   HIT_GAIN,
@@ -11,11 +12,8 @@ import {
   soundPlan,
 } from '@/games/copyblocks/sounds'
 
-/** The sound switch as the player sees it. */
-const sound = vi.hoisted(() => ({ on: true }))
-
 vi.mock('@/ui/soundOutput', () => ({
-  gameSoundOn: () => sound.on,
+  soundGraph: vi.fn(() => null),
   soundOutput: (graph: { destination: unknown }) => graph.destination,
 }))
 vi.mock('@/ui/audio', () => ({
@@ -70,29 +68,21 @@ describe('without Web Audio', () => {
   })
 })
 
-describe('muted', () => {
+describe('the graph', () => {
   beforeEach(() => {
     vi.mocked(audioGraph).mockClear()
-    sound.on = true
+    vi.mocked(soundGraph).mockClear()
   })
 
-  it('asks for no graph at all: a muted game leaves the device’s audio alone', () => {
-    sound.on = false
+  it('comes from `soundGraph`: muted or asleep, a play stays silent', () => {
     playSound('break', 'STONE')
 
-    expect(audioGraph).not.toHaveBeenCalled()
+    expect(soundGraph).toHaveBeenCalledOnce()
   })
 
-  it('preloads without the app’s graph: one built after a tap may start running', () => {
-    sound.on = false
+  it('is not built to preload: one built after a tap may start running', () => {
     preloadSounds()
 
     expect(audioGraph).not.toHaveBeenCalled()
-  })
-
-  it('asks for it once sound is on', () => {
-    playSound('break', 'STONE')
-
-    expect(audioGraph).toHaveBeenCalledOnce()
   })
 })

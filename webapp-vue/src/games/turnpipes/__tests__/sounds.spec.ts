@@ -21,11 +21,14 @@ interface FakeSource {
 const gains: FakeGain[] = []
 const sources: FakeSource[] = []
 
-/** The sound switch; the output itself adds no gain of its own to count. */
-const sound = vi.hoisted(() => ({ on: true }))
+/**
+ * The sound switch, and the running graph of the module `load` just imported; the output itself
+ * adds no gain of its own to count.
+ */
+const sound = vi.hoisted(() => ({ on: true, runningGraph: (): AudioContext | null => null }))
 
 vi.mock('@/ui/soundOutput', () => ({
-  gameSoundOn: () => sound.on,
+  soundGraph: () => (sound.on ? sound.runningGraph() : null),
   soundOutput: (graph: { destination: unknown }) => graph.destination,
 }))
 
@@ -67,6 +70,7 @@ class FakeAudioContext {
 /** A fresh module per test: the shared audio graph and the buffers are module state. */
 async function load() {
   vi.resetModules()
+  sound.runningGraph = (await import('@/ui/audio')).runningGraph
   return import('@/games/turnpipes/sounds')
 }
 
@@ -219,6 +223,22 @@ describe('with Web Audio', () => {
     playSound('turn')
 
     expect(sources).toHaveLength(1)
+  })
+
+  it('stays silent on a sleeping graph: the sound would land on its wake-up', async () => {
+    vi.stubGlobal(
+      'AudioContext',
+      class extends FakeAudioContext {
+        override state = 'suspended'
+      },
+    )
+    const { preloadSounds, playSound } = await load()
+    preloadSounds()
+    await settle()
+
+    playSound('turn')
+
+    expect(sources).toHaveLength(0)
   })
 
   it('stays silent until the sound is decoded', async () => {
