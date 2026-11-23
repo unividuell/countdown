@@ -201,7 +201,7 @@ function finish(): void {
 function entered(): void {
   entering = false
   // Only now may the row go `overflow-x: auto` — it computes `overflow-y` to `auto` too, which
-  // would cut flying circles off at the ~72px band. Mid-flight the row must not clip on either
+  // would cut flying circles off at the ~86px band. Mid-flight the row must not clip on either
   // axis at all: the circles travel far outside it, across the whole viewport. Horizontal
   // containment during the flight lives on the app root instead (see App.vue).
   settled.value = true

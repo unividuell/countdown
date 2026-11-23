@@ -66,6 +66,9 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
   arrived. In a `watch` on the data with `{ flush: 'post' }`. `SongSearchBox`.
 - **`overflow-x: auto` computes `overflow-y` to `auto` too**, which clips transformed children: an
   element that scrolls and hosts an animation escaping its box must not clip while it runs.
+  Dropping the scroll container zeroes `scrollLeft`: read it first, carry it as a `translateX` on
+  the content, write it back after. Overlapping animations share one hold — the first reads, the
+  last restores. `MemberRow`.
 
 ### Animation on a phone's main thread
 

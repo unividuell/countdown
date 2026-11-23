@@ -510,7 +510,7 @@ describe('MemberRow', () => {
       await rearrangeTo(w, RISEN)
 
       // `overflow-x: auto` computes `overflow-y` to `auto` as well, which would cut the banking
-      // off at the 72px band. Dropping it costs the row its scroll offset, so the track carries it.
+      // off at the 86px band. Dropping it costs the row its scroll offset, so the track carries it.
       expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
       expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
 

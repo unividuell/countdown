@@ -86,10 +86,11 @@ const settledMembers = computed(() => {
   <!-- The section owns the height, so all three states are the same height by construction rather
        than by three numbers agreeing. 86px is what the row measures: a 48px avatar, plus 10 for the
        points badge and 10 for the live-points chip (16px each, pulled up 6 by -mt-1.5), plus the
-       track's 16px padding top (room for the streak icon's overhang) and 2px bottom. The chip holds its line even for a member who has not
-       played (see MemberRow), so this is the row's only height — reserving anything smaller is what
-       used to drop the card the moment the roster landed, and letting the chip leave the flow is
-       what used to lift the ranking the moment the first live points arrived. -->
+       track's 16px padding top (room for the streak icon's overhang) and 2px bottom. The chip holds
+       its line even for a member who has not played (see MemberRow), so this is the row's only
+       height — reserving anything smaller is what used to drop the card the moment the roster
+       landed, and letting the chip leave the flow is what used to lift the ranking the moment the
+       first live points arrived. -->
   <section class="flex min-h-[86px] items-center">
     <MemberRow v-if="state === 'ready'" :members="members" :me-id="user?.id" />
     <p
