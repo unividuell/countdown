@@ -8,17 +8,16 @@
  *    Auswertung …
  *
  * Beats come from `revealChoreography`: my own painting stands as I signed it, then at
- * `SOLUTION_DELAY_MS` the picture fades in under it. The scoreboard carries its own beats.
+ * the verdict the picture fades in under it. The scoreboard carries its own beats.
  *
  *   ┌──────────────────────┐        ┌──────────────────────┐
  *   │  my painting         │  ───▶  │  picture             │
  *   │                      │        │   + my painting      │
  *   └──────────────────────┘        └──────────────────────┘
  */
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { computed, ref } from 'vue'
+import { FADE_MS } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
-import { useRevealArming } from '@/ui/useRevealArming'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import LayerCanvas from './LayerCanvas.vue'
 import { KOLLEKTIV, openingLayers, toggleLayer } from './layers'
@@ -41,7 +40,7 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()
@@ -77,21 +76,16 @@ const layers = computed<CanvasLayer[]>(() =>
  * Whether my painting stands alone until the solution beat. Asked once, on arrival: without a
  * painting of mine, or without beats, the reveal shows the finished picture at once.
  */
-const intro = !isStill(props.animate) && own.value !== undefined
+const intro = !timeline.still && own.value !== undefined
 
 const ownLayers = computed<CanvasLayer[]>(() =>
   own.value === undefined ? [] : [{ kind: 'strokes', strokes: own.value }],
 )
 
 const faded = ref(false)
-let solutionTimer: ReturnType<typeof setTimeout> | undefined
 
-// Without an intro there is no beat to arm.
-useRevealArming(!intro, () => {
-  solutionTimer = setTimeout(() => (faded.value = true), SOLUTION_DELAY_MS)
-})
-
-onBeforeUnmount(() => clearTimeout(solutionTimer))
+// The picture judges: it shows with the verdict.
+if (intro) timeline.on('verdict', () => (faded.value = true))
 
 function select(id: string): void {
   selected.value = toggleLayer(selected.value, id)

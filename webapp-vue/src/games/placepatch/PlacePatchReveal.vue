@@ -7,15 +7,8 @@
  * moved, so the switch to the reveal leaves it exactly where it was.
  */
 import { computed } from 'vue'
-import {
-  FADE_MS,
-  SOLUTION_DELAY_MS,
-  TIP_COLUMN,
-  cellDelayMs,
-  isStill,
-} from '@/games/revealChoreography'
+import { FADE_MS, TIP_COLUMN, othersDelayMs } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
-import { useRevealArming } from '@/ui/useRevealArming'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import PlacePatchScoreboard from './PlacePatchScoreboard.vue'
 import { stackedOutlines } from './outlines'
@@ -36,14 +29,15 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-const still = isStill(props.animate)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const still = timeline.still
 
-provideRevealTimeline({ animate: props.animate, won: () => props.won })
+/** The solution judges: it lands on the verdict. Everyone else's tip after it, mine never fades. */
+const verdictReached = timeline.reached('verdict')
+const othersReached = timeline.reached('others')
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()
-
-const { shown } = useRevealArming(still)
 
 function hasCell(row: ScoreRow): row is ScoreRow & { cell: Cell } {
   return row.cell !== null
@@ -61,7 +55,7 @@ const outlines = computed(() => {
       delayMs:
         still || row.userId === props.mineUserId
           ? 0
-          : cellDelayMs(row.tick, TIP_COLUMN, props.rows.length),
+          : othersDelayMs(row.tick, TIP_COLUMN, props.rows.length),
     })),
   )
 })
@@ -101,14 +95,13 @@ const CORNERS = [
 const solutionStyle = computed(() => ({
   ...box(props.solution),
   transitionDuration: `${FADE_MS}ms`,
-  transitionDelay: `${SOLUTION_DELAY_MS}ms`,
 }))
 
 function outlineStyle(outline: Outline) {
   return {
     ...box(outline.cell, outline.insetPx),
     boxShadow: `inset 0 0 0 3px ${outline.colorHex}`,
-    opacity: still || outline.delayMs === 0 || shown.value ? 1 : 0,
+    opacity: outline.userId === props.mineUserId || othersReached.value ? 1 : 0,
     transition: `opacity ${FADE_MS}ms ease-out ${outline.delayMs}ms`,
   }
 }
@@ -130,7 +123,7 @@ function outlineStyle(outline: Outline) {
       <div
         data-test="place-patch-solution"
         class="pointer-events-none absolute transition-opacity"
-        :class="shown ? 'opacity-100' : 'opacity-0'"
+        :class="verdictReached ? 'opacity-100' : 'opacity-0'"
         :style="solutionStyle"
       >
         <img

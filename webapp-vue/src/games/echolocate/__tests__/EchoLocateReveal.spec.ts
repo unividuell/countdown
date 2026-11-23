@@ -12,7 +12,7 @@ import type {
   Point,
 } from '@/games/echolocate/types'
 import type { GameEntry } from '@/games/GameEntry'
-import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { FADE_MS, SOLUTION_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
@@ -340,6 +340,19 @@ describe('EchoLocateReveal', () => {
       await nextTick()
       expect(own(wrapper).element.style.opacity).toBe('0')
       expect(own(wrapper).element.style.transitionDuration).toBe(`${FADE_MS}ms`)
+    })
+
+    it('puts the others’ pins on the map only once my verdict has rung out', async () => {
+      useBeats()
+      const wrapper = mountReveal({ animate: true, mineUserId: 'me' })
+
+      vi.advanceTimersByTime(VERDICT_AT_MS)
+      await nextTick()
+      expect(map(wrapper).props('otherPins')).toEqual([])
+
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+      expect(map(wrapper).props('otherPins')).toHaveLength(2)
     })
 
     it('lets a finger through to the map while my field covers it', () => {
