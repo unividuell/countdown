@@ -1,7 +1,5 @@
 # Aufdeckungs-Zeitleiste — Entwurf
 
-Folgt auf [Verdict im Takt](2026-11-23-verdict-takt-design.md); löst dessen Einzelmechanismen ab.
-
 ## Warum
 
 Jede Aufdeckung baut ihr Timing selbst: eigene `setTimeout`s ab Mount, CSS-Verzögerungen ab dem
