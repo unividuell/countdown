@@ -54,11 +54,11 @@ function rowsOf(
 }
 
 describe('formatDistance', () => {
-  it('labels the distance with one decimal, the mean of two with Ø', () => {
-    expect(formatDistance(2.345, 1)).toBe('2,3')
-    expect(formatDistance(2.345, 2)).toBe('Ø 2,3')
-    expect(formatDistance(0, 1)).toBe('0,0')
-    expect(formatDistance(12, 2)).toBe('Ø 12,0')
+  it('labels the distance with two decimals, the mean of two with Ø', () => {
+    expect(formatDistance(2.345, 1)).toBe('2,35')
+    expect(formatDistance(2.345, 2)).toBe('Ø 2,35')
+    expect(formatDistance(0, 1)).toBe('0,00')
+    expect(formatDistance(12, 2)).toBe('Ø 12,00')
   })
 })
 
@@ -117,8 +117,8 @@ describe('scoreRows', () => {
       { payload: TWO },
     )
 
-    expect(one!.distanceLabel).toBe('2,3')
-    expect(two!.distanceLabel).toBe('Ø 2,3')
+    expect(one!.distanceLabel).toBe('2,35')
+    expect(two!.distanceLabel).toBe('Ø 2,35')
   })
 
   it('reads every player’s pings from their steps', () => {

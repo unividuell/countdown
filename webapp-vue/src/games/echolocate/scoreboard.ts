@@ -11,7 +11,7 @@ import { asEchoLocateGuess, asEchoLocateOutcome, asPing } from './types'
 import type { EchoLocateGuess, EchoLocatePayload, Point } from './types'
 
 export interface ScoreRow extends ScoreboardRow {
-  /** The distance in cells, e.g. `2,3` or `Ø 2,3`; `null` for a row without a readable play. */
+  /** The distance in cells, e.g. `2,35` or `Ø 2,35`; `null` for a row without a readable play. */
   distanceLabel: string | null
   /** The player's pins and rings; `null` for a row that gave up or cannot be read. */
   guess: EchoLocateGuess | null
@@ -25,14 +25,14 @@ export interface ScoreRow extends ScoreboardRow {
   correct: boolean
 }
 
-const oneDecimal = new Intl.NumberFormat('de-DE', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
+const twoDecimals = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 })
 
-/** `2.345` → `2,3`; the mean of two clips is marked, `Ø 2,3`. */
+/** `2.345` → `2,35`; the mean of two clips is marked, `Ø 2,35`. */
 export function formatDistance(distance: number, clips: number): string {
-  const label = oneDecimal.format(distance)
+  const label = twoDecimals.format(distance)
 
   return clips > 1 ? `Ø ${label}` : label
 }

@@ -8,11 +8,11 @@
  * pins on the map above.
  *
  *                      Toleranz
- *                         ≤ 1,5            the circle's radius; a distance is never negative
+ *                         ≤ 1,50           the circle's radius; a distance is never negative
  *   Auswertung
  *   Name              Pings  Abstand  Pkt   phase two: Zeit [mm:ss] between Abstand and Pkt
- *   anna                 4      1,6     1
- *   bert                12    Ø 7,2     0   two clips: the mean
+ *   anna                 4     1,60     1
+ *   bert                12   Ø 7,20     0   two clips: the mean
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
@@ -31,9 +31,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
-const oneDecimal = new Intl.NumberFormat('de-DE', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
+const twoDecimals = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 })
 
 // What decides stands furthest right, next to „Pkt“: the distance; in phase two the frame's clock
@@ -44,7 +44,7 @@ const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => [
     key: 'distance',
     label: 'Abstand',
     ...(props.toleranceRadius === null ? {} : { fact: 'Toleranz' }),
-    width: '3.5rem',
+    width: '4rem',
     align: 'end',
     numeric: true,
   },
@@ -89,7 +89,7 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
 
     <template v-if="props.toleranceRadius !== null" #fact-distance>
       <span data-test="distance-tolerance" class="block text-end tabular-nums">
-        ≤&nbsp;{{ oneDecimal.format(props.toleranceRadius) }}
+        ≤&nbsp;{{ twoDecimals.format(props.toleranceRadius) }}
       </span>
     </template>
     <template #cell-distance="{ row }">{{ row.distanceLabel ?? '—' }}</template>
