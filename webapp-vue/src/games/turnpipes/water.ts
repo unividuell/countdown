@@ -2,9 +2,9 @@ import { onScopeDispose, readonly, ref } from 'vue'
 import type { Ref } from 'vue'
 
 /**
- * A full run, inlet to outlet through every pipe, whatever the board's size. Short enough that the
- * reveal — `SOLUTION_DELAY_MS`, one turn, this run — ends before the roster above the card gives the
- * result away (`SPOILER_HOLD_MS`, 3.8 s after the guess).
+ * A full run, inlet to outlet through every pipe, whatever the board's size. The table and the
+ * roster wait for it and the verdict after it; a longer run raises the roster's ceiling
+ * (`SPOILER_HOLD_MS`).
  */
 export const WATER_RUN_MS = 2000
 
