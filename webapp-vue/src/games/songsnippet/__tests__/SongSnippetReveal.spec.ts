@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
-import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import SongSnippetReveal from '@/games/songsnippet/SongSnippetReveal.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 
 const stopVerdict = vi.fn()
@@ -58,7 +58,7 @@ describe('SongSnippetReveal', () => {
 
   describe('verdict', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       vi.mocked(playVerdict).mockClear()
       stopVerdict.mockClear()
       Object.defineProperty(document, 'hidden', { value: false, configurable: true })
@@ -69,12 +69,12 @@ describe('SongSnippetReveal', () => {
       vi.restoreAllMocks()
     })
 
-    it('plays mine with my row, the first to land', () => {
+    it('plays mine at the verdict', () => {
       mountReveal(true, false)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(50)
 
       expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
     })
@@ -89,14 +89,14 @@ describe('SongSnippetReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal(false, true)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('stays silent without a verdict on a tip of mine', () => {
       mountReveal(true, null)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
@@ -104,14 +104,14 @@ describe('SongSnippetReveal', () => {
     it('stays silent in a background tab', () => {
       Object.defineProperty(document, 'hidden', { value: true, configurable: true })
       mountReveal(true, true)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const w = mountReveal(true, true)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
       w.unmount()
 
       expect(stopVerdict).toHaveBeenCalledOnce()

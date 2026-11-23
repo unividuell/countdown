@@ -2,12 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
-import {
-  RESULTS_DELAY_MS,
-  SOLUTION_DELAY_MS,
-  TIP_COLUMN,
-  cellDelayMs,
-} from '@/games/revealChoreography'
+import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import {
   RECEDED_OPACITY,
   RECEDE_DELAY_MS,
@@ -18,6 +13,7 @@ import {
 } from '@/games/findpattern/preview'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -374,7 +370,7 @@ describe('FindPatternReveal', () => {
 
   describe('verdict', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       vi.mocked(playVerdict).mockClear()
     })
 
@@ -382,26 +378,26 @@ describe('FindPatternReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine with my row, the first to land', () => {
+    it('plays mine at the verdict', () => {
       mountReveal([row({ userId: 'mine' })], { animate: true, won: true })
-      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(50)
 
       expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
     })
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal([row({ userId: 'mine' })], { animate: false, won: true })
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true, won: false })
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()

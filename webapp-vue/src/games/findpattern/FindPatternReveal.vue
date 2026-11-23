@@ -20,7 +20,7 @@ import {
   cellDelayMs,
   isStill,
 } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import { useRevealArming } from '@/ui/useRevealArming'
@@ -54,7 +54,7 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-useRevealVerdict(() => props.won, props.animate)
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()

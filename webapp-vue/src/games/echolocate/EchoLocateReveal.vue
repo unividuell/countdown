@@ -19,7 +19,7 @@
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import EchoLocateScoreboard from './EchoLocateScoreboard.vue'
@@ -41,7 +41,7 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-useRevealVerdict(() => props.won, props.animate)
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()

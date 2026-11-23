@@ -10,7 +10,8 @@ import { scoreboardRows } from '../scoreboard'
 import type { MatchScalePayload, Measure } from '../types'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { playCount } from '../countSound'
-import { countTones, growMs } from '../countTones'
+import { countEndsInMs, countTones, growMs } from '../countTones'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import { playVerdict } from '@/ui/verdictSound'
@@ -268,14 +269,14 @@ describe('MatchScaleReveal', () => {
   })
 
   it('animated, B grows from the tip to the factor after the beat', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+    vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
     try {
       const wrapper = mountReveal({ animate: true })
 
       expect(field(wrapper).props('grow')).toBe(true)
       expect(field(wrapper).props('placementB').scale).toBe(1.3)
 
-      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
+      await vi.advanceTimersByTimeAsync(VERDICT_AT_MS)
 
       expect(field(wrapper).props('placementB').scale).toBe(1.6)
     } finally {
@@ -323,15 +324,22 @@ describe('MatchScaleReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays from my tip to the factor at the beat, then my verdict, and stops on unmount', async () => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+    it('plays from my tip to the factor at the story, my verdict as it ends, and stops on unmount', async () => {
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       const wrapper = mountReveal({ animate: true, won: true })
+      const tones = countTones(1.3, 1.6)
 
-      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS - 10)
+      await vi.advanceTimersByTimeAsync(VERDICT_AT_MS - 50)
       expect(playCount).not.toHaveBeenCalled()
 
-      await vi.advanceTimersByTimeAsync(20)
-      expect(playCount).toHaveBeenCalledExactlyOnceWith(countTones(1.3, 1.6), true)
+      await vi.advanceTimersByTimeAsync(50)
+      expect(playCount).toHaveBeenCalledExactlyOnceWith(tones)
+
+      await vi.advanceTimersByTimeAsync(countEndsInMs(tones) - 50)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(50)
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
 
       wrapper.unmount()
       expect(stopCount).toHaveBeenCalled()
@@ -352,7 +360,7 @@ describe('MatchScaleReveal', () => {
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
-    // As `useRevealVerdict` does everywhere: where nothing moves, the verdict comes at once.
+    // As everywhere: where nothing moves, the verdict comes at once.
     it('with reduced motion plays no count but my verdict at once', () => {
       vi.spyOn(window, 'matchMedia').mockReturnValue({
         matches: true,
@@ -520,7 +528,7 @@ describe('MatchScaleReveal', () => {
   })
 
   it('after the growth B stops easing, so a refit moves it with the rest', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
+    vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
     try {
       const far = [
         entries[0]!,
@@ -541,7 +549,7 @@ describe('MatchScaleReveal', () => {
       const wrapper = mountReveal({ animate: true, rows })
       const b = () => wrapper.get('[data-test="match-scale-b"]')
 
-      await vi.advanceTimersByTimeAsync(SOLUTION_DELAY_MS + 10)
+      await vi.advanceTimersByTimeAsync(VERDICT_AT_MS)
 
       expect(field(wrapper).props('grow')).toBe(true)
       expect(b().classes()).toContain('transition-[transform,opacity]')

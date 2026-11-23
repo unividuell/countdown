@@ -7,7 +7,7 @@
  * reveal that just happened here.
  */
 import type { RoundAssets } from '@/api/assets'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import SongPlayerReveal from './SongPlayerReveal.vue'
 import SongSnippetScoreboard from './SongSnippetScoreboard.vue'
 import type { ScoreRow } from './scoreboard'
@@ -26,7 +26,7 @@ const props = defineProps<{
   assets?: RoundAssets | undefined
 }>()
 
-useRevealVerdict(() => props.won, props.animate)
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 </script>
 
 <template>

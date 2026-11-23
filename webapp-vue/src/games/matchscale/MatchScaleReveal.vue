@@ -5,12 +5,12 @@
  * name in the table toggles that player's outline over the same corner, any number at once — mine
  * too, which starts on show.
  *
- *   0 ─────────────────────── SOLUTION_DELAY_MS ──────────▶
+ *   0 ─────────────────────── story ──────────────────────▶ verdict
  *   board view ──▶ fitted view
  *   B as sent, amber, filled ──▶ my dashed outline at the corner
  *                                       true B fades in, grows tip ──▶ factor
- *                                       tick by tick with a count up (or down), then my verdict
- *                                       rows land once B has arrived (≥ RESULTS_DELAY_MS)
+ *                                       tick by tick with a count up (or down); its end
+ *                                       releases the timeline's verdict (`countEndsInMs`)
  *
  * Everything eases via CSS; frames only arm it. Live after my own submit in this tab only: a
  * reload, history or reduced motion shows the end state at once.
@@ -20,11 +20,10 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { inBackground } from '@/ui/motion'
-import { playVerdict, type Verdict } from '@/ui/verdictSound'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, type Counting } from './countSound'
-import { countTones, growEasing, growMs } from './countTones'
+import { countEndsInMs, countTones, growEasing, growMs } from './countTones'
 import {
   FIELD_PX,
   fitView,
@@ -101,37 +100,39 @@ const { shown: moved } = useRevealArming(handoff === null)
 /** The beat: the tip has arrived, B is there, camera and tip ease no more. */
 const arrived = ref(handoff === null)
 
-let beat: ReturnType<typeof setTimeout> | undefined
 let settle: ReturnType<typeof setTimeout> | undefined
+let ending: ReturnType<typeof setTimeout> | undefined
 
 let counting: Counting | null = null
-let verdict: Verdict | null = null
 
-onMounted(() => {
-  if (bScale.value === props.factor && handoff === null) {
-    // Nothing to grow: B must not ease on later refits either.
-    growing.value = false
-    // No count to close (reduced motion): the verdict at once, as `useRevealVerdict` plays it.
-    if (props.animate && !inBackground() && props.won !== null) verdict = playVerdict(props.won)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
-    return
-  }
+/** Nothing to grow: no story, the verdict falls with the solution. */
+const nothingToGrow = bScale.value === props.factor && handoff === null
 
-  beat = setTimeout(() => {
-    counting = playCount(tones, props.won)
+// The count is the story: the verdict waits for its last tone.
+if (!nothingToGrow) {
+  const story = timeline.hold()
+  timeline.on('story', () => {
+    counting = playCount(tones)
     bScale.value = props.factor
     arrived.value = true
     settle = setTimeout(() => {
       growing.value = false
     }, growTiming.ms)
-  }, SOLUTION_DELAY_MS)
+    ending = setTimeout(story.release, countEndsInMs(tones))
+  })
+}
+
+onMounted(() => {
+  // B must not ease on later refits either.
+  if (nothingToGrow) growing.value = false
 })
 
 onBeforeUnmount(() => {
-  clearTimeout(beat)
   clearTimeout(settle)
+  clearTimeout(ending)
   counting?.stop()
-  verdict?.stop()
 })
 
 const placementB = computed<Placement>(() => ({ ...start.value.b, scale: bScale.value }))

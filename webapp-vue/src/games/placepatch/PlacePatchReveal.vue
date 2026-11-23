@@ -14,7 +14,7 @@ import {
   cellDelayMs,
   isStill,
 } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import PlacePatchScoreboard from './PlacePatchScoreboard.vue'
@@ -38,7 +38,7 @@ const props = defineProps<{
 
 const still = isStill(props.animate)
 
-useRevealVerdict(() => props.won, props.animate)
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()

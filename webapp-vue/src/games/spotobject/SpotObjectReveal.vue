@@ -9,6 +9,7 @@
  */
 import type { RoundReview } from '@/rounds/review'
 import InfoBox from '@/ui/InfoBox.vue'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import SpotObjectReviewRules from './SpotObjectReviewRules.vue'
 import SpotObjectScoreboard from './SpotObjectScoreboard.vue'
 import SpotObjectTipGrid from './SpotObjectTipGrid.vue'
@@ -22,6 +23,9 @@ const props = defineProps<{
   canVote: boolean
   review: RoundReview
 }>()
+
+// No verdict here: only the table's rows land.
+provideRevealTimeline({ animate: props.animate, won: () => null })
 </script>
 
 <template>

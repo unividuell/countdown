@@ -12,11 +12,8 @@
  * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useSoundStage } from '@/ui/useSoundAwake'
-import { useRevealArming } from '@/ui/useRevealArming'
-import { playVerdict, type Verdict } from '@/ui/verdictSound'
-import { inBackground } from '@/ui/motion'
 import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
 import type { ShownBoard } from './reveal'
@@ -101,10 +98,15 @@ let flow: Playing | undefined
 /** Set by the reveal's own first run; a tip replayed by its name plays no verdict. */
 let verdictDue = false
 let verdictBeat: ReturnType<typeof setTimeout> | undefined
-let verdict: Verdict | null = null
+
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const still = timeline.still
+
+/** The water is the story: the verdict waits for its end sound. */
+const story = timeline.hold()
 
 /** The table's rows wait for the verdict: they would say it first (`RevealScoreboard`). */
-const held = ref(false)
+const verdictReached = timeline.reached('verdict')
 
 function halt(): void {
   clearTimeout(beat)
@@ -145,49 +147,29 @@ function present(board: ShownBoard | null): void {
 /** The verdict and the rows once the end sound, ringing for [endsInS] more, has fallen silent. */
 function verdictAfter(endsInS: number): void {
   verdictDue = false
-
-  verdictBeat = setTimeout(
-    () => {
-      held.value = false
-      if (props.won !== null && !inBackground()) verdict = playVerdict(props.won)
-    },
-    endsInS * 1000 + VERDICT_GAP_MS,
-  )
+  verdictBeat = setTimeout(story.release, endsInS * 1000 + VERDICT_GAP_MS)
 }
 
 // The board may never have mounted (reload, history, onlooker): decode here, once per page.
 onMounted(preloadSounds)
 
-const still = isStill(props.animate)
-
 if (still && shown.value) showEnd(shown.value)
 
-held.value = !still
-
-// Nothing moves: the verdict at once, as `useRevealVerdict` plays it.
-onMounted(() => {
-  if (still && props.animate && props.won !== null && !inBackground()) {
-    verdict = playVerdict(props.won)
-  }
-})
-
-useRevealArming(still, () => {
-  beat = setTimeout(() => {
+if (!still) {
+  timeline.on('story', () => {
     verdictDue = true
     present(shown.value)
-  }, SOLUTION_DELAY_MS)
-})
+  })
+}
 
+// A name tapped before the verdict: the rows come, the verdict stays unsaid.
 watch(selectedUserId, () => {
   verdictDue = false
-  held.value = false
+  story.releaseSilently()
   present(shown.value)
 })
 
-onBeforeUnmount(() => {
-  halt()
-  verdict?.stop()
-})
+onBeforeUnmount(halt)
 </script>
 
 <template>
@@ -210,7 +192,7 @@ onBeforeUnmount(() => {
       :rows="props.rows"
       :live="props.live"
       :animate="props.animate"
-      :results-held="held"
+      :results-held="!verdictReached"
       :selected-user-id="selectedUserId"
       @select="select"
     />

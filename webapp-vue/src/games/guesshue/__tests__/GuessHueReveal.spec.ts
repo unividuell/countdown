@@ -10,6 +10,7 @@ import {
   VERDICT_MS,
   cellDelayMs,
 } from '@/games/revealChoreography'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -61,7 +62,7 @@ function setHidden(hidden: boolean): void {
 
 describe('GuessHueReveal', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
     vi.mocked(playVerdict).mockClear()
     vi.mocked(playMarker).mockClear()
     stopVerdict.mockClear()
@@ -73,12 +74,12 @@ describe('GuessHueReveal', () => {
     vi.restoreAllMocks()
   })
 
-  it('plays my verdict with my row, the first to land', () => {
+  it('plays my verdict at the verdict beat', () => {
     mountReveal({ won: false })
-    vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
+    vi.advanceTimersByTime(VERDICT_AT_MS - 50)
     expect(playVerdict).not.toHaveBeenCalled()
 
-    vi.advanceTimersByTime(1)
+    vi.advanceTimersByTime(50)
 
     expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
   })
@@ -93,14 +94,14 @@ describe('GuessHueReveal', () => {
 
   it('stays silent on a reload into a round already revealed', () => {
     mountReveal({ animate: false })
-    vi.advanceTimersByTime(RESULTS_DELAY_MS)
+    vi.advanceTimersByTime(VERDICT_AT_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
 
   it('stays silent without a verdict on a tip of mine', () => {
     mountReveal({ won: null })
-    vi.advanceTimersByTime(RESULTS_DELAY_MS)
+    vi.advanceTimersByTime(VERDICT_AT_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
@@ -108,7 +109,7 @@ describe('GuessHueReveal', () => {
   it('stays silent in a background tab', () => {
     setHidden(true)
     mountReveal()
-    vi.advanceTimersByTime(RESULTS_DELAY_MS)
+    vi.advanceTimersByTime(VERDICT_AT_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
@@ -120,7 +121,7 @@ describe('GuessHueReveal', () => {
 
   it('leaving cuts a verdict that is sounding', () => {
     const w = mountReveal()
-    vi.advanceTimersByTime(RESULTS_DELAY_MS)
+    vi.advanceTimersByTime(VERDICT_AT_MS)
     w.unmount()
 
     expect(stopVerdict).toHaveBeenCalledOnce()
@@ -128,7 +129,7 @@ describe('GuessHueReveal', () => {
 
   it('leaving before the results land plays nothing', () => {
     mountReveal().unmount()
-    vi.advanceTimersByTime(RESULTS_DELAY_MS)
+    vi.advanceTimersByTime(VERDICT_AT_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })

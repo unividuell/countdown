@@ -6,12 +6,10 @@
  * The template is drawn through my own inverse fit, so it stands in the coordinates of my build.
  * Beats come from `revealChoreography`: my build as it stood, then the solution marks with one
  * full turn of the field, so every error comes to the front once. The marks are the judgement, so
- * they come with the verdict and my row (`RESULTS_DELAY_MS`), not before.
+ * they come on the timeline's verdict, with my row, not before.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { RESULTS_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
-import { useRevealArming } from '@/ui/useRevealArming'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import BlockScene from './BlockScene.vue'
 import CentreButton from './CentreButton.vue'
 import CopyBlocksScoreboard from './CopyBlocksScoreboard.vue'
@@ -45,22 +43,14 @@ const camera = defineModel<Camera>('camera', { required: true })
 const ground = useSurfaceContainer()
 const NO_MARKS: Mark[] = []
 
-const still = isStill(props.animate)
-
-useRevealVerdict(() => props.won, props.animate)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()
 
-const solved = ref(still)
-let solutionTimer: ReturnType<typeof setTimeout> | undefined
+const solved = timeline.reached('verdict')
 
-useRevealArming(still, () => {
-  solutionTimer = setTimeout(() => {
-    solved.value = true
-    spin()
-  }, RESULTS_DELAY_MS)
-})
+if (!timeline.still) timeline.on('verdict', spin)
 
 let spinFrame = 0
 
@@ -84,10 +74,7 @@ function stopSpin(): void {
   spinFrame = 0
 }
 
-onBeforeUnmount(() => {
-  clearTimeout(solutionTimer)
-  stopSpin()
-})
+onBeforeUnmount(stopSpin)
 
 /** Mine, when there is a tip of mine to show. */
 const own = computed(() => (props.myOutcome ? props.mineUserId : null))

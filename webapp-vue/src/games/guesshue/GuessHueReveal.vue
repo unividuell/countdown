@@ -20,7 +20,7 @@ import type { RevealGuess } from './reveal'
 import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { isStill } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { inBackground } from '@/ui/motion'
 import { useSoundStage } from '@/ui/useSoundAwake'
 
@@ -40,7 +40,7 @@ const props = defineProps<{
   live: boolean
 }>()
 
-useRevealVerdict(() => props.won, props.animate)
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()

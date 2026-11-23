@@ -1,13 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import {
-  RESULTS_DELAY_MS,
-  SOLUTION_DELAY_MS,
-  TIP_COLUMN,
-  cellDelayMs,
-} from '@/games/revealChoreography'
+import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
 import type { ScoreRow } from '@/games/placepatch/scoreboard'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -150,7 +146,7 @@ describe('PlacePatchReveal', () => {
 
   describe('verdict', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       vi.mocked(playVerdict).mockClear()
     })
 
@@ -158,19 +154,19 @@ describe('PlacePatchReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine with my row, the first to land', () => {
+    it('plays mine at the verdict', () => {
       mountReveal([row({ userId: 'mine' })], true, false)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(50)
 
       expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
     })
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal([row({ userId: 'mine' })], false, true)
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
