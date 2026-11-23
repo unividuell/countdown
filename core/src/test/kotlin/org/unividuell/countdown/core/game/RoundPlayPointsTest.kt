@@ -334,6 +334,19 @@ class RoundPlayPointsTest(
     }
 
     @Test
+    fun `rounds outside the window neither count nor break`() {
+        val (community, owner) = aCommunity("Streak Window")
+        val current = currentRoundNumberOf(community)
+        (1..4).forEach { scored(community = community, roundNumber = current - it, user = owner, points = 1) }
+
+        // -2 and -1 keep their round_games rows but now lie after the window.
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        editions.save(edition.copy(gamesUntilRound = current - 3))
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 2
+    }
+
+    @Test
     fun `the running round counts only once the viewer submitted it`() {
         val (community, a) = aCommunity("Streak Live Gate")
         val b = aUser()
