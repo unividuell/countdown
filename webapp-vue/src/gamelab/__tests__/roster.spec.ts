@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { labRoster, type LabViewer } from '@/gamelab/roster'
+import { labRoster, labStreakBase, type LabViewer } from '@/gamelab/roster'
 import type { LabAwardRule, LabEntryDto, LabPlayerDto } from '@/gamelab/types'
 
 const ME: LabViewer = {
@@ -40,7 +40,7 @@ function round(
   awardRule: LabAwardRule = 'ALL_QUALIFYING',
   players: LabPlayerDto[] = others.map((o) => player(o.userId)),
 ) {
-  return { me, others, awardRule, players }
+  return { seed: 7, me, others, awardRule, players }
 }
 
 describe('labRoster', () => {
@@ -57,7 +57,7 @@ describe('labRoster', () => {
         fullName: 'Clemens',
         bgColorHex: '#123456',
         points: { stable: 0 },
-        streak: 0,
+        streak: labStreakBase(7, 'me', true),
       },
     ])
   })
@@ -101,5 +101,52 @@ describe('labRoster', () => {
 
   it('is empty without a viewer and without entries', () => {
     expect(labRoster(round(null, []), null)).toEqual([])
+  })
+
+  describe('streak', () => {
+    const streakOf = (roster: ReturnType<typeof labRoster>, id: string) =>
+      roster.find((m) => m.userId === id)!.streak
+
+    // The lab has no history; the streak is rolled from the URL's seed so a link reproduces it.
+    it('rolls the same streaks for the same seed and others for another', () => {
+      const a = (seed: number) => ({ ...round(null, [entry('ann', 1)]), seed })
+
+      expect(labRoster(a(7), ME)).toEqual(labRoster(a(7), ME))
+
+      const seen = new Set<number>()
+      for (let seed = 1; seed <= 20; seed++) seen.add(streakOf(labRoster(a(seed), ME), 'ann'))
+      expect(seen.size).toBeGreaterThan(1)
+    })
+
+    it('keeps everyone else between 0 and 60 before their entry', () => {
+      for (let i = 0; i < 200; i++) {
+        const base = labStreakBase(7, `user-${i}`, false)
+        expect(base).toBeGreaterThanOrEqual(0)
+        expect(base).toBeLessThanOrEqual(60)
+      }
+    })
+
+    // Just below a band edge, so one more round tips the badge over it.
+    it('starts me just below a band boundary most of the time', () => {
+      for (let seed = 0; seed < 50; seed++) {
+        expect([2, 9, 19, 32, 49, 5, 14, 25, 40]).toContain(labStreakBase(seed, 'me', true))
+      }
+    })
+
+    it('adds the lab round to whoever submitted it', () => {
+      const seated = labRoster(round(null, [], 'ALL_QUALIFYING', [player('ann')]), ME)
+      const entered = labRoster(round(null, [entry('ann', 1)]), ME)
+
+      expect(streakOf(entered, 'ann')).toBe(streakOf(seated, 'ann') + 1)
+      expect(streakOf(seated, 'ann')).toBe(labStreakBase(7, 'ann', false))
+    })
+
+    it('adds it to me once my entry lands', () => {
+      const before = streakOf(labRoster(round(null, []), ME), 'me')
+      const after = streakOf(labRoster(round(entry('me', 1), []), ME), 'me')
+
+      expect(before).toBe(labStreakBase(7, 'me', true))
+      expect(after).toBe(before + 1)
+    })
   })
 })

@@ -113,6 +113,9 @@ shell's (light/dark, `ui/colorScheme.ts`, shared `isEditableTarget`): neither la
 - **A one-line mirror of a server rule in lab code is acceptable** (`labRoster` copies the roster's
   rank and „provisional“ rule) where drifting only makes the lab wrong, never the product. Name the
   server source in the comment.
+- **The lab's streak is rolled from the seed, not read** (`labStreakBase`): no round history exists
+  and none is added. Others 0–60, the viewer just below a band edge; an entry adds 1. Same link,
+  same badges.
 
 ## What the lab deliberately cannot check
 
