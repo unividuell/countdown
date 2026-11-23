@@ -62,15 +62,17 @@ Entwurfs.)*
 - `still` — Reload, reduzierte Bewegung, Hintergrund, kein rAF: alle Schläge sofort beim Mount,
   in Reihenfolge, Halte zählen nicht.
 
-Die Zeitleiste besitzt: Verdict-Ton (außer `judged: 'before'` und eigenem Bus, s. u.), Roster-Meldung
+Die Zeitleiste besitzt: Verdict-Ton (außer `judged: 'before'`), Roster-Meldung
 (`announceResults` beim Urteil, nur `animate`), Abbruch aller Timer und des Tons beim Unmount.
 
 ## Ton
 
 - Verdict spielt die Zeitleiste bei `verdict`: nur `animate`, nicht im Hintergrund; still +
   `animate` (reduzierte Bewegung) sofort; Reload stumm. Wie heute.
-- **Augenmaß** behält sein Verdict auf dem Tonfolgen-Bus (`scheduleVerdict`, sample-genau) und
-  meldet nur das Lösen; die Zeitleiste spielt dort keinen zweiten.
+- **Keine Ausnahme für Augenmaß:** seine Tonfolge endet, das Spiel löst den Halt, die Zeitleiste
+  spielt das geteilte Verdict. `playCount` verliert `won`. Den Lösezeitpunkt rechnet das Spiel aus
+  demselben Tonplan wie die Tonfolge (`growMs` + Abstand nach dem letzten Ton), damit Timer- und
+  Audio-Uhr nicht auseinanderlaufen.
 - Fremde Marker klopfen bei `others` + ihrer Staffel (Farbausmalung). Mein Marker nie.
 - Wiederholungen per Namens-Tipp (Verrohrung) laufen außerhalb der Zeitleiste, ohne Verdict.
   Ein Tipp vor dem Urteil löst den Halt **stumm**: Zeilen und Roster kommen, das Verdict nicht
@@ -88,14 +90,21 @@ Tick 0 leer).
 ## Pro Spiel
 
 - **Farbausmalung:** Sektor auf `verdict`; fremde Marker + Klopfen auf `others`;
-  Band-Wachstum auf `verdict` (startete bisher mit den Zeilen). `revealDelayMs` wandert aus
+  Band-Wachstum auf `others` — es macht Platz für die Bahnen fremder Marker und bleibt an die
+  Zeilen gekoppelt. `revealDelayMs` wandert aus
   `GuessHueGame` in die Zeitleiste.
-- **Musterung:** Erzählung: Möglichkeiten ab `story`, Brett zurück, dann Halt lösen.
-- **Platzierung, Peilung, Anmaßung:** Lösung/Bild auf `verdict`; fremde Umrisse auf `others`.
+- **Musterung:** Erzählung: Möglichkeiten ab `story`, Brett zurück, dann Halt lösen. Fremde
+  Umrisse erscheinen von selbst, mit ihrer Zeile auf `others`.
+- **Platzierung:** Lösung auf `verdict`; fremde Umrisse erscheinen von selbst, jeder mit seiner
+  Zeile auf `others`.
+- **Peilung:** Karte auf `verdict`; die Pins der anderen stehen ungefragt auf der Karte, sie kommen
+  auf `others`.
+- **Anmaßung:** Bild auf `verdict`. Fremde Ebenen nur per Tipp — kein Schlag.
 - **Blockierung:** Fehler + Drehung auf `verdict` (zurück auf 0,9 s).
 - **Anspielung:** Titel und Cover verdeckt bis `verdict` — nur wenn billig; der Treffer zeigt
   sich meist schon durch die Weiterleitung.
-- **Augenmaß:** Erzählung: B wächst mit Tonfolge ab `story`, Halt lösen am Ende.
+- **Augenmaß:** Erzählung: B wächst mit Tonfolge ab `story`, Halt lösen am Ende. Fremde Umrisse
+  nur per Tipp.
 - **Verrohrung:** Erzählung: Drehen, Wasser, Endsound + Atempause, Halt lösen.
 - **Entstauber:** `judged: 'before'`.
 - **Weltanschauung:** nur Tabelle.
