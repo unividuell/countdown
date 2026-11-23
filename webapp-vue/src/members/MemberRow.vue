@@ -18,8 +18,12 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm, type Vec } from './swarm'
 import { planReorder, reorderTuning } from './reorder'
+import { bandLabel, bandOf } from './streak'
+import StreakMark from './StreakMark.vue'
 import Avatar from '@/ui/Avatar.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { playTriangle } from '@/ui/triangleSound'
+import { VERDICT_MS } from '@/games/revealChoreography'
 import type { RosterMemberResponse } from '@/api/types'
 
 const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
@@ -72,7 +76,13 @@ let lastFrame = 0
 // travels with them: visually it is carried by a colour and a pulse, neither of which a screen
 // reader passes on.
 function ariaLabel(m: RosterMemberResponse): string {
-  return `${m.fullName}, ${m.points.stable} Punkte${liveSuffix(m)}`
+  return `${m.fullName}, ${m.points.stable} Punkte${liveSuffix(m)}${streakSuffix(m)}`
+}
+
+/** Names the icon, not the number — what a sighted reader sees. */
+function streakSuffix(m: RosterMemberResponse): string {
+  const band = bandOf(streakOf(m))
+  return band ? `, Streak: ${bandLabel(band)}` : ''
 }
 
 function liveSuffix(m: RosterMemberResponse): string {
@@ -279,6 +289,64 @@ watch(
   },
 )
 
+/**
+ * The streak each badge shows. A rise lands with the verdict but is held `VERDICT_MS` longer, so the
+ * badge flares — and my own rings — once the verdict has rung out, with the other rows landing:
+ *
+ *   refresh (verdict) ──── VERDICT_MS ──── shown = new  → StreakMark flares, triangle if me
+ *
+ * Anything else — a fall, a rise short of a badge, a new member, reduced motion, a background
+ * tab — shows at once, silently.
+ */
+const shownStreaks = ref<Record<string, number>>(
+  Object.fromEntries(props.members.map((m) => [m.userId, m.streak])),
+)
+const heldStreaks = new Map<string, ReturnType<typeof setTimeout>>()
+
+function streakOf(m: RosterMemberResponse): number {
+  return shownStreaks.value[m.userId] ?? m.streak
+}
+
+watch(
+  () => props.members,
+  (members) => {
+    const animated = !prefersReducedMotion() && !inBackground()
+    const present = new Set(members.map((m) => m.userId))
+    // Whoever left takes their badge and its pending flare along; a return mounts afresh.
+    for (const id of Object.keys(shownStreaks.value)) {
+      if (present.has(id)) continue
+      clearTimeout(heldStreaks.get(id))
+      heldStreaks.delete(id)
+      Reflect.deleteProperty(shownStreaks.value, id)
+    }
+
+    for (const m of members) {
+      const id = m.userId
+      const shown = shownStreaks.value[id]
+      // A second refresh inside the hold replaces it: the newest value lands, once.
+      clearTimeout(heldStreaks.get(id))
+      heldStreaks.delete(id)
+      if (shown === undefined || m.streak <= shown || !bandOf(m.streak) || !animated) {
+        shownStreaks.value[id] = m.streak
+        continue
+      }
+
+      heldStreaks.set(
+        id,
+        setTimeout(() => {
+          heldStreaks.delete(id)
+          shownStreaks.value[id] = m.streak
+          if (id === props.meId) playTriangle()
+        }, VERDICT_MS),
+      )
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  for (const timer of heldStreaks.values()) clearTimeout(timer)
+})
+
 onMounted(() => {
   const host = row.value
   if (!host) return
@@ -348,7 +416,11 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         :aria-label="ariaLabel(m)"
         :title="m.fullName"
       >
-        <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" data-swarm-circle />
+        <!-- The badge sits in the circle the swarm moves, so it flies and reorders with it. -->
+        <div class="relative" data-swarm-circle>
+          <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" />
+          <StreakMark :streak="streakOf(m)" />
+        </div>
         <div
           class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
         >
