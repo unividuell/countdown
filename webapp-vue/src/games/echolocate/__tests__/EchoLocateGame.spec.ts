@@ -501,7 +501,7 @@ describe('EchoLocateGame', () => {
 
       expect(reveal.props('rows')[0]).toMatchObject({
         userId: 'mine',
-        distanceLabel: '0,8',
+        distanceLabel: '0,80',
         guess: GUESS,
         pings: PINGS,
         pinOf: [0],

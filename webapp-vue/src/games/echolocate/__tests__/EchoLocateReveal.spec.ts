@@ -411,8 +411,8 @@ describe('EchoLocateReveal', () => {
       const one = mountReveal({ entries: [ENTRIES[2]!, ENTRIES[1]!, ENTRIES[0]!] })
 
       expect(one.findAll('th[scope="row"]').map((th) => th.text())).toEqual(['me', 'anna', 'bert'])
-      expect(one.get('[data-test="cell-distance-me"]').text()).toBe('0,8')
-      expect(one.get('[data-test="cell-distance-bert"]').text()).toBe('7,2')
+      expect(one.get('[data-test="cell-distance-me"]').text()).toBe('0,80')
+      expect(one.get('[data-test="cell-distance-bert"]').text()).toBe('7,20')
 
       const two = mountReveal({
         payload: TWO,
@@ -431,7 +431,7 @@ describe('EchoLocateReveal', () => {
         ],
       })
 
-      expect(two.get('[data-test="cell-distance-anna"]').text()).toBe('Ø 2,3')
+      expect(two.get('[data-test="cell-distance-anna"]').text()).toBe('Ø 2,34')
     })
 
     it('heads the distance with the tolerance in phase one only, never a cell', () => {
@@ -439,7 +439,7 @@ describe('EchoLocateReveal', () => {
       const two = mountReveal({ payload: PHASE_TWO, solution: PHASE_TWO_SOLUTION })
 
       expect(one.get('#distance-fact').text()).toBe('Toleranz')
-      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('≤ 1,5')
+      expect(one.get('[data-test="distance-tolerance"]').text()).toBe('≤ 1,50')
       expect(two.find('#distance-fact').exists()).toBe(false)
       expect(two.find('[data-test="distance-tolerance"]').exists()).toBe(false)
 
@@ -464,7 +464,7 @@ describe('EchoLocateReveal', () => {
         .findAll('col')
         .map((col) => col.attributes('style'))
 
-      expect(widths.slice(1, 3)).toEqual(['width: 3rem;', 'width: 3.5rem;'])
+      expect(widths.slice(1, 3)).toEqual(['width: 3rem;', 'width: 4rem;'])
     })
 
     it('counts every player’s pings', () => {
