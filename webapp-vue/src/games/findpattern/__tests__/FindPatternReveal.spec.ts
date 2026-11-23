@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
-import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import {
+  SOLUTION_DELAY_MS,
+  TIP_COLUMN,
+  VERDICT_MS,
+  othersDelayMs,
+} from '@/games/revealChoreography'
 import {
   RECEDED_OPACITY,
   RECEDE_DELAY_MS,
@@ -13,11 +18,13 @@ import {
 } from '@/games/findpattern/preview'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
 import type { FindPatternPayload, FindPatternSolution } from '@/games/findpattern/types'
-import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
+import { ARMED_MS, TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
+/** The possibilities are told and the board is whole again: Musterung's story ends. */
+const STORY_ENDS_MS = ARMED_MS + RESTORE_AT_MS + RESTORE_MS
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
 
@@ -223,11 +230,11 @@ describe('FindPatternReveal', () => {
       const outlines = wrapper.findAll('[data-test="pattern-outline-5"]')
       expect(outlines[0]!.attributes('style')).toContain('transition-delay: 0ms')
       expect(outlines[1]!.attributes('style')).toContain(
-        `transition-delay: ${cellDelayMs(1, TIP_COLUMN, 2)}ms`,
+        `transition-delay: ${othersDelayMs(1, TIP_COLUMN, 2)}ms`,
       )
     })
 
-    it("keeps every other player's outline hidden until the beats begin, mine never hidden", async () => {
+    it("keeps every other player's outline hidden until my verdict has rung out, mine never hidden", async () => {
       const wrapper = mountReveal(
         [
           row({ userId: 'other', colorHex: '#00ff00', startIndex: 5, tick: 1 }),
@@ -239,6 +246,12 @@ describe('FindPatternReveal', () => {
       const [mine, other] = wrapper.findAll('[data-test="pattern-outline-5"]')
       expect(mine!.classes()).toContain('opacity-100')
       expect(other!.classes()).toContain('opacity-0')
+
+      vi.advanceTimersByTime(STORY_ENDS_MS + VERDICT_MS - 50)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findAll('[data-test="pattern-outline-5"]')[1]!.classes()).toContain(
+        'opacity-0',
+      )
 
       vi.advanceTimersByTime(50)
       await wrapper.vm.$nextTick()
@@ -379,9 +392,9 @@ describe('FindPatternReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine at the verdict', () => {
+    it('plays mine once the possibilities are told and the board is whole again', () => {
       mountReveal([row({ userId: 'mine' })], { animate: true, won: true })
-      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
+      vi.advanceTimersByTime(STORY_ENDS_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(50)
@@ -398,7 +411,7 @@ describe('FindPatternReveal', () => {
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true, won: false })
-      vi.advanceTimersByTime(VERDICT_AT_MS)
+      vi.advanceTimersByTime(STORY_ENDS_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()

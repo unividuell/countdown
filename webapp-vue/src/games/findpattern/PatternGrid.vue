@@ -55,12 +55,24 @@ const props = withDefaults(
      * board is not showing, so the two are one state, not two.
      */
     tiles?: PatternTile[]
+    /**
+     * Whether the outlines' beat has come, where a reveal times them itself (Musterung's others,
+     * after the verdict). Omitted, they follow the grid's own arming.
+     */
+    outlinesShown?: boolean | undefined
     /** How present the board is. Below 1 it has stepped back and the tiles carry the picture. */
     imageOpacity?: number
     imageFadeMs?: number
     imageFadeDelayMs?: number
   }>(),
-  { still: true, tiles: () => [], imageOpacity: 1, imageFadeMs: 0, imageFadeDelayMs: 0 },
+  {
+    still: true,
+    tiles: () => [],
+    imageOpacity: 1,
+    imageFadeMs: 0,
+    imageFadeDelayMs: 0,
+    outlinesShown: undefined,
+  },
 )
 
 const emit = defineEmits<{ cell: [index: number]; imageError: [] }>()
@@ -105,8 +117,8 @@ function onCell(index: number): void {
  */
 const { shown } = useRevealArming(props.still)
 
-function markOpacity(delayMs: number | undefined): string {
-  return (delayMs ?? 0) === 0 || shown.value ? 'opacity-100' : 'opacity-0'
+function markOpacity(delayMs: number | undefined, gate = shown.value): string {
+  return (delayMs ?? 0) === 0 || gate ? 'opacity-100' : 'opacity-0'
 }
 
 /**
@@ -186,7 +198,7 @@ function tileStyle(tile: PatternTile) {
           :key="depth"
           :data-test="`pattern-outline-${cell.index}`"
           class="pointer-events-none absolute transition-opacity"
-          :class="markOpacity(outline.delayMs)"
+          :class="markOpacity(outline.delayMs, props.outlinesShown ?? shown)"
           :style="{
             top: `${outline.insetPx}px`,
             right: `${outline.insetPx}px`,

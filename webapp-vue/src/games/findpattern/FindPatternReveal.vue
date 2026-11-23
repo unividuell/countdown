@@ -10,15 +10,16 @@
  * My own outline sits outermost, at inset 0: it is the box drawn while playing, and the board under
  * it has not moved, so the switch from playing to reveal leaves it exactly where it was.
  *
- * My verdict sounds with the solution's beat.
+ * The possibilities are its story: they uncover, the board comes back, then my verdict sounds and
+ * my row lands; everyone else's outline comes with their row, once the verdict has rung out.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 import {
   FADE_MS,
   SOLUTION_DELAY_MS,
   TIP_COLUMN,
-  cellDelayMs,
   isStill,
+  othersDelayMs,
 } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -54,7 +55,8 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const othersReached = timeline.reached('others')
 
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()
@@ -80,7 +82,7 @@ const outlines = computed(() => {
       delayMs:
         still || row.userId === props.mineUserId
           ? 0
-          : cellDelayMs(row.tick, TIP_COLUMN, props.rows.length),
+          : othersDelayMs(row.tick, TIP_COLUMN, props.rows.length),
     })),
     props.solution.pattern.length,
   )
@@ -155,6 +157,10 @@ const deltaLabel = computed(() =>
  */
 const restored = ref(false)
 let restoreTimer = 0
+let storyTimer = 0
+
+/** The story: the verdict waits until the board is whole again. */
+const story = timeline.hold()
 
 /**
  * Same beat, driven the same way as `FindPatternScoreboard`'s head and `HueWheelReveal`'s sector.
@@ -163,10 +169,12 @@ let restoreTimer = 0
  */
 const { shown } = useRevealArming(still, () => {
   restoreTimer = window.setTimeout(() => (restored.value = true), RESTORE_AT_MS)
+  storyTimer = window.setTimeout(story.release, RESTORE_AT_MS + RESTORE_MS)
 })
 
 onBeforeUnmount(() => {
   if (restoreTimer) clearTimeout(restoreTimer)
+  if (storyTimer) clearTimeout(storyTimer)
 })
 
 // `still` short-circuits the whole phase: `shown` is already true there and the timer never runs,
@@ -191,6 +199,7 @@ const paletteStyle = {
            field and must stay the same size, or the picture jumps when the view switches. -->
       <div class="mx-auto w-full max-w-[22rem]">
         <PatternGrid
+          :outlines-shown="othersReached"
           :image="props.boardSrc"
           :cols="props.payload.cols"
           :rows="props.payload.rows"
