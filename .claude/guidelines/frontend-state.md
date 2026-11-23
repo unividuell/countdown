@@ -77,6 +77,8 @@ per instance and reacts via `watch(nowMs, tick)`.
   nobody ends (background tab); a reveal that runs longer raises it. Only a reveal that just
   happened here (`animate`) announces — a history card mounting mid-hold must not release it. Skip
   the hold under `prefers-reduced-motion`.
+  The streak rides in the same answer; `MemberRow` holds a grown streak another `VERDICT_MS`, then
+  flares it.
 - **Every call the server answers with a re-scored round refreshes the roster** — guess, ballot,
   override, give-up all run `RoundScoring.reevaluate`. Guess and give-up go through
   `refreshAfterGuess`, a ballot through `refresh`. Ballots happen in the running round and in the
@@ -224,6 +226,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   at its count's last tone (`countEndsInMs`), computed from the same tone plan.
 - **The verdict is a reveal's last sound.** The cascade after it lands silently: a knock per
   other player's marker (Farbausmalung, tried) came after the verdict and only got in the way.
+  Exception: the roster's triangle rings `VERDICT_MS` after the verdict, only for the viewer's own
+  grown streak, into the gap where the other rows land silently.
 - **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every
   oscillator's pitch and start. Mock `@/ui/audio` with its `audioMock`; do not copy the fake.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
