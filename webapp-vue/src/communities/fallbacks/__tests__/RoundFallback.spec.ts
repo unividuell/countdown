@@ -49,6 +49,7 @@ function member(fullName: string, stable: number): RosterMemberResponse {
     fullName,
     bgColorHex: '#8e44ad',
     points: { stable },
+    streak: 0,
   }
 }
 

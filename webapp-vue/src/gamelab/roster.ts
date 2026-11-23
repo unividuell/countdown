@@ -34,6 +34,7 @@ export function labRoster(
       stable: 0,
       live: { points: e.points, provisional: round.awardRule === 'CLOSEST_ONLY' && e.points > 0 },
     },
+    streak: 0,
   })
 
   const members = round.others.map(fromEntry)
@@ -48,6 +49,7 @@ export function labRoster(
       fullName: p.username,
       bgColorHex: p.avatar.bgColorHex,
       points: { stable: 0 },
+      streak: 0,
     })
   }
 
@@ -60,6 +62,7 @@ export function labRoster(
       fullName: viewer.username,
       bgColorHex: viewer.avatar.bgColorHex,
       points: { stable: 0 },
+      streak: 0,
     })
 
   const rank = (m: RosterMemberResponse) => m.points.stable + (m.points.live?.points ?? 0)

@@ -13,6 +13,7 @@ function member(over: Partial<RosterMemberResponse> = {}): RosterMemberResponse 
     fullName: 'amy',
     bgColorHex: '#8e44ad',
     points: { stable: 3 },
+    streak: 0,
     ...over,
   }
 }
