@@ -377,6 +377,27 @@ describe('RevealScoreboard', () => {
     expect(theirs().element.style.transitionDelay).toBe('0ms')
   })
 
+  // An invisible name is still a button: tapped, it would replay someone else's tip before the
+  // verdict (Verrohrung's water) or lay their painting on the picture early.
+  it('lets nobody reach a row before it has landed', async () => {
+    const wrapper = mountBoard({
+      animate: true,
+      rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
+    })
+    const inert = () =>
+      ['a', 'b'].map((id) => wrapper.get(`[data-test="row-${id}"]`).attributes('inert'))
+
+    expect(inert()).toEqual(['', ''])
+
+    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    await wrapper.vm.$nextTick()
+    expect(inert()).toEqual([undefined, ''])
+
+    vi.advanceTimersByTime(VERDICT_MS)
+    await wrapper.vm.$nextTick()
+    expect(inert()).toEqual([undefined, undefined])
+  })
+
   it('writes the head on its beat, the facts — which judge — with the verdict', async () => {
     const wrapper = mountBoard(
       { animate: true, columns: [SOLVED_TIP] },

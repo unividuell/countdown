@@ -81,8 +81,12 @@ const shownClass = (shown: boolean) => (shown ? 'opacity-100' : 'opacity-0')
 const opacity = computed(() => shownClass(headReached.value))
 const factOpacity = computed(() => shownClass(verdictReached.value))
 
+function landed(row: Row): boolean {
+  return row.tick === 0 ? verdictReached.value : othersReached.value
+}
+
 function rowOpacity(row: Row) {
-  return shownClass(row.tick === 0 ? verdictReached.value : othersReached.value)
+  return shownClass(landed(row))
 }
 
 function fade(delayMs: number) {
@@ -268,7 +272,14 @@ function pointsLabel(points: number | null): string {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in props.rows" :key="row.userId" :data-test="`row-${row.userId}`">
+        <!-- Inert until it lands: an invisible name is still a button, and a tap would replay
+             someone's tip before the verdict. -->
+        <tr
+          v-for="row in props.rows"
+          :key="row.userId"
+          :data-test="`row-${row.userId}`"
+          :inert="!landed(row)"
+        >
           <th
             scope="row"
             class="truncate px-0.5 text-start font-normal transition-opacity"
