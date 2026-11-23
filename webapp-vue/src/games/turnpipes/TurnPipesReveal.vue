@@ -7,6 +7,7 @@
  *
  *   selection ─▶ shownBoard ─▶ turn (TURN_MS) ─▶ water, one cell per step ─▶ end sound + puddles
  *                                    my first run only: end sound silent ─▶ VERDICT_GAP_MS ─▶ verdict
+ *                                                                                   + the table's rows
  *
  * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
  */
@@ -102,6 +103,9 @@ let verdictDue = false
 let verdictBeat: ReturnType<typeof setTimeout> | undefined
 let verdict: Verdict | null = null
 
+/** The table's rows wait for the verdict: they would say it first (`RevealScoreboard`). */
+const held = ref(false)
+
 function halt(): void {
   clearTimeout(beat)
   clearTimeout(verdictBeat)
@@ -115,7 +119,10 @@ function present(board: ShownBoard | null): void {
   halt()
   water.fill([])
   puddles.value = NO_PUDDLES
-  if (!board) return
+  if (!board) {
+    if (verdictDue) verdictAfter(0)
+    return
+  }
 
   turns.value = turnedTo(board)
   beat = setTimeout(() => {
@@ -135,15 +142,14 @@ function present(board: ShownBoard | null): void {
   }, TURN_MS)
 }
 
-/** The verdict once the end sound, ringing for [endsInS] more, has fallen silent. */
+/** The verdict and the rows once the end sound, ringing for [endsInS] more, has fallen silent. */
 function verdictAfter(endsInS: number): void {
   verdictDue = false
-  const won = props.won
-  if (won === null || inBackground()) return
 
   verdictBeat = setTimeout(
     () => {
-      verdict = playVerdict(won)
+      held.value = false
+      if (props.won !== null && !inBackground()) verdict = playVerdict(props.won)
     },
     endsInS * 1000 + VERDICT_GAP_MS,
   )
@@ -156,6 +162,15 @@ const still = isStill(props.animate)
 
 if (still && shown.value) showEnd(shown.value)
 
+held.value = !still
+
+// Nothing moves: the verdict at once, as `useRevealVerdict` plays it.
+onMounted(() => {
+  if (still && props.animate && props.won !== null && !inBackground()) {
+    verdict = playVerdict(props.won)
+  }
+})
+
 useRevealArming(still, () => {
   beat = setTimeout(() => {
     verdictDue = true
@@ -165,6 +180,7 @@ useRevealArming(still, () => {
 
 watch(selectedUserId, () => {
   verdictDue = false
+  held.value = false
   present(shown.value)
 })
 
@@ -194,6 +210,7 @@ onBeforeUnmount(() => {
       :rows="props.rows"
       :live="props.live"
       :animate="props.animate"
+      :results-held="held"
       :selected-user-id="selectedUserId"
       @select="select"
     />

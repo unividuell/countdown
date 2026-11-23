@@ -14,6 +14,8 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: a reload shows the finished table. */
   animate: boolean
   selectedUserId: string | null
+  /** Rows wait for the verdict, which comes after the water. */
+  resultsHeld: boolean
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
@@ -28,6 +30,7 @@ const NO_COLUMNS: ScoreboardColumn<ScoreRow>[] = []
     caption="Alle Tipps der Runde, nach Punkten sortiert"
     :live="props.live"
     :animate="props.animate"
+    :results-held="props.resultsHeld"
   >
     <template #name="{ row }">
       <button

@@ -5,6 +5,7 @@ import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import PipeGrid from '../PipeGrid.vue'
 import { playSound, preloadSounds, startFlow } from '../sounds'
 import TurnPipesReveal from '../TurnPipesReveal.vue'
+import TurnPipesScoreboard from '../TurnPipesScoreboard.vue'
 import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
 import { waterStepMs } from '../water'
@@ -87,6 +88,7 @@ type Reveal = ReturnType<typeof mountReveal>
 const grid = (w: Reveal) => w.getComponent(PipeGrid)
 const wet = (w: Reveal) => [...(grid(w).props('wet') as ReadonlySet<number>)]
 const puddles = (w: Reveal) => [...(grid(w).props('puddles') as ReadonlySet<number>)]
+const held = (w: Reveal) => w.getComponent(TurnPipesScoreboard).props('resultsHeld')
 const rotationsOf = (w: Reveal) => (grid(w).props('turns') as number[]).map((t) => t % 4)
 
 /** Lets the timers fire, then Vue render what they changed. */
@@ -200,6 +202,45 @@ describe('TurnPipesReveal', () => {
       expect(stopVerdict).toHaveBeenCalled()
     })
 
+    it('holds the table’s rows until the verdict sounds', async () => {
+      const wrapper = mountReveal({ animate: true, won: false })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP + VERDICT_AFTER_MS - 100)
+      expect(held(wrapper)).toBe(true)
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      await advance(100)
+
+      expect(playVerdict).toHaveBeenCalledOnce()
+      expect(held(wrapper)).toBe(false)
+    })
+
+    it('releases the rows at the same moment without a tip of mine', async () => {
+      const wrapper = mountReveal({ animate: true, won: null })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + 2 * STEP + VERDICT_AFTER_MS)
+
+      expect(held(wrapper)).toBe(false)
+    })
+
+    it('a name tapped before the verdict releases the rows at once, the verdict unsaid', async () => {
+      const wrapper = mountReveal({ animate: true, won: true })
+      await advance(SOLUTION_DELAY_MS + ARMED_MS + 150 + STEP)
+
+      await wrapper.get('[data-test="select-them"]').trigger('click')
+
+      expect(held(wrapper)).toBe(false)
+      await advance(150 + 2 * STEP + VERDICT_AFTER_MS)
+      expect(playVerdict).not.toHaveBeenCalled()
+    })
+
+    it('where nothing moves, the verdict sounds at once and nothing is held', async () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(true))
+      const wrapper = mountReveal({ animate: true, won: true })
+      await advance(0)
+
+      expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
+      expect(held(wrapper)).toBe(false)
+    })
+
     it('leaves no timer behind when it unmounts', () => {
       const wrapper = mountReveal({ animate: true })
       vi.advanceTimersByTime(SOLUTION_DELAY_MS + ARMED_MS + 150 + STEP)
@@ -210,8 +251,11 @@ describe('TurnPipesReveal', () => {
     })
   })
 
-  it('a reload shows the end at once — no run, no sound', () => {
-    const wrapper = mountReveal({ animate: false })
+  it('a reload shows the end at once — no run, no sound, no rows held', () => {
+    const wrapper = mountReveal({ animate: false, won: true })
+
+    expect(held(wrapper)).toBe(false)
+    expect(playVerdict).not.toHaveBeenCalled()
 
     expect(wet(wrapper)).toEqual([0, 1])
     expect(puddles(wrapper)).toEqual([7])
