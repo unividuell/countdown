@@ -6,6 +6,7 @@ import type { ScoreRow } from '@/games/placepatch/scoreboard'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -176,5 +177,34 @@ describe('PlacePatchReveal', () => {
 
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it.fails('judges with its verdict: the solution lands with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mountReveal(
+            [
+              row({ userId: 'other', cell: { x: 1, y: 1 }, tick: 1 }),
+              row({ userId: 'mine', cell: { x: 7, y: 4 }, tick: 0 }),
+            ],
+            true,
+            true,
+          ),
+        mineUserId: 'mine',
+        judging: (w) => w.get('[data-test="place-patch-solution"]').classes('opacity-100'),
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

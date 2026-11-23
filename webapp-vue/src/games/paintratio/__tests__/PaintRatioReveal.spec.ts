@@ -12,6 +12,7 @@ import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -311,5 +312,29 @@ describe('PaintRatioReveal', () => {
 
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the picture lands with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () => mountReveal({ animate: true, won: true }),
+        mineUserId: 'me',
+        judging: (w) => {
+          const own = w.find<HTMLElement>('[data-test="paint-ratio-own"]')
+          return !own.exists() || own.element.style.opacity === '0'
+        },
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

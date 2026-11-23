@@ -16,6 +16,7 @@ import type { FindPatternPayload, FindPatternSolution } from '@/games/findpatter
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -407,5 +408,33 @@ describe('FindPatternReveal', () => {
       expect(mountReveal([]).find('button[aria-label="Ton"]').exists()).toBe(false)
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: its facts land with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mountReveal(
+            [
+              row({ userId: 'other', colorHex: '#00ff00', startIndex: 5, tick: 1 }),
+              row({ userId: 'mine', colorHex: '#ff0000', startIndex: 5, tick: 0 }),
+            ],
+            { animate: true, won: true },
+          ),
+        mineUserId: 'mine',
+        judging: () => false,
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

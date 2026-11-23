@@ -9,6 +9,8 @@ import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
 import { waterStepMs } from '../water'
 import { playVerdict } from '@/ui/verdictSound'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
+import { TIMELINE_TIMERS } from '@/games/__tests__/timelineTiming'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -333,5 +335,34 @@ describe('TurnPipesReveal', () => {
     expect(rotationsOf(wrapper)[5]).toBe(1)
     expect(wet(wrapper)).toEqual([0, 1, 2])
     expect(wrapper.findAll('[data-test^="select-"][aria-pressed="true"]')).toHaveLength(0)
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the water ends in my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mountReveal({
+            animate: true,
+            won: false,
+            rows: [
+              row('me', MINE, MY_ROTATIONS),
+              { ...row('them', THEIRS, THEIR_ROTATIONS), tick: 1 },
+            ],
+          }),
+        mineUserId: 'me',
+        judging: () => false,
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

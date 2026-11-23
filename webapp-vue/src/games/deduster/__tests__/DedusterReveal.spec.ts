@@ -6,8 +6,11 @@ import DedusterScoreboard from '../DedusterScoreboard.vue'
 import type { DedusterRow } from '../scoreboard'
 import { playRatchet } from '@/ui/ratchetSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
+import { TIMELINE_TIMERS } from '@/games/__tests__/timelineTiming'
 
 vi.mock('@/ui/ratchetSound', () => ({ playRatchet: vi.fn() }))
+vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: vi.fn() })) }))
 
 const PAYLOAD = { cols: 2, rows: 2, intervalMs: 1000, order: [3, 1, 0, 2] }
 
@@ -168,5 +171,35 @@ describe('DedusterReveal', () => {
     }
 
     expect(playRatchet).toHaveBeenCalledTimes(3)
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: its board judged: my row lands silently, the others after', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mount(DedusterReveal, {
+            props: {
+              payload: PAYLOAD,
+              photoUrl: '/asset/98',
+              rows: ROWS.map((r, tick) => ({ ...r, tick })),
+              live: false,
+              animate: true,
+            },
+          }),
+        mineUserId: 'a',
+        judging: () => false,
+        verdict: 'silent',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

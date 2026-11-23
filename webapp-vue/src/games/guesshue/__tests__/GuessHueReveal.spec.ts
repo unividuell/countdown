@@ -5,6 +5,8 @@ import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
 import { ROW_STAGGER_MS, TIP_COLUMN, VERDICT_MS, othersDelayMs } from '@/games/revealChoreography'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
+import type { ScoreboardRow } from '@/games/guesshue/scoreboard'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -179,6 +181,29 @@ describe('GuessHueReveal', () => {
       vi.advanceTimersByTime(3000)
 
       expect(playMarker).not.toHaveBeenCalled()
+    })
+  })
+
+  it('judges with its verdict: the sector lands with my row and its sound', async () => {
+    const tableRow = (userId: string, tick: number): ScoreboardRow => ({
+      userId,
+      name: userId,
+      colorHex: '#7d2ae8',
+      ink: '#ffffff',
+      hue: 100,
+      guessHex: '#5ce65c',
+      guessInk: '#111111',
+      deviationDeg: 5,
+      points: 1,
+      provisional: false,
+      tick,
+    })
+
+    await expectJudgesWithVerdict({
+      mount: () => mountReveal({ guesses: GUESSES, rows: [tableRow('fry', 1), tableRow('me', 0)] }),
+      mineUserId: 'me',
+      judging: (w) => w.get('[data-test="hue-sector"]').classes('opacity-100'),
+      verdict: 'sound',
     })
   })
 })

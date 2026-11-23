@@ -14,6 +14,8 @@ import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
+import { TIMELINE_TIMERS } from '@/games/__tests__/timelineTiming'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -410,5 +412,31 @@ describe('CopyBlocksReveal', () => {
 
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the error marks land with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mountReveal({
+            animate: true,
+            won: false,
+            rows: [row('me', MINE), { ...row('them', THEIRS), tick: 1 }],
+          }),
+        mineUserId: 'me',
+        judging: (w) => (w.getComponent(BlockScene).props('marks') as unknown[]).length > 0,
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

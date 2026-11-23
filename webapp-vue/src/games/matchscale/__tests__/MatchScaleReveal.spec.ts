@@ -14,6 +14,7 @@ import { countEndsInMs, countTones, growMs } from '../countTones'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import { playVerdict } from '@/ui/verdictSound'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopCount = vi.fn()
 vi.mock('../countSound', async (importOriginal) => ({
@@ -591,5 +592,26 @@ describe('MatchScaleReveal', () => {
 
     expect(b().attributes('transform')).not.toBe(before)
     expect(b().attributes('style') ?? '').not.toContain('transform')
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the count ends in my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () => mountReveal({ animate: true, won: true }),
+        mineUserId: 'me',
+        judging: () => false,
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { defineComponent, h, type PropType } from 'vue'
+import RevealScoreboard from '@/games/RevealScoreboard.vue'
+import type { ScoreboardRow } from '@/games/scoreboardColumns'
 import SongSnippetReveal from '@/games/songsnippet/SongSnippetReveal.vue'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
@@ -121,5 +125,46 @@ describe('SongSnippetReveal', () => {
     it('has no sound toggle', () => {
       expect(mountReveal(true, true).find('button[aria-label="Ton"]').exists()).toBe(false)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`. The table stands in through the shared
+  // frame: its own playback is tested where it lives. The title's cover is SongPlayerReveal's.
+  it('judges with its verdict: my row lands with its sound', async () => {
+    const Table = defineComponent({
+      props: { rows: { type: Array as PropType<ScoreboardRow[]>, required: true } },
+      setup: (props) => () =>
+        h(RevealScoreboard, { rows: props.rows, columns: [], caption: 'Tipps', live: false }),
+    })
+    const tableRow = (userId: string, tick: number): ScoreboardRow => ({
+      userId,
+      name: userId,
+      colorHex: '#406abf',
+      ink: '#ffffff',
+      points: 1,
+      provisional: false,
+      tick,
+    })
+    vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mount(SongSnippetReveal, {
+            props: {
+              solution: SOLUTION,
+              durations: [0.1, 0.5, 2, 8, 15],
+              rows: [tableRow('me', 0), tableRow('them', 1)] as never,
+              live: false,
+              animate: true,
+              won: true,
+            },
+            global: { stubs: { SongPlayerReveal: true, SongSnippetScoreboard: Table } },
+          }),
+        mineUserId: 'me',
+        judging: () => false,
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
