@@ -6,7 +6,7 @@ import leakUrl from './sounds/leak.mp3?url'
 import successUrl from './sounds/success.mp3?url'
 import turnUrl from './sounds/turn.mp3?url'
 
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { audioGraph, decodingGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
 import type { Leak } from './types'
 
@@ -52,23 +52,19 @@ export function endSoundOf(run: {
 const buffers = new Map<SoundName, AudioBuffer | null>()
 
 /**
- * Decodes every sound once, ahead of the first one needed; a suspended graph decodes all the same.
- * Muted builds no graph: a browser may start one built after a tap, claiming the device's audio.
+ * Decodes every sound once, ahead of the first one needed, muted or not: off the app's graph,
+ * so a muted game leaves the device's audio alone (`decodingGraph`).
  */
 export function preloadSounds(): void {
-  if (!gameSoundOn()) return
+  const decoder = decodingGraph()
+  if (!decoder) return
 
-  const graph = audioGraph()
-  if (graph) decodeAll(graph)
-}
-
-function decodeAll(graph: AudioContext): void {
   for (const [name, url] of Object.entries(URLS) as [SoundName, string][]) {
     if (buffers.has(name)) continue
     buffers.set(name, null)
     void fetch(url)
       .then((response) => response.arrayBuffer())
-      .then((data) => graph.decodeAudioData(data))
+      .then((data) => decoder.decodeAudioData(data))
       .then(
         (buffer) => buffers.set(name, buffer),
         (err: unknown) => console.warn('[turn-pipes] a sound did not decode', name, err),
@@ -83,9 +79,6 @@ function play(name: SoundName, loop: boolean): Playing {
 
   const graph = audioGraph()
   if (!graph) return SILENT
-
-  // Unmuted mid-game: the board's preload found sound off.
-  decodeAll(graph)
 
   // Browsers start the graph suspended; the first tap is the gesture that may wake it.
   if (graph.state === 'suspended') {

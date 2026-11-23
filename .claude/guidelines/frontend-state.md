@@ -200,11 +200,11 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   `soundGraph()` — or `gameSoundOn()` first, where it wakes the graph itself — and connects to
   `soundOutput(graph)`, never to `graph.destination`. A board calls its play function and nothing
   else: no `if (sound.value)`, no watcher that cuts a sound on mute. The output's gain is the
-  mute, so what is already sounding falls silent too. Muted asks for no graph at all — not even to
-  preload: by their autoplay policies Chrome and Firefox start a context built after a tap as
-  `running`, no `resume()` needed,
-  and on iOS that stops the player's music. A preload skipped while muted happens on the first play
-  after unmuting (`turnpipes/sounds.ts`).
+  mute, so what is already sounding falls silent too. Muted asks for no graph at all: by their
+  autoplay policies Chrome and Firefox start a context built after a tap as `running`, no
+  `resume()` needed, and on iOS that stops the player's music. A preload decodes on
+  `decodingGraph()` instead — an `OfflineAudioContext` has no output — muted or not, so the first
+  sound after unmuting is ready (`turnpipes/sounds.ts`).
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):

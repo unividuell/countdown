@@ -113,9 +113,15 @@ describe('without Web Audio', () => {
   })
 })
 
+/** Decodes like the live graph; the app builds one for preloading. */
+class FakeOfflineContext {
+  decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true, duration: 3.7 }))
+}
+
 describe('with Web Audio', () => {
   beforeEach(() => {
     vi.stubGlobal('AudioContext', FakeAudioContext)
+    vi.stubGlobal('OfflineAudioContext', FakeOfflineContext)
   })
 
   it('a turn varies its pitch by at most five per cent, at 0.6', async () => {
@@ -194,23 +200,22 @@ describe('with Web Audio', () => {
     expect(sources).toHaveLength(0)
   })
 
-  it('preloads nothing while muted: a graph built after a tap may start running', async () => {
+  it('preloads while muted without the app’s graph: one built after a tap may start running', async () => {
     sound.on = false
     const { preloadSounds } = await load()
     preloadSounds()
 
     expect(FakeAudioContext.built).toBe(0)
-    expect(fetch).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalled()
   })
 
-  it('decodes once sound comes on mid-game, ready from the next sound', async () => {
+  it('sounds with the first turn after unmuting', async () => {
     sound.on = false
     const { preloadSounds, playSound } = await load()
     preloadSounds()
+    await settle()
 
     sound.on = true
-    playSound('turn')
-    await settle()
     playSound('turn')
 
     expect(sources).toHaveLength(1)

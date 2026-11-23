@@ -17,7 +17,7 @@ import stone2 from './sounds/stone2.m4a?url'
 import stone3 from './sounds/stone3.m4a?url'
 import stone4 from './sounds/stone4.m4a?url'
 
-import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { audioGraph, decodingGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
 import { BLOCK_TYPES } from './blockTypes'
 import type { BlockCode, SoundSet } from './blockTypes'
@@ -82,23 +82,19 @@ export function soundPlan(
 const buffers = new Map<string, AudioBuffer | null>()
 
 /**
- * Decodes every sample once, ahead of the first tap; a suspended graph decodes all the same.
- * Muted builds no graph: a browser may start one built after a tap, claiming the device's audio.
+ * Decodes every sample once, ahead of the first tap, muted or not: off the app's graph, so a
+ * muted game leaves the device's audio alone (`decodingGraph`).
  */
 export function preloadSounds(): void {
-  if (!gameSoundOn()) return
+  const decoder = decodingGraph()
+  if (!decoder) return
 
-  const graph = audioGraph()
-  if (graph) decodeAll(graph)
-}
-
-function decodeAll(graph: AudioContext): void {
   for (const url of Object.values(SAMPLES).flat()) {
     if (buffers.has(url)) continue
     buffers.set(url, null)
     void fetch(url)
       .then((response) => response.arrayBuffer())
-      .then((data) => graph.decodeAudioData(data))
+      .then((data) => decoder.decodeAudioData(data))
       .then(
         (buffer) => buffers.set(url, buffer),
         (err: unknown) => console.warn('[copy-blocks] a block sound did not decode', url, err),
@@ -129,9 +125,6 @@ export function playSound(action: 'place' | 'break', code: BlockCode): void {
 
   const graph = audioGraph()
   if (!graph) return
-
-  // Unmuted mid-game: the board's preload found sound off.
-  decodeAll(graph)
 
   // Browsers start the graph suspended; the first tap is the gesture that may wake it.
   if (graph.state === 'suspended') {

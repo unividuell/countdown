@@ -27,6 +27,28 @@ describe('audioGraph', () => {
   })
 })
 
+describe('decodingGraph', () => {
+  beforeEach(() => vi.resetModules())
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('is null without offline Web Audio', async () => {
+    vi.stubGlobal('OfflineAudioContext', undefined)
+    const { decodingGraph } = await import('@/ui/audio')
+
+    expect(decodingGraph()).toBeNull()
+  })
+
+  it('opens one offline graph, apart from the app’s live one', async () => {
+    const live = vi.fn()
+    vi.stubGlobal('AudioContext', live)
+    vi.stubGlobal('OfflineAudioContext', class {})
+    const { decodingGraph } = await import('@/ui/audio')
+
+    expect(decodingGraph()).toBe(decodingGraph())
+    expect(live).not.toHaveBeenCalled()
+  })
+})
+
 /** A graph in `state`, as the one the app opens. */
 function stubGraph(state: AudioContextState) {
   const resume = vi.fn(() => Promise.resolve())

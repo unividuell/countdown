@@ -18,7 +18,11 @@ vi.mock('@/ui/soundOutput', () => ({
   gameSoundOn: () => sound.on,
   soundOutput: (graph: { destination: unknown }) => graph.destination,
 }))
-vi.mock('@/ui/audio', () => ({ audioGraph: vi.fn(() => null), START_LOOKAHEAD_SECONDS: 0 }))
+vi.mock('@/ui/audio', () => ({
+  audioGraph: vi.fn(() => null),
+  decodingGraph: () => null,
+  START_LOOKAHEAD_SECONDS: 0,
+}))
 
 describe('soundPlan', () => {
   it('places with one sound of the type, pitched to 0.8 ± 5 %', () => {
@@ -79,7 +83,7 @@ describe('muted', () => {
     expect(audioGraph).not.toHaveBeenCalled()
   })
 
-  it('preloads without a graph too: one built after a tap may start running', () => {
+  it('preloads without the app’s graph: one built after a tap may start running', () => {
     sound.on = false
     preloadSounds()
 
