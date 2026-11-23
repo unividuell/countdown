@@ -10,7 +10,7 @@ import type { ScoreRow } from '@/games/copyblocks/scoreboard'
 import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from '@/games/copyblocks/types'
 import { SPIN_MS, START_CAMERA } from '@/games/copyblocks/view'
 import type { Camera } from '@/games/copyblocks/view'
-import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
@@ -198,7 +198,7 @@ describe('CopyBlocksReveal', () => {
       expect(scene(wrapper).props('frame')).toEqual(fieldOf(TOP, 6))
     })
 
-    it('keeps my floor until the solution beat, then lowers it with the solution', async () => {
+    it('keeps my floor until the verdict’s beat, then lowers it with the solution', async () => {
       vi.useFakeTimers({
         toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
       })
@@ -206,7 +206,7 @@ describe('CopyBlocksReveal', () => {
       const wrapper = mountReveal({ ...props, animate: true })
       expect(scene(wrapper).props('field')).toEqual(fieldOf(TOP, 6))
 
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 100)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 100)
       await nextTick()
 
       expect(scene(wrapper).props('field').lo[1]).toBe(-1)
@@ -257,21 +257,27 @@ describe('CopyBlocksReveal', () => {
       vi.spyOn(window, 'matchMedia').mockReturnValue(mediaQuery(false))
     })
 
-    it('shows my build as it stood, and the solution at its beat', async () => {
-      const wrapper = mountReveal({ animate: true })
+    it('shows my build as it stood, and marks the errors with the verdict', async () => {
+      vi.mocked(playVerdict).mockClear()
+      const wrapper = mountReveal({ animate: true, won: false })
       expect(scene(wrapper).props('blocks')).toEqual(MY_GUESS)
-      expect(scene(wrapper).props('marks')).toEqual([])
 
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 100)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 100)
+      await nextTick()
+      expect(scene(wrapper).props('marks')).toEqual([])
+      expect(playVerdict).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(200)
       await nextTick()
 
       expect(scene(wrapper).props('marks')).toHaveLength(1)
+      expect(playVerdict).toHaveBeenCalledOnce()
     })
 
-    it('turns the view once around at the solution beat, and ends where it began', () => {
+    it('turns the view once around at the verdict’s beat, and ends where it began', () => {
       const wrapper = mountReveal({ animate: true })
 
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 50)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 50)
       expect(yaws(wrapper)).toEqual([])
 
       vi.advanceTimersByTime(50 + SPIN_MS / 2)
@@ -287,7 +293,7 @@ describe('CopyBlocksReveal', () => {
 
     it('stops turning as soon as a finger touches the view', async () => {
       const wrapper = mountReveal({ animate: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 200)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 200)
       const turned = yaws(wrapper).length
       expect(turned).toBeGreaterThan(0)
 
@@ -300,14 +306,14 @@ describe('CopyBlocksReveal', () => {
     it('never turns on a reload', () => {
       const wrapper = mountReveal({ animate: false })
 
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 2 * SPIN_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 2 * SPIN_MS)
 
       expect(yaws(wrapper)).toEqual([])
     })
 
     it('stops turning when it unmounts', () => {
       const wrapper = mountReveal({ animate: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS + 200)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 200)
 
       wrapper.unmount()
 

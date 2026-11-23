@@ -5,11 +5,11 @@
  *
  * The template is drawn through my own inverse fit, so it stands in the coordinates of my build.
  * Beats come from `revealChoreography`: my build as it stood, then the solution marks with one
- * full turn of the field, so every error comes to the front once; the scoreboard carries its own
- * beat.
+ * full turn of the field, so every error comes to the front once. The marks are the judgement, so
+ * they come with the verdict and my row (`RESULTS_DELAY_MS`), not before.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS, isStill } from '@/games/revealChoreography'
 import { useRevealVerdict } from '@/games/useRevealVerdict'
 import { useRevealArming } from '@/ui/useRevealArming'
 import BlockScene from './BlockScene.vue'
@@ -59,7 +59,7 @@ useRevealArming(still, () => {
   solutionTimer = setTimeout(() => {
     solved.value = true
     spin()
-  }, SOLUTION_DELAY_MS)
+  }, RESULTS_DELAY_MS)
 })
 
 let spinFrame = 0
@@ -131,13 +131,13 @@ const solutionField = computed(() => {
   return fieldOf([...(props.myGuess ?? []), ...solution], props.payload.grid)
 })
 
-/** My build's floor until the solution beat, then the solution's — it arrives with the solution. */
+/** My build's floor until the marks, then the solution's — it arrives with the solution. */
 const field = computed(() => (solved.value ? solutionField.value : frame.value))
 
 /** The box beneath the view: on, the errors are marked; off, the tip stands bare. */
 const markErrors = ref(true)
 
-/** Until the solution beat the view shows only the build as it stood. */
+/** Until the marks the view shows only the build as it stood. */
 const marks = computed(() => (solved.value && markErrors.value ? view.value.marks : NO_MARKS))
 </script>
 
