@@ -455,8 +455,9 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
           <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" />
           <StreakMark :streak="streakOf(m)" />
         </div>
+        <!-- `z-10`: the positioned circle above would otherwise paint over the badge it overlaps. -->
         <div
-          class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
+          class="z-10 -mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
         >
           {{ m.points.stable }}
         </div>
