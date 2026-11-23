@@ -18,7 +18,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm, type Vec } from './swarm'
 import { planReorder, reorderTuning } from './reorder'
-import { bandLabel, bandOf } from './streak'
+import { bandLabel, bandOf, FLARE_MS } from './streak'
 import StreakMark from './StreakMark.vue'
 import Avatar from '@/ui/Avatar.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
@@ -56,6 +56,8 @@ const props = defineProps<{
 const row = ref<HTMLElement | null>(null)
 const settled = ref(false)
 const rearranging = ref(false)
+/** A streak icon is stretching past the track's top padding, which the scroll container would cut. */
+const flaring = ref(false)
 /** Who is currently travelling, and who is doing the overtaking — the row's stacking order. */
 const lifted = ref<ReadonlySet<string>>(new Set())
 const riserId = ref<string | null>(null)
@@ -68,6 +70,7 @@ let swarm: Swarm | null = null
 let onSettled: () => void = () => {}
 let entering = false
 let heldScrollLeft = 0
+let flareTimer: ReturnType<typeof setTimeout> | undefined
 let raf = 0
 let lastFrame = 0
 
@@ -205,10 +208,29 @@ function entered(): void {
   void nextTick(scrollToLeader)
 }
 
+/**
+ * Rearrangement and flare both need the row unclipped. The first to start reads the reader's
+ * offset; the last to end hands it back.
+ */
+function holdScroll(): void {
+  if (!rearranging.value && !flaring.value) heldScrollLeft = row.value?.scrollLeft ?? 0
+  trackShift.value = -heldScrollLeft
+}
+
 function rearranged(): void {
   lifted.value = new Set()
   riserId.value = null
   rearranging.value = false
+  handBack()
+}
+
+function flared(): void {
+  flaring.value = false
+  handBack()
+}
+
+function handBack(): void {
+  if (rearranging.value || flaring.value) return
   trackShift.value = 0
   // The row becomes a scroll container again only on the next render, and it comes back at zero.
   void nextTick(() => {
@@ -256,8 +278,7 @@ function rearrange(before: Map<string, Vec>): void {
   painted = plan.entries.map((e) => els.get(e.id)!)
   // Reading it after the row has stopped clipping would read zero, and the reader would be thrown
   // back to the leader for the length of the movement.
-  if (!rearranging.value) heldScrollLeft = host.scrollLeft
-  trackShift.value = -heldScrollLeft
+  holdScroll()
   lifted.value = plan.moving
   riserId.value = plan.riserId
   rearranging.value = true
@@ -342,8 +363,13 @@ watch(
         const streak = heldStreaks.get(id)?.streak ?? m.streak
         heldStreaks.delete(id)
         shownStreaks.value[id] = streak
-        // StreakMark asks the same at its flare; the triangle has to keep in step.
-        if (id === props.meId && !prefersReducedMotion() && !inBackground()) playTriangle()
+        // StreakMark asks the same at its flare; the triangle and the unclipped row keep in step.
+        if (prefersReducedMotion() || inBackground()) return
+        if (id === props.meId) playTriangle()
+        holdScroll()
+        flaring.value = true
+        clearTimeout(flareTimer)
+        flareTimer = setTimeout(flared, FLARE_MS)
       }, VERDICT_MS)
       heldStreaks.set(id, { timer, streak: m.streak })
     }
@@ -352,6 +378,7 @@ watch(
 
 onBeforeUnmount(() => {
   for (const { timer } of heldStreaks.values()) clearTimeout(timer)
+  clearTimeout(flareTimer)
 })
 
 onMounted(() => {
@@ -404,13 +431,13 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     ref="row"
     data-test="row"
     class="flex w-full cursor-default select-none"
-    :class="settled && !rearranging ? 'overflow-x-auto' : 'overflow-visible'"
+    :class="settled && !rearranging && !flaring ? 'overflow-x-auto' : 'overflow-visible'"
     style="visibility: hidden"
   >
     <div
       data-test="track"
       class="flex shrink-0 -space-x-2 p-0.5 pt-4"
-      :style="{ transform: rearranging ? `translateX(${trackShift}px)` : '' }"
+      :style="{ transform: rearranging || flaring ? `translateX(${trackShift}px)` : '' }"
     >
       <div
         v-for="(m, index) in members"

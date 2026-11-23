@@ -13,10 +13,9 @@
  *   bright 1  1.9         1.2         1
  */
 import { computed, nextTick, ref, watch } from 'vue'
-import { bandOf, markBox, markSize, type StreakBand } from './streak'
+import { bandOf, FLARE_MS, markBox, markSize, type StreakBand } from './streak'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 
-const FLARE_MS = 600
 const FADE_MS = 250
 
 type Look =

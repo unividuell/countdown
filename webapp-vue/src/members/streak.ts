@@ -14,6 +14,9 @@
  *   px: 14  20.5  23.0  24.6   26
  */
 
+/** The flare's length; the row stops clipping for as long. */
+export const FLARE_MS = 600
+
 export type StreakBand =
   'flame-orange' | 'flame-blue' | 'diamond-ice' | 'diamond-ruby' | 'diamond-ruby-glint'
 

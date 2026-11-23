@@ -5,6 +5,7 @@ import type { RosterMemberResponse } from '@/api/types'
 import MemberRow from '../MemberRow.vue'
 import * as swarmModule from '../swarm'
 import { RISER_SEEK, YIELD_SEEK } from '../reorder'
+import { FLARE_MS } from '../streak'
 import { VERDICT_MS } from '@/games/revealChoreography'
 import { playTriangle } from '@/ui/triangleSound'
 
@@ -755,6 +756,80 @@ describe('MemberRow', () => {
       expect(bandOf(w, 'me')).toBe('flame-blue')
       expect(playTriangle).not.toHaveBeenCalled()
       expect(animate).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    // The flare stretches the icon past the track's top padding, which `overflow-x: auto` would cut.
+    it('stops clipping while a streak flares, and holds the reader where they were', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+      // Past the mount's scroll to the leader, which would otherwise land mid-test.
+      vi.advanceTimersToNextFrame()
+      const el = w.find('[data-test="row"]').element as HTMLElement
+      el.scrollLeft = 60
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      vi.advanceTimersByTime(FLARE_MS)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(w.find('[data-test="track"]').attributes('style') ?? '').not.toContain('translateX')
+      expect(el.scrollLeft).toBe(60)
+      w.unmount()
+    })
+
+    it('hands the row back only once both the flare and the rearrangement are over', async () => {
+      stubRowGeometry()
+      const swarms = captureSwarms()
+      const w = await mountWith([withStreak('a', 9), withStreak('me', 9)])
+      // Past the mount's scroll to the leader, which would otherwise land mid-test.
+      vi.advanceTimersToNextFrame()
+      const el = w.find('[data-test="row"]').element as HTMLElement
+      el.scrollLeft = 60
+
+      // The rearrangement outlasts the flare.
+      await w.setProps({ members: [withStreak('me', 10), withStreak('a', 9)] })
+      await nextTick()
+      await nextTick()
+      vi.advanceTimersByTime(VERDICT_MS + FLARE_MS)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      swarms[0]!.done = true
+      vi.advanceTimersByTime(100)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(el.scrollLeft).toBe(60)
+
+      // The flare outlasts the rearrangement.
+      await w.setProps({ members: [withStreak('a', 10), withStreak('me', 10)] })
+      await nextTick()
+      await nextTick()
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+      swarms[1]!.done = true
+      vi.advanceTimersByTime(100)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      vi.advanceTimersByTime(FLARE_MS)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(el.scrollLeft).toBe(60)
       w.unmount()
     })
 
