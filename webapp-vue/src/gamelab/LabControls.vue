@@ -14,6 +14,8 @@ const props = defineProps<{
   seed: number
   phase: LabPhase
   returnPath: string
+  /** The lab index, phase and ramp carried along like its own links do. */
+  indexPath: string
   busy: boolean
   /**
    * Round-bound, not URL-bound — these three always come from the same `LabRoundResponse`, so the
@@ -97,7 +99,9 @@ const ruleText = computed(() => {
       data-test="lab-heading"
       class="text-xs font-semibold tracking-wide text-on-surface/40 uppercase"
     >
-      Spiel-Labor
+      <RouterLink data-test="lab-index-link" :to="props.indexPath" class="hover:underline">
+        Spiel-Labor
+      </RouterLink>
     </h2>
 
     <form class="flex items-center gap-2" @submit.prevent="apply">

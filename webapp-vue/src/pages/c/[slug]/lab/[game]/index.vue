@@ -20,7 +20,7 @@ import { labRoster } from '@/gamelab/roster'
 import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
-import { phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
+import { gameLink, phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
 import { labShortcut } from '@/gamelab/shortcuts'
 import { switchPlayerHref } from '@/gamelab/switchPlayer'
 import {
@@ -403,6 +403,7 @@ watch(
         :difficulty="round?.difficulty"
         :ramp="ramp"
         :return-path="returnPath"
+        :index-path="gameLink(`/c/${community.slug}/lab`, phase, ramp)"
         @apply="writeSeed"
         @roll="writeSeed(rollSeed())"
         @phase-change="writePhase"
