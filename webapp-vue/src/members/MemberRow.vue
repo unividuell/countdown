@@ -409,7 +409,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
   >
     <div
       data-test="track"
-      class="flex shrink-0 -space-x-2 p-0.5"
+      class="flex shrink-0 -space-x-2 p-0.5 pt-4"
       :style="{ transform: rearranging ? `translateX(${trackShift}px)` : '' }"
     >
       <div

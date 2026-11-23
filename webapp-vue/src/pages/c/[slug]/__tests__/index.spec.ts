@@ -146,10 +146,10 @@ describe('community home', () => {
     ])
     const w = mountPage()
     const section = w.get('section')
-    expect(section.classes()).toContain('min-h-[72px]')
+    expect(section.classes()).toContain('min-h-[86px]')
     expect(w.get('[data-test="roster-placeholder"]').classes().join(' ')).not.toContain('min-h')
     await flushPromises()
-    expect(w.get('section').classes()).toContain('min-h-[72px]')
+    expect(w.get('section').classes()).toContain('min-h-[86px]')
     expect(w.get('[data-test="row"]').classes().join(' ')).not.toContain('min-h')
   })
 
