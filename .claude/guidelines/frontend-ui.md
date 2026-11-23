@@ -44,6 +44,9 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **Only the element that must ride above an overlay gets the `z-index`, not its container** — a
   z-index lifts everything inside. `NavDrawer`'s toggle and the sound switch beside it carry
   `relative z-30`; the header none.
+- **Making a box `relative` lifts it over every unpositioned sibling it overlaps,** DOM order
+  notwithstanding. The roster's avatar wrapper (for the streak badge) buried the points badge
+  pulled up under it with `-mt-1.5`; that badge now carries `z-10`.
 - **An outside-click check listens in the capture phase.** A click that changes state re-renders
   in a microtask before it bubbles to `document`; a swapped icon is then detached, inside nothing,
   and the menu closes under the finger. happy-dom runs no microtask between listeners, so only a
