@@ -57,7 +57,7 @@ describe('labRoster', () => {
         fullName: 'Clemens',
         bgColorHex: '#123456',
         points: { stable: 0 },
-        streak: labStreakBase(7, 'me', true),
+        streak: labStreakBase(7, 'me'),
       },
     ])
   })
@@ -118,19 +118,25 @@ describe('labRoster', () => {
       expect(seen.size).toBeGreaterThan(1)
     })
 
-    it('keeps everyone else between 0 and 60 before their entry', () => {
-      for (let i = 0; i < 200; i++) {
-        const base = labStreakBase(7, `user-${i}`, false)
-        expect(base).toBeGreaterThanOrEqual(0)
-        expect(base).toBeLessThanOrEqual(60)
+    // Just below a band edge, so one more round tips the badge over it — for everyone alike.
+    it('starts everyone just below a band boundary most of the time', () => {
+      for (let i = 0; i < 50; i++) {
+        expect([2, 9, 19, 32, 49, 5, 14, 25, 40]).toContain(labStreakBase(7, `user-${i}`))
       }
     })
 
-    // Just below a band edge, so one more round tips the badge over it.
-    it('starts me just below a band boundary most of the time', () => {
-      for (let seed = 0; seed < 50; seed++) {
-        expect([2, 9, 19, 32, 49, 5, 14, 25, 40]).toContain(labStreakBase(seed, 'me', true))
+    // Two testers on one seed must see each other's badge as each sees their own.
+    it('shows a player the same streak whoever looks', () => {
+      const ANN: LabViewer = {
+        id: 'ann',
+        username: 'Ann',
+        avatar: { shortName: 'AN', bgColorHex: '#000000' },
       }
+      const asMe = labRoster(round(entry('me', 1), [entry('ann', 1)]), ME)
+      const asAnn = labRoster(round(entry('ann', 1), [entry('me', 1)]), ANN)
+
+      expect(streakOf(asMe, 'ann')).toBe(streakOf(asAnn, 'ann'))
+      expect(streakOf(asMe, 'me')).toBe(streakOf(asAnn, 'me'))
     })
 
     it('adds the lab round to whoever submitted it', () => {
@@ -138,14 +144,14 @@ describe('labRoster', () => {
       const entered = labRoster(round(null, [entry('ann', 1)]), ME)
 
       expect(streakOf(entered, 'ann')).toBe(streakOf(seated, 'ann') + 1)
-      expect(streakOf(seated, 'ann')).toBe(labStreakBase(7, 'ann', false))
+      expect(streakOf(seated, 'ann')).toBe(labStreakBase(7, 'ann'))
     })
 
     it('adds it to me once my entry lands', () => {
       const before = streakOf(labRoster(round(null, []), ME), 'me')
       const after = streakOf(labRoster(round(entry('me', 1), []), ME), 'me')
 
-      expect(before).toBe(labStreakBase(7, 'me', true))
+      expect(before).toBe(labStreakBase(7, 'me'))
       expect(after).toBe(before + 1)
     })
   })

@@ -275,9 +275,9 @@ trotzdem dort testbar sind, würfelt `labRoster` die Streaks im Client aus dem S
 Seed, gleiche Streaks, ein Fall ist per Link wiederholbar. Kein Backend.
 
 - **Grundwert:** aus `hash32` (`gamelab/seed.ts`) über Seed und `userId`.
-  - Andere Spieler: 0–60, damit alle Bänder in der Reihe vorkommen.
-  - Ich: aus `2 · 9 · 19 · 32 · 49 · 5 · 14 · 25 · 40` — meist direkt vor einer Grenze, damit ein
-    Tipp Erscheinen, Bandwechsel und Funkeln auch wirklich zeigt.
+  - Für alle Spieler gleich, egal wer hinschaut: aus `2 · 9 · 19 · 32 · 49 · 5 · 14 · 25 · 40` —
+    meist direkt vor einer Grenze, damit ein Tipp Erscheinen, Bandwechsel und Funkeln auch wirklich
+    zeigt. Zwei Tester auf einem Seed sehen einander so, wie jeder sich selbst sieht.
 - **Live-Gate nachgebildet:** Wer in der Labor-Runde einen Eintrag hat (abgegeben), bekommt +1,
   ich eingeschlossen; wer nur sitzt, behält den Grundwert. Vor meinem Tipp sind die Einträge der
   anderen zurückgehalten, also sehe ich überall Grundwerte.

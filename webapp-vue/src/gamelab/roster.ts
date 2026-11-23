@@ -10,19 +10,18 @@ export interface LabViewer {
 }
 
 /**
- * Where the viewer's streak starts: one step below a band edge or so, so the lab's own round can
- * tip the badge over it and show the flare and the triangle.
+ * Where a streak starts: mostly one step below a band edge, so the lab's own round can tip the
+ * badge over it and show the flare and the triangle.
  */
-const VIEWER_BASES = [2, 9, 19, 32, 49, 5, 14, 25, 40]
+const BASES = [2, 9, 19, 32, 49, 5, 14, 25, 40]
 
 /**
  * A member's streak before this round's entry, rolled from the URL's seed — the lab has no history,
- * and a shared link must show the same badges. Others spread over 0–60; the viewer over
- * [VIEWER_BASES].
+ * and a shared link must show the same badges. Independent of who looks: two testers on one seed
+ * see each other's badge as each sees their own.
  */
-export function labStreakBase(seed: number, userId: string, viewer: boolean): number {
-  const hash = hash32(`${seed}:${userId}`)
-  return viewer ? VIEWER_BASES[hash % VIEWER_BASES.length]! : hash % 61
+export function labStreakBase(seed: number, userId: string): number {
+  return BASES[hash32(`${seed}:${userId}`) % BASES.length]!
 }
 
 /**
@@ -46,7 +45,7 @@ export function labRoster(
   viewer: LabViewer | null,
 ): RosterMemberResponse[] {
   const streak = (userId: string, entered: boolean) =>
-    labStreakBase(round.seed, userId, userId === viewer?.id) + (entered ? 1 : 0)
+    labStreakBase(round.seed, userId) + (entered ? 1 : 0)
 
   const fromEntry = (e: LabEntryDto): RosterMemberResponse => ({
     userId: e.userId,
