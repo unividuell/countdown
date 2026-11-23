@@ -195,10 +195,12 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
-  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: as the results start
-  landing (`RESULTS_DELAY_MS`) — it is their signal, so no row and no roster says it first — only
-  on a reveal that just happened here (`animate`) — a reload is silent — and at once
-  where nothing moves. Exception: a run that ends itself plays the verdict the moment it ends, in
+  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: with my row, which
+  lands first and alone (`RESULTS_DELAY_MS`, `tickOfRow`); the others follow once it has rung out
+  (`VERDICT_MS`). It is the signal for my points, so no row and no roster says it first, and no
+  marker's knock sounds into it. My row's slot gives my rank away a moment early; the verdict has
+  said the part that matters. Only on a reveal that just happened here (`animate`) — a reload is
+  silent — and at once where nothing moves. Exception: a run that ends itself plays the verdict the moment it ends, in
   the board, and its reveal stays silent — Entstauber's last tile wins, a wrong tile or a missed
   beat fails (`deduster/DedusterBoard.vue`). A reveal whose own animation ends in a sound of
   its own plays the verdict after that sound has fallen silent, once, for my first run only —

@@ -3,7 +3,13 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
-import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
+import {
+  RESULTS_DELAY_MS,
+  ROW_STAGGER_MS,
+  TIP_COLUMN,
+  VERDICT_MS,
+  cellDelayMs,
+} from '@/games/revealChoreography'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -25,7 +31,9 @@ const guess = (userId: string, revealDelayMs: number): RevealGuess => ({
 })
 
 /** Mine is on the wheel from the start; the other two land 120 ms apart. */
-const GUESSES = [guess('me', 1945), guess('fry', 1945), guess('leela', 2065)]
+/** As `GuessHueGame` times them: mine first, the others after the verdict. */
+const landing = (tick: number) => cellDelayMs(tick, TIP_COLUMN, 3)
+const GUESSES = [guess('me', landing(0)), guess('fry', landing(1)), guess('leela', landing(2))]
 
 function mountReveal(props: Partial<InstanceType<typeof GuessHueReveal>['$props']> = {}) {
   return mount(GuessHueReveal, {
@@ -65,7 +73,7 @@ describe('GuessHueReveal', () => {
     vi.restoreAllMocks()
   })
 
-  it('plays my verdict when the results start landing', () => {
+  it('plays my verdict with my row, the first to land', () => {
     mountReveal({ won: false })
     vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
     expect(playVerdict).not.toHaveBeenCalled()
@@ -128,14 +136,22 @@ describe('GuessHueReveal', () => {
   describe('markers', () => {
     it('knocks once for every other player, as their marker lands', () => {
       mountReveal({ guesses: GUESSES })
-      vi.advanceTimersByTime(1944)
+      vi.advanceTimersByTime(landing(1) - 1)
       expect(playMarker).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
       expect(playMarker).toHaveBeenCalledOnce()
 
-      vi.advanceTimersByTime(120)
+      vi.advanceTimersByTime(ROW_STAGGER_MS)
       expect(playMarker).toHaveBeenCalledTimes(2)
+    })
+
+    it('knocks only once my verdict has rung out', () => {
+      mountReveal({ guesses: GUESSES })
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + VERDICT_MS - 1)
+      expect(playVerdict).toHaveBeenCalledOnce()
+
+      expect(playMarker).not.toHaveBeenCalled()
     })
 
     it('does not knock for mine: it is the knob, already there', () => {

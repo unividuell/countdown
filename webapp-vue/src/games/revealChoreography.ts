@@ -32,6 +32,13 @@ export const SOLUTION_DELAY_MS = 900
 /** Beat 4: the results start landing, row by row with their marker. */
 export const RESULTS_DELAY_MS = 1900
 
+/**
+ * How long the verdict sounds, from its call to the last knock's ring (`ui/verdictSound`). My row
+ * lands with it, the others' only once it has rung out: no marker's knock sounds into it
+ * (Farbausmalung).
+ */
+export const VERDICT_MS = 550
+
 export const FADE_MS = 300
 
 /** Beat 3 writes the scoreboard's head at the same moment the solution appears. */
@@ -68,6 +75,8 @@ export function headCellDelayMs(row: number, column: number): number {
  * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the picture. One
  * function for both is the whole point of the coupling: there is no second timetable to drift.
  * `resultsDelayMs` moves the whole cascade, for a picture that runs past beat 4 (Augenmaß's count).
+ *
+ *   tick 0 (mine) ─ VERDICT_MS ─ tick 1 ─ rowStagger ─ tick 2 ─ …
  */
 export function cellDelayMs(
   tick: number,
@@ -75,19 +84,20 @@ export function cellDelayMs(
   rowCount: number,
   resultsDelayMs = RESULTS_DELAY_MS,
 ): number {
-  return resultsDelayMs + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
+  const rowStart = tick === 0 ? 0 : VERDICT_MS + (tick - 1) * rowStagger(rowCount)
+
+  return resultsDelayMs + rowStart + column * CELL_STAGGER_MS
 }
 
 /**
- * Which tick a row borrows its timing from. Every row rides its own rank — except the viewer's.
+ * Which tick a row rides. Mine is first and alone: it lands with the verdict, which is the signal
+ * for my points. The others follow in rank order. Without a row of mine the first tick stays empty,
+ * so every table keeps one timetable.
  *
- * My own marker is already on the picture when the reveal starts, so a row appearing with it would
- * say „I am not the best“ from its slot alone, before a single rival had been shown. Mine therefore
- * waits for the first foreign marker: rank 1 when I am rank 0, rank 0 otherwise. Alone in the round
- * there is nothing to give away.
+ *   ranks 0 1 2 3, mine 2  →  ticks 1 2 0 3
  */
-export function tickOfRow(rank: number, myRank: number | null, rowCount: number): number {
-  if (myRank === null || rank !== myRank) return rank
-  if (rowCount <= 1) return 0
-  return myRank === 0 ? 1 : 0
+export function tickOfRow(rank: number, myRank: number | null): number {
+  if (rank === myRank) return 0
+
+  return myRank !== null && rank > myRank ? rank : rank + 1
 }

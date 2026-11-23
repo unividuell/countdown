@@ -217,7 +217,7 @@ describe('scoreRows', () => {
     })
   })
 
-  it('stamps the reveal tick, my own row waiting for the first rival', () => {
+  it('stamps the reveal tick, my own row first', () => {
     const rows = rowsOf(
       [
         entry({ userId: 'me', outcome: outcome(0.1) }),
@@ -228,7 +228,7 @@ describe('scoreRows', () => {
     )
 
     expect(rows.map((row) => [row.userId, row.tick])).toEqual([
-      ['me', 1],
+      ['me', 0],
       ['b', 1],
       ['c', 2],
     ])

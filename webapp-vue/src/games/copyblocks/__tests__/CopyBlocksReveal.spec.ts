@@ -374,7 +374,7 @@ describe('CopyBlocksReveal', () => {
       vi.restoreAllMocks()
     })
 
-    it('plays mine when the results start landing', () => {
+    it('plays mine with my row, the first to land', () => {
       mountReveal({ animate: true, won: true })
       vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()

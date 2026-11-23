@@ -131,7 +131,7 @@ describe('scoreRows', () => {
   })
 
   /** My own row waits for the first foreign one — the shared choreography's rule. */
-  it('gives my own row the tick of the first row that is not mine', () => {
+  it('gives my own row the first tick, the others after it', () => {
     const rows = scoreRows({
       entries: [
         gameEntry({ userId: 'mine', guess: { startIndex: 5 }, points: 3 }),
@@ -142,7 +142,7 @@ describe('scoreRows', () => {
       mineUserId: 'mine',
     })
 
-    expect(rows[0]!.tick).toBe(1)
+    expect(rows[0]!.tick).toBe(0)
     expect(rows[1]!.tick).toBe(1)
   })
 })

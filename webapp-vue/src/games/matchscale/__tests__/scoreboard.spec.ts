@@ -186,7 +186,7 @@ describe('scoreboardRows', () => {
     expect(rows.map((row) => row.userId)).toEqual(['c', 'a', 'b'])
   })
 
-  it('gives each row its rank as a tick, and holds mine back to the first foreign marker', () => {
+  it('lands mine first, the others after it in rank order', () => {
     const rows = rowsOf(
       [
         entry({ userId: 'far', outcome: { scale: 1, deviation: 0.9, withinTolerance: null } }),
@@ -197,7 +197,7 @@ describe('scoreboardRows', () => {
     )
 
     expect(rows.map((row) => [row.userId, row.tick])).toEqual([
-      ['near', 0],
+      ['near', 1],
       ['me', 0],
       ['far', 2],
     ])

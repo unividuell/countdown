@@ -158,7 +158,7 @@ describe('PlacePatchReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the results start landing', () => {
+    it('plays mine with my row, the first to land', () => {
       mountReveal([row({ userId: 'mine' })], true, false)
       vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()

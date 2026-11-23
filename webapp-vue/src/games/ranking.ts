@@ -14,7 +14,7 @@ export function withTicks<Row extends { userId: string }>(
   const myRank = ranked.findIndex((row) => row.userId === mineUserId)
   return ranked.map((row, rank) => ({
     ...row,
-    tick: tickOfRow(rank, myRank === -1 ? null : myRank, ranked.length),
+    tick: tickOfRow(rank, myRank === -1 ? null : myRank),
   }))
 }
 

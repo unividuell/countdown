@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
-import { HEAD_DELAY_MS, RESULTS_DELAY_MS } from '@/games/revealChoreography'
+import { HEAD_DELAY_MS, RESULTS_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
 import type { ScoreboardColumn, ScoreboardRow } from '@/games/scoreboardColumns'
 import { announceResults } from '@/ui/resultsLanding'
 
@@ -357,7 +357,7 @@ describe('RevealScoreboard', () => {
     ])
 
     const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
-    expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + 120}ms`)
+    expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + VERDICT_MS}ms`)
   })
 
   it('lands the rows later when the game asks', async () => {
@@ -434,7 +434,7 @@ describe('RevealScoreboard', () => {
       expect(wrapper.get('tbody th').classes()).toContain('opacity-100')
       expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('0ms')
       const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
-      expect(second.element.style.transitionDelay).toBe('120ms')
+      expect(second.element.style.transitionDelay).toBe(`${VERDICT_MS}ms`)
       expect(announceResults).toHaveBeenCalledOnce()
     })
 

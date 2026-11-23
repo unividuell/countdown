@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { bodies, graph, resetGraph, sound, started } from './fakeGraph'
+import { VERDICT_MS } from '@/games/revealChoreography'
 import { playVerdict } from '../verdictSound'
 
 vi.mock('@/ui/audio', async () => (await import('@/ui/__tests__/fakeGraph')).audioMock)
@@ -23,6 +24,21 @@ describe('playVerdict', () => {
       { hz: 220, at: 0.15 },
     ])
   })
+
+  it.each([true, false])(
+    'falls silent within VERDICT_MS, lookahead included (won: %s)',
+    async (won) => {
+      // The fake graph schedules at once; the real one 50 ms ahead.
+      const { START_LOOKAHEAD_SECONDS } =
+        await vi.importActual<typeof import('@/ui/audio')>('@/ui/audio')
+      playVerdict(won)
+
+      const ends = started.flatMap((oscillator) =>
+        oscillator.stop.mock.calls.map(([at]) => at as number),
+      )
+      expect(START_LOOKAHEAD_SECONDS + Math.max(...ends)).toBeLessThanOrEqual(VERDICT_MS / 1000)
+    },
+  )
 
   it('stop silences what has not sounded', () => {
     playVerdict(true).stop()

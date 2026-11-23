@@ -10,17 +10,24 @@ import {
   ROW_STAGGER_MS,
   tickOfRow,
   TYPE_BUDGET_MS,
+  VERDICT_MS,
 } from '@/games/revealChoreography'
 
 describe('the reveal schedule', () => {
-  it('walks a row left to right and the rows top to bottom', () => {
+  it('lands my row alone at the results beat, left to right', () => {
     expect(cellDelayMs(0, 0, 3)).toBe(RESULTS_DELAY_MS)
     expect(cellDelayMs(0, 3, 3)).toBe(RESULTS_DELAY_MS + 3 * CELL_STAGGER_MS)
-    expect(cellDelayMs(2, 0, 3)).toBe(RESULTS_DELAY_MS + 2 * ROW_STAGGER_MS)
+  })
+
+  it('lets the others follow top to bottom once the verdict has rung out', () => {
+    expect(cellDelayMs(1, 0, 3)).toBe(RESULTS_DELAY_MS + VERDICT_MS)
+    expect(cellDelayMs(3, 0, 4)).toBe(RESULTS_DELAY_MS + VERDICT_MS + 2 * ROW_STAGGER_MS)
   })
 
   it('a later results beat moves the whole cascade', () => {
-    expect(cellDelayMs(2, 3, 3, 2500)).toBe(2500 + 2 * ROW_STAGGER_MS + 3 * CELL_STAGGER_MS)
+    expect(cellDelayMs(2, 3, 3, 2500)).toBe(
+      2500 + VERDICT_MS + ROW_STAGGER_MS + 3 * CELL_STAGGER_MS,
+    )
   })
 
   it('overlaps the cascades: a row starts before the row above it has finished', () => {
@@ -49,26 +56,20 @@ describe('the reveal schedule', () => {
 })
 
 describe('tickOfRow', () => {
-  it('gives every other row its own rank', () => {
-    expect(tickOfRow(0, 2, 4)).toBe(0)
-    expect(tickOfRow(3, 2, 4)).toBe(3)
+  // The verdict is the signal for my points: my row lands with it, alone, and nobody else's row
+  // or marker knock sounds into it.
+  it('gives my row the first tick, whatever its rank', () => {
+    expect(tickOfRow(3, 3)).toBe(0)
+    expect(tickOfRow(0, 0)).toBe(0)
   })
 
-  it('never lets my row appear before the first foreign marker', () => {
-    // My marker has been on the wheel since the crossfade, so a row in slot four would say
-    // "not the best" while the picture still shows a single guess.
-    expect(tickOfRow(3, 3, 4)).toBe(0)
-    // As rank 0 the best foreign guess is rank 1, so that is when my row may land.
-    expect(tickOfRow(0, 0, 4)).toBe(1)
+  it('lets the others follow in rank order', () => {
+    expect([0, 1, 3].map((rank) => tickOfRow(rank, 2))).toEqual([1, 2, 3])
   })
 
-  it('has nothing to give away when I guessed alone', () => {
-    expect(tickOfRow(0, 0, 1)).toBe(0)
-  })
-
-  it('leaves every row alone when none of them is mine', () => {
-    expect(tickOfRow(0, null, 3)).toBe(0)
-    expect(tickOfRow(2, null, 3)).toBe(2)
+  it('leaves the first tick empty when no row is mine', () => {
+    expect(tickOfRow(0, null)).toBe(1)
+    expect(tickOfRow(2, null)).toBe(3)
   })
 })
 

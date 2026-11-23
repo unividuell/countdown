@@ -21,8 +21,8 @@ export interface ScoreboardRow {
   /** `mm:ss`; absent or `null` where the round did not score on time. */
   durationLabel?: string | null
   /**
-   * Which tick of the reveal cascade this row's timing comes from. Its rank, except for the
-   * viewer's own row — see `tickOfRow`.
+   * Which tick of the reveal cascade this row's timing comes from: the viewer's own first, the
+   * others in rank order — see `tickOfRow`.
    */
   tick: number
 }
