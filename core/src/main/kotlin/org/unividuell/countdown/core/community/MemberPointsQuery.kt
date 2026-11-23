@@ -18,8 +18,11 @@ interface MemberPointsQuery {
     fun standings(communityId: UUID, viewerId: UUID, userIds: Collection<UUID>): Map<UUID, MemberPoints>
 }
 
-/** [live] is null both when the viewer may not see it and when the member has not played the round. */
-data class MemberPoints(val stable: Int, val live: LivePoints?)
+/**
+ * [live] is null both when the viewer may not see it and when the member has not played the round.
+ * [streak] is the rounds submitted without a gap — same window and live gate as [live].
+ */
+data class MemberPoints(val stable: Int, val live: LivePoints?, val streak: Int)
 
 /**
  * The running round's points, and whether they can still move.

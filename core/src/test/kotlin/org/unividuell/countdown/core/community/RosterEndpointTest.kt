@@ -62,8 +62,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 3, live = null),
-            bob to MemberPoints(stable = 10, live = null),
+            alice to MemberPoints(stable = 3, live = null, streak = 0),
+            bob to MemberPoints(stable = 10, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -88,8 +88,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         // bob leads on stable points, alice overtakes him once the live round counts.
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 8, live = LivePoints(points = 5, provisional = true)),
-            bob to MemberPoints(stable = 10, live = null),
+            alice to MemberPoints(stable = 8, live = LivePoints(points = 5, provisional = true), streak = 0),
+            bob to MemberPoints(stable = 10, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -110,7 +110,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false)))
+            mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false), streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }
@@ -128,7 +128,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 3, live = null))
+            mapOf(alice to MemberPoints(stable = 3, live = null, streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }
@@ -148,8 +148,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 0, live = null),
-            bob to MemberPoints(stable = 0, live = null),
+            alice to MemberPoints(stable = 0, live = null, streak = 0),
+            bob to MemberPoints(stable = 0, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -170,8 +170,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 0, live = null),
-            bob to MemberPoints(stable = 0, live = null),
+            alice to MemberPoints(stable = 0, live = null, streak = 0),
+            bob to MemberPoints(stable = 0, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -189,7 +189,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         every { userQuery.findAllById(any()) } returns
             listOf(User(id = alice, subject = "1", githubLogin = "amy", bgColorHex = null))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 0, live = null))
+            mapOf(alice to MemberPoints(stable = 0, live = null, streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }

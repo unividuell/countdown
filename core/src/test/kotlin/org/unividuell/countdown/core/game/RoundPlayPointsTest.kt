@@ -96,6 +96,32 @@ class RoundPlayPointsTest(
         plays.save(requireNotNull(plays.findById(playId).orElse(null)).copy(points = points))
     }
 
+    /** A round that exists but nobody has touched. */
+    private fun announced(community: Community, roundNumber: Int) {
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        store.announce(
+            edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+            params = mapper.readTree("""{"hue":1.0}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = at,
+        )
+    }
+
+    /** A round the user looked at but did not submit: a play row without a guess. */
+    private fun opened(community: Community, roundNumber: Int, user: UUID) {
+        val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
+        val round = store.find(edition = edition, roundNumber = roundNumber) ?: store.announce(
+            edition = edition, roundNumber = roundNumber, gameType = "guess-hue",
+            params = mapper.readTree("""{"hue":1.0}"""),
+            award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = at,
+        )
+        plays.revealOrCount(roundGameId = requireNotNull(round.id), userId = user, revealedAt = at)
+    }
+
+    private fun streak(community: Community, of: UUID, viewer: UUID): Int =
+        points.standings(
+            communityId = requireNotNull(community.id), viewerId = viewer, userIds = listOf(of),
+        )[of]!!.streak
+
     @Test
     fun `a community without any played round scores zero rather than nothing`() {
         val (community, owner) = aCommunity("Points Empty")
@@ -246,5 +272,93 @@ class RoundPlayPointsTest(
         )
 
         standings[ownerId].shouldNotBeNull().stable shouldBe 0
+    }
+
+    @Test
+    fun `a community without any played round has no streak`() {
+        val (community, owner) = aCommunity("Streak Empty")
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 0
+    }
+
+    @Test
+    fun `consecutive finished rounds count`() {
+        val (community, owner) = aCommunity("Streak Run")
+        val current = currentRoundNumberOf(community)
+        (1..3).forEach { scored(community = community, roundNumber = current - it, user = owner, points = 1) }
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 3
+    }
+
+    @Test
+    fun `an announced round without my submission breaks it`() {
+        val (community, owner) = aCommunity("Streak Announced")
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 1)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 1)
+        announced(community = community, roundNumber = current - 3)
+        scored(community = community, roundNumber = current - 4, user = owner, points = 1)
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 2
+    }
+
+    @Test
+    fun `opening a round without submitting breaks it`() {
+        val (community, owner) = aCommunity("Streak Opened")
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 1)
+        opened(community = community, roundNumber = current - 2, user = owner)
+        scored(community = community, roundNumber = current - 3, user = owner, points = 1)
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 1
+    }
+
+    @Test
+    fun `giving up counts`() {
+        val (community, owner) = aCommunity("Streak Give Up")
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 0)
+        scored(community = community, roundNumber = current - 2, user = owner, points = 1)
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 2
+    }
+
+    @Test
+    fun `a round without a game neither counts nor breaks`() {
+        val (community, owner) = aCommunity("Streak Gap")
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current - 1, user = owner, points = 1)
+        scored(community = community, roundNumber = current - 3, user = owner, points = 1)
+
+        streak(community = community, of = owner, viewer = owner) shouldBe 2
+    }
+
+    @Test
+    fun `the running round counts only once the viewer submitted it`() {
+        val (community, a) = aCommunity("Streak Live Gate")
+        val b = aUser()
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current, user = a, points = 1)
+        scored(community = community, roundNumber = current - 1, user = a, points = 1)
+        scored(community = community, roundNumber = current - 1, user = b, points = 1)
+
+        val hidden = streak(community = community, of = a, viewer = b)
+        scored(community = community, roundNumber = current, user = b, points = 1)
+        val shown = streak(community = community, of = a, viewer = b)
+
+        hidden shouldBe 1
+        shown shouldBe 2
+    }
+
+    @Test
+    fun `an unplayed running round never breaks it`() {
+        val (community, a) = aCommunity("Streak Running Unplayed")
+        val viewer = aUser()
+        val current = currentRoundNumberOf(community)
+        scored(community = community, roundNumber = current - 1, user = a, points = 1)
+        scored(community = community, roundNumber = current - 2, user = a, points = 1)
+        scored(community = community, roundNumber = current, user = viewer, points = 1)
+
+        streak(community = community, of = a, viewer = viewer) shouldBe 2
     }
 }

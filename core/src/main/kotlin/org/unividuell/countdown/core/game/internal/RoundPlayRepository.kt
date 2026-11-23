@@ -168,4 +168,11 @@ interface RoundPlayRepository : CrudRepository<RoundPlay, UUID> {
         """,
     )
     fun pointsOf(editionId: UUID, userIds: Collection<UUID>): List<PlayPoints>
+
+    /**
+     * Every round of one run that has a game, played or not — the streak's yardstick: a round
+     * nobody opened is a gap the member did not cause, so only these can break a streak.
+     */
+    @Query("SELECT round_number FROM game.round_games WHERE edition_id = :editionId")
+    fun roundNumbersOf(editionId: UUID): List<Int>
 }
