@@ -406,6 +406,16 @@ describe('lab page', () => {
     expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=TWO')
   })
 
+  it('carries the ramp into the switch-player return path', async () => {
+    setQuery({ seed: '42', phase: 'ONE', ramp: '1' })
+    await mountPage()
+
+    const href = tool('lab-switch-player').attributes('href')
+    const redirect = new URL(href!, 'https://example.test').searchParams.get('redirect')
+
+    expect(redirect).toBe('/c/team/lab/stub?seed=42&phase=ONE&ramp=1')
+  })
+
   it('switches player on W, back to the same seed and phase', async () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { assign } as unknown as Location)

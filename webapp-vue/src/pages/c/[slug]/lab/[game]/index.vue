@@ -63,7 +63,9 @@ const phase = computed<LabPhase>(() => phaseFrom(route.query))
 const ramp = computed(() => rampFrom(route.query))
 
 // Where a player switch comes back to: phase included, or the other tester's phase-two round is lost.
-const returnPath = computed(() => `${route.path}?seed=${seed.value}&phase=${phase.value}`)
+const returnPath = computed(
+  () => `${route.path}?seed=${seed.value}&phase=${phase.value}${ramp.value ? '&ramp=1' : ''}`,
+)
 
 const round = ref<LabRoundResponse | null>(null)
 /** The lab round's assets by name, the same shape a real round hands its game. */
