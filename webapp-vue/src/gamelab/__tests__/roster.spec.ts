@@ -57,6 +57,7 @@ describe('labRoster', () => {
         fullName: 'Clemens',
         bgColorHex: '#123456',
         points: { stable: 0 },
+        streak: 0,
       },
     ])
   })
