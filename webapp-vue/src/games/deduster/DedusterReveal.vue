@@ -14,6 +14,7 @@ import type { DedusterRow } from './scoreboard'
 import type { DedusterPayload } from './types'
 import { playRatchet } from '@/ui/ratchetSound'
 import { useSoundStage } from '@/ui/useSoundAwake'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 
 const props = defineProps<{
   payload: DedusterPayload
@@ -22,6 +23,9 @@ const props = defineProps<{
   live: boolean
   animate: boolean
 }>()
+
+// The board sounded the verdict as the run ended: the reveal only lands the rows.
+provideRevealTimeline({ animate: props.animate, won: () => null, judged: 'before' })
 
 const tiles = computed(() => props.payload.cols * props.payload.rows)
 const selectedUserId = ref<string | null>(null)
@@ -145,7 +149,6 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
     <DedusterScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       :interval-ms="props.payload.intervalMs"
       :tiles="tiles"

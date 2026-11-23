@@ -6,7 +6,7 @@ import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
 import MemberRow from '@/members/MemberRow.vue'
-import { SPOILER_HOLD_MS } from '@/members/useRoster'
+import { announceResults } from '@/ui/resultsLanding'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
@@ -253,8 +253,8 @@ describe('lab page', () => {
     expect(members.map((m) => [m.userId, m.points])).toEqual([['auth-me', { stable: 0 }]])
   })
 
-  // Same hold as the community page's `refreshAfterGuess`: the row moves after the reveal.
-  it('holds the member row back after a guess, then shows the new points', async () => {
+  // Same hold as the community page's `refreshAfterGuess`: the row moves with the verdict.
+  it('holds the member row back after a guess, until the reveal’s results land', async () => {
     const w = await mountPage()
     const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
     vi.mocked(api.submitLabGuess).mockResolvedValueOnce({ ...round, me } as never)
@@ -264,7 +264,8 @@ describe('lab page', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toBeUndefined()
 
-    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
+    announceResults()
+    await vi.advanceTimersByTimeAsync(0)
     expect(w.getComponent(MemberRow).props('members')[0]!.points.live).toEqual({
       points: 1,
       provisional: false,

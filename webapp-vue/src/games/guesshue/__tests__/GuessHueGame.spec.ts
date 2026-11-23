@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
-import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
+import GuessHueScoreboard from '@/games/guesshue/GuessHueScoreboard.vue'
 import type { GuessHuePayload } from '@/games/guesshue/types'
 import type { GameProps } from '@/games/GameProps'
 import type { GameEntry } from '@/games/GameEntry'
@@ -400,8 +400,8 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
     expect(markerDelay[1]).toBe(tipDelay[0])
   })
 
-  it('never lands my row before the first foreign marker', () => {
-    // I am rank 1 of 2, so my row rides tick 0 — the moment the leader's marker arrives.
+  it('lands my row first, the leader once my verdict has rung out', () => {
+    // I am rank 1 of 2: my row rides tick 0 with the verdict, the leader's tick 1 after it.
     const w = spentRound({
       entries: [
         entry('me', 214.5, '#3366cc', { outcome: { deviationDeg: 40 } }),
@@ -409,12 +409,12 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
       ],
     })
 
-    const rows = w.findAll('tbody tr')
-    const nameDelay = (index: number) =>
-      rows[index]!.get<HTMLElement>('th').element.style.transitionDelay
+    const rows = w.getComponent(GuessHueScoreboard).props('rows')
 
-    expect(nameDelay(0)).toBe(`${RESULTS_DELAY_MS}ms`)
-    expect(nameDelay(1)).toBe(`${RESULTS_DELAY_MS}ms`)
+    expect(rows.map((row) => [row.userId, row.tick])).toEqual([
+      ['near', 1],
+      ['me', 0],
+    ])
   })
 
   it('keeps an unrankable guess in the picture and out of the table', () => {

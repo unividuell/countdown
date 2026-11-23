@@ -7,15 +7,13 @@
  *
  *   selection ─▶ shownBoard ─▶ turn (TURN_MS) ─▶ water, one cell per step ─▶ end sound + puddles
  *                                    my first run only: end sound silent ─▶ VERDICT_GAP_MS ─▶ verdict
+ *                                                                                   + the table's rows
  *
- * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
+ * The very first picture waits for the story beat; a still timeline lands on the end at once.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useSoundStage } from '@/ui/useSoundAwake'
-import { useRevealArming } from '@/ui/useRevealArming'
-import { playVerdict, type Verdict } from '@/ui/verdictSound'
-import { inBackground } from '@/ui/motion'
 import PipeGrid from './PipeGrid.vue'
 import { shownBoard } from './reveal'
 import type { ShownBoard } from './reveal'
@@ -100,7 +98,12 @@ let flow: Playing | undefined
 /** Set by the reveal's own first run; a tip replayed by its name plays no verdict. */
 let verdictDue = false
 let verdictBeat: ReturnType<typeof setTimeout> | undefined
-let verdict: Verdict | null = null
+
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const still = timeline.still
+
+/** The water is the story: the verdict waits for its end sound. */
+const story = timeline.hold()
 
 function halt(): void {
   clearTimeout(beat)
@@ -115,7 +118,10 @@ function present(board: ShownBoard | null): void {
   halt()
   water.fill([])
   puddles.value = NO_PUDDLES
-  if (!board) return
+  if (!board) {
+    if (verdictDue) verdictAfter(0)
+    return
+  }
 
   turns.value = turnedTo(board)
   beat = setTimeout(() => {
@@ -135,43 +141,32 @@ function present(board: ShownBoard | null): void {
   }, TURN_MS)
 }
 
-/** The verdict once the end sound, ringing for [endsInS] more, has fallen silent. */
+/** The verdict and the rows once the end sound, ringing for [endsInS] more, has fallen silent. */
 function verdictAfter(endsInS: number): void {
   verdictDue = false
-  const won = props.won
-  if (won === null || inBackground()) return
-
-  verdictBeat = setTimeout(
-    () => {
-      verdict = playVerdict(won)
-    },
-    endsInS * 1000 + VERDICT_GAP_MS,
-  )
+  verdictBeat = setTimeout(story.release, endsInS * 1000 + VERDICT_GAP_MS)
 }
 
 // The board may never have mounted (reload, history, onlooker): decode here, once per page.
 onMounted(preloadSounds)
 
-const still = isStill(props.animate)
-
 if (still && shown.value) showEnd(shown.value)
 
-useRevealArming(still, () => {
-  beat = setTimeout(() => {
+if (!still) {
+  timeline.on('story', () => {
     verdictDue = true
     present(shown.value)
-  }, SOLUTION_DELAY_MS)
-})
+  })
+}
 
+// A name tapped before the verdict: the rows come, the verdict stays unsaid.
 watch(selectedUserId, () => {
   verdictDue = false
+  story.releaseSilently()
   present(shown.value)
 })
 
-onBeforeUnmount(() => {
-  halt()
-  verdict?.stop()
-})
+onBeforeUnmount(halt)
 </script>
 
 <template>
@@ -193,7 +188,6 @@ onBeforeUnmount(() => {
     <TurnPipesScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       @select="select"
     />

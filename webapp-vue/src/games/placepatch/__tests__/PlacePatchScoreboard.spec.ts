@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PlacePatchScoreboard from '@/games/placepatch/PlacePatchScoreboard.vue'
 import type { ScoreRow } from '@/games/placepatch/scoreboard'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
   return {
@@ -21,10 +22,10 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 describe('PlacePatchScoreboard', () => {
   it('needs no hit column — the points say it', () => {
     const wrapper = mount(PlacePatchScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [row({ userId: 'a', correct: true, points: 1 }), row({ userId: 'b', cell: null })],
         live: false,
-        animate: false,
       },
     })
 
@@ -33,10 +34,12 @@ describe('PlacePatchScoreboard', () => {
 
   it('shows the clock only for a timed round', () => {
     const timed = mount(PlacePatchScoreboard, {
-      props: { rows: [row({ userId: 'a', durationLabel: '00:42' })], live: true, animate: false },
+      global: { provide: testTimeline(false).provide },
+      props: { rows: [row({ userId: 'a', durationLabel: '00:42' })], live: true },
     })
     const untimed = mount(PlacePatchScoreboard, {
-      props: { rows: [row({ userId: 'a' })], live: false, animate: false },
+      global: { provide: testTimeline(false).provide },
+      props: { rows: [row({ userId: 'a' })], live: false },
     })
 
     expect(timed.text()).toContain('[mm:ss]')

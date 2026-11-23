@@ -16,8 +16,8 @@
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
-import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
-import { useRevealArming } from '@/ui/useRevealArming'
+import { FADE_MS, headDelayMs } from '@/games/revealChoreography'
+import { useRevealTimeline } from '@/games/revealTimeline'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import { solutionText, toleranceText, type ScoreboardRow, type Truth } from './scoreboard'
 
@@ -25,8 +25,6 @@ const props = defineProps<{
   rows: ScoreboardRow[]
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
-  animate: boolean
   /** Whose outlines are on the field. */
   selected: readonly string[]
   /** The true factor between A and B. */
@@ -35,8 +33,6 @@ const props = defineProps<{
   tolerance: number | null
   /** `null` without B's measure: then factors. */
   truth: Truth | null
-  /** When the rows start landing: after B's growth. */
-  resultsDelayMs?: number
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
@@ -75,13 +71,13 @@ function width(
 }
 
 /**
- * The note arrives with the cell it explains: the tolerance sits in the head block's first row, in
- * the third grid column (name, tip, distance) — the same beat RevealScoreboard gives that cell.
+ * The note arrives with the cell it explains: the tolerance, a fact, so on the verdict, in the head
+ * block's second row and the third grid column (name, tip, distance) — as RevealScoreboard does.
  */
-const { shown } = useRevealArming(isStill(props.animate))
+const shown = useRevealTimeline().reached('verdict')
 const noteFade = {
   transitionDuration: `${FADE_MS}ms`,
-  transitionDelay: `${headCellDelayMs(1, 2)}ms`,
+  transitionDelay: `${headDelayMs(1, 2)}ms`,
 }
 
 const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
@@ -121,8 +117,6 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
       :columns="columns"
       caption="Alle Tipps der Runde, nach Punkten sortiert"
       :live="props.live"
-      :animate="props.animate"
-      :results-delay-ms="props.resultsDelayMs"
     >
       <template #name="{ row }">
         <button

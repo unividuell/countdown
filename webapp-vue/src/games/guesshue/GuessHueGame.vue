@@ -16,7 +16,7 @@ import type { RevealGuess } from './reveal'
 import { scoreboardRows, solutionCell, withinToleranceOf } from './scoreboard'
 import type { ScoreboardRow } from './scoreboard'
 import type { GameEmits, GameProps } from '@/games/GameProps'
-import { TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import { TIP_COLUMN, othersDelayMs } from '@/games/revealChoreography'
 import { useRevealedLive } from '@/games/useRevealedLive'
 import { myWin } from '@/games/verdict'
 import { asGuessHuePayload, hueOf } from './types'
@@ -90,7 +90,8 @@ const guesses = computed<RevealGuess[]>(() => {
         userId: entry.userId,
         hue,
         colorHex: entry.avatar.bgColorHex,
-        revealDelayMs: cellDelayMs(tick, TIP_COLUMN, rowCount),
+        // Within the others' beat; mine (tick 0) is the knob and never lands.
+        revealDelayMs: tick === 0 ? 0 : othersDelayMs(tick, TIP_COLUMN, rowCount),
       },
     ]
   })

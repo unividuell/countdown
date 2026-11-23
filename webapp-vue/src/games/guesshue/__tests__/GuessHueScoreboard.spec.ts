@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueScoreboard from '@/games/guesshue/GuessHueScoreboard.vue'
 import type { ScoreboardRow, ScoreboardSolution } from '@/games/guesshue/scoreboard'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 // The table itself — band, gutters, cascade, live chip, the pulse's nesting — is
 // `RevealScoreboard`'s and tested there. What is guess-hue's own: which columns it asks for, the
@@ -27,11 +28,11 @@ function row(over: Partial<ScoreboardRow> & { userId: string }): ScoreboardRow {
 
 function mountBoard(props: Partial<InstanceType<typeof GuessHueScoreboard>['$props']> = {}) {
   return mount(GuessHueScoreboard, {
+    global: { provide: testTimeline(false).provide },
     props: {
       rows: [row({ userId: 'leela' })],
       solution: SOLUTION,
       live: false,
-      animate: false,
       ...props,
     },
   })

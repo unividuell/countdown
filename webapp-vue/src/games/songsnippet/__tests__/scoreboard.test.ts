@@ -103,9 +103,9 @@ describe('scoreRows', () => {
     expect(rowsOf(unscored, 'CLOSEST_ONLY')[0]!.provisional).toBe(false)
   })
 
-  it('gives each row its rank as a tick, and holds mine back to the first foreign marker', () => {
-    // The cascade that writes the table reads this — see `tickOfRow`. My own row may not land
-    // first, or its slot alone would say „I am not the best“ before a single rival was shown.
+  it('lands mine first, the others after it in rank order', () => {
+    // The cascade that writes the table reads this — see `tickOfRow`. My own row lands first,
+    // alone, with the verdict; the others once it has rung out.
     const rows = rowsOf(
       [
         gameEntry({ userId: 'last', points: 0, stage: 4 }),
@@ -116,9 +116,8 @@ describe('scoreRows', () => {
       'me',
     )
 
-    // Mine borrows rank 0's tick, so it lands with the winner rather than announcing itself.
     expect(rows.map((row) => [row.userId, row.tick])).toEqual([
-      ['best', 0],
+      ['best', 1],
       ['me', 0],
       ['last', 2],
     ])

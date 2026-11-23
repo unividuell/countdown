@@ -37,13 +37,13 @@ import {
 } from '@/gamelab/api'
 import type { GameEntry } from '@/games/GameEntry'
 import MemberRow from '@/members/MemberRow.vue'
-import { SPOILER_HOLD_MS } from '@/members/useRoster'
 import type { RoundReview } from '@/rounds/review'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundSurface from '@/ui/RoundSurface.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { isEditableTarget } from '@/ui/editableTarget'
 import { prefersReducedMotion } from '@/ui/motion'
+import { afterResultsLand } from '@/ui/resultsLanding'
 import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
 import type { RampScene } from '@/ui/ramp/posterText'
@@ -211,25 +211,25 @@ async function guess(value: unknown): Promise<void> {
 
 /**
  * The product's member row, fed from the lab round. Every response replaces it at once, except the
- * one a guess brings: that waits [SPOILER_HOLD_MS], as `useRoster.refreshAfterGuess` does on the
- * community page, so the row's reorder lands after the game's reveal rather than into it.
+ * one a guess brings: that waits for the reveal's results to land, as `useRoster.refreshAfterGuess`
+ * does on the community page, so the row's reorder comes with the verdict rather than before it.
  */
 const rosterMembers = ref<RosterMemberResponse[]>([])
 let holdRoster = false
-let rosterHold: ReturnType<typeof setTimeout> | undefined
+let cancelRosterHold: (() => void) | undefined
 
 watch(round, (current) => {
   if (!current) return
   const next = labRoster(current, user.value)
-  clearTimeout(rosterHold)
+  cancelRosterHold?.()
   if (holdRoster && !prefersReducedMotion()) {
-    rosterHold = setTimeout(() => (rosterMembers.value = next), SPOILER_HOLD_MS)
+    cancelRosterHold = afterResultsLand(() => (rosterMembers.value = next))
   } else {
     rosterMembers.value = next
   }
   holdRoster = false
 })
-onBeforeUnmount(() => clearTimeout(rosterHold))
+onBeforeUnmount(() => cancelRosterHold?.())
 
 /** Voluntary stage advance — same wrapping as `guess`, since `skipLabStage` also carries extra
  * arguments beyond `run`'s four-argument action shape. */

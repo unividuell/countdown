@@ -7,6 +7,7 @@ import { formatDifference, formatShare } from '@/games/paintratio/scoreboard'
 import type { ScoreRow } from '@/games/paintratio/scoreboard'
 import type { Stroke } from '@/games/paintratio/types'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 enableAutoUnmount(afterEach)
 
@@ -28,17 +29,22 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 }
 
 function mountBoard(rows: ScoreRow[], over: Record<string, unknown> = {}) {
-  return mount(PaintRatioScoreboard, {
+  const { animate = false, ...props } = over
+  const timeline = testTimeline(animate === true)
+  const wrapper = mount(PaintRatioScoreboard, {
     props: {
       rows,
       live: false,
-      animate: false,
       selected: [KOLLEKTIV],
       targetRatio: 0.4234,
       tolerance: 0.05,
-      ...over,
+      ...props,
     },
+    global: { provide: timeline.provide },
   })
+  timeline.arm()
+
+  return wrapper
 }
 
 describe('PaintRatioScoreboard', () => {
@@ -164,7 +170,7 @@ describe('PaintRatioScoreboard', () => {
       ])
     })
 
-    it('appears with the head, when the solution does', async () => {
+    it('appears with the verdict: it names the target', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame'] })
       vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
 
@@ -176,11 +182,13 @@ describe('PaintRatioScoreboard', () => {
       expect(footer(moving).classes()).toContain('opacity-0')
       expect(footer(still).classes()).toContain('opacity-100')
 
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
       await nextTick()
+      expect(footer(moving).classes()).toContain('opacity-0')
 
+      vi.advanceTimersByTime(1)
+      await nextTick()
       expect(footer(moving).classes()).toContain('opacity-100')
-      expect(footer(moving).element.style.transitionDelay).toBe(`${SOLUTION_DELAY_MS}ms`)
     })
   })
 })

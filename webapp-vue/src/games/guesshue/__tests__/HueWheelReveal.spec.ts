@@ -3,14 +3,21 @@ import { mount } from '@vue/test-utils'
 import HueWheelReveal from '@/games/guesshue/HueWheelReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
 import { KNOB_TRACK_FRACTION, trackBoxStyle } from '@/games/guesshue/wheel'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
+import { SOLUTION_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
 
 const GUESSES: RevealGuess[] = [
   { userId: 'me', hue: 214.5, colorHex: '#3366cc', revealDelayMs: 2000 },
   { userId: 'other', hue: 40, colorHex: '#cc3366', revealDelayMs: 2500 },
 ]
 
-function mountWheel(props: Partial<InstanceType<typeof HueWheelReveal>['$props']> = {}) {
-  return mount(HueWheelReveal, {
+/** `animate` is the timeline's, armed at the fake clock's now. */
+function mountWheel(
+  over: Partial<InstanceType<typeof HueWheelReveal>['$props']> & { animate?: boolean } = {},
+) {
+  const { animate = false, ...props } = over
+  const timeline = testTimeline(animate)
+  const wrapper = mount(HueWheelReveal, {
     props: {
       saturation: 0.6,
       lightness: 0.45,
@@ -18,10 +25,13 @@ function mountWheel(props: Partial<InstanceType<typeof HueWheelReveal>['$props']
       toleranceDeg: 10,
       guesses: GUESSES,
       mineUserId: 'me',
-      animate: false,
       ...props,
     },
+    global: { provide: timeline.provide },
   })
+  timeline.arm()
+
+  return wrapper
 }
 
 function setHidden(hidden: boolean): void {
@@ -30,7 +40,9 @@ function setHidden(hidden: boolean): void {
 
 describe('HueWheelReveal', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+    })
     setHidden(false)
   })
 
@@ -157,6 +169,35 @@ describe('HueWheelReveal', () => {
     expect(w.findAll<HTMLElement>('[data-test="hue-marker"]')[0]!.classes()).toContain(
       'opacity-100',
     )
+  })
+
+  it('shows the sector with the verdict, the others once it has rung out', async () => {
+    const w = mountWheel({ animate: true })
+    const sector = () => w.get('[data-test="hue-sector"]').classes()
+    const other = () => w.findAll<HTMLElement>('[data-test="hue-marker"]')[1]!.classes()
+
+    vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+    await w.vm.$nextTick()
+    expect(sector()).toContain('opacity-0')
+
+    vi.advanceTimersByTime(1)
+    await w.vm.$nextTick()
+    expect(sector()).toContain('opacity-100')
+    expect(other()).toContain('opacity-0')
+
+    vi.advanceTimersByTime(VERDICT_MS)
+    await w.vm.$nextTick()
+    expect(other()).toContain('opacity-100')
+  })
+
+  it('grows the band only with the others: it makes room for their markers', async () => {
+    const stacked = [GUESSES[0]!, { userId: 'x', hue: 216, colorHex: '#111111', revealDelayMs: 0 }]
+    const w = mountWheel({ animate: true, guesses: stacked })
+
+    vi.advanceTimersByTime(SOLUTION_DELAY_MS + VERDICT_MS - 1)
+    await w.vm.$nextTick()
+
+    expect(w.get('[data-test="hue-ring"]').attributes('style')).toContain('78%')
   })
 
   it('skips straight to the end under reduced motion', () => {

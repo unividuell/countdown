@@ -2,16 +2,12 @@
 // synthesised, so nothing to load. Without an `AudioContext` it stays silent.
 import { audioGraph, START_LOOKAHEAD_SECONDS, unlockSound } from '@/ui/audio'
 import { gameSoundOn, soundGraph } from '@/ui/soundOutput'
-import { scheduleVerdict } from '@/ui/verdictSound'
 import { knocks } from '@/ui/woodKnock'
 import type { Tone } from './countTones'
 
 export interface Counting {
   stop(): void
 }
-
-/** After the last tick, the verdict. */
-const FINALE_GAP_S = 0.07
 
 /** The board's opening: A knocks, B a fourth higher once it pops in. */
 export const POP_GAP_MS = 220
@@ -24,11 +20,11 @@ const POP_WAKE_LIMIT_MS = 150
 const SILENT: Counting = { stop: () => {} }
 
 /**
- * Schedules every tone at once, on the graph's clock, then the verdict: `won` `null` plays none.
- * `stop` silences what has not sounded. Muted or on a sleeping graph it stays silent: the count
+ * Schedules every tone at once, on the graph's clock. The verdict after it is the reveal
+ * timeline's, at `countEndsInMs`. `stop` silences what has not sounded. Muted or on a sleeping graph it stays silent: the count
  * would sound with the next tap, after B has long arrived.
  */
-export function playCount(tones: readonly Tone[], won: boolean | null): Counting {
+export function playCount(tones: readonly Tone[]): Counting {
   const graph = soundGraph()
   if (!graph || tones.length === 0) return SILENT
 
@@ -36,9 +32,6 @@ export function playCount(tones: readonly Tone[], won: boolean | null): Counting
   const { knock, counting } = knocks(graph)
 
   tones.forEach((tone, i) => knock(at + tone.atS, tone.hz, i === tones.length - 1))
-
-  const finale = at + tones.at(-1)!.atS + FINALE_GAP_S
-  if (won !== null) scheduleVerdict(knock, finale, won)
 
   return counting
 }

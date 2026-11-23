@@ -105,8 +105,8 @@ shell's (light/dark, `ui/colorScheme.ts`, shared `isEditableTarget`): neither la
 ## Product components are fed, not adapted
 
 - **The lab shows the page's `MemberRow` unchanged,** because the row is props-only; the lab maps
-  its entries in `gamelab/roster.ts` and replays the post-guess hold with the exported
-  `SPOILER_HOLD_MS`.
+  its entries in `gamelab/roster.ts` and replays the post-guess hold with `afterResultsLand`
+  (`ui/resultsLanding.ts`), as `useRoster` does.
 - **Before pulling in another product component, check it takes everything as props.** If it loads
   its own data or reads a route, the lab does without it rather than the component growing a lab
   seam.

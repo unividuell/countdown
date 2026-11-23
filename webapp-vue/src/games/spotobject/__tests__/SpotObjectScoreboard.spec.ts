@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpotObjectScoreboard from '../SpotObjectScoreboard.vue'
 import type { ScoreRow } from '../tips'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 // The table itself — band, gutters, cascade, live chip, the pulse's nesting — is
 // `RevealScoreboard`'s and tested there. Weltanschauung brings the least of any game: its tip is a
@@ -22,10 +23,10 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 
 function mountBoard(props: Partial<InstanceType<typeof SpotObjectScoreboard>['$props']> = {}) {
   return mount(SpotObjectScoreboard, {
+    global: { provide: testTimeline(false).provide },
     props: {
       rows: [row({ userId: 'a' })],
       live: false,
-      animate: false,
       ...props,
     },
   })

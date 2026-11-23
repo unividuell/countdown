@@ -18,9 +18,9 @@
  */
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
-import { FADE_MS, headCellDelayMs, isStill } from '@/games/revealChoreography'
+import { FADE_MS } from '@/games/revealChoreography'
+import { useRevealTimeline } from '@/games/revealTimeline'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import { useRevealArming } from '@/ui/useRevealArming'
 import { KOLLEKTIV } from './layers'
 import { formatDifference, formatShare } from './scoreboard'
 import type { ScoreRow } from './scoreboard'
@@ -29,8 +29,6 @@ const props = defineProps<{
   rows: ScoreRow[]
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
-  animate: boolean
   /** The layers on the canvas: user ids and `KOLLEKTIV`. */
   selected: readonly string[]
   /** The Kollektiv's share of the canvas, as a fraction. */
@@ -74,8 +72,8 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
 /** The head's values are the Kollektiv's, so they wear its row's ground, right-aligned like the column. */
 const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface tabular-nums'
 
-const still = isStill(props.animate)
-const { shown } = useRevealArming(still)
+/** The Kollektiv names the target: it judges, so it lands on the verdict. */
+const shown = useRevealTimeline().reached('verdict')
 </script>
 
 <template>
@@ -85,7 +83,6 @@ const { shown } = useRevealArming(still)
       :columns="columns"
       caption="Alle Gemälde der Runde, nach Abweichung sortiert"
       :live="props.live"
-      :animate="props.animate"
     >
       <template #name="{ row }">
         <button
@@ -121,7 +118,7 @@ const { shown } = useRevealArming(still)
       <template #cell-difference="{ row }">{{ row.differenceLabel ?? '—' }}</template>
 
       <!-- The Kollektiv: a row of the table, set apart by a rule, above the units. It appears with
-           the head, when the solution does: it names the target. -->
+           the verdict: it names the target. -->
       <template #foot="{ columns: footColumns }">
         <tr aria-hidden="true">
           <td :colspan="footColumns.length + 2" class="py-1"><hr class="border-outline" /></td>
@@ -132,7 +129,7 @@ const { shown } = useRevealArming(still)
           :class="shown ? 'opacity-100' : 'opacity-0'"
           :style="{
             transitionDuration: `${FADE_MS}ms`,
-            transitionDelay: `${headCellDelayMs(0, 0)}ms`,
+            transitionDelay: '0ms',
           }"
         >
           <!-- The label wraps rather than truncates: it is no player's name, and it is always there. -->

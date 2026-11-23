@@ -17,8 +17,6 @@ const props = defineProps<{
   solution: ScoreboardSolution
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
-  animate: boolean
 }>()
 
 const COLUMNS: ScoreboardColumn<ScoreboardRow>[] = [
@@ -59,7 +57,6 @@ function degrees(value: number): string {
     :columns="COLUMNS"
     caption="Alle Tipps der Runde, nach Abstand zur Lösung sortiert"
     :live="props.live"
-    :animate="props.animate"
   >
     <!-- The solution is nobody's row, so it brings its own surface into the bare head cell. -->
     <template #fact-tip>

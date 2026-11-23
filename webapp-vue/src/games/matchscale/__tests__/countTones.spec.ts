@@ -6,6 +6,7 @@ import {
   SINGLE_TICK_GROW_MS,
   STEP,
   TICK_S,
+  countEndsInMs,
   countTones,
   growEasing,
   growMs,
@@ -13,6 +14,17 @@ import {
   tickCount,
   tickTimes,
 } from '../countTones'
+
+describe('countEndsInMs', () => {
+  it('is the last tone plus the finale’s breath: where the verdict falls', () => {
+    expect(
+      countEndsInMs([
+        { atS: 0, hz: 400 },
+        { atS: 0.058, hz: 416 },
+      ]),
+    ).toBeCloseTo(128)
+  })
+})
 
 describe('tickCount', () => {
   it('counts one tick per step of size, either way', () => {

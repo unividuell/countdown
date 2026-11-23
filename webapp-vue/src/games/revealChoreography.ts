@@ -1,6 +1,6 @@
 /**
- * When a reveal happens, for every game: the beats after the card switches, and the cascade that
- * walks the scoreboard's cells.
+ * The numbers of every reveal: when its beats fall (`revealTimeline` schedules them) and how the
+ * scoreboard's cells walk within a beat.
  *
  * One module rather than one per game, because the coupling is the point: a marker on the picture
  * and its row in the table are the same event, and two copies of these numbers would be two
@@ -26,16 +26,26 @@ export function isStill(animate: boolean): boolean {
   )
 }
 
-/** Beat 3: the solution appears — Guess Hue's tolerance sector, Musterung's possibilities. */
+/** The `story` beat: the solution appears, or a story starts telling it. */
 export const SOLUTION_DELAY_MS = 900
 
-/** Beat 4: the results start landing, row by row with their marker. */
+/**
+ * Where a told solution's window closes: Musterung's possibilities hand the board back before it,
+ * Anspielung's bar finishes its morph by it. No longer a beat of the timeline.
+ */
 export const RESULTS_DELAY_MS = 1900
+
+/**
+ * How long the verdict sounds, from its call to the last knock's ring (`ui/verdictSound`). My row
+ * lands with it, the others' only once it has rung out: no marker's knock sounds into it
+ * (Farbausmalung).
+ */
+export const VERDICT_MS = 550
 
 export const FADE_MS = 300
 
-/** Beat 3 writes the scoreboard's head at the same moment the solution appears. */
-export const HEAD_DELAY_MS = SOLUTION_DELAY_MS
+/** The scoreboard's head, written early enough to stand before the story (`revealTimeline`). */
+export const HEAD_DELAY_MS = 100
 
 /** Between the columns of one row — the typewriter's step. */
 export const CELL_STAGGER_MS = 45
@@ -59,35 +69,30 @@ export function rowStagger(rowCount: number): number {
   return Math.min(ROW_STAGGER_MS, TYPE_BUDGET_MS / Math.max(1, rowCount))
 }
 
-/** A cell of the scoreboard's head. */
-export function headCellDelayMs(row: number, column: number): number {
-  return HEAD_DELAY_MS + row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
+/** A head cell within the `head` beat: row by row, then along the row. */
+export function headDelayMs(row: number, column: number): number {
+  return row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
 }
 
 /**
- * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the picture. One
- * function for both is the whole point of the coupling: there is no second timetable to drift.
- * `resultsDelayMs` moves the whole cascade, for a picture that runs past beat 4 (Augenmaß's count).
- */
-export function cellDelayMs(
-  tick: number,
-  column: number,
-  rowCount: number,
-  resultsDelayMs = RESULTS_DELAY_MS,
-): number {
-  return resultsDelayMs + tick * rowStagger(rowCount) + column * CELL_STAGGER_MS
-}
-
-/**
- * Which tick a row borrows its timing from. Every row rides its own rank — except the viewer's.
+ * A cell of someone else's row within the `others` beat — and, at [TIP_COLUMN], their marker. One
+ * function for both: a marker and its row are the same event. Tick 1 lands with the beat.
  *
- * My own marker is already on the picture when the reveal starts, so a row appearing with it would
- * say „I am not the best“ from its slot alone, before a single rival had been shown. Mine therefore
- * waits for the first foreign marker: rank 1 when I am rank 0, rank 0 otherwise. Alone in the round
- * there is nothing to give away.
+ *   verdict: tick 0 (mine) ─ VERDICT_MS ─ others: tick 1 ─ rowStagger ─ tick 2 ─ …
  */
-export function tickOfRow(rank: number, myRank: number | null, rowCount: number): number {
-  if (myRank === null || rank !== myRank) return rank
-  if (rowCount <= 1) return 0
-  return myRank === 0 ? 1 : 0
+export function othersDelayMs(tick: number, column: number, rowCount: number): number {
+  return (tick - 1) * rowStagger(rowCount) + column * CELL_STAGGER_MS
+}
+
+/**
+ * Which tick a row rides. Mine is first and alone: it lands with the verdict, which is the signal
+ * for my points. The others follow in rank order. Without a row of mine the first tick stays empty,
+ * so every table keeps one timetable.
+ *
+ *   ranks 0 1 2 3, mine 2  →  ticks 1 2 0 3
+ */
+export function tickOfRow(rank: number, myRank: number | null): number {
+  if (rank === myRank) return 0
+
+  return myRank !== null && rank > myRank ? rank : rank + 1
 }

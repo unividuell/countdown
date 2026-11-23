@@ -12,9 +12,11 @@ import type {
   Point,
 } from '@/games/echolocate/types'
 import type { GameEntry } from '@/games/GameEntry'
-import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { FADE_MS, SOLUTION_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -340,6 +342,19 @@ describe('EchoLocateReveal', () => {
       expect(own(wrapper).element.style.transitionDuration).toBe(`${FADE_MS}ms`)
     })
 
+    it('puts the others’ pins on the map only once my verdict has rung out', async () => {
+      useBeats()
+      const wrapper = mountReveal({ animate: true, mineUserId: 'me' })
+
+      vi.advanceTimersByTime(VERDICT_AT_MS)
+      await nextTick()
+      expect(map(wrapper).props('otherPins')).toEqual([])
+
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+      expect(map(wrapper).props('otherPins')).toHaveLength(2)
+    })
+
     it('lets a finger through to the map while my field covers it', () => {
       useBeats()
       const wrapper = mountReveal({ animate: true, mineUserId: 'me' })
@@ -501,7 +516,7 @@ describe('EchoLocateReveal', () => {
 
   describe('verdict', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       vi.mocked(playVerdict).mockClear()
       stopVerdict.mockClear()
     })
@@ -510,26 +525,26 @@ describe('EchoLocateReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the map appears', () => {
+    it('plays mine at the verdict', () => {
       mountReveal({ animate: true, won: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(50)
 
       expect(playVerdict).toHaveBeenCalledExactlyOnceWith(true)
     })
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal({ animate: false, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal({ animate: true, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()
@@ -540,5 +555,29 @@ describe('EchoLocateReveal', () => {
 
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the map lands with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () => mountReveal({ animate: true, mineUserId: 'me', won: true }),
+        mineUserId: 'me',
+        judging: (w) => {
+          const own = w.find<HTMLElement>('[data-test="echo-locate-own"]')
+          return !own.exists() || own.element.style.opacity === '0'
+        },
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })

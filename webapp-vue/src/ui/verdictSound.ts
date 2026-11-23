@@ -18,8 +18,8 @@ export interface Verdict {
 
 const SILENT: Verdict = { stop: () => {} }
 
-/** The verdict from `at` on, on a bus that already plays something: Augenmaß's count ends in it. */
-export function scheduleVerdict(
+/** The verdict from `at` on, on a knock bus. */
+function scheduleVerdict(
   knock: (start: number, hz: number, ring?: boolean) => void,
   at: number,
   won: boolean,

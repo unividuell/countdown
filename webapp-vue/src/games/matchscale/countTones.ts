@@ -56,6 +56,16 @@ export function pitches(count: number, rising: boolean): number[] {
   return rising ? up : up.reverse()
 }
 
+/** After the last tick, a breath, then the verdict. */
+export const FINALE_GAP_S = 0.07
+
+/** When the verdict falls, from the count's first tone: the last tone and the breath after it. */
+export function countEndsInMs(tones: readonly Tone[]): number {
+  const last = tones.at(-1)
+
+  return last === undefined ? 0 : (last.atS + FINALE_GAP_S) * 1000
+}
+
 /** The whole count for B growing from `tip` to `factor`. */
 export function countTones(tip: number, factor: number): Tone[] {
   const count = tickCount(tip, factor)

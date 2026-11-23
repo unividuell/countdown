@@ -4,16 +4,16 @@ import { rankByClock, withTicks } from '@/games/ranking'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 
 describe('withTicks', () => {
-  it('lets every row ride its rank, except mine', () => {
-    const rows = withTicks([{ userId: 'a' }, { userId: 'b' }, { userId: 'c' }], 'a')
+  it('lands mine first, the others after it in rank order', () => {
+    const rows = withTicks([{ userId: 'a' }, { userId: 'b' }, { userId: 'c' }], 'b')
 
-    expect(rows.map((row) => row.tick)).toEqual([1, 1, 2])
+    expect(rows.map((row) => row.tick)).toEqual([1, 0, 2])
   })
 
-  it('is the plain rank without a row of mine', () => {
+  it('leaves the first tick empty without a row of mine', () => {
     const rows = withTicks([{ userId: 'a' }, { userId: 'b' }], null)
 
-    expect(rows.map((row) => row.tick)).toEqual([0, 1])
+    expect(rows.map((row) => row.tick)).toEqual([1, 2])
   })
 })
 
@@ -73,7 +73,7 @@ describe('rankByClock', () => {
     )
 
     expect(rows).toEqual([
-      { userId: 'b', points: 3, tick: 1 },
+      { userId: 'b', points: 3, tick: 0 },
       { userId: 'a', points: 0, tick: 1 },
     ])
   })

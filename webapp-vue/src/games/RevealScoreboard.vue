@@ -31,8 +31,8 @@
  */
 import { computed } from 'vue'
 import { hasDurations } from '@/games/durations'
-import { FADE_MS, cellDelayMs, headCellDelayMs, isStill } from '@/games/revealChoreography'
-import { useRevealArming } from '@/ui/useRevealArming'
+import { CELL_STAGGER_MS, FADE_MS, headDelayMs, othersDelayMs } from '@/games/revealChoreography'
+import { useRevealTimeline } from '@/games/revealTimeline'
 import type { ScoreboardColumn, ScoreboardRow } from './scoreboardColumns'
 
 const props = defineProps<{
@@ -43,12 +43,8 @@ const props = defineProps<{
   caption: string
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
-  animate: boolean
   /** Width of the name column. Omitted, it takes what the fixed columns leave over. */
   nameWidth?: string | undefined
-  /** When the rows start landing, where a game's own reveal runs past `RESULTS_DELAY_MS`. */
-  resultsDelayMs?: number | undefined
 }>()
 
 const clock: ScoreboardColumn<Row> = {
@@ -72,21 +68,39 @@ const bandRow = computed(() => (hasHeadBlock.value ? 2 : 1))
 /** A band row beneath the table whenever a column names its unit. */
 const hasUnits = computed(() => tableColumns.value.some((column) => column.unit !== undefined))
 
-const still = isStill(props.animate)
+/**
+ * The reveal's timeline writes the table: the head on `head`; the facts, which judge, and my row
+ * (tick 0) on `verdict`; everyone else on `others`. Delays count from each beat.
+ */
+const timeline = useRevealTimeline()
+const headReached = timeline.reached('head')
+const verdictReached = timeline.reached('verdict')
+const othersReached = timeline.reached('others')
 
-const { shown } = useRevealArming(still)
-const opacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
+const shownClass = (shown: boolean) => (shown ? 'opacity-100' : 'opacity-0')
+const opacity = computed(() => shownClass(headReached.value))
+const factOpacity = computed(() => shownClass(verdictReached.value))
+
+function landed(row: Row): boolean {
+  return row.tick === 0 ? verdictReached.value : othersReached.value
+}
+
+function rowOpacity(row: Row) {
+  return shownClass(landed(row))
+}
 
 function fade(delayMs: number) {
   return { transitionDuration: `${FADE_MS}ms`, transitionDelay: `${delayMs}ms` }
 }
 
 function head(row: number, column: number) {
-  return fade(headCellDelayMs(row, column))
+  return fade(headDelayMs(row, column))
 }
 
 function body(tick: number, column: number) {
-  return fade(cellDelayMs(tick, column, props.rows.length, props.resultsDelayMs))
+  return fade(
+    tick === 0 ? column * CELL_STAGGER_MS : othersDelayMs(tick, column, props.rows.length),
+  )
 }
 
 function rowGround(row: Row) {
@@ -159,7 +173,7 @@ function pointsLabel(points: number | null): string {
                 v-if="column.fact !== undefined"
                 :id="`${column.key}-fact`"
                 class="bg-inverse-surface px-0.5 text-start text-xs font-normal text-inverse-on-surface transition-opacity"
-                :class="opacity"
+                :class="factOpacity"
                 :style="head(0, at + 1)"
               >
                 {{ column.fact }}
@@ -192,7 +206,7 @@ function pointsLabel(points: number | null): string {
                 v-if="column.fact !== undefined"
                 :headers="`${column.key}-fact`"
                 class="transition-opacity"
-                :class="opacity"
+                :class="factOpacity"
                 :style="head(1, at + 1)"
               >
                 <slot :name="`fact-${column.key}`" />
@@ -258,11 +272,18 @@ function pointsLabel(points: number | null): string {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in props.rows" :key="row.userId">
+        <!-- Inert until it lands: an invisible name is still a button, and a tap would replay
+             someone's tip before the verdict. -->
+        <tr
+          v-for="row in props.rows"
+          :key="row.userId"
+          :data-test="`row-${row.userId}`"
+          :inert="!landed(row)"
+        >
           <th
             scope="row"
             class="truncate px-0.5 text-start font-normal transition-opacity"
-            :class="opacity"
+            :class="rowOpacity(row)"
             :style="[rowGround(row), body(row.tick, 0)]"
           >
             <slot name="name" :row="row">{{ row.name }}</slot>
@@ -272,7 +293,7 @@ function pointsLabel(points: number | null): string {
             :key="column.key"
             :data-test="`cell-${column.key}-${row.userId}`"
             class="transition-opacity"
-            :class="[opacity, cellClass(column, row)]"
+            :class="[rowOpacity(row), cellClass(column, row)]"
             :style="[groundOf(column, row) ?? {}, body(row.tick, at + 1)]"
           >
             <span v-if="column === clock" class="font-mono text-xs">{{
@@ -291,7 +312,7 @@ function pointsLabel(points: number | null): string {
           <td
             data-test="scoreboard-points"
             class="px-px text-end tabular-nums transition-opacity"
-            :class="[opacity, row.provisional ? 'italic' : '']"
+            :class="[rowOpacity(row), row.provisional ? 'italic' : '']"
             :style="[rowGround(row), body(row.tick, pointsColumnIndex)]"
           >
             <span :class="row.provisional ? 'animate-pulse motion-reduce:animate-none' : ''">{{

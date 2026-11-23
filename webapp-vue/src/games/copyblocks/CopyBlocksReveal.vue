@@ -5,13 +5,11 @@
  *
  * The template is drawn through my own inverse fit, so it stands in the coordinates of my build.
  * Beats come from `revealChoreography`: my build as it stood, then the solution marks with one
- * full turn of the field, so every error comes to the front once; the scoreboard carries its own
- * beat.
+ * full turn of the field, so every error comes to the front once. The marks are the judgement, so
+ * they come on the timeline's verdict, with my row, not before.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
-import { useRevealArming } from '@/ui/useRevealArming'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import BlockScene from './BlockScene.vue'
 import CentreButton from './CentreButton.vue'
 import CopyBlocksScoreboard from './CopyBlocksScoreboard.vue'
@@ -45,22 +43,14 @@ const camera = defineModel<Camera>('camera', { required: true })
 const ground = useSurfaceContainer()
 const NO_MARKS: Mark[] = []
 
-const still = isStill(props.animate)
-
-useRevealVerdict(() => props.won, props.animate)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()
 
-const solved = ref(still)
-let solutionTimer: ReturnType<typeof setTimeout> | undefined
+const solved = timeline.reached('verdict')
 
-useRevealArming(still, () => {
-  solutionTimer = setTimeout(() => {
-    solved.value = true
-    spin()
-  }, SOLUTION_DELAY_MS)
-})
+if (!timeline.still) timeline.on('verdict', spin)
 
 let spinFrame = 0
 
@@ -84,10 +74,7 @@ function stopSpin(): void {
   spinFrame = 0
 }
 
-onBeforeUnmount(() => {
-  clearTimeout(solutionTimer)
-  stopSpin()
-})
+onBeforeUnmount(stopSpin)
 
 /** Mine, when there is a tip of mine to show. */
 const own = computed(() => (props.myOutcome ? props.mineUserId : null))
@@ -131,13 +118,13 @@ const solutionField = computed(() => {
   return fieldOf([...(props.myGuess ?? []), ...solution], props.payload.grid)
 })
 
-/** My build's floor until the solution beat, then the solution's — it arrives with the solution. */
+/** My build's floor until the marks, then the solution's — it arrives with the solution. */
 const field = computed(() => (solved.value ? solutionField.value : frame.value))
 
 /** The box beneath the view: on, the errors are marked; off, the tip stands bare. */
 const markErrors = ref(true)
 
-/** Until the solution beat the view shows only the build as it stood. */
+/** Until the marks the view shows only the build as it stood. */
 const marks = computed(() => (solved.value && markErrors.value ? view.value.marks : NO_MARKS))
 </script>
 
@@ -176,7 +163,6 @@ const marks = computed(() => (solved.value && markErrors.value ? view.value.mark
     <CopyBlocksScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       @select="select"
     />

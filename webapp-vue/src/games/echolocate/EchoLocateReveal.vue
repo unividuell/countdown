@@ -10,17 +10,16 @@
  *    Auswertung …
  *
  * Beats come from `revealChoreography`: my own field stands as I left it, then at
- * `SOLUTION_DELAY_MS` the map fades in under it. The scoreboard carries its own beats.
+ * the verdict the map fades in under it. The scoreboard carries its own beats.
  *
  *   ┌──────────────────────┐        ┌──────────────────────┐
  *   │  my pings, rings, pin│  ───▶  │  the map             │
  *   │                      │        │   + my pings, pin    │
  *   └──────────────────────┘        └──────────────────────┘
  */
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { FADE_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
-import { useRevealVerdict } from '@/games/useRevealVerdict'
-import { useRevealArming } from '@/ui/useRevealArming'
+import { computed, ref } from 'vue'
+import { FADE_MS } from '@/games/revealChoreography'
+import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import EchoLocateScoreboard from './EchoLocateScoreboard.vue'
 import type { Wave } from './flow'
@@ -41,7 +40,7 @@ const props = defineProps<{
   won: boolean | null
 }>()
 
-useRevealVerdict(() => props.won, props.animate)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 // The verdict is governed by the header's sound switch, which wakes the graph while it is here.
 useSoundStage()
@@ -92,29 +91,29 @@ const links = computed(() => {
 })
 
 /** Everyone else's pins, each in its player's colour; the chosen player's own are drawn larger. */
+const othersReached = timeline.reached('others')
+
+/** Nobody else's pin before the verdict has rung out: they come with their rows. */
 const otherPins = computed(() =>
-  props.rows
-    .filter((row) => row.userId !== chosen.value?.userId)
-    .flatMap((row) => (row.guess?.pins ?? []).map((at) => ({ at, colorHex: row.colorHex }))),
+  othersReached.value
+    ? props.rows
+        .filter((row) => row.userId !== chosen.value?.userId)
+        .flatMap((row) => (row.guess?.pins ?? []).map((at) => ({ at, colorHex: row.colorHex })))
+    : [],
 )
 
 /**
  * Whether my field stands alone until the solution beat. Asked once, on arrival: without a play
  * of mine, or without beats, the reveal shows the finished map at once.
  */
-const intro = !isStill(props.animate) && own.value !== undefined
+const intro = !timeline.still && own.value !== undefined
 
 const ownField = computed(() => fieldOf(own.value))
 
 const faded = ref(false)
-let solutionTimer: ReturnType<typeof setTimeout> | undefined
 
-// Without an intro there is no beat to arm.
-useRevealArming(!intro, () => {
-  solutionTimer = setTimeout(() => (faded.value = true), SOLUTION_DELAY_MS)
-})
-
-onBeforeUnmount(() => clearTimeout(solutionTimer))
+// The map judges: it shows with the verdict.
+if (intro) timeline.on('verdict', () => (faded.value = true))
 
 /** The same name again takes its play off the map. */
 function select(userId: string): void {
@@ -164,7 +163,6 @@ function select(userId: string): void {
     <EchoLocateScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected="selected"
       :tolerance-radius="props.solution.toleranceRadius"
       @select="select"

@@ -23,8 +23,6 @@ const props = defineProps<{
   rows: ScoreRow[]
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** False when this card was already the reveal on arrival: a reload shows the finished table. */
-  animate: boolean
   /** The player whose pings are on the map. */
   selected: string | null
   /** The tolerance circle's radius; `null` in phase two, where there is no gate. */
@@ -68,7 +66,6 @@ const BUTTON = 'cursor-pointer text-start focus-visible:outline-2 focus-visible:
         : 'Alle Peilungen der Runde, nach Abstand sortiert'
     "
     :live="props.live"
-    :animate="props.animate"
   >
     <!-- A row without a guess has no pings to show: a give-up, or a play that cannot be read. -->
     <template #name="{ row }">

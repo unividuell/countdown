@@ -5,6 +5,7 @@ import type { Ref } from 'vue'
 import SongSnippetScoreboard from '@/games/songsnippet/SongSnippetScoreboard.vue'
 import type { ScoreRow } from '@/games/songsnippet/scoreboard'
 import type { TrackPreview } from '@/games/songsnippet/api'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 interface PlaybackStub {
   positionSeconds: Ref<number>
@@ -66,7 +67,10 @@ function row(overrides: Partial<ScoreRow> & { userId: string }): ScoreRow {
 }
 
 function mountBoard(rows: ScoreRow[], live = false) {
-  return mount(SongSnippetScoreboard, { props: { rows, live, animate: false } })
+  return mount(SongSnippetScoreboard, {
+    global: { provide: testTimeline(false).provide },
+    props: { rows, live },
+  })
 }
 
 // The table itself — band, gutters, cascade, live chip, the pulse's nesting — is

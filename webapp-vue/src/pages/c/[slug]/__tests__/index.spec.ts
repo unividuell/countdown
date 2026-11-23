@@ -20,7 +20,7 @@ import RoundFallback from '@/communities/fallbacks/RoundFallback.vue'
 import RoundHistory from '@/rounds/RoundHistory.vue'
 import type { RoundReview } from '@/rounds/review'
 import { _resetCountdownState } from '@/communities/useCountdown'
-import { SPOILER_HOLD_MS } from '@/members/useRoster'
+import { SPOILER_HOLD_MS, announceResults } from '@/ui/resultsLanding'
 import { useRound } from '@/rounds/useRound'
 import type { RoundStage } from '@/rounds/useRound'
 
@@ -364,16 +364,15 @@ describe('community home', () => {
     ]
 
     await w.findComponent(RoundCard).vm.$emit('guessed')
-    await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS - 1)
+    await vi.advanceTimersByTimeAsync(0)
 
-    expect(getRoster).not.toHaveBeenCalled()
     expect(w.findAll('[data-swarm-item]').map((el) => el.attributes('aria-label'))).toEqual([
       'fry, 3 Punkte',
       'amy, 0 Punkte',
     ])
 
-    await vi.advanceTimersByTimeAsync(1)
-    // The hold expiring only asks; the answer lands a microtask after that tick.
+    // The reveal's results land: the answer, asked at once, shows now.
+    announceResults()
     await vi.advanceTimersByTimeAsync(0)
 
     expect(getRoster).toHaveBeenCalledTimes(1)

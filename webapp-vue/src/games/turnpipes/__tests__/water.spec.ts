@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
 import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
-import { SPOILER_HOLD_MS } from '@/members/useRoster'
+import { SPOILER_HOLD_MS } from '@/ui/resultsLanding'
 import { TURN_MS } from '../turns'
 import { useWaterRun, WATER_RUN_MS, waterStepMs } from '../water'
 
@@ -12,8 +12,13 @@ describe('the pace of the water', () => {
     for (const size of [6, 7, 8]) expect(waterStepMs(size) * size * size).toBeCloseTo(WATER_RUN_MS)
   })
 
-  it('ends before the roster gives the result away, with half a second to spare', () => {
-    expect(SOLUTION_DELAY_MS + TURN_MS + WATER_RUN_MS).toBeLessThanOrEqual(SPOILER_HOLD_MS - 500)
+  // The roster waits for the verdict, which follows the water and its end sound; its ceiling must
+  // not cut in. The longest end sound is dry.mp3, 3.7 s, then a 0.2 s breath.
+  it('leaves room under the roster’s ceiling for the longest end sound and the verdict', () => {
+    // A slow phone's step timers drift; the ceiling keeps a second and a half for that.
+    expect(SOLUTION_DELAY_MS + TURN_MS + WATER_RUN_MS + 3700 + 200).toBeLessThanOrEqual(
+      SPOILER_HOLD_MS - 1500,
+    )
   })
 })
 

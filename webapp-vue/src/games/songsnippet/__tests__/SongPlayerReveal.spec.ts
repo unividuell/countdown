@@ -6,6 +6,8 @@ import type { RoundAssets } from '@/api/assets'
 import SongPlayerReveal from '@/games/songsnippet/SongPlayerReveal.vue'
 import StageBar from '@/games/songsnippet/StageBar.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
+import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 
 interface PlaybackStub {
   positionSeconds: Ref<number>
@@ -60,7 +62,14 @@ function mountPlayer(
   assets: RoundAssets = ASSETS,
   animate = false,
 ) {
-  return mount(SongPlayerReveal, { props: { solution, durations: DURATIONS, assets, animate } })
+  const timeline = testTimeline(animate)
+  const wrapper = mount(SongPlayerReveal, {
+    props: { solution, durations: DURATIONS, assets, animate },
+    global: { provide: timeline.provide },
+  })
+  timeline.arm()
+
+  return wrapper
 }
 
 describe('SongPlayerReveal', () => {
@@ -203,5 +212,27 @@ describe('SongPlayerReveal', () => {
     await w.get('[data-test="stop-solution"]').trigger('click')
 
     expect(playbacks[0]!.stop).toHaveBeenCalled()
+  })
+
+  // The title names the song: it judges, so it comes with the verdict, cover and all.
+  it('covers the title and the cover until the verdict', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const wrapper = mountPlayer(SOLUTION, ASSETS, true)
+      const hidden = () =>
+        ['deezer-link', 'solution-line'].map((id) =>
+          wrapper.get(`[data-test="${id}"]`).classes('opacity-0'),
+        )
+
+      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      await wrapper.vm.$nextTick()
+      expect(hidden()).toEqual([true, true])
+
+      vi.advanceTimersByTime(1)
+      await wrapper.vm.$nextTick()
+      expect(hidden()).toEqual([false, false])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

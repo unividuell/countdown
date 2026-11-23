@@ -4,7 +4,8 @@ import { defineComponent, h, watch } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import * as api from '@/api/communities'
 import type { RosterMemberResponse } from '@/api/types'
-import { SPOILER_HOLD_MS, useRoster } from '../useRoster'
+import { SPOILER_HOLD_MS, announceResults } from '@/ui/resultsLanding'
+import { useRoster } from '../useRoster'
 
 /** useRoster loads on mount, so it needs a host component. */
 function host(slug = 'team') {
@@ -162,40 +163,70 @@ describe('useRoster', () => {
       roster().refreshAfterGuess()
       await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS - 1)
 
-      expect(getRoster).not.toHaveBeenCalled()
+      // Asked at once, so the answer is there when the results land; shown only then.
+      expect(getRoster).toHaveBeenCalledTimes(1)
+      expect(roster().members.value).toHaveLength(1)
     })
 
-    it('takes the new points once the reveal has had its say', async () => {
-      const { roster, getRoster } = await mounted()
+    it('takes the new points as the reveal’s results land', async () => {
+      const { roster } = await mounted()
+
+      roster().refreshAfterGuess()
+      await vi.advanceTimersByTimeAsync(0)
+      announceResults()
+
+      expect(roster().members.value).toHaveLength(2)
+    })
+
+    it('takes them at the ceiling when no reveal says so', async () => {
+      const { roster } = await mounted()
 
       roster().refreshAfterGuess()
       await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
-      // The hold expiring only *asks*; the answer lands a microtask after that tick.
+
+      expect(roster().members.value).toHaveLength(2)
+    })
+
+    it('shows an answer slower than the results the moment it arrives', async () => {
+      const { roster, getRoster } = await mounted()
+      let arrive: (members: RosterMemberResponse[]) => void = () => {}
+      getRoster.mockImplementation(() => new Promise((resolve) => (arrive = resolve)))
+
+      roster().refreshAfterGuess()
+      announceResults()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(roster().members.value).toHaveLength(1)
+
+      arrive([alice, alice])
       await vi.advanceTimersByTimeAsync(0)
 
-      expect(getRoster).toHaveBeenCalledTimes(1)
       expect(roster().members.value).toHaveLength(2)
     })
 
     it('drops a pending hold when the row leaves the page', async () => {
-      const { roster, getRoster, unmount } = await mounted()
+      const { roster, unmount } = await mounted()
 
       roster().refreshAfterGuess()
       unmount()
+      announceResults()
       await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
 
-      expect(getRoster).not.toHaveBeenCalled()
+      expect(roster().members.value).toHaveLength(1)
     })
 
-    it('arms one hold, not two, when a guess is announced twice', async () => {
+    it('lets a second guess replace the first hold', async () => {
       const { roster, getRoster } = await mounted()
+      const answers: ((members: RosterMemberResponse[]) => void)[] = []
+      getRoster.mockImplementation(() => new Promise((resolve) => answers.push(resolve)))
 
       roster().refreshAfterGuess()
-      await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS / 2)
       roster().refreshAfterGuess()
+      announceResults()
+      answers[1]!([alice, alice, alice])
+      answers[0]!([alice, alice])
       await vi.advanceTimersByTimeAsync(SPOILER_HOLD_MS)
 
-      expect(getRoster).toHaveBeenCalledTimes(1)
+      expect(roster().members.value).toHaveLength(3)
     })
 
     // There is no choreography to protect when the visitor has asked for less motion — the

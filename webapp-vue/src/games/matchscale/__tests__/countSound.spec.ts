@@ -14,8 +14,8 @@ const TONES: Tone[] = [
 describe('playCount', () => {
   beforeEach(resetGraph)
 
-  it('knocks each tick, body and overtone, and no verdict without one', () => {
-    playCount(TONES, null)
+  it('knocks each tick, body and overtone — and nothing after: the verdict is the timeline’s', () => {
+    playCount(TONES)
 
     expect(started.map(({ hz, at }) => [hz, at])).toEqual([
       [400, 0],
@@ -25,41 +25,22 @@ describe('playCount', () => {
     ])
   })
 
-  it('a win ends in a rising C major arpeggio, 70 ms after the last tick', () => {
-    playCount(TONES, true)
-    const roots = bodies().slice(2)
-
-    expect(roots.map(({ hz }) => hz)).toEqual([523.25, 659.25, 783.99, 1046.5, 1318.5])
-    expect(roots[0]!.at).toBeCloseTo(0.128)
-    expect(roots[4]!.at).toBeCloseTo(0.128 + 4 * 0.04)
-  })
-
-  it('a loss ends in two falling knocks', () => {
-    playCount(TONES, false)
-
-    expect(
-      bodies()
-        .slice(2)
-        .map(({ hz }) => hz),
-    ).toEqual([311, 220])
-  })
-
-  it('stop silences every voice, the verdict too', () => {
-    playCount(TONES, true).stop()
+  it('stop silences every voice', () => {
+    playCount(TONES).stop()
 
     for (const oscillator of started) expect(oscillator.stop).toHaveBeenCalledTimes(2)
   })
 
   it('stays silent while the graph sleeps: the count would land on the next tap', () => {
     graph.state = 'suspended'
-    playCount(TONES, true)
+    playCount(TONES)
 
     expect(started).toEqual([])
   })
 
   it('stays silent while muted', () => {
     sound.on = false
-    playCount(TONES, true)
+    playCount(TONES)
 
     expect(started).toEqual([])
   })

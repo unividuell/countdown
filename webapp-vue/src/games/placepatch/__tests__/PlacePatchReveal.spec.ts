@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import { TIP_COLUMN, VERDICT_MS, othersDelayMs } from '@/games/revealChoreography'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
 import type { ScoreRow } from '@/games/placepatch/scoreboard'
+import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
+import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
@@ -110,42 +112,45 @@ describe('PlacePatchReveal', () => {
 
   describe('as a live reveal', () => {
     beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
     })
 
     afterEach(() => {
       vi.useRealTimers()
     })
 
-    it('fades the solution and the other tips in, and never mine', async () => {
+    it('fades the solution in with the verdict, the other tips after it, and never mine', async () => {
       const wrapper = mountReveal(
         [
-          row({ userId: 'fry', cell: { x: 1, y: 1 }, tick: 0 }),
-          row({ userId: 'mine', cell: { x: 7, y: 4 }, tick: 1 }),
+          row({ userId: 'fry', cell: { x: 1, y: 1 }, tick: 1 }),
+          row({ userId: 'mine', cell: { x: 7, y: 4 }, tick: 0 }),
         ],
         true,
       )
-      const solution = wrapper.get('[data-test="place-patch-solution"]')
-      const fry = wrapper.get('[data-test="place-patch-outline-fry"]')
-      const mine = wrapper.get('[data-test="place-patch-outline-mine"]')
+      const solution = () => wrapper.get('[data-test="place-patch-solution"]')
+      const fry = () => wrapper.get('[data-test="place-patch-outline-fry"]').attributes('style')
+      const mine = () => wrapper.get('[data-test="place-patch-outline-mine"]').attributes('style')
 
-      expect(solution.classes()).toContain('opacity-0')
-      expect(solution.attributes('style')).toContain(`transition-delay: ${SOLUTION_DELAY_MS}ms`)
-      expect(fry.attributes('style')).toContain('opacity: 0')
-      expect(fry.attributes('style')).toContain(`${cellDelayMs(0, TIP_COLUMN, 2)}ms`)
-      expect(mine.attributes('style')).toContain('opacity: 1')
+      expect(mine()).toContain('opacity: 1')
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
+      await wrapper.vm.$nextTick()
+      expect(solution().classes()).toContain('opacity-0')
 
       vi.advanceTimersByTime(50)
       await wrapper.vm.$nextTick()
+      expect(solution().classes()).toContain('opacity-100')
+      expect(fry()).toContain('opacity: 0')
 
-      expect(solution.classes()).toContain('opacity-100')
-      expect(fry.attributes('style')).toContain('opacity: 1')
+      vi.advanceTimersByTime(VERDICT_MS)
+      await wrapper.vm.$nextTick()
+      expect(fry()).toContain('opacity: 1')
+      expect(fry()).toContain(`${othersDelayMs(1, TIP_COLUMN, 2)}ms`)
     })
   })
 
   describe('verdict', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
       vi.mocked(playVerdict).mockClear()
     })
 
@@ -153,19 +158,19 @@ describe('PlacePatchReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the solution appears', () => {
+    it('plays mine at the verdict', () => {
       mountReveal([row({ userId: 'mine' })], true, false)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS - 50)
       expect(playVerdict).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(50)
 
       expect(playVerdict).toHaveBeenCalledExactlyOnceWith(false)
     })
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal([row({ userId: 'mine' })], false, true)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(VERDICT_AT_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
@@ -175,5 +180,34 @@ describe('PlacePatchReveal', () => {
 
       expect(soundOnStage.value).toBe(true)
     })
+  })
+
+  // The rule every reveal keeps — see `judgesWithVerdict`.
+  it('judges with its verdict: the solution lands with my row and its sound', async () => {
+    vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
+    try {
+      await expectJudgesWithVerdict({
+        mount: () =>
+          mountReveal(
+            [
+              row({ userId: 'other', cell: { x: 1, y: 1 }, tick: 1 }),
+              row({ userId: 'mine', cell: { x: 7, y: 4 }, tick: 0 }),
+            ],
+            true,
+            true,
+          ),
+        mineUserId: 'mine',
+        judging: (w) => w.get('[data-test="place-patch-solution"]').classes('opacity-100'),
+        verdict: 'sound',
+      })
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 })
