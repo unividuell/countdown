@@ -79,6 +79,13 @@ describe('muted', () => {
     expect(audioGraph).not.toHaveBeenCalled()
   })
 
+  it('preloads without a graph too: one built after a tap may start running', () => {
+    sound.on = false
+    preloadSounds()
+
+    expect(audioGraph).not.toHaveBeenCalled()
+  })
+
   it('asks for it once sound is on', () => {
     playSound('break', 'STONE')
 

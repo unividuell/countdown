@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import IconAsleep from '~icons/lucide/volume'
 import IconVolume from '~icons/lucide/volume-2'
 import IconMuted from '~icons/lucide/volume-x'
 import { unlockSound } from './audio'
@@ -8,31 +6,10 @@ import { useGameSound } from './useGameSound'
 import { soundOnStage, useSoundAwake } from './useSoundAwake'
 
 const sound = useGameSound()
-const awake = useSoundAwake()
+useSoundAwake()
 
-/**
- * `asleep`: sound is on and a board knocks, but the browser has not let the graph start yet. With
- * no board on screen there is nothing to hear: the switch shows the setting.
- */
-const state = computed(() => {
-  if (!sound.value) return 'off'
-  return awake.value || !soundOnStage.value ? 'on' : 'asleep'
-})
-
-/**
- * Read when the press begins: the press itself wakes the graph, which may run by the time the
- * click arrives.
- */
-let pressedAsleep = false
-
-function onPress(): void {
-  pressedAsleep = state.value === 'asleep'
-}
-
-/** A press on the sleeping toggle asks for sound: it wakes, it does not mute. */
 function onClick(): void {
-  if (!pressedAsleep) sound.value = !sound.value
-  pressedAsleep = false
+  sound.value = !sound.value
 
   // Off stage nothing would sound, and waking would claim the device's audio session.
   if (sound.value && soundOnStage.value) unlockSound()
@@ -40,18 +17,8 @@ function onClick(): void {
 </script>
 
 <template>
-  <button
-    type="button"
-    aria-label="Ton"
-    :aria-pressed="sound"
-    :data-state="state"
-    @pointerdown="onPress"
-    @keydown.enter="onPress"
-    @keydown.space="onPress"
-    @click="onClick"
-  >
-    <IconVolume v-if="state === 'on'" class="size-5" aria-hidden="true" />
-    <IconAsleep v-else-if="state === 'asleep'" class="size-5" aria-hidden="true" />
+  <button type="button" aria-label="Ton" :aria-pressed="sound" @click="onClick">
+    <IconVolume v-if="sound" class="size-5" aria-hidden="true" />
     <IconMuted v-else class="size-5" aria-hidden="true" />
   </button>
 </template>

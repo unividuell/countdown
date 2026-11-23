@@ -81,11 +81,18 @@ export function soundPlan(
 /** Decoded samples by URL; null while decoding or when it failed. */
 const buffers = new Map<string, AudioBuffer | null>()
 
-/** Decodes every sample once, ahead of the first tap; a suspended graph decodes all the same. */
+/**
+ * Decodes every sample once, ahead of the first tap; a suspended graph decodes all the same.
+ * Muted builds no graph: a browser may start one built after a tap, claiming the device's audio.
+ */
 export function preloadSounds(): void {
-  const graph = audioGraph()
-  if (!graph) return
+  if (!gameSoundOn()) return
 
+  const graph = audioGraph()
+  if (graph) decodeAll(graph)
+}
+
+function decodeAll(graph: AudioContext): void {
   for (const url of Object.values(SAMPLES).flat()) {
     if (buffers.has(url)) continue
     buffers.set(url, null)
@@ -122,6 +129,9 @@ export function playSound(action: 'place' | 'break', code: BlockCode): void {
 
   const graph = audioGraph()
   if (!graph) return
+
+  // Unmuted mid-game: the board's preload found sound off.
+  decodeAll(graph)
 
   // Browsers start the graph suspended; the first tap is the gesture that may wake it.
   if (graph.state === 'suspended') {

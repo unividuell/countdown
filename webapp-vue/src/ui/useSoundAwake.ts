@@ -1,6 +1,6 @@
 import { useEventListener } from '@vueuse/core'
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
-import { audioGraph, unlockSound } from './audio'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { unlockSound } from './audio'
 import { useGameSound } from './useGameSound'
 
 /** Boards on screen whose knocks the switch governs. */
@@ -20,42 +20,18 @@ export function useSoundStage(): void {
 }
 
 /**
- * Whether the app's graph is running. A browser lets it start only after a user activation, and a
- * finger setting down is none: after a fresh load the first drag is silent, whatever the setting.
- *
- *   load ──▶ asleep ──(tap, release or key anywhere, while a board knocks)──▶ awake
- *
- * The graph is built only once a board asks for sound. Without Web Audio there is nothing to wait
- * for: awake.
+ * Wakes the graph on any activation while a board knocks and sound is on. The poster's tap does
+ * it first; this catches a board with no poster (a reload mid-run) and a graph the OS suspended.
+ * A finger setting down is no activation. Muted builds no graph at all.
  */
-export function useSoundAwake(): Readonly<Ref<boolean>> {
+export function useSoundAwake(): void {
   const sound = useGameSound()
-  const awake = ref(false)
-
-  let graph: AudioContext | null = null
-  const follow = (): void => {
-    awake.value = graph === null || graph.state === 'running'
-  }
-
-  watch(
-    soundOnStage,
-    (onStage) => {
-      if (!onStage || graph !== null) return
-      graph = audioGraph()
-      follow()
-      graph?.addEventListener('statechange', follow)
-    },
-    { immediate: true },
-  )
-  onBeforeUnmount(() => graph?.removeEventListener('statechange', follow))
 
   const wake = (event: Event): void => {
     // A touch `pointerdown` is no activation: the resume would be refused.
     if (event.type === 'pointerdown' && (event as PointerEvent).pointerType !== 'mouse') return
-    if (soundOnStage.value && sound.value && !awake.value) unlockSound()
+    if (soundOnStage.value && sound.value) unlockSound()
   }
   // Captured: a game that stops its pointer events must not keep the graph asleep.
   useEventListener(document, ['pointerdown', 'pointerup', 'keydown'], wake, { capture: true })
-
-  return awake
 }

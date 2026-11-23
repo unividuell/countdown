@@ -88,12 +88,13 @@ describe('unlockSound', () => {
     expect(resume).not.toHaveBeenCalled()
   })
 
-  it('claims playback on iOS, so the silent switch does not mute it', async () => {
+  // Chrome on iOS ignores the type and stops other audio anyway; elsewhere `auto` sounded as well.
+  it('leaves the audio session type to the browser', async () => {
     const session = { type: 'auto' }
     Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
     const { unlockSound } = await import('@/ui/audio')
     unlockSound()
 
-    expect(session.type).toBe('playback')
+    expect(session.type).toBe('auto')
   })
 })

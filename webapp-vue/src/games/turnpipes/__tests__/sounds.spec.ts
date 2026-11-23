@@ -30,11 +30,16 @@ vi.mock('@/ui/soundOutput', () => ({
 }))
 
 class FakeAudioContext {
+  static built = 0
   state = 'running'
   currentTime = 10
   destination = {}
   resume = vi.fn(() => Promise.resolve())
   decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true, duration: 3.7 }))
+
+  constructor() {
+    FakeAudioContext.built++
+  }
 
   createGain(): FakeGain {
     const gain: FakeGain = {
@@ -73,6 +78,7 @@ beforeEach(() => {
   gains.length = 0
   sources.length = 0
   sound.on = true
+  FakeAudioContext.built = 0
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })),
@@ -176,9 +182,7 @@ describe('with Web Audio', () => {
     expect(playSound('leak').endsInS).toBe(0)
   })
 
-  it('stays silent while muted, and leaves the device’s audio alone', async () => {
-    const session = { type: 'auto' }
-    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+  it('stays silent while muted', async () => {
     const { preloadSounds, playSound, startFlow } = await load()
     preloadSounds()
     await settle()
@@ -188,8 +192,28 @@ describe('with Web Audio', () => {
     startFlow().stop()
 
     expect(sources).toHaveLength(0)
-    expect(session.type).toBe('auto')
-    Reflect.deleteProperty(navigator, 'audioSession')
+  })
+
+  it('preloads nothing while muted: a graph built after a tap may start running', async () => {
+    sound.on = false
+    const { preloadSounds } = await load()
+    preloadSounds()
+
+    expect(FakeAudioContext.built).toBe(0)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('decodes once sound comes on mid-game, ready from the next sound', async () => {
+    sound.on = false
+    const { preloadSounds, playSound } = await load()
+    preloadSounds()
+
+    sound.on = true
+    playSound('turn')
+    await settle()
+    playSound('turn')
+
+    expect(sources).toHaveLength(1)
   })
 
   it('stays silent until the sound is decoded', async () => {

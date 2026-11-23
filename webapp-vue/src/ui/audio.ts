@@ -26,18 +26,11 @@ export function runningGraph(): AudioContext | null {
   return graph?.state === 'running' ? graph : null
 }
 
-/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
-export function claimPlayback(): void {
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
-}
-
 /**
  * Wakes the graph. Call it synchronously inside a `click` or `pointerup`: iOS refuses a resume
  * anywhere else.
  */
 export function unlockSound(): void {
-  claimPlayback()
   const graph = audioGraph()
   if (graph?.state !== 'suspended') return
 

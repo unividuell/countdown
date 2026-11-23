@@ -25,7 +25,7 @@ import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import type { AwardRule, StepView } from '@/api/types'
 import IconBroom from '~icons/lucide/brush-cleaning'
-import { audioGraph, claimPlayback } from '@/ui/audio'
+import { audioGraph } from '@/ui/audio'
 import HoldButton from '@/ui/HoldButton.vue'
 import HoldLock from '@/ui/HoldLock.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
@@ -125,7 +125,6 @@ const graph = shallowRef<AudioContext | null>(null)
  * graph iOS suspended. A refused start leaves it to the next click.
  */
 function ensureSound(): void {
-  claimPlayback()
   const ctx = audioGraph()
   if (ctx === null) return
 
