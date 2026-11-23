@@ -268,6 +268,24 @@ Gewählt: **A**.
   72px-Reservierung, und `gamelab/roster.ts` baut `RosterMemberResponse`. Beide brauchen `streak`
   und die höhere Reihe.
 
+### Labor: Zufalls-Streak
+
+Das Labor hat keine Runden-Historie und bekommt keine. Damit Abzeichen, Auflodern und Triangel
+trotzdem dort testbar sind, würfelt `labRoster` die Streaks im Client aus dem Seed der URL — gleicher
+Seed, gleiche Streaks, ein Fall ist per Link wiederholbar. Kein Backend.
+
+- **Grundwert:** aus `hash32` (`gamelab/seed.ts`) über Seed und `userId`.
+  - Andere Spieler: 0–60, damit alle Bänder in der Reihe vorkommen.
+  - Ich: aus `2 · 9 · 19 · 32 · 49 · 5 · 14 · 25 · 40` — meist direkt vor einer Grenze, damit ein
+    Tipp Erscheinen, Bandwechsel und Funkeln auch wirklich zeigt.
+- **Live-Gate nachgebildet:** Wer in der Labor-Runde einen Eintrag hat (abgegeben), bekommt +1,
+  ich eingeschlossen; wer nur sitzt, behält den Grundwert. Vor meinem Tipp sind die Einträge der
+  anderen zurückgehalten, also sehe ich überall Grundwerte.
+- **Wiederholen:** Zurücksetzen oder „Meins vergessen“ lässt meine Streak still auf den Grundwert
+  fallen; der nächste Tipp lodert und klingt erneut. Ein neuer Seed würfelt neu.
+- Die Labor-Seite zeigt die neue Reihe schon heute über `afterResultsLand`, wie `useRoster`. Die
+  Verzögerung um `VERDICT_MS` und die Triangel kommen aus `MemberRow` und gelten damit unverändert.
+
 ## Eigene Entscheidungen (zur Prüfung)
 
 - **Runden ohne Spiel** im Fenster überspringen statt abbrechen.
