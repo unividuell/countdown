@@ -3,7 +3,7 @@
  * How a member is drawn, everywhere: their four-character label on their colour.
  *
  * The circle is the root element, so a caller can attach its own attributes to the circle
- * itself — MemberRow measures it during the fly-in and needs the marker on the real geometry.
+ * itself — MemberRow instead wraps it in a same-size marker that also carries the streak badge.
  */
 import { computed } from 'vue'
 import { readableTextColor } from './readableTextColor'

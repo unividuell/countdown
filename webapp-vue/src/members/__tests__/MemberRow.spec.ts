@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { RosterMemberResponse } from '@/api/types'
 import MemberRow from '../MemberRow.vue'
 import * as swarmModule from '../swarm'
 import { RISER_SEEK, YIELD_SEEK } from '../reorder'
+import { FLARE_MS } from '../streak'
+import { VERDICT_MS } from '@/games/revealChoreography'
+import { playTriangle } from '@/ui/triangleSound'
+
+vi.mock('@/ui/triangleSound', () => ({ playTriangle: vi.fn() }))
 
 function member(over: Partial<RosterMemberResponse> = {}): RosterMemberResponse {
   return {
@@ -13,6 +18,7 @@ function member(over: Partial<RosterMemberResponse> = {}): RosterMemberResponse 
     fullName: 'amy',
     bgColorHex: '#8e44ad',
     points: { stable: 3 },
+    streak: 0,
     ...over,
   }
 }
@@ -125,7 +131,7 @@ describe('MemberRow', () => {
 
     // Proof that the shared Avatar still draws the roster the way it used to: the DOM may hand
     // back an inline colour either as written or normalised to rgb() (see Avatar.spec.ts).
-    const circle = w.find('[data-swarm-circle]')
+    const circle = w.find('[data-swarm-circle] > div')
     expect(circle.attributes('style')).toMatch(/#8e44ad|rgb\(142, 68, 173\)/)
     expect(circle.classes()).toContain('size-12')
   })
@@ -504,7 +510,7 @@ describe('MemberRow', () => {
       await rearrangeTo(w, RISEN)
 
       // `overflow-x: auto` computes `overflow-y` to `auto` as well, which would cut the banking
-      // off at the 72px band. Dropping it costs the row its scroll offset, so the track carries it.
+      // off at the 86px band. Dropping it costs the row its scroll offset, so the track carries it.
       expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
       expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
 
@@ -584,6 +590,253 @@ describe('MemberRow', () => {
 
       expect(swarms).toHaveLength(1)
       expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      w.unmount()
+    })
+  })
+  describe('streak', () => {
+    let animate: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.mocked(playTriangle).mockClear()
+      animate = vi.fn(() => ({ finished: Promise.resolve() }))
+      Object.defineProperty(Element.prototype, 'animate', {
+        value: animate,
+        configurable: true,
+        writable: true,
+      })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      Reflect.deleteProperty(Element.prototype, 'animate')
+    })
+
+    /** Settled under reduced motion, then motion allowed: the fly-in is out of the way. */
+    async function mountWith(members: RosterMemberResponse[]) {
+      reduceMotion(true)
+      const w = mount(MemberRow, { props: { members, meId: 'me' }, attachTo: document.body })
+      await nextTick()
+      reduceMotion(false)
+      return w
+    }
+
+    function bandOf(w: ReturnType<typeof mount>, id: string): string | undefined {
+      return w.find(`[data-member-id="${id}"] [data-test="streak-mark"]`).attributes('data-band')
+    }
+
+    const withStreak = (id: string, streak: number) => member({ userId: id, fullName: id, streak })
+
+    it('holds a grown streak until the verdict has rung out', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(VERDICT_MS - 1)
+      await nextTick()
+      expect(bandOf(w, 'me')).toBe('flame-orange')
+
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      expect(bandOf(w, 'me')).toBe('flame-blue')
+      w.unmount()
+    })
+
+    it('rings the triangle for my own grown streak only', async () => {
+      const w = await mountWith([withStreak('me', 5), withStreak('b', 5)])
+
+      await w.setProps({ members: [withStreak('me', 6), withStreak('b', 6)] })
+      vi.advanceTimersByTime(VERDICT_MS)
+
+      expect(playTriangle).toHaveBeenCalledTimes(1)
+      w.unmount()
+    })
+
+    it('does not ring for the streaks the row mounted with', async () => {
+      const w = await mountWith([withStreak('me', 5)])
+
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(playTriangle).not.toHaveBeenCalled()
+      expect(animate).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    // The triangle belongs to the flare, and below three there is no icon to flare.
+    it('does not ring for a streak still short of a badge', async () => {
+      const w = await mountWith([withStreak('me', 1)])
+
+      await w.setProps({ members: [withStreak('me', 2)] })
+      vi.advanceTimersByTime(VERDICT_MS)
+
+      expect(playTriangle).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    it('shows a broken streak at once and silently', async () => {
+      const w = await mountWith([withStreak('me', 12)])
+
+      await w.setProps({ members: [withStreak('me', 0)] })
+
+      expect(w.find('[data-test="streak-mark"]').exists()).toBe(false)
+      vi.advanceTimersByTime(VERDICT_MS)
+      expect(playTriangle).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    it('flares nothing and rings nothing under reduced motion', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+      reduceMotion(true)
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      await nextTick()
+
+      expect(bandOf(w, 'me')).toBe('flame-blue')
+      vi.advanceTimersByTime(VERDICT_MS)
+      expect(animate).not.toHaveBeenCalled()
+      expect(playTriangle).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    it('forgets a pending flare when it unmounts', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      w.unmount()
+      vi.advanceTimersByTime(VERDICT_MS)
+
+      expect(playTriangle).not.toHaveBeenCalled()
+    })
+
+    it('takes the newest value when a second refresh lands inside the hold', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(200)
+      await w.setProps({ members: [withStreak('me', 11)] })
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(playTriangle).toHaveBeenCalledTimes(1)
+      const mark = w.get<HTMLElement>('[data-test="streak-mark"]')
+      expect(mark.attributes('data-band')).toBe('flame-blue')
+      // 11, not 10: the size is the one value that tells them apart.
+      expect(parseFloat(mark.element.style.width)).toBeCloseTo(20.81, 2)
+      w.unmount()
+    })
+
+    // The flare belongs to the moment the others' rows land; a repeat refresh must not push it.
+    it('keeps the first deadline when a refresh lands inside the hold', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(200)
+      await w.setProps({ members: [withStreak('me', 11)] })
+      vi.advanceTimersByTime(VERDICT_MS - 200 - 1)
+      await nextTick()
+      expect(bandOf(w, 'me')).toBe('flame-orange')
+
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      const mark = w.get<HTMLElement>('[data-test="streak-mark"]')
+      expect(parseFloat(mark.element.style.width)).toBeCloseTo(20.81, 2)
+      vi.advanceTimersByTime(VERDICT_MS)
+      expect(playTriangle).toHaveBeenCalledTimes(1)
+      w.unmount()
+    })
+
+    it('applies a held rise silently when the tab went to the background meanwhile', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(bandOf(w, 'me')).toBe('flame-blue')
+      expect(playTriangle).not.toHaveBeenCalled()
+      expect(animate).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    // The flare stretches the icon past the track's top padding, which `overflow-x: auto` would cut.
+    it('stops clipping while a streak flares, and holds the reader where they were', async () => {
+      const w = await mountWith([withStreak('me', 9)])
+      // Past the mount's scroll to the leader, which would otherwise land mid-test.
+      vi.advanceTimersToNextFrame()
+      const el = w.find('[data-test="row"]').element as HTMLElement
+      el.scrollLeft = 60
+
+      await w.setProps({ members: [withStreak('me', 10)] })
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      vi.advanceTimersByTime(FLARE_MS)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(w.find('[data-test="track"]').attributes('style') ?? '').not.toContain('translateX')
+      expect(el.scrollLeft).toBe(60)
+      w.unmount()
+    })
+
+    it('hands the row back only once both the flare and the rearrangement are over', async () => {
+      stubRowGeometry()
+      const swarms = captureSwarms()
+      const w = await mountWith([withStreak('a', 9), withStreak('me', 9)])
+      // Past the mount's scroll to the leader, which would otherwise land mid-test.
+      vi.advanceTimersToNextFrame()
+      const el = w.find('[data-test="row"]').element as HTMLElement
+      el.scrollLeft = 60
+
+      // The rearrangement outlasts the flare.
+      await w.setProps({ members: [withStreak('me', 10), withStreak('a', 9)] })
+      await nextTick()
+      await nextTick()
+      vi.advanceTimersByTime(VERDICT_MS + FLARE_MS)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      swarms[0]!.done = true
+      vi.advanceTimersByTime(100)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(el.scrollLeft).toBe(60)
+
+      // The flare outlasts the rearrangement.
+      await w.setProps({ members: [withStreak('a', 10), withStreak('me', 10)] })
+      await nextTick()
+      await nextTick()
+      vi.advanceTimersByTime(VERDICT_MS)
+      await nextTick()
+      swarms[1]!.done = true
+      vi.advanceTimersByTime(100)
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-visible')
+      expect(w.find('[data-test="track"]').attributes('style')).toContain('translateX(-60px)')
+
+      vi.advanceTimersByTime(FLARE_MS)
+      await nextTick()
+      await nextTick()
+
+      expect(w.find('[data-test="row"]').classes()).toContain('overflow-x-auto')
+      expect(el.scrollLeft).toBe(60)
+      w.unmount()
+    })
+
+    it('names the icon to a screen reader', async () => {
+      const w = await mountWith([withStreak('me', 10)])
+
+      expect(w.get('[data-swarm-item]').attributes('aria-label')).toMatch(/, Streak: blaue Flamme$/)
       w.unmount()
     })
   })

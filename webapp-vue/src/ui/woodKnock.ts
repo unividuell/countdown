@@ -25,9 +25,9 @@ const KNOCK_RATIO = 3.9
  */
 export const VOLUME = 0.35
 
-const STOP_FADE_S = 0.02
+export const STOP_FADE_S = 0.02
 /** Exponential ramps cannot reach 0; this is inaudible, the line to 0 after it removes the rest. */
-const QUIET = 0.0008
+export const QUIET = 0.0008
 
 /** One bus of knocks: `stop` fades the bus and ends every oscillator still to come. */
 export function knocks(graph: AudioContext): {

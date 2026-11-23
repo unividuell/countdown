@@ -31,7 +31,7 @@ class RosterService(
             )
             .mapNotNull { member ->
                 val user = byId[member.userId] ?: return@mapNotNull null
-                val p = standings[member.userId] ?: MemberPoints(stable = 0, live = null)
+                val p = standings[member.userId] ?: MemberPoints(stable = 0, live = null, streak = 0)
                 val identity = MemberIdentityResolver.resolve(
                     user = user,
                     displayName = member.displayName,
@@ -48,6 +48,7 @@ class RosterService(
                             LivePointsResponse(points = it.points, provisional = it.provisional)
                         },
                     ),
+                    streak = p.streak,
                 )
             }
     }

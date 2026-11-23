@@ -62,8 +62,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 3, live = null),
-            bob to MemberPoints(stable = 10, live = null),
+            alice to MemberPoints(stable = 3, live = null, streak = 0),
+            bob to MemberPoints(stable = 10, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -88,8 +88,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         // bob leads on stable points, alice overtakes him once the live round counts.
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 8, live = LivePoints(points = 5, provisional = true)),
-            bob to MemberPoints(stable = 10, live = null),
+            alice to MemberPoints(stable = 8, live = LivePoints(points = 5, provisional = true), streak = 0),
+            bob to MemberPoints(stable = 10, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -103,6 +103,29 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
     }
 
     @Test
+    fun `the roster carries each member's streak`() {
+        admitted()
+        every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
+            member(alice, MemberStatus.ACTIVE, "2026-01-01T00:00:00Z"),
+            member(bob, MemberStatus.ACTIVE, "2026-01-02T00:00:00Z"),
+        )
+        every { userQuery.findAllById(any()) } returns listOf(
+            User(id = alice, subject = "1", githubLogin = "amy"),
+            User(id = bob, subject = "2", githubLogin = "Bender"),
+        )
+        // alice has a running streak, bob has no plays at all (absent from the standings).
+        every { points.standings(community.id!!, uid, any()) } returns
+            mapOf(alice to MemberPoints(stable = 3, live = null, streak = 3))
+
+        mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
+            status { isOk() }
+            jsonPath("$[0].shortName") { value("AMY") }
+            jsonPath("$[0].streak") { value(3) }
+            jsonPath("$[1].streak") { value(0) }
+        }
+    }
+
+    @Test
     fun `live points nobody can touch anymore are shipped as settled`() {
         admitted()
         every { memberRepo.findByCommunityId(community.id!!) } returns listOf(
@@ -110,7 +133,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false)))
+            mapOf(alice to MemberPoints(stable = 3, live = LivePoints(points = 0, provisional = false), streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }
@@ -128,7 +151,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         )
         every { userQuery.findAllById(any()) } returns listOf(User(id = alice, subject = "1", githubLogin = "amy"))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 3, live = null))
+            mapOf(alice to MemberPoints(stable = 3, live = null, streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }
@@ -148,8 +171,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 0, live = null),
-            bob to MemberPoints(stable = 0, live = null),
+            alice to MemberPoints(stable = 0, live = null, streak = 0),
+            bob to MemberPoints(stable = 0, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -170,8 +193,8 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
             User(id = bob, subject = "2", githubLogin = "Bender"),
         )
         every { points.standings(community.id!!, uid, any()) } returns mapOf(
-            alice to MemberPoints(stable = 0, live = null),
-            bob to MemberPoints(stable = 0, live = null),
+            alice to MemberPoints(stable = 0, live = null, streak = 0),
+            bob to MemberPoints(stable = 0, live = null, streak = 0),
         )
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
@@ -189,7 +212,7 @@ class RosterEndpointTest(@Autowired val mockMvc: MockMvc) {
         every { userQuery.findAllById(any()) } returns
             listOf(User(id = alice, subject = "1", githubLogin = "amy", bgColorHex = null))
         every { points.standings(community.id!!, uid, any()) } returns
-            mapOf(alice to MemberPoints(stable = 0, live = null))
+            mapOf(alice to MemberPoints(stable = 0, live = null, streak = 0))
 
         mockMvc.get("/api/communities/team/roster") { with(principalFor()) }.andExpect {
             status { isOk() }

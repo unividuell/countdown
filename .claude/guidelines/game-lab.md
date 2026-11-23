@@ -113,6 +113,12 @@ shell's (light/dark, `ui/colorScheme.ts`, shared `isEditableTarget`): neither la
 - **A one-line mirror of a server rule in lab code is acceptable** (`labRoster` copies the roster's
   rank and „provisional“ rule) where drifting only makes the lab wrong, never the product. Name the
   server source in the comment.
+- **The lab's streak is rolled from the seed, not read** (`labStreakBase`): no round history exists
+  and none is added. Everyone mostly just below a band edge; an entry adds 1. Same link, same
+  badges — and the roll never asks who looks, or two testers see each other with different streaks.
+- **A product component that reacts to a prop _changing_ is keyed on the seed** (`MemberRow`'s
+  flare and triangle). A roll is a new round, not a change; reset and „forget mine“ keep the seed
+  and the instance.
 
 ## What the lab deliberately cannot check
 

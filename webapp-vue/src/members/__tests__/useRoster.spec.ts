@@ -31,6 +31,7 @@ const alice = {
   fullName: 'amy',
   bgColorHex: '#8e44ad',
   points: { stable: 3 },
+  streak: 0,
 }
 
 describe('useRoster', () => {

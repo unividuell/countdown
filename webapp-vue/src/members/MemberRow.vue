@@ -18,8 +18,12 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm, type Vec } from './swarm'
 import { planReorder, reorderTuning } from './reorder'
+import { bandLabel, bandOf, FLARE_MS } from './streak'
+import StreakMark from './StreakMark.vue'
 import Avatar from '@/ui/Avatar.vue'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
+import { playTriangle } from '@/ui/triangleSound'
+import { VERDICT_MS } from '@/games/revealChoreography'
 import type { RosterMemberResponse } from '@/api/types'
 
 const MAX_TILT_RAD = (MAX_TILT_DEG * Math.PI) / 180
@@ -52,6 +56,8 @@ const props = defineProps<{
 const row = ref<HTMLElement | null>(null)
 const settled = ref(false)
 const rearranging = ref(false)
+/** A streak icon is stretching past the track's top padding, which the scroll container would cut. */
+const flaring = ref(false)
 /** Who is currently travelling, and who is doing the overtaking — the row's stacking order. */
 const lifted = ref<ReadonlySet<string>>(new Set())
 const riserId = ref<string | null>(null)
@@ -64,6 +70,7 @@ let swarm: Swarm | null = null
 let onSettled: () => void = () => {}
 let entering = false
 let heldScrollLeft = 0
+let flareTimer: ReturnType<typeof setTimeout> | undefined
 let raf = 0
 let lastFrame = 0
 
@@ -72,7 +79,13 @@ let lastFrame = 0
 // travels with them: visually it is carried by a colour and a pulse, neither of which a screen
 // reader passes on.
 function ariaLabel(m: RosterMemberResponse): string {
-  return `${m.fullName}, ${m.points.stable} Punkte${liveSuffix(m)}`
+  return `${m.fullName}, ${m.points.stable} Punkte${liveSuffix(m)}${streakSuffix(m)}`
+}
+
+/** Names the icon, not the number — what a sighted reader sees. */
+function streakSuffix(m: RosterMemberResponse): string {
+  const band = bandOf(streakOf(m))
+  return band ? `, Streak: ${bandLabel(band)}` : ''
 }
 
 function liveSuffix(m: RosterMemberResponse): string {
@@ -188,17 +201,36 @@ function finish(): void {
 function entered(): void {
   entering = false
   // Only now may the row go `overflow-x: auto` — it computes `overflow-y` to `auto` too, which
-  // would cut flying circles off at the ~72px band. Mid-flight the row must not clip on either
+  // would cut flying circles off at the ~86px band. Mid-flight the row must not clip on either
   // axis at all: the circles travel far outside it, across the whole viewport. Horizontal
   // containment during the flight lives on the app root instead (see App.vue).
   settled.value = true
   void nextTick(scrollToLeader)
 }
 
+/**
+ * Rearrangement and flare both need the row unclipped. The first to start reads the reader's
+ * offset; the last to end hands it back.
+ */
+function holdScroll(): void {
+  if (!rearranging.value && !flaring.value) heldScrollLeft = row.value?.scrollLeft ?? 0
+  trackShift.value = -heldScrollLeft
+}
+
 function rearranged(): void {
   lifted.value = new Set()
   riserId.value = null
   rearranging.value = false
+  handBack()
+}
+
+function flared(): void {
+  flaring.value = false
+  handBack()
+}
+
+function handBack(): void {
+  if (rearranging.value || flaring.value) return
   trackShift.value = 0
   // The row becomes a scroll container again only on the next render, and it comes back at zero.
   void nextTick(() => {
@@ -246,8 +278,7 @@ function rearrange(before: Map<string, Vec>): void {
   painted = plan.entries.map((e) => els.get(e.id)!)
   // Reading it after the row has stopped clipping would read zero, and the reader would be thrown
   // back to the leader for the length of the movement.
-  if (!rearranging.value) heldScrollLeft = host.scrollLeft
-  trackShift.value = -heldScrollLeft
+  holdScroll()
   lifted.value = plan.moving
   riserId.value = plan.riserId
   rearranging.value = true
@@ -278,6 +309,77 @@ watch(
     void nextTick(() => rearrange(before))
   },
 )
+
+/**
+ * The streak each badge shows. A rise lands with the verdict but is held `VERDICT_MS` longer, so the
+ * badge flares — and my own rings — once the verdict has rung out, with the other rows landing:
+ *
+ *   refresh (verdict) ──── VERDICT_MS ──── shown = new  → StreakMark flares, triangle if me
+ *
+ * A refresh inside the hold only updates the value; the deadline stays. Anything else — a fall, a
+ * rise short of a badge, a new member, reduced motion, a background tab, also one the tab went to
+ * during the hold — shows at once, silently.
+ */
+const shownStreaks = ref<Record<string, number>>(
+  Object.fromEntries(props.members.map((m) => [m.userId, m.streak])),
+)
+const heldStreaks = new Map<string, { timer: ReturnType<typeof setTimeout>; streak: number }>()
+
+function streakOf(m: RosterMemberResponse): number {
+  return shownStreaks.value[m.userId] ?? m.streak
+}
+
+watch(
+  () => props.members,
+  (members) => {
+    const animated = !prefersReducedMotion() && !inBackground()
+    const present = new Set(members.map((m) => m.userId))
+    // Whoever left takes their badge and its pending flare along; a return mounts afresh.
+    for (const id of Object.keys(shownStreaks.value)) {
+      if (present.has(id)) continue
+      clearTimeout(heldStreaks.get(id)?.timer)
+      heldStreaks.delete(id)
+      Reflect.deleteProperty(shownStreaks.value, id)
+    }
+
+    for (const m of members) {
+      const id = m.userId
+      const shown = shownStreaks.value[id]
+      const held = heldStreaks.get(id)
+      if (shown === undefined || m.streak <= shown || !bandOf(m.streak) || !animated) {
+        clearTimeout(held?.timer)
+        heldStreaks.delete(id)
+        shownStreaks.value[id] = m.streak
+        continue
+      }
+
+      // A second refresh inside the hold: the newest value lands, once, on the first deadline.
+      if (held) {
+        held.streak = m.streak
+        continue
+      }
+
+      const timer = setTimeout(() => {
+        const streak = heldStreaks.get(id)?.streak ?? m.streak
+        heldStreaks.delete(id)
+        shownStreaks.value[id] = streak
+        // StreakMark asks the same at its flare; the triangle and the unclipped row keep in step.
+        if (prefersReducedMotion() || inBackground()) return
+        if (id === props.meId) playTriangle()
+        holdScroll()
+        flaring.value = true
+        clearTimeout(flareTimer)
+        flareTimer = setTimeout(flared, FLARE_MS)
+      }, VERDICT_MS)
+      heldStreaks.set(id, { timer, streak: m.streak })
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  for (const { timer } of heldStreaks.values()) clearTimeout(timer)
+  clearTimeout(flareTimer)
+})
 
 onMounted(() => {
   const host = row.value
@@ -329,13 +431,13 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
     ref="row"
     data-test="row"
     class="flex w-full cursor-default select-none"
-    :class="settled && !rearranging ? 'overflow-x-auto' : 'overflow-visible'"
+    :class="settled && !rearranging && !flaring ? 'overflow-x-auto' : 'overflow-visible'"
     style="visibility: hidden"
   >
     <div
       data-test="track"
-      class="flex shrink-0 -space-x-2 p-0.5"
-      :style="{ transform: rearranging ? `translateX(${trackShift}px)` : '' }"
+      class="flex shrink-0 -space-x-2 p-0.5 pt-4"
+      :style="{ transform: rearranging || flaring ? `translateX(${trackShift}px)` : '' }"
     >
       <div
         v-for="(m, index) in members"
@@ -348,9 +450,14 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         :aria-label="ariaLabel(m)"
         :title="m.fullName"
       >
-        <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" data-swarm-circle />
+        <!-- The badge sits in the circle the swarm moves, so it flies and reorders with it. -->
+        <div class="relative" data-swarm-circle>
+          <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" />
+          <StreakMark :streak="streakOf(m)" />
+        </div>
+        <!-- `z-10`: the positioned circle above would otherwise paint over the badge it overlaps. -->
         <div
-          class="-mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
+          class="z-10 -mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
         >
           {{ m.points.stable }}
         </div>

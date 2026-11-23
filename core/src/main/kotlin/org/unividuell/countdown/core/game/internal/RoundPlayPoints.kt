@@ -26,6 +26,11 @@ import java.util.UUID
  * what it may not have. It carries its own `provisional`: „can still move“ follows from the round's
  * frozen award rule, which the client has no business re-deriving.
  *
+ * `streak` counts the rounds in a row a member submitted (giving up included), newest first, over the
+ * rounds that have a game. A round with a game and no submission breaks it; a round without a game
+ * neither counts nor breaks. The running round adds one only for a member who submitted it, and only
+ * for a viewer who did too — the live gate — and never breaks the run, since it is not over.
+ *
  * The only `MemberPointsQuery` there is. It answers `0` for a community without played rounds all by
  * itself, which is why no environment needs a stand-in implementation.
  */
@@ -44,7 +49,7 @@ class RoundPlayPoints(
     ): Map<UUID, MemberPoints> {
         // `IN ()` is a syntax error, and there is nothing to sum for nobody.
         if (userIds.isEmpty()) return emptyMap()
-        val blank = userIds.associateWith { MemberPoints(stable = 0, live = null) }
+        val blank = userIds.associateWith { MemberPoints(stable = 0, live = null, streak = 0) }
         val edition = communities.activeEditionOf(communityId) ?: return blank
 
         val current = engine.roundAt(
@@ -70,7 +75,22 @@ class RoundPlayPoints(
             emptyMap()
         }
 
-        return userIds.associateWith { MemberPoints(stable = stable[it] ?: 0, live = live[it]) }
+        // Rounds that have a game, newest first: only these can break a streak.
+        val gameRounds = plays.roundNumbersOf(requireNotNull(edition.id))
+            .filter { windowReasonOf(edition = edition, roundNumber = it) == null && it < current }
+            .sortedDescending()
+        val playedBy = scored.groupBy({ it.userId }, { it.roundNumber })
+        val viewerSubmittedCurrent = running.any { it.userId == viewerId }
+
+        return userIds.associateWith { userId ->
+            val played = playedBy[userId].orEmpty().toSet()
+            val runningCounts = viewerSubmittedCurrent && current in played
+            MemberPoints(
+                stable = stable[userId] ?: 0,
+                live = live[userId],
+                streak = (if (runningCounts) 1 else 0) + gameRounds.takeWhile { it in played }.count(),
+            )
+        }
     }
 
     /**

@@ -140,15 +140,16 @@ describe('community home', () => {
         shortName: 'AMY',
         fullName: 'amy',
         bgColorHex: '#8e44ad',
+        streak: 0,
         points: { stable: 3, live: { points: 5, provisional: true } },
       },
     ])
     const w = mountPage()
     const section = w.get('section')
-    expect(section.classes()).toContain('min-h-[72px]')
+    expect(section.classes()).toContain('min-h-[86px]')
     expect(w.get('[data-test="roster-placeholder"]').classes().join(' ')).not.toContain('min-h')
     await flushPromises()
-    expect(w.get('section').classes()).toContain('min-h-[72px]')
+    expect(w.get('section').classes()).toContain('min-h-[86px]')
     expect(w.get('[data-test="row"]').classes().join(' ')).not.toContain('min-h')
   })
 
@@ -176,6 +177,7 @@ describe('community home', () => {
         shortName: 'AMY',
         fullName: 'amy',
         bgColorHex: '#8e44ad',
+        streak: 0,
         points: { stable: 3 },
       },
     ])
@@ -193,6 +195,7 @@ describe('community home', () => {
         shortName: 'AMY',
         fullName: 'amy',
         bgColorHex: '#8e44ad',
+        streak: 0,
         points: { stable: 3 },
       },
     ])
@@ -342,8 +345,20 @@ describe('community home', () => {
   it('takes the new points and the new order once the game has shown them', async () => {
     vi.useFakeTimers()
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing' }))
-    const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
-    const fry = { userId: 'u2', shortName: 'FRY', fullName: 'fry', bgColorHex: '#bf40b3' }
+    const amy = {
+      userId: 'u1',
+      shortName: 'AMY',
+      fullName: 'amy',
+      bgColorHex: '#8e44ad',
+      streak: 0,
+    }
+    const fry = {
+      userId: 'u2',
+      shortName: 'FRY',
+      fullName: 'fry',
+      bgColorHex: '#bf40b3',
+      streak: 0,
+    }
     const getRoster = vi.spyOn(api, 'getRoster')
     // Reset, not a queue of `Once`s: spies are installed per test and never restored here, so both
     // the call counter *and* unconsumed queue entries carry over from this file's earlier tests.
@@ -393,6 +408,7 @@ describe('community home', () => {
         shortName: 'AMY',
         fullName: 'amy',
         bgColorHex: '#8e44ad',
+        streak: 0,
         points: { stable: 0 },
       },
     ])
@@ -417,7 +433,13 @@ describe('community home', () => {
     const round = aRoundResponse({ game: unrendered })
     vi.mocked(useRound).mockReturnValue(mockUseRound({ stage: 'playing', round }))
     vi.spyOn(rounds, 'castVote').mockResolvedValue(round)
-    const amy = { userId: 'u1', shortName: 'AMY', fullName: 'amy', bgColorHex: '#8e44ad' }
+    const amy = {
+      userId: 'u1',
+      shortName: 'AMY',
+      fullName: 'amy',
+      bgColorHex: '#8e44ad',
+      streak: 0,
+    }
     const getRoster = vi.spyOn(api, 'getRoster')
     getRoster.mockReset()
     getRoster.mockResolvedValue([

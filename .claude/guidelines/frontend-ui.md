@@ -44,6 +44,9 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **Only the element that must ride above an overlay gets the `z-index`, not its container** — a
   z-index lifts everything inside. `NavDrawer`'s toggle and the sound switch beside it carry
   `relative z-30`; the header none.
+- **Making a box `relative` lifts it over every unpositioned sibling it overlaps,** DOM order
+  notwithstanding. The roster's avatar wrapper (for the streak badge) buried the points badge
+  pulled up under it with `-mt-1.5`; that badge now carries `z-10`.
 - **An outside-click check listens in the capture phase.** A click that changes state re-renders
   in a microtask before it bubbles to `document`; a swapped icon is then detached, inside nothing,
   and the menu closes under the finger. happy-dom runs no microtask between listeners, so only a
@@ -66,6 +69,9 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
   arrived. In a `watch` on the data with `{ flush: 'post' }`. `SongSearchBox`.
 - **`overflow-x: auto` computes `overflow-y` to `auto` too**, which clips transformed children: an
   element that scrolls and hosts an animation escaping its box must not clip while it runs.
+  Dropping the scroll container zeroes `scrollLeft`: read it first, carry it as a `translateX` on
+  the content, write it back after. Overlapping animations share one hold — the first reads, the
+  last restores. `MemberRow`.
 
 ### Animation on a phone's main thread
 

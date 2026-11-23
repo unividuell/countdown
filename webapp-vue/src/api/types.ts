@@ -100,6 +100,8 @@ export interface RosterMemberResponse {
   fullName: string
   bgColorHex: string
   points: RosterPoints
+  /** Consecutive played rounds; the badge shows from 3. */
+  streak: number
 }
 export interface InviteResponse {
   url: string

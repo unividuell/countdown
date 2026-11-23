@@ -6,6 +6,9 @@ import * as api from '@/gamelab/api'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed } from '@/gamelab/seed'
 import MemberRow from '@/members/MemberRow.vue'
+import { FLARE_MS } from '@/members/streak'
+import { VERDICT_MS } from '@/games/revealChoreography'
+import { playTriangle } from '@/ui/triangleSound'
 import { announceResults } from '@/ui/resultsLanding'
 import GameHeader from '@/ui/GameHeader.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
@@ -56,6 +59,8 @@ const { StubGame } = await vi.hoisted(async () => {
   }
 })
 
+vi.mock('@/ui/triangleSound', () => ({ playTriangle: vi.fn() }))
+
 vi.mock('@/gamelab/games', () => ({
   labGameList: [{ id: 'stub', title: 'Stub' }],
   labGames: { stub: StubGame },
@@ -104,9 +109,11 @@ const authUser = {
   username: 'Auth Me',
   avatar: { shortName: 'AM', bgColorHex: '#123456' },
 }
-vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => ({ user: { value: authUser } }),
-}))
+// A ref, not `{ value }`: the template unwraps it into the row's `meId`.
+vi.mock('@/auth/useAuth', async () => {
+  const { ref } = await import('vue')
+  return { useAuth: () => ({ user: ref(authUser) }) }
+})
 
 const round: LabRoundResponse<{ lowerBound: number; upperBound: number }> = {
   seed: 42,
@@ -270,6 +277,53 @@ describe('lab page', () => {
       points: 1,
       provisional: false,
     })
+  })
+
+  // A roll is a new round, not a rise: seed 42 seats the tester at 25, seed 47 at 49.
+  it('flares the tester s streak for a guess, not for a roll', async () => {
+    const w = await mountPage()
+    const saved = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')
+    const animate = vi.fn(() => ({ finished: Promise.resolve() }))
+    Object.defineProperty(Element.prototype, 'animate', {
+      value: animate,
+      configurable: true,
+      writable: true,
+    })
+    // Other parts of the page animate too; only the badge's own flare counts.
+    const flares = () =>
+      animate.mock.contexts.filter((el) => (el as Element).matches('[data-test="streak-mark"]'))
+        .length
+    vi.mocked(playTriangle).mockClear()
+    vi.useFakeTimers()
+    try {
+      vi.mocked(api.openLabRound).mockResolvedValueOnce({ ...round, seed: 47 } as never)
+      setQuery({ seed: '47' })
+      await vi.advanceTimersByTimeAsync(VERDICT_MS + FLARE_MS)
+
+      expect(w.getComponent(MemberRow).props('members')[0]!.streak).toBe(49)
+      expect(playTriangle).not.toHaveBeenCalled()
+      expect(flares()).toBe(0)
+
+      const me = { userId: 'auth-me', username: 'Auth Me', avatar: authUser.avatar, points: 1 }
+      vi.mocked(api.submitLabGuess).mockResolvedValueOnce({ ...round, seed: 47, me } as never)
+      await w.get('[data-test="stub-guess"]').trigger('click')
+      await vi.advanceTimersByTimeAsync(0)
+      announceResults()
+      await vi.advanceTimersByTimeAsync(VERDICT_MS)
+
+      expect(playTriangle).toHaveBeenCalledTimes(1)
+      expect(flares()).toBe(1)
+
+      // A reset keeps the seed, so the row stays: the streak drops silently, the next guess flares.
+      const row = w.getComponent(MemberRow).vm.$.uid
+      vi.mocked(api.resetLabRound).mockResolvedValueOnce({ ...round, seed: 47 } as never)
+      await tool('lab-reset').trigger('click')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(w.getComponent(MemberRow).vm.$.uid).toBe(row)
+    } finally {
+      if (saved) Object.defineProperty(Element.prototype, 'animate', saved)
+      else Reflect.deleteProperty(Element.prototype, 'animate')
+    }
   })
 
   // A failed guess brings no round, so nothing may be left waiting for one.
