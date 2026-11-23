@@ -147,12 +147,17 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   mid-handover (`usePlayback.extend`).
 - **Unlock the graph synchronously inside a `click` (or `pointerup`) handler.** A touch
   `pointerdown` is no user activation on iOS: `resume()` is refused and the round stays silent, with
-  no error. `navigator.audioSession.type = 'playback'` goes in the same handler — otherwise the
-  silent switch mutes Web Audio. A play surface that only listens to touches gets a cover button
+  no error. A play surface that only listens to touches gets a cover button
   for it (Peilung's, `SonarField.vue`/`EchoLocateBoard.vue`). The graph can stop again later (iOS:
   a call, an app switch, the lock screen): on `statechange` away from `running`, or a hidden page,
   bring the cover back and send no move that must be heard. What a hidden page stops restarts on
   every way back, not only the cover's click. Never `suspend()` the shared graph.
+- **Leave `navigator.audioSession` alone; iOS gets no special path.** Measured on devices
+  (2026-11-23, music playing in another app): Chrome for iOS stops that music on `resume()` alone,
+  whatever the session type (`playback`, `auto`, `ambient`, `transient`), and it does not come
+  back; Firefox for Android keeps it playing, its session turns `active` only while a sound plays.
+  The iOS 18.1 simulator's Safari sounded under the silent switch with `auto` as with `playback`.
+  The app cannot tell Safari from Chrome on iOS, so the mute switch is the answer for whoever minds.
 - **Never swallow a refused `play()` or `resume()`.** „Sometimes you hear nothing" is invisible
   from the outside; a `console.warn` is what makes it a report instead of a mystery.
 - **A remote clip must be CORS-open** for `decodeAudioData` (the element needs no such thing).
@@ -172,13 +177,12 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **A board that knocks says so: `useSoundStage()`.** Only while one is on screen does an
   activation wake the graph — waking claims the device's audio session, and on iOS that stops the
   player's music on every other page. Off stage the switch shows the setting and wakes nothing.
-- **The switch shows what is heard, not only what is set.** After a fresh load the graph sleeps
-  until a user activation, and a finger setting down is none — the first drag is silent on every
-  phone. On iOS the release of a drag is none either, only a tap is (simulator, iOS 18.1); Firefox
-  for Android wakes on that release. So `SoundToggle` has three faces: muted, on, and „on but
-  asleep“ (speaker without waves). A press on the sleeping one wakes instead of muting, and
-  `useSoundAwake` asks the graph to wake on every activation anywhere on the page while a board is
-  on stage. A game adds no wake handlers of its own.
+- **The poster's tap wakes the graph; the switch shows only the setting.** After a fresh load the
+  graph sleeps until a user activation, and a finger setting down is none — on iOS not even the
+  release of a drag, only a tap (simulator, iOS 18.1). Every round's board stands behind the
+  `RoundRamp` poster, whose tap is that activation. For the rest (a reload mid-run, a graph the OS
+  suspended) `useSoundAwake` wakes it on every activation anywhere on the page while a board is on
+  stage. A game adds no wake handlers of its own.
 - **A hold that sparks also knocks, in every game.** `HoldButton` knocks (charge or count-in)
   wherever it throws sparks, and is then on stage itself (`useSoundStage`). `sparks: false`
   silences both — giving up celebrates nothing. No exception for a game whose sound is the game:
@@ -187,17 +191,23 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   „wruusch“ for tidying up in `ui/whooshSound.ts` (Peilung's „Markierungen löschen“); a game
   schedules them, it does not build its own oscillators. Sound is a side note, not a
   signal: one master level for all of it (`VOLUME`), which a game does not raise.
+- **Recorded clips go through `ui/recordedSounds.ts`** (Verrohrung, Blockierung): `preload()` on
+  mount, `buffer(url)` in the play function, the graph from `soundGraph()` like every synthesised
+  voice. A game keeps no decode cache and wakes nothing of its own.
 - **One rule for a sleeping graph: a one-shot stays silent.** A sound scheduled on a suspended
   graph lands on its wake-up, with the next tap, long after what it belonged to — so a one-shot
   asks for the graph only while it runs (`runningGraph()` in `ui/audio.ts`; decoration sound asks
-  `soundGraph()`, see below). Waking (`unlockSound`, `claimPlayback`) lives in `ui/audio.ts` too —
+  `soundGraph()`, see below). Waking (`unlockSound`) lives in `ui/audio.ts` too —
   no game carries its own copy.
 - **The sound switch is honoured in one place, `ui/soundOutput.ts`.** A play function asks
   `soundGraph()` — or `gameSoundOn()` first, where it wakes the graph itself — and connects to
   `soundOutput(graph)`, never to `graph.destination`. A board calls its play function and nothing
   else: no `if (sound.value)`, no watcher that cuts a sound on mute. The output's gain is the
-  mute, so what is already sounding falls silent too. Muted asks for no graph at all: a muted game
-  must not claim the device's audio session (on iOS that stops the player's music).
+  mute, so what is already sounding falls silent too. Muted asks for no graph at all: by their
+  autoplay policies Chrome and Firefox start a context built after a tap as `running`, no
+  `resume()` needed, and on iOS that stops the player's music. A preload decodes on
+  `decodingGraph()` instead — an `OfflineAudioContext` has no output — muted or not, so the first
+  sound after unmuting is ready (`ui/recordedSounds.ts`).
 - **Feedback on an input keeps one pitch.** A pitch that follows the value reads as a hint: „the
   target is where it gets higher“ (Farbausmalung's wheel, a scale tried and dropped). Throttle it
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):

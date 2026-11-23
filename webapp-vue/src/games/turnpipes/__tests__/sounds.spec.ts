@@ -21,20 +21,28 @@ interface FakeSource {
 const gains: FakeGain[] = []
 const sources: FakeSource[] = []
 
-/** The sound switch; the output itself adds no gain of its own to count. */
-const sound = vi.hoisted(() => ({ on: true }))
+/**
+ * The sound switch, and the running graph of the module `load` just imported; the output itself
+ * adds no gain of its own to count.
+ */
+const sound = vi.hoisted(() => ({ on: true, runningGraph: (): AudioContext | null => null }))
 
 vi.mock('@/ui/soundOutput', () => ({
-  gameSoundOn: () => sound.on,
+  soundGraph: () => (sound.on ? sound.runningGraph() : null),
   soundOutput: (graph: { destination: unknown }) => graph.destination,
 }))
 
 class FakeAudioContext {
+  static built = 0
   state = 'running'
   currentTime = 10
   destination = {}
   resume = vi.fn(() => Promise.resolve())
   decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true, duration: 3.7 }))
+
+  constructor() {
+    FakeAudioContext.built++
+  }
 
   createGain(): FakeGain {
     const gain: FakeGain = {
@@ -62,6 +70,7 @@ class FakeAudioContext {
 /** A fresh module per test: the shared audio graph and the buffers are module state. */
 async function load() {
   vi.resetModules()
+  sound.runningGraph = (await import('@/ui/audio')).runningGraph
   return import('@/games/turnpipes/sounds')
 }
 
@@ -73,6 +82,7 @@ beforeEach(() => {
   gains.length = 0
   sources.length = 0
   sound.on = true
+  FakeAudioContext.built = 0
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) })),
@@ -107,9 +117,15 @@ describe('without Web Audio', () => {
   })
 })
 
+/** Decodes like the live graph; the app builds one for preloading. */
+class FakeOfflineContext {
+  decodeAudioData = vi.fn(() => Promise.resolve({ decoded: true, duration: 3.7 }))
+}
+
 describe('with Web Audio', () => {
   beforeEach(() => {
     vi.stubGlobal('AudioContext', FakeAudioContext)
+    vi.stubGlobal('OfflineAudioContext', FakeOfflineContext)
   })
 
   it('a turn varies its pitch by at most five per cent, at 0.6', async () => {
@@ -176,9 +192,7 @@ describe('with Web Audio', () => {
     expect(playSound('leak').endsInS).toBe(0)
   })
 
-  it('stays silent while muted, and leaves the device’s audio alone', async () => {
-    const session = { type: 'auto' }
-    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+  it('stays silent while muted', async () => {
     const { preloadSounds, playSound, startFlow } = await load()
     preloadSounds()
     await settle()
@@ -188,8 +202,43 @@ describe('with Web Audio', () => {
     startFlow().stop()
 
     expect(sources).toHaveLength(0)
-    expect(session.type).toBe('auto')
-    Reflect.deleteProperty(navigator, 'audioSession')
+  })
+
+  it('preloads while muted without the app’s graph: one built after a tap may start running', async () => {
+    sound.on = false
+    const { preloadSounds } = await load()
+    preloadSounds()
+
+    expect(FakeAudioContext.built).toBe(0)
+    expect(fetch).toHaveBeenCalled()
+  })
+
+  it('sounds with the first turn after unmuting', async () => {
+    sound.on = false
+    const { preloadSounds, playSound } = await load()
+    preloadSounds()
+    await settle()
+
+    sound.on = true
+    playSound('turn')
+
+    expect(sources).toHaveLength(1)
+  })
+
+  it('stays silent on a sleeping graph: the sound would land on its wake-up', async () => {
+    vi.stubGlobal(
+      'AudioContext',
+      class extends FakeAudioContext {
+        override state = 'suspended'
+      },
+    )
+    const { preloadSounds, playSound } = await load()
+    preloadSounds()
+    await settle()
+
+    playSound('turn')
+
+    expect(sources).toHaveLength(0)
   })
 
   it('stays silent until the sound is decoded', async () => {

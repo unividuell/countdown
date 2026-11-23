@@ -238,23 +238,15 @@ describe('EchoLocateBoard', () => {
 
   // No cover: the release of the first click is the gesture iOS needs, and it pings at once.
   it('starts the sound with the first click and pings in the same click', async () => {
-    const session = { type: 'auto' }
-    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+    const w = mountBoard()
 
-    try {
-      const w = mountBoard()
+    await tapAt(w, A)
 
-      await tapAt(w, A)
-
-      expect(session.type).toBe('playback')
-      expect(sound.ctx.resume).toHaveBeenCalledOnce()
-      expect(sound.loadSounds).toHaveBeenCalledWith(sound.ctx, [SRC])
-      expect(w.emitted('skip')).toEqual([[0, A]])
-      expect(sound.engines).toHaveLength(1)
-      expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
-    } finally {
-      Reflect.deleteProperty(navigator, 'audioSession')
-    }
+    expect(sound.ctx.resume).toHaveBeenCalledOnce()
+    expect(sound.loadSounds).toHaveBeenCalledWith(sound.ctx, [SRC])
+    expect(w.emitted('skip')).toEqual([[0, A]])
+    expect(sound.engines).toHaveLength(1)
+    expect(engine().startBed).toHaveBeenCalledWith(buffer('bed'), dbToGain(-24))
   })
 
   it('loads the sounds once, whatever clicks follow', async () => {

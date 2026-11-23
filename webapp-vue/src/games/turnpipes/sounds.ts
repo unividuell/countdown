@@ -6,8 +6,9 @@ import leakUrl from './sounds/leak.mp3?url'
 import successUrl from './sounds/success.mp3?url'
 import turnUrl from './sounds/turn.mp3?url'
 
-import { audioGraph, claimPlayback, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
-import { gameSoundOn, soundOutput } from '@/ui/soundOutput'
+import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { recordedSounds } from '@/ui/recordedSounds'
+import { soundGraph, soundOutput } from '@/ui/soundOutput'
 import type { Leak } from './types'
 
 export type SoundName = 'turn' | 'flow' | 'leak' | 'success' | 'dry'
@@ -48,44 +49,20 @@ export function endSoundOf(run: {
   return run.correct ? 'success' : 'dry'
 }
 
-/** Decoded sounds by name; null while decoding or when it failed. */
-const buffers = new Map<SoundName, AudioBuffer | null>()
+const clips = recordedSounds(Object.values(URLS), 'turn-pipes')
 
-/** Decodes every sound once, ahead of the first one needed; a suspended graph decodes all the same. */
+/** Decodes every sound once, ahead of the first one needed. */
 export function preloadSounds(): void {
-  const graph = audioGraph()
-  if (!graph) return
-
-  for (const [name, url] of Object.entries(URLS) as [SoundName, string][]) {
-    if (buffers.has(name)) continue
-    buffers.set(name, null)
-    void fetch(url)
-      .then((response) => response.arrayBuffer())
-      .then((data) => graph.decodeAudioData(data))
-      .then(
-        (buffer) => buffers.set(name, buffer),
-        (err: unknown) => console.warn('[turn-pipes] a sound did not decode', name, err),
-      )
-  }
+  clips.preload()
 }
 
 const SILENT: Playing = { stop: () => {}, endsInS: 0 }
 
 function play(name: SoundName, loop: boolean): Playing {
-  if (!gameSoundOn()) return SILENT
-
-  claimPlayback()
-  const graph = audioGraph()
+  const graph = soundGraph()
   if (!graph) return SILENT
 
-  // Browsers start the graph suspended; the first tap is the gesture that may wake it.
-  if (graph.state === 'suspended') {
-    graph.resume().catch((err: unknown) => {
-      console.warn('[turn-pipes] the browser kept the audio graph suspended', err)
-    })
-  }
-
-  const buffer = buffers.get(name)
+  const buffer = clips.buffer(URLS[name])
   if (!buffer) return SILENT
 
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS

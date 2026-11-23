@@ -17,6 +17,19 @@ export function audioGraph(): AudioContext | null {
 }
 
 /**
+ * Decodes without the app's graph: an offline context has no output, so building it claims no
+ * audio session — a muted game preloads through it. Its buffers play on the app's graph.
+ */
+let offline: OfflineAudioContext | null = null
+
+export function decodingGraph(): OfflineAudioContext | null {
+  if (offline !== null) return offline
+  if (typeof OfflineAudioContext === 'undefined') return null
+  offline = new OfflineAudioContext(1, 1, 48000)
+  return offline
+}
+
+/**
  * The graph, only while it runs. A sound scheduled on a sleeping graph lands on its wake-up, long
  * after what it belonged to: a one-shot asks here and stays silent on `null`.
  */
@@ -26,18 +39,11 @@ export function runningGraph(): AudioContext | null {
   return graph?.state === 'running' ? graph : null
 }
 
-/** iOS mutes Web Audio under the ring/silent switch unless the session says „playback“. */
-export function claimPlayback(): void {
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
-  if (session) session.type = 'playback'
-}
-
 /**
  * Wakes the graph. Call it synchronously inside a `click` or `pointerup`: iOS refuses a resume
  * anywhere else.
  */
 export function unlockSound(): void {
-  claimPlayback()
   const graph = audioGraph()
   if (graph?.state !== 'suspended') return
 

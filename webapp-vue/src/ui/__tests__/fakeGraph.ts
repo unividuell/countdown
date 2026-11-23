@@ -71,7 +71,6 @@ export const graph = {
 export const audioMock = {
   audioGraph: () => graph,
   runningGraph: () => (graph.state === 'running' ? graph : null),
-  claimPlayback: vi.fn(),
   unlockSound: vi.fn(),
   START_LOOKAHEAD_SECONDS: 0,
 }

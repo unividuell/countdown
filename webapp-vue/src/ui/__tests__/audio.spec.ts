@@ -27,6 +27,28 @@ describe('audioGraph', () => {
   })
 })
 
+describe('decodingGraph', () => {
+  beforeEach(() => vi.resetModules())
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('is null without offline Web Audio', async () => {
+    vi.stubGlobal('OfflineAudioContext', undefined)
+    const { decodingGraph } = await import('@/ui/audio')
+
+    expect(decodingGraph()).toBeNull()
+  })
+
+  it('opens one offline graph, apart from the app’s live one', async () => {
+    const live = vi.fn()
+    vi.stubGlobal('AudioContext', live)
+    vi.stubGlobal('OfflineAudioContext', class {})
+    const { decodingGraph } = await import('@/ui/audio')
+
+    expect(decodingGraph()).toBe(decodingGraph())
+    expect(live).not.toHaveBeenCalled()
+  })
+})
+
 /** A graph in `state`, as the one the app opens. */
 function stubGraph(state: AudioContextState) {
   const resume = vi.fn(() => Promise.resolve())
@@ -88,12 +110,13 @@ describe('unlockSound', () => {
     expect(resume).not.toHaveBeenCalled()
   })
 
-  it('claims playback on iOS, so the silent switch does not mute it', async () => {
+  // Chrome on iOS ignores the type and stops other audio anyway; elsewhere `auto` sounded as well.
+  it('leaves the audio session type to the browser', async () => {
     const session = { type: 'auto' }
     Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
     const { unlockSound } = await import('@/ui/audio')
     unlockSound()
 
-    expect(session.type).toBe('playback')
+    expect(session.type).toBe('auto')
   })
 })
