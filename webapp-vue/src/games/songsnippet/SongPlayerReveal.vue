@@ -14,6 +14,8 @@ import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import { usePlayback } from '@/ui/usePlayback'
+import { FADE_MS } from '@/games/revealChoreography'
+import { useRevealTimeline } from '@/games/revealTimeline'
 import { SOLUTION_ASSET } from './types'
 import type { SongSnippetSolution } from './types'
 
@@ -30,6 +32,10 @@ const props = defineProps<{
   /** False when this card was already the reveal on arrival: the bar then skips its morph. */
   animate: boolean
 }>()
+
+/** Cover and title name the song: they judge, so they come with the verdict. */
+const verdictReached = useRevealTimeline().reached('verdict')
+const verdictFade = { transitionDuration: `${FADE_MS}ms` }
 
 const playback = usePlayback()
 const loaded = ref(false)
@@ -93,7 +99,9 @@ onUnmounted(() => {
         :href="solution.link"
         target="_blank"
         rel="noopener"
-        class="song-cover block aspect-square"
+        class="song-cover block aspect-square transition-opacity"
+        :class="verdictReached ? 'opacity-100' : 'opacity-0'"
+        :style="verdictFade"
         data-test="deezer-link"
         aria-label="Auf Deezer öffnen"
         title="Auf Deezer öffnen"
@@ -117,7 +125,12 @@ onUnmounted(() => {
     <!-- Two lines, because either of them can be long: „Das geht ab [wir feiern die ganze Nacht]"
          next to its artist had nowhere to go on a phone. On the board this same slot holds the
          search field, so the bar below sits at the same height on both screens. -->
-    <div class="h-12" data-test="solution-line">
+    <div
+      class="h-12 transition-opacity"
+      :class="verdictReached ? 'opacity-100' : 'opacity-0'"
+      :style="verdictFade"
+      data-test="solution-line"
+    >
       <p class="truncate text-center text-sm leading-6 font-medium">{{ solution.title }}</p>
       <p class="truncate text-center text-sm leading-6 text-on-surface-variant">
         {{ solution.artist }}
