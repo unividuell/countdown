@@ -16,11 +16,11 @@ import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
-import LabEntries from '@/gamelab/LabEntries.vue'
 import { labRoster } from '@/gamelab/roster'
 import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
+import { phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
 import { labShortcut } from '@/gamelab/shortcuts'
 import { switchPlayerHref } from '@/gamelab/switchPlayer'
 import {
@@ -35,7 +35,6 @@ import {
   skipLabStage,
   submitLabGuess,
 } from '@/gamelab/api'
-import { requestDrawerClose } from '@/nav/drawerControl'
 import type { GameEntry } from '@/games/GameEntry'
 import MemberRow from '@/members/MemberRow.vue'
 import { SPOILER_HOLD_MS } from '@/members/useRoster'
@@ -49,7 +48,7 @@ import { nowMs, skewMs } from '@/ui/sharedClock'
 import type { PlayClock } from '@/ui/playClock'
 import type { RampScene } from '@/ui/ramp/posterText'
 import type { RosterMemberResponse } from '@/api/types'
-import type { LabEntryDto, LabPhase, LabRoundResponse } from '@/gamelab/types'
+import type { LabPhase, LabRoundResponse } from '@/gamelab/types'
 
 const route = useRoute('/c/[slug]/lab/[game]/')
 const router = useRouter()
@@ -59,12 +58,9 @@ const { user } = useAuth()
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
 const seed = computed(() => parseSeed(route.query.seed))
-// Anything other than exactly `TWO` reads as `ONE` — the lab is a dev tool, so a junk `?phase=`
-// value is visible at a glance rather than an error state, and every link that predates this
-// selector keeps opening phase one.
-const phase = computed<LabPhase>(() => (route.query.phase === 'TWO' ? 'TWO' : 'ONE'))
+const phase = computed<LabPhase>(() => phaseFrom(route.query))
 // Like the phase, in the URL: a reload and a shared link stand the same ramp.
-const ramp = computed(() => route.query.ramp === '1')
+const ramp = computed(() => rampFrom(route.query))
 
 // Where a player switch comes back to: phase included, or the other tester's phase-two round is lost.
 const returnPath = computed(() => `${route.path}?seed=${seed.value}&phase=${phase.value}`)
@@ -119,19 +115,15 @@ function writeSeed(next: number): void {
 // Same reasoning as the seed: the phase lives in the URL so a reload and a shared link show the
 // same round.
 function writePhase(next: LabPhase): void {
-  router.replace({ query: { ...route.query, phase: next } })
+  router.replace({ query: withPhase(route.query, next) })
 }
 
 function writeRamp(on: boolean): void {
-  const query = { ...route.query }
-  if (on) query.ramp = '1'
-  else delete query.ramp
-  router.replace({ query })
+  router.replace({ query: withRamp(route.query, on) })
 }
 
 async function run(
   action: (slug: string, game: string, seed: number, phase: LabPhase) => Promise<LabRoundResponse>,
-  closeDrawer = false,
 ) {
   const current = seed.value
   if (current === null || !gameComponent.value) return
@@ -153,7 +145,6 @@ async function run(
     // `revealed: false` for a gated game, because the server clears its own `openedAt` on all of
     // them. So this one line retires the stamp on all of them too.
     if (!round.value.revealed) playStartedAt.value = null
-    if (closeDrawer) requestDrawerClose()
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) unavailable.value = true
     else if (err instanceof ApiError && err.status === 409)
@@ -251,25 +242,14 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 
   event.preventDefault()
   if (shortcut === 'forgetMine') {
-    void run(forgetMyLabEntry, true)
+    void run(forgetMyLabEntry)
   } else if (shortcut === 'reset') {
-    void run(resetLabRound, true)
+    void run(resetLabRound)
   } else if (shortcut === 'roll') {
     writeSeed(rollSeed())
   } else if (shortcut === 'switchPlayer') {
     window.location.assign(switchPlayerHref(returnPath.value))
   }
-})
-
-/**
- * The complete picture of the round, as the server actually stored it — the viewer's own entry
- * first, then everyone else's. Feeds `LabEntries`, which shows exactly the raw wire values; a
- * synthesised row would misrepresent what is really in the database.
- */
-const entries = computed<LabEntryDto[]>(() => {
-  const current = round.value
-  if (!current) return []
-  return current.me ? [current.me, ...current.others] : current.others
 })
 
 /**
@@ -336,39 +316,6 @@ watch(
     </p>
   </div>
   <div v-else-if="seed !== null">
-    <!-- Everything that only exists because this is a lab lives in the nav drawer, not here. A
-         game review judges the look of the page as much as the game, so the content column must
-         hold nothing a real player would not see. `defer` lets the drawer's container mount
-         first; without it the teleport would race the drawer on a cold load. -->
-    <Teleport defer to="#drawer-page-tools">
-      <LabControls
-        :seed="seed"
-        :phase="phase"
-        :busy="busy"
-        :round-phase="round?.phase"
-        :award-rule="round?.awardRule"
-        :award-points="round?.awardPoints"
-        :difficulty="round?.difficulty"
-        :ramp="ramp"
-        :return-path="returnPath"
-        @apply="writeSeed"
-        @roll="writeSeed(rollSeed())"
-        @phase-change="writePhase"
-        @ramp-change="writeRamp"
-        @refresh="run(openLabRound, true)"
-        @reset="run(resetLabRound, true)"
-        @forget-mine="run(forgetMyLabEntry, true)"
-      />
-      <p data-test="lab-context" class="px-5 pt-2 pb-3 text-xs text-on-surface-variant">
-        Testrunde in „{{ community.name }}“
-        <span v-if="round?.tookOverRound" data-test="lab-takeover" class="mt-1 block text-warning">
-          Seed {{ seed }} hat die vorherige Test-Runde verworfen.
-        </span>
-      </p>
-    </Teleport>
-
-    <!-- Stays in the column: an error is the one thing that must not wait behind a closed
-         drawer, and it is absent whenever the page is worth looking at. -->
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-error">{{ error }}</p>
 
     <!-- The community page's row, same height reservation (see `pages/c/[slug]/index.vue`). -->
@@ -443,14 +390,31 @@ watch(
       </RoundSurface>
     </RoundRamp>
 
-    <!-- No drawer close on these two: they are triggered from the column, where nothing is in
-         the way of the result. -->
-    <LabEntries
-      :entries="entries"
-      :mine-user-id="round?.me?.userId ?? null"
-      :busy="busy"
-      @forget-mine="run(forgetMyLabEntry)"
-      @reset="run(resetLabRound)"
-    />
+    <section data-test="lab-controls" class="mt-8 border-t border-outline pt-4">
+      <LabControls
+        :seed="seed"
+        :phase="phase"
+        :busy="busy"
+        :round-phase="round?.phase"
+        :award-rule="round?.awardRule"
+        :award-points="round?.awardPoints"
+        :difficulty="round?.difficulty"
+        :ramp="ramp"
+        :return-path="returnPath"
+        @apply="writeSeed"
+        @roll="writeSeed(rollSeed())"
+        @phase-change="writePhase"
+        @ramp-change="writeRamp"
+        @refresh="run(openLabRound)"
+        @reset="run(resetLabRound)"
+        @forget-mine="run(forgetMyLabEntry)"
+      />
+      <p data-test="lab-context" class="mt-3 text-xs text-on-surface-variant">
+        Testrunde in „{{ community.name }}“
+        <span v-if="round?.tookOverRound" data-test="lab-takeover" class="mt-1 block text-warning">
+          Seed {{ seed }} hat die vorherige Test-Runde verworfen.
+        </span>
+      </p>
+    </section>
   </div>
 </template>

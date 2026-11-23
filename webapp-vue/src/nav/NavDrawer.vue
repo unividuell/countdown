@@ -14,7 +14,6 @@ import {
   computed,
   nextTick,
   onMounted,
-  onUnmounted,
   ref,
   useTemplateRef,
   watch,
@@ -43,7 +42,6 @@ import { activeCommunity } from '@/communities/context'
 import { communityPath } from '@/communities/routes'
 import { useCommunities } from '@/communities/useCommunities'
 import { communityEntries, spinDegrees } from './drawer'
-import { onDrawerCloseRequested } from './drawerControl'
 import type { MeResponse } from '@/api/types'
 
 const props = defineProps<{ user: MeResponse }>()
@@ -138,7 +136,6 @@ const viewerName = computed(
  * Crossing md swaps the closed frame's classes — a drawer translated off becomes a dialog faded
  * out — and with transitions on, the browser animates between the two: the menu flashes up. So the
  * switch renders without transitions; a forced style read commits it before they come back.
- * Not a remount (`:key`): the lab teleports its tools into the frame.
  */
 const switchingMode = ref(false)
 
@@ -254,10 +251,9 @@ function updateScrollHint(): void {
   scrollHintVisible.value = el.scrollTop + el.clientHeight <= cutoff
 }
 
-// The rows are not all there when the drawer opens: the community list is still in flight, and a
-// page's tools teleport in whenever that page mounts. Both land as child mutations, and without
-// this the cue would be decided against a list that had not arrived yet — leaving no hint at all
-// on precisely the overflowing drawer it exists for.
+// The rows are not all there when the drawer opens: the community list is still in flight. It
+// lands as child mutations, and without this the cue would be decided against a list that had not
+// arrived yet — leaving no hint at all on precisely the overflowing drawer it exists for.
 useMutationObserver(navScroll, updateScrollHint, { childList: true, subtree: true })
 
 function loadCommunities(): void {
@@ -265,16 +261,7 @@ function loadCommunities(): void {
   refresh().catch((e) => console.error('could not load the community list', e))
 }
 
-let unsubscribeClose: (() => void) | null = null
-onMounted(() => {
-  loadCommunities()
-  unsubscribeClose = onDrawerCloseRequested(() => {
-    if (open.value) void setOpen(false)
-  })
-})
-onUnmounted(() => {
-  unsubscribeClose?.()
-})
+onMounted(loadCommunities)
 
 /**
  * The toggle stays above the open frame, which is laid out round it. Read at open time, because
@@ -379,11 +366,9 @@ useEventListener(
 // because it is also the close button; the sound switch beside it stays reachable too.
 onKeyStroke('Tab', (e) => {
   if (!open.value) return
-  // Contract: this selector must list every focusable element the drawer can contain. Since the
-  // drawer hosts page-published tools (see the #drawer-page-tools container below), its contents
-  // are no longer knowable from this file — so the selector covers the standard focusables rather
-  // than only what today's own markup happens to use. Anything with a non-negative [tabindex] is
-  // included for the same reason. The spec's cage test reuses this selector, so it cannot catch
+  // Contract: this selector must list every focusable element the drawer can contain — the
+  // standard focusables rather than only what today's own markup happens to use, and anything
+  // with a non-negative [tabindex]. The spec's cage test reuses this selector, so it cannot catch
   // an omission here.
   const inDrawer = Array.from(
     drawer.value?.querySelectorAll<HTMLElement>(
@@ -565,15 +550,6 @@ onKeyStroke('Tab', (e) => {
               >Einstellungen</RouterLink
             >
           </template>
-
-          <!-- Tools published by whatever page is open, via `<Teleport to="#drawer-page-tools">`.
-               Deliberately empty and deliberately ignorant: the drawer knows a page MAY contribute
-               controls, never which ones, so nothing page-specific reaches this file and a page
-               that contributes none costs a hidden empty div. `empty:hidden` keeps it out of the
-               flex flow until something lands in it — a teleported child is a real DOM child, so
-               :empty flips on its own. Contributors bring their own heading and divider, because
-               only they know whether their block deserves one. -->
-          <div id="drawer-page-tools" data-test="page-tools" class="shrink-0 empty:hidden" />
 
           <!-- grow takes the slack and centres the mark in it; shrink-0 means a long list grows
                the scroll height instead of squeezing the mark away. -->
