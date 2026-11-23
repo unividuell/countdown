@@ -320,9 +320,15 @@ watch(
   <div v-else-if="seed !== null">
     <p v-if="error" data-test="lab-error" class="mb-3 text-sm text-error">{{ error }}</p>
 
-    <!-- The community page's row, same height reservation (see `pages/c/[slug]/index.vue`). -->
+    <!-- The community page's row, same height reservation (see `pages/c/[slug]/index.vue`). Keyed
+         on the seed: a roll is a fresh load, so its new streaks never read as a rise. -->
     <section class="flex min-h-[86px] items-center">
-      <MemberRow v-if="rosterMembers.length" :members="rosterMembers" :me-id="user?.id" />
+      <MemberRow
+        v-if="round && rosterMembers.length"
+        :key="round.seed"
+        :members="rosterMembers"
+        :me-id="user?.id"
+      />
     </section>
 
     <!-- The ramp decides once at mount, so a fresh instance is the only way to stand it again: after
