@@ -3,13 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
-import {
-  RESULTS_DELAY_MS,
-  ROW_STAGGER_MS,
-  TIP_COLUMN,
-  VERDICT_MS,
-  cellDelayMs,
-} from '@/games/revealChoreography'
+import { ROW_STAGGER_MS, TIP_COLUMN, VERDICT_MS, othersDelayMs } from '@/games/revealChoreography'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
@@ -31,10 +25,12 @@ const guess = (userId: string, revealDelayMs: number): RevealGuess => ({
   revealDelayMs,
 })
 
-/** Mine is on the wheel from the start; the other two land 120 ms apart. */
-/** As `GuessHueGame` times them: mine first, the others after the verdict. */
-const landing = (tick: number) => cellDelayMs(tick, TIP_COLUMN, 3)
-const GUESSES = [guess('me', landing(0)), guess('fry', landing(1)), guess('leela', landing(2))]
+/** As `GuessHueGame` times them, within the `others` beat: mine is the knob, already there. */
+const within = (tick: number) => othersDelayMs(tick, TIP_COLUMN, 3)
+const GUESSES = [guess('me', 0), guess('fry', within(1)), guess('leela', within(2))]
+
+/** When a marker lands: the others' beat, then its own delay. */
+const landing = (tick: number) => VERDICT_AT_MS + VERDICT_MS + within(tick)
 
 function mountReveal(props: Partial<InstanceType<typeof GuessHueReveal>['$props']> = {}) {
   return mount(GuessHueReveal, {
@@ -137,10 +133,11 @@ describe('GuessHueReveal', () => {
   describe('markers', () => {
     it('knocks once for every other player, as their marker lands', () => {
       mountReveal({ guesses: GUESSES })
-      vi.advanceTimersByTime(landing(1) - 1)
+      // ARMED_MS rounds the two arming frames up by 8 ms.
+      vi.advanceTimersByTime(landing(1) - 10)
       expect(playMarker).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(10)
       expect(playMarker).toHaveBeenCalledOnce()
 
       vi.advanceTimersByTime(ROW_STAGGER_MS)
@@ -149,14 +146,14 @@ describe('GuessHueReveal', () => {
 
     it('knocks only once my verdict has rung out', () => {
       mountReveal({ guesses: GUESSES })
-      vi.advanceTimersByTime(RESULTS_DELAY_MS + VERDICT_MS - 1)
+      vi.advanceTimersByTime(VERDICT_AT_MS + VERDICT_MS - 1)
       expect(playVerdict).toHaveBeenCalledOnce()
 
       expect(playMarker).not.toHaveBeenCalled()
     })
 
     it('does not knock for mine: it is the knob, already there', () => {
-      mountReveal({ guesses: [guess('me', 1945)] })
+      mountReveal({ guesses: [guess('me', 0)] })
       vi.advanceTimersByTime(3000)
 
       expect(playMarker).not.toHaveBeenCalled()

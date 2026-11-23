@@ -176,6 +176,6 @@ function outlineStyle(outline: Outline) {
       />
     </div>
 
-    <PlacePatchScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
+    <PlacePatchScoreboard :rows="props.rows" :live="props.live" />
   </div>
 </template>

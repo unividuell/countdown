@@ -5,7 +5,6 @@ import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import PipeGrid from '../PipeGrid.vue'
 import { playSound, preloadSounds, startFlow } from '../sounds'
 import TurnPipesReveal from '../TurnPipesReveal.vue'
-import TurnPipesScoreboard from '../TurnPipesScoreboard.vue'
 import type { ScoreRow } from '../scoreboard'
 import type { PipeKindCode, TurnPipesOutcome, TurnPipesPayload } from '../types'
 import { waterStepMs } from '../water'
@@ -88,7 +87,8 @@ type Reveal = ReturnType<typeof mountReveal>
 const grid = (w: Reveal) => w.getComponent(PipeGrid)
 const wet = (w: Reveal) => [...(grid(w).props('wet') as ReadonlySet<number>)]
 const puddles = (w: Reveal) => [...(grid(w).props('puddles') as ReadonlySet<number>)]
-const held = (w: Reveal) => w.getComponent(TurnPipesScoreboard).props('resultsHeld')
+/** My row still waits for the verdict. */
+const held = (w: Reveal) => w.get('[data-test="row-me"] th').classes().includes('opacity-0')
 const rotationsOf = (w: Reveal) => (grid(w).props('turns') as number[]).map((t) => t % 4)
 
 /** Lets the timers fire, then Vue render what they changed. */

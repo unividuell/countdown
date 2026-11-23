@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DedusterScoreboard from '../DedusterScoreboard.vue'
 import type { DedusterRow } from '../scoreboard'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 const viewer = vi.hoisted(() => ({ isSuperAdmin: false }))
 vi.mock('@/auth/useAuth', async () => {
@@ -39,10 +40,10 @@ describe('DedusterScoreboard', () => {
 
   it('tells the players that a run is marked, not what caught it', () => {
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,
@@ -56,10 +57,10 @@ describe('DedusterScoreboard', () => {
   it('tells a super-admin every reason the server stored', () => {
     viewer.isSuperAdmin = true
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,
@@ -73,10 +74,10 @@ describe('DedusterScoreboard', () => {
 
   it('shows the original’s columns and both marks', () => {
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,
@@ -99,10 +100,10 @@ describe('DedusterScoreboard', () => {
 
   it('heads the table with the round’s tempo and size, units beneath the table', () => {
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,
@@ -118,10 +119,10 @@ describe('DedusterScoreboard', () => {
 
   it('selects a player by their name, for the curve', async () => {
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,
@@ -135,10 +136,10 @@ describe('DedusterScoreboard', () => {
 
   it('keeps its focus ring inside the cell that clips it', () => {
     const w = mount(DedusterScoreboard, {
+      global: { provide: testTimeline(false).provide },
       props: {
         rows: [ROW],
         live: false,
-        animate: false,
         selectedUserId: null,
         intervalMs: 1500,
         tiles: 48,

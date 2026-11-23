@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CopyBlocksScoreboard from '@/games/copyblocks/CopyBlocksScoreboard.vue'
 import type { ScoreRow } from '@/games/copyblocks/scoreboard'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
   return {
@@ -21,7 +22,8 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 
 function mountBoard(rows: ScoreRow[], selectedUserId: string | null = null) {
   return mount(CopyBlocksScoreboard, {
-    props: { rows, live: false, animate: false, selectedUserId },
+    global: { provide: testTimeline(false).provide },
+    props: { rows, live: false, selectedUserId },
   })
 }
 

@@ -39,6 +39,6 @@ provideRevealTimeline({ animate: props.animate, won: () => null })
       <SpotObjectReviewRules />
     </InfoBox>
 
-    <SpotObjectScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
+    <SpotObjectScoreboard :rows="props.rows" :live="props.live" />
   </div>
 </template>

@@ -37,6 +37,6 @@ provideRevealTimeline({ animate: props.animate, won: () => props.won })
       :assets="props.assets"
       :animate="props.animate"
     />
-    <SongSnippetScoreboard :rows="props.rows" :live="props.live" :animate="props.animate" />
+    <SongSnippetScoreboard :rows="props.rows" :live="props.live" />
   </div>
 </template>

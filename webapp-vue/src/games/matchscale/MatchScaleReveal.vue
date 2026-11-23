@@ -19,7 +19,7 @@
  * sizes compare there, positions do not exist.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS, isStill } from '@/games/revealChoreography'
+import { isStill } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, type Counting } from './countSound'
@@ -83,9 +83,6 @@ const growTiming: GrowTiming = {
 function supportsLinear(): boolean {
   return typeof CSS !== 'undefined' && CSS.supports('transition-timing-function', 'linear(0, 1)')
 }
-
-/** A long count would run under the rows; they wait for B. */
-const resultsDelayMs = Math.max(RESULTS_DELAY_MS, SOLUTION_DELAY_MS + growTiming.ms)
 
 /** B eases only during its growth; afterwards a view refit moves B with everything else. */
 const growing = ref(!still)
@@ -245,12 +242,10 @@ function boxOf(s: MatchScalePayload['a'], p: Placement): Box {
     <MatchScaleScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected="selected"
       :factor="props.factor"
       :tolerance="props.payload.tolerance"
       :truth="truth"
-      :results-delay-ms="resultsDelayMs"
       @select="select"
     />
 

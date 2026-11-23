@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { FIELD_PX, revealPlacements, sizeAt } from '../gestures'
 import MatchScaleLegend from '../MatchScaleLegend.vue'
 import MatchScaleReveal from '../MatchScaleReveal.vue'
@@ -12,7 +12,6 @@ import { gameEntry } from '@/games/__tests__/gameFixtures'
 import { playCount } from '../countSound'
 import { countEndsInMs, countTones, growMs } from '../countTones'
 import { TIMELINE_TIMERS, VERDICT_AT_MS } from '@/games/__tests__/timelineTiming'
-import MatchScaleScoreboard from '../MatchScaleScoreboard.vue'
 import { soundOnStage } from '@/ui/useSoundAwake'
 import { playVerdict } from '@/ui/verdictSound'
 
@@ -302,14 +301,21 @@ describe('MatchScaleReveal', () => {
     }
   })
 
-  it('a long count holds the rows back until B has arrived; a short one does not', () => {
-    const delay = (w: ReturnType<typeof mountReveal>) =>
-      w.getComponent(MatchScaleScoreboard).props('resultsDelayMs')
+  it('lands my row when the count ends, with the verdict', async () => {
+    vi.useFakeTimers({ toFake: TIMELINE_TIMERS })
+    try {
+      const wrapper = mountReveal({ animate: true, myScale: 0.3, factor: 1.6 })
+      const mine = () => wrapper.get('[data-test="row-me"] th')
+      const ends = VERDICT_AT_MS + countEndsInMs(countTones(0.3, 1.6))
 
-    expect(delay(mountReveal({ animate: true, myScale: 0.3, factor: 1.6 }))).toBeCloseTo(
-      SOLUTION_DELAY_MS + growMs(countTones(0.3, 1.6)),
-    )
-    expect(delay(mountReveal({ animate: true }))).toBe(RESULTS_DELAY_MS)
+      await vi.advanceTimersByTimeAsync(ends - 50)
+      expect(mine().classes()).toContain('opacity-0')
+
+      await vi.advanceTimersByTimeAsync(50)
+      expect(mine().classes()).toContain('opacity-100')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   describe('the count while B grows', () => {

@@ -49,11 +49,19 @@ export interface RevealTimelineOptions {
   judged?: 'before'
 }
 
-const KEY: InjectionKey<RevealTimeline> = Symbol('revealTimeline')
+export const REVEAL_TIMELINE: InjectionKey<RevealTimeline> = Symbol('revealTimeline')
 
 const NO_HOLD: Hold = { release: () => {}, releaseSilently: () => {} }
 
-export function provideRevealTimeline(options: RevealTimelineOptions): RevealTimeline {
+/**
+ * The timeline without a component: [arm] starts the beats, [dispose] ends everything. Specs arm
+ * it by hand; a reveal uses [provideRevealTimeline].
+ */
+export function createRevealTimeline(options: RevealTimelineOptions): {
+  timeline: RevealTimeline
+  arm: () => void
+  dispose: () => void
+} {
   const still =
     !options.animate ||
     prefersReducedMotion() ||
@@ -66,7 +74,6 @@ export function provideRevealTimeline(options: RevealTimelineOptions): RevealTim
   let disposed = false
   let holds = 0
   let silent = options.judged === 'before'
-  let frame = 0
   const timers: ReturnType<typeof setTimeout>[] = []
   let verdict: Verdict | null = null
 
@@ -99,7 +106,8 @@ export function provideRevealTimeline(options: RevealTimelineOptions): RevealTim
     if (isReached('story') && holds === 0) reach('verdict')
   }
 
-  function start(): void {
+  function arm(): void {
+    if (still || disposed) return
     reach('open')
     after(HEAD_DELAY_MS, () => {
       reach('head')
@@ -117,24 +125,11 @@ export function provideRevealTimeline(options: RevealTimelineOptions): RevealTim
   // Still: the whole sequence during setup, in order, so the first render is the end state.
   if (still) for (const beat of BEATS) reach(beat)
 
-  onMounted(() => {
-    if (still) return
-    // Two frames, as `useRevealArming`: a painted „from“ state before any transition starts.
-    frame = requestAnimationFrame(() => {
-      void document.body.offsetHeight
-      frame = requestAnimationFrame(() => {
-        frame = 0
-        start()
-      })
-    })
-  })
-
-  onBeforeUnmount(() => {
+  function dispose(): void {
     disposed = true
-    if (frame) cancelAnimationFrame(frame)
     timers.forEach(clearTimeout)
     verdict?.stop()
-  })
+  }
 
   const timeline: RevealTimeline = {
     still,
@@ -158,13 +153,37 @@ export function provideRevealTimeline(options: RevealTimelineOptions): RevealTim
     },
   }
 
-  provide(KEY, timeline)
+  return { timeline, arm, dispose }
+}
+
+export function provideRevealTimeline(options: RevealTimelineOptions): RevealTimeline {
+  const { timeline, arm, dispose } = createRevealTimeline(options)
+  let frame = 0
+
+  onMounted(() => {
+    if (timeline.still) return
+    // Two frames, as `useRevealArming`: a painted „from“ state before any transition starts.
+    frame = requestAnimationFrame(() => {
+      void document.body.offsetHeight
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        arm()
+      })
+    })
+  })
+
+  onBeforeUnmount(() => {
+    if (frame) cancelAnimationFrame(frame)
+    dispose()
+  })
+
+  provide(REVEAL_TIMELINE, timeline)
 
   return timeline
 }
 
 export function useRevealTimeline(): RevealTimeline {
-  const timeline = inject(KEY, null)
+  const timeline = inject(REVEAL_TIMELINE, null)
   if (!timeline) throw new Error('useRevealTimeline outside a reveal: call provideRevealTimeline')
 
   return timeline

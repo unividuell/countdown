@@ -163,7 +163,6 @@ const marks = computed(() => (solved.value && markErrors.value ? view.value.mark
     <CopyBlocksScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       @select="select"
     />

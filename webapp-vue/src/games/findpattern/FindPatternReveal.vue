@@ -239,7 +239,6 @@ const paletteStyle = {
       :rows="props.rows"
       :solution-chips="toneChips(props.solution.pattern, props.solution.palette)"
       :live="props.live"
-      :animate="props.animate"
     />
   </div>
 </template>

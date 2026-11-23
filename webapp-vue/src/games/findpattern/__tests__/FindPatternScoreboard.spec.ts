@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternScoreboard from '@/games/findpattern/FindPatternScoreboard.vue'
 import type { ScoreRow } from '@/games/findpattern/scoreboard'
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 // The table itself — band, gutters, cascade, live chip, the pulse's nesting — is
 // `RevealScoreboard`'s and tested there. What is Musterung's own: the chip columns, the clock that
@@ -33,11 +34,11 @@ function row(over: Partial<ScoreRow> & { userId: string }): ScoreRow {
 
 function mountBoard(props: Partial<InstanceType<typeof FindPatternScoreboard>['$props']> = {}) {
   return mount(FindPatternScoreboard, {
+    global: { provide: testTimeline(false).provide },
     props: {
       rows: [row({ userId: 'a' })],
       solutionChips: CHIPS,
       live: false,
-      animate: false,
       ...props,
     },
   })

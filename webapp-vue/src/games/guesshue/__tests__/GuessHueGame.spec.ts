@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GuessHueGame from '@/games/guesshue/GuessHueGame.vue'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
-import { RESULTS_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
+import GuessHueScoreboard from '@/games/guesshue/GuessHueScoreboard.vue'
 import type { GuessHuePayload } from '@/games/guesshue/types'
 import type { GameProps } from '@/games/GameProps'
 import type { GameEntry } from '@/games/GameEntry'
@@ -409,12 +409,12 @@ describe('GuessHueGame, the scoreboard under the wheel', () => {
       ],
     })
 
-    const rows = w.findAll('tbody tr')
-    const nameDelay = (index: number) =>
-      rows[index]!.get<HTMLElement>('th').element.style.transitionDelay
+    const rows = w.getComponent(GuessHueScoreboard).props('rows')
 
-    expect(nameDelay(0)).toBe(`${RESULTS_DELAY_MS + VERDICT_MS}ms`)
-    expect(nameDelay(1)).toBe(`${RESULTS_DELAY_MS}ms`)
+    expect(rows.map((row) => [row.userId, row.tick])).toEqual([
+      ['near', 1],
+      ['me', 0],
+    ])
   })
 
   it('keeps an unrankable guess in the picture and out of the table', () => {

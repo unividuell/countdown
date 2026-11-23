@@ -149,7 +149,6 @@ function markOf(tile: number): 'reveal-correct' | 'reveal-wrong' | 'reveal-cell'
     <DedusterScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       :interval-ms="props.payload.intervalMs"
       :tiles="tiles"

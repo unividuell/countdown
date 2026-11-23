@@ -131,7 +131,6 @@ function select(id: string): void {
     <PaintRatioScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected="selected"
       :target-ratio="props.solution.targetRatio"
       :tolerance="props.solution.tolerance"

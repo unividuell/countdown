@@ -105,9 +105,6 @@ const still = timeline.still
 /** The water is the story: the verdict waits for its end sound. */
 const story = timeline.hold()
 
-/** The table's rows wait for the verdict: they would say it first (`RevealScoreboard`). */
-const verdictReached = timeline.reached('verdict')
-
 function halt(): void {
   clearTimeout(beat)
   clearTimeout(verdictBeat)
@@ -191,8 +188,6 @@ onBeforeUnmount(halt)
     <TurnPipesScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
-      :results-held="!verdictReached"
       :selected-user-id="selectedUserId"
       @select="select"
     />

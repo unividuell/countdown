@@ -13,13 +13,12 @@
  *   0 ─── 900 ms ─────────── 1945 ms ── +120 ── +120 ──▶
  *         solution, verdict   marker     marker  marker
  */
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount } from 'vue'
 import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
 import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
-import { isStill } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
 import { inBackground } from '@/ui/motion'
 import { useSoundStage } from '@/ui/useSoundAwake'
@@ -40,22 +39,24 @@ const props = defineProps<{
   live: boolean
 }>()
 
-provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()
 
 let landings: ReturnType<typeof setTimeout>[] = []
 
-onMounted(() => {
-  // All markers at once would be one loud knock that says nothing.
-  if (!props.animate || inBackground() || isStill(props.animate)) return
+// All markers at once would be one loud knock that says nothing.
+if (!timeline.still) {
+  timeline.on('others', () => {
+    if (inBackground()) return
 
-  // Mine is the knob, already there: it does not land.
-  landings = props.guesses
-    .filter((guess) => guess.userId !== props.mineUserId)
-    .map((guess) => setTimeout(playMarker, guess.revealDelayMs))
-})
+    // Mine is the knob, already there: it does not land.
+    landings = props.guesses
+      .filter((guess) => guess.userId !== props.mineUserId)
+      .map((guess) => setTimeout(playMarker, guess.revealDelayMs))
+  })
+}
 
 onBeforeUnmount(() => {
   landings.forEach(clearTimeout)
@@ -81,17 +82,11 @@ onBeforeUnmount(() => {
         :tolerance-deg="props.toleranceDeg"
         :guesses="props.guesses"
         :mine-user-id="props.mineUserId"
-        :animate="props.animate"
       />
     </div>
 
     <div class="mt-6">
-      <GuessHueScoreboard
-        :rows="props.rows"
-        :solution="props.solutionCell"
-        :live="props.live"
-        :animate="props.animate"
-      />
+      <GuessHueScoreboard :rows="props.rows" :solution="props.solutionCell" :live="props.live" />
     </div>
   </div>
 </template>

@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
-import { HEAD_DELAY_MS, RESULTS_DELAY_MS, VERDICT_MS } from '@/games/revealChoreography'
+import {
+  CELL_STAGGER_MS,
+  HEAD_DELAY_MS,
+  SOLUTION_DELAY_MS,
+  VERDICT_MS,
+} from '@/games/revealChoreography'
 import type { ScoreboardColumn, ScoreboardRow } from '@/games/scoreboardColumns'
-import { announceResults } from '@/ui/resultsLanding'
-
-vi.mock('@/ui/resultsLanding', () => ({ announceResults: vi.fn() }))
+import { testTimeline } from '@/games/__tests__/timelineTiming'
 
 interface Row extends ScoreboardRow {
   guess: string
@@ -36,26 +39,32 @@ type Props = {
   columns: ScoreboardColumn<Row>[]
   caption: string
   live: boolean
-  animate: boolean
   nameWidth?: string | undefined
-  resultsDelayMs?: number | undefined
-  resultsHeld?: boolean | undefined
 }
 
-function mountBoard(props: Partial<Props> = {}, slots: Record<string, string> = {}) {
+/** `animate` is the timeline's: false lands on a spent round, true arms the beats at now. */
+function mountBoard(
+  props: Partial<Props> & { animate?: boolean } = {},
+  slots: Record<string, string> = {},
+) {
+  const { animate = false, ...rest } = props
   const merged: Props = {
     rows: [row({ userId: 'a' })],
     columns: [TIP],
     caption: 'Alle Tipps der Runde',
     live: false,
-    animate: false,
-    ...props,
+    ...rest,
   }
+  const timeline = testTimeline(animate)
 
-  return mount(RevealScoreboard<Row>, {
+  const wrapper = mount(RevealScoreboard<Row>, {
     props: merged,
     slots: { 'cell-tip': '<span data-test="tip">{{ params.row.guess }}</span>', ...slots },
+    global: { provide: timeline.provide },
   })
+  timeline.arm()
+
+  return wrapper
 }
 
 /**
@@ -89,7 +98,9 @@ function columnOf(grid: (Element | undefined)[][], cell: Element): number {
 
 describe('RevealScoreboard', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+    })
   })
 
   afterEach(() => {
@@ -337,130 +348,52 @@ describe('RevealScoreboard', () => {
     for (const cell of cells) expect(cell.classes()).toContain('opacity-100')
   })
 
-  it('types itself in, cell by cell and row by row, once it is a live reveal', async () => {
+  it('writes my row on the verdict, cell by cell, the others once it has rung out', async () => {
     const wrapper = mountBoard({
       animate: true,
       rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
     })
+    const mine = () => wrapper.get('[data-test="row-a"] th')
+    const theirs = () => wrapper.get<HTMLElement>('[data-test="row-b"] th')
 
-    // Two frames before anything is shown: the painted opacity-0 frame Firefox needs.
-    expect(wrapper.get('tbody th').classes()).toContain('opacity-0')
-    vi.advanceTimersByTime(50)
+    vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('tbody th').classes()).toContain('opacity-100')
+    expect(mine().classes()).toContain('opacity-0')
 
-    const first = wrapper.findAll<HTMLElement>('tbody tr:first-child th, tbody tr:first-child td')
-    expect(first.map((cell) => cell.element.style.transitionDelay)).toEqual([
-      `${RESULTS_DELAY_MS}ms`,
-      `${RESULTS_DELAY_MS + 45}ms`,
-      `${RESULTS_DELAY_MS + 90}ms`,
+    vi.advanceTimersByTime(1)
+    await wrapper.vm.$nextTick()
+    expect(mine().classes()).toContain('opacity-100')
+    expect(theirs().classes()).toContain('opacity-0')
+    const cells = wrapper.findAll<HTMLElement>('[data-test="row-a"] th, [data-test="row-a"] td')
+    expect(cells.map((cell) => cell.element.style.transitionDelay)).toEqual([
+      '0ms',
+      `${CELL_STAGGER_MS}ms`,
+      `${2 * CELL_STAGGER_MS}ms`,
     ])
 
-    const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
-    expect(second.element.style.transitionDelay).toBe(`${RESULTS_DELAY_MS + VERDICT_MS}ms`)
-  })
-
-  it('lands the rows later when the game asks', async () => {
-    const wrapper = mountBoard({
-      animate: true,
-      resultsDelayMs: 2600,
-      rows: [row({ userId: 'a' })],
-    })
-
-    vi.advanceTimersByTime(50)
+    vi.advanceTimersByTime(VERDICT_MS)
     await wrapper.vm.$nextTick()
-
-    expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('2600ms')
+    expect(theirs().classes()).toContain('opacity-100')
+    expect(theirs().element.style.transitionDelay).toBe('0ms')
   })
 
-  describe('results landing', () => {
-    beforeEach(() => {
-      vi.useFakeTimers({
-        toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
-      })
-      vi.mocked(announceResults).mockClear()
-    })
-
-    it('announces its results as its first row lands', async () => {
-      const wrapper = mountBoard({ animate: true })
-      vi.advanceTimersByTime(50)
-      await wrapper.vm.$nextTick()
-
-      // Armed within those 50 ms, two frames in: the delay counts from there.
-      vi.advanceTimersByTime(RESULTS_DELAY_MS - 50)
-      expect(announceResults).not.toHaveBeenCalled()
-
-      vi.advanceTimersByTime(50)
-
-      expect(announceResults).toHaveBeenCalledOnce()
-    })
-
-    it('announces at once where nothing moves', () => {
-      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
-      mountBoard({ animate: true })
-
-      expect(announceResults).toHaveBeenCalledOnce()
-      vi.restoreAllMocks()
-    })
-
-    it('announces nothing on a reload, which lands no news', () => {
-      mountBoard({ animate: false })
-      vi.advanceTimersByTime(RESULTS_DELAY_MS + 1000)
-
-      expect(announceResults).not.toHaveBeenCalled()
-    })
-
-    it('holds its rows while the game says so, its head not', async () => {
-      const wrapper = mountBoard({ animate: true, resultsHeld: true })
-      vi.advanceTimersByTime(50)
-      await wrapper.vm.$nextTick()
-      vi.advanceTimersByTime(RESULTS_DELAY_MS + 1000)
-
-      expect(wrapper.get('thead h2').element.closest('td')!.className).toContain('opacity-100')
-      expect(wrapper.get('tbody th').classes()).toContain('opacity-0')
-      expect(announceResults).not.toHaveBeenCalled()
-    })
-
-    it('lands the held rows from the moment of release, and announces them', async () => {
-      const wrapper = mountBoard({
-        animate: true,
-        resultsHeld: true,
-        rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
-      })
-      vi.advanceTimersByTime(50)
-
-      await wrapper.setProps({ resultsHeld: false })
-
-      expect(wrapper.get('tbody th').classes()).toContain('opacity-100')
-      expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('0ms')
-      const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
-      expect(second.element.style.transitionDelay).toBe(`${VERDICT_MS}ms`)
-      expect(announceResults).toHaveBeenCalledOnce()
-    })
-
-    it('stops waiting to announce when it leaves', async () => {
-      const wrapper = mountBoard({ animate: true })
-      vi.advanceTimersByTime(50)
-      await wrapper.vm.$nextTick()
-
-      wrapper.unmount()
-      vi.advanceTimersByTime(RESULTS_DELAY_MS)
-
-      expect(announceResults).not.toHaveBeenCalled()
-    })
-  })
-
-  it('writes the head on beat three, the solution a row later', () => {
+  it('writes the head on its beat, the facts — which judge — with the verdict', async () => {
     const wrapper = mountBoard(
       { animate: true, columns: [SOLVED_TIP] },
       { 'fact-tip': '<span data-test="solution">262,0</span>' },
     )
+    const heading = () => wrapper.get<HTMLElement>('thead h2').element.closest('td')!
+    const value = () => wrapper.get('[data-test="solution"]').element.closest('td') as HTMLElement
 
-    const heading = wrapper.get<HTMLElement>('thead h2').element.closest('td')!
-    const value = wrapper.get('[data-test="solution"]').element.closest('td') as HTMLElement
+    vi.advanceTimersByTime(HEAD_DELAY_MS)
+    await wrapper.vm.$nextTick()
+    expect(heading().className).toContain('opacity-100')
+    expect(heading().style.transitionDelay).toBe('0ms')
+    expect(value().className).toContain('opacity-0')
 
-    expect(heading.style.transitionDelay).toBe(`${HEAD_DELAY_MS}ms`)
-    expect(value.style.transitionDelay).toBe(`${HEAD_DELAY_MS + 120 + 45}ms`)
+    vi.advanceTimersByTime(SOLUTION_DELAY_MS - HEAD_DELAY_MS)
+    await wrapper.vm.$nextTick()
+    expect(value().className).toContain('opacity-100')
   })
 
   it('never puts the pulse on an element the fade is meant to hide', () => {

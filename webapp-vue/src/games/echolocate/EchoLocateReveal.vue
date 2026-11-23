@@ -164,7 +164,6 @@ function select(userId: string): void {
     <EchoLocateScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected="selected"
       :tolerance-radius="props.solution.toleranceRadius"
       @select="select"

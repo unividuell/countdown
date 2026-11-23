@@ -23,7 +23,6 @@ import { MIN_HUMAN_MS, type DedusterImplausible } from './types'
 const props = defineProps<{
   rows: DedusterRow[]
   live: boolean
-  animate: boolean
   selectedUserId: string | null
   intervalMs: number
   tiles: number
@@ -79,7 +78,6 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
     :columns="columns"
     caption="Alle Läufe der Runde, nach Punkten sortiert"
     :live="props.live"
-    :animate="props.animate"
   >
     <!-- The marks follow the name and never shrink: a long name truncates, the mark stays. -->
     <template #name="{ row }">
