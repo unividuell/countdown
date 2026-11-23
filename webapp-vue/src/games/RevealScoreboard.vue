@@ -29,9 +29,16 @@
  * A game may fill the name cell through the `name` slot — Entstauber puts a button there that picks
  * the player's line in its curve.
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { hasDurations } from '@/games/durations'
-import { FADE_MS, cellDelayMs, headCellDelayMs, isStill } from '@/games/revealChoreography'
+import {
+  FADE_MS,
+  RESULTS_DELAY_MS,
+  cellDelayMs,
+  headCellDelayMs,
+  isStill,
+} from '@/games/revealChoreography'
+import { announceResults } from '@/ui/resultsLanding'
 import { useRevealArming } from '@/ui/useRevealArming'
 import type { ScoreboardColumn, ScoreboardRow } from './scoreboardColumns'
 
@@ -49,6 +56,11 @@ const props = defineProps<{
   nameWidth?: string | undefined
   /** When the rows start landing, where a game's own reveal runs past `RESULTS_DELAY_MS`. */
   resultsDelayMs?: number | undefined
+  /**
+   * Rows wait while true, for a game whose verdict comes at a moment only known at runtime
+   * (Verrohrung's end sound). Released, they land from that moment on.
+   */
+  resultsHeld?: boolean | undefined
 }>()
 
 const clock: ScoreboardColumn<Row> = {
@@ -74,8 +86,37 @@ const hasUnits = computed(() => tableColumns.value.some((column) => column.unit 
 
 const still = isStill(props.animate)
 
-const { shown } = useRevealArming(still)
+/** Held from the start, the rows count from their release rather than from mount. */
+const heldAtMount = props.resultsHeld === true
+const resultsDelayMs = heldAtMount ? 0 : (props.resultsDelayMs ?? RESULTS_DELAY_MS)
+
+/**
+ * The first row landing is news the roster must not tell first (`ui/resultsLanding`). Only a
+ * reveal that just happened here announces: a reload or the history lands no news.
+ */
+let landing: ReturnType<typeof setTimeout> | undefined
+
+const { shown } = useRevealArming(still, () => {
+  if (props.animate && !heldAtMount) landing = setTimeout(announceResults, resultsDelayMs)
+})
+
+onMounted(() => {
+  if (props.animate && still && !heldAtMount) announceResults()
+})
+
+watch(
+  () => props.resultsHeld,
+  (held) => {
+    if (props.animate && !held) announceResults()
+  },
+)
+
+onBeforeUnmount(() => clearTimeout(landing))
+
 const opacity = computed(() => (shown.value ? 'opacity-100' : 'opacity-0'))
+const rowOpacity = computed(() =>
+  shown.value && props.resultsHeld !== true ? 'opacity-100' : 'opacity-0',
+)
 
 function fade(delayMs: number) {
   return { transitionDuration: `${FADE_MS}ms`, transitionDelay: `${delayMs}ms` }
@@ -86,7 +127,7 @@ function head(row: number, column: number) {
 }
 
 function body(tick: number, column: number) {
-  return fade(cellDelayMs(tick, column, props.rows.length, props.resultsDelayMs))
+  return fade(cellDelayMs(tick, column, props.rows.length, resultsDelayMs))
 }
 
 function rowGround(row: Row) {
@@ -262,7 +303,7 @@ function pointsLabel(points: number | null): string {
           <th
             scope="row"
             class="truncate px-0.5 text-start font-normal transition-opacity"
-            :class="opacity"
+            :class="rowOpacity"
             :style="[rowGround(row), body(row.tick, 0)]"
           >
             <slot name="name" :row="row">{{ row.name }}</slot>
@@ -272,7 +313,7 @@ function pointsLabel(points: number | null): string {
             :key="column.key"
             :data-test="`cell-${column.key}-${row.userId}`"
             class="transition-opacity"
-            :class="[opacity, cellClass(column, row)]"
+            :class="[rowOpacity, cellClass(column, row)]"
             :style="[groundOf(column, row) ?? {}, body(row.tick, at + 1)]"
           >
             <span v-if="column === clock" class="font-mono text-xs">{{
@@ -291,7 +332,7 @@ function pointsLabel(points: number | null): string {
           <td
             data-test="scoreboard-points"
             class="px-px text-end tabular-nums transition-opacity"
-            :class="[opacity, row.provisional ? 'italic' : '']"
+            :class="[rowOpacity, row.provisional ? 'italic' : '']"
             :style="[rowGround(row), body(row.tick, pointsColumnIndex)]"
           >
             <span :class="row.provisional ? 'animate-pulse motion-reduce:animate-none' : ''">{{

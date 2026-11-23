@@ -3,6 +3,9 @@ import { mount } from '@vue/test-utils'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import { HEAD_DELAY_MS, RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import type { ScoreboardColumn, ScoreboardRow } from '@/games/scoreboardColumns'
+import { announceResults } from '@/ui/resultsLanding'
+
+vi.mock('@/ui/resultsLanding', () => ({ announceResults: vi.fn() }))
 
 interface Row extends ScoreboardRow {
   guess: string
@@ -36,6 +39,7 @@ type Props = {
   animate: boolean
   nameWidth?: string | undefined
   resultsDelayMs?: number | undefined
+  resultsHeld?: boolean | undefined
 }
 
 function mountBoard(props: Partial<Props> = {}, slots: Record<string, string> = {}) {
@@ -367,6 +371,83 @@ describe('RevealScoreboard', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('2600ms')
+  })
+
+  describe('results landing', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({
+        toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+      })
+      vi.mocked(announceResults).mockClear()
+    })
+
+    it('announces its results as its first row lands', async () => {
+      const wrapper = mountBoard({ animate: true })
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      // Armed within those 50 ms, two frames in: the delay counts from there.
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 50)
+      expect(announceResults).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(50)
+
+      expect(announceResults).toHaveBeenCalledOnce()
+    })
+
+    it('announces at once where nothing moves', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+      mountBoard({ animate: true })
+
+      expect(announceResults).toHaveBeenCalledOnce()
+      vi.restoreAllMocks()
+    })
+
+    it('announces nothing on a reload, which lands no news', () => {
+      mountBoard({ animate: false })
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 1000)
+
+      expect(announceResults).not.toHaveBeenCalled()
+    })
+
+    it('holds its rows while the game says so, its head not', async () => {
+      const wrapper = mountBoard({ animate: true, resultsHeld: true })
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+      vi.advanceTimersByTime(RESULTS_DELAY_MS + 1000)
+
+      expect(wrapper.get('thead h2').element.closest('td')!.className).toContain('opacity-100')
+      expect(wrapper.get('tbody th').classes()).toContain('opacity-0')
+      expect(announceResults).not.toHaveBeenCalled()
+    })
+
+    it('lands the held rows from the moment of release, and announces them', async () => {
+      const wrapper = mountBoard({
+        animate: true,
+        resultsHeld: true,
+        rows: [row({ userId: 'a', tick: 0 }), row({ userId: 'b', tick: 1 })],
+      })
+      vi.advanceTimersByTime(50)
+
+      await wrapper.setProps({ resultsHeld: false })
+
+      expect(wrapper.get('tbody th').classes()).toContain('opacity-100')
+      expect(wrapper.get<HTMLElement>('tbody th').element.style.transitionDelay).toBe('0ms')
+      const second = wrapper.get<HTMLElement>('tbody tr:nth-child(2) th')
+      expect(second.element.style.transitionDelay).toBe('120ms')
+      expect(announceResults).toHaveBeenCalledOnce()
+    })
+
+    it('stops waiting to announce when it leaves', async () => {
+      const wrapper = mountBoard({ animate: true })
+      vi.advanceTimersByTime(50)
+      await wrapper.vm.$nextTick()
+
+      wrapper.unmount()
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
+
+      expect(announceResults).not.toHaveBeenCalled()
+    })
   })
 
   it('writes the head on beat three, the solution a row later', () => {
