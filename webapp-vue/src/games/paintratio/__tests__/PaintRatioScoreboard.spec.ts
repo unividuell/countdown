@@ -6,7 +6,7 @@ import PaintRatioScoreboard from '@/games/paintratio/PaintRatioScoreboard.vue'
 import { formatDifference, formatShare } from '@/games/paintratio/scoreboard'
 import type { ScoreRow } from '@/games/paintratio/scoreboard'
 import type { Stroke } from '@/games/paintratio/types'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { HEAD_DELAY_MS } from '@/games/revealChoreography'
 
 enableAutoUnmount(afterEach)
 
@@ -180,7 +180,7 @@ describe('PaintRatioScoreboard', () => {
       await nextTick()
 
       expect(footer(moving).classes()).toContain('opacity-100')
-      expect(footer(moving).element.style.transitionDelay).toBe(`${SOLUTION_DELAY_MS}ms`)
+      expect(footer(moving).element.style.transitionDelay).toBe(`${HEAD_DELAY_MS}ms`)
     })
   })
 })

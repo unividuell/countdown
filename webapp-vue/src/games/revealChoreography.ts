@@ -41,8 +41,8 @@ export const VERDICT_MS = 550
 
 export const FADE_MS = 300
 
-/** Beat 3 writes the scoreboard's head at the same moment the solution appears. */
-export const HEAD_DELAY_MS = SOLUTION_DELAY_MS
+/** The scoreboard's head, written early enough to stand before the story (`revealTimeline`). */
+export const HEAD_DELAY_MS = 100
 
 /** Between the columns of one row — the typewriter's step. */
 export const CELL_STAGGER_MS = 45
@@ -64,6 +64,19 @@ export const TIP_COLUMN = 1
  */
 export function rowStagger(rowCount: number): number {
   return Math.min(ROW_STAGGER_MS, TYPE_BUDGET_MS / Math.max(1, rowCount))
+}
+
+/** A head cell within the `head` beat: row by row, then along the row. */
+export function headDelayMs(row: number, column: number): number {
+  return row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
+}
+
+/**
+ * A cell of someone else's row within the `others` beat — and, at [TIP_COLUMN], their marker.
+ * Tick 1 lands with the beat.
+ */
+export function othersDelayMs(tick: number, column: number, rowCount: number): number {
+  return (tick - 1) * rowStagger(rowCount) + column * CELL_STAGGER_MS
 }
 
 /** A cell of the scoreboard's head. */
