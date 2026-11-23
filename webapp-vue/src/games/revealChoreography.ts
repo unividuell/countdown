@@ -1,6 +1,6 @@
 /**
- * When a reveal happens, for every game: the beats after the card switches, and the cascade that
- * walks the scoreboard's cells.
+ * The numbers of every reveal: when its beats fall (`revealTimeline` schedules them) and how the
+ * scoreboard's cells walk within a beat.
  *
  * One module rather than one per game, because the coupling is the point: a marker on the picture
  * and its row in the table are the same event, and two copies of these numbers would be two
@@ -26,10 +26,13 @@ export function isStill(animate: boolean): boolean {
   )
 }
 
-/** Beat 3: the solution appears — Guess Hue's tolerance sector, Musterung's possibilities. */
+/** The `story` beat: the solution appears, or a story starts telling it. */
 export const SOLUTION_DELAY_MS = 900
 
-/** Beat 4: the results start landing, row by row with their marker. */
+/**
+ * Where a told solution's window closes: Musterung's possibilities hand the board back before it,
+ * Anspielung's bar finishes its morph by it. No longer a beat of the timeline.
+ */
 export const RESULTS_DELAY_MS = 1900
 
 /**
@@ -72,34 +75,13 @@ export function headDelayMs(row: number, column: number): number {
 }
 
 /**
- * A cell of someone else's row within the `others` beat — and, at [TIP_COLUMN], their marker.
- * Tick 1 lands with the beat.
+ * A cell of someone else's row within the `others` beat — and, at [TIP_COLUMN], their marker. One
+ * function for both: a marker and its row are the same event. Tick 1 lands with the beat.
+ *
+ *   verdict: tick 0 (mine) ─ VERDICT_MS ─ others: tick 1 ─ rowStagger ─ tick 2 ─ …
  */
 export function othersDelayMs(tick: number, column: number, rowCount: number): number {
   return (tick - 1) * rowStagger(rowCount) + column * CELL_STAGGER_MS
-}
-
-/** A cell of the scoreboard's head. */
-export function headCellDelayMs(row: number, column: number): number {
-  return HEAD_DELAY_MS + row * ROW_STAGGER_MS + column * CELL_STAGGER_MS
-}
-
-/**
- * A cell of the scoreboard's body — and, at [TIP_COLUMN], the matching marker on the picture. One
- * function for both is the whole point of the coupling: there is no second timetable to drift.
- * `resultsDelayMs` moves the whole cascade, for a picture that runs past beat 4 (Augenmaß's count).
- *
- *   tick 0 (mine) ─ VERDICT_MS ─ tick 1 ─ rowStagger ─ tick 2 ─ …
- */
-export function cellDelayMs(
-  tick: number,
-  column: number,
-  rowCount: number,
-  resultsDelayMs = RESULTS_DELAY_MS,
-): number {
-  const rowStart = tick === 0 ? 0 : VERDICT_MS + (tick - 1) * rowStagger(rowCount)
-
-  return resultsDelayMs + rowStart + column * CELL_STAGGER_MS
 }
 
 /**

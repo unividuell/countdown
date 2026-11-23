@@ -14,13 +14,7 @@
  * my row lands; everyone else's outline comes with their row, once the verdict has rung out.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
-import {
-  FADE_MS,
-  SOLUTION_DELAY_MS,
-  TIP_COLUMN,
-  isStill,
-  othersDelayMs,
-} from '@/games/revealChoreography'
+import { FADE_MS, SOLUTION_DELAY_MS, TIP_COLUMN, othersDelayMs } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
 import { readableTextColor } from '@/ui/readableTextColor'
 import { useSoundStage } from '@/ui/useSoundAwake'
@@ -61,7 +55,7 @@ const othersReached = timeline.reached('others')
 /** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()
 
-const still = isStill(props.animate)
+const still = timeline.still
 
 function hasStartIndex(row: ScoreRow): row is ScoreRow & { startIndex: number } {
   return row.startIndex !== null

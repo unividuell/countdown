@@ -9,7 +9,7 @@
  *                                    my first run only: end sound silent ─▶ VERDICT_GAP_MS ─▶ verdict
  *                                                                                   + the table's rows
  *
- * The very first picture waits for the beat; a reload (`isStill`) lands on the end at once.
+ * The very first picture waits for the story beat; a still timeline lands on the end at once.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { provideRevealTimeline } from '@/games/revealTimeline'

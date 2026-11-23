@@ -19,7 +19,6 @@
  * sizes compare there, positions do not exist.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { isStill } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
 import { useRevealArming } from '@/ui/useRevealArming'
 import { playCount, type Counting } from './countSound'
@@ -66,7 +65,8 @@ const start = computed(() => revealPlacements(props.payload.a, props.payload.b, 
 
 const truth = computed(() => truthOf(props.measureA, props.measureB))
 
-const still = isStill(props.animate)
+const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+const still = timeline.still
 
 /** Where B is drawn: at my tip until the beat, then at the truth. Without a tip there is no start. */
 const bScale = ref(still || props.myScale === null ? props.factor : props.myScale)
@@ -101,8 +101,6 @@ let settle: ReturnType<typeof setTimeout> | undefined
 let ending: ReturnType<typeof setTimeout> | undefined
 
 let counting: Counting | null = null
-
-const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
 /** Nothing to grow: no story, the verdict falls with the solution. */
 const nothingToGrow = bScale.value === props.factor && handoff === null

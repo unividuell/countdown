@@ -72,11 +72,11 @@ per instance and reacts via `watch(nowMs, tick)`.
   single line cannot reorder: whoever overtakes leaves the line and is back in it on arrival.
 - **A surface beside a game must not pre-empt that game's reveal — hold the answer, not the
   widget.** `useRoster.refreshAfterGuess` fetches at once and shows the answer when the reveal's
-  results land: an animating `RevealScoreboard` announces its first row (`ui/resultsLanding.ts`),
-  no game calls it. Holding only the chip would leak the new order. `SPOILER_HOLD_MS` is the
-  ceiling for a hold nobody ends (background tab); a reveal that runs longer raises it. Only a
-  reveal that just happened here (`animate`) announces — a history card mounting mid-hold must not
-  release it. Skip the hold under `prefers-reduced-motion`.
+  timeline reaches its verdict (`announceResults`, `ui/resultsLanding.ts`); no game calls it.
+  Holding only the chip would leak the new order. `SPOILER_HOLD_MS` is the ceiling for a hold
+  nobody ends (background tab); a reveal that runs longer raises it. Only a reveal that just
+  happened here (`animate`) announces — a history card mounting mid-hold must not release it. Skip
+  the hold under `prefers-reduced-motion`.
 - **Every call the server answers with a re-scored round refreshes the roster** — guess, ballot,
   override, give-up all run `RoundScoring.reevaluate`. Guess and give-up go through
   `refreshAfterGuess`, a ballot through `refresh`. Ballots happen in the running round and in the
@@ -84,9 +84,24 @@ per instance and reacts via `watch(nowMs, tick)`.
 
 ## A game's reveal is shared
 
-- **The choreography is one module, `games/revealChoreography.ts`:** a game brings *what* moves,
-  never *when*. A game with more to say on a beat fills the window the clock leaves
-  (`SOLUTION_DELAY_MS` to `RESULTS_DELAY_MS`, as Musterung does) instead of offsetting the clock.
+- **One timeline per reveal, `games/revealTimeline.ts`:** each `*Reveal.vue` calls
+  `provideRevealTimeline`; picture, table and sound read it (`reached`, `on`). A game brings *what*
+  moves on a beat, never *when*; the numbers live in `games/revealChoreography.ts`.
+
+  ```
+  open ─ head ─ story (0,9 s) ──[holds]── verdict ── +VERDICT_MS ── others
+  ```
+
+  **What judges my tip lands on `verdict`** — the solution, a sector, error marks, a title, the
+  head's facts — with my row, its sound and the roster. Everyone else's row, marker, pins and knock
+  land on `others`. A game whose solution is told over time (Augenmaß's count, Verrohrung's water,
+  Musterung's possibilities) `hold()`s the verdict and releases it at the story's end; a story may
+  show the judgement step by step. A board that already judged (Entstauber) passes
+  `judged: 'before'`. The quiet rules — reload, reduced motion, background tab — live only there.
+- **Every reveal proves it, one way:** its spec runs `expectJudgesWithVerdict`
+  (`games/__tests__/judgesWithVerdict.ts`) on its own fixture, and `judgingCoverage.spec.ts` fails
+  a registered game whose specs do not. A picture or table mounted alone in a spec gets
+  `testTimeline` (`games/__tests__/timelineTiming.ts`).
 - **The plumbing is shared the same way** — `GameProps`/`GameEmits`, `games/ranking.ts`, `rowHead`,
   `durations.ts`, `awards.ts`, `useRevealedLive`, `useMyColorHex`, `__tests__/gameFixtures.ts`.
   Import, don't copy; a third copy is the signal to hoist, and a hoist is safe when no game's test
@@ -195,24 +210,21 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   first (reload, history, onlooker).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
-  reveal plays it with `useRevealVerdict` (`games/`), never its own timer: with my row, which
-  lands first and alone (`RESULTS_DELAY_MS`, `tickOfRow`); the others follow once it has rung out
-  (`VERDICT_MS`). It is the signal for my points, so no row and no roster says it first, and no
-  marker's knock sounds into it. My row's slot gives my rank away a moment early; the verdict has
-  said the part that matters. Only on a reveal that just happened here (`animate`) — a reload is
-  silent — and at once where nothing moves. Exception: a run that ends itself plays the verdict the moment it ends, in
-  the board, and its reveal stays silent — Entstauber's last tile wins, a wrong tile or a missed
-  beat fails (`deduster/DedusterBoard.vue`). A reveal whose own animation ends in a sound of
-  its own plays the verdict after that sound has fallen silent, once, for my first run only —
-  Verrohrung's water, its end sound to the last, then the verdict. The sound says how long it still
-  rings (`Playing.endsInS`); no guessed delay (`turnpipes/TurnPipesReveal.vue`). Such a reveal holds
-  the table's rows until then (`RevealScoreboard`'s `resultsHeld`) and releases them on every exit:
-  the verdict, no tip of mine, a name tapped first. Augenmaß closes its
-  count with it on the same bus (`matchscale/countSound.ts`). Every such reveal keeps the rest of
-  the rule: silent on a reload or in a background tab, at once where nothing moves (reduced
-  motion), cut when leaving.
+  reveal's timeline plays it at `verdict`, never a game's own timer: with my row, which lands first
+  and alone (`tickOfRow`); the others follow once it has rung out (`VERDICT_MS`). It is the signal
+  for my points, so no row and no roster says it first, and no marker's knock sounds into it. My
+  row's slot gives my rank away a moment early; the verdict has said the part that matters. Only on
+  a reveal that just happened here (`animate`) — a reload is silent — and at once where nothing
+  moves. Exception: a run that ends itself plays the verdict the moment it ends, in the board, and
+  its reveal stays silent (`judged: 'before'`) — Entstauber's last tile wins, a wrong tile or a
+  missed beat fails (`deduster/DedusterBoard.vue`). A story whose own animation ends in a sound
+  releases its hold after that sound has fallen silent, for my first run only — Verrohrung's water,
+  its end sound to the last, then the verdict. The sound says how long it still rings
+  (`Playing.endsInS`); no guessed delay. A name tapped first releases silently. Augenmaß releases
+  at its count's last tone (`countEndsInMs`), computed from the same tone plan.
 - **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
-  neutral knock at its `revealDelayMs` — the same number that fades it in, no second timetable.
+  neutral knock at its delay within `others` (`othersDelayMs`) — the same number that fades it in,
+  no second timetable.
   One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and
   none where nothing moves: every marker at once is one loud knock that says nothing.
 - **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every

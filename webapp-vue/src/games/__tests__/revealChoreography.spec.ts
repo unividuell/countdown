@@ -1,33 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  cellDelayMs,
   CELL_STAGGER_MS,
   FADE_MS,
-  headCellDelayMs,
+  HEAD_DELAY_MS,
+  headDelayMs,
   isStill,
-  RESULTS_DELAY_MS,
+  othersDelayMs,
   rowStagger,
   ROW_STAGGER_MS,
   tickOfRow,
+  SOLUTION_DELAY_MS,
   TYPE_BUDGET_MS,
-  VERDICT_MS,
 } from '@/games/revealChoreography'
 
 describe('the reveal schedule', () => {
-  it('lands my row alone at the results beat, left to right', () => {
-    expect(cellDelayMs(0, 0, 3)).toBe(RESULTS_DELAY_MS)
-    expect(cellDelayMs(0, 3, 3)).toBe(RESULTS_DELAY_MS + 3 * CELL_STAGGER_MS)
-  })
-
-  it('lets the others follow top to bottom once the verdict has rung out', () => {
-    expect(cellDelayMs(1, 0, 3)).toBe(RESULTS_DELAY_MS + VERDICT_MS)
-    expect(cellDelayMs(3, 0, 4)).toBe(RESULTS_DELAY_MS + VERDICT_MS + 2 * ROW_STAGGER_MS)
-  })
-
-  it('a later results beat moves the whole cascade', () => {
-    expect(cellDelayMs(2, 3, 3, 2500)).toBe(
-      2500 + VERDICT_MS + ROW_STAGGER_MS + 3 * CELL_STAGGER_MS,
-    )
+  it('walks the others top to bottom from their beat, each row left to right', () => {
+    expect(othersDelayMs(1, 0, 3)).toBe(0)
+    expect(othersDelayMs(1, 3, 3)).toBe(3 * CELL_STAGGER_MS)
+    expect(othersDelayMs(3, 0, 4)).toBe(2 * ROW_STAGGER_MS)
   })
 
   it('overlaps the cascades: a row starts before the row above it has finished', () => {
@@ -49,9 +39,9 @@ describe('the reveal schedule', () => {
     expect(rowStagger(0)).toBe(ROW_STAGGER_MS)
   })
 
-  it('finishes the head before the results beat starts', () => {
-    // Three head rows, four columns; the last one must have faded out before beat 4.
-    expect(headCellDelayMs(2, 3) + FADE_MS).toBeLessThan(RESULTS_DELAY_MS)
+  it('finishes the head before the story starts', () => {
+    // Three head rows, four columns; the last one must have faded in before the solution.
+    expect(HEAD_DELAY_MS + headDelayMs(2, 3) + FADE_MS).toBeLessThan(SOLUTION_DELAY_MS)
   })
 })
 
