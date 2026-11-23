@@ -12,7 +12,7 @@ import type {
   Point,
 } from '@/games/echolocate/types'
 import type { GameEntry } from '@/games/GameEntry'
-import { FADE_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { FADE_MS, RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -510,9 +510,9 @@ describe('EchoLocateReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the map appears', () => {
+    it('plays mine when the results start landing', () => {
       mountReveal({ animate: true, won: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
@@ -522,14 +522,14 @@ describe('EchoLocateReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal({ animate: false, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal({ animate: true, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()

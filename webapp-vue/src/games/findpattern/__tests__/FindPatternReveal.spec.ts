@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FindPatternReveal from '@/games/findpattern/FindPatternReveal.vue'
 import PatternGrid from '@/games/findpattern/PatternGrid.vue'
-import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import {
+  RESULTS_DELAY_MS,
+  SOLUTION_DELAY_MS,
+  TIP_COLUMN,
+  cellDelayMs,
+} from '@/games/revealChoreography'
 import {
   RECEDED_OPACITY,
   RECEDE_DELAY_MS,
@@ -377,9 +382,9 @@ describe('FindPatternReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the solution appears', () => {
+    it('plays mine when the results start landing', () => {
       mountReveal([row({ userId: 'mine' })], { animate: true, won: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
@@ -389,14 +394,14 @@ describe('FindPatternReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal([row({ userId: 'mine' })], { animate: false, won: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal([row({ userId: 'mine' })], { animate: true, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()

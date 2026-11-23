@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { SOLUTION_DELAY_MS, TIP_COLUMN, cellDelayMs } from '@/games/revealChoreography'
+import {
+  RESULTS_DELAY_MS,
+  SOLUTION_DELAY_MS,
+  TIP_COLUMN,
+  cellDelayMs,
+} from '@/games/revealChoreography'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
 import type { ScoreRow } from '@/games/placepatch/scoreboard'
 import { playVerdict } from '@/ui/verdictSound'
@@ -153,9 +158,9 @@ describe('PlacePatchReveal', () => {
       vi.useRealTimers()
     })
 
-    it('plays mine when the solution appears', () => {
+    it('plays mine when the results start landing', () => {
       mountReveal([row({ userId: 'mine' })], true, false)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
@@ -165,7 +170,7 @@ describe('PlacePatchReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal([row({ userId: 'mine' })], false, true)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })

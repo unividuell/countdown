@@ -3,7 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import GuessHueReveal from '@/games/guesshue/GuessHueReveal.vue'
 import type { RevealGuess } from '@/games/guesshue/reveal'
 import { playMarker } from '@/games/guesshue/turnSound'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
@@ -65,9 +65,9 @@ describe('GuessHueReveal', () => {
     vi.restoreAllMocks()
   })
 
-  it('plays my verdict when the solution appears', () => {
+  it('plays my verdict when the results start landing', () => {
     mountReveal({ won: false })
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
     expect(playVerdict).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(1)
@@ -85,14 +85,14 @@ describe('GuessHueReveal', () => {
 
   it('stays silent on a reload into a round already revealed', () => {
     mountReveal({ animate: false })
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
 
   it('stays silent without a verdict on a tip of mine', () => {
     mountReveal({ won: null })
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
@@ -100,7 +100,7 @@ describe('GuessHueReveal', () => {
   it('stays silent in a background tab', () => {
     setHidden(true)
     mountReveal()
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })
@@ -112,15 +112,15 @@ describe('GuessHueReveal', () => {
 
   it('leaving cuts a verdict that is sounding', () => {
     const w = mountReveal()
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS)
     w.unmount()
 
     expect(stopVerdict).toHaveBeenCalledOnce()
   })
 
-  it('leaving before the solution appears plays nothing', () => {
+  it('leaving before the results land plays nothing', () => {
     mountReveal().unmount()
-    vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+    vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
     expect(playVerdict).not.toHaveBeenCalled()
   })

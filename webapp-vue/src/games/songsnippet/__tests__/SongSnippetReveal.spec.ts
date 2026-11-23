@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS } from '@/games/revealChoreography'
 import SongSnippetReveal from '@/games/songsnippet/SongSnippetReveal.vue'
 import type { SongSnippetSolution } from '@/games/songsnippet/types'
 import { playVerdict } from '@/ui/verdictSound'
@@ -69,9 +69,9 @@ describe('SongSnippetReveal', () => {
       vi.restoreAllMocks()
     })
 
-    it('plays mine when the solution appears', () => {
+    it('plays mine when the results start landing', () => {
       mountReveal(true, false)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
@@ -89,14 +89,14 @@ describe('SongSnippetReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal(false, true)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('stays silent without a verdict on a tip of mine', () => {
       mountReveal(true, null)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
@@ -104,14 +104,14 @@ describe('SongSnippetReveal', () => {
     it('stays silent in a background tab', () => {
       Object.defineProperty(document, 'hidden', { value: true, configurable: true })
       mountReveal(true, true)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const w = mountReveal(true, true)
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
       w.unmount()
 
       expect(stopVerdict).toHaveBeenCalledOnce()

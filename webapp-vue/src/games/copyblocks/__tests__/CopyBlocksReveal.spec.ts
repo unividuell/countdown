@@ -10,7 +10,7 @@ import type { ScoreRow } from '@/games/copyblocks/scoreboard'
 import type { CopyBlocksOutcome, CopyBlocksPayload, GuessBlock } from '@/games/copyblocks/types'
 import { SPIN_MS, START_CAMERA } from '@/games/copyblocks/view'
 import type { Camera } from '@/games/copyblocks/view'
-import { SOLUTION_DELAY_MS } from '@/games/revealChoreography'
+import { RESULTS_DELAY_MS, SOLUTION_DELAY_MS } from '@/games/revealChoreography'
 import { SURFACE_CONTAINER } from '@/ui/surfaceTone'
 import { playVerdict } from '@/ui/verdictSound'
 import { soundOnStage } from '@/ui/useSoundAwake'
@@ -374,9 +374,9 @@ describe('CopyBlocksReveal', () => {
       vi.restoreAllMocks()
     })
 
-    it('plays mine when the solution appears', () => {
+    it('plays mine when the results start landing', () => {
       mountReveal({ animate: true, won: true })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS - 1)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS - 1)
       expect(playVerdict).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1)
@@ -386,14 +386,14 @@ describe('CopyBlocksReveal', () => {
 
     it('stays silent on a reload into a round already revealed', () => {
       mountReveal({ animate: false, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
 
       expect(playVerdict).not.toHaveBeenCalled()
     })
 
     it('leaving cuts a verdict that is sounding', () => {
       const wrapper = mountReveal({ animate: true, won: false })
-      vi.advanceTimersByTime(SOLUTION_DELAY_MS)
+      vi.advanceTimersByTime(RESULTS_DELAY_MS)
       wrapper.unmount()
 
       expect(stopVerdict).toHaveBeenCalled()
