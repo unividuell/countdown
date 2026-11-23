@@ -6,21 +6,18 @@
  * afterwards, only its ink appears. That is why the card grows exactly once, during the crossfade
  * both cards share a grid cell for, and never again.
  *
- * When the solution appears, a knocked verdict says whether my hue made it, and every other
- * player's marker lands with a knock of its own — only on a reveal that just happened here, never
- * on a reload.
+ * When the solution appears, a knocked verdict says whether my hue made it — only on a reveal that
+ * just happened here, never on a reload. The other markers land after it in silence: the verdict
+ * is the last sound.
  *
- *   0 ─── 900 ms ─────────── 1945 ms ── +120 ── +120 ──▶
- *         solution, verdict   marker     marker  marker
+ *   0 ─── 900 ms ──────────────── 1450 ms ── +120 ── +120 ──▶
+ *         sector, verdict, my row   marker     marker  marker
  */
-import { onBeforeUnmount } from 'vue'
 import GuessHueScoreboard from './GuessHueScoreboard.vue'
 import HueWheelReveal from './HueWheelReveal.vue'
 import type { RevealGuess } from './reveal'
-import { playMarker } from './turnSound'
 import type { ScoreboardRow, ScoreboardSolution } from './scoreboard'
 import { provideRevealTimeline } from '@/games/revealTimeline'
-import { inBackground } from '@/ui/motion'
 import { useSoundStage } from '@/ui/useSoundAwake'
 
 const props = defineProps<{
@@ -39,28 +36,10 @@ const props = defineProps<{
   live: boolean
 }>()
 
-const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
+provideRevealTimeline({ animate: props.animate, won: () => props.won })
 
-/** Its knocks are governed by the header's sound switch, which wakes the graph while it is here. */
+/** Its verdict is governed by the header's sound switch, which wakes the graph while it is here. */
 useSoundStage()
-
-let landings: ReturnType<typeof setTimeout>[] = []
-
-// All markers at once would be one loud knock that says nothing.
-if (!timeline.still) {
-  timeline.on('others', () => {
-    if (inBackground()) return
-
-    // Mine is the knob, already there: it does not land.
-    landings = props.guesses
-      .filter((guess) => guess.userId !== props.mineUserId)
-      .map((guess) => setTimeout(playMarker, guess.revealDelayMs))
-  })
-}
-
-onBeforeUnmount(() => {
-  landings.forEach(clearTimeout)
-})
 </script>
 
 <template>

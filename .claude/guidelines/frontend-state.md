@@ -93,8 +93,8 @@ per instance and reacts via `watch(nowMs, tick)`.
   ```
 
   **What judges my tip lands on `verdict`** — the solution, a sector, error marks, a title, the
-  head's facts — with my row, its sound and the roster. Everyone else's row, marker, pins and knock
-  land on `others`. A game whose solution is told over time (Augenmaß's count, Verrohrung's water,
+  head's facts — with my row, its sound and the roster. Everyone else's row, marker and pins land on
+  `others`, in silence. A game whose solution is told over time (Augenmaß's count, Verrohrung's water,
   Musterung's possibilities) `hold()`s the verdict and releases it at the story's end; a story may
   show the judgement step by step. A board that already judged (Entstauber) passes
   `judged: 'before'`. The quiet rules — reload, reduced motion, background tab — live only there.
@@ -212,7 +212,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
   reveal's timeline plays it at `verdict`, never a game's own timer: with my row, which lands first
   and alone (`tickOfRow`); the others follow once it has rung out (`VERDICT_MS`). It is the signal
-  for my points, so no row and no roster says it first, and no marker's knock sounds into it. My
+  for my points, so no row and no roster says it first. My
   row's slot gives my rank away a moment early; the verdict has said the part that matters. Only on
   a reveal that just happened here (`animate`) — a reload is silent — and at once where nothing
   moves. Exception: a run that ends itself plays the verdict the moment it ends, in the board, and
@@ -222,11 +222,8 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   its end sound to the last, then the verdict. The sound says how long it still rings
   (`Playing.endsInS`); no guessed delay. A name tapped first releases silently. Augenmaß releases
   at its count's last tone (`countEndsInMs`), computed from the same tone plan.
-- **A reveal's cascade sounds on its own delays.** Each other player's marker lands with one
-  neutral knock at its delay within `others` (`othersDelayMs`) — the same number that fades it in,
-  no second timetable.
-  One pitch for all: a knock that varied would rank the tips by ear. None for my own marker, and
-  none where nothing moves: every marker at once is one loud knock that says nothing.
+- **The verdict is a reveal's last sound.** The cascade after it lands silently: a knock per
+  other player's marker (Farbausmalung, tried) came after the verdict and only got in the way.
 - **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every
   oscillator's pitch and start. Mock `@/ui/audio` with its `audioMock`; do not copy the fake.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the
