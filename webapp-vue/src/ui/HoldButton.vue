@@ -60,6 +60,8 @@ const props = withDefaults(
     sound?: boolean
     /** False for a hold that must not celebrate: giving up charges nothing, neither seen nor heard. */
     sparks?: boolean
+    /** Holds itself while true, as a press would; releases do not end it, `disabled` and false do. */
+    autoHold?: boolean
   }>(),
   {
     holdMs: DEFAULT_HOLD_MS,
@@ -68,6 +70,7 @@ const props = withDefaults(
     contour: 'opposite',
     sound: true,
     sparks: true,
+    autoHold: false,
   },
 )
 
@@ -77,6 +80,8 @@ const button = useTemplateRef<HTMLButtonElement>('button')
 /** The outline and the button arrive as one object — this is what the entrance animates. */
 const pop = useTemplateRef<HTMLDivElement>('pop')
 const keyHeld = ref(false)
+/** True while the hold was started by [autoHold]: pointer and key releases pass it by. */
+let autoHolding = false
 
 function canAnimate(el: Element | null): el is Element {
   // happy-dom has no Web Animations API, and neither has any point in animating an unseen tab.
@@ -164,7 +169,10 @@ const face = computed<{ text: string; shown: boolean } | null>(() => {
 watch(
   holding,
   (isHolding) => {
-    if (!isHolding) keyHeld.value = false
+    if (!isHolding) {
+      keyHeld.value = false
+      autoHolding = false
+    }
   },
   // Sync, not the default pre-flush: the tab-hidden path must clear `keyHeld` before the next
   // `keydown` can possibly arrive, not merely before the next render.
@@ -244,6 +252,25 @@ function startIfAllowed(): void {
   start()
 }
 
+/** Every release path but `disabled`, which cancels outright. */
+function release(): void {
+  if (!autoHolding) cancel()
+}
+
+watch(
+  () => props.autoHold,
+  (auto) => {
+    if (!auto) {
+      cancel()
+      return
+    }
+    if (props.disabled || !props.ready) return
+    autoHolding = true
+    start()
+  },
+  { immediate: true },
+)
+
 function beginHold(event: PointerEvent): void {
   // A right (or any non-primary, e.g. a secondary touch point) press must get no response at all —
   // not even a swallowed one. Without this a right mouse-down starts the hold the same as a left
@@ -279,7 +306,7 @@ function onPointerMove(event: PointerEvent): void {
       event.clientX <= box.right &&
       event.clientY >= box.top &&
       event.clientY <= box.bottom
-    if (!inside) cancel()
+    if (!inside) release()
     return
   }
   const cx = box.left + box.width / 2
@@ -287,7 +314,7 @@ function onPointerMove(event: PointerEvent): void {
   const radius = Math.min(box.width, box.height) / 2
   const dx = event.clientX - cx
   const dy = event.clientY - cy
-  if (dx * dx + dy * dy > radius * radius) cancel()
+  if (dx * dx + dy * dy > radius * radius) release()
 }
 
 function onKeyDown(event: KeyboardEvent): void {
@@ -302,7 +329,7 @@ function onKeyDown(event: KeyboardEvent): void {
 function onKeyUp(event: KeyboardEvent): void {
   if (event.key !== ' ' && event.key !== 'Enter') return
   keyHeld.value = false
-  cancel()
+  release()
 }
 
 /**
@@ -439,12 +466,12 @@ const popStyle = computed(() => ({
       }"
       @pointerdown="beginHold"
       @pointermove="onPointerMove"
-      @pointerup="cancel"
-      @pointercancel="cancel"
-      @pointerleave="cancel"
-      @lostpointercapture="cancel"
+      @pointerup="release"
+      @pointercancel="release"
+      @pointerleave="release"
+      @lostpointercapture="release"
       @contextmenu.prevent
-      @blur="cancel"
+      @blur="release"
       @keydown="onKeyDown"
       @keyup="onKeyUp"
     >
