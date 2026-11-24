@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import { ApiError } from '@/api/client'
 import { checkLabGate } from '@/gamelab/api'
@@ -38,6 +39,13 @@ vi.mock('@/communities/context', () => ({
 
 vi.mock('@/gamelab/api', () => ({ checkLabGate: vi.fn() }))
 
+/** The list's links, without the cross-link to the other lab beside the heading. */
+const listLinks = (w: VueWrapper) =>
+  w
+    .findAllComponents(RouterLinkStub)
+    .filter((l) => l.attributes('data-test') !== 'lab-other')
+    .map((l) => String(l.props().to))
+
 async function mountIndex() {
   const Page = (await import('@/pages/c/[slug]/lab/index.vue')).default
   const w = mount(Page, { global: { stubs: { RouterLink: RouterLinkStub } } })
@@ -67,12 +75,19 @@ describe('lab index', () => {
       expect(list.text()).toContain(game.title)
       expect(w.find(`[data-test="lab-game-${game.id}"]`).exists()).toBe(true)
     }
-    expect(w.findAllComponents(RouterLinkStub)).toHaveLength(labGameList.length)
+    expect(list.findAllComponents(RouterLinkStub)).toHaveLength(labGameList.length)
+  })
+
+  it('links to the card lab beside its heading', async () => {
+    const w = await mountIndex()
+    const link = w.getComponent<typeof RouterLinkStub>('[data-test="lab-other"]')
+    expect(link.props().to).toBe('/c/team/card-lab')
+    expect(link.text()).toBe('Karten-Labor')
   })
 
   it('links into the community in context', async () => {
     const w = await mountIndex()
-    const links = w.findAllComponents(RouterLinkStub).map((l) => String(l.props().to))
+    const links = listLinks(w)
     expect(links).toEqual(labGameList.map((g) => `/c/team/lab/${g.id}`))
   })
 
@@ -94,7 +109,7 @@ describe('lab index', () => {
   it('carries phase two and the ramp into every link', async () => {
     setQuery({ phase: 'TWO', ramp: '1' })
     const w = await mountIndex()
-    const links = w.findAllComponents(RouterLinkStub).map((l) => String(l.props().to))
+    const links = listLinks(w)
     expect(links).toEqual(labGameList.map((g) => `/c/team/lab/${g.id}?phase=TWO&ramp=1`))
   })
 

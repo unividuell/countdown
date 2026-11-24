@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import { cardLabList } from '@/cardlab/cards'
 import CountdownCard from '@/communities/fallbacks/CountdownCard.vue'
@@ -18,6 +19,13 @@ vi.mock('@/communities/context', () => ({
 vi.mock('@/gamelab/api', () => ({ checkLabGate: vi.fn() }))
 
 const stubs = { RouterLink: RouterLinkStub }
+
+/** The list's links, without the cross-link to the other lab beside the heading. */
+const listLinks = (w: VueWrapper) =>
+  w
+    .findAllComponents(RouterLinkStub)
+    .filter((l) => l.attributes('data-test') !== 'lab-other')
+    .map((l) => String(l.props().to))
 
 async function mountIndex() {
   const Page = (await import('@/pages/c/[slug]/card-lab/index.vue')).default
@@ -41,9 +49,16 @@ beforeEach(() => {
 describe('card lab index', () => {
   it('links every card into the community in context', async () => {
     const w = await mountIndex()
-    const links = w.findAllComponents(RouterLinkStub).map((l) => String(l.props().to))
+    const links = listLinks(w)
     expect(links).toEqual(cardLabList.map((c) => `/c/team/card-lab/${c.id}`))
     for (const card of cardLabList) expect(w.text()).toContain(card.title)
+  })
+
+  it('links to the game lab beside its heading', async () => {
+    const w = await mountIndex()
+    const link = w.getComponent<typeof RouterLinkStub>('[data-test="lab-other"]')
+    expect(link.props().to).toBe('/c/team/lab')
+    expect(link.text()).toBe('Spiel-Labor')
   })
 
   it('stays behind the lab gate', async () => {

@@ -13,7 +13,16 @@ const { community } = useCommunityContext()
 <template>
   <LabGate title="Karten-Labor">
     <div>
-      <h1 class="mb-1 text-lg font-semibold">Karten-Labor</h1>
+      <div class="mb-1 flex items-baseline justify-between">
+        <h1 class="text-lg font-semibold">Karten-Labor</h1>
+        <RouterLink
+          :to="`/c/${community.slug}/lab`"
+          data-test="lab-other"
+          class="text-lg text-on-surface-variant hover:text-on-surface"
+        >
+          Spiel-Labor
+        </RouterLink>
+      </div>
       <p class="mb-4 text-sm text-on-surface-variant">
         Karten ohne Spiel in „{{ community.name }}“
       </p>

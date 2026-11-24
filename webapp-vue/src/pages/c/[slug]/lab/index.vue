@@ -42,7 +42,16 @@ function writeRamp(on: boolean): void {
 <template>
   <LabGate title="Spiel-Labor">
     <div>
-      <h1 class="mb-1 text-lg font-semibold">Spiel-Labor</h1>
+      <div class="mb-1 flex items-baseline justify-between">
+        <h1 class="text-lg font-semibold">Spiel-Labor</h1>
+        <RouterLink
+          :to="`/c/${community.slug}/card-lab`"
+          data-test="lab-other"
+          class="text-lg text-on-surface-variant hover:text-on-surface"
+        >
+          Karten-Labor
+        </RouterLink>
+      </div>
       <p class="mb-4 text-sm text-on-surface-variant">Testrunde in „{{ community.name }}“</p>
 
       <ul v-if="labGameList.length" data-test="lab-game-list" class="space-y-2">
