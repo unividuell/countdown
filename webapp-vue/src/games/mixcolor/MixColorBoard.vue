@@ -19,6 +19,7 @@ import type { AwardRule, StepView } from '@/api/types'
 import { useCurtainOpen } from '@/ui/curtain'
 import HoldButton from '@/ui/HoldButton.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
+import { playDrop } from './dropSound'
 import MixColorBriefing from './MixColorBriefing.vue'
 import MixerGlass from './MixerGlass.vue'
 import { glassOf } from './types'
@@ -82,6 +83,7 @@ function drop(key: string, hex: string): void {
   if (locked.value || full.value) return
 
   pending.value = true
+  playDrop()
   splash(hex)
   emit('skip', drops.value, { base: key })
 }
@@ -140,7 +142,7 @@ function submit(): void {
           type="button"
           :aria-label="pigment.name"
           :disabled="locked || full"
-          class="size-12 rounded-full border border-outline disabled:opacity-40"
+          class="size-12 cursor-pointer rounded-full border border-outline disabled:cursor-not-allowed disabled:opacity-40"
           :style="{ backgroundColor: pigment.hex }"
           @click="drop(pigment.key, pigment.hex)"
         />

@@ -84,11 +84,11 @@ describe('MixColorGame', () => {
   it('shows my mix first, another on tap, mine again on a second tap', async () => {
     const w = revealed()
     expect(fill(w)).toBe('#112233')
-    expect(w.find('[data-test="lane-c-player"]').findAll('[data-test="drop"]')).toHaveLength(2)
+    expect(w.get('[data-test="row-c"]').findAll('[data-test="mix-drop"]')).toHaveLength(2)
 
     await w.get('[data-test="select-other"]').trigger('click')
     expect(fill(w)).toBe('#445566')
-    expect(w.find('[data-test="lane-m-player"]').findAll('[data-test="drop"]')).toHaveLength(1)
+    expect(w.get('[data-test="row-m"]').findAll('[data-test="mix-drop"]')).toHaveLength(1)
 
     await w.get('[data-test="select-other"]').trigger('click')
     expect(fill(w)).toBe('#112233')
@@ -99,7 +99,7 @@ describe('MixColorGame', () => {
 
     await w.get('[data-test="select-quitter"]').trigger('click')
 
-    expect(w.find('[data-test="lane-c-player"]').exists()).toBe(false)
+    expect(w.findAll('[data-test="mix-drop"]')).toHaveLength(0)
     expect(fill(w)).toBe('#112233')
   })
 

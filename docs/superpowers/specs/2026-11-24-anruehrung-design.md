@@ -256,25 +256,20 @@ games/mixcolor/
 ### Auflösung
 
 Feld in der Zielfarbe, im Glas die eigene Farbe. Darunter **keine Tabelle**, sondern Tropfen: je
-Grundfarbe eine Zeile, darin das Ziel als Reihe Tropfen in dieser Farbe, direkt darunter die Tropfen
-des Spielers. Ein gemeinsames Raster (eine Spalte je Tropfen) macht die beiden Reihen zu
-vergleichbaren Balken.
+Grundfarbe eine Reihe, ohne Beschriftung, eine Spalte je Tropfen. Jeder Tropfen ist geteilt: die
+obere Hälfte zählt die Tropfen des Spielers, die untere die des Ziels.
 
 ```
-Cyan     Ziel ● ● ● ●
-         Du   ● ● ●
-Magenta  Ziel ● ●
-         Du   ● ● ● ●
-Gelb     Ziel
-         Du   ●
-…
+Cyan     ● ● ● ◓ ○ ○      Mix 4, Ziel 3
+Magenta  ● ● ◒ ◒ ○ ○      Mix 2, Ziel 4
+Gelb     ◓ ○ ○ ○ ○ ○      Mix 1, Ziel 0
+Weiß     ○ ○ ○ ○ ○ ○
+Schwarz  ○ ○ ○ ○ ○ ○
 ```
 
-Grundfarben, die weder im Ziel noch beim Spieler vorkommen, dürfen fehlen; Form der Tropfen, Abstände
-und ob leere Zeilen stehen, verfeinert das Labor. Ein anderer Name in der Rangliste ist ein Knopf: das
-Glas zeigt dessen Farbe (aus seinem Outcome), die Spieler-Reihen dessen Tropfen; nochmal tippen hebt
-auf. Takt
-nach `revealChoreography.ts`.
+Alle Grundfarben stehen immer da, auch leer, in der Reihenfolge der Düsen. Ein anderer Name in der
+Rangliste ist ein Knopf: das Glas zeigt dessen Farbe (aus seinem Outcome), die oberen Hälften dessen
+Tropfen; nochmal tippen hebt auf. Takt nach `revealChoreography.ts`.
 
 ### Rangliste
 
@@ -314,7 +309,7 @@ Tropfen-Balken der Auflösung.
   `confirm` schickt den Tipp; ebenso bei einem vollen Glas ohne Tipp beim Laden.
 - `HoldButton`: Halten ohne Finger lädt auf und feuert `confirm` wie ein echtes Halten; ohne die
   neue Option unverändert.
-- `DropBars`: Ziel- und Spielerreihe je Grundfarbe, gleiches Raster.
+- `DropBars`: eine Reihe je Grundfarbe, immer alle; obere Hälfte Spieler, untere Ziel.
 
 ## Bewusst nicht
 
@@ -329,7 +324,7 @@ Tropfen-Balken der Auflösung.
 
 ## Dem Bauenden überlassen
 
-- Klang des Tropfens und der Auflösung — nach Gehör im Labor.
+- Klang der Auflösung — nach Gehör im Labor. (Der Tropfen „plopt“: ein Sinus, der schnell steigt.)
 - Ob die Antwort für 20 Tropfen spürbar dauert, und dann der Cache.
 - Fehleranzeige bei einem gescheiterten Tropfen.
 - Die Rezepte in den Goldvektoren.

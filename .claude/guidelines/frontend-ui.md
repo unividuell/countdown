@@ -233,6 +233,8 @@ the ancestor chain answers all three. `HueWheel`.
   wraps stays self-describing.
 - **A panel that stays in the DOM needs `inert`, not just `aria-hidden`** — the latter leaves it
   focusable. `:inert="!open || undefined"`, as above. `NavDrawer`.
+- **Every `<button>` states `cursor-pointer`.** Tailwind v4's preflight resets buttons to
+  `cursor: default`; add `disabled:cursor-not-allowed` where it can be disabled.
 
 ## The reveal cover
 

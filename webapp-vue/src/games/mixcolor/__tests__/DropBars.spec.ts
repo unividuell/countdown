@@ -18,58 +18,50 @@ function mountBars(player: Record<string, number> | null) {
   })
 }
 
-const drops = (w: ReturnType<typeof mountBars>, lane: string) =>
-  w.get(`[data-test="lane-${lane}"]`).findAll('[data-test="drop"]').length
+const count = (w: ReturnType<typeof mountBars>, key: string, half: 'mix' | 'target') =>
+  w.get(`[data-test="row-${key}"]`).findAll(`[data-test="${half}-drop"]`).length
 
 describe('DropBars', () => {
-  it('gives each lane a text alternative', () => {
+  it('gives each row a text alternative', () => {
     const w = mountBars({ c: 2 })
 
-    expect(w.get('[data-test="lane-c-target"]').attributes('aria-label')).toBe(
-      'Cyan, Ziel: 3 Tropfen',
-    )
-    expect(w.get('[data-test="lane-c-player"]').attributes('aria-label')).toBe(
-      'Cyan, Mix: 2 Tropfen',
+    expect(w.get('[data-test="row-c"]').attributes('aria-label')).toBe(
+      'Cyan: Mix 2, Ziel 3 Tropfen',
     )
   })
 
-  it('lists the pigments present in either recipe, in payload order', () => {
-    const w = mountBars({ c: 2, y: 1 })
+  it('lists every pigment, empty or not, in payload order', () => {
+    const w = mountBars({ c: 2 })
 
-    const lanes = w.findAll('[data-test^="lane-"]').map((lane) => lane.attributes('data-test'))
-    expect(lanes).toEqual([
-      'lane-c-target',
-      'lane-c-player',
-      'lane-m-target',
-      'lane-m-player',
-      'lane-y-target',
-      'lane-y-player',
-    ])
+    const rows = w.findAll('[data-test^="row-"]').map((row) => row.attributes('data-test'))
+    expect(rows).toEqual(['row-c', 'row-m', 'row-y', 'row-w', 'row-k'])
   })
 
-  it('draws one drop per drop in each lane', () => {
+  it('fills the upper halves with the mix, the lower with the target', () => {
     const w = mountBars({ c: 2, y: 1 })
 
-    expect(drops(w, 'c-target')).toBe(3)
-    expect(drops(w, 'c-player')).toBe(2)
-    expect(drops(w, 'm-target')).toBe(1)
-    expect(drops(w, 'm-player')).toBe(0)
-    expect(drops(w, 'y-target')).toBe(0)
-    expect(drops(w, 'y-player')).toBe(1)
+    expect(count(w, 'c', 'mix')).toBe(2)
+    expect(count(w, 'c', 'target')).toBe(3)
+    expect(count(w, 'm', 'mix')).toBe(0)
+    expect(count(w, 'm', 'target')).toBe(1)
+    expect(count(w, 'y', 'mix')).toBe(1)
+    expect(count(w, 'y', 'target')).toBe(0)
+    expect(count(w, 'k', 'mix')).toBe(0)
+    expect(count(w, 'k', 'target')).toBe(0)
   })
 
   it('draws drops in the pigment colour', () => {
     const w = mountBars(null)
 
-    expect(w.get('[data-test="lane-c-target"] [data-test="drop"]').attributes('style')).toContain(
+    expect(w.get('[data-test="row-c"] [data-test="target-drop"]').attributes('style')).toContain(
       '#00AEEF',
     )
   })
 
-  it('without a player recipe there is no player lane', () => {
+  it('without a player recipe the upper halves stay empty', () => {
     const w = mountBars(null)
 
-    expect(w.find('[data-test="lane-c-player"]').exists()).toBe(false)
-    expect(w.find('[data-test="lane-c-target"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="mix-drop"]')).toHaveLength(0)
+    expect(w.get('[data-test="row-c"]').attributes('aria-label')).toBe('Cyan, Ziel: 3 Tropfen')
   })
 })
