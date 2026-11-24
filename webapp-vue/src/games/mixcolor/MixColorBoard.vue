@@ -16,6 +16,7 @@
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { AwardRule, StepView } from '@/api/types'
+import { useCurtainOpen } from '@/ui/curtain'
 import HoldButton from '@/ui/HoldButton.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import MixColorBriefing from './MixColorBriefing.vue'
@@ -86,8 +87,10 @@ function drop(key: string, hex: string): void {
 }
 
 // A full circle holds "Fertig" itself, once per mount: after a failed hand-in the player decides.
+// Not behind the ramp poster: it waits for the curtain.
 const spent = ref(false)
-const autoHold = computed(() => full.value && !locked.value && !spent.value)
+const curtainOpen = useCurtainOpen()
+const autoHold = computed(() => full.value && !locked.value && !spent.value && curtainOpen.value)
 
 watch(autoHold, (now, before) => {
   if (before && !now) spent.value = true

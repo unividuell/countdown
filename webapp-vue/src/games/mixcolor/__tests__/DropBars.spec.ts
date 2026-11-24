@@ -22,6 +22,17 @@ const drops = (w: ReturnType<typeof mountBars>, lane: string) =>
   w.get(`[data-test="lane-${lane}"]`).findAll('[data-test="drop"]').length
 
 describe('DropBars', () => {
+  it('gives each lane a text alternative', () => {
+    const w = mountBars({ c: 2 })
+
+    expect(w.get('[data-test="lane-c-target"]').attributes('aria-label')).toBe(
+      'Cyan, Ziel: 3 Tropfen',
+    )
+    expect(w.get('[data-test="lane-c-player"]').attributes('aria-label')).toBe(
+      'Cyan, Mix: 2 Tropfen',
+    )
+  })
+
   it('lists the pigments present in either recipe, in payload order', () => {
     const w = mountBars({ c: 2, y: 1 })
 

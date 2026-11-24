@@ -166,7 +166,7 @@ data class GuessContext(
   berechnet), `PlayService.skip` (Prüfen vor dem Schreiben), `LabService` (beide Stellen),
   `GameCatalog`. Bestehende Spiele überschreiben weiter die kurze Form; für sie ändert sich nichts.
 - **`GuessContext.steps`** füllt `PlayService.guess` aus der Spielzeile, `LabService.guess` aus
-  `LabRoundStore`; `DedusterGameType` übergibt die leere Liste.
+  `LabRoundStore`; `DedusterGameType` übergibt die leere Liste. Default von `GuessContext.steps` ist `emptyList()`.
 - **Rein bleibt rein:** `step` rechnet aus Params und gespeicherten Eingaben, nichts wird gespeichert.
   Bei 20 Tropfen mischt eine Antwort für `MyPlayDto.steps` 1 + 2 + … + 20 = 210 Mal. Der Bauende misst;
   ist es spürbar, mischt `MixColorGameType` inkrementell über einen Cache je Rezeptpräfix, nicht über
@@ -187,7 +187,7 @@ Payload.
 - **`OtherPlayDto.steps`** trägt die Eingaben der anderen — gelistet erst nach dem eigenen Tipp. Ihre
   Glasfarbe steht im Outcome; der Client mischt nie selbst.
 
-Params: `target` (Rezept), `targetHex`, `capacity`, `tolerance`. Payload: `targetHex`, `capacity`, die fünf
+Params: `recipe` (Rezept), `targetHex`, `capacity`, `tolerance`. Payload: `targetHex`, `capacity`, die fünf
 Grundfarben (Schlüssel, Name, Hex) — der Client kennt sie nicht aus eigenem Code, damit sie an einem
 Ort stehen. Lösung: `recipe`, `tolerance`. Je ein Feldmengen-Test für Payload, Lösung, Outcome, Antwort.
 

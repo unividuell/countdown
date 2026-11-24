@@ -83,7 +83,6 @@ const deltaE = pairs.map(([a, b]) => {
   const [L1, a1, b1] = new Color(a).OKLab, [L2, a2, b2] = new Color(b).OKLab;
   return { a, b, deltaE: 100 * Math.hypot(L1 - L2, a1 - a2, b1 - b2) };
 });
-mixes.forEach(m => { const c = new Color(m.hex); });
 console.log(JSON.stringify({ mixes, deltaE }, null, 2));
 ' > shared/mix-color/spectral-vectors.json
 ```

@@ -128,6 +128,8 @@ class RoundResponses(
     ): MyPlayDto? =
         identity?.let {
             val (views, struck, override) = reviewOf(play = play, cast = cast, byId = byId)
+            val stored = play.steps.toList()
+
             MyPlayDto(
                 userId = play.userId,
                 username = it.username,
@@ -142,12 +144,12 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
-                steps = play.steps.mapIndexed { i, input ->
+                steps = stored.mapIndexed { i, input ->
                     StepDto(
                         input = input.takeUnless { it.isNull },
                         answer = answerOf(
                             play = play, handle = handle, params = params, stage = i, input = input,
-                            earlier = play.steps.toList().subList(0, i),
+                            earlier = stored.subList(0, i),
                         ),
                     )
                 },

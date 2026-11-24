@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import type { StepView } from '@/api/types'
 import MixColorBoard from '@/games/mixcolor/MixColorBoard.vue'
 import MixerGlass from '@/games/mixcolor/MixerGlass.vue'
 import type { MixColorPayload } from '@/games/mixcolor/types'
 import HoldButton from '@/ui/HoldButton.vue'
+import { CURTAIN_KEY } from '@/ui/curtain'
 
 enableAutoUnmount(afterEach)
 
@@ -22,8 +24,9 @@ const PAYLOAD: MixColorPayload = {
 
 type Board = ReturnType<typeof mountBoard>
 
-function mountBoard(over: Record<string, unknown> = {}) {
+function mountBoard(over: Record<string, unknown> = {}, curtain?: { value: boolean }) {
   return mount(MixColorBoard, {
+    global: curtain ? { provide: { [CURTAIN_KEY as symbol]: curtain } } : {},
     props: {
       payload: PAYLOAD,
       steps: [] as StepView[],
@@ -134,6 +137,17 @@ describe('MixColorBoard', () => {
     hold(w).vm.$emit('confirm')
 
     expect(w.emitted('guess')).toEqual([[{ drops: 3 }]])
+  })
+
+  it('a full glass waits for the curtain before holding', async () => {
+    const curtain = ref(false)
+    const w = mountBoard({ steps: steps(3) }, curtain)
+    expect(hold(w).props('autoHold')).toBe(false)
+
+    curtain.value = true
+    await w.vm.$nextTick()
+
+    expect(hold(w).props('autoHold')).toBe(true)
   })
 
   it('auto-hold once', async () => {

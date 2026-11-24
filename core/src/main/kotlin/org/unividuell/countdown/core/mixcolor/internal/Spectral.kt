@@ -216,7 +216,6 @@ object Spectral {
         doubleArrayOf(1.0, -0.0894841775298119, -1.2914855480194092),
     )
 
-
     /** spectral.js' `Color`: one colour in every space it needs. sRGB are ints, possibly out of range. */
     private class Color(val R: DoubleArray, val XYZ: DoubleArray, val lRGB: DoubleArray, val sRGB: IntArray) {
 

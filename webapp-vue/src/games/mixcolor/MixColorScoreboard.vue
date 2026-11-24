@@ -3,7 +3,7 @@
  * „Auswertung“ for Anrührung: the shared table with the drops used and the distance to the target
  * colour. The name is a button — tapping it shows that player's mix on the reveal.
  *
- *                     Toleranz
+ *                              Toleranz
  *   Name             Tropfen   Abstand   Pkt
  *   anna                   7       3,2     1
  */

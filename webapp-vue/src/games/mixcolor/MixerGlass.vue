@@ -6,7 +6,7 @@
  *
  * Reduced motion: no blob, no swirl; the fill still fades over.
  */
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { prefersReducedMotion } from '@/ui/motion'
 
 const props = defineProps<{
@@ -14,6 +14,7 @@ const props = defineProps<{
   splashes: { id: number; hex: string; angle: number }[]
 }>()
 
+const clipId = `mixer-glass-${useId()}`
 const EMPTY = '#8C8C8C'
 const ARMS = 7
 const TURNS = 1.3
@@ -68,7 +69,7 @@ onBeforeUnmount(() => clearTimeout(unmountTimer))
 <template>
   <svg viewBox="-50 -50 100 100" class="h-full w-full" aria-hidden="true">
     <defs>
-      <clipPath id="mixer-glass">
+      <clipPath :id="clipId">
         <circle r="47" />
       </clipPath>
     </defs>
@@ -78,7 +79,7 @@ onBeforeUnmount(() => clearTimeout(unmountTimer))
 
     <g
       v-if="streaksMounted"
-      clip-path="url(#mixer-glass)"
+      :clip-path="`url(#${clipId})`"
       class="streaks"
       :class="{ fading: !stirring }"
       :style="{ '--fade': `${FADE_MS}ms` }"
@@ -105,7 +106,7 @@ onBeforeUnmount(() => clearTimeout(unmountTimer))
       </g>
     </g>
 
-    <g v-if="!calm" clip-path="url(#mixer-glass)">
+    <g v-if="!calm" :clip-path="`url(#${clipId})`">
       <circle
         v-for="splash in splashes"
         :key="splash.id"

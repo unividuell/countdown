@@ -71,6 +71,13 @@ class MixColorGameTypeTest {
     }
 
     @Test
+    fun `capacity 2 has 3 stages, so the framework refuses the third drop`() {
+        val params = game.draw(random = random(), context = context())
+
+        game.stages(params.copy(capacity = 2)) shouldBe 3
+    }
+
+    @Test
     fun `stages follow capacity`() {
         val params = game.draw(random = random(), context = context())
 

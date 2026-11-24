@@ -50,6 +50,8 @@ const columns = computed(() => ({
         v-for="lane in row.lanes"
         :key="lane.id"
         :data-test="`lane-${row.pigment.key}-${lane.id}`"
+        role="img"
+        :aria-label="`${row.pigment.name}, ${lane.label}: ${lane.drops} Tropfen`"
         class="flex items-center gap-2"
       >
         <span class="w-8 shrink-0 text-xs text-on-surface-variant">{{ lane.label }}</span>
@@ -58,6 +60,7 @@ const columns = computed(() => ({
           <span
             v-for="n in props.capacity"
             :key="n"
+            aria-hidden="true"
             :data-test="n <= lane.drops ? 'drop' : undefined"
             class="aspect-square rounded-full"
             :class="n <= lane.drops ? 'border border-outline' : 'bg-surface-container-highest'"

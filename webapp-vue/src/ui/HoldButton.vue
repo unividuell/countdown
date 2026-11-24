@@ -445,7 +445,7 @@ const popStyle = computed(() => ({
       it, the universal "slide off to cancel" gesture — `pointerleave` never fires for it, because
       implicit pointer capture suppresses boundary events until release. `touch-none`/`select-none`
       mean the press itself never has text or a callout to fight over in the first place. All four
-      route through `cancel()`, and the `watch(holding, …)` above already clears `keyHeld` once
+      route through `release()` (a no-op during an auto-hold), and the `watch(holding, …)` above already clears `keyHeld` once
       `holding` goes false — no second mechanism needed.
     -->
     <!-- cursor-pointer is explicit: Tailwind v4's preflight resets buttons to cursor:default. -->
