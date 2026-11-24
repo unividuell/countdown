@@ -146,6 +146,16 @@ const settledMembers = computed(() => {
   />
   <RoundFallback v-else :community="community" :members="settledMembers" class="mt-6" />
 
+  <!-- The countdown keeps running under a game round, so it stays on the page between the game
+       and the history. -->
+  <RoundFallback
+    v-if="roundState === 'ready' && stage !== 'no-game'"
+    countdown-only
+    :community="community"
+    :members="settledMembers"
+    class="mt-6"
+  />
+
   <!-- Under the card AND under the fallback: after the event the fallback is what stands here, and
        looking back is then the only reason left to open the page. Held until the round has landed,
        so the entry point is the real one rather than a `null` that would immediately be replaced. -->

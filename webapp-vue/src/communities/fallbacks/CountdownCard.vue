@@ -33,7 +33,7 @@ const stripLive = ref(false)
 <template>
   <div
     data-test="countdown-card"
-    class="round-bleed flex aspect-square flex-col items-center justify-between bg-board py-4 sm:rounded-xl"
+    class="round-bleed flex aspect-square flex-col items-center justify-between bg-inverse-surface py-4 sm:rounded-xl"
   >
     <!-- w-full, not shrink-to-fit: inside an items-center column this block would take its width
          from its widest child, and a widthless <svg viewBox> contributes only its 300px CSS
@@ -42,13 +42,14 @@ const stripLive = ref(false)
       <FlipDotBoard
         data-test="countdown-hero"
         :class="heroWidth"
+        ground="inverse"
         :text="days"
         :label="heroLabel"
         @phase="heroLive = $event === 'live'"
       />
       <p
         data-test="countdown-label-days"
-        class="font-mono text-[11px] tracking-[0.14em] text-on-board/70 transition-opacity duration-300"
+        class="font-mono text-[11px] tracking-[0.14em] text-inverse-on-surface/70 transition-opacity duration-300"
         :class="heroLive ? 'opacity-100' : 'opacity-0'"
       >
         TAGE
@@ -57,6 +58,7 @@ const stripLive = ref(false)
     <div class="w-[94%]">
       <FlipDotBoard
         data-test="countdown-strip"
+        ground="inverse"
         :text="time"
         :label="`Verbleibende Zeit ${time}`"
         @phase="stripLive = $event === 'live'"
@@ -64,6 +66,7 @@ const stripLive = ref(false)
       <FlipDotLegend
         data-test="countdown-label-time"
         class="mt-2"
+        ground="inverse"
         :text="time"
         :labels="['STD', 'MIN', 'SEK']"
         :visible="stripLive"

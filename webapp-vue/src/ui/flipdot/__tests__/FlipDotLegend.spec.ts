@@ -82,6 +82,16 @@ describe('FlipDotLegend', () => {
     expect(w.classes()).not.toContain('text-on-board/70')
   })
 
+  // On the countdown card, whose ground flips with the scheme: on-board's tint in the light, the
+  // light page's ink in the dark.
+  it('takes the inverse text colour on an inverse ground', () => {
+    const w = mount(FlipDotLegend, {
+      props: { text: '13:42:07', labels: ['STD', 'MIN', 'SEK'], visible: true, ground: 'inverse' },
+    })
+    expect(w.classes()).toContain('text-inverse-on-surface/70')
+    expect(w.classes()).not.toContain('text-on-board/70')
+  })
+
   // Under a padded board the labels must be measured over the same padded field.
   it('places the labels over a padded field', () => {
     const pad = { top: 1, right: 1, bottom: 1, left: 1 }

@@ -32,7 +32,11 @@ const cells = computed(() =>
     class="relative block h-4 font-mono text-[11px] tracking-[0.14em] transition-opacity duration-300"
     :class="[
       visible ? 'opacity-100' : 'opacity-0',
-      ground === 'surface' ? 'text-on-surface-variant' : 'text-on-board/70',
+      {
+        board: 'text-on-board/70',
+        surface: 'text-on-surface-variant',
+        inverse: 'text-inverse-on-surface/70',
+      }[ground],
     ]"
   >
     <!-- The row is a span and not a div so it stays valid inside the header's <button>, whose content

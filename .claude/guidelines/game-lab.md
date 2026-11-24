@@ -1,6 +1,9 @@
 # Game Lab — the non-prod harness for mini-games
 
-`gamelab` (backend) + `src/gamelab/` and `src/pages/c/[slug]/lab/` (frontend).
+`gamelab` (backend) + `src/gamelab/` and `src/pages/c/[slug]/lab/` (frontend). Its sibling, the
+**card lab** (`src/cardlab/`, `/c/:slug/card-lab`), shows the cards the community page puts where no
+game is, fed with props and behind the same gate. Its texts come from
+`communities/fallbacks/messages.ts`, so the lab shows the shipped words, not a copy.
 Design: `docs/superpowers/specs/2026-08-08-game-lab-design.md`.
 
 ## The direction rule — the lab adapts, never the game
@@ -36,6 +39,9 @@ Every bean of a non-prod tool carries **both**:
 - The SPA bundle is identical in every environment, so the frontend cannot gate itself. **The server
   decides**; the page renders "not available" on 404 and is not linked from anywhere. No
   environment flag in `/api/me`.
+- **A lab page without a backend call of its own still asks.** `GET /api/lab` (`LabGateController`,
+  204) is the one gate for every lab page; wrap the page in `gamelab/LabGate.vue`. The game lab's
+  index went ungated to production once (#99).
 - Assert the gate: one test with `@TestPropertySource(properties = ["app.<tool>.enabled=false"])`
   that the beans are absent and the endpoint 404s.
 

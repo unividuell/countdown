@@ -14,6 +14,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCommunityContext } from '@/communities/context'
+import LabGate from '@/gamelab/LabGate.vue'
 import LabOptions from '@/gamelab/LabOptions.vue'
 import { labGameList } from '@/gamelab/games'
 import { gameLink, phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
@@ -39,39 +40,55 @@ function writeRamp(on: boolean): void {
 </script>
 
 <template>
-  <div>
-    <h1 class="mb-1 text-lg font-semibold">Spiel-Labor</h1>
-    <p class="mb-4 text-sm text-on-surface-variant">Testrunde in „{{ community.name }}“</p>
-
-    <ul v-if="labGameList.length" data-test="lab-game-list" class="space-y-2">
-      <li v-for="game in labGameList" :key="game.id">
+  <LabGate title="Spiel-Labor">
+    <div>
+      <div class="mb-1 flex items-baseline justify-between">
+        <h1 class="text-lg font-semibold">Spiel-Labor</h1>
         <RouterLink
-          :to="gameLink(`/c/${community.slug}/lab/${game.id}`, phase, ramp)"
-          :data-test="`lab-game-${game.id}`"
-          class="flex min-h-11 items-center justify-between rounded-lg border border-outline px-4 hover:bg-surface-container"
+          :to="`/c/${community.slug}/card-lab`"
+          data-test="lab-other"
+          class="text-lg text-on-surface-variant hover:text-on-surface"
         >
-          <span class="text-sm font-medium">{{ game.title }}</span>
-          <code class="text-xs text-on-surface-variant">{{ game.id }}</code>
+          Karten-Labor
         </RouterLink>
-      </li>
-    </ul>
-    <p v-else data-test="lab-no-games" class="text-sm text-on-surface-variant">
-      Im Labor ist noch kein Spiel eingetragen.
-    </p>
+      </div>
+      <p class="mb-4 text-sm text-on-surface-variant">Testrunde in „{{ community.name }}“</p>
 
-    <section data-test="lab-index-options" class="mt-8 space-y-2 border-t border-outline pt-4">
-      <h2 class="text-xs font-semibold tracking-wide text-on-surface/40 uppercase">
-        Für jedes Spiel
-      </h2>
-      <LabOptions :phase="phase" :ramp="ramp" @phase-change="writePhase" @ramp-change="writeRamp" />
-      <!-- Full page load: the picker is server-rendered HTML, and the redirect lands back here. -->
-      <a
-        data-test="lab-switch-player"
-        :href="switchPlayerHref(route.fullPath)"
-        class="flex h-11 w-fit cursor-pointer items-center rounded-md border border-outline px-3 text-sm hover:bg-surface-container"
-      >
-        Spieler wechseln
-      </a>
-    </section>
-  </div>
+      <ul v-if="labGameList.length" data-test="lab-game-list" class="space-y-2">
+        <li v-for="game in labGameList" :key="game.id">
+          <RouterLink
+            :to="gameLink(`/c/${community.slug}/lab/${game.id}`, phase, ramp)"
+            :data-test="`lab-game-${game.id}`"
+            class="flex min-h-11 items-center justify-between rounded-lg border border-outline px-4 hover:bg-surface-container"
+          >
+            <span class="text-sm font-medium">{{ game.title }}</span>
+            <code class="text-xs text-on-surface-variant">{{ game.id }}</code>
+          </RouterLink>
+        </li>
+      </ul>
+      <p v-else data-test="lab-no-games" class="text-sm text-on-surface-variant">
+        Im Labor ist noch kein Spiel eingetragen.
+      </p>
+
+      <section data-test="lab-index-options" class="mt-8 space-y-2 border-t border-outline pt-4">
+        <h2 class="text-xs font-semibold tracking-wide text-on-surface/40 uppercase">
+          Für jedes Spiel
+        </h2>
+        <LabOptions
+          :phase="phase"
+          :ramp="ramp"
+          @phase-change="writePhase"
+          @ramp-change="writeRamp"
+        />
+        <!-- Full page load: the picker is server-rendered HTML, and the redirect lands back here. -->
+        <a
+          data-test="lab-switch-player"
+          :href="switchPlayerHref(route.fullPath)"
+          class="flex h-11 w-fit cursor-pointer items-center rounded-md border border-outline px-3 text-sm hover:bg-surface-container"
+        >
+          Spieler wechseln
+        </a>
+      </section>
+    </div>
+  </LabGate>
 </template>

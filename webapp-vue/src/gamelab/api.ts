@@ -106,3 +106,6 @@ export const setLabOverride = <P>(
     labUrl(slug, game, seed, phase, `/plays/${encodeURIComponent(userId)}/override`),
     { method: 'PUT', body: JSON.stringify({ value }) },
   )
+
+/** Resolves where the labs exist; 404 where they are switched off. Asked by every lab page. */
+export const checkLabGate = () => apiFetch<void>('/api/lab')

@@ -39,11 +39,15 @@ function uniform(b: Bitmap, on: boolean): Bitmap {
 }
 
 const svg = useTemplateRef<SVGSVGElement>('svg')
-// On the light page the board's near-white dots would vanish; everywhere else the tone decides.
-// Read once: a board does not move between the page and a board, and only a page board needs to
-// watch the scheme.
-const dark = props.ground === 'surface' ? useDarkScheme() : null
-const colours = computed(() => (dark !== null && !dark.value ? SURFACE_LIGHT : TONES[props.tone]))
+// On a light ground the board's near-white dots would vanish: the page in the light, the inverse
+// card in the dark. Everywhere else the tone decides. Read once: a board does not change grounds,
+// and only a board whose ground follows the scheme needs to watch it.
+const dark = props.ground === 'board' ? null : useDarkScheme()
+const lightGround = computed(() => {
+  if (dark === null) return false
+  return props.ground === 'surface' ? !dark.value : dark.value
+})
+const colours = computed(() => (lightGround.value ? SURFACE_LIGHT : TONES[props.tone]))
 const bm = computed(() => {
   const glyphs = bitmap(props.text)
   return props.pad === undefined ? glyphs : padded(glyphs, props.pad)

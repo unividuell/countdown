@@ -5,11 +5,18 @@ import { useCountdown } from '@/communities/useCountdown'
 import { formatWinnerNames, winners } from '@/members/winner'
 import CountdownCard from './CountdownCard.vue'
 import MessageCard from './MessageCard.vue'
+import { NO_DATE_MESSAGE, RUNNING_MESSAGE, winnerMessage } from './messages'
 
-const props = defineProps<{
-  community: CommunityResponse
-  members: readonly RosterMemberResponse[] | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    community: CommunityResponse
+    members: readonly RosterMemberResponse[] | null
+    // Under a game round: the board while it counts down, nothing else. The messages would talk
+    // over the game, and a placeholder would hold a square below it for nothing.
+    countdownOnly?: boolean
+  }>(),
+  { countdownOnly: false },
+)
 
 // A null slug keeps useCountdown from firing: without an edition there is nothing to count. Tested
 // against null exactly as the template branch below is, so no third case can slip between them.
@@ -31,8 +38,7 @@ const winnerNames = computed(() =>
   <MessageCard
     v-if="community.edition === null"
     data-test="fallback-no-date"
-    title="Noch kein Termin"
-    text="Diese Spielgemeinschaft entsteht gerade. Komm später wieder."
+    v-bind="NO_DATE_MESSAGE"
   />
   <CountdownCard
     v-else-if="view.state === 'before'"
@@ -41,16 +47,16 @@ const winnerNames = computed(() =>
     :minutes="minutes"
     :seconds="seconds"
   />
+  <template v-else-if="countdownOnly" />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null && winnerNames !== ''"
     data-test="fallback-winner"
-    :title="`Herzlichen Glückwunsch, ${winnerNames}!`"
-    text="Und jetzt viel Spaß zusammen!"
+    v-bind="winnerMessage(winnerNames)"
   />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null"
     data-test="fallback-running"
-    title="Und jetzt viel Spaß zusammen!"
+    v-bind="RUNNING_MESSAGE"
   />
   <div
     v-else
