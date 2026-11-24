@@ -180,8 +180,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   The native range stays the control, invisible, with its thumb sized like the drawn knob so both
   coincide. The speaker follows the value: × at 0, one wave below the default, two from it on. Those
   games and the audio pool show `SoundOffNotice` (warning colour) at 0: the header's switch is easy
-  to miss. Peilung's slider plays its bed at the sayings' level from press to release
-  (`useVolumePreview`): judge by what counts.
+  to miss. Every volume slider ratchets per step at the level just set; Peilung's is `silent` and
+  plays its bed at the sayings' level from press to release instead (`useVolumePreview`): judge by
+  what counts.
 - **Every sound reaches the speakers through `masterOutput(graph)`** (`ui/masterOutput.ts`, gain =
   volume²), never `graph.destination`. The `<audio>` fallback takes `element.volume` instead;
   iOS ignores it there.
@@ -224,7 +225,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):
   Farbausmalung's knob per degree, Entstauber's scrubbed curve per level, Platzierung's stamp per
   cell it moves on to and per tap — a tap ticks even where nothing moved, it answers the finger;
-  Anmaßung's colour picker as it opens.
+  Anmaßung's colour picker as it opens; every volume slider per step.
   A pitch may also name a tool: Anmaßung's brushes sink as they thicken, undo knocks below redo
   (`paintratio/toolSound.ts`). A pitch may follow
   the player's own progress, which says nothing about the target: Musterung climbs a scale per

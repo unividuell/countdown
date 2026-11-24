@@ -6,12 +6,16 @@
  */
 import VolumeSlider from './VolumeSlider.vue'
 
+/** `silent`: the game lets the level be heard its own way (Peilung's bed), not by the ratchet. */
+const props = defineProps<{ silent?: boolean }>()
+
 const emit = defineEmits<{ adjust: []; press: []; release: [] }>()
 </script>
 
 <template>
   <VolumeSlider
     vertical
+    :silent="props.silent"
     data-test="volume-control"
     class="w-11 shrink-0"
     @adjust="emit('adjust')"

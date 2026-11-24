@@ -843,3 +843,12 @@ describe('EchoLocateBoard volume', () => {
     expect(w.get('[data-test="sound-off"]').classes()).not.toContain('invisible')
   })
 })
+
+describe('EchoLocateBoard volume feedback', () => {
+  // The bed is Peilung's feedback; a ratchet on top would judge the wrong sound.
+  it('sets its slider silent', () => {
+    const w = mountBoard()
+
+    expect(w.findComponent({ name: 'VolumeSlider' }).props('silent')).toBe(true)
+  })
+})

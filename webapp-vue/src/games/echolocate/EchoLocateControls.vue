@@ -52,7 +52,13 @@ const { onPress, onAdjust, onRelease } = useVolumePreview()
     class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center self-stretch"
   >
     <span class="flex w-full min-w-0 justify-start self-stretch pr-4">
-      <VolumeControl class="h-full" @press="onPress" @adjust="onAdjust" @release="onRelease" />
+      <VolumeControl
+        silent
+        class="h-full"
+        @press="onPress"
+        @adjust="onAdjust"
+        @release="onRelease"
+      />
     </span>
     <!-- `HoldButton` fills its parent and has no size of its own. -->
     <div class="relative size-24 shrink-0" :class="{ 'opacity-40': !props.canHandIn }">

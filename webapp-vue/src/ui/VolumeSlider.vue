@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * The volume for everything the app plays; zero is mute. The caller gives the size.
- * `adjust` fires on every step; `press` and `release` bracket a finger or mouse on it, for a game
- * that lets the new level be heard while the slider is held.
+ * Every step ratchets at the new level, so the level is heard while it is set. A game that lets
+ * it be heard its own way passes `silent` and listens to `adjust` (every step) and `press` /
+ * `release` (a finger or mouse on it).
  *
  * Vertical, the knob is the speaker. The native range stays the control (keys, screen readers,
  * touch) but is invisible; rail and knob are drawn where its own 32 px thumb is:
@@ -13,13 +14,14 @@
  */
 import { computed } from 'vue'
 import { unlockSound } from './audio'
+import { playRatchet } from './ratchetSound'
 import { speakerIcon } from './speakerIcon'
 import { useGameVolume } from './useGameVolume'
 import { soundOnStage } from './useSoundAwake'
 
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<{ vertical?: boolean }>()
+const props = defineProps<{ vertical?: boolean; silent?: boolean }>()
 
 const emit = defineEmits<{ adjust: []; press: []; release: [] }>()
 
@@ -31,6 +33,7 @@ const KNOB = '2rem'
 
 function onInput(e: Event): void {
   volume.value = Number((e.target as HTMLInputElement).value)
+  if (!props.silent) playRatchet()
   emit('adjust')
 }
 

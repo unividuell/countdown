@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 import { unlockSound } from '@/ui/audio'
+import { playRatchet } from '@/ui/ratchetSound'
 import IconLoud from '~icons/lucide/volume-2'
 import IconSoft from '~icons/lucide/volume-1'
 import IconMuted from '~icons/lucide/volume-x'
@@ -12,6 +13,7 @@ import { useSoundStage } from '@/ui/useSoundAwake'
 import VolumeSlider from '@/ui/VolumeSlider.vue'
 
 vi.mock('@/ui/audio', () => ({ unlockSound: vi.fn() }))
+vi.mock('@/ui/ratchetSound', () => ({ playRatchet: vi.fn() }))
 
 enableAutoUnmount(afterEach)
 
@@ -27,6 +29,7 @@ describe('VolumeSlider', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.mocked(unlockSound).mockClear()
+    vi.mocked(playRatchet).mockClear()
   })
 
   it('shows the stored volume', () => {
@@ -44,6 +47,25 @@ describe('VolumeSlider', () => {
     await nextTick()
 
     expect(localStorage.getItem(GAME_VOLUME_KEY)).toBe('0.5')
+    expect(w.emitted('adjust')).toHaveLength(1)
+  })
+
+  // Scrubbing: each step knocks at the level just set, so the level is heard while it is set.
+  it('ratchets on every step', async () => {
+    const w = mount(VolumeSlider, { props: { vertical: true } })
+
+    await w.get('input').setValue('0.5')
+    await w.get('input').setValue('0.55')
+
+    expect(playRatchet).toHaveBeenCalledTimes(2)
+  })
+
+  it('stays quiet for a game that lets the level be heard its own way', async () => {
+    const w = mount(VolumeSlider, { props: { silent: true } })
+
+    await w.get('input').setValue('0.5')
+
+    expect(playRatchet).not.toHaveBeenCalled()
     expect(w.emitted('adjust')).toHaveLength(1)
   })
 
