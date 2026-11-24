@@ -2,8 +2,8 @@
 /**
  * „Auswertung“ for Anrührung: the shared table with each mix as five pigment boxes under the
  * target's and the distance to the target colour. The name is a button — tapping it toggles that
- * player's mix in the reveal's circle. The boxes bring their own surface, so the table leaves that
- * cell bare.
+ * player's mix in the reveal's circle. The boxes sit in a frame of the mix's own colour — the
+ * target's over its row — so each recipe stands on the colour it makes.
  *
  *                    Ziel            Toleranz
  *                    [█][ ][▌][ ][ ]   ≤ 4,0
@@ -13,6 +13,7 @@
 import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
+import { readableTextColor } from '@/ui/readableTextColor'
 import RecipeBoxes from './RecipeBoxes.vue'
 import { toleranceText, type ScoreboardRow } from './scoreboard'
 import type { MixColorPigment, Recipe } from './types'
@@ -27,18 +28,20 @@ const props = defineProps<{
   tolerance: number | null
   pigments: MixColorPigment[]
   target: Recipe
+  targetHex: string
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
 const columns = computed<ScoreboardColumn<ScoreboardRow>[]>(() => [
-  // Exactly the boxes: `size-5` each, `gap-px` between.
+  // Exactly the boxes — `size-5` each, `gap-px` between — plus the cell's `px-0.5` frame.
   {
     key: 'drops',
     label: 'Tropfen',
     fact: 'Ziel',
-    width: `calc(${props.pigments.length} * 1.25rem + ${Math.max(props.pigments.length - 1, 0)} * 1px)`,
-    ground: () => null,
+    width: `calc(${props.pigments.length} * 1.25rem + ${Math.max(props.pigments.length - 1, 0)} * 1px + 0.25rem)`,
+    ground: (row) =>
+      row.hex === null ? null : { backgroundColor: row.hex, color: readableTextColor(row.hex) },
   },
   {
     key: 'off',
@@ -85,13 +88,16 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
       </button>
     </template>
 
+    <!-- The same frame as a row's cell: `px-0.5`, and `py-0.5` up to the row's height. -->
     <template #fact-drops>
-      <RecipeBoxes
-        data-test="mix-color-target"
-        :pigments="props.pigments"
-        :recipe="props.target"
-        :max="max"
-      />
+      <div class="p-0.5" :style="{ backgroundColor: props.targetHex }">
+        <RecipeBoxes
+          data-test="mix-color-target"
+          :pigments="props.pigments"
+          :recipe="props.target"
+          :max="max"
+        />
+      </div>
     </template>
 
     <template v-if="props.tolerance !== null" #fact-off>

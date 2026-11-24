@@ -270,7 +270,8 @@ Kreis das Grau des leeren Glases. Wer aufgegeben hat, lässt sich nicht wählen.
 Spalten **Name** (Knopf) **· Tropfen · Abstand · Pkt**. „Tropfen“ ist je Grundfarbe ein Kästchen,
 umrandet in ihrer Farbe, mit der Tropfenzahl darin und von unten so weit gefüllt, wie die Zahl am
 größten Einzelwert der Tabelle (Ziel eingeschlossen) misst. Darüber steht das Ziel-Rezept als
-Kopfzeile „Ziel“ in denselben Kästchen. Abstand ist `deviation` auf eine Nachkommastelle,
+Kopfzeile „Ziel“ in denselben Kästchen. Die Kästchen stehen in einem schmalen Rahmen in der
+Farbe ihrer Mischung, die des Ziels in der Zielfarbe. Abstand ist `deviation` auf eine Nachkommastelle,
 Kopfzeile „Toleranz ≤ 4,0“ nur in Phase eins. Sortierung Punkte absteigend, dann Abstand aufsteigend,
 `userId` als Tiebreak. Pure `scoreboard.ts`.
 

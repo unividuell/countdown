@@ -79,6 +79,7 @@ function select(userId: string): void {
       :tolerance="props.solution.tolerance"
       :pigments="props.payload.pigments"
       :target="props.solution.recipe"
+      :target-hex="props.payload.targetHex"
       @select="select"
     />
   </div>
