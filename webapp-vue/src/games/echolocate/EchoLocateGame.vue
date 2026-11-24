@@ -36,10 +36,11 @@ import {
   asEchoLocatePayload,
   asEchoLocateScene,
   asEchoLocateSolution,
+  clipAsset,
 } from './types'
 
-const FIRST_CLIP = 'clip-0'
-const SECOND_CLIP = 'clip-1'
+const FIRST_CLIP = clipAsset(0)
+const SECOND_CLIP = clipAsset(1)
 
 const props = defineProps<GameProps>()
 
@@ -53,8 +54,9 @@ const scene = computed(() => (props.sealed === true ? asEchoLocateScene(props.sc
 const solved = computed(() => solution.value !== null)
 
 /**
- * Only the board plays a clip: a reveal, a history card or a payload that cannot be read would
- * fetch and decrypt bytes nobody hears. A solution that arrives lets them go again.
+ * Only the board loads its clips up front: a reveal, a history card or a payload that cannot be
+ * read would fetch and decrypt bytes nobody hears. A solution that arrives lets them go again; the
+ * reveal opens a clip on the click that asks for it.
  */
 const assets = computed(() => (payload.value !== null && !solved.value ? props.assets : undefined))
 
@@ -177,6 +179,7 @@ const animate = useRevealedLive(solved)
     :animate="animate"
     :mine-user-id="props.mineUserId"
     :won="won"
+    :assets="props.assets"
   />
   <EchoLocateBoard
     v-else

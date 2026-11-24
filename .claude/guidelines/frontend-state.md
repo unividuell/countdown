@@ -220,6 +220,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   marked block, a cover's count-in the same scale per beat (`ui/scale.ts`).
 - **A reveal that plays sound decodes it itself** (`onMounted`): the board may not have mounted
   first (reload, history, onlooker).
+- **A round's clip on the reveal loads on the click that asks for it**, never on mount: most
+  reveals are only looked at. It plays through `usePlayback`, alone and without the board's mix
+  (`SongPlayerReveal`, `EchoLocateReveal`).
 - **One verdict for every game.** Whether my tip won is `myWin` (`games/verdict.ts`): inside the
   gate, or without a gate my row holding the points. How it sounds is `ui/verdictSound.ts`; a
   reveal's timeline plays it at `verdict`, never a game's own timer: with my row, which lands first

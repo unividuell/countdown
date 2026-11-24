@@ -7,7 +7,8 @@
  *   · [clips, noises, links, other pins] · pins · sparks
  *
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
- * a finger there scrolls the page — and a legend under it names what the map shows.
+ * a finger there scrolls the page — and a legend under it names what the map shows. A `listenable`
+ * map hears one click: on a clip's tolerance circle (phase two: its dot) it asks to `listen`.
  *
  * A click comes in two lengths. Released within `LONG_PRESS_MS` it is a `tap`, told on the way up —
  * iOS counts a touch as a gesture from its end on, so only then may the board start the sound — but
@@ -28,7 +29,7 @@
  * The backing store follows the CSS size × `devicePixelRatio`; without a 2D context (happy-dom) it
  * draws nothing.
  */
-import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import type { Wave } from './flow'
 import { toCell, waveRadius } from './sonar'
 import type { Cell, EchoLocateSolution, NoiseKind, Point } from './types'
@@ -54,10 +55,18 @@ const props = defineProps<{
   otherPins?: { at: Point; colorHex: string }[]
   /** A pin and the target cell it was matched with. */
   links?: [Point, Cell][]
+  /** Whether a click on a clip's circle asks to hear it: the map only. */
+  listenable?: boolean
+  /** The clip sounding, by place: its circle lights up. */
+  playing?: number | null
 }>()
 
 /** `tMs` is the event's `timeStamp`: when the finger came down, not when the handler ran. */
-const emit = defineEmits<{ tap: [at: Point, tMs: number]; hold: [at: Point] }>()
+const emit = defineEmits<{
+  tap: [at: Point, tMs: number]
+  hold: [at: Point]
+  listen: [clip: number]
+}>()
 
 /** Held this long, a click is a long one: iOS's own long press waits about as long. */
 const LONG_PRESS_MS = 500
@@ -99,6 +108,46 @@ let sparks: Spark[] = []
 let frame = 0
 
 const interactive = computed(() => !props.solution)
+
+/** A clip's dot in px: never below 8, so it reads on a small field. */
+function dotRadius(cell: number): number {
+  return Math.max(8, cell * 0.6)
+}
+
+/**
+ * The clip whose circle holds the pointer — the tolerance circle, in phase two the dot — or
+ * `null`. Where two circles overlap, the nearer centre wins.
+ */
+function clipAt(event: MouseEvent): number | null {
+  const el = canvas.value
+  const solution = props.solution
+  if (!el || !solution || !props.listenable) return null
+
+  const rect = el.getBoundingClientRect()
+  const at = toCell(event.clientX, event.clientY, rect, props.grid)
+  const cell = rect.width / props.grid
+  const radius = solution.toleranceRadius ?? (cell > 0 ? dotRadius(cell) / cell : 0)
+
+  let nearest: number | null = null
+  let best = radius
+  for (const [clip, target] of solution.targets.entries()) {
+    const distance = Math.hypot(at.x - (target.col + 0.5), at.y - (target.row + 0.5))
+    if (distance > best) continue
+
+    nearest = clip
+    best = distance
+  }
+
+  return nearest
+}
+
+/** Over a circle the mouse shows it can be clicked; a finger needs no such hint. */
+const overClip = ref(false)
+
+function onClick(event: MouseEvent): void {
+  const clip = clipAt(event)
+  if (clip !== null) emit('listen', clip)
+}
 
 /** A burst flung outward from the tap, in CSS pixels. It says nothing about the sound. */
 function throwSparks(x: number, y: number): void {
@@ -160,6 +209,7 @@ function onDown(event: PointerEvent): void {
 }
 
 function onMove(event: PointerEvent): void {
+  if (props.listenable) overClip.value = clipAt(event) !== null
   if (drag === null || event.pointerId !== drag.id) return
 
   if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) <= DRAG_SLOP_PX) return
@@ -343,14 +393,16 @@ function drawTolerance(
   const radius = solution.toleranceRadius
   if (radius === null) return
 
-  c.fillStyle = 'rgba(52,211,153,0.15)'
-  c.strokeStyle = 'rgba(52,211,153,0.5)'
-  for (const target of solution.targets) {
+  solution.targets.forEach((target, clip) => {
+    // The sounding clip's circle lights up.
+    const lit = clip === props.playing
+    c.fillStyle = lit ? 'rgba(52,211,153,0.35)' : 'rgba(52,211,153,0.15)'
+    c.strokeStyle = lit ? 'rgba(52,211,153,0.9)' : 'rgba(52,211,153,0.5)'
     c.beginPath()
     c.arc((target.col + 0.5) * cell, (target.row + 0.5) * cell, radius * cell, 0, 2 * Math.PI)
     c.fill()
     c.stroke()
-  }
+  })
 }
 
 /** The clips green, the noises by their letter, and a dashed line from each linked pin. */
@@ -372,8 +424,19 @@ function drawSolution(
   c.fillStyle = 'rgba(52,211,153,0.9)'
   for (const target of solution.targets) {
     c.beginPath()
-    c.arc(centre(target.col), centre(target.row), Math.max(8, cell * 0.6), 0, 2 * Math.PI)
+    c.arc(centre(target.col), centre(target.row), dotRadius(cell), 0, 2 * Math.PI)
     c.fill()
+  }
+
+  // Phase two has no circle to light: the sounding clip's dot gets a white ring.
+  const sounding = props.playing == null ? undefined : solution.targets[props.playing]
+  if (solution.toleranceRadius === null && sounding !== undefined) {
+    c.beginPath()
+    c.arc(centre(sounding.col), centre(sounding.row), dotRadius(cell) + 3, 0, 2 * Math.PI)
+    c.strokeStyle = '#ffffff'
+    c.lineWidth = 2
+    c.stroke()
+    c.lineWidth = 1
   }
 
   c.setLineDash([4, 4])
@@ -425,6 +488,7 @@ watch(
     () => props.solution,
     () => props.otherPins,
     () => props.links,
+    () => props.playing,
   ],
   () => {
     draw()
@@ -440,7 +504,8 @@ watch(
       role="img"
       aria-label="Sonarfeld"
       class="block aspect-square w-full rounded-lg select-none [-webkit-touch-callout:none]"
-      :class="{ 'touch-none': interactive }"
+      :class="{ 'touch-none': interactive, 'cursor-pointer': overClip }"
+      @click="onClick"
       @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
@@ -475,5 +540,16 @@ watch(
         Toleranzkreis
       </li>
     </ul>
+    <p
+      v-if="props.solution && props.listenable"
+      data-test="sonar-listen-hint"
+      class="mt-1 text-center text-sm text-on-surface-variant"
+    >
+      {{
+        props.solution.toleranceRadius === null
+          ? 'Klick auf einen Spruch: anhören'
+          : 'Klick auf einen Toleranzkreis: Spruch anhören'
+      }}
+    </p>
   </div>
 </template>

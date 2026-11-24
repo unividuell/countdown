@@ -46,6 +46,11 @@ export interface EchoHit {
   delayMs: number
 }
 
+/** A clip's asset by its place in the round: `clip-0`, `clip-1`. */
+export function clipAsset(place: number): string {
+  return `clip-${place}`
+}
+
 export interface EchoLocateSolution {
   targets: Cell[]
   noises: { cell: Cell; kind: NoiseKind }[]

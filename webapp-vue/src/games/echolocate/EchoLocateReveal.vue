@@ -9,6 +9,9 @@
  *    V Vögel  B Bach  …       the field's legend
  *    Auswertung …
  *
+ * A click on a clip's circle plays that clip alone, without noise; again, it pauses. Its bytes are
+ * fetched on the first click, not before: most reveals are only looked at.
+ *
  * Beats come from `revealChoreography`: my own field stands as I left it, then at
  * the verdict the map fades in under it. The scoreboard carries its own beats.
  *
@@ -17,14 +20,19 @@
  *   │                      │        │   + my pings, pin    │
  *   └──────────────────────┘        └──────────────────────┘
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { loadSealed } from '@/api/assets'
+import type { RoundAssets } from '@/api/assets'
 import { FADE_MS } from '@/games/revealChoreography'
 import { provideRevealTimeline } from '@/games/revealTimeline'
+import { unlockSound } from '@/ui/audio'
+import { usePlayback } from '@/ui/usePlayback'
 import { useSoundStage } from '@/ui/useSoundAwake'
 import EchoLocateScoreboard from './EchoLocateScoreboard.vue'
 import type { Wave } from './flow'
 import type { ScoreRow } from './scoreboard'
 import SonarField from './SonarField.vue'
+import { clipAsset } from './types'
 import type { Cell, EchoLocatePayload, EchoLocateSolution, Point } from './types'
 
 const props = defineProps<{
@@ -38,6 +46,8 @@ const props = defineProps<{
   mineUserId: string | null
   /** Whether my tip earns the success sound (`myWin`); `null` plays nothing. */
   won: boolean | null
+  /** The round's clips; without them, or without their key, the map plays nothing. */
+  assets?: RoundAssets | undefined
 }>()
 
 const timeline = provideRevealTimeline({ animate: props.animate, won: () => props.won })
@@ -115,6 +125,65 @@ const faded = ref(false)
 // The map judges: it shows with the verdict.
 if (intro) timeline.on('verdict', () => (faded.value = true))
 
+/** Whether a click on a circle can play its clip: the key came with the round. */
+const listenable = computed(() => props.assets?.key(clipAsset(0)) != null)
+
+const playback = usePlayback()
+
+/** The clip the player holds, by place. */
+const loaded = ref<number | null>(null)
+
+const playing = computed(() => (playback.playing.value ? loaded.value : null))
+
+/** Each clip opened once, as an object URL. */
+const urls = new Map<number, Promise<string>>()
+
+/** Only the newest click may start a clip: an older one's fetch may answer later. */
+let clicks = 0
+let alive = true
+
+/** Plays a clip, or pauses it while it sounds. */
+async function listen(clip: number): Promise<void> {
+  if (playing.value === clip) {
+    playback.pause()
+    return
+  }
+
+  const assets = props.assets
+  if (!assets) return
+
+  // iOS wakes the graph only inside the click; the fetch below ends outside it.
+  unlockSound()
+  const mine = ++clicks
+
+  let url = urls.get(clip)
+  if (url === undefined) {
+    url = loadSealed(assets, clipAsset(clip)).then((blob) => URL.createObjectURL(blob))
+    urls.set(clip, url)
+  }
+
+  let src: string
+  try {
+    src = await url
+  } catch (err) {
+    urls.delete(clip)
+    console.warn('[echo-locate] the clip did not load', err)
+    return
+  }
+  if (!alive || mine !== clicks) return
+
+  if (loaded.value !== clip) {
+    playback.setSource(src)
+    loaded.value = clip
+  }
+  playback.resume()
+}
+
+onBeforeUnmount(() => {
+  alive = false
+  for (const url of urls.values()) url.then(URL.revokeObjectURL, () => undefined)
+})
+
 /** The same name again takes its play off the map. */
 function select(userId: string): void {
   selected.value = selected.value === userId ? null : userId
@@ -136,6 +205,9 @@ function select(userId: string): void {
         :solution="props.solution"
         :other-pins="otherPins"
         :links="links"
+        :listenable="listenable"
+        :playing="playing"
+        @listen="listen"
       />
       <!-- My field alone, over the same field on the map: as this one leaves, the map fades in
            under my pings, which do not move. The box takes no touch, so a finger reaches the map.

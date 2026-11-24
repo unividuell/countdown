@@ -326,6 +326,93 @@ describe('SonarField', () => {
     expect(mountField().get('canvas').classes()).toContain('touch-none')
   })
 
+  describe('listening on the map', () => {
+    // Clip (5, 7) sits at (65, 95) on the page; its tolerance circle is 15 px around it.
+    const click = (field: ReturnType<typeof mountField>, clientX: number, clientY: number) =>
+      field.get('canvas').trigger('click', { clientX, clientY })
+
+    it('asks to hear a clip on a click inside its tolerance circle, not beside it', async () => {
+      const field = mountField({ solution: SOLUTION, listenable: true })
+
+      await click(field, 65 + 14, 95)
+      await click(field, 65 + 16, 95)
+
+      expect(field.emitted('listen')).toEqual([[0]])
+    })
+
+    it('takes the dot in phase two, which has no circle', async () => {
+      const field = mountField({
+        solution: { ...SOLUTION, toleranceRadius: null },
+        listenable: true,
+      })
+
+      // The dot is 8 px: 0.6 of a 10 px cell is less.
+      await click(field, 65 + 7, 95)
+      await click(field, 65 + 9, 95)
+
+      expect(field.emitted('listen')).toEqual([[0]])
+    })
+
+    it('hands overlapping circles to the nearer clip', async () => {
+      const targets = [
+        { col: 5, row: 7 },
+        { col: 7, row: 7 },
+      ]
+      const field = mountField({ solution: { ...SOLUTION, targets }, listenable: true })
+
+      await click(field, 65 + 12, 95)
+
+      expect(field.emitted('listen')).toEqual([[1]])
+    })
+
+    it('hears nothing unless listenable, nor on the board', async () => {
+      const unheard = mountField({ solution: SOLUTION })
+      await click(unheard, 65, 95)
+      expect(unheard.emitted('listen')).toBeUndefined()
+      expect(unheard.find('[data-test="sonar-listen-hint"]').exists()).toBe(false)
+
+      const board = mountField({ listenable: true })
+      await click(board, 65, 95)
+      expect(board.emitted('listen')).toBeUndefined()
+    })
+
+    it('says what a click does, by phase', () => {
+      const hint = (toleranceRadius: number | null) =>
+        mountField({ solution: { ...SOLUTION, toleranceRadius }, listenable: true })
+          .get('[data-test="sonar-listen-hint"]')
+          .text()
+
+      expect(hint(1.5)).toBe('Klick auf einen Toleranzkreis: Spruch anhören')
+      expect(hint(null)).toBe('Klick auf einen Spruch: anhören')
+    })
+
+    it('lights up the circle of the clip sounding', async () => {
+      const field = mountField({ solution: SOLUTION, listenable: true })
+      expect(log).toContainEqual(['set fillStyle', 'rgba(52,211,153,0.15)'])
+
+      log.length = 0
+      await field.setProps({ playing: 0 })
+
+      expect(log).toContainEqual(['set fillStyle', 'rgba(52,211,153,0.35)'])
+      expect(log).not.toContainEqual(['set fillStyle', 'rgba(52,211,153,0.15)'])
+    })
+
+    it('rings the dot of the clip sounding in phase two', () => {
+      mountField({
+        solution: { ...SOLUTION, toleranceRadius: null },
+        listenable: true,
+        playing: 0,
+      })
+
+      expect(after(log, 55, 75, 11, 4)).toEqual([
+        ['set strokeStyle', '#ffffff'],
+        ['set lineWidth', 2],
+        ['stroke'],
+        ['set lineWidth', 1],
+      ])
+    })
+  })
+
   // No cover: the first click is the first ping. Until then the field says what hides in it.
   it('names how many clips hide in the field until the first ping, and takes no click for it', () => {
     const hint = (over: Record<string, unknown>) =>
