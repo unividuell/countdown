@@ -243,7 +243,7 @@ games/mixcolor/
   Streifen, ohne Bewegung. Werte aus dem Spike („fein, schnell“, `MixerSwirl.vue`): 7 Arme, 1,3
   Windungen, Strich 2,2, Deckkraft 0,45, Umlauf 0,7 s; Klecks 900 ms; Überblenden 700 ms; Ausblenden
   600 ms. Reduzierte Bewegung: kein Klecks, kein Wirbel, das Glas blendet nur über.
-- **Füllstand** als Balken mit „8 / 20“ (aus `capacity`).
+- **Füllstand** als Balken, „8 / 20“ darin (aus `capacity`).
 - **Ein Tropfen zur Zeit.** Man gibt einen Tropfen und schaut, wie die Mischung wird. Tippen startet
   den Klecks sofort und emittiert `skip`; solange die Anfrage läuft, setzt der Host `disabled`, und die
   Düsen und „Fertig“ sind gesperrt. Die Glasfarbe kommt mit der Antwort. Bestätigt ist, was in `steps`

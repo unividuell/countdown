@@ -98,6 +98,9 @@ watch(autoHold, (now, before) => {
   if (before && !now) spent.value = true
 })
 
+/** Percent of the glass in. */
+const filled = computed(() => Math.min(100, (drops.value / props.payload.capacity) * 100))
+
 function submit(): void {
   if (locked.value || drops.value < 1) return
 
@@ -118,21 +121,27 @@ function submit(): void {
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <div
-          class="h-2 flex-1 overflow-hidden rounded-full bg-surface-container-highest"
-          role="progressbar"
-          aria-label="Füllstand"
-          :aria-valuenow="drops"
-          aria-valuemin="0"
-          :aria-valuemax="props.payload.capacity"
+      <!-- The count sits in the bar twice: on the track, and in `on-primary` clipped to the fill,
+           so every digit reads on whichever side of the edge it lands. -->
+      <div
+        class="relative h-5 overflow-hidden rounded-full bg-surface-container-highest text-xs tabular-nums"
+        role="progressbar"
+        aria-label="Füllstand"
+        :aria-valuenow="drops"
+        aria-valuemin="0"
+        :aria-valuemax="props.payload.capacity"
+      >
+        <div class="absolute inset-y-0 left-0 bg-primary" :style="{ width: `${filled}%` }" />
+        <span aria-hidden="true" class="absolute inset-0 flex items-center justify-center">
+          {{ drops }} / {{ props.payload.capacity }}
+        </span>
+        <span
+          aria-hidden="true"
+          class="absolute inset-0 flex items-center justify-center text-on-primary"
+          :style="{ clipPath: `inset(0 ${100 - filled}% 0 0)` }"
         >
-          <div
-            class="h-full bg-primary"
-            :style="{ width: `${Math.min(100, (drops / props.payload.capacity) * 100)}%` }"
-          />
-        </div>
-        <span class="text-sm tabular-nums">{{ drops }} / {{ props.payload.capacity }}</span>
+          {{ drops }} / {{ props.payload.capacity }}
+        </span>
       </div>
 
       <div class="flex justify-center gap-3">

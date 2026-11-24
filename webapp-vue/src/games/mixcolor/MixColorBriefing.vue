@@ -16,7 +16,7 @@ const props = defineProps<{
   <div class="flex flex-col gap-3">
     <InfoBox storage-key="mix-color">
       <template #abstract>
-        Rühr im Kreis die Farbe des Feldes an. Was drin ist, bleibt drin; höchstens
+        Rühr im Kreis (innen) die Farbe des Feldes (außen) an. Höchstens
         {{ props.capacity }} Tropfen.
       </template>
       <MixColorRules />

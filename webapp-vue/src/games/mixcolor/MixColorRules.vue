@@ -6,7 +6,7 @@
   <ul class="ms-4 list-disc space-y-1">
     <li>Tipp auf eine Farbe gibt einen Tropfen in den Kreis.</li>
     <li>Was drin ist, bleibt drin — nichts kommt zurück.</li>
-    <li>Ist der Kreis voll, wird die Mischung von selbst abgegeben.</li>
-    <li>Früher abgegeben wird, indem du „Fertig“ gedrückt hältst.</li>
+    <li>Hast du alle deine Tropfen verbraucht, wird die Mischung von selbst abgegeben.</li>
+    <li>Du kannst jederzeit früher abgeben, indem du „Fertig“ gedrückt hältst.</li>
   </ul>
 </template>
