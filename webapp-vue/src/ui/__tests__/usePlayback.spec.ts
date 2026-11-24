@@ -438,6 +438,8 @@ describe('usePlayback without an audio graph', () => {
     await nextTick()
 
     expect(element.volume).toBe(0)
+    // iOS ignores `volume` on an element, but honours `muted`.
+    expect(element.muted).toBe(true)
   })
 
   it('plays through the element where no AudioContext exists', async () => {

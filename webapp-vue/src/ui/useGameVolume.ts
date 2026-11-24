@@ -13,6 +13,9 @@ export function useGameVolume(): Ref<number> {
 
 /** The gain for a slider value: squared, so the slider's lower half is not all near-silence. */
 export function volumeGain(volume: number): number {
+  // A hand-edited value parses to NaN, and a NaN gain throws on assignment.
+  if (!Number.isFinite(volume)) return 0
+
   const v = Math.min(1, Math.max(0, volume))
 
   return v * v

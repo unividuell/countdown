@@ -1,5 +1,6 @@
 import { onBeforeUnmount } from 'vue'
 import { runningGraph } from '@/ui/audio'
+import { useGameVolume } from '@/ui/useGameVolume'
 import { EchoEngine, bufferOf } from './engine'
 import { bedSamples } from './noise'
 
@@ -17,8 +18,12 @@ export function useVolumePreview(): { onAdjust: () => void } {
   let engine: EchoEngine | null = null
   let bed: AudioBuffer | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
+  const volume = useGameVolume()
 
   function onAdjust(): void {
+    // Muted asks for no graph: building one claims the device's audio session.
+    if (volume.value === 0) return
+
     const graph = runningGraph()
     if (graph === null) return
 

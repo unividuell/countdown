@@ -28,6 +28,8 @@ describe('volumeGain', () => {
   it('never leaves [0, 1]', () => {
     expect(volumeGain(1.5)).toBe(1)
     expect(volumeGain(-1)).toBe(0)
+    // A hand-edited `games:volume` parses to NaN; a NaN gain throws on assignment.
+    expect(volumeGain(Number.NaN)).toBe(0)
   })
 })
 

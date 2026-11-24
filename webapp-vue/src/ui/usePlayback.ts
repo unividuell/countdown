@@ -59,9 +59,16 @@ export function usePlayback(): {
   element.preload = 'auto'
 
   // The graph's clips pass the master; the element bypasses it, so it takes the volume itself.
-  // iOS ignores `volume` on an element: there the fallback plays at full level.
+  // iOS ignores `volume` on an element (full level there) but honours `muted`.
   const volume = useGameVolume()
-  watch(volume, (v) => (element.volume = volumeGain(v)), { immediate: true })
+  watch(
+    volume,
+    (v) => {
+      element.volume = volumeGain(v)
+      element.muted = v === 0
+    },
+    { immediate: true },
+  )
 
   let decoded: Promise<AudioBuffer | null> | null = null
   let node: AudioBufferSourceNode | null = null

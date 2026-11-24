@@ -43,6 +43,8 @@ function withPreview(): { onAdjust: () => void; unmount: () => void } {
 describe('useVolumePreview', () => {
   beforeEach(() => {
     engines.length = 0
+    localStorage.clear()
+    vi.mocked(runningGraph).mockClear()
     vi.useFakeTimers()
     vi.mocked(runningGraph).mockReturnValue({ sampleRate: 48000 } as AudioContext)
   })
@@ -79,6 +81,17 @@ describe('useVolumePreview', () => {
 
     onAdjust()
 
+    expect(engines).toHaveLength(0)
+  })
+
+  // Muted asks for no graph: a running one claims the device's audio session.
+  it('plays nothing at zero', () => {
+    localStorage.setItem('games:volume', '0')
+    const { onAdjust } = withPreview()
+
+    onAdjust()
+
+    expect(runningGraph).not.toHaveBeenCalled()
     expect(engines).toHaveLength(0)
   })
 
