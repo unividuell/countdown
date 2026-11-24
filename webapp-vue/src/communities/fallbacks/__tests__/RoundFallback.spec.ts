@@ -57,8 +57,12 @@ function member(fullName: string, stable: number): RosterMemberResponse {
 // would fetch inside the *next* test case.
 enableAutoUnmount(afterEach)
 
-function mountFallback(targetAt: string | null, members: RosterMemberResponse[] | null = []) {
-  return mount(RoundFallback, { props: { community: community(targetAt), members } })
+function mountFallback(
+  targetAt: string | null,
+  members: RosterMemberResponse[] | null = [],
+  countdownOnly = false,
+) {
+  return mount(RoundFallback, { props: { community: community(targetAt), members, countdownOnly } })
 }
 
 describe('RoundFallback', () => {
@@ -150,5 +154,28 @@ describe('RoundFallback', () => {
     const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 0)])
     await flushPromises()
     expect(w.text()).not.toContain('Event läuft')
+  })
+
+  describe('countdown only, under a game round', () => {
+    it('shows the board while the countdown runs', async () => {
+      vi.spyOn(api, 'getCountdown').mockResolvedValue(before)
+      const w = mountFallback('2026-08-11T09:00:00Z', [], true)
+      await flushPromises()
+      expect(w.find('[data-test="countdown-card"]').exists()).toBe(true)
+    })
+
+    it('reserves no space while the countdown is in flight', () => {
+      vi.spyOn(api, 'getCountdown').mockReturnValue(new Promise(() => {}))
+      const w = mountFallback('2026-08-11T09:00:00Z', [], true)
+      expect(w.find('[data-test="fallback-placeholder"]').exists()).toBe(false)
+    })
+
+    it('says nothing once the target has passed', async () => {
+      vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
+      const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12)], true)
+      await flushPromises()
+      expect(w.text()).toBe('')
+      expect(w.find('[data-test="countdown-card"]').exists()).toBe(false)
+    })
   })
 })

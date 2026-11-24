@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { computed, defineComponent, ref } from 'vue'
+import type { VNode } from 'vue'
 import * as api from '@/api/communities'
 import type { RoundAssets } from '@/api/assets'
 import * as client from '@/api/client'
@@ -241,7 +242,26 @@ describe('community home', () => {
     vi.spyOn(api, 'getRoster').mockResolvedValue([])
     const w = mountPage()
     expect(w.findComponent(RoundCard).exists()).toBe(true)
-    expect(w.findComponent(RoundFallback).exists()).toBe(false)
+  })
+
+  // Round card, then the countdown, then the history.
+  it('hangs the countdown alone under the round card', () => {
+    vi.mocked(useRound).mockReturnValue(
+      mockUseRound({ stage: 'playing', round: aRoundResponse({ previousRoundNumber: 13 }) }),
+    )
+    vi.spyOn(api, 'getRoster').mockResolvedValue([])
+    const w = mountPage()
+
+    expect(w.getComponent(RoundFallback).props('countdownOnly')).toBe(true)
+
+    // Sibling order on the page; the fallback renders nothing until the countdown lands.
+    const order = (w.vm.$.subTree.children as VNode[])
+      .map((n) => {
+        const t = n.type as { name?: string; __name?: string }
+        return t.name ?? t.__name
+      })
+      .filter((name) => name !== undefined)
+    expect(order).toEqual(['RoundCard', 'RoundFallback', 'RoundHistory'])
   })
 
   // A game this build has no renderer for, so the card mounts without a real game under it: only
@@ -283,6 +303,7 @@ describe('community home', () => {
     vi.spyOn(api, 'getRoster').mockResolvedValue([])
     const w = mountPage()
     expect(w.findComponent(RoundFallback).exists()).toBe(true)
+    expect(w.findComponent(RoundFallback).props('countdownOnly')).toBe(false)
     expect(w.findComponent(RoundCard).exists()).toBe(false)
   })
 

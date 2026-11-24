@@ -6,10 +6,16 @@ import { formatWinnerNames, winners } from '@/members/winner'
 import CountdownCard from './CountdownCard.vue'
 import MessageCard from './MessageCard.vue'
 
-const props = defineProps<{
-  community: CommunityResponse
-  members: readonly RosterMemberResponse[] | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    community: CommunityResponse
+    members: readonly RosterMemberResponse[] | null
+    // Under a game round: the board while it counts down, nothing else. The messages would talk
+    // over the game, and a placeholder would hold a square below it for nothing.
+    countdownOnly?: boolean
+  }>(),
+  { countdownOnly: false },
+)
 
 // A null slug keeps useCountdown from firing: without an edition there is nothing to count. Tested
 // against null exactly as the template branch below is, so no third case can slip between them.
@@ -41,6 +47,7 @@ const winnerNames = computed(() =>
     :minutes="minutes"
     :seconds="seconds"
   />
+  <template v-else-if="countdownOnly" />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null && winnerNames !== ''"
     data-test="fallback-winner"
