@@ -150,7 +150,7 @@ onUnmounted(() => {
     <!-- The board's play row, same grid and same sizes, so nothing jumps on reveal. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
       <!-- The volume beside stop: in a game whose sound is the game, under the player's thumb. -->
-      <span class="flex min-w-0 items-center gap-3 justify-self-end pr-4">
+      <span class="flex w-full min-w-0 items-center justify-end gap-3 pr-4">
         <VolumeSlider class="w-20 min-w-0" />
         <button
           type="button"
