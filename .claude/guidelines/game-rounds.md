@@ -248,7 +248,8 @@ two). `difficultyOf` (`Difficulty.kt`) is its one source for a real round:
   (Peilung's ping). The input is stored, the answer never: `step` is pure and recomputed from the
   frozen params. `round_plays.steps` holds one entry per stage (JSON `null` without input), written
   with the stage in one statement. `MyPlayDto.steps` carries input and answer, `OtherPlayDto.steps`
-  only inputs.
+  only inputs. A step answer may read the earlier inputs (`StepContext`); `judge` sees the stored
+  inputs (`GuessContext.steps`).
 - **A ladder unlimited for the player is finite for the row:** `stages` is a hidden ceiling
   (Peilung: 999 pings + 1). Peilung does not charge its steps in the score: phase two on time
   rewards few steps by itself.

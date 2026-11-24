@@ -58,8 +58,11 @@ class GameTypeHandle<P : Any>(
      * The game's answer to one step. JSON `null` is no input: `"input": null` arrives as a
      * `NullNode`, and so does a stored step without one.
      */
-    fun step(params: JsonNode, stage: Int, input: JsonNode?): GameStepAnswer? =
-        type.step(params = paramsOf(params), stage = stage, input = input?.takeUnless { it.isNull })
+    fun step(params: JsonNode, stage: Int, input: JsonNode?, earlier: List<JsonNode>): GameStepAnswer? =
+        type.step(
+            params = paramsOf(params), stage = stage, input = input?.takeUnless { it.isNull },
+            context = StepContext(earlier = earlier.map { it.takeUnless(JsonNode::isNull) }),
+        )
 
     /** Compute (expensively) the round's assets, from a stored `params` blob. Names are unique per round. */
     fun produceAssets(params: JsonNode): List<RoundAsset> =

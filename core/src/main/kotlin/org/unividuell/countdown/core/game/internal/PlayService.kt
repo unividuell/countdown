@@ -108,6 +108,7 @@ class PlayService(
         val context = GuessContext(
             sinceRevealMs = durationMsBetween(revealedAt = play.revealedAt, guessedAt = clock.instant()),
             playId = play.id,
+            steps = play.steps.toList().map { it.takeUnless(JsonNode::isNull) },
         )
         val judgement = current.handle.judge(params = current.roundGame.params, guess = guess, context = context)
 
@@ -182,10 +183,14 @@ class PlayService(
         val stages = current.handle.stages(current.roundGame.params)
         // No skip off the top: the exits up there are the terminal guess, or giving up.
         if (fromStage < 0 || fromStage >= stages - 1) throw StageMovedOnException()
+        val roundGameId = requireNotNull(current.roundGame.id)
+        val play = plays.findByRoundGameIdAndUserId(roundGameId = roundGameId, userId = userId)
+            ?: throw NotRevealedException()
         // Validated before the write: an invalid input must not spend the stage. The answer itself
         // is recomputed for the response.
-        current.handle.step(params = current.roundGame.params, stage = fromStage, input = input)
-        val roundGameId = requireNotNull(current.roundGame.id)
+        current.handle.step(
+            params = current.roundGame.params, stage = fromStage, input = input, earlier = play.steps.toList(),
+        )
         val advanced = plays.advanceStage(
             roundGameId = roundGameId, userId = userId, expectedStage = fromStage,
             input = input ?: NullNode.instance,

@@ -144,8 +144,13 @@ class LabService(
         if (store.hasGuessed(communityId = communityId, gameId = gameId, round = playing, userId = userId)) {
             throw AlreadyGuessedException()
         }
+        val steps = store.stepsOf(communityId = communityId, gameId = gameId, round = playing, userId = userId)
         val judgement = handle.judge(
-            params = playing.params, guess = guess, context = GuessContext(sinceRevealMs = sinceOpenedMs, playId = null),
+            params = playing.params, guess = guess,
+            context = GuessContext(
+                sinceRevealMs = sinceOpenedMs, playId = null,
+                steps = steps.map { it.takeUnless(JsonNode::isNull) },
+            ),
         )
         val stages = handle.stages(playing.params)
         val stagesScore = handle.stagesScore(playing.params)
@@ -210,7 +215,10 @@ class LabService(
         if (fromStage < 0 || fromStage >= stages - 1) throw LabStageMovedOnException()
         // Validated before the write: an invalid input must not spend the stage. The answer itself
         // is recomputed for the response.
-        handle.step(params = playing.params, stage = fromStage, input = input)
+        handle.step(
+            params = playing.params, stage = fromStage, input = input,
+            earlier = store.stepsOf(communityId = communityId, gameId = gameId, round = playing, userId = userId),
+        )
         val advanced = store.advanceStage(
             communityId = communityId, gameId = gameId, round = playing, userId = userId, expected = fromStage,
             input = input,
@@ -439,9 +447,15 @@ class LabService(
     }
 
     /** As in `RoundResponses`: a stored step the game no longer reads is answered with `null`, not a 500. */
-    private fun answerOf(handle: GameTypeHandle<*>, round: LabRound, stage: Int, input: JsonNode): GameStepAnswer? =
+    private fun answerOf(
+        handle: GameTypeHandle<*>,
+        round: LabRound,
+        stage: Int,
+        input: JsonNode,
+        earlier: List<JsonNode>,
+    ): GameStepAnswer? =
         try {
-            handle.step(params = round.params, stage = stage, input = input)
+            handle.step(params = round.params, stage = stage, input = input, earlier = earlier)
         } catch (e: InvalidStepException) {
             logger.warn {
                 "lab seed ${round.seed} ${round.phase}: '${handle.id}' rejects stored step $stage (${e.message}); " +
@@ -504,11 +518,15 @@ class LabService(
             store.hasOpened(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
         val myStage = store.stageOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
         // Answers are recomputed per response, never stored: `step` is pure, as in `RoundResponses`.
-        val mySteps = store.stepsOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        val myInputs = store.stepsOf(communityId = communityId, gameId = handle.id, round = snapshot.round, userId = me)
+        val mySteps = myInputs
             .mapIndexed { i, input ->
                 LabStepDto(
                     input = input.takeUnless { it.isNull },
-                    answer = answerOf(handle = handle, round = snapshot.round, stage = i, input = input),
+                    answer = answerOf(
+                        handle = handle, round = snapshot.round, stage = i, input = input,
+                        earlier = myInputs.subList(0, i),
+                    ),
                 )
             }
         // Produced only once the tester has revealed: no key opens before, and producing may download.

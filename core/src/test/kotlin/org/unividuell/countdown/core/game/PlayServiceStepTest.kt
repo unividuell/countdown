@@ -41,7 +41,7 @@ import java.util.UUID
  * [StepGame] is the smallest game of that shape — four stages, a step answers with the `n` it was
  * sent.
  */
-@Import(TestcontainersConfiguration::class, PlayServiceStepTest.StepGame::class)
+@Import(TestcontainersConfiguration::class, PlayServiceStepTest.StepGame::class, EarlierStepsGame.Configuration::class)
 @SpringBootTest
 @Transactional
 class PlayServiceStepTest(
@@ -115,7 +115,7 @@ class PlayServiceStepTest(
     }
 
     /** Announces the current round as "step-fake" with answer "42", phase one. */
-    private fun announceStep(community: Community): RoundGame {
+    private fun announceStep(community: Community, gameType: String = "step-fake"): RoundGame {
         val edition = requireNotNull(editions.findActiveByCommunityId(requireNotNull(community.id)))
         val roundNumber = engine.roundAt(
             now = clock.instant(),
@@ -124,10 +124,13 @@ class PlayServiceStepTest(
         ).number
         return store.announce(
             edition = edition, roundNumber = roundNumber,
-            gameType = "step-fake", params = mapper.readTree("""{"answer":"42"}"""),
+            gameType = gameType, params = mapper.readTree("""{"answer":"42"}"""),
             award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1), announcedAt = clock.instant(),
         )
     }
+
+    private fun announceEarlier(community: Community): RoundGame =
+        announceStep(community = community, gameType = "earlier-steps-fake")
 
     private fun json(raw: String): JsonNode = mapper.readTree(raw)
 
@@ -258,5 +261,33 @@ class PlayServiceStepTest(
         val row = rowOf(round = round, userId = viewer)
         row.stage shouldBe 1
         row.steps shouldBe json("""[{"n":1}]""")
+    }
+
+    @Test
+    fun `a step sees the inputs before it`() {
+        val (community, viewer) = aCommunity("Step Earlier")
+        val round = announceEarlier(community)
+        reveal(community = community, userId = viewer, round = round)
+
+        repeat(3) { i ->
+            step(community = community, userId = viewer, round = round, fromStage = i, input = json("""{"n":$i}"""))
+        }
+
+        val res = reveal(community = community, userId = viewer, round = round)
+        res.me.shouldNotBeNull().steps.map { it.answer } shouldBe (0..2).map { EarlierStepsGame.EarlierAnswer(earlier = it) }
+    }
+
+    @Test
+    fun `judge sees the stored steps`() {
+        val (community, viewer) = aCommunity("Step Judge")
+        val round = announceEarlier(community)
+        reveal(community = community, userId = viewer, round = round)
+        repeat(2) { i ->
+            step(community = community, userId = viewer, round = round, fromStage = i, input = json("""{"n":$i}"""))
+        }
+
+        guess(community = community, userId = viewer, round = round, answer = "42")
+
+        rowOf(round = round, userId = viewer).deviation shouldBe 2.0
     }
 }
