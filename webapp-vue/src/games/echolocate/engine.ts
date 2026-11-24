@@ -15,6 +15,11 @@ import type { EchoHit, NoiseKind } from './types'
 
 const MASTER_GAIN = 0.6
 
+/** The noises recorded rather than synthesised. */
+export const RECORDINGS = { BROOK: brookUrl, COW: cowUrl } satisfies Partial<
+  Record<NoiseKind, string>
+>
+
 export interface Shot {
   buffer: AudioBuffer
   /** Milliseconds after the ping. */
@@ -196,8 +201,8 @@ export async function loadSounds(
 ): Promise<EchoSounds & { bed: AudioBuffer }> {
   const rate = ctx.sampleRate
   const [brook, cow, clips] = await Promise.all([
-    tryDecode(ctx, brookUrl, 'the brook recording'),
-    tryDecode(ctx, cowUrl, 'the cow recording'),
+    tryDecode(ctx, RECORDINGS.BROOK, 'the brook recording'),
+    tryDecode(ctx, RECORDINGS.COW, 'the cow recording'),
     Promise.all(clipSrcs.map((src) => (src === null ? null : tryDecode(ctx, src, 'a clip')))),
   ])
   const silence = (): AudioBuffer =>

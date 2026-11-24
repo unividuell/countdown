@@ -319,8 +319,8 @@ describe('EchoLocateReveal', () => {
       URL.revokeObjectURL = vi.fn()
     })
 
-    const listen = async (w: Reveal, clip: number) => {
-      map(w).vm.$emit('listen', clip)
+    const listen = async (w: Reveal, place: number, kind: 'clip' | 'noise' = 'clip') => {
+      map(w).vm.$emit('listen', { kind, place })
       await flushPromises()
     }
 
@@ -348,7 +348,7 @@ describe('EchoLocateReveal', () => {
       await listen(wrapper, 0)
       playback.playing.value = true
       await nextTick()
-      expect(map(wrapper).props('playing')).toBe(0)
+      expect(map(wrapper).props('playing')).toEqual({ kind: 'clip', place: 0 })
 
       await listen(wrapper, 0)
 
@@ -375,7 +375,7 @@ describe('EchoLocateReveal', () => {
       loadSealed.mockImplementationOnce(() => new Promise((resolve) => (open = resolve)))
       const wrapper = mountReveal({ solution: SOLUTION_TWO, payload: TWO, assets: ASSETS })
 
-      map(wrapper).vm.$emit('listen', 0)
+      map(wrapper).vm.$emit('listen', { kind: 'clip', place: 0 })
       await listen(wrapper, 1)
       open(new Blob(['late']))
       await flushPromises()
@@ -396,6 +396,38 @@ describe('EchoLocateReveal', () => {
       await listen(wrapper, 0)
       expect(loadSealed).toHaveBeenCalledTimes(2)
       expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('plays a recorded noise from its own file, unsealed', async () => {
+      const wrapper = mountReveal({ assets: ASSETS })
+
+      // SOLUTION's noise 1 is the cow.
+      await listen(wrapper, 1, 'noise')
+
+      expect(loadSealed).not.toHaveBeenCalled()
+      expect(playback.setSource).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/cow\.mp3/))
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('plays a synthesised noise as a WAV, rendered once per kind', async () => {
+      const blobs: Blob[] = []
+      URL.createObjectURL = vi.fn((blob: Blob) => {
+        blobs.push(blob)
+        return `blob:noise-${blobs.length}`
+      })
+      const wrapper = mountReveal({ assets: ASSETS })
+
+      // SOLUTION's noise 0 is the birds.
+      await listen(wrapper, 0, 'noise')
+      await listen(wrapper, 0, 'clip')
+      await listen(wrapper, 0, 'noise')
+
+      expect(blobs[0]?.type).toBe('audio/wav')
+      expect(playback.setSource.mock.calls).toEqual([
+        ['blob:noise-1'],
+        ['blob:noise-2'],
+        ['blob:noise-1'],
+      ])
     })
 
     it('lets go of the opened clips when it leaves', async () => {

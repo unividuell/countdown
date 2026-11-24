@@ -330,6 +330,36 @@ describe('SonarField', () => {
     // Clip (5, 7) sits at (65, 95) on the page; its tolerance circle is 15 px around it.
     const click = (field: ReturnType<typeof mountField>, clientX: number, clientY: number) =>
       field.get('canvas').trigger('click', { clientX, clientY })
+    const clip = (place: number) => ({ kind: 'clip' as const, place })
+    const noise = (place: number) => ({ kind: 'noise' as const, place })
+
+    // K stands at (65, 35) on the page; its letter is 10 px, so 6 px around its centre.
+    it('asks to hear a noise on a click on its letter, not beside it', async () => {
+      const field = mountField({ solution: SOLUTION, listenable: true })
+
+      await click(field, 65 + 5, 35)
+      await click(field, 65 + 7, 35)
+
+      expect(field.emitted('listen')).toEqual([[noise(2)]])
+    })
+
+    it('gives a letter inside a tolerance circle to the noise', async () => {
+      const noises = [{ cell: { col: 6, row: 7 }, kind: 'COW' as const }]
+      const field = mountField({ solution: { ...SOLUTION, noises }, listenable: true })
+
+      await click(field, 75, 95)
+      await click(field, 65, 95)
+
+      expect(field.emitted('listen')).toEqual([[noise(0)], [clip(0)]])
+    })
+
+    it('turns the letter of the noise sounding white', () => {
+      mountField({ solution: SOLUTION, listenable: true, playing: noise(2) })
+
+      const at = log.findIndex(([name, text]) => name === 'fillText' && text === 'K')
+      expect(log[at - 1]).toEqual(['set fillStyle', '#ffffff'])
+      expect(log).toContainEqual(['set fillStyle', 'rgba(248,113,113,0.9)'])
+    })
 
     it('asks to hear a clip on a click inside its tolerance circle, not beside it', async () => {
       const field = mountField({ solution: SOLUTION, listenable: true })
@@ -337,7 +367,7 @@ describe('SonarField', () => {
       await click(field, 65 + 14, 95)
       await click(field, 65 + 16, 95)
 
-      expect(field.emitted('listen')).toEqual([[0]])
+      expect(field.emitted('listen')).toEqual([[clip(0)]])
     })
 
     it('takes the dot in phase two, which has no circle', async () => {
@@ -350,7 +380,7 @@ describe('SonarField', () => {
       await click(field, 65 + 7, 95)
       await click(field, 65 + 9, 95)
 
-      expect(field.emitted('listen')).toEqual([[0]])
+      expect(field.emitted('listen')).toEqual([[clip(0)]])
     })
 
     it('hands overlapping circles to the nearer clip', async () => {
@@ -362,7 +392,7 @@ describe('SonarField', () => {
 
       await click(field, 65 + 12, 95)
 
-      expect(field.emitted('listen')).toEqual([[1]])
+      expect(field.emitted('listen')).toEqual([[clip(1)]])
     })
 
     it('hears nothing unless listenable, nor on the board', async () => {
@@ -382,8 +412,8 @@ describe('SonarField', () => {
           .get('[data-test="sonar-listen-hint"]')
           .text()
 
-      expect(hint(1.5)).toBe('Klick auf einen Toleranzkreis: Spruch anhören')
-      expect(hint(null)).toBe('Klick auf einen Spruch: anhören')
+      expect(hint(1.5)).toBe('Klick auf Toleranzkreis oder Buchstabe: anhören')
+      expect(hint(null)).toBe('Klick auf Spruch oder Buchstabe: anhören')
     })
 
     it('lights up the circle of the clip sounding', async () => {
@@ -391,7 +421,7 @@ describe('SonarField', () => {
       expect(log).toContainEqual(['set fillStyle', 'rgba(52,211,153,0.15)'])
 
       log.length = 0
-      await field.setProps({ playing: 0 })
+      await field.setProps({ playing: clip(0) })
 
       expect(log).toContainEqual(['set fillStyle', 'rgba(52,211,153,0.35)'])
       expect(log).not.toContainEqual(['set fillStyle', 'rgba(52,211,153,0.15)'])
@@ -401,7 +431,7 @@ describe('SonarField', () => {
       mountField({
         solution: { ...SOLUTION, toleranceRadius: null },
         listenable: true,
-        playing: 0,
+        playing: clip(0),
       })
 
       expect(after(log, 55, 75, 11, 4)).toEqual([
