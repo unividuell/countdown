@@ -176,8 +176,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
 - **Where the volume is set:** `SoundToggle` left of the avatar (`NavDrawer`), the same on every
   page and still there with the menu open; `VolumeSlider` beside it in the open menu. Beside the
   transport of a game whose sound is the game (Anspielung's stop, Peilung's „Abgeben“) stands
-  `VolumeControl`: the slider upright, the switch beside it — the speaker is what explains the
-  slider. The speaker follows the value: × at 0, one wave below the default, two from it on. Those
+  `VolumeControl`: the slider upright, its knob the speaker — that is what explains the slider.
+  The native range stays the control, invisible, with its thumb sized like the drawn knob so both
+  coincide. The speaker follows the value: × at 0, one wave below the default, two from it on. Those
   games and the audio pool show `SoundOffNotice` (warning colour) at 0: the header's switch is easy
   to miss. Peilung's slider plays its bed at the sayings' level from press to release
   (`useVolumePreview`): judge by what counts.

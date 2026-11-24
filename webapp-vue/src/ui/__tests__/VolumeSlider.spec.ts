@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 import { unlockSound } from '@/ui/audio'
+import IconLoud from '~icons/lucide/volume-2'
+import IconSoft from '~icons/lucide/volume-1'
+import IconMuted from '~icons/lucide/volume-x'
 import SoundOffNotice from '@/ui/SoundOffNotice.vue'
 import { useGameSound } from '@/ui/useGameSound'
 import { GAME_VOLUME_KEY, useGameVolume } from '@/ui/useGameVolume'
@@ -82,6 +85,19 @@ describe('VolumeSlider', () => {
       expect.arrayContaining(['touch-none', '[writing-mode:vertical-lr]', '[direction:rtl]']),
     )
     expect(w.get('input').attributes('aria-orientation')).toBe('vertical')
+  })
+
+  // Upright, the knob is the speaker: it says what the slider sets.
+  it.each([
+    ['0', IconMuted],
+    ['0.5', IconSoft],
+    ['1', IconLoud],
+  ])('upright at %s, the knob shows the matching speaker', (stored, icon) => {
+    localStorage.setItem(GAME_VOLUME_KEY, stored)
+    const w = mount(VolumeSlider, { props: { vertical: true } })
+
+    const knob = w.get('[data-test="volume-knob"]')
+    expect(knob.findComponent(icon).exists()).toBe(true)
   })
 
   it('wakes the graph on release while a board is on screen', async () => {

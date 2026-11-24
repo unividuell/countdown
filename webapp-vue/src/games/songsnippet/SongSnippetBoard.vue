@@ -204,8 +204,8 @@ onUnmounted(() => {
          the middle. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
       <!-- The volume beside stop: in a game whose sound is the game, under the player's thumb. -->
-      <span class="flex w-full min-w-0 items-center justify-between pr-4">
-        <VolumeControl />
+      <span class="flex w-full min-w-0 items-center justify-between self-stretch pr-4">
+        <VolumeControl class="h-full" />
         <button
           type="button"
           data-test="stop"
