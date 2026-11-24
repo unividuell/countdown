@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RouterLinkStub, mount } from '@vue/test-utils'
+import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
+import { ApiError } from '@/api/client'
+import { checkLabGate } from '@/gamelab/api'
 import { labGameList } from '@/gamelab/games'
 
 const replace = vi.fn()
@@ -34,15 +36,28 @@ vi.mock('@/communities/context', () => ({
   }),
 }))
 
+vi.mock('@/gamelab/api', () => ({ checkLabGate: vi.fn() }))
+
 async function mountIndex() {
   const Page = (await import('@/pages/c/[slug]/lab/index.vue')).default
-  return mount(Page, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const w = mount(Page, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  await flushPromises()
+  return w
 }
 
 describe('lab index', () => {
   beforeEach(() => {
     replace.mockReset()
     setQuery({})
+    vi.mocked(checkLabGate).mockReset().mockResolvedValue(undefined)
+  })
+
+  // Issue #99: the game pages were gated, the index was not.
+  it('lists nothing where the lab is off', async () => {
+    vi.mocked(checkLabGate).mockRejectedValue(new ApiError(404, 'not found'))
+    const w = await mountIndex()
+    expect(w.find('[data-test="lab-game-list"]').exists()).toBe(false)
+    expect(w.get('[data-test="lab-unavailable"]').text()).toContain('Spiel-Labor nicht verfügbar')
   })
 
   it('lists every registered game', async () => {

@@ -36,6 +36,9 @@ Every bean of a non-prod tool carries **both**:
 - The SPA bundle is identical in every environment, so the frontend cannot gate itself. **The server
   decides**; the page renders "not available" on 404 and is not linked from anywhere. No
   environment flag in `/api/me`.
+- **A lab page without a backend call of its own still asks.** `GET /api/lab` (`LabGateController`,
+  204) is the one gate for every lab page; wrap the page in `gamelab/LabGate.vue`. The game lab's
+  index went ungated to production once (#99).
 - Assert the gate: one test with `@TestPropertySource(properties = ["app.<tool>.enabled=false"])`
   that the beans are absent and the endpoint 404s.
 

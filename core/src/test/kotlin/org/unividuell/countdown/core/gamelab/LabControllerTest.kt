@@ -65,6 +65,12 @@ class LabControllerTest(@Autowired val mockMvc: MockMvc) {
     )
 
     @Test
+    fun `the lab gate answers while the lab is on`() {
+        mockMvc.get("/api/lab") { with(principalFor()) }
+            .andExpect { status { isNoContent() } }
+    }
+
+    @Test
     fun `GET opens the round at the requested seed`() {
         every {
             service.open(

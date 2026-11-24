@@ -44,4 +44,10 @@ class LabDisabledTest(
         mockMvc.get("/api/lab/team/guess-hue?seed=42") { with(principalFor()) }
             .andExpect { status { isNotFound() } }
     }
+
+    @Test
+    fun `the lab gate is not found`() {
+        mockMvc.get("/api/lab") { with(principalFor()) }
+            .andExpect { status { isNotFound() } }
+    }
 }
