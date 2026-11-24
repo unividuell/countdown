@@ -30,7 +30,7 @@ describe('toleranceText', () => {
 })
 
 describe('scoreboardRows', () => {
-  it('prints drops and deviation from the outcome', () => {
+  it('prints the deviation and keeps the recipe', () => {
     const [row] = rowsOf([
       entry({
         outcome: { hex: '#112233', recipe: { c: 4, m: 3 }, deviation: 3.24, withinTolerance: null },
@@ -38,7 +38,6 @@ describe('scoreboardRows', () => {
     ])
 
     expect(row).toMatchObject({
-      drops: '7',
       off: '3,2',
       deviation: 3.24,
       hex: '#112233',
@@ -71,7 +70,6 @@ describe('scoreboardRows', () => {
 
     expect(rows.map((row) => row.userId)).toEqual(['fine', 'gaveup'])
     expect(rows[1]).toMatchObject({
-      drops: '–',
       off: '–',
       deviation: null,
       hex: null,

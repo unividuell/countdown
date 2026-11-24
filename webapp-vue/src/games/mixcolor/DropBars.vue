@@ -6,8 +6,8 @@
  *
  *   Mix 3, Ziel 2   ●●◓○○○      ● both halves · ◓ upper only · ○ empty
  *
- * Every pigment gets its row, empty or not, in payload order. Without a player recipe the upper
- * halves stay empty.
+ * Every pigment gets its row, empty or not, in payload order; each circle is ringed in its pigment,
+ * so an empty row still tells whose it is. Without a player recipe the upper halves stay empty.
  */
 import { computed } from 'vue'
 import type { MixColorPigment, Recipe } from './types'
@@ -56,8 +56,8 @@ const columns = computed(() => ({
         v-for="n in props.capacity"
         :key="n"
         aria-hidden="true"
-        class="flex aspect-square flex-col overflow-hidden rounded-full"
-        :class="{ 'border border-outline': n <= row.player || n <= row.target }"
+        class="flex aspect-square flex-col overflow-hidden rounded-full border"
+        :style="{ borderColor: row.pigment.hex }"
       >
         <span
           :data-test="n <= row.player ? 'mix-drop' : undefined"

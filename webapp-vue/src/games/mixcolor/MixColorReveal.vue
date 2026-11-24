@@ -64,6 +64,8 @@ function select(userId: string): void {
       :live="props.live"
       :selected="shown?.userId ?? null"
       :tolerance="props.solution.tolerance"
+      :pigments="props.payload.pigments"
+      :target="props.solution.recipe"
       @select="select"
     />
   </div>

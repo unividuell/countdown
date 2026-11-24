@@ -9,8 +9,6 @@ import type { ScoreboardRow as SharedScoreboardRow } from '@/games/scoreboardCol
 import { asMixColorOutcome, type Recipe } from './types'
 
 export interface ScoreboardRow extends SharedScoreboardRow {
-  /** Total drops in the mix, e.g. `7`; `–` without outcome. */
-  drops: string
   /** The server's deviation, one decimal, e.g. `3,2`; `–` without outcome. */
   off: string
   deviation: number | null
@@ -43,7 +41,6 @@ export function scoreboardRows(input: {
 
     return {
       ...rowHead(entry, input.awardRule),
-      drops: outcome === null ? '–' : String(sum(outcome.recipe)),
       off: outcome === null ? '–' : formatDeviation(outcome.deviation),
       deviation: outcome?.deviation ?? null,
       hex: outcome?.hex ?? null,
@@ -59,10 +56,6 @@ export function scoreboardRows(input: {
   )
 
   return withTicks(ranked, input.mineUserId)
-}
-
-function sum(recipe: Recipe): number {
-  return Object.values(recipe).reduce((total, drops) => total + drops, 0)
 }
 
 /** Ascending, a missing deviation last; two missing ones tie. */

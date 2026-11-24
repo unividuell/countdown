@@ -69,4 +69,16 @@ describe('MixColorReveal', () => {
     }
     expect(playVerdict).toHaveBeenCalled()
   })
+
+  it('fills every box against the largest count in the table', () => {
+    const w = mountReveal()
+    const fill = (box: string, key: string) =>
+      w
+        .get(`[data-test="${box}"] [data-test="box-${key}"] [data-test="box-fill"]`)
+        .attributes('style')
+
+    // Target { c: 3, m: 1 }, mine { c: 2 }, other { m: 1 }: 3 is the largest.
+    expect(fill('mix-color-target', 'c')).toContain('height: 100%')
+    expect(fill('mix-me', 'c')).toContain('height: 66.6')
+  })
 })
