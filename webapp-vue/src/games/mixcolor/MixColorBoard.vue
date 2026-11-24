@@ -115,7 +115,7 @@ function submit(): void {
 
       <div class="flex items-center gap-3">
         <div
-          class="h-2 flex-1 overflow-hidden rounded-full bg-surface-variant"
+          class="h-2 flex-1 overflow-hidden rounded-full bg-surface-container-highest"
           role="progressbar"
           aria-label="Füllstand"
           :aria-valuenow="drops"
