@@ -233,6 +233,9 @@ the ancestor chain answers all three. `HueWheel`.
 - **A sealed round mounts its game.** The game lays `RevealCover` over its own play area and
   nothing else, and sets `inert` on that area — glass stops a finger, not a keyboard. Its rules and
   stake stay outside both: the sealed round is when they are read at leisure.
+- **The sealed card lays out the board's rows under the cover**, the same component with nothing
+  live (Peilung's `EchoLocateControls`, hand-in off): otherwise START grows the card below the
+  field and everything under it jumps. Only the cover's area may differ.
 - **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
 failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
 - **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene
