@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
@@ -46,8 +46,12 @@ function revealed() {
   return mountGame({ solution: SOLUTION, entries, mineUserId: 'me' })
 }
 
-const fill = (w: ReturnType<typeof mountGame>) =>
-  w.getComponent(MixerGlass).get('[data-test="mixer-fill"]').attributes('fill')
+/** The circle's slices, in order. */
+const slices = (w: ReturnType<typeof mountGame>) =>
+  w.findAll('[data-test="pie-slice"]').map((slice) => slice.attributes('fill'))
+
+const dots = (w: ReturnType<typeof mountGame>) =>
+  w.findAll('[data-test="pie-dot"]').map((dot) => dot.attributes('fill'))
 
 describe('MixColorGame', () => {
   it('an unreadable payload says so', () => {
@@ -81,23 +85,62 @@ describe('MixColorGame', () => {
     expect(w.emitted('guess')).toEqual([[{ drops: 3 }]])
   })
 
-  it('shows my mix first, another on tap, mine again on a second tap', async () => {
-    const w = revealed()
-    expect(fill(w)).toBe('#112233')
-
-    await w.get('[data-test="select-other"]').trigger('click')
-    expect(fill(w)).toBe('#445566')
-
-    await w.get('[data-test="select-other"]').trigger('click')
-    expect(fill(w)).toBe('#112233')
+  it('starts with my mix as the whole circle', () => {
+    expect(slices(revealed())).toEqual(['#112233'])
   })
 
-  it('a given-up player leaves the circle at mine', async () => {
-    const w = revealed()
+  describe('the circle', () => {
+    beforeEach(() =>
+      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] }),
+    )
+    afterEach(() => vi.useRealTimers())
 
-    await w.get('[data-test="select-quitter"]').trigger('click')
+    /** Taps a name and lets the slices finish moving. */
+    async function toggle(w: ReturnType<typeof mountGame>, userId: string) {
+      await w.get(`[data-test="select-${userId}"]`).trigger('click')
+      vi.advanceTimersByTime(1000)
+      await w.vm.$nextTick()
+    }
 
-    expect(fill(w)).toBe('#112233')
+    it('toggles each name on its own: one slice per selected player', async () => {
+      const w = revealed()
+
+      await toggle(w, 'other')
+      expect(slices(w)).toEqual(['#112233', '#445566'])
+      expect(dots(w)).toHaveLength(2)
+
+      await toggle(w, 'me')
+      expect(slices(w)).toEqual(['#445566'])
+    })
+
+    it('orders the slices like the scoreboard, not like the taps', async () => {
+      const w = revealed()
+
+      await toggle(w, 'me')
+      await toggle(w, 'other')
+      await toggle(w, 'me')
+
+      expect(slices(w)).toEqual(['#112233', '#445566'])
+    })
+
+    it('with nobody selected the circle is the empty grey', async () => {
+      const w = revealed()
+
+      await toggle(w, 'me')
+
+      expect(slices(w)).toEqual([])
+      expect(w.getComponent(MixerGlass).get('[data-test="mixer-fill"]').attributes('fill')).toBe(
+        '#8C8C8C',
+      )
+    })
+
+    it('a given-up player cannot be selected', async () => {
+      const w = revealed()
+
+      await toggle(w, 'quitter')
+
+      expect(slices(w)).toEqual(['#112233'])
+    })
   })
 
   it('names the tolerance in phase one only', () => {

@@ -215,6 +215,7 @@ games/mixcolor/
   MixColorBoard.vue        Feld, Glas, Düsen, HoldButton
   MixerGlass.vue           Glas samt Wirbel — von Spielfläche und Auflösung geteilt
   RecipeBoxes.vue          Rezept als Kästchen je Grundfarbe — Rangliste
+  MixPie.vue + pie.ts      gewählte Mischungen als Kuchen im Kreis — Auflösung
   MixColorReveal.vue
   MixColorScoreboard.vue + scoreboard.ts
   types.ts                 Payload, Antwort, Lösung, Outcome — defensiv eingeengt
@@ -255,9 +256,14 @@ games/mixcolor/
 
 ### Auflösung
 
-Feld in der Zielfarbe, im Glas die eigene Farbe, darunter die Rangliste; ihre Kästchen stellen jedes
-Rezept dem Ziel gegenüber. Ein anderer Name in der Rangliste ist ein Knopf: das Glas zeigt dessen
-Farbe (aus seinem Outcome); nochmal tippen hebt auf. Takt nach `revealChoreography.ts`.
+Feld in der Zielfarbe, darin der Kreis, darunter die Rangliste; ihre Kästchen stellen jedes Rezept
+dem Ziel gegenüber. Jeder Name ist ein Schalter, unabhängig von den anderen: jeder gewählte Spieler
+bekommt ein gleich großes Kuchenstück des Kreises in seiner Mischfarbe (aus seinem Outcome), markiert
+mit einem Punkt in seiner Spielerfarbe. Der erste Schnitt liegt zufällig, einmal je Auflösung; die
+Stücke folgen der Reihenfolge der Rangliste, Stück und Zeile entsprechen sich eins zu eins. Ein Stück wächst beim Wählen aus dem Nichts und
+schrumpft beim Abwählen weg, die anderen machen Platz. Anfangs ist die eigene Mischung gewählt; ist keiner gewählt, zeigt der
+Kreis das Grau des leeren Glases. Wer aufgegeben hat, lässt sich nicht wählen. Takt nach
+`revealChoreography.ts`.
 
 ### Rangliste
 

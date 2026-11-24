@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * „Auswertung“ for Anrührung: the shared table with each mix as five pigment boxes under the
- * target's and the distance to the target colour. The name is a button — tapping it shows that
- * player's mix on the reveal. The boxes bring their own surface, so the table leaves that cell bare.
+ * target's and the distance to the target colour. The name is a button — tapping it toggles that
+ * player's mix in the reveal's circle. The boxes bring their own surface, so the table leaves that
+ * cell bare.
  *
  *                    Ziel            Toleranz
  *                    [█][ ][▌][ ][ ]   ≤ 4,0
@@ -20,8 +21,8 @@ const props = defineProps<{
   rows: ScoreboardRow[]
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  /** Whose mix is on show. */
-  selected: string | null
+  /** Whose mixes are on show. */
+  selected: string[]
   /** `null` in phase two — there is no gate there. */
   tolerance: number | null
   pigments: MixColorPigment[]
@@ -73,12 +74,12 @@ const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface
         type="button"
         :data-test="`select-${row.userId}`"
         class="flex w-full cursor-pointer items-baseline gap-1 text-start focus-visible:outline-2 focus-visible:-outline-offset-2"
-        :aria-pressed="props.selected === row.userId"
+        :aria-pressed="props.selected.includes(row.userId)"
         @click="emit('select', row.userId)"
       >
         <span
           class="min-w-0 truncate"
-          :class="props.selected === row.userId ? 'font-semibold underline' : ''"
+          :class="props.selected.includes(row.userId) ? 'font-semibold underline' : ''"
           >{{ row.name }}</span
         >
       </button>
