@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { GAME_SOUND_KEY } from '@/ui/useGameSound'
+import { GAME_VOLUME_KEY } from '@/ui/useGameVolume'
 
 /** A graph in `state` whose gains can be read back. */
 function stubGraph(state: AudioContextState = 'running') {
@@ -60,7 +60,7 @@ describe('soundOutput', () => {
   })
 
   it('starts closed on a stored mute', async () => {
-    localStorage.setItem(GAME_SOUND_KEY, 'false')
+    localStorage.setItem(GAME_VOLUME_KEY, '0')
     const gains = stubGraph()
     const { audioGraph, soundOutput } = await load()
     soundOutput(audioGraph()!)
@@ -127,7 +127,7 @@ describe('soundGraph', () => {
   })
 
   it('is null while muted, and opens no graph for it', async () => {
-    localStorage.setItem(GAME_SOUND_KEY, 'false')
+    localStorage.setItem(GAME_VOLUME_KEY, '0')
     const created = vi.fn()
     vi.stubGlobal(
       'AudioContext',

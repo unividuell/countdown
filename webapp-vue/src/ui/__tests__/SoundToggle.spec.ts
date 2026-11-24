@@ -35,7 +35,7 @@ describe('SoundToggle', () => {
     await w.get('button').trigger('click')
 
     expect(w.get('button').attributes('aria-pressed')).toBe('false')
-    expect(localStorage.getItem('games:sound')).toBe('false')
+    expect(localStorage.getItem('games:volume')).toBe('0')
   })
 
   it('two toggles show the same setting', async () => {
@@ -50,7 +50,7 @@ describe('SoundToggle', () => {
   })
 
   it('shows a stored mute as muted', () => {
-    localStorage.setItem('games:sound', 'false')
+    localStorage.setItem('games:volume', '0')
     const w = mount(SoundToggle)
 
     expect(w.get('button').attributes('aria-pressed')).toBe('false')
@@ -74,7 +74,7 @@ describe('SoundToggle', () => {
     })
 
     it('unmuting wakes the graph with the same click', async () => {
-      localStorage.setItem('games:sound', 'false')
+      localStorage.setItem('games:volume', '0')
       const w = mount(SoundToggle)
 
       await w.get('button').trigger('click')
@@ -108,7 +108,7 @@ describe('SoundToggle', () => {
     })
 
     it('a tap on a muted page wakes nothing', () => {
-      localStorage.setItem('games:sound', 'false')
+      localStorage.setItem('games:volume', '0')
       mount(SoundToggle)
 
       document.dispatchEvent(new Event('pointerup'))
