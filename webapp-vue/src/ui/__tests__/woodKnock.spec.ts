@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { VOLUME, knocks } from '../woodKnock'
+import { knocks } from '../woodKnock'
 
 function param() {
   return {
@@ -11,7 +11,7 @@ function param() {
 }
 
 describe('knocks', () => {
-  it('sends every knock through one bus at the shared volume, into the sound output', () => {
+  it('sends every knock through one bus, into the sound output and on through the master', () => {
     const gains: { gain: ReturnType<typeof param>; connect: ReturnType<typeof vi.fn> }[] = []
     const destination = {}
     const graph = {
@@ -31,12 +31,12 @@ describe('knocks', () => {
     }
 
     knocks(graph as unknown as AudioContext).knock(0, 700)
-    const [bus, output, ...voices] = gains
+    const [bus, output, master, ...voices] = gains
 
-    expect(bus!.gain.value).toBe(VOLUME)
-    // Not straight out: through the output, where the sound switch is honoured.
+    // Not straight out: through the output, where the sound switch is honoured, then the volume.
     expect(bus!.connect).toHaveBeenCalledWith(output)
-    expect(output!.connect).toHaveBeenCalledWith(destination)
+    expect(output!.connect).toHaveBeenCalledWith(master)
+    expect(master!.connect).toHaveBeenCalledWith(destination)
     // Body and overtone, each into the bus rather than straight out.
     expect(voices.map((voice) => voice.connect.mock.calls[0]![0])).toEqual([bus, bus])
   })

@@ -5,6 +5,11 @@ import { BURST_SECONDS, REF_RMS, dbToGain, rms } from '@/games/echolocate/noise'
 import type { EchoHit, NoiseKind } from '@/games/echolocate/types'
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 
+// The volume's own node is `masterOutput`'s spec; here it is the speakers.
+vi.mock('@/ui/masterOutput', () => ({
+  masterOutput: (ctx: { destination: unknown }) => ctx.destination,
+}))
+
 const NOISE_KINDS: NoiseKind[] = ['BIRDS', 'BROOK', 'COW', 'WIND', 'RAIN']
 
 class FakeBuffer {

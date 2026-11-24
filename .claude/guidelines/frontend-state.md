@@ -170,10 +170,22 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   (`echolocate/noise.ts`) are synthesised, its clips and recordings decoded; every part is scaled to
   one RMS before the mix gain. Only then does a dB value mean the signal-to-noise ratio the ear gets,
   and no source is simply louder because of how it was made.
-- **One sound switch, in the header:** `SoundToggle` stands left of the avatar (`NavDrawer`), in
-  the same place on every page and still there with the menu open; no game card carries one.
-  `useGameSound()` is the setting, so no game stores it itself. It governs decoration sound only:
-  a game whose sound is the game (Anspielung, Peilung) plays on, muting there would end the round.
+- **One volume, and zero is mute.** `useGameVolume()` (`games:volume`, 0–1, default 0.8) is the
+  only stored setting; `useGameSound()` derives on/off from it. Muting sets 0, unmuting from 0 jumps
+  to the default. It governs everything the app plays, a game whose sound is the game included.
+- **Where the volume is set:** `SoundToggle` left of the avatar (`NavDrawer`), the same on every
+  page and still there with the menu open; `VolumeSlider` beside it in the open menu. Beside the
+  transport of a game whose sound is the game (Anspielung's stop, Peilung's „Abgeben“) stands
+  `VolumeControl`: the slider upright, its knob the speaker — that is what explains the slider.
+  The native range stays the control, invisible, with its thumb sized like the drawn knob so both
+  coincide. The speaker follows the value: × at 0, one wave below the default, two from it on. Those
+  games and the audio pool show `SoundOffNotice` (warning colour) at 0: the header's switch is easy
+  to miss. Every volume slider ratchets per step at the level just set; Peilung's is `silent` and
+  plays its bed at the sayings' level from press to release instead (`useVolumePreview`): judge by
+  what counts.
+- **Every sound reaches the speakers through `masterOutput(graph)`** (`ui/masterOutput.ts`, gain =
+  volume²), never `graph.destination`. The `<audio>` fallback takes `element.volume` instead;
+  iOS ignores it there.
 - **A board that knocks says so: `useSoundStage()`.** Only while one is on screen does an
   activation wake the graph — waking claims the device's audio session, and on iOS that stops the
   player's music on every other page. Off stage the switch shows the setting and wakes nothing.
@@ -187,10 +199,13 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   wherever it throws sparks, and is then on stage itself (`useSoundStage`). `sparks: false`
   silences both — giving up celebrates nothing. No exception for a game whose sound is the game:
   Peilung's hand-in and its cover's count-in knock too.
+- **A game's volume slider is on stage too** (`VolumeControl`): its ratchet knocks, so Anspielung's
+  board and reveal wake the graph on any tap, like every game that knocks. Not the menu's slider:
+  it is on every page, and off stage nothing may claim the device's audio.
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`, the broom's
   „wruusch“ for tidying up in `ui/whooshSound.ts` (Peilung's „Markierungen löschen“); a game
   schedules them, it does not build its own oscillators. Sound is a side note, not a
-  signal: one master level for all of it (`VOLUME`), which a game does not raise.
+  signal: a game does not raise its level above the voice's own.
 - **Recorded clips go through `ui/recordedSounds.ts`** (Verrohrung, Blockierung): `preload()` on
   mount, `buffer(url)` in the play function, the graph from `soundGraph()` like every synthesised
   voice. A game keeps no decode cache and wakes nothing of its own.
@@ -201,7 +216,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   no game carries its own copy.
 - **The sound switch is honoured in one place, `ui/soundOutput.ts`.** A play function asks
   `soundGraph()` — or `gameSoundOn()` first, where it wakes the graph itself — and connects to
-  `soundOutput(graph)`, never to `graph.destination`. A board calls its play function and nothing
+  `soundOutput(graph)`, never to `masterOutput` or `graph.destination`. A board calls its play function and nothing
   else: no `if (sound.value)`, no watcher that cuts a sound on mute. The output's gain is the
   mute, so what is already sounding falls silent too. Muted asks for no graph at all: by their
   autoplay policies Chrome and Firefox start a context built after a tap as `running`, no
@@ -213,7 +228,7 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   too — knocks under ~30 ms apart overlap and clip. That ratchet is shared (`ui/ratchetSound.ts`):
   Farbausmalung's knob per degree, Entstauber's scrubbed curve per level, Platzierung's stamp per
   cell it moves on to and per tap — a tap ticks even where nothing moved, it answers the finger;
-  Anmaßung's colour picker as it opens.
+  Anmaßung's colour picker as it opens; every volume slider per step.
   A pitch may also name a tool: Anmaßung's brushes sink as they thicken, undo knocks below redo
   (`paintratio/toolSound.ts`). A pitch may follow
   the player's own progress, which says nothing about the target: Musterung climbs a scale per

@@ -36,6 +36,7 @@ import IconPlus from '~icons/lucide/plus'
 import Avatar from '@/ui/Avatar.vue'
 import BrandMark from '@/ui/BrandMark.vue'
 import SoundToggle from '@/ui/SoundToggle.vue'
+import VolumeSlider from '@/ui/VolumeSlider.vue'
 import ColorSchemeSwitch from './ColorSchemeSwitch.vue'
 import { useAuth } from '@/auth/useAuth'
 import { activeCommunity } from '@/communities/context'
@@ -88,7 +89,7 @@ const spin = computed(() =>
     : 0,
 )
 
-/** Room the dialog leaves round the toggle it encloses; also the name's gap to the toggle. */
+/** Room the dialog leaves round the toggle it encloses; also the slider's gap to the toggle. */
 const ENCLOSE_PX = 8
 
 /**
@@ -118,8 +119,8 @@ const frameStyle = computed(() => {
     : { width: `${drawerWidth.value}px`, paddingTop }
 })
 
-/** The viewer's name, on the toggle's row: from the frame's left edge up to the sound switch. */
-const nameStyle = computed(() => {
+/** The volume slider, on the toggle's row: from the frame's left edge up to the sound switch. */
+const volumeStyle = computed(() => {
   const t = toggleBox.value
   return {
     top: `${t.top - frame.value.top}px`,
@@ -127,10 +128,6 @@ const nameStyle = computed(() => {
     right: `${frame.value.right - t.rowLeft + ENCLOSE_PX}px`,
   }
 })
-
-const viewerName = computed(
-  () => activeCommunity.value?.viewerIdentity?.username ?? props.user.username,
-)
 
 /**
  * Crossing md swaps the closed frame's classes — a drawer translated off becomes a dialog faded
@@ -449,14 +446,14 @@ onKeyStroke('Tab', (e) => {
       class="raised fixed z-20 flex flex-col bg-surface-container-high text-on-surface duration-300 ease-[cubic-bezier(.4,0,.2,1)] outline-none motion-reduce:transition-none"
       :class="[asDialog ? dialogClasses : drawerClasses, switchingMode && 'transition-none!']"
     >
-      <!-- Whose menu this is, on the toggle's row; a touch stronger than the rows below. -->
+      <!-- Volume beside the sound switch, on the toggle's row: both halves of sound in one place. -->
       <div
         v-if="toggleBox.bottom > 0"
-        data-test="nav-viewer"
-        class="absolute left-0 flex items-center pl-5 text-sm font-medium"
-        :style="nameStyle"
+        data-test="nav-volume"
+        class="absolute left-0 flex items-center pl-5"
+        :style="volumeStyle"
       >
-        <span class="truncate">{{ viewerName }}</span>
+        <VolumeSlider class="w-full min-w-0" />
       </div>
       <div class="relative flex min-h-0 flex-1 flex-col">
         <div

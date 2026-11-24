@@ -40,11 +40,11 @@ const emit = defineEmits<{ press: [] }>()
   <!-- The ring is absolute, so it hangs outside the button without taking any width from the row.
        Its box is pinned to the button's own size rather than left to the surrounding layout: a
        wrapper that ends up wider than tall turns the mask's `closest-side` into an ellipse. -->
-  <span class="relative block size-20">
+  <span class="relative block size-24">
     <button
       type="button"
       data-test="play"
-      class="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-950 disabled:opacity-40"
+      class="flex size-24 cursor-pointer items-center justify-center rounded-full bg-amber-400 text-3xl text-neutral-950 disabled:opacity-40"
       :disabled="waiting || disabled"
       :aria-label="label"
       @click="emit('press')"

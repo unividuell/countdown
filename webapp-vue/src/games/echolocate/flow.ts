@@ -200,6 +200,11 @@ export function settle(state: FlowState, nowMs: number): FlowState {
   return endMs !== null && nowMs >= endMs ? { ...state, phase: 'idle' } : state
 }
 
+/** The line under the status: what a long click does. */
+export const PIN_HINT = 'Lang drücken: Pin setzen oder entfernen'
+/** The same line, for a moment, after a long click that found no pin left to set. */
+export const PINS_FULL = 'Du musst zuerst einen anderen Pin entfernen, um einen neuen zu setzen.'
+
 /** What a short click does right now, as the line under the field says it. */
 export function statusLine(state: FlowState): string {
   switch (state.phase) {

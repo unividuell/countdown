@@ -821,3 +821,34 @@ describe('EchoLocateBoard', () => {
     })
   })
 })
+
+describe('EchoLocateBoard volume', () => {
+  beforeEach(() => localStorage.clear())
+
+  // A silent first ping costs time in phase two: the volume sits by the hand-in, not only in the menu.
+  it('puts the volume slider left of „Abgeben“', () => {
+    const w = mountBoard()
+
+    const row = w.get('[data-test="echo-locate-hand-in-row"]')
+    expect(row.element.firstElementChild?.querySelector('[data-test="volume"]')).not.toBeNull()
+    // Hidden but there: muting must not move what is below.
+    expect(w.get('[data-test="sound-off"]').classes()).toContain('invisible')
+  })
+
+  it('warns when the sound is off', () => {
+    localStorage.setItem('games:volume', '0')
+    const w = mountBoard()
+
+    expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+    expect(w.get('[data-test="sound-off"]').classes()).not.toContain('invisible')
+  })
+})
+
+describe('EchoLocateBoard volume feedback', () => {
+  // The bed is Peilung's feedback; a ratchet on top would judge the wrong sound.
+  it('sets its slider silent', () => {
+    const w = mountBoard()
+
+    expect(w.findComponent({ name: 'VolumeSlider' }).props('silent')).toBe(true)
+  })
+})

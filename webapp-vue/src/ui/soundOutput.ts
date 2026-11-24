@@ -3,14 +3,15 @@
  * its play function and nothing else: no check of the switch, no watcher to cut a sound on mute.
  *
  *   knocks ─┐
- *   pipes  ─┼─▶ output (gain: 1 on · 0 muted) ─▶ destination
+ *   pipes  ─┼─▶ output (gain: 1 on · 0 muted) ─▶ masterOutput ─▶ destination
  *   blocks ─┘
  *
  * Two halves, because muting has two: nothing new starts (`gameSoundOn`, `soundGraph`), and what is
- * already sounding falls silent (`soundOutput`). Not for a game whose sound is the game.
+ * already sounding falls silent (`soundOutput`).
  */
 import { effectScope, watch, type Ref } from 'vue'
 import { runningGraph } from './audio'
+import { masterOutput } from './masterOutput'
 import { useGameSound } from './useGameSound'
 
 /** Long enough not to click, short enough to be „now“. */
@@ -41,13 +42,13 @@ export function soundGraph(): AudioContext | null {
 
 let output: { graph: AudioContext; node: GainNode } | null = null
 
-/** Connect here instead of `graph.destination`: muting closes it. */
+/** Connect here instead of `masterOutput`: muting closes it. */
 export function soundOutput(graph: AudioContext): AudioNode {
   if (output?.graph === graph) return output.node
 
   const node = graph.createGain()
   node.gain.value = gameSoundOn() ? 1 : 0
-  node.connect(graph.destination)
+  node.connect(masterOutput(graph))
   output = { graph, node }
 
   scope.run(() =>

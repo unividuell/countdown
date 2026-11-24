@@ -1,7 +1,9 @@
-import { onUnmounted, ref } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 
 import { audioGraph, START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { masterOutput } from '@/ui/masterOutput'
+import { useGameVolume, volumeGain } from '@/ui/useGameVolume'
 
 /**
  * The one clip currently sounding, across every instance of this composable. Two players exist on
@@ -55,6 +57,18 @@ export function usePlayback(): {
    */
   const element = new Audio()
   element.preload = 'auto'
+
+  // The graph's clips pass the master; the element bypasses it, so it takes the volume itself.
+  // iOS ignores `volume` on an element (full level there) but honours `muted`.
+  const volume = useGameVolume()
+  watch(
+    volume,
+    (v) => {
+      element.volume = volumeGain(v)
+      element.muted = v === 0
+    },
+    { immediate: true },
+  )
 
   let decoded: Promise<AudioBuffer | null> | null = null
   let node: AudioBufferSourceNode | null = null
@@ -130,11 +144,11 @@ export function usePlayback(): {
     heldAt = null
   }
 
-  /** A node for `buffer`, wired to the speakers and to `ended`. */
+  /** A node for `buffer`, wired to the master volume and to `ended`. */
   function source(context: AudioContext, buffer: AudioBuffer, mine: number): AudioBufferSourceNode {
     const next = context.createBufferSource()
     next.buffer = buffer
-    next.connect(context.destination)
+    next.connect(masterOutput(context))
     next.onended = (): void => ended(mine)
     return next
   }

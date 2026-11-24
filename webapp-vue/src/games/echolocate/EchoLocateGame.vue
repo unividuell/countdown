@@ -28,6 +28,8 @@ import { useSealedAsset } from '@/ui/useSealedAsset'
 import { draftKey, draftPrefix } from './draft'
 import EchoLocateBoard from './EchoLocateBoard.vue'
 import EchoLocateBriefing from './EchoLocateBriefing.vue'
+import EchoLocateControls from './EchoLocateControls.vue'
+import { initialFlow, PIN_HINT, statusLine } from './flow'
 import EchoLocateReveal from './EchoLocateReveal.vue'
 import { scoreRows } from './scoreboard'
 import SonarField from './SonarField.vue'
@@ -43,6 +45,9 @@ const FIRST_CLIP = clipAsset(0)
 const SECOND_CLIP = clipAsset(1)
 
 const props = defineProps<GameProps>()
+
+/** The line a fresh board opens with, already under the cover. */
+const SEALED_STATUS = statusLine(initialFlow({ clips: 0, pings: 0, steps: [], draft: null }))
 
 const emit = defineEmits<GameEmits>()
 
@@ -140,25 +145,37 @@ const animate = useRevealedLive(solved)
 
 <template>
   <div v-if="scene !== null" data-test="echo-locate-sealed" class="flex flex-col gap-6">
-    <!-- The field under the glass is empty: nothing of the round leaves the server before the hold. -->
-    <div class="relative">
-      <SonarField
-        :grid="scene.grid"
-        :speed="1"
-        :reach="1"
-        :waves="[]"
-        :rings="[]"
-        :pins="[]"
-        pin-color-hex="#525252"
-        :pending="null"
+    <!-- The board's own column: field, then its controls, so START swaps the field and moves nothing. -->
+    <div class="flex flex-col items-center gap-3">
+      <!-- The field under the glass is empty: nothing of the round leaves the server before the hold. -->
+      <div class="relative self-stretch">
+        <SonarField
+          :grid="scene.grid"
+          :speed="1"
+          :reach="1"
+          :waves="[]"
+          :rings="[]"
+          :pins="[]"
+          pin-color-hex="#525252"
+          :pending="null"
+        />
+        <RevealCover state="ready" :busy="props.disabled" @start="emit('reveal')">
+          <template #note>
+            <p data-test="echo-locate-sealed-count" class="text-2xl font-bold">
+              {{ scene.clips === 1 ? '1 Spruch' : `${scene.clips} Sprüche` }}
+            </p>
+          </template>
+        </RevealCover>
+      </div>
+      <!-- Nothing to hand in or clear yet; the volume already works, so the first ping is heard. -->
+      <EchoLocateControls
+        :status="SEALED_STATUS"
+        :pin-hint="PIN_HINT"
+        :can-hand-in="false"
+        :has-rings="false"
+        :touching="false"
+        :color-hex="myColorHex"
       />
-      <RevealCover state="ready" :busy="props.disabled" @start="emit('reveal')">
-        <template #note>
-          <p data-test="echo-locate-sealed-count" class="text-2xl font-bold">
-            {{ scene.clips === 1 ? '1 Spruch' : `${scene.clips} Sprüche` }}
-          </p>
-        </template>
-      </RevealCover>
     </div>
     <EchoLocateBriefing
       :award-rule="props.awardRule"

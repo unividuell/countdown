@@ -13,7 +13,9 @@ import type { RoundAssets } from '@/api/assets'
 import PlayButton from './PlayButton.vue'
 import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
+import SoundOffNotice from '@/ui/SoundOffNotice.vue'
 import { usePlayback } from '@/ui/usePlayback'
+import VolumeControl from '@/ui/VolumeControl.vue'
 import { FADE_MS } from '@/games/revealChoreography'
 import { useRevealTimeline } from '@/games/revealTimeline'
 import { SOLUTION_ASSET } from './types'
@@ -147,7 +149,9 @@ onUnmounted(() => {
 
     <!-- The board's play row, same grid and same sizes, so nothing jumps on reveal. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-      <span class="min-w-0 justify-self-end pr-4">
+      <!-- The volume beside stop: in a game whose sound is the game, under the player's thumb. -->
+      <span class="flex w-full min-w-0 items-center justify-between self-stretch pr-4">
+        <VolumeControl class="h-full" />
         <button
           type="button"
           data-test="stop-solution"
@@ -166,6 +170,7 @@ onUnmounted(() => {
       />
       <span class="min-w-0" />
     </div>
+    <SoundOffNotice reserve />
   </div>
 </template>
 

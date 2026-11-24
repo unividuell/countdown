@@ -146,6 +146,10 @@ the ancestor chain answers all three. `HueWheel`.
   press on a nested button starts the container's drag, and a radius dead zone only suppresses the
   first jump. Put `@pointerdown.stop` on the slot wrapper — the nested control stays ignorant of
   being nested. A dead-zone radius equal to the nested control's radius is a knife-edge. `HueWheel`.
+- **A drag inside the open menu keeps its `touchmove`** (`@touchmove.stop`, `VolumeSlider`). The
+  menu's scroll lock (`useScrollLock`) prevents every `touchmove` reaching `body` on iOS, which
+  freezes a range's drag; a tap still works, so it looks half-broken. In the simulator, drag only
+  once the drawer has settled: a drag during its slide-in fails either way and misleads.
 - **Wrap `setPointerCapture` in a `try`/`catch`.** It throws `NotFoundError` for a pointer the
   browser is not tracking, and a listener's exception is swallowed: the control is dead with no
   error. Dragging without capture only degrades at the edges.
@@ -233,6 +237,9 @@ the ancestor chain answers all three. `HueWheel`.
 - **A sealed round mounts its game.** The game lays `RevealCover` over its own play area and
   nothing else, and sets `inert` on that area — glass stops a finger, not a keyboard. Its rules and
   stake stay outside both: the sealed round is when they are read at leisure.
+- **The sealed card lays out the board's rows under the cover**, the same component with nothing
+  live (Peilung's `EchoLocateControls`, hand-in off): otherwise START grows the card below the
+  field and everything under it jumps. Only the cover's area may differ.
 - **The game owns the cover's state.** It knows whether its scene stands (`preparing | ready |
 failed`); a failed scene offers a retry and never a reveal, so a broken load costs no attempt.
 - **When the payload arrives, a game only inserts.** Anything that costs time belongs to the scene

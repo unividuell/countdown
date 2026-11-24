@@ -418,3 +418,23 @@ describe('AudioPool', () => {
     })
   })
 })
+
+describe('AudioPool volume', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it('warns when the sound is off: the previews would be silent', async () => {
+    localStorage.setItem('games:volume', '0')
+    const w = await mounted()
+
+    expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+  })
+
+  it('says nothing while there is sound', async () => {
+    const w = await mounted()
+
+    expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
+  })
+})

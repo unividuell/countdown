@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import IconVolume from '~icons/lucide/volume-2'
-import IconMuted from '~icons/lucide/volume-x'
+import { computed } from 'vue'
 import { unlockSound } from './audio'
 import { useGameSound } from './useGameSound'
+import { speakerIcon } from './speakerIcon'
+import { useGameVolume } from './useGameVolume'
 import { soundOnStage, useSoundAwake } from './useSoundAwake'
 
 const sound = useGameSound()
+const volume = useGameVolume()
 useSoundAwake()
+
+/** The speaker shows the slider. */
+const icon = computed(() => speakerIcon(volume.value))
 
 function onClick(): void {
   sound.value = !sound.value
@@ -18,7 +23,6 @@ function onClick(): void {
 
 <template>
   <button type="button" aria-label="Ton" :aria-pressed="sound" @click="onClick">
-    <IconVolume v-if="sound" class="size-5" aria-hidden="true" />
-    <IconMuted v-else class="size-5" aria-hidden="true" />
+    <component :is="icon" data-test="sound-icon" class="size-5" aria-hidden="true" />
   </button>
 </template>

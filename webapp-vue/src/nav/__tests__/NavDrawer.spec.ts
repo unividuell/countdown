@@ -324,33 +324,21 @@ describe('NavDrawer mechanics', () => {
     expect(drawer.attributes('style')).toContain('padding-top: 52px')
   })
 
-  // The toggle's row would otherwise be empty space; the full name says whose menu this is.
-  it('names the viewer on the toggle row, a touch stronger than the rows', async () => {
+  // Beside the sound switch, on the toggle's row: volume and mute in one place.
+  it('puts the volume slider on the toggle row, and no name', async () => {
     const w = render(viewer, 52)
     await w.get('[data-test=nav-toggle]').trigger('click')
-    const name = w.get('[data-test=nav-viewer]')
-    expect(name.text()).toBe(viewer.username)
-    expect(name.classes()).toContain('font-medium')
-    expect(name.attributes('style')).toContain('top: 12px')
+    const row = w.get('[data-test=nav-volume]')
+    expect(row.find('input[type=range]').exists()).toBe(true)
+    expect(row.attributes('style')).toContain('top: 12px')
+    expect(w.find('[data-test=nav-viewer]').exists()).toBe(false)
   })
 
-  it('takes the name from the community identity inside a community', async () => {
-    activeCommunity.value = {
-      slug: 'huette',
-      name: 'Hütte',
-      targetAt: null,
-      targetTimezone: 'Europe/Berlin',
-      editionLabel: null,
-      viewerIsAdmin: false,
-      pendingCount: 0,
-      viewerIdentity: {
-        username: 'Hüttenwirt',
-        avatar: { shortName: 'HW', bgColorHex: '#123456' },
-      },
-    }
+  it('stays open while the slider is used', async () => {
     const w = render(viewer, 52)
     await w.get('[data-test=nav-toggle]').trigger('click')
-    expect(w.get('[data-test=nav-viewer]').text()).toBe('Hüttenwirt')
+    await w.get('[data-test=nav-volume] input').trigger('click')
+    expect(w.get('[data-test=nav-drawer]').attributes('inert')).toBeUndefined()
   })
 
   // The drawer has the spin; a boing on top would fight it.
@@ -552,12 +540,10 @@ describe('NavDrawer mechanics', () => {
       expect(w.get('[data-test=nav-drawer]').attributes('style')).toContain('right: 8px')
     })
 
-    it('names the viewer on the toggle row', async () => {
+    it('puts the volume slider on the toggle row', async () => {
       const w = render(viewer, 52)
       await w.get('[data-test=nav-toggle]').trigger('click')
-      const name = w.get('[data-test=nav-viewer]')
-      expect(name.text()).toBe(viewer.username)
-      const style = name.attributes('style') ?? ''
+      const style = w.get('[data-test=nav-volume]').attributes('style') ?? ''
       expect(style).toContain('top: 8px')
       expect(style).toContain('height: 40px')
       // From the dialog's right edge: 8px of frame, the 40px toggle, 4px, the 40px sound switch,

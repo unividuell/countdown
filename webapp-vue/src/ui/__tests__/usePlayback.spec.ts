@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
+
+/** The volume's own node is `masterOutput`'s spec; here it is a marker to connect to. */
+const MASTER = { name: 'master' }
+vi.mock('@/ui/masterOutput', () => ({ masterOutput: () => MASTER }))
 
 /**
  * The composable keeps the graph and the „only one clip sounds" registry in module state, so every
@@ -136,7 +140,8 @@ describe('usePlayback with an audio graph', () => {
     expect(ctx.resume).toHaveBeenCalled()
     const node = ctx.nodes[0]!
     expect(node.buffer).toEqual({ duration: CLIP_SECONDS })
-    expect(node.connect).toHaveBeenCalledWith(ctx.destination)
+    // Through the volume, never straight to the speakers.
+    expect(node.connect).toHaveBeenCalledWith(MASTER)
     // Not „now": the first samples of a clip started in the present can be dropped.
     expect(node.startedAt).toBeCloseTo(10.05)
     expect(playback.playing.value).toBe(true)
@@ -416,6 +421,27 @@ describe('usePlayback with an audio graph', () => {
 })
 
 describe('usePlayback without an audio graph', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('plays the element at the volume, and follows it', async () => {
+    const { useGameVolume } = await import('@/ui/useGameVolume')
+    const { playback } = withPlayback(usePlayback)
+    playback.setSource('blob:stage-0')
+    playback.restart()
+    await settle()
+    const element = play.mock.contexts[0] as HTMLAudioElement
+
+    expect(element.volume).toBeCloseTo(0.64)
+
+    useGameVolume().value = 0
+    await nextTick()
+    await nextTick()
+
+    expect(element.volume).toBe(0)
+    // iOS ignores `volume` on an element, but honours `muted`.
+    expect(element.muted).toBe(true)
+  })
+
   it('plays through the element where no AudioContext exists', async () => {
     const { playback } = withPlayback(usePlayback)
     playback.setSource('blob:stage-0')
