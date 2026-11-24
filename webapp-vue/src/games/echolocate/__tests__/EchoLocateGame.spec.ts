@@ -146,6 +146,22 @@ describe('EchoLocateGame', () => {
       expect(wrapper.text()).toContain('Irgendwo im Nebel stecken zwei Sprüche. Peil sie an.')
     })
 
+    // The board's rows stand under the cover already, so START opens the field and moves nothing.
+    it("lays out the board's controls under the cover, hand-in off, volume live", () => {
+      const wrapper = mountSealed(2)
+
+      expect(wrapper.get('[data-test="echo-locate-status"]').text()).toBe(
+        '1. Klick: Ping, 2. Klick: Markieren',
+      )
+      expect(wrapper.get('[data-test="echo-locate-pin-hint"]').text()).toBe(
+        'Lang drücken: Pin setzen oder entfernen',
+      )
+      const row = wrapper.get('[data-test="echo-locate-hand-in-row"]')
+      expect(row.find('[data-test="volume"]').exists()).toBe(true)
+      expect(row.findComponent({ name: 'HoldButton' }).props('disabled')).toBe(true)
+      expect(row.get('[data-test="echo-locate-clear-rings"]').attributes('disabled')).toBeDefined()
+    })
+
     it('asks for the reveal once the hold opens the cover', async () => {
       const wrapper = mountSealed(1)
 

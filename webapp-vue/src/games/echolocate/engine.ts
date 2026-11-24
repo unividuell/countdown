@@ -159,7 +159,11 @@ export class EchoEngine {
   }
 }
 
-function bufferOf(ctx: AudioContext, data: Float32Array<ArrayBuffer>, rate: number): AudioBuffer {
+export function bufferOf(
+  ctx: AudioContext,
+  data: Float32Array<ArrayBuffer>,
+  rate: number,
+): AudioBuffer {
   const buffer = ctx.createBuffer(1, data.length, rate)
   buffer.copyToChannel(data, 0)
 
