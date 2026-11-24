@@ -133,6 +133,8 @@ class LabServiceTest(
         "echo-locate" -> mapper.readTree("""{"pins":[{"x":1.5,"y":1.5}],"rings":[]}""")
         // Seed 42 → labDifficulty 0.9 → an 8×8 board.
         "turn-pipes" -> mapper.readTree("""{"rotations":[${List(64) { 0 }.joinToString(",")}]}""")
+        // Its guess counts the stored drops: the loop below takes one first.
+        "mix-color" -> mapper.readTree("""{"drops":1}""")
         else -> error("no lab test guess for game '$gameId' — add one when the game is added")
     }
 
@@ -535,6 +537,14 @@ class LabServiceTest(
                 slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
                 userId = mine.other, isSuperAdmin = false,
             )
+            // A game that judges from its steps needs one on record first.
+            if (gameId == "mix-color") {
+                service.skip(
+                    slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
+                    userId = mine.other, isSuperAdmin = false, fromStage = 0,
+                    input = mapper.readTree("""{"base":"c"}"""),
+                )
+            }
             service.guess(
                 slug = community.slug, gameId = gameId, seed = 42, phase = Phase.ONE,
                 userId = mine.other, isSuperAdmin = false, guess = aValidGuessFor(gameId),

@@ -128,6 +128,8 @@ class RoundResponses(
     ): MyPlayDto? =
         identity?.let {
             val (views, struck, override) = reviewOf(play = play, cast = cast, byId = byId)
+            val stored = play.steps.toList()
+
             MyPlayDto(
                 userId = play.userId,
                 username = it.username,
@@ -142,10 +144,13 @@ class RoundResponses(
                 votes = views,
                 struck = struck,
                 adminOverride = override,
-                steps = play.steps.mapIndexed { i, input ->
+                steps = stored.mapIndexed { i, input ->
                     StepDto(
                         input = input.takeUnless { it.isNull },
-                        answer = answerOf(play = play, handle = handle, params = params, stage = i, input = input),
+                        answer = answerOf(
+                            play = play, handle = handle, params = params, stage = i, input = input,
+                            earlier = stored.subList(0, i),
+                        ),
                     )
                 },
             )
@@ -161,9 +166,10 @@ class RoundResponses(
         params: JsonNode,
         stage: Int,
         input: JsonNode,
+        earlier: List<JsonNode>,
     ): GameStepAnswer? =
         try {
-            handle.step(params = params, stage = stage, input = input)
+            handle.step(params = params, stage = stage, input = input, earlier = earlier)
         } catch (e: InvalidStepException) {
             logger.warn {
                 "play ${play.id}: '${handle.id}' rejects stored step $stage (${e.message}); answered with null"

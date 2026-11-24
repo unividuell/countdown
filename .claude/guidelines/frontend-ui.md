@@ -126,6 +126,8 @@ the ancestor chain answers all three. `HueWheel`.
   starts the hold, `keyup` abandons it, `event.repeat` is ignored, the default is prevented. The
   residual limit (someone who cannot hold a key) belongs in the spec, not in a cheaper fallback.
   `ui/HoldButton.vue`.
+- **`HoldButton` `autoHold` is the same ceremony without a finger** (Anrührung's full glass). A
+  caller gates it on `useCurtainOpen()`, or it charges unseen under the ramp poster.
 - **A board whose hold button can be covered draws the hold itself, large, on the play area — and
   a touch there cancels it.** A palm resting on the button while painting would submit unseen.
   `HoldButton` emits `progress` for the board to draw; its `disabled` watch cancels a running hold,
@@ -231,6 +233,8 @@ the ancestor chain answers all three. `HueWheel`.
   wraps stays self-describing.
 - **A panel that stays in the DOM needs `inert`, not just `aria-hidden`** — the latter leaves it
   focusable. `:inert="!open || undefined"`, as above. `NavDrawer`.
+- **Every `<button>` states `cursor-pointer`.** Tailwind v4's preflight resets buttons to
+  `cursor: default`; add `disabled:cursor-not-allowed` where it can be disabled.
 
 ## The reveal cover
 

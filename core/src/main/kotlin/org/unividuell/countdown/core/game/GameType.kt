@@ -95,6 +95,14 @@ data class GuessContext(
     val sinceRevealMs: Long?,
     /** The stored play, to find a log line from its row; `null` in the lab, which stores none. */
     val playId: UUID?,
+    /** The stored step inputs, in order; `null` where a step had none. Empty for a game without steps. */
+    val steps: List<JsonNode?> = emptyList(),
+)
+
+/** What a step may read besides its own input. */
+data class StepContext(
+    /** The inputs of stages 0 until this one, in order; `null` where a step had none. */
+    val earlier: List<JsonNode?>,
 )
 
 /**
@@ -235,6 +243,12 @@ interface GameType<P : Any> {
         if (input != null) throw InvalidStepException("this game takes no step input")
         return null
     }
+
+    /**
+     * [step] with [context]. Only a game whose answer depends on earlier steps needs it.
+     */
+    fun step(params: P, stage: Int, input: JsonNode?, context: StepContext): GameStepAnswer? =
+        step(params = params, stage = stage, input = input)
 
     /**
      * The round's binary assets, each named and with its [AssetVisibility]; none by default. Plain

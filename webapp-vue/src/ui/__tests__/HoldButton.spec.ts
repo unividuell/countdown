@@ -806,4 +806,53 @@ describe('HoldButton', () => {
       expect(playCountIn).not.toHaveBeenCalled()
     })
   })
+
+  describe('auto-hold', () => {
+    it('auto-hold charges and confirms like a press', async () => {
+      const w = mountButton({ autoHold: false })
+      const values = () => (w.emitted('progress') ?? []).map(([value]) => value as number)
+
+      await w.setProps({ autoHold: true })
+      for (let i = 0; i < 25; i++) {
+        vi.advanceTimersByTime(50)
+        await nextTick()
+      }
+
+      expect(playCharge).toHaveBeenCalled()
+      expect(w.emitted('confirm')).toHaveLength(1)
+      const held = values()
+      expect(held.length).toBeGreaterThan(1)
+      expect(held.slice(0, 5)).toEqual([...held.slice(0, 5)].sort((a, b) => a - b))
+    })
+
+    it('auto-hold is not cancelled by pointerleave', async () => {
+      const w = mountButton({ autoHold: true })
+
+      await w.get('[data-test="hold-button"]').trigger('pointerleave')
+      await w.get('[data-test="hold-button"]').trigger('pointerup')
+      vi.advanceTimersByTime(1200)
+
+      expect(w.emitted('confirm')).toHaveLength(1)
+    })
+
+    it('disabled cancels an auto-hold', async () => {
+      const w = mountButton({ autoHold: true })
+      vi.advanceTimersByTime(400)
+
+      await w.setProps({ disabled: true })
+      vi.advanceTimersByTime(3000)
+
+      expect(w.emitted('confirm')).toBeUndefined()
+    })
+
+    it('turning autoHold off mid-hold cancels', async () => {
+      const w = mountButton({ autoHold: true })
+      vi.advanceTimersByTime(400)
+
+      await w.setProps({ autoHold: false })
+      vi.advanceTimersByTime(3000)
+
+      expect(w.emitted('confirm')).toBeUndefined()
+    })
+  })
 })

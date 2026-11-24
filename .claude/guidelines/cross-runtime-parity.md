@@ -31,6 +31,7 @@ side drift without turning red.
 ```
 shared/rng/golden-vectors.json         # written by Kotlin, asserted by Kotlin AND Vitest
 shared/round-assets/seal-vectors.json  # written by Node's crypto, asserted by Kotlin AND Vitest
+shared/mix-color/spectral-vectors.json # written by spectral.js 3.0.0 (third implementation), Kotlin only
 ```
 
 - **The file earns its keep with one consumer too:** it pins the Kotlin side and is the ready

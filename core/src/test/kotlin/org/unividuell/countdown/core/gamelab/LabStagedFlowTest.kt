@@ -23,6 +23,7 @@ import org.unividuell.countdown.core.community.MemberIdentity
 import org.unividuell.countdown.core.community.MemberIdentityQuery
 import org.unividuell.countdown.core.community.MembershipQuery
 import org.unividuell.countdown.core.game.Award
+import org.unividuell.countdown.core.game.EarlierStepsGame
 import org.unividuell.countdown.core.game.AwardRule
 import org.unividuell.countdown.core.game.GamePayload
 import org.unividuell.countdown.core.game.GameRandom
@@ -58,7 +59,7 @@ import java.util.UUID
  */
 @Import(
     TestcontainersConfiguration::class, SongSnippetTestCatalogConfiguration::class,
-    LabStagedFlowTest.StepGame::class,
+    LabStagedFlowTest.StepGame::class, EarlierStepsGame.Configuration::class,
 )
 @SpringBootTest
 class LabStagedFlowTest(
@@ -340,6 +341,34 @@ class LabStagedFlowTest(
         res.me.shouldNotBeNull().steps.shouldBeEmpty()
         // The answers stay with their owner: only the inputs ride on somebody else's entry.
         res.mySteps.shouldBeEmpty()
+    }
+
+    @Test
+    fun `a lab step sees the inputs before it`() {
+        aCommunityOfTwo()
+
+        repeat(3) { i -> step(fromStage = i, input = json("""{"n":$i}"""), game = "earlier-steps-fake") }
+
+        val res = service.open(
+            slug = slug, gameId = "earlier-steps-fake", seed = 7, phase = Phase.ONE,
+            userId = tester, isSuperAdmin = false,
+        )
+        res.mySteps.map { it.answer } shouldBe (0..2).map { EarlierStepsGame.EarlierAnswer(earlier = it) }
+    }
+
+    @Test
+    fun `lab judge sees the stored steps`() {
+        aCommunityOfTwo()
+        repeat(2) { i -> step(fromStage = i, input = json("""{"n":$i}"""), game = "earlier-steps-fake") }
+
+        service.guess(
+            slug = slug, gameId = "earlier-steps-fake", seed = 7, phase = Phase.ONE,
+            userId = tester, isSuperAdmin = false, guess = json("""{"answer":"42"}"""),
+        )
+
+        store.open(
+            communityId = communityId, gameId = "earlier-steps-fake", round = aRound(),
+        ).entries.single().deviation shouldBe 2.0
     }
 
     /** Only the key matters: the store hands back the round it froze first. */
