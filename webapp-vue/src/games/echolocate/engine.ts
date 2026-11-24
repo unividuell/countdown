@@ -11,6 +11,7 @@ import cowUrl from './sounds/cow.mp3?url'
 import rainUrl from './sounds/rain.mp3?url'
 
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
+import { masterOutput } from '@/ui/masterOutput'
 import { BURST_SECONDS, bedSamples, burstSamples, dbToGain, levelled } from './noise'
 import type { EchoHit, NoiseKind } from './types'
 
@@ -72,7 +73,7 @@ export class EchoEngine {
     this.limiter.ratio.value = 20
     this.limiter.attack.value = 0.003
     this.limiter.release.value = 0.1
-    this.limiter.connect(ctx.destination)
+    this.limiter.connect(masterOutput(ctx))
 
     this.out = ctx.createGain()
     this.out.gain.value = MASTER_GAIN

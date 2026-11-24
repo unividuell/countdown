@@ -48,15 +48,17 @@ describe('soundOutput', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  it('is one gain per graph, open, in front of the destination', async () => {
+  it('is one gain per graph, open, in front of the master volume', async () => {
     const gains = stubGraph()
     const { audioGraph, soundOutput } = await load()
     const graph = audioGraph()!
 
     expect(soundOutput(graph)).toBe(soundOutput(graph))
-    expect(gains).toHaveLength(1)
-    expect(gains[0]!.gain.value).toBe(1)
-    expect(gains[0]!.to).toBe(graph.destination)
+    const [output, master] = gains
+    expect(gains).toHaveLength(2)
+    expect(output!.gain.value).toBe(1)
+    expect(output!.to).toBe(master)
+    expect(master!.to).toBe(graph.destination)
   })
 
   it('starts closed on a stored mute', async () => {

@@ -1,14 +1,13 @@
 /**
  * „Wruusch“: a broom's sweep, for tidying up. White noise through a band-pass gliding down, swelling
  * in and fading out — air, not wood, so it reads as clearing rather than as a tap. Synthesised like
- * the knock, into `soundOutput`, at the shared `VOLUME`.
+ * the knock, into `soundOutput`.
  *
  *   band    2.4 kHz ─────╲──────── 500 Hz      over SWEEP_S
  *   level   0 ╱‾‾‾‾‾‾‾‾‾‾‾╲___ 0                ATTACK_S in, then out
  */
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { soundGraph, soundOutput } from './soundOutput'
-import { VOLUME } from './woodKnock'
 
 const SWEEP_S = 0.32
 const ATTACK_S = 0.06
@@ -44,7 +43,7 @@ export function playWhoosh(): void {
 
   const level = graph.createGain()
   level.gain.setValueAtTime(0, at)
-  level.gain.linearRampToValueAtTime(PEAK * VOLUME, at + ATTACK_S)
+  level.gain.linearRampToValueAtTime(PEAK, at + ATTACK_S)
   level.gain.exponentialRampToValueAtTime(QUIET, end)
 
   noise.connect(band).connect(level).connect(soundOutput(graph))

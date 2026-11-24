@@ -19,12 +19,6 @@ const RING_DECAY_S = 0.3
 const KNOCK: Voice = { peak: 0.05, attackS: 0.004, decayS: 0.02 }
 const KNOCK_RATIO = 3.9
 
-/**
- * Every knock of every game passes this. Sound is a side note, not a signal: quieter here, never
- * louder in a game.
- */
-export const VOLUME = 0.35
-
 export const STOP_FADE_S = 0.02
 /** Exponential ramps cannot reach 0; this is inaudible, the line to 0 after it removes the rest. */
 export const QUIET = 0.0008
@@ -35,7 +29,6 @@ export function knocks(graph: AudioContext): {
   counting: { stop(): void }
 } {
   const bus = graph.createGain()
-  bus.gain.value = VOLUME
   bus.connect(soundOutput(graph))
   const oscillators: OscillatorNode[] = []
 

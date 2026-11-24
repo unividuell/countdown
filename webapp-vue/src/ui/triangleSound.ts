@@ -1,6 +1,6 @@
 /**
  * „Biiinnng“: a struck triangle, for a streak that grew. Synthesised like the knock, into
- * `soundOutput`, at the shared `VOLUME`. Inharmonic partials over C7 ring long; the two lowest
+ * `soundOutput`. Inharmonic partials over C7 ring long; the two lowest
  * come as pairs a few Hz apart, so they beat like a real, slightly uneven bar. A noise tick
  * stands in for the beater.
  *
@@ -9,7 +9,7 @@
  */
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { soundGraph, soundOutput } from './soundOutput'
-import { QUIET, STOP_FADE_S, VOLUME } from './woodKnock'
+import { QUIET, STOP_FADE_S } from './woodKnock'
 
 const BASE_HZ = 2093
 const ATTACK_S = 0.002
@@ -35,7 +35,6 @@ export function playTriangle(): void {
   const at = graph.currentTime + START_LOOKAHEAD_SECONDS
 
   const bus = graph.createGain()
-  bus.gain.value = VOLUME
   bus.connect(soundOutput(graph))
 
   for (const { ratio, detuneHz, peak, decayS } of PARTIALS) {
