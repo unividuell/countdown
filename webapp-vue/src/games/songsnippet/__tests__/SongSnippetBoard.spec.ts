@@ -440,7 +440,7 @@ describe('SongSnippetBoard', () => {
     // Hits and field first (both the search box's), then the bar, then the transport, then the
     // explanation box — the reveal fills the same rows with the cover and the title, so nothing
     // moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'volume-control', 'info-box'])
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'volume-control', 'sound-off', 'info-box'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
@@ -502,7 +502,8 @@ describe('SongSnippetBoard volume', () => {
 
     const left = w.get('[data-test="stop"]').element.parentElement!
     expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume-control')
-    expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
+    // Hidden but there: muting must not move what is below.
+    expect(w.get('[data-test="sound-off"]').classes()).toContain('invisible')
   })
 
   it('warns when the sound is off', () => {
@@ -510,5 +511,6 @@ describe('SongSnippetBoard volume', () => {
     const w = mountBoard({})
 
     expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+    expect(w.get('[data-test="sound-off"]').classes()).not.toContain('invisible')
   })
 })

@@ -255,5 +255,6 @@ describe('SongPlayerReveal volume', () => {
     const w = mountPlayer()
 
     expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+    expect(w.get('[data-test="sound-off"]').classes()).not.toContain('invisible')
   })
 })

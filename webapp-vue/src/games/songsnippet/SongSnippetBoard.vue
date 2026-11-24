@@ -265,7 +265,7 @@ onUnmounted(() => {
         </span>
       </span>
     </div>
-    <SoundOffNotice class="text-center" />
+    <SoundOffNotice reserve class="text-center" />
 
     <SongSnippetBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
   </div>

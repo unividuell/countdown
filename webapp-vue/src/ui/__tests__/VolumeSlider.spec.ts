@@ -120,4 +120,14 @@ describe('SoundOffNotice', () => {
 
     expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
   })
+
+  // Where it sits above other content, showing and hiding it must move nothing.
+  it('keeps its room while hidden, on request', () => {
+    localStorage.setItem(GAME_VOLUME_KEY, '0.3')
+    const w = mount(SoundOffNotice, { props: { reserve: true } })
+
+    const line = w.get('[data-test="sound-off"]')
+    expect(line.classes()).toContain('invisible')
+    expect(line.attributes('aria-hidden')).toBe('true')
+  })
 })

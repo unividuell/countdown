@@ -831,7 +831,8 @@ describe('EchoLocateBoard volume', () => {
 
     const row = w.get('[data-test="echo-locate-hand-in-row"]')
     expect(row.element.firstElementChild?.querySelector('[data-test="volume"]')).not.toBeNull()
-    expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
+    // Hidden but there: muting must not move what is below.
+    expect(w.get('[data-test="sound-off"]').classes()).toContain('invisible')
   })
 
   it('warns when the sound is off', () => {
@@ -839,5 +840,6 @@ describe('EchoLocateBoard volume', () => {
     const w = mountBoard()
 
     expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+    expect(w.get('[data-test="sound-off"]').classes()).not.toContain('invisible')
   })
 })
