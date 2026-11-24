@@ -30,7 +30,7 @@ import { unlockSound } from '@/ui/audio'
 import { toWav } from '@/audio/toWav'
 import { usePlayback } from '@/ui/usePlayback'
 import { useSoundStage } from '@/ui/useSoundAwake'
-import { RECORDINGS } from './engine'
+import { isRecorded, RECORDINGS } from './engine'
 import EchoLocateScoreboard from './EchoLocateScoreboard.vue'
 import type { Wave } from './flow'
 import { burstSamples } from './noise'
@@ -158,7 +158,7 @@ const NOISE_RATE = 44100
 
 /** A noise as `usePlayback` takes it: the recording's own URL, or the burst as a WAV. */
 function noiseUrl(kind: NoiseKind): string {
-  if (kind === 'BROOK' || kind === 'COW') return RECORDINGS[kind]
+  if (isRecorded(kind)) return RECORDINGS[kind]
 
   const samples = burstSamples(kind, NOISE_RATE)
   const wav = toWav({
