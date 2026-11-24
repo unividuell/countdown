@@ -199,6 +199,9 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   wherever it throws sparks, and is then on stage itself (`useSoundStage`). `sparks: false`
   silences both — giving up celebrates nothing. No exception for a game whose sound is the game:
   Peilung's hand-in and its cover's count-in knock too.
+- **A game's volume slider is on stage too** (`VolumeControl`): its ratchet knocks, so Anspielung's
+  board and reveal wake the graph on any tap, like every game that knocks. Not the menu's slider:
+  it is on every page, and off stage nothing may claim the device's audio.
 - **The synthesised voice is shared:** the wooden knock lives in `ui/woodKnock.ts`, the broom's
   „wruusch“ for tidying up in `ui/whooshSound.ts` (Peilung's „Markierungen löschen“); a game
   schedules them, it does not build its own oscillators. Sound is a side note, not a
