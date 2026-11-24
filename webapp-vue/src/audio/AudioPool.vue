@@ -7,6 +7,7 @@ import IconX from '~icons/lucide/x'
 import { clipUrl, deleteClip, listClips, type AudioClipResponse } from '@/api/audio'
 import { uploadFile } from '@/api/upload'
 import { MAX_SECONDS, prepareWav } from '@/audio/intake'
+import SoundOffNotice from '@/ui/SoundOffNotice.vue'
 import UploadQueueRows from '@/ui/UploadQueueRows.vue'
 import { usePlayback } from '@/ui/usePlayback'
 import { useUploadQueue } from '@/ui/useUploadQueue'
@@ -173,6 +174,7 @@ defineExpose({ enqueue })
     <UploadQueueRows :rows="queue" />
 
     <p v-if="error" class="mb-3 text-sm text-error">{{ error }}</p>
+    <SoundOffNotice class="mb-3" />
 
     <ul class="divide-y divide-outline">
       <li

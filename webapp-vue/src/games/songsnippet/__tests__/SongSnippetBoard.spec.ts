@@ -440,7 +440,7 @@ describe('SongSnippetBoard', () => {
     // Hits and field first (both the search box's), then the bar, then the transport, then the
     // explanation box — the reveal fills the same rows with the cover and the title, so nothing
     // moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'stop', 'info-box'])
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'volume', 'info-box'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
@@ -482,5 +482,33 @@ describe('SongSnippetBoard', () => {
   // PlayService, and the scoreboard sorts by the stage reached. The box must not name a time rule.
   it('never promises a time rule, because this game is scored by stage', () => {
     expect(mountBoard({ awardRule: 'CLOSEST_ONLY', awardPoints: 5 }).text()).not.toContain('Zeit')
+  })
+})
+
+describe('SongSnippetBoard volume', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    fetchMock.mockReset()
+    serveClips()
+    vi.stubGlobal('fetch', fetchMock)
+    URL.createObjectURL = vi.fn(() => 'blob:stage')
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  // The header's switch is easy to miss; the slider sits where the hands already are.
+  it('puts the volume slider left of stop', () => {
+    const w = mountBoard({})
+
+    const left = w.get('[data-test="stop"]').element.parentElement!
+    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume')
+    expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
+  })
+
+  it('warns when the sound is off', () => {
+    localStorage.setItem('games:volume', '0')
+    const w = mountBoard({})
+
+    expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
   })
 })

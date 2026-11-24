@@ -9,7 +9,9 @@ import PlayerIcon from './PlayerIcon.vue'
 import StageBar from './StageBar.vue'
 import SongSearchBox from './SongSearchBox.vue'
 import HoldButton from '@/ui/HoldButton.vue'
+import SoundOffNotice from '@/ui/SoundOffNotice.vue'
 import { usePlayback } from '@/ui/usePlayback'
+import VolumeSlider from '@/ui/VolumeSlider.vue'
 import { clipAsset } from './types'
 import type { SongSuggestion } from './api'
 
@@ -201,7 +203,9 @@ onUnmounted(() => {
          left, skip on the right. Both side tracks are `minmax(0,1fr)` so the wider one cannot shift
          the middle. -->
     <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-      <span class="min-w-0 justify-self-end pr-4">
+      <!-- The volume beside stop: in a game whose sound is the game, under the player's thumb. -->
+      <span class="flex min-w-0 items-center gap-3 justify-self-end pr-4">
+        <VolumeSlider class="w-20 min-w-0" />
         <button
           type="button"
           data-test="stop"
@@ -261,6 +265,7 @@ onUnmounted(() => {
         </span>
       </span>
     </div>
+    <SoundOffNotice class="text-center" />
 
     <SongSnippetBriefing :award-rule="props.awardRule" :award-points="props.awardPoints" />
   </div>

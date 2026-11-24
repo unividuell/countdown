@@ -236,3 +236,24 @@ describe('SongPlayerReveal', () => {
     }
   })
 })
+
+describe('SongPlayerReveal volume', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    URL.createObjectURL = vi.fn(() => 'blob:solution')
+  })
+
+  it('puts the volume slider left of stop, as on the board', () => {
+    const w = mountPlayer()
+
+    const left = w.get('[data-test="stop-solution"]').element.parentElement!
+    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume')
+  })
+
+  it('warns when the sound is off', () => {
+    localStorage.setItem('games:volume', '0')
+    const w = mountPlayer()
+
+    expect(w.get('[data-test="sound-off"]').text()).toBe('Ton ist aus')
+  })
+})
