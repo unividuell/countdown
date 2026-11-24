@@ -107,7 +107,7 @@ function onPointerDown(): void {
     step="0.05"
     aria-label="Lautstärke"
     data-test="volume"
-    class="h-11 cursor-pointer accent-primary"
+    class="h-11 cursor-pointer accent-on-surface-variant"
     :value="volume"
     @input="onInput"
     @change="onChange"
