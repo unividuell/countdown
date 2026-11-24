@@ -440,7 +440,7 @@ describe('SongSnippetBoard', () => {
     // Hits and field first (both the search box's), then the bar, then the transport, then the
     // explanation box — the reveal fills the same rows with the cover and the title, so nothing
     // moves when the round resolves.
-    expect(rows).toEqual(['search-stub', 'stage-bar', 'volume', 'info-box'])
+    expect(rows).toEqual(['search-stub', 'stage-bar', 'volume-control', 'info-box'])
   })
 
   it('says nothing about what a guess costs — the skip outline carries that', () => {
@@ -501,7 +501,7 @@ describe('SongSnippetBoard volume', () => {
     const w = mountBoard({})
 
     const left = w.get('[data-test="stop"]').element.parentElement!
-    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume')
+    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume-control')
     expect(w.find('[data-test="sound-off"]').exists()).toBe(false)
   })
 

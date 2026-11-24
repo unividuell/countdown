@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 import { unlockSound } from '@/ui/audio'
+import IconLoud from '~icons/lucide/volume-2'
+import IconSoft from '~icons/lucide/volume-1'
+import IconMuted from '~icons/lucide/volume-x'
 import SoundToggle from '@/ui/SoundToggle.vue'
 import { useSoundStage } from '@/ui/useSoundAwake'
 
@@ -115,5 +118,23 @@ describe('SoundToggle', () => {
 
       expect(unlockSound).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('SoundToggle speaker', () => {
+  beforeEach(() => localStorage.clear())
+
+  // The speaker shows the slider: × at zero, one wave below the default, two from it on.
+  it.each([
+    ['0', IconMuted],
+    ['0.05', IconSoft],
+    ['0.75', IconSoft],
+    ['0.8', IconLoud],
+    ['1', IconLoud],
+  ])('at %s shows the matching speaker', (stored, icon) => {
+    localStorage.setItem('games:volume', stored)
+    const w = mount(SoundToggle)
+
+    expect(w.findComponent(icon).exists()).toBe(true)
   })
 })

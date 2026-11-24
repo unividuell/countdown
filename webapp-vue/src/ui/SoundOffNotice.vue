@@ -6,7 +6,7 @@ const volume = useGameVolume()
 </script>
 
 <template>
-  <p v-if="volume === 0" data-test="sound-off" class="text-sm font-semibold text-error">
+  <p v-if="volume === 0" data-test="sound-off" class="text-sm font-semibold text-warning">
     Ton ist aus
   </p>
 </template>

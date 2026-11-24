@@ -4,7 +4,7 @@
  *
  *   1. Klick: Ping, 2. Klick: Markieren
  *   Lang drücken: Pin setzen oder entfernen
- *   ═══○  ( Abgeben )  (🧹)      volume left, broom right, „Abgeben“ centred
+ *   ┃🔉     ( Abgeben )  (🧹)      volume left, broom right, „Abgeben“ centred
  *
  * One component for the board and the sealed card, so phase two keeps its layout through START.
  */
@@ -12,7 +12,7 @@ import IconBroom from '~icons/lucide/brush-cleaning'
 import HoldButton from '@/ui/HoldButton.vue'
 import { readableTextColor } from '@/ui/readableTextColor'
 import SoundOffNotice from '@/ui/SoundOffNotice.vue'
-import VolumeSlider from '@/ui/VolumeSlider.vue'
+import VolumeControl from '@/ui/VolumeControl.vue'
 import { PINS_FULL } from './flow'
 import { useVolumePreview } from './useVolumePreview'
 
@@ -27,7 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ handIn: []; progress: [p: number]; clearRings: [] }>()
 
-const { onAdjust } = useVolumePreview()
+const { onPress, onAdjust, onRelease } = useVolumePreview()
 </script>
 
 <template>
@@ -51,8 +51,8 @@ const { onAdjust } = useVolumePreview()
     data-test="echo-locate-hand-in-row"
     class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center self-stretch"
   >
-    <span class="flex min-w-0 justify-self-end pr-4">
-      <VolumeSlider class="w-20 min-w-0" @adjust="onAdjust" />
+    <span class="flex w-full min-w-0 justify-start pr-4">
+      <VolumeControl @press="onPress" @adjust="onAdjust" @release="onRelease" />
     </span>
     <!-- `HoldButton` fills its parent and has no size of its own. -->
     <div class="relative size-24 shrink-0" :class="{ 'opacity-40': !props.canHandIn }">

@@ -247,7 +247,7 @@ describe('SongPlayerReveal volume', () => {
     const w = mountPlayer()
 
     const left = w.get('[data-test="stop-solution"]').element.parentElement!
-    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume')
+    expect(left.firstElementChild?.getAttribute('data-test')).toBe('volume-control')
   })
 
   it('warns when the sound is off', () => {

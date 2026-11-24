@@ -174,10 +174,13 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   only stored setting; `useGameSound()` derives on/off from it. Muting sets 0, unmuting from 0 jumps
   to the default. It governs everything the app plays, a game whose sound is the game included.
 - **Where the volume is set:** `SoundToggle` left of the avatar (`NavDrawer`), the same on every
-  page and still there with the menu open; `VolumeSlider` beside it in the open menu, and beside the
-  transport of a game whose sound is the game (Anspielung's stop, Peilung's „Abgeben“). Those games
-  and the audio pool show `SoundOffNotice` at 0: the header's switch is easy to miss. Peilung's
-  slider plays its bed at the sayings' level while dragged (`useVolumePreview`): judge by what counts.
+  page and still there with the menu open; `VolumeSlider` beside it in the open menu. Beside the
+  transport of a game whose sound is the game (Anspielung's stop, Peilung's „Abgeben“) stands
+  `VolumeControl`: the slider upright, the switch beside it — the speaker is what explains the
+  slider. The speaker follows the value: × at 0, one wave below the default, two from it on. Those
+  games and the audio pool show `SoundOffNotice` (warning colour) at 0: the header's switch is easy
+  to miss. Peilung's slider plays its bed at the sayings' level from press to release
+  (`useVolumePreview`): judge by what counts.
 - **Every sound reaches the speakers through `masterOutput(graph)`** (`ui/masterOutput.ts`, gain =
   volume²), never `graph.destination`. The `<audio>` fallback takes `element.volume` instead;
   iOS ignores it there.

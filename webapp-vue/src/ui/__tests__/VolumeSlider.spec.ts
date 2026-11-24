@@ -63,6 +63,27 @@ describe('VolumeSlider', () => {
     expect(w.get<HTMLInputElement>('input').element.value).toBe('0')
   })
 
+  it('brackets a press: down on the slider, up anywhere', async () => {
+    const w = mount(VolumeSlider)
+
+    await w.get('input').trigger('pointerdown')
+    expect(w.emitted('press')).toHaveLength(1)
+    expect(w.emitted('release')).toBeUndefined()
+
+    window.dispatchEvent(new Event('pointerup'))
+    window.dispatchEvent(new Event('pointerup'))
+    expect(w.emitted('release')).toHaveLength(1)
+  })
+
+  it('stands upright on request, with the page kept from scrolling under the finger', () => {
+    const w = mount(VolumeSlider, { props: { vertical: true } })
+
+    expect(w.get('input').classes()).toEqual(
+      expect.arrayContaining(['touch-none', '[writing-mode:vertical-lr]', '[direction:rtl]']),
+    )
+    expect(w.get('input').attributes('aria-orientation')).toBe('vertical')
+  })
+
   it('wakes the graph on release while a board is on screen', async () => {
     mount(Stage)
     const w = mount(VolumeSlider)

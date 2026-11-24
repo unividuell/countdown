@@ -26,18 +26,18 @@ vi.mock('@/games/echolocate/engine', () => ({
 
 enableAutoUnmount(afterEach)
 
-function withPreview(): { onAdjust: () => void; unmount: () => void } {
-  let onAdjust!: () => void
+function withPreview(): ReturnType<typeof useVolumePreview> & { unmount: () => void } {
+  let preview!: ReturnType<typeof useVolumePreview>
   const w = mount(
     defineComponent({
       setup() {
-        onAdjust = useVolumePreview().onAdjust
+        preview = useVolumePreview()
         return () => null
       },
     }),
   )
 
-  return { onAdjust, unmount: () => w.unmount() }
+  return { ...preview, unmount: () => w.unmount() }
 }
 
 describe('useVolumePreview', () => {
@@ -52,7 +52,7 @@ describe('useVolumePreview', () => {
   afterEach(() => vi.useRealTimers())
 
   // Gain 1, not the round's bed level: the sayings come at full level, and that is what to judge by.
-  it('plays the bed at the sayings level while the slider moves', () => {
+  it('plays the bed at the sayings level while the slider is set', () => {
     const { onAdjust } = withPreview()
 
     onAdjust()
@@ -62,7 +62,21 @@ describe('useVolumePreview', () => {
     expect(engines[0]!.startBed).toHaveBeenCalledWith({ name: 'bed' }, 1)
   })
 
-  it('falls silent a moment after the last move', () => {
+  // Held, it sounds as long as the finger stays: judging a level takes a moment.
+  it('sounds from press to release, however long the slider is held still', () => {
+    const { onPress, onAdjust, onRelease } = withPreview()
+
+    onPress()
+    onAdjust()
+    vi.advanceTimersByTime(PROBE_MS * 10)
+    expect(engines[0]!.startBed).toHaveBeenCalledWith({ name: 'bed' }, 1)
+    expect(engines[0]!.stopBed).not.toHaveBeenCalled()
+
+    onRelease()
+    expect(engines[0]!.stopBed).toHaveBeenCalledOnce()
+  })
+
+  it('falls silent a moment after the last keyboard step', () => {
     const { onAdjust } = withPreview()
 
     onAdjust()
