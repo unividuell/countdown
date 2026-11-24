@@ -7,7 +7,9 @@
  *   · [clips, noises, links, other pins] · pins · sparks
  *
  * Bracketed layers belong to the reveal. With a `solution` the field is a map and takes no taps —
- * a finger there scrolls the page — and a legend under it names what the map shows.
+ * a finger there scrolls the page — and a legend under it names what the map shows. A `listenable`
+ * map hears one click: on a noise's letter or a clip's tolerance circle (without one: its dot) it
+ * asks to `listen`. The letter wins where it stands inside a circle.
  *
  * A click comes in two lengths. Released within `LONG_PRESS_MS` it is a `tap`, told on the way up —
  * iOS counts a touch as a gesture from its end on, so only then may the board start the sound — but
@@ -28,10 +30,10 @@
  * The backing store follows the CSS size × `devicePixelRatio`; without a 2D context (happy-dom) it
  * draws nothing.
  */
-import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import type { Wave } from './flow'
 import { toCell, waveRadius } from './sonar'
-import type { Cell, EchoLocateSolution, NoiseKind, Point } from './types'
+import type { Cell, EchoLocateSolution, MapSound, NoiseKind, Point } from './types'
 
 const props = defineProps<{
   /** How many sayings hide in the field; named on it until the first ping. */
@@ -54,10 +56,18 @@ const props = defineProps<{
   otherPins?: { at: Point; colorHex: string }[]
   /** A pin and the target cell it was matched with. */
   links?: [Point, Cell][]
+  /** Whether a click on a clip's circle asks to hear it: the map only. */
+  listenable?: boolean
+  /** The sound playing: a clip's circle or a noise's letter lights up. */
+  playing?: MapSound | null
 }>()
 
 /** `tMs` is the event's `timeStamp`: when the finger came down, not when the handler ran. */
-const emit = defineEmits<{ tap: [at: Point, tMs: number]; hold: [at: Point] }>()
+const emit = defineEmits<{
+  tap: [at: Point, tMs: number]
+  hold: [at: Point]
+  listen: [sound: MapSound]
+}>()
 
 /** Held this long, a click is a long one: iOS's own long press waits about as long. */
 const LONG_PRESS_MS = 500
@@ -99,6 +109,70 @@ let sparks: Spark[] = []
 let frame = 0
 
 const interactive = computed(() => !props.solution)
+
+/** A clip's dot in px: never below 8, so it reads on a small field. */
+function dotRadius(cell: number): number {
+  return Math.max(8, cell * 0.6)
+}
+
+/** A noise's letter in px: never below 10. */
+function letterSize(cell: number): number {
+  return Math.max(10, cell * 0.7)
+}
+
+/** The nearest cell centre within `radius` cells of `at`, by its place in `cells`; or `null`. */
+function nearestOf(cells: Cell[], at: Point, radius: number): number | null {
+  let nearest: number | null = null
+  let best = radius
+  for (const [place, cell] of cells.entries()) {
+    const distance = Math.hypot(at.x - (cell.col + 0.5), at.y - (cell.row + 0.5))
+    if (distance > best) continue
+
+    nearest = place
+    best = distance
+  }
+
+  return nearest
+}
+
+/**
+ * The sound under the pointer, or `null`: a noise's letter, as large as it is drawn, else a
+ * clip's tolerance circle — without one, its dot. Where two overlap, the nearer centre wins.
+ */
+function soundAt(event: MouseEvent): MapSound | null {
+  const el = canvas.value
+  const solution = props.solution
+  if (!el || !solution || !props.listenable) return null
+
+  const rect = el.getBoundingClientRect()
+  const at = toCell(event.clientX, event.clientY, rect, props.grid)
+  const cell = rect.width / props.grid
+  if (cell <= 0) return null
+
+  const noise = nearestOf(
+    solution.noises.map((source) => source.cell),
+    at,
+    (letterSize(cell) * 0.6) / cell,
+  )
+  if (noise !== null) return { kind: 'noise', place: noise }
+
+  const clip = nearestOf(solution.targets, at, solution.toleranceRadius ?? dotRadius(cell) / cell)
+
+  return clip === null ? null : { kind: 'clip', place: clip }
+}
+
+/** Whether `sound` is the one playing. */
+function lit(kind: MapSound['kind'], place: number): boolean {
+  return props.playing?.kind === kind && props.playing.place === place
+}
+
+/** Over a sound the mouse shows it can be clicked; a finger needs no such hint. */
+const overSound = ref(false)
+
+function onClick(event: MouseEvent): void {
+  const sound = soundAt(event)
+  if (sound !== null) emit('listen', sound)
+}
 
 /** A burst flung outward from the tap, in CSS pixels. It says nothing about the sound. */
 function throwSparks(x: number, y: number): void {
@@ -160,6 +234,7 @@ function onDown(event: PointerEvent): void {
 }
 
 function onMove(event: PointerEvent): void {
+  if (props.listenable) overSound.value = soundAt(event) !== null
   if (drag === null || event.pointerId !== drag.id) return
 
   if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) <= DRAG_SLOP_PX) return
@@ -343,14 +418,16 @@ function drawTolerance(
   const radius = solution.toleranceRadius
   if (radius === null) return
 
-  c.fillStyle = 'rgba(52,211,153,0.15)'
-  c.strokeStyle = 'rgba(52,211,153,0.5)'
-  for (const target of solution.targets) {
+  solution.targets.forEach((target, clip) => {
+    // The sounding clip's circle lights up.
+    const on = lit('clip', clip)
+    c.fillStyle = on ? 'rgba(52,211,153,0.35)' : 'rgba(52,211,153,0.15)'
+    c.strokeStyle = on ? 'rgba(52,211,153,0.9)' : 'rgba(52,211,153,0.5)'
     c.beginPath()
     c.arc((target.col + 0.5) * cell, (target.row + 0.5) * cell, radius * cell, 0, 2 * Math.PI)
     c.fill()
     c.stroke()
-  }
+  })
 }
 
 /** The clips green, the noises by their letter, and a dashed line from each linked pin. */
@@ -361,19 +438,32 @@ function drawSolution(
 ): void {
   const centre = (v: number): number => (v + 0.5) * cell
 
-  c.font = `700 ${Math.max(10, cell * 0.7)}px system-ui`
+  c.font = `700 ${letterSize(cell)}px system-ui`
   c.textAlign = 'center'
   c.textBaseline = 'middle'
-  c.fillStyle = 'rgba(248,113,113,0.9)'
-  for (const noise of solution.noises) {
+  solution.noises.forEach((noise, place) => {
+    // The sounding noise's letter turns white.
+    c.fillStyle = lit('noise', place) ? '#ffffff' : 'rgba(248,113,113,0.9)'
     c.fillText(NOISE_LETTER[noise.kind], centre(noise.cell.col), centre(noise.cell.row))
-  }
+  })
 
   c.fillStyle = 'rgba(52,211,153,0.9)'
   for (const target of solution.targets) {
     c.beginPath()
-    c.arc(centre(target.col), centre(target.row), Math.max(8, cell * 0.6), 0, 2 * Math.PI)
+    c.arc(centre(target.col), centre(target.row), dotRadius(cell), 0, 2 * Math.PI)
     c.fill()
+  }
+
+  // Phase two has no circle to light: the sounding clip's dot gets a white ring.
+  const sounding =
+    props.playing?.kind === 'clip' ? solution.targets[props.playing.place] : undefined
+  if (solution.toleranceRadius === null && sounding !== undefined) {
+    c.beginPath()
+    c.arc(centre(sounding.col), centre(sounding.row), dotRadius(cell) + 3, 0, 2 * Math.PI)
+    c.strokeStyle = '#ffffff'
+    c.lineWidth = 2
+    c.stroke()
+    c.lineWidth = 1
   }
 
   c.setLineDash([4, 4])
@@ -425,6 +515,7 @@ watch(
     () => props.solution,
     () => props.otherPins,
     () => props.links,
+    () => props.playing,
   ],
   () => {
     draw()
@@ -440,7 +531,8 @@ watch(
       role="img"
       aria-label="Sonarfeld"
       class="block aspect-square w-full rounded-lg select-none [-webkit-touch-callout:none]"
-      :class="{ 'touch-none': interactive }"
+      :class="{ 'touch-none': interactive, 'cursor-pointer': overSound }"
+      @click="onClick"
       @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
@@ -475,5 +567,16 @@ watch(
         Toleranzkreis
       </li>
     </ul>
+    <p
+      v-if="props.solution && props.listenable"
+      data-test="sonar-listen-hint"
+      class="mt-1 text-center text-sm text-on-surface-variant"
+    >
+      {{
+        props.solution.toleranceRadius === null
+          ? 'Klick auf Spruch oder Buchstabe: anhören'
+          : 'Klick auf Toleranzkreis oder Buchstabe: anhören'
+      }}
+    </p>
   </div>
 </template>

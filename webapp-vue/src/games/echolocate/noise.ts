@@ -1,5 +1,5 @@
 /**
- * Synthesised noise, so Peilung needs no downloaded recordings for wind, rain and birds. Every
+ * Synthesised noise, so Peilung needs no downloaded recordings for wind and birds. Every
  * buffer is mono and levelled to the same loudness (RMS) as a clip, so a knob's dB is the
  * signal-to-noise ratio the ear gets.
  */
@@ -103,29 +103,6 @@ function wind(n: number, rate: number): Float32Array<ArrayBuffer> {
   return out
 }
 
-/** High hiss plus droplets: short noise bursts, ~70 a second, each dying within milliseconds. */
-function rain(n: number, rate: number): Float32Array<ArrayBuffer> {
-  const out = new Float32Array(n)
-  let last = 0
-  for (let i = 0; i < n; i++) {
-    const w = white()
-    out[i] = (w - last) * 0.25
-    last = w
-  }
-
-  const drops = Math.round((n / rate) * 70)
-  for (let d = 0; d < drops; d++) {
-    const at = Math.floor(Math.random() * n)
-    const amp = 0.3 + Math.random() * 0.9
-    const tau = (0.002 + Math.random() * 0.004) * rate
-    for (let j = 0; j < tau * 5 && at + j < n; j++) {
-      out[at + j] = (out[at + j] ?? 0) + amp * white() * Math.exp(-j / tau)
-    }
-  }
-
-  return out
-}
-
 /** Phrases of 2–6 sweeping chirps between 2 and 9 kHz, with quiet in between. */
 function birds(n: number, rate: number): Float32Array<ArrayBuffer> {
   const out = new Float32Array(n)
@@ -163,7 +140,7 @@ function faded(data: Float32Array<ArrayBuffer>, rate: number): Float32Array<Arra
   return data
 }
 
-const SYNTHESISERS = { BIRDS: birds, WIND: wind, RAIN: rain } satisfies Record<string, Render>
+const SYNTHESISERS = { BIRDS: birds, WIND: wind } satisfies Record<string, Render>
 
 /** Pink hiss that loops for good under everything. */
 export function bedSamples(rate: number): Float32Array<ArrayBuffer> {

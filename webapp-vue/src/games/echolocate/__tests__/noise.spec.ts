@@ -9,7 +9,7 @@ import {
   rms,
 } from '@/games/echolocate/noise'
 
-const KINDS = ['BIRDS', 'WIND', 'RAIN'] as const
+const KINDS = ['BIRDS', 'WIND'] as const
 const RATES = [44100, 48000]
 
 /** Plain arithmetic, so one assertion covers a quarter million samples. */

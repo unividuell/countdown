@@ -170,12 +170,13 @@ describe('loadSounds', () => {
     expect(sounds.bed.duration).toBe(6)
   })
 
-  it('fetches the brook and the cow, and nothing else without clips', async () => {
+  it('fetches the brook, the cow and the rain, and nothing else without clips', async () => {
     await loadSounds(asContext(ctx), [null, null])
 
-    expect(fetched).toHaveLength(2)
-    expect(fetched.some((url) => url.endsWith('brook.mp3'))).toBe(true)
-    expect(fetched.some((url) => url.endsWith('cow.mp3'))).toBe(true)
+    expect(fetched).toHaveLength(3)
+    for (const file of ['brook.mp3', 'cow.mp3', 'rain.mp3']) {
+      expect(fetched.some((url) => url.endsWith(file))).toBe(true)
+    }
   })
 
   it('levels a recording to the reference loudness, in mono', async () => {
@@ -188,10 +189,10 @@ describe('loadSounds', () => {
     expect(brook.getChannelData(0).every((s) => Math.abs(s - REF_RMS) < 1e-6)).toBe(true)
   })
 
-  it('synthesises wind, rain and birds as a burst each', async () => {
+  it('synthesises wind and birds as a burst each', async () => {
     const { noises } = await loadSounds(asContext(ctx), [])
 
-    for (const kind of ['WIND', 'RAIN', 'BIRDS'] as const) {
+    for (const kind of ['WIND', 'BIRDS'] as const) {
       expect(noises[kind].duration).toBeCloseTo(BURST_SECONDS, 3)
     }
   })

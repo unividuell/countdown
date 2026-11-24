@@ -8,12 +8,22 @@
  */
 import brookUrl from './sounds/brook.mp3?url'
 import cowUrl from './sounds/cow.mp3?url'
+import rainUrl from './sounds/rain.mp3?url'
 
 import { START_LOOKAHEAD_SECONDS } from '@/ui/audio'
 import { BURST_SECONDS, bedSamples, burstSamples, dbToGain, levelled } from './noise'
 import type { EchoHit, NoiseKind } from './types'
 
 const MASTER_GAIN = 0.6
+
+/** The noises recorded rather than synthesised. */
+export const RECORDINGS = { BROOK: brookUrl, COW: cowUrl, RAIN: rainUrl } satisfies Partial<
+  Record<NoiseKind, string>
+>
+
+export function isRecorded(kind: NoiseKind): kind is keyof typeof RECORDINGS {
+  return kind in RECORDINGS
+}
 
 export interface Shot {
   buffer: AudioBuffer
@@ -195,9 +205,10 @@ export async function loadSounds(
   clipSrcs: readonly (string | null)[],
 ): Promise<EchoSounds & { bed: AudioBuffer }> {
   const rate = ctx.sampleRate
-  const [brook, cow, clips] = await Promise.all([
-    tryDecode(ctx, brookUrl, 'the brook recording'),
-    tryDecode(ctx, cowUrl, 'the cow recording'),
+  const [brook, cow, rain, clips] = await Promise.all([
+    tryDecode(ctx, RECORDINGS.BROOK, 'the brook recording'),
+    tryDecode(ctx, RECORDINGS.COW, 'the cow recording'),
+    tryDecode(ctx, RECORDINGS.RAIN, 'the rain recording'),
     Promise.all(clipSrcs.map((src) => (src === null ? null : tryDecode(ctx, src, 'a clip')))),
   ])
   const silence = (): AudioBuffer =>
@@ -211,7 +222,7 @@ export async function loadSounds(
       BROOK: brook ?? silence(),
       COW: cow ?? silence(),
       WIND: bufferOf(ctx, burstSamples('WIND', rate), rate),
-      RAIN: bufferOf(ctx, burstSamples('RAIN', rate), rate),
+      RAIN: rain ?? silence(),
     },
   }
 }

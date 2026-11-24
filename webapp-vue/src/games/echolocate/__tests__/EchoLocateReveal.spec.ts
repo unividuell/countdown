@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { enableAutoUnmount, mount } from '@vue/test-utils'
+import type { Mock } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import type { Ref } from 'vue'
+import type { RoundAssets } from '@/api/assets'
 import { gameEntry } from '@/games/__tests__/gameFixtures'
 import EchoLocateReveal from '@/games/echolocate/EchoLocateReveal.vue'
 import { scoreRows } from '@/games/echolocate/scoreboard'
@@ -20,6 +23,31 @@ import { expectJudgesWithVerdict } from '@/games/__tests__/judgesWithVerdict'
 
 const stopVerdict = vi.fn()
 vi.mock('@/ui/verdictSound', () => ({ playVerdict: vi.fn(() => ({ stop: stopVerdict })) }))
+
+const { loadSealed } = vi.hoisted(() => ({ loadSealed: vi.fn() }))
+vi.mock('@/api/assets', async (original) => ({
+  ...(await original<typeof import('@/api/assets')>()),
+  loadSealed,
+}))
+
+/** The real composable owns an `Audio` element happy-dom cannot sound. */
+const { playback } = vi.hoisted(() => ({
+  playback: {} as { playing: Ref<boolean>; setSource: Mock; resume: Mock; pause: Mock },
+}))
+vi.mock('@/ui/usePlayback', async () => {
+  const { ref } = await import('vue')
+  return {
+    usePlayback: () => {
+      Object.assign(playback, {
+        playing: ref(false),
+        setSource: vi.fn(),
+        resume: vi.fn(),
+        pause: vi.fn(),
+      })
+      return playback
+    },
+  }
+})
 
 enableAutoUnmount(afterEach)
 
@@ -272,6 +300,144 @@ describe('EchoLocateReveal', () => {
 
       expect(map(wrapper).props()).toMatchObject({ waves: [], pins: [], links: [] })
       expect(map(wrapper).props('otherPins')).toHaveLength(2)
+    })
+  })
+
+  describe('listening', () => {
+    const ASSETS: RoundAssets = {
+      url: (name) => `/assets/${name}`,
+      key: () => ({ key: 'AAAA', mediaType: 'audio/mpeg' }),
+    }
+
+    beforeEach(() => {
+      loadSealed.mockReset()
+      loadSealed.mockImplementation((_assets: RoundAssets, name: string) =>
+        Promise.resolve(new Blob([name])),
+      )
+      let made = 0
+      URL.createObjectURL = vi.fn(() => `blob:clip-${made++}`)
+      URL.revokeObjectURL = vi.fn()
+    })
+
+    const listen = async (w: Reveal, place: number, kind: 'clip' | 'noise' = 'clip') => {
+      map(w).vm.$emit('listen', { kind, place })
+      await flushPromises()
+    }
+
+    it('lets the map hear clips only with their key', () => {
+      expect(map(mountReveal({ assets: ASSETS })).props('listenable')).toBe(true)
+      expect(map(mountReveal({ assets: { ...ASSETS, key: () => null } })).props('listenable')).toBe(
+        false,
+      )
+      expect(map(mountReveal()).props('listenable')).toBe(false)
+    })
+
+    it('opens a clip on its first click and plays it', async () => {
+      const wrapper = mountReveal({ solution: SOLUTION_TWO, payload: TWO, assets: ASSETS })
+      expect(loadSealed).not.toHaveBeenCalled()
+
+      await listen(wrapper, 1)
+
+      expect(loadSealed).toHaveBeenCalledExactlyOnceWith(ASSETS, 'clip-1')
+      expect(playback.setSource).toHaveBeenCalledExactlyOnceWith('blob:clip-0')
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('pauses the clip sounding on its own click, and lights its circle meanwhile', async () => {
+      const wrapper = mountReveal({ solution: SOLUTION_TWO, payload: TWO, assets: ASSETS })
+      await listen(wrapper, 0)
+      playback.playing.value = true
+      await nextTick()
+      expect(map(wrapper).props('playing')).toEqual({ kind: 'clip', place: 0 })
+
+      await listen(wrapper, 0)
+
+      expect(playback.pause).toHaveBeenCalledOnce()
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('switches to another clip, opening each only once', async () => {
+      const wrapper = mountReveal({ solution: SOLUTION_TWO, payload: TWO, assets: ASSETS })
+      await listen(wrapper, 0)
+      await listen(wrapper, 1)
+      await listen(wrapper, 0)
+
+      expect(loadSealed).toHaveBeenCalledTimes(2)
+      expect(playback.setSource.mock.calls).toEqual([
+        ['blob:clip-0'],
+        ['blob:clip-1'],
+        ['blob:clip-0'],
+      ])
+    })
+
+    it('starts only the newest click, though an older clip loads later', async () => {
+      let open!: (blob: Blob) => void
+      loadSealed.mockImplementationOnce(() => new Promise((resolve) => (open = resolve)))
+      const wrapper = mountReveal({ solution: SOLUTION_TWO, payload: TWO, assets: ASSETS })
+
+      map(wrapper).vm.$emit('listen', { kind: 'clip', place: 0 })
+      await listen(wrapper, 1)
+      open(new Blob(['late']))
+      await flushPromises()
+
+      expect(playback.setSource.mock.calls).toEqual([['blob:clip-0']])
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('plays nothing when a clip fails, and tries again on the next click', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      loadSealed.mockRejectedValueOnce(new Error('gone'))
+      const wrapper = mountReveal({ assets: ASSETS })
+
+      await listen(wrapper, 0)
+      expect(playback.resume).not.toHaveBeenCalled()
+      expect(warn).toHaveBeenCalled()
+
+      await listen(wrapper, 0)
+      expect(loadSealed).toHaveBeenCalledTimes(2)
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('plays a recorded noise from its own file, unsealed', async () => {
+      const wrapper = mountReveal({ assets: ASSETS })
+
+      // SOLUTION's noise 1 is the cow.
+      await listen(wrapper, 1, 'noise')
+
+      expect(loadSealed).not.toHaveBeenCalled()
+      expect(playback.setSource).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/cow\.mp3/))
+      expect(playback.resume).toHaveBeenCalledOnce()
+    })
+
+    it('plays a synthesised noise as a WAV, rendered once per kind', async () => {
+      const blobs: Blob[] = []
+      URL.createObjectURL = vi.fn((blob: Blob) => {
+        blobs.push(blob)
+        return `blob:noise-${blobs.length}`
+      })
+      const wrapper = mountReveal({ assets: ASSETS })
+
+      // SOLUTION's noise 0 is the birds.
+      await listen(wrapper, 0, 'noise')
+      await listen(wrapper, 0, 'clip')
+      await listen(wrapper, 0, 'noise')
+
+      expect(blobs[0]?.type).toBe('audio/wav')
+      expect(playback.setSource.mock.calls).toEqual([
+        ['blob:noise-1'],
+        ['blob:noise-2'],
+        ['blob:noise-1'],
+      ])
+    })
+
+    it('lets go of the opened clips when it leaves', async () => {
+      const wrapper = mountReveal({ assets: ASSETS })
+      await listen(wrapper, 0)
+
+      wrapper.unmount()
+      await flushPromises()
+
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:clip-0')
     })
   })
 
