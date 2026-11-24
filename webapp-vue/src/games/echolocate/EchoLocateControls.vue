@@ -88,5 +88,5 @@ const { onPress, onAdjust, onRelease } = useVolumePreview()
       </button>
     </span>
   </div>
-  <SoundOffNotice reserve />
+  <SoundOffNotice reserve class="self-stretch" />
 </template>

@@ -170,7 +170,7 @@ onUnmounted(() => {
       />
       <span class="min-w-0" />
     </div>
-    <SoundOffNotice reserve class="text-center" />
+    <SoundOffNotice reserve />
   </div>
 </template>
 
