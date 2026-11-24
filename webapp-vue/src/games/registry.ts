@@ -5,6 +5,7 @@ import EchoLocateGame from './echolocate/EchoLocateGame.vue'
 import FindPatternGame from './findpattern/FindPatternGame.vue'
 import GuessHueGame from './guesshue/GuessHueGame.vue'
 import MatchScaleGame from './matchscale/MatchScaleGame.vue'
+import MixColorGame from './mixcolor/MixColorGame.vue'
 import PaintRatioGame from './paintratio/PaintRatioGame.vue'
 import PlacePatchGame from './placepatch/PlacePatchGame.vue'
 import SongSnippetGame from './songsnippet/SongSnippetGame.vue'
@@ -53,4 +54,5 @@ export const gameComponents: Record<string, Component> = {
   'echo-locate': EchoLocateGame,
   'turn-pipes': TurnPipesGame,
   'match-scale': MatchScaleGame,
+  'mix-color': MixColorGame,
 }
