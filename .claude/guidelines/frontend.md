@@ -52,7 +52,8 @@ of the frontend conventions live beside it:
     What must look the same in both — the game band and the flip-dot board — takes the fixed
     `board` roles (`bg-board`, `text-on-board`, `text-board-phase-two`). Colours painted from TS
     that must follow the mode read `useDarkScheme()`; flip dots straight on the page (header
-    countdown) take `ground="surface"`. A surface over the scrim (the menu) must be lighter than
+    countdown) take `ground="surface"`, flip dots on `inverse-surface` (the countdown card: dark
+    in the light, light in the dark) `ground="inverse"`. A surface over the scrim (the menu) must be lighter than
     the page in the dark: it wears `bg-surface-container-high raised`, and `raised` redefines the
     text and fill roles for its subtree, so its content keeps the plain role names.
   - **`src/assets/main.css` holds only what is app-wide:** theme tokens with a cross-cutting

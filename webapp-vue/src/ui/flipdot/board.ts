@@ -27,15 +27,18 @@ export const TONES: Record<Tone, { on: string; off: string }> = {
 }
 
 /**
- * What the dots stand on. `board`: the dark instrument of the card and the game band, the same in
- * both schemes. `surface`: straight on the page (the header countdown), so they follow the scheme.
+ * What the dots stand on. `board`: the dark instrument of the game band, the same in both schemes.
+ * `surface`: straight on the page (the header countdown), so they follow the scheme. `inverse`:
+ * the countdown card, `inverse-surface` — the dark board on the light page, a light one on the
+ * dark page.
  */
-export type Ground = 'board' | 'surface'
+export type Ground = 'board' | 'surface' | 'inverse'
 
 /**
- * Dots on the light page: on in on-surface (`#0d0d0d`), off barely off surface (`#f7f5f1`): a
- * hint of the grid, not a grey field. On the dark page (stone-700) the board's own colours
- * already read, so there is no dark twin. Only the plain tone: nothing on the page is timed yet.
+ * Dots on a light ground — the light page, or the inverse card in the dark: on in on-surface
+ * (`#0d0d0d`), off barely off surface (`#f7f5f1`): a hint of the grid, not a grey field. On the
+ * dark page (stone-700) the board's own colours already read, so there is no dark twin. Only the
+ * plain tone: nothing on a light ground is timed yet.
  */
 export const SURFACE_LIGHT = { on: '#0d0d0d', off: '#f0ede8' }
 

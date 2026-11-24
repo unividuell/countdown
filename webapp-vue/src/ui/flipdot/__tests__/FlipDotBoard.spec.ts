@@ -707,6 +707,36 @@ describe('FlipDotBoard', () => {
       expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
     })
 
+    // The countdown card: the dark instrument on the light page, a light one on the dark page.
+    it('keeps the board colours on an inverse ground in the light', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'light')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'inverse' } })
+      await bootDone()
+
+      expect(fills(w).filter((f) => f === DOT_ON).length).toBe(10)
+      expect(fills(w).filter((f) => f === DOT_OFF).length).toBe(5 * 7 - 10)
+    })
+
+    it('paints dark dots on an inverse ground in the dark', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'dark')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'inverse' } })
+      await bootDone()
+
+      expect(fills(w).filter((f) => f === SURFACE_LIGHT.on).length).toBe(10)
+      expect(fills(w).filter((f) => f === SURFACE_LIGHT.off).length).toBe(5 * 7 - 10)
+    })
+
+    it('repaints an inverse ground when the user switches the scheme', async () => {
+      localStorage.setItem(COLOR_SCHEME_KEY, 'light')
+      const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins', ground: 'inverse' } })
+      await bootDone()
+
+      useColorScheme().value = 'dark'
+      await nextTick()
+
+      expect(fills(w).filter((f) => f === SURFACE_LIGHT.on).length).toBe(10)
+    })
+
     it('leaves a board-ground board alone in the light', async () => {
       localStorage.setItem(COLOR_SCHEME_KEY, 'light')
       const w = mount(FlipDotBoard, { props: { text: '1', label: 'eins' } })

@@ -48,6 +48,20 @@ afterEach(() => {
 })
 
 describe('CountdownCard', () => {
+  // Dark in the light, light in the dark: the card stands out from the page in both schemes.
+  it('inverts with the colour scheme', () => {
+    const w = mountCard('58')
+    const card = w.get('[data-test="countdown-card"]')
+    expect(card.classes()).toContain('bg-inverse-surface')
+    expect(card.classes()).not.toContain('bg-board')
+    expect(w.get('[data-test="countdown-label-days"]').classes()).toContain(
+      'text-inverse-on-surface/70',
+    )
+    for (const board of w.findAllComponents({ name: 'FlipDotBoard' }))
+      expect(board.props('ground')).toBe('inverse')
+    expect(w.findComponent({ name: 'FlipDotLegend' }).props('ground')).toBe('inverse')
+  })
+
   it('is square', () => {
     expect(mountCard('58').find('[data-test="countdown-card"]').classes()).toContain(
       'aspect-square',
@@ -174,7 +188,12 @@ describe('CountdownCard', () => {
   })
 
   it('shows the labels straight away under prefers-reduced-motion', async () => {
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    // The listeners: the card's boards follow the scheme, which watches the media query too.
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList)
     const w = mountCard('58')
     await nextTick()
     expect(labelClasses(w).every((c) => c.includes('opacity-100'))).toBe(true)
