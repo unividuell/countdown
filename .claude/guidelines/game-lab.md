@@ -1,6 +1,9 @@
 # Game Lab — the non-prod harness for mini-games
 
-`gamelab` (backend) + `src/gamelab/` and `src/pages/c/[slug]/lab/` (frontend).
+`gamelab` (backend) + `src/gamelab/` and `src/pages/c/[slug]/lab/` (frontend). Its sibling, the
+**card lab** (`src/cardlab/`, `/c/:slug/card-lab`), shows the cards the community page puts where no
+game is, fed with props and behind the same gate. Its texts come from
+`communities/fallbacks/messages.ts`, so the lab shows the shipped words, not a copy.
 Design: `docs/superpowers/specs/2026-08-08-game-lab-design.md`.
 
 ## The direction rule — the lab adapts, never the game

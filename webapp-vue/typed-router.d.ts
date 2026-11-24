@@ -52,6 +52,8 @@ declare module 'vue-router/auto-routes' {
       { slug: ParamValue<false> },
       | '/c/[slug]/'
       | '/c/[slug]/audio'
+      | '/c/[slug]/card-lab/'
+      | '/c/[slug]/card-lab/[card]/'
       | '/c/[slug]/edition'
       | '/c/[slug]/images'
       | '/c/[slug]/lab/'
@@ -73,6 +75,20 @@ declare module 'vue-router/auto-routes' {
       '/c/:slug/audio',
       { slug: ParamValue<true> },
       { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/card-lab/': RouteRecordInfo<
+      '/c/[slug]/card-lab/',
+      '/c/:slug/card-lab',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
+      | never
+    >,
+    '/c/[slug]/card-lab/[card]/': RouteRecordInfo<
+      '/c/[slug]/card-lab/[card]/',
+      '/c/:slug/card-lab/:card',
+      { card: ParamValue<true>, slug: ParamValue<true> },
+      { card: ParamValue<false>, slug: ParamValue<false> },
       | never
     >,
     '/c/[slug]/edition': RouteRecordInfo<
@@ -261,6 +277,8 @@ declare module 'vue-router/auto-routes' {
         | '/c/[slug]'
         | '/c/[slug]/'
         | '/c/[slug]/audio'
+        | '/c/[slug]/card-lab/'
+        | '/c/[slug]/card-lab/[card]/'
         | '/c/[slug]/edition'
         | '/c/[slug]/images'
         | '/c/[slug]/lab/'
@@ -285,6 +303,22 @@ declare module 'vue-router/auto-routes' {
     'src/pages/c/[slug]/audio.vue': {
       routes:
         | '/c/[slug]/audio'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/card-lab/index.vue': {
+      routes:
+        | '/c/[slug]/card-lab/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/c/[slug]/card-lab/[card]/index.vue': {
+      routes:
+        | '/c/[slug]/card-lab/[card]/'
       views:
         | never
       pathParamNames:

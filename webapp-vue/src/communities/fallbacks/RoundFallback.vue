@@ -5,6 +5,7 @@ import { useCountdown } from '@/communities/useCountdown'
 import { formatWinnerNames, winners } from '@/members/winner'
 import CountdownCard from './CountdownCard.vue'
 import MessageCard from './MessageCard.vue'
+import { NO_DATE_MESSAGE, RUNNING_MESSAGE, winnerMessage } from './messages'
 
 const props = withDefaults(
   defineProps<{
@@ -37,8 +38,7 @@ const winnerNames = computed(() =>
   <MessageCard
     v-if="community.edition === null"
     data-test="fallback-no-date"
-    title="Noch kein Termin"
-    text="Diese Spielgemeinschaft entsteht gerade. Komm später wieder."
+    v-bind="NO_DATE_MESSAGE"
   />
   <CountdownCard
     v-else-if="view.state === 'before'"
@@ -51,13 +51,12 @@ const winnerNames = computed(() =>
   <MessageCard
     v-else-if="view.state === 'after' && members !== null && winnerNames !== ''"
     data-test="fallback-winner"
-    :title="`Herzlichen Glückwunsch, ${winnerNames}!`"
-    text="Und jetzt viel Spaß zusammen!"
+    v-bind="winnerMessage(winnerNames)"
   />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null"
     data-test="fallback-running"
-    title="Und jetzt viel Spaß zusammen!"
+    v-bind="RUNNING_MESSAGE"
   />
   <div
     v-else
