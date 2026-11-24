@@ -1,14 +1,13 @@
 <script setup lang="ts">
 /**
- * The card after the round: the target field with the circle in the shown player's mix, the drops
- * of target and player side by side, and the scoreboard. Mine shows first; tapping a name shows
- * that player's mix, tapping it again returns to mine.
+ * The card after the round: the target field with the circle in the shown player's mix, and the
+ * scoreboard, whose boxes set every recipe against the target's. Mine shows first; tapping a name
+ * shows that player's mix, tapping it again returns to mine.
  *
- * A player who gave up has no mix: no player lane, the circle stays at mine.
+ * A player who gave up has no mix: the circle stays at mine.
  */
 import { computed, ref } from 'vue'
 import { provideRevealTimeline } from '@/games/revealTimeline'
-import DropBars from './DropBars.vue'
 import MixColorScoreboard from './MixColorScoreboard.vue'
 import MixerGlass from './MixerGlass.vue'
 import type { ScoreboardRow } from './scoreboard'
@@ -40,23 +39,14 @@ function select(userId: string): void {
 
 <template>
   <div data-test="mix-color-reveal" class="flex flex-col gap-6">
-    <div class="flex flex-col gap-4">
-      <div
-        data-test="mix-color-field"
-        class="flex aspect-square w-full items-center justify-center rounded-lg"
-        :style="{ backgroundColor: props.payload.targetHex }"
-      >
-        <div class="aspect-square w-[58%]">
-          <MixerGlass :fill="shown?.hex ?? mine?.hex ?? null" :splashes="[]" />
-        </div>
+    <div
+      data-test="mix-color-field"
+      class="flex aspect-square w-full items-center justify-center rounded-lg"
+      :style="{ backgroundColor: props.payload.targetHex }"
+    >
+      <div class="aspect-square w-[58%]">
+        <MixerGlass :fill="shown?.hex ?? mine?.hex ?? null" :splashes="[]" />
       </div>
-
-      <DropBars
-        :pigments="props.payload.pigments"
-        :target="props.solution.recipe"
-        :player="shown?.recipe ?? null"
-        :capacity="props.payload.capacity"
-      />
     </div>
 
     <MixColorScoreboard
