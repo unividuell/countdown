@@ -42,6 +42,9 @@ function onChange(): void {
   if (volume.value > 0 && soundOnStage.value) unlockSound()
 }
 
+// `@touchmove.stop` on the range: on iOS an open menu's scroll lock (`useScrollLock`) prevents
+// every touchmove that reaches body, and that freezes a range's drag (simulator, iOS 18).
+
 // The release is heard on the window: a drag that ends off the slider still ends.
 function onPointerDown(): void {
   emit('press')
@@ -90,6 +93,7 @@ function onPointerDown(): void {
       @input="onInput"
       @change="onChange"
       @pointerdown="onPointerDown"
+      @touchmove.stop
     />
     <!-- Just the speaker in a ring, no fill. -->
     <span
@@ -115,5 +119,6 @@ function onPointerDown(): void {
     @input="onInput"
     @change="onChange"
     @pointerdown="onPointerDown"
+    @touchmove.stop
   />
 </template>

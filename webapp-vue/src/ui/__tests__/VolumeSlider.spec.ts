@@ -69,6 +69,20 @@ describe('VolumeSlider', () => {
     expect(w.emitted('adjust')).toHaveLength(1)
   })
 
+  // iOS: an open menu locks the page with a touchmove listener on body that prevents the default
+  // — and with it the drag of any range inside. The slider keeps its touchmove to itself.
+  it.each([false, true])('keeps its drag from a scroll lock on body (vertical: %s)', (vertical) => {
+    const lock = (e: Event): void => e.preventDefault()
+    document.body.addEventListener('touchmove', lock, { passive: false })
+    const w = mount(VolumeSlider, { props: { vertical }, attachTo: document.body })
+
+    const move = new Event('touchmove', { bubbles: true, cancelable: true })
+    w.get('input').element.dispatchEvent(move)
+    document.body.removeEventListener('touchmove', lock)
+
+    expect(move.defaultPrevented).toBe(false)
+  })
+
   it('down to zero is mute', async () => {
     const w = mount(VolumeSlider)
 
