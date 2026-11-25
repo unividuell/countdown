@@ -9,7 +9,6 @@ const title = ref('HütteHütte')
 // The final's day; noon UTC is the same day in every zone the app is used in.
 const day = ref('2027-06-24')
 const targetAt = computed(() => `${day.value}T12:00:00Z`)
-const gameRounds = ref(25)
 // „Name Punkte“, comma-separated: ties and long names are one edit away.
 const input = ref('Fry 12, Leela 12, Bender 9, Amy 7, Hermes 4, Zoidberg 0')
 // Stands in for the edition id; the community page draws from the real one.
@@ -43,7 +42,6 @@ const poster = computed(() => posterList.find((p) => p.id === override.value) ??
     :target-at="targetAt"
     target-timezone="Europe/Berlin"
     :members="members"
-    :game-rounds="gameRounds"
   />
 
   <section class="mt-8 space-y-3 border-t border-outline pt-4">
@@ -64,17 +62,6 @@ const poster = computed(() => posterList.find((p) => p.id === override.value) ??
           v-model="title"
           data-test="card-lab-title"
           type="text"
-          class="h-11 rounded-md border border-outline bg-surface px-3"
-        />
-      </label>
-      <label class="flex w-28 flex-col gap-1 text-sm">
-        Spielrunden
-        <input
-          v-model.number="gameRounds"
-          data-test="card-lab-rounds"
-          type="number"
-          min="1"
-          inputmode="numeric"
           class="h-11 rounded-md border border-outline bg-surface px-3"
         />
       </label>

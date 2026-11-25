@@ -43,7 +43,6 @@ const poster = computed(() => {
     title: edition.label ?? props.community.name,
     targetAt: edition.targetAt,
     targetTimezone: edition.targetTimezone,
-    gameRounds: edition.gamesUntilRound - edition.gamesFromRound + 1,
   }
 })
 </script>
@@ -70,7 +69,6 @@ const poster = computed(() => {
     :target-at="poster.targetAt"
     :target-timezone="poster.targetTimezone"
     :members="members"
-    :game-rounds="poster.gameRounds"
   />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null"

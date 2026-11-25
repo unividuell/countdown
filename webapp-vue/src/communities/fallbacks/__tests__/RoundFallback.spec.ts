@@ -133,9 +133,6 @@ describe('RoundFallback', () => {
       expect.stringContaining('fry'),
       expect.stringContaining('leela'),
     ])
-    const stats = w.get('[data-test="poster-stats"]')
-    expect(stats.findAll('dd').map((d) => d.text())).toEqual(['25', '2', '21'])
-    expect(stats.findAll('dt').map((d) => d.text())).toEqual(['Runden', 'Dabei', 'Punkte'])
   })
 
   it('names everyone tied at the top', async () => {

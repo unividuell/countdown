@@ -8,7 +8,6 @@
  *            FRY · LEELA            one line per winner
  *   [2]      [1]      [3]           solid steps, numbers cut out
  *   1  FRY ······················ 12
- *   25 RUNDEN │ 6 DABEI │ 52 PUNKTE
  *   ███ UND JETZT VIEL SPAẞ ZUSAMMEN ███
  *
  * On `inverse-surface`, as the countdown card: dark in the light, light in the dark. Phase two's
@@ -33,7 +32,6 @@ const props = defineProps<PosterProps>()
 const table = computed(() => standings(props.members))
 const steps = computed(() => podium(table.value))
 const winners = computed(() => table.value.filter((r) => r.rank === 1 && r.points > 0))
-const totalPoints = computed(() => table.value.reduce((sum, r) => sum + r.points, 0))
 
 const message = computed(() =>
   winnerMessage(formatWinnerNames(winners.value.map((r) => r.member.fullName))),
@@ -161,24 +159,6 @@ const confetti = computed(() =>
         <span class="text-2xl font-black tracking-tighter tabular-nums">{{ row.points }}</span>
       </li>
     </ol>
-
-    <dl
-      data-test="poster-stats"
-      class="mx-4 mt-6 grid grid-cols-3 divide-x divide-inverse-on-surface/15 border-y border-inverse-on-surface/15 text-center"
-    >
-      <div class="flex flex-col-reverse py-3">
-        <dt class="text-[10px] font-medium tracking-[0.2em] uppercase opacity-70">Runden</dt>
-        <dd class="text-4xl font-black tracking-tighter tabular-nums">{{ gameRounds }}</dd>
-      </div>
-      <div class="flex flex-col-reverse py-3">
-        <dt class="text-[10px] font-medium tracking-[0.2em] uppercase opacity-70">Dabei</dt>
-        <dd class="text-4xl font-black tracking-tighter tabular-nums">{{ members.length }}</dd>
-      </div>
-      <div class="flex flex-col-reverse py-3">
-        <dt class="text-[10px] font-medium tracking-[0.2em] uppercase opacity-70">Punkte</dt>
-        <dd class="text-4xl font-black tracking-tighter tabular-nums">{{ totalPoints }}</dd>
-      </div>
-    </dl>
 
     <p class="sr-only">{{ message.text }}</p>
     <div class="mt-6 bg-inverse-on-surface px-4 pt-3 pb-2 text-inverse-surface" aria-hidden="true">

@@ -11,8 +11,6 @@ export interface PosterProps {
   targetAt: string
   targetTimezone: string
   members: readonly RosterMemberResponse[]
-  /** Rounds that carried a game. */
-  gameRounds: number
 }
 
 export interface PosterEntry {
