@@ -256,6 +256,10 @@ Peilung's `echolocate/engine.ts` is the one for a looping bed plus many schedule
   other player's marker (Farbausmalung, tried) came after the verdict and only got in the way.
   Exception: the roster's triangle rings `VERDICT_MS` after the verdict, only for the viewer's own
   grown streak, into the gap where the other rows land silently.
+- **A sound needs its picture where the viewer looks.** The roster is usually scrolled away when
+  the verdict lands, so `MemberPop` shows the viewer's own column in the viewport — points change,
+  streak flare, triangle — whenever it is out of view. A new sound or change tied to something
+  off-screen gets the same.
 - **Testing knocks:** `ui/__tests__/fakeGraph.ts` is the graph for a spec — it records every
   oscillator's pitch and start. Mock `@/ui/audio` with its `audioMock`; do not copy the fake.
 - **Testing:** happy-dom has no `AudioContext`, so tests take the element path unless you stub the

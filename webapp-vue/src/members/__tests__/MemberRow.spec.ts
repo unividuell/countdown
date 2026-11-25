@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { RosterMemberResponse } from '@/api/types'
 import MemberRow from '../MemberRow.vue'
+import { POP_MS, SWAP_MS } from '../MemberPop.vue'
 import * as swarmModule from '../swarm'
 import { RISER_SEEK, YIELD_SEEK } from '../reorder'
 import { FLARE_MS } from '../streak'
@@ -757,6 +758,104 @@ describe('MemberRow', () => {
       expect(playTriangle).not.toHaveBeenCalled()
       expect(animate).not.toHaveBeenCalled()
       w.unmount()
+    })
+
+    describe('pop', () => {
+      /** A 400×700 viewport with my circle at `top`, inside a row 400px wide. */
+      function placeMe(top: number): void {
+        vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(400)
+        vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(700)
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+          this: HTMLElement,
+        ) {
+          if (this.dataset.test === 'row') {
+            return { left: 0, top: top - 16, right: 400, bottom: top + 70 } as DOMRect
+          }
+          if (this.closest('[data-member-id="me"]') && this.matches('[data-swarm-circle]')) {
+            return { left: 20, top, right: 68, bottom: top + 48 } as DOMRect
+          }
+          return { left: 0, top: 0, right: 0, bottom: 0 } as DOMRect
+        })
+      }
+
+      const pop = () => document.body.querySelector('[data-test="member-pop"]')
+      const popLive = () => pop()?.querySelector('[data-test="live-points"]')?.textContent
+      const popBand = () =>
+        pop()?.querySelector('[data-test="streak-mark"]')?.getAttribute('data-band')
+      const scored = (id: string, streak: number, live: number) =>
+        member({
+          userId: id,
+          fullName: id,
+          streak,
+          points: { stable: 3, live: { points: live, provisional: false } },
+        })
+
+      it('shows my points changing where I look when my column is out of view', async () => {
+        const w = await mountWith([withStreak('me', 1)])
+        placeMe(-200)
+
+        await w.setProps({ members: [scored('me', 1, 7)] })
+        await nextTick()
+        expect(popLive()).toBe('')
+
+        vi.advanceTimersByTime(SWAP_MS)
+        await nextTick()
+        expect(popLive()).toBe('+7')
+
+        vi.advanceTimersByTime(POP_MS - SWAP_MS)
+        await nextTick()
+        expect(pop()).toBeNull()
+        w.unmount()
+      })
+
+      it('flares a grown streak in it, with the triangle', async () => {
+        const w = await mountWith([withStreak('me', 9)])
+        placeMe(-200)
+
+        await w.setProps({ members: [scored('me', 10, 7)] })
+        await nextTick()
+        expect(popBand()).toBe('flame-orange')
+
+        vi.advanceTimersByTime(VERDICT_MS)
+        await nextTick()
+        expect(popBand()).toBe('flame-blue')
+        expect(playTriangle).toHaveBeenCalledTimes(1)
+        w.unmount()
+      })
+
+      it('shows nothing extra while my column is in view', async () => {
+        const w = await mountWith([withStreak('me', 9)])
+        placeMe(120)
+
+        await w.setProps({ members: [scored('me', 10, 7)] })
+        await nextTick()
+
+        expect(pop()).toBeNull()
+        w.unmount()
+      })
+
+      it('shows nothing when only another member’s points change', async () => {
+        const w = await mountWith([withStreak('me', 5), withStreak('b', 9)])
+        placeMe(-200)
+
+        await w.setProps({ members: [withStreak('me', 5), scored('b', 10, 7)] })
+        await nextTick()
+
+        expect(pop()).toBeNull()
+        w.unmount()
+      })
+
+      it('shows nothing under reduced motion', async () => {
+        const w = await mountWith([withStreak('me', 1)])
+        placeMe(-200)
+        reduceMotion(true)
+
+        await w.setProps({ members: [scored('me', 1, 7)] })
+        await nextTick()
+
+        expect(pop()).toBeNull()
+        w.unmount()
+      })
     })
 
     // The flare stretches the icon past the track's top padding, which `overflow-x: auto` would cut.

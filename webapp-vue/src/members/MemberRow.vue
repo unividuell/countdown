@@ -15,12 +15,13 @@
  * order is patched in place, keyed by `userId`, and the rearrangement below measures its own
  * geometry each time. Remounting for that would replay the whole fly-in, hence `useRoster.refresh`.
  */
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createSwarm, defaultTuning, MAX_TILT_DEG, type Swarm, type Vec } from './swarm'
 import { planReorder, reorderTuning } from './reorder'
 import { bandLabel, bandOf, FLARE_MS } from './streak'
-import StreakMark from './StreakMark.vue'
-import Avatar from '@/ui/Avatar.vue'
+import MemberColumn from './MemberColumn.vue'
+import MemberPop from './MemberPop.vue'
+import { inView, popSpot } from './popPlacement'
 import { inBackground, prefersReducedMotion } from '@/ui/motion'
 import { playTriangle } from '@/ui/triangleSound'
 import { VERDICT_MS } from '@/games/revealChoreography'
@@ -95,34 +96,6 @@ function liveSuffix(m: RosterMemberResponse): string {
   return live.provisional
     ? `, diese Runde vorläufig +${live.points}`
     : `, diese Runde +${live.points}`
-}
-
-/** Empty for a member who has not played: the chip stays in the flow, holding the row's height. */
-function liveLabel(m: RosterMemberResponse): string {
-  const live = m.points.live
-  if (live === undefined) return ''
-  // A nought beside the stable badge's nought read as one two-digit number; the skull says „played,
-  // came away empty“ without competing with a number. The screen-reader wording lives in
-  // `liveSuffix`, so the emoji never has to carry it.
-  return live.points > 0 ? `+${live.points}` : '💀'
-}
-
-/**
- * Whether the number can still move is the server's answer (`provisional`), not a re-derivation from
- * the award rule here.
- *
- * One colour per meaning, so the state is never carried by punctuation: yellow is the standing total,
- * dark is „this round is done“, rose and pulsing is „still up for grabs“. A settled chip in the
- * badge's own yellow was the obvious reading of „same colour as stable“ and the wrong one — stacked
- * under one avatar, `5` above `+6` reads as one two-line number, with a 12px plus sign as the only
- * thing telling them apart.
- */
-function liveChipClass(m: RosterMemberResponse): string {
-  const live = m.points.live
-  if (live === undefined) return 'invisible'
-  return live.provisional
-    ? 'animate-pulse bg-live text-on-live ring-yellow-400 motion-reduce:animate-none'
-    : 'bg-inverse-surface text-inverse-on-surface ring-surface'
 }
 
 function paint(): void {
@@ -331,7 +304,7 @@ function streakOf(m: RosterMemberResponse): number {
 
 watch(
   () => props.members,
-  (members) => {
+  (members, old) => {
     const animated = !prefersReducedMotion() && !inBackground()
     const present = new Set(members.map((m) => m.userId))
     // Whoever left takes their badge and its pending flare along; a return mounts afresh.
@@ -373,8 +346,48 @@ watch(
       }, VERDICT_MS)
       heldStreaks.set(id, { timer, streak: m.streak })
     }
+
+    const mine = (list: RosterMemberResponse[]) => list.find((m) => m.userId === props.meId)
+    const before = mine(old)
+    const now = mine(members)
+    if (animated && before && now && standingMoved(before, now)) popIfAway(before)
   },
 )
+
+/** Points or a grown streak: what a glance at my column would have caught. */
+function standingMoved(before: RosterMemberResponse, now: RosterMemberResponse): boolean {
+  const live = (m: RosterMemberResponse) => JSON.stringify(m.points.live ?? null)
+  return (
+    before.points.stable !== now.points.stable ||
+    live(before) !== live(now) ||
+    (now.streak > before.streak && bandOf(now.streak) !== null)
+  )
+}
+
+/**
+ * My column, shown where I look when my standing moves and the roster is scrolled away — else the
+ * points change unseen and the triangle rings with nothing to see. Measured in the `pre` watcher,
+ * on the row as it stood.
+ */
+const pop = ref<{ key: number; before: RosterMemberResponse; x: number; y: number } | null>(null)
+let pops = 0
+/** The live member, so the pop follows a refresh while it is up; gone with them, gone too. */
+const popAfter = computed(() =>
+  pop.value ? props.members.find((m) => m.userId === pop.value!.before.userId) : undefined,
+)
+
+function popIfAway(before: RosterMemberResponse): void {
+  const host = row.value
+  const circle = itemsById().get(before.userId)?.querySelector('[data-swarm-circle]')
+  if (!host || !circle) return
+  const viewport = {
+    width: document.documentElement.clientWidth,
+    height: document.documentElement.clientHeight,
+  }
+  const rowBox = host.getBoundingClientRect()
+  if (inView(circle.getBoundingClientRect(), rowBox, viewport)) return
+  pop.value = { key: ++pops, before, ...popSpot(rowBox, viewport) }
+}
 
 onBeforeUnmount(() => {
   for (const { timer } of heldStreaks.values()) clearTimeout(timer)
@@ -439,39 +452,31 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
       class="flex shrink-0 -space-x-2 p-0.5 pt-4"
       :style="{ transform: rearranging || flaring ? `translateX(${trackShift}px)` : '' }"
     >
-      <div
+      <MemberColumn
         v-for="(m, index) in members"
         :key="m.userId"
         data-swarm-item
         :data-member-id="m.userId"
         role="img"
-        class="flex w-12 shrink-0 flex-col will-change-transform"
+        class="will-change-transform"
         :style="{ zIndex: zIndexOf(m.userId, index) }"
         :aria-label="ariaLabel(m)"
         :title="m.fullName"
-      >
-        <!-- The badge sits in the circle the swarm moves, so it flies and reorders with it. -->
-        <div class="relative" data-swarm-circle>
-          <Avatar :short-name="m.shortName" :bg-color-hex="m.bgColorHex" />
-          <StreakMark :streak="streakOf(m)" />
-        </div>
-        <!-- `z-10`: the positioned circle above would otherwise paint over the badge it overlaps. -->
-        <div
-          class="z-10 -mt-1.5 h-4 w-6 place-self-center overflow-hidden rounded-lg bg-yellow-400 text-center text-xs whitespace-nowrap text-neutral-950 ring-1 ring-surface"
-        >
-          {{ m.points.stable }}
-        </div>
-        <!-- Always in the flow, only ever hidden: a chip that comes and goes takes the row's height
-             with it, and the section around it centres what is left — which is the vertical jump the
-             ranking made the moment the first live points landed. `h-4` is what `text-xs` gives the
-             chip anyway, written down so an empty one keeps it. -->
-        <span
-          data-test="live-points"
-          class="z-20 -mt-1.5 h-4 self-end rounded-lg px-1 text-xs whitespace-nowrap ring-1"
-          :class="liveChipClass(m)"
-          >{{ liveLabel(m) }}</span
-        >
-      </div>
+        :member="m"
+        :streak="streakOf(m)"
+      />
     </div>
+    <Teleport to="body">
+      <MemberPop
+        v-if="pop && popAfter"
+        :key="pop.key"
+        :before="pop.before"
+        :after="popAfter"
+        :streak="streakOf(popAfter)"
+        :x="pop.x"
+        :y="pop.y"
+        @done="pop = null"
+      />
+    </Teleport>
   </div>
 </template>
