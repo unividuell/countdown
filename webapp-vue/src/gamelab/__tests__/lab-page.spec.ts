@@ -14,6 +14,7 @@ import GameHeader from '@/ui/GameHeader.vue'
 import RoundRamp from '@/ui/ramp/RoundRamp.vue'
 import { _resetSharedClock } from '@/ui/sharedClock'
 import type { RoundAssets } from '@/api/assets'
+import type { IdentityView } from '@/api/types'
 import type { LabRoundResponse } from '@/gamelab/types'
 
 /**
@@ -93,9 +94,15 @@ vi.mock('vue-router', () => ({
     path: '/c/team/lab/stub',
   }),
 }))
+/** How the viewer appears in this community; null leaves the global profile. */
+let viewerIdentity: IdentityView | null = null
 vi.mock('@/communities/context', () => ({
   useCommunityContext: () => ({
-    community: { value: { slug: 'team', name: 'Team' } },
+    community: {
+      get value() {
+        return { slug: 'team', name: 'Team', viewerIdentity }
+      },
+    },
     refresh: vi.fn(),
   }),
 }))
@@ -174,6 +181,7 @@ describe('lab page', () => {
     replace.mockReset()
     setQuery({ seed: '42' })
     currentParams = { slug: 'team', game: 'stub' }
+    viewerIdentity = null
     // vi.spyOn reuses the same mock across tests once a method is already spied, so call counts
     // accumulate across the whole file unless cleared here too — same reasoning as replace above.
     vi.spyOn(api, 'openLabRound')
@@ -619,6 +627,24 @@ describe('lab page', () => {
         steps: [],
       },
     ])
+  })
+
+  // The server draws every entry in the community's identity; the viewer's own seat before a guess
+  // has to match it, or the avatar changes colour the moment the guess lands.
+  it('seats the viewer before any guess the way this community draws them', async () => {
+    const here = { shortName: 'HERE', bgColorHex: '#9daec7' }
+    viewerIdentity = { username: 'Here Me', avatar: here }
+    const w = await mountPage()
+
+    expect(w.findComponent(StubGame).props('entries')).toMatchObject([
+      { username: 'Here Me', avatar: here },
+    ])
+    const seat = w.getComponent(MemberRow).props('members')[0]!
+    expect(seat).toMatchObject({
+      fullName: 'Here Me',
+      shortName: 'HERE',
+      bgColorHex: '#9daec7',
+    })
   })
 
   it('keys the game component on the round the response carries, not the seed in the URL', async () => {
