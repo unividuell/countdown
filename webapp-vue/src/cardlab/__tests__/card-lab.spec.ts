@@ -4,6 +4,7 @@ import type { VueWrapper } from '@vue/test-utils'
 import { reactive, ref } from 'vue'
 import { cardLabList } from '@/cardlab/cards'
 import CountdownCard from '@/communities/fallbacks/CountdownCard.vue'
+import { posterList } from '@/communities/fallbacks/poster/posters'
 import { checkLabGate } from '@/gamelab/api'
 
 const params = reactive<Record<string, string>>({ card: 'countdown' })
@@ -139,10 +140,23 @@ describe('card lab card page', () => {
     )
   })
 
-  it('congratulates the names typed in', async () => {
-    const w = await mountCard('winner')
-    await w.get('[data-test="card-lab-names"]').setValue('Fry, Leela,  Bender ')
-    expect(w.text()).toContain('Herzlichen Glückwunsch, Fry, Leela und Bender!')
+  it('closes on the players typed in', async () => {
+    const w = await mountCard('poster')
+    await w.get('[data-test="card-lab-members"]').setValue('Fry 3, Leela 7,  Bender 7 ')
+    expect(w.text()).toContain('Herzlichen Glückwunsch, Leela und Bender!')
+    expect(w.findAll('[data-test="poster-row"]').map((r) => r.text())).toEqual([
+      expect.stringContaining('Leela'),
+      expect.stringContaining('Bender'),
+      expect.stringContaining('Fry'),
+    ])
+  })
+
+  it('names the seed’s pick and lets a variant override it', async () => {
+    const w = await mountCard('poster')
+    const variant = w.get('[data-test="card-lab-variant"]')
+    expect(variant.find('option[value=""]').text()).toBe(`Aus Seed: ${posterList[0]!.title}`)
+    await variant.setValue(posterList[0]!.id)
+    expect(w.find('[data-test="poster-podium"]').exists()).toBe(true)
   })
 
   it('shows the message cards without controls', async () => {

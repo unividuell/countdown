@@ -1,5 +1,5 @@
 import type { AvatarView, RosterMemberResponse } from '@/api/types'
-import { hash32 } from '@/gamelab/seed'
+import { hash32 } from '@/lib/hash32'
 import type { LabEntryDto, LabRoundResponse } from '@/gamelab/types'
 
 /** The tester at the screen — enough of `MeResponse` to seat them in the row. */

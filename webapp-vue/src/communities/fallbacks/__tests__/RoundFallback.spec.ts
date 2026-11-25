@@ -123,6 +123,19 @@ describe('RoundFallback', () => {
     expect(w.text()).toContain('Und jetzt viel Spaß zusammen!')
   })
 
+  it('closes the edition on a poster with the full table', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
+    const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12), member('leela', 9)])
+    await flushPromises()
+    const poster = w.get('[data-test="fallback-winner"]')
+    expect(poster.text()).toContain('Team')
+    expect(w.findAll('[data-test="poster-row"]').map((r) => r.text())).toEqual([
+      expect.stringContaining('fry'),
+      expect.stringContaining('leela'),
+    ])
+    expect(w.get('[data-test="poster-stats"]').text()).toBe('25 Spielrunden · 2 Mitspielende')
+  })
+
   it('names everyone tied at the top', async () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
     const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12), member('leela', 12)])
