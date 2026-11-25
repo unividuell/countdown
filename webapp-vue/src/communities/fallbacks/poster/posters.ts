@@ -5,8 +5,11 @@ import PodiumPoster from './PodiumPoster.vue'
 
 /** What every poster is given. Shaped by the first one; the next widens it when it needs more. */
 export interface PosterProps {
-  /** The edition's label, else the community's name. */
+  /** The edition's label, else the community's name — as the header, without the year. */
   title: string
+  /** The edition's target and its zone: the final's day. */
+  targetAt: string
+  targetTimezone: string
   members: readonly RosterMemberResponse[]
   /** Rounds that carried a game. */
   gameRounds: number

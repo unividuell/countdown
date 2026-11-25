@@ -5,7 +5,10 @@ import { pickPoster, posterList } from '@/communities/fallbacks/poster/posters'
 
 const COLORS = ['#8e44ad', '#e67e22', '#16a085', '#c0392b', '#2980b9', '#f1c40f', '#7f8c8d']
 
-const title = ref('Hüttenwochenende 2026')
+const title = ref('HütteHütte')
+// The final's day; noon UTC is the same day in every zone the app is used in.
+const day = ref('2027-06-24')
+const targetAt = computed(() => `${day.value}T12:00:00Z`)
 const gameRounds = ref(25)
 // „Name Punkte“, comma-separated: ties and long names are one edit away.
 const input = ref('Fry 12, Leela 12, Bender 9, Amy 7, Hermes 4, Zoidberg 0')
@@ -34,7 +37,14 @@ const poster = computed(() => posterList.find((p) => p.id === override.value) ??
 </script>
 
 <template>
-  <component :is="poster.component" :title="title" :members="members" :game-rounds="gameRounds" />
+  <component
+    :is="poster.component"
+    :title="title"
+    :target-at="targetAt"
+    target-timezone="Europe/Berlin"
+    :members="members"
+    :game-rounds="gameRounds"
+  />
 
   <section class="mt-8 space-y-3 border-t border-outline pt-4">
     <label class="flex flex-col gap-1 text-sm">
@@ -69,6 +79,16 @@ const poster = computed(() => posterList.find((p) => p.id === override.value) ??
         />
       </label>
     </div>
+
+    <label class="flex flex-col gap-1 text-sm">
+      Finale
+      <input
+        v-model="day"
+        data-test="card-lab-day"
+        type="date"
+        class="h-11 rounded-md border border-outline bg-surface px-3"
+      />
+    </label>
 
     <label class="flex flex-col gap-1 text-sm">
       Seed (Edition-ID)

@@ -41,6 +41,8 @@ const poster = computed(() => {
   return {
     component: pickPoster(edition.id).component,
     title: edition.label ?? props.community.name,
+    targetAt: edition.targetAt,
+    targetTimezone: edition.targetTimezone,
     gameRounds: edition.gamesUntilRound - edition.gamesFromRound + 1,
   }
 })
@@ -65,6 +67,8 @@ const poster = computed(() => {
     v-else-if="view.state === 'after' && members !== null && winnerNames !== '' && poster"
     data-test="fallback-winner"
     :title="poster.title"
+    :target-at="poster.targetAt"
+    :target-timezone="poster.targetTimezone"
     :members="members"
     :game-rounds="poster.gameRounds"
   />

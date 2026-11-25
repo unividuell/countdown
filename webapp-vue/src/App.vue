@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import { useTitle } from '@vueuse/core'
 import { activeCommunity } from '@/communities/context'
 import CountdownDisplay from '@/communities/CountdownDisplay.vue'
+import { yearSuffix as editionYearSuffix } from '@/communities/editionDate'
 import { useAuth } from '@/auth/useAuth'
 import NavDrawer from '@/nav/NavDrawer.vue'
 import { navigationPending } from '@/ui/navigationProgress'
@@ -24,8 +25,7 @@ const brand = computed(
 const yearSuffix = computed(() => {
   const c = activeCommunity.value
   if (!c?.targetAt) return ''
-  const year = DateTime.fromISO(c.targetAt, { zone: c.targetTimezone }).year
-  return ` '${String(year).slice(-2)}`
+  return editionYearSuffix(c.targetAt, c.targetTimezone)
 })
 
 const thisYear = DateTime.now().year

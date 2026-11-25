@@ -127,13 +127,15 @@ describe('RoundFallback', () => {
     vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
     const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12), member('leela', 9)])
     await flushPromises()
-    const poster = w.get('[data-test="fallback-winner"]')
-    expect(poster.text()).toContain('Team')
+    const print = w.get('[data-test="fallback-winner"] [data-test="poster-print"]')
+    expect(print.findAll('span').map((p) => p.text())).toEqual(["Team '26", '2026-06-14'])
     expect(w.findAll('[data-test="poster-row"]').map((r) => r.text())).toEqual([
       expect.stringContaining('fry'),
       expect.stringContaining('leela'),
     ])
-    expect(w.get('[data-test="poster-stats"]').text()).toBe('25 Spielrunden · 2 Mitspielende')
+    const stats = w.get('[data-test="poster-stats"]')
+    expect(stats.findAll('dd').map((d) => d.text())).toEqual(['25', '2', '21'])
+    expect(stats.findAll('dt').map((d) => d.text())).toEqual(['Runden', 'Dabei', 'Punkte'])
   })
 
   it('names everyone tied at the top', async () => {
