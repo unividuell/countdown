@@ -21,8 +21,10 @@ import PosterPrint from '@/ui/ramp/PosterPrint.vue'
 import { winnerMessage } from '@/communities/fallbacks/messages'
 import { formatWinnerNames } from '@/members/winner'
 import { hash32 } from '@/lib/hash32'
+import { slugify } from '@/lib/slugify'
 import { targetDay, yearSuffix } from '@/communities/editionDate'
 import FitLine from './FitLine.vue'
+import PosterShare from './PosterShare.vue'
 import type { PosterProps } from './posters'
 import { podium, standings } from './standings'
 
@@ -40,6 +42,7 @@ const message = computed(() =>
 // The header's title, year suffix included, and the final's day: `HÜTTEHÜTTE '27 · 2027-06-24`.
 const heading = computed(() => `${props.title}${yearSuffix(props.targetAt, props.targetTimezone)}`)
 const day = computed(() => targetDay(props.targetAt, props.targetTimezone))
+const fileName = computed(() => slugify(`${props.title} ${day.value}`))
 
 const STEP_HEIGHTS: Record<number, string> = { 1: 'h-28', 2: 'h-20', 3: 'h-14' }
 // Rise order: third first, the winner last.
@@ -68,12 +71,14 @@ const confetti = computed(() =>
 <template>
   <div
     data-test="poster-podium"
-    class="round-bleed overflow-hidden bg-inverse-surface text-inverse-on-surface sm:rounded-xl"
+    data-poster
+    class="round-bleed relative overflow-hidden bg-inverse-surface text-inverse-on-surface sm:rounded-xl"
     :style="{ '--ground': 'var(--color-inverse-surface)' }"
   >
     <h2 class="sr-only">{{ message.title }}</h2>
 
     <PosterPrint data-test="poster-print" :left="heading" :right="day" />
+    <PosterShare :file-name="fileName" :title="heading" class="absolute top-11 right-2 z-10" />
 
     <div class="relative px-4 pt-6 pb-2" aria-hidden="true">
       <span
