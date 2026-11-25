@@ -16,7 +16,7 @@ import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/useAuth'
 import { useCommunityContext } from '@/communities/context'
 import LabControls from '@/gamelab/LabControls.vue'
-import { labRoster } from '@/gamelab/roster'
+import { labRoster, type LabViewer } from '@/gamelab/roster'
 import { labGames } from '@/gamelab/games'
 import { labRoundEnd, labRoundNumber } from '@/gamelab/header'
 import { initialSeed, parseSeed, rollSeed } from '@/gamelab/seed'
@@ -54,6 +54,17 @@ const route = useRoute('/c/[slug]/lab/[game]/')
 const router = useRouter()
 const { community } = useCommunityContext()
 const { user } = useAuth()
+
+/**
+ * The viewer as this community draws them. Their own entry comes from the server in that identity,
+ * so a seat drawn from the global profile would change colour the moment the guess lands.
+ */
+const viewer = computed<LabViewer | null>(() => {
+  const u = user.value
+  if (!u) return null
+  const here = community.value.viewerIdentity
+  return { id: u.id, username: here?.username ?? u.username, avatar: here?.avatar ?? u.avatar }
+})
 
 const gameId = computed(() => String(route.params.game ?? ''))
 const gameComponent = computed(() => labGames[gameId.value] ?? null)
@@ -220,7 +231,7 @@ let cancelRosterHold: (() => void) | undefined
 
 watch(round, (current) => {
   if (!current) return
-  const next = labRoster(current, user.value)
+  const next = labRoster(current, viewer.value)
   cancelRosterHold?.()
   if (holdRoster && !prefersReducedMotion()) {
     cancelRosterHold = afterResultsLand(() => (rosterMembers.value = next))
@@ -268,17 +279,17 @@ const gameEntries = computed<GameEntry[]>(() => {
   const current = round.value
   if (!current) return []
   if (current.me) return [current.me, ...current.others]
-  if (!user.value) return current.others
+  if (!viewer.value) return current.others
   return [
     {
-      userId: user.value.id,
-      username: user.value.username,
+      userId: viewer.value.id,
+      username: viewer.value.username,
       stage: current.myStage,
       guess: null,
       outcome: null,
       points: null,
       durationMs: null,
-      avatar: user.value.avatar,
+      avatar: viewer.value.avatar,
       votes: [],
       struck: false,
       adminOverride: null,
