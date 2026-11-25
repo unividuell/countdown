@@ -17,6 +17,7 @@ vi.mock('@/communities/context', () => ({
 }))
 
 const edition: EditionResponse = {
+  id: 'e1',
   label: 'Hüttenwochenende',
   targetAt: '2026-12-20T17:00:00.000Z',
   targetTimezone: 'Europe/Berlin',

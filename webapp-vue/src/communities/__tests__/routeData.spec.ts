@@ -302,6 +302,7 @@ describe('community route data guard', () => {
     publishCommunity(
       community({
         edition: {
+          id: 'e1',
           label: 'Hüttenwochenende',
           targetAt: '2026-06-25T09:00:00Z',
           targetTimezone: 'Europe/Berlin',

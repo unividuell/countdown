@@ -13,6 +13,7 @@ const community = (targetAt: string | null): CommunityResponse => ({
     targetAt === null
       ? null
       : {
+          id: '0193f1c2-7a4b-7c3d-9e8f-0123456789ab',
           label: null,
           targetAt,
           targetTimezone: 'Europe/Berlin',

@@ -220,12 +220,19 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `get with an active edition nests it`() {
         val c = community("team")
         asMember(c)
-        val edition = anEdition(communityId = c.id!!, label = "Team 2026", targetTimezone = "America/New_York")
+        val editionId = UUID.randomUUID()
+        val edition = anEdition(
+            communityId = c.id!!,
+            label = "Team 2026",
+            targetTimezone = "America/New_York",
+            id = editionId,
+        )
         every { editions.active(c.id!!) } returns edition
         every { editions.isFrozen(edition) } returns true
 
         mockMvc.get("/api/communities/team") { with(principalFor()) }.andExpect {
             status { isOk() }
+            jsonPath("$.edition.id") { value(editionId.toString()) }
             jsonPath("$.edition.label") { value("Team 2026") }
             jsonPath("$.edition.targetTimezone") { value("America/New_York") }
             jsonPath("$.edition.gamesFromRound") { value(-30) }
@@ -238,7 +245,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     fun `get with an active edition reports one that is not frozen`() {
         val c = community("team")
         asMember(c, admin = true)
-        val edition = anEdition(communityId = c.id!!)
+        val edition = anEdition(communityId = c.id!!, id = UUID.randomUUID())
         every { editions.active(c.id!!) } returns edition
         every { editions.isFrozen(edition) } returns false
 
@@ -275,7 +282,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             phaseTwoStartRound = null, gamesFromRound = -30,
         )
         every { editions.create(communityId = c.id!!, draft = draft) } returns
-            anEdition(communityId = c.id!!, label = null)
+            anEdition(communityId = c.id!!, label = null, id = UUID.randomUUID())
 
         mockMvc.post("/api/communities/team/editions") {
             with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
@@ -305,7 +312,7 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
         val c = community("team")
         asAdmin(c)
         every { editions.replace(communityId = c.id!!, draft = any()) } returns
-            anEdition(communityId = c.id!!, label = "Neu")
+            anEdition(communityId = c.id!!, label = "Neu", id = UUID.randomUUID())
 
         mockMvc.put("/api/communities/team/editions/active") {
             with(principalFor()); with(withCsrfToken()); contentType = MediaType.APPLICATION_JSON
