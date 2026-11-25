@@ -7,6 +7,8 @@ import java.time.Instant
 import java.util.UUID
 
 data class EditionResponse(
+    /** Stable across edits — the seed for presentational picks such as the closing poster. */
+    val id: UUID,
     val label: String?,
     val targetAt: Instant,
     val targetTimezone: String,
@@ -65,6 +67,7 @@ data class RosterMemberResponse(
 )
 
 fun CommunityEdition.toResponse(frozen: Boolean) = EditionResponse(
+    id = requireNotNull(id),
     label = label,
     targetAt = targetAt,
     targetTimezone = targetTimezone,

@@ -14,6 +14,7 @@ const community: CommunityResponse = {
   name: 'Team',
   slug: 'team',
   edition: {
+    id: 'e1',
     label: null,
     targetAt: '2026-06-25T09:00:00Z',
     targetTimezone: 'Europe/Berlin',

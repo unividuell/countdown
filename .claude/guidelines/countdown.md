@@ -118,6 +118,10 @@ round twice, or numbers skipped.
   `POST .../editions` creates (409 while one is active), `PUT .../editions/active` **replaces
   completely** — an absent optional field clears it, there is no "null = keep".
 - Round bounds: `gamesFromRound <= phaseTwoStartRound <= 0` (phase two optional).
+- **The edition `id` is its stable seed** — `PUT .../editions/active` keeps it. Presentational,
+  public picks draw from it in the client: the closing poster is `hash32(id) % posterList.length`
+  (`communities/fallbacks/poster/posters.ts`). Growing a list re-rolls only the edition that is
+  closing right now; anything a player could profit from stays server-side.
 
 ## Fast rounds (not built, not specced)
 

@@ -1,4 +1,4 @@
-import { hash32 } from '@/gamelab/seed'
+import { hash32 } from '@/lib/hash32'
 
 /**
  * What the lab puts in the game header's band. The band itself is the product's — `ui/GameHeader`

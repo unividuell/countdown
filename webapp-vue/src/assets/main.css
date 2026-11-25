@@ -57,6 +57,8 @@
   --color-on-phase-one: var(--color-on-primary);
   --color-phase-two: light-dark(var(--color-fuchsia-800), var(--color-fuchsia-300));
   --color-on-phase-two: light-dark(#ffffff, #0d0d0d);
+  /* Phase two on inverse-surface (the closing poster), where the base value falls to ~2:1. */
+  --color-inverse-phase-two: light-dark(var(--color-fuchsia-300), var(--color-fuchsia-800));
 
   /* „Vorläufig“: a score that can still be overtaken — the best-guess-takes-it rule of phase two
      at work, so it wears phase two's colour, plus a pulse, in the member row and the scoreboard.

@@ -1,3 +1,5 @@
+import { hash32 } from '@/lib/hash32'
+
 /**
  * The lab's round identity. It is a signed 32-bit integer because that is what the backend's
  * `SeededRandom.fromSeed(Int)` takes — and because the RNG spec requires seeds to survive JSON as
@@ -6,23 +8,6 @@
  */
 export const SEED_MIN = -2_147_483_648
 export const SEED_MAX = 2_147_483_647
-
-/**
- * FNV-1a-32 over the UTF-8 bytes of [text], masked to 31 bits so the result is never negative.
- *
- * Hashing bytes rather than UTF-16 code units follows the same convention as the rest of the
- * codebase — the strings fed to it are free to carry an umlaut. Lab-only, and only ever for values
- * a tester is allowed to see: a round's *content* is derived on the server from a seed it never
- * ships, and nothing here may become a convenient way around that.
- */
-export function hash32(text: string): number {
-  let hash = 0x811c9dc5 | 0
-  for (const byte of new TextEncoder().encode(text)) {
-    hash ^= byte
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return hash & SEED_MAX
-}
 
 /**
  * The round a game opens on when the URL carries no usable seed — hashed from the game id, so every

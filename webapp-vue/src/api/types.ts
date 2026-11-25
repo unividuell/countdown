@@ -42,6 +42,8 @@ export interface MemberProfileResponse {
 }
 
 export interface EditionResponse {
+  /** Stable across edits — the seed for presentational picks such as the closing poster. */
+  id: string
   label: string | null
   targetAt: string
   targetTimezone: string

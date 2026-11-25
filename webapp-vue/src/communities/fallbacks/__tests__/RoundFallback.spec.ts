@@ -13,6 +13,7 @@ const community = (targetAt: string | null): CommunityResponse => ({
     targetAt === null
       ? null
       : {
+          id: '0193f1c2-7a4b-7c3d-9e8f-0123456789ab',
           label: null,
           targetAt,
           targetTimezone: 'Europe/Berlin',
@@ -120,6 +121,18 @@ describe('RoundFallback', () => {
     await flushPromises()
     expect(w.find('[data-test="fallback-winner"]').text()).toContain('Herzlichen Glückwunsch, fry!')
     expect(w.text()).toContain('Und jetzt viel Spaß zusammen!')
+  })
+
+  it('closes the edition on a poster with the full table', async () => {
+    vi.spyOn(api, 'getCountdown').mockResolvedValue(after)
+    const w = mountFallback('2026-06-14T09:00:00Z', [member('fry', 12), member('leela', 9)])
+    await flushPromises()
+    const print = w.get('[data-test="fallback-winner"] [data-test="poster-print"]')
+    expect(print.findAll('span').map((p) => p.text())).toEqual(["Team '26", '2026-06-14'])
+    expect(w.findAll('[data-test="poster-row"]').map((r) => r.text())).toEqual([
+      expect.stringContaining('fry'),
+      expect.stringContaining('leela'),
+    ])
   })
 
   it('names everyone tied at the top', async () => {

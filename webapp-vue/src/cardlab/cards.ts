@@ -1,8 +1,8 @@
 import type { Component } from 'vue'
 import CountdownLab from './CountdownLab.vue'
 import NoDateLab from './NoDateLab.vue'
+import PosterLab from './PosterLab.vue'
 import RunningLab from './RunningLab.vue'
-import WinnerLab from './WinnerLab.vue'
 
 export interface CardLabEntry {
   /** The `:card` URL segment. */
@@ -16,6 +16,6 @@ export interface CardLabEntry {
 export const cardLabList: readonly CardLabEntry[] = [
   { id: 'countdown', title: 'Countdown', component: CountdownLab },
   { id: 'no-date', title: 'Noch kein Termin', component: NoDateLab },
-  { id: 'winner', title: 'Glückwunsch', component: WinnerLab },
+  { id: 'poster', title: 'Abschlussposter', component: PosterLab },
   { id: 'running', title: 'Viel Spaß', component: RunningLab },
 ]

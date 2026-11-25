@@ -5,7 +5,8 @@ import { useCountdown } from '@/communities/useCountdown'
 import { formatWinnerNames, winners } from '@/members/winner'
 import CountdownCard from './CountdownCard.vue'
 import MessageCard from './MessageCard.vue'
-import { NO_DATE_MESSAGE, RUNNING_MESSAGE, winnerMessage } from './messages'
+import { NO_DATE_MESSAGE, RUNNING_MESSAGE } from './messages'
+import { pickPoster } from './poster/posters'
 
 const props = withDefaults(
   defineProps<{
@@ -32,6 +33,18 @@ const seconds = computed(() => chip(3))
 const winnerNames = computed(() =>
   props.members === null ? '' : formatWinnerNames(winners(props.members).map((m) => m.fullName)),
 )
+
+// The edition closes on one poster, drawn from its id: the same on every device and every visit.
+const poster = computed(() => {
+  const edition = props.community.edition
+  if (edition === null) return null
+  return {
+    component: pickPoster(edition.id).component,
+    title: edition.label ?? props.community.name,
+    targetAt: edition.targetAt,
+    targetTimezone: edition.targetTimezone,
+  }
+})
 </script>
 
 <template>
@@ -48,10 +61,14 @@ const winnerNames = computed(() =>
     :seconds="seconds"
   />
   <template v-else-if="countdownOnly" />
-  <MessageCard
-    v-else-if="view.state === 'after' && members !== null && winnerNames !== ''"
+  <component
+    :is="poster.component"
+    v-else-if="view.state === 'after' && members !== null && winnerNames !== '' && poster"
     data-test="fallback-winner"
-    v-bind="winnerMessage(winnerNames)"
+    :title="poster.title"
+    :target-at="poster.targetAt"
+    :target-timezone="poster.targetTimezone"
+    :members="members"
   />
   <MessageCard
     v-else-if="view.state === 'after' && members !== null"
