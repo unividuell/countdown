@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /**
- * The tower, drawn from the bars the run has fixed — never from the animated pixel. The board is
- * a fixed 5:4 picture; a tall tower scrolls under it so the sliding bar stays in the upper third.
- * With [fit] (the reveal) the picture zooms out instead, until the whole tower is on it.
+ * The tower, drawn from the bars the run has fixed — never from the animated pixel. Across, the
+ * board is the field (every length a share of its width, the same on every phone); up, it is fixed
+ * in pixels: the board's height and a bar's thickness do not grow with a wider screen. A tall tower
+ * scrolls under it so the sliding bar stays in the upper third. With [fit] (the reveal) the picture
+ * zooms out instead, until the whole tower is on it.
  *
  *   y = 0      ┌──────────┐
  *              │ ▬▬ slider│  ← stays at or below a third of the height
@@ -10,7 +12,8 @@
  *              │ ▬▬▬▬▬    │  ← the bars scroll down, off the bottom
  *              └──────────┘
  */
-import { computed, useId } from 'vue'
+import { computed, ref, useId } from 'vue'
+import { useElementSize } from '@vueuse/core'
 import { prefersReducedMotion } from '@/ui/motion'
 import { useDarkScheme } from '@/ui/colorScheme'
 import type { Bar } from './tower'
@@ -18,8 +21,11 @@ import type { Cut } from './useStackRun'
 import { barFill, barHue } from './colors'
 import { heightLabel } from './scoreboard'
 
-const BAR_HEIGHT = 60
-const CORNER = 2
+/** The board's and a bar's height on screen, whatever its width. */
+const BOARD_PX = 300
+const BAR_PX = 22.5
+/** Until the board is measured (and in tests): a 375 px phone, 0.375 px per field unit. */
+const FALLBACK_WIDTH_PX = 375
 const GOLD_FROM = '#F7D774'
 const GOLD_TO = '#C9971C'
 /** A perfect stop's flare: bright on the dark board, deep gold on the light one. */
@@ -55,12 +61,24 @@ const shadeId = `shade-${id}`
 const dark = useDarkScheme()
 const still = prefersReducedMotion()
 
-/** Landscape 5:4: low enough to leave the page room, high enough for the slider's third. */
-const viewHeight = computed(() => Math.round((props.fieldWidth * 4) / 5))
+const svg = ref<SVGSVGElement | null>(null)
+const { width: measured } = useElementSize(svg)
+const pxPerUnit = computed(
+  () => (measured.value > 0 ? measured.value : FALLBACK_WIDTH_PX) / props.fieldWidth,
+)
+
+/** In field units, so a bar's thickness and the board's height stay put in pixels. */
+const barHeight = computed(() => BAR_PX / pxPerUnit.value)
+const viewHeight = computed(() => Math.round(BOARD_PX / pxPerUnit.value))
+
+/** Screen pixels in field units, for sizes that must not grow with the width. */
+function px(value: number): number {
+  return value / pxPerUnit.value
+}
 
 /** The floor's top edge, before scrolling. */
 function floorY(floor: number): number {
-  return viewHeight.value - BAR_HEIGHT * (floor + 1)
+  return viewHeight.value - barHeight.value * (floor + 1)
 }
 
 const offset = computed(() => {
@@ -70,10 +88,10 @@ const offset = computed(() => {
   return Math.max(0, Math.floor(viewHeight.value / 3 - floorY(floor)))
 })
 
-/** Fitted: tall enough for every bar plus two floors of air, 5:4 kept, the field centred. */
+/** Fitted: tall enough for every bar plus two floors of air, the board's shape kept, the field centred. */
 const view = computed(() => {
   const height = props.fit
-    ? Math.max(viewHeight.value, BAR_HEIGHT * (props.bars.length + 2))
+    ? Math.max(viewHeight.value, Math.ceil(barHeight.value * (props.bars.length + 2)))
     : viewHeight.value
   const width = Math.round((height * props.fieldWidth) / viewHeight.value)
 
@@ -117,23 +135,27 @@ function star(cx: number, cy: number, r: number): string {
 
 <template>
   <svg
+    ref="svg"
     :viewBox="`${view.x} ${view.y} ${view.width} ${view.height}`"
     role="img"
     :aria-label="heightLabel(props.bars.length - 1)"
     class="block w-full select-none"
-    :style="{ aspectRatio: `${props.fieldWidth} / ${viewHeight}` }"
+    :style="{ height: `${BOARD_PX}px` }"
   >
     <defs>
       <linearGradient :id="gradientId" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" :stop-color="GOLD_FROM" />
         <stop offset="1" :stop-color="GOLD_TO" />
       </linearGradient>
-      <!-- Light from above: a lit top edge, a shaded bottom one. -->
+      <!-- A milled beam lit from above: a narrow bright chamfer on top, a narrow dark one below, the
+           face flat between — hard stops, no blur. -->
       <linearGradient :id="shadeId" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#fff" stop-opacity="0.45" />
-        <stop offset="0.18" stop-color="#fff" stop-opacity="0.12" />
-        <stop offset="0.6" stop-color="#000" stop-opacity="0" />
-        <stop offset="1" stop-color="#000" stop-opacity="0.3" />
+        <stop offset="0" stop-color="#fff" stop-opacity="0.5" />
+        <stop offset="0.14" stop-color="#fff" stop-opacity="0.5" />
+        <stop offset="0.14" stop-color="#fff" stop-opacity="0" />
+        <stop offset="0.86" stop-color="#000" stop-opacity="0" />
+        <stop offset="0.86" stop-color="#000" stop-opacity="0.35" />
+        <stop offset="1" stop-color="#000" stop-opacity="0.35" />
       </linearGradient>
       <filter :id="blurId" x="-20%" y="-150%" width="140%" height="400%">
         <feGaussianBlur stdDeviation="14" />
@@ -165,7 +187,7 @@ function star(cx: number, cy: number, r: number): string {
         :x="gold.left"
         :y="floorY(gold.floor)"
         :width="gold.width"
-        :height="BAR_HEIGHT"
+        :height="barHeight"
         :fill="GOLD_FROM"
         :filter="`url(#${blurId})`"
         :opacity="still ? 0.6 : 0.35"
@@ -185,8 +207,7 @@ function star(cx: number, cy: number, r: number): string {
           :x="bar.left"
           :y="floorY(floor)"
           :width="bar.width"
-          :height="BAR_HEIGHT"
-          :rx="CORNER"
+          :height="barHeight"
           :fill="fillOf(floor)"
         />
         <rect
@@ -195,8 +216,7 @@ function star(cx: number, cy: number, r: number): string {
           :x="bar.left"
           :y="floorY(floor)"
           :width="bar.width"
-          :height="BAR_HEIGHT"
-          :rx="CORNER"
+          :height="barHeight"
           :fill="`url(#${shadeId})`"
         />
       </template>
@@ -207,8 +227,7 @@ function star(cx: number, cy: number, r: number): string {
           :x="props.slider.x"
           :y="floorY(props.slider.floor)"
           :width="props.slider.width"
-          :height="BAR_HEIGHT"
-          :rx="CORNER"
+          :height="barHeight"
           :fill="fillOf(props.slider.floor)"
         />
         <rect
@@ -216,8 +235,7 @@ function star(cx: number, cy: number, r: number): string {
           :x="props.slider.x"
           :y="floorY(props.slider.floor)"
           :width="props.slider.width"
-          :height="BAR_HEIGHT"
-          :rx="CORNER"
+          :height="barHeight"
           :fill="`url(#${shadeId})`"
         />
       </template>
@@ -227,7 +245,9 @@ function star(cx: number, cy: number, r: number): string {
           v-for="(spot, i) in SPARKLES"
           :key="i"
           data-test="sparkle"
-          :d="star(gold.left + gold.width * spot.fx, floorY(gold.floor) + BAR_HEIGHT * spot.fy, 11)"
+          :d="
+            star(gold.left + gold.width * spot.fx, floorY(gold.floor) + barHeight * spot.fy, px(4))
+          "
           fill="#FFFBE6"
           :opacity="still ? 0.9 : 0"
         >
@@ -253,7 +273,7 @@ function star(cx: number, cy: number, r: number): string {
               :key="i"
               class="stack-sparkle"
               pointer-events="none"
-              :d="star(cx, floorY(floor) + BAR_HEIGHT, 16)"
+              :d="star(cx, floorY(floor) + barHeight, px(6))"
               :fill="dark ? FLARE_DARK : FLARE_LIGHT"
             />
           </template>
@@ -270,16 +290,14 @@ function star(cx: number, cy: number, r: number): string {
             :x="cut.left"
             :y="floorY(cut.floor)"
             :width="cut.width"
-            :height="BAR_HEIGHT"
-            :rx="CORNER"
+            :height="barHeight"
             :fill="fillOf(cut.floor)"
           />
           <rect
             :x="cut.left"
             :y="floorY(cut.floor)"
             :width="cut.width"
-            :height="BAR_HEIGHT"
-            :rx="CORNER"
+            :height="barHeight"
             :fill="`url(#${shadeId})`"
           />
         </g>

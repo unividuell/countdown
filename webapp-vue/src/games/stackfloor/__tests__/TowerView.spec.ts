@@ -6,6 +6,15 @@ import { prefersReducedMotion } from '@/ui/motion'
 
 vi.mock('@/ui/motion', () => ({ prefersReducedMotion: vi.fn(() => false) }))
 
+const board = vi.hoisted(() => ({ widthPx: 0 }))
+vi.mock('@vueuse/core', async (importOriginal) => {
+  const { computed } = await import('vue')
+  return {
+    ...(await importOriginal<typeof import('@vueuse/core')>()),
+    useElementSize: () => ({ width: computed(() => board.widthPx), height: computed(() => 0) }),
+  }
+})
+
 const scheme = vi.hoisted(() => ({ dark: false }))
 vi.mock('@/ui/colorScheme', async () => {
   const { computed } = await import('vue')
@@ -169,6 +178,17 @@ describe('TowerView', () => {
 
   it('fitted, a short tower keeps the board as it is', () => {
     expect(mountTower({ fit: true }).get('svg').attributes('viewBox')).toBe('0 0 1000 800')
+  })
+
+  it('height and bar thickness stay put in pixels when the board is wider', () => {
+    board.widthPx = 750
+    const w = mountTower()
+
+    // 750 px for 1000 units: 0.75 px a unit, so 300 px are 400 units and a 22.5 px bar is 30.
+    expect(w.get('svg').attributes('viewBox')).toBe('0 0 1000 400')
+    expect(w.get('svg').attributes('style')).toContain('height: 300px')
+    expect(bars(w)[0]!.attributes('height')).toBe('30')
+    board.widthPx = 0
   })
 
   it('every bar carries a shade, lit on top and darker below', () => {

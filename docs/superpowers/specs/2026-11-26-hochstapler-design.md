@@ -156,9 +156,10 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 ## Brett
 
-- Kartenbreit, mobil zuerst, Querformat 5:4. Der Turm wandert nach unten weg, damit der gleitende
+- Kartenbreit, mobil zuerst. Quer ist das Brett das Feld (jede Länge ein Anteil seiner Breite, auf
+  jedem Gerät gleich); hoch ist es fest: 300 px Brett, 22,5 px Balken, egal wie breit. Der Turm wandert nach unten weg, damit der gleitende
   Balken sichtbar bleibt. Die Seite bleibt im Lauf scrollbar; nur ein Wisch auf dem Brett ist ein Tipp.
-- **Balken sind plastisch:** oben eine Lichtkante, unten Schatten, kaum gerundete Ecken.
+- **Balken wie gefräste Holzbalken:** scharfe Ecken, oben eine schmale helle Fase, unten eine dunkle.
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
 - **Der N. Balken sieht anders aus** — das Signal „Ziel erreicht“, nur in Phase eins. Man sieht ihn erst,
