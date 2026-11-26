@@ -58,8 +58,8 @@ POST /api/communities/{slug}/editions/active/archive        (Admin)
   `[{ "rank": 1, "name": "…", "shortName": "…", "bgColorHex": "#…", "points": 12 }]`.
   Ranking wie das Poster (`standings.ts`): Wettkampf-Ranking 1, 1, 3; Gleichstand in Roster-Reihenfolge.
   Name, Kürzel, Farbe aus `MemberIdentityResolver`, also wie im Roster. Keine `user_id`.
-- **Punkte:** Summe aller `round_plays.points` der Edition je Spieler, unabhängig vom Betrachter
-  und inklusive der laufenden, noch vorläufigen Runde. Das ist der Stand, den alle beim Beenden
+- **Punkte:** Summe der `round_plays.points` der Edition je Spieler, nur Runden im Spielfenster
+  (wie der Roster), unabhängig vom Betrachter und inklusive der laufenden, noch vorläufigen Runde. Das ist der Stand, den alle beim Beenden
   zuletzt gesehen hätten, ohne die Sichtbarkeitssperre von `MemberPointsQuery`.
 - **Wer in der Rangliste steht:** die aktiven Mitglieder zum Zeitpunkt des Beendens, wie im Roster.
 - **Modulgrenze:** `community` darf nicht von `game` abhängen. Neue Schnittstelle `EditionGameData`
