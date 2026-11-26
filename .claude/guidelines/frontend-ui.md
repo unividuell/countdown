@@ -32,7 +32,7 @@ breakpoints upward (`sm:`/`md:` add, never `md:`-down to fix a desktop layout wr
 - **An image under a gesture must not take the touch.** A long press on an `<img>` opens the OS
   image menu and fires `pointercancel` mid-gesture. Give the image
   `pointer-events-none [-webkit-touch-callout:none]` and let its container own the pointer.
-  `DedusterMark`, `PlacePatchBoard`.
+  `RunMark`, `PlacePatchBoard`.
 - **A text field's font is at least 16px (`text-base`).** Below that, iOS Safari zooms the page
   in on focus. Never `maximum-scale=1` instead: it also kills pinch zoom. `SongSearchBox`.
 

@@ -1,24 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
-import DedusterMark from '../DedusterMark.vue'
+import RunMark from '../RunMark.vue'
 
 enableAutoUnmount(afterEach)
 
 /** The mark inside a button, as in the scoreboard: a click that reaches the button selects. */
 const Host = defineComponent({
-  components: { DedusterMark },
+  components: { RunMark },
   setup() {
     return { selected: ref(0) }
   },
-  template: `<button @click="selected++"><DedusterMark hint="Nach dem Neuladen gespielt">!</DedusterMark></button>`,
+  template: `<button @click="selected++"><RunMark hint="Nach dem Neuladen gespielt">!</RunMark></button>`,
 })
 
 // happy-dom has the attribute but not the top layer.
 const showPopover = vi.fn()
 const hidePopover = vi.fn()
 
-describe('DedusterMark', () => {
+describe('RunMark', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     showPopover.mockClear()

@@ -7,7 +7,7 @@
  * pixel, so the screen shows what the server will count.
  */
 import { readonly, ref, shallowRef } from 'vue'
-import { browserClock, type RunClock } from '@/games/deduster/useDedusterRun'
+import { browserClock, type RunClock } from '@/games/runClock'
 import { foundation, place, position, type Bar, type TowerGeometry } from './tower'
 
 /** A piece cut off a bar; it falls. */

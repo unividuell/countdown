@@ -16,7 +16,7 @@ import IconWarning from '~icons/lucide/triangle-alert'
 import { useAuth } from '@/auth/useAuth'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
-import DedusterMark from './DedusterMark.vue'
+import RunMark from '@/games/RunMark.vue'
 import type { DedusterRow } from './scoreboard'
 import { MIN_HUMAN_MS, type DedusterImplausible } from './types'
 
@@ -93,18 +93,18 @@ const columns = computed<ScoreboardColumn<DedusterRow>[]>(() => [
           :class="props.selectedUserId === row.userId ? 'font-semibold underline' : ''"
           >{{ row.name }}</span
         >
-        <DedusterMark
+        <RunMark
           v-if="row.implausible.length > 0"
           :data-test="`mark-implausible-${row.userId}`"
           :hint="implausibleHint(row)"
           ><IconWarning class="size-[1em]" aria-hidden="true"
-        /></DedusterMark>
-        <DedusterMark
+        /></RunMark>
+        <RunMark
           v-if="row.restarted"
           :data-test="`mark-restarted-${row.userId}`"
           :hint="RESTARTED_HINT"
           ><IconRestarted class="size-[1em]" aria-hidden="true"
-        /></DedusterMark>
+        /></RunMark>
       </button>
     </template>
 

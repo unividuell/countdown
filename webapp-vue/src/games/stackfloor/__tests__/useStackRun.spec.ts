@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RunClock } from '@/games/deduster/useDedusterRun'
+import type { RunClock } from '@/games/runClock'
 import { buildTower, place, position, type TowerGeometry } from '../tower'
 import { useStackRun } from '../useStackRun'
 
