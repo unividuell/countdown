@@ -56,6 +56,21 @@ Auswahl  = gleichverteilt aus Kandidaten ohne gesperrte;
 
 `frei = 4` ist eine Konstante: weniger frei heißt gleichmäßiger, aber näher an einem festen Zyklus.
 
+## Anschluss an #37 (nicht gebaut)
+
+[#37](https://github.com/unividuell/countdown/issues/37): Community-Admin stellt je Spiel
+`aus | selten | normal | viel` ein. Vorläufiger Weg, geprüft per Simulation (3 viel, 3 selten,
+8 normal, 140 Runden):
+
+- **`aus`** filtert die Kandidaten vor der Auswahl — wie `isAvailable` heute.
+- **Stufen = eigene Sperrdauer je Spiel**: `gesperrt_g = K / Gewicht_g` (viel 2, normal 1, selten 0,5).
+  Mit `K = 12` erreicht viel ≈ 16 (Ziel 18), normal ≈ 10 (9), selten ≈ 5,4 (4,5), enge Streuung.
+  Alle `normal` = diese Regel.
+- **Nicht** das Gewicht nur unter den freien Spielen anwenden: die gemeinsame Sperre ebnet es ein
+  (viel 11,5, selten 8).
+- `GameSelection.pick` braucht dann die Gewichte; `K` und ob es an die Katalog-Größe gekoppelt bleibt,
+  entscheidet #37.
+
 ## Umfang
 
 - `GameSelection.kt`: neue Implementierung ersetzt `DifferentFromPreviousRound` (genau ein Bean).
