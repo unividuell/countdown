@@ -27,10 +27,8 @@ data class StackFloorParams(
     val maxFloors: Int,
     val hueStart: Int,
     val target: Int?,
-    /** Default for rounds frozen before the bar sped up per floor. */
-    val accelPercent: Int = 0,
-    /** Default for rounds frozen before a near stop counted as perfect. */
-    val perfectTolerance: Int = 0,
+    val accelPercent: Int,
+    val perfectTolerance: Int,
 ) {
     fun geometry() = TowerGeometry(
         fieldWidth = fieldWidth, startWidth = startWidth, speedNum = speedNum, speedDen = speedDen,
