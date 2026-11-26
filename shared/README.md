@@ -10,6 +10,7 @@ not generated at build time — deleting a file here breaks tests in both suites
 | `copy-blocks/fit.json` | How Blockierung's `fit` maps a guess cell onto the template, and back | by hand — seven cases; Kotlin's `Fit` is the source of truth | `FitGoldenVectorTest` **and** `webapp-vue/src/games/copyblocks/__tests__/fit.spec.ts` |
 | `round-assets/seal-vectors.json` | A round asset sealed with ChaCha20-Poly1305 (`nonce ‖ ciphertext ‖ tag`) opens in the browser with `@noble/ciphers` | Node's built-in crypto, see below — an implementation independent of both sides | `AssetSealTest` **and** the frontend's decrypt spec |
 | `mix-color/spectral-vectors.json` | Pigment mixing (Kubelka-Munk) and OKLab ΔE of Anrührung, ported from spectral.js to Kotlin: hex exact, OKLab to 1e-9 | spectral.js 3.0.0 itself, see below — a third implementation vouches for the port | `MixingGoldenVectorTest` |
+| `stack-floor/tower.json` | Hochstapler's tower: position of the sliding bar, the cut, the whole tower from click times | `TowerGoldenVectorTest` (`-Dstackfloor.vectors.write=true`) | the same Kotlin class **and** `webapp-vue/src/games/stackfloor/__tests__/tower.spec.ts` |
 
 For the RNG the browser side is a **test-scope reference implementation**, not production code —
 rounds are server-authoritative. The file still pins the Kotlin generator against accidental change,
