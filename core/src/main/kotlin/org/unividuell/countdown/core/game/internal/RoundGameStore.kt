@@ -67,6 +67,10 @@ class RoundGameStore(private val rounds: RoundGameRepository) {
         announcedAt: Instant,
     ): RoundGame {
         val editionId = requireNotNull(edition.id)
+
+        // Held until commit: archiving waits for this round, so its purge takes the round along.
+        checkNotNull(rounds.lockActiveEdition(editionId)) { "edition $editionId is archived" }
+
         rounds.insertIfAbsent(
             editionId = editionId,
             roundNumber = roundNumber,

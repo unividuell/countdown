@@ -65,6 +65,8 @@ Vitest + @vue/test-utils + happy-dom. Siblings: [frontend.md](frontend.md)
   ```
 - **`setPointerCapture` is absent from happy-dom elements.** Stub it per test and say which test
   the stub pins, or the stub becomes what makes the suite pass.
+- **`window.confirm` does not exist in happy-dom,** so `vi.spyOn(window, 'confirm')` throws.
+  `vi.stubGlobal('confirm', vi.fn(() => answer))`, and `vi.unstubAllGlobals()` in `afterEach`.
 - **`FormData.append(name, blob, fileName)` ignores `fileName` for a plain `Blob`.** Pass a `File`
   in the spec.
 - **`Element.prototype.animate` exists and runs (happy-dom ≥ 20.12),** so a component's capability

@@ -40,6 +40,10 @@ export const replaceEdition = (slug: string, body: EditionRequest) =>
     method: 'PUT',
     body: JSON.stringify(body),
   })
+export const archiveEdition = (slug: string) =>
+  apiFetch<CommunityResponse>(`/api/communities/${slug}/editions/active/archive`, {
+    method: 'POST',
+  })
 export const generateInvite = (slug: string) =>
   apiFetch<InviteResponse>(`/api/communities/${slug}/invite`, { method: 'POST' })
 export const joinByToken = (token: string) =>

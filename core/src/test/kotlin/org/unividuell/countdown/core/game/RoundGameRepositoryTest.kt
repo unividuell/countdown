@@ -133,15 +133,14 @@ class RoundGameRepositoryTest(
     @Test
     fun `two editions of the same community keep their own rounds`() {
         val first = anEdition("rg-two-editions")
-        val second = editions.save(
-            anEdition(communityId = first.communityId, label = "Run 2027")
-                .copy(archivedAt = Instant.parse("2027-01-01T00:00:00Z")),
-        )
         val award = Award(rule = AwardRule.ALL_QUALIFYING, points = 1)
         store.announce(
             edition = first, roundNumber = 5, gameType = "first-run",
             params = json("""{}"""), award = award, announcedAt = announcedAt,
         )
+        // Only the active run takes announcements: the first ends before the second begins.
+        editions.save(first.copy(archivedAt = Instant.parse("2027-01-01T00:00:00Z")))
+        val second = editions.save(anEdition(communityId = first.communityId, label = "Run 2027"))
         store.announce(
             edition = second, roundNumber = 5, gameType = "second-run",
             params = json("""{}"""), award = award, announcedAt = announcedAt,

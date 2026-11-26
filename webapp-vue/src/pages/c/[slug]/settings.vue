@@ -2,7 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
-import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
+import {
+  updateCommunity,
+  generateInvite,
+  getInvite,
+  revokeInvite,
+  archiveEdition,
+} from '@/api/communities'
 import { listGames, saveGameWeights } from '@/api/games'
 import type { GameEntry, GameWeight } from '@/api/types'
 import GameWeights from '@/communities/GameWeights.vue'
@@ -24,6 +30,7 @@ const slug = community.value.slug
 const name = ref('')
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
+const archiveError = ref<string | null>(null)
 const { copy, copied } = useClipboard()
 
 const games = ref<GameEntry[]>([])
@@ -111,6 +118,23 @@ async function saveWeights(): Promise<void> {
     weightsError.value = saveErrorMessage(e)
   }
 }
+// Ends the run for good: the server keeps the final standings and deletes every round.
+async function archive(): Promise<void> {
+  const e = edition.value
+  if (!e) return
+
+  const title = e.label ?? community.value.name
+  const question = `Edition „${title}“ beenden? Alle Runden, Tipps und Spieldaten werden gelöscht. Nur die Endrangliste bleibt.`
+  if (!window.confirm(question)) return
+
+  archiveError.value = null
+  try {
+    await archiveEdition(slug)
+    await refresh()
+  } catch {
+    archiveError.value = 'Beenden fehlgeschlagen.'
+  }
+}
 async function regenerate(): Promise<void> {
   const r = await generateInvite(slug)
   inviteUrl.value = fullUrl(r.url)
@@ -167,6 +191,14 @@ async function revoke(): Promise<void> {
           class="inline-block rounded border px-3 py-1.5 hover:bg-surface-container-highest"
           >Edition bearbeiten</RouterLink
         >
+        <button
+          data-test="archive-edition"
+          class="ml-2 rounded border px-3 py-1.5 text-error hover:bg-surface-container-highest"
+          @click="archive"
+        >
+          Edition beenden
+        </button>
+        <p v-if="archiveError" class="text-sm text-error">{{ archiveError }}</p>
       </div>
       <div v-else>
         <p class="mb-2 text-sm text-on-surface-variant">Kein Lauf aktiv.</p>

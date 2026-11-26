@@ -28,6 +28,7 @@ import java.util.UUID
 class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
     @MockkBean lateinit var communityService: CommunityService
     @MockkBean lateinit var editions: EditionService
+    @MockkBean lateinit var archiver: EditionArchiver
     @MockkBean lateinit var query: org.unividuell.countdown.core.community.MembershipQuery
     @MockkBean lateinit var communityQuery: org.unividuell.countdown.core.community.CommunityQuery
     @MockkBean lateinit var access: CommunityAccess
@@ -425,5 +426,43 @@ class CommunityControllerTest(@Autowired val mockMvc: MockMvc) {
             status { isOk() }
             jsonPath("$.viewerIdentity") { value(null) }
         }
+    }
+
+    @Test
+    fun `archive answers the community without an edition`() {
+        val c = community("team")
+        asAdmin(c)
+        every { archiver.archive(c.id!!) } returns
+            anEdition(communityId = c.id!!, id = UUID.randomUUID()).copy(archivedAt = Instant.now())
+        every { editions.active(c.id!!) } returns null
+
+        mockMvc.post("/api/communities/team/editions/active/archive") {
+            with(principalFor()); with(withCsrfToken())
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.edition") { value(null) }
+        }
+    }
+
+    @Test
+    fun `archive answers 404 without an active edition`() {
+        val c = community("team")
+        asAdmin(c)
+        every { archiver.archive(c.id!!) } throws EditionNotFoundException()
+
+        mockMvc.post("/api/communities/team/editions/active/archive") {
+            with(principalFor()); with(withCsrfToken())
+        }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `archive is admin only`() {
+        every { access.requireAdmin(userId = uid, isSuperAdmin = false, slug = "team") } throws NotAdminException()
+
+        mockMvc.post("/api/communities/team/editions/active/archive") {
+            with(principalFor()); with(withCsrfToken())
+        }.andExpect { status { isForbidden() } }
+
+        verify(exactly = 0) { archiver.archive(any()) }
     }
 }

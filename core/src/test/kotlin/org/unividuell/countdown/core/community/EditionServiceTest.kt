@@ -38,6 +38,10 @@ class EditionServiceTest {
 
     init {
         every { repository.save(any()) } answers { firstArg() }
+        // The locked read answers what the plain one is stubbed with, unless a test says otherwise.
+        every { repository.lockActiveForEditByCommunityId(any()) } answers {
+            repository.findActiveByCommunityId(firstArg())
+        }
     }
 
     @Test
@@ -104,6 +108,16 @@ class EditionServiceTest {
         shouldThrow<IllegalArgumentException> {
             service.create(communityId = communityId, draft = draft.copy(gamesFromRound = -46, phaseTwoStartRound = null))
         }.message.shouldContain("already ended")
+    }
+
+    @Test
+    fun `replace reads the active edition under a lock`() {
+        // Unlocked, a save racing an archive would write archived_at = null back over it.
+        every { repository.findActiveByCommunityId(communityId) } returns null
+        every { repository.lockActiveForEditByCommunityId(communityId) } returns
+            anEdition(communityId = communityId, id = UUID.randomUUID())
+
+        service.replace(communityId = communityId, draft = draft).label shouldBe "Run 2026"
     }
 
     @Test
