@@ -27,7 +27,7 @@ export interface TowerResult {
 }
 
 /** Centred on the field. */
-export function foundation(geometry: TowerGeometry): Bar {
+export function foundation(geometry: Pick<TowerGeometry, 'fieldWidth' | 'startWidth'>): Bar {
   return {
     left: Math.floor((geometry.fieldWidth - geometry.startWidth) / 2),
     width: geometry.startWidth,

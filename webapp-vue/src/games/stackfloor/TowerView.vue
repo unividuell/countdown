@@ -18,8 +18,6 @@ import { barFill, barHue } from './colors'
 import { heightLabel } from './scoreboard'
 
 const BAR_HEIGHT = 60
-const FALL_MS = 600
-const FALL_UNITS = 800
 const GOLD_FROM = '#F7D774'
 const GOLD_TO = '#C9971C'
 
@@ -128,6 +126,27 @@ function star(cx: number, cy: number, r: number): string {
       />
 
       <rect
+        v-if="gold"
+        data-test="glow"
+        pointer-events="none"
+        :x="gold.left"
+        :y="floorY(gold.floor)"
+        :width="gold.width"
+        :height="BAR_HEIGHT"
+        :fill="GOLD_FROM"
+        :filter="`url(#${blurId})`"
+        :opacity="still ? 0.6 : 0.35"
+      >
+        <animate
+          v-if="!still"
+          attributeName="opacity"
+          values="0.35;0.8;0.35"
+          dur="1.6s"
+          repeatCount="indefinite"
+        />
+      </rect>
+
+      <rect
         v-for="(bar, floor) in props.bars"
         :key="floor"
         data-test="bar"
@@ -149,24 +168,6 @@ function star(cx: number, cy: number, r: number): string {
       />
 
       <g v-if="gold" data-test="gold" pointer-events="none">
-        <rect
-          data-test="glow"
-          :x="gold.left"
-          :y="floorY(gold.floor)"
-          :width="gold.width"
-          :height="BAR_HEIGHT"
-          :fill="GOLD_FROM"
-          :filter="`url(#${blurId})`"
-          :opacity="still ? 0.6 : 0.35"
-        >
-          <animate
-            v-if="!still"
-            attributeName="opacity"
-            values="0.35;0.8;0.35"
-            dur="1.6s"
-            repeatCount="indefinite"
-          />
-        </rect>
         <path
           v-for="(spot, i) in SPARKLES"
           :key="i"
@@ -187,26 +188,36 @@ function star(cx: number, cy: number, r: number): string {
       </g>
 
       <template v-if="!still">
-        <rect
+        <g
           v-for="(cut, i) in props.cuts"
           :key="i"
           data-test="cut"
-          :x="cut.left"
-          :y="floorY(cut.floor)"
-          :width="cut.width"
-          :height="BAR_HEIGHT"
-          :fill="barFill(barHue(props.hueStart, cut.floor), dark)"
+          class="stack-fall"
+          pointer-events="none"
         >
-          <animate
-            attributeName="y"
-            :from="floorY(cut.floor)"
-            :to="floorY(cut.floor) + FALL_UNITS"
-            :dur="`${FALL_MS}ms`"
-            fill="freeze"
+          <rect
+            :x="cut.left"
+            :y="floorY(cut.floor)"
+            :width="cut.width"
+            :height="BAR_HEIGHT"
+            :fill="fillOf(cut.floor)"
           />
-          <animate attributeName="opacity" from="1" to="0" :dur="`${FALL_MS}ms`" fill="freeze" />
-        </rect>
+        </g>
       </template>
     </g>
   </svg>
 </template>
+
+<style scoped>
+/* A CSS animation starts on insertion; SMIL would count from the SVG's mount and skip a late cut. */
+.stack-fall {
+  animation: stack-fall 600ms ease-in forwards;
+}
+
+@keyframes stack-fall {
+  to {
+    transform: translateY(800px);
+    opacity: 0;
+  }
+}
+</style>

@@ -106,6 +106,33 @@ describe('TowerView', () => {
     expect(mountTower({ cuts }).findAll('[data-test="cut"]')).toHaveLength(0)
   })
 
+  it('a cut falls by a CSS animation, which starts when it is inserted', () => {
+    const w = mountTower({ cuts: [{ floor: 2, left: 200, width: 60 }] })
+
+    expect(w.get('[data-test="cut"]').classes()).toContain('stack-fall')
+    expect(w.findAll('[data-test="cut"] animate')).toHaveLength(0)
+  })
+
+  it('a cut off the gold bar falls gold', () => {
+    const w = mountTower({ target: 2, cuts: [{ floor: 2, left: 200, width: 60 }] })
+
+    expect(w.get('[data-test="cut"] rect').attributes('fill')).toMatch(/^url\(#/)
+    expect(
+      mountTower({ target: 1, cuts: [{ floor: 2, left: 200, width: 60 }] })
+        .get('[data-test="cut"] rect')
+        .attributes('fill'),
+    ).toMatch(/^oklch/)
+  })
+
+  it('the glow is painted behind the bars', () => {
+    const w = mountTower({ target: 2 })
+    const order = w
+      .findAll('[data-test="glow"], [data-test="bar"]')
+      .map((n) => n.attributes('data-test'))
+
+    expect(order[0]).toBe('glow')
+  })
+
   it('a tall tower scrolls, the board keeps its size', () => {
     const tall = Array.from({ length: 40 }, () => ({ left: 200, width: 600 }))
     const w = mountTower({ bars: tall, slider: { floor: 40, width: 600, x: 0 } })

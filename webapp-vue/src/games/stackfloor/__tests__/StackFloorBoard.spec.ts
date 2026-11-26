@@ -4,9 +4,14 @@ import StackFloorBoard from '../StackFloorBoard.vue'
 import RevealCover from '@/ui/RevealCover.vue'
 import { playStop } from '../stopSound'
 import type { StackFloorPayload } from '../types'
+import { inBackground } from '@/ui/motion'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
 vi.mock('../stopSound', () => ({ playStop: vi.fn() }))
+vi.mock('@/ui/motion', () => ({
+  prefersReducedMotion: vi.fn(() => false),
+  inBackground: vi.fn(() => false),
+}))
 
 enableAutoUnmount(afterEach)
 
@@ -97,6 +102,26 @@ describe('StackFloorBoard', () => {
 
     expect(playStop).toHaveBeenCalledTimes(1)
     expect(bars(w).length).toBeGreaterThan(1)
+  })
+
+  it('knocks for no tap in the pause after a stop', async () => {
+    const w = mountBoard()
+    await runStarted(w)
+    await tap(w)
+    await tap(w)
+
+    expect(playStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('knocks for no tap while the tab is in the background', async () => {
+    const w = mountBoard()
+    await runStarted(w)
+    vi.mocked(inBackground).mockReturnValue(true)
+    await tap(w)
+
+    expect(bars(w)).toHaveLength(2)
+    expect(playStop).not.toHaveBeenCalled()
+    vi.mocked(inBackground).mockReturnValue(false)
   })
 
   it('the miss sends every click', async () => {

@@ -143,7 +143,7 @@ const shownBars = computed(() => {
   const geometry = layout.value
   if (geometry === null) return []
 
-  return [foundation({ ...geometry, speedNum: 1, speedDen: 1, maxFloors: 1 })]
+  return [foundation(geometry)]
 })
 
 function onPointerDown(event: PointerEvent): void {
