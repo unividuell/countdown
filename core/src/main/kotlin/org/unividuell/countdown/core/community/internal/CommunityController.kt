@@ -20,6 +20,7 @@ import java.util.UUID
 class CommunityController(
     private val communityService: CommunityService,
     private val editions: EditionService,
+    private val archiver: EditionArchiver,
     private val membershipQuery: MembershipQuery,
     private val access: CommunityAccess,
     private val selection: SelectionService,
@@ -95,6 +96,15 @@ class CommunityController(
         val id = requireNotNull(c.id)
         val edition = editions.replace(communityId = id, draft = body.toDraft())
         return respond(community = c, edition = edition, viewerIsAdmin = true, pendingCount = pendingCount(id), userId = me.id)
+    }
+
+    /** Ends the active run: keeps the final standings, deletes its game data; 404 without one. */
+    @PostMapping("/{slug}/editions/active/archive")
+    fun archiveEdition(@AuthenticationPrincipal me: AuthenticatedUser, @PathVariable slug: String): CommunityResponse {
+        val c = access.requireAdmin(userId = me.id, isSuperAdmin = me.isSuperAdmin, slug = slug)
+        val id = requireNotNull(c.id)
+        archiver.archive(id)
+        return respond(community = c, edition = null, viewerIsAdmin = true, pendingCount = pendingCount(id), userId = me.id)
     }
 
     private fun pendingCount(communityId: UUID): Int =
