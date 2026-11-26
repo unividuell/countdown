@@ -5,14 +5,14 @@ Baut auf [Spielauswahl-Sperre](2026-11-26-game-selection-cooldown-design.md) (PR
 ## Warum
 
 [#37](https://github.com/unividuell/countdown/issues/37): Der Admin einer Community bestimmt, wie oft
-ein Spiel drankommt — pro Spiel `aus | selten | normal | viel`, Standard `normal`. Eine Community ohne
-Musikfreunde schaltet „Anspielung“ ab, eine mit Lieblingsspiel dreht es hoch.
+ein Spiel drankommt — pro Spiel `aus | selten | normal | häufig`, Standard `normal`. Eine Community ohne
+Musikfreunde schaltet „Anspielung“ ab, eine mit Lieblingsspiel stellt es auf `häufig`.
 
 ## Ziele
 
 - Pro Spiel eine von vier Stufen, gespeichert **an der Community** (gilt für jede Edition).
 - Bearbeitet in den Einstellungen, im bestehenden Community-Abschnitt — keine eigene Unterseite.
-- `aus` nimmt das Spiel aus der Auswahl; `selten`/`viel` verschieben die Häufigkeit spürbar.
+- `aus` nimmt das Spiel aus der Auswahl; `selten`/`häufig` verschieben die Häufigkeit spürbar.
 - Alle `normal` = exakt die Regel aus PR #200.
 
 ## Nicht-Ziele
@@ -39,25 +39,36 @@ Musikfreunde schaltet „Anspielung“ ab, eine mit Lieblingsspiel dreht es hoch
 `aus` filtert die Kandidaten vor der Auswahl. Für die übrigen `n` Kandidaten:
 
 ```
-basis_g    = max(1, n − 4)               // wie PR #200
-gesperrt_g = round(basis_g / faktor_g)   // viel 3, normal 1, selten 1/3
+basis      = max(1, n − 4)                         // wie PR #200
+f̄          = Mittel der Faktoren der n Kandidaten  // häufig 3, normal 1, selten 1/3
+gesperrt_g = max(1, round(basis · f̄ / faktor_g))
 ```
 
 Spiel `g` ist gesperrt, wenn es in den letzten `gesperrt_g` Runden lief. Gezogen wird gleichverteilt
-aus den freien; sind keine frei, aus allen Kandidaten (wie PR #200).
+aus den freien. Sind keine frei, aus allen Kandidaten außer dem Spiel der Vorrunde; nur wenn das
+nichts übrig lässt, aus allen.
 
-Simuliert, 14 Spiele (3 viel, 3 selten, 8 normal), 140 Runden, 1000 Seeds — Mittel je Spiel (in Klammern: Ziel „viel doppelt, selten halb so oft wie normal“):
+**Die Stufen sind relativ.** `f̄` hält die Summe der Sperren so, dass im Mittel etwa vier Spiele frei
+bleiben. Stehen alle Spiele auf derselben Stufe — alle `häufig`, alle `selten` —, ist das exakt
+„alle `normal`“ = PR #200. Ohne `f̄` wäre „alle häufig“ fast reiner Zufall (Spanne 1–20) und „alle
+selten“ sperrte alles, sodass ≈ 8 direkte Wiederholungen je Edition entstanden.
 
-| Faktoren | viel | normal | selten |
+Simuliert, 140 Runden, 1000 Seeds, Mittel (Min–Max) je Spiel:
+
+| Einstellung | häufig | normal | selten |
 |---|---|---|---|
-| 2 / ½ | 14,7 (18) | 9,8 (9) | 5,9 (4,5) |
-| **3 / ⅓** | **17,5 (18)** | **9,4 (9)** | **4,2 (4,5)** |
+| 3 häufig, 8 normal, 3 selten | 19,6 (15–24) | 8,8 (6–10) | 3,7 (3–5) |
+| alle gleich (egal welche Stufe) | — | 10 (6–13) | — |
+| 1 häufig, 13 normal | 17,2 (12–23) | 9,4 (5–12) | — |
+| 1 selten, 13 normal | — | 10,4 (7–13) | 4,6 (3–5) |
+| 7 häufig, 7 selten | 17 (14–20) | — | 3 (3–3) |
 
-3/⅓ trifft „viel ≈ doppelt, selten ≈ halb so oft wie normal“ im echten Katalog (Entscheidung von Claude,
-korrigierbar). `K = 12` aus der Vorgänger-Spec entfällt: es widerspricht „alle normal = PR #200“.
+Faktoren 3/⅓ statt 2/½: mit 2/½ landet häufig nur bei ≈ 1,5×, selten bei ≈ 0,6× normal; 3/⅓ trifft
+„häufig ≈ doppelt, selten ≈ halb so oft“ (Entscheidung von Claude, korrigierbar). `K = 12` aus der
+Vorgänger-Spec entfällt: es widerspricht „alle gleich = PR #200“.
 
-Grenze: Bei kleinem Katalog (≤ 5 eingeschaltet) ist die Sperre kurz, die Stufen wirken kaum. Gewollt
-in Kauf genommen — der Katalog hat 14 Spiele.
+Grenze: Bei kleinem Katalog (≤ 6 eingeschaltet) ist die Sperre kurz, die Stufen wirken schwächer
+(1 häufig, 4 normal, 1 selten: 30 / 24 / 13). Gewollt in Kauf genommen — der Katalog hat 14 Spiele.
 
 **Vorrang, kein Ausschluss**: Bleibt nach `aus` kein verfügbares Spiel übrig (z. B. das einzige
 eingeschaltete ist für diese Runde nicht verfügbar), wird `aus` ignoriert statt die Runde spiellos zu
@@ -94,9 +105,9 @@ URL-Slug /c/huette ist unveränderlich.
 
 Spiele
 Anspielung
-[  aus  ][ selten ][ normal ][  viel  ]
+[  aus  ][ selten ][ normal ][ häufig ]
 Augenmaß
-[  aus  ][ selten ][ normal ][  viel  ]
+[  aus  ][ selten ][ normal ][ häufig ]
 …
 [ Speichern ]
 ```
