@@ -4,7 +4,6 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Test
 import org.unividuell.countdown.core.game.internal.NotRecentlyPlayed
 import org.unividuell.countdown.core.game.internal.PastRound
@@ -58,19 +57,40 @@ class GameSelectionTest {
     }
 
     @Test
-    fun `with few candidates only the round immediately before counts`() {
-        // "beta" was two rounds ago and is fair game again; only "alpha" is excluded.
+    fun `with five candidates only the round immediately before blocks`() {
+        // "beta" was two rounds ago: five candidates block one round, so it is fair game again.
         val history = listOf(
             PastRound(roundNumber = 9, gameType = "alpha"),
             PastRound(roundNumber = 10, gameType = "beta"),
         )
 
-        val picked = selection.pick(
-            candidates = listOf("alpha", "beta"), history = history, random = random(),
+        val seen = (0 until 50).mapNotNull {
+            selection.pick(
+                candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon"),
+                history = history,
+                random = SeededRandom.fromSeed(it),
+            )
+        }.toSet()
+
+        seen shouldBe setOf("beta", "gamma", "delta", "epsilon")
+    }
+
+    @Test
+    fun `with six candidates the last two rounds block`() {
+        val history = listOf(
+            PastRound(roundNumber = 9, gameType = "alpha"),
+            PastRound(roundNumber = 10, gameType = "beta"),
         )
 
-        picked shouldBe "beta"
-        picked shouldNotBe "alpha"
+        val seen = (0 until 50).mapNotNull {
+            selection.pick(
+                candidates = listOf("alpha", "beta", "gamma", "delta", "epsilon", "zeta"),
+                history = history,
+                random = SeededRandom.fromSeed(it),
+            )
+        }.toSet()
+
+        seen shouldBe setOf("gamma", "delta", "epsilon", "zeta")
     }
 
     @Test

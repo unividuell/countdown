@@ -215,9 +215,9 @@ for who took whose points. A log line covers the operational case.
 change to a pure function. Legitimate while the input is cheap.
 
 - **The rule is `NotRecentlyPlayed`:** the games of the last `candidates − 4` rounds (at least one)
-  are blocked, the rest drawn uniformly — 8 to 12 rounds per game over 140, where uniform choice
-  gave 5 to 15. A late-arriving game does not catch up. Per-community weights (#37) attach as a
-  block length per game; see
+  are blocked, the rest drawn uniformly — over 140 rounds every game lands within 8 to 12 in about
+  95 % of editions, where uniform choice gave 5 to 15. A late-arriving game does not catch up.
+  Per-community weights (#37) attach as a block length per game; see
   `docs/superpowers/specs/2026-11-26-game-selection-cooldown-design.md`.
 - **Which game comes next is no secret.** A guessable next game costs nothing; don't trade evenness
   for unpredictability.

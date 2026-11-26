@@ -24,9 +24,9 @@ fun interface GameSelection {
  * The games of the last rounds are blocked; the next one is drawn uniformly from the rest.
  *
  * With 14 candidates the last 10 rounds block, 4 stay free. Uniform choice gave each game 5 to 15
- * rounds over an edition of 140; this gives 8 to 12. A game arriving mid-edition is unblocked,
- * comes up soon and then runs with the others — it does not catch up. That the next game becomes
- * guessable is fine: which game comes is no secret.
+ * rounds over an edition of 140; this keeps every game within 8 to 12 in about 95 % of editions.
+ * A game arriving mid-edition is unblocked, comes up soon and then runs with the others — it does
+ * not catch up. That the next game becomes guessable is fine: which game comes is no secret.
  *
  * At least the previous round blocks, so a catalogue of up to five falls back to "not twice in a
  * row". A **preference, not an exclusion criterion** — if honouring it would leave nothing, the rule
