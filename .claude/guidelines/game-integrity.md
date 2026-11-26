@@ -46,3 +46,12 @@ The first game that cannot keep two of these rules, by necessity:
 What stands in: a plausibility floor (`< 120 ms` or `> intervalMs` marks the run), the mark shown
 in the evaluation, the raw times stored. **Mark, never reject** — a false alarm must never cost a
 player their only attempt.
+
+## The second ceiling — Hochstapler
+
+- **The client sends click times, not a height.** The server rebuilds the tower from them with
+  the shared integer function, so a faked height is impossible.
+- **The payload is enough to compute perfect times:** a bot builds up to `maxFloors`. Nothing in
+  the picture hides that.
+- What stands in: the lower bound `Σ clicks + (n − 1) × pauseMs` — a run submitted earlier than
+  it can last is marked `SUBMITTED_BEFORE_RUN_END`. **Mark, never reject.**
