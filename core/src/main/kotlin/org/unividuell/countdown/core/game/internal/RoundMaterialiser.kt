@@ -25,6 +25,7 @@ class RoundMaterialiser(
     private val catalog: GameCatalog,
     private val selection: GameSelection,
     private val assets: RoundAssetStore,
+    private val weights: GameWeightStore,
     private val clock: Clock,
 ) {
     private val logger = KotlinLogging.logger {}
@@ -51,6 +52,7 @@ class RoundMaterialiser(
         val typeId = selection.pick(
             candidates = catalog.availableIds(context),
             history = history,
+            weights = weights.weightsOf(edition.communityId),
             // The chosen type is announced, so it is a published value and comes from the published
             // stream — the same rule that governs the payload.
             random = random.presentation,

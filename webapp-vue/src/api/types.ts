@@ -308,3 +308,13 @@ export interface RoundResponse {
   /** The assets this viewer may open right now, by name. A missing name is one that stays closed. */
   assetKeys: Record<string, AssetKey>
 }
+
+/** How often a community wants a game. A game without a stored weight is `NORMAL`. */
+export type GameWeight = 'OFF' | 'RARE' | 'NORMAL' | 'OFTEN'
+
+/** One game as the community settings list it. */
+export interface GameEntry {
+  id: string
+  displayName: string
+  weight: GameWeight
+}

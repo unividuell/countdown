@@ -17,11 +17,15 @@ class GameExceptionHandler {
     fun notFound(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "not found")
 
-    @ExceptionHandler(InvalidGuessException::class, InvalidStepException::class)
+    @ExceptionHandler(InvalidGuessException::class, InvalidStepException::class, InvalidGameWeightsException::class)
     fun badRequest(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "invalid guess")
 
-    @ExceptionHandler(AssetForbiddenException::class, ReviewNotAllowedException::class)
+    @ExceptionHandler(
+        AssetForbiddenException::class,
+        ReviewNotAllowedException::class,
+        GameWeightsForbiddenException::class,
+    )
     fun forbidden(e: RuntimeException) =
         ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.message ?: "forbidden")
 

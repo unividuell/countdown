@@ -3,6 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { DateTime } from 'luxon'
 import { useClipboard } from '@vueuse/core'
 import { updateCommunity, generateInvite, getInvite, revokeInvite } from '@/api/communities'
+import { listGames, saveGameWeights } from '@/api/games'
+import type { GameEntry, GameWeight } from '@/api/types'
+import GameWeights from '@/communities/GameWeights.vue'
 import { useCommunityContext } from '@/communities/context'
 import { useAdminGuard } from '@/communities/useAdminGuard'
 import { communityPath } from '@/communities/routes'
@@ -22,6 +25,10 @@ const name = ref('')
 const inviteUrl = ref<string | null>(null)
 const error = ref<string | null>(null)
 const { copy, copied } = useClipboard()
+
+const games = ref<GameEntry[]>([])
+const weights = ref<Record<string, GameWeight>>({})
+const weightsError = ref<string | null>(null)
 
 const edition = computed(() => community.value.edition)
 const start = computed(() => {
@@ -76,6 +83,12 @@ onMounted(async () => {
   inviteUrl.value = inv ? fullUrl(inv.url) : null
 })
 
+onMounted(async () => {
+  const list = await listGames(slug)
+  games.value = list
+  weights.value = Object.fromEntries(list.map((g) => [g.id, g.weight]))
+})
+
 async function save(): Promise<void> {
   error.value = null
   try {
@@ -83,6 +96,19 @@ async function save(): Promise<void> {
     await refresh()
   } catch (e) {
     error.value = saveErrorMessage(e)
+  }
+}
+async function saveWeights(): Promise<void> {
+  weightsError.value = null
+  if (games.value.every((g) => weights.value[g.id] === 'OFF')) {
+    weightsError.value = 'Mindestens ein Spiel muss an bleiben.'
+    return
+  }
+
+  try {
+    await saveGameWeights(slug, weights.value)
+  } catch (e) {
+    weightsError.value = saveErrorMessage(e)
   }
 }
 async function regenerate(): Promise<void> {
@@ -114,6 +140,18 @@ async function revoke(): Promise<void> {
       </button>
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
     </form>
+
+    <div v-if="games.length" class="mt-6 border-t pt-4">
+      <h2 class="mb-2 font-medium">Spiele</h2>
+      <form data-test="game-weights" class="space-y-3" @submit.prevent="saveWeights">
+        <GameWeights v-model="weights" :games="games" />
+        <p class="text-xs text-on-surface-variant">Gilt ab der nächsten angekündigten Runde.</p>
+        <button class="rounded border px-3 py-1.5 hover:bg-surface-container-highest">
+          Speichern
+        </button>
+        <p v-if="weightsError" class="text-sm text-error">{{ weightsError }}</p>
+      </form>
+    </div>
 
     <div class="mt-6 border-t pt-4">
       <h2 class="mb-2 font-medium">Edition</h2>

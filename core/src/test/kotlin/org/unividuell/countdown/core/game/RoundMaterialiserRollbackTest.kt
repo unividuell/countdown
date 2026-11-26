@@ -48,7 +48,7 @@ class RoundMaterialiserRollbackTest(
     class FailingGame {
         @Bean
         @Primary
-        fun alwaysTheFailingGame(): GameSelection = GameSelection { _, _, _ -> "checked-failure" }
+        fun alwaysTheFailingGame(): GameSelection = GameSelection { _, _, _, _ -> "checked-failure" }
 
         @Bean
         fun checkedFailureGame(): GameType<FailParams> = object : GameType<FailParams> {

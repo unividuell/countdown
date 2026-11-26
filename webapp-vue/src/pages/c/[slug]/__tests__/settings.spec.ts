@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { ref } from 'vue'
 import * as api from '@/api/communities'
+import * as gamesApi from '@/api/games'
 import { ApiError } from '@/api/client'
-import type { CommunityResponse, EditionResponse } from '@/api/types'
+import type { CommunityResponse, EditionResponse, GameEntry } from '@/api/types'
 
 const { community } = vi.hoisted(() => ({ community: { current: null as never } }))
 
@@ -40,6 +41,20 @@ function useCommunity(e: EditionResponse | null) {
 
   return c
 }
+
+const games: GameEntry[] = [
+  { id: 'echo-locate', displayName: 'Peilung', weight: 'OFTEN' },
+  { id: 'song-snippet', displayName: 'Anspielung', weight: 'NORMAL' },
+]
+
+beforeEach(() => {
+  vi.spyOn(gamesApi, 'listGames').mockResolvedValue(games)
+  vi.spyOn(gamesApi, 'saveGameWeights').mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 async function mountSettings() {
   const Settings = (await import('@/pages/c/[slug]/settings.vue')).default
@@ -155,5 +170,77 @@ describe('settings — edition', () => {
     const w = await mountSettings()
 
     expect(w.get('[data-test=edition-title]').text()).toBe('Team')
+  })
+})
+
+describe('settings — games', () => {
+  beforeEach(() => {
+    useCommunity(null)
+    vi.spyOn(api, 'getInvite').mockResolvedValue(null)
+    vi.spyOn(api, 'updateCommunity').mockResolvedValue({} as CommunityResponse)
+  })
+
+  const weightsForm = (w: Awaited<ReturnType<typeof mountSettings>>) =>
+    w.get('form[data-test=game-weights]')
+
+  it('shows every game with its stored stage', async () => {
+    const w = await mountSettings()
+
+    expect(w.text()).toContain('Peilung')
+    expect(
+      weightsForm(w)
+        .findAll<HTMLInputElement>('input:checked')
+        .map((i) => i.element.value),
+    ).toEqual(['OFTEN', 'NORMAL'])
+  })
+
+  it('has its own save button, apart from the name', async () => {
+    const w = await mountSettings()
+    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
+    await weightsForm(w).trigger('submit')
+    await flushPromises()
+
+    expect(gamesApi.saveGameWeights).toHaveBeenCalledWith('team', {
+      'echo-locate': 'OFTEN',
+      'song-snippet': 'RARE',
+    })
+    expect(api.updateCommunity).not.toHaveBeenCalled()
+  })
+
+  it('saving the name leaves the weights alone', async () => {
+    const w = await mountSettings()
+    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
+    await w.find('input').setValue('Team Nord')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(api.updateCommunity).toHaveBeenCalledWith('team', 'Team Nord')
+    expect(gamesApi.saveGameWeights).not.toHaveBeenCalled()
+  })
+
+  it('refuses to switch every game off', async () => {
+    const w = await mountSettings()
+    await w.find('input[name=weight-echo-locate][value=OFF]').setValue(true)
+    await w.find('input[name=weight-song-snippet][value=OFF]').setValue(true)
+    await weightsForm(w).trigger('submit')
+    await flushPromises()
+
+    expect(weightsForm(w).text()).toContain('Mindestens ein Spiel muss an bleiben.')
+    expect(gamesApi.saveGameWeights).not.toHaveBeenCalled()
+  })
+
+  it('shows a failed save in its own form and keeps the selection', async () => {
+    vi.spyOn(gamesApi, 'saveGameWeights').mockRejectedValue(
+      new ApiError(400, 'Bad Request', { detail: 'unknown games' }),
+    )
+    const w = await mountSettings()
+    await w.find('input[name=weight-song-snippet][value=RARE]').setValue(true)
+    await weightsForm(w).trigger('submit')
+    await flushPromises()
+
+    expect(weightsForm(w).text()).toContain('Speichern fehlgeschlagen')
+    expect(
+      (w.find('input[name=weight-song-snippet][value=RARE]').element as HTMLInputElement).checked,
+    ).toBe(true)
   })
 })
