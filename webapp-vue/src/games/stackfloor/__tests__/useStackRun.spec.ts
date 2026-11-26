@@ -75,6 +75,32 @@ describe('useStackRun', () => {
     expect(ends).toEqual([])
   })
 
+  it('no slider in the pause: the next bar appears already moving', () => {
+    const { run, at } = setup()
+    run.start(0)
+    at(100)
+    run.tap()
+
+    at(100 + PAUSE - 1)
+    run.frame()
+    expect(run.slider.value).toBeNull()
+
+    at(100 + PAUSE + 40)
+    run.frame()
+    // Stopped at x 50 on the foundation (170..830): 540 rest on it.
+    expect(run.slider.value).toEqual({ floor: 2, width: 540, x: position(G, 1, 540, 40) })
+  })
+
+  it('a start in the future shows no slider until it begins', () => {
+    const { run, at } = setup()
+    run.start(500)
+
+    expect(run.slider.value).toBeNull()
+    at(500)
+    run.frame()
+    expect(run.slider.value).not.toBeNull()
+  })
+
   it('taps in the pause are ignored, then the next click counts from its end', () => {
     const { run, at, ends } = setup({ ...G, maxFloors: 2 })
     run.start(0)

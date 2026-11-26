@@ -46,11 +46,16 @@ export function useStackRun(input: {
     return bars.value[bars.value.length - 1]!
   }
 
-  /** The foundation is floor 0, so the sliding bar's floor is `bars.length`. */
-  function sliderNow(): Slider {
+  /**
+   * The foundation is floor 0, so the sliding bar's floor is `bars.length`. `null` until its floor
+   * begins: shown during the pause it would stand still at its edge, then jump into motion.
+   */
+  function sliderNow(): Slider | null {
+    const ms = clock.now() - floorBegin
+    if (ms < 0) return null
+
     const floor = bars.value.length
     const width = below().width
-    const ms = Math.max(0, clock.now() - floorBegin)
 
     return { floor, width, x: position(input.geometry, floor - 1, width, ms) }
   }

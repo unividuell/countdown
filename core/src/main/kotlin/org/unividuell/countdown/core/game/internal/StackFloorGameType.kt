@@ -176,7 +176,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         const val FIELD_WIDTH = 1000
         const val START_WIDTH = 660
         const val SPEED_NUM = 1
-        const val SPEED_DEN = 2
+        const val SPEED_DEN = 3
 
         /** Each floor's bar slides this many percent of floor 0's speed faster. Provisional. */
         const val ACCEL_PERCENT = 3
