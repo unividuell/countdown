@@ -15,6 +15,10 @@ interface CommunityEditionRepository : CrudRepository<CommunityEdition, UUID> {
     @Query("SELECT * FROM community.editions WHERE community_id = :communityId AND archived_at IS NULL")
     fun findActiveByCommunityId(communityId: UUID): CommunityEdition?
 
+    /** The active run, locked for archiving: an announcement holding `FOR SHARE` on it finishes first. */
+    @Query("SELECT * FROM community.editions WHERE community_id = :communityId AND archived_at IS NULL FOR UPDATE")
+    fun lockActiveByCommunityId(communityId: UUID): CommunityEdition?
+
     /** For list screens: one query for every community's active edition, never one per row. */
     @Query("SELECT * FROM community.editions WHERE archived_at IS NULL")
     fun findAllActive(): List<CommunityEdition>

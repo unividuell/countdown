@@ -4,6 +4,7 @@ import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.Id
 import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.relational.core.mapping.Table
+import tools.jackson.databind.JsonNode
 import java.time.Instant
 import java.util.UUID
 
@@ -37,6 +38,11 @@ data class CommunityEdition(
     val gamesUntilRound: Int = 0,
     /** `null` = active. Archiving is how a run ends; rows are never deleted. */
     val archivedAt: Instant? = null,
+    /**
+     * The final table, set exactly when the run is archived: `[{rank, name, shortName, bgColorHex, points}]`.
+     * Without user ids, so deleting an account leaves it as it is.
+     */
+    val finalStandings: JsonNode? = null,
     @CreatedDate
     val createdAt: Instant? = null,
     @LastModifiedDate

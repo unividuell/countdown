@@ -18,6 +18,7 @@ import org.unividuell.countdown.core.community.internal.CommunityEditionReposito
 import org.unividuell.countdown.core.community.internal.CommunityRepository
 import org.unividuell.countdown.core.iam.User
 import org.unividuell.countdown.core.iam.internal.UserRepository
+import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 import java.util.UUID
 
@@ -29,6 +30,7 @@ class CommunityEditionRepositoryTest(
     @Autowired val communities: CommunityRepository,
     @Autowired val users: UserRepository,
     @Autowired val jdbc: JdbcTemplate,
+    @Autowired val mapper: ObjectMapper,
 ) {
     private fun aCommunity(slug: String): UUID {
         val creator = users.save(User(subject = System.nanoTime().toString(), githubLogin = "creator"))
@@ -60,6 +62,28 @@ class CommunityEditionRepositoryTest(
         editions.save(first.copy(archivedAt = Instant.parse("2026-08-11T00:00:00Z")))
 
         editions.findActiveByCommunityId(communityId).shouldBeNull()
+    }
+
+    @Test
+    fun `final standings round-trip as json`() {
+        val communityId = aCommunity("edition-final-standings")
+        val standings = mapper.readTree(
+            """[{"rank":1,"name":"Fry","shortName":"FR","bgColorHex":"#123456","points":12}]""",
+        )
+
+        val saved = editions.save(anEdition(communityId = communityId).copy(finalStandings = standings))
+
+        editions.findById(saved.id!!).get().finalStandings shouldBe standings
+    }
+
+    @Test
+    fun `lock active edition finds only the active one`() {
+        val communityId = aCommunity("edition-lock-active")
+        val old = editions.save(anEdition(communityId = communityId, label = "Run 2025"))
+        editions.save(old.copy(archivedAt = Instant.parse("2026-01-01T00:00:00Z")))
+        val active = editions.save(anEdition(communityId = communityId, label = "Run 2026"))
+
+        editions.lockActiveByCommunityId(communityId)?.id shouldBe active.id
     }
 
     @Test
