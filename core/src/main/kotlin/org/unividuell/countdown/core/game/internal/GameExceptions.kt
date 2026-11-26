@@ -62,3 +62,10 @@ class ReviewNotOpenException(message: String = "this round is not open for revie
  */
 class ReviewNotAllowedException(message: String = "this vote is not yours to cast") :
     RuntimeException(message)
+
+/** Only this community's admin (or a super-admin) sets its game weights → 403. */
+class GameWeightsForbiddenException(message: String = "only an admin sets the game weights") :
+    RuntimeException(message)
+
+/** An unknown game, or every game off → 400. */
+class InvalidGameWeightsException(message: String) : RuntimeException(message)
