@@ -50,8 +50,6 @@ const COLUMNS: ScoreboardColumn<ScoreRow>[] = [{ key: 'height', label: 'Höhe', 
       </button>
     </template>
 
-    <template #cell-height="{ row }">{{
-      row.height === null ? '—' : String(row.height)
-    }}</template>
+    <template #cell-height="{ row }">{{ row.height === null ? '—' : String(row.height) }}</template>
   </RevealScoreboard>
 </template>

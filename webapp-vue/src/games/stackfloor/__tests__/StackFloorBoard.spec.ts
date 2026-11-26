@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import StackFloorBoard from '../StackFloorBoard.vue'
 import RevealCover from '@/ui/RevealCover.vue'
-import { playStop } from '../stopSound'
+import { playPerfect, playStop } from '../stopSound'
 import type { StackFloorPayload } from '../types'
 import { inBackground } from '@/ui/motion'
 import { soundOnStage } from '@/ui/useSoundAwake'
 
-vi.mock('../stopSound', () => ({ playStop: vi.fn() }))
+vi.mock('../stopSound', () => ({ playStop: vi.fn(), playPerfect: vi.fn() }))
 vi.mock('@/ui/motion', () => ({
   prefersReducedMotion: vi.fn(() => false),
   inBackground: vi.fn(() => false),
@@ -76,6 +76,7 @@ describe('StackFloorBoard', () => {
       ],
     })
     vi.mocked(playStop).mockClear()
+    vi.mocked(playPerfect).mockClear()
   })
   afterEach(() => vi.useRealTimers())
 
@@ -103,6 +104,17 @@ describe('StackFloorBoard', () => {
 
     expect(playStop).toHaveBeenCalledTimes(1)
     expect(bars(w).length).toBeGreaterThan(1)
+  })
+
+  it('a stop that cuts nothing rings the success instead of the knock', async () => {
+    const w = mountBoard()
+    await runStarted(w)
+    // 340 ms at 1/2 unit per ms puts the bar on the foundation's left edge, 170.
+    vi.advanceTimersByTime(340)
+    await tap(w)
+
+    expect(playPerfect).toHaveBeenCalledTimes(1)
+    expect(playStop).not.toHaveBeenCalled()
   })
 
   it('knocks for no tap in the pause after a stop', async () => {

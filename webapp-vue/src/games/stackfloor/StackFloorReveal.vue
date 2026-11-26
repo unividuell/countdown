@@ -58,6 +58,7 @@ const bars = computed(() => {
       :cuts="[]"
       :slider="null"
       :target="props.payload.target"
+      fit
     />
 
     <StackFloorScoreboard

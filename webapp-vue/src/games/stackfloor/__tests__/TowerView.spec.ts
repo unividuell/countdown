@@ -151,6 +151,26 @@ describe('TowerView', () => {
     expect(y).toBeLessThanOrEqual(1333 / 3)
   })
 
+  it('fitted, a tall tower zooms out until every bar is on the picture', () => {
+    const tall = Array.from({ length: 40 }, () => ({ left: 200, width: 600 }))
+    const w = mountTower({ bars: tall, fit: true })
+
+    // 42 floors of 60 = 2520 high, 3:4 kept → 1890 wide, the field of 1000 centred.
+    expect(w.get('svg').attributes('viewBox')).toBe(`-445 ${1333 - 2520} 1890 2520`)
+    expect(w.get('[data-test="tower"]').attributes('style')).toContain('translateY(0px)')
+  })
+
+  it('fitted, a short tower keeps the board as it is', () => {
+    expect(mountTower({ fit: true }).get('svg').attributes('viewBox')).toBe('0 0 1000 1333')
+  })
+
+  it('every bar carries a shade, lit on top and darker below', () => {
+    const w = mountTower()
+
+    expect(w.findAll('[data-test="shade"]')).toHaveLength(bars(w).length)
+    expect(w.get('[data-test="shade"]').attributes('fill')).toMatch(/^url\(#shade-/)
+  })
+
   it('a short tower does not scroll', () => {
     const w = mountTower()
 

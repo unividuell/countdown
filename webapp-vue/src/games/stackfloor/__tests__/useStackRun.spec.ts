@@ -47,6 +47,18 @@ describe('useStackRun', () => {
     expect(run.slider.value).toEqual({ floor: 1, width: 660, x: position(G, 0, 660, 1000) })
   })
 
+  it('a stop exactly on the bar below is perfect and cuts nothing', () => {
+    const { run, at } = setup()
+    run.start(0)
+
+    // 340 ms at 1/2 unit per ms: x = 170, the foundation's own left edge.
+    at(340)
+
+    expect(run.tap()).toBe('perfect')
+    expect(run.bars.value[1]).toEqual({ left: 170, width: 660 })
+    expect(run.cuts.value).toEqual([])
+  })
+
   it('a tap places the bar from its whole-millisecond time', () => {
     const { run, at, ends } = setup()
     run.start(0)

@@ -56,6 +56,7 @@ describe('StackFloorReveal', () => {
     expect(view.props('bars')).toEqual(buildTower(geometryOf(PAYLOAD), MINE).bars)
     expect(view.props('slider')).toBeNull()
     expect(view.props('cuts')).toEqual([])
+    expect(view.props('fit')).toBe(true)
     expect(view.props('target')).toBe(3)
   })
 

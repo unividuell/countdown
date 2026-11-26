@@ -158,11 +158,12 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 - Kartenbreit, mobil zuerst. Der Turm wandert nach unten weg, damit der gleitende Balken sichtbar
   bleibt.
+- **Balken sind plastisch:** oben eine Lichtkante, unten Schatten, leicht gerundete Ecken.
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
 - **Der N. Balken sieht anders aus** — das Signal „Ziel erreicht“, nur in Phase eins. Man sieht ihn erst,
   wenn er gleitet; N steht nirgends als Zahl. **Gold, mit Funken, glimmend** — nicht vom Farbkreis.
-- **Halten:** kurzer Ton beim Tipp. **Schnitt:** das Stück fällt animiert nach unten
+- **Halten:** kurzer Ton beim Tipp; ein perfekter Halt (nichts abgeschnitten) klingt nach Erfolg. **Schnitt:** das Stück fällt animiert nach unten
   ([frontend-ui.md](../../../.claude/guidelines/frontend-ui.md), Animation; reduzierte Bewegung
   beachten). Ton über `useSoundStage()` wie bei den anderen Brettern.
 
@@ -170,7 +171,8 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 Wie Verrohrung: Takt, Zwischenstand, antippbare Namen. Je Spieler die Höhe, in Phase zwei der Sieger
 vorn. **Ein Name im Scoreboard zeigt dessen Turm**, nachgebaut aus den Klickzeiten im Tipp, wie die
-antippbaren Namen der anderen Spiele. Es steht immer nur ein Turm auf dem Brett.
+antippbaren Namen der anderen Spiele. Es steht immer nur ein Turm auf dem Brett. Der Turm steht ganz im Bild:
+das Brett zoomt heraus, statt zu scrollen.
 
 ## Labor
 

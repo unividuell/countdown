@@ -23,7 +23,8 @@ export interface Slider {
   x: number
 }
 
-export type StackTap = 'placed' | 'missed' | 'ignored'
+/** `perfect`: placed with nothing cut off. */
+export type StackTap = 'placed' | 'perfect' | 'missed' | 'ignored'
 
 export function useStackRun(input: {
   geometry: TowerGeometry
@@ -99,7 +100,7 @@ export function useStackRun(input: {
     if (bars.value.length - 1 >= input.geometry.maxFloors) finish()
     else slider.value = sliderNow()
 
-    return 'placed'
+    return bar.width === rest.width ? 'perfect' : 'placed'
   }
 
   return {

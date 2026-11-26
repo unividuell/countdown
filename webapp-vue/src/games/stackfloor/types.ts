@@ -68,8 +68,17 @@ export function asStackFloorScene(value: unknown): StackFloorScene | null {
 export function asStackFloorPayload(value: unknown): StackFloorPayload | null {
   if (typeof value !== 'object' || value === null) return null
   const raw = value as Partial<Record<keyof StackFloorPayload, unknown>>
-  const { fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target, accelPercent } =
-    raw
+  const {
+    fieldWidth,
+    startWidth,
+    speedNum,
+    speedDen,
+    pauseMs,
+    maxFloors,
+    hueStart,
+    target,
+    accelPercent,
+  } = raw
   if (!isLength(fieldWidth) || !isLength(startWidth)) return null
   if (!isLength(speedNum) || !isLength(speedDen)) return null
   if (!isCount(pauseMs) || !isLength(maxFloors) || !isCount(hueStart)) return null
