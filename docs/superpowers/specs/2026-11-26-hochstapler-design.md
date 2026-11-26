@@ -100,7 +100,8 @@ gleitet erst los, wenn der Vorhang offen ist (wie Anrührung und Augenmessung wa
 - **Nur N hängt an der Schwierigkeit**, gezogen aus `GameRandom.presentation` in einem Bereich, den
   `RoundContext.difficulty` verschiebt. Kein Geheimnis zu schützen, aber nicht aus dem Szenen-Strom.
 - **Geschwindigkeit und Startbreite sind konstant**, für jede Runde gleich.
-- Bereich für N, Geschwindigkeit und Startbreite sind **vorläufig** und werden im Labor eingestellt.
+- **N reicht von etwa 11 (leichteste Runde) bis etwa 45 (schwerste).** Die Geschwindigkeit wird im
+  Labor so eingestellt, dass diese Grenzen passen; sie und die Startbreite sind vorläufig.
 
 ## Die Turm-Funktion — Kotlin und TS, bit-genau
 
@@ -157,7 +158,7 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
 - **Der N. Balken sieht anders aus** — das Signal „Ziel erreicht“, nur in Phase eins. Man sieht ihn erst,
-  wenn er gleitet; N steht nirgends als Zahl. Die Gestalt wählt der Bauer im Labor.
+  wenn er gleitet; N steht nirgends als Zahl. **Gold, mit Funken, glimmend** — nicht vom Farbkreis.
 - **Halten:** kurzer Ton beim Tipp. **Schnitt:** das Stück fällt animiert nach unten
   ([frontend-ui.md](../../../.claude/guidelines/frontend-ui.md), Animation; reduzierte Bewegung
   beachten). Ton über `useSoundStage()` wie bei den anderen Brettern.
@@ -180,5 +181,5 @@ Startbreite werden im Code eingestellt und im Labor geprüft.
 ## Offen für den Bauer
 
 - Startlagen und Richtungen je Stockwerk; feste Übergangszeit zwischen Stockwerken.
-- Gestalt des Ziel-Balkens, Farbschritt, Klänge, Fall-Animation.
-- Startwerte für N-Bereich, Geschwindigkeit, Startbreite — vorläufig, im Labor eingestellt.
+- Farbschritt, Klänge, Fall-Animation; Feinheiten von Gold, Funken und Glimmen.
+- Geschwindigkeit und Startbreite — vorläufig, im Labor eingestellt.

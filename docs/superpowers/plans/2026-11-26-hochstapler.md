@@ -19,9 +19,9 @@
 3. **Startlagen fest:** Stockwerk `k` (= Zahl der schon liegenden Balken über dem Fundament, ab `0`) beginnt bei geradem `k` links und gleitet nach rechts, bei ungeradem rechts und gleitet nach links. Nichts gezogen.
 4. **Lage:** `S = fieldWidth − width`, `d = floor(ms × speedNum / speedDen)`, `m = d mod 2S`, `p = m ≤ S ? m : 2S − m`, `x = links ? p : S − p`.
 5. **Schnitt:** Überlappung `[max(l₀, x), min(l₀ + w₀, x + w))`; Breite `≤ 0` ist der Fehlgriff — Berühren an der Kante zählt nicht.
-6. **N:** `6 + floor(difficulty × 10) + presentation.nextIntBetween(-2, 2)` → `4..18`, nur Phase eins; Phase zwei `target = null`.
+6. **N:** `(11 + floor(difficulty × 34) + presentation.nextIntBetween(-2, 2)).coerceIn(11, 45)` — leichteste Runde um 11, schwerste um 45; nur Phase eins, Phase zwei `target = null`. Die Geschwindigkeit wird im Labor so eingestellt, dass diese Grenzen passen.
 7. **Farbe:** `hueStart` aus `random.scene` (`nextInt(360)`), damit das Fundament unter der Hülle schon seine Farbe hat. Balken `i` (Fundament `0`) hat Farbton `(hueStart + 12 × i) mod 360`, `oklch(70% 0.13 h)`, im Dunkeln `oklch(62% 0.13 h)`.
-8. **Ziel-Balken:** Stockwerk `target` trägt Streifen (SVG-`<pattern>`, 45°, weiß 35 %) und eine weiße Kontur — Startpunkt fürs Labor.
+8. **Ziel-Balken:** Stockwerk `target` ist **gold** (Verlauf `#F7D774` → `#C9971C`, nicht vom Farbkreis), **glimmt** (SVG-`feGaussianBlur`-Schein in Gold, Deckkraft pulsiert `0.35 ↔ 0.8` in `1,6 s`) und trägt **Funken**: fünf kleine Vierzack-Sterne an festen Stellen je Index, die versetzt aufblitzen (`1,2 s`, Phase je Stern). Bei reduzierter Bewegung stehen Schein und Sterne still. Gilt für den gleitenden wie den liegenden Ziel-Balken.
 9. **Ton:** ein Holzklopfen je Halt (`knocks`, Bauform `deduster/tileSound.ts`, `A5 = 880 Hz`), sonst nichts.
 10. **Darstellung:** SVG, `viewBox` `1000 × 1333` (3:4), Balkenhöhe `60`; der Turm rollt, sodass der gleitende Balken im oberen Drittel bleibt. Abgeschnittenes fällt in `600 ms` um `800` Einheiten und blendet aus; bei reduzierter Bewegung verschwindet es sofort.
 11. **Markierungen** als eine Liste `marks` (`RESTARTED`, `SUBMITTED_BEFORE_RUN_END`), ein Zeichen in der Rangliste wie Entstauber.
@@ -166,14 +166,14 @@ EOF
 **Interfaces:**
 - Consumes: Task 1.
 - Produces (Wire-Vertrag fürs Frontend): Game-Id `stack-floor`; Bühne `{ fieldWidth, startWidth, hueStart }`; Payload `{ fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target: Int|null }`; Tipp `{ clicks: [Int], restarted: Boolean }` (`restarted` optional, Vorgabe `false`); Outcome `{ height, marks: ["RESTARTED" | "SUBMITTED_BEFORE_RUN_END"] }`; Lösung `null`.
-- Kotlin: `data class StackFloorParams(val fieldWidth: Int, val startWidth: Int, val speedNum: Int, val speedDen: Int, val pauseMs: Int, val maxFloors: Int, val hueStart: Int, val target: Int?)` mit `fun geometry(): TowerGeometry`; `StackFloorScene : GameScene`; `StackFloorPayload : GamePayload`; `enum class StackFloorMark { RESTARTED, SUBMITTED_BEFORE_RUN_END }`; `StackFloorOutcome(height: Int, marks: List<StackFloorMark>) : GameOutcome`; `@Component class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloorParams>` mit `companion object { FIELD_WIDTH = 1000; START_WIDTH = 660; SPEED_NUM = 1; SPEED_DEN = 2; PAUSE_MS = 300; MAX_FLOORS = 999; MAX_CLICK_MS = 3_600_000; fun targetBase(difficulty: Double): Int }`.
+- Kotlin: `data class StackFloorParams(val fieldWidth: Int, val startWidth: Int, val speedNum: Int, val speedDen: Int, val pauseMs: Int, val maxFloors: Int, val hueStart: Int, val target: Int?)` mit `fun geometry(): TowerGeometry`; `StackFloorScene : GameScene`; `StackFloorPayload : GamePayload`; `enum class StackFloorMark { RESTARTED, SUBMITTED_BEFORE_RUN_END }`; `StackFloorOutcome(height: Int, marks: List<StackFloorMark>) : GameOutcome`; `@Component class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloorParams>` mit `companion object { FIELD_WIDTH = 1000; START_WIDTH = 660; SPEED_NUM = 1; SPEED_DEN = 2; PAUSE_MS = 300; MAX_FLOORS = 999; MAX_CLICK_MS = 3_600_000; MIN_TARGET = 11; MAX_TARGET = 45; fun targetBase(difficulty: Double): Int }` — `targetBase = MIN_TARGET + floor(difficulty × (MAX_TARGET − MIN_TARGET))`.
 
 - [ ] **Step 1: Die fallenden Tests schreiben**
 
 `StackFloorGameTypeTest` — Gerüst (`random(…)`, `draw(phase, difficulty)`, `guess(json)`) wie `TurnPipesGameTypeTest`:
 
 - `it is registered under a stable id and a German display name` — `"stack-floor"`, `"Hochstapler"`.
-- `the target follows the difficulty, only in phase one` — `targetBase(0.0) == 6`, `targetBase(0.5) == 11`, `targetBase(1.0) == 16`; über 200 Seeds liegt `draw(ONE, d).target` in `targetBase(d) − 2 .. targetBase(d) + 2`; `draw(TWO, …).target == null`.
+- `the target follows the difficulty, only in phase one` — `targetBase(0.0) == 11`, `targetBase(0.5) == 28`, `targetBase(1.0) == 45`; über 200 Seeds liegt `draw(ONE, d).target` in `max(11, targetBase(d) − 2) .. min(45, targetBase(d) + 2)` für `d` in `0.0, 0.5, 1.0`; `draw(TWO, …).target == null`.
 - `the hue comes from the scene stream, the target from the presentation stream` — `hueStart` gleich bei gleichem `scene`-Seed und verschiedenen anderen; `target` gleich bei gleichem `presentation`-Seed und verschiedenen anderen.
 - `both phases need the one reveal and score no duration` — `requiresReveal == true`, `scoresOnDuration == false` in beiden Phasen; `stages == 1`.
 - `every exit carries exactly its fields` — Bühne `{fieldWidth, startWidth, hueStart}`, Payload `{fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target}`, Outcome `{height, marks}`, `solution == null`.
@@ -201,7 +201,7 @@ Expected: Kompilierfehler — `StackFloorGameType` unbekannt.
 
 - [ ] **Step 3: Den Adapter schreiben**
 
-`draw`: erst `hueStart = random.scene.nextInt(360)`, dann in Phase eins `target = targetBase(difficulty) + random.presentation.nextIntBetween(-2, 2)`; Konstanten in die Params. `judge(params, guess, context)` nach `DedusterGameType.judge`: Klicks prüfen (Array, nicht leer, jedes `isIntegralNumber && canConvertToInt()` in `0..MAX_CLICK_MS`, höchstens `maxFloors + 1`), `Tower.build`, dann Gültigkeit: ein Fehlgriff vor dem letzten Klick oder kein Fehlgriff unter `maxFloors` → `InvalidGuessException`. Untergrenze: `sum(clicks) + (clicks.size − 1) × pauseMs`, als `Long`. Markierungen in Deklarationsreihenfolge, `logger.warn` mit `context.playId ?: "lab"` wie Entstauber. `judge(params, guess)` delegiert mit `GuessContext(sinceRevealMs = null, playId = null)`. KDoc auf der Klasse: Hochstapler als ankündbares Spiel; der Server rechnet den Turm aus Klickzeiten nach; die Decke (perfekte Klickzeiten aus der Payload) in einem Satz.
+`draw`: erst `hueStart = random.scene.nextInt(360)`, dann in Phase eins `target = (targetBase(difficulty) + random.presentation.nextIntBetween(-2, 2)).coerceIn(MIN_TARGET, MAX_TARGET)`; Konstanten in die Params. `judge(params, guess, context)` nach `DedusterGameType.judge`: Klicks prüfen (Array, nicht leer, jedes `isIntegralNumber && canConvertToInt()` in `0..MAX_CLICK_MS`, höchstens `maxFloors + 1`), `Tower.build`, dann Gültigkeit: ein Fehlgriff vor dem letzten Klick oder kein Fehlgriff unter `maxFloors` → `InvalidGuessException`. Untergrenze: `sum(clicks) + (clicks.size − 1) × pauseMs`, als `Long`. Markierungen in Deklarationsreihenfolge, `logger.warn` mit `context.playId ?: "lab"` wie Entstauber. `judge(params, guess)` delegiert mit `GuessContext(sinceRevealMs = null, playId = null)`. KDoc auf der Klasse: Hochstapler als ankündbares Spiel; der Server rechnet den Turm aus Klickzeiten nach; die Decke (perfekte Klickzeiten aus der Payload) in einem Satz.
 
 - [ ] **Step 4: Alles laufen lassen**
 
@@ -354,7 +354,8 @@ EOF
 
 `TowerView.spec.ts`:
 - `one rect per bar, coloured round the wheel` — drei Balken → drei `rect` mit `fill` aus `barFill(barHue(…))`.
-- `the target floor wears the stripes` — `target: 2` → Balken 2 hat das Muster, die anderen nicht; `target: null` → keiner.
+- `the target floor is gold, glows and sparkles` — `target: 2` → Balken 2 hat die Gold-Füllung, den Schein und fünf Sterne, die anderen nichts davon; `target: null` → keiner; auch der gleitende Balken auf Stockwerk `target` ist gold.
+- `under reduced motion the gold stands still` — `prefersReducedMotion` gemockt → Schein und Sterne ohne Animation.
 - `the guide line stands on the top bar's centre` — `x1 == left + width / 2` des obersten Balkens.
 - `cuts fall, or vanish under reduced motion` — mit `prefersReducedMotion` gemockt → kein Fall-Element.
 - `a tall tower scrolls, the board keeps its size` — 40 Balken → `viewBox`-Höhe bleibt `1333`, der Versatz hält den Schieber im oberen Drittel.
@@ -390,7 +391,8 @@ git commit -F - <<'EOF'
 Add Hochstapler's board
 
 Card-wide SVG tower: each bar a step further round the colour wheel,
-the target floor striped in phase one, cut pieces falling away. The
+the target floor gold and sparkling in phase one, cut pieces falling
+away. The
 cover starts the one run in both phases; a reload mid-run lays the
 cover again and marks the run, as in Entstauber.
 
@@ -468,7 +470,7 @@ EOF
 Backend und Frontend aus diesem Worktree starten (`.claude/launch.json`, Konfigurationen `backend` und `frontend`; cwd prüfen), am Handy über die LAN-IP `/c/<slug>/lab/stack-floor` öffnen. Prüfen und dem Menschen berichten, was nur er am Gerät beurteilen kann:
 - Rampe → Hülle → START in beiden Phasen; der Balken gleitet erst nach dem Vorhang.
 - Tipp hält mit Klopfen; Überstand fällt; Hilfslinie mittig; Farben wandern, hell und dunkel lesbar.
-- Phase eins: Ziel-Balken erkennbar, keine Zahl N zu sehen.
-- Geschwindigkeit, Startbreite, N-Bereich: Gefühl melden — die Zahlen sind vorläufig.
+- Phase eins: Ziel-Balken gold, glimmend, mit Funken; keine Zahl N zu sehen.
+- **Geschwindigkeit einstellen:** so, dass N = 11 in der leichtesten Runde gut erreichbar und N = 45 in der schwersten knapp erreichbar ist. Mehrere Läufe je Geschwindigkeit, Höhen notieren, dem Menschen Varianten mit Zahlen vorlegen — er wählt. Danach `SPEED_NUM`/`SPEED_DEN` setzen und die Vektoren (Geometrie aus `G`) unverändert lassen.
 - Neuladen mitten im Lauf: eigene Hülle mit Satz, Zeichen in der Rangliste.
 - Auflösung: Namen antippen zeigt je einen Turm.
