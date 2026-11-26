@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The tower, drawn from the bars the run has fixed — never from the animated pixel. The board is
- * a fixed 3:4 picture; a tall tower scrolls under it so the sliding bar stays in the upper third.
+ * a fixed 5:4 picture; a tall tower scrolls under it so the sliding bar stays in the upper third.
  * With [fit] (the reveal) the picture zooms out instead, until the whole tower is on it.
  *
  *   y = 0      ┌──────────┐
@@ -50,7 +50,8 @@ const shadeId = `shade-${id}`
 const dark = useDarkScheme()
 const still = prefersReducedMotion()
 
-const viewHeight = computed(() => Math.round((props.fieldWidth * 4) / 3))
+/** Landscape 5:4: low enough to leave the page room, high enough for the slider's third. */
+const viewHeight = computed(() => Math.round((props.fieldWidth * 4) / 5))
 
 /** The floor's top edge, before scrolling. */
 function floorY(floor: number): number {
@@ -61,10 +62,10 @@ const offset = computed(() => {
   if (props.fit) return 0
   const floor = props.slider?.floor ?? props.bars.length
 
-  return Math.max(0, Math.round(viewHeight.value / 3 - floorY(floor)))
+  return Math.max(0, Math.floor(viewHeight.value / 3 - floorY(floor)))
 })
 
-/** Fitted: tall enough for every bar plus two floors of air, 3:4 kept, the field centred. */
+/** Fitted: tall enough for every bar plus two floors of air, 5:4 kept, the field centred. */
 const view = computed(() => {
   const height = props.fit
     ? Math.max(viewHeight.value, BAR_HEIGHT * (props.bars.length + 2))

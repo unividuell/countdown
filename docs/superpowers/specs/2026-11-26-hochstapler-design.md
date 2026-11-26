@@ -156,8 +156,8 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 
 ## Brett
 
-- Kartenbreit, mobil zuerst. Der Turm wandert nach unten weg, damit der gleitende Balken sichtbar
-  bleibt.
+- Kartenbreit, mobil zuerst, Querformat 5:4. Der Turm wandert nach unten weg, damit der gleitende
+  Balken sichtbar bleibt. Die Seite bleibt im Lauf scrollbar; nur ein Wisch auf dem Brett ist ein Tipp.
 - **Balken sind plastisch:** oben eine Lichtkante, unten Schatten, leicht gerundete Ecken.
 - **Jeder Balken hat eine leicht andere Farbe:** Farbton um einen festen Schritt weiter, wie auf dem
   Farbkreis. Startton aus der Payload, Schrittweite und Sättigung im Labor, hell und dunkel lesbar.
@@ -170,7 +170,7 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 ## Auflösung
 
 Wie Verrohrung: Takt, Zwischenstand, antippbare Namen. Je Spieler die Höhe, in Phase zwei der Sieger
-vorn. **Ein Name im Scoreboard zeigt dessen Turm**, nachgebaut aus den Klickzeiten im Tipp, wie die
+vorn; in Phase eins steht im Kopf „Lösung ≥ N“. **Ein Name im Scoreboard zeigt dessen Turm**, nachgebaut aus den Klickzeiten im Tipp, wie die
 antippbaren Namen der anderen Spiele. Es steht immer nur ein Turm auf dem Brett. Der Turm steht ganz im Bild:
 das Brett zoomt heraus, statt zu scrollen.
 

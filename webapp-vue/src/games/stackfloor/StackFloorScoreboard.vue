@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /**
  * „Auswertung“ for Hochstapler: the shared table with one column, the tower's height. The name is a
- * button — tapping it shows that player's tower on the reveal's board.
+ * button — tapping it shows that player's tower on the reveal's board. In phase one the head names
+ * what earned the point: „Lösung ≥ 12“.
  */
+import { computed } from 'vue'
 import RevealScoreboard from '@/games/RevealScoreboard.vue'
 import type { ScoreboardColumn } from '@/games/scoreboardColumns'
 import type { ScoreRow } from './scoreboard'
@@ -13,17 +15,39 @@ const props = defineProps<{
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
   selectedUserId: string | null
+  /** The floor that earned the point; `null` in phase two. */
+  target: number | null
 }>()
 
 const emit = defineEmits<{ select: [userId: string] }>()
 
-const COLUMNS: ScoreboardColumn<ScoreRow>[] = [{ key: 'height', label: 'Höhe', width: '6.5rem' }]
+const solution = computed(() => (props.target === null ? null : `≥ ${props.target}`))
+
+/** As wide as the widest text, one `ch` spare, but never narrower than „Höhe“ in the head. */
+const columns = computed<ScoreboardColumn<ScoreRow>[]>(() => {
+  const texts = [solution.value ?? '', ...props.rows.map((row) => String(row.height ?? '—'))]
+  const ch = Math.max(...texts.map((text) => text.length)) + 1
+
+  return [
+    {
+      key: 'height',
+      label: 'Höhe',
+      width: `max(calc(${ch}ch + 0.25rem), 2.05rem)`,
+      align: 'end',
+      numeric: true,
+      ...(solution.value === null ? {} : { fact: 'Lösung' }),
+    },
+  ]
+})
+
+/** Like Augenmaß's head values: the solution row's ground, right-aligned like the column. */
+const FACT = 'block bg-surface-container-highest px-0.5 text-end text-on-surface tabular-nums'
 </script>
 
 <template>
   <RevealScoreboard
     :rows="props.rows"
-    :columns="COLUMNS"
+    :columns="columns"
     caption="Alle Türme der Runde, nach Punkten sortiert"
     :live="props.live"
   >
@@ -48,6 +72,10 @@ const COLUMNS: ScoreboardColumn<ScoreRow>[] = [{ key: 'height', label: 'Höhe', 
           :mark="mark"
         />
       </button>
+    </template>
+
+    <template v-if="solution !== null" #fact-height>
+      <span data-test="stack-floor-solution" :class="FACT">{{ solution }}</span>
     </template>
 
     <template #cell-height="{ row }">{{ row.height === null ? '—' : String(row.height) }}</template>

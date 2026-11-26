@@ -6,7 +6,6 @@
  * gives the sliding bar a head start. The foundation stands under the cover from the scene alone.
  */
 import { computed, effectScope, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { useScrollLock } from '@vueuse/core'
 import type { AwardRule } from '@/api/types'
 import RevealCover from '@/ui/RevealCover.vue'
 import { inBackground } from '@/ui/motion'
@@ -127,11 +126,8 @@ watch(
   },
 )
 
+// No scroll lock: the page scrolls beside the board, and `touch-none` keeps a swipe on it a tap.
 const running = computed(() => run.value?.running.value === true)
-const scrollLocked = useScrollLock(document.body)
-watch(running, (now) => {
-  scrollLocked.value = now
-})
 
 const cuts = computed(() => run.value?.cuts.value ?? [])
 const slider = computed(() => run.value?.slider.value ?? null)

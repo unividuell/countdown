@@ -65,6 +65,7 @@ const bars = computed(() => {
       :rows="props.rows"
       :live="props.live"
       :selected-user-id="selectedUserId"
+      :target="props.payload.target"
       @select="select"
     />
   </div>
