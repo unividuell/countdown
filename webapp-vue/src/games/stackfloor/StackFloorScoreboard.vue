@@ -13,7 +13,6 @@ const props = defineProps<{
   rows: ScoreRow[]
   /** True while the round's rule is `CLOSEST_ONLY` — then a score can still be overtaken. */
   live: boolean
-  animate: boolean
   selectedUserId: string | null
 }>()
 

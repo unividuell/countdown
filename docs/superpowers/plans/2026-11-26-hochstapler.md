@@ -14,7 +14,7 @@
 
 **Entscheidungen dieses Plans** (die Spec überlässt sie dem Bauenden):
 
-1. **Geometrie (vorläufig, in den Params eingefroren):** Feldbreite `1000`, Startbreite `660`, Geschwindigkeit `1/2` Einheit je ms (`speedNum = 1`, `speedDen = 2`), Pause zwischen Stockwerken `300 ms`, `maxFloors = 999`, eine Klickzeit höchstens `3_600_000 ms`.
+1. **Geometrie (vorläufig, in den Params eingefroren):** Feldbreite `1000`, Startbreite `660`, Geschwindigkeit `1/2` Einheit je ms (`speedNum = 1`, `speedDen = 2`), Pause zwischen Stockwerken `300 ms`, `maxFloors = 999`; eine Klickzeit ist nach oben unbegrenzt (ein Tab im Hintergrund darf nie verweigert werden).
 2. **Fundament** mittig: `left = (fieldWidth − startWidth) / 2`.
 3. **Startlagen fest:** Stockwerk `k` (= Zahl der schon liegenden Balken über dem Fundament, ab `0`) beginnt bei geradem `k` links und gleitet nach rechts, bei ungeradem rechts und gleitet nach links. Nichts gezogen.
 4. **Lage:** `S = fieldWidth − width`, `d = floor(ms × speedNum / speedDen)`, `m = d mod 2S`, `p = m ≤ S ? m : 2S − m`, `x = links ? p : S − p`.
@@ -166,7 +166,7 @@ EOF
 **Interfaces:**
 - Consumes: Task 1.
 - Produces (Wire-Vertrag fürs Frontend): Game-Id `stack-floor`; Bühne `{ fieldWidth, startWidth, hueStart }`; Payload `{ fieldWidth, startWidth, speedNum, speedDen, pauseMs, maxFloors, hueStart, target: Int|null }`; Tipp `{ clicks: [Int], restarted: Boolean }` (`restarted` optional, Vorgabe `false`); Outcome `{ height, marks: ["RESTARTED" | "SUBMITTED_BEFORE_RUN_END"] }`; Lösung `null`.
-- Kotlin: `data class StackFloorParams(val fieldWidth: Int, val startWidth: Int, val speedNum: Int, val speedDen: Int, val pauseMs: Int, val maxFloors: Int, val hueStart: Int, val target: Int?)` mit `fun geometry(): TowerGeometry`; `StackFloorScene : GameScene`; `StackFloorPayload : GamePayload`; `enum class StackFloorMark { RESTARTED, SUBMITTED_BEFORE_RUN_END }`; `StackFloorOutcome(height: Int, marks: List<StackFloorMark>) : GameOutcome`; `@Component class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloorParams>` mit `companion object { FIELD_WIDTH = 1000; START_WIDTH = 660; SPEED_NUM = 1; SPEED_DEN = 2; PAUSE_MS = 300; MAX_FLOORS = 999; MAX_CLICK_MS = 3_600_000; MIN_TARGET = 11; MAX_TARGET = 45; fun targetBase(difficulty: Double): Int }` — `targetBase = MIN_TARGET + floor(difficulty × (MAX_TARGET − MIN_TARGET))`.
+- Kotlin: `data class StackFloorParams(val fieldWidth: Int, val startWidth: Int, val speedNum: Int, val speedDen: Int, val pauseMs: Int, val maxFloors: Int, val hueStart: Int, val target: Int?)` mit `fun geometry(): TowerGeometry`; `StackFloorScene : GameScene`; `StackFloorPayload : GamePayload`; `enum class StackFloorMark { RESTARTED, SUBMITTED_BEFORE_RUN_END }`; `StackFloorOutcome(height: Int, marks: List<StackFloorMark>) : GameOutcome`; `@Component class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloorParams>` mit `companion object { FIELD_WIDTH = 1000; START_WIDTH = 660; SPEED_NUM = 1; SPEED_DEN = 2; PAUSE_MS = 300; MAX_FLOORS = 999; MIN_TARGET = 11; MAX_TARGET = 45; fun targetBase(difficulty: Double): Int }` — `targetBase = MIN_TARGET + floor(difficulty × (MAX_TARGET − MIN_TARGET))`.
 
 - [ ] **Step 1: Die fallenden Tests schreiben**
 
@@ -182,7 +182,7 @@ EOF
 - `the stored guess is the checked clicks and the restart flag` — `{"clicks":[0,0,0],"note":"x"}` → gespeichert `{"clicks":[0,0,0],"restarted":false}`.
 - `a restart is marked, not refused` — `restarted: true` → `marks == [RESTARTED]`, Höhe unverändert.
 - `a guess faster than its run is marked, not refused` — `[0,0,0]` mit `GuessContext(sinceRevealMs = 599, …)` → `marks` enthält `SUBMITTED_BEFORE_RUN_END` (frühestes Ende `0+0+0 + 2 × 300 = 600`); mit `600` nicht; mit `null` nicht.
-- `a malformed guess is refused before anything is written` — je `InvalidGuessException`: `{}`, `{"clicks":[]}`, `{"clicks":"0"}`, ein Wert `-1`, `1.5`, `"1"`, `3600001`, `9999999999`, `null`; `restarted: "yes"`; Klicks nach dem Fehlgriff `[0,0,0,0]`; ein Lauf ohne Fehlgriff unter `maxFloors` `[0,0]`.
+- `a malformed guess is refused before anything is written` — je `InvalidGuessException`: `{}`, `{"clicks":[]}`, `{"clicks":"0"}`, ein Wert `-1`, `1.5`, `"1"`, `9999999999`, `null`; `restarted: "yes"`; Klicks nach dem Fehlgriff `[0,0,0,0]`; ein Lauf ohne Fehlgriff unter `maxFloors` `[0,0]`.
 - `a run that reaches maxFloors needs no miss` — Params mit `maxFloors = 2`: `[0,0]` gültig, Höhe `2`.
 
 `LabServiceTest.aValidGuessFor`, vor dem `else`:
@@ -201,7 +201,7 @@ Expected: Kompilierfehler — `StackFloorGameType` unbekannt.
 
 - [ ] **Step 3: Den Adapter schreiben**
 
-`draw`: erst `hueStart = random.scene.nextInt(360)`, dann in Phase eins `target = (targetBase(difficulty) + random.presentation.nextIntBetween(-2, 2)).coerceIn(MIN_TARGET, MAX_TARGET)`; Konstanten in die Params. `judge(params, guess, context)` nach `DedusterGameType.judge`: Klicks prüfen (Array, nicht leer, jedes `isIntegralNumber && canConvertToInt()` in `0..MAX_CLICK_MS`, höchstens `maxFloors + 1`), `Tower.build`, dann Gültigkeit: ein Fehlgriff vor dem letzten Klick oder kein Fehlgriff unter `maxFloors` → `InvalidGuessException`. Untergrenze: `sum(clicks) + (clicks.size − 1) × pauseMs`, als `Long`. Markierungen in Deklarationsreihenfolge, `logger.warn` mit `context.playId ?: "lab"` wie Entstauber. `judge(params, guess)` delegiert mit `GuessContext(sinceRevealMs = null, playId = null)`. KDoc auf der Klasse: Hochstapler als ankündbares Spiel; der Server rechnet den Turm aus Klickzeiten nach; die Decke (perfekte Klickzeiten aus der Payload) in einem Satz.
+`draw`: erst `hueStart = random.scene.nextInt(360)`, dann in Phase eins `target = (targetBase(difficulty) + random.presentation.nextIntBetween(-2, 2)).coerceIn(MIN_TARGET, MAX_TARGET)`; Konstanten in die Params. `judge(params, guess, context)` nach `DedusterGameType.judge`: Klicks prüfen (Array, nicht leer, jedes `isIntegralNumber && canConvertToInt()` `>= 0`, höchstens `maxFloors + 1`), `Tower.build`, dann Gültigkeit: ein Fehlgriff vor dem letzten Klick oder kein Fehlgriff unter `maxFloors` → `InvalidGuessException`. Untergrenze: `sum(clicks) + (clicks.size − 1) × pauseMs`, als `Long`. Markierungen in Deklarationsreihenfolge, `logger.warn` mit `context.playId ?: "lab"` wie Entstauber. `judge(params, guess)` delegiert mit `GuessContext(sinceRevealMs = null, playId = null)`. KDoc auf der Klasse: Hochstapler als ankündbares Spiel; der Server rechnet den Turm aus Klickzeiten nach; die Decke (perfekte Klickzeiten aus der Payload) in einem Satz.
 
 - [ ] **Step 4: Alles laufen lassen**
 

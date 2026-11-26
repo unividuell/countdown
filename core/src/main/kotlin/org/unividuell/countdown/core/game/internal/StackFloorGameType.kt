@@ -81,7 +81,7 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
     override fun draw(random: GameRandom, context: RoundContext): StackFloorParams {
         val hueStart = random.scene.nextInt(360)
         val target = if (context.phase == Phase.ONE) {
-            val jitter = random.presentation.nextIntBetween(-2, 2)
+            val jitter = random.presentation.nextIntBetween(min = -2, maxInclusive = 2)
 
             (targetBase(context.difficulty) + jitter).coerceIn(MIN_TARGET, MAX_TARGET)
         } else {
@@ -160,8 +160,8 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         // toList(): JsonNode has its own single-value `map`, which would shadow the Iterable one.
         return node.toList().map { entry ->
             // canConvertToInt, not just isIntegralNumber: see FindPatternGameType.judge.
-            if (!entry.isIntegralNumber || !entry.canConvertToInt() || entry.asInt() !in 0..MAX_CLICK_MS) {
-                throw InvalidGuessException("every click must be an integer of 0..$MAX_CLICK_MS milliseconds")
+            if (!entry.isIntegralNumber || !entry.canConvertToInt() || entry.asInt() < 0) {
+                throw InvalidGuessException("every click must be a non-negative integer of milliseconds")
             }
             entry.asInt()
         }
@@ -174,7 +174,6 @@ class StackFloorGameType(private val mapper: ObjectMapper) : GameType<StackFloor
         const val SPEED_DEN = 2
         const val PAUSE_MS = 300
         const val MAX_FLOORS = 999
-        const val MAX_CLICK_MS = 3_600_000
         const val MIN_TARGET = 11
         const val MAX_TARGET = 45
 

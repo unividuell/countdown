@@ -60,8 +60,8 @@ object Tower {
             if (bars.size - 1 >= geometry.maxFloors) break
 
             val below = bars.last()
-            val x = position(geometry, floor = bars.size - 1, width = below.width, ms = ms)
-            val bar = place(below, x = x, width = below.width)
+            val x = position(geometry = geometry, floor = bars.size - 1, width = below.width, ms = ms)
+            val bar = place(below = below, x = x, width = below.width)
                 ?: return TowerResult(bars = bars, missed = true)
 
             bars += bar

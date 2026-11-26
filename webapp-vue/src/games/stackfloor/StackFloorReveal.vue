@@ -63,7 +63,6 @@ const bars = computed(() => {
     <StackFloorScoreboard
       :rows="props.rows"
       :live="props.live"
-      :animate="props.animate"
       :selected-user-id="selectedUserId"
       @select="select"
     />

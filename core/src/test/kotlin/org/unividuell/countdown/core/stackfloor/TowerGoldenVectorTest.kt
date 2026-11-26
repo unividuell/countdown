@@ -32,7 +32,7 @@ class TowerGoldenVectorTest {
     private fun pair(bar: Bar) = listOf(bar.left, bar.width)
 
     private fun tower(geometry: TowerGeometry, clicks: List<Int>): TowerCase {
-        val result = Tower.build(geometry, clicks)
+        val result = Tower.build(geometry = geometry, clicks = clicks)
 
         return TowerCase(
             maxFloors = geometry.maxFloors,
@@ -56,15 +56,18 @@ class TowerGoldenVectorTest {
             Triple(below, 900, 100), // far right
         )
         val rng = SeededRandom.fromSeed(7)
-        val random = List(20) { rng.nextIntBetween(0, 2000) }
+        val random = List(20) { rng.nextIntBetween(min = 0, maxInclusive = 2000) }
 
         return Vectors(
             version = 1,
-            geometry = GeometryJson(g.fieldWidth, g.startWidth, g.speedNum, g.speedDen, g.maxFloors),
+            geometry = GeometryJson(
+                fieldWidth = g.fieldWidth, startWidth = g.startWidth, speedNum = g.speedNum,
+                speedDen = g.speedDen, maxFloors = g.maxFloors,
+            ),
             positions = listOf(0, 1, 7).flatMap { floor ->
                 listOf(660, 1, 999).flatMap { width ->
                     listOf(0, 1, 679, 680, 681, 1361, 3_600_000).map { ms ->
-                        PositionCase(floor = floor, width = width, ms = ms, x = Tower.position(g, floor = floor, width = width, ms = ms))
+                        PositionCase(floor = floor, width = width, ms = ms, x = Tower.position(geometry = g, floor = floor, width = width, ms = ms))
                     }
                 }
             },
@@ -72,9 +75,9 @@ class TowerGoldenVectorTest {
                 PlaceCase(below = pair(b), x = x, width = width, bar = Tower.place(b, x = x, width = width)?.let { pair(it) })
             },
             towers = listOf(
-                tower(g, listOf(0, 0, 0)),
-                tower(g, random),
-                tower(g.copy(maxFloors = 5), List(7) { 340 }), // dead centre every time
+                tower(geometry = g, clicks = listOf(0, 0, 0)),
+                tower(geometry = g, clicks = random),
+                tower(geometry = g.copy(maxFloors = 5), clicks = List(7) { 340 }), // dead centre every time
             ),
         )
     }

@@ -115,7 +115,7 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
   des Balkens von Stockwerk i. Wo jeder Balken beginnt und in welche Richtung er gleitet, folgt aus den
   Params (Bauers Wahl, ob fest oder je Runde gezogen). Kotlin ist die Quelle, TS spiegelt im selben
   Commit.
-- **Golden Vectors** in `shared/stack-floor/vectors.json` mit `version`, von Kotlin geschrieben, von
+- **Golden Vectors** in `shared/stack-floor/tower.json` mit `version`, von Kotlin geschrieben, von
   Kotlin und Vitest geprüft.
 - **Der Client zeigt, was die Funktion sagt.** Die Lage eines haltenden Balkens kommt aus der
   ganzzahligen Klickzeit, nicht aus der animierten Pixel-Lage im Moment des Tipps — sonst zeigt der

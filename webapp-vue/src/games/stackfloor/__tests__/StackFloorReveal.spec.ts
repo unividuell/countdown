@@ -85,7 +85,7 @@ describe('StackFloorReveal', () => {
   })
 
   // The rule every reveal keeps — see `judgesWithVerdict`.
-  it('judges with its verdict: its board judged: my row lands silently, the others after', async () => {
+  it('judges with its verdict: my row lands silently, the others after', async () => {
     vi.useFakeTimers({ toFake: [...TIMELINE_TIMERS, 'setInterval', 'clearInterval'] })
     vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: false,

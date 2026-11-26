@@ -206,7 +206,6 @@ class StackFloorGameTypeTest {
             """{"clicks":[-1]}""",
             """{"clicks":[1.5]}""",
             """{"clicks":["1"]}""",
-            """{"clicks":[3600001]}""",
             """{"clicks":[9999999999]}""",
             """{"clicks":[null]}""",
             """{"clicks":[0,0,0],"restarted":"yes"}""",
@@ -217,6 +216,13 @@ class StackFloorGameTypeTest {
         ).forEach { json ->
             shouldThrow<InvalidGuessException> { game.judge(params = params(target = null), guess = guess(json)) }
         }
+    }
+
+    @Test
+    fun `a click after hours in a background tab is still judged`() {
+        val judged = game.judge(params = params(target = null, maxFloors = 1), guess = guess("""{"clicks":[5000000]}"""))
+
+        (judged.outcome as StackFloorOutcome).height shouldBe 1
     }
 
     @Test

@@ -56,6 +56,21 @@ describe('StackFloorGame', () => {
     expect(wrapper.findComponent(StackFloorBoard).exists()).toBe(false)
   })
 
+  it('a closed round without a guess of mine shows the reveal, not the board', () => {
+    const wrapper = mountGame({ closed: true })
+
+    expect(wrapper.findComponent(StackFloorReveal).exists()).toBe(true)
+    expect(wrapper.findComponent(StackFloorBoard).exists()).toBe(false)
+  })
+
+  it('is live only while the award rule is CLOSEST_ONLY', () => {
+    const live = (awardRule: GameProps['awardRule']) =>
+      mountGame({ closed: true, awardRule }).getComponent(StackFloorReveal).props('live')
+
+    expect(live('CLOSEST_ONLY')).toBe(true)
+    expect(live('ALL_QUALIFYING')).toBe(false)
+  })
+
   it("the board's guess is passed up", () => {
     const wrapper = mountGame()
 
