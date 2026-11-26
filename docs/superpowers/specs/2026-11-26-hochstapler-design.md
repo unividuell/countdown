@@ -157,7 +157,7 @@ nachzurechnen. Das rechtfertigt den Spiegel ([Parität](../../../.claude/guideli
 ## Brett
 
 - Kartenbreit, mobil zuerst. Quer ist das Brett das Feld (jede Länge ein Anteil seiner Breite, auf
-  jedem Gerät gleich); hoch ist es fest: 450 px Brett, 22,5 px Balken, 24 px Luft unter dem
+  jedem Gerät gleich); hoch ist es fest: 450 px Brett, 22,5 px Balken, 50 px Luft unter dem
   Fundament, egal wie breit. Der Turm wandert nach unten weg, damit der gleitende
   Balken sichtbar bleibt. Die Seite bleibt im Lauf scrollbar; nur ein Wisch auf dem Brett ist ein Tipp.
 - **Balken wie gefräste Holzbalken:** scharfe Ecken, oben eine schmale helle Fase, unten eine dunkle.

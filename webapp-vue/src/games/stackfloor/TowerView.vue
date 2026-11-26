@@ -25,7 +25,7 @@ import { heightLabel } from './scoreboard'
 const BOARD_PX = 450
 const BAR_PX = 22.5
 /** Air under the foundation. */
-const GROUND_PX = 24
+const GROUND_PX = 50
 /** Until the board is measured (and in tests): a 375 px phone, 0.375 px per field unit. */
 const FALLBACK_WIDTH_PX = 375
 const GOLD_FROM = '#F7D774'

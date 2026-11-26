@@ -171,8 +171,8 @@ describe('TowerView', () => {
     const tall = Array.from({ length: 40 }, () => ({ left: 200, width: 600 }))
     const w = mountTower({ bars: tall, fit: true })
 
-    // 42 floors of 60 and 64 of ground = 2584 high, the board's shape kept → 2153 wide, centred.
-    expect(w.get('svg').attributes('viewBox')).toBe(`-577 ${1200 - 2584} 2153 2584`)
+    // 42 floors of 60 and 133⅓ of ground = 2654 high, the board's shape kept → 2212 wide, centred.
+    expect(w.get('svg').attributes('viewBox')).toBe(`-606 ${1200 - 2654} 2212 2654`)
     expect(w.get('[data-test="tower"]').attributes('style')).toContain('translateY(0px)')
   })
 
