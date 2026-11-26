@@ -12,7 +12,6 @@ import EchoLocateReveal from '@/games/echolocate/EchoLocateReveal.vue'
 import type { EchoLocatePayload } from '@/games/echolocate/types'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 
 enableAutoUnmount(afterEach)
 
@@ -557,12 +556,8 @@ describe('EchoLocateGame', () => {
     })
   })
 
-  it('is registered for rounds and the lab, after Anmaßung', () => {
-    const ids = labGameList.map((game) => game.id)
-
+  it('is in the registry', () => {
     expect(gameComponents['echo-locate']).toBe(EchoLocateGame)
-    expect(labGameList).toContainEqual({ id: 'echo-locate', title: 'Peilung' })
-    expect(ids.indexOf('echo-locate')).toBe(ids.indexOf('paint-ratio') + 1)
   })
 
   describe('verdict', () => {

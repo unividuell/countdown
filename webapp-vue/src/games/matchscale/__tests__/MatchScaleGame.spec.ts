@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils'
 import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 import { draftKey } from '../draft'
 import MatchScaleBoard from '../MatchScaleBoard.vue'
 import MatchScaleGame from '../MatchScaleGame.vue'
@@ -123,8 +122,7 @@ describe('MatchScaleGame', () => {
     expect(reveal.get('h2').text()).toBe('Formen')
   })
 
-  it('is in the registry and in the lab', () => {
+  it('is in the registry', () => {
     expect(gameComponents['match-scale']).toBe(MatchScaleGame)
-    expect(labGameList).toContainEqual({ id: 'match-scale', title: 'Augenmaß' })
   })
 })

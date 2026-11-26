@@ -49,8 +49,8 @@ the backend falls back to the bundled six-entry sample and says so in the startu
 playable either way, but the texts are placeholders and nothing about the *content* can be judged
 from them. See [game-content.md](../.claude/guidelines/game-content.md) and `core/README.md`.
 
-Adding a game: one entry in `src/gamelab/games.ts` plus its component, and a `LabGame`
-implementation in the backend's `gamelab` module. See
+Adding a game: its component in `src/games/registry.ts`. The lab index lists the server's
+catalogue (`GET /api/communities/{slug}/games`), so the backend's `GameType` bean is the entry. See
 `docs/superpowers/specs/2026-08-08-game-lab-design.md`.
 
 ## Scripts

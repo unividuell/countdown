@@ -9,7 +9,6 @@ import type { CopyBlocksPayload } from '@/games/copyblocks/types'
 import type { GameProps } from '@/games/GameProps'
 import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 
 vi.mock('@/auth/useAuth', async () => {
   const { ref } = await import('vue')
@@ -113,9 +112,8 @@ describe('CopyBlocksGame', () => {
     )
   })
 
-  it('is in the registry and in the lab', () => {
+  it('is in the registry', () => {
     expect(gameComponents['copy-blocks']).toBeDefined()
-    expect(labGameList).toContainEqual({ id: 'copy-blocks', title: 'Blockierung' })
   })
 
   describe('verdict', () => {

@@ -14,10 +14,10 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCommunityContext } from '@/communities/context'
+import LabGameList from '@/gamelab/LabGameList.vue'
 import LabGate from '@/gamelab/LabGate.vue'
 import LabOptions from '@/gamelab/LabOptions.vue'
-import { labGameList } from '@/gamelab/games'
-import { gameLink, phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
+import { phaseFrom, rampFrom, withPhase, withRamp } from '@/gamelab/options'
 import { switchPlayerHref } from '@/gamelab/switchPlayer'
 import type { LabPhase } from '@/gamelab/types'
 
@@ -54,21 +54,7 @@ function writeRamp(on: boolean): void {
       </div>
       <p class="mb-4 text-sm text-on-surface-variant">Testrunde in „{{ community.name }}“</p>
 
-      <ul v-if="labGameList.length" data-test="lab-game-list" class="space-y-2">
-        <li v-for="game in labGameList" :key="game.id">
-          <RouterLink
-            :to="gameLink(`/c/${community.slug}/lab/${game.id}`, phase, ramp)"
-            :data-test="`lab-game-${game.id}`"
-            class="flex min-h-11 items-center justify-between rounded-lg border border-outline px-4 hover:bg-surface-container"
-          >
-            <span class="text-sm font-medium">{{ game.title }}</span>
-            <code class="text-xs text-on-surface-variant">{{ game.id }}</code>
-          </RouterLink>
-        </li>
-      </ul>
-      <p v-else data-test="lab-no-games" class="text-sm text-on-surface-variant">
-        Im Labor ist noch kein Spiel eingetragen.
-      </p>
+      <LabGameList :slug="community.slug" :phase="phase" :ramp="ramp" />
 
       <section data-test="lab-index-options" class="mt-8 space-y-2 border-t border-outline pt-4">
         <h2 class="text-xs font-semibold tracking-wide text-on-surface/40 uppercase">

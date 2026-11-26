@@ -3,7 +3,6 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { gameEntry, gameProps } from '@/games/__tests__/gameFixtures'
 import type { GameProps } from '@/games/GameProps'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 import MixColorBoard from '../MixColorBoard.vue'
 import MixColorGame from '../MixColorGame.vue'
 import MixColorReveal from '../MixColorReveal.vue'
@@ -154,8 +153,7 @@ describe('MixColorGame', () => {
     expect(phaseTwo.find('[data-test="mix-color-tolerance"]').exists()).toBe(false)
   })
 
-  it('is in the registry and in the lab', () => {
+  it('is in the registry', () => {
     expect(gameComponents['mix-color']).toBe(MixColorGame)
-    expect(labGameList).toContainEqual({ id: 'mix-color', title: 'Anrührung' })
   })
 })

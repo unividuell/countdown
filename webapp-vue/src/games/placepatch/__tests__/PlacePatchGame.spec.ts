@@ -8,7 +8,6 @@ import PlacePatchBoard from '@/games/placepatch/PlacePatchBoard.vue'
 import PlacePatchGame from '@/games/placepatch/PlacePatchGame.vue'
 import PlacePatchReveal from '@/games/placepatch/PlacePatchReveal.vue'
 import { gameComponents } from '@/games/registry'
-import { labGameList } from '@/gamelab/games'
 import RevealCover from '@/ui/RevealCover.vue'
 
 const PAYLOAD = { cols: 40, rows: 30, size: 10 }
@@ -256,9 +255,8 @@ describe('PlacePatchGame', () => {
     )
   })
 
-  it('is in the registry and in the lab', () => {
+  it('is in the registry', () => {
     expect(gameComponents['place-patch']).toBe(PlacePatchGame)
-    expect(labGameList).toContainEqual({ id: 'place-patch', title: 'Platzierung' })
   })
 
   describe('verdict', () => {

@@ -17,6 +17,9 @@ Design: `docs/superpowers/specs/2026-08-08-game-lab-design.md`.
   the lab exists — no import, no bean, no test hook. The lab can be rewritten or deleted without
   touching a game. So the lab computes its own duration from its own stamp rather than importing
   the framework's helper.
+- **The index lists the server's catalogue** (`GET /api/communities/{slug}/games`), the
+  community's `OFF` games included: the lab tests games, not the community's mix. No game list of
+  its own to drift.
 - One test-only exception: `LabPointsParityTest` imports from `game.internal` to drive the real
   round's services (its KDoc argues it). `ModularityTests.verify()` scans production sources only.
 
